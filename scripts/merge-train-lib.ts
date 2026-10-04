@@ -265,23 +265,40 @@ export const commitRegen = (git: Git, k: number, member: Member, commands: strin
 export const LANES_JSON = 'packages/parity/out/lanes.json';
 export const failuresJson = (target: string): string => `packages/parity/out/device-failures-${target}.json`;
 
-/** One target's lane states and its listed device failures, each as "<lane> <case> <dpr> <node> <kind>". */
-export type DeviceEvidence = { parityPass: boolean; parityProblems: string[]; targets: Map<string, { lanes: Map<string, string>; failures: Map<string, Set<string>> }> };
+/** One DPR set of a device lane's run: the device it ran on, the cases it had, the dumps it got and the failures it judged. */
+export type DeviceSet = { dpr: number; device: string; cases: number; dumps: number; failures: number };
+/**
+ * One target's lane states, its listed device failures (each as "<lane> <case> <dpr> <node> <kind>") and, per lane with a
+ * device run record, the DPR sets it ran.
+ */
+export type TargetEvidence = { lanes: Map<string, string>; failures: Map<string, Set<string>>; runs: Map<string, DeviceSet[]> };
+export type DeviceEvidence = { parityPass: boolean; parityProblems: string[]; targets: Map<string, TargetEvidence> };
 
 export const parseDeviceEvidence = (lanes: unknown, failures: (target: string) => unknown, what: string): DeviceEvidence => {
   const bad = (why: string): never => fail(`${what}: ${why}`);
   if (!isObject(lanes) || !isObject(lanes.parity) || !Array.isArray(lanes.targets)) return bad('lanes.json has no parity or targets');
   const { pass, problems } = lanes.parity;
   if (typeof pass !== 'boolean' || !Array.isArray(problems) || !problems.every((p) => typeof p === 'string')) return bad('lanes.json parity is not { pass, problems }');
-  const targets = new Map<string, { lanes: Map<string, string>; failures: Map<string, Set<string>> }>();
+  const targets = new Map<string, TargetEvidence>();
   for (const t of lanes.targets) {
     if (!isObject(t) || typeof t.target !== 'string' || !Array.isArray(t.lanes)) return bad('a lanes.json target is not { target, lanes }');
     if (targets.has(t.target)) return bad(`target ${t.target} is listed twice`);
     const states = new Map<string, string>();
+    const runs = new Map<string, DeviceSet[]>();
     for (const l of t.lanes) {
       if (!isObject(l) || typeof l.lane !== 'string' || typeof l.state !== 'string') return bad(`a ${t.target} lane is not { lane, state }`);
       if (states.has(l.lane)) return bad(`${t.target} lists lane ${l.lane} twice`);
       states.set(l.lane, l.state);
+      if (l.device === undefined || l.device === null) continue;
+      if (!isObject(l.device) || !Array.isArray(l.device.sets)) return bad(`${t.target} ${l.lane}: device is not null or { sets }`);
+      const sets: DeviceSet[] = [];
+      for (const d of l.device.sets) {
+        const ok = isObject(d) && typeof d.dpr === 'number' && isObject(d.device) && typeof d.device.name === 'string' && d.device.name !== '';
+        const counts = ok && [d.cases, d.dumps, d.failures].every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0);
+        if (!ok || !counts) return bad(`${t.target} ${l.lane}: a device set is not { dpr, device: { name }, cases, dumps, failures }`);
+        sets.push({ dpr: d.dpr as number, device: (d.device as { name: string }).name, cases: d.cases as number, dumps: d.dumps as number, failures: d.failures as number });
+      }
+      runs.set(l.lane, sets);
     }
     const list = failures(t.target);
     if (!Array.isArray(list)) return bad(`${failuresJson(t.target)} is not a list`);
@@ -295,7 +312,7 @@ export const parseDeviceEvidence = (lanes: unknown, failures: (target: string) =
       own.add(`${f.lane} ${f.case} ${f.dpr} ${f.node} ${f.kind}`);
       byLane.set(f.lane, own);
     }
-    targets.set(t.target, { lanes: states, failures: byLane });
+    targets.set(t.target, { lanes: states, failures: byLane, runs });
   }
   return { parityPass: pass, parityProblems: problems as string[], targets };
 };
@@ -323,9 +340,38 @@ export const deviceRunProblems = (base: DeviceEvidence, run: DeviceEvidence, sta
         if (added.length > 0) problems.push(`${target} ${lane}: ${added.length} failure(s) master does not have, e.g. ${added.slice(0, 3).join(' | ')}`);
       }
     }
-    for (const lane of r.lanes.keys()) if (!b.lanes.has(lane)) problems.push(`${target} ${lane}: not a lane on master`);
+    for (const lane of r.lanes.keys()) if (!b.lanes.has(lane)) problems.push(...newLaneProblems(target, lane, b, r));
+  }
+  // A lane new on some target must be on every target.
+  const added = new Set([...run.targets.values()].flatMap((r) => [...r.lanes.keys()]).filter((l) => ![...base.targets.values()].some((b) => b.lanes.has(l))));
+  for (const lane of added) {
+    for (const [target, r] of run.targets) if (base.targets.has(target) && !r.lanes.has(lane)) problems.push(`${target} ${lane}: a new lane the run has on another target but not here`);
   }
   for (const target of run.targets.keys()) if (!base.targets.has(target)) problems.push(`${target}: not a target on master`);
+  return problems;
+};
+
+// A lane master does not have has no baseline, so it is accepted only as a full pass: it passes, lists no failure, and ran
+// every case on every device (DPR and device name) that master's device lanes ran on for that target, with every dump taken.
+const newLaneProblems = (target: string, lane: string, b: TargetEvidence, r: TargetEvidence): string[] => {
+  const what = `${target} ${lane}: a new lane (not on master)`;
+  const problems: string[] = [];
+  const state = r.lanes.get(lane);
+  if (state !== 'pass') problems.push(`${what} is ${state}, not pass`);
+  const listed = r.failures.get(lane)?.size ?? 0;
+  if (listed > 0) problems.push(`${what} lists ${listed} failure(s)`);
+  const sets = r.runs.get(lane);
+  if (sets === undefined) return [...problems, `${what} has no device run record`];
+  const key = (s: { dpr: number; device: string }): string => `${s.device} at DPR ${s.dpr}`;
+  const expected = new Set([...b.runs.values()].flatMap((ss) => ss.map(key)));
+  if (expected.size === 0) problems.push(`${what}: master has no device run on ${target} to compare devices with`);
+  const ran = new Set(sets.map(key));
+  for (const d of expected) if (!ran.has(d)) problems.push(`${what} did not run on ${d}`);
+  for (const s of sets) {
+    if (s.cases === 0) problems.push(`${what} ran no case on ${key(s)}`);
+    else if (s.dumps !== s.cases) problems.push(`${what} got ${s.dumps} dumps of ${s.cases} cases on ${key(s)}`);
+    if (s.failures > 0) problems.push(`${what} has ${s.failures} failure(s) on ${key(s)}`);
+  }
   return problems;
 };
 

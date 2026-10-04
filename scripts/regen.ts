@@ -115,6 +115,7 @@ export const MANUAL: readonly { readonly command: string; readonly outputs: read
   // paint-transform-cases.ts); its test fails when the committed file differs, and the paint-vectors step reads it.
   { command: 'DRAGON_WRITE_DASH_INPUTS=1 npx vitest run packages/layout/test/paint-dash.test.ts; node packages/layout/test/paint-transform-cases.ts > packages/layout/paint-vectors/transform/inputs.jsonl', outputs: ['packages/layout/paint-vectors/*/inputs.jsonl'] },
   { command: 'pnpm run rt:oracle', outputs: ['packages/layout/rt-oracle/**', 'packages/layout/rt-vectors/**'] },
+  { command: 'node scripts/capture-interpolable.ts', outputs: ['packages/dragon/test/data/chrome-145-interpolable.json'] },
   { command: 'pnpm run parity:hit-capture -- --identity-base <rev> (the pointer-events identity manifest, once per base)', outputs: ['packages/parity/expected-hit/identity-base.json'] },
   { command: 'pnpm run parity:glyph-calibration', outputs: ['packages/parity/expected-glyphs/darwin-arm64/**'] },
   { command: 'node scripts/gen-script-data.ts', outputs: ['packages/layout/src/script-data.ts'] },
