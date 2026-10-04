@@ -196,6 +196,8 @@
       "inline-tags-rtl": [15,19],
       "inline-baselines": [2,4],
       "inline-baselines-rtl": [2,4],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -395,6 +397,8 @@
       "inline-tags-rtl": [16,19],
       "inline-baselines": [3,4],
       "inline-baselines-rtl": [3,4],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     }
@@ -596,6 +600,8 @@
       "inline-tags-rtl": [15,19],
       "inline-baselines": [2,4],
       "inline-baselines-rtl": [2,4],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -795,6 +801,8 @@
       "inline-tags-rtl": [16,19],
       "inline-baselines": [3,4],
       "inline-baselines-rtl": [3,4],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -994,6 +1002,8 @@
       "inline-tags-rtl": [15,19],
       "inline-baselines": [2,4],
       "inline-baselines-rtl": [2,4],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     }
