@@ -7,10 +7,14 @@ import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
 import { DUMP_FAULTS } from './native-compare.ts';
 import { repoPath } from './paths.ts';
+import type { LayoutInput } from '../../layout/src/input.ts';
+import { hitRefusal } from '../../layout/src/rt-hit.ts';
 import { SAMPLE_RULES } from './samples.ts';
 import { shapedCaseIds } from './text-latin-run.ts';
 
-export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels'] as const;
+export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels',
+  // SELD-R1b (notes/T047 §3.3 item 5): the case scripts' dumps, and the device hit test's answers.
+  'device-states', 'device-hit'] as const;
 export type LaneId = (typeof LANES)[number];
 export type NativeTarget = 'ios' | 'android';
 export const NATIVE_TARGETS: readonly NativeTarget[] = ['ios', 'android'];
@@ -53,6 +57,21 @@ export const extendedManifest = (): ExtendedManifest => readJson<ExtendedManifes
 /** The milestone-1 case ids the P1 vectors suite reads, in order (corpus-m1-cases.json). */
 export const m1CaseIds = (): readonly string[] => readJson<{ readonly cases: readonly string[] }>('packages/translate/corpus-m1-cases.json').cases;
 
+let hitVectors: number | null = null;
+/** The layout vectors the P1 hit suite runs (translate corpus.ts hitCases): every one whose input rt-hit.ts hitRefusal accepts. */
+function hitVectorCount(): number {
+  if (hitVectors === null) {
+    let n = 0;
+    for (const d of ['', ...DPRS.map((x) => `/dpr-${x}`)]) {
+      for (const f of readdirSync(repoPath(`packages/layout/vectors${d}`)).filter((x) => x.endsWith('.json'))) {
+        if (hitRefusal(readJson<{ readonly input: LayoutInput }>(`packages/layout/vectors${d}/${f}`).input) === null) n++;
+      }
+    }
+    hitVectors = n;
+  }
+  return hitVectors;
+}
+
 let topLevel: readonly string[] | null = null;
 /** Every layout case id, in fixture order: the top-level vectors, and the ids of every DPR set. */
 export function layoutCaseIds(): readonly string[] {
@@ -92,6 +111,8 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'p1', suite: 'library', cases: p1.cases['library'] ?? 0 },
     // ANIM-a2 (notes/T047 section 3.2): one rt case per rt vector record (timing, easing, hold and interpolation).
     { corpus: 'p1', suite: 'rt', cases: ['timing', 'easing', 'hold', 'interp'].reduce((n, f) => n + readJson<{ readonly records: readonly unknown[] }>(`packages/layout/rt-vectors/${f}.json`).records.length, 0) },
+    // SELD-R1b (notes/T047 RT-9): one hit case per layout vector, top-level and at every DPR, but those hitTableOf refuses (INL1a).
+    { corpus: 'p1', suite: 'hit', cases: hitVectorCount() },
     { corpus: 'extended', suite: 'engine-dpr', cases: vectorCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },
     { corpus: 'extended', suite: 'snap', cases: x.snapVectors + x.snapGenerated },
@@ -107,6 +128,16 @@ export function corpusSuites(): readonly CorpusSuite[] {
   ];
 }
 
+let scripts: readonly string[] | null = null;
+/**
+ * Every case script id (state-cases.ts deriveScripts), from the layout cases alone: one per case of a tree fixture with free states,
+ * "<fixture>~script<k>" with k the case's assignment index and "-rtl" for right-to-left.
+ */
+export function stateScriptIds(): readonly string[] {
+  if (scripts === null) scripts = layoutCases().flatMap((f) => f.cases.filter((c) => f.spec.format === 'tree' && c.assignment.length > 0).map((c) => `${f.spec.id}~script${c.index}${c.environment.direction === 'rtl' ? '-rtl' : ''}`));
+  return scripts;
+}
+
 /** The declared lane: vectors lanes hold every top-level and DPR vector plus the corpora; device lanes the cases at the device DPRs. */
 export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
   const where = lane === 'layout-vectors-host' ? 'host' : 'device';
@@ -115,6 +146,7 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
     const vectors = vectorCaseIds();
     return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids: vectors }, ...DPRS.map((d) => dprSet(d, vectors))], corpora: corpusSuites() };
   }
+  if (lane === 'device-states') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, stateScriptIds())), corpora: [] };
   // TXT1a-2: a shaped case is not a device case until phase R gives the device runtime its shaper (the device measures only Ahem).
   return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, vectorCaseIds())), corpora: [] };
 }

@@ -88,6 +88,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -169,6 +170,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -250,6 +252,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -331,6 +334,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -442,6 +446,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -553,6 +558,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -664,6 +670,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -775,6 +782,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -886,6 +894,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -997,6 +1006,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1098,6 +1108,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1179,6 +1190,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1290,6 +1302,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "writing-mode": "horizontal-tb"
       }
     },
