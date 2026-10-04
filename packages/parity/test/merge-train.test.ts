@@ -367,7 +367,10 @@ describe('the device run against the base\'s device evidence', () => {
     expect(deviceRunProblems(master, ev(states, { ios: [], android: [] }), ['ios device-pixels: evidence stamp'])).toEqual(['stale: ios device-pixels: evidence stamp']);
     expect(deviceRunProblems(master, ev(states, { ios: [], android: [] }, false), [])).toEqual(['lane parity fails: ios: case lists differ']);
     expect(deviceRunProblems(master, ev({ ios: states.ios }, { ios: [] }), [])).toEqual(['android: the run has no lanes']);
-    expect(deviceRunProblems(master, ev({ ...states, ios: { ...states.ios, 'device-new': 'pass' } }, { ios: [], android: [] }), [])).toEqual(['ios device-new: not a lane on master']);
+    expect(deviceRunProblems(master, ev({ ...states, ios: { ...states.ios, 'device-new': 'pass' } }, { ios: [], android: [] }), [])).toEqual([
+      'ios device-new: a new lane (not on master) has no device run record',
+      'android device-new: a new lane the run has on another target but not here',
+    ]);
   });
 
   it('parses the evidence strictly and reads STALE lines', () => {
@@ -379,6 +382,69 @@ describe('the device run against the base\'s device evidence', () => {
     expect(() => parseDeviceEvidence(lanes({ ios: {} }), () => [], 't')).not.toThrow();
     expect(() => parseDeviceEvidence({ ...ok, targets: [...ok.targets, ...ok.targets] }, () => [], 't')).toThrow(/twice/);
     expect(staleLines('ios (device DPRs 2, 3):\nSTALE ios device-pixels: x\n  STALE not at line start\n')).toEqual(['ios device-pixels: x']);
+  });
+});
+
+// #111 added device-hit and device-states, which master has no evidence for; they passed on every device master runs on.
+describe('a device lane master does not have', () => {
+  const DEVICES: Record<string, [number, string][]> = { ios: [[3, 'iPhone 17'], [2, 'iPad (A16)']], android: [[2, 'dragon-320'], [2.625, 'dragon-smoke'], [3, 'dragon-480']] };
+  type Set = { dpr: number; device: { name: string }; cases: number; dumps: number; failures: number };
+  const sets = (target: string, cases = 507, over: Partial<Set> = {}): Set[] => DEVICES[target]!.map(([dpr, name]) => ({ dpr, device: { name }, cases, dumps: cases, failures: 0, ...over }));
+  type Lane = { lane: string; state: string; device: { sets: Set[] } | null };
+  const lane = (target: string, name: string, state: string, s: Set[] | null = sets(target)): Lane => ({ lane: name, state, device: s === null ? null : { sets: s } });
+  const px = (c: string) => ({ lane: 'device-pixels', case: c, dpr: 3, node: 'edge:a', kind: 'pixel', detail: 'x' });
+  const file = (extra: Record<string, Lane[]>) => ({
+    parity: { pass: true, problems: [] },
+    targets: ['ios', 'android'].map((t) => ({ target: t, lanes: [lane(t, 'layout-vectors-host', 'pass', null), lane(t, 'device-frames', 'pass'), lane(t, 'device-pixels', 'fail', sets(t, 507, { failures: 28 })), ...(extra[t] ?? [])] })),
+  });
+  const master = parseDeviceEvidence(file({}), () => [px('a')], 'master');
+  const judge = (extra: Record<string, Lane[]>, failures: (t: string) => unknown[] = () => [px('a')]) => deviceRunProblems(master, parseDeviceEvidence(file(extra), failures, 'run'), []);
+  const both = (f: (t: string) => Lane[]): Record<string, Lane[]> => ({ ios: f('ios'), android: f('android') });
+
+  it('accepts new lanes that passed on every target and device master runs on, with no failure', () => {
+    expect(judge(both((t) => [lane(t, 'device-hit', 'pass'), lane(t, 'device-states', 'pass', sets(t, 126))]))).toEqual([]);
+  });
+
+  it('fails a new lane with any failure, in its state, its failure list or a device set', () => {
+    expect(judge(both((t) => [lane(t, 'device-hit', t === 'ios' ? 'fail' : 'pass')]))).toEqual(['ios device-hit: a new lane (not on master) is fail, not pass']);
+    const listed = judge(both((t) => [lane(t, 'device-hit', 'pass')]), (t) => [px('a'), ...(t === 'android' ? [{ ...px('b'), lane: 'device-hit' }] : [])]);
+    expect(listed).toEqual(['android device-hit: a new lane (not on master) lists 1 failure(s)']);
+    expect(judge(both((t) => [lane(t, 'device-hit', 'pass', t === 'ios' ? sets(t, 507, { failures: 1 }) : sets(t))]))).toEqual([
+      'ios device-hit: a new lane (not on master) has 1 failure(s) on iPhone 17 at DPR 3',
+      'ios device-hit: a new lane (not on master) has 1 failure(s) on iPad (A16) at DPR 2',
+    ]);
+  });
+
+  it('fails a new lane that missed a device or a target, or skipped runs', () => {
+    expect(judge(both((t) => [lane(t, 'device-hit', 'pass', t === 'android' ? sets(t).slice(0, 2) : sets(t))]))).toEqual(['android device-hit: a new lane (not on master) did not run on dragon-480 at DPR 3']);
+    expect(judge({ ios: [lane('ios', 'device-hit', 'pass')] })).toEqual(['android device-hit: a new lane the run has on another target but not here']);
+    expect(judge(both((t) => [lane(t, 'device-hit', 'pass', t === 'ios' ? sets(t, 0) : sets(t))]))).toEqual([
+      'ios device-hit: a new lane (not on master) ran no case on iPhone 17 at DPR 3',
+      'ios device-hit: a new lane (not on master) ran no case on iPad (A16) at DPR 2',
+    ]);
+    expect(judge(both((t) => [lane(t, 'device-hit', 'pass', t === 'ios' ? sets(t, 507, { dumps: 506 }) : sets(t))]))).toHaveLength(2);
+    expect(judge(both((t) => [lane(t, 'device-hit', 'not run', null)]))).toEqual([
+      'ios device-hit: a new lane (not on master) is not run, not pass',
+      'ios device-hit: a new lane (not on master) has no device run record',
+      'android device-hit: a new lane (not on master) is not run, not pass',
+      'android device-hit: a new lane (not on master) has no device run record',
+    ]);
+  });
+
+  it('still fails a lane master has that the run lacks', () => {
+    const run = file({});
+    run.targets[0]!.lanes = run.targets[0]!.lanes.filter((l) => l.lane !== 'device-frames');
+    expect(deviceRunProblems(master, parseDeviceEvidence(run, () => [px('a')], 'run'), [])).toEqual(['ios device-frames: missing from the run']);
+  });
+
+  it('parses device run records strictly', () => {
+    const bad = (device: unknown) => () => parseDeviceEvidence({ parity: { pass: true, problems: [] }, targets: [{ target: 'ios', lanes: [{ lane: 'device-hit', state: 'pass', device }] }] }, () => [], 't');
+    expect(bad(null)).not.toThrow();
+    expect(bad(undefined)).not.toThrow();
+    expect(bad({})).toThrow(/device is not null or \{ sets \}/);
+    expect(bad({ sets: [{ dpr: 3, device: { name: 'x' }, cases: 1, dumps: 1 }] })).toThrow(/device set/);
+    expect(bad({ sets: [{ dpr: 3, device: 'x', cases: 1, dumps: 1, failures: 0 }] })).toThrow(/device set/);
+    expect(bad({ sets: [{ dpr: 3, device: { name: 'x' }, cases: -1, dumps: 1, failures: 0 }] })).toThrow(/device set/);
   });
 });
 
