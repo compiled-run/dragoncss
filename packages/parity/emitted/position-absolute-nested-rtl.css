@@ -68,6 +68,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg1 {
   display: block;
@@ -138,6 +141,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg2 {
   display: block;
@@ -212,6 +218,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg3 {
   display: block;
@@ -282,6 +291,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg4 {
   display: block;
@@ -356,6 +368,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg5 {
   display: block;
@@ -430,6 +445,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg6 {
   display: block;
@@ -500,6 +518,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg7 {
   display: block;
@@ -574,6 +595,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg8 {
   display: block;
@@ -648,6 +672,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg9 {
   display: block;
@@ -722,6 +749,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg10 {
   display: block;
@@ -796,6 +826,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg11 {
   display: block;
@@ -866,6 +899,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg12 {
   display: block;
@@ -940,6 +976,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg13 {
   display: block;
@@ -1014,6 +1053,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg14 {
   display: block;
@@ -1084,6 +1126,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg15 {
   display: block;
@@ -1154,6 +1199,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg16 {
   display: block;
@@ -1228,6 +1276,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg17 {
   display: block;
@@ -1298,4 +1349,7 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
