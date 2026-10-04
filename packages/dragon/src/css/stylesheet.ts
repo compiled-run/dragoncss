@@ -15,6 +15,7 @@ import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
 import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
+import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
 import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, ratioValue, tokenValue, toValue } from './values.ts';
@@ -383,6 +384,8 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   }
   // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
   if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);
+  // css-transforms-1 (PNT2): multi-token transform, transform-origin and will-change values (properties/transform.ts).
+  if (!wide && TRANSFORM_VALUE_PROPERTIES.has(property)) return parseTransformValue(property, tokens, base);
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
   const values: CssValue[] = baseline === null ? [] : [baseline];

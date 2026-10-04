@@ -87,7 +87,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "200px 31.7292px",
+        "will-change": "auto"
       }
     },
     {
@@ -167,7 +170,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "198.75px 31.2292px",
+        "will-change": "auto"
       }
     },
     {
@@ -247,7 +253,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "19.9405px 8.1369px",
+        "will-change": "auto"
       }
     },
     {
@@ -327,7 +336,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "74.131px 3.88393px",
+        "will-change": "auto"
       }
     },
     {
@@ -407,7 +419,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "132.506px 0.389881px",
+        "will-change": "auto"
       }
     },
     {
@@ -487,7 +502,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "90.4286px 5.55357px",
+        "will-change": "auto"
       }
     },
     {
@@ -567,7 +585,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "50.6458px 4.9494px",
+        "will-change": "auto"
       }
     },
     {
@@ -647,7 +668,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "13.8065px 4.9494px",
+        "will-change": "auto"
       }
     },
     {
@@ -727,7 +751,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "28.0417px 4.9494px",
+        "will-change": "auto"
       }
     },
     {
@@ -807,7 +834,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "6.58036px 4.9494px",
+        "will-change": "auto"
       }
     }
   ]

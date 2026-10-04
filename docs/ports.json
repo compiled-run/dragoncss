@@ -257,10 +257,12 @@
       "headerSha256": "1e9851604ded024932b1faf32ac34284f5dc88020b49fd177d9d2dd5f93ffc8f",
       "ranges": [
         { "lines": "50-51", "symbol": "kMaxValueForCssLength", "source": "located" },
-        { "lines": "52-53", "symbol": "kMinValueForCssLength", "source": "located" }
+        { "lines": "52-53", "symbol": "kMinValueForCssLength", "source": "located" },
+        { "lines": "486-542", "symbol": "readAngle", "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/units.ts", "symbol": "CSS_LENGTH_MAX", "use": "reference" }
+        { "file": "packages/layout/src/units.ts", "symbol": "CSS_LENGTH_MAX", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/transform.ts", "symbol": "readAngle", "use": "reference" }
       ]
     },
     {
@@ -2002,6 +2004,21 @@
       "dragon": [
         { "file": "packages/translate/harness/harness.ts", "symbol": "rtSin", "use": "port" },
         { "file": "packages/translate/harness/harness.ts", "symbol": "rtCos", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "ui/gfx/geometry/sin_cos_degrees.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "2d212352a2f9a7929e8fb83b22ec3c1f13e21947d2f897adf6890018c75a1524",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "25-110", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/emit/paint/transform.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
