@@ -46,7 +46,7 @@ describe('devices of a target at once', () => {
     const o = outcome('iPhone 17');
     expect(parseOutcome(JSON.stringify(o), 'iPhone 17')).toEqual(o);
     expect(() => parseOutcome('{', 'iPhone 17')).toThrow(/wrote no outcome JSON/);
-    expect(() => parseOutcome(JSON.stringify(o), 'iPad (A16)')).toThrow(/malformed device outcome: device "iPhone 17"; set.device is not this device; trust is not/);
+    expect(() => parseOutcome(JSON.stringify(o), 'iPad (A16)')).toThrow(/malformed device outcome: device "iPhone 17"; set.device is not this device; states.device is not this device; hits.device is not this device; trust is not/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: { ...o.set, failures: 'none' } }), 'iPhone 17')).toThrow(/set.failures is not a failure list/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: null }), 'iPhone 17')).toThrow(/neither a set nor a blocked reason/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: { ...o.set, faults: [{ caught: 1 }] } }), 'iPhone 17')).toThrow(/set.faults is not a fault row list/);

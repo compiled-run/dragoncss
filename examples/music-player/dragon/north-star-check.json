@@ -96,7 +96,7 @@
  "method": {
   "passes": {
    "A-authored": "the tree and stylesheet as written, all cases in one compile",
-   "B-unwrapped": "@media and @keyframes wrappers blanked (offsets kept), so declarations inside at-rules get the context-free check",
+   "B-unwrapped": "@media wrappers blanked (offsets kept), so declarations inside them get the context-free check",
    "C-context": "B with target-less errors blanked to a fixed point and the tree projected to supported tags and accepted attributes; reaches the per-case checks"
   },
   "cases": 4,
@@ -105,44 +105,42 @@
    "doc/page.isPlaying"
   ],
   "contextProbe": {
-   "rounds": 1,
+   "rounds": 2,
    "blankedRules": 9,
-   "blankedDeclarations": 64,
+   "blankedDeclarations": 47,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 304,
-  "errors": 303,
+  "diagnostics": 357,
+  "errors": 356,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 19,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 19,
    "DRAGON_UNPROVEN_CONTEXT [web]": 21,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
-   "DRAGON_UNSUPPORTED_AT_RULE": 1,
    "DRAGON_UNSUPPORTED_AT_RULE [android]": 2,
    "DRAGON_UNSUPPORTED_AT_RULE [ios]": 2,
    "DRAGON_UNSUPPORTED_ELEMENT": 11,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 61,
+   "DRAGON_UNSUPPORTED_PROPERTY": 41,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 22,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 22,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 20
+   "DRAGON_UNSUPPORTED_VALUE [android]": 49,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 49,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 40
   },
   "perTarget": {
    "web": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 21,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
-     "DRAGON_UNSUPPORTED_AT_RULE": 1,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
-     "DRAGON_UNSUPPORTED_PROPERTY": 61,
+     "DRAGON_UNSUPPORTED_PROPERTY": 41,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 23
+     "DRAGON_UNSUPPORTED_VALUE": 43
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -152,12 +150,12 @@
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 19,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
-     "DRAGON_UNSUPPORTED_AT_RULE": 3,
+     "DRAGON_UNSUPPORTED_AT_RULE": 2,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 61,
+     "DRAGON_UNSUPPORTED_PROPERTY": 41,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 25
+     "DRAGON_UNSUPPORTED_VALUE": 52
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -167,12 +165,12 @@
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 19,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 23,
-     "DRAGON_UNSUPPORTED_AT_RULE": 3,
+     "DRAGON_UNSUPPORTED_AT_RULE": 2,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 61,
+     "DRAGON_UNSUPPORTED_PROPERTY": 41,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 25
+     "DRAGON_UNSUPPORTED_VALUE": 52
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -180,11 +178,11 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 178,
-  "supportedWeb": 192,
-  "supportedIos": 178,
-  "supportedAndroid": 178,
-  "supportPercent": 61.2,
+  "supportedBothTargets": 181,
+  "supportedWeb": 201,
+  "supportedIos": 181,
+  "supportedAndroid": 181,
+  "supportPercent": 62.2,
   "elements": 62,
   "supportedElements": 45,
   "tags": {
@@ -267,9 +265,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 140,
-   "B-unwrapped": 137,
-   "C-context": 166
+   "A-authored": 151,
+   "B-unwrapped": 147,
+   "C-context": 210
   }
  },
  "features": {
@@ -815,11 +813,11 @@
    "atRule": null,
    "property": "transition",
    "value": "margin-right 0.5s ease",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1015,11 +1013,11 @@
    "atRule": null,
    "property": "transition",
    "value": "all 0.3s ease",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1357,11 +1355,11 @@
    "atRule": null,
    "property": "animation",
    "value": "album-spin 20s linear infinite",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1371,11 +1369,11 @@
    "atRule": null,
    "property": "animation-play-state",
    "value": "paused",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1499,11 +1497,11 @@
    "atRule": null,
    "property": "animation-play-state",
    "value": "running",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1629,7 +1627,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1771,7 +1769,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1859,7 +1857,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1899,7 +1897,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1927,7 +1925,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2053,7 +2051,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2525,7 +2523,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2551,7 +2549,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2811,11 +2809,11 @@
    "atRule": null,
    "property": "transition",
    "value": "color 0.2s ease,\n\t\ttransform 0.2s ease",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2843,7 +2841,6 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -3036,7 +3033,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -3046,12 +3043,10 @@
    "atRule": null,
    "property": "transition",
    "value": "opacity 0.5s ease,\n\t\ttransform 0.5s ease",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 209,
@@ -3422,7 +3417,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -3767,13 +3762,10 @@
    "atRule": "@keyframes album-spin",
    "property": "transform",
    "value": "rotate(0deg)",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE",
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 266,
@@ -3782,13 +3774,10 @@
    "atRule": "@keyframes album-spin",
    "property": "transform",
    "value": "rotate(360deg)",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE",
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 267,
@@ -4462,26 +4451,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@949-983|transition is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 949,
-    "end": 983,
-    "line": 67,
-    "column": 2,
-    "text": "transition: margin-right 0.5s ease"
-   },
-   "message": "transition is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -4535,26 +4504,6 @@
     "text": "10vh"
    },
    "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@1577-1602|transition is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1577,
-    "end": 1602,
-    "line": 97,
-    "column": 2,
-    "text": "transition: all 0.3s ease"
-   },
-   "message": "transition is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4722,46 +4671,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2407-2448|animation is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 2407,
-    "end": 2448,
-    "line": 145,
-    "column": 2,
-    "text": "animation: album-spin 20s linear infinite"
-   },
-   "message": "animation is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2451-2479|animation-play-state is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 2451,
-    "end": 2479,
-    "line": 146,
-    "column": 2,
-    "text": "animation-play-state: paused"
-   },
-   "message": "animation-play-state is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|*|css@2514-2678|background: \"radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)\" has 2 layers, which set background-image (initial none), background-position-x (initial 0%), background-position-y (initial 0%), background-size (initial auto), background-repeat (initial repeat), background-attachment (initial scroll), background-origin (initial padding-box), background-clip (initial border-box) to 2-item lists. Dragon supports one layer, where every longhand except background-color keeps its initial value",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -4822,26 +4731,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2984-3013|animation-play-state is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 2984,
-    "end": 3013,
-    "line": 164,
-    "column": 2,
-    "text": "animation-play-state: running"
-   },
-   "message": "animation-play-state is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3106-3124|border-radius is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -4882,19 +4771,59 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3287-3319|transform is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3298-3319|transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 3287,
+    "start": 3298,
     "end": 3319,
     "line": 179,
-    "column": 2,
-    "text": "transform: translate(-50%, -50%)"
+    "column": 13,
+    "text": "translate(-50%, -50%)"
    },
-   "message": "transform is not supported in milestone 1",
+   "message": "transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3298-3319|transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3298,
+    "end": 3319,
+    "line": 179,
+    "column": 13,
+    "text": "translate(-50%, -50%)"
+   },
+   "message": "transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3298-3319|transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 3298,
+    "end": 3319,
+    "line": 179,
+    "column": 13,
+    "text": "translate(-50%, -50%)"
+   },
+   "message": "transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4982,19 +4911,59 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3654-3694|transform is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3665-3694|transform: translatex(-18%) rotate(8deg) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 3654,
+    "start": 3665,
     "end": 3694,
     "line": 202,
-    "column": 2,
-    "text": "transform: translateX(-18%) rotate(8deg)"
+    "column": 13,
+    "text": "translateX(-18%) rotate(8deg)"
    },
-   "message": "transform is not supported in milestone 1",
+   "message": "transform: translatex(-18%) rotate(8deg) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3665-3694|transform: translatex(-18%) rotate(8deg) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3665,
+    "end": 3694,
+    "line": 202,
+    "column": 13,
+    "text": "translateX(-18%) rotate(8deg)"
+   },
+   "message": "transform: translatex(-18%) rotate(8deg) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3665-3694|transform: translatex(-18%) rotate(8deg) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 3665,
+    "end": 3694,
+    "line": 202,
+    "column": 13,
+    "text": "translateX(-18%) rotate(8deg)"
+   },
+   "message": "transform: translatex(-18%) rotate(8deg) is unsupported (support profile m1-s5); no transform value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5022,19 +4991,59 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3841-3864|transform-origin is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3859-3864|transform-origin: 0px 50% is unsupported (support profile m1-s5); no transform-origin value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 3841,
+    "start": 3859,
     "end": 3864,
     "line": 212,
-    "column": 2,
-    "text": "transform-origin: 0 50%"
+    "column": 20,
+    "text": "0 50%"
    },
-   "message": "transform-origin is not supported in milestone 1",
+   "message": "transform-origin: 0px 50% is unsupported (support profile m1-s5); no transform-origin value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3859-3864|transform-origin: 0px 50% is unsupported (support profile m1-s5); no transform-origin value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3859,
+    "end": 3864,
+    "line": 212,
+    "column": 20,
+    "text": "0 50%"
+   },
+   "message": "transform-origin: 0px 50% is unsupported (support profile m1-s5); no transform-origin value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3859-3864|transform-origin: 0px 50% is unsupported (support profile m1-s5); no transform-origin value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 3859,
+    "end": 3864,
+    "line": 212,
+    "column": 20,
+    "text": "0 50%"
+   },
+   "message": "transform-origin: 0px 50% is unsupported (support profile m1-s5); no transform-origin value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5062,19 +5071,59 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3919-3959|transform is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3930-3959|transform: rotate(28deg) translatex(22%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 3919,
+    "start": 3930,
     "end": 3959,
     "line": 218,
-    "column": 2,
-    "text": "transform: rotate(28deg) translateX(22%)"
+    "column": 13,
+    "text": "rotate(28deg) translateX(22%)"
    },
-   "message": "transform is not supported in milestone 1",
+   "message": "transform: rotate(28deg) translatex(22%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3930-3959|transform: rotate(28deg) translatex(22%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3930,
+    "end": 3959,
+    "line": 218,
+    "column": 13,
+    "text": "rotate(28deg) translateX(22%)"
+   },
+   "message": "transform: rotate(28deg) translatex(22%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3930-3959|transform: rotate(28deg) translatex(22%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 3930,
+    "end": 3959,
+    "line": 218,
+    "column": 13,
+    "text": "rotate(28deg) translateX(22%)"
+   },
+   "message": "transform: rotate(28deg) translatex(22%) is unsupported (support profile m1-s5); no transform value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5102,19 +5151,59 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4002-4043|transform is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4013-4043|transform: rotate(142deg) translatex(34%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 4002,
+    "start": 4013,
     "end": 4043,
     "line": 223,
-    "column": 2,
-    "text": "transform: rotate(142deg) translateX(34%)"
+    "column": 13,
+    "text": "rotate(142deg) translateX(34%)"
    },
-   "message": "transform is not supported in milestone 1",
+   "message": "transform: rotate(142deg) translatex(34%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4013-4043|transform: rotate(142deg) translatex(34%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4013,
+    "end": 4043,
+    "line": 223,
+    "column": 13,
+    "text": "rotate(142deg) translateX(34%)"
+   },
+   "message": "transform: rotate(142deg) translatex(34%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4013-4043|transform: rotate(142deg) translatex(34%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4013,
+    "end": 4043,
+    "line": 223,
+    "column": 13,
+    "text": "rotate(142deg) translateX(34%)"
+   },
+   "message": "transform: rotate(142deg) translatex(34%) is unsupported (support profile m1-s5); no transform value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5162,19 +5251,59 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4307-4339|transform is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4318-4339|transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 4307,
+    "start": 4318,
     "end": 4339,
     "line": 238,
-    "column": 2,
-    "text": "transform: translate(-50%, -50%)"
+    "column": 13,
+    "text": "translate(-50%, -50%)"
    },
-   "message": "transform is not supported in milestone 1",
+   "message": "transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4318-4339|transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4318,
+    "end": 4339,
+    "line": 238,
+    "column": 13,
+    "text": "translate(-50%, -50%)"
+   },
+   "message": "transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4318-4339|transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4318,
+    "end": 4339,
+    "line": 238,
+    "column": 13,
+    "text": "translate(-50%, -50%)"
+   },
+   "message": "transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5342,19 +5471,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5318-5343|transform is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5329-5343|transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 5318,
+    "start": 5329,
     "end": 5343,
     "line": 300,
-    "column": 2,
-    "text": "transform: translateX(0%)"
+    "column": 13,
+    "text": "translateX(0%)"
    },
-   "message": "transform is not supported in milestone 1",
+   "message": "transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5362,19 +5491,99 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5360-5382|will-change is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5329-5343|transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "ios",
    "location": {
     "kind": "css",
-    "start": 5360,
+    "start": 5329,
+    "end": 5343,
+    "line": 300,
+    "column": 13,
+    "text": "translateX(0%)"
+   },
+   "message": "transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5329-5343|transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 5329,
+    "end": 5343,
+    "line": 300,
+    "column": 13,
+    "text": "translateX(0%)"
+   },
+   "message": "transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5373-5382|will-change: transform is unsupported (support profile m1-s5); no will-change value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5373,
     "end": 5382,
     "line": 302,
-    "column": 2,
-    "text": "will-change: transform"
+    "column": 15,
+    "text": "transform"
    },
-   "message": "will-change is not supported in milestone 1",
+   "message": "will-change: transform is unsupported (support profile m1-s5); no will-change value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5373-5382|will-change: transform is unsupported (support profile m1-s5); no will-change value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 5373,
+    "end": 5382,
+    "line": 302,
+    "column": 15,
+    "text": "transform"
+   },
+   "message": "will-change: transform is unsupported (support profile m1-s5); no will-change value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5373-5382|will-change: transform is unsupported (support profile m1-s5); no will-change value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 5373,
+    "end": 5382,
+    "line": 302,
+    "column": 15,
+    "text": "transform"
+   },
+   "message": "will-change: transform is unsupported (support profile m1-s5); no will-change value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5483,26 +5692,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5962-6014|transition is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5962,
-    "end": 6014,
-    "line": 338,
-    "column": 2,
-    "text": "transition:\n\t\tcolor 0.2s ease,\n\t\ttransform 0.2s ease"
-   },
-   "message": "transition is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@6039-6045|:hover depends on user interaction or document state, which a later package models as runtime state",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
@@ -5516,26 +5705,6 @@
     "text": ":hover"
    },
    "message": ":hover depends on user interaction or document state, which a later package models as runtime state",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6076-6098|transform is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6076,
-    "end": 6098,
-    "line": 345,
-    "column": 2,
-    "text": "transform: scale(1.08)"
-   },
-   "message": "transform is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5763,19 +5932,19 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6501-6528|transform is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6512-6528|transform: translatex(100%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 6501,
+    "start": 6512,
     "end": 6528,
     "line": 372,
-    "column": 2,
-    "text": "transform: translateX(100%)"
+    "column": 13,
+    "text": "translateX(100%)"
    },
-   "message": "transform is not supported in milestone 1",
+   "message": "transform: translatex(100%) is unsupported (support profile m1-s5); no transform value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5783,19 +5952,39 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6531-6585|transition is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6512-6528|transform: translatex(100%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "ios",
    "location": {
     "kind": "css",
-    "start": 6531,
-    "end": 6585,
-    "line": 373,
-    "column": 2,
-    "text": "transition:\n\t\topacity 0.5s ease,\n\t\ttransform 0.5s ease"
+    "start": 6512,
+    "end": 6528,
+    "line": 372,
+    "column": 13,
+    "text": "translateX(100%)"
    },
-   "message": "transition is not supported in milestone 1",
+   "message": "transform: translatex(100%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6512-6528|transform: translatex(100%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 6512,
+    "end": 6528,
+    "line": 372,
+    "column": 13,
+    "text": "translateX(100%)"
+   },
+   "message": "transform: translatex(100%) is unsupported (support profile m1-s5); no transform value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5903,19 +6092,59 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@7393-7418|transform is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7404-7418|transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
-    "start": 7393,
+    "start": 7404,
     "end": 7418,
     "line": 435,
-    "column": 2,
-    "text": "transform: translateX(0%)"
+    "column": 13,
+    "text": "translateX(0%)"
    },
-   "message": "transform is not supported in milestone 1",
+   "message": "transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7404-7418|transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 7404,
+    "end": 7418,
+    "line": 435,
+    "column": 13,
+    "text": "translateX(0%)"
+   },
+   "message": "transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is supported",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7404-7418|transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is supported",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 7404,
+    "end": 7418,
+    "line": 435,
+    "column": 13,
+    "text": "translateX(0%)"
+   },
+   "message": "transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is supported",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6120,25 +6349,6 @@
    "passes": [
     "A-authored",
     "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_AT_RULE|*|css@8334-8436|@keyframes in the stylesheet is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_AT_RULE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8334,
-    "end": 8436,
-    "line": 488,
-    "column": 1,
-    "text": "@keyframes album-spin {\n\tfrom {\n\t\ttransform: rotate(0deg);\n\t}\n\n\tto {\n\t\ttransform: rotate(360deg);\n\t}\n}"
-   },
-   "message": "@keyframes in the stylesheet is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored"
    ]
   },
   {
@@ -6836,44 +7046,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@8368-8391|transform is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8368,
-    "end": 8391,
-    "line": 490,
-    "column": 3,
-    "text": "transform: rotate(0deg)"
-   },
-   "message": "transform is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@8405-8430|transform is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8405,
-    "end": 8430,
-    "line": 494,
-    "column": 3,
-    "text": "transform: rotate(360deg)"
-   },
-   "message": "transform is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNPROVEN_CONTEXT|android|css@484-490|overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
@@ -7292,6 +7464,44 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@961-983|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 961,
+    "end": 983,
+    "line": 67,
+    "column": 14,
+    "text": "margin-right 0.5s ease"
+   },
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@961-983|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 961,
+    "end": 983,
+    "line": 67,
+    "column": 14,
+    "text": "margin-right 0.5s ease"
+   },
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -7634,6 +7844,44 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1589-1602|transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1589,
+    "end": 1602,
+    "line": 97,
+    "column": 14,
+    "text": "all 0.3s ease"
+   },
+   "message": "transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1589-1602|transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 1589,
+    "end": 1602,
+    "line": 97,
+    "column": 14,
+    "text": "all 0.3s ease"
+   },
+   "message": "transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2125-2130|position: fixed is unsupported (support profile m1-s5); in flex-column/ltr use static",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -7685,6 +7933,462 @@
     "text": "fixed"
    },
    "message": "position: fixed is unsupported (support profile m1-s5); in flex-column/ltr use static",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2418-2448|animation-name:<custom-ident>, animation-duration:<time>, animation-timing-function:linear, animation-delay:<time>, animation-iteration-count:infinite, animation-direction:normal, animation-fill-mode:none, animation-play-state:running, animation-timeline:auto, animation-range-start:normal, animation-range-end:normal, animation-composition:replace has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2418,
+    "end": 2448,
+    "line": 145,
+    "column": 13,
+    "text": "album-spin 20s linear infinite"
+   },
+   "message": "animation-name:<custom-ident>, animation-duration:<time>, animation-timing-function:linear, animation-delay:<time>, animation-iteration-count:infinite, animation-direction:normal, animation-fill-mode:none, animation-play-state:running, animation-timeline:auto, animation-range-start:normal, animation-range-end:normal, animation-composition:replace has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2418-2448|animation-name:<custom-ident>, animation-duration:<time>, animation-timing-function:linear, animation-delay:<time>, animation-iteration-count:infinite, animation-direction:normal, animation-fill-mode:none, animation-play-state:running, animation-timeline:auto, animation-range-start:normal, animation-range-end:normal, animation-composition:replace has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2418,
+    "end": 2448,
+    "line": 145,
+    "column": 13,
+    "text": "album-spin 20s linear infinite"
+   },
+   "message": "animation-name:<custom-ident>, animation-duration:<time>, animation-timing-function:linear, animation-delay:<time>, animation-iteration-count:infinite, animation-direction:normal, animation-fill-mode:none, animation-play-state:running, animation-timeline:auto, animation-range-start:normal, animation-range-end:normal, animation-composition:replace has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2473-2479|animation-play-state:paused has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2473,
+    "end": 2479,
+    "line": 146,
+    "column": 24,
+    "text": "paused"
+   },
+   "message": "animation-play-state:paused has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2473-2479|animation-play-state:paused has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2473,
+    "end": 2479,
+    "line": 146,
+    "column": 24,
+    "text": "paused"
+   },
+   "message": "animation-play-state:paused has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3006-3013|animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3006,
+    "end": 3013,
+    "line": 164,
+    "column": 24,
+    "text": "running"
+   },
+   "message": "animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3006-3013|animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3006,
+    "end": 3013,
+    "line": 164,
+    "column": 24,
+    "text": "running"
+   },
+   "message": "animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3298-3319|transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3298,
+    "end": 3319,
+    "line": 179,
+    "column": 13,
+    "text": "translate(-50%, -50%)"
+   },
+   "message": "transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3298-3319|transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3298,
+    "end": 3319,
+    "line": 179,
+    "column": 13,
+    "text": "translate(-50%, -50%)"
+   },
+   "message": "transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3298-3319|transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 3298,
+    "end": 3319,
+    "line": 179,
+    "column": 13,
+    "text": "translate(-50%, -50%)"
+   },
+   "message": "transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3665-3694|transform: translatex(-18%) rotate(8deg) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3665,
+    "end": 3694,
+    "line": 202,
+    "column": 13,
+    "text": "translateX(-18%) rotate(8deg)"
+   },
+   "message": "transform: translatex(-18%) rotate(8deg) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3665-3694|transform: translatex(-18%) rotate(8deg) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3665,
+    "end": 3694,
+    "line": 202,
+    "column": 13,
+    "text": "translateX(-18%) rotate(8deg)"
+   },
+   "message": "transform: translatex(-18%) rotate(8deg) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3665-3694|transform: translatex(-18%) rotate(8deg) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 3665,
+    "end": 3694,
+    "line": 202,
+    "column": 13,
+    "text": "translateX(-18%) rotate(8deg)"
+   },
+   "message": "transform: translatex(-18%) rotate(8deg) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3859-3864|transform-origin: 0px 50% is unsupported (support profile m1-s5); no transform-origin value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3859,
+    "end": 3864,
+    "line": 212,
+    "column": 20,
+    "text": "0 50%"
+   },
+   "message": "transform-origin: 0px 50% is unsupported (support profile m1-s5); no transform-origin value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3859-3864|transform-origin: 0px 50% is unsupported (support profile m1-s5); no transform-origin value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3859,
+    "end": 3864,
+    "line": 212,
+    "column": 20,
+    "text": "0 50%"
+   },
+   "message": "transform-origin: 0px 50% is unsupported (support profile m1-s5); no transform-origin value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3859-3864|transform-origin: 0px 50% is unsupported (support profile m1-s5); no transform-origin value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 3859,
+    "end": 3864,
+    "line": 212,
+    "column": 20,
+    "text": "0 50%"
+   },
+   "message": "transform-origin: 0px 50% is unsupported (support profile m1-s5); no transform-origin value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3930-3959|transform: rotate(28deg) translatex(22%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3930,
+    "end": 3959,
+    "line": 218,
+    "column": 13,
+    "text": "rotate(28deg) translateX(22%)"
+   },
+   "message": "transform: rotate(28deg) translatex(22%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3930-3959|transform: rotate(28deg) translatex(22%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3930,
+    "end": 3959,
+    "line": 218,
+    "column": 13,
+    "text": "rotate(28deg) translateX(22%)"
+   },
+   "message": "transform: rotate(28deg) translatex(22%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3930-3959|transform: rotate(28deg) translatex(22%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 3930,
+    "end": 3959,
+    "line": 218,
+    "column": 13,
+    "text": "rotate(28deg) translateX(22%)"
+   },
+   "message": "transform: rotate(28deg) translatex(22%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4013-4043|transform: rotate(142deg) translatex(34%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4013,
+    "end": 4043,
+    "line": 223,
+    "column": 13,
+    "text": "rotate(142deg) translateX(34%)"
+   },
+   "message": "transform: rotate(142deg) translatex(34%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4013-4043|transform: rotate(142deg) translatex(34%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4013,
+    "end": 4043,
+    "line": 223,
+    "column": 13,
+    "text": "rotate(142deg) translateX(34%)"
+   },
+   "message": "transform: rotate(142deg) translatex(34%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4013-4043|transform: rotate(142deg) translatex(34%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4013,
+    "end": 4043,
+    "line": 223,
+    "column": 13,
+    "text": "rotate(142deg) translateX(34%)"
+   },
+   "message": "transform: rotate(142deg) translatex(34%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4318-4339|transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4318,
+    "end": 4339,
+    "line": 238,
+    "column": 13,
+    "text": "translate(-50%, -50%)"
+   },
+   "message": "transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4318-4339|transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4318,
+    "end": 4339,
+    "line": 238,
+    "column": 13,
+    "text": "translate(-50%, -50%)"
+   },
+   "message": "transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4318-4339|transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 4318,
+    "end": 4339,
+    "line": 238,
+    "column": 13,
+    "text": "translate(-50%, -50%)"
+   },
+   "message": "transform: translate(-50%, -50%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -7976,6 +8680,158 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5329-5343|transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5329,
+    "end": 5343,
+    "line": 300,
+    "column": 13,
+    "text": "translateX(0%)"
+   },
+   "message": "transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5329-5343|transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 5329,
+    "end": 5343,
+    "line": 300,
+    "column": 13,
+    "text": "translateX(0%)"
+   },
+   "message": "transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5329-5343|transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 5329,
+    "end": 5343,
+    "line": 300,
+    "column": 13,
+    "text": "translateX(0%)"
+   },
+   "message": "transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5373-5382|will-change: transform is unsupported (support profile m1-s5); no will-change value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5373,
+    "end": 5382,
+    "line": 302,
+    "column": 15,
+    "text": "transform"
+   },
+   "message": "will-change: transform is unsupported (support profile m1-s5); no will-change value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5373-5382|will-change: transform is unsupported (support profile m1-s5); no will-change value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 5373,
+    "end": 5382,
+    "line": 302,
+    "column": 15,
+    "text": "transform"
+   },
+   "message": "will-change: transform is unsupported (support profile m1-s5); no will-change value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5373-5382|will-change: transform is unsupported (support profile m1-s5); no will-change value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 5373,
+    "end": 5382,
+    "line": 302,
+    "column": 15,
+    "text": "transform"
+   },
+   "message": "will-change: transform is unsupported (support profile m1-s5); no will-change value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5976-6014|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5976,
+    "end": 6014,
+    "line": 339,
+    "column": 3,
+    "text": "color 0.2s ease,\n\t\ttransform 0.2s ease"
+   },
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5976-6014|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 5976,
+    "end": 6014,
+    "line": 339,
+    "column": 3,
+    "text": "color 0.2s ease,\n\t\ttransform 0.2s ease"
+   },
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNPROVEN_CONTEXT|android|css@6185-6196|display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
@@ -8198,6 +9054,158 @@
     "text": "fixed"
    },
    "message": "position: fixed is unsupported (support profile m1-s5); in block/ltr use static",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6512-6528|transform: translatex(100%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6512,
+    "end": 6528,
+    "line": 372,
+    "column": 13,
+    "text": "translateX(100%)"
+   },
+   "message": "transform: translatex(100%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6512-6528|transform: translatex(100%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 6512,
+    "end": 6528,
+    "line": 372,
+    "column": 13,
+    "text": "translateX(100%)"
+   },
+   "message": "transform: translatex(100%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6512-6528|transform: translatex(100%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 6512,
+    "end": 6528,
+    "line": 372,
+    "column": 13,
+    "text": "translateX(100%)"
+   },
+   "message": "transform: translatex(100%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7404-7418|transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 7404,
+    "end": 7418,
+    "line": 435,
+    "column": 13,
+    "text": "translateX(0%)"
+   },
+   "message": "transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@7404-7418|transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 7404,
+    "end": 7418,
+    "line": 435,
+    "column": 13,
+    "text": "translateX(0%)"
+   },
+   "message": "transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@7404-7418|transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 7404,
+    "end": 7418,
+    "line": 435,
+    "column": 13,
+    "text": "translateX(0%)"
+   },
+   "message": "transform: translatex(0%) is unsupported (support profile m1-s5); no transform value is proven in paint/ltr",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@8334-8355|at-rule:@keyframes, keyframe-selector:from, keyframe-selector:to has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8334,
+    "end": 8355,
+    "line": 488,
+    "column": 1,
+    "text": "@keyframes album-spin"
+   },
+   "message": "at-rule:@keyframes, keyframe-selector:from, keyframe-selector:to has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@8334-8355|at-rule:@keyframes, keyframe-selector:from, keyframe-selector:to has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8334,
+    "end": 8355,
+    "line": 488,
+    "column": 1,
+    "text": "@keyframes album-spin"
+   },
+   "message": "at-rule:@keyframes, keyframe-selector:from, keyframe-selector:to has no passing frame-lane proof in the animation context (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"

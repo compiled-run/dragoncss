@@ -1,0 +1,9 @@
+<div wrap
+{hide === true ? 'hide' : ''}
+<div box
+{on === true ? 'on' : ''}
+on: [false, true] = false
+hide: [false, true] = false
+component App
+<html>
+<body>

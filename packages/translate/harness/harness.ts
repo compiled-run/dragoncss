@@ -91,12 +91,20 @@ import {
   zoomFontSize,
   zoomViewportPx,
 } from '../../layout/src/units.ts';
+import type { AnimationEntry, AnimationState, KeyframesRule } from '../../layout/src/rt-animations.ts';
+import { runAnimationScript } from '../../layout/src/rt-animations.ts';
 import type { EasingSpec, RtFaults, StepPosition } from '../../layout/src/rt-easing.ts';
-import { cubicBezier, easingFromSpec, solveBezier } from '../../layout/src/rt-easing.ts';
-import type { AnimatedValue, LegacyColor, LengthValue, TransformFn, TransformOp, Trig } from '../../layout/src/rt-interpolate.ts';
+import { cubicBezier, easingFromSpec, LINEAR, solveBezier } from '../../layout/src/rt-easing.ts';
+import type { TransformOrigin } from '../../layout/src/paint-transform.ts';
+import { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from '../../layout/src/paint-transform.ts';
+import type { AnimatedValue, LegacyColor, LengthValue, Matrix2D, TransformFn, TransformOp, Trig, ValueRange } from '../../layout/src/rt-interpolate.ts';
 import { interpolateValue, serializeValue } from '../../layout/src/rt-interpolate.ts';
-import type { EffectTimingSpec, FillMode, PlaybackDirection } from '../../layout/src/rt-timing.ts';
-import { computeTiming, currentTimeAt, seekPaused } from '../../layout/src/rt-timing.ts';
+import type { RuleKeyframe } from '../../layout/src/rt-keyframes.ts';
+import { groupFromRule, sampleKeyframeEffect } from '../../layout/src/rt-keyframes.ts';
+import type { EffectTimingSpec, FillMode, PlaybackDirection, SecondsTiming } from '../../layout/src/rt-timing.ts';
+import { advanceHeld, computeSecondsTiming, computeTiming, currentTimeAt, HELD_ZERO, seekPaused } from '../../layout/src/rt-timing.ts';
+import type { ScriptStep, TransitionListing, TransitionState } from '../../layout/src/rt-transition.ts';
+import { runTransitionScript } from '../../layout/src/rt-transition.ts';
 import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
@@ -999,6 +1007,20 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const faults: DashFaults = { phase1: flagAt(a, 8), gapUnfitted: flagAt(a, 9) };
     return `["ok",[${commaList(borderPaintOps(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), bitsList(a, 5), strList(a, 6), bitsList(a, 7), faults).map(borderOpJson))}]]`;
   }
+  // PNT2: paint-transform.ts.
+  if (name === 'paint:transform:resolveTransformOrigin') {
+    const o = resolveTransformOrigin(decodeOrigin(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
+    return `["ok",[${h(o.x)},${h(o.y)}]]`;
+  }
+  if (name === 'paint:transform:transformFunctionsMatrix') return `["ok",${matrixJson(transformFunctionsMatrix(decodeOps(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3), tableTrig(item(a, 4, '$'), '$[4]')))}]`;
+  if (name === 'paint:transform:paintTransformMatrix') {
+    return `["ok",${matrixJson(paintTransformMatrix(decodeOps(item(a, 1, '$'), '$[1]'), decodeOrigin(item(a, 2, '$'), '$[2]'), arg(a, 3), arg(a, 4), tableTrig(item(a, 5, '$'), '$[5]')))}]`;
+  }
+  if (name === 'paint:transform:transformAboutPoint') return `["ok",${matrixJson(transformAboutPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3)))}]`;
+  if (name === 'paint:transform:mapPoint') {
+    const p = mapPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
+    return `["ok",[${h(p.x)},${h(p.y)}]]`;
+  }
   return null;
 }
 
@@ -1025,6 +1047,61 @@ function commaList(parts: readonly string[]): string {
   let out = '';
   for (const x of parts) out = out === '' ? x : `${out},${x}`;
   return out;
+}
+
+// PNT2 decoders: a length is [kind, px bits, percent bits]; an op [fn, x, y, angle bits, sx bits, sy bits]; a matrix [full, a..f bits];
+// the trig table [[radians bits, sin bits, cos bits], ...] stands in for the platform's sin and cos, so every target reads the same values.
+function decodeLength(v: JsonValue, path: string): LengthValue {
+  const t = arr(v, path);
+  if (t.length !== 3) return fail(`${path}: expected [kind, px, percent]`);
+  const kind = lit(item(t, 0, path), ['px', 'percent', 'calc'], `${path}[0]`) as LengthValue['kind'];
+  return { kind, px: hexBits(str(item(t, 1, path), `${path}[1]`)), percent: hexBits(str(item(t, 2, path), `${path}[2]`)) };
+}
+
+function decodeOrigin(v: JsonValue, path: string): TransformOrigin {
+  const t = arr(v, path);
+  if (t.length !== 2) return fail(`${path}: expected [x, y]`);
+  return { x: decodeLength(item(t, 0, path), `${path}[0]`), y: decodeLength(item(t, 1, path), `${path}[1]`) };
+}
+
+function decodeOps(v: JsonValue, path: string): TransformOp[] {
+  const out: TransformOp[] = [];
+  arr(v, path).forEach((o, i) => {
+    const at = `${path}[${i}]`;
+    const t = arr(o, at);
+    if (t.length !== 6) fail(`${at}: expected [fn, x, y, angle, sx, sy]`);
+    const fn = lit(item(t, 0, at), ['translate', 'translateX', 'translateY', 'rotate', 'scale', 'scaleX', 'scaleY'], `${at}[0]`) as TransformFn;
+    out.push({ fn, x: decodeLength(item(t, 1, at), `${at}[1]`), y: decodeLength(item(t, 2, at), `${at}[2]`), angle: hexBits(str(item(t, 3, at), at)), sx: hexBits(str(item(t, 4, at), at)), sy: hexBits(str(item(t, 5, at), at)) });
+  });
+  return out;
+}
+
+function decodeMatrix(v: JsonValue, path: string): Matrix2D {
+  const t = arr(v, path);
+  if (t.length !== 7) return fail(`${path}: expected [full, a, b, c, d, e, f]`);
+  const n = (i: number): number => hexBits(str(item(t, i, path), `${path}[${i}]`));
+  return { full: bool(item(t, 0, path), `${path}[0]`), a: n(1), b: n(2), c: n(3), d: n(4), e: n(5), f: n(6) };
+}
+
+type TrigEntry = { readonly radians: number; readonly sin: number; readonly cos: number };
+
+function tableTrig(v: JsonValue, path: string): Trig {
+  const table: TrigEntry[] = [];
+  arr(v, path).forEach((e, i) => {
+    const at = `${path}[${i}]`;
+    const t = arr(e, at);
+    if (t.length !== 3) fail(`${at}: expected [radians, sin, cos]`);
+    table.push({ radians: hexBits(str(item(t, 0, at), at)), sin: hexBits(str(item(t, 1, at), at)), cos: hexBits(str(item(t, 2, at), at)) });
+  });
+  const find = (r: number): TrigEntry => {
+    for (const e of table) if (e.radians === r) return e;
+    return fail(`the trig table has no entry for ${bitsHex(r)}`);
+  };
+  return { sin: (r: number): number => find(r).sin, cos: (r: number): number => find(r).cos };
+}
+
+function matrixJson(m: Matrix2D): string {
+  return `[${m.full ? 'true' : 'false'},${h(m.a)},${h(m.b)},${h(m.c)},${h(m.d)},${h(m.e)},${h(m.f)}]`;
 }
 
 /** One units case: ["name", arg bits...] in, the result bits out. */
@@ -1170,6 +1247,15 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
       return rtTimingResult(rtOneIteration(rtEasing(item(a, 1, '$'), '$[1]')), rtFinite(a, 2, '$'), 0);
     case 'rt-interp':
       return rtInterpResult(a);
+    // ANIM-b (T065): held-time steps, keyframe samples, transition scripts and animation scripts.
+    case 'rt-advance':
+      return rtAdvanceResult(a);
+    case 'rt-keyframes':
+      return rtKeyframesResult(a);
+    case 'rt-transitions':
+      return rtTransitionsResult(a);
+    case 'rt-animations':
+      return rtAnimationsResult(a);
     // hit suite (SELD-R1b, T047 RT-9): the hit table, derived grid and answers of a layout vector's input.
     case 'rt-hit':
       return rtHitResult(a);
@@ -1207,6 +1293,13 @@ const RT_NO_FAULTS: RtFaults = {
   rotateViaMatrix: false,
   colorUnpremultiplied: false,
   holdTimeLost: false,
+  heldTimeShortcut: false,
+  noReversalShortening: false,
+  perKeyframeEasingIgnored: false,
+  nameChangeKeepsAnimation: false,
+  pauseLosesPhase: false,
+  pauseClockRuns: false,
+  nonNegativeUnclamped: false,
 };
 
 /**
@@ -1424,6 +1517,150 @@ function rtInterpResult(a: readonly JsonValue[]): string {
   const local = keyframe.kind === 'cubic-bezier' ? solveBezier(cubicBezier(keyframe.x1, keyframe.y1, keyframe.x2, keyframe.y2), p, RT_NO_FAULTS) : p;
   const v = interpolateValue(from, to, local, RT_NO_FAULTS);
   return `[${rtBits(t.progress)},${q(v.refused ? 'refused' : serializeValue(v.value, rtFinite(a, 6, '$'), rtFinite(a, 7, '$'), RT_TRIG))}]`;
+}
+
+// ---------------------------------------------------------------- rt suite, ANIM-b (T065)
+
+function rtRange(v: JsonValue, path: string): ValueRange {
+  return lit(v, ['all', 'non-negative'], path) === 'all' ? 'all' : 'non-negative';
+}
+
+/** A seconds timing [delay, duration, iterations, direction, fill, easing], numbers as bits. */
+function rtSeconds(v: JsonValue, path: string): SecondsTiming {
+  const a = arr(v, path);
+  if (a.length !== 6) return fail(`${path}: expected [delay, duration, iterations, direction, fill, easing]`);
+  return { delay: rtFinite(a, 0, path), duration: rtFinite(a, 1, path), iterations: rtIterations(a, 2, path), direction: rtDirection(item(a, 3, path), `${path}[3]`), fill: rtFill(item(a, 4, path), `${path}[4]`), easing: easingFromSpec(rtEasing(item(a, 5, path), `${path}[5]`)) };
+}
+
+/** The value a block that does not set the property carries; groupFromRule never reads it. */
+const RT_UNSET: AnimatedValue = { kind: 'opacity', number: 0, length: { kind: 'px', px: 0, percent: 0 }, color: { r: 0, g: 0, b: 0, alpha: 0 }, ops: [] };
+
+/** An @keyframes rule's blocks [[offset, easing or null, value or null], ...]. */
+function rtRule(v: JsonValue, path: string): RuleKeyframe[] {
+  const out: RuleKeyframe[] = [];
+  arr(v, path).forEach((b, i) => {
+    const p = `${path}[${i}]`;
+    const k = arr(b, p);
+    if (k.length !== 3) fail(`${p}: expected [offset, easing, value]`);
+    const e = item(k, 1, p);
+    const value = item(k, 2, p);
+    out.push({ offset: rtFinite(k, 0, p), hasEasing: e.kind !== 'null', easing: e.kind === 'null' ? LINEAR : easingFromSpec(rtEasing(e, `${p}[1]`)), sets: value.kind !== 'null', value: value.kind === 'null' ? RT_UNSET : rtValue(value, `${p}[2]`) });
+  });
+  return out;
+}
+
+/** Script steps [['s', state] or ['a', deltaMs], ...]. */
+function rtSteps(v: JsonValue, path: string): ScriptStep[] {
+  const out: ScriptStep[] = [];
+  arr(v, path).forEach((s, i) => {
+    const p = `${path}[${i}]`;
+    const k = arr(s, p);
+    if (k.length !== 2) fail(`${p}: expected [kind, number]`);
+    const n = rtFinite(k, 1, p);
+    if (lit(item(k, 0, p), ['s', 'a'], p) === 's') out.push({ kind: 'state', state: n, deltaMs: 0 });
+    else out.push({ kind: 'advance', state: 0, deltaMs: n });
+  });
+  return out;
+}
+
+function rtShow(v: AnimatedValue, a: readonly JsonValue[], at: number): string {
+  return serializeValue(v, rtFinite(a, at, '$'), rtFinite(a, at + 1, '$'), RT_TRIG);
+}
+
+/** Held-time steps: [op, [deltaMs, ...]] -> the current time in ms after each step. */
+function rtAdvanceResult(a: readonly JsonValue[]): string {
+  if (a.length !== 2) return fail('rt-advance: expected [op, deltas]');
+  const deltas = arr(item(a, 1, '$'), '$[1]');
+  let held = HELD_ZERO;
+  let out = '';
+  for (let i = 0; i < deltas.length; i++) {
+    held = advanceHeld(held, rtFinite(deltas, i, '$[1]'), RT_NO_FAULTS);
+    out += `${i > 0 ? ',' : ''}${h(held.seconds * 1000)}`;
+  }
+  return `[${out}]`;
+}
+
+/** A keyframe sample: [op, range, underlying, rule, timing, timeMs, boxWidth, boxHeight] -> [progress, value]. */
+function rtKeyframesResult(a: readonly JsonValue[]): string {
+  if (a.length !== 8) return fail('rt-keyframes: expected [op, range, underlying, rule, timing, timeMs, boxWidth, boxHeight]');
+  const range = rtRange(item(a, 1, '$'), '$[1]');
+  const underlying = rtValue(item(a, 2, '$'), '$[2]');
+  const rule = rtRule(item(a, 3, '$'), '$[3]');
+  const timing = rtSeconds(item(a, 4, '$'), '$[4]');
+  const seconds = rtFinite(a, 5, '$') / 1000;
+  const t = computeSecondsTiming({ delay: timing.delay, duration: timing.duration, iterations: timing.iterations, direction: timing.direction, fill: timing.fill, easing: LINEAR }, seconds, RT_NO_FAULTS);
+  const v = sampleKeyframeEffect(timing, seconds, groupFromRule(rule, timing.easing), underlying, range, RT_NO_FAULTS);
+  const value = v === null ? rtShow(underlying, a, 6) : v.refused ? 'refused' : rtShow(v.value, a, 6);
+  return `[${rtBits(t.progress)},${q(value)}]`;
+}
+
+/** A transition script: [op, range, states [[value, [mode, delay, duration, easing]], ...], steps, boxWidth, boxHeight]. */
+function rtTransitionsResult(a: readonly JsonValue[]): string {
+  if (a.length !== 6) return fail('rt-transitions: expected [op, range, states, steps, boxWidth, boxHeight]');
+  const states: TransitionState[] = [];
+  arr(item(a, 2, '$'), '$[2]').forEach((s, i) => {
+    const p = `$[2][${i}]`;
+    const k = arr(s, p);
+    if (k.length !== 2) fail(`${p}: expected [value, listing]`);
+    const l = arr(item(k, 1, p), `${p}[1]`);
+    if (l.length !== 4) fail(`${p}[1]: expected [mode, delay, duration, easing]`);
+    const delay = rtFinite(l, 1, p);
+    const duration = rtFinite(l, 2, p);
+    const easing = easingFromSpec(rtEasing(item(l, 3, p), `${p}[1][3]`));
+    const mode = lit(item(l, 0, p), ['listed', 'unlisted', 'initial'], p);
+    let listing: TransitionListing = { mode: 'initial', delay, duration, easing };
+    if (mode === 'listed') listing = { mode: 'listed', delay, duration, easing };
+    else if (mode === 'unlisted') listing = { mode: 'unlisted', delay, duration, easing };
+    states.push({ value: rtValue(item(k, 0, p), `${p}[0]`), listing });
+  });
+  let out = '';
+  runTransitionScript(states, rtRange(item(a, 1, '$'), '$[1]'), rtSteps(item(a, 3, '$'), '$[3]'), RT_NO_FAULTS).forEach((r, i) => {
+    out += `${i > 0 ? ',' : ''}[${q(rtShow(r.value, a, 4))},${r.durationMs === null ? 'null' : h(r.durationMs)}]`;
+  });
+  return `[${out}]`;
+}
+
+/** An animation script: [op, range, rules [[name, rule], ...], states [[base, [[name, hasKeyframes, paused, timing], ...]], ...], steps, boxWidth, boxHeight]. */
+function rtAnimationsResult(a: readonly JsonValue[]): string {
+  if (a.length !== 7) return fail('rt-animations: expected [op, range, rules, states, steps, boxWidth, boxHeight]');
+  const rules: KeyframesRule[] = [];
+  arr(item(a, 2, '$'), '$[2]').forEach((r, i) => {
+    const p = `$[2][${i}]`;
+    const k = arr(r, p);
+    if (k.length !== 2) fail(`${p}: expected [name, rule]`);
+    rules.push({ name: str(item(k, 0, p), p), keyframes: rtRule(item(k, 1, p), `${p}[1]`) });
+  });
+  const states: AnimationState[] = [];
+  arr(item(a, 3, '$'), '$[3]').forEach((s, i) => {
+    const p = `$[3][${i}]`;
+    const k = arr(s, p);
+    if (k.length !== 2) fail(`${p}: expected [base, entries]`);
+    const entries: AnimationEntry[] = [];
+    arr(item(k, 1, p), `${p}[1]`).forEach((e, j) => {
+      const q2 = `${p}[1][${j}]`;
+      const x = arr(e, q2);
+      if (x.length !== 4) fail(`${q2}: expected [name, hasKeyframes, paused, timing]`);
+      entries.push({ name: str(item(x, 0, q2), q2), hasKeyframes: bool(item(x, 1, q2), q2), paused: bool(item(x, 2, q2), q2), timing: rtSeconds(item(x, 3, q2), `${q2}[3]`) });
+    });
+    states.push({ base: rtValue(item(k, 0, p), `${p}[0]`), entries });
+  });
+  let out = '';
+  runAnimationScript(states, rules, rtRange(item(a, 1, '$'), '$[1]'), rtSteps(item(a, 4, '$'), '$[4]'), RT_NO_FAULTS).forEach((r, i) => {
+    let names = '';
+    let times = '';
+    let plays = '';
+    r.names.forEach((n, j) => {
+      names += `${j > 0 ? ',' : ''}${q(n)}`;
+    });
+    r.currentTimesMs.forEach((t, j) => {
+      times += `${j > 0 ? ',' : ''}${h(t)}`;
+    });
+    r.playStates.forEach((ps, j) => {
+      plays += `${j > 0 ? ',' : ''}${q(ps)}`;
+    });
+    out += `${i > 0 ? ',' : ''}[[${names}],[${times}],[${plays}],${q(rtShow(r.value, a, 5))}]`;
+  });
+  return `[${out}]`;
 }
 
 // ---------------------------------------------------------------- hit suite (SELD-R1b, T047 RT-9)

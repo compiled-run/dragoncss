@@ -8,11 +8,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { LayoutRect } from '@dragon/layout';
 import { layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
-import type { Compiled, Environment } from 'dragon';
-import { nativeLayoutProjection, NO_FAULTS } from 'dragon';
+import { nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { atDpr, committedDprCapture, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
-import type { FixtureSpec } from './fixtures.ts';
 import { spawnChild } from './device-exec.ts';
 import type { ExecResult } from './device-exec.ts';
 import { checkAgainstChrome, checkAgainstEngine, DUMP_FAULTS, referenceDump } from './native-compare.ts';
@@ -20,7 +18,7 @@ import { validateNativeDump } from './native-dump.ts';
 import { committedPixelManifestProblems } from './pixel-reference.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
-import { compileFixture } from './pipeline.ts';
+import { enforcedCompile } from './pipeline.ts';
 import { SAMPLE_RULES } from './samples.ts';
 import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './device-lanes.ts';
 import type { DeviceLaneId } from './device-lanes.ts';
@@ -332,23 +330,12 @@ export async function runHostLane(t: TargetConfig, opts: HostOptions = {}): Prom
 export type ReferenceRow = { readonly dpr: number; readonly role: 'shared' | 'extra'; readonly cases: number; readonly valid: number; readonly chrome: number; readonly engine: number; readonly chromeCompared: number; readonly engineCompared: number; readonly failures: readonly string[] };
 
 /**
- * For every layout case at every device DPR of each target: the TS engine through the target's projection, snapped by snapRect
- * into a ts-reference dump, which must validate and pass (a) against Chrome at that DPR and (d) against the engine.
+ * For every layout case (or those of the fixtures given) at every device DPR of each target: the TS engine through the target's
+ * projection, snapped by snapRect into a ts-reference dump, which must validate and pass (a) against Chrome at that DPR and (d) against the engine.
  */
-export function referenceProof(targets: readonly TargetConfig[]): { readonly target: NativeTarget; readonly rows: readonly ReferenceRow[] }[] {
+export function referenceProof(targets: readonly TargetConfig[], all: ReturnType<typeof layoutCases> = layoutCases()): { readonly target: NativeTarget; readonly rows: readonly ReferenceRow[] }[] {
   const m = measurerFor(REFERENCE_PLATFORM);
   if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
-  const compiled = new Map<string, Compiled<'ios' | 'web'>>();
-  const compiledFor = (spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'web'> => {
-    const key = `${spec.id} ${direction}`;
-    let c = compiled.get(key);
-    if (c === undefined) {
-      c = compileFixture(spec, NO_FAULTS, 'enforce', direction).compiled;
-      compiled.set(key, c);
-    }
-    return c;
-  };
-  const all = layoutCases();
   return targets.map((t) => ({
     target: t.target,
     rows: t.dprs.map((dpr): ReferenceRow => {
@@ -362,7 +349,7 @@ export function referenceProof(targets: readonly TargetConfig[]): { readonly tar
       for (const f of all) {
         for (const c of f.cases) {
           cases++;
-          const comp = compiledFor(f.spec, c.environment.direction);
+          const comp = enforcedCompile(f.spec, c.environment.direction);
           const env = atDpr(c.environment, dpr);
           const p = t.projection(comp, env, c.assignment);
           if (p.kind === 'blocked') {

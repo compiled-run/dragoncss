@@ -19,7 +19,13 @@ import { fixtureInput } from '../src/cases.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { compilerChromeDeviations } from '../src/compiler-deviations.ts';
 import { readTreeExpectation } from '../src/tree-fixture.ts';
-import { deriveRows } from '../src/profile-rows.ts';
+import { ANIMATION_CONTEXT, deriveRows } from '../src/profile-rows.ts';
+import { animFixtures } from '../src/anim-cases.ts';
+
+// T065: the row checks here are about rows proven by layout cases. Animation rows (context animation) are proven by frame cases
+// against frame captures, and anim-frames.test.ts gives them the same checks: exactly the passing cases that use the key, every
+// used key has a row, exactly what profile:rows derives, the context and lane shape, and every proof case a passing frame case.
+const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT);
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
@@ -69,7 +75,10 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('fixture registry (M7): every packages/parity/fixtures entry is registered, and every registered fixture has its file', () => {
     const dir = repoPath('packages/parity/fixtures');
     const entries = readdirSync(dir).sort();
-    const registered = new Set([...FIXTURES, ...FONT_FIXTURES.map((f) => f.spec)].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)));
+    // Frame fixtures (T065) are registered by their frames.json sidecar (anim-cases.ts animFixtures) and are not layout fixtures.
+    const frames = animFixtures().map((f) => f.id);
+    for (const id of frames) expect(FIXTURES.some((f) => f.id === id), `${id} is both a frame fixture and in FIXTURES`).toBe(false);
+    const registered = new Set([...[...FIXTURES, ...FONT_FIXTURES.map((f) => f.spec)].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...frames]);
     for (const f of FONT_FIXTURES) expect(statSync(`${dir}/${f.spec.id}.html`).isFile(), f.spec.id).toBe(true);
     expect(new Set([...FIXTURES.map((f) => f.id), ...FONT_FIXTURES.map((f) => f.spec.id)]).size).toBe(FIXTURES.length + FONT_FIXTURES.length);
     for (const e of entries) expect(registered.has(e), `${e} is not in FIXTURES`).toBe(true);
@@ -365,8 +374,8 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('profile proofs (M1): every row and proof names exactly the cases that passed its lane and use its key; every used key has a row', () => {
     const cases = allCases();
     for (const [target, profile] of [['ios', iosProfile], ['web', webProfile]] as const) {
-      expect(profile.rows.length).toBeGreaterThan(0);
-      for (const row of profile.rows) {
+      expect(layoutRows(profile.rows).length).toBeGreaterThan(0);
+      for (const row of layoutRows(profile.rows)) {
         const key = `${row.feature}@${row.context}`;
         for (const proof of row.proofs) {
           const expected = cases.filter((c) => c.lanes[proof.lane] === 'pass' && c.features[target].includes(key)).map((c) => c.id);
@@ -377,7 +386,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       }
       const keys = new Set(profile.rows.map((r) => `${r.feature}@${r.context}`));
       for (const c of cases) for (const k of c.features[target]) expect(keys.has(k), `${target} ${k} used by ${c.id} has no row`).toBe(true);
-      expect(profile.rows, `${target} rows must be exactly what pnpm run profile:rows derives from this run`).toEqual(deriveRows(target, cases));
+      expect(layoutRows(profile.rows), `${target} rows must be exactly what pnpm run profile:rows derives from this run`).toEqual(deriveRows(target, cases));
     }
   });
 
@@ -418,7 +427,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     const positioned = new RegExp('^(relative-in-' + itemBases + '/(ltr|rtl)|absolute-in-' + itemBases + '/(ltr|rtl)/cb-(ltr|rtl))$');
     const role = (feature: string) => PROPERTY_ROLE[feature.slice(0, feature.indexOf(':')) as Longhand];
     for (const profile of [iosProfile, webProfile]) {
-      for (const row of profile.rows) {
+      for (const row of layoutRows(profile.rows)) {
         expect(row.feature, row.feature).not.toMatch(/<length>/);
         expect(row.context, row.feature).not.toBe('single-line-text');
         const r = role(row.feature);
@@ -445,7 +454,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('no row of one direction is proven by a case that laid it out in the other: every proving case has an element of the facet direction in its Chrome capture', () => {
     const cases = new Map(allCases().map((c) => [c.id, c]));
     for (const profile of [iosProfile, webProfile]) {
-      for (const row of profile.rows) {
+      for (const row of layoutRows(profile.rows)) {
         // Every direction facet of the context, the containing block's (cb-<dir>) included.
         const facets = row.context.split('/').map((p) => p.replace(/^cb-/, '')).filter((p) => p === 'ltr' || p === 'rtl');
         expect(facets.length, row.context).toBeGreaterThan(0);
@@ -821,9 +830,9 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     expect(report.run.rootFont).toEqual({ default: 'ahem', uaDefault: ['block-ua-divs'] });
     // Every exact profile row links to at least one passing case id that exists in the report, and every case links back.
     const reportCases = new Set([...report.fixtures.flatMap((f) => f.cases.filter((c) => c.status === 'pass').map((c) => c.id)), ...report.webOnlyCases.filter((c) => c.status === 'pass').map((c) => c.case)]);
-    const exact = report.profileRows.filter((r) => r.status === 'exact');
+    const exact = layoutRows(report.profileRows).filter((r) => r.status === 'exact');
     expect(exact.length).toBeGreaterThan(1000);
-    for (const r of report.profileRows) {
+    for (const r of layoutRows(report.profileRows)) {
       expect(r.casesPassingInReport, `${r.target} ${r.feature}@${r.context}`).toBe(true);
       for (const pr of r.proofs) {
         expect(pr.cases.length).toBeGreaterThan(0);

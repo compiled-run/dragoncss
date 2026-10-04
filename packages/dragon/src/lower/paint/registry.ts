@@ -19,15 +19,16 @@ import { SCROLL_LOWERING } from './scroll.ts';
 import { SCROLLBAR_LOWERING } from './scrollbar.ts';
 import { SHADOW_LOWERING } from './shadow.ts';
 import { STACKING_LOWERING } from './stacking.ts';
+import type { TransformWrite } from './transform.ts';
 import { TRANSFORM_LOWERING } from './transform.ts';
 import type { BoxPaintContext, NativeBackend, PaintLowering, VocabularyEntry } from './types.ts';
 import { PAINT_MODULE_NAMES } from './types.ts';
 
 /** Every paint write kind; a module adds its write type here when it gains writes. */
-export type PaintWrite = BackgroundWrite | BorderWrite | ClipWrite;
+export type PaintWrite = BackgroundWrite | BorderWrite | ClipWrite | TransformWrite;
 export type PaintWriteKind = PaintWrite['kind'];
 
-export type AnyLowering = PaintLowering<PaintWrite> | PaintLowering<BackgroundWrite> | PaintLowering<BorderWrite> | PaintLowering<ClipWrite> | PaintLowering<never>;
+export type AnyLowering = PaintLowering<PaintWrite> | PaintLowering<BackgroundWrite> | PaintLowering<BorderWrite> | PaintLowering<ClipWrite> | PaintLowering<TransformWrite> | PaintLowering<never>;
 
 /** Registration point (EMS): the paint lowerings in PAINT_MODULE_NAMES order. */
 export const PAINT_LOWERINGS: readonly AnyLowering[] = [

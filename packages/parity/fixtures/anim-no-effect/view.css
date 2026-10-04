@@ -1,0 +1,2 @@
+.box { width: 10px; height: 10px; animation: nosuch 1s; transition: foo 1s; }
+.box.on { width: 50px; }

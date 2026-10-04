@@ -51,3 +51,14 @@ export { AHEM_FACE_ID, AHEM_SHA256 } from './text.ts';
 export { shapedMeasurerFor, shapingFaultsOf } from './platform.ts';
 export type { GlyphShaper, HanKerningFontData, ShapedFace, ShapingFaults } from './shaping.ts';
 export { FEATURE_STRIDE, GLYPH_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_HAN_KERNING, NO_SHAPING_FAULTS } from './shaping.ts';
+// ANIM-b1 (T065): the rt roots the runtime animator's TypeScript reference runs (packages/parity/src/anim-cases.ts), namespaced.
+export * as rtEasing from './rt-easing.ts';
+export * as rtTiming from './rt-timing.ts';
+export * as rtInterpolate from './rt-interpolate.ts';
+export * as rtKeyframes from './rt-keyframes.ts';
+export * as rtTransition from './rt-transition.ts';
+export * as rtAnimations from './rt-animations.ts';
+export type { OriginPoint, TransformOrigin } from './paint-transform.ts';
+export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';
+export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';
+export { serializeTransform } from './rt-interpolate.ts';
