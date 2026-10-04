@@ -592,6 +592,19 @@ function channel(v: number): string {
   return intToString(roundOf(c));
 }
 
+/** A colour as a device draws it: 8-bit channels and alpha. */
+export type Rgba8Value = { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number };
+
+function channelValue(v: number): number {
+  return roundOf(v < 0 ? 0 : v > 255 ? 255 : v);
+}
+
+/** T065 R16: the colour as the device draws it, the channels and 8-bit alpha serializeColor shows (Chrome's computed colour). */
+export function colorRgba8(c: LegacyColor): Rgba8Value {
+  const scaled = roundHalfAway(froundOf(c.alpha + froundOf(1e-7)) * 255.0);
+  return { r: channelValue(c.r), g: channelValue(c.g), b: channelValue(c.b), alpha: scaled < 0 ? 0 : scaled > 255 ? 255 : scaled };
+}
+
 /** Color::SerializeLegacyColorAsCSSColor. */
 export function serializeColor(c: LegacyColor): string {
   const opaque = c.alpha >= 1;
