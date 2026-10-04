@@ -1,0 +1,16 @@
+# Throwaway probe (never lands): does the free arm64 Linux runner offer KVM for an arm64 Android emulator?
+name: probe-arm-kvm
+on:
+  pull_request:
+    paths: [.github/workflows/probe-arm-kvm.yml]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - run: |
+          uname -a; nproc; free -g
+          ls -l /dev/kvm || echo "no /dev/kvm"
+          grep -c -E 'vmx|svm' /proc/cpuinfo || true
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"; ls "${ANDROID_HOME:-/nonexistent}" 2>&1 | head
