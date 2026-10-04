@@ -99,12 +99,15 @@ jobs:
           [ -n "$H1" ] || { echo "::error::host-1 reported nothing"; exit 1; }
           echo "rounds: chrome-1=$C1 host-1=$H1 chrome-2=${C2:-not run} host-2=${H2:-not run} chrome-3=${C3:-not run}; final tree from $last" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "name=$last" >> "$GITHUB_OUTPUT"
+  # always(): a skipped later round (the usual case) would otherwise skip every job after it.
   sweep:
     needs: [resolve, converge]
+    if: always() && needs.converge.result == 'success'
     uses: ./.github/workflows/regen-on-ci-round.yml
     with: { runner: macos-26, side: chrome, args: '--only tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: '${{ needs.converge.outputs.last }}', name: sweep }
   push:
     needs: [resolve, sweep]
+    if: always() && needs.sweep.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
