@@ -787,7 +787,6 @@ const FAULT_KEYS: readonly string[] = [
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
   'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes',
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
-  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak',
   'orderHalfEven', 'orderUnclamped',
 ];
 
