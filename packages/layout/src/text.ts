@@ -1,4 +1,5 @@
 // Text measurement is injected. The Ahem measurer is pure: it models the WPT Ahem v1.50 metrics without reading the font.
+// (regen-on-ci proof: a comment-only change; this branch is throwaway and never lands.)
 import type { TextFont } from './input.ts';
 import type { LU } from './units.ts';
 import { cachedRangeWidth, fontMetricPx, glyphBoundsMetricPx, platformFontSize, roundFontMetricHalfUpToWholePx, roundFontMetricToWholePx, textAdvanceAt, ZERO } from './units.ts';
