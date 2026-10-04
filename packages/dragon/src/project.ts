@@ -164,6 +164,8 @@ export type InternalRecord = {
   readonly linked: Linked | null;
   /** The font context font-family feature keys were resolved against. */
   readonly fonts: FamilyKeyContext;
+  /** T065: the transitions and animations of the native band's cases, null when the analysis did not run. */
+  readonly animation: AnimationAnalysis | null;
   /** REPL-a: the bytes of every drawable image src, for the native image paint. */
   readonly images: ReadonlyMap<string, Uint8Array>;
 };
@@ -981,6 +983,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       profiles: { web: profiles.web, ios: profiles.ios, android: profileFor(profiles, 'android') },
       linked,
       fonts: fonts === null ? NO_FONTS : fonts.keys,
+      animation,
       images: images === null ? new Map() : images.bytes,
       cases: cases.map((c) => ({
         key: c.key,

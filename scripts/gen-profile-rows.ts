@@ -15,7 +15,10 @@ import { committedFontAuthored, runFontFixture } from '../packages/parity/src/fo
 import { repoPath } from '../packages/parity/src/paths.ts';
 import type { CaseOutcome } from '../packages/parity/src/pipeline.ts';
 import { runFixture } from '../packages/parity/src/pipeline.ts';
-import { committedLanes, deriveRows, nativeLanesSource, profileSource } from '../packages/parity/src/profile-rows.ts';
+import { committedLanes, deriveAnimationRows, deriveRows, nativeLanesSource, profileSource } from '../packages/parity/src/profile-rows.ts';
+import { animCasesOf, animFixtures } from '../packages/parity/src/anim-cases.ts';
+import { animCaseReport } from '../packages/parity/src/frame-capture.ts';
+import { animationFeatures } from '../packages/dragon/src/internal.ts';
 
 const browser = await launchChrome();
 const cases: CaseOutcome[] = [];
@@ -36,8 +39,14 @@ try {
   await browser.close();
 }
 
+// T065: the frame cases that pass the host frame lanes against the committed frame captures prove the animation rows.
+const framePassing = animFixtures().flatMap(animCasesOf).flatMap((c) => {
+  const r = animCaseReport(c);
+  for (const f of r.failures.slice(0, 3)) console.log(`not passing, proves nothing: ${f}`);
+  return r.failures.length === 0 ? [{ id: c.id, features: animationFeatures(c.compiled) }] : [];
+});
 for (const target of ['ios', 'android', 'web'] as const) {
-  const rows = deriveRows(target, cases);
+  const rows = [...deriveRows(target, cases), ...deriveAnimationRows(target, framePassing)];
   writeFileSync(repoPath(`packages/dragon/src/profiles/${target}.ts`), profileSource(target, rows));
   console.log(`${target}: ${rows.length} rows from ${cases.length} cases`);
 }
