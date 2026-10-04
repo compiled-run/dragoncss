@@ -1,6 +1,7 @@
 // The checked parts of land.ts: queue and argument parsing, retries of network calls, the CI verdict, the Claude review gate and
 // the queue loop that records a failed PR and continues. The git and device judgements come from merge-train-lib.ts.
 import { spawnSync } from 'node:child_process';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { type CheckRun, CI_CHECK } from './pr-review-vouch.ts';
 
 const fail = (what: string): never => {
@@ -45,7 +46,8 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   environment: LAND_WORKTREE (driver worktree, default /tmp/dragon-land), LAND_STATUS (/tmp/land.status), LAND_LOG (/tmp/land.log),
   LAND_REVIEW_CMD (the reviewer: reads the prompt on stdin, gets LAND_REVIEW_PR and LAND_REVIEW_HEAD, prints JSON; default the main
   checkout's scripts/land-review-lookup.ts, which prints the review a review agent precomputed in LAND_REVIEW_PRECOMPUTED_DIR,
-  default /tmp/land-reviews/precomputed), LAND_REVIEW_DIR (/tmp/land-reviews), LAND_CI_WAIT and LAND_CI_APPEAR (seconds, default 5400 and 900)`;
+  default /tmp/land-reviews/precomputed), LAND_REVIEW_DIR (/tmp/land-reviews), LAND_CI_WAIT and LAND_CI_APPEAR (seconds, default 5400 and 900), LAND_QUIET_MAX
+  (seconds the test gate waits for a quiet machine before failing the PR, default 5400)`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;
@@ -161,6 +163,44 @@ export const worktreesOf = (porcelain: string, branch: string, shas: readonly st
 // The quiet-machine gate: no heavy slot held by a live process of anyone else, and a 1-minute load under 20.
 export const QUIET_LOAD = 20;
 export const isQuiet = (otherHeavyHolders: number, load1: number): boolean => otherHeavyHolders === 0 && load1 < QUIET_LOAD;
+
+// While the driver waits for quiet it holds /tmp/dragon-train-quiet (its pid), which stops /tmp/heavy-lease.sh from starting
+// new jobs beside the train. The file is removed when the wait ends, quiet or not, and never another process's file.
+export const QUIET_FILE = '/tmp/dragon-train-quiet';
+export const requestQuiet = (path: string, pid: number): void => writeFileSync(path, String(pid));
+export const releaseQuiet = (path: string, pid: number): void => {
+  try {
+    if (readFileSync(path, 'utf8').trim() === String(pid)) rmSync(path, { force: true });
+  } catch {}
+};
+// A request left by a driver that died (SIGKILL skips its cleanup) would hold every lane forever.
+export const clearStaleQuiet = (path: string, alive: (pid: number) => boolean): boolean => {
+  let text: string;
+  try {
+    text = readFileSync(path, 'utf8').trim();
+  } catch {
+    return false;
+  }
+  const pid = Number(text);
+  if (/^[1-9]\d*$/.test(text) && alive(pid)) return false;
+  rmSync(path, { force: true });
+  return true;
+};
+
+// Waits for a quiet machine with the quiet request held, up to `ceilingMs`; true when quiet, false at the ceiling.
+export const waitForQuiet = (o: { quiet: () => boolean; request: () => void; release: () => void; sleep: (ms: number) => void; now: () => number; ceilingMs: number; pollMs?: number }): boolean => {
+  o.request();
+  try {
+    const t0 = o.now();
+    for (;;) {
+      if (o.quiet()) return true;
+      if (o.now() - t0 >= o.ceilingMs) return false;
+      o.sleep(o.pollMs ?? 30_000);
+    }
+  } finally {
+    o.release();
+  }
+};
 
 // pr:review's banner when every Macroscope check of the head was skipped for the spending limit.
 export const isUnreviewed = (prReviewOutput: string): boolean => /^!!! UNREVIEWED: Macroscope spending limit/m.test(prReviewOutput);

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -13,6 +13,10 @@ import {
   Fatal,
   findingsComment,
   isQuiet,
+  clearStaleQuiet,
+  releaseQuiet,
+  requestQuiet,
+  waitForQuiet,
   isTransient,
   isUnreviewed,
   LandFailure,
@@ -180,6 +184,49 @@ describe('CI, base, worktree and quiet decisions', () => {
     expect(isQuiet(0, 19.9)).toBe(true);
     expect(isQuiet(1, 2)).toBe(false);
     expect(isQuiet(0, 20)).toBe(false);
+  });
+
+  it('holds the quiet request while it waits, and drops it when the wait ends, quiet or not', () => {
+    const path = join(tempDir(), 'dragon-train-quiet');
+    let clock = 0;
+    const held: boolean[] = [];
+    const wait = (quietAt: number, ceilingMs: number, quiet?: () => boolean) =>
+      waitForQuiet({
+        quiet: quiet ?? (() => (held.push(existsSync(path)), clock >= quietAt)),
+        request: () => requestQuiet(path, 4242),
+        release: () => releaseQuiet(path, 4242),
+        sleep: (ms) => (clock += ms),
+        now: () => clock,
+        ceilingMs,
+        pollMs: 1000,
+      });
+    // Quiet after 3 polls: the request was held on every poll and is gone when the rerun starts.
+    expect(wait(3000, 10_000)).toBe(true);
+    expect(held).toEqual([true, true, true, true]);
+    expect(existsSync(path)).toBe(false);
+    // Never quiet: fails at the ceiling instead of hanging, and still drops the request.
+    clock = 0;
+    expect(wait(Number.POSITIVE_INFINITY, 5000)).toBe(false);
+    expect(clock).toBe(5000);
+    expect(existsSync(path)).toBe(false);
+    // A failure while waiting drops it too.
+    expect(() => wait(0, 5000, () => { throw new Error('readdir failed'); })).toThrow('readdir failed');
+    expect(existsSync(path)).toBe(false);
+  });
+
+  it('never removes another process\'s quiet request, and clears one whose driver is gone', () => {
+    const path = join(tempDir(), 'dragon-train-quiet');
+    requestQuiet(path, 7);
+    releaseQuiet(path, 8);
+    expect(readFileSync(path, 'utf8')).toBe('7');
+    expect(clearStaleQuiet(path, () => true)).toBe(false);
+    expect(existsSync(path)).toBe(true);
+    expect(clearStaleQuiet(path, () => false)).toBe(true);
+    expect(existsSync(path)).toBe(false);
+    writeFileSync(path, 'garbage');
+    expect(clearStaleQuiet(path, () => true)).toBe(true);
+    expect(clearStaleQuiet(path, () => true)).toBe(false);
+    releaseQuiet(path, 7);
   });
 
   it('reads pr:review\'s UNREVIEWED banner, which pr-review.ts prints', () => {

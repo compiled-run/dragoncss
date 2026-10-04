@@ -17,6 +17,11 @@ import {
   Fatal,
   findingsComment,
   isQuiet,
+  QUIET_FILE,
+  clearStaleQuiet,
+  releaseQuiet,
+  requestQuiet,
+  waitForQuiet,
   isTransient,
   isUnreviewed,
   LandFailure,
@@ -73,6 +78,7 @@ const seconds = (name: string, fallback: number): number => {
 };
 let CI_WAIT_S = 0;
 let CI_APPEAR_S = 0;
+let QUIET_MAX_S = 0;
 const REGEN = ['pnpm', 'regen'];
 const DEVICES = ['pnpm', 'run', 'parity:devices'];
 
@@ -186,9 +192,15 @@ const otherHeavyHolders = (): number => {
   }
   return n;
 };
-const waitQuiet = (): void => {
-  while (!isQuiet(otherHeavyHolders(), loadavg()[0]!)) sleep(30_000);
-};
+const waitQuiet = (): boolean =>
+  waitForQuiet({
+    quiet: () => isQuiet(otherHeavyHolders(), loadavg()[0]!),
+    request: () => requestQuiet(QUIET_FILE, process.pid),
+    release: () => releaseQuiet(QUIET_FILE, process.pid),
+    sleep,
+    now: Date.now,
+    ceilingMs: QUIET_MAX_S * 1000,
+  });
 
 const requireTracked = (step: string, what: string): void => {
   const dirty = text(wtGit, ['status', '--porcelain=v1', '--untracked-files=no']);
@@ -362,7 +374,7 @@ const landOne = (e: Entry): { result: 'landed' | 'merged before'; detail: string
     let t = heavy('test', ['pnpm', 'test']);
     if (t.error !== undefined || t.status !== 0) {
       log('  pnpm test failed; waiting for a quiet machine to run it once more');
-      waitQuiet();
+      if (!waitQuiet()) throw new LandFailure('test', `pnpm test failed (log ${t.log}), and no quiet machine came within ${QUIET_MAX_S}s to run it once more\n${tail(t.log, 15)}`);
       t = heavy('test-quiet', ['pnpm', 'test']);
       if (t.error !== undefined || t.status !== 0) failed('test', t, 'pnpm test on a quiet machine');
       log('  pnpm test passed on a quiet machine');
@@ -536,6 +548,7 @@ const main = (): number => {
   const args = parseLandArgs(process.argv.slice(2));
   CI_WAIT_S = seconds('LAND_CI_WAIT', 5400);
   CI_APPEAR_S = seconds('LAND_CI_APPEAR', 900);
+  QUIET_MAX_S = seconds('LAND_QUIET_MAX', 5400);
   MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
   // The default reviewer is the main checkout's lookup script, never the PR's own copy in the driver worktree.
   REVIEW_CMD = env['LAND_REVIEW_CMD'] ?? `node --conditions=dragon-internal '${join(MAIN, 'scripts/land-review-lookup.ts')}'`;
@@ -548,9 +561,19 @@ const main = (): number => {
   }
   lock();
   const cleanup = (): void => {
+    releaseQuiet(QUIET_FILE, process.pid);
     releasePriority();
     unlock();
   };
+  const alive = (pid: number): boolean => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  if (clearStaleQuiet(QUIET_FILE, alive)) log(`removed a stale ${QUIET_FILE} left by a driver that is gone`);
   process.on('exit', cleanup);
   for (const s of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
     process.on(s, () => {
