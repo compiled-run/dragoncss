@@ -83,8 +83,8 @@ export const STEPS: readonly Step[] = [
   { name: 'native-gen', argv: pnpm('native:gen'), outputs: ['packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'], reads: [...ENGINE_SOURCES, 'packages/layout/vectors/**', 'packages/layout/rt-vectors/**', 'packages/translate/corpus-m1-cases.json', 'packages/translate/package.json'] },
   { name: 'north-star', argv: pnpm('north-star:check'), outputs: ['examples/music-player/dragon/north-star-check.json'], reads: [FONTS, 'examples/music-player/snapshot.html', 'examples/music-player/styles.css', 'examples/music-player/tree/**', 'examples/music-player/covers/**'] },
   // wpt:update-expectations merges the run into expectations/web.json and copies the run's Chrome snapshots into snapshots/.
-  { name: 'wpt', argv: ['sh', '-c', 'pnpm -s run wpt:run --target web && pnpm -s run wpt:update-expectations --target web'], outputs: ['packages/wpt/expectations/web.json', 'packages/wpt/snapshots/**'], env: ['DRAGON_WPT_DIR'], reads: ['packages/wpt/wpt.lock', 'packages/wpt/interop-labels.json'] },
-  { name: 'tw-sweep', argv: pnpm('tw:sweep'), outputs: ['packages/tailwind-sweep/snapshot/**'], reads: [FONTS] },
+  { name: 'wpt', argv: ['sh', '-c', 'pnpm -s run wpt:run --target web && pnpm -s run wpt:update-expectations --target web'], outputs: ['packages/wpt/expectations/web.json', 'packages/wpt/snapshots/**'], env: ['DRAGON_WPT_DIR'], reads: [FIXTURES, 'packages/wpt/wpt.lock', 'packages/wpt/interop-labels.json'] },
+  { name: 'tw-sweep', argv: pnpm('tw:sweep'), outputs: ['packages/tailwind-sweep/snapshot/**'], reads: [FIXTURES, FONTS] },
   { name: 'glyph-b3', argv: pnpm('parity:glyph-b3', '--write-bottom-pins'), outputs: ['packages/parity/expected-glyphs/bottom-scanlines.json'], reads: [FIXTURES, FONTS] },
   { name: 'media-sweep', argv: ['node', '--conditions=dragon-internal', 'packages/parity/src/cli/media-sweep.ts'], outputs: ['packages/parity/expected-media/**'], reads: [FIXTURES, FONTS] },
   // lanes-host builds the generated engine with swiftc and kotlinc and runs the host lanes over every vector and capture.
