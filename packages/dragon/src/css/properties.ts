@@ -25,6 +25,10 @@ import { SCROLLBAR_ASPECTS, SCROLLBAR_CONTAINER, SCROLLBAR_INHERITED, SCROLLBAR_
 /** What a longhand affects: layout (box geometry) and paint (pixels). */
 export type PropertyAspect = { readonly layout: boolean; readonly paint: boolean };
 
+// SELD-R1b (notes/T047-runtime-spec.md RT-9): pointer-events, inherited, read only by Dragon's hit test; auto and none only.
+export const POINTER_LONGHANDS = ['pointer-events'] as const;
+const POINTER_ASPECTS: { readonly [P in (typeof POINTER_LONGHANDS)[number]]: PropertyAspect } = { 'pointer-events': { layout: false, paint: false } };
+
 export const LONGHANDS = [
   ...POSITION_LONGHANDS,
   ...OVERFLOW_LONGHANDS,
@@ -40,6 +44,8 @@ export const LONGHANDS = [
   // Grid (css-grid-2) goes after the writing-mode family in every table below.
   ...GRID_LONGHANDS,
 
+  // SELD-R1b appends pointer-events after grid.
+  ...POINTER_LONGHANDS,
   // The paint families (EMS seams) go last in every table below.
   ...RADIUS_LONGHANDS,
   ...SHADOW_LONGHANDS,
@@ -91,6 +97,7 @@ export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([
 
   ...GRID_INHERITED,
 
+  ...POINTER_LONGHANDS,
   ...RADIUS_INHERITED,
   ...SHADOW_INHERITED,
   ...EFFECTS_INHERITED,
@@ -142,6 +149,7 @@ export const PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {
 
   ...GRID_ASPECTS,
 
+  ...POINTER_ASPECTS,
   ...RADIUS_ASPECTS,
   ...SHADOW_ASPECTS,
   ...EFFECTS_ASPECTS,

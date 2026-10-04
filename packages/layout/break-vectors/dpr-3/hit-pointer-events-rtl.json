@@ -1,0 +1,10 @@
+{
+  "case": "hit-pointer-events-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"nt:text0","lines":[[0,3],[3,5]]},
+    {"id":"f1:text0","lines":[[0,8]]},
+    {"id":"f2:text0","lines":[[0,2]]},
+    {"id":"relc:text0","lines":[[0,2]]}
+  ]
+}

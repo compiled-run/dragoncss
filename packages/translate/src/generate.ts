@@ -71,6 +71,11 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
       if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at(f), name: st.name.text });
     }
   }
+  // SELD-R1b (T047 RT-9): the hit test and tap dispatch.
+  const hit = program.getSourceFile(at('rt-hit.ts')) as ts.SourceFile;
+  for (const st of hit.statements) {
+    if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('rt-hit.ts'), name: st.name.text });
+  }
   return roots;
 }
 

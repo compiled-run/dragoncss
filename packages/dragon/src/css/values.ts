@@ -31,6 +31,16 @@ const NUMBER_PROPERTIES: ReadonlySet<string> = new Set<string>(['flex-grow', 'fl
 
 export const kw = (value: string): CssValue => ({ kind: 'keyword', value });
 
+/** The shorthands that set a border's width, style and colour together (css-backgrounds-3 §3.1, css-logical-1 §6.3). */
+const BORDER_SHORTHAND = /^border(-(top|right|bottom|left|block|inline|block-start|block-end|inline-start|inline-end))?$/;
+
+/** A math function value (calc(), min(), max(), clamp(), or one V1 refuses), which a border shorthand assigns to the width. */
+export function isMathValue(v: CssValue): boolean {
+  if (v.kind !== 'other') return false;
+  const name = v.type.startsWith(REFUSED_MATH_PREFIX) ? v.type.slice(REFUSED_MATH_PREFIX.length) : v.type;
+  return name.endsWith('()') && V1_MATH_FUNCTIONS.has(name.slice(0, -2));
+}
+
 export const COLOR_FIX = 'Use a named colour, a 3, 4, 6 or 8 digit hex colour, rgb(), rgba(), hsl(), hsla(), transparent or currentcolor.';
 
 function isColorBearing(property: string): boolean {
@@ -48,9 +58,9 @@ export function tokenValue(node: CssNode, property: string): CssValue | string {
     if (node.type === 'Identifier' && TEXT_DECORATION_KEYWORDS.has(asciiLower(String(node['name'])))) return toValue(node, property);
     if (node.type === 'Function' && V1_MATH_FUNCTIONS.has(asciiLower(String(node['name'])))) return toValue(node, 'text-decoration-thickness');
   }
-  // The border shorthands assign a token that is neither a length nor a keyword to the colour, so a calculation there is refused.
-  if (node.type === 'Function' && V1_MATH_FUNCTIONS.has(asciiLower(String(node['name']))) && !property.endsWith('color')) {
-    return `a calculation in the ${property} shorthand is not supported; set it with ${property === 'border' ? 'border-width' : `${property}-width`}`;
+  // css-backgrounds-3 §3.1: a calculation in a border shorthand is its <line-width>, typed as the border-*-width longhands are.
+  if (node.type === 'Function' && V1_MATH_FUNCTIONS.has(asciiLower(String(node['name']))) && BORDER_SHORTHAND.test(property)) {
+    return mathValue(node, asciiLower(String(node['name'])), 'border-top-width');
   }
   if (node.type === 'Identifier') {
     const name = asciiLower(String(node['name']));
@@ -92,8 +102,8 @@ export function toValue(node: CssNode, property: string): CssValue {
 
 /**
  * A css-values-4 §10 math function (css/math.ts). A number calculation (flex-grow, flex-shrink, order, or a number in the flex
- * shorthand) is folded to its number now; a length calculation keeps its text, with feature key <calc()>, <min()>, <max()> or
- * <clamp()>, and is lowered per element (lower/ios-layout.ts). A calculation V1 refuses keeps its text with the reason as a
+ * shorthand) is folded to its number now, order unrounded (the engine rounds it, environment.ts); a length calculation keeps its
+ * text, with feature key <calc()>, <min()>, <max()> or <clamp()>, and is lowered per element (lower/ios-layout.ts). A calculation V1 refuses keeps its text with the reason as a
  * comment and the feature type "refused <name>()", which no profile row supports, so the declaration is refused with the reason.
  */
 export const REFUSED_MATH_PREFIX = 'refused ';
@@ -114,7 +124,6 @@ function mathValue(node: CssNode, name: string, property: string): CssValue {
   if (context.type === 'number') {
     const folded = foldNumber(parsed.node);
     const value = property === 'flex-grow' || property === 'flex-shrink' ? nonNegative(folded) : folded;
-    if (property === 'order' && !Number.isInteger(value)) return refused('order takes an integer, and this calculation is not a whole number');
     return { kind: 'number', value };
   }
   return { kind: 'other', type: `${name}()`, text };
