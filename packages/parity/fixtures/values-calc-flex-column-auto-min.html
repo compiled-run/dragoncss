@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.col { display: flex; flex-direction: column; width: 100px; margin-bottom: 3px; }
+.row { display: flex; height: 10px; width: 50px; margin-bottom: 3px; }
+.h30 { height: 30px; }
+.h10 { height: 10px; }
+.h12 { height: calc(10px + 2px); }
+.e11 { height: 11px; }
+.c11 { height: calc(10px + 1px); }
+.e20 { height: 20px; }
+.c20 { height: calc(5px + 15px); }
+.pad { height: 20px; padding-top: 2px; border-bottom: 1px solid; }
+.maxh { height: 20px; max-height: 15px; }
+.inner6 { height: 6px; width: 7px; margin-left: 2px; }
+.nest { display: flex; flex-direction: column; height: calc(25px - 5px); }
+.leaf { height: 4px; }
+.w40 { width: 40px; }
+.inner15 { width: 15px; height: 2px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c1" class="col h30"><div data-dragon-id="c1a" class="e11"></div><div data-dragon-id="c1b" class="e11"></div><div data-dragon-id="c1c" class="c11"></div></div>
+<div data-dragon-id="c2" class="col h10"><div data-dragon-id="c2a" class="e20"><div data-dragon-id="c2a1" class="inner6"></div></div><div data-dragon-id="c2b" class="e20"></div></div>
+<div data-dragon-id="c3" class="col h12"><div data-dragon-id="c3a" class="c20">X</div><div data-dragon-id="c3b" class="c20"></div></div>
+<div data-dragon-id="c4" class="col h10"><div data-dragon-id="c4a" class="pad"></div><div data-dragon-id="c4b" class="e20"></div></div>
+<div data-dragon-id="c5" class="col h10"><div data-dragon-id="c5a" class="maxh"><div data-dragon-id="c5a1" class="inner6"></div></div><div data-dragon-id="c5b" class="e20"></div></div>
+<div data-dragon-id="c6" class="col h10"><div data-dragon-id="c6a" class="nest"><div data-dragon-id="c6a1" class="leaf"></div><div data-dragon-id="c6a2" class="leaf"></div></div><div data-dragon-id="c6b" class="e20"></div></div>
+<div data-dragon-id="r1" class="row"><div data-dragon-id="r1a" class="w40"><div data-dragon-id="r1a1" class="inner15"></div></div><div data-dragon-id="r1b" class="w40"></div></div>
+</body>
+</html>
