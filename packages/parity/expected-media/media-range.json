@@ -13,18 +13,30 @@
   },
   {
    "index": 2,
-   "condition": "(not (width < 400px)) and (width <= 400px) and (not (400px < width)) and (400px <= width) and (390px < width < 410px) and (not (410px <= width <= 500px)) and (width = 400px)"
+   "condition": "(width < 400px) and (width <= 400px) and (not (400px < width)) and (400px <= width) and (390px < width < 410px) and (not (410px <= width <= 500px)) and (width = 400px)"
   },
   {
    "index": 3,
-   "condition": "(not (width < 400px)) and (not (width <= 400px)) and (400px < width) and (400px <= width) and (390px < width < 410px) and (not (410px <= width <= 500px)) and (not (width = 400px))"
+   "condition": "(not (width < 400px)) and (width <= 400px) and (not (400px < width)) and (400px <= width) and (390px < width < 410px) and (not (410px <= width <= 500px)) and (width = 400px)"
   },
   {
    "index": 4,
-   "condition": "(not (width < 400px)) and (not (width <= 400px)) and (400px < width) and (400px <= width) and (not (390px < width < 410px)) and (410px <= width <= 500px) and (not (width = 400px))"
+   "condition": "(not (width < 400px)) and (width <= 400px) and (400px < width) and (400px <= width) and (390px < width < 410px) and (not (410px <= width <= 500px)) and (width = 400px)"
   },
   {
    "index": 5,
+   "condition": "(not (width < 400px)) and (not (width <= 400px)) and (400px < width) and (400px <= width) and (390px < width < 410px) and (not (410px <= width <= 500px)) and (not (width = 400px))"
+  },
+  {
+   "index": 6,
+   "condition": "(not (width < 400px)) and (not (width <= 400px)) and (400px < width) and (400px <= width) and (390px < width < 410px) and (410px <= width <= 500px) and (not (width = 400px))"
+  },
+  {
+   "index": 7,
+   "condition": "(not (width < 400px)) and (not (width <= 400px)) and (400px < width) and (400px <= width) and (not (390px < width < 410px)) and (410px <= width <= 500px) and (not (width = 400px))"
+  },
+  {
+   "index": 8,
    "condition": "(not (width < 400px)) and (not (width <= 400px)) and (400px < width) and (400px <= width) and (not (390px < width < 410px)) and (not (410px <= width <= 500px)) and (not (width = 400px))"
   }
  ],
@@ -92,7 +104,7 @@
   {
    "width": 400,
    "height": 300,
-   "band": 2,
+   "band": 3,
    "pass": true,
    "boxesCompared": 9,
    "valuesCompared": 657,
@@ -102,7 +114,7 @@
   {
    "width": 401,
    "height": 300,
-   "band": 3,
+   "band": 5,
    "pass": true,
    "boxesCompared": 9,
    "valuesCompared": 657,
@@ -112,7 +124,7 @@
   {
    "width": 405,
    "height": 300,
-   "band": 3,
+   "band": 5,
    "pass": true,
    "boxesCompared": 9,
    "valuesCompared": 657,
@@ -122,7 +134,7 @@
   {
    "width": 409,
    "height": 300,
-   "band": 3,
+   "band": 5,
    "pass": true,
    "boxesCompared": 9,
    "valuesCompared": 657,
@@ -132,7 +144,7 @@
   {
    "width": 410,
    "height": 300,
-   "band": 4,
+   "band": 7,
    "pass": true,
    "boxesCompared": 9,
    "valuesCompared": 657,
@@ -142,7 +154,7 @@
   {
    "width": 411,
    "height": 300,
-   "band": 4,
+   "band": 7,
    "pass": true,
    "boxesCompared": 9,
    "valuesCompared": 657,
@@ -152,7 +164,7 @@
   {
    "width": 455,
    "height": 300,
-   "band": 4,
+   "band": 7,
    "pass": true,
    "boxesCompared": 9,
    "valuesCompared": 657,
@@ -162,7 +174,7 @@
   {
    "width": 499,
    "height": 300,
-   "band": 4,
+   "band": 7,
    "pass": true,
    "boxesCompared": 9,
    "valuesCompared": 657,
@@ -172,7 +184,7 @@
   {
    "width": 500,
    "height": 300,
-   "band": 4,
+   "band": 7,
    "pass": true,
    "boxesCompared": 9,
    "valuesCompared": 657,
@@ -182,7 +194,7 @@
   {
    "width": 501,
    "height": 300,
-   "band": 5,
+   "band": 8,
    "pass": true,
    "boxesCompared": 9,
    "valuesCompared": 657,
@@ -192,7 +204,52 @@
   {
    "width": 600,
    "height": 300,
-   "band": 5,
+   "band": 8,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 657,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 399.984375,
+   "height": 300,
+   "frame": {
+    "widthPx": 51198,
+    "heightPx": 38400,
+    "zoom": 128
+   },
+   "band": 2,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 657,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 400.0078125,
+   "height": 300,
+   "frame": {
+    "widthPx": 51201,
+    "heightPx": 38400,
+    "zoom": 128
+   },
+   "band": 4,
+   "pass": true,
+   "boxesCompared": 9,
+   "valuesCompared": 657,
+   "channelsCompared": 54,
+   "problems": []
+  },
+  {
+   "width": 409.984375,
+   "height": 300,
+   "frame": {
+    "widthPx": 52478,
+    "heightPx": 38400,
+    "zoom": 128
+   },
+   "band": 6,
    "pass": true,
    "boxesCompared": 9,
    "valuesCompared": 657,
