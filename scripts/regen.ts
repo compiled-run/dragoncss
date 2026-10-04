@@ -1,5 +1,6 @@
-// pnpm regen [--check] [--force] [--from <step>] [--jobs <n>] [--explain]: regenerates every generated output from the sources
-// and repeats the chain until a pass changes nothing (profile rows feed the captures, lanes.json feeds the profile rows).
+// pnpm regen [--check] [--force] [--from <step>] [--jobs <n>] [--explain] [--skip <step>] [--only <step>]: regenerates every
+// generated output from the sources and repeats the chain until a pass changes nothing (profile rows feed the captures,
+// lanes.json feeds the profile rows).
 // A step's cache key is the content of exactly what it reads (scripts/regen-inputs.ts): the import closure of its entry files,
 // its declared data globs, the lockfile entries of the packages it imports, its command and its environment. Every step runs
 // under scripts/regen-trace.ts, and a run that read a tree file or package outside that set fails, so the key cannot miss an
@@ -8,7 +9,9 @@
 // they differ and the recorded run wrote every output without reading any of them. Steps that neither read nor write each
 // other's files run in parallel (--jobs, default 2). --check exits 1 naming every file the run changed (and leaves them
 // regenerated); --force ignores entries recorded before this run; --from starts the first pass at that step; --explain prints
-// what each step would do and why, and changes nothing.
+// what each step would do and why, and changes nothing. --skip <step> leaves a step out of every pass and --only <step> leaves out
+// all the others (both repeatable): .github/workflows/regen-on-ci.yml runs the Chrome steps and lanes-host on different machines.
+// A skipped step's outputs are not judged, so only the whole split reaches a fixed point.
 // Device lanes are never run: lanes-host rewrites only the host rows of lanes.json and keeps device records that are still current.
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -491,7 +494,7 @@ export type Io = {
 };
 
 /** explain: decide every step of one pass (skip, restore or run, and why) and change nothing. */
-export type Options = { readonly force: boolean; readonly check: boolean; readonly from: string | null; readonly jobs?: number; readonly explain?: boolean };
+export type Options = { readonly force: boolean; readonly check: boolean; readonly from: string | null; readonly jobs?: number; readonly explain?: boolean; readonly skip?: readonly string[] };
 export type StepRecord = { readonly pass: number; readonly step: string; readonly action: 'skipped' | 'restored' | 'ran' | 'would restore' | 'would run'; readonly ms: number; readonly changed: number; readonly why: string };
 export type Result = { readonly ok: boolean; readonly changed: readonly string[]; readonly ran: number; readonly passes: number; readonly error: string | null; readonly records: readonly StepRecord[] };
 
@@ -526,6 +529,11 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
   for (const [i, s] of steps.entries()) if (steps.findIndex((x) => x.name === s.name) !== i) return fail(`step ${s.name} is named twice`);
   const first = opts.from === null ? 0 : steps.findIndex((s) => s.name === opts.from);
   if (first < 0) return fail(`unknown step ${opts.from}; the steps are ${steps.map((s) => s.name).join(', ')}`);
+  const skip = new Set(opts.skip ?? []);
+  const unknown = [...skip].filter((n) => !steps.some((s) => s.name === n));
+  if (unknown.length > 0) return fail(`unknown step ${unknown.join(', ')} to skip; the steps are ${steps.map((s) => s.name).join(', ')}`);
+  if (skip.size === steps.length) return fail('every step is skipped');
+  if (skip.size > 0) io.log(`not run (--skip or --only): ${steps.filter((s) => skip.has(s.name)).map((s) => s.name).join(', ')}`);
   const jobs = Math.max(1, opts.jobs ?? DEFAULT_JOBS);
   const start = io.snapshot();
   const t0 = io.now();
@@ -556,7 +564,7 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
   for (let pass = 1; pass <= maxPasses; pass++) {
     const touched = new Set<string>();
     const tp = io.now();
-    const pending = steps.slice(pass === 1 ? first : 0);
+    const pending = steps.slice(pass === 1 ? first : 0).filter((s) => !skip.has(s.name));
     const running = new Map<string, { step: Step; inputs: Inputs; promise: Promise<{ name: string; r: RunResult }>; ts: number; why: string }>();
     let error: string | null = null;
     const finish = (s: Step, before: Inputs, after: Tree, ts: number, action: 'ran' | 'restored', reason: string, r: RunResult | null): string | null => {
@@ -829,7 +837,8 @@ export function localIo(root: string, storeDir: string, logDir: string): Io {
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
-  const opts: { force: boolean; check: boolean; from: string | null; jobs: number; explain: boolean } = { force: false, check: false, from: null, jobs: Number(process.env.DRAGON_REGEN_JOBS ?? DEFAULT_JOBS), explain: false };
+  const opts: { force: boolean; check: boolean; from: string | null; jobs: number; explain: boolean; skip: string[] } = { force: false, check: false, from: null, jobs: Number(process.env.DRAGON_REGEN_JOBS ?? DEFAULT_JOBS), explain: false, skip: [] };
+  const only: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === '--force') opts.force = true;
@@ -837,11 +846,23 @@ async function main(): Promise<void> {
     else if (a === '--explain') opts.explain = true;
     else if (a === '--from' && i + 1 < args.length && !args[i + 1]!.startsWith('--')) opts.from = args[++i]!;
     else if (a === '--jobs' && i + 1 < args.length && /^[1-9]\d*$/.test(args[i + 1]!)) opts.jobs = Number(args[++i]!);
+    else if (a === '--skip' && i + 1 < args.length && !args[i + 1]!.startsWith('--')) opts.skip.push(args[++i]!);
+    else if (a === '--only' && i + 1 < args.length && !args[i + 1]!.startsWith('--')) only.push(args[++i]!);
     else {
-      console.error(`regen: unknown argument ${JSON.stringify(a)}; usage: pnpm regen [--check] [--force] [--from <step>] [--jobs <n>] [--explain]`);
+      console.error(`regen: unknown argument ${JSON.stringify(a)}; usage: pnpm regen [--check] [--force] [--from <step>] [--jobs <n>] [--explain] [--skip <step>]... [--only <step>]...`);
       process.exit(2);
     }
   }
+  if (only.length > 0 && opts.skip.length > 0) {
+    console.error('regen: --skip and --only cannot be combined');
+    process.exit(2);
+  }
+  const badOnly = only.filter((n) => !STEPS.some((s) => s.name === n));
+  if (badOnly.length > 0) {
+    console.error(`regen: unknown step ${badOnly.join(', ')} for --only; the steps are ${STEPS.map((s) => s.name).join(', ')}`);
+    process.exit(2);
+  }
+  if (only.length > 0) opts.skip = STEPS.map((s) => s.name).filter((n) => !only.includes(n));
   if (!Number.isInteger(opts.jobs) || opts.jobs < 1) {
     console.error(`regen: DRAGON_REGEN_JOBS must be a positive integer, not ${JSON.stringify(process.env.DRAGON_REGEN_JOBS)}`);
     process.exit(2);

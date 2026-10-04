@@ -366,6 +366,23 @@ describe('pnpm regen chain', () => {
     expect((await regen([CHAIN[0]!, CHAIN[0]!], opts, v.io())).error).toBe('step gen is named twice');
   });
 
+  it('--skip leaves a step out of every pass, and a later run without it finishes the split chain', async () => {
+    const w = new World(SOURCES, IMPL);
+    const r1 = await regen(CHAIN, { ...opts, skip: ['rows'] }, w.io());
+    expect(r1).toMatchObject({ ok: true, changed: ['out/a', 'out/c'] });
+    expect(w.t.has('out/b')).toBe(false);
+    w.set({ 'data/a/x': '2' });
+    const r2 = await regen(CHAIN, { ...opts, skip: ['gen', 'other'] }, w.io());
+    expect(r2).toMatchObject({ ok: true, changed: ['out/b'] });
+    expect(w.ran).toEqual(['rows']);
+    expect(w.t.get('out/b')).toBe('B(A(1))');
+    const r3 = await regen(CHAIN, opts, w.io());
+    expect(r3).toMatchObject({ ok: true, changed: ['out/a', 'out/b'] });
+    expect(w.t.get('out/b')).toBe('B(A(2))');
+    expect((await regen(CHAIN, { ...opts, skip: ['nope'] }, w.io())).error).toBe('unknown step nope to skip; the steps are gen, rows, other');
+    expect((await regen(CHAIN, { ...opts, skip: ['gen', 'rows', 'other'] }, w.io())).error).toBe('every step is skipped');
+  });
+
   it('fails a step that edits one of its own inputs, recording nothing', async () => {
     const w: World = new World(SOURCES, {});
     w.impls.gen = (f: Files): void => {
