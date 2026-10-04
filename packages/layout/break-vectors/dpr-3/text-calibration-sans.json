@@ -1,9 +1,0 @@
-{
-  "case": "text-calibration-sans",
-  "dpr": 3,
-  "texts": [
-    {"id":"p1:text0","lines":[[0,34],[34,61]]},
-    {"id":"p2:text0","lines":[[0,29],[29,48]]},
-    {"id":"p3:text0","lines":[[0,20]]}
-  ]
-}
