@@ -1,0 +1,8 @@
+{
+  "case": "mqr-music-shape-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"title:text0","data":"Song name","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}
