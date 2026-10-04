@@ -7,10 +7,11 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { NativeProgram } from 'dragon';
 import { chromeArgsAt, CHROME_VERSION } from '../src/chrome.ts';
-import { DPRS } from '../src/dpr.ts';
 import { readBreakVector } from '../src/line-breaks.ts';
 import { readSamples } from '../src/native-compare.ts';
-import { nativeCases } from '../src/native-host.ts';
+import { nativeCases, nativeCompile } from '../src/native-host.ts';
+import { nativePrograms } from 'dragon';
+import { DPRS, layoutCases } from '../src/dpr.ts';
 import { repoPath } from '../src/paths.ts';
 import type { PixelManifest } from '../src/pixel-reference.ts';
 import type { BottomScanlines } from '../src/pixel-reference.ts';
@@ -104,14 +105,21 @@ describe('the glyph rule', () => {
     expect(() => glyphLines(other, n.case.environment.viewport, 3)).toThrow(/the engine refused the input/);
   });
 
-  it('gives a real face its shaped glyph boxes on every inked line of every shaped case', () => {
+  it('gives a real face its shaped glyph boxes on every inked line of every real-face shaped case (native lowering on, as phase R will run it)', () => {
+    // The real-face cases are no device cases until TXT1a-2 phase R, so the glyph rule's real-face extents are proven on their
+    // native lowering with phase C turned on (native-host.ts nativeCompile nativeRealFaces).
     const shaped = shapedCaseIds();
     let lines = 0;
-    for (const n of cases.filter((c) => shaped.has(c.case.id) && c.spec.id !== 'text-ahem-fractional')) {
-      for (const l of glyphLines(n.programs.uikit, n.case.environment.viewport, 3)) {
-        lines++;
-        expect(l.glyphs.length, l.id).toBeGreaterThan(0);
-        for (const g of l.glyphs) expect(g.right > g.left && g.bottom > g.top, l.id).toBe(true);
+    for (const { spec, cases: own } of layoutCases()) {
+      if (spec.id === 'text-ahem-fractional' || !own.some((c) => shaped.has(c.id))) continue;
+      for (const c of own) {
+        const p = nativePrograms(nativeCompile(spec, c.environment.direction, true), c.assignment);
+        if (p.kind !== 'ready') throw new Error(`${c.id}: ${p.reason}`);
+        for (const l of glyphLines(p.programs.uikit, c.environment.viewport, 3)) {
+          lines++;
+          expect(l.glyphs.length, l.id).toBeGreaterThan(0);
+          for (const g of l.glyphs) expect(g.right > g.left && g.bottom > g.top, l.id).toBe(true);
+        }
       }
     }
     expect(lines).toBeGreaterThan(50);
@@ -124,18 +132,18 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
   // points (addendum F2). A change here changes what the device lanes compare; it needs a written reason. SIZE-ar: only the 10
   // sizing-ratio cases' rules (edge +8, edge:glyph +4, rescued edge +8 at DPR 2 and 3, +6 at 2.625); with them filtered out the
   // master pins hold exactly. INL1a: plus the INL1a stack's new cases (inline-breaks-*, the inline fixtures and inline-baselines;
-  // the second term, as on the stack against master 7a363ac7b), every existing case unchanged. TXT1a-2 (T084J phase F): plus the
-  // sum over the text-latin, Ahem fractional and text-calibration cases (the last term); a real face's glyph boxes are its shaped
-  // HarfBuzz extents (pixel-reference.ts glyphLines).
+  // the second term, as on the stack against master 7a363ac7b), every existing case unchanged. SELD-R1b: the eight hit-* cases' own
+  // (the last term): 11 dropped edges, 20 glyph-edge scanlines and 8 glyph points per DPR, all from their overflowing text. TXT1a-2's
+  // shaped cases (text-latin, Ahem fractional, text-calibration) are no device cases until phase R, so they add nothing here.
   const DROPPED = {
     ios: {
-      2: { dropped: { edge: 1234 + 262 + 15, 'edge:glyph': 924 + 189 + 8, glyph: 31, clip: 4, border: 16, interior: 5 + 1, outside: 4 }, rescued: { edge: 1194 + 236 + 2 } },
-      3: { dropped: { edge: 1243 + 254 + 15, 'edge:glyph': 872 + 172 + 8, glyph: 25, border: 18, interior: 5 + 1, clip: 2, outside: 2 }, rescued: { edge: 1215 + 231 + 7, border: 18 } },
+      2: { dropped: { edge: 1234 + 262 + 11, 'edge:glyph': 924 + 189 + 20, glyph: 31 + 8, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 + 236 + 11 } },
+      3: { dropped: { edge: 1243 + 254 + 11, 'edge:glyph': 872 + 172 + 20, glyph: 25 + 8, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1215 + 231 + 11, border: 18 } },
     },
     android: {
-      2: { dropped: { edge: 1234 + 262 + 15, 'edge:glyph': 924 + 189 + 8, glyph: 31, clip: 4, border: 16, interior: 5 + 1, outside: 4 }, rescued: { edge: 1194 + 236 + 2 } },
-      3: { dropped: { edge: 1243 + 254 + 15, 'edge:glyph': 872 + 172 + 8, glyph: 25, border: 18, interior: 5 + 1, clip: 2, outside: 2 }, rescued: { edge: 1215 + 231 + 7, border: 18 } },
-      2.625: { dropped: { edge: 1207 + 260 + 15, 'edge:glyph': 901 + 189 + 8, glyph: 33, outside: 6 + 4 + 3, clip: 13, border: 16, interior: 5 + 1 }, rescued: { edge: 1071 + 194 + 8 } },
+      2: { dropped: { edge: 1234 + 262 + 11, 'edge:glyph': 924 + 189 + 20, glyph: 31 + 8, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 + 236 + 11 } },
+      3: { dropped: { edge: 1243 + 254 + 11, 'edge:glyph': 872 + 172 + 20, glyph: 25 + 8, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1215 + 231 + 11, border: 18 } },
+      2.625: { dropped: { edge: 1207 + 260 + 11, 'edge:glyph': 901 + 189 + 20, glyph: 33 + 8, outside: 6 + 4, clip: 13, border: 16, interior: 5 }, rescued: { edge: 1071 + 194 + 11 } },
     },
   } as const;
   const bottoms = JSON.parse(readFileSync(BOTTOM_SCANLINES_PATH(), 'utf8')) as BottomScanlines;

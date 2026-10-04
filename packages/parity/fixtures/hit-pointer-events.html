@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.under { width: 120px; height: 30px; background-color: #0c0; }
+.over { width: 120px; height: 20px; margin-top: -25px; pointer-events: none; background-color: #c00; }
+.none { pointer-events: none; width: 120px; height: 40px; background-color: #ccc; }
+.auto { pointer-events: auto; width: 40px; height: 20px; background-color: #00c; }
+.inner { width: 80px; height: 10px; background-color: #999; }
+.txt { width: 30px; height: 10px; line-height: 20px; }
+.f { display: flex; width: 200px; height: 30px; }
+.fi { width: 60px; height: 30px; background-color: #c0c; }
+.fn { pointer-events: none; width: 60px; height: 30px; margin-left: -30px; background-color: #0cc; }
+.rel { position: relative; pointer-events: none; width: 60px; height: 20px; margin-top: -10px; background-color: #cc0; }
+.base { width: 100px; height: 20px; background-color: #660; }
+.holder { position: relative; width: 150px; height: 30px; margin-top: 4px; background-color: #ddd; }
+.track { position: absolute; left: 0; top: 0; width: 100%; height: 100%; padding: 4px; pointer-events: none; background-color: #333; }
+.thumb { width: 50px; height: 20px; background-color: #c00; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="u" class="under"></div>
+<div data-dragon-id="v" class="over"></div>
+<div data-dragon-id="n" class="none"><div data-dragon-id="na" class="auto"></div><div data-dragon-id="ni" class="inner"></div><div data-dragon-id="nt" class="txt">XX XX</div></div>
+<div data-dragon-id="f" class="f"><div data-dragon-id="f1" class="fi">XXXXXXXX</div><div data-dragon-id="f2" class="fn">XX</div></div>
+<div data-dragon-id="base" class="base"></div>
+<div data-dragon-id="rel" class="rel"><div data-dragon-id="relc" class="auto">XX</div></div>
+<div data-dragon-id="holder" class="holder"><div data-dragon-id="thumb" class="thumb"></div><div data-dragon-id="track" class="track"></div></div>
+</body>
+</html>

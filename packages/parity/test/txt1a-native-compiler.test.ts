@@ -20,10 +20,11 @@ const LATO = 'sha256:d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f18
 
 const inputOf = (id: string): FrontEndResult => withFontMapAssets(fixtureInput(layout(id, ['ltr'], 'ahem')), FONT_REFERENCE_MAP);
 
-function compile(input: FrontEndResult): Compiled<'ios' | 'android' | 'web'> {
+// Phase C's lowering is off by default until phase R (InternalOptions.nativeRealFaces); these tests turn it on to keep proving it.
+function compile(input: FrontEndResult, nativeRealFaces = true): Compiled<'ios' | 'android' | 'web'> {
   const project = dragon.createProjectWith(
     { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }, fonts: FONT_REFERENCE_MAP },
-    { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ahem', foldViewport: ENVIRONMENT.viewport },
+    { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ahem', foldViewport: ENVIRONMENT.viewport, nativeRealFaces },
   );
   return project.compile(input);
 }
@@ -48,6 +49,18 @@ function families(v: unknown, out = new Set<string>()): Set<string> {
 }
 
 describe('TXT1a-2 phase C: native lowering of real bundled faces', () => {
+  it('is off by default: native refuses Lato with the font refusal, and the engine lane lowers it in engine mode', () => {
+    // The device runtime measures and draws only the bundled Ahem until phase R (emit/native-support.ts DragonBridge.measurer).
+    const c = compile(inputOf('text-latin-lato'), false);
+    expect(new Set(nativeErrors(c).map((d) => `${d.target} ${d.code}`))).toEqual(new Set(['ios DRAGON_UNSUPPORTED_FONT', 'android DRAGON_UNSUPPORTED_FONT']));
+    expect([c.outputs.ios.kind, c.outputs.android.kind]).toEqual(['blocked', 'blocked']);
+    expect(dragon.nativeLayoutProjection(c, ENVIRONMENT, []).kind).toBe('blocked');
+    const engine = dragon.engineLayoutProjection(c, ENVIRONMENT, []);
+    if (engine.kind !== 'ready') throw new Error(engine.reason);
+    expect([...families(engine.input.root)].sort()).toEqual([LATO]);
+    expect(c.digest).not.toBe(compile(inputOf('text-latin-lato')).digest);
+  });
+
   it('lowers Lato for ios and android with the face id, with no font refusal and the engine projection equal to the native one', () => {
     const c = compile(inputOf('text-latin-lato'));
     expect(nativeErrors(c).map((d) => `${d.code}: ${d.message}`)).toEqual([]);
