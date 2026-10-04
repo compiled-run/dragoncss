@@ -213,15 +213,20 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
   });
 
   // #72 landing device run: Android captured image cases before their frame reached the display (white image-flat samples, varying
-  // by device and DPR). The host copies only after a frame holding the drawn tree is committed, and the decoder uploads early.
-  it('the Android host copies the window only after a frame commit, and the image decoder prepares its bitmap', () => {
+  // by device and DPR). The host copies only after a frame of the redrawn tree is committed, and copies again only after another
+  // committed frame, so two equal copies come from two frames; the decoder uploads early.
+  it('the Android host copies the window only after a frame commit, each copy after its own, and the image decoder prepares its bitmap', () => {
     const files = hostSources('android', 'toolchain');
     const host = files.find((f) => f.path === 'kotlin/dev/dragon/host/DragonActivity.kt')?.text ?? '';
-    const commit = host.indexOf('registerFrameCommitCallback { main.post { capture() } }');
-    expect(commit).toBeGreaterThan(-1);
-    // capture() is the only caller of the first copy, and settle() reaches capture() only through the commit callback.
+    expect(host).toContain('fun afterCommittedFrame(block: () -> Unit) {\n      tree.root.viewTreeObserver.registerFrameCommitCallback { main.post { block() } }\n      tree.root.invalidate()\n    }');
+    // capture() is the only caller of the first copy, settle() reaches capture() only through a committed frame, and a copy that
+    // differs from the previous one is retried only through another.
     expect(host.match(/copy\(0\)/g)?.length).toBe(1);
     expect(host.match(/capture\(\)/g)?.length).toBe(2);
+    expect(host.match(/afterCommittedFrame \{ capture\(\) \}/g)?.length).toBe(1);
+    expect(host.match(/copy\(attempt \+ 1\)/g)).toEqual(['copy(attempt + 1)', 'copy(attempt + 1)', 'copy(attempt + 1)']);
+    expect(host).toContain('previous = sha\n              // The next copy is of another committed frame of the same tree, so equal copies show two frames drew it alike.\n              afterCommittedFrame { copy(attempt + 1) }');
+    expect(host.indexOf('fun afterCommittedFrame(')).toBeLessThan(host.indexOf('fun capture() {'));
     expect(host.indexOf('fun capture() {')).toBeLessThan(host.indexOf('copy(0)'));
     expect(host.indexOf('copy(0)')).toBeLessThan(host.indexOf('fun settle('));
     const image = files.find((f) => f.path === 'kotlin/dev/dragon/views/paint/DragonPaintImage.kt')?.text ?? '';

@@ -405,8 +405,15 @@ class DragonActivity : Activity() {
       tree.apply(c.input(scale), bridge.measurer, scale, bridge)
       frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
     }
-    // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, a frame holding the drawn tree committed to
-    // the display, then compositor copies of the window until two consecutive copies are equal.
+    // The tree redrawn, then the block once that frame is committed to the display. Only the commit shows the frame holds the
+    // redraw: the UI-thread draw is recorded before RenderThread presents it.
+    fun afterCommittedFrame(block: () -> Unit) {
+      tree.root.viewTreeObserver.registerFrameCommitCallback { main.post { block() } }
+      tree.root.invalidate()
+    }
+    // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, a frame of the redrawn tree committed to
+    // the display, then compositor copies of the window, each after a committed frame of its own, until two consecutive copies
+    // are equal.
     fun capture() {
       run {
         val t1 = SystemClock.elapsedRealtimeNanos()
@@ -435,7 +442,8 @@ class DragonActivity : Activity() {
             if (sha != previous) {
               if (attempt >= 6000) throw IllegalStateException("dragon host: " + id + ": no two consecutive copies were equal after " + attempt + " copies")
               previous = sha
-              Choreographer.getInstance().postFrameCallback { copy(attempt + 1) }
+              // The next copy is of another committed frame of the same tree, so equal copies show two frames drew it alike.
+              afterCommittedFrame { copy(attempt + 1) }
               return@OnPixelCopyFinishedListener
             }
             val pixels = DumpPixels("PixelCopy", w.toDouble(), h.toDouble(), sha, dragonSamples(bytes, w, h, run.points[id] ?: emptyList()))
@@ -479,10 +487,7 @@ class DragonActivity : Activity() {
           settle(frames + 1)
           return@postFrameCallback
         }
-        // The tree's draw is recorded on the UI thread, but RenderThread may present it frames later (texture uploads of decoded
-        // images): copy only after a frame holding the drawn tree was committed to the display.
-        tree.root.viewTreeObserver.registerFrameCommitCallback { main.post { capture() } }
-        tree.root.invalidate()
+        afterCommittedFrame { capture() }
       }
     }
     settle(1)

@@ -41,6 +41,7 @@ export type DeviceCheckLane = (typeof DEVICE_CHECK_LANES)[number];
 export type FailureKind =
   | 'dump-missing' | 'dump-invalid' | 'device-scale' | 'frame-chrome' | 'frame-engine' | 'applied' | 'native-class' | 'expected-digest'
   | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest' | 'case-identity' | 'capture-kind'
+  | 'blank-capture'
   | 'hit-missing' | 'hit-mismatch';
 
 /** SELD-R1b's device lanes: the case scripts' dumps (device-states) and the device hit test's answers (device-hit). */
@@ -160,8 +161,10 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
   let passingSamples: number[] = [];
   const captureKind = target === 'ios' ? 'drawHierarchy' : 'PixelCopy';
   if (dump.pixels !== null && dump.pixels.capture !== captureKind) fail('device-pixels', 'capture-kind', `capture ${dump.pixels.capture}, the ${target} compositor capture is ${captureKind}`);
+  const blank = dump.pixels === null || ref.pixels === null ? null : blankCapture(dump.pixels.samples, ref.pixels);
   if (dump.pixels === null) fail('device-pixels', 'pixel', 'the dump has no pixels');
   else if (ref.pixels === null) fail('device-pixels', 'pixel', 'no committed Chrome PNG (pnpm run parity:pixel-capture)');
+  else if (blank !== null) fail('device-pixels', 'blank-capture', blank, 'capture');
   else {
     const want = rasterSize(n.case.environment.viewport, dpr);
     const c = checkCasePixels(dump.pixels.samples, ref.points, ref.pixels, want, { width: dump.pixels.width, height: dump.pixels.height });
@@ -176,6 +179,20 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
     });
   }
   return { failures, compared, passingSamples };
+}
+
+/** The hosts' stage colour (native-host.ts: white on both), which a capture of the window with nothing drawn shows. */
+export const STAGE_RGBA: readonly number[] = [255, 255, 255, 255];
+
+/**
+ * A capture that is the bare stage at every sample where Chrome paints something else at one or more of them: the host copied a
+ * frame without the case's paint, a harness fault reported once for the case, not as a pixel mismatch per sample. Null otherwise.
+ */
+export function blankCapture(samples: readonly { readonly x: number; readonly y: number; readonly rgba: readonly number[] }[], chrome: RgbaImage): string | null {
+  if (samples.length === 0 || !samples.every((s) => s.rgba.length === 4 && s.rgba.every((v, k) => v === STAGE_RGBA[k]))) return null;
+  const painted = samples.filter((s) => Number.isInteger(s.x) && Number.isInteger(s.y) && s.x >= 0 && s.y >= 0 && s.x < chrome.width && s.y < chrome.height && pixelAt(chrome, s.x, s.y).some((v, k) => v !== STAGE_RGBA[k])).length;
+  if (painted === 0) return null;
+  return `the capture is the blank stage [${STAGE_RGBA.join(',')}] at all ${samples.length} samples, where Chrome paints other colours at ${painted}: the host copied a frame without the case's paint (a harness fault, not a paint mismatch)`;
 }
 
 // ---------------------------------------------------------------- a DPR set
