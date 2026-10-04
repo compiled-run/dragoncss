@@ -46,10 +46,13 @@ Everything else here is a default you apply without asking.
 Everything else is a default above, or a note in your receipt.
 
 ## Waiting
-- Submit long jobs with `pnpm job submit -- <cmd>` and end your turn with a receipt saying what's queued.
-  You are resumed with the result. Never sleep-poll; never wait on anything outside your lane.
-- Until the queue exists: `/tmp/heavy-lease.sh <cmd>` in the background, and at most one blocking
-  `sleep 590` plus one result line per check.
+- Start every long job (regen, full test, chains of them) DETACHED with `/tmp/job.sh <job-name> <worktree> <cmd...>`
+  (e.g. `/tmp/job.sh repla-regen /tmp/dragon-repla pnpm regen`). It runs through the heavy lease in its own
+  session, logs to /tmp/jobs/<job-name>.log and writes /tmp/jobs/<job-name>.done (the exit code) when finished.
+  Jobs started as session background tasks get killed; detached jobs survive. Name jobs <lane>-<step>.
+- Then end your turn with a receipt listing the job names. The PM's watcher resumes you when they finish.
+  Never sleep-poll; never wait on anything outside your lane.
+- A multi-step chain (regen, commit, test) goes in one small script run through /tmp/job.sh.
 
 ## Landing (when your dispatch says "land")
 1. Audit every changed source and test file once: unchecked external input, silent error paths,
