@@ -10,6 +10,7 @@ import type { LinkedElement } from '../src/analysis/link.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../src/css/properties/grid.ts';
+import { TRANSFORM_LONGHANDS } from '../src/css/properties/transform.ts';
 import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -39,12 +40,13 @@ const expanded = (property: string, value: string): string[] => {
 };
 
 describe('grid family: registry', () => {
-  it('twelve longhands and eight shorthands, appended after every other family', () => {
+  it('twelve longhands and eight shorthands, appended after every other family but the paint families', () => {
     expect([...GRID_LONGHANDS]).toEqual([
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow',
       'grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'justify-items', 'justify-self',
     ]);
-    expect(LONGHANDS.slice(-GRID_LONGHANDS.length)).toEqual([...GRID_LONGHANDS]);
+    // EMS registers the paint families last in every table; PNT2's transform family is the first that has longhands.
+    expect(LONGHANDS.slice(-GRID_LONGHANDS.length - TRANSFORM_LONGHANDS.length)).toEqual([...GRID_LONGHANDS, ...TRANSFORM_LONGHANDS]);
     expect(SHORTHANDS.slice(-GRID_SHORTHANDS.length)).toEqual([...GRID_SHORTHANDS]);
     for (const p of GRID_LONGHANDS) {
       expect(INHERITED.has(p), p).toBe(false);

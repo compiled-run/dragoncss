@@ -35,7 +35,6 @@ type Infer<R> = R extends CalcRule
 const num = (minimum: number): NumberRule => ({ t: 'number', min: minimum, exclusiveMin: false, integer: false });
 const positive: NumberRule = { t: 'number', min: 0, exclusiveMin: true, integer: false };
 const anyNum: NumberRule = { t: 'number', min: -Infinity, exclusiveMin: false, integer: false };
-const int: NumberRule = { t: 'number', min: -Infinity, exclusiveMin: false, integer: true };
 const str: StringRule = { t: 'string' };
 function lit<const V extends string>(...values: V[]): LiteralRule<V> {
   return { t: 'literal', values };
@@ -112,7 +111,8 @@ export const styleSchema = obj({
   flexGrow: num(0),
   flexShrink: num(0),
   flexBasis: tagged({ ...px(0), ...percent(0), ...auto, content: {}, ...calc }),
-  order: int,
+  // A math function's order arrives unrounded; the environment pass rounds and clamps it as Blink's ComputeInteger does.
+  order: anyNum,
   justifyContent: justify,
   alignItems: lit(...alignItemsValues),
   alignSelf: lit('auto', ...alignItemsValues),

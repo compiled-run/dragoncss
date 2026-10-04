@@ -3,28 +3,17 @@
 // exist at ios 2 and 3 and android 2, 3 and 2.625 with identical CSS-longhand coverage per node; color-border-sides node long
 // expects its initial borders as 3 device px; the generated sources hold no stylesheet text, selector, class name or JSON decoding.
 import { describe, expect, it } from 'vitest';
-import { cssCoverage, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDump, nativeLayoutProjection, NO_FAULTS, webClassMap } from 'dragon';
+import { cssCoverage, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDump, nativeLayoutProjection, webClassMap } from 'dragon';
 import { declaredLayoutCaseCount, MILESTONE_1_LAYOUT_CASES } from '../src/case-count.ts';
 import { atDpr, layoutCases } from '../src/dpr.ts';
 import { readHtmlFixture } from '../src/fixture-reader.ts';
 import { BACKEND_OF, emitCases, expectedEngine, nativeCases } from '../src/native-host.ts';
-import { compileFixture } from '../src/pipeline.ts';
+import { enforcedCompile } from '../src/pipeline.ts';
+import { containedNeedles, dotNames } from '../src/text-search.ts';
 import { deviceDprs, layoutCaseIds } from '../src/targets.ts';
 
 const cases = nativeCases();
 const m = expectedEngine();
-const enforced = new Map<string, ReturnType<typeof compileFixture>['compiled']>();
-/** The enforced { ios, web } compile of a fixture and direction, shared by the tests below. */
-function enforcedCompile(spec: Parameters<typeof compileFixture>[0], direction: 'ltr' | 'rtl'): ReturnType<typeof compileFixture>['compiled'] {
-  const key = `${spec.id} ${direction}`;
-  let c = enforced.get(key);
-  if (c === undefined) {
-    c = compileFixture(spec, NO_FAULTS, 'enforce', direction).compiled;
-    enforced.set(key, c);
-  }
-  return c;
-}
-
 describe('the native generation compile (derive mode, ios and android)', () => {
   it('covers every layout case, derived from layoutCases()', () => {
     expect(cases.map((c) => c.case.id)).toEqual([...layoutCaseIds()]);
@@ -83,38 +72,58 @@ describe('expected dumps', () => {
 });
 
 describe('the generated sources', () => {
-  it('hold no stylesheet text, selector, class name or JSON layout decoding', () => {
-    const ios = emitUikitCases(emitCases('ios'));
-    const android = emitAndroidViewsCases(emitCases('android'));
-    const generated = [...ios, ...android].map((f) => f.text).join('\n');
-    const support = [...emitNativeSupport('uikit'), ...emitNativeSupport('android-views')].map((f) => f.text).join('\n');
-    for (const src of [generated, support]) expect(src).not.toMatch(/JSONDecoder|JSONSerialization|JSONObject|org\.json|kotlinx\.serialization|Codable|Decodable/);
-    let rules = 0;
-    let classes = 0;
-    let webClasses = 0;
-    for (const f of layoutCases()) {
-      if (f.spec.format === 'html') {
-        const css = /<style>([\s\S]*?)<\/style>/.exec(readHtmlFixture(f.spec.id).html)?.[1] ?? '';
-        for (const rule of css.split('}').map((r) => r.trim()).filter((r) => r.length > 0)) {
-          rules++;
-          expect(generated.includes(rule), rule).toBe(false);
-        }
-        for (const cls of new Set([...css.matchAll(/\.([A-Za-z_][\w-]*)/g)].map((x) => x[1] as string))) {
-          classes++;
-          expect(new RegExp(`\\.${cls}(?![\\w-])`).test(generated), `.${cls}`).toBe(false);
-        }
-      }
+  // Each fixture's checks run in their own test, its enforced compile included; the corpus test checks every web class binding at once.
+  let sources: { readonly files: number; readonly generated: string; readonly support: string } | null = null;
+  const sourcesOf = () => {
+    if (sources === null) {
+      const ios = emitUikitCases(emitCases('ios'));
+      const android = emitAndroidViewsCases(emitCases('android'));
+      sources = { files: ios.length + android.length, generated: [...ios, ...android].map((f) => f.text).join('\n'), support: [...emitNativeSupport('uikit'), ...emitNativeSupport('android-views')].map((f) => f.text).join('\n') };
+    }
+    return sources;
+  };
+  const stylesheetOf = (f: (ReturnType<typeof layoutCases>)[number]): { readonly rules: readonly string[]; readonly classes: readonly string[] } => {
+    if (f.spec.format !== 'html') return { rules: [], classes: [] };
+    const css = /<style>([\s\S]*?)<\/style>/.exec(readHtmlFixture(f.spec.id).html)?.[1] ?? '';
+    return { rules: css.split('}').map((r) => r.trim()).filter((r) => r.length > 0), classes: [...new Set([...css.matchAll(/\.([A-Za-z_][\w-]*)/g)].map((x) => x[1] as string))] };
+  };
+  // Every rule of the corpus looked up in one pass over the 25 MB of sources, and every '.name' in them read once.
+  let index: { readonly rules: ReadonlySet<string>; readonly dotted: ReadonlySet<string> } | null = null;
+  const indexOf = () => {
+    index ??= { rules: containedNeedles(sourcesOf().generated, layoutCases().flatMap((f) => stylesheetOf(f).rules)), dotted: dotNames(sourcesOf().generated) };
+    return index;
+  };
+  const bindings = new Map<string, readonly string[]>();
+  const bindingsOf = (f: (ReturnType<typeof layoutCases>)[number]): readonly string[] => {
+    let b = bindings.get(f.spec.id);
+    if (b === undefined) {
+      const out: string[] = [];
       for (const direction of new Set(f.cases.map((c) => c.environment.direction))) {
         const web = enforcedCompile(f.spec, direction);
-        for (const c of f.cases.filter((x) => x.environment.direction === direction)) {
-          for (const w of webClassMap(web, c.assignment)?.values() ?? []) {
-            webClasses++;
-            expect(generated.includes(w), w).toBe(false);
-          }
-        }
+        for (const c of f.cases.filter((x) => x.environment.direction === direction)) out.push(...(webClassMap(web, c.assignment)?.values() ?? []));
       }
+      b = out;
+      bindings.set(f.spec.id, b);
     }
-    console.log(`generated sources: ${ios.length + android.length} files; ${rules} stylesheet rules, ${classes} selector class names and ${webClasses} web class bindings absent`);
+    return b;
+  };
+
+  it.each(layoutCases().map((f) => [f.spec.id, f] as const))('%s: none of its stylesheet rules or selector class names', (_id, f) => {
+    const { rules, classes } = stylesheetOf(f);
+    for (const rule of rules) expect(indexOf().rules.has(rule), rule).toBe(false);
+    for (const cls of classes) expect(indexOf().dotted.has(cls), `.${cls}`).toBe(false);
+    bindingsOf(f);
+  });
+  it('hold no stylesheet text, selector, class name or JSON layout decoding', () => {
+    const { files, generated, support } = sourcesOf();
+    for (const src of [generated, support]) expect(src).not.toMatch(/JSONDecoder|JSONSerialization|JSONObject|org\.json|kotlinx\.serialization|Codable|Decodable/);
+    const webChecks = layoutCases().flatMap(bindingsOf);
+    const contained = containedNeedles(generated, webChecks);
+    for (const w of webChecks) expect(contained.has(w), w).toBe(false);
+    const rules = layoutCases().reduce((n, f) => n + stylesheetOf(f).rules.length, 0);
+    const classes = layoutCases().reduce((n, f) => n + stylesheetOf(f).classes.length, 0);
+    const webClasses = webChecks.length;
+    console.log(`generated sources: ${files} files; ${rules} stylesheet rules, ${classes} selector class names and ${webClasses} web class bindings absent`);
     expect(rules).toBeGreaterThan(100);
     expect(webClasses).toBeGreaterThan(100);
   }, 300_000);

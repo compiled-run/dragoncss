@@ -87,7 +87,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "200px 73.4524px",
+        "will-change": "auto"
       }
     },
     {
@@ -167,7 +170,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "200px 73.4524px",
+        "will-change": "auto"
       }
     },
     {
@@ -247,7 +253,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "100px 25.9524px",
+        "will-change": "auto"
       }
     },
     {
@@ -327,7 +336,10 @@
         "grid-column-start": "2",
         "grid-column-end": "4",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "100px 5px",
+        "will-change": "auto"
       }
     },
     {
@@ -407,7 +419,10 @@
         "grid-column-start": "head",
         "grid-column-end": "head",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "15px 6px",
+        "will-change": "auto"
       }
     },
     {
@@ -487,7 +502,10 @@
         "grid-column-start": "2 a",
         "grid-column-end": "span 2 b",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "100px 4px",
+        "will-change": "auto"
       }
     },
     {
@@ -587,7 +605,10 @@
         "grid-column-start": "2",
         "grid-column-end": "4",
         "justify-items": "normal",
-        "justify-self": "normal"
+        "justify-self": "normal",
+        "transform": "none",
+        "transform-origin": "100px 2.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -667,7 +688,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "100px 2px",
+        "will-change": "auto"
       }
     },
     {
@@ -747,7 +771,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "100px 1.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -827,7 +854,10 @@
         "grid-column-start": "span 3 Name",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "100px 4.95238px",
+        "will-change": "auto"
       }
     },
     {
@@ -927,7 +957,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "100px 15px",
+        "will-change": "auto"
       }
     },
     {
@@ -1007,7 +1040,10 @@
         "grid-column-start": "3",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "center"
+        "justify-self": "center",
+        "transform": "none",
+        "transform-origin": "10px 5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1087,7 +1123,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "end"
+        "justify-self": "end",
+        "transform": "none",
+        "transform-origin": "10px 6px",
+        "will-change": "auto"
       }
     },
     {
@@ -1167,7 +1206,10 @@
         "grid-column-start": "y",
         "grid-column-end": "y",
         "justify-items": "normal",
-        "justify-self": "safe center"
+        "justify-self": "safe center",
+        "transform": "none",
+        "transform-origin": "10px 7px",
+        "will-change": "auto"
       }
     },
     {
@@ -1247,7 +1289,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "stretch"
+        "justify-self": "stretch",
+        "transform": "none",
+        "transform-origin": "10px 3px",
+        "will-change": "auto"
       }
     },
     {
@@ -1327,7 +1372,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "left"
+        "justify-self": "left",
+        "transform": "none",
+        "transform-origin": "10px 4px",
+        "will-change": "auto"
       }
     },
     {
@@ -1407,7 +1455,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "baseline"
+        "justify-self": "baseline",
+        "transform": "none",
+        "transform-origin": "10px 4.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1487,7 +1538,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "unsafe self-end"
+        "justify-self": "unsafe self-end",
+        "transform": "none",
+        "transform-origin": "10px 3.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1567,7 +1621,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "flex-start"
+        "justify-self": "flex-start",
+        "transform": "none",
+        "transform-origin": "10px 2.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1647,7 +1704,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "50px 12.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1727,7 +1787,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "right"
+        "justify-self": "right",
+        "transform": "none",
+        "transform-origin": "10px 5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1807,7 +1870,10 @@
         "grid-column-start": "1",
         "grid-column-end": "-1",
         "justify-items": "normal",
-        "justify-self": "last baseline"
+        "justify-self": "last baseline",
+        "transform": "none",
+        "transform-origin": "50px 5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1907,7 +1973,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "anchor-center"
+        "justify-self": "anchor-center",
+        "transform": "none",
+        "transform-origin": "15px 2.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1987,7 +2056,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "50px 20px",
+        "will-change": "auto"
       }
     },
     {
@@ -2067,7 +2139,10 @@
         "grid-column-start": "3",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "transform": "none",
+        "transform-origin": "5px 5px",
+        "will-change": "auto"
       }
     }
   ]
