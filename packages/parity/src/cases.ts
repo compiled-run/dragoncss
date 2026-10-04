@@ -1,7 +1,7 @@
 // Parity cases (docs/api.md §7): one per reachable assignment of every fixture and environment, never deduplicated or factored.
 // HTML fixtures have one case per declared environment direction, rendered from the file itself; tree fixtures are rendered by the
 // parity-owned renderer, once per assignment in each environment direction.
-import type { Assignment, Environment, FrontEndResult, InteractionPartition } from 'dragon';
+import type { Assignment, Environment, ForcedPseudo, FrontEndResult, InteractionPartition } from 'dragon';
 import { compiledFixtureHtml, readHtmlFixture } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { directionSuffix, environmentsOf } from './fixtures.ts';
@@ -27,34 +27,17 @@ export type ParityCase = {
 };
 
 /** One element forced into one interaction pseudo-class, by its data-dragon-id. */
-export type ForcedPseudo = { readonly address: string; readonly pseudo: 'hover' | 'focus' | 'focus-visible' };
+export type { ForcedPseudo } from 'dragon';
 
 /**
- * What a forced case forces for partition state k: a hover chain forces :hover on every element of the chain of its first target in
- * preorder, as a real pointer there would; a forced hover, focus or focus-visible state forces that one element.
+ * What a forced case forces for partition state k (SELD-R2): a reachable state forces what the real pointer and focus give (every
+ * element of the hover and active chains, the focused element), a forced state its one element.
  */
-export function forcedFor(p: InteractionPartition, k: number): ForcedPseudo[] {
+export function forcedFor(p: InteractionPartition, k: number): readonly ForcedPseudo[] {
   const v = p.states[k];
   if (v === undefined) throw new Error(`no interaction state ${k}`);
-  const first = (table: readonly number[]): string => {
-    const i = table.indexOf(k);
-    if (i < 0) throw new Error(`interaction state ${v.key} is not reached from any element`);
-    return (p.elements[i] as { address: string }).address;
-  };
-  switch (v.kind) {
-    case 'hover': {
-      const out: ForcedPseudo[] = [];
-      const parent = new Map(p.elements.map((e) => [e.address, e.parent]));
-      for (let a: string | null | undefined = first(p.chainOf); a !== null && a !== undefined; a = parent.get(a)) out.unshift({ address: a, pseudo: 'hover' });
-      return out;
-    }
-    case 'forced-hover':
-      return [{ address: first(p.forcedHoverOf), pseudo: 'hover' }];
-    case 'forced-focus':
-      return [{ address: first(p.forcedFocusOf), pseudo: 'focus' }];
-    case 'forced-focus-visible':
-      return [{ address: first(p.forcedFocusVisibleOf), pseudo: 'focus-visible' }];
-  }
+  if (v.force.length === 0) throw new Error(`interaction state ${v.key} forces nothing`);
+  return v.force;
 }
 
 /** Whether a case id is a forced case's ("<case>~ix<k>", then the direction suffix): one counted beside the reachable cases. */

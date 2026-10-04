@@ -8,19 +8,20 @@ import type { CompilerFaults } from '../faults.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 
 /**
- * The interaction state a match runs in (SELD-R2a, analysis/interaction.ts): the element addresses that match :hover, :focus and
- * :focus-visible. probe, when given, records every address an interaction pseudo-class is tested against.
+ * The interaction state a match runs in (SELD-R2, analysis/interaction.ts): the element addresses that match :hover, :active,
+ * :focus and :focus-visible. probe, when given, records every address an interaction pseudo-class is tested against.
  */
 export type InteractionState = {
   readonly hover: ReadonlySet<string>;
+  readonly active: ReadonlySet<string>;
   readonly focus: ReadonlySet<string>;
   readonly focusVisible: ReadonlySet<string>;
   readonly probe?: InteractionProbe;
 };
-export type InteractionProbe = { readonly hover: Set<string>; readonly focus: Set<string>; readonly focusVisible: Set<string> };
+export type InteractionProbe = { readonly hover: Set<string>; readonly active: Set<string>; readonly focus: Set<string>; readonly focusVisible: Set<string> };
 
-/** No element hovered or focused: every match is the match without interaction states. */
-export const NO_INTERACTION: InteractionState = { hover: new Set(), focus: new Set(), focusVisible: new Set() };
+/** No element hovered, pressed or focused: every match is the match without interaction states. */
+export const NO_INTERACTION: InteractionState = { hover: new Set(), active: new Set(), focus: new Set(), focusVisible: new Set() };
 
 /** An element with its ancestors: path[0] is the document element, the last entry the element itself. */
 type Path = readonly LinkedElement[];
@@ -126,7 +127,7 @@ function pseudoMatches(path: Path, rule: Rule, p: PseudoClass, faults: CompilerF
     case 'has':
       return p.selectors.some((s) => hasMatches(rule, s, path, faults, ix));
     case 'interaction': {
-      const set = p.pseudo === 'hover' ? 'hover' : p.pseudo === 'focus' ? 'focus' : 'focusVisible';
+      const set = p.pseudo === 'focus-visible' ? 'focusVisible' : p.pseudo;
       ix.probe?.[set].add(el.address);
       return ix[set].has(el.address);
     }

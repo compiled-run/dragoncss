@@ -65,15 +65,15 @@ export function valueText(v: CssValue): string {
 }
 
 /** The parts of an interaction state the web output reads (analysis/interaction.ts InteractionValue): who matches each pseudo-class. */
-type StateMatch = { readonly hover: readonly string[]; readonly focus: string | null; readonly focusVisible: string | null };
-type Candidates = { readonly hover: readonly string[]; readonly focus: readonly string[]; readonly focusVisible: readonly string[] };
+type StateMatch = { readonly hover: readonly string[]; readonly active: readonly string[]; readonly focus: string | null; readonly focusVisible: string | null };
+type Candidates = { readonly hover: readonly string[]; readonly active: readonly string[]; readonly focus: readonly string[]; readonly focusVisible: readonly string[] };
 
-/** A case's interaction states (SELD-R2a): the candidates of its partition and each state but none, resolved. */
-export type WebInteraction = { readonly candidates: Candidates; readonly states: readonly { readonly value: StateMatch; readonly root: ResolvedElement }[] };
+/** A case's interaction states (SELD-R2): the candidates of its partition and each distinct state but none, resolved. */
+export type WebInteraction = { readonly candidates: Candidates; readonly states: readonly { readonly members: readonly StateMatch[]; readonly root: ResolvedElement }[] };
 
 type WebCase = { readonly key: string; readonly root: ResolvedElement; readonly interaction?: WebInteraction | undefined };
 
-type Pseudo = 'hover' | 'focus' | 'focus-visible';
+type Pseudo = 'hover' | 'active' | 'focus' | 'focus-visible';
 /** A generated state condition: the candidates that match each pseudo-class (on) and those that do not (off). */
 export type InteractionCondition = { readonly on: readonly (readonly [string, Pseudo])[]; readonly off: readonly (readonly [string, Pseudo])[] };
 
@@ -85,6 +85,7 @@ export function interactionCondition(v: StateMatch, candidates: Candidates): Int
   const on: [string, Pseudo][] = [];
   const off: [string, Pseudo][] = [];
   for (const a of candidates.hover) (v.hover.includes(a) ? on : off).push([a, 'hover']);
+  for (const a of candidates.active) (v.active.includes(a) ? on : off).push([a, 'active']);
   for (const a of candidates.focus) (v.focus === a ? on : off).push([a, 'focus']);
   for (const a of candidates.focusVisible) (v.focusVisible === a ? on : off).push([a, 'focus-visible']);
   return { on, off };
@@ -94,6 +95,22 @@ export function interactionCondition(v: StateMatch, candidates: Candidates): Int
 export function conditionsExclusive(a: InteractionCondition, b: InteractionCondition): boolean {
   const has = (list: InteractionCondition['on'], [x, p]: readonly [string, Pseudo]): boolean => list.some(([y, q]) => x === y && p === q);
   return a.on.some((t) => has(b.off, t)) || b.on.some((t) => has(a.off, t));
+}
+
+/** R3: the media query that gates :hover conditions, as Tailwind's hover variant does, and its complement. */
+export const HOVER_MEDIA = '(hover: hover)';
+export const NO_HOVER_MEDIA = 'not all and (hover: hover)';
+
+/**
+ * R3: where a state condition is emitted. A condition with a :hover candidate on holds only under (hover: hover), so a tap never
+ * leaves a hover style; one with :hover candidates only off holds in full under (hover: hover), and without its :hover terms
+ * elsewhere, where hover never counts. gate false (the plant webHoverUngated) emits every condition in full, ungated.
+ */
+export function gatedConditions(c: InteractionCondition, gate: boolean): { readonly media: string | null; readonly condition: InteractionCondition }[] {
+  const hover = ([, p]: readonly [string, Pseudo]): boolean => p === 'hover';
+  if (!gate || (!c.on.some(hover) && !c.off.some(hover))) return [{ media: null, condition: c }];
+  if (c.on.some(hover)) return [{ media: HOVER_MEDIA, condition: c }];
+  return [{ media: HOVER_MEDIA, condition: c }, { media: NO_HOVER_MEDIA, condition: { on: c.on, off: c.off.filter((t) => !hover(t)) } }];
 }
 
 /** One band after the first (MQ-a): its condition text and every case resolved in it. */
@@ -135,7 +152,7 @@ export type WebAnimations = {
  * when the project declares and maps no font, which leaves the output as it was before fonts. cases are resolved in the first
  * @media band; each later band (MQ-a) gets one @media block with the declarations that differ from it, per class.
  */
-export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all'): WebEmit {
+export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all', gateHover = true): WebEmit {
   const usedPinned = new Set<string>();
   const familyText = (v: CssValue): string => {
     const text = familyListText(v);
@@ -159,8 +176,9 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
   const variants = new Map<string, string>();
   const rules: string[] = [];
   const bandRules: string[][] = bands.map(() => []);
-  // SELD-R2a: per class, per band (the first, then each later one), the conditions and declarations of its interaction states.
-  const pending: { cls: string; root: boolean; states: { band: number; condition: InteractionCondition; lines: string[] }[] }[] = [];
+  // SELD-R2: per class, per band (the first, then each later one), its interaction states: the condition of every combination a
+  // state stands for (R5), and the declarations that differ from the band's none state.
+  const pending: { cls: string; root: boolean; states: { band: number; conditions: InteractionCondition[]; lines: string[] }[] }[] = [];
   const classesOf = new Map<string, string[]>();
   for (const c of cases) {
     const map = new Map<string, string>();
@@ -173,7 +191,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     const sources = animations === null ? new Set<string>() : animations.sources(c.key);
     // Each band's interaction states as address maps, against that band's own resolution of the case.
     const bandCase = [c, ...bands.map((b) => b.cases.find((x) => x.key === c.key) as WebCase)];
-    const states = bandCase.map((bc) => (bc.interaction?.states ?? []).map((st) => ({ condition: interactionCondition(st.value, (bc.interaction as WebInteraction).candidates), at: byAddress(st.root) })));
+    const states = bandCase.map((bc) => (bc.interaction?.states ?? []).map((st) => ({ conditions: st.members.map((m) => interactionCondition(m, (bc.interaction as WebInteraction).candidates)), at: byAddress(st.root) })));
     const bandBase = bandCase.map((bc) => byAddress(bc.root));
     const visit = (el: ResolvedElement, under: boolean): void => {
       const insets = writesInsets(el);
@@ -191,7 +209,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         const base = (bandBase[band] as Map<string, ResolvedElement>).get(el.element.address);
         if (here === undefined || base === undefined) throw new Error(`${el.element.address} is not resolved in every interaction state`);
         const lines = LONGHANDS.map((p) => declLine(here, p)).filter((line, k) => line !== declLine(base, LONGHANDS[k] as (typeof LONGHANDS)[number]));
-        return lines.length === 0 ? [] : [{ band, condition: st.condition, lines }];
+        return lines.length === 0 ? [] : [{ band, conditions: st.conditions, lines }];
       }));
       const variant = `${el.element.address}\u0000${decls.join('\n')}${diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(diffs)}` : ''}${own.length > 0 ? `\u0001${JSON.stringify(own)}` : ''}`;
       let cls = variants.get(variant);
@@ -224,15 +242,31 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
   };
   const rootAddress = cases[0] === undefined ? null : cases[0].root.element.address;
   const isRoot = (a: string): boolean => a === rootAddress;
-  const stateRules: string[][] = [[], ...bands.map(() => [])];
+  // Per band, the state rules by their R3 media gate (null: ungated), each gate's rules in emission order.
+  const stateRules: Map<string | null, string[]>[] = [new Map(), ...bands.map(() => new Map<string | null, string[]>())];
   for (const p of pending) {
     for (const st of p.states) {
-      const cond = `:root${st.condition.on.map(([a, ps]) => test(a, ps, isRoot)).join('')}${st.condition.off.map(([a, ps]) => `:not(${test(a, ps, isRoot)})`).join('')}`;
-      (stateRules[st.band] as string[]).push(`${p.root ? `${cond}.${p.cls}` : `${cond} .${p.cls}`} {\n${st.lines.join('\n')}\n}`);
+      const selectors = new Map<string | null, string[]>();
+      for (const g of st.conditions.flatMap((c) => gatedConditions(c, gateHover))) {
+        const cond = `:root${g.condition.on.map(([a, ps]) => test(a, ps, isRoot)).join('')}${g.condition.off.map(([a, ps]) => `:not(${test(a, ps, isRoot)})`).join('')}`;
+        const list = selectors.get(g.media) ?? [];
+        list.push(p.root ? `${cond}.${p.cls}` : `${cond} .${p.cls}`);
+        selectors.set(g.media, list);
+      }
+      const byGate = stateRules[st.band] as Map<string | null, string[]>;
+      for (const [media, list] of selectors) byGate.set(media, [...(byGate.get(media) ?? []), `${list.join(',\n')} {\n${st.lines.join('\n')}\n}`]);
     }
   }
   const conditions = [baseCondition, ...bands.map((b) => b.condition)];
-  const stateBlocks = stateRules.flatMap((r, k) => (r.length === 0 ? [] : bands.length === 0 ? r : [`@media ${conditions[k] as string} {\n${r.join('\n')}\n}`]));
+  const gated = (byGate: Map<string | null, string[]>): string[] =>
+    [null, HOVER_MEDIA, NO_HOVER_MEDIA].flatMap((m) => {
+      const r = byGate.get(m) ?? [];
+      return r.length === 0 ? [] : m === null ? r : [`@media ${m} {\n${r.join('\n')}\n}`];
+    });
+  const stateBlocks = stateRules.flatMap((byGate, k) => {
+    const r = gated(byGate);
+    return r.length === 0 ? [] : bands.length === 0 ? r : [`@media ${conditions[k] as string} {\n${r.join('\n')}\n}`];
+  });
   const prelude = fonts === null ? '' : fonts.prelude(usedPinned);
   const keyframes = animations === null || animations.keyframes === '' ? [] : [animations.keyframes];
   const text = `/* Generated by Dragon from compilation ${digest}. Do not edit. */\n${prelude === '' ? '' : `${prelude}\n`}${[...rules, ...blocks, ...stateBlocks, ...keyframes].join('\n')}\n`;

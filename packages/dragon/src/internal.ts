@@ -321,10 +321,10 @@ export function animationFeatures(compiled: object): readonly string[] {
   if (record === undefined || record.animation === null) return [];
   return [...new Set(record.animation.features.map((f) => f.feature))].sort();
 }
-// SELD-R2a (notes/T047-runtime-spec.md, Amendment T064J): interaction states, their partition and the generated web conditions.
-export type { InteractionElement, InteractionKind, InteractionPartition, InteractionValue } from './analysis/interaction.ts';
-export { chainStateOf, focusTargetOf, INTERACTION_NONE, isFocusable, ruleIsInteractive, selectorIsInteractive } from './analysis/interaction.ts';
+// SELD-R2 (notes/T064-seld-r2-spec.md): interaction states, their partition and the generated web conditions.
+export type { ChainValue, FocusValue, ForcedPseudo, InteractionElement, InteractionKind, InteractionPartition, InteractionValue, StateMatch } from './analysis/interaction.ts';
+export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledFact, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
 export type { InteractionState } from './analysis/match.ts';
 export { NO_INTERACTION } from './analysis/match.ts';
 export type { InteractionCondition, WebInteraction } from './emit/web-css.ts';
-export { conditionsExclusive, interactionCondition } from './emit/web-css.ts';
+export { conditionsExclusive, gatedConditions, HOVER_MEDIA, interactionCondition, NO_HOVER_MEDIA } from './emit/web-css.ts';

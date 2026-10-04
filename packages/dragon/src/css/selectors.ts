@@ -29,9 +29,9 @@ export type PseudoClass =
   | { readonly kind: 'has'; readonly selectors: readonly Selector[] }
   | { readonly kind: 'interaction'; readonly pseudo: InteractionPseudo };
 
-/** The interaction pseudo-classes Dragon compiles as interaction states (SELD-R2a, analysis/interaction.ts). */
-export type InteractionPseudo = 'hover' | 'focus' | 'focus-visible';
-export const INTERACTION_PSEUDOS: readonly InteractionPseudo[] = ['hover', 'focus', 'focus-visible'];
+/** The interaction pseudo-classes Dragon compiles as interaction states (SELD-R2, analysis/interaction.ts). */
+export type InteractionPseudo = 'hover' | 'active' | 'focus' | 'focus-visible';
+export const INTERACTION_PSEUDOS: readonly InteractionPseudo[] = ['hover', 'active', 'focus', 'focus-visible'];
 
 export type Compound = {
   readonly tag: string | null;
@@ -59,7 +59,7 @@ export type Selector = {
 
 const SELECTOR_FIX =
   'Use type, class, id, attribute and structural pseudo-class selectors (:root, :empty, :first-child, :nth-child(), :is(), :where(), :not(), :has() and the like), joined by descendant, child or sibling combinators.';
-const INTERACTIVE = new Set(['active', 'focus-within', 'target', 'visited', 'link', 'any-link', 'checked', 'disabled', 'enabled']);
+const INTERACTIVE = new Set(['focus-within', 'target', 'visited', 'link', 'any-link', 'checked', 'disabled', 'enabled']);
 const COMBINATORS: ReadonlySet<string> = new Set([' ', '>', '+', '~']);
 const ZERO: Specificity = [0, 0, 0];
 

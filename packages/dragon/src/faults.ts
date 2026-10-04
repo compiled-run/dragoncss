@@ -53,6 +53,12 @@ export type CompilerFaults = {
   readonly setterSkipsRelayout: boolean;
   /** The interaction partition loses the last :hover candidate, so a hover rule on it never applies (SELD-R2a). */
   readonly interactionRuleDropped: boolean;
+  /** A combination of two or more interaction dimensions resolves as its first non-none dimension alone (SELD-R2 R7). */
+  readonly comboStateDropped: boolean;
+  /** The web output's :hover conditions are not wrapped in @media (hover: hover), so a tap leaves a hover style (SELD-R2 R3). */
+  readonly webHoverUngated: boolean;
+  /** An interaction rule in a case with a paint fact the hit test does not model is not refused on native (SELD-R2 R13). */
+  readonly hitUnmodelledNotRefused: boolean;
 };
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, blockifySkipped: false, inlineFlexToBlock: false, sumOrderSwapped: false, dropExplicitZeroPercent: false, mediaConditionIgnored: false, mediaBandOffByOne: false, stateDeltaDropped: false, setterSkipsRelayout: false, interactionRuleDropped: false };
+export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, blockifySkipped: false, inlineFlexToBlock: false, sumOrderSwapped: false, dropExplicitZeroPercent: false, mediaConditionIgnored: false, mediaBandOffByOne: false, stateDeltaDropped: false, setterSkipsRelayout: false, interactionRuleDropped: false, comboStateDropped: false, webHoverUngated: false, hitUnmodelledNotRefused: false };
