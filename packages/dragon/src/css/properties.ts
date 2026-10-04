@@ -1,7 +1,7 @@
 // The longhands the milestone-1 compiler resolves per element, and the shorthands it expands into them. This file is the
-// aggregate: each family's lists and tables live in properties/<family>.ts, concatenated here in a fixed family order (the
-// order of LONGHANDS and SHORTHANDS is pinned by test/seams.test.ts). Tables that cut across families (TEXT_LONGHANDS,
-// COLOR_LONGHANDS) stay here.
+// aggregate: each family's lists and tables live in properties/<family>.ts, and FAMILIES registers each family on one line, in
+// table order (the order of LONGHANDS and SHORTHANDS is pinned by test/seams.test.ts). A new family adds its file and one line
+// after the family it follows. Tables that cut across families (TEXT_LONGHANDS, COLOR_LONGHANDS) stay here.
 import { BACKGROUND_ASPECTS, BACKGROUND_CONTAINER, BACKGROUND_INHERITED, BACKGROUND_LONGHANDS, BACKGROUND_SHORTHANDS, BACKGROUND_TEXT_ROLE } from './properties/background.ts';
 import { BORDER_ASPECTS, BORDER_CONTAINER, BORDER_INHERITED, BORDER_LONGHANDS, BORDER_SHORTHANDS, BORDER_TEXT_ROLE } from './properties/border.ts';
 import { BOX_ASPECTS, BOX_CONTAINER, BOX_INHERITED, BOX_LONGHANDS, BOX_SHORTHANDS, BOX_TEXT_ROLE } from './properties/box.ts';
@@ -24,84 +24,67 @@ import { SCROLLBAR_ASPECTS, SCROLLBAR_CONTAINER, SCROLLBAR_INHERITED, SCROLLBAR_
 /** What a longhand affects: layout (box geometry) and paint (pixels). */
 export type PropertyAspect = { readonly layout: boolean; readonly paint: boolean };
 
-// SELD-R1b (notes/T047-runtime-spec.md RT-9): pointer-events, inherited, read only by Dragon's hit test; auto and none only.
 export const POINTER_LONGHANDS = ['pointer-events'] as const;
 const POINTER_ASPECTS: { readonly [P in (typeof POINTER_LONGHANDS)[number]]: PropertyAspect } = { 'pointer-events': { layout: false, paint: false } };
 
-export const LONGHANDS = [
-  ...POSITION_LONGHANDS,
-  ...OVERFLOW_LONGHANDS,
-  ...BOX_LONGHANDS,
-  ...BORDER_LONGHANDS,
-  ...FLEX_LONGHANDS,
-  ...TEXT_FAMILY_LONGHANDS,
-  ...BACKGROUND_LONGHANDS,
-  ...LOGICAL_LONGHANDS,
-  ...WRITING_MODE_LONGHANDS,
+/** One property family: its longhands and shorthands, and which of its longhands are inherited, container or text properties. */
+type Family<L extends string, S extends string> = {
+  readonly id: string;
+  readonly longhands: readonly L[];
+  readonly shorthands: readonly S[];
+  readonly inherited: readonly L[];
+  readonly aspects: { readonly [P in L]: PropertyAspect };
+  readonly container: readonly L[];
+  readonly textRole: readonly L[];
+};
 
-  // Grid (css-grid-2) goes after the writing-mode family in every table below.
-  ...GRID_LONGHANDS,
+function family<const L extends readonly string[], const S extends readonly string[]>(id: string, longhands: L, shorthands: S, inherited: readonly L[number][], aspects: { readonly [P in L[number]]: PropertyAspect }, container: readonly L[number][], textRole: readonly L[number][]): Family<L[number], S[number]> {
+  return { id, longhands, shorthands, inherited, aspects, container, textRole };
+}
 
-  // SELD-R1b appends pointer-events after grid.
-  ...POINTER_LONGHANDS,
-  // The paint families (EMS seams) go last in every table below.
-  ...RADIUS_LONGHANDS,
-  ...SHADOW_LONGHANDS,
-  ...EFFECTS_LONGHANDS,
-  ...OUTLINE_LONGHANDS,
-  ...TRANSFORM_LONGHANDS,
-  ...BACKGROUND_LAYERS_LONGHANDS,
-  ...SCROLLBAR_LONGHANDS,
+/** Every family, in table order. */
+const FAMILIES = [
+  family('position', POSITION_LONGHANDS, POSITION_SHORTHANDS, POSITION_INHERITED, POSITION_ASPECTS, POSITION_CONTAINER, POSITION_TEXT_ROLE),
+  family('overflow', OVERFLOW_LONGHANDS, OVERFLOW_SHORTHANDS, OVERFLOW_INHERITED, OVERFLOW_ASPECTS, OVERFLOW_CONTAINER, OVERFLOW_TEXT_ROLE),
+  family('box', BOX_LONGHANDS, BOX_SHORTHANDS, BOX_INHERITED, BOX_ASPECTS, BOX_CONTAINER, BOX_TEXT_ROLE),
+  family('border', BORDER_LONGHANDS, BORDER_SHORTHANDS, BORDER_INHERITED, BORDER_ASPECTS, BORDER_CONTAINER, BORDER_TEXT_ROLE),
+  family('flex', FLEX_LONGHANDS, FLEX_SHORTHANDS, FLEX_INHERITED, FLEX_ASPECTS, FLEX_CONTAINER, FLEX_TEXT_ROLE),
+  family('text', TEXT_FAMILY_LONGHANDS, TEXT_FAMILY_SHORTHANDS, TEXT_FAMILY_INHERITED, TEXT_FAMILY_ASPECTS, TEXT_FAMILY_CONTAINER, TEXT_FAMILY_TEXT_ROLE),
+  family('background', BACKGROUND_LONGHANDS, BACKGROUND_SHORTHANDS, BACKGROUND_INHERITED, BACKGROUND_ASPECTS, BACKGROUND_CONTAINER, BACKGROUND_TEXT_ROLE),
+  family('logical', LOGICAL_LONGHANDS, LOGICAL_SHORTHANDS, LOGICAL_INHERITED, LOGICAL_ASPECTS, LOGICAL_CONTAINER, LOGICAL_TEXT_ROLE),
+  family('writing-mode', WRITING_MODE_LONGHANDS, WRITING_MODE_SHORTHANDS, WRITING_MODE_INHERITED, WRITING_MODE_ASPECTS, WRITING_MODE_CONTAINER, WRITING_MODE_TEXT_ROLE),
+  // Grid (css-grid-2) goes after the writing-mode family.
+  family('grid', GRID_LONGHANDS, GRID_SHORTHANDS, GRID_INHERITED, GRID_ASPECTS, GRID_CONTAINER, GRID_TEXT_ROLE),
+  // SELD-R1b (notes/T047-runtime-spec.md RT-9): pointer-events, inherited, read only by Dragon's hit test; auto and none only.
+  family('pointer', POINTER_LONGHANDS, [], POINTER_LONGHANDS, POINTER_ASPECTS, [], []),
+  // The paint families (EMS seams, notes/T046-paint-spec.md §3 item 4) go last.
+  family('radius', RADIUS_LONGHANDS, RADIUS_SHORTHANDS, RADIUS_INHERITED, RADIUS_ASPECTS, RADIUS_CONTAINER, RADIUS_TEXT_ROLE),
+  family('shadow', SHADOW_LONGHANDS, SHADOW_SHORTHANDS, SHADOW_INHERITED, SHADOW_ASPECTS, SHADOW_CONTAINER, SHADOW_TEXT_ROLE),
+  family('effects', EFFECTS_LONGHANDS, EFFECTS_SHORTHANDS, EFFECTS_INHERITED, EFFECTS_ASPECTS, EFFECTS_CONTAINER, EFFECTS_TEXT_ROLE),
+  family('outline', OUTLINE_LONGHANDS, OUTLINE_SHORTHANDS, OUTLINE_INHERITED, OUTLINE_ASPECTS, OUTLINE_CONTAINER, OUTLINE_TEXT_ROLE),
+  family('transform', TRANSFORM_LONGHANDS, TRANSFORM_SHORTHANDS, TRANSFORM_INHERITED, TRANSFORM_ASPECTS, TRANSFORM_CONTAINER, TRANSFORM_TEXT_ROLE),
+  family('background-layers', BACKGROUND_LAYERS_LONGHANDS, BACKGROUND_LAYERS_SHORTHANDS, BACKGROUND_LAYERS_INHERITED, BACKGROUND_LAYERS_ASPECTS, BACKGROUND_LAYERS_CONTAINER, BACKGROUND_LAYERS_TEXT_ROLE),
+  family('scrollbar', SCROLLBAR_LONGHANDS, SCROLLBAR_SHORTHANDS, SCROLLBAR_INHERITED, SCROLLBAR_ASPECTS, SCROLLBAR_CONTAINER, SCROLLBAR_TEXT_ROLE),
 ] as const;
 
-export type Longhand = (typeof LONGHANDS)[number];
+export type Longhand = (typeof FAMILIES)[number] extends infer F ? (F extends Family<infer L, string> ? L : never) : never;
+export type Shorthand = (typeof FAMILIES)[number] extends infer F ? (F extends Family<string, infer S> ? S : never) : never;
 
-export const SHORTHANDS = [
-  ...POSITION_SHORTHANDS,
-  ...BOX_SHORTHANDS,
-  ...BORDER_SHORTHANDS,
-  ...FLEX_SHORTHANDS,
-  ...OVERFLOW_SHORTHANDS,
-  ...TEXT_FAMILY_SHORTHANDS,
-  ...BACKGROUND_SHORTHANDS,
-  ...LOGICAL_SHORTHANDS,
-  ...WRITING_MODE_SHORTHANDS,
+type AnyFamily = Omit<Family<Longhand, Shorthand>, 'aspects'> & { readonly aspects: { readonly [P in Longhand]?: PropertyAspect } };
+/** Every family, in table order (test/registry-claims.test.ts checks no longhand or shorthand is in two). */
+export const PROPERTY_FAMILIES: readonly AnyFamily[] = FAMILIES;
+const ALL = PROPERTY_FAMILIES;
 
-  ...GRID_SHORTHANDS,
+export const LONGHANDS: readonly Longhand[] = ALL.flatMap((f) => f.longhands);
 
-  ...RADIUS_SHORTHANDS,
-  ...SHADOW_SHORTHANDS,
-  ...EFFECTS_SHORTHANDS,
-  ...OUTLINE_SHORTHANDS,
-  ...TRANSFORM_SHORTHANDS,
-  ...BACKGROUND_LAYERS_SHORTHANDS,
-  ...SCROLLBAR_SHORTHANDS,
-] as const;
+/** The shorthands follow FAMILIES, except overflow's, which follow flex's (they were added after the flex shorthands). */
+export const SHORTHANDS_MOVED = { family: 'overflow', after: 'flex' } as const;
 
-export type Shorthand = (typeof SHORTHANDS)[number];
+export const SHORTHANDS: readonly Shorthand[] = ALL.filter((f) => f.id !== SHORTHANDS_MOVED.family)
+  .flatMap((f) => (f.id === SHORTHANDS_MOVED.after ? [f, ...ALL.filter((m) => m.id === SHORTHANDS_MOVED.family)] : [f]))
+  .flatMap((f) => f.shorthands);
 
-export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([
-  ...POSITION_INHERITED,
-  ...OVERFLOW_INHERITED,
-  ...BOX_INHERITED,
-  ...BORDER_INHERITED,
-  ...FLEX_INHERITED,
-  ...TEXT_FAMILY_INHERITED,
-  ...BACKGROUND_INHERITED,
-  ...LOGICAL_INHERITED,
-  ...WRITING_MODE_INHERITED,
-
-  ...GRID_INHERITED,
-
-  ...POINTER_LONGHANDS,
-  ...RADIUS_INHERITED,
-  ...SHADOW_INHERITED,
-  ...EFFECTS_INHERITED,
-  ...OUTLINE_INHERITED,
-  ...TRANSFORM_INHERITED,
-  ...BACKGROUND_LAYERS_INHERITED,
-  ...SCROLLBAR_INHERITED,
-]);
+export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>(ALL.flatMap((f) => f.inherited));
 
 /**
  * The inherited text properties every resolved text node carries itself (goal.md principle 3), each with an inherited Origin,
@@ -131,74 +114,13 @@ export const SIDES = ['top', 'right', 'bottom', 'left'] as const;
  * lanes. paint: pixels no milestone-1 lane renders natively, so iOS rows for it are capped at caveat. border-*-style is both:
  * none/hidden zero the border width, and every other style paints.
  */
-export const PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {
-  ...POSITION_ASPECTS,
-  ...OVERFLOW_ASPECTS,
-  ...BOX_ASPECTS,
-  ...BORDER_ASPECTS,
-  ...FLEX_ASPECTS,
-  ...TEXT_FAMILY_ASPECTS,
-  ...BACKGROUND_ASPECTS,
-  ...LOGICAL_ASPECTS,
-  ...WRITING_MODE_ASPECTS,
-
-  ...GRID_ASPECTS,
-
-  ...POINTER_ASPECTS,
-  ...RADIUS_ASPECTS,
-  ...SHADOW_ASPECTS,
-  ...EFFECTS_ASPECTS,
-  ...OUTLINE_ASPECTS,
-  ...TRANSFORM_ASPECTS,
-  ...BACKGROUND_LAYERS_ASPECTS,
-  ...SCROLLBAR_ASPECTS,
-};
+export const PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = Object.assign({}, ...ALL.map((f) => f.aspects)) as { readonly [P in Longhand]: PropertyAspect };
 
 /** The role of a longhand in its row key (M2): which formatting context, if any, the row names. */
 export type PropertyRole = 'item' | 'container' | 'text' | 'paint';
 
-const CONTAINER_LONGHANDS: readonly Longhand[] = [
-  ...POSITION_CONTAINER,
-  ...OVERFLOW_CONTAINER,
-  ...BOX_CONTAINER,
-  ...BORDER_CONTAINER,
-  ...FLEX_CONTAINER,
-  ...TEXT_FAMILY_CONTAINER,
-  ...BACKGROUND_CONTAINER,
-  ...LOGICAL_CONTAINER,
-  ...WRITING_MODE_CONTAINER,
-
-  ...GRID_CONTAINER,
-
-  ...RADIUS_CONTAINER,
-  ...SHADOW_CONTAINER,
-  ...EFFECTS_CONTAINER,
-  ...OUTLINE_CONTAINER,
-  ...TRANSFORM_CONTAINER,
-  ...BACKGROUND_LAYERS_CONTAINER,
-  ...SCROLLBAR_CONTAINER,
-];
-const TEXT_ROLE_LONGHANDS: readonly Longhand[] = [
-  ...POSITION_TEXT_ROLE,
-  ...OVERFLOW_TEXT_ROLE,
-  ...BOX_TEXT_ROLE,
-  ...BORDER_TEXT_ROLE,
-  ...FLEX_TEXT_ROLE,
-  ...TEXT_FAMILY_TEXT_ROLE,
-  ...BACKGROUND_TEXT_ROLE,
-  ...LOGICAL_TEXT_ROLE,
-  ...WRITING_MODE_TEXT_ROLE,
-
-  ...GRID_TEXT_ROLE,
-
-  ...RADIUS_TEXT_ROLE,
-  ...SHADOW_TEXT_ROLE,
-  ...EFFECTS_TEXT_ROLE,
-  ...OUTLINE_TEXT_ROLE,
-  ...TRANSFORM_TEXT_ROLE,
-  ...BACKGROUND_LAYERS_TEXT_ROLE,
-  ...SCROLLBAR_TEXT_ROLE,
-];
+const CONTAINER_LONGHANDS: readonly Longhand[] = ALL.flatMap((f) => f.container);
+const TEXT_ROLE_LONGHANDS: readonly Longhand[] = ALL.flatMap((f) => f.textRole);
 
 /**
  * Which formatting context a longhand's row key names (M2): container properties name the element's own flex line mode, text

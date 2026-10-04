@@ -1,56 +1,34 @@
 // Internal fault switches, reachable only through createProjectWith, so the parity harness can prove it fails (docs/api.md §7).
+// Each feature owns faults/<feature>.ts: its fault type (one documented field per fault) and its all-off defaults, and one line in
+// FAULT_GROUPS, which is sorted by feature id. A fault name belongs to one feature (test/registry-claims.test.ts).
+import { BLOCKIFY_FAULTS } from './faults/blockify.ts';
+import { CASCADE_VAR_FAULTS } from './faults/cascade-var.ts';
+import { FONTS_FAULTS } from './faults/fonts.ts';
+import { INL1A_FAULTS } from './faults/inl1a.ts';
+import { INL2A_FAULTS } from './faults/inl2a.ts';
+import { MEDIA_FAULTS } from './faults/media.ts';
+import { MILESTONE_1_FAULTS } from './faults/milestone-1.ts';
+import { OVFL_FAULTS } from './faults/ovfl.ts';
+import { SELD_FAULTS } from './faults/seld.ts';
+import { SELECTORS_FAULTS } from './faults/selectors.ts';
+import { VALUES_FAULTS } from './faults/values.ts';
 
-export type CompilerFaults = {
-  /** The ios lowering swaps content-box and border-box. */
-  readonly swapBoxSizing: boolean;
-  /** The resolver ignores the last class of every compound selector with two or more classes, collapsing variants. */
-  readonly variantCollapse: boolean;
-  /** The resolver moves every resolved colour's red channel by one step and changes nothing else. */
-  readonly colourOnly: boolean;
-  /** The resolver ignores the state on this element address: its classes and attributes keep their initial-assignment values. */
-  readonly stateCollapse: string | null;
-  /** The resolver does not write the inherited font-size onto text nodes: each text node's font-size reverts to its initial value. */
-  readonly dropInheritedText: boolean;
-  /** The resolver gives the root direction ltr whatever the environment direction (M4). */
-  readonly ignoreEnvironmentDirection: boolean;
-  /** The cascade gives :is() the specificity of its first argument instead of its most specific one (Selectors-4 §17). */
-  readonly isSpecificityFirstArgument: boolean;
-  /** Spec-reading fault of the Chrome deviation empty-counts-whitespace: :empty ignores whitespace-only text (Selectors-4 §14.2). */
-  readonly emptyIgnoresWhitespace: boolean;
-  /** The cascade resolves direction before var() substitution: a direction declaration holding var() is skipped. */
-  readonly directionBeforeVar: boolean;
-  /** A flow-relative declaration holding var() is not narrowed to the element's direction: it competes on both physical sides. */
-  readonly varLogicalBothSides: boolean;
-  /** The cascade counts an #id selector in the class column instead of the id column (Selectors-4 §17). */
-  readonly idSpecificityAsClass: boolean;
-  /** Attribute values compare case-sensitively even for names in HTML's case-insensitive list (HTML §4.16.2). */
-  readonly attributeCaseAlwaysSensitive: boolean;
-  /** A rule whose selector list Chrome drops (one selector it does not parse) keeps its other selectors. */
-  readonly invalidSelectorListKept: boolean;
-  /** The web output writes a pinned generic as authored instead of its pinned family. */
-  readonly pinnedGenericNotRewritten: boolean;
-  /** The web output omits the @font-face rules of the pinned and declared faces. */
-  readonly fontFaceNotEmitted: boolean;
-  /** The compilation digest leaves out the font manifest. */
-  readonly fontManifestOutOfDigest: boolean;
-  /** A family that is neither declared nor mapped is accepted without a diagnostic. */
-  readonly unmappedFamilyAccepted: boolean;
-  /** Flex and grid items and absolutely positioned boxes keep their inline-level display (css-display-3 §2.7). */
-  readonly blockifySkipped: boolean;
-  /** Blockification turns inline-flex into block instead of flex. */
-  readonly inlineFlexToBlock: boolean;
-  /** MQ-a: every rule inside @media applies in every band, whatever its condition. */
-  readonly mediaConditionIgnored: boolean;
-  /** MQ-a: the native output takes the band holding the fold viewport one CSS px wider than it is. */
-  readonly mediaBandOffByOne: boolean;
-  /** The ios lowering reverses the terms of every calculation sum, so float sums accumulate in the wrong order (css/math.ts). */
-  readonly sumOrderSwapped: boolean;
-  /** The ios lowering drops explicit 0% terms of calculations, so a calculation with only a 0% percentage loses its percentage. */
-  readonly dropExplicitZeroPercent: boolean;
-  /** The state program loses the last changed node record of every assignment's delta (SELD-R1a, lower/state-program.ts). */
-  readonly stateDeltaDropped: boolean;
-  /** The generated state setters never lay out again, even when the engine input changes (SELD-R1a). */
-  readonly setterSkipsRelayout: boolean;
-};
+export const FAULT_GROUPS = {
+  blockify: BLOCKIFY_FAULTS,
+  'cascade-var': CASCADE_VAR_FAULTS,
+  fonts: FONTS_FAULTS,
+  inl1a: INL1A_FAULTS,
+  inl2a: INL2A_FAULTS,
+  media: MEDIA_FAULTS,
+  'milestone-1': MILESTONE_1_FAULTS,
+  ovfl: OVFL_FAULTS,
+  seld: SELD_FAULTS,
+  selectors: SELECTORS_FAULTS,
+  values: VALUES_FAULTS,
+} as const;
 
-export const NO_FAULTS: CompilerFaults = { swapBoxSizing: false, variantCollapse: false, colourOnly: false, stateCollapse: null, dropInheritedText: false, ignoreEnvironmentDirection: false, isSpecificityFirstArgument: false, emptyIgnoresWhitespace: false, directionBeforeVar: false, varLogicalBothSides: false, idSpecificityAsClass: false, attributeCaseAlwaysSensitive: false, invalidSelectorListKept: false, pinnedGenericNotRewritten: false, fontFaceNotEmitted: false, fontManifestOutOfDigest: false, unmappedFamilyAccepted: false, blockifySkipped: false, inlineFlexToBlock: false, sumOrderSwapped: false, dropExplicitZeroPercent: false, mediaConditionIgnored: false, mediaBandOffByOne: false, stateDeltaDropped: false, setterSkipsRelayout: false };
+type Intersection<U> = (U extends unknown ? (u: U) => void : never) extends (i: infer I) => void ? I : never;
+
+export type CompilerFaults = Intersection<(typeof FAULT_GROUPS)[keyof typeof FAULT_GROUPS]>;
+
+export const NO_FAULTS: CompilerFaults = Object.assign({}, ...Object.values(FAULT_GROUPS)) as CompilerFaults;
