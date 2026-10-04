@@ -62,7 +62,8 @@ jobs:
         run: |
           have() { xcrun simctl list runtimes -j | jq -e '.runtimes[] | select(.buildversion == "23F77" and .isAvailable)' >/dev/null; }
           start=$(date +%s)
-          have || xcodebuild -downloadPlatform iOS -buildVersion 26.5
+          # "-buildVersion 26.5" fetches the 26.5 release candidate (23F73); the release the evidence was recorded on is 23F77.
+          have || xcodebuild -downloadPlatform iOS -buildVersion 23F77
           have || { xcrun simctl list runtimes; echo "::error::iOS 26.5 (23F77) is not installed"; exit 1; }
           echo "runtime ready in $(( $(date +%s) - start )) s"
           xcodebuild -version
