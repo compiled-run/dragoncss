@@ -77,6 +77,7 @@ export function deviceDprs(target: NativeTarget): readonly number[] {
 export function corpusSuites(): readonly CorpusSuite[] {
   const p1 = p1Manifest();
   const x = extendedManifest();
+  const hitRefused = readJson<{ readonly refused?: Readonly<Record<string, string>> }>('packages/layout/rt-vectors/hit/facts.json').refused ?? {};
   return [
     { corpus: 'p1', suite: 'units', cases: p1.unitsPerFunction * p1.unitsFunctions.length },
     { corpus: 'p1', suite: 'engine', cases: p1.mutatedVectors + p1.generatedTrees },
@@ -84,8 +85,9 @@ export function corpusSuites(): readonly CorpusSuite[] {
     // ANIM-a2 (notes/T047 section 3.2): one rt case per rt vector record (timing, easing, hold and interpolation); ANIM-b1 (T065)
     // adds the advance, keyframe, transition and animation records.
     { corpus: 'p1', suite: 'rt', cases: ['timing', 'easing', 'hold', 'interp', 'advance', 'keyframes', 'transitions', 'animations'].reduce((n, f) => n + readJson<{ readonly records: readonly unknown[] }>(`packages/layout/rt-vectors/${f}.json`).records.length, 0) },
-    // SELD-R1b (notes/T047 RT-9): one hit case per layout vector, top-level and at every DPR.
-    { corpus: 'p1', suite: 'hit', cases: ['', ...DPRS.map((d) => `/dpr-${d}`)].reduce((n, d) => n + readdirSync(repoPath(`packages/layout/vectors${d}`)).filter((f) => f.endsWith('.json')).length, 0) },
+    // SELD-R1b (notes/T047 RT-9): one hit case per layout vector, top-level and at every DPR, but for the cases the hit lane refuses
+    // by name (rt-vectors/hit/facts.json refused; PNT2 transforms until SELD-R2b T146).
+    { corpus: 'p1', suite: 'hit', cases: ['', ...DPRS.map((d) => `/dpr-${d}`)].reduce((n, d) => n + readdirSync(repoPath(`packages/layout/vectors${d}`)).filter((f) => f.endsWith('.json') && hitRefused[f.slice(0, -'.json'.length)] === undefined).length, 0) },
     { corpus: 'extended', suite: 'engine-dpr', cases: layoutCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },
     { corpus: 'extended', suite: 'snap', cases: x.snapVectors + x.snapGenerated },
