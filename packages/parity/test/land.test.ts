@@ -12,6 +12,8 @@ import {
   type Entry,
   Fatal,
   findingsComment,
+  floorRegressions,
+  isFloorFile,
   isQuiet,
   clearStaleQuiet,
   releaseQuiet,
@@ -649,5 +651,73 @@ describe('deleting a merged branch only after its child PRs move to master', () 
     expect(() => parseChildPrs('[{"number":3,"baseRefName":"c"}]', 'b')).toThrow();
     expect(() => parseChildPrs('{}', 'b')).toThrow();
     expect(() => parseChildPrs('[{"number":"3","baseRefName":"b"}]', 'b')).toThrow();
+  });
+});
+
+describe('floors may only rise (the landing commit against master)', () => {
+  const j = (v: unknown): string => JSON.stringify(v);
+  const P1 = 'packages/translate/test/p1-floor.json';
+  const suites = { p1: { order: ['vectors', 'units'], counts: { vectors: 258, units: 320000 } }, extended: { order: ['vectors-m1', 'vectors-m2'], counts: { 'vectors-m1': 10, 'vectors-m2': 249 } } };
+  const NAMES = 'packages/dragon/test/seams-floor.json';
+  const names = { longhands: ['display', 'position', 'top'], inherited: ['color', 'font-size'] };
+
+  it('finds every floor file and the glyph clearance pins, nothing else', () => {
+    for (const p of [P1, NAMES, 'packages/parity/test/css-escapes-floor.json', 'packages/parity/test/glyph-clearance-pins.json', 'packages/new/test/x-floor.json']) expect(isFloorFile(p), p).toBe(true);
+    for (const p of ['packages/translate/test/floor.ts', 'packages/parity/out/lanes.json', 'packages/x/test/sub/y-floor.json', 'docs/a-floor.json']) expect(isFloorFile(p), p).toBe(false);
+  });
+
+  it('fails a lowered count, naming its key (the #72 case: vectors-m2 249 -> 241)', () => {
+    const lowered = structuredClone(suites);
+    lowered.extended.counts['vectors-m2'] = 241;
+    expect(floorRegressions(P1, j(suites), j(lowered))).toEqual([`${P1}: extended.counts.vectors-m2: lowered 249 -> 241`]);
+    const css = 'packages/parity/test/css-escapes-floor.json';
+    expect(floorRegressions(css, j({ background: 227, border: 197 }), j({ background: 226, border: 197 }))).toEqual([`${css}: background: lowered 227 -> 226`]);
+  });
+
+  it('fails a removed name, suite, count or key', () => {
+    expect(floorRegressions(NAMES, j(names), j({ ...names, longhands: ['display', 'top'] }))).toEqual([`${NAMES}: longhands: "position" removed`]);
+    expect(floorRegressions(NAMES, j(names), j({ longhands: names.longhands }))).toEqual([`${NAMES}: inherited: removed`]);
+    const noSuite = { ...suites, extended: { order: ['vectors-m1'], counts: { 'vectors-m1': 10 } } };
+    expect(floorRegressions(P1, j(suites), j(noSuite))).toEqual([`${P1}: extended.order: "vectors-m2" removed`, `${P1}: extended.counts.vectors-m2: removed (was 249)`]);
+  });
+
+  it('fails a reordered ordered list', () => {
+    expect(floorRegressions(NAMES, j(names), j({ ...names, longhands: ['position', 'display', 'top'] }))).toEqual([`${NAMES}: longhands: "position" now comes before "display"`]);
+    const swapped = { ...suites, p1: { ...suites.p1, order: ['units', 'vectors'] } };
+    expect(floorRegressions(P1, j(suites), j(swapped))).toEqual([`${P1}: p1.order: "units" now comes before "vectors"`]);
+  });
+
+  it('accepts additions anywhere and raised counts', () => {
+    const more = { p1: { order: ['vectors', 'units', 'hit'], counts: { vectors: 300, units: 320000, hit: 5 } }, extended: suites.extended, rt: { order: ['a'], counts: { a: 1 } } };
+    expect(floorRegressions(P1, j(suites), j(more))).toEqual([]);
+    expect(floorRegressions(NAMES, j(names), j({ longhands: ['display', 'float', 'position', 'top', 'left'], inherited: names.inherited, 'role:item': ['order'] }))).toEqual([]);
+  });
+
+  it('accepts a floor master does not have, and fails one the landing commit removes', () => {
+    expect(floorRegressions('packages/x/test/new-floor.json', null, j({ a: ['b'] }))).toEqual([]);
+    expect(floorRegressions(P1, j(suites), null)).toEqual([`${P1}: removed (it is on master)`]);
+    expect(floorRegressions(P1, j(suites), '{')).toEqual([expect.stringMatching(/not JSON/)]);
+    expect(floorRegressions(P1, j({ odd: { x: 'y' } }), j({ odd: { x: 'y' } }))).toEqual([`${P1}: odd: a floor shape the driver cannot judge`]);
+  });
+
+  it('judges the glyph clearance pins by direction: rescued may not fall, dropped may not rise, new cases are free', () => {
+    const PINS = 'packages/parity/test/glyph-clearance-pins.json';
+    const pins = { a: { 'ios@3': { dropped: { edge: 2 }, rescued: { edge: 1 } } } };
+    const at = (dropped: Record<string, number>, rescued: Record<string, number>) => j({ a: { 'ios@3': { dropped, rescued } } });
+    expect(floorRegressions(PINS, j(pins), at({ edge: 1 }, { edge: 2 }))).toEqual([]);
+    expect(floorRegressions(PINS, j(pins), j({ ...pins, b: { 'ios@2': { dropped: { edge: 9 }, rescued: {} } } }))).toEqual([]);
+    expect(floorRegressions(PINS, j(pins), at({ edge: 3 }, { edge: 1 }))).toEqual([`${PINS}: a ios@3 dropped.edge: raised 2 -> 3`]);
+    expect(floorRegressions(PINS, j(pins), at({ edge: 2, 'edge:glyph': 1 }, { edge: 1 }))).toEqual([`${PINS}: a ios@3 dropped.edge:glyph: raised 0 -> 1`]);
+    expect(floorRegressions(PINS, j(pins), at({ edge: 2 }, {}))).toEqual([`${PINS}: a ios@3 rescued.edge: lowered 1 -> 0`]);
+    expect(floorRegressions(PINS, j(pins), j({}))).toEqual([`${PINS}: a ios@3 rescued.edge: lowered 1 -> 0`]);
+  });
+
+  it('reads every floor file in this tree, and finds none below itself', () => {
+    const files = execFileSync('git', ['ls-files', 'packages'], { cwd: repoPath('.'), encoding: 'utf8' }).split('\n').filter(isFloorFile);
+    expect(files.length).toBeGreaterThanOrEqual(6);
+    for (const f of files) {
+      const t = readFileSync(repoPath(f), 'utf8');
+      expect(floorRegressions(f, t, t), f).toEqual([]);
+    }
   });
 });

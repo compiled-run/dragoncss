@@ -16,6 +16,8 @@ import {
   errorText,
   Fatal,
   findingsComment,
+  floorRegressions,
+  isFloorFile,
   isQuiet,
   QUIET_FILE,
   clearStaleQuiet,
@@ -222,6 +224,14 @@ const judgeDevices = (master: string, startedMs: number | null): string[] => {
   return deviceRunProblems(before, after, staleLines(lanes.stdout));
 };
 
+// Every floor file on master or the landing commit, judged against master's version (floorRegressions).
+const floorFileProblems = (master: string, head: string): string[] => {
+  const files = (commit: string): string[] => text(git, ['ls-tree', '-r', '--name-only', commit, '--', 'packages']).split('\n').filter(isFloorFile);
+  const at = (commit: string, path: string, present: string[]): string | null => (present.includes(path) ? git(['show', `${commit}:${path}`]).toString('utf8') : null);
+  const [onMaster, onHead] = [files(master), files(head)];
+  return [...new Set([...onMaster, ...onHead])].sort().flatMap((p) => floorRegressions(p, at(master, p, onMaster), at(head, p, onHead)));
+};
+
 const resetWorktree = (master: string): void => {
   try {
     wtGit(['rev-parse', '-q', '--verify', 'MERGE_HEAD']);
@@ -369,6 +379,9 @@ const landOne = (e: Entry): { result: 'landed' | 'merged before'; detail: string
     if ('error' in ignore) throw new LandFailure('regen-only', ignore.error);
     const regenProblems = regenOnlyProblems(wtGit, head, ignore);
     if (regenProblems.length > 0) throw new LandFailure('regen-only', `the regen commit ${head} is not regen-only:\n  ${regenProblems.join('\n  ')}`);
+    const floors = floorFileProblems(master, head);
+    if (floors.length > 0) throw new LandFailure('floors', `the landing commit lowers a floor below master's:\n  ${floors.join('\n  ')}`);
+    log('  floors: none below master');
     const prediction = predictPosition(wtGit, member, { prev: master, merge, head, tip });
     log(`  Macroscope vouch prediction: ${prediction.vouch.ok ? 'an "already reviewed" skip will be vouched for' : `not vouchable (${prediction.vouch.reason}); a full review will run unless at the limit`}`);
 
