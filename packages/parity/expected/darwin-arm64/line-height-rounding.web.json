@@ -88,6 +88,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 251.688px",
         "will-change": "auto"
@@ -171,6 +172,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 251.688px",
         "will-change": "auto"
@@ -254,6 +256,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "15px 27.4062px",
         "will-change": "auto"
@@ -387,6 +390,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "15px 41.0938px",
         "will-change": "auto"
@@ -520,6 +524,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "10px 39.625px",
         "will-change": "auto"
@@ -653,6 +658,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "10px 19.25px",
         "will-change": "auto"
@@ -786,6 +792,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "10px 24.0312px",
         "will-change": "auto"
@@ -919,6 +926,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "10px 21px",
         "will-change": "auto"
@@ -1052,6 +1060,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "15px 25.5px",
         "will-change": "auto"
@@ -1185,6 +1194,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "10px 19.1875px",
         "will-change": "auto"
@@ -1318,6 +1328,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "10px 34.5938px",
         "will-change": "auto"

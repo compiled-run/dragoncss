@@ -1,0 +1,11 @@
+{
+  "case": "hit-order-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"t:text0","data":"XX XX","lines":2,"units":[0,0,0,1,1],"blank":[2]},
+    {"id":"f1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"f2:text0","data":"XXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"g1:text0","data":"XXXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

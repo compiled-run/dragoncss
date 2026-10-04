@@ -88,6 +88,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 15px",
         "will-change": "auto"
@@ -171,6 +172,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 15px",
         "will-change": "auto"
@@ -254,6 +256,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "62.5px 10px",
         "will-change": "auto"
@@ -337,6 +340,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "19.1641px 2.5px",
         "will-change": "auto"
@@ -420,6 +424,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "8.5625px 2.5px",
         "will-change": "auto"
@@ -503,6 +508,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "7.14062px 2.5px",
         "will-change": "auto"
@@ -586,6 +592,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "3.66406px 2.5px",
         "will-change": "auto"
@@ -669,6 +676,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "65px 2.5px",
         "will-change": "auto"
@@ -752,6 +760,7 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
+        "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "27.3984px 2.5px",
         "will-change": "auto"
