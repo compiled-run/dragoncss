@@ -58,10 +58,10 @@ describe('precise refusals', () => {
   it.each([
     ['.a::before', 'pseudo-element ::before'],
     ['.a::after', 'pseudo-element ::after'],
-    ['.a:hover', ':hover depends on user interaction'],
-    ['.a:focus', ':focus depends on user interaction'],
+    ['.a:focus-within', ':focus-within depends on user interaction'],
+    ['.a:visited', ':visited depends on user interaction'],
     ['.a:active', ':active depends on user interaction'],
-    [':is(.a:hover)', ':hover depends on user interaction'],
+    [':is(.a:active)', ':active depends on user interaction'],
     ['.a:has(:has(.b))', ':has(.b) is invalid inside :has()'],
     ['.a:has(:is(:has(.b)))', ':has(.b) is invalid inside :has()'],
     ['[ui-x="a" s]', 'is invalid in Chrome 145, which does not implement the s flag'],

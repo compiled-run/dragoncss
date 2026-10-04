@@ -13,6 +13,8 @@ import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
 import { checkComputed } from './analysis/computed-checks.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
+import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
+import { combinedStateRefusal, emptyPartition, interactionPartition, interactionRefusals, interactionStateOf, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
@@ -28,7 +30,7 @@ import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
 import { emitNativeSupport, supportDigest } from './emit/native-support.ts';
 import { UIKIT_EMITTER_VERSION } from './emit/uikit.ts';
 import { emitWebCss } from './emit/web-css.ts';
-import type { WebFontContext } from './emit/web-css.ts';
+import type { WebFontContext, WebInteraction } from './emit/web-css.ts';
 import type { AtRuleContext } from './css/at-rules.ts';
 import type { FamilyKeyContext } from './css/values.ts';
 import { familyListText } from './css/values.ts';
@@ -142,7 +144,13 @@ export type InternalCase = {
   readonly webClassOf: ReadonlyMap<string, string> | null;
   /** Profile row keys ("<feature>@<context>") this case uses, per target, sorted. */
   readonly features: ReadonlyMap<Target, readonly string[]>;
+  /** SELD-R2a: the case's interaction partition (null when it did not resolve) and each state but none, resolved and lowered. */
+  readonly partition: InteractionPartition | null;
+  readonly interaction: readonly InternalInteraction[];
 };
+
+/** @internal One interaction state of a case: its value, resolution and native lowering; the web classes are the case's. */
+export type InternalInteraction = { readonly value: InteractionValue; readonly resolved: ResolvedElement; readonly nativeLowered: LayoutBox | null };
 
 /**
  * @internal
@@ -571,7 +579,12 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
   walk(root, { weight: 400, style: 'normal' }, false);
 }
 
-type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[] };
+/** One interaction state of a case, resolved and checked like the case (SELD-R2a). */
+type InteractionResult = { value: InteractionValue; resolved: ResolvedElement; used: UsedKey[] };
+type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[]; partition: InteractionPartition | null; interaction: InteractionResult[] };
+
+/** A case's used keys with those of every interaction state, for the value checks' context lists. */
+const allUsed = (c: CaseResult): UsedKey[] => [...c.used, ...c.interaction.flatMap((i) => i.used)];
 
 /** What checkCases has reported, shared by every band's pass so a diagnostic is reported once. */
 type Reported = { readonly contextual: Set<string>; readonly refused: Set<string>; readonly fonts: Set<string>; readonly fenced: Set<string> };
@@ -586,15 +599,18 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const { contextual: reported, refused, fonts, fenced } = seen;
   const keys = projectFonts === null ? NO_FONTS : projectFonts.keys;
   const out: CaseResult[] = [];
-  for (const c of linked.cases) {
-    const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua });
+  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua };
+  // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
+  const check = (resolved: ResolvedElement): UsedKey[] => {
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
-    out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used });
-    if (options.profiles === 'derive') continue;
+    if (options.profiles !== 'derive') checkContexts(used);
+    return used;
+  };
+  const checkContexts = (used: readonly UsedKey[]): void => {
     for (const u of used) {
       for (const t of targets) {
         const profile = profileFor(options.supportProfiles, t);
@@ -624,8 +640,30 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
         }));
       }
     }
+  };
+  const interactive = rules.some(ruleIsInteractive);
+  for (const c of linked.cases) {
+    const resolved = resolveTree(c.root, rules, options.faults, env);
+    const used = check(resolved);
+    const partition = !interactive ? emptyPartition(c.root) : interactionPartition(c.root, (ix) => { resolveTree(c.root, rules, options.faults, env, ix); }, options.faults);
+    const combined = combinedStateRefusal(partition, rules, c.root.node.origin);
+    if (combined !== null && !diagnostics.some((d) => d.code === combined.code && d.message === combined.message)) diagnostics.push(combined);
+    const interaction = partition.states.map((value): InteractionResult => {
+      const r = resolveTree(c.root, rules, options.faults, env, interactionStateOf(value));
+      return { value, resolved: r, used: check(r) };
+    });
+    out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, partition, interaction });
   }
   return out;
+}
+
+/** The lowering key of an interaction state of a case. */
+const interactionKey = (caseKey: string, v: InteractionValue): string => `${caseKey}\u0000${v.key}`;
+
+/** The web output's view of a case's interaction states: each state's resolution and the candidates its condition names. */
+function webInteraction(c: CaseResult): WebInteraction | undefined {
+  if (c.partition === null || c.interaction.length === 0) return undefined;
+  return { candidates: c.partition.candidates, states: c.interaction.map((i) => ({ value: i.value, root: i.resolved })) };
 }
 
 /** The @media conditions of the sheet: each distinct at-rule once, in source order. */
@@ -777,6 +815,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     for (const s of [...valid.sources.values()].sort((a, b) => (a.ref.uri < b.ref.uri ? -1 : a.ref.uri > b.ref.uri ? 1 : 0))) dependencies.push({ kind: 'source', uri: s.ref.uri, hash: s.ref.hash });
     // T065: the @keyframes blocks parse with the stylesheet, so their refusals come whether or not the analysis runs.
     const keyframesRules = parseKeyframesRules(keyframeSources, diagnostics);
+    diagnostics.push(...interactionRefusals(rules));
     const conditions = conditionsOf(rules);
     const partition = conditions.length === 0 ? null : band(conditions.map((c) => c.list));
     if (partition !== null && partition.kind === 'refused') {
@@ -839,7 +878,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
         // A target's messages list the contexts of the bands it is resolved in.
-        const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap((c) => c.used));
+        const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap(allUsed));
         checkValues(rules, targets, profiles, usedOf, values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...values);
       }
@@ -856,7 +895,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         const scratchCases = (bands === null ? [null] : bands.partition.bands).flatMap((b, k) =>
           checkCases(scratchLinked, [...rulesIn(rules, bands, b, options.faults), ...unwrapped], k === nativeBand ? targets : targets.filter((t) => t === 'web'), options, scratch, fonts, scratchSeen),
         );
-        if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap((c) => c.used), scratch, keys);
+        if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap(allUsed), scratch, keys);
         for (const e of enclosed) {
           const found = [...e.diagnostics, ...scratch.filter((d) => inside(d.origin, e))];
           const related = found.map((d) => ({ origin: d.origin, message: `${d.code}${d.target === null ? '' : ` [${d.target}]`}: ${d.message}` }));
@@ -870,7 +909,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         checkValues(rules, targets, profiles, [], values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...values);
       }
-      cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [] }));
+      cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [], partition: null, interaction: [] }));
       bandCases = [{ band: null, cases }];
     } else if (options.profiles === 'enforce') {
       const values: Diagnostic[] = [];
@@ -906,8 +945,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   const lowerFor = NATIVE_TARGETS.filter((t) => targets.includes(t) && !diagnostics.some((d) => blocksTarget(d, t)));
   if (lowerFor.length > 0 && cases.length > 0) {
     const reported = new Set<string>();
-    for (const c of cases) {
-      if (c.resolved === null) continue;
+    const lowerings = cases.flatMap((c) => (c.resolved === null ? [] : [{ key: c.key, resolved: c.resolved }, ...c.interaction.map((i) => ({ key: interactionKey(c.key, i.value), resolved: i.resolved }))]));
+    for (const c of lowerings) {
       try {
         lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua));
       } catch (e) {
@@ -931,8 +970,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     else if (t === 'ios' || t === 'android') outputs[key] = nativeOutputState(t, digest, NATIVE_LANES[t]);
     else {
       const webFonts = fonts === null || !fonts.used ? null : webFontsOf(fonts, options.faults);
-      const [base, ...extra] = bandCases.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement })) }));
-      web = emitWebCss((base as { cases: { key: string; root: ResolvedElement }[] }).cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText));
+      const [base, ...extra] = bandCases.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement, interaction: webInteraction(c) })) }));
+      const first = base as { condition: string; cases: { key: string; root: ResolvedElement; interaction?: WebInteraction | undefined }[] };
+      web = emitWebCss(first.cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText), first.condition);
       outputs[key] = { kind: 'ready', digest, files: web.files, assets: webFonts === null ? [] : webFonts.assets() };
     }
   }
@@ -969,6 +1009,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         nativeLowered: nativeChecked ? (lowered.get(c.key) ?? null) : null,
         webClassOf: webClasses === null ? null : (webClasses.get(c.key) ?? null),
         features: new Map(targets.map((t) => [t, [...new Set(c.used.map((u) => u.key))].sort()])),
+        partition: c.partition,
+        interaction: c.interaction.map((i) => ({ value: i.value, resolved: i.resolved, nativeLowered: nativeChecked ? (lowered.get(interactionKey(c.key, i.value)) ?? null) : null })),
       })),
     },
   };

@@ -10,6 +10,7 @@ import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
 import { colorChannels, lowerNativePrograms, ProgramError, usedColors } from './lower/native-program.ts';
 import { rootFontSizeOf } from './lower/ios-layout.ts';
+import type { InteractionPartition } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
@@ -81,11 +82,24 @@ export type LayoutProjection =
   | { readonly kind: 'ready'; readonly input: LayoutInput }
   | { readonly kind: 'blocked'; readonly reason: string };
 
-function caseOf(compiled: object, assignment: Assignment): InternalCase | string {
+/**
+ * One case, or one of its interaction states (SELD-R2a) when state names a partition state key: the state's resolution and
+ * lowering replace the case's. null is the case itself (the none state).
+ */
+function caseOf(compiled: object, assignment: Assignment, state: string | null = null): InternalCase | string {
   const record = internalRecord(compiled);
   if (record === undefined) return 'not a compiled result from this package';
   const c = caseByAssignment(record, assignment);
-  return c === undefined ? `no reachable case for the assignment ${JSON.stringify(assignment)}` : c;
+  if (c === undefined) return `no reachable case for the assignment ${JSON.stringify(assignment)}`;
+  if (state === null) return c;
+  const i = c.interaction.find((x) => x.value.key === state);
+  return i === undefined ? `no interaction state ${state} in the case ${JSON.stringify(assignment)}` : { ...c, resolved: i.resolved, nativeLowered: i.nativeLowered };
+}
+
+/** The interaction partition of one case (SELD-R2a): its candidates, its states but none and its per-element state tables. */
+export function interactionPartitionOf(compiled: object, assignment: Assignment): InteractionPartition | null {
+  const c = caseOf(compiled, assignment);
+  return typeof c === 'string' ? null : c.partition;
 }
 
 /** Dragon's reachable assignments, in its enumeration order, with the initial case marked. */
@@ -98,8 +112,8 @@ export function compiledCases(compiled: object): readonly { readonly assignment:
  * The native layout projection of one case for one environment, shared by every native target (native-strategy.md 3.9 item 13):
  * one lowered tree from the checked native output, so ios and android lay out the same engine input.
  */
-export function nativeLayoutProjection(compiled: object, environment: Environment, assignment: Assignment): LayoutProjection {
-  const c = caseOf(compiled, assignment);
+export function nativeLayoutProjection(compiled: object, environment: Environment, assignment: Assignment, state: string | null = null): LayoutProjection {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
   if (record.direction !== environment.direction) return { kind: 'blocked', reason: `the result was resolved for direction ${record.direction}, not ${environment.direction}` };
@@ -144,8 +158,8 @@ export function webClassMap(compiled: object, assignment: Assignment): ReadonlyM
 export type { ElementColors } from './lower/native-program.ts';
 
 /** Dragon's resolved colour channels per element address in one case; null when the case did not resolve. */
-export function resolvedColors(compiled: object, assignment: Assignment): ReadonlyMap<string, ElementColors> | null {
-  const c = caseOf(compiled, assignment);
+export function resolvedColors(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, ElementColors> | null {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, ElementColors>();
   const walk = (el: ResolvedElement): void => {
@@ -208,8 +222,8 @@ export function textTopology(compiled: object, assignment: Assignment): readonly
 }
 
 /** Dragon's resolved colour channels of every laid-out text node in one case, keyed by text address. */
-export function resolvedTextColors(compiled: object, assignment: Assignment): ReadonlyMap<string, Rgba8> | null {
-  const c = caseOf(compiled, assignment);
+export function resolvedTextColors(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, Rgba8> | null {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, Rgba8>();
   const walk = (el: ResolvedElement): void => {
@@ -234,8 +248,8 @@ export type NativePrograms =
  * Both native backends' lowered programs of one case (docs/research/native-strategy.md 1.1): from the one nativeLowered tree and
  * the case's resolved paint values. Ready only when the result configures and checks both ios and android.
  */
-export function nativePrograms(compiled: object, assignment: Assignment): NativePrograms {
-  const c = caseOf(compiled, assignment);
+export function nativePrograms(compiled: object, assignment: Assignment, state: string | null = null): NativePrograms {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   const targets = (compiled as { targets?: Record<string, string> }).targets ?? {};
   for (const t of ['ios', 'android']) if (targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} target is ${targets[t] === undefined ? 'not configured' : targets[t]}` };
@@ -265,8 +279,8 @@ export const ACTIVATION_TAGS: readonly string[] = ['a', 'button'];
 const activates = (tag: string, attributes: ReadonlyMap<string, string>): boolean => tag === 'button' || (tag === 'a' && attributes.has('href'));
 
 /** Every element's hit facts in one case: computed pointer-events, whether it was inherited, and whether it has a handler. */
-export function hitFacts(compiled: object, assignment: Assignment): ReadonlyMap<string, import('./emit/runtime/hit.ts').HitFact> | null {
-  const c = caseOf(compiled, assignment);
+export function hitFacts(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, import('./emit/runtime/hit.ts').HitFact> | null {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, import('./emit/runtime/hit.ts').HitFact>();
   const walk = (el: ResolvedElement): void => {
@@ -307,3 +321,10 @@ export function animationFeatures(compiled: object): readonly string[] {
   if (record === undefined || record.animation === null) return [];
   return [...new Set(record.animation.features.map((f) => f.feature))].sort();
 }
+// SELD-R2a (notes/T047-runtime-spec.md, Amendment T064J): interaction states, their partition and the generated web conditions.
+export type { InteractionElement, InteractionKind, InteractionPartition, InteractionValue } from './analysis/interaction.ts';
+export { chainStateOf, focusTargetOf, INTERACTION_NONE, isFocusable, ruleIsInteractive, selectorIsInteractive } from './analysis/interaction.ts';
+export type { InteractionState } from './analysis/match.ts';
+export { NO_INTERACTION } from './analysis/match.ts';
+export type { InteractionCondition, WebInteraction } from './emit/web-css.ts';
+export { conditionsExclusive, interactionCondition } from './emit/web-css.ts';

@@ -163,8 +163,8 @@ export function parseHitCaptureArgs(argv: readonly string[]): HitCaptureArgs {
 /** The committed outputs that pointer-events may change only by its own key: the Chrome captures and the emitted CSS. */
 export const IDENTITY_ROOTS: readonly string[] = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts', 'packages/parity/emitted'];
 export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.json';
-/** Files that are new with SELD-R1b's fixtures (hit-*, reject-pointer-events-*), not in the base. */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-)[^/]*$/;
+/** Files that are new with SELD-R1b's fixtures (hit-*, reject-pointer-events-*) and SELD-R2a's (interaction-*, reject-interaction-*), not in the base. */
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-)[^/]*$/;
 
 /**
  * A committed output with the pointer-events key removed: the "pointer-events" computed value of every captured element, and the

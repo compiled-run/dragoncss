@@ -6,6 +6,7 @@ import { measurerFor, PLATFORM_RULES, platformRules, REFERENCE_PLATFORM as ENGIN
 import { createProjectWith, NO_FAULTS, REFERENCE_PLATFORM as COMPILER_REFERENCE, ReferencePlatformUnavailable, referenceDataset, uaDatasetFor } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { expectedDir } from '../src/committed.ts';
+import { isForcedCaseId } from '../src/cases.ts';
 import { FIXTURES } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 import { checkPlatformCaptures, fixtureOfCase, readCaptures } from '../src/platform-check.ts';
@@ -25,7 +26,8 @@ describe('platform keys', () => {
     for (const [id, c] of captures) expect([c.platform, c.browser], id).toEqual(['darwin-arm64', BROWSER_FLAVOUR]);
     const dir = repoPath('packages/layout/vectors');
     const vectors = readdirSync(dir).filter((f) => f.endsWith('.json'));
-    expect(vectors.length).toBe(captures.size);
+    // A SELD-R2a forced case ("~ix<k>") is captured but adds no engine vector: its layout is compared through the lanes.
+    expect(vectors.length).toBe([...captures.keys()].filter((id) => !isForcedCaseId(id)).length);
     for (const f of vectors) {
       const v = JSON.parse(readFileSync(`${dir}/${f}`, 'utf8')) as Record<string, unknown>;
       expect([Object.keys(v), v['platform'], v['measurer']], f).toEqual([['platform', 'measurer', 'input', 'output'], 'darwin-arm64', 'ahem/darwin-arm64']);

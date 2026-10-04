@@ -64,7 +64,37 @@ export function valueText(v: CssValue): string {
   }
 }
 
-type WebCase = { readonly key: string; readonly root: ResolvedElement };
+/** The parts of an interaction state the web output reads (analysis/interaction.ts InteractionValue): who matches each pseudo-class. */
+type StateMatch = { readonly hover: readonly string[]; readonly focus: string | null; readonly focusVisible: string | null };
+type Candidates = { readonly hover: readonly string[]; readonly focus: readonly string[]; readonly focusVisible: readonly string[] };
+
+/** A case's interaction states (SELD-R2a): the candidates of its partition and each state but none, resolved. */
+export type WebInteraction = { readonly candidates: Candidates; readonly states: readonly { readonly value: StateMatch; readonly root: ResolvedElement }[] };
+
+type WebCase = { readonly key: string; readonly root: ResolvedElement; readonly interaction?: WebInteraction | undefined };
+
+type Pseudo = 'hover' | 'focus' | 'focus-visible';
+/** A generated state condition: the candidates that match each pseudo-class (on) and those that do not (off). */
+export type InteractionCondition = { readonly on: readonly (readonly [string, Pseudo])[]; readonly off: readonly (readonly [string, Pseudo])[] };
+
+/**
+ * The condition of one interaction state: every candidate's membership is fixed, so the conditions of two states of one partition
+ * differ in some candidate and never hold together.
+ */
+export function interactionCondition(v: StateMatch, candidates: Candidates): InteractionCondition {
+  const on: [string, Pseudo][] = [];
+  const off: [string, Pseudo][] = [];
+  for (const a of candidates.hover) (v.hover.includes(a) ? on : off).push([a, 'hover']);
+  for (const a of candidates.focus) (v.focus === a ? on : off).push([a, 'focus']);
+  for (const a of candidates.focusVisible) (v.focusVisible === a ? on : off).push([a, 'focus-visible']);
+  return { on, off };
+}
+
+/** Whether two conditions can never hold together: one needs a candidate state the other excludes. */
+export function conditionsExclusive(a: InteractionCondition, b: InteractionCondition): boolean {
+  const has = (list: InteractionCondition['on'], [x, p]: readonly [string, Pseudo]): boolean => list.some(([y, q]) => x === y && p === q);
+  return a.on.some((t) => has(b.off, t)) || b.on.some((t) => has(a.off, t));
+}
 
 /** One band after the first (MQ-a): its condition text and every case resolved in it. */
 export type WebBand = { readonly condition: string; readonly cases: readonly WebCase[] };
@@ -105,7 +135,7 @@ export type WebAnimations = {
  * when the project declares and maps no font, which leaves the output as it was before fonts. cases are resolved in the first
  * @media band; each later band (MQ-a) gets one @media block with the declarations that differ from it, per class.
  */
-export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null): WebEmit {
+export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all'): WebEmit {
   const usedPinned = new Set<string>();
   const familyText = (v: CssValue): string => {
     const text = familyListText(v);
@@ -129,6 +159,9 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
   const variants = new Map<string, string>();
   const rules: string[] = [];
   const bandRules: string[][] = bands.map(() => []);
+  // SELD-R2a: per class, per band (the first, then each later one), the conditions and declarations of its interaction states.
+  const pending: { cls: string; root: boolean; states: { band: number; condition: InteractionCondition; lines: string[] }[] }[] = [];
+  const classesOf = new Map<string, string[]>();
   for (const c of cases) {
     const map = new Map<string, string>();
     classOf.set(c.key, map);
@@ -138,6 +171,10 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       return byAddress(other.root);
     });
     const sources = animations === null ? new Set<string>() : animations.sources(c.key);
+    // Each band's interaction states as address maps, against that band's own resolution of the case.
+    const bandCase = [c, ...bands.map((b) => b.cases.find((x) => x.key === c.key) as WebCase)];
+    const states = bandCase.map((bc) => (bc.interaction?.states ?? []).map((st) => ({ condition: interactionCondition(st.value, (bc.interaction as WebInteraction).candidates), at: byAddress(st.root) })));
+    const bandBase = bandCase.map((bc) => byAddress(bc.root));
     const visit = (el: ResolvedElement, under: boolean): void => {
       const insets = writesInsets(el);
       const decls = LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => declLine(el, p, under));
@@ -149,7 +186,14 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         if (other === undefined) throw new Error(`${el.element.address} is not resolved in every band`);
         return LONGHANDS.map((p) => declLine(other, p, under)).filter((line, k) => line !== declLine(el, LONGHANDS[k] as (typeof LONGHANDS)[number], under));
       });
-      const variant = `${el.element.address}\u0000${decls.join('\n')}${diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(diffs)}` : ''}`;
+      const own = states.flatMap((list, band) => list.flatMap((st) => {
+        const here = st.at.get(el.element.address);
+        const base = (bandBase[band] as Map<string, ResolvedElement>).get(el.element.address);
+        if (here === undefined || base === undefined) throw new Error(`${el.element.address} is not resolved in every interaction state`);
+        const lines = LONGHANDS.map((p) => declLine(here, p)).filter((line, k) => line !== declLine(base, LONGHANDS[k] as (typeof LONGHANDS)[number]));
+        return lines.length === 0 ? [] : [{ band, condition: st.condition, lines }];
+      }));
+      const variant = `${el.element.address}\u0000${decls.join('\n')}${diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(diffs)}` : ''}${own.length > 0 ? `\u0001${JSON.stringify(own)}` : ''}`;
       let cls = variants.get(variant);
       if (cls === undefined) {
         cls = `dg${variants.size}`;
@@ -158,6 +202,10 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         diffs.forEach((d, k) => {
           if (d.length > 0) (bandRules[k] as string[]).push(`.${cls} {\n${d.join('\n')}\n}`);
         });
+        if (own.length > 0) pending.push({ cls, root: el === c.root, states: own });
+        const list = classesOf.get(el.element.address) ?? [];
+        list.push(cls);
+        classesOf.set(el.element.address, list);
       }
       map.set(el.element.address, cls);
       const below = under || sources.has(el.element.address);
@@ -166,8 +214,27 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     visit(c.root, false);
   }
   const blocks = bands.flatMap((b, k) => ((bandRules[k] as string[]).length === 0 ? [] : [`@media ${b.condition} {\n${(bandRules[k] as string[]).join('\n')}\n}`]));
+  // The generated state rules: a condition on :root built from dg classes and the pseudo-classes, then the subject's class. Every
+  // class of a candidate is named, so the condition holds for that element alone in every case; no author selector is copied.
+  const test = (address: string, pseudo: Pseudo, isRoot: (a: string) => boolean): string => {
+    if (isRoot(address)) return `:${pseudo}`;
+    const own = classesOf.get(address) ?? [];
+    if (own.length === 0) throw new Error(`the interaction candidate ${address} has no class`);
+    return `:has(${own.length === 1 ? `.${own[0] as string}` : `:is(${own.map((k) => `.${k}`).join(', ')})`}:${pseudo})`;
+  };
+  const rootAddress = cases[0] === undefined ? null : cases[0].root.element.address;
+  const isRoot = (a: string): boolean => a === rootAddress;
+  const stateRules: string[][] = [[], ...bands.map(() => [])];
+  for (const p of pending) {
+    for (const st of p.states) {
+      const cond = `:root${st.condition.on.map(([a, ps]) => test(a, ps, isRoot)).join('')}${st.condition.off.map(([a, ps]) => `:not(${test(a, ps, isRoot)})`).join('')}`;
+      (stateRules[st.band] as string[]).push(`${p.root ? `${cond}.${p.cls}` : `${cond} .${p.cls}`} {\n${st.lines.join('\n')}\n}`);
+    }
+  }
+  const conditions = [baseCondition, ...bands.map((b) => b.condition)];
+  const stateBlocks = stateRules.flatMap((r, k) => (r.length === 0 ? [] : bands.length === 0 ? r : [`@media ${conditions[k] as string} {\n${r.join('\n')}\n}`]));
   const prelude = fonts === null ? '' : fonts.prelude(usedPinned);
   const keyframes = animations === null || animations.keyframes === '' ? [] : [animations.keyframes];
-  const text = `/* Generated by Dragon from compilation ${digest}. Do not edit. */\n${prelude === '' ? '' : `${prelude}\n`}${[...rules, ...blocks, ...keyframes].join('\n')}\n`;
+  const text = `/* Generated by Dragon from compilation ${digest}. Do not edit. */\n${prelude === '' ? '' : `${prelude}\n`}${[...rules, ...blocks, ...stateBlocks, ...keyframes].join('\n')}\n`;
   return { files: [{ path: WEB_CSS_PATH, text }], classOf };
 }

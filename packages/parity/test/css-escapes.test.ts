@@ -208,7 +208,7 @@ const SELECTORS: readonly SelectorCase[] = [
   { selector: '\\73 pan:\\6e ot(.\\78\\3a y)' }, { selector: ':\\72oot' }, { selector: 'div:\\66irst-child' }, { selector: ':n\\74h-child(\\6f dd)' },
   { selector: ':n\\74h-child(odd)' }, { selector: ':\\6e th-last-child(2 of .\\61)' }, { selector: ':\\77here(.\\31 a)' }, { selector: '.\\31 a:\\68 as(+ .\\31 a)' },
   { selector: ':\\69s(#\\31 a, .\\2d)' }, { selector: '.a\\', eof: true }, { selector: '#\\31', eof: true }, { selector: '[data-a=\\', eof: true },
-  { selector: '.\\31 a,' }, { selector: 'div:\\68over' }, { selector: '.a\\\n' }, { selector: '#\uD800' }, { selector: '.\uD800' }, { selector: '#\u0000' }, { selector: '.a\u0000' }, { selector: '.\u0000a' },
+  { selector: '.\\31 a,' }, { selector: 'div:\\68over' }, { selector: 'div:\\66 ocus-within' }, { selector: '.a\\\n' }, { selector: '#\uD800' }, { selector: '.\uD800' }, { selector: '#\u0000' }, { selector: '.a\u0000' }, { selector: '.\u0000a' },
 ];
 
 const toLinked = (el: El, children: LinkedElement[] = []): LinkedElement => ({
@@ -342,7 +342,7 @@ const judgeEdges = (items: readonly EdgeItem[], seen: readonly EdgeSeen[]): stri
 type SelectorSeen = { readonly c: SelectorCase; readonly dragon: boolean[] | 'invalid' | string; readonly chrome: boolean[] | 'invalid' };
 /** Selectors Chrome parses that Dragon refuses or reports, each with its reason; none is a wrong match. */
 const SELECTOR_REFUSALS: Record<string, string> = {
-  'div:\\68over': 'interactive state is runtime state, which a later package models',
+  'div:\\66 ocus-within': ':focus-within is runtime state Dragon does not model (SELD-R2 compiles :hover, :active, :focus and :focus-visible)',
   ':n\\74h-child(\\6f dd)': 'css-tree\'s An+B parser does not read escapes, so the argument stays Raw and is refused',
   '[data-a=\\': 'css-tree reports a block left open at the end of the input',
 };
@@ -471,6 +471,6 @@ describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
     // PIN-DERIVE: Chrome read every twin both ways (the twin set itself is floored above); the edge and selector lists are this file's.
     expect(twinSeen.length).toBe(expectedTwins(calls));
     expect(twinSeen.filter((s) => s.chrome === undefined || s.chromePlain === undefined).map((s) => s.twin.decl)).toEqual([]);
-    expect({ edges: edges.length, selectors: selectorSeen.length }).toEqual({ edges: 89, selectors: 59 });
+    expect({ edges: edges.length, selectors: selectorSeen.length }).toEqual({ edges: 89, selectors: 60 });
   }, 300_000);
 });
