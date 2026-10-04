@@ -14,7 +14,7 @@ import { usedKeys } from './analysis/context.ts';
 import { checkComputed } from './analysis/computed-checks.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, ruleIsInteractive } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
@@ -198,6 +198,11 @@ export type InternalOptions = {
   readonly rootFont?: RootFont;
   readonly supportProfiles?: SupportProfiles;
   readonly foldViewport?: Viewport;
+  /**
+   * SELD-R2: the parity lanes compile :hover, :active, :focus and :focus-visible on native, to prove each state's resolution ahead
+   * of the native runtime; every other compile refuses them there (nativeInteractionRefusals).
+   */
+  readonly interactionLanes?: boolean;
 };
 
 type Viewport = { readonly width: number; readonly height: number };
@@ -211,6 +216,7 @@ type Resolved = {
   /** Snapshots (snapshotProfile): the support checks and the digest read these same objects. */
   readonly supportProfiles: Required<SupportProfiles>;
   readonly foldViewport: Viewport | null;
+  readonly interactionLanes: boolean;
 };
 
 function deepFreeze<T>(v: T): T {
@@ -677,7 +683,8 @@ const assignmentLabel = (a: Assignment): string => (a.length === 0 ? '(the initi
  * counted as compiled.
  */
 function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[]): void {
-  if (options.faults.hitUnmodelledNotRefused) return;
+  // Outside the lanes every interaction rule is already refused on native (nativeInteractionRefusals).
+  if (options.faults.hitUnmodelledNotRefused || !options.interactionLanes) return;
   const seen = new Set<string>();
   for (const t of NATIVE_TARGETS.filter((x) => targets.includes(x))) {
     const refusedAt = new Set(diagnostics.filter((d) => d.severity === 'error' && (d.target === null || d.target === t) && d.origin.kind === 'authored').map((d) => {
@@ -868,6 +875,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // T065: the @keyframes blocks parse with the stylesheet, so their refusals come whether or not the analysis runs.
     const keyframesRules = parseKeyframesRules(keyframeSources, diagnostics);
     diagnostics.push(...interactionRefusals(rules));
+    if (!options.interactionLanes) diagnostics.push(...nativeInteractionRefusals(rules, NATIVE_TARGETS.filter((t) => targets.includes(t))));
     const conditions = conditionsOf(rules);
     const partition = conditions.length === 0 ? null : band(conditions.map((c) => c.list));
     if (partition !== null && partition.kind === 'refused') {
@@ -1174,6 +1182,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     ua: choice.dataset,
     supportProfiles: snapshotProfiles(options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles),
     foldViewport: options.foldViewport === undefined ? null : checkedViewport(options.foldViewport),
+    interactionLanes: options.interactionLanes === true,
   };
   const configDiagnostics = validateConfig(config);
   const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown };

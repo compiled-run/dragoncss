@@ -9,7 +9,7 @@
 // - Identity: a document without interaction rules, or with one that matches nothing, compiles as it did.
 import { describe, expect, it } from 'vitest';
 import type { CompilerFaults, Diagnostic, FrontEndResult, InteractionPartition, InteractionState } from '../src/internal.ts';
-import { interactionPartition } from '../src/analysis/interaction.ts';
+import { interactionPartition, isFocusable } from '../src/analysis/interaction.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
 import { comboIndex, conditionsExclusive, createProjectWith, gatedConditions, HIT_MODELLED, hitUnmodelledFact, interactionCondition, LONGHANDS, NO_FAULTS, stateMembers } from '../src/internal.ts';
 import type { ResolvedElement } from '../src/analysis/resolve.ts';
@@ -60,8 +60,9 @@ function input(css = CSS, body = tree): FrontEndResult {
 }
 
 const TARGETS = { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } };
-const compile = (faults: Partial<CompilerFaults> = {}, css = CSS, body = tree, targets: { readonly web: object } = TARGETS, profiles: 'enforce' | 'derive' = 'enforce') =>
-  createProjectWith({ projectId: 'test', targets }, { faults: { ...NO_FAULTS, ...faults }, profiles, direction: 'ltr' }).compile(input(css, body));
+/** lanes: compile as the parity lanes do (interactionLanes), which keep the interaction states on native; the default here. */
+const compile = (faults: Partial<CompilerFaults> = {}, css = CSS, body = tree, targets: { readonly web: object } = TARGETS, profiles: 'enforce' | 'derive' = 'enforce', lanes = true) =>
+  createProjectWith({ projectId: 'test', targets }, { faults: { ...NO_FAULTS, ...faults }, profiles, direction: 'ltr', ...(lanes ? { interactionLanes: true } : {}) }).compile(input(css, body));
 
 /** The body font every small document below sets, so the native targets have a layout font. */
 const BODY = 'body { font-family: Ahem; font-size: 10px; } ';
@@ -214,6 +215,37 @@ describe('interaction states: compile', () => {
   });
 });
 
+describe('interaction states: what no target can carry yet', () => {
+  it('refuses every interaction rule on native outside the lanes, naming the runtime PRs, and compiles it on web', () => {
+    const css = `${BODY}.a:active { background-color: #0c0; } .card:hover .title { width: 60px; }`;
+    const c = compile({}, css, tree, TARGETS, 'enforce', false);
+    expect(errors(c.diagnostics)).toEqual([
+      'DRAGON_UNSUPPORTED_SELECTOR [ios] :active is not supported on ios yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
+      'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover is not supported on ios yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
+      'DRAGON_UNSUPPORTED_SELECTOR [android] :active is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
+      'DRAGON_UNSUPPORTED_SELECTOR [android] :hover is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
+    ]);
+    const states = c.targets as Record<string, string>;
+    expect([states.ios, states.android]).toEqual(['blocked', 'blocked']);
+    expect(c.outputs.web.kind).toBe('ready');
+    expect(errors(compile({}, css, tree, { web: {} }, 'enforce', false).diagnostics)).toEqual([]);
+    // The lanes compile the states on native; a document without interaction rules is not refused anywhere.
+    expect(errors(compile({}, css).diagnostics)).toEqual([]);
+    expect(errors(compile({}, `${BODY}.a { width: 1px; }`, tree, TARGETS, 'enforce', false).diagnostics)).toEqual([]);
+  });
+
+  it('refuses transition and animation declarations in an interaction rule on every target, as before SELD-R2', () => {
+    const refused = (property: string): string => `DRAGON_UNSUPPORTED_SELECTOR ${property} in a rule that tests :hover, :active, :focus or :focus-visible is not supported: transitions and animations are resolved without the interaction states (a later SELD-R2 package)`;
+    const keyframes = '@keyframes k { from { width: 10px; } to { width: 20px; } } ';
+    expect(errors(compile({}, `${BODY}.a:hover { width: 60px; transition: width 1s linear; }`, tree, { web: {} }).diagnostics)).toEqual([refused('transition')]);
+    expect(errors(compile({}, `${BODY}${keyframes}.a { animation: k 1s; } .a:hover { animation-play-state: paused; }`, tree, { web: {} }).diagnostics)).toEqual([refused('animation-play-state')]);
+    expect(errors(compile({}, `${BODY}${keyframes}:is(.a:focus) { animation: k 1s; }`, tree, { web: {} }).diagnostics)).toEqual([refused('animation')]);
+    expect(errors(compile({}, `${BODY}.a:active { transition-duration: 1s; }`, tree, { web: {} }).diagnostics)).toEqual([refused('transition-duration')]);
+    // A transition set outside the interaction rule compiles: the browser runs it when a state rule changes the property.
+    expect(errors(compile({}, `${BODY}.a { transition: width 1s linear; } .a:hover { width: 60px; }`, tree, { web: {} }).diagnostics)).toEqual([]);
+  });
+});
+
 describe('interaction states: collapse and cap (R5, R7)', () => {
   const flat = (n: number) => (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => Array.from({ length: n }, (_, i) => div(r, `e${i}`, ['e']));
 
@@ -270,6 +302,19 @@ describe('interaction states: hit model (R13)', () => {
     expect(otherErrors(compile({}, css.replace('transform: translateX(5px);', ''), body, TARGETS, 'derive').diagnostics)).toEqual([]);
   });
 
+  it('counts an overflow value computed from a refused partner as refused, and leaves R13 to the lanes', () => {
+    // overflow-x: hidden on html is refused on native (it propagates to the viewport); the overflow-y: auto it computes is not a fact.
+    const viewport = `${BODY}html { overflow-x: hidden; } .k:hover { background-color: #0c0; }`;
+    const found = errors(compile({}, viewport, body).diagnostics);
+    expect(found.some((m) => m.includes('propagates to the viewport'))).toBe(true);
+    expect(found.filter((m) => m.includes('needs Dragon hit testing'))).toEqual([]);
+    // Outside the lanes the interaction rules are refused on native already, so R13 adds nothing.
+    expect(otherErrors(compile({}, css, body, TARGETS, 'derive', false).diagnostics)).toEqual([
+      'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover is not supported on ios yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
+      'DRAGON_UNSUPPORTED_SELECTOR [android] :hover is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
+    ]);
+  });
+
   it('catches the plant hitUnmodelledNotRefused', () => {
     expect(otherErrors(compile({ hitUnmodelledNotRefused: true }, css, body, TARGETS, 'derive').diagnostics)).toEqual([]);
   });
@@ -281,6 +326,25 @@ describe('interaction states: hit model (R13)', () => {
     expect([...HIT_MODELLED.keys()]).not.toContain('transform');
     const plain = internalRecord(compile({}, css.replace('transform: translateX(5px);', 'overflow: hidden; transform-origin: 0 0;'), body, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement;
     expect(hitUnmodelledFact(plain, referenceDataset())).toBeNull();
+  });
+});
+
+describe('interaction states: focusability (R9)', () => {
+  const el = (tag: string, attributes: Record<string, string> = {}): LinkedElement => ({ tag, attributes: new Map(Object.entries(attributes)) }) as unknown as LinkedElement;
+  it('follows HTML: a valid tabindex, a with href, and form controls but input type=hidden', () => {
+    expect(isFocusable(el('div', { tabindex: '0' }))).toBe(true);
+    expect(isFocusable(el('div', { tabindex: ' -1' }))).toBe(true);
+    expect(isFocusable(el('div', { tabindex: '+2' }))).toBe(true);
+    expect(isFocusable(el('div', { tabindex: 'x' }))).toBe(false);
+    expect(isFocusable(el('div', { tabindex: '' }))).toBe(false);
+    expect(isFocusable(el('div', { tabindex: '-' }))).toBe(false);
+    expect(isFocusable(el('div'))).toBe(false);
+    expect(isFocusable(el('a'))).toBe(false);
+    expect(isFocusable(el('a', { href: '' }))).toBe(true);
+    expect(isFocusable(el('input'))).toBe(true);
+    expect(isFocusable(el('input', { type: 'HIDDEN' }))).toBe(false);
+    expect(isFocusable(el('input', { type: 'hidden', tabindex: '0' }))).toBe(false);
+    expect(isFocusable(el('button'))).toBe(true);
   });
 });
 
@@ -344,6 +408,26 @@ describe('interaction states: web conditions', () => {
 
   it('catches the plant webHoverUngated', () => {
     expect(web(CSS, { webHoverUngated: true })).not.toMatch(/@media \(hover: hover\)/);
+  });
+
+  it('keep an inherited colour inherit under an animated colour in every state (T065 R9)', () => {
+    const css = `${BODY}@keyframes k { from { color: red; } to { color: blue; } } .a { color: black; animation: k 1s infinite; } .a:hover { color: green; }`;
+    const body = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'a', ['a'], [div(r, 'z', ['z'])])];
+    const out = compile({}, css, body, { web: {} });
+    if (out.outputs.web.kind !== 'ready') throw new Error(errors(out.diagnostics).join('\n'));
+    const text = (out.outputs.web.files[0] as { text: string }).text;
+    const record = internalRecord(out);
+    const cls = (address: string): string => record?.cases[0]?.webClassOf?.get(address) as string;
+    expect(text).toContain(`.${cls('z')} {\n`);
+    // z's base rule keeps color: inherit, and no state rule replaces it with a's static hover colour.
+    const rules = text.split('}\n').filter((r) => r.includes(`.${cls('z')} {`) || r.includes(`.${cls('z')},`));
+    expect(rules.some((r) => r.includes('color: inherit;'))).toBe(true);
+    expect(rules.filter((r) => r.includes(':root')).join('')).not.toContain('color: rgb(0, 128, 0)');
+    // a's own hover colour is still emitted (Chrome lets the animation outrank it, which the browser does here too).
+    expect(text).toContain(` .${cls('a')} {\n  color: rgb(0, 128, 0);\n}`);
+    // A colour z declares in a state is its own, not inherited, and is emitted.
+    const own = compile({}, `${css} .a:hover .z { color: green; }`, body, { web: {} }).outputs.web;
+    expect(own.kind === 'ready' && own.files[0]?.text.includes(' .' + cls('z') + ' {\n  color: rgb(0, 128, 0);')).toBe(true);
   });
 
   it('leave a document without interaction rules, or with one that matches nothing, as it was', () => {

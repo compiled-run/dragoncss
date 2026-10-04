@@ -208,7 +208,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         const here = st.at.get(el.element.address);
         const base = (bandBase[band] as Map<string, ResolvedElement>).get(el.element.address);
         if (here === undefined || base === undefined) throw new Error(`${el.element.address} is not resolved in every interaction state`);
-        const lines = LONGHANDS.map((p) => declLine(here, p)).filter((line, k) => line !== declLine(base, LONGHANDS[k] as (typeof LONGHANDS)[number]));
+        // T065 R9 holds in every state: under an animated colour, an inherited colour stays `inherit`.
+        const lines = LONGHANDS.map((p) => declLine(here, p, under)).filter((line, k) => line !== declLine(base, LONGHANDS[k] as (typeof LONGHANDS)[number], under));
         return lines.length === 0 ? [] : [{ band, conditions: st.conditions, lines }];
       }));
       const variant = `${el.element.address}\u0000${decls.join('\n')}${diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(diffs)}` : ''}${own.length > 0 ? `\u0001${JSON.stringify(own)}` : ''}`;

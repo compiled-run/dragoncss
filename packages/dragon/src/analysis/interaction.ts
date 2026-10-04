@@ -5,6 +5,7 @@
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { PROPERTY_ASPECTS } from '../css/properties.ts';
+import { isAnimationProperty } from '../css/properties/animation.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { Compound, InteractionPseudo, PseudoClass, Selector } from '../css/selectors.ts';
 import type { Rule } from '../css/stylesheet.ts';
@@ -80,9 +81,18 @@ export function interactionStateOf(v: Pick<InteractionValue, 'hover' | 'active' 
   return { hover: new Set(v.hover), active: new Set(v.active), focus: new Set(v.focus === null ? [] : [v.focus]), focusVisible: new Set(v.focusVisible === null ? [] : [v.focusVisible]) };
 }
 
-/** HTML §6.6.3 focusable areas among elements: a with href, form controls and any element with tabindex. */
+/** HTML §2.3.4.1 rules for parsing integers, as tabindex uses them: leading ASCII whitespace, an optional sign, then digits. */
+export const validTabindex = (v: string): boolean => /^[\t\n\f\r ]*[-+]?[0-9]/.test(v);
+
+/**
+ * HTML §6.6.3 focusable areas among elements: a with href, form controls, and any element with a valid tabindex; never input
+ * type=hidden. R9's general display: none clause waits for FORM-a (SELD-R2 PR 2).
+ */
 export function isFocusable(el: LinkedElement): boolean {
-  if (el.attributes.has('tabindex')) return true;
+  // input type=hidden is display: none in the UA sheet, so a tabindex does not make it focusable either.
+  if (el.tag === 'input' && el.attributes.get('type')?.toLowerCase() === 'hidden') return false;
+  const tabindex = el.attributes.get('tabindex');
+  if (tabindex !== undefined && validTabindex(tabindex)) return true;
   if (el.tag === 'a') return el.attributes.has('href');
   return el.tag === 'button' || el.tag === 'input' || el.tag === 'select' || el.tag === 'textarea';
 }
@@ -366,19 +376,51 @@ export function firstInteractionPseudo(r: Rule): InteractionPseudo | null {
 }
 
 /**
- * The declarations of interaction rules Dragon cannot resolve per state: direction is resolved before the cascade (logical.ts)
- * without the interaction state, so a direction declaration in such a rule is refused rather than resolved in the wrong state.
+ * The declarations of interaction rules Dragon cannot resolve per state. direction is resolved before the cascade (logical.ts)
+ * without the interaction state. The transition and animation lists (analysis/animations.ts) cascade in the none state only, and
+ * the web output writes them on the base classes alone. Either in such a rule is refused rather than compiled in the wrong state.
  */
 export function interactionRefusals(rules: readonly Rule[]): Diagnostic[] {
   const out: Diagnostic[] = [];
   for (const r of rules) {
     if (!ruleIsInteractive(r)) continue;
     for (const d of r.declarations) {
+      if (d.animation !== undefined || isAnimationProperty(d.property)) {
+        out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
+          origin: authored(d.span),
+          message: `${d.property} in a rule that tests :hover, :active, :focus or :focus-visible is not supported: transitions and animations are resolved without the interaction states (a later SELD-R2 package)`,
+          manual: `Set ${d.property} in a rule without :hover, :active, :focus or :focus-visible.`,
+        }));
+        continue;
+      }
       if (!d.longhands.some((lh) => lh.property === 'direction') && d.pending?.longhands.includes('direction') !== true) continue;
       out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
         origin: authored(d.span),
         message: `${d.property} in a rule that tests :hover, :active, :focus or :focus-visible is not supported: direction is resolved before the interaction states`,
         manual: 'Set direction in a rule without :hover, :active, :focus or :focus-visible.',
+      }));
+    }
+  }
+  return out;
+}
+
+/**
+ * Native has no interaction runtime until SELD-R2 PR 3 (rt-interaction.ts) and PR 4 (the UIKit and Android glue), and no support
+ * profile row: every interaction rule is refused on each native target. lanes: the parity lanes compile the states on native to
+ * prove their resolution (forced cases), so they skip this refusal.
+ */
+export function nativeInteractionRefusals(rules: readonly Rule[], targets: readonly ('ios' | 'android')[]): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  for (const t of targets) {
+    for (const r of rules) {
+      const pseudo = firstInteractionPseudo(r);
+      const first = r.declarations[0];
+      if (pseudo === null || first === undefined) continue;
+      out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
+        origin: authored(first.span),
+        target: t,
+        message: `:${pseudo} is not supported on ${t} yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4`,
+        manual: `Style the state with a component state and a class, or target web only, until the ${t} interaction runtime lands.`,
       }));
     }
   }
@@ -431,8 +473,11 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
 export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles: (v: ResolvedValue) => boolean = () => true): { readonly property: Longhand; readonly address: string } | null {
   const initial = new Map<Longhand, string>();
   const visit = (el: ResolvedElement): { property: Longhand; address: string } | null => {
+    // An overflow value computed from its partner (computeOverflowPair) has no declaration: it compiles only when the partner does.
+    const partner = (p: Longhand): ResolvedValue | undefined => (p === 'overflow-x' ? el.props.get('overflow-y') : p === 'overflow-y' ? el.props.get('overflow-x') : undefined);
     for (const [p, v] of el.props) {
-      if (!PROPERTY_ASPECTS[p].paint || !compiles(v)) continue;
+      const other = partner(p);
+      if (!PROPERTY_ASPECTS[p].paint || !compiles(v) || (other !== undefined && !compiles(other))) continue;
       const modelled = HIT_MODELLED.get(p);
       if (modelled !== undefined) {
         if (modelled(v.value)) continue;
