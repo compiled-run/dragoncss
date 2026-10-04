@@ -66,6 +66,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg1 {
   display: block;
@@ -134,6 +137,9 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
 .dg2 {
   display: block;
@@ -202,4 +208,7 @@
   justify-items: normal;
   justify-self: auto;
   pointer-events: auto;
+  transform: none;
+  transform-origin: 50% 50%;
+  will-change: auto;
 }
