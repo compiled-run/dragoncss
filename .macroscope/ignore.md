@@ -63,6 +63,7 @@ packages/dragon/src/profiles/android.ts
 packages/dragon/src/profiles/native-lanes.ts
 packages/dragon/test/data/grid-corpus-declarations.json
 packages/dragon/test/data/grid-fuzz-corpus.json
+packages/dragon/test/data/chrome-145-interpolable.json
 packages/layout/rt-oracle/**
 packages/layout/rt-vectors/**
 packages/layout/break-vectors/**
