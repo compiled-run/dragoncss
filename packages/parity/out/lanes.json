@@ -104,7 +104,7 @@
             {
               "corpus": "p1",
               "suite": "hit",
-              "cases": 2080
+              "cases": 2028
             },
             {
               "corpus": "extended",
@@ -142,8 +142,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "a54280021174584985ff4849a224ae25ff7a6569699cc4ef4c134e00e7b2a9a9",
-          "totalCases": 618917,
+          "caseListSha256": "7cfdbd5ec13874b732b637e96b1b825b595861324f0806881d427ac100702b13",
+          "totalCases": 618865,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
             "suites": [
@@ -185,9 +185,9 @@
               {
                 "corpus": "p1",
                 "suite": "hit",
-                "declared": 2080,
-                "total": 2080,
-                "pass": 2080
+                "declared": 2028,
+                "total": 2028,
+                "pass": 2028
               },
               {
                 "corpus": "extended",
@@ -254,7 +254,7 @@
               }
             ],
             "digests": {
-              "p1": "a1fa5c443a836cb04dd8baf91c6a2a11b447de214f6827cf8815d0a49475bcdc",
+              "p1": "271c1461700ce233d8c00deacc96ba1c7618ac7b27590189490671c25049b9dc",
               "extended": "ace6e77a499b1be2509b3a58ad1f9095aa5efa81380bc221a490d8f3e428b62c"
             }
           },
@@ -316,7 +316,7 @@
             {
               "corpus": "p1",
               "suite": "hit",
-              "cases": 2080
+              "cases": 2028
             },
             {
               "corpus": "extended",
@@ -354,8 +354,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "a54280021174584985ff4849a224ae25ff7a6569699cc4ef4c134e00e7b2a9a9",
-          "totalCases": 618917,
+          "caseListSha256": "7cfdbd5ec13874b732b637e96b1b825b595861324f0806881d427ac100702b13",
+          "totalCases": 618865,
           "run": null,
           "device": null,
           "evidence": null
@@ -728,7 +728,7 @@
             {
               "corpus": "p1",
               "suite": "hit",
-              "cases": 2080
+              "cases": 2028
             },
             {
               "corpus": "extended",
@@ -766,8 +766,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "a54280021174584985ff4849a224ae25ff7a6569699cc4ef4c134e00e7b2a9a9",
-          "totalCases": 618917,
+          "caseListSha256": "7cfdbd5ec13874b732b637e96b1b825b595861324f0806881d427ac100702b13",
+          "totalCases": 618865,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
             "suites": [
@@ -809,9 +809,9 @@
               {
                 "corpus": "p1",
                 "suite": "hit",
-                "declared": 2080,
-                "total": 2080,
-                "pass": 2080
+                "declared": 2028,
+                "total": 2028,
+                "pass": 2028
               },
               {
                 "corpus": "extended",
@@ -878,7 +878,7 @@
               }
             ],
             "digests": {
-              "p1": "a1fa5c443a836cb04dd8baf91c6a2a11b447de214f6827cf8815d0a49475bcdc",
+              "p1": "271c1461700ce233d8c00deacc96ba1c7618ac7b27590189490671c25049b9dc",
               "extended": "ace6e77a499b1be2509b3a58ad1f9095aa5efa81380bc221a490d8f3e428b62c"
             }
           },
@@ -940,7 +940,7 @@
             {
               "corpus": "p1",
               "suite": "hit",
-              "cases": 2080
+              "cases": 2028
             },
             {
               "corpus": "extended",
@@ -978,8 +978,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "a54280021174584985ff4849a224ae25ff7a6569699cc4ef4c134e00e7b2a9a9",
-          "totalCases": 618917,
+          "caseListSha256": "7cfdbd5ec13874b732b637e96b1b825b595861324f0806881d427ac100702b13",
+          "totalCases": 618865,
           "run": null,
           "device": null,
           "evidence": null
