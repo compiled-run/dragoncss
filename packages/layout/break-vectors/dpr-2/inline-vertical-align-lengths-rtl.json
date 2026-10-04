@@ -1,0 +1,27 @@
+{
+  "case": "inline-vertical-align-lengths-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"up:text0","lines":[[0,2]]},
+    {"id":"up-s:text0","lines":[[0,2]]},
+    {"id":"up:text1","lines":[[0,2]]},
+    {"id":"down:text0","lines":[[0,2]]},
+    {"id":"down-s:text0","lines":[[0,2]]},
+    {"id":"down:text1","lines":[[0,2]]},
+    {"id":"frac:text0","lines":[[0,2]]},
+    {"id":"frac-s:text0","lines":[[0,2]]},
+    {"id":"frac:text1","lines":[[0,2]]},
+    {"id":"pct:text0","lines":[[0,2]]},
+    {"id":"pct-s:text0","lines":[[0,2]]},
+    {"id":"pct:text1","lines":[[0,2]]},
+    {"id":"npct:text0","lines":[[0,2]]},
+    {"id":"npct-s:text0","lines":[[0,2]]},
+    {"id":"npct:text1","lines":[[0,2]]},
+    {"id":"em:text0","lines":[[0,2]]},
+    {"id":"em-s:text0","lines":[[0,2]]},
+    {"id":"em:text1","lines":[[0,2]]},
+    {"id":"lh:text0","lines":[[0,2]]},
+    {"id":"lh-s:text0","lines":[[0,2]]},
+    {"id":"lh:text1","lines":[[0,2]]}
+  ]
+}

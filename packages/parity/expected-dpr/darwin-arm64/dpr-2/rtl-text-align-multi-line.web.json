@@ -102,7 +102,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -197,7 +198,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -292,7 +294,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -417,7 +420,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -542,7 +546,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -667,7 +672,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -792,7 +798,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -917,7 +924,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -1072,7 +1080,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -1197,7 +1206,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -1322,7 +1332,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -1447,7 +1458,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -1572,7 +1584,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -1697,7 +1710,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -1822,7 +1836,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -1947,7 +1962,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -2072,7 +2088,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -2197,7 +2214,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -2322,7 +2340,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -2417,7 +2436,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -2542,7 +2562,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -2707,7 +2728,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -2802,7 +2824,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -2897,7 +2920,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {
@@ -3042,7 +3066,8 @@
         "justify-self": "auto",
         "overflow-wrap": "normal",
         "word-break": "normal",
-        "letter-spacing": "normal"
+        "letter-spacing": "normal",
+        "vertical-align": "baseline"
       }
     },
     {

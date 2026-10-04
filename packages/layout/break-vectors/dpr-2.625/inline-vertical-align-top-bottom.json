@@ -1,0 +1,25 @@
+{
+  "case": "inline-vertical-align-top-bottom",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"top:text0","lines":[[0,3]]},
+    {"id":"top:text1","lines":[[0,9]]},
+    {"id":"bot:text0","lines":[[0,3]]},
+    {"id":"bot:text1","lines":[[0,3]]},
+    {"id":"tb:text0","lines":[[0,3]]},
+    {"id":"tb:text1","lines":[[0,3]]},
+    {"id":"bt:text0","lines":[[0,3]]},
+    {"id":"bt:text1","lines":[[0,3]]},
+    {"id":"span:text0","lines":[[0,3]]},
+    {"id":"span-s:text0","lines":[[0,2]]},
+    {"id":"span:text1","lines":[[0,3]]},
+    {"id":"mix:text0","lines":[[0,3]]},
+    {"id":"mix-t:text0","lines":[[0,2]]},
+    {"id":"mix-b:text0","lines":[[0,2]]},
+    {"id":"mix:text1","lines":[[0,3]]},
+    {"id":"in:text0","lines":[[0,3]]},
+    {"id":"in-o:text0","lines":[[0,2]]},
+    {"id":"in-i:text0","lines":[[0,2]]},
+    {"id":"in:text1","lines":[[0,3]]}
+  ]
+}

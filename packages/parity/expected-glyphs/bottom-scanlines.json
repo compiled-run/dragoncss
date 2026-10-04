@@ -246,7 +246,19 @@
       "text-wrap-break-flex": [3,19],
       "text-wrap-break-flex-rtl": [3,19],
       "text-wrap-break-lato": [11,13],
-      "text-wrap-break-lato-rtl": [11,13]
+      "text-wrap-break-lato-rtl": [11,13],
+      "inline-vertical-align-keywords": [26,33],
+      "inline-vertical-align-keywords-rtl": [26,33],
+      "inline-vertical-align-lengths": [21,21],
+      "inline-vertical-align-lengths-rtl": [21,21],
+      "inline-vertical-align-atomic": [18,22],
+      "inline-vertical-align-atomic-rtl": [18,22],
+      "inline-vertical-align-top-bottom": [12,19],
+      "inline-vertical-align-top-bottom-rtl": [12,19],
+      "inline-vertical-align-tags": [15,18],
+      "inline-vertical-align-tags-rtl": [18,18],
+      "inline-vertical-align-lato": [20,20],
+      "inline-vertical-align-lato-rtl": [20,20]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -494,7 +506,19 @@
       "text-wrap-break-flex": [3,19],
       "text-wrap-break-flex-rtl": [3,19],
       "text-wrap-break-lato": [11,13],
-      "text-wrap-break-lato-rtl": [11,13]
+      "text-wrap-break-lato-rtl": [11,13],
+      "inline-vertical-align-keywords": [27,33],
+      "inline-vertical-align-keywords-rtl": [27,33],
+      "inline-vertical-align-lengths": [21,21],
+      "inline-vertical-align-lengths-rtl": [21,21],
+      "inline-vertical-align-atomic": [18,22],
+      "inline-vertical-align-atomic-rtl": [18,22],
+      "inline-vertical-align-top-bottom": [12,19],
+      "inline-vertical-align-top-bottom-rtl": [12,19],
+      "inline-vertical-align-tags": [15,18],
+      "inline-vertical-align-tags-rtl": [18,18],
+      "inline-vertical-align-lato": [20,20],
+      "inline-vertical-align-lato-rtl": [20,20]
     }
   },
   "android": {
@@ -744,7 +768,19 @@
       "text-wrap-break-flex": [3,19],
       "text-wrap-break-flex-rtl": [3,19],
       "text-wrap-break-lato": [11,13],
-      "text-wrap-break-lato-rtl": [11,13]
+      "text-wrap-break-lato-rtl": [11,13],
+      "inline-vertical-align-keywords": [26,33],
+      "inline-vertical-align-keywords-rtl": [26,33],
+      "inline-vertical-align-lengths": [21,21],
+      "inline-vertical-align-lengths-rtl": [21,21],
+      "inline-vertical-align-atomic": [18,22],
+      "inline-vertical-align-atomic-rtl": [18,22],
+      "inline-vertical-align-top-bottom": [12,19],
+      "inline-vertical-align-top-bottom-rtl": [12,19],
+      "inline-vertical-align-tags": [15,18],
+      "inline-vertical-align-tags-rtl": [18,18],
+      "inline-vertical-align-lato": [20,20],
+      "inline-vertical-align-lato-rtl": [20,20]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -992,7 +1028,19 @@
       "text-wrap-break-flex": [3,19],
       "text-wrap-break-flex-rtl": [3,19],
       "text-wrap-break-lato": [11,13],
-      "text-wrap-break-lato-rtl": [11,13]
+      "text-wrap-break-lato-rtl": [11,13],
+      "inline-vertical-align-keywords": [27,33],
+      "inline-vertical-align-keywords-rtl": [27,33],
+      "inline-vertical-align-lengths": [21,21],
+      "inline-vertical-align-lengths-rtl": [21,21],
+      "inline-vertical-align-atomic": [18,22],
+      "inline-vertical-align-atomic-rtl": [18,22],
+      "inline-vertical-align-top-bottom": [12,19],
+      "inline-vertical-align-top-bottom-rtl": [12,19],
+      "inline-vertical-align-tags": [15,18],
+      "inline-vertical-align-tags-rtl": [18,18],
+      "inline-vertical-align-lato": [20,20],
+      "inline-vertical-align-lato-rtl": [20,20]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -1240,7 +1288,19 @@
       "text-wrap-break-flex": [3,19],
       "text-wrap-break-flex-rtl": [3,19],
       "text-wrap-break-lato": [11,13],
-      "text-wrap-break-lato-rtl": [11,13]
+      "text-wrap-break-lato-rtl": [11,13],
+      "inline-vertical-align-keywords": [27,33],
+      "inline-vertical-align-keywords-rtl": [27,33],
+      "inline-vertical-align-lengths": [21,21],
+      "inline-vertical-align-lengths-rtl": [21,21],
+      "inline-vertical-align-atomic": [18,22],
+      "inline-vertical-align-atomic-rtl": [18,22],
+      "inline-vertical-align-top-bottom": [12,19],
+      "inline-vertical-align-top-bottom-rtl": [12,19],
+      "inline-vertical-align-tags": [15,18],
+      "inline-vertical-align-tags-rtl": [18,18],
+      "inline-vertical-align-lato": [20,20],
+      "inline-vertical-align-lato-rtl": [20,20]
     }
   }
 }

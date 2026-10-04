@@ -1,0 +1,26 @@
+{
+  "case": "inline-vertical-align-lato",
+  "dpr": 2,
+  "texts": [
+    {"id":"a:text0","lines":[[0,5]]},
+    {"id":"a-sub:text0","lines":[[0,3]]},
+    {"id":"a:text1","lines":[[0,5]]},
+    {"id":"a-sup:text0","lines":[[0,3]]},
+    {"id":"a:text2","lines":[[0,4]]},
+    {"id":"b:text0","lines":[[0,5]]},
+    {"id":"b-tt:text0","lines":[[0,3]]},
+    {"id":"b:text1","lines":[[0,5]]},
+    {"id":"b-tb:text0","lines":[[0,3]]},
+    {"id":"b:text2","lines":[[0,4]]},
+    {"id":"m:text0","lines":[[0,5]]},
+    {"id":"m-mid:text0","lines":[[0,3]]},
+    {"id":"m:text1","lines":[[0,5]]},
+    {"id":"m-up:text0","lines":[[0,3]]},
+    {"id":"m:text2","lines":[[0,4]]},
+    {"id":"t:text0","lines":[[0,4]]},
+    {"id":"t-sub:text0","lines":[[0,3]]},
+    {"id":"t:text1","lines":[[0,4]]},
+    {"id":"t-sup:text0","lines":[[0,4]]},
+    {"id":"t:text2","lines":[[0,4]]}
+  ]
+}

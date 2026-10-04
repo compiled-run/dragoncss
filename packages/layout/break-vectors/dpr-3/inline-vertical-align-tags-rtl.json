@@ -1,0 +1,24 @@
+{
+  "case": "inline-vertical-align-tags-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"tags:text0","lines":[[0,1]]},
+    {"id":"tags-sub:text0","lines":[[0,1]]},
+    {"id":"tags:text1","lines":[[0,1]]},
+    {"id":"tags-sup:text0","lines":[[0,1]]},
+    {"id":"tags:text2","lines":[[0,1]]},
+    {"id":"nest:text0","lines":[[0,1]]},
+    {"id":"nest-sup:text0","lines":[[0,1]]},
+    {"id":"nest-sub:text0","lines":[[0,1]]},
+    {"id":"nest:text1","lines":[[0,1]]},
+    {"id":"normal:text0","lines":[[0,1]]},
+    {"id":"normal-sub:text0","lines":[[0,1]]},
+    {"id":"normal:text1","lines":[[0,1]]},
+    {"id":"normal-sup:text0","lines":[[0,1]]},
+    {"id":"normal:text2","lines":[[0,1]]},
+    {"id":"small:text0","lines":[[0,1]]},
+    {"id":"small-s:text0","lines":[[0,1]]},
+    {"id":"small-sub:text0","lines":[[0,1]]},
+    {"id":"small:text1","lines":[[0,1]]}
+  ]
+}

@@ -103,6 +103,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -199,6 +200,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -295,6 +297,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -391,6 +394,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -517,6 +521,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -643,6 +648,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -769,6 +775,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -895,6 +902,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1011,6 +1019,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1137,6 +1146,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1253,6 +1263,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1369,6 +1380,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1465,6 +1477,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1561,6 +1574,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1657,6 +1671,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1753,6 +1768,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1879,6 +1895,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2005,6 +2022,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2101,6 +2119,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2197,6 +2216,7 @@
         "overflow-wrap": "normal",
         "word-break": "normal",
         "letter-spacing": "normal",
+        "vertical-align": "baseline",
         "writing-mode": "horizontal-tb"
       }
     }

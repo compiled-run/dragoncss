@@ -1,0 +1,28 @@
+{
+  "case": "inline-vertical-align-atomic",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"sub:text0","lines":[[0,2]]},
+    {"id":"sub:text1","lines":[[0,2]]},
+    {"id":"super:text0","lines":[[0,2]]},
+    {"id":"super:text1","lines":[[0,2]]},
+    {"id":"ttop:text0","lines":[[0,2]]},
+    {"id":"ttop:text1","lines":[[0,2]]},
+    {"id":"tbot:text0","lines":[[0,2]]},
+    {"id":"tbot:text1","lines":[[0,2]]},
+    {"id":"mid:text0","lines":[[0,2]]},
+    {"id":"mid:text1","lines":[[0,2]]},
+    {"id":"top:text0","lines":[[0,2]]},
+    {"id":"top:text1","lines":[[0,2]]},
+    {"id":"bot:text0","lines":[[0,2]]},
+    {"id":"bot:text1","lines":[[0,2]]},
+    {"id":"up:text0","lines":[[0,2]]},
+    {"id":"up:text1","lines":[[0,2]]},
+    {"id":"down:text0","lines":[[0,2]]},
+    {"id":"down:text1","lines":[[0,2]]},
+    {"id":"text:text0","lines":[[0,2]]},
+    {"id":"text-ib:text0","lines":[[0,2]]},
+    {"id":"text-ib:text1","lines":[[0,2]]},
+    {"id":"text:text1","lines":[[0,2]]}
+  ]
+}
