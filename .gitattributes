@@ -12,6 +12,7 @@ packages/dragon/src/ua/*.generated.ts merge=dragon-generated
 packages/layout/break-vectors/** merge=dragon-generated
 packages/layout/generated/** merge=dragon-generated
 packages/layout/paint-vectors/*/vectors.json merge=dragon-generated
+packages/layout/rt-vectors/animator/** merge=dragon-generated
 packages/layout/rt-vectors/hit/** merge=dragon-generated
 packages/layout/vectors/*.json merge=dragon-generated
 packages/layout/vectors/dpr-*/** merge=dragon-generated

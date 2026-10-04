@@ -107,6 +107,11 @@
               "cases": 2028
             },
             {
+              "corpus": "p1",
+              "suite": "animator",
+              "cases": 18
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 1521
@@ -142,8 +147,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "140d592e9257c2610383115ac8511868f56b954453b7123a78ddfd870318f09c",
-          "totalCases": 618735,
+          "caseListSha256": "07258dc8384b3fee3aa444d5ba0eafaf7449cad59d77238284c7df2d8592e636",
+          "totalCases": 618753,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
             "suites": [
@@ -188,6 +193,13 @@
                 "declared": 2028,
                 "total": 2028,
                 "pass": 2028
+              },
+              {
+                "corpus": "p1",
+                "suite": "animator",
+                "declared": 18,
+                "total": 18,
+                "pass": 18
               },
               {
                 "corpus": "extended",
@@ -254,7 +266,7 @@
               }
             ],
             "digests": {
-              "p1": "271c1461700ce233d8c00deacc96ba1c7618ac7b27590189490671c25049b9dc",
+              "p1": "f4ff5014ab92867a7ece46f3b637aa9291e04adc90019015b70ded13008ef3ed",
               "extended": "b2be674777de5fb913d7bbbea39110be9fee4149bee107ec877e17ecbc528f6d"
             }
           },
@@ -319,6 +331,11 @@
               "cases": 2028
             },
             {
+              "corpus": "p1",
+              "suite": "animator",
+              "cases": 18
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 1521
@@ -354,8 +371,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "140d592e9257c2610383115ac8511868f56b954453b7123a78ddfd870318f09c",
-          "totalCases": 618735,
+          "caseListSha256": "07258dc8384b3fee3aa444d5ba0eafaf7449cad59d77238284c7df2d8592e636",
+          "totalCases": 618753,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1); arm64-apple-ios15.0-simulator; simctl spawn on iPhone 17",
             "suites": [
@@ -400,6 +417,13 @@
                 "declared": 2028,
                 "total": 2028,
                 "pass": 2028
+              },
+              {
+                "corpus": "p1",
+                "suite": "animator",
+                "declared": 18,
+                "total": 18,
+                "pass": 18
               },
               {
                 "corpus": "extended",
@@ -466,15 +490,15 @@
               }
             ],
             "digests": {
-              "p1": "271c1461700ce233d8c00deacc96ba1c7618ac7b27590189490671c25049b9dc",
+              "p1": "f4ff5014ab92867a7ece46f3b637aa9291e04adc90019015b70ded13008ef3ed",
               "extended": "b2be674777de5fb913d7bbbea39110be9fee4149bee107ec877e17ecbc528f6d"
             }
           },
           "device": null,
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "53b1f745ce606ac338a3bf7016066ba95a0c4c1dbd9c2b458c89d84a6bd0257d"
+            "app": "5c533a73451137d62382978c53a0c2f8f3a04818fee40d318b14b2af74c61d2e"
           }
         },
         {
@@ -582,9 +606,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "53b1f745ce606ac338a3bf7016066ba95a0c4c1dbd9c2b458c89d84a6bd0257d"
+            "app": "5c533a73451137d62382978c53a0c2f8f3a04818fee40d318b14b2af74c61d2e"
           }
         },
         {
@@ -692,9 +716,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "53b1f745ce606ac338a3bf7016066ba95a0c4c1dbd9c2b458c89d84a6bd0257d"
+            "app": "5c533a73451137d62382978c53a0c2f8f3a04818fee40d318b14b2af74c61d2e"
           }
         },
         {
@@ -802,9 +826,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "53b1f745ce606ac338a3bf7016066ba95a0c4c1dbd9c2b458c89d84a6bd0257d"
+            "app": "5c533a73451137d62382978c53a0c2f8f3a04818fee40d318b14b2af74c61d2e"
           }
         },
         {
@@ -1094,9 +1118,9 @@
             ]
           },
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "53b1f745ce606ac338a3bf7016066ba95a0c4c1dbd9c2b458c89d84a6bd0257d"
+            "app": "5c533a73451137d62382978c53a0c2f8f3a04818fee40d318b14b2af74c61d2e"
           }
         },
         {
@@ -1204,9 +1228,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "53b1f745ce606ac338a3bf7016066ba95a0c4c1dbd9c2b458c89d84a6bd0257d"
+            "app": "5c533a73451137d62382978c53a0c2f8f3a04818fee40d318b14b2af74c61d2e"
           }
         },
         {
@@ -1314,9 +1338,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "53b1f745ce606ac338a3bf7016066ba95a0c4c1dbd9c2b458c89d84a6bd0257d"
+            "app": "5c533a73451137d62382978c53a0c2f8f3a04818fee40d318b14b2af74c61d2e"
           }
         }
       ],
@@ -1534,6 +1558,11 @@
               "cases": 2028
             },
             {
+              "corpus": "p1",
+              "suite": "animator",
+              "cases": 18
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 1521
@@ -1569,8 +1598,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "140d592e9257c2610383115ac8511868f56b954453b7123a78ddfd870318f09c",
-          "totalCases": 618735,
+          "caseListSha256": "07258dc8384b3fee3aa444d5ba0eafaf7449cad59d77238284c7df2d8592e636",
+          "totalCases": 618753,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
             "suites": [
@@ -1615,6 +1644,13 @@
                 "declared": 2028,
                 "total": 2028,
                 "pass": 2028
+              },
+              {
+                "corpus": "p1",
+                "suite": "animator",
+                "declared": 18,
+                "total": 18,
+                "pass": 18
               },
               {
                 "corpus": "extended",
@@ -1681,7 +1717,7 @@
               }
             ],
             "digests": {
-              "p1": "271c1461700ce233d8c00deacc96ba1c7618ac7b27590189490671c25049b9dc",
+              "p1": "f4ff5014ab92867a7ece46f3b637aa9291e04adc90019015b70ded13008ef3ed",
               "extended": "b2be674777de5fb913d7bbbea39110be9fee4149bee107ec877e17ecbc528f6d"
             }
           },
@@ -1746,6 +1782,11 @@
               "cases": 2028
             },
             {
+              "corpus": "p1",
+              "suite": "animator",
+              "cases": 18
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 1521
@@ -1781,8 +1822,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "140d592e9257c2610383115ac8511868f56b954453b7123a78ddfd870318f09c",
-          "totalCases": 618735,
+          "caseListSha256": "07258dc8384b3fee3aa444d5ba0eafaf7449cad59d77238284c7df2d8592e636",
+          "totalCases": 618753,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18; d8 --min-api 31; ART app_process on dragon-smoke (Android 16)",
             "suites": [
@@ -1827,6 +1868,13 @@
                 "declared": 2028,
                 "total": 2028,
                 "pass": 2028
+              },
+              {
+                "corpus": "p1",
+                "suite": "animator",
+                "declared": 18,
+                "total": 18,
+                "pass": 18
               },
               {
                 "corpus": "extended",
@@ -1893,15 +1941,15 @@
               }
             ],
             "digests": {
-              "p1": "271c1461700ce233d8c00deacc96ba1c7618ac7b27590189490671c25049b9dc",
+              "p1": "f4ff5014ab92867a7ece46f3b637aa9291e04adc90019015b70ded13008ef3ed",
               "extended": "b2be674777de5fb913d7bbbea39110be9fee4149bee107ec877e17ecbc528f6d"
             }
           },
           "device": null,
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "5c13deb65d178117c80f3c7237962632f62e0cf31437030e43046897a6340f83"
+            "app": "21be2678fdba3764b042265c42935b7ea784ded378bdff45becc4ccfd44eb74e"
           }
         },
         {
@@ -2052,9 +2100,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "5c13deb65d178117c80f3c7237962632f62e0cf31437030e43046897a6340f83"
+            "app": "21be2678fdba3764b042265c42935b7ea784ded378bdff45becc4ccfd44eb74e"
           }
         },
         {
@@ -2205,9 +2253,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "5c13deb65d178117c80f3c7237962632f62e0cf31437030e43046897a6340f83"
+            "app": "21be2678fdba3764b042265c42935b7ea784ded378bdff45becc4ccfd44eb74e"
           }
         },
         {
@@ -2358,9 +2406,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "5c13deb65d178117c80f3c7237962632f62e0cf31437030e43046897a6340f83"
+            "app": "21be2678fdba3764b042265c42935b7ea784ded378bdff45becc4ccfd44eb74e"
           }
         },
         {
@@ -2702,9 +2750,9 @@
             ]
           },
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "5c13deb65d178117c80f3c7237962632f62e0cf31437030e43046897a6340f83"
+            "app": "21be2678fdba3764b042265c42935b7ea784ded378bdff45becc4ccfd44eb74e"
           }
         },
         {
@@ -2855,9 +2903,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "5c13deb65d178117c80f3c7237962632f62e0cf31437030e43046897a6340f83"
+            "app": "21be2678fdba3764b042265c42935b7ea784ded378bdff45becc4ccfd44eb74e"
           }
         },
         {
@@ -3008,9 +3056,9 @@
             "trust": null
           },
           "evidence": {
-            "laneCode": "2feed552c63a2a238a8f990dc65cace90581f4cf6569fef17e31d7dbaa1a55f9",
+            "laneCode": "73f8493e13d73d83427e42e4d617ba95c36083e5326cdbc1a73e98ef7ff6cfc1",
             "referenceData": "ef62393c0aa78e268fa0f474c8abab204a147d2c7b257715fa24b718cb5dfdcb",
-            "app": "5c13deb65d178117c80f3c7237962632f62e0cf31437030e43046897a6340f83"
+            "app": "21be2678fdba3764b042265c42935b7ea784ded378bdff45becc4ccfd44eb74e"
           }
         }
       ],
