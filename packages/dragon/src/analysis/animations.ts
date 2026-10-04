@@ -220,6 +220,8 @@ export type AnimationInput = {
 };
 
 const KIND_LABEL = (k: AnimationKind): string => (k.kind === 'length' ? `length (${k.range})` : k.kind);
+// The spec's ANIM-p row: opacity and transform are admitted by ANIM-b2, so their refusals name that package.
+const PACKAGE_OF = (p: string): string => (p === 'opacity' || p === 'transform' ? 'ANIM-b2' : 'ANIM-p');
 
 /** Walks a resolved tree by address. */
 function byAddress(root: ResolvedElement): Map<string, ResolvedElement> {
@@ -280,7 +282,7 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
       for (const v of b.values) {
         const kind = animationKind(v.property);
         feature(`animatable:${v.property}`, v.span);
-        if (!admitted(kind)) once(`kfp|${v.property}|${v.span.start}`, refuse(v.valueSpan, `${v.property} in @keyframes ${rule.name} cannot be animated yet: Dragon has no ${KIND_LABEL(kind)} animation writer (package ANIM-p)`));
+        if (!admitted(kind)) once(`kfp|${v.property}|${v.span.start}`, refuse(v.valueSpan, `${v.property} in @keyframes ${rule.name} cannot be animated yet: Dragon has no ${KIND_LABEL(kind)} animation writer (package ${PACKAGE_OF(v.property)})`));
       }
     }
   }
@@ -342,7 +344,7 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           animated.add(`${address}|${p}|transition`);
           feature(`animatable:${p}`, span);
           if (!admitted(kind)) {
-            once(`tp|${p}|${span.start}`, refuse(span, `${p} cannot be animated yet: a transition on ${address} would start between two reachable states, and Dragon has no ${KIND_LABEL(kind)} animation writer (package ANIM-p)`));
+            once(`tp|${p}|${span.start}`, refuse(span, `${p} cannot be animated yet: a transition on ${address} would start between two reachable states, and Dragon has no ${KIND_LABEL(kind)} animation writer (package ${PACKAGE_OF(p)})`));
             continue;
           }
           const cc = (v: AnimValue): boolean => v.kind === 'keyword' && v.value === 'currentcolor';

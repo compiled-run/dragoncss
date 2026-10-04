@@ -7,6 +7,9 @@ export const ALREADY_REVIEWED = 'All code in this push has already been reviewed
 export const NO_CODE_REVIEWED = 'No code objects were reviewed.';
 // Owner directive (2026-10-02): a commit Macroscope skips for its monthly spending limit may land unreviewed.
 export const SPENDING_LIMIT = 'Monthly spending limit reached (workspace setting).';
+// The CI check is the one job of this workflow; a job without `name:` reports its check run under its job id.
+export const CI_WORKFLOW = '.github/workflows/ci.yml';
+export const CI_CHECK = 'checks';
 
 export type CheckRun = { name: string; status: string; conclusion: string | null; html_url: string; output?: { title: string | null } };
 export type ReviewComment = {
@@ -137,6 +140,31 @@ export const vouchForSkip = (run: CheckRun, head: PatchId, earlier: Earlier[]): 
   return { ok: false, reason: `head patch id ${head.id} over ${scope} matches no reviewed earlier commit (${seen.join(', ')})` };
 };
 
+// The job ids under `jobs:` in a workflow file; a job with a `name:` fails, since its check run would carry that name instead.
+export const ciJobIds = (yml: string): string[] => {
+  const lines = yml.split('\n');
+  const start = lines.indexOf('jobs:');
+  if (start < 0) return fail(`${CI_WORKFLOW} (no top-level jobs:)`, yml.slice(0, 200));
+  const ids: string[] = [];
+  for (const line of lines.slice(start + 1)) {
+    if (/^\S/.test(line)) break;
+    const job = /^  ([A-Za-z0-9_-]+):\s*$/.exec(line);
+    if (job) ids.push(job[1]!);
+    else if (/^    name:/.test(line)) return fail(`${CI_WORKFLOW} job ${ids.at(-1)} (has a name:)`, line);
+  }
+  return ids;
+};
+
+// `gh pr view --json headRefOid,mergeable`. GitHub runs no pull_request workflow on a PR it sees as conflicting.
+export type Mergeable = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
+export type PrHead = { sha: string; mergeable: Mergeable };
+export const parsePrHead = (v: unknown): PrHead => {
+  if (!isObject(v)) return fail('pr head', v);
+  const mergeable = str(v, 'mergeable', 'pr');
+  if (mergeable !== 'MERGEABLE' && mergeable !== 'CONFLICTING' && mergeable !== 'UNKNOWN') return fail('pr mergeable', v);
+  return { sha: checkSha(v.headRefOid, 'PR head sha'), mergeable };
+};
+
 // `gh pr view --json isCrossRepository`. A fork PR is reviewed with the base branch's ignore file, not its own, so it is never vouched for.
 export const parseCrossRepository = (v: unknown): boolean =>
   isObject(v) && typeof v.isCrossRepository === 'boolean' ? v.isCrossRepository : fail('pr isCrossRepository', v);
@@ -195,6 +223,7 @@ export const spendingLimitWaived = (runs: CheckRun[]): boolean => {
 export type Verdict = 'pending' | 'passed' | 'failed';
 export const verdictOf = (run: CheckRun, vouches: ReadonlyMap<string, Vouch>, waived = false): Verdict => {
   if (run.status !== 'completed') return 'pending';
+  if (run.name === CI_CHECK) return run.conclusion === 'success' ? 'passed' : 'failed';
   if (run.name === CORRECTNESS) {
     if (waived && limitSkipped(run)) return 'passed';
     return run.conclusion === 'success' || vouches.get(run.html_url)?.ok === true ? 'passed' : 'failed';
@@ -202,20 +231,30 @@ export const verdictOf = (run: CheckRun, vouches: ReadonlyMap<string, Vouch>, wa
   return ['success', 'neutral', 'skipped'].includes(run.conclusion ?? '') ? 'passed' : 'failed';
 };
 
-// Macroscope's correctness review starts only after CI passes, so a green CI alone is not "done"; a failed check ends the wait.
-export const settled = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>): boolean => {
+// Macroscope's correctness review starts only after CI passes, so a green CI alone is not "done"; a failed check or a
+// conflicting PR ends the wait. A missing CI run is waited for, since GitHub may not have queued it yet.
+export const settled = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>, head: PrHead): boolean => {
   const waived = spendingLimitWaived(runs);
   return (
+    head.mergeable === 'CONFLICTING' ||
     runs.some((r) => verdictOf(r, vouches, waived) === 'failed') ||
-    (runs.length > 0 && runs.every((r) => verdictOf(r, vouches, waived) !== 'pending') && runs.some((r) => r.name === CORRECTNESS))
+    (runs.every((r) => verdictOf(r, vouches, waived) !== 'pending') && runs.some((r) => r.name === CORRECTNESS) && runs.some((r) => r.name === CI_CHECK))
   );
 };
 
-export const outcome = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>): { pending: string[]; failed: string[]; unreviewed: boolean } => {
+// The final verdict: the CI run must exist on the head and succeed, with or without the spending-limit waiver.
+export const outcome = (
+  runs: CheckRun[],
+  vouches: ReadonlyMap<string, Vouch>,
+  head: PrHead,
+): { pending: string[]; failed: string[]; unreviewed: boolean } => {
   const waived = spendingLimitWaived(runs);
   const pending = runs.filter((r) => verdictOf(r, vouches, waived) === 'pending').map((r) => r.name);
   if (!runs.some((r) => r.name === CORRECTNESS)) pending.push(CORRECTNESS);
-  return { pending, failed: runs.filter((r) => verdictOf(r, vouches, waived) === 'failed').map((r) => r.name), unreviewed: waived };
+  const failed = runs.filter((r) => verdictOf(r, vouches, waived) === 'failed').map((r) => r.name);
+  if (!runs.some((r) => r.name === CI_CHECK)) failed.push(`no CI run on ${head.sha}: the PR may be conflicting with master`);
+  if (head.mergeable === 'CONFLICTING') failed.push(`PR head ${head.sha} is CONFLICTING with its base`);
+  return { pending, failed, unreviewed: waived };
 };
 
 // pr:review's exit: 0 only with nothing pending, nothing failed and no unanswered finding (from any commit of the PR).

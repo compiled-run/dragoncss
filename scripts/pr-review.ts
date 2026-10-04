@@ -4,7 +4,6 @@ import { execFileSync } from 'node:child_process';
 import {
   CORRECTNESS,
   type CheckRun,
-  checkSha,
   correctnessSucceeded,
   type Earlier,
   type Git,
@@ -12,6 +11,8 @@ import {
   ignoreAt,
   isVouchableSkip,
   outcome,
+  parsePrHead,
+  type PrHead,
   parseCheckRunPages,
   parseCrossRepository,
   parsePrCommits,
@@ -45,9 +46,11 @@ const pr = args.find((a) => /^\d+$/.test(a)) ?? gh(['pr', 'view', '--json', 'num
 if (!/^\d+$/.test(pr)) throw new Error(`pr-review: not a PR number: ${JSON.stringify(pr)}`);
 const repo = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']).trim();
 // The head is re-read on every poll, so a push during --wait is judged on its own checks, never on the previous commit's.
+let head: PrHead = { sha: '', mergeable: 'UNKNOWN' };
 let sha = '';
 const checkRuns = (): CheckRun[] => {
-  sha = checkSha(gh(['pr', 'view', pr, '--json', 'headRefOid', '--jq', '.headRefOid']).trim(), 'PR head sha');
+  head = parsePrHead(JSON.parse(gh(['pr', 'view', pr, '--json', 'headRefOid,mergeable'])));
+  sha = head.sha;
   return runsOf(sha);
 };
 const runsOf = (commit: string): CheckRun[] => parseCheckRunPages(ghJson(`repos/${repo}/commits/${commit}/check-runs?per_page=100`));
@@ -119,7 +122,7 @@ const judge = (rs: CheckRun[]): Map<string, Vouch> => {
 
 let runs = checkRuns();
 const deadline = Date.now() + 45 * 60_000;
-while (wait && !settled(runs, judge(runs)) && Date.now() < deadline) {
+while (wait && !settled(runs, judge(runs), head) && Date.now() < deadline) {
   await new Promise((resolve) => setTimeout(resolve, 30_000));
   runs = checkRuns();
 }
@@ -143,7 +146,7 @@ const open = comments.filter((c) => c.in_reply_to_id === undefined && isMacrosco
 console.log(`\nUnanswered Macroscope findings: ${open.length}`);
 for (const c of open) console.log(`\n--- ${c.path}:${c.line ?? '?'} (comment ${c.id})\n${c.html_url}\n${c.body.trim()}`);
 
-const result = outcome(runs, vouches);
+const result = outcome(runs, vouches, head);
 const { pending, failed } = result;
 if (result.unreviewed) {
   console.log(`\n!!! UNREVIEWED: Macroscope spending limit. Every Macroscope check of ${sha} was skipped with "${SPENDING_LIMIT}"; the owner's`);

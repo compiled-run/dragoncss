@@ -6,6 +6,8 @@ import type { Diagnostic } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, POINTER_LONGHANDS, PROPERTY_ASPECTS } from '../src/css/properties.ts';
+import { GRID_LONGHANDS } from '../src/css/properties/grid.ts';
+import { TRANSFORM_LONGHANDS } from '../src/css/properties/transform.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { ACTIVATION_TAGS, hitFacts } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
@@ -20,9 +22,10 @@ function parse(value: string): Diagnostic[] {
 }
 
 describe('pointer-events: registry', () => {
-  it('is the last longhand, inherited, with no layout or paint aspect, and webref\'s grammar', () => {
+  it('is the longhand right after grid (the paint families follow it), inherited, with no layout or paint aspect, and webref\'s grammar', () => {
     expect([...POINTER_LONGHANDS]).toEqual(['pointer-events']);
-    expect(LONGHANDS[LONGHANDS.length - 1]).toBe('pointer-events');
+    expect(LONGHANDS[LONGHANDS.indexOf('pointer-events') - 1]).toBe(GRID_LONGHANDS[GRID_LONGHANDS.length - 1]);
+    expect(LONGHANDS.slice(LONGHANDS.indexOf('pointer-events') + 1)).toEqual([...TRANSFORM_LONGHANDS]);
     expect(INHERITED.has('pointer-events')).toBe(true);
     expect(PROPERTY_ASPECTS['pointer-events']).toEqual({ layout: false, paint: false });
     expect(grammar['pointer-events']?.initial).toBe('auto');
