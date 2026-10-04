@@ -190,7 +190,7 @@ describe('CI, base, worktree and quiet decisions', () => {
     expect(isQuiet(0, 20)).toBe(false);
   });
 
-  it('holds the quiet request while it waits, and drops it when the wait ends, quiet or not', () => {
+  it('holds the quiet request while it waits, and drops it when the wait ends unless asked to hold it through the rerun', () => {
     const path = join(tempDir(), 'dragon-train-quiet');
     let clock = 0;
     const held: boolean[] = [];
@@ -212,6 +212,27 @@ describe('CI, base, worktree and quiet decisions', () => {
     clock = 0;
     expect(wait(Number.POSITIVE_INFINITY, 5000)).toBe(false);
     expect(clock).toBe(5000);
+    expect(existsSync(path)).toBe(false);
+    // With hold (the driver's rerun): a quiet result keeps the request held so nothing starts beside the rerun; the caller
+    // releases it. A failed wait still drops it.
+    const holding = (quietAt: number, ceilingMs: number) =>
+      waitForQuiet({
+        quiet: () => clock >= quietAt,
+        request: () => requestQuiet(path, 4242),
+        release: () => releaseQuiet(path, 4242),
+        sleep: (ms) => (clock += ms),
+        now: () => clock,
+        ceilingMs,
+        pollMs: 1000,
+        hold: true,
+      });
+    clock = 0;
+    expect(holding(2000, 10_000)).toBe(true);
+    expect(readFileSync(path, 'utf8')).toBe('4242');
+    releaseQuiet(path, 4242);
+    expect(existsSync(path)).toBe(false);
+    clock = 0;
+    expect(holding(Number.POSITIVE_INFINITY, 3000)).toBe(false);
     expect(existsSync(path)).toBe(false);
     // A failure while waiting drops it too.
     expect(() => wait(0, 5000, () => { throw new Error('readdir failed'); })).toThrow('readdir failed');
