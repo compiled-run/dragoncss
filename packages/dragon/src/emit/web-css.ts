@@ -58,7 +58,7 @@ function cssNumber(n: number): string {
   return exp < 0 ? `${sign}0.${'0'.repeat(-exp - 1)}${digits}` : `${sign}${digits}${'0'.repeat(exp - frac.length)}`;
 }
 
-function valueText(v: CssValue): string {
+export function valueText(v: CssValue): string {
   switch (v.kind) {
     case 'keyword':
       return v.value;
@@ -108,13 +108,21 @@ export type WebFontContext = {
   readonly prelude: (usedPinned: ReadonlySet<string>) => string;
 };
 
+/** T065 R15: an element's resolved transition and animation lines per case, and the used @keyframes (lower/anim-program.ts). */
+export type WebAnimations = {
+  readonly lines: (caseKey: string, address: string) => readonly string[];
+  /** The addresses that declare an animation longhand in a case: a colour they animate reaches inheriting descendants (R9). */
+  readonly sources: (caseKey: string) => ReadonlySet<string>;
+  readonly keyframes: string;
+};
+
 /**
  * One class per resolved variant: an element address gets a new class for each distinct resolved style across the cases.
  * Deterministic: classes are numbered in case order, then element preorder; declarations follow LONGHANDS order. fonts: null
  * when the project declares and maps no font, which leaves the output as it was before fonts. cases are resolved in the first
  * @media band; each later band (MQ-a) gets one @media block with the declarations that differ from it, per class.
  */
-export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = []): WebEmit {
+export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null): WebEmit {
   const usedPinned = new Set<string>();
   const familyText = (v: CssValue): string => {
     const text = familyListText(v);
@@ -124,8 +132,14 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     for (const r of rewritten.resolutions) if (r.kind === 'pinned') usedPinned.add(r.family);
     return fonts.rewrite ? rewritten.value : valueText(v);
   };
-  const declLine = (el: ResolvedElement, p: (typeof LONGHANDS)[number]): string => {
-    const v = (el.props.get(p) as ResolvedValue).value;
+  const declLine = (el: ResolvedElement, p: (typeof LONGHANDS)[number], underSource = false): string => {
+    const r = el.props.get(p) as ResolvedValue;
+    // T065 R9: under an element that may animate its colour, an inherited colour stays inherited, so it follows each frame (the
+    // static value is the same: the parent's resolved colour).
+    if (p === 'color' && underSource && r.origin === 'inherited') return '  color: inherit;';
+    const v = r.value;
+    // A folded order calculation that is not a whole number stays a calculation, which Chrome rounds as the engine does.
+    if (p === 'order' && v.kind === 'number' && !Number.isInteger(v.value)) return `  ${p}: calc(${valueText(v)});`;
     return `  ${p}: ${p === 'font-family' ? familyText(v) : valueText(v)};`;
   };
   const classOf = new Map<string, Map<string, string>>();
@@ -140,21 +154,25 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       if (other === undefined) throw new Error(`case ${c.key} is not resolved in the band ${b.condition}`);
       return byAddress(other.root);
     });
+    const sources = animations === null ? new Set<string>() : animations.sources(c.key);
     // Every longhand whose value in a band differs from the first band's (an inset left out there is auto, its value).
-    const bandDiffs = (el: ResolvedElement): string[][] =>
+    const bandDiffs = (el: ResolvedElement, under: boolean): string[][] =>
       inBands.map((m) => {
         const other = m.get(el.element.address);
         if (other === undefined) throw new Error(`${el.element.address} is not resolved in every band`);
-        return LONGHANDS.map((p) => declLine(other, p)).filter((line, k) => line !== declLine(el, LONGHANDS[k] as (typeof LONGHANDS)[number]));
+        return LONGHANDS.map((p) => declLine(other, p, under)).filter((line, k) => line !== declLine(el, LONGHANDS[k] as (typeof LONGHANDS)[number], under));
       });
-    const visit = (el: ResolvedElement): void => {
+    const visit = (el: ResolvedElement, under: boolean): void => {
       const insets = writesInsets(el);
-      const decls = LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => declLine(el, p));
-      const diffs = bandDiffs(el);
+      const decls = LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => declLine(el, p, under));
+      // T065 R15: an element's transition and animation lists, resolved per element and state.
+      if (animations !== null) decls.push(...animations.lines(c.key, el.element.address));
+      const diffs = bandDiffs(el, under);
+      const below = under || sources.has(el.element.address);
       // FORM-a A4: a range's track and thumb are styled through their pseudo-elements on the input's class (in every band); its
       // container takes only UA and inherited values, which the input's own rules reproduce.
       const parts = rangePartOf(el)?.part === null
-        ? rangeStyledParts(el).map((p) => ({ pseudo: p.pseudo, decls: LONGHANDS.filter((q) => writesInsets(p.el) || !INSET_LONGHANDS.includes(q)).map((q) => declLine(p.el, q)), diffs: bandDiffs(p.el) }))
+        ? rangeStyledParts(el).map((p) => ({ pseudo: p.pseudo, decls: LONGHANDS.filter((q) => writesInsets(p.el) || !INSET_LONGHANDS.includes(q)).map((q) => declLine(p.el, q, below)), diffs: bandDiffs(p.el, below) }))
         : [];
       const variant = `${el.element.address}\u0000${decls.join('\n')}${diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(diffs)}` : ''}${parts.map((p) => `\u0000${p.pseudo}\u0000${p.decls.join('\n')}\u0000${JSON.stringify(p.diffs)}`).join('')}`;
       let cls = variants.get(variant);
@@ -173,12 +191,13 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         }
       }
       map.set(el.element.address, cls);
-      for (const ch of el.children) if (ch.kind === 'element' && (rangePartOf(ch)?.part ?? null) === null) visit(ch);
+      for (const ch of el.children) if (ch.kind === 'element' && (rangePartOf(ch)?.part ?? null) === null) visit(ch, below);
     };
-    visit(c.root);
+    visit(c.root, false);
   }
   const blocks = bands.flatMap((b, k) => ((bandRules[k] as string[]).length === 0 ? [] : [`@media ${b.condition} {\n${(bandRules[k] as string[]).join('\n')}\n}`]));
   const prelude = fonts === null ? '' : fonts.prelude(usedPinned);
-  const text = `/* Generated by Dragon from compilation ${digest}. Do not edit. */\n${prelude === '' ? '' : `${prelude}\n`}${[...rules, ...blocks].join('\n')}\n`;
+  const keyframes = animations === null || animations.keyframes === '' ? [] : [animations.keyframes];
+  const text = `/* Generated by Dragon from compilation ${digest}. Do not edit. */\n${prelude === '' ? '' : `${prelude}\n`}${[...rules, ...blocks, ...keyframes].join('\n')}\n`;
   return { files: [{ path: WEB_CSS_PATH, text }], classOf };
 }

@@ -9,6 +9,7 @@ import type { DeviceRecord, DeviceSpec } from '../src/device-run.ts';
 import type { SettleState } from '../src/device-run.ts';
 import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, isGlyphPlant, judgeGlyphPlant, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from 'dragon';
+import { paintPlants } from '../../dragon/src/emit/paint/registry.ts';
 import { GATE_GLYPH_POSITION_DEVICE_PX } from '../src/compare.ts';
 import type { GlyphPosition } from '../src/native-compare.ts';
 import { layoutCaseIds } from '../src/targets.ts';
@@ -133,11 +134,15 @@ describe('raster plants judged against the clean run (T093 ruling A)', () => {
   const ok = { hostErrors: [], frames: 0, lines: 0 };
   it('the constants and one axis per plant', () => {
     expect([PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, PLANT_MARGIN_DEVICE_PX]).toEqual([1, 0.05, 0.2]);
-    // REPL-a: image-offset-1 is the image paint module's raster plant, a paint plant judged on the drawn replaced cases.
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'image-offset-1']);
+    // PIN-DERIVE: the plant lists are floored in dragon test/paint-seams.test.ts; here the glyph plants lead, and every paint
+    // module plant is a support plant with its case list and rule.
+    const paint = paintPlants().map((p) => p.name);
+    expect(SUPPORT_PLANTS.slice(0, 2 + paint.length)).toEqual(['glyph-offset-1', 'glyph-offset-y-1', ...paint]);
     expect(SUPPORT_PLANTS.filter(isGlyphPlant)).toEqual(['glyph-offset-1', 'glyph-offset-y-1']);
-    expect(Object.keys(PLANT_CASES)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'image-offset-1']);
-    expect(Object.keys(PLANT_RULES)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'image-offset-1']);
+    expect(paint).toEqual(expect.arrayContaining(['dash-phase-1', 'dash-gap-unfitted']));
+    expect(Object.keys(PLANT_CASES)).toEqual(paint);
+    expect(Object.keys(PLANT_RULES)).toEqual(paint);
+    // REPL-a: image-offset-1, the image paint module's raster plant, is judged on image-flat and edge rules, never border rules.
     expect(PLANT_RULES['image-offset-1'].test('image-flat:a1:0') && PLANT_RULES['image-offset-1'].test('edge:a1:top') && !PLANT_RULES['image-offset-1'].test('border:a1:top')).toBe(true);
     expect(PLANT_AXIS).toEqual({ 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' });
   });

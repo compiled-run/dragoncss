@@ -495,6 +495,13 @@ type RtOpJson = { readonly fn: string; readonly x: RtLengthJson; readonly y: RtL
 type RtValueJson = { readonly kind: string; readonly number: number; readonly length: RtLengthJson; readonly color: { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number }; readonly ops: readonly RtOpJson[] };
 type RtCaseJson = { readonly from: RtValueJson; readonly to: RtValueJson; readonly effectEasing: RtEasingJson; readonly keyframeEasing: RtEasingJson };
 
+type RtSecondsJson = { readonly delay: number; readonly duration: number; readonly iterations: number | 'Infinity'; readonly direction: string; readonly fill: string; readonly easing: RtEasingJson };
+type RtRuleJson = readonly { readonly offset: number; readonly easing: RtEasingJson | null; readonly value: { readonly v: RtValueJson } | null }[];
+type RtStepsJson = readonly (readonly [string, number])[];
+type RtKeyframeCaseJson = { readonly range: string; readonly underlying: { readonly v: RtValueJson }; readonly rule: RtRuleJson; readonly timing: RtSecondsJson };
+type RtTransitionCaseJson = { readonly range: string; readonly states: readonly { readonly value: { readonly v: RtValueJson }; readonly listing: { readonly mode: string; readonly delay: number; readonly duration: number; readonly easing: RtEasingJson } }[]; readonly steps: RtStepsJson };
+type RtAnimationCaseJson = { readonly range: string; readonly rules: readonly { readonly name: string; readonly rule: RtRuleJson }[]; readonly states: readonly { readonly base: { readonly v: RtValueJson }; readonly entries: readonly { readonly name: string; readonly paused: boolean; readonly timing: RtSecondsJson }[] }[]; readonly steps: RtStepsJson };
+
 const rtRead = <T>(name: string): T => JSON.parse(readFileSync(join(RT_VECTORS_DIR, name), 'utf8')) as T;
 /** The input a record's index names; an index outside the file's inputs is a corrupt vector file, never a skipped record. */
 function rtAt<T>(list: readonly T[], i: number, file: string): T {
@@ -511,6 +518,10 @@ const rtValueLine = (v: RtValueJson): unknown[] => [
   v.kind, bitsHex(v.number), rtLengthLine(v.length), [bitsHex(v.color.r), bitsHex(v.color.g), bitsHex(v.color.b), bitsHex(v.color.alpha)],
   v.ops.map((o) => [o.fn, rtLengthLine(o.x), rtLengthLine(o.y), bitsHex(o.angle), bitsHex(o.sx), bitsHex(o.sy)]),
 ];
+
+const rtSecondsLine = (t: RtSecondsJson): unknown[] => [bitsHex(t.delay), bitsHex(t.duration), bitsHex(t.iterations === 'Infinity' ? Number.POSITIVE_INFINITY : t.iterations), t.direction, t.fill, rtEasingLine(t.easing)];
+const rtRuleLine = (r: RtRuleJson): unknown[] => r.map((k) => [bitsHex(k.offset), k.easing === null ? null : rtEasingLine(k.easing), k.value === null ? null : rtValueLine(k.value.v)]);
+const rtStepsLine = (s: RtStepsJson): unknown[] => s.map(([k, n]) => [k, bitsHex(n)]);
 
 /**
  * The rt suite: one library-mode line per rt vector record, in file order: timing.json, easing.json, hold.json, then interp.json.
@@ -530,7 +541,65 @@ export function rtCases(read: <T>(name: string) => T = rtRead): string[] {
     const c = rtAt(interp.cases, i, 'interp.json');
     out.push(JSON.stringify(['rt-interp', rtValueLine(c.from), rtValueLine(c.to), rtEasingLine(c.effectEasing), rtEasingLine(c.keyframeEasing), bitsHex(t), bitsHex(interp.box.width), bitsHex(interp.box.height)]));
   }
+  // ANIM-b (T065): advance.json, keyframes.json, transitions.json, then animations.json; serialisation uses the keyframes box.
+  const advance = read<{ sequences: number[][]; records: [number, unknown][] }>('advance.json');
+  for (const [i] of advance.records) out.push(JSON.stringify(['rt-advance', rtAt(advance.sequences, i, 'advance.json').map(bitsHex)]));
+  const keyframes = read<{ box: { width: number; height: number }; cases: RtKeyframeCaseJson[]; records: [number, number, string | null, string][] }>('keyframes.json');
+  const box = [bitsHex(keyframes.box.width), bitsHex(keyframes.box.height)];
+  for (const [i, t] of keyframes.records) {
+    const c = rtAt(keyframes.cases, i, 'keyframes.json');
+    out.push(JSON.stringify(['rt-keyframes', c.range, rtValueLine(c.underlying.v), rtRuleLine(c.rule), rtSecondsLine(c.timing), bitsHex(t), ...box]));
+  }
+  const transitions = read<{ cases: RtTransitionCaseJson[]; records: [number, unknown][] }>('transitions.json');
+  for (const [i] of transitions.records) {
+    const c = rtAt(transitions.cases, i, 'transitions.json');
+    const states = c.states.map((s) => [rtValueLine(s.value.v), [s.listing.mode, bitsHex(s.listing.delay), bitsHex(s.listing.duration), rtEasingLine(s.listing.easing)]]);
+    out.push(JSON.stringify(['rt-transitions', c.range, states, rtStepsLine(c.steps), ...box]));
+  }
+  const animations = read<{ cases: RtAnimationCaseJson[]; records: [number, unknown][] }>('animations.json');
+  for (const [i] of animations.records) {
+    const c = rtAt(animations.cases, i, 'animations.json');
+    const names = c.rules.map((r) => r.name);
+    const states = c.states.map((s) => [rtValueLine(s.base.v), s.entries.map((e) => [e.name, names.includes(e.name), e.paused, rtSecondsLine(e.timing)])]);
+    out.push(JSON.stringify(['rt-animations', c.range, c.rules.map((r) => [r.name, rtRuleLine(r.rule)]), states, rtStepsLine(c.steps), ...box]));
+  }
   return out;
+}
+
+// ---------------------------------------------------------------- hit suite (SELD-R1b, T047 RT-9)
+
+/** The hit facts of every layout case (packages/parity parity:hit-capture -- --vectors), keyed by case id. */
+export const HIT_FACTS = join(RT_VECTORS_DIR, 'hit/facts.json');
+
+/**
+ * The hit suite: one library-mode line per layout vector, top-level and at every DPR, in directory then file-name order: the
+ * vector's input and its case's hit facts. The TypeScript harness's answers are the expected results; Swift and Kotlin must equal
+ * them, and packages/parity hit-report proves the TypeScript hit test equals Chrome at DPR 1.
+ */
+export function hitCases(): string[] {
+  const facts = (JSON.parse(readFileSync(HIT_FACTS, 'utf8')) as { cases: Record<string, unknown> }).cases;
+  const out: string[] = [];
+  for (const dir of ['', 'dpr-2', 'dpr-3', 'dpr-2.625']) {
+    const at = dir === '' ? VECTORS_DIR : join(VECTORS_DIR, dir);
+    for (const file of readdirSync(at).filter((f) => f.endsWith('.json')).sort()) {
+      const id = file.slice(0, -'.json'.length);
+      const f = facts[id];
+      if (f === undefined) throw new Error(`no hit facts for vector ${dir === '' ? '' : `${dir}/`}${file}; run pnpm run parity:hit-capture -- --vectors`);
+      const v = JSON.parse(readFileSync(join(at, file), 'utf8')) as { platform: string; input: unknown };
+      out.push(JSON.stringify(['rt-hit', v.platform, v.input, f]));
+    }
+  }
+  if (out.length === 0) throw new Error('the hit suite has no cases');
+  return out;
+}
+
+/** The hit suite's expected results; a line the TypeScript reference threw on or refused fails the build, not the natives. */
+export function hitExpected(lines: readonly string[]): string[] {
+  return lines.map((line, i) => {
+    const r = runLibraryCase(line);
+    if (!r.startsWith('["ok",')) throw new Error(`hit case ${i}: the TypeScript reference answered ${r.slice(0, 200)}, not a result`);
+    return r;
+  });
 }
 
 export function buildCorpus(): Corpus {
@@ -540,6 +609,7 @@ export function buildCorpus(): Corpus {
   const engine = engineCases(vectors);
   const library = libraryCases();
   const rt = rtCases();
+  const hit = hitCases();
   const suites: Suite[] = [
     { name: 'vectors', mode: 'engine', lines: vLines, expected: vLines.map(runEngineCase) },
     { name: 'units', mode: 'units', lines: units, expected: units.map(runUnitsCase) },
@@ -547,6 +617,8 @@ export function buildCorpus(): Corpus {
     { name: 'library', mode: 'library', lines: library, expected: library.map(runLibraryCase) },
     // ANIM-a2: the rt vectors (timing, easing, hold and interpolation), after the P1 suites.
     { name: 'rt', mode: 'library', lines: rt, expected: rt.map(runLibraryCase) },
+    // SELD-R1b: the hit table, grid and answers of every layout vector, after rt.
+    { name: 'hit', mode: 'library', lines: hit, expected: hitExpected(hit) },
   ];
   const d = digestsOf(suites);
   return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: d.digest, digests: d.digests };

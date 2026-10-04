@@ -256,3 +256,55 @@ export type { ScriptCase, ScriptStep, StateEmit, WebClassTable, WebStateProgram 
 export { emitStatePrograms, STATE_RUNTIME_VERSION, StateEmitError, typedSetters, valueKey, webStateModule, webStateProgram } from './emit/runtime/state.ts';
 export { CLOCK_RUNTIME_VERSION, ClockError, VirtualClock } from './emit/runtime/clock.ts';
 export { RUNTIME_MODULES } from './emit/runtime/index.ts';
+
+// SELD-R1b (notes/T047-runtime-spec.md RT-9): the hit table and each element's hit facts.
+export type { HitFact } from './emit/runtime/hit.ts';
+export { HIT_FACTS_VERSION } from './emit/runtime/hit.ts';
+
+/** The tags whose elements carry an activation handler (RT-9 tap dispatch): button, and a with an href (HTML §4.6.1). */
+export const ACTIVATION_TAGS: readonly string[] = ['a', 'button'];
+const activates = (tag: string, attributes: ReadonlyMap<string, string>): boolean => tag === 'button' || (tag === 'a' && attributes.has('href'));
+
+/** Every element's hit facts in one case: computed pointer-events, whether it was inherited, and whether it has a handler. */
+export function hitFacts(compiled: object, assignment: Assignment): ReadonlyMap<string, import('./emit/runtime/hit.ts').HitFact> | null {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string' || c.resolved === null) return null;
+  const out = new Map<string, import('./emit/runtime/hit.ts').HitFact>();
+  const walk = (el: ResolvedElement): void => {
+    const v = el.props.get('pointer-events');
+    if (v === undefined || v.value.kind !== 'keyword' || (v.value.value !== 'auto' && v.value.value !== 'none')) throw new Error(`${el.element.address}: pointer-events did not resolve to auto or none`);
+    out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes) });
+    for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+  };
+  walk(c.resolved);
+  return out;
+}
+
+// T065 ANIM-b1: the animation tables of a compile and the runtime animator's TypeScript reference.
+export type { AnimationAnalysis, AnimValue } from './analysis/animations.ts';
+export type { AnimProgram, SlotListing, TransitionSlot } from './lower/anim-program.ts';
+export { ANIM_PROGRAM_VERSION } from './lower/anim-program.ts';
+import { lowerAnimProgram } from './lower/anim-program.ts';
+export { lowerAnimProgram };
+// T065: the TypeScript reference animator (packages/parity/src/anim-cases.ts) reads these.
+export type { EasingValue } from './css/properties/animation.ts';
+export { animationKind } from './css/animation-kinds.ts';
+
+/** The animation tables of one state program: its cases' resolved trees in the program's assignment order. */
+export function animProgramOf(compiled: object, assignments: readonly Assignment[]): import('./lower/anim-program.ts').AnimProgram | null {
+  const record = internalRecord(compiled);
+  if (record === undefined || record.animation === null) return null;
+  const cases = assignments.map((a) => {
+    const c = caseOf(compiled, a);
+    if (typeof c === 'string' || c.resolved === null) throw new Error(`no resolved case for the assignment ${JSON.stringify(a)}`);
+    return { key: c.key, resolved: c.resolved };
+  });
+  return lowerAnimProgram(record.animation, cases);
+}
+
+/** The animation features a compile uses (the support gate's keys in the animation context), sorted. */
+export function animationFeatures(compiled: object): readonly string[] {
+  const record = internalRecord(compiled);
+  if (record === undefined || record.animation === null) return [];
+  return [...new Set(record.animation.features.map((f) => f.feature))].sort();
+}

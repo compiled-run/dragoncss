@@ -2,7 +2,8 @@
 // with the TypeScript reference, byte for byte (every double is its IEEE bit pattern).
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Corpus, Split, Suite } from './corpus.ts';
 import { split } from './corpus.ts';
@@ -37,8 +38,18 @@ function run(cmd: string, args: readonly string[], env?: NodeJS.ProcessEnv): { o
   return { ok: r.status === 0 && r.error === undefined, out: `${r.stdout ?? ''}${r.stderr ?? ''}` };
 }
 
+/** Runs use with a fresh TMPDIR, removed afterwards: swiftc leaves an empty TemporaryDirectory.* there on --version and -typecheck. */
+export function withToolTmp<T>(use: (env: NodeJS.ProcessEnv) => T): T {
+  const dir = mkdtempSync(join(tmpdir(), 'dragon-swiftc-'));
+  try {
+    return use({ ...process.env, TMPDIR: dir });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 export function swiftTool(): SwiftTool | null {
-  const v = run('swiftc', ['--version']);
+  const v = withToolTmp((env) => run('swiftc', ['--version'], env));
   if (!v.ok) return null;
   return { swiftc: 'swiftc', version: (v.out.split('\n').find((l) => l.includes('Swift version')) ?? v.out).trim() };
 }
@@ -114,10 +125,12 @@ export function buildSwift(tool: SwiftTool, files: Files): { binary: string; sec
   const t = Date.now();
   // The engine module must compile on its own (no Foundation, nothing from the harness), as it does in the SwiftPM package.
   const engine = srcs.filter((f) => f.includes('/Sources/DragonLayout/'));
-  const alone = run(tool.swiftc, ['-typecheck', '-parse-as-library', '-module-name', 'DragonLayout', ...engine]);
-  if (!alone.ok) failBuild(work, `swiftc -typecheck of the engine module failed:\n${alone.out.slice(0, 4000)}`);
-  const r = run(tool.swiftc, [...SWIFT_FLAGS, ...srcs, '-o', join(work, 'harness')]);
-  if (!r.ok) failBuild(work, `swiftc failed:\n${r.out.slice(0, 4000)}`);
+  withToolTmp((env) => {
+    const alone = run(tool.swiftc, ['-typecheck', '-parse-as-library', '-module-name', 'DragonLayout', ...engine], env);
+    if (!alone.ok) failBuild(work, `swiftc -typecheck of the engine module failed:\n${alone.out.slice(0, 4000)}`);
+    const r = run(tool.swiftc, [...SWIFT_FLAGS, ...srcs, '-o', join(work, 'harness')], env);
+    if (!r.ok) failBuild(work, `swiftc failed:\n${r.out.slice(0, 4000)}`);
+  });
   publish(work, dir);
   return { binary, seconds: (Date.now() - t) / 1000, cached: false };
 }

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/properties/grid.ts';
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
+import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 
 type WebrefEntry = {
   name: string;
@@ -41,6 +42,11 @@ const SUBSET = [
 
   // Grid (css-grid-2), after the writing-mode family.
   ...GRID_LONGHANDS, ...GRID_SHORTHANDS,
+
+  // SELD-R1b: pointer-events, after grid.
+  'pointer-events',
+  // Transforms (PNT2), after grid, as LONGHANDS registers them.
+  ...TRANSFORM_LONGHANDS,
 ] as const;
 
 /**

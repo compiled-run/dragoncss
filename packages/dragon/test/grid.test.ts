@@ -10,6 +10,13 @@ import type { LinkedElement } from '../src/analysis/link.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../src/css/properties/grid.ts';
+import * as backgroundLayers from '../src/css/properties/background-layers.ts';
+import * as effects from '../src/css/properties/effects.ts';
+import * as outline from '../src/css/properties/outline.ts';
+import * as radius from '../src/css/properties/radius.ts';
+import * as scrollbar from '../src/css/properties/scrollbar.ts';
+import * as shadow from '../src/css/properties/shadow.ts';
+import * as transform from '../src/css/properties/transform.ts';
 import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -38,14 +45,25 @@ const expanded = (property: string, value: string): string[] => {
   return (declaration?.longhands ?? []).map((l) => `${l.property}${l.explicit ? '' : '(i)'}=${valueToString(l.value)}`);
 };
 
+/** The EMS paint families (notes/T046-paint-spec.md §3 item 4), registered after grid. */
+const PAINT_FAMILIES: readonly Record<string, unknown>[] = [radius, shadow, effects, outline, transform, backgroundLayers, scrollbar];
+
 describe('grid family: registry', () => {
-  it('twelve longhands and eight shorthands, appended after every other family', () => {
+  it('twelve longhands and eight shorthands, appended after every other family but the paint families', () => {
     expect([...GRID_LONGHANDS]).toEqual([
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow',
       'grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'justify-items', 'justify-self',
     ]);
-    expect(LONGHANDS.slice(-GRID_LONGHANDS.length)).toEqual([...GRID_LONGHANDS]);
-    expect(SHORTHANDS.slice(-GRID_SHORTHANDS.length)).toEqual([...GRID_SHORTHANDS]);
+    // EMS registers the paint families after grid in every table (PIN-DERIVE: derived from the families, not a tail length).
+    const after = (all: readonly string[], block: readonly string[], paint: readonly string[]): string[] => {
+      const at = all.indexOf(block[0] as string);
+      const problems = JSON.stringify(all.slice(at, at + block.length)) === JSON.stringify(block) ? [] : [`not one run: ${JSON.stringify(block)}`];
+      return [...problems, ...all.slice(0, at).filter((p) => paint.includes(p)).map((p) => `${p} comes before the grid family`)];
+    };
+    const paint = PAINT_FAMILIES.flatMap((f) => Object.entries(f).filter(([k]) => k.endsWith('_LONGHANDS')).flatMap(([, v]) => v as readonly string[]));
+    const paintShorthands = PAINT_FAMILIES.flatMap((f) => Object.entries(f).filter(([k]) => k.endsWith('_SHORTHANDS')).flatMap(([, v]) => v as readonly string[]));
+    expect(after(LONGHANDS, GRID_LONGHANDS, paint)).toEqual([]);
+    expect(after(SHORTHANDS, GRID_SHORTHANDS, paintShorthands)).toEqual([]);
     for (const p of GRID_LONGHANDS) {
       expect(INHERITED.has(p), p).toBe(false);
       expect(PROPERTY_ASPECTS[p], p).toEqual({ layout: true, paint: false });
