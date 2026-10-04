@@ -16,8 +16,9 @@ export const MAX_MEMBERS = 5;
 export const BOARD = 'docs/goals/';
 
 export type Member = { branch: string; pr: number; clean: string };
-// A position: `merge` has parents [prev, member.clean]; `head` is the regen commit on top of it.
-export type Position = { prev: string; merge: string; head: string };
+// A position: `merge` has parents [prev, tip], where tip is the member's clean head or its PR head from an earlier build
+// (memberTip); `head` is the regen commit on top of it.
+export type Position = { prev: string; merge: string; head: string; tip: string };
 export type Plan = { base: string; positions: Position[] };
 
 const fail = (what: string): never => {
@@ -51,8 +52,9 @@ export const parseMembers = (specs: string[]): Member[] => {
 
 export type Args = { command: 'build' | 'check' | 'land'; from: number; members: Member[] };
 export const USAGE = `usage: pnpm train <build|check|land> [--from <k>] <branch>:<pr>:<clean-head-sha>...
-  build  merge each member onto the previous position (position 0 is origin/master), run pnpm regen, pnpm typecheck,
-         the device lanes and pnpm test, and point train/<k> at the result; --from k reuses train/1..k-1
+  build  merge each member's PR head (its clean head, or an earlier build's position on it) onto the previous position
+         (position 0 is origin/master), run pnpm regen, pnpm typecheck, the device lanes (judged against origin/master's
+         device evidence), pnpm regen again and pnpm test, and point train/<k> at the result; --from k reuses train/1..k-1
   check  predict, without pushing, whether pr:review will vouch for each position (exit 1 if any will not)
   land   push position k to its PR branch (fast-forward) once PR k-1 has merged, run pr:review --wait, merge with
          --match-head-commit, and check master's tree equals the position's outside ${BOARD}**; --from k resumes`;
@@ -93,8 +95,38 @@ export const parentsOf = (git: Git, commit: string): string[] => {
   return parents.map((p) => checkSha(p, `parent of ${commit}`));
 };
 
+export const TRAIN_SUBJECT = 'Train position ';
+// The landing driver (scripts/land.ts) makes the same merge and regen commits under this subject.
+export const LAND_SUBJECT = 'Land: ';
+const MAX_BUILDS = 10;
+
+// The commit a member's position merges: its clean head, or a PR head that an earlier build of the train pushed (a position
+// of that build), so the new position fast-forwards from it. Every commit between the clean head and that PR head must be one
+// the train or the landing driver made (a "Train position" or "Land:" merge or regen commit); anything else is an unreviewed push.
+export const tipProblem = (git: Git, member: Member, prHead: string): string | null => {
+  checkSha(prHead, `${member.branch} PR head`);
+  if (prHead === member.clean) return null;
+  if (!isAncestor(git, member.clean, prHead)) return `${member.branch}'s PR head ${prHead} does not contain its clean head ${member.clean}`;
+  // Each earlier build added a regen commit on a merge of [its previous position, the member's tip then]; walk that chain down.
+  let at = prHead;
+  for (let depth = 0; at !== member.clean; depth++) {
+    if (depth >= 2 * MAX_BUILDS) return `${member.branch}'s PR head ${prHead} is more than ${MAX_BUILDS} train builds above its clean head`;
+    const subject = text(git(['log', '-1', '--format=%s', at])).trim();
+    if (!subject.startsWith(TRAIN_SUBJECT) && !subject.startsWith(LAND_SUBJECT)) return `${member.branch}'s PR head ${prHead} holds ${at}, which the train did not make ("${subject.slice(0, 80)}")`;
+    const parents = parentsOf(git, at);
+    if (parents.length === 1) at = parents[0]!;
+    else if (parents.length === 2) at = parents[1]!;
+    else return `${at} has ${parents.length} parents`;
+  }
+  return null;
+};
+export const memberTip = (git: Git, member: Member, prHead: string): string => {
+  const problem = tipProblem(git, member, prHead);
+  return problem === null ? prHead : fail(problem);
+};
+
 // Checks built positions (train/1..n, as shas) against the members, in order. Each member's clean head must be an ancestor
-// of its position, and each position must be exactly: a merge of [previous position, clean head], then one regen commit.
+// of its position, and each position must be exactly: a merge of [previous position, member tip], then one regen commit.
 export const planPositions = (git: Git, members: Member[], heads: string[]): Plan => {
   if (heads.length === 0 || heads.length > members.length) return fail(`${heads.length} positions for ${members.length} members`);
   const positions: Position[] = [];
@@ -108,13 +140,14 @@ export const planPositions = (git: Git, members: Member[], heads: string[]): Pla
     if (headParents.length !== 1) fail(`position ${k} (${head}) has ${headParents.length} parents; its regen commit has exactly one`);
     const merge = headParents[0]!;
     const mergeParents = parentsOf(git, merge);
-    if (mergeParents.length !== 2 || mergeParents[1] !== m.clean) {
+    if (mergeParents.length !== 2 || tipProblem(git, m, mergeParents[1]!) !== null) {
       fail(`position ${k}: ${merge} is not a merge of the previous position and ${m.branch}'s clean head ${m.clean}`);
     }
+    const tip = mergeParents[1]!;
     const prev = mergeParents[0]!;
     if (k === 1) base = prev;
     else if (prev !== positions[i - 1]!.head) fail(`position ${k} is not built on position ${k - 1} (${positions[i - 1]!.head})`);
-    positions.push({ prev, merge, head });
+    positions.push({ prev, merge, head, tip });
   });
   return { base, positions };
 };
@@ -154,15 +187,19 @@ export const parsePrState = (v: unknown): PrState => {
   return { number, state, head: headRefName, headOid: checkSha(headRefOid, 'PR headRefOid'), base: baseRefName, cross: isCrossRepository };
 };
 
-// Why PR k may not take position k now: wrong PR, wrong branch, or a head that is neither the clean head nor the position.
-export const prProblems = (pr: PrState, member: Member, head: string, remoteHead: string): string[] => {
+// Why PR k may not take position k now: wrong PR, wrong branch, or a head that is neither the clean head, the tip the position
+// merged (an earlier build's position) nor the position.
+export const prProblems = (pr: PrState, member: Member, head: string, remoteHead: string, tip: string = member.clean): string[] => {
   const problems: string[] = [];
   if (pr.number !== member.pr) problems.push(`gh returned PR #${pr.number}, not #${member.pr}`);
   if (pr.state !== 'OPEN') problems.push(`PR #${member.pr} is ${pr.state}, not OPEN`);
   if (pr.head !== member.branch) problems.push(`PR #${member.pr} is from ${pr.head}, not ${member.branch}`);
-  if (pr.base !== 'master') problems.push(`PR #${member.pr} targets ${pr.base}, not master`);
+  if (pr.base.startsWith('review/')) problems.push(`PR #${member.pr} targets ${pr.base}, not master; retarget it first: gh pr edit ${member.pr} --base master`);
+  else if (pr.base !== 'master') problems.push(`PR #${member.pr} targets ${pr.base}, not master`);
   if (pr.cross) problems.push(`PR #${member.pr} comes from a fork`);
-  if (pr.headOid !== member.clean && pr.headOid !== head) problems.push(`PR #${member.pr} head ${pr.headOid} is neither the clean head ${member.clean} nor position ${head}`);
+  if (pr.headOid !== member.clean && pr.headOid !== tip && pr.headOid !== head) {
+    problems.push(`PR #${member.pr} head ${pr.headOid} is neither the clean head ${member.clean}${tip === member.clean ? '' : `, the earlier position ${tip}`} nor position ${head}`);
+  }
   if (remoteHead !== pr.headOid) problems.push(`origin/${member.branch} is at ${remoteHead}, but PR #${member.pr} reports ${pr.headOid}`);
   return problems;
 };
@@ -170,7 +207,7 @@ export const prProblems = (pr: PrState, member: Member, head: string, remoteHead
 // Checked immediately before `gh pr merge`, which pins only the PR head: the PR still targets master from the member's branch
 // at the position, and master still holds exactly the previous position outside the board.
 export const mergeGate = (git: Git, pr: PrState, member: Member, position: Position, master: string): string[] => {
-  const problems = prProblems(pr, member, position.head, pr.headOid);
+  const problems = prProblems(pr, member, position.head, pr.headOid, position.tip);
   if (pr.headOid !== position.head) problems.push(`PR #${member.pr} head is ${pr.headOid}, not position ${position.head}`);
   if (!isAncestor(git, position.prev, master)) problems.push(`the previous position ${position.prev} is not in master ${master}`);
   else {
@@ -188,11 +225,12 @@ export const parseLsRemote = (out: string, ref: string): string => {
   return checkSha(oid, `ls-remote ${ref}`);
 };
 
-// Merges the member's clean head onto `prev` with a merge commit, in a clean worktree. A conflict aborts the merge and throws.
-export const mergeMember = (git: Git, prev: string, member: Member, k: number): string => {
+// Merges the member's tip (its clean head, or its PR head from an earlier build; memberTip) onto `prev` with a merge commit, in
+// a clean worktree. A conflict aborts the merge and throws. `label` starts the subject (the landing driver passes "Land").
+export const mergeMember = (git: Git, prev: string, member: Member, k: number, tip: string = member.clean, label = `${TRAIN_SUBJECT}${k}`): string => {
   git(['checkout', '-q', '--detach', prev]);
   try {
-    git(['-c', 'rerere.enabled=false', 'merge', '-q', '--no-ff', '--no-edit', '-m', `Train position ${k}: merge ${member.branch} (#${member.pr})`, member.clean]);
+    git(['-c', 'rerere.enabled=false', 'merge', '-q', '--no-ff', '--no-edit', '-m', `${label}: merge ${member.branch} (#${member.pr})`, tip]);
   } catch (error) {
     const conflicted = text(git(['diff', '--name-only', '--diff-filter=U', '-z'])).split('\0').filter((p) => p !== '');
     let merging = true;
@@ -207,15 +245,100 @@ export const mergeMember = (git: Git, prev: string, member: Member, k: number): 
   const merge = checkSha(text(git(['rev-parse', 'HEAD'])).trim(), 'merge commit');
   // `merge --no-ff` of a commit already in `prev` succeeds without making a merge commit.
   const parents = parentsOf(git, merge);
-  if (parents.length !== 2 || parents[0] !== prev || parents[1] !== member.clean) {
-    return fail(`merging ${member.branch} onto ${prev} made ${merge} with parents [${parents.join(', ')}], not a merge of [${prev}, ${member.clean}]`);
+  if (parents.length !== 2 || parents[0] !== prev || parents[1] !== tip) {
+    return fail(`merging ${member.branch} onto ${prev} made ${merge} with parents [${parents.join(', ')}], not a merge of [${prev}, ${tip}]`);
   }
   return merge;
 };
 
 // Commits everything the regen and device steps left in the worktree, as one commit that names the commands.
-export const commitRegen = (git: Git, k: number, member: Member, commands: string[]): string => {
+export const commitRegen = (git: Git, k: number, member: Member, commands: string[], label = `${TRAIN_SUBJECT}${k}`): string => {
   git(['add', '-A']);
-  git(['commit', '-q', '--allow-empty', '-m', `Train position ${k}: regenerate after merging ${member.branch} (#${member.pr})\n\nCommands: ${commands.join('; ')}`]);
+  git(['commit', '-q', '--allow-empty', '-m', `${label}: regenerate after merging ${member.branch} (#${member.pr})\n\nCommands: ${commands.join('; ')}`]);
   return checkSha(text(git(['rev-parse', 'HEAD'])).trim(), 'regen commit');
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The device run of a position, judged against the device evidence committed on the train's base (master), not by the lanes
+// command's exit code: master's device-pixels lane fails on purpose (its failures are listed), so every run exits 1.
+
+export const LANES_JSON = 'packages/parity/out/lanes.json';
+export const failuresJson = (target: string): string => `packages/parity/out/device-failures-${target}.json`;
+
+/** One target's lane states and its listed device failures, each as "<lane> <case> <dpr> <node> <kind>". */
+export type DeviceEvidence = { parityPass: boolean; parityProblems: string[]; targets: Map<string, { lanes: Map<string, string>; failures: Map<string, Set<string>> }> };
+
+export const parseDeviceEvidence = (lanes: unknown, failures: (target: string) => unknown, what: string): DeviceEvidence => {
+  const bad = (why: string): never => fail(`${what}: ${why}`);
+  if (!isObject(lanes) || !isObject(lanes.parity) || !Array.isArray(lanes.targets)) return bad('lanes.json has no parity or targets');
+  const { pass, problems } = lanes.parity;
+  if (typeof pass !== 'boolean' || !Array.isArray(problems) || !problems.every((p) => typeof p === 'string')) return bad('lanes.json parity is not { pass, problems }');
+  const targets = new Map<string, { lanes: Map<string, string>; failures: Map<string, Set<string>> }>();
+  for (const t of lanes.targets) {
+    if (!isObject(t) || typeof t.target !== 'string' || !Array.isArray(t.lanes)) return bad('a lanes.json target is not { target, lanes }');
+    if (targets.has(t.target)) return bad(`target ${t.target} is listed twice`);
+    const states = new Map<string, string>();
+    for (const l of t.lanes) {
+      if (!isObject(l) || typeof l.lane !== 'string' || typeof l.state !== 'string') return bad(`a ${t.target} lane is not { lane, state }`);
+      if (states.has(l.lane)) return bad(`${t.target} lists lane ${l.lane} twice`);
+      states.set(l.lane, l.state);
+    }
+    const list = failures(t.target);
+    if (!Array.isArray(list)) return bad(`${failuresJson(t.target)} is not a list`);
+    const byLane = new Map<string, Set<string>>();
+    for (const f of list) {
+      if (!isObject(f) || typeof f.lane !== 'string' || typeof f.case !== 'string' || typeof f.dpr !== 'number' || typeof f.node !== 'string' || typeof f.kind !== 'string') {
+        return bad(`${failuresJson(t.target)} has an entry that is not { lane, case, dpr, node, kind }`);
+      }
+      if (!states.has(f.lane)) return bad(`${failuresJson(t.target)} lists a failure of ${f.lane}, which lanes.json does not have`);
+      const own = byLane.get(f.lane) ?? new Set<string>();
+      own.add(`${f.lane} ${f.case} ${f.dpr} ${f.node} ${f.kind}`);
+      byLane.set(f.lane, own);
+    }
+    targets.set(t.target, { lanes: states, failures: byLane });
+  }
+  return { parityPass: pass, parityProblems: problems as string[], targets };
+};
+
+// A position's device run passes when lane parity passes, nothing is stale, every lane of every target that master has
+// passes or fails as it does on master, and a failing lane lists no failure master does not (it may list fewer).
+export const deviceRunProblems = (base: DeviceEvidence, run: DeviceEvidence, stale: readonly string[]): string[] => {
+  const problems: string[] = [];
+  if (!run.parityPass) problems.push(`lane parity fails: ${run.parityProblems.join('; ')}`);
+  for (const s of stale) problems.push(`stale: ${s}`);
+  for (const [target, b] of base.targets) {
+    const r = run.targets.get(target);
+    if (r === undefined) {
+      problems.push(`${target}: the run has no lanes`);
+      continue;
+    }
+    for (const [lane, was] of b.lanes) {
+      const now = r.lanes.get(lane);
+      if (now === undefined) problems.push(`${target} ${lane}: missing from the run`);
+      else if (now === 'pass') continue;
+      else if (now !== 'fail' || was !== 'fail') problems.push(`${target} ${lane}: ${now}, on master ${was}`);
+      else {
+        const known = b.failures.get(lane) ?? new Set<string>();
+        const added = [...(r.failures.get(lane) ?? new Set<string>())].filter((f) => !known.has(f));
+        if (added.length > 0) problems.push(`${target} ${lane}: ${added.length} failure(s) master does not have, e.g. ${added.slice(0, 3).join(' | ')}`);
+      }
+    }
+    for (const lane of r.lanes.keys()) if (!b.lanes.has(lane)) problems.push(`${target} ${lane}: not a lane on master`);
+  }
+  for (const target of run.targets.keys()) if (!base.targets.has(target)) problems.push(`${target}: not a target on master`);
+  return problems;
+};
+
+// Whether the device run wrote lanes.json: by its modification time, not its content, since a run of a tree whose evidence is
+// already committed (a member rebuilt from an earlier build's position) writes the same bytes. Filesystem times are kept to
+// the second on some systems, so the start is taken back one second.
+export const deviceRunWrote = (mtimeMs: number, startedMs: number): boolean =>
+  Number.isFinite(mtimeMs) && Number.isFinite(startedMs) && mtimeMs >= Math.floor(startedMs / 1000) * 1000 - 1000;
+
+/** `pnpm run parity:lanes` on the committed file prints one "STALE <why>" line per stale lane or evidence. */
+export const staleLines = (out: string): string[] => out.split('\n').filter((l) => l.startsWith('STALE ')).map((l) => l.slice(6));
+
+// The steps of one position after its merge, in order. The second regen rebuilds what reads the device run's lanes.json
+// (native-lanes.ts), so the position's regen commit carries it; judge-devices compares the run with the base's evidence.
+export type PositionStep = 'regen' | 'typecheck' | 'devices' | 'judge-devices' | 'regen-after-devices';
+export const POSITION_STEPS: readonly PositionStep[] = ['regen', 'typecheck', 'devices', 'judge-devices', 'regen-after-devices'];

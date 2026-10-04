@@ -5,18 +5,24 @@ import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   commitRegen,
+  deviceRunProblems,
+  deviceRunWrote,
   isAncestor,
   type Member,
   mergeGate,
+  memberTip,
   mergeMember,
   parseArgs,
+  parseDeviceEvidence,
   parseLsRemote,
   parseMember,
   parseMembers,
   parsePrState,
   planPositions,
+  POSITION_STEPS,
   predictPosition,
   prProblems,
+  staleLines,
   treeMatches,
 } from '../../../scripts/merge-train-lib.ts';
 import { ALREADY_REVIEWED, type Git, ignoreAt, type Ignore, patchIdOver, regenOnlyProblems, vouchForSkip } from '../../../scripts/pr-review-vouch.ts';
@@ -278,5 +284,113 @@ describe('merge-train input checks', () => {
     expect(prProblems({ ...ok, headOid: sha('d') }, m, head, sha('d'))).toEqual([expect.stringContaining('neither the clean head')]);
     expect(prProblems(ok, m, head, sha('d'))).toEqual([expect.stringContaining('origin/b is at')]);
     expect(prProblems({ ...ok, number: 3, state: 'MERGED', head: 'x', base: 'main', cross: true }, m, head, S)).toHaveLength(5);
+  });
+});
+
+// Train 1 (2026-10-02): #59's PR head was position 1 of a build whose land stopped; master then moved, so the next build must
+// merge that head, keep the patch id of the clean head, and push a fast-forward of it.
+describe('a member whose PR head is a position from an earlier build', () => {
+  const r = scratch();
+  afterAll(r.cleanup);
+  const t = train(r);
+  const { git } = t;
+  git(['checkout', '-q', 'master']);
+  const moved = t.commit({ 'scripts/tool.ts': 'export const fixed = true;\n' }, 'tooling lands on master');
+
+  it('builds the new position on the old one, which it fast-forwards, with the clean head\'s patch id', () => {
+    expect(memberTip(git, t.A, t.p1)).toBe(t.p1);
+    const merge = mergeMember(git, moved, t.A, 1, t.p1);
+    expect(git(['rev-list', '--parents', '-n', '1', merge]).toString().trim().split(' ').slice(1)).toEqual([moved, t.p1]);
+    t.write({ 'out/x.json': '1b\n' });
+    const head = commitRegen(git, 1, t.A, ['pnpm regen']);
+    const plan = planPositions(git, [t.A], [head]);
+    expect(plan.positions[0]).toMatchObject({ prev: moved, tip: t.p1, head });
+    expect(predictPosition(git, t.A, plan.positions[0]!)).toMatchObject({ ok: true, regenProblems: [] });
+    expect(isAncestor(git, t.p1, head)).toBe(true);
+    const pr = { number: 1, state: 'OPEN', head: 'a', headOid: t.p1, base: 'master', cross: false };
+    expect(prProblems(pr, t.A, head, t.p1, t.p1)).toEqual([]);
+    expect(prProblems(pr, t.A, head, t.p1)).toEqual([expect.stringContaining('neither the clean head')]);
+  });
+
+  it('refuses a PR head with a commit the train did not make, or one that lost the clean head', () => {
+    git(['checkout', '-q', '--detach', t.p1]);
+    const pushed = t.commit({ 'src/a.ts': 'unreviewed\n' }, 'an unreviewed push');
+    expect(() => memberTip(git, t.A, pushed)).toThrow(/the train did not make/);
+    git(['checkout', '-q', '--detach', t.A.clean]);
+    const sneaky = t.commit({ 'src/a.ts': 'unreviewed\n' }, 'Train position 1: not really');
+    expect(() => memberTip(git, t.A, sneaky)).not.toThrow();
+    // The subject check is only the shape; the patch id against the clean head catches the code.
+    const merge = mergeMember(git, moved, t.A, 1, sneaky);
+    expect(merge).toMatch(/^[0-9a-f]{40}$/);
+    const head = commitRegen(git, 1, t.A, ['pnpm regen']);
+    expect(predictPosition(git, t.A, planPositions(git, [t.A], [head]).positions[0]!).ok).toBe(false);
+    expect(() => memberTip(git, t.A, t.B.clean)).toThrow(/does not contain its clean head/);
+  });
+});
+
+describe('a review/* base stops land with the retarget command', () => {
+  it('names gh pr edit <n> --base master', () => {
+    const m: Member = { branch: 'b', pr: 75, clean: sha('a') };
+    const pr = { number: 75, state: 'OPEN', head: 'b', headOid: sha('a'), base: 'review/seld-r1-base', cross: false };
+    expect(prProblems(pr, m, sha('c'), sha('a'))).toEqual(['PR #75 targets review/seld-r1-base, not master; retarget it first: gh pr edit 75 --base master']);
+  });
+});
+
+describe('a position\'s steps', () => {
+  it('regenerate again after the device run and judge the run before that, never by its exit code', () => {
+    expect(POSITION_STEPS).toEqual(['regen', 'typecheck', 'devices', 'judge-devices', 'regen-after-devices']);
+  });
+});
+
+describe('the device run against the base\'s device evidence', () => {
+  const lanes = (states: Record<string, Record<string, string>>, pass = true) => ({
+    parity: { pass, problems: pass ? [] : ['ios: case lists differ'] },
+    targets: Object.entries(states).map(([target, ls]) => ({ target, lanes: Object.entries(ls).map(([lane, state]) => ({ lane, state })) })),
+  });
+  const px = (c: string, node = 'edge:a') => ({ lane: 'device-pixels', case: c, dpr: 3, node, kind: 'pixel', detail: 'x' });
+  const ev = (states: Record<string, Record<string, string>>, failures: Record<string, unknown[]>, pass = true) => parseDeviceEvidence(lanes(states, pass), (t) => failures[t], 't');
+  const master = ev({ ios: { 'device-frames': 'pass', 'device-pixels': 'fail' }, android: { 'device-frames': 'pass', 'device-pixels': 'fail' } }, { ios: [px('a'), px('b')], android: [px('a')] });
+
+  it('passes a run that fails exactly as master does (train 1 position 1: iOS 57, Android 86), or with fewer failures', () => {
+    const same = ev({ ios: { 'device-frames': 'pass', 'device-pixels': 'fail' }, android: { 'device-frames': 'pass', 'device-pixels': 'fail' } }, { ios: [{ ...px('b'), detail: 'other values' }, px('a')], android: [px('a')] });
+    expect(deviceRunProblems(master, same, [])).toEqual([]);
+    const fewer = ev({ ios: { 'device-frames': 'pass', 'device-pixels': 'fail' }, android: { 'device-frames': 'pass', 'device-pixels': 'pass' } }, { ios: [px('a')], android: [] });
+    expect(deviceRunProblems(master, fewer, [])).toEqual([]);
+  });
+
+  it('stops on a new failure, a lane that newly fails or did not run, a stale lane, failed lane parity, or a missing target', () => {
+    const states = { ios: { 'device-frames': 'pass', 'device-pixels': 'fail' }, android: { 'device-frames': 'pass', 'device-pixels': 'fail' } };
+    expect(deviceRunProblems(master, ev(states, { ios: [px('a'), px('b'), px('c')], android: [px('a')] }), [])).toEqual([expect.stringContaining('ios device-pixels: 1 failure(s) master does not have, e.g. device-pixels c 3 edge:a pixel')]);
+    expect(deviceRunProblems(master, ev(states, { ios: [px('a'), px('b', 'edge:b')], android: [px('a')] }), [])).toHaveLength(1);
+    expect(deviceRunProblems(master, ev({ ...states, ios: { 'device-frames': 'fail', 'device-pixels': 'fail' } }, { ios: [px('a')], android: [px('a')] }), [])).toEqual(['ios device-frames: fail, on master pass']);
+    expect(deviceRunProblems(master, ev({ ...states, android: { 'device-frames': 'not run', 'device-pixels': 'fail' } }, { ios: [], android: [] }), [])).toEqual(['android device-frames: not run, on master pass']);
+    expect(deviceRunProblems(master, ev(states, { ios: [], android: [] }), ['ios device-pixels: evidence stamp'])).toEqual(['stale: ios device-pixels: evidence stamp']);
+    expect(deviceRunProblems(master, ev(states, { ios: [], android: [] }, false), [])).toEqual(['lane parity fails: ios: case lists differ']);
+    expect(deviceRunProblems(master, ev({ ios: states.ios }, { ios: [] }), [])).toEqual(['android: the run has no lanes']);
+    expect(deviceRunProblems(master, ev({ ...states, ios: { ...states.ios, 'device-new': 'pass' } }, { ios: [], android: [] }), [])).toEqual(['ios device-new: not a lane on master']);
+  });
+
+  it('parses the evidence strictly and reads STALE lines', () => {
+    const ok = lanes({ ios: { 'device-pixels': 'fail' } });
+    expect(() => parseDeviceEvidence({}, () => [], 't')).toThrow(/no parity or targets/);
+    expect(() => parseDeviceEvidence(ok, () => ({}), 't')).toThrow(/not a list/);
+    expect(() => parseDeviceEvidence(ok, () => [{ ...px('a'), dpr: '3' }], 't')).toThrow(/not \{ lane, case, dpr, node, kind \}/);
+    expect(() => parseDeviceEvidence(ok, () => [{ ...px('a'), lane: 'device-lines' }], 't')).toThrow(/lanes.json does not have/);
+    expect(() => parseDeviceEvidence(lanes({ ios: {} }), () => [], 't')).not.toThrow();
+    expect(() => parseDeviceEvidence({ ...ok, targets: [...ok.targets, ...ok.targets] }, () => [], 't')).toThrow(/twice/);
+    expect(staleLines('ios (device DPRs 2, 3):\nSTALE ios device-pixels: x\n  STALE not at line start\n')).toEqual(['ios device-pixels: x']);
+  });
+});
+
+// Train 1 rebuild (2026-10-03): position 1 merged #59's earlier position, whose lanes.json already held this tree's device run,
+// so the new run wrote identical bytes and a content check said it had not run.
+describe('whether the device run wrote lanes.json', () => {
+  it('goes by the file time against the run start, whatever the content', () => {
+    const start = Date.parse('2026-10-03T00:00:10.500Z');
+    expect(deviceRunWrote(start + 60_000, start)).toBe(true);
+    expect(deviceRunWrote(Date.parse('2026-10-03T00:00:10.000Z'), start)).toBe(true);
+    expect(deviceRunWrote(start - 5_000, start)).toBe(false);
+    expect(deviceRunWrote(start + 1, Number.POSITIVE_INFINITY)).toBe(false);
+    expect(deviceRunWrote(Number.NaN, start)).toBe(false);
   });
 });
