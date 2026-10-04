@@ -131,7 +131,7 @@ function targetConfig(target: NativeTarget): TargetConfig {
 }
 
 let targets: readonly TargetConfig[] | null = null;
-/** The configured native targets (compiles every layout fixture once, on first use). */
+/** The configured native targets (reads every layout fixture once, on first use). */
 export function nativeTargets(): readonly TargetConfig[] {
   if (targets === null) targets = NATIVE_TARGETS.map(targetConfig);
   return targets;

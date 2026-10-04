@@ -87,7 +87,9 @@ import {
 } from '../../layout/src/units.ts';
 import type { EasingSpec, RtFaults, StepPosition } from '../../layout/src/rt-easing.ts';
 import { cubicBezier, easingFromSpec, solveBezier } from '../../layout/src/rt-easing.ts';
-import type { AnimatedValue, LegacyColor, LengthValue, TransformFn, TransformOp, Trig } from '../../layout/src/rt-interpolate.ts';
+import type { TransformOrigin } from '../../layout/src/paint-transform.ts';
+import { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from '../../layout/src/paint-transform.ts';
+import type { AnimatedValue, LegacyColor, LengthValue, Matrix2D, TransformFn, TransformOp, Trig } from '../../layout/src/rt-interpolate.ts';
 import { interpolateValue, serializeValue } from '../../layout/src/rt-interpolate.ts';
 import type { EffectTimingSpec, FillMode, PlaybackDirection } from '../../layout/src/rt-timing.ts';
 import { computeTiming, currentTimeAt, seekPaused } from '../../layout/src/rt-timing.ts';
@@ -928,6 +930,20 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const faults: DashFaults = { phase1: flagAt(a, 8), gapUnfitted: flagAt(a, 9) };
     return `["ok",[${commaList(borderPaintOps(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), bitsList(a, 5), strList(a, 6), bitsList(a, 7), faults).map(borderOpJson))}]]`;
   }
+  // PNT2: paint-transform.ts.
+  if (name === 'paint:transform:resolveTransformOrigin') {
+    const o = resolveTransformOrigin(decodeOrigin(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
+    return `["ok",[${h(o.x)},${h(o.y)}]]`;
+  }
+  if (name === 'paint:transform:transformFunctionsMatrix') return `["ok",${matrixJson(transformFunctionsMatrix(decodeOps(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3), tableTrig(item(a, 4, '$'), '$[4]')))}]`;
+  if (name === 'paint:transform:paintTransformMatrix') {
+    return `["ok",${matrixJson(paintTransformMatrix(decodeOps(item(a, 1, '$'), '$[1]'), decodeOrigin(item(a, 2, '$'), '$[2]'), arg(a, 3), arg(a, 4), tableTrig(item(a, 5, '$'), '$[5]')))}]`;
+  }
+  if (name === 'paint:transform:transformAboutPoint') return `["ok",${matrixJson(transformAboutPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3)))}]`;
+  if (name === 'paint:transform:mapPoint') {
+    const p = mapPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
+    return `["ok",[${h(p.x)},${h(p.y)}]]`;
+  }
   return null;
 }
 
@@ -954,6 +970,61 @@ function commaList(parts: readonly string[]): string {
   let out = '';
   for (const x of parts) out = out === '' ? x : `${out},${x}`;
   return out;
+}
+
+// PNT2 decoders: a length is [kind, px bits, percent bits]; an op [fn, x, y, angle bits, sx bits, sy bits]; a matrix [full, a..f bits];
+// the trig table [[radians bits, sin bits, cos bits], ...] stands in for the platform's sin and cos, so every target reads the same values.
+function decodeLength(v: JsonValue, path: string): LengthValue {
+  const t = arr(v, path);
+  if (t.length !== 3) return fail(`${path}: expected [kind, px, percent]`);
+  const kind = lit(item(t, 0, path), ['px', 'percent', 'calc'], `${path}[0]`) as LengthValue['kind'];
+  return { kind, px: hexBits(str(item(t, 1, path), `${path}[1]`)), percent: hexBits(str(item(t, 2, path), `${path}[2]`)) };
+}
+
+function decodeOrigin(v: JsonValue, path: string): TransformOrigin {
+  const t = arr(v, path);
+  if (t.length !== 2) return fail(`${path}: expected [x, y]`);
+  return { x: decodeLength(item(t, 0, path), `${path}[0]`), y: decodeLength(item(t, 1, path), `${path}[1]`) };
+}
+
+function decodeOps(v: JsonValue, path: string): TransformOp[] {
+  const out: TransformOp[] = [];
+  arr(v, path).forEach((o, i) => {
+    const at = `${path}[${i}]`;
+    const t = arr(o, at);
+    if (t.length !== 6) fail(`${at}: expected [fn, x, y, angle, sx, sy]`);
+    const fn = lit(item(t, 0, at), ['translate', 'translateX', 'translateY', 'rotate', 'scale', 'scaleX', 'scaleY'], `${at}[0]`) as TransformFn;
+    out.push({ fn, x: decodeLength(item(t, 1, at), `${at}[1]`), y: decodeLength(item(t, 2, at), `${at}[2]`), angle: hexBits(str(item(t, 3, at), at)), sx: hexBits(str(item(t, 4, at), at)), sy: hexBits(str(item(t, 5, at), at)) });
+  });
+  return out;
+}
+
+function decodeMatrix(v: JsonValue, path: string): Matrix2D {
+  const t = arr(v, path);
+  if (t.length !== 7) return fail(`${path}: expected [full, a, b, c, d, e, f]`);
+  const n = (i: number): number => hexBits(str(item(t, i, path), `${path}[${i}]`));
+  return { full: bool(item(t, 0, path), `${path}[0]`), a: n(1), b: n(2), c: n(3), d: n(4), e: n(5), f: n(6) };
+}
+
+type TrigEntry = { readonly radians: number; readonly sin: number; readonly cos: number };
+
+function tableTrig(v: JsonValue, path: string): Trig {
+  const table: TrigEntry[] = [];
+  arr(v, path).forEach((e, i) => {
+    const at = `${path}[${i}]`;
+    const t = arr(e, at);
+    if (t.length !== 3) fail(`${at}: expected [radians, sin, cos]`);
+    table.push({ radians: hexBits(str(item(t, 0, at), at)), sin: hexBits(str(item(t, 1, at), at)), cos: hexBits(str(item(t, 2, at), at)) });
+  });
+  const find = (r: number): TrigEntry => {
+    for (const e of table) if (e.radians === r) return e;
+    return fail(`the trig table has no entry for ${bitsHex(r)}`);
+  };
+  return { sin: (r: number): number => find(r).sin, cos: (r: number): number => find(r).cos };
+}
+
+function matrixJson(m: Matrix2D): string {
+  return `[${m.full ? 'true' : 'false'},${h(m.a)},${h(m.b)},${h(m.c)},${h(m.d)},${h(m.e)},${h(m.f)}]`;
 }
 
 /** One units case: ["name", arg bits...] in, the result bits out. */

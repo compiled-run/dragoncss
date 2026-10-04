@@ -396,7 +396,8 @@ describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
     expect(judgeSelectors(selectorSeen)).toEqual([]);
     for (const p of planted) expect(p.problems().length, p.name).toBeGreaterThan(0);
     // SIZE-ar: aspect-ratio joins the grammar subset, so its keyword and name gain escaped twins (+4); SELD-R1b's pointer-events
-    // and the hit-* fixtures add 21. Every twin still reads as Chrome reads it.
-    expect({ twins: twinSeen.length, edges: edges.length, selectors: selectorSeen.length }).toEqual({ twins: 13803, edges: 89, selectors: 59 });
+    // and the hit-* fixtures add 21; PNT2: transform, transform-origin and will-change, their names and the keywords their syntax
+    // reaches (+28). Every twin still reads as Chrome reads it.
+    expect({ twins: twinSeen.length, edges: edges.length, selectors: selectorSeen.length }).toEqual({ twins: 13831, edges: 89, selectors: 59 });
   }, 300_000);
 });
