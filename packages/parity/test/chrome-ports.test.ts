@@ -16,6 +16,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
+import { floorProblems } from './floor.ts';
 import { currentNotices, NOTICES_PATH, thirdPartyNotices } from '../../../scripts/gen-third-party-notices.ts';
 import { parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
 
@@ -460,7 +461,10 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
 
   it('records a ruling for every LGPL entry: class A ones only referenced, class B ones on the clean-room list for T123', () => {
     const lgpl = registry.entries.filter((e) => e.licence === 'lgpl');
-    expect(lgpl.length).toBe(20); // the 18 T118J rulings, computed_style_constants.h (cited by V2a after them) and layout_replaced.cc (REPL-a, class A: the destination rect is written from css-images-3)
+    // PIN-DERIVE: chrome-ports-floor.json holds every LGPL entry registered so far (the 18 T118J rulings, computed_style_constants.h
+    // from V2a and layout_replaced.cc from REPL-a); a new citation adds an entry without a test edit, but none may vanish or stop being LGPL.
+    expect(floorProblems(new URL('./chrome-ports-floor.json', import.meta.url), 'lgpl', lgpl.map((e) => e.upstream), false)).toEqual([]);
+    for (const e of lgpl) expect(['A', 'B'], e.upstream).toContain(e.ruling?.class);
     expect(lgpl.filter((e) => e.ruling?.class === 'B').map((e) => e.upstream).sort()).toEqual([...KNOWN_LGPL_CLEAN_ROOM].sort());
     for (const e of lgpl.filter((x) => x.ruling?.class === 'A')) expect(e.dragon.map((d) => d.use), e.upstream).not.toContain('port');
   });

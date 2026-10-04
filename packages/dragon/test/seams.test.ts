@@ -1,61 +1,83 @@
 // E2 compiler seams (docs/research/coverage-roadmap.md §3): the split of css/stylesheet.ts, css/properties.ts,
 // analysis/resolve.ts and the parity FIXTURES list is behaviour-preserving. These pins were taken at 4c1331c, before the split.
 import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resolve.ts';
 import type { Candidate } from '../src/analysis/resolve.ts';
 import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
 import type { AtRuleContext } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
-import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../src/css/properties/grid.ts';
-import { LOGICAL_SHORTHANDS } from '../src/css/properties/logical.ts';
+import type { Longhand } from '../src/css/properties.ts';
 import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import type { Declaration, EnclosedRules } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { lengthFeatureType, UNITS } from '../src/css/units.ts';
 import { featureOf } from '../src/css/values.ts';
 import type { Diagnostic } from '../src/types.ts';
+import { floorProblems } from './floor.ts';
 
 const SRC = { uri: 's.css', revision: 'r', hash: 'h' };
 const sha = (v: unknown): string => createHash('sha256').update(JSON.stringify(v)).digest('hex');
+const FLOOR = new URL('./seams-floor.json', import.meta.url);
+const PROPERTIES_DIR = new URL('../src/css/properties/', import.meta.url);
+const AGGREGATE = readFileSync(new URL('../src/css/properties.ts', import.meta.url), 'utf8');
+/** Every export of every properties/<family>.ts module. */
+const FAMILY_EXPORTS: Record<string, unknown> = Object.assign({}, ...(await Promise.all(readdirSync(PROPERTIES_DIR).filter((f) => f.endsWith('.ts')).map((f) => import(new URL(f, PROPERTIES_DIR).href)))) as Record<string, unknown>[]);
+/** What an aggregate block may spread: the family modules' exports and the aggregate's own. */
+const SPREADABLE: Record<string, unknown> = { ...FAMILY_EXPORTS, ...((await import('../src/css/properties.ts')) as Record<string, unknown>) };
+const BLOCKS = ['LONGHANDS = [', 'SHORTHANDS = [', 'INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([', 'PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {', 'CONTAINER_LONGHANDS: readonly Longhand[] = [', 'TEXT_ROLE_LONGHANDS: readonly Longhand[] = ['];
+const SUFFIX: Record<string, string> = { [BLOCKS[0] as string]: 'LONGHANDS', [BLOCKS[1] as string]: 'SHORTHANDS', [BLOCKS[2] as string]: 'INHERITED', [BLOCKS[3] as string]: 'ASPECTS', [BLOCKS[4] as string]: 'CONTAINER', [BLOCKS[5] as string]: 'TEXT_ROLE' };
+/** The lists an aggregate block of properties.ts spreads, in order. */
+function spreads(block: string): string[] {
+  const start = AGGREGATE.indexOf(block);
+  if (start < 0) throw new Error(`no ${block} block in properties.ts`);
+  const body = AGGREGATE.slice(start, Math.min(...['\n]', '\n}'].map((e) => AGGREGATE.indexOf(e, start)).filter((i) => i > 0)));
+  return [...body.matchAll(/\.\.\.([A-Z_]+),/g)].map((m) => m[1] as string);
+}
+/** The families an aggregate block spreads, in order. */
+const spreadOrder = (block: string): string[] => spreads(block).map((id) => id.replace(/_(?:LONGHANDS|SHORTHANDS|INHERITED|ASPECTS|CONTAINER|TEXT_ROLE)$/, ''));
+/** A registry list against its families: the concatenation of the lists it spreads, in order, every family module's list spread once. */
+function registryProblems(block: string, name: string, actual: readonly string[]): string[] {
+  const suffix = SUFFIX[block] as string;
+  const ids = spreads(block);
+  const lists = Object.entries(FAMILY_EXPORTS).filter(([k, v]) => k.endsWith(`_${suffix}`) && Array.isArray(v) && !/_RESET_/.test(k));
+  const problems = lists.map(([k]) => k).filter((k) => ids.filter((i) => i === k).length !== 1).map((k) => `${name}: ${k} is spread ${ids.filter((i) => i === k).length} times`);
+  const want = ids.flatMap((id) => (Array.isArray(SPREADABLE[id]) ? (SPREADABLE[id] as readonly string[]) : [`<${id} is not an exported list>`]));
+  if (JSON.stringify([...actual]) !== JSON.stringify(want)) problems.push(`${name} is not its families in spread order: ${JSON.stringify(actual)} vs ${JSON.stringify(want)}`);
+  return problems;
+}
 
 describe('E2 seams: the property registry', () => {
-  it('LONGHANDS keeps its order across the properties/<family>.ts aggregate', () => {
-    expect([...LONGHANDS]).toEqual([
-      'display', 'position', 'top', 'right', 'bottom', 'left', 'overflow-x', 'overflow-y', 'direction', 'box-sizing',
-      'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'aspect-ratio',
-      'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
-      'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
-      'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
-      'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
-      'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
-      'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
-      'justify-content', 'align-items', 'align-self', 'align-content', 'row-gap', 'column-gap',
-      'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
-      // GRID G0 appends its family (test/grid.test.ts pins GRID_LONGHANDS).
-      ...GRID_LONGHANDS,
-      // PNT2: the transform family, appended in its registered family position.
-      'transform', 'transform-origin', 'will-change',
-    ]);
+  // PIN-DERIVE: the orders are derived from properties/<family>.ts and the aggregate's spread order, and seams-floor.json keeps
+  // every name these lists held (taken from the 4c1331c pins and every family since), in order: a family may add names anywhere,
+  // but dropping or reordering one fails.
+  it('LONGHANDS is its families spread in aggregate order, with every floor longhand kept in order', () => {
+    expect(registryProblems('LONGHANDS = [', 'LONGHANDS', LONGHANDS)).toEqual([]);
+    expect(floorProblems(FLOOR, 'longhands', LONGHANDS, true)).toEqual([]);
   });
-  it('SHORTHANDS keeps its order', () => {
-    expect([...SHORTHANDS]).toEqual([
-      'margin', 'padding', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
-      'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
-      'background',
-      ...LOGICAL_SHORTHANDS,
-      'writing-mode', 'text-orientation', 'text-combine-upright',
-      ...GRID_SHORTHANDS,
-    ]);
+  it('SHORTHANDS is its families spread in aggregate order, with every floor shorthand kept in order', () => {
+    expect(registryProblems('SHORTHANDS = [', 'SHORTHANDS', SHORTHANDS)).toEqual([]);
+    expect(floorProblems(FLOOR, 'shorthands', SHORTHANDS, true)).toEqual([]);
   });
-  it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE are unchanged', () => {
+  it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE keep every floor entry in order', () => {
     expect(Object.keys(PROPERTY_ASPECTS)).toEqual([...LONGHANDS]);
-    expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color']);
+    expect(registryProblems('INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([', 'INHERITED', [...INHERITED])).toEqual([]);
+    expect(floorProblems(FLOOR, 'inherited', [...INHERITED], true)).toEqual([]);
     const byRole = (r: string): string[] => LONGHANDS.filter((p) => PROPERTY_ROLE[p] === r);
-    expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap',
-      'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items']);
-    expect(byRole('text')).toEqual(['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
-    expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color', 'transform', 'transform-origin', 'will-change']);
+    for (const r of ['item', 'container', 'text', 'paint']) expect(floorProblems(FLOOR, `role:${r}`, byRole(r), true), r).toEqual([]);
+    // Exact for every floor longhand: it keeps the one role whose floor holds it, and is inherited exactly when the inherited
+    // floor holds it, so a longhand moving into a role or into INHERITED fails too; only a new longhand may take any.
+    const floors = JSON.parse(readFileSync(FLOOR, 'utf8')) as Record<string, readonly string[]>;
+    const moved = (floors['longhands'] ?? []).flatMap((p) => {
+      const roles = ['item', 'container', 'text', 'paint'].filter((r) => floors[`role:${r}`]?.includes(p));
+      const inherited = floors['inherited']?.includes(p) === true;
+      return [
+        ...(roles.length === 1 && roles[0] === PROPERTY_ROLE[p as Longhand] ? [] : [`${p}: role ${PROPERTY_ROLE[p as Longhand]}, the floor gives ${roles.join(', ') || 'none'}`]),
+        ...(INHERITED.has(p as Longhand) === inherited ? [] : [`${p}: ${inherited ? 'no longer' : 'now'} inherited`]),
+      ];
+    });
+    expect(moved).toEqual([]);
   });
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());
@@ -223,13 +245,13 @@ const MILESTONE_1_IDS: readonly string[] = [
 ];
 
 describe('EMS seams: the paint families (notes/T046-paint-spec.md §3 item 4)', () => {
-  it('are spread into every aggregate after the grid family, empty, so the registry orders above hold', async () => {
-    const text = (await import('node:fs')).readFileSync(new URL('../src/css/properties.ts', import.meta.url), 'utf8');
-    for (const block of ['LONGHANDS = [', 'SHORTHANDS = [', 'INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([', 'PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {', 'CONTAINER_LONGHANDS: readonly Longhand[] = [', 'TEXT_ROLE_LONGHANDS: readonly Longhand[] = [']) {
-      const start = text.indexOf(block);
-      const body = text.slice(start, Math.min(...['\n]', '\n}'].map((e) => text.indexOf(e, start)).filter((i) => i > 0)));
-      const fams = [...body.matchAll(/\.\.\.([A-Z_]+?)_(?:LONGHANDS|SHORTHANDS|INHERITED|ASPECTS|CONTAINER|TEXT_ROLE),/g)].map((m) => m[1]);
-      expect(fams.slice(-8), block).toEqual(['GRID', 'RADIUS', 'SHADOW', 'EFFECTS', 'OUTLINE', 'TRANSFORM', 'BACKGROUND_LAYERS', 'SCROLLBAR']);
+  it('are spread into every aggregate after the grid family, in their registered order', () => {
+    // PIN-DERIVE: in every block the EMS paint families follow GRID in their registered order; a family added later may follow.
+    const ems = ['GRID', 'RADIUS', 'SHADOW', 'EFFECTS', 'OUTLINE', 'TRANSFORM', 'BACKGROUND_LAYERS', 'SCROLLBAR'];
+    for (const block of BLOCKS) {
+      const fams = spreadOrder(block);
+      const at = ems.map((f) => fams.indexOf(f));
+      expect(at.every((i, k) => i >= 0 && (k === 0 || i > (at[k - 1] as number))), `${block}: ${JSON.stringify(fams)}`).toBe(true);
     }
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());
   });
