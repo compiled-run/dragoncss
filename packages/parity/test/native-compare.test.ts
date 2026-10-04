@@ -19,7 +19,8 @@ import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 import type { GlyphBox, SampleBox } from '../src/samples.ts';
 import { generateGlyphSamples, generateSamples } from '../src/samples.ts';
 import type { NativeTarget } from '../src/targets.ts';
-import { layoutCaseIds, nativeTargets } from '../src/targets.ts';
+import { nativeTargets, vectorCaseIds } from '../src/targets.ts';
+import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 const all = layoutCases();
 // TXT1a-2: the engine the device mirrors measures every face through HarfBuzz.
@@ -51,9 +52,10 @@ const moveRight = (n: DumpNode, px: number, scale: number): DumpNode => {
 };
 
 describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () => {
-  it('every layout case at 2 and 3 on ios and at 2, 3 and 2.625 on android', () => {
+  it('every device case at 2 and 3 on ios and at 2, 3 and 2.625 on android', () => {
     const proof = referenceProof(nativeTargets());
-    const cases = layoutCaseIds().length;
+    // TXT1a-2: the device cases are every layout case but the shaped ones (no device case until phase R).
+    const cases = vectorCaseIds().length;
     expect(proof.map((p) => [p.target, p.rows.map((r) => r.dpr)])).toEqual([['ios', [2, 3]], ['android', [2, 3, 2.625]]]);
     for (const p of proof) {
       for (const r of p.rows) {
@@ -63,7 +65,7 @@ describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () =
         expect(r.chromeCompared).toBeGreaterThan(0);
       }
     }
-    expect(cases).toBe(declaredLayoutCaseCount());
+    expect(cases + shapedCaseIds().size).toBe(declaredLayoutCaseCount());
   });
 });
 
@@ -125,7 +127,7 @@ describe('negative checks', () => {
     let failing = 0;
     let checked = 0;
     for (const dprX of [2.625, 3]) {
-      for (const id of layoutCaseIds()) {
+      for (const id of vectorCaseIds()) {
         const off = reference(id, dprX, 'android', { snap: 'off' });
         expect(validateNativeDump(clone(off.dump)).ok).toBe(true);
         checked++;

@@ -7,16 +7,16 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
-import type { LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
+import type { LayoutBox, LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
 import { layout, LU_PER_PX, NO_ENGINE_FAULTS, platformFontSize, resolveBorder, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
-import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
+import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, engineLayoutProjection, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
 import { stateEmits } from './state-cases.ts';
 import { deviceHitSource } from './hit-capture.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
-import { layoutCases } from './dpr.ts';
+import { atDpr, layoutCases } from './dpr.ts';
 import { fontMapOf, withFontMapAssets } from './fixture-groups/fonts.ts';
 import { PROJECT_ID } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
@@ -86,6 +86,45 @@ export function nativeCases(): readonly NativeCase[] {
     }
   }
   records = out;
+  return out;
+}
+
+/** A layout case with the engine input tree the engine lane lays it out from (the break vectors and break captures read these). */
+export type EngineCase = { readonly case: ParityCase; readonly root: LayoutBox; readonly inputAt: (dpr: number) => LayoutInput };
+
+let engineRecords: readonly EngineCase[] | null = null;
+
+/**
+ * Every layout case in layoutCases() order: a device case through its native programs (both backends hold one engine input tree),
+ * and a shaped case, which native refuses until TXT1a-2 phase R, through engineLayoutProjection of its derive compile.
+ */
+export function engineCases(): readonly EngineCase[] {
+  if (engineRecords !== null) return engineRecords;
+  const native = new Map(nativeCases().map((n) => [n.case.id, n]));
+  const out: EngineCase[] = [];
+  for (const f of layoutCases()) {
+    const byDirection = new Map<string, Compiled<'ios' | 'android'>>();
+    for (const c of f.cases) {
+      const n = native.get(c.id);
+      if (n !== undefined) {
+        if (JSON.stringify(n.programs.uikit.root) !== JSON.stringify(n.programs['android-views'].root)) throw new Error(`${c.id}: the uikit and android-views programs hold different engine inputs`);
+        out.push({ case: c, root: n.programs.uikit.root, inputAt: (dpr) => programInput(n.programs.uikit, c.environment.viewport, dpr) });
+        continue;
+      }
+      let compiled = byDirection.get(c.environment.direction);
+      if (compiled === undefined) {
+        compiled = nativeCompile(f.spec, c.environment.direction);
+        byDirection.set(c.environment.direction, compiled);
+      }
+      const at = (dpr: number): LayoutInput => {
+        const p = engineLayoutProjection(compiled, atDpr(c.environment, dpr), c.assignment);
+        if (p.kind !== 'ready') throw new Error(`${c.id} at DPR ${dpr}: no engine projection: ${p.reason}`);
+        return p.input;
+      };
+      out.push({ case: c, root: at(1).root, inputAt: at });
+    }
+  }
+  engineRecords = out;
   return out;
 }
 

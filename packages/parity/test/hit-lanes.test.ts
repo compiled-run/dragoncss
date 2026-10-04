@@ -11,7 +11,7 @@ import { parseOutcome } from '../src/device-jobs.ts';
 import { deviceHitSource, expectedHitRuns, hitCases } from '../src/hit-capture.ts';
 import type { DeviceRun } from '../src/lanes.ts';
 import { lanesFile } from '../src/lanes.ts';
-import { layoutCaseIds, nativeTargets } from '../src/targets.ts';
+import { nativeTargets, vectorCaseIds } from '../src/targets.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'dragon-hits-'));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
@@ -56,7 +56,7 @@ describe('device-hit on fake records', () => {
 
 describe('the device-hit lane record', () => {
   const t = nativeTargets().find((x) => x.target === 'android');
-  const set = (dpr: number, failures: readonly LaneFailure[] = []): DeviceSet => ({ dpr, device: { name: `d${dpr}` } as DeviceRecord, cases: layoutCaseIds().length, dumps: layoutCaseIds().length, compared: { a: 0, b: 1, c: 0, d: 0, breaks: 0 }, dumpsSha256: '0', failures, faults: [] });
+  const set = (dpr: number, failures: readonly LaneFailure[] = []): DeviceSet => ({ dpr, device: { name: `d${dpr}` } as DeviceRecord, cases: vectorCaseIds().length, dumps: vectorCaseIds().length, compared: { a: 0, b: 1, c: 0, d: 0, breaks: 0 }, dumpsSha256: '0', failures, faults: [] });
   const record = (hits: readonly DeviceSet[]) => {
     if (t === undefined) throw new Error('no android target');
     const run: DeviceRun = { vectors: null, sets: [], states: [], hits, trust: [], blocked: null, evidence: { laneCode: 'a', referenceData: 'b', app: 'c' } };
