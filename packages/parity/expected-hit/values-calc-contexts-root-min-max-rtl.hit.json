@@ -1,0 +1,18 @@
+{
+  "case": "values-calc-contexts-root-min-max-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 308,
+  "gridSha256": "ad6876f69562ec7415f2bad13f82eda54dd9c190cf7f16fc4dea3840c2580c1f",
+  "ids": [
+    "a",
+    "body",
+    "html"
+  ],
+  "runs": [[2,91],[1,6],[0,6],[2,5],[1,6],[0,6],[2,5],[1,6],[0,6],[2,5],[1,6],[0,6],[2,5],[1,6],[0,6],[2,5],[1,6],[0,6],[2,120]]
+}

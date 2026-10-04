@@ -25,9 +25,10 @@ const lane = (t: TargetConfig, id: string) => t.lanes.find((l) => l.lane === id)
 const ids = layoutCaseIds();
 
 describe('native targets', () => {
-  it('ios and android, each with the six lanes in order', () => {
+  it('ios and android, each with the eight lanes in order', () => {
     expect(targets.map((t) => t.target)).toEqual(['ios', 'android']);
-    expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels']);
+    // SELD-R1b appends device-states and device-hit after the six P5 lanes.
+    expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels', 'device-states', 'device-hit']);
     for (const t of targets) expect(t.lanes.map((l) => l.lane)).toEqual([...LANES]);
   });
   it('case lists come from the constants: the declared top-level cases plus one set per DPR on both vectors lanes of both targets', () => {

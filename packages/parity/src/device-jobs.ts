@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { DeviceOutcome, RunLog } from './device-lanes.ts';
-import { afterRelease } from './device-lanes.ts';
+import { afterRelease, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE } from './device-lanes.ts';
 import type { DeviceHandle, DeviceSpec } from './device-run.ts';
 import { spawnChild } from './device-exec.ts';
 import { boot, DEVICE_MATRIX, release } from './device-run.ts';
@@ -63,18 +63,34 @@ export function parseOutcome(text: string, device: string): DeviceOutcome {
   const problems: string[] = [];
   if (!isObj(v)) throw new Error(`${device}: the device outcome is not an object`);
   if (v['device'] !== device) problems.push(`device ${JSON.stringify(v['device'])}`);
-  const set = v['set'];
-  if (set !== null) {
-    if (!isObj(set)) problems.push('set is not an object');
-    else {
-      for (const k of ['dpr', 'cases', 'dumps']) if (typeof set[k] !== 'number') problems.push(`set.${k} is not a number`);
-      if (typeof set['dumpsSha256'] !== 'string') problems.push('set.dumpsSha256 is not a string');
-      if (!isObj(set['device']) || set['device']['name'] !== device) problems.push('set.device is not this device');
-      const compared = set['compared'];
-      if (!isObj(compared) || JSON.stringify(Object.keys(compared)) !== JSON.stringify(['a', 'b', 'c', 'd', 'breaks']) || !Object.values(compared).every((n) => typeof n === 'number')) problems.push('set.compared is not the five check counts');
-      if (!Array.isArray(set['failures']) || !set['failures'].every((f) => isObj(f) && typeof f['lane'] === 'string' && typeof f['kind'] === 'string')) problems.push('set.failures is not a failure list');
-      if (!Array.isArray(set['faults']) || !set['faults'].every((f) => isObj(f) && typeof f['applicable'] === 'number' && typeof f['caught'] === 'number' && Array.isArray(f['uncaught']))) problems.push('set.faults is not a fault row list');
+  // The batch set, and SELD-R1b's script (device-states) and hit (device-hit) sets: each checked the same way.
+  // Each set's failures belong to its own lanes: a lane record counts only its lane's failures, so a stray one would go uncounted.
+  const lanesOf: { readonly [name: string]: readonly string[] } = { set: DEVICE_CHECK_LANES, states: [STATE_LANE], hits: [HIT_LANE] };
+  const checkSet = (name: string, set: unknown): void => {
+    if (set === null) return;
+    if (!isObj(set)) {
+      problems.push(`${name} is not an object`);
+      return;
     }
+    for (const k of ['dpr', 'cases', 'dumps']) if (typeof set[k] !== 'number') problems.push(`${name}.${k} is not a number`);
+    if (typeof set['dumpsSha256'] !== 'string') problems.push(`${name}.dumpsSha256 is not a string`);
+    if (!isObj(set['device']) || set['device']['name'] !== device) problems.push(`${name}.device is not this device`);
+    const compared = set['compared'];
+    if (!isObj(compared) || JSON.stringify(Object.keys(compared)) !== JSON.stringify(['a', 'b', 'c', 'd', 'breaks']) || !Object.values(compared).every((n) => typeof n === 'number')) problems.push(`${name}.compared is not the five check counts`);
+    if (!Array.isArray(set['failures']) || !set['failures'].every((f) => isObj(f) && typeof f['lane'] === 'string' && typeof f['kind'] === 'string')) problems.push(`${name}.failures is not a failure list`);
+    else {
+      const lanes = lanesOf[name] ?? [];
+      const stray = [...new Set(set['failures'].map((f) => (f as { lane: string }).lane).filter((l) => !lanes.includes(l)))];
+      const named = lanes.length > 1 ? `${lanes.slice(0, -1).join(', ')} or ${lanes[lanes.length - 1]}` : lanes.join('');
+      for (const l of stray) problems.push(`${name}.failures holds a failure of lane ${l}, not ${named}`);
+    }
+    if (!Array.isArray(set['faults']) || !set['faults'].every((f) => isObj(f) && typeof f['applicable'] === 'number' && typeof f['caught'] === 'number' && Array.isArray(f['uncaught']))) problems.push(`${name}.faults is not a fault row list`);
+  };
+  const set = v['set'];
+  checkSet('set', set);
+  for (const k of ['states', 'hits']) {
+    if (set !== null && v[k] === undefined) problems.push(`a set without its ${k} set`);
+    else checkSet(k, v[k] === undefined ? null : v[k]);
   }
   const trust = v['trust'];
   const trustRow = (r: unknown): boolean => isObj(r) && typeof r['case'] === 'string' && typeof r['points'] === 'number' && Array.isArray(r['mismatches']) && r['mismatches'].every((m) => typeof m === 'string');
