@@ -243,7 +243,8 @@ describe('animation analysis', () => {
   it('gates every animation declaration and @keyframes per target in the animation context until a frame lane proves it', () => {
     const ds = compile('.a { transition: color 1s; } .b { animation: k 1s; } @keyframes k { to { color: rgb(1, 2, 3) } }', 'enforce');
     expect(ds.every((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.target !== null && d.profile?.context === 'animation')).toBe(true);
-    expect([...new Set(ds.map((d) => d.target))].sort()).toEqual(['ios', 'web']);
+    // The web frame lanes (chrome-dual, PR 3a) prove these features; ios has no device-anim row until 3b.
+    expect([...new Set(ds.map((d) => d.target))].sort()).toEqual(['ios']);
     expect(ds.map((d) => d.profile?.feature).filter((f, i, a) => a.indexOf(f) === i).sort()).toEqual(['animatable:color', 'animation-name:<custom-ident>', 'at-rule:@keyframes', 'transition-property:<custom-ident>']);
   });
 });
@@ -251,8 +252,9 @@ describe('animation analysis', () => {
 describe('animation analysis audit', () => {
   it('gates a declaration in an @media band the native output is not resolved in, for web', () => {
     const ds = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' })
-      .compile(stated('@media (min-width: 9999px) { .a { transition: color 1s; } }')).diagnostics;
-    expect(ds.filter((d) => d.profile?.context === 'animation').map((d) => [d.target, d.profile?.feature])).toEqual([['web', 'transition-property:<custom-ident>']]);
+      .compile(stated('@media (min-width: 9999px) { .a { transition: color 1s ease-in-out; } }')).diagnostics;
+    // ease-in-out has no web frame lane row (the other features of the declaration do, so they pass).
+    expect(ds.filter((d) => d.profile?.context === 'animation').map((d) => [d.target, d.profile?.feature])).toEqual([['web', 'transition-timing-function:ease-in-out']]);
   });
 
   it('refuses a computed font size that is not px instead of assuming 16px', () => {
