@@ -7,6 +7,7 @@ import {
   backoffMs,
   baseAction,
   ciState,
+  ciStep,
   claudeReviewGate,
   type Entry,
   Fatal,
@@ -133,6 +134,25 @@ describe('CI, base, worktree and quiet decisions', () => {
     expect(ciState([ci('completed', 'success', 'push'), ci('completed', 'failure', 'pr')])).toEqual({ state: 'failure', conclusions: ['failure pr'] });
     expect(ciState([ci('in_progress', null), ci('completed', 'cancelled', 'x')]).state).toBe('failure');
     expect(ciState([ci('completed', 'skipped')]).state).toBe('failure');
+  });
+
+  it('lets a CONFLICTING PR with no CI run on its clean head through to the build, and nothing else', () => {
+    const limits = { appearS: 900, waitS: 5400 };
+    const none = ciState([other]);
+    const failed = ciState([ci('completed', 'failure', 'f')]);
+    // Conflicting and no CI run: GitHub runs none, so the build proceeds without waiting.
+    expect(ciStep(none, 0, limits, true)).toBe('skip');
+    // Conflicting but its CI run failed: the PR fails.
+    expect(ciStep(failed, 0, limits, true)).toEqual({ fail: 'did not succeed: failure f' });
+    // Conflicting with a run still going: wait for its verdict.
+    expect(ciStep(ciState([ci('in_progress', null)]), 0, limits, true)).toBe('wait');
+    expect(ciStep(ciState([ci('completed', 'success')]), 0, limits, true)).toBe('success');
+    // Mergeable (or the landing commit, where conflicting is never passed) and no CI run: wait, then fail closed as before.
+    expect(ciStep(none, 899, limits, false)).toBe('wait');
+    expect(ciStep(none, 900, limits, false)).toEqual({ fail: 'has no CI checks run after 900s' });
+    expect(ciStep(none, 900, limits)).toEqual({ fail: 'has no CI checks run after 900s' });
+    expect(ciStep(failed, 0, limits, false)).toEqual({ fail: 'did not succeed: failure f' });
+    expect(ciStep(ciState([ci('queued', null)]), 5400, limits)).toEqual({ fail: 'CI checks still pending after 5400s' });
   });
 
   it('retargets a landed parent (or its review/* copy) to master, and fails on a parent still open', () => {
