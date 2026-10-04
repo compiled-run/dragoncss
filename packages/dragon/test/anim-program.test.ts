@@ -68,8 +68,8 @@ describe('lowerAnimProgram', () => {
 });
 
 describe('web output (R15)', () => {
-  const web = (css: string): string => {
-    const c = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(stated(css));
+  const web = (css: string, child?: (r: SourceRef) => TreeNode[]): string => {
+    const c = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(stated(css, child));
     const out = c.outputs.web;
     if (out.kind !== 'ready') throw new Error('web output blocked');
     return (out.files.find((f) => f.path === WEB_CSS_PATH) as { text: string }).text;
@@ -81,6 +81,14 @@ describe('web output (R15)', () => {
     expect(css).toContain('  animation-name: "a b";\n  animation-duration: 1s;');
     expect(css).toContain('@keyframes "a b" {\n  20% { width: 1em; }\n}');
     expect(css).not.toContain('unused');
+  });
+
+  it('keeps an inherited colour inherited under an element that declares an animation, so it follows each frame (R9)', () => {
+    const css = web('.a { color: rgb(1, 2, 3); transition: color 1s; } .a.on { color: rgb(4, 5, 6); } .u { color: rgb(7, 8, 9); }', (r) => [div(r, 't', ['t']), div(r, 'u', ['u'])]);
+    const colors = [...css.matchAll(/\.(dg\d+) \{[^}]*?\n  color: ([^;]+);/g)].map((m) => m[2]);
+    // html and body, then a, t inheriting, u its own, b outside any source, and a with on.
+    expect(colors).toEqual(['rgb(0, 0, 0)', 'rgb(0, 0, 0)', 'rgb(1, 2, 3)', 'inherit', 'rgb(7, 8, 9)', 'rgb(0, 0, 0)', 'rgb(4, 5, 6)']);
+    expect(css).toContain('transition-property: color;');
   });
 
   it('leaves an element without animation declarations, and a document without @keyframes, as before', () => {

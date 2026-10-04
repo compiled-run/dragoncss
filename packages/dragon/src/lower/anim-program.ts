@@ -46,6 +46,10 @@ export type AnimProgram = {
   /** Per node with an animation in some assignment: its animation list per assignment (null where the node is absent). */
   readonly animations: readonly { readonly node: string; readonly lists: readonly (readonly AnimationEntry[] | null)[] }[];
   readonly keyframes: readonly KeyframeTable[];
+  /** Per node, per assignment: whether it generates a box (present, with no display: none on it or an ancestor; R7). */
+  readonly rendered: readonly { readonly node: string; readonly values: readonly boolean[] }[];
+  /** The base value of every (node, property) a keyframe of the node's animations sets, per assignment (null where absent). */
+  readonly bases: readonly { readonly node: string; readonly property: Longhand; readonly values: readonly (AnimValue | null)[] }[];
   /** Per animated colour (node and property), the other writes its value reaches in any assignment. */
   readonly closure: readonly { readonly source: ClosureWrite; readonly writes: readonly ClosureWrite[] }[];
 };
@@ -152,7 +156,30 @@ export function lowerAnimProgram(analysis: AnimationAnalysis, cases: readonly { 
     return { source, writes: [...writes.values()] };
   });
   if (total > MAX_CLOSURE_WRITES) throw new AnimProgramError(`${total} closure writes per frame exceed the ${MAX_CLOSURE_WRITES} a program holds`);
-  return { version: ANIM_PROGRAM_VERSION, assignments: cases.map((c) => c.key), slots, animations, keyframes, closure };
+  const displayed = trees.map((t) => {
+    const out = new Set<string>();
+    const walk = (el: ResolvedElement): void => {
+      if (keywordIs(el.props.get('display') as ResolvedValue, 'none')) return;
+      out.add(el.element.address);
+      for (const c of el.children) if (c.kind === 'element') walk(c);
+    };
+    for (const at of t.values()) if (at.parent === null) walk(at.el);
+    return out;
+  });
+  const rendered = nodes.map((node) => ({ node, values: displayed.map((d) => d.has(node)) }));
+  const bases = animations.flatMap((a) => {
+    const names = new Set(a.lists.flatMap((l) => (l ?? []).map((e) => e.name)));
+    const props = new Set(keyframes.filter((k) => names.has(k.name)).flatMap((k) => k.blocks.flatMap((b) => b.values.map((v) => v.property))));
+    return [...props].map((property) => ({
+      node: a.node,
+      property,
+      values: trees.map((t) => {
+        const at = t.get(a.node);
+        return at === undefined ? null : animValueOf((at.el.props.get(property) as ResolvedValue).value);
+      }),
+    }));
+  });
+  return { version: ANIM_PROGRAM_VERSION, assignments: cases.map((c) => c.key), slots, animations, keyframes, rendered, bases, closure };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -189,6 +216,10 @@ export function webAnimationsOf(analysis: AnimationAnalysis, valueText: (v: CssV
       const ea = byKey.get(caseKey)?.elements.get(address);
       if (ea === undefined || ea.declarations.length === 0) return [];
       return ANIM_LIST_PROPERTIES.map((p) => `  ${p}: ${(ea.lists.get(p) ?? []).map((i) => itemText(p, i)).join(', ')};`);
+    },
+    sources: (caseKey) => {
+      const c = byKey.get(caseKey);
+      return new Set(c === undefined ? [] : [...c.elements.values()].filter((ea) => ea.declarations.length > 0).map((ea) => ea.address));
     },
     keyframes: rules.join('\n'),
   };
