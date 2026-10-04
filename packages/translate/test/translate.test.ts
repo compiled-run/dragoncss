@@ -149,8 +149,9 @@ describe('differential corpus (native-strategy.md 1.7)', () => {
   it('matches the committed seed, sizes and digest; at least 50% of the engine corpus lays out ok', () => {
     expect(c.digest).toBe(lockedDigest());
     const n = Object.fromEntries(c.suites.map((s) => [s.name, s.lines.length]));
-    // ANIM-a2 appends the rt suite (one line per rt vector record); the four P1 suites keep their sizes.
-    expect(n).toEqual({ vectors: 258, units: 320000, engine: 20258, library: 22000, rt: 54588, hit: 2028 });
+    // ANIM-a2 appends the rt suite (one line per rt vector record); the four P1 suites keep their sizes. The hit suite has one line
+    // per layout vector at every DPR: REPL-a's 10 replaced layout cases at 4 DPRs add 40 (2028 + 40).
+    expect(n).toEqual({ vectors: 258, units: 320000, engine: 20258, library: 22000, rt: 54588, hit: 2068 });
     expect(c.engineSplit.ok / 20258).toBeGreaterThanOrEqual(0.5);
     expect(c.engineSplit.threw + c.engineSplit.harnessError).toBe(0);
   });
