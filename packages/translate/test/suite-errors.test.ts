@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Corpus, Suite } from '../src/corpus.ts';
 import type { Exec, RunResult } from '../src/native.ts';
-import { allPass, buildKotlin, buildSwift, describe as describeRun, execSuite, OUT, outputCause, runSuites, stderrTail, suiteCause } from '../src/native.ts';
+import { allPass, buildKotlin, buildSwift, describe as describeRun, execSuite, OUT, outputCause, runSuites, stderrTail, suiteCause, withToolTmp } from '../src/native.ts';
 
 /** The longest a fake harness may run unless a test sets its own limit; below the 30 s test timeout. */
 const FAKE_MS = 20_000;
@@ -132,4 +132,18 @@ describe('T132: a harness that does not account for every case is a named error'
     expect(() => buildSwift({ swiftc: process.execPath, version: 't132-failed-build' }, files)).toThrow(/^swiftc -typecheck of the engine module failed:/);
     expect(leftovers('swift')).toEqual([]);
   }, TEST_MS);
+
+  it('withToolTmp gives the compiler its own TMPDIR and removes it after a return and after a throw (TMP-LEAK)', () => {
+    let seen = '';
+    expect(withToolTmp((env) => {
+      seen = env['TMPDIR'] as string;
+      return existsSync(seen);
+    })).toBe(true);
+    expect(existsSync(seen)).toBe(false);
+    expect(() => withToolTmp((env) => {
+      seen = env['TMPDIR'] as string;
+      throw new Error('planted');
+    })).toThrow('planted');
+    expect(existsSync(seen)).toBe(false);
+  });
 });
