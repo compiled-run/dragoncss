@@ -10,6 +10,7 @@ import { initialValue } from '../src/analysis/resolve.ts';
 import { computed, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
+import { floorProblems } from './floor.ts';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -51,7 +52,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   const paint = LONGHANDS.filter((p) => PROPERTY_ROLE[p] === 'paint');
   it('(i) paint holds exactly for the aspect-table longhands with a paint aspect and no layout aspect', () => {
     for (const p of LONGHANDS) expect(PROPERTY_ROLE[p] === 'paint', p).toBe(!PROPERTY_ASPECTS[p].layout && PROPERTY_ASPECTS[p].paint);
-    expect([...paint].sort()).toEqual(['background-color', 'border-bottom-color', 'border-left-color', 'border-right-color', 'border-top-color', 'color', 'transform', 'transform-origin', 'will-change']);
+    // PIN-DERIVE: the seams floor keeps every longhand that had the paint role, in order; a new paint longhand needs no edit here.
+    expect(floorProblems(new URL('./seams-floor.json', import.meta.url), 'role:paint', paint, true)).toEqual([]);
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
     // Two values of each paint longhand: two colours, or for the PNT2 longhands two transforms, origins and will-change features.

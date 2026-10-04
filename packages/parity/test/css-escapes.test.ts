@@ -7,6 +7,7 @@
 //   an escaped exponent or percent sign); Dragon's accepted declarations must compute as Chrome's, and its invalid ones be dropped;
 // - selectors: Dragon's matches equal Chrome's Element.matches() on elements carrying the decoded names.
 // Planted faults at each gate must be caught.
+import { readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { LinkedElement } from '../../dragon/src/analysis/link.ts';
 import { selectorMatches } from '../../dragon/src/analysis/match.ts';
@@ -344,6 +345,43 @@ const judgeSelectors = (seen: readonly SelectorSeen[]): string[] => seen.flatMap
   return JSON.stringify(s.dragon) === JSON.stringify(s.chrome) ? [] : [`${name}: Dragon ${JSON.stringify(s.dragon)}, Chrome ${JSON.stringify(s.chrome)}`];
 });
 
+/**
+ * PIN-DERIVE: the twin set's floor, per property, the number of distinct plain spellings it has twins for (case folded, so the
+ * seed that picks each escape form does not move it). css-escapes-floor.json may only rise: a property or word the grammar
+ * subset reaches can be added without a test edit, but losing one fails. DRAGON_FLOOR_WRITE=1 raises the floor when none is lost.
+ */
+const TWIN_FLOOR = new URL('./css-escapes-floor.json', import.meta.url);
+function twinFloorProblems(twins: readonly Twin[]): string[] {
+  const plains = new Map<string, Set<string>>();
+  for (const t of twins) {
+    const key = t.plain.slice(0, t.plain.indexOf(':')).toLowerCase();
+    plains.set(key, (plains.get(key) ?? new Set()).add(t.plain.toLowerCase()));
+  }
+  const floor = JSON.parse(readFileSync(TWIN_FLOOR, 'utf8')) as unknown;
+  if (typeof floor !== 'object' || floor === null || Array.isArray(floor) || Object.values(floor).some((n) => !Number.isInteger(n) || (n as number) < 1)) return ['css-escapes-floor.json is not an object of positive counts'];
+  const problems = Object.entries(floor as Record<string, number>).filter(([k, n]) => (plains.get(k)?.size ?? 0) < n).map(([k, n]) => `${k}: ${plains.get(k)?.size ?? 0} plain spellings with twins, the floor is ${n}`);
+  if (problems.length === 0 && process.env['DRAGON_FLOOR_WRITE'] === '1') {
+    const raised = Object.fromEntries([...plains].map(([k, v]) => [k, v.size]).sort(([a], [b]) => ((a as string) < (b as string) ? -1 : 1)));
+    writeFileSync(TWIN_FLOOR, `${JSON.stringify(raised, null, 2)}\n`);
+  }
+  return problems;
+}
+
+describe('CSS escapes: the twin set', () => {
+  it('has a twin for every keyword each subset property reaches and for its name, and never falls below its floor', () => {
+    const twins = twinCases();
+    const plains = new Set(twins.map((t) => t.plain));
+    for (const p of subset) {
+      const words = new Set<string>();
+      reach((grammar as Record<string, { syntax: string }>)[p]?.syntax ?? '', words, new Set(), new Set());
+      for (const w of words) expect(plains.has(`${p}: ${w}`), `${p}: ${w}`).toBe(true);
+      expect(plains.has(`${p}: inherit`), `${p} name`).toBe(true);
+    }
+    expect(new Set(twins.map((t) => t.decl)).size).toBe(twins.length);
+    expect(twinFloorProblems(twins)).toEqual([]);
+  });
+});
+
 describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
   it('escaped twins read as their plain spelling, edge escapes compute like Chrome, selectors match like Chrome, and the plants are caught', async () => {
     const twins = twinCases();
@@ -395,8 +433,9 @@ describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
     expect(judgeEdges(edges, edgeSeen)).toEqual([]);
     expect(judgeSelectors(selectorSeen)).toEqual([]);
     for (const p of planted) expect(p.problems().length, p.name).toBeGreaterThan(0);
-    // SIZE-ar: aspect-ratio joins the grammar subset, so its keyword and name gain escaped twins (+4); PNT2: transform,
-    // transform-origin and will-change, their names and the keywords their syntax reaches (+28); every twin still reads as Chrome reads it.
-    expect({ twins: twinSeen.length, edges: edges.length, selectors: selectorSeen.length }).toEqual({ twins: 13810, edges: 89, selectors: 59 });
+    // PIN-DERIVE: Chrome read every twin both ways (the twin set itself is floored above); the edge and selector lists are this file's.
+    expect(twinSeen.length).toBe(twins.length);
+    expect(twinSeen.filter((s) => s.chrome === undefined || s.chromePlain === undefined).map((s) => s.twin.decl)).toEqual([]);
+    expect({ edges: edges.length, selectors: selectorSeen.length }).toEqual({ edges: 89, selectors: 59 });
   }, 300_000);
 });
