@@ -10,6 +10,7 @@ import { dirname, join } from 'node:path';
 import {
   baseAction,
   ciState,
+  ciStep,
   claudeReviewGate,
   type Entry,
   errorText,
@@ -50,7 +51,7 @@ import {
   staleLines,
   treeMatches,
 } from './merge-train-lib.ts';
-import { checkSha, type Git, ignoreAt, parseCheckRunPages, regenOnlyProblems } from './pr-review-vouch.ts';
+import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
 const DEVICE = '/tmp/device-lease.sh';
@@ -159,15 +160,15 @@ const releasePriority = (): void => {
   } catch {}
 };
 
-const waitCi = (step: string, sha: string, what: string): void => {
+// `conflicting` (only before the build) re-reads whether the PR conflicts with master on every poll.
+const waitCi = (step: string, sha: string, what: string, conflicting?: () => boolean): void => {
   const t0 = Date.now();
   for (;;) {
     const s = ciState(checkRuns(sha));
-    const waited = (Date.now() - t0) / 1000;
-    if (s.state === 'success') return log(`  CI checks success on ${what} ${sha}`);
-    if (s.state === 'failure') throw new LandFailure(step, `CI checks on ${what} ${sha} did not succeed: ${s.conclusions.join('; ')}`);
-    if (s.state === 'none' && waited >= CI_APPEAR_S) throw new LandFailure(step, `no CI checks run on ${what} ${sha} after ${CI_APPEAR_S}s`);
-    if (waited >= CI_WAIT_S) throw new LandFailure(step, `CI checks on ${what} ${sha} still ${s.state} after ${CI_WAIT_S}s`);
+    const next = ciStep(s, (Date.now() - t0) / 1000, { appearS: CI_APPEAR_S, waitS: CI_WAIT_S }, s.state === 'none' && conflicting !== undefined && conflicting());
+    if (next === 'success') return log(`  CI checks success on ${what} ${sha}`);
+    if (next === 'skip') return log(`  ${what} ${sha} is CONFLICTING with master and has no CI run (GitHub runs none on a conflicting PR); building anyway, CI on the landing commit is still required`);
+    if (typeof next === 'object') throw new LandFailure(step, `${what} ${sha} ${next.fail}`);
     sleep(30_000);
   }
 };
@@ -306,7 +307,7 @@ const landOne = (e: Entry): { result: 'landed' | 'merged before'; detail: string
   }
 
   // The PR head's own CI must pass before a build is spent on it.
-  waitCi('ci-before', pr.headOid, `#${e.pr} head`);
+  waitCi('ci-before', pr.headOid, `#${e.pr} head`, () => parsePrHead(JSON.parse(gh(['pr', 'view', String(e.pr), '--repo', REPO, '--json', 'headRefOid,mergeable']))).mergeable === 'CONFLICTING');
 
   // Build: merge into master, regen, device evidence, regen, commit, test.
   const master = fetchMaster();
