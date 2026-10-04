@@ -19,6 +19,12 @@ import { compileFixture } from '../src/pipeline.ts';
 const replacedIds = new Set(REPLACED.map((f) => f.id));
 const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !replacedIds.has(f.id));
 
+/**
+ * Earlier fixtures that gained a replaced leaf on purpose: hit-order's row m (SELD-R1b x REPL-a) proves a positioned img flex item
+ * stacks by its order in Chrome's hit test. Every other check still applies to them, and each must hold a replaced leaf.
+ */
+const HOLDS_REPLACED = new Set(['hit-order']);
+
 const NEUTRAL = new Map([['object-fit', 'fill'], ['object-position', '50% 50%']]);
 
 /** Every element of a resolved tree. */
@@ -93,7 +99,7 @@ describe('REPL-a identity: every case that predates the replaced package is unch
           vectors++;
           const committed = (JSON.parse(readFileSync(path, 'utf8')) as { input: unknown }).input;
           if (JSON.stringify(p.input) !== JSON.stringify(committed)) off.push(`${c.id}: layout input differs from the committed vector`);
-          if (holdsReplaced(p.input.root)) off.push(`${c.id}: holds a replaced leaf`);
+          if (holdsReplaced(p.input.root) !== HOLDS_REPLACED.has(spec.id)) off.push(`${c.id}: ${HOLDS_REPLACED.has(spec.id) ? 'holds no replaced leaf' : 'holds a replaced leaf'}`);
         }
       }
     }
