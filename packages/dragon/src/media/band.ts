@@ -46,6 +46,13 @@ export function contains(i: Interval, v: number): boolean {
   return (v > i.lo || (i.loInclusive && v === i.lo)) && (v < i.hi || (i.hiInclusive && v === i.hi));
 }
 
+/** Whether a whole number lies in the interval. */
+export function holdsWholePx(i: Interval): boolean {
+  if (i.hi === Infinity) return true;
+  for (let n = Math.ceil(i.lo); n <= Math.floor(i.hi); n++) if (contains(i, n)) return true;
+  return false;
+}
+
 const bits = new DataView(new ArrayBuffer(8));
 /** The adjacent double above (up) or below x. */
 function step(x: number, up: boolean): number {

@@ -45,7 +45,7 @@ import { NO_FAULTS } from './faults.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
 import { PROGRAM_VERSIONS } from './lower/native-program.ts';
 import type { Band, BandPartition } from './media/index.ts';
-import { band, bandAt, evaluateInBand, featuresOfList } from './media/index.ts';
+import { band, bandAt, evaluateInBand, featuresOfList, holdsWholePx } from './media/index.ts';
 import { androidProfile } from './profiles/android.ts';
 import type { NativeLanesVerdict } from './profiles/native-lanes.ts';
 import { NATIVE_LANES } from './profiles/native-lanes.ts';
@@ -931,7 +931,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     else if (t === 'ios' || t === 'android') outputs[key] = nativeOutputState(t, digest, NATIVE_LANES[t]);
     else {
       const webFonts = fonts === null || !fonts.used ? null : webFontsOf(fonts, options.faults);
-      const [base, ...extra] = bandCases.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement })) }));
+      const whole = (b: Band | null): boolean => b === null || (b.width.some(holdsWholePx) && b.height.some(holdsWholePx));
+      const webBands = options.faults.mediaFractionalBandDropped ? bandCases.filter((r, k) => k === 0 || whole(r.band)) : bandCases;
+      const [base, ...extra] = webBands.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement })) }));
       web = emitWebCss((base as { cases: { key: string; root: ResolvedElement }[] }).cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText));
       outputs[key] = { kind: 'ready', digest, files: web.files, assets: webFonts === null ? [] : webFonts.assets() };
     }
