@@ -8,6 +8,7 @@ import { NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
 import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, tapTarget } from '../src/hit-capture.ts';
 import { nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
+import { hitCaseIds, nativeTargets } from '../src/targets.ts';
 
 const cases = hitCases();
 
@@ -20,6 +21,10 @@ describe('the host hit lane', () => {
       'inline-box-boundaries-rtl', 'inline-box-hyphen', 'inline-tags', 'inline-tags-rtl', 'inline-baselines', 'inline-baselines-rtl',
     ]);
     for (const n of out) expect(() => caseHitTable(n), n.case.id).toThrow(/is (an inline box|a <br>), which the hit table does not model yet/);
+    // The device-hit lane declares exactly these cases at every device DPR (targets.ts hitCaseIds), so P5 counts them, not all.
+    expect(hitCaseIds()).toEqual(cases.map((n) => n.case.id));
+    for (const t of nativeTargets()) for (const s of t.lanes.find((l) => l.lane === 'device-hit')?.sets ?? []) expect(s.ids, `${t.target} ${s.dpr}`).toEqual(hitCaseIds());
+    for (const t of nativeTargets()) for (const s of t.lanes.find((l) => l.lane === 'device-frames')?.sets ?? []) expect(s.ids.length, `${t.target} ${s.dpr}`).toBe(nativeCases().length);
   });
 
   it('has a capture of every layout case, on the grid its hit table derives', () => {

@@ -16,7 +16,7 @@ import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
 import { SAMPLE_RULES } from '../src/samples.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
-import { corpusSuites, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest } from '../src/targets.ts';
+import { corpusSuites, declaredSuites, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest } from '../src/targets.ts';
 
 const targets = nativeTargets();
 const sources = laneSources();
@@ -227,7 +227,8 @@ describe('committed out/lanes.json', () => {
         expect([...(l.device?.sets.map((s) => s.dpr) ?? [])].sort(), `${t.target} ${l.lane}`).toEqual(l.sets.map((s) => s.dpr).sort());
         // SELD-R1b: device-states runs the state script cases, every check; device-hit runs every layout case and compares only
         // hit points (b), the other counts exactly 0.
-        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : ids.length;
+        // INL1a: device-hit runs the hit cases (hitCaseIds: every layout case but those hitTableOf refuses).
+        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseIds().length : ids.length;
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
           expect(s.cases, `${t.target} ${l.lane} ${s.dpr}`).toBe(cases);

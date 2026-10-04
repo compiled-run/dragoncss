@@ -71,6 +71,18 @@ function hitVectorCount(): number {
   return hitVectors;
 }
 
+let hitIds: readonly string[] | null = null;
+/**
+ * The layout case ids the hit lane covers, in layoutCaseIds() order: those whose committed DPR-1 vector input rt-hit.ts hitRefusal
+ * accepts (hit-capture.ts hitCases filters the native programs the same way; hit-report.test.ts checks they agree).
+ */
+export function hitCaseIds(): readonly string[] {
+  if (hitIds === null) {
+    hitIds = layoutCaseIds().filter((id) => hitRefusal(readJson<{ readonly input: LayoutInput }>(`packages/layout/vectors/${id}.json`).input) === null);
+  }
+  return hitIds;
+}
+
 let topLevel: readonly string[] | null = null;
 /** Every layout case id, in fixture order: the top-level vectors, and the ids of every DPR set. */
 export function layoutCaseIds(): readonly string[] {
@@ -134,6 +146,8 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
     return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids }, ...DPRS.map((d) => dprSet(d, ids))], corpora: corpusSuites() };
   }
   if (lane === 'device-states') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, stateScriptIds())), corpora: [] };
+  // INL1a: device-hit runs only the cases hitTableOf accepts (the device has no hit facts for the others); every other lane all.
+  if (lane === 'device-hit') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, hitCaseIds())), corpora: [] };
   return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, ids)), corpora: [] };
 }
 

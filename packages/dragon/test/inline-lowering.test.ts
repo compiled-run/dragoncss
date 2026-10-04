@@ -76,6 +76,22 @@ describe('inline boxes and <br>s in the engine input', () => {
 });
 
 describe('refusals', () => {
+  it('a background on an inline box is refused on ios and android, naming INL1b, and painted on web; a transparent one is not refused', () => {
+    // The native runtime places inline box views unpainted until INL1b, so the review's highlighted span must not compile checked there.
+    const css = 'body { font-family: Ahem; font-size: 10px; } .x { background-color: red; } .t { background-color: transparent; }';
+    const tree = (cls: string) => (r: SourceRef) => [el(r, 'd', 'div', [], [el(r, 'p', 'p', [], [text(r, 't0', 'a '), el(r, 's', 'span', [cls], [text(r, 't1', 'b')]), text(r, 't2', ' c')])])];
+    const all = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' });
+    const red = all.compile(inputFor(css, tree('x')));
+    const refused = red.diagnostics.filter((d) => d.severity === 'error').map((d) => [d.code, d.target, d.message]).sort((a, b) => String(a[1]).localeCompare(String(b[1])));
+    expect(refused).toEqual([
+      ['DRAGON_UNSUPPORTED_VALUE', 'android', expect.stringMatching(/^background-color: .* on the inline box <span> s: the native runtime does not paint inline boxes until INL1b/)],
+      ['DRAGON_UNSUPPORTED_VALUE', 'ios', expect.stringMatching(/^background-color: .* on the inline box <span> s: the native runtime does not paint inline boxes until INL1b/)],
+    ]);
+    expect([red.outputs.ios.kind, red.outputs.android.kind, red.outputs.web.kind]).toEqual(['blocked', 'blocked', 'ready']);
+    const clear = all.compile(inputFor(css, tree('t')));
+    expect(clear.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+  });
+
   const refused = (tree: (r: SourceRef) => TreeNode[]) => compile(tree).diagnostics.map((d) => `${d.code} ${String(d.target)}`);
   it('an inline box whose white-space-collapse is not collapse is refused on every target', () => {
     const got = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', 'span', ['pre'], [text(r, 't1', 'b  c')])])]).diagnostics;

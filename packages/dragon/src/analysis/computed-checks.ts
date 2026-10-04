@@ -14,6 +14,7 @@ import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { environmentOf, valueToString } from './resolve.ts';
+import { usedColors } from '../lower/paint/colors.ts';
 import { checkTransformContexts } from './paint-values/transform.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
@@ -133,14 +134,16 @@ function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set
 // and runs with different text-wrap-mode in one formatting context.
 function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   if (isInlineBox(el)) return;
-  const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => {
-    for (const t of targets) {
+  const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets, at, what, message, manual);
+  const refuseFor = (on: readonly string[], at: ResolvedElement, what: string, message: string, manual: string): void => {
+    for (const t of on) {
       const id = `${t}|inline-${what}|${at.element.address}`;
       if (reported.has(id)) continue;
       reported.add(id);
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: at.element.node.origin, target: t, message, manual, basis: 'computed-value' }));
     }
   };
+  const refuseNative = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets.filter((t) => t === 'ios' || t === 'android'), at, what, message, manual);
   const runs = inlineContexts(el, (child, box) =>
     refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`),
   );
@@ -157,6 +160,13 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     // right only for white-space-collapse: collapse (css-text-4 §4.1.1).
     for (const it of run) {
       if (it.kind !== 'open' && it.kind !== 'br') continue;
+      // The native runtime places inline box views unpainted (their decorations are INL1b), so a paint an inline box would draw
+      // is refused on native rather than dropped. Of the paint longhands, only background-color paints an inline box without a
+      // border width (which the inline/ltr context refuses); transform, overflow and will-change do not apply to inline boxes.
+      if (it.kind === 'open' && usedColors(it.el)['background-color'].alpha !== 0) {
+        const bg = valueToString((it.el.props.get('background-color') as ResolvedValue).value);
+        refuseNative(it.el, 'background', `background-color: ${bg} on the inline box <${it.el.element.tag}> ${it.el.element.address}: the native runtime does not paint inline boxes until INL1b (inline box decorations), so the background would be dropped`, `Move the background to a block, or remove it from <${it.el.element.tag}> ${it.el.element.address}, until INL1b.`);
+      }
       const collapse = keywordOf(it.el.props.get('white-space-collapse') as ResolvedValue);
       if (collapse !== 'collapse') refuse(it.el, 'white-space', `white-space-collapse: ${collapse} on the inline box <${it.el.element.tag}> ${it.el.element.address} (css-text-4 §4.1.1), which Dragon does not lay out`, `Remove the white-space declaration of ${it.el.element.address}, or make ${it.el.element.address} a block.`);
     }
