@@ -14,7 +14,9 @@ Everything else here is a default you apply without asking.
   captures, wpt:run, tw:sweep. Device runs are the landing driver's job, never a lane's.
 
 ## Work
-- One worktree, one branch. Base: master unless your dispatch names a parent; stacks at most 2 deep.
+- One worktree, one branch. NO STACKS (owner, 2026-10-04): every new branch starts from origin/master, stays small
+  (one theme, ~150 KB reviewed), and is built to land within about a day. If you need unlanded work, wait for it or
+  have the PM fold it in; never build on top of an unlanded branch. Existing stacks drain as they are.
 - Develop with targeted `vitest run <files>` and `pnpm typecheck` (no queue needed).
 - At the end of the branch: one `pnpm regen`, one full `pnpm test` (through the queue), commit.
   Don't rerun a step that passed.
