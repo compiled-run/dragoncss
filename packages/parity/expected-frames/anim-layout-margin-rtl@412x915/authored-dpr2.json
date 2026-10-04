@@ -1,0 +1,1511 @@
+{
+ "schema": "dragon-frames-capture/1",
+ "case": "anim-layout-margin-rtl@412x915",
+ "chrome": "145.0.7632.6",
+ "rendering": "authored",
+ "devicePixelRatio": 2,
+ "direction": "rtl",
+ "viewport": {
+  "width": 412,
+  "height": 915
+ },
+ "steps": 43,
+ "samples": [
+  {
+   "at": 0,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {
+      "margin-right": "0px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 396,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 396,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 0,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {
+      "margin-right": "0px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 396,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 396,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 1,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 411.7421875,
+     "height": 20,
+     "computed": {
+      "margin-right": "0.262158px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 411.7421875,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 395.7421875,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 395.7421875,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 104.97779199999998,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 310.2421875,
+     "height": 20,
+     "computed": {
+      "margin-right": "101.761px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 310.2421875,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 294.2421875,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 294.2421875,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 250,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 155.234375,
+     "height": 20,
+     "computed": {
+      "margin-right": "256.769px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 155.234375,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 139.234375,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 139.234375,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 499,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92.0078125,
+     "height": 20,
+     "computed": {
+      "margin-right": "319.999px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92.0078125,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 76.0078125,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 76.0078125,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 500,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {
+      "margin-right": "320px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 501,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {
+      "margin-right": "320px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 600,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {
+      "margin-right": "320px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 600,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {
+      "margin-right": "320px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 601,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92.265625,
+     "height": 20,
+     "computed": {
+      "margin-right": "319.738px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92.265625,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 76.265625,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 76.265625,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 704.977792,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 193.765625,
+     "height": 20,
+     "computed": {
+      "margin-right": "218.239px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 193.765625,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 177.765625,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 177.765625,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 850,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 348.7734375,
+     "height": 20,
+     "computed": {
+      "margin-right": "63.2309px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 348.7734375,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 332.7734375,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 332.7734375,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 850,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 348.7734375,
+     "height": 20,
+     "computed": {
+      "margin-right": "63.2309px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 348.7734375,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 332.7734375,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 332.7734375,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 851,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 348.5078125,
+     "height": 20,
+     "computed": {
+      "margin-right": "63.4946px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 348.5078125,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 332.5078125,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 332.5078125,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 934.2345362867749,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 267.1171875,
+     "height": 20,
+     "computed": {
+      "margin-right": "144.884px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 267.1171875,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 251.1171875,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 251.1171875,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 1050.600847764961,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 142.7421875,
+     "height": 20,
+     "computed": {
+      "margin-right": "269.263px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 142.7421875,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 126.7421875,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 126.7421875,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 1250.2016955299218,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92.0078125,
+     "height": 20,
+     "computed": {
+      "margin-right": "319.999px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92.0078125,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 76.0078125,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 76.0078125,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 1251.2016955299218,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {
+      "margin-right": "320px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 1252.2016955299218,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {
+      "margin-right": "320px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 1450,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {
+      "margin-right": "320px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "at": 1451,
+   "settle": true,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 412,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {
+      "margin-right": "320px"
+     }
+    },
+    {
+     "id": "item",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 92,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "item:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    },
+    {
+     "id": "item:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 76,
+     "y": 0,
+     "width": 16,
+     "height": 16,
+     "computed": null
+    }
+   ]
+  }
+ ]
+}

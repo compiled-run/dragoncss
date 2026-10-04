@@ -29,6 +29,7 @@ type Translate = {
   readonly suiteCause: (r: { status: number | null; signal: NodeJS.Signals | null; error?: Error | undefined }, timeoutMs: number) => string | null;
   readonly SUITE_TIMEOUT_MS: number;
   readonly SWIFT_FLAGS: readonly string[];
+  readonly withToolTmp: <T>(use: (env: NodeJS.ProcessEnv) => T) => T;
   readonly KOTLIN_FLAGS: readonly string[];
   readonly kotlinTool: () => { readonly kotlinc: string; readonly javaHome: string; readonly version: string } | null;
   readonly buildKotlin: (tool: { kotlinc: string; javaHome: string; version: string }, files: Files) => { jar: string };
@@ -59,7 +60,7 @@ const SUITE_FAILS = 'a suite that crashes or times out is judged: its cause is t
 export async function buildIosHarness(): Promise<string> {
   const t = await translate();
   const files = t.committedFiles('swift');
-  const swiftVersion = must(run('xcrun', ['-sdk', 'iphonesimulator', 'swiftc', '--version']), 'swiftc --version');
+  const swiftVersion = t.withToolTmp((env) => must(run('xcrun', ['-sdk', 'iphonesimulator', 'swiftc', '--version'], { env }), 'swiftc --version'));
   const dir = join(nativeOut('ios'), 'vectors', key(files, [...t.SWIFT_FLAGS, IOS_TARGET, swiftVersion]));
   const binary = join(dir, 'harness');
   if (existsSync(binary)) return binary;
@@ -131,7 +132,7 @@ export async function runDeviceVectors(h: DeviceHandle, target: TargetConfig, ho
       const r = run('xcrun', ['simctl', 'spawn', h.udid, binary, mode, input, output], { timeoutMs: t.SUITE_TIMEOUT_MS, allowFailure: SUITE_FAILS });
       return t.suiteCause(causeOf(r), t.SUITE_TIMEOUT_MS);
     };
-    toolchain = `${must(run('xcrun', ['swiftc', '--version']), 'swiftc --version').split('\n').find((l) => l.includes('Swift version'))?.trim() ?? 'swiftc'}; ${IOS_TARGET}; simctl spawn on ${h.spec.name}`;
+    toolchain = `${t.withToolTmp((env) => must(run('xcrun', ['swiftc', '--version'], { env }), 'swiftc --version')).split('\n').find((l) => l.includes('Swift version'))?.trim() ?? 'swiftc'}; ${IOS_TARGET}; simctl spawn on ${h.spec.name}`;
   } else {
     const dexJar = await buildAndroidHarness();
     const adb = (args: readonly string[], timeoutMs = 600_000, allowFailure?: string): ExecResult => run(h.tools.adb, ['-s', h.serial, ...args], allowFailure === undefined ? { timeoutMs } : { timeoutMs, allowFailure });

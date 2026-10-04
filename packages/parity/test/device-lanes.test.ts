@@ -223,3 +223,18 @@ describe('capture trust', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 });
+
+// #72 landing device run: an image sample failure must name its rule as its node, like every other sample kind, or the
+// device-failures file holds an entry the landing driver's strict parser refuses.
+describe('pixelProblemNode', () => {
+  it('names the rule of every sample kind, hyphenated ones included, and null for a case-level problem', async () => {
+    const { pixelProblemNode } = await import('../src/device-lanes.ts');
+    const { SAMPLE_RULES } = await import('../src/samples.ts');
+    expect(pixelProblemNode('image-flat:a1:0 at 80,40: native [255,255,255,255], Chrome [230,40,40,255] (channel delta limit 0)')).toBe('image-flat:a1:0');
+    expect(pixelProblemNode('edge:a1:image-left: Chrome shows an edge 3.000 device px along the scanline, the native capture none')).toBe('edge:a1:image-left');
+    expect(pixelProblemNode('interior:a1 at 72,22: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)')).toBe('interior:a1');
+    for (const k of SAMPLE_RULES) expect(pixelProblemNode(`${k}:n3:1 at 1,2: native [0,0,0,255], Chrome [1,1,1,255]`), k).toBe(`${k}:n3:1`);
+    expect(pixelProblemNode('the dump has no pixels')).toBeNull();
+    expect(pixelProblemNode('raster rule: 800x600, the capture 800x601')).toBeNull();
+  });
+});

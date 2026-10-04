@@ -140,7 +140,10 @@ function directionIsForwards(currentIteration: number | null, direction: Playbac
 
 /** Timing::CalculateTimings for a KeyframeEffect at a local time in seconds (null when the animation has no current time). */
 export function computeTiming(spec: EffectTimingSpec, localTimeSeconds: number | null, faults: RtFaults): ComputedTiming {
-  const n = normalizeTiming(spec);
+  return timingAt(normalizeTiming(spec), spec, localTimeSeconds, faults);
+}
+
+function timingAt(n: NormalizedTiming, spec: EffectTimingSpec, localTimeSeconds: number | null, faults: RtFaults): ComputedTiming {
   if (localTimeSeconds === null) return { phase: 'none', localTime: null, activeTime: null, progress: null, currentIteration: null };
   const p = calculatePhase(n, localTimeSeconds);
   const phase = p.phase;
@@ -211,4 +214,53 @@ export function seekPaused(ms: number, timelineTime: number, playbackRate: numbe
 /** The computed timing of an animation's effect at a timeline time (seconds since the timeline's zero time). */
 export function animationTiming(spec: EffectTimingSpec, s: PlayState, timelineTime: number, faults: RtFaults): ComputedTiming {
   return computeTiming(spec, currentTimeAt(s, timelineTime, faults), faults);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// CSS transitions and animations (T065 R2): CSSTimingData keeps durations and delays in seconds, and the lanes move each
+// animation's current time through Animation::setCurrentTime in milliseconds (animation_time_delta.h, animation.cc).
+
+/** A CSS transition's or animation's Timing (CSSTimingData::ConvertToTiming): delay and duration in seconds, no end delay. */
+export type SecondsTiming = {
+  readonly delay: number;
+  readonly duration: number;
+  readonly iterations: number;
+  readonly direction: PlaybackDirection;
+  readonly fill: FillMode;
+  readonly easing: Easing;
+};
+
+/** AnimationEffect::EnsureNormalizedTiming for a seconds timing on a monotonic timeline. */
+export function normalizeSeconds(t: SecondsTiming): NormalizedTiming {
+  const activeDuration = multiplyZeroAlwaysGivesZero(t.duration, t.iterations);
+  return { startDelay: t.delay, endDelay: 0, iterationDuration: t.duration, activeDuration, endTime: maxTime(t.delay + activeDuration, 0) };
+}
+
+/** Timing::CalculateTimings for a seconds timing at a local time in seconds. */
+export function computeSecondsTiming(t: SecondsTiming, localTimeSeconds: number | null, faults: RtFaults): ComputedTiming {
+  const spec: EffectTimingSpec = { delayMs: 0, endDelayMs: 0, durationMs: 0, iterations: t.iterations, iterationStart: 0, direction: t.direction, fill: t.fill, easing: t.easing };
+  return timingAt(normalizeSeconds(t), spec, localTimeSeconds, faults);
+}
+
+/** An animation's current time in seconds, and the milliseconds it has run (the heldTimeShortcut plant's clock). */
+export type HeldTime = {
+  readonly seconds: number;
+  readonly runMs: number;
+};
+
+export const HELD_ZERO: HeldTime = { seconds: 0, runMs: 0 };
+
+/** Animation::Limited at playback rate 1: the held time is at or within the time tolerance of the effect end. */
+export function heldFinished(seconds: number, endTime: number): boolean {
+  return seconds >= endTime || withinTolerance(seconds, endTime);
+}
+
+/**
+ * One lane step: `currentTime = currentTime + deltaMs`, which Blink reads as `seconds * 1000` and stores as `ms / 1000.0`.
+ * The heldTimeShortcut plant derives the time from the summed milliseconds instead.
+ */
+export function advanceHeld(h: HeldTime, deltaMs: number, faults: RtFaults): HeldTime {
+  const runMs = h.runMs + deltaMs;
+  if (faults.heldTimeShortcut) return { seconds: runMs / 1000.0, runMs };
+  return { seconds: (h.seconds * 1000 + deltaMs) / 1000.0, runMs };
 }

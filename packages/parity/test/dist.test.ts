@@ -3,6 +3,7 @@
 // plain Node consumer imports it through the default condition and a typed consumer checks its .d.ts.
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import type { Browser, Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -38,7 +39,7 @@ afterAll(() => {
 
 beforeAll(() => {
   execFileSync(process.execPath, [repoPath('scripts/build-dist.ts')], { stdio: 'pipe' });
-  packDir = mkdtempSync('/tmp/dragon-s5-pack-');
+  packDir = mkdtempSync(join(tmpdir(), 'dragon-s5-pack-'));
   scratch.push(packDir);
   execFileSync('pnpm', ['pack', '--pack-destination', packDir], { cwd: repoPath('packages/dragon'), stdio: 'pipe' });
   const tgz = readdirSync(packDir).filter((f) => f.endsWith('.tgz'));
@@ -205,8 +206,8 @@ describe('(f4) Node consumer and (f5) publish shape of the packed dragon tarball
     }
   });
 
-  it('(f4) plain node without --conditions imports "dragon" from a /tmp consumer: exactly the public exports; deep and internal paths fail; the compile equals the workspace compile', () => {
-    const consumer = mkdtempSync('/tmp/dragon-s5-consumer-');
+  it('(f4) plain node without --conditions imports "dragon" from a consumer in the temp folder: exactly the public exports; deep and internal paths fail; the compile equals the workspace compile', () => {
+    const consumer = mkdtempSync(join(tmpdir(), 'dragon-s5-consumer-'));
     scratch.push(consumer);
     mkdirSync(join(consumer, 'node_modules'));
     cpSync(join(packDir, 'package'), join(consumer, 'node_modules', 'dragon'), { recursive: true });

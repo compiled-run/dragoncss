@@ -101,21 +101,16 @@ function lineCol(css: string, offset: number): { line: number; column: number } 
 /** Pass B's stylesheet: at-rule wrappers blanked, keyframe selectors renamed to unmatched classes, all offsets kept. */
 export function unwrapAtRules(css: string, decls: readonly CssDeclaration[]): string {
   const spans: Span[] = [];
-  const renames: { span: Span; text: string }[] = [];
   const seen = new Set<number>();
   for (const d of decls) {
-    if (d.atRuleSpan === null) continue;
-    if (d.atRule !== null && d.atRule.startsWith('@keyframes') && !renames.some((r) => r.span.start === d.selectorSpan.start)) {
-      const len = d.selectorSpan.end - d.selectorSpan.start;
-      renames.push({ span: d.selectorSpan, text: `.${'k'.repeat(len - 1)}` });
-    }
+    // ANIM-b1 accepts @keyframes at the top level, so only conditional wrappers are blanked.
+    if (d.atRuleSpan === null || (d.atRule !== null && d.atRule.startsWith('@keyframes'))) continue;
     if (seen.has(d.atRuleSpan.start)) continue;
     seen.add(d.atRuleSpan.start);
     const open = css.indexOf('{', d.atRuleSpan.start);
     spans.push({ start: d.atRuleSpan.start, end: open + 1 }, { start: d.atRuleSpan.end - 1, end: d.atRuleSpan.end });
   }
-  let out = blank(css, spans);
-  for (const r of renames) out = out.slice(0, r.span.start) + r.text + out.slice(r.span.end);
+  const out = blank(css, spans);
   if (out.length !== css.length) throw new Error('unwrapping changed the stylesheet length');
   return out;
 }
@@ -317,7 +312,7 @@ function main(): void {
     method: {
       passes: {
         'A-authored': 'the tree and stylesheet as written, all cases in one compile',
-        'B-unwrapped': '@media and @keyframes wrappers blanked (offsets kept), so declarations inside at-rules get the context-free check',
+        'B-unwrapped': '@media wrappers blanked (offsets kept), so declarations inside them get the context-free check',
         'C-context': 'B with target-less errors blanked to a fixed point and the tree projected to supported tags and accepted attributes; reaches the per-case checks',
       },
       cases: model.assignments.length,

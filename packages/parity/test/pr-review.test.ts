@@ -2,9 +2,19 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   ALREADY_REVIEWED,
+  CI_CHECK,
+  CI_WORKFLOW,
+  ciJobIds,
+  type PrHead,
+  parsePrHead,
+  NO_CODE_REVIEWED,
+  reviewExit,
+  SPENDING_LIMIT,
+  spendingLimitWaived,
   type Git,
   type Ignore,
   ignoreAt,
@@ -39,6 +49,7 @@ const run = (conclusion: string | null, title: string | null, name = 'Macroscope
 const skipped = run('skipped', 'Diff unchanged');
 const reviewed = [run('success', 'No issues identified'), run('success', null, 'checks')];
 const PATCH = sha('7');
+const HEAD: PrHead = { sha: sha('a'), mergeable: 'MERGEABLE' };
 
 describe('vouchForSkip on "Diff unchanged"', () => {
   it('passes when an earlier reviewed commit has the head patch id, naming that commit', () => {
@@ -143,34 +154,34 @@ describe('pr-review wait loop and verdict', () => {
   it('keeps waiting on a vouched skip while CI is pending', () => {
     const runs = [ci(null), skipped];
     expect(verdictOf(skipped, ok)).toBe('passed');
-    expect(settled(runs, ok)).toBe(false);
-    expect(outcome(runs, ok)).toEqual({ pending: ['checks'], failed: [] });
+    expect(settled(runs, ok, HEAD)).toBe(false);
+    expect(outcome(runs, ok, HEAD)).toEqual({ pending: ['checks'], failed: [], unreviewed: false });
   });
 
   it('passes a vouched skip once CI is green', () => {
     const runs = [ci('success'), skipped];
-    expect(settled(runs, ok)).toBe(true);
-    expect(outcome(runs, ok)).toEqual({ pending: [], failed: [] });
+    expect(settled(runs, ok, HEAD)).toBe(true);
+    expect(outcome(runs, ok, HEAD)).toEqual({ pending: [], failed: [], unreviewed: false });
   });
 
   it('fails an unvouched skip, and a skip nobody judged', () => {
     for (const v of [no, new Map<string, Vouch>()]) {
       expect(verdictOf(skipped, v)).toBe('failed');
-      expect(settled([ci(null), skipped], v)).toBe(true);
-      expect(outcome([ci('success'), skipped], v)).toEqual({ pending: [], failed: [skipped.name] });
+      expect(settled([ci(null), skipped], v, HEAD)).toBe(true);
+      expect(outcome([ci('success'), skipped], v, HEAD)).toEqual({ pending: [], failed: [skipped.name], unreviewed: false });
     }
   });
 
   it('ends the wait on a genuine failure', () => {
     const runs = [ci('failure'), run(null, null)];
-    expect(settled(runs, ok)).toBe(true);
-    expect(outcome(runs, ok)).toEqual({ pending: [run(null, null).name], failed: ['checks'] });
+    expect(settled(runs, ok, HEAD)).toBe(true);
+    expect(outcome(runs, ok, HEAD)).toEqual({ pending: [run(null, null).name], failed: ['checks'], unreviewed: false });
   });
 
   it('keeps waiting until the correctness check exists, and reports it as not started', () => {
-    expect(settled([ci('success')], ok)).toBe(false);
-    expect(settled([], ok)).toBe(false);
-    expect(outcome([ci('success')], ok)).toEqual({ pending: ['Macroscope - Correctness Check'], failed: [] });
+    expect(settled([ci('success')], ok, HEAD)).toBe(false);
+    expect(settled([], ok, HEAD)).toBe(false);
+    expect(outcome([ci('success')], ok, HEAD)).toEqual({ pending: ['Macroscope - Correctness Check'], failed: [], unreviewed: false });
   });
 });
 
@@ -189,6 +200,16 @@ describe('vouchForSkip on "already reviewed"', () => {
       expect(vouchForSkip(run('skipped', title), { id: PATCH }, earlier)).toMatchObject({ ok: false });
     }
     expect(vouchForSkip(run('neutral', ALREADY_REVIEWED), { id: PATCH }, earlier)).toMatchObject({ ok: false });
+  });
+
+  it('treats "No code objects were reviewed." (train 1, #59 at 2d47e5d) under the same reviewed-paths guard', () => {
+    const none = run('skipped', NO_CODE_REVIEWED);
+    expect(NO_CODE_REVIEWED).toBe('No code objects were reviewed.');
+    expect(vouchForSkip(none, { id: PATCH }, earlier)).toEqual({ ok: true, sha: sha('a'), patchId: PATCH, scope: 'reviewed paths' });
+    expect(vouchForSkip(none, { id: sha('1') }, earlier)).toMatchObject({ ok: false, reason: expect.stringContaining('over reviewed paths') });
+    expect(vouchForSkip(none, { id: PATCH }, [])).toMatchObject({ ok: false });
+    expect(vouchForSkip(run('skipped', 'No code objects were reviewed'), { id: PATCH }, earlier)).toMatchObject({ ok: false });
+    expect(vouchForSkip(run('neutral', NO_CODE_REVIEWED), { id: PATCH }, earlier)).toMatchObject({ ok: false });
   });
 
   it('counts the skip as passed only when vouched', () => {
@@ -442,5 +463,118 @@ describe('regenOnlyProblems on a scratch repository', () => {
     expect(regenOnlyProblems(git, sha('e'), ignore)).toEqual([expect.any(String)]);
     const garbage: Git = (args) => (args[0] === 'rev-list' ? Buffer.from(`${sha('a')} ${sha('b')}\n`) : Buffer.from('nonsense'));
     expect(regenOnlyProblems(garbage, sha('a'), ignore)).not.toEqual([]);
+  });
+});
+
+// Owner directive (2026-10-02): "When it hits limit that's fine you just dont do the review".
+describe('the Macroscope spending-limit waiver', () => {
+  const ci = (conclusion: string | null): CheckRun => run(conclusion, null, 'checks');
+  const limit = (name: string, title: string | null = SPENDING_LIMIT): CheckRun => run('skipped', title, name);
+  const all = [limit('Macroscope - Correctness Check'), limit('Macroscope - Proof guard'), limit('Macroscope - Approvability Check')];
+
+  it('passes when every Macroscope check carries the exact title and CI passed, and reports it as unreviewed', () => {
+    expect(SPENDING_LIMIT).toBe('Monthly spending limit reached (workspace setting).');
+    const runs = [ci('success'), ...all];
+    expect(spendingLimitWaived(runs)).toBe(true);
+    expect(settled(runs, new Map(), HEAD)).toBe(true);
+    expect(outcome(runs, new Map(), HEAD)).toEqual({ pending: [], failed: [], unreviewed: true });
+    expect(reviewExit(outcome(runs, new Map(), HEAD), 0)).toBe(0);
+  });
+
+  it('still waits for CI and fails on failed CI', () => {
+    expect(settled([ci(null), ...all], new Map(), HEAD)).toBe(false);
+    expect(outcome([ci(null), ...all], new Map(), HEAD)).toEqual({ pending: ['checks'], failed: [], unreviewed: true });
+    expect(reviewExit(outcome([ci('failure'), ...all], new Map(), HEAD), 0)).toBe(1);
+  });
+
+  it('fails on a near-miss title or a mixed result', () => {
+    for (const title of ['Monthly spending limit reached (workspace setting)', 'monthly spending limit reached (workspace setting).', 'Per-review cost limit exceeded (workspace setting).']) {
+      const runs = [ci('success'), limit('Macroscope - Correctness Check', title), ...all.slice(1)];
+      expect(spendingLimitWaived(runs), title).toBe(false);
+      expect(outcome(runs, new Map(), HEAD).failed, title).toEqual(['Macroscope - Correctness Check']);
+    }
+    // The correctness check carries it but the proof guard ran (or the reverse): not every Macroscope check hit the limit.
+    const mixed = [ci('success'), all[0]!, run('success', 'Proof guard: no issues found', 'Macroscope - Proof guard'), all[2]!];
+    expect(spendingLimitWaived(mixed)).toBe(false);
+    expect(reviewExit(outcome(mixed, new Map(), HEAD), 0)).toBe(1);
+    const reverse = [ci('success'), run('skipped', 'Per-review cost limit exceeded (workspace setting).'), ...all.slice(1)];
+    expect(reviewExit(outcome(reverse, new Map(), HEAD), 0)).toBe(1);
+    expect(spendingLimitWaived([ci('success'), limit('Macroscope - Proof guard')])).toBe(false);
+    expect(spendingLimitWaived([ci('success'), { ...all[0]!, conclusion: 'neutral' }])).toBe(false);
+  });
+
+  it('never clears an unanswered finding from an earlier commit', () => {
+    expect(reviewExit(outcome([ci('success'), ...all], new Map(), HEAD), 1)).toBe(1);
+  });
+});
+
+describe('the CI run is required', () => {
+  const ci = (conclusion: string | null): CheckRun => run(conclusion, null, CI_CHECK);
+  const limit = (name: string): CheckRun => run('skipped', SPENDING_LIMIT, name);
+  const waived = [limit('Macroscope - Correctness Check'), limit('Macroscope - Proof guard'), limit('Macroscope - Approvability Check')];
+  const noCi = `no CI run on ${HEAD.sha}: the PR may be conflicting with master`;
+
+  it('names the one job of .github/workflows/ci.yml', () => {
+    const yml = readFileSync(new URL(`../../../${CI_WORKFLOW}`, import.meta.url), 'utf8');
+    expect(ciJobIds(yml)).toEqual([CI_CHECK]);
+    expect(ciJobIds('jobs:\n  build:\n    runs-on: x\n  lint:\n    runs-on: y\n')).toEqual(['build', 'lint']);
+    expect(() => ciJobIds('jobs:\n  build:\n    name: Build\n')).toThrow(/name/);
+  });
+
+  it('runs CI on every branch push but master, as well as on pull requests', () => {
+    const yml = readFileSync(new URL(`../../../${CI_WORKFLOW}`, import.meta.url), 'utf8');
+    expect(yml).toMatch(/^on:\n  pull_request:\n    branches: \[master, 'review\/\*\*'\]\n  push:\n    branches-ignore: \[master\]\n/m);
+  });
+
+  // A pushed head has a push run and, once its PR exists, a pull_request run, both named "checks" on the same commit.
+  it('counts a push-triggered CI run on the head, alone or beside the pull_request run', () => {
+    const push = { ...ci('success'), html_url: 'push' };
+    const pr = (conclusion: string | null): CheckRun => ({ ...ci(conclusion), html_url: 'pull_request', status: conclusion === null ? 'in_progress' : 'completed' });
+    expect(reviewExit(outcome([push, ...waived], new Map(), HEAD), 0)).toBe(0);
+    expect(reviewExit(outcome([push, pr('success'), ...waived], new Map(), HEAD), 0)).toBe(0);
+    expect(settled([push, pr(null), ...waived], new Map(), HEAD)).toBe(false);
+    expect(outcome([push, pr(null), ...waived], new Map(), HEAD).pending).toEqual([CI_CHECK]);
+    expect(outcome([push, pr('failure'), ...waived], new Map(), HEAD).failed).toEqual([CI_CHECK]);
+  });
+
+  it('fails a waived commit with no CI run, after waiting for it', () => {
+    expect(settled(waived, new Map(), HEAD)).toBe(false);
+    const o = outcome(waived, new Map(), HEAD);
+    expect(o.failed).toEqual([noCi]);
+    expect(reviewExit(o, 0)).toBe(1);
+  });
+
+  it('fails a reviewed commit with no CI run', () => {
+    const runs = [run('success', 'No issues identified')];
+    expect(settled(runs, new Map(), HEAD)).toBe(false);
+    expect(outcome(runs, new Map(), HEAD)).toEqual({ pending: [], failed: [noCi], unreviewed: false });
+    expect(reviewExit(outcome(runs, new Map(), HEAD), 0)).toBe(1);
+  });
+
+  it('passes a waived commit whose CI run succeeded', () => {
+    const runs = [ci('success'), ...waived];
+    expect(settled(runs, new Map(), HEAD)).toBe(true);
+    expect(outcome(runs, new Map(), HEAD)).toEqual({ pending: [], failed: [], unreviewed: true });
+    expect(reviewExit(outcome(runs, new Map(), HEAD), 0)).toBe(0);
+  });
+
+  it('fails a CI run that ended neutral or skipped', () => {
+    for (const c of ['neutral', 'skipped']) expect(reviewExit(outcome([ci(c), ...waived], new Map(), HEAD), 0), c).toBe(1);
+  });
+
+  it('ends the wait and fails on a conflicting PR', () => {
+    const conflicting: PrHead = { ...HEAD, mergeable: 'CONFLICTING' };
+    expect(settled([ci(null), ...waived], new Map(), conflicting)).toBe(true);
+    expect(settled(waived, new Map(), conflicting)).toBe(true);
+    expect(outcome(waived, new Map(), conflicting).failed).toEqual([noCi, `PR head ${HEAD.sha} is CONFLICTING with its base`]);
+    const green = [ci('success'), run('success', 'No issues identified')];
+    expect(reviewExit(outcome(green, new Map(), conflicting), 0)).toBe(1);
+  });
+
+  it('checks gh pr view --json headRefOid,mergeable', () => {
+    expect(parsePrHead({ headRefOid: HEAD.sha, mergeable: 'UNKNOWN' })).toEqual({ ...HEAD, mergeable: 'UNKNOWN' });
+    expect(() => parsePrHead({ headRefOid: HEAD.sha, mergeable: 'conflicting' })).toThrow();
+    expect(() => parsePrHead({ headRefOid: 'abc', mergeable: 'MERGEABLE' })).toThrow();
+    expect(() => parsePrHead(null)).toThrow();
   });
 });

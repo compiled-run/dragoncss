@@ -1,5 +1,6 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
 import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeResetLonghand } from 'dragon';
+import { ANIMATIONS } from './fixture-groups/animations.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
@@ -16,6 +17,7 @@ import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
+import { STATES } from './fixture-groups/states.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { UNITS } from './fixture-groups/units.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
@@ -91,9 +93,11 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'border-paint', fixtures: BORDER_PAINT },
   { id: 'sizing-ratio', fixtures: SIZING },
   { id: 'inline', fixtures: INLINE },
+  { id: 'animations', fixtures: ANIMATIONS },
   { id: 'replaced', fixtures: REPLACED },
   // values stays last: the extended corpus keys its vectors on the values- prefix (values.test.ts).
   { id: 'values', fixtures: VALUES },
+  { id: 'states', fixtures: STATES },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);

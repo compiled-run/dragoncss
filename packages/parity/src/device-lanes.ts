@@ -28,6 +28,8 @@ import type { NativeDump } from './native-dump.ts';
 import { validateNativeDump } from './native-dump.ts';
 import type { NativeCase } from './native-host.ts';
 import { BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, nativeCases, nativeOut } from './native-host.ts';
+import { expectedHitRuns } from './hit-capture.ts';
+import { deriveScripts, stateEmits, stateGroups, stateProgramOf } from './state-cases.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
@@ -38,10 +40,16 @@ export type DeviceCheckLane = (typeof DEVICE_CHECK_LANES)[number];
 
 export type FailureKind =
   | 'dump-missing' | 'dump-invalid' | 'device-scale' | 'frame-chrome' | 'frame-engine' | 'applied' | 'native-class' | 'expected-digest'
-  | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest' | 'case-identity' | 'capture-kind';
+  | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest' | 'case-identity' | 'capture-kind'
+  | 'hit-missing' | 'hit-mismatch';
+
+/** SELD-R1b's device lanes: the case scripts' dumps (device-states) and the device hit test's answers (device-hit). */
+export const STATE_LANE = 'device-states';
+export const HIT_LANE = 'device-hit';
+export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE;
 
 /** One failure, named: lane, case, DPR, node (or sample rule), kind and the values. */
-export type LaneFailure = { readonly lane: DeviceCheckLane; readonly case: string; readonly dpr: number; readonly node: string | null; readonly kind: FailureKind; readonly detail: string };
+export type LaneFailure = { readonly lane: DeviceLaneId; readonly case: string; readonly dpr: number; readonly node: string | null; readonly kind: FailureKind; readonly detail: string };
 
 /** Counts compared per check. */
 export type Compared = { a: number; b: number; c: number; d: number; breaks: number };
@@ -158,7 +166,7 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
     const want = rasterSize(n.case.environment.viewport, dpr);
     const c = checkCasePixels(dump.pixels.samples, ref.points, ref.pixels, want, { width: dump.pixels.width, height: dump.pixels.height });
     compared.c += c.compared;
-    for (const p of c.problems) fail('device-pixels', /raster rule/.test(p) ? 'raster-size' : 'pixel', p, /^([a-z]+:\S+?)(?: at |: )/.exec(p)?.[1] ?? null);
+    for (const p of c.problems) fail('device-pixels', /raster rule/.test(p) ? 'raster-size' : 'pixel', p, pixelProblemNode(p));
     const img = ref.pixels;
     passingSamples = dump.pixels.samples.flatMap((s, i) => {
       // A rule no generator emits is already a (c) failure (the points do not match); it is never a passing sample.
@@ -215,7 +223,7 @@ function namedCheck(check: NamedCheck, dump: NativeDump, target: NativeTarget, n
 }
 
 /** Every case of the set: the dumps in dir, checked; then every dump fault planted into every real dump it applies to. */
-export function evaluateSet(target: NativeTarget, dpr: number, dir: string, device: DeviceRecord, cases: readonly NativeCase[], extra: readonly LaneFailure[] = []): DeviceSet {
+export function evaluateSet(target: NativeTarget, dpr: number, dir: string, device: DeviceRecord, cases: readonly NativeCase[], extra: readonly LaneFailure[] = [], refOf: (n: NativeCase) => CaseReference = (n) => caseReference(target, n, dpr)): DeviceSet {
   const failures: LaneFailure[] = [...extra];
   const compared = zero();
   const h = createHash('sha256');
@@ -229,7 +237,7 @@ export function evaluateSet(target: NativeTarget, dpr: number, dir: string, devi
       continue;
     }
     const raw = read.kind === 'ok' ? read.raw : null;
-    const ref = caseReference(target, n, dpr);
+    const ref = refOf(n);
     const o = evaluateCase(target, n, dpr, raw, ref);
     failures.push(...o.failures);
     for (const k of Object.keys(compared) as (keyof Compared)[]) compared[k] += o.compared[k];
@@ -338,6 +346,12 @@ export function plantVerdict(failures: readonly LaneFailure[], hostError: string
   return { caught: hostError === null && inked > 0 && frames === 0 && lines === 0, pixels: pixels.length, inked, frames, lines };
 }
 
+/** The sample rule a pixel problem names ("image-flat:a1:0 at 80,40: ...", "edge:a1:right: ..."), or null for a case-level one. */
+const PROBLEM_RULE = new RegExp(`^((?:${SAMPLE_RULES.join('|')}):\\S+?)(?: at |: )`);
+export function pixelProblemNode(problem: string): string | null {
+  return PROBLEM_RULE.exec(problem)?.[1] ?? null;
+}
+
 /** Whether a sample rule string names one of SAMPLE_RULES (ruleKind throws on any other). */
 export function isSampleRule(rule: string): boolean {
   const k = rule.indexOf(':');
@@ -353,7 +367,7 @@ export function dumpedIds(dir: string, dpr: number): string[] {
 export type LaneOutcome = { readonly lane: LaneId; readonly failures: readonly LaneFailure[] };
 
 /** The failures of one device lane across the target's sets. */
-export function laneFailures(sets: readonly DeviceSet[], lane: DeviceCheckLane): LaneFailure[] {
+export function laneFailures(sets: readonly DeviceSet[], lane: DeviceLaneId): LaneFailure[] {
   return sets.flatMap((s) => s.failures.filter((f) => f.lane === lane));
 }
 
@@ -371,6 +385,9 @@ export type RunLog = (line: string) => void;
 export type DeviceOutcome = {
   readonly device: string;
   readonly set: DeviceSet | null;
+  /** SELD-R1b: the case scripts' set (device-states) and the hit records' set (device-hit); absent before them. */
+  readonly states?: DeviceSet | null;
+  readonly hits?: DeviceSet | null;
   readonly trust: { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] } | null;
   readonly vectors: (HostRun & { readonly device: string }) | null;
   readonly blocked: string | null;
@@ -412,19 +429,103 @@ async function sequentially<A, B>(xs: readonly A[], f: (x: A) => Promise<B>): Pr
 /** The target's run from its devices' outcomes, in matrix order. */
 export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: DeviceRun['evidence']): DeviceRun {
   const sets: DeviceSet[] = [];
+  const states: DeviceSet[] = [];
+  const hits: DeviceSet[] = [];
   const trust: { device: string; dpr: number; rows: readonly TrustRow[] }[] = [];
   const blocked: string[] = [];
   let vectors: (HostRun & { device: string }) | null = null;
   for (const o of outcomes) {
     if (o.blocked !== null) blocked.push(o.blocked);
     if (o.set !== null) sets.push(o.set);
+    if (o.states !== undefined && o.states !== null) states.push(o.states);
+    if (o.hits !== undefined && o.hits !== null) hits.push(o.hits);
     if (o.trust !== null) trust.push(o.trust);
     if (o.vectors !== null) {
       if (vectors !== null) throw new Error(`two devices ran the vectors lane (${vectors.device}, ${o.vectors.device})`);
       vectors = o.vectors;
     }
   }
-  return { vectors, sets, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
+  return { vectors, sets, states, hits, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
+}
+
+/** Every failure of a target's run, the SELD-R1b lanes' too (the list written to out/device-failures-<target>.json). */
+export function allRunFailures(d: DeviceRun): LaneFailure[] {
+  return [...d.sets, ...(d.states ?? []), ...(d.hits ?? [])].flatMap((s) => s.failures);
+}
+
+// ---------------------------------------------------------------- device-states and device-hit (SELD-R1b)
+
+/** A case script as a layout case for the device checks: the end assignment's case under the script's id. */
+export type ScriptCase = { readonly script: NativeCase; readonly end: NativeCase };
+
+/** Every case script of a target, in state program order (state-cases.ts stateEmits), each with its end assignment's case. */
+export function scriptCases(target: NativeTarget): ScriptCase[] {
+  const groups = stateGroups();
+  const emits = stateEmits(target);
+  if (emits.length !== groups.length) throw new Error(`${emits.length} state programs for ${groups.length} state groups`);
+  return emits.flatMap((e, k) => {
+    const g = groups[k] as (typeof groups)[number];
+    if (g.id !== e.id) throw new Error(`state program ${e.id} is not group ${g.id}`);
+    const sp = stateProgramOf(g, BACKEND_OF[target]);
+    return deriveScripts(g, sp).map((s): ScriptCase => {
+      const end = g.cases[s.ends];
+      if (end === undefined) throw new Error(`${s.id}: no end case ${s.ends}`);
+      return { script: { ...end, case: { ...end.case, id: s.id } }, end };
+    });
+  });
+}
+
+/** The device checks of a case script: the end assignment's references, with the expected dump under the script's id. */
+export function scriptReference(target: NativeTarget, s: ScriptCase, dpr: number): CaseReference {
+  const ref = caseReference(target, s.end, dpr);
+  // The end assignment's Chrome capture is the script's Chrome reference, so it is named for the script.
+  return { ...ref, chrome: { ...ref.chrome, fixture: s.script.case.id }, expected: expectedDump(s.end.programs[BACKEND_OF[target]], s.script.case.id, s.end.case.environment.viewport, dpr, expectedEngine()) };
+}
+
+/** device-states at one DPR: every script's dump checked as its end assignment's case would be, failures under device-states. */
+export function evaluateStates(target: NativeTarget, dpr: number, dir: string, device: DeviceRecord, scripts: readonly ScriptCase[], extra: readonly LaneFailure[] = []): DeviceSet {
+  const byId = new Map(scripts.map((s) => [s.script.case.id, s]));
+  const set = evaluateSet(target, dpr, dir, device, scripts.map((s) => s.script), [], (n) => scriptReference(target, byId.get(n.case.id) as ScriptCase, dpr));
+  // One failure per kind, case and detail: the four check lanes report a missing or invalid dump each.
+  const seen = new Set<string>();
+  const failures: LaneFailure[] = [...extra];
+  for (const f of set.failures) {
+    const k = `${f.case}\0${f.node ?? ''}\0${f.kind}\0${f.detail}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    failures.push({ ...f, lane: STATE_LANE });
+  }
+  return { ...set, failures };
+}
+
+export const hitFile = (dir: string, id: string, dpr: number): string => join(dir, `${id}@${dpr}.hit`);
+
+/** device-hit at one DPR: the device's hit answers of every layout case against the TS hit test's at that DPR. */
+export function evaluateHits(dpr: number, dir: string, device: DeviceRecord, cases: readonly NativeCase[], expectedOf: (n: NativeCase) => string = (n) => expectedHitRuns(n, dpr), extra: readonly LaneFailure[] = []): DeviceSet {
+  const failures: LaneFailure[] = [...extra];
+  const h = createHash('sha256');
+  let records = 0;
+  let compared = 0;
+  for (const n of cases) {
+    const id = n.case.id;
+    const file = hitFile(dir, id, dpr);
+    if (!existsSync(file)) {
+      failures.push({ lane: HIT_LANE, case: id, dpr, node: null, kind: 'hit-missing', detail: 'the device wrote no hit record' });
+      continue;
+    }
+    const got = readFileSync(file, 'utf8');
+    records++;
+    h.update(id).update('\0').update(got).update('\0');
+    const want = expectedOf(n);
+    const gotRuns = got.split(';');
+    const wantRuns = want.split(';');
+    compared += wantRuns.length;
+    if (got === want) continue;
+    const at = wantRuns.findIndex((r, i) => r !== gotRuns[i]);
+    const k = at < 0 ? wantRuns.length : at;
+    failures.push({ lane: HIT_LANE, case: id, dpr, node: null, kind: 'hit-mismatch', detail: `run ${k}: device ${JSON.stringify(gotRuns[k] ?? '(none)')}, host ${JSON.stringify(wantRuns[k] ?? '(none)')} (${gotRuns.length} and ${wantRuns.length} runs)` });
+  }
+  return { dpr, device, cases: cases.length, dumps: records, compared: { a: 0, b: compared, c: 0, d: 0, breaks: 0 }, dumpsSha256: h.digest('hex'), failures, faults: [] };
 }
 
 /** Where a device comes from: booted and stopped by this process, or handed by the parent that boots and stops it (release null). */
@@ -480,6 +581,18 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const e0 = Date.now();
     const set = evaluateSet(t.target, dpr, outDir, rec, cases, extra);
     log(`${spec.name}: checked ${set.dumps}/${set.cases} dumps in ${((Date.now() - e0) / 1000).toFixed(0)} s; compared a ${set.compared.a}, b ${set.compared.b}, c ${set.compared.c}, d ${set.compared.d}, breaks ${set.compared.breaks}; failures ${JSON.stringify(failuresByKind(set.failures))}`);
+    // SELD-R1b: device-hit from the hit records the batch launch wrote beside its dumps, then device-states from a launch of the
+    // case scripts.
+    const h0 = Date.now();
+    const hits = evaluateHits(dpr, outDir, rec, cases, (n) => expectedHitRuns(n, dpr), extra.map((f): LaneFailure => ({ ...f, lane: HIT_LANE })).filter((f, i, all) => all.findIndex((x) => x.detail === f.detail) === i));
+    log(`${spec.name}: device-hit ${hits.dumps}/${hits.cases} records, ${hits.compared.b} runs compared in ${((Date.now() - h0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(hits.failures))}`);
+    const scripts = scriptCases(t.target);
+    const statesDir = join(nativeOut(t.target), 'lanes', `${spec.name}-states`);
+    const s0 = Date.now();
+    const sr = await runApp(h, artifact, { runFile: runFileText(scripts.map((s) => ({ id: s.script.case.id, points: casePoints(s.end.programs[backend], s.end.case.environment.viewport, dpr) })), false), caseCount: scripts.length, outDir: statesDir });
+    const stateExtra: LaneFailure[] = sr.error === null ? [] : [{ lane: STATE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the scripts: ${sr.error}` }];
+    const states = evaluateStates(t.target, dpr, statesDir, rec, scripts, stateExtra);
+    log(`${spec.name}: device-states ${states.dumps}/${states.cases} dumps in ${((Date.now() - s0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(states.failures))}`);
     const trustDir = join(nativeOut(t.target), 'lanes', `${spec.name}-trust`);
     const trustCases: TrustCase[] = TRUST_CASES.map((id) => {
       const tc = cases.find((c) => c.case.id === id);
@@ -498,7 +611,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
       vectors = await runDeviceVectors(h, t, host);
       log(`${spec.name}: layout-vectors-device ${vectors.state}${vectors.reason === null ? '' : ` (${vectors.reason})`}; ${vectors.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'}`).join(', ')}; digests ${vectors.digests.p1} ${vectors.digests.extended}; ${((Date.now() - v0) / 1000).toFixed(0)} s`);
     }
-    return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
+    return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, states, hits, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
   };
   const stop = source.release;
   if (stop === null) return work();

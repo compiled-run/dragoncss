@@ -10,6 +10,7 @@ import { initialValue } from '../src/analysis/resolve.ts';
 import { computed, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
+import { floorProblems } from './floor.ts';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -51,14 +52,15 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   const paint = LONGHANDS.filter((p) => PROPERTY_ROLE[p] === 'paint');
   it('(i) paint holds exactly for the aspect-table longhands with a paint aspect and no layout aspect', () => {
     for (const p of LONGHANDS) expect(PROPERTY_ROLE[p] === 'paint', p).toBe(!PROPERTY_ASPECTS[p].layout && PROPERTY_ASPECTS[p].paint);
-    expect([...paint].sort()).toEqual(['background-color', 'border-bottom-color', 'border-left-color', 'border-right-color', 'border-top-color', 'color', 'object-fit', 'object-position']);
+    // PIN-DERIVE: the seams floor keeps every longhand that had the paint role, in order; a new paint longhand needs no edit here.
+    expect(floorProblems(new URL('./seams-floor.json', import.meta.url), 'role:paint', paint, true)).toEqual([]);
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
-    // Each paint longhand with two of its values: a colour for the colour longhands, keywords and offsets for the replaced ones.
-    const values: Readonly<Record<string, readonly [string, string]>> = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'] };
+    // Two values of each paint longhand: two colours, or for the PNT2 longhands two transforms, origins and will-change features.
+    const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'] };
     for (const p of paint) {
-      const [va, vb] = values[p] ?? ['#102030', 'rgba(200, 100, 50, 0.5)'];
-      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
+      const [va, vb] = pair[p] ?? ['#102030', 'rgba(200, 100, 50, 0.5)'];
+      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: relative; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
       const m = boxes(input);
       const [a, b] = [m.get('a') as LayoutBox, m.get('b') as LayoutBox];
       expect(a.style, p).toEqual(b.style);

@@ -14,6 +14,7 @@ import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, Na
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
 import { stateEmits } from './state-cases.ts';
+import { deviceHitSource } from './hit-capture.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
 import { layoutCases } from './dpr.ts';
@@ -235,6 +236,8 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   let t2 = CACurrentMediaTime()
   let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000))
   dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
+  // SELD-R1b: the device-hit record, the translated hit test on the case's own input and the device's measurer.
+  if let facts = dragonHitFactsTable[id] { dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".hit", dragonHitRuns(c, facts, scale: scale, measurer: bridge.measurer)) }
   let next = {
     tree.root.removeFromSuperview()
     dragonCase(k + 1, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
@@ -402,17 +405,10 @@ class DragonActivity : Activity() {
       tree.apply(c.input(scale), bridge.measurer, scale, bridge)
       frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
     }
-    // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, then compositor copies of the window until
-    // two consecutive copies are equal (a copy of a frame before the tree was presented differs from the next one).
-    var drawnAt = -1
-    fun settle(frames: Int) {
-      Choreographer.getInstance().postFrameCallback {
-        if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
-        if (drawnAt < 0 || frames < drawnAt + 2) {
-          if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
-          settle(frames + 1)
-          return@postFrameCallback
-        }
+    // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, a frame holding the drawn tree committed to
+    // the display, then compositor copies of the window until two consecutive copies are equal.
+    fun capture() {
+      run {
         val t1 = SystemClock.elapsedRealtimeNanos()
         deviceRecord(tree)
         val at = IntArray(2)
@@ -445,6 +441,8 @@ class DragonActivity : Activity() {
             val pixels = DumpPixels("PixelCopy", w.toDouble(), h.toDouble(), sha, dragonSamples(bytes, w, h, run.points[id] ?: emptyList()))
             val dump = tree.dump(c, scale, device, pixels, DumpTiming((t1 - t0) / 1e6, (SystemClock.elapsedRealtimeNanos() - t2) / 1e6))
             File(out, id + "@" + DumpJsonWriter.format(scale) + ".json").writeText(dumpJson(dump))
+            // SELD-R1b: the device-hit record, the translated hit test on the case's own input and the device's measurer.
+            dragonHitFactsTable[id]?.let { facts -> File(out, id + "@" + DumpJsonWriter.format(scale) + ".hit").writeText(dragonHitRuns(c, facts, scale, bridge.measurer)) }
             val next = Runnable {
               frame.removeView(tree.root)
               frame.post { runCase(k + 1) }
@@ -470,6 +468,21 @@ class DragonActivity : Activity() {
           }
         }
         copy(0)
+      }
+    }
+    var drawnAt = -1
+    fun settle(frames: Int) {
+      Choreographer.getInstance().postFrameCallback {
+        if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
+        if (drawnAt < 0 || frames < drawnAt + 2) {
+          if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
+          settle(frames + 1)
+          return@postFrameCallback
+        }
+        // The tree's draw is recorded on the UI thread, but RenderThread may present it frames later (texture uploads of decoded
+        // images): copy only after a frame holding the drawn tree was committed to the display.
+        tree.root.viewTreeObserver.registerFrameCommitCallback { main.post { capture() } }
+        tree.root.invalidate()
       }
     }
     settle(1)
@@ -526,6 +539,8 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
   // SELD-R1a: the state programs and their case scripts.
   files.push(...emitStatePrograms(backend, stateEmits(target)));
+  // SELD-R1b: the device-hit facts and runner.
+  files.push(deviceHitSource(target));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);
   return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }

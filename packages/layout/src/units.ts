@@ -395,6 +395,11 @@ export function clampLengthFloat(v: number): number {
   return Math.fround(v);
 }
 
+/** Whether a px length is strictly inside the CSS length range, so ClampToCSSLengthRange leaves it unchanged. */
+export function inCssLengthRange(v: number): boolean {
+  return v > CSS_LENGTH_MIN && v < CSS_LENGTH_MAX;
+}
+
 /** CSSPrimitiveValue::ClampToCSSLengthRange: NaN is 0, then the CSS length range, as float (Length::Fixed). */
 export function cssLengthFixed(v: number): number {
   if (Number.isNaN(v)) return 0;
@@ -511,6 +516,17 @@ function saturatedInt(v: number): number {
   if (v >= INT_MAX) return INT_MAX;
   if (v <= INT_MIN) return INT_MIN;
   return Math.trunc(v);
+}
+
+/**
+ * order from a math function (CSSMathFunctionValue::ComputeInteger, range kInteger): RoundHalfTowardsPositiveInfinity, floor(v + 0.5)
+ * in double, then ClampToWithNaNTo0<int>. Planted faults: halfEven rounds a tie to the even integer; unclamped skips the int range.
+ */
+export function orderInteger(v: number, halfEven: boolean, unclamped: boolean): number {
+  const lower = Math.floor(v);
+  const tieToEven = halfEven && v - lower === 0.5;
+  const rounded = tieToEven ? (Math.floor(lower / 2) * 2 === lower ? lower : lower + 1) : Math.floor(v + 0.5);
+  return unclamped ? rounded : saturatedInt(rounded);
 }
 
 /** line-height: <percentage> (StyleBuilderConverter::ConvertLineHeight): float(computed * int(percent)) / 100.0, stored as float. */

@@ -15,16 +15,23 @@ const bad = (why: string): never => {
 /** A canonical Huffman code (RFC 1951 §3.2.2): symbol counts per length and the symbols in code order. */
 type Huffman = { readonly counts: Uint16Array; readonly symbols: Uint16Array };
 
-function huffman(lengths: ArrayLike<number>, what: string): Huffman {
+/** Which zlib inflate_table a code is built as: the code-length code, the literal/length code or the distance code. */
+type CodeKind = 'code length' | 'literal/length' | 'distance';
+
+function huffman(lengths: ArrayLike<number>, kind: CodeKind): Huffman {
   const counts = new Uint16Array(16);
   for (let i = 0; i < lengths.length; i++) counts[lengths[i] as number]!++;
   counts[0] = 0;
-  // Over-subscribed codes are invalid; incomplete ones are allowed (zlib allows a single distance code).
+  let max = 0;
+  for (let len = 1; len < 16; len++) if (counts[len] !== 0) max = len;
+  // zlib inflate_table: an over-subscribed code is invalid, and so is an incomplete one, except a literal/length or distance
+  // code that is a single one-bit code. A code with no symbols is accepted, and fails when it is decoded.
   let left = 1;
   for (let len = 1; len < 16; len++) {
     left = (left << 1) - (counts[len] as number);
-    if (left < 0) bad(`over-subscribed ${what} code`);
+    if (left < 0) bad(`over-subscribed ${kind} code`);
   }
+  if (max !== 0 && left > 0 && (kind === 'code length' || max !== 1)) bad(`incomplete ${kind} code`);
   const offs = new Uint16Array(16);
   for (let len = 1; len < 15; len++) offs[len + 1] = (offs[len] as number) + (counts[len] as number);
   const symbols = new Uint16Array(lengths.length);
@@ -32,8 +39,9 @@ function huffman(lengths: ArrayLike<number>, what: string): Huffman {
   return { counts, symbols };
 }
 
-const FIXED_LIT = huffman(Array.from({ length: 288 }, (_, i) => (i < 144 ? 8 : i < 256 ? 9 : i < 280 ? 7 : 8)), 'fixed literal');
-const FIXED_DIST = huffman(Array.from({ length: 30 }, () => 5), 'fixed distance');
+const FIXED_LIT = huffman(Array.from({ length: 288 }, (_, i) => (i < 144 ? 8 : i < 256 ? 9 : i < 280 ? 7 : 8)), 'literal/length');
+// zlib builds the fixed distance code over all 32 five-bit codes, so it is complete; codes 30 and 31 are refused when decoded.
+const FIXED_DIST = huffman(Array.from({ length: 32 }, () => 5), 'distance');
 
 /**
  * Inflates a zlib stream; throws on any malformed or truncated input, a checksum mismatch, or output past `limit` bytes (so a

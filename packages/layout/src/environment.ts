@@ -66,10 +66,12 @@ import {
   floatMax,
   floatMin,
   floatMul,
+  inCssLengthRange,
   fontPercentSize,
   lineHeightNumberPx,
   lineHeightPercentPx,
   metricLeafPx,
+  orderInteger,
   specifiedFontSize,
   fontMetricPx,
   platformFontSize,
@@ -142,29 +144,33 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
 }
 
 /**
- * Whether a box or its descendants hold anything to resolve at DPR 1: a calculation, or a text run whose font size or line
+ * Whether a box or its descendants hold anything to resolve at DPR 1: a calculation, a px length outside the CSS length range, or a text run whose font size or line
  * height is not already its computed px value; the pass returns such an input itself.
  */
 function boxNeedsEnvironment(b: LayoutBox | ControlBox, faults: EngineFaults): boolean {
   if (styleNeedsEnvironment(b.style)) return true;
+  if (resolveOrder(b.style.order, faults) !== b.style.order) return true;
   for (const c of b.children) {
     if (c.kind === 'box' || c.kind === 'control') {
       if (boxNeedsEnvironment(c, faults)) return true;
       continue;
     }
     if (c.kind === 'replaced') {
-      if (styleNeedsEnvironment(c.style)) return true;
+      if (styleNeedsEnvironment(c.style) || resolveOrder(c.style.order, faults) !== c.style.order) return true;
+      const x = c.objectPositionX;
+      const y = c.objectPositionY;
+      if ((x.kind === 'px' && !inCssLengthRange(x.value)) || (y.kind === 'px' && !inCssLengthRange(y.value))) return true;
       continue;
     }
     const f = c.font;
     if (f.specifiedSize.kind !== 'px' || f.specifiedSize.value !== f.size) return true;
     if (computedFontSize(f.size, f.absoluteSize, 1, faults.minimumFontSizeIgnored) !== f.size) return true;
-    if (c.lineHeight.kind === 'percent' || c.lineHeight.kind === 'calc') return true;
+    if (c.lineHeight.kind === 'percent' || c.lineHeight.kind === 'calc' || (c.lineHeight.kind === 'px' && !inCssLengthRange(c.lineHeight.value))) return true;
   }
   return false;
 }
 
-/** Whether any length of a style is a calculation. */
+/** Whether any length of a style is a calculation, or a px length outside the CSS length range (clamped by the pass). */
 function styleNeedsEnvironment(s: LayoutStyle): boolean {
   const kinds = [
     s.top.kind, s.right.kind, s.bottom.kind, s.left.kind, s.width.kind, s.height.kind, s.minWidth.kind, s.minHeight.kind, s.maxWidth.kind,
@@ -173,6 +179,11 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
     s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind,
   ];
   for (const k of kinds) if (k === 'calc') return true;
+  const lengths = [
+    s.top, s.right, s.bottom, s.left, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight,
+    s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.flexBasis, s.rowGap, s.columnGap,
+  ];
+  for (const v of lengths) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
   return false;
 }
 
@@ -195,7 +206,7 @@ function resolveControl(b: ControlBox, env: Env): ControlBox {
 function resolveReplaced(r: ReplacedLeaf, env: Env): ReplacedLeaf {
   const z = env.zoom;
   const natural: ReplacedLeaf['natural'] = r.natural.kind === 'image' ? { kind: 'image', width: zoomCssPx(r.natural.width, z), height: zoomCssPx(r.natural.height, z) } : { kind: 'none' };
-  const position = (v: ReplacedLeaf['objectPositionX']): ReplacedLeaf['objectPositionX'] => (v.kind === 'px' ? { kind: 'px', value: zoomCssPx(v.value, z) } : v);
+  const position = (v: ReplacedLeaf['objectPositionX']): ReplacedLeaf['objectPositionX'] => (v.kind === 'px' ? lengthPx(v, z) : v);
   return {
     kind: 'replaced',
     id: r.id,
@@ -245,14 +256,26 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     borderBottomWidth: resolveBorderWidth(s.borderBottomWidth, env),
     borderLeftWidth: resolveBorderWidth(s.borderLeftWidth, env),
     flexBasis: resolveBasis(s.flexBasis, env),
+    order: resolveOrder(s.order, env.faults),
     rowGap: resolveGap(s.rowGap, env),
     columnGap: resolveGap(s.columnGap, env),
   };
 }
 
+/** order: a math function's number rounded half toward +infinity and clamped to int; an integer in range is itself. */
+function resolveOrder(order: number, faults: EngineFaults): number {
+  return orderInteger(order, faults.orderHalfEven, faults.orderUnclamped);
+}
+
 function zoomPx(v: Px, z: number): Px {
   if (z === 1) return v;
   return { kind: 'px', value: zoomCssPx(v.value, z) };
+}
+
+/** Blink ConvertToLength: a px length zoomed, then clamped to the CSS length range (ClampToCSSLengthRange) when outside it. */
+function lengthPx(v: Px, z: number): Px {
+  const zoomed = zoomPx(v, z);
+  return inCssLengthRange(zoomed.value) ? zoomed : { kind: 'px', value: cssLengthFixed(zoomed.value) };
 }
 
 /** R5: a device-px initial line width keeps its value at every zoom; the planted spec reading zooms it like CSS px. */
@@ -264,43 +287,43 @@ function resolveBorderWidth(v: BorderWidthValue, env: Env): BorderWidthValue {
 }
 
 function resolveSize(v: SizeValue, env: Env): SizeValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
 
 function resolveMax(v: MaxSizeValue, env: Env): MaxSizeValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
 
 function envMargin(v: MarginValue, env: Env): MarginValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
 
 function resolveInset(v: InsetValue, env: Env): InsetValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
 
 function envPadding(v: PaddingValue, env: Env): PaddingValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
 
 function resolveBasis(v: FlexBasisValue, env: Env): FlexBasisValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
 
 function resolveGap(v: GapValue, env: Env): GapValue {
-  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
 }
@@ -387,7 +410,7 @@ function lineHeightCalcPx(lh: LineHeightCalc, computedFontSize: number, env: Env
 
 /** A text run's line height at the zoom: normal and numbers stay, as layout resolves them (R3); the rest become zoomed px. */
 function resolveLineHeightValue(v: LineHeightValue, computedFontSize: number, env: Env): LineHeightValue {
-  if (v.kind === 'px') return zoomPx(v, env.fontZoom);
+  if (v.kind === 'px') return lengthPx(v, env.fontZoom);
   if (v.kind === 'percent') return { kind: 'px', value: lineHeightPercentPx(computedFontSize, v.value) };
   if (v.kind === 'calc') return { kind: 'px', value: lineHeightCalcPx(v, computedFontSize, atZoom(env, env.fontZoom)) };
   return v;
