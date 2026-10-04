@@ -48,7 +48,8 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   checkout's scripts/land-review-lookup.ts, which prints the review a review agent precomputed in LAND_REVIEW_PRECOMPUTED_DIR,
   default /tmp/land-reviews/precomputed), LAND_REVIEW_DIR (/tmp/land-reviews), LAND_CI_WAIT and LAND_CI_APPEAR (seconds, default 5400 and 900), LAND_QUIET_MAX
   (seconds the test gate waits for a quiet machine before failing the PR, default 5400), LAND_DEVICES (local, the default: the device
-  lanes under /tmp/device-lease.sh; ci: device-lanes.yml on GitHub runners for the landing tree), LAND_DEVICES_WAIT (seconds, 7200)`;
+  lanes under /tmp/device-lease.sh; ci: device-lanes.yml on GitHub runners for the landing tree, with android layout-vectors-device on this Mac; the local run until
+  master has device-lanes.yml), LAND_DEVICES_WAIT (seconds, 7200)`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;

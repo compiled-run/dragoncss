@@ -1,16 +1,17 @@
 // LAND_DEVICES=ci (scripts/land-devices-ci.ts), against a fake GitHub: the dispatch, finding this dispatch's run by its run-name,
-// the wait, the records handed back, and every failure path failing the PR at the devices step with the temporary branch deleted.
+// the Mac's half run meanwhile, the wait, the outcomes handed back, and every failure path failing the PR at the devices step
+// with the temporary branch deleted.
 import { describe, expect, it } from 'vitest';
 import { LandFailure } from '../../../scripts/land-lib.ts';
-import { DEVICE_RECORDS, type DevicesCiDeps, deviceRecords, parseRunRows, runDevicesOnCi, runTitle, tempBranch } from '../../../scripts/land-devices-ci.ts';
+import { type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, tempBranch } from '../../../scripts/land-devices-ci.ts';
 
 const SHA = 'a'.repeat(40);
 const T0 = Date.parse('2026-10-04T12:00:00Z');
 type Run = { databaseId: number; displayTitle: string; createdAt: string; status: string; conclusion: string | null; url: string };
-const RECORDS: Record<string, string> = Object.fromEntries(DEVICE_RECORDS.map((n) => [n, `{"file":"${n}"}\n`]));
+const OUTCOMES = ['android-dragon-320.json', 'android-dragon-480.json', 'android-dragon-smoke.json', 'ios-iPad__A16__.json', 'ios-iPhone_17.json'];
 
 /** A fake GitHub: runs appear after `appearAfter` list calls and complete after `doneAfter` view calls. */
-function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; conclusion?: string | null; records?: Record<string, string>; pushFails?: boolean; ghBad?: boolean } = {}) {
+function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; conclusion?: string | null; files?: string[]; pushFails?: boolean; ghBad?: boolean } = {}) {
   const calls: string[] = [];
   let clock = T0;
   let lists = 0;
@@ -33,7 +34,7 @@ function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; concl
     deleteTemp: (branch) => void calls.push(`delete ${branch}`),
     download: (id, name) => {
       calls.push(`download ${id} ${name}`);
-      return o.records ?? RECORDS;
+      return { dir: '/tmp/outcomes', files: o.files ?? OUTCOMES };
     },
     sleep: (ms) => {
       clock += ms;
@@ -43,7 +44,7 @@ function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; concl
   };
   return { deps, calls };
 }
-const run = (f: ReturnType<typeof fake>, waitS = 3600) => runDevicesOnCi({ pr: 42, deps: f.deps, appearS: 300, waitS, pollS: 30 });
+const run = (f: ReturnType<typeof fake>, waitS = 3600, during: () => void = () => void f.calls.push('local vectors')) => runDevicesOnCi({ pr: 42, deps: f.deps, appearS: 300, waitS, pollS: 30, during });
 const failure = (f: () => unknown): LandFailure => {
   try {
     f();
@@ -55,11 +56,22 @@ const failure = (f: () => unknown): LandFailure => {
 };
 
 describe('LAND_DEVICES=ci', () => {
-  it('dispatches on master for the landing tree, waits for its run, hands back the records and deletes the branch', () => {
+  it('dispatches on master for the landing tree, runs the Mac half meanwhile, waits, hands back the outcomes and deletes the branch', () => {
     const f = fake({ appearAfter: 1, doneAfter: 2 });
     const r = run(f);
-    expect(r).toEqual({ sha: SHA, url: 'https://ci/run/7', files: RECORDS });
-    expect(f.calls).toEqual([`push ${tempBranch(42)}`, 'workflow run', 'run list', 'run list', 'run view', 'run view', 'run view', 'download 7 device-records', `delete ${tempBranch(42)}`]);
+    expect(r).toEqual({ sha: SHA, url: 'https://ci/run/7', outcomesDir: '/tmp/outcomes' });
+    expect(f.calls).toEqual([`push ${tempBranch(42)}`, 'workflow run', 'run list', 'run list', 'local vectors', 'run view', 'run view', 'run view', `download 7 ${OUTCOMES_ARTIFACT}`, `delete ${tempBranch(42)}`]);
+  });
+  it('fails the step when the Mac half fails, without waiting for CI, and still deletes the branch', () => {
+    const f = fake();
+    const e = failure(() =>
+      run(f, 3600, () => {
+        throw new LandFailure('devices-local-vectors', 'the dragon-smoke vectors run failed');
+      }),
+    );
+    expect(e).toMatchObject({ step: 'devices-local-vectors' });
+    expect(f.calls).not.toContain('run view');
+    expect(f.calls.at(-1)).toBe(`delete ${tempBranch(42)}`);
   });
   it('takes only a run of this dispatch, not an older run for the same commit', () => {
     const old: Run = { databaseId: 3, displayTitle: runTitle(SHA), createdAt: new Date(T0 - 3_600_000).toISOString(), status: 'completed', conclusion: 'failure', url: 'https://ci/run/3' };
@@ -74,18 +86,19 @@ describe('LAND_DEVICES=ci', () => {
     expect(slow.calls.at(-1)).toBe(`delete ${tempBranch(42)}`);
     const red = fake({ conclusion: 'failure' });
     expect(failure(() => run(red))).toMatchObject({ step: 'devices', message: 'the CI device run https://ci/run/7 concluded failure' });
-    expect(red.calls).not.toContain('download 7 device-records');
+    expect(red.calls).not.toContain(`download 7 ${OUTCOMES_ARTIFACT}`);
   });
   it('fails on a malformed gh answer, a refused push or an artifact without the records, never reading them as no run', () => {
     expect(failure(() => run(fake({ ghBad: true })))).toMatchObject({ step: 'devices', message: expect.stringContaining('unexpected gh run JSON') });
     const refused = fake({ pushFails: true });
     expect(failure(() => run(refused))).toMatchObject({ step: 'devices', message: 'the CI device lanes failed: push refused' });
     expect(refused.calls).toEqual([`push ${tempBranch(42)}`]);
-    expect(failure(() => run(fake({ records: { 'lanes.json': '{}' } })))).toMatchObject({ message: expect.stringContaining('device-failures-ios.json is missing; device-failures-android.json is missing') });
+    expect(failure(() => run(fake({ files: [] })))).toMatchObject({ message: expect.stringContaining('the device-outcomes artifact holds nothing') });
   });
-  it('checks gh run rows and the record files field by field', () => {
+  it('checks gh run rows and the outcome files', () => {
     expect(parseRunRows('{"databaseId":1,"status":"completed","conclusion":null,"url":"u"}')).toEqual([{ databaseId: 1, displayTitle: '', createdAt: '', status: 'completed', conclusion: null, url: 'u' }]);
     expect(() => parseRunRows('[{"databaseId":"1","status":"x","conclusion":null,"url":"u"}]')).toThrow('unexpected gh run JSON');
-    expect(() => deviceRecords({ ...RECORDS, 'lanes.json': '{' })).toThrow('lanes.json is not JSON');
+    expect(outcomeFiles(OUTCOMES)).toEqual(OUTCOMES);
+    expect(() => outcomeFiles([...OUTCOMES, 'notes.txt'])).toThrow('not device outcome files');
   });
 });

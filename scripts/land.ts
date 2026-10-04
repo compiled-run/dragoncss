@@ -257,20 +257,33 @@ const ciDeviceDeps = (pr: number) => ({
   deleteTemp: (branch: string): void => {
     net(wtGit, ['push', '--quiet', 'origin', '--delete', branch]);
   },
-  download: (runId: number, artifact: string): Record<string, string> => {
-    const dir = mkdtempSync(join(tmpdir(), 'land-device-records-'));
+  download: (runId: number, artifact: string): { dir: string; files: string[] } => {
+    const dir = mkdtempSync(join(tmpdir(), 'land-device-outcomes-'));
     try {
       gh(['run', 'download', String(runId), '--repo', REPO, '-n', artifact, '-D', dir]);
-      // upload-artifact keeps the paths below the common root (packages/parity/out), so the files sit at the top.
-      return Object.fromEntries(readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => [f, readFileSync(join(dir, f), 'utf8')]));
-    } finally {
+    } catch (error) {
       rmSync(dir, { recursive: true, force: true });
+      throw error;
     }
+    return { dir, files: readdirSync(dir) };
   },
   sleep,
   now: () => Date.now(),
   log,
 });
+
+// LAND_DEVICES=ci is a no-op (the local device run) until master has the CI device workflow and the landing tree its CLI.
+const ciDevicesReady = (master: string): boolean => {
+  let workflow = true;
+  try {
+    git(['cat-file', '-e', `${master}:.github/workflows/device-lanes.yml`]);
+  } catch {
+    workflow = false;
+  }
+  const cli = existsSync(join(WT, 'packages/parity/src/cli/device-ci.ts'));
+  if (!workflow || !cli) log(`  LAND_DEVICES=ci: ${!workflow ? 'master has no .github/workflows/device-lanes.yml' : 'the landing tree has no packages/parity/src/cli/device-ci.ts'} yet; running the device lanes locally`);
+  return workflow && cli;
+};
 
 const resetWorktree = (master: string): void => {
   try {
@@ -404,10 +417,32 @@ const landOne = (e: Entry): { result: 'landed' | 'merged before'; detail: string
     if (runDevices) {
       const started = Date.now();
       let ran = DEVICES.join(' ');
-      if (DEVICES_ON === 'ci') {
-        const ci = runDevicesOnCi({ pr: e.pr, deps: ciDeviceDeps(e.pr), appearS: CI_APPEAR_S, waitS: DEVICES_WAIT_S });
-        for (const [name, body] of Object.entries(ci.files)) writeFileSync(join(WT, 'packages/parity/out', name), body);
-        ran = `device-lanes.yml on CI for the landing tree ${ci.sha} (${ci.url})`;
+      const onCi = DEVICES_ON === 'ci' && ciDevicesReady(master);
+      if (onCi) {
+        // The hybrid: every lane on CI but android layout-vectors-device, which the Mac runs under the device lease meanwhile.
+        const record = join(tmpdir(), `land-${e.pr}-local-vectors.json`);
+        rmSync(record, { force: true });
+        const vectorsCmd = [DEVICE, 'node', '--conditions=dragon-internal', 'packages/parity/src/cli/device-ci.ts', 'vectors', record];
+        const ci = runDevicesOnCi({
+          pr: e.pr,
+          deps: ciDeviceDeps(e.pr),
+          appearS: CI_APPEAR_S,
+          waitS: DEVICES_WAIT_S,
+          during: () => {
+            const v = run('devices-local-vectors', vectorsCmd, WT);
+            if (v.error !== undefined || v.signal !== null || v.status !== 0 || !existsSync(record)) failed('devices-local-vectors', v, vectorsCmd.slice(1).join(' '));
+          },
+        });
+        try {
+          // Fails loudly unless every CI device and the Mac's record are there, on this tree's evidence.
+          const mergeCmd = ['node', '--conditions=dragon-internal', 'packages/parity/src/cli/device-ci.ts', 'merge', ci.outcomesDir, '--local-vectors', record];
+          const m = run('devices-merge', mergeCmd, WT);
+          if (m.error !== undefined || m.signal !== null || (m.status !== 0 && m.status !== 1)) failed('devices-merge', m, mergeCmd.join(' '));
+        } finally {
+          rmSync(ci.outcomesDir, { recursive: true, force: true });
+          rmSync(record, { force: true });
+        }
+        ran = `device-lanes.yml on CI for the landing tree ${ci.sha} (${ci.url}), android layout-vectors-device on this Mac, merged with device-ci.ts merge`;
       } else {
         const d = run('devices', [DEVICE, ...DEVICES], WT);
         // master's device-pixels lane fails on purpose, so the exit code says nothing; the judgement against master decides.
@@ -418,7 +453,7 @@ const landOne = (e: Entry): { result: 'landed' | 'merged before'; detail: string
       r = heavy('regen-after-devices', REGEN);
       if (r.error !== undefined || r.status !== 0) failed('regen-after-devices', r, 'pnpm regen');
       commands.push(ran, REGEN.join(' '));
-      device = `ran${DEVICES_ON === 'ci' ? ' on CI' : ''}; every lane passes or fails as on master`;
+      device = `ran${onCi ? ' on CI (android layout-vectors-device on the Mac)' : ''}; every lane passes or fails as on master`;
     }
     log(`  device lanes: ${device}`);
     const head = commitRegen(wtGit, 1, member, commands, 'Land');
