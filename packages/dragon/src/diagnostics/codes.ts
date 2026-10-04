@@ -35,3 +35,5 @@ export const LEGACY_FEATURES: readonly DiagnosticFeatureId[] = ['s2', 's3a', 's4
 export const DIAGNOSTIC_FEATURE_ORDER: readonly DiagnosticFeatureId[] = [...LEGACY_FEATURES, ...(Object.keys(DIAGNOSTIC_FEATURES) as DiagnosticFeatureId[]).filter((id) => !LEGACY_FEATURES.includes(id)).sort()];
 
 export const DIAGNOSTIC_CODES: readonly DiagnosticCode[] = DIAGNOSTIC_FEATURE_ORDER.flatMap((id): readonly DiagnosticCode[] => DIAGNOSTIC_FEATURES[id].codes);
+
+if (new Set(DIAGNOSTIC_CODES).size !== DIAGNOSTIC_CODES.length) throw new Error('a diagnostic code belongs to two features (diagnostics/codes/<feature>.ts)');

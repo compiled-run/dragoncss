@@ -86,6 +86,8 @@ export const SHORTHANDS: readonly Shorthand[] = ALL.filter((f) => f.id !== SHORT
 
 export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>(ALL.flatMap((f) => f.inherited));
 
+if (new Set(LONGHANDS).size !== LONGHANDS.length || new Set(SHORTHANDS).size !== SHORTHANDS.length) throw new Error('a longhand or shorthand belongs to two property families');
+
 /**
  * The inherited text properties every resolved text node carries itself (goal.md principle 3), each with an inherited Origin,
  * so the lowering reads only the text node.

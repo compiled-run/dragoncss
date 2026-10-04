@@ -32,3 +32,5 @@ type Intersection<U> = (U extends unknown ? (u: U) => void : never) extends (i: 
 export type CompilerFaults = Intersection<(typeof FAULT_GROUPS)[keyof typeof FAULT_GROUPS]>;
 
 export const NO_FAULTS: CompilerFaults = Object.assign({}, ...Object.values(FAULT_GROUPS)) as CompilerFaults;
+
+if (Object.values(FAULT_GROUPS).flatMap((g) => Object.keys(g)).length !== Object.keys(NO_FAULTS).length) throw new Error('a fault belongs to two features (faults/<feature>.ts)');
