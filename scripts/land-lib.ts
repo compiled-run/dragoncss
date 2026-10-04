@@ -355,6 +355,61 @@ export const findingsComment = (pr: number, head: string, findings: readonly Fin
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
+// After a merge: GitHub closes, rather than retargets, an open PR whose base branch is deleted. So every open PR based on the
+// merged branch is moved to master first, the list is read again, and the branch is deleted last, only when none is left.
+
+export type GhRun = (args: string[]) => string;
+export const parseChildPrs = (out: string, branch: string): number[] => {
+  const v: unknown = JSON.parse(out);
+  if (!Array.isArray(v)) return fail(`gh pr list printed ${out.slice(0, 200)}`);
+  return v.map((p: unknown) => {
+    if (!isObject(p) || typeof p.number !== 'number' || !Number.isInteger(p.number) || p.baseRefName !== branch) return fail(`gh pr list --base ${branch} printed ${JSON.stringify(p).slice(0, 200)}`);
+    return p.number;
+  });
+};
+export type BranchCleanup = { retargeted: number[]; deleted: boolean; problems: string[] };
+export const retargetChildrenThenDelete = (o: { repo: string; branch: string; gh: GhRun; log: (line: string) => void }): BranchCleanup => {
+  const list = (): number[] => parseChildPrs(o.gh(['pr', 'list', '--repo', o.repo, '--base', o.branch, '--state', 'open', '--limit', '1000', '--json', 'number,baseRefName']), o.branch);
+  const retargeted: number[] = [];
+  const problems: string[] = [];
+  const errorLine = (error: unknown): string => errorText(error).split('\n')[0]!;
+  let children: number[];
+  try {
+    children = list();
+  } catch (error) {
+    return { retargeted, deleted: false, problems: [`kept branch ${o.branch}: could not list the open PRs based on it: ${errorLine(error)}`] };
+  }
+  for (const n of children) {
+    try {
+      o.gh(['pr', 'edit', String(n), '--repo', o.repo, '--base', 'master']);
+      retargeted.push(n);
+      o.log(`  #${n} was based on ${o.branch}; retargeted to master`);
+    } catch (error) {
+      problems.push(`#${n} is based on ${o.branch} and could not be retargeted to master: ${errorLine(error)}`);
+    }
+  }
+  let left: number[];
+  try {
+    left = list();
+  } catch (error) {
+    problems.push(`could not list the open PRs based on ${o.branch} again: ${errorLine(error)}`);
+    left = [];
+  }
+  if (problems.length === 0 && left.length > 0) problems.push(`open PRs still based on ${o.branch}: ${left.map((n) => `#${n}`).join(', ')}`);
+  if (problems.length > 0) {
+    problems.unshift(`kept branch ${o.branch} so no PR based on it is closed`);
+    return { retargeted, deleted: false, problems };
+  }
+  try {
+    o.gh(['api', '-X', 'DELETE', `repos/${o.repo}/git/refs/heads/${o.branch}`]);
+  } catch (error) {
+    return { retargeted, deleted: false, problems: [`could not delete branch ${o.branch}: ${errorLine(error)}`] };
+  }
+  o.log(`  deleted branch ${o.branch}`);
+  return { retargeted, deleted: true, problems };
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
 // The queue loop: a failed PR is recorded and the queue continues; only a Fatal error (master in an unexpected state) stops it.
 
 export class LandFailure extends Error {

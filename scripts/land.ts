@@ -32,6 +32,7 @@ import {
   backoffMs,
   type ReviewRecord,
   runQueue,
+  retargetChildrenThenDelete,
   reviewerEnv,
   runReviewer,
   statusText,
@@ -265,7 +266,7 @@ const prDiff = (pr: number, master: string, head: string): string => {
 // gh pr merge is not retried blindly: after an error the PR state decides whether it merged.
 const ghMerge = (pr: number, head: string): void => {
   for (let retry = 0; ; retry++) {
-    const r = spawnSync('gh', ['pr', 'merge', String(pr), '--repo', REPO, '--merge', '--delete-branch', '--match-head-commit', head], { encoding: 'utf8' });
+    const r = spawnSync('gh', ['pr', 'merge', String(pr), '--repo', REPO, '--merge', '--match-head-commit', head], { encoding: 'utf8' });
     if (prView(pr).state === 'MERGED') {
       if (r.status !== 0) log(`  gh pr merge exited ${r.status ?? r.signal} but #${pr} is merged: ${r.stderr.trim().split('\n')[0]}`);
       return;
@@ -434,7 +435,7 @@ const publish = (
   const gate = mergeGate(git, prView(e.pr), member, { prev: p.master, merge: p.merge, head: p.head, tip: p.tip }, fetchMaster());
   if (gate.length > 0) throw new LandFailure('merge-gate', gate.join('\n'));
   const porcelain = text(git, ['worktree', 'list', '--porcelain']);
-  // gh pr merge --delete-branch cannot delete a local branch a worktree has checked out.
+  // The local branch is deleted after the merge (git branch -D), which a worktree that has it checked out would block.
   for (const w of worktreesOf(porcelain, e.branch, [], [MAIN, WT])) {
     try {
       if (text(gitAt(w), ['rev-parse', '--abbrev-ref', 'HEAD']) === e.branch) gitAt(w)(['checkout', '-q', '--detach']);
@@ -448,6 +449,12 @@ const publish = (
   log(`  #${e.pr} merged; origin/master ${after} has the landing commit's tree outside docs/goals/**`);
 
   const notes: string[] = [];
+  // The branch is deleted only after every open PR based on it has moved to master; otherwise it is kept and reported.
+  const cleanup = retargetChildrenThenDelete({ repo: REPO, branch: e.branch, gh, log });
+  for (const problem of cleanup.problems) {
+    notes.push(problem);
+    log(`  WARNING ${problem}`);
+  }
   try {
     net(git, ['pull', '-q', '--ff-only']);
   } catch (error) {
