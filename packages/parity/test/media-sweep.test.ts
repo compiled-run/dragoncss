@@ -133,13 +133,12 @@ describe.sequential('MQ-a planted compiler faults through the parity pipeline', 
   }
 });
 
-describe('the native refusal through the public entry', () => {
-  it('media-overlap compiles for web; ios and android refuse both @media rules until MQ-R', () => {
+describe('native @media through the public entry (MQ-R1)', () => {
+  it('media-overlap compiles for web, and ios and android accept both @media rules: the media rows prove width', () => {
     const { input } = readHtmlFixture('media-overlap');
     const c = createProject({ projectId: 'dragon-parity', targets: { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } } }).compile(input);
     expect(c.outputs.web.kind).toBe('ready');
-    expect([c.outputs.ios.kind, c.outputs.android.kind]).toEqual(['blocked', 'blocked']);
-    const refusals = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
-    expect(refusals.map((d) => [d.target, d.message])).toEqual(['ios', 'android'].flatMap((t) => ['768px', '640px'].map((w) => [t, `@media screen and (max-width: ${w}) selects rules by the viewport width or height, which the ${t} output does not support until MQ-R`])));
+    expect(c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE')).toEqual([]);
+    expect([c.outputs.ios.kind, c.outputs.android.kind]).not.toContain('blocked');
   });
 });

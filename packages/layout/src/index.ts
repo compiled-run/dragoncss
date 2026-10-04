@@ -54,6 +54,8 @@ export * as rtInterpolate from './rt-interpolate.ts';
 export * as rtKeyframes from './rt-keyframes.ts';
 export * as rtTransition from './rt-transition.ts';
 export * as rtAnimations from './rt-animations.ts';
+// MQ-R1 (T067 R4): the @media band lookup a native root runs on a size change.
+export * as rtBand from './rt-band.ts';
 export type { OriginPoint, TransformOrigin } from './paint-transform.ts';
 export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';
 export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';

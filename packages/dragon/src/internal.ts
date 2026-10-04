@@ -307,3 +307,76 @@ export function animationFeatures(compiled: object): readonly string[] {
   if (record === undefined || record.animation === null) return [];
   return [...new Set(record.animation.features.map((f) => f.feature))].sort();
 }
+
+// MQ-R1 (notes/T067-mq-r-spec.md R4, R5): the @media bands of the native output, their per-case programs and the band program.
+export type { BandAnalysis, BandCase, BandRuntimeFaults, RootSize } from './lower/band-program.ts';
+export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, MediaRuntime, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
+export type { InternalBands } from './project.ts';
+export { MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
+import { bandStateProgram as deriveBandProgram } from './lower/band-program.ts';
+import { assignmentKey as keyOfAssignment } from './analysis/link.ts';
+import { bandAt as partitionBandAt } from './media/index.ts';
+import { MEDIA_AT_RULE_FEATURE as MEDIA_AT_RULE_FEATURE_KEY, mediaFeatureKey as mediaFeatureKeyOf } from './project.ts';
+import type { BandRuntimeFaults } from './lower/band-program.ts';
+import type { StateFaults, StateProgram } from './lower/state-program.ts';
+
+/** The @media bands of a compile's native output: the band table, each band's condition and the per-case programs' band; null without @media. */
+export function nativeBands(compiled: object): { readonly table: import('@dragon/layout').rtBand.BandTable; readonly conditions: readonly string[]; readonly initial: number } | null {
+  const record = internalRecord(compiled);
+  if (record === undefined || record.bands === null) return null;
+  return { table: record.bands.table, conditions: record.bands.conditions, initial: record.bands.initial };
+}
+
+/** The media profile keys a compile's native output uses (T067 R13): the at-rule and each atom's feature, sorted; none without @media. */
+export function mediaFeatures(compiled: object): readonly string[] {
+  const bands = nativeBands(compiled);
+  if (bands === null || bands.table.atoms.length === 0) return [];
+  return [MEDIA_AT_RULE_FEATURE_KEY, ...[...new Set(bands.table.atoms.map((a) => a.feature))].map(mediaFeatureKeyOf)].sort();
+}
+
+/**
+ * The band that holds a viewport by the compile-time partition (media/band.ts bandAt over CSS px): the independent reference the
+ * runtime's band lookup is checked against; 0 without @media, null when no band holds it (only a planted partition leaves a gap).
+ */
+export function nativeBandOfViewport(compiled: object, viewport: { readonly width: number; readonly height: number }): number | null {
+  const record = internalRecord(compiled);
+  if (record === undefined) throw new Error('not a compiled result from this package');
+  if (record.bands === null) return 0;
+  return partitionBandAt(record.bands.partition, viewport)?.index ?? null;
+}
+
+/** Both native backends' programs of one case in one band (nativePrograms for the per-case programs' own band). */
+export function nativeBandPrograms(compiled: object, assignment: Assignment, band: number): NativePrograms {
+  const record = internalRecord(compiled);
+  if (record === undefined) return { kind: 'blocked', reason: 'not a compiled result from this package' };
+  if (record.bands === null) return band === 0 ? nativePrograms(compiled, assignment) : { kind: 'blocked', reason: `the compile has no @media bands, so no band ${band}` };
+  const cases = record.bands.cases[band];
+  if (cases === undefined) return { kind: 'blocked', reason: `no band ${band} (the compile has ${record.bands.cases.length})` };
+  const targets = (compiled as { targets?: Record<string, string> }).targets ?? {};
+  for (const t of ['ios', 'android']) if (targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} target is ${targets[t] === undefined ? 'not configured' : targets[t]}` };
+  const key = keyOfAssignment(assignment);
+  const c = cases.find((x) => x.key === key);
+  if (c === undefined) return { kind: 'blocked', reason: `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}` };
+  if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: `the case has no native lowering in band ${band}` };
+  try {
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved) };
+  } catch (e) {
+    if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
+    throw e;
+  }
+}
+
+/**
+ * The band program of a compile for one backend: every reachable (assignment, band) pair's programs, env#band last, the initial
+ * assignment in the per-case programs' band first. A compile without @media is one band.
+ */
+export function nativeBandProgram(compiled: object, backend: NativeBackend, faults?: StateFaults, bandFaults?: BandRuntimeFaults): StateProgram {
+  const bands = nativeBands(compiled);
+  const count = bands === null ? 1 : bands.table.bands.length;
+  const cases = compiledCases(compiled).flatMap((c) => Array.from({ length: count }, (_, band) => {
+    const p = nativeBandPrograms(compiled, c.assignment, band);
+    if (p.kind !== 'ready') throw new Error(`no native programs for ${JSON.stringify(c.assignment)} in band ${band}: ${p.reason}`);
+    return { assignment: c.assignment, isInitial: c.isInitial, band, program: p.programs[backend] };
+  }));
+  return deriveBandProgram(backend, cases, count, bands === null ? 0 : bands.initial, faults, bandFaults);
+}
