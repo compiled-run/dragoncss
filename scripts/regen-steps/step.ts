@@ -1,4 +1,5 @@
 // The shape of a regen step (scripts/regen.ts), the helpers the step lists share, and how a feature's additions are placed.
+import { compilePattern, matchSegments } from '../macroscope-ignore.ts';
 export type Step = {
   readonly name: string;
   readonly argv: readonly string[];
@@ -66,5 +67,23 @@ export function placeSteps(base: readonly Step[], features: { readonly [feature:
       out[at] = { ...(out[at] as Step), outputs: [...(out[at] as Step).outputs, ...extra] };
     }
   }
+  const clash = overlappingOutputs(out);
+  if (clash !== null) throw new Error(`regen: ${clash}`);
   return out;
+}
+
+/** Whether one output glob matches the other read as a path: two steps declaring them could write the same file. */
+export function globsOverlap(a: string, b: string): boolean {
+  const covers = (g: string, p: string): boolean => matchSegments(compilePattern(g), p.split('/'));
+  return covers(a, b) || covers(b, a);
+}
+
+/** The first pair of different steps whose outputs overlap, as text, or null. */
+export function overlappingOutputs(steps: readonly Step[]): string | null {
+  for (const [i, a] of steps.entries()) {
+    for (const b of steps.slice(i + 1)) {
+      for (const x of a.outputs) for (const y of b.outputs) if (globsOverlap(x, y)) return `steps ${a.name} and ${b.name} both write ${x} / ${y}`;
+    }
+  }
+  return null;
 }

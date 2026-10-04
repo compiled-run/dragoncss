@@ -127,7 +127,11 @@ export const LEGACY_RUN_ORDER: readonly FixtureGroupId[] = [
   'states',
 ];
 
-/** The fixture groups, in run order: the legacy groups, then every later group in id order. FIXTURES is their concatenation. */
+/**
+ * The fixture groups, in run order: the legacy groups, then every later group in id order. FIXTURES is their concatenation.
+ * A new group can therefore land between two later groups and move their cases in FIXTURES; no check depends on that position
+ * (pin a group's place in LEGACY_RUN_ORDER instead), and `pnpm regen` rebuilds the outputs that list cases in run order.
+ */
 export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: readonly FixtureSpec[] }[] = [
   ...LEGACY_RUN_ORDER,
   ...(Object.keys(GROUPS) as FixtureGroupId[]).filter((id) => !LEGACY_RUN_ORDER.includes(id)).sort(),
