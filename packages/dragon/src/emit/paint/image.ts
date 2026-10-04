@@ -115,10 +115,11 @@ fun dragonPaintImageStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShap
     canvas.restore()
     return
   }
-  val l = Math.floor(c[0]).toInt()
-  val t = Math.floor(c[1]).toInt()
-  val r = Math.ceil(c[0] + c[2]).toInt()
-  val b = Math.ceil(c[1] + c[3]).toInt()
+  val px = dragonCoveringPx(c)
+  val l = px[0]
+  val t = px[1]
+  val r = px[2]
+  val b = px[3]
   if (r <= l || b <= t) return
   val node = v.dragonImageNode ?: RenderNode("dragonImage").also {
     it.setUseCompositingLayer(true, null)

@@ -251,5 +251,9 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
     expect(hardware).not.toContain('canvas.drawBitmap');
     expect(hardware).toContain('canvas.drawRenderNode(node)');
     expect(hardware).toContain('node.endRecording()');
+    // The layer covers the drawn part in whole device px through the support code's snap (no rounding in a paint emitter).
+    expect(stage).toContain('val px = dragonCoveringPx(c)');
+    const support = hostSources('android', 'toolchain').map((f) => f.text).join('\n');
+    expect(support).toContain('fun dragonCoveringPx(r: DoubleArray): IntArray = intArrayOf(kotlin.math.floor(r[0]).toInt(), kotlin.math.floor(r[1]).toInt(), kotlin.math.ceil(r[0] + r[2]).toInt(), kotlin.math.ceil(r[1] + r[3]).toInt())');
   });
 });
