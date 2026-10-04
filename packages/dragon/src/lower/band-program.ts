@@ -203,8 +203,11 @@ export class MediaRuntime {
       this.layout();
       const listener = this.states.onChange;
       this.states.onChange = null;
-      this.moveBand(to);
-      this.states.onChange = listener;
+      try {
+        this.moveBand(to);
+      } finally {
+        this.states.onChange = listener;
+      }
       return;
     }
     if (to === this.band) this.layout();
