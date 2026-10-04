@@ -21,7 +21,7 @@ Everything else here is a default you apply without asking.
 - Catch up (`git merge origin/master`, then regen) only when GitHub says CONFLICTING, the driver asks,
   or your parent has merged. Never rebuild a branch as -v2: merge its parent forward.
 - Device-record tests that fail only for a missing device run are "device step pending"
-  (lanes, lanes-records, device-failures, p6a-promotion, lanes-concurrent). Never a stop.
+  (lanes, lanes-records, device-failures, p6a-promotion, lanes-concurrent, and land.test's evidence:stamp case). Never a stop.
 - A test that times out: rerun that file alone. Passes means load (record it); fails means real (stop
   landing this branch, report).
 
