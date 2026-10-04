@@ -2,8 +2,9 @@
 # Trigger: workflow_dispatch with a branch, or the `regen` label on a pull request from this repository.
 # The chain is split by machine (regen-on-ci-round.yml): the Chrome steps on macos-26, whose captures are byte-identical to the
 # local Mac's (capture-proof.yml), and lanes-host on xcode-27, the image with the local Mac's Xcode 27.0. Rounds alternate until
-# one changes nothing (at most 5), and the last round's tree is committed. Never pushes master, a protected branch, the default
-# branch or a fork; never force-pushes (a branch that moved meanwhile makes the push fail).
+# one changes nothing (at most 5). tw-sweep, which no other step reads and which takes about 50 min on a 3-core runner, runs
+# once on the converged tree, and that tree is committed. Never pushes master, a protected branch, the default branch or a fork;
+# never force-pushes (a branch that moved meanwhile makes the push fail).
 # A push made with GITHUB_TOKEN starts no workflow, so the push job dispatches ci.yml on the branch for the new commit's checks.
 name: regen-on-ci
 on:
@@ -55,7 +56,7 @@ jobs:
   chrome-1:
     needs: resolve
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', name: chrome-1 }
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', name: chrome-1 }
   host-1:
     needs: [resolve, chrome-1]
     uses: ./.github/workflows/regen-on-ci-round.yml
@@ -64,7 +65,7 @@ jobs:
     needs: [resolve, host-1]
     if: needs.host-1.outputs.changed == 'true'
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-1, name: chrome-2 }
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: host-1, name: chrome-2 }
   host-2:
     needs: [resolve, chrome-2]
     if: needs.chrome-2.outputs.changed == 'true'
@@ -74,15 +75,13 @@ jobs:
     needs: [resolve, host-2]
     if: needs.host-2.outputs.changed == 'true'
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3 }
-  push:
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3 }
+  converge:
     needs: [resolve, chrome-1, host-1, chrome-2, host-2, chrome-3]
     if: always() && needs.resolve.result == 'success' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      actions: write
-      pull-requests: write
+    outputs:
+      last: ${{ steps.last.outputs.name }}
     steps:
       - name: Pick the last round
         id: last
@@ -100,14 +99,26 @@ jobs:
           [ -n "$H1" ] || { echo "::error::host-1 reported nothing"; exit 1; }
           echo "rounds: chrome-1=$C1 host-1=$H1 chrome-2=${C2:-not run} host-2=${H2:-not run} chrome-3=${C3:-not run}; final tree from $last" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "name=$last" >> "$GITHUB_OUTPUT"
+  sweep:
+    needs: [resolve, converge]
+    uses: ./.github/workflows/regen-on-ci-round.yml
+    with: { runner: macos-26, side: chrome, args: '--only tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: '${{ needs.converge.outputs.last }}', name: sweep }
+  push:
+    needs: [resolve, sweep]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+      pull-requests: write
+    steps:
       - name: Check out the branch commit
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.resolve.outputs.sha }}
-      - name: Download the last round
+      - name: Download the sweep round (the converged tree with tw-sweep run)
         uses: actions/download-artifact@v4
         with:
-          name: ${{ steps.last.outputs.name }}
+          name: sweep
           path: ${{ runner.temp }}/last
       - name: Commit and push the outputs, then start CI on the new commit
         id: push
@@ -128,7 +139,8 @@ jobs:
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -q -F - <<EOF
           Regenerate on CI: pnpm regen (regen-on-ci)
 
-          Commands: pnpm regen --skip lanes-host (macos-26) and pnpm regen --only lanes-host (xcode-27), alternated to a fixed point.
+          Commands: pnpm regen --skip lanes-host --skip tw-sweep (macos-26) and pnpm regen --only lanes-host (xcode-27), alternated
+          to a fixed point, then pnpm regen --only tw-sweep (macos-26).
           Base: $SHA
           Run: $RUN_URL
           EOF
