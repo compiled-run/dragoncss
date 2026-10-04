@@ -14,7 +14,7 @@ import { doubleLit, environmentArgs, inputFunctions, stringLit } from '../native
 
 export const STATE_RUNTIME_VERSION = 'dragon.runtime-state/1';
 
-/** One step of a case script (T047 §3.3 item 4). tap needs Dragon hit testing and comes with SELD-R1b. */
+/** One step of a case script (T047 §3.3 item 4). tap is a point in LU (1/64 px); the device runs it once the hit runtime is emitted. */
 export type ScriptStep =
   | { readonly kind: 'set'; readonly state: string; readonly value: Scalar }
   | { readonly kind: 'advance'; readonly ms: number }
@@ -516,7 +516,7 @@ function stepLit(lang: Lang, sp: StateProgram, id: string, step: ScriptStep): st
     case 'dump':
       return lang === 'swift' ? '.dump' : 'DragonScriptStep.Dump';
     case 'tap':
-      throw new StateEmitError(`${id}: tap(${step.x}, ${step.y}) needs Dragon hit testing, which comes with SELD-R1b`);
+      throw new StateEmitError(`${id}: tap(${step.x}, ${step.y}) needs the device hit runtime (the device-hit lane), which is not emitted yet`);
   }
 }
 
