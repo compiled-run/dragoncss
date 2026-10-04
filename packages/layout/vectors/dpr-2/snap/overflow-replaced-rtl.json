@@ -69,10 +69,10 @@
   {
    "id": "i4",
    "parent": "s3",
-   "x": 4352,
+   "x": 5120,
    "y": 14080,
-   "width": 9984,
-   "height": 9984
+   "width": 9216,
+   "height": 9216
   },
   {
    "id": "s4",
@@ -174,12 +174,12 @@
   },
   {
    "id": "i4",
-   "left": 668,
+   "left": 680,
    "top": 476,
    "right": 824,
-   "bottom": 632,
-   "width": 156,
-   "height": 156
+   "bottom": 620,
+   "width": 144,
+   "height": 144
   },
   {
    "id": "s4",

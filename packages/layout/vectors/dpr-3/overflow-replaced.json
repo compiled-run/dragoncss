@@ -1103,19 +1103,19 @@
           },
           "borderTopWidth": {
            "kind": "px",
-           "value": 3
+           "value": 0
           },
           "borderRightWidth": {
            "kind": "px",
-           "value": 3
+           "value": 0
           },
           "borderBottomWidth": {
            "kind": "px",
-           "value": 3
+           "value": 0
           },
           "borderLeftWidth": {
            "kind": "px",
-           "value": 3
+           "value": 0
           },
           "flexDirection": "row",
           "flexWrap": "nowrap",
@@ -1626,8 +1626,8 @@
    "parent": "s3",
    "x": 2304,
    "y": 21120,
-   "width": 14976,
-   "height": 14976
+   "width": 13824,
+   "height": 13824
   },
   {
    "id": "s4",

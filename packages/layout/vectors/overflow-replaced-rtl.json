@@ -1103,19 +1103,19 @@
           },
           "borderTopWidth": {
            "kind": "px",
-           "value": 3
+           "value": 0
           },
           "borderRightWidth": {
            "kind": "px",
-           "value": 3
+           "value": 0
           },
           "borderBottomWidth": {
            "kind": "px",
-           "value": 3
+           "value": 0
           },
           "borderLeftWidth": {
            "kind": "px",
-           "value": 3
+           "value": 0
           },
           "flexDirection": "row",
           "flexWrap": "nowrap",
@@ -1624,10 +1624,10 @@
   {
    "id": "i4",
    "parent": "s3",
-   "x": 2176,
+   "x": 2560,
    "y": 7040,
-   "width": 4992,
-   "height": 4992
+   "width": 4608,
+   "height": 4608
   },
   {
    "id": "s4",
