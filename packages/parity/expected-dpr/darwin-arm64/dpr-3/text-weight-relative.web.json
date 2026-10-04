@@ -99,7 +99,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -191,7 +194,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -283,7 +289,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -375,7 +384,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -487,7 +499,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -599,7 +614,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -691,7 +709,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -803,7 +824,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -895,7 +919,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1007,7 +1034,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1099,7 +1129,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1211,7 +1244,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1323,7 +1359,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1415,7 +1454,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1527,7 +1569,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1619,7 +1664,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1731,7 +1779,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1843,7 +1894,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1935,7 +1989,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -2047,7 +2104,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -2159,7 +2219,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -2251,7 +2314,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -2363,7 +2429,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -2455,7 +2524,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -2567,7 +2639,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -2659,7 +2734,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -2771,7 +2849,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -2883,7 +2964,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -2975,7 +3059,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -3087,7 +3174,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -3199,7 +3289,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -3291,7 +3384,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -3383,7 +3479,10 @@
         "grid-column-start": "auto",
         "grid-column-end": "auto",
         "justify-items": "normal",
-        "justify-self": "auto"
+        "justify-self": "auto",
+        "overflow-wrap": "normal",
+        "word-break": "normal",
+        "letter-spacing": "normal"
       }
     },
     {

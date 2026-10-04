@@ -1,0 +1,12 @@
+{
+  "case": "text-wrap-break-flex",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"any:text0","data":"aaaaaaaa","lines":8,"units":[0,1,2,3,4,5,6,7],"blank":[]},
+    {"id":"bw:text0","data":"bbbbbbbb","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"wbw:text0","data":"aaaaaaaa","lines":8,"units":[0,1,2,3,4,5,6,7],"blank":[]},
+    {"id":"plain:text0","data":"bbbbbbbb","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"ls:text0","data":"aa bb","lines":1,"units":[0,0,0,0,0],"blank":[]}
+  ]
+}

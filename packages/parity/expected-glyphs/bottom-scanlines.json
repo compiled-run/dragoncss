@@ -240,7 +240,13 @@
       "atomic-inline-links": [2,2],
       "atomic-inline-disclosure": [3,3],
       "atomic-inline-lato": [1,1],
-      "atomic-inline-lato-rtl": [1,1]
+      "atomic-inline-lato-rtl": [1,1],
+      "text-wrap-break-ahem": [9,28],
+      "text-wrap-break-ahem-rtl": [9,28],
+      "text-wrap-break-flex": [3,19],
+      "text-wrap-break-flex-rtl": [3,19],
+      "text-wrap-break-lato": [11,13],
+      "text-wrap-break-lato-rtl": [11,13]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -482,7 +488,13 @@
       "atomic-inline-links": [2,2],
       "atomic-inline-disclosure": [3,3],
       "atomic-inline-lato": [1,1],
-      "atomic-inline-lato-rtl": [1,1]
+      "atomic-inline-lato-rtl": [1,1],
+      "text-wrap-break-ahem": [9,28],
+      "text-wrap-break-ahem-rtl": [9,28],
+      "text-wrap-break-flex": [3,19],
+      "text-wrap-break-flex-rtl": [3,19],
+      "text-wrap-break-lato": [11,13],
+      "text-wrap-break-lato-rtl": [11,13]
     }
   },
   "android": {
@@ -726,7 +738,13 @@
       "atomic-inline-links": [2,2],
       "atomic-inline-disclosure": [3,3],
       "atomic-inline-lato": [1,1],
-      "atomic-inline-lato-rtl": [1,1]
+      "atomic-inline-lato-rtl": [1,1],
+      "text-wrap-break-ahem": [9,28],
+      "text-wrap-break-ahem-rtl": [9,28],
+      "text-wrap-break-flex": [3,19],
+      "text-wrap-break-flex-rtl": [3,19],
+      "text-wrap-break-lato": [11,13],
+      "text-wrap-break-lato-rtl": [11,13]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -968,7 +986,13 @@
       "atomic-inline-links": [2,2],
       "atomic-inline-disclosure": [3,3],
       "atomic-inline-lato": [1,1],
-      "atomic-inline-lato-rtl": [1,1]
+      "atomic-inline-lato-rtl": [1,1],
+      "text-wrap-break-ahem": [9,28],
+      "text-wrap-break-ahem-rtl": [9,28],
+      "text-wrap-break-flex": [3,19],
+      "text-wrap-break-flex-rtl": [3,19],
+      "text-wrap-break-lato": [11,13],
+      "text-wrap-break-lato-rtl": [11,13]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -1210,7 +1234,13 @@
       "atomic-inline-links": [2,2],
       "atomic-inline-disclosure": [3,3],
       "atomic-inline-lato": [1,1],
-      "atomic-inline-lato-rtl": [1,1]
+      "atomic-inline-lato-rtl": [1,1],
+      "text-wrap-break-ahem": [9,28],
+      "text-wrap-break-ahem-rtl": [9,28],
+      "text-wrap-break-flex": [3,19],
+      "text-wrap-break-flex-rtl": [3,19],
+      "text-wrap-break-lato": [11,13],
+      "text-wrap-break-lato-rtl": [11,13]
     }
   }
 }

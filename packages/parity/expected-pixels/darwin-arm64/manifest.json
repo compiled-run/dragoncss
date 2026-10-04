@@ -539,7 +539,13 @@
         {"case":"atomic-inline-links","width":800,"height":600,"sha256":"bf264238e94d899b5d50284ed0a6682bc4d101aaa3120ec38f41ae4668c7e49b"},
         {"case":"atomic-inline-disclosure","width":800,"height":600,"sha256":"fdba368cfe70b55915bae9e598a05123ad8f6ff4c59678dcc82bca7000c99b2b"},
         {"case":"atomic-inline-lato","width":800,"height":600,"sha256":"5d2e782b01a38c3c9f1c3650bd9ae09dbf582f094b04ea4fded5ebd186085633"},
-        {"case":"atomic-inline-lato-rtl","width":800,"height":600,"sha256":"f77062d4971a360dffeb5064af726593c8e602e0a2a12e58a524e936fbc8ae3a"}
+        {"case":"atomic-inline-lato-rtl","width":800,"height":600,"sha256":"f77062d4971a360dffeb5064af726593c8e602e0a2a12e58a524e936fbc8ae3a"},
+        {"case":"text-wrap-break-ahem","width":800,"height":600,"sha256":"2c3b9bda6b6e62acba4905be4be6bcb10436ea0fc55f0f794ec439bcf221f253"},
+        {"case":"text-wrap-break-ahem-rtl","width":800,"height":600,"sha256":"2d628a0919bd936cf390c9d900ed8a83863a1102b28ef5dcd5627255184e744e"},
+        {"case":"text-wrap-break-flex","width":800,"height":600,"sha256":"f36cf53161f3efed567f523943152ef8e67d7f6e5e848e0e32632097fb11997d"},
+        {"case":"text-wrap-break-flex-rtl","width":800,"height":600,"sha256":"009b4f5a66ba394955696a335d1f3f27912b3be3568685f23b71f1e0f883c58f"},
+        {"case":"text-wrap-break-lato","width":800,"height":600,"sha256":"5088e3cc03f809d34c3e12f8e5399883f22164e4447aa1b4875fe2c55b7244c1"},
+        {"case":"text-wrap-break-lato-rtl","width":800,"height":600,"sha256":"e058ed278e6ccf17b427121f65d5665762765fb4abc3f0fe446e7f13d7487d6e"}
       ]
     },
     {
@@ -1078,7 +1084,13 @@
         {"case":"atomic-inline-links","width":1200,"height":900,"sha256":"93562da14794c3bb8dcbe7d0a442e32caf9690679a3d97aaed5179b1f0f1326d"},
         {"case":"atomic-inline-disclosure","width":1200,"height":900,"sha256":"ca19c514ddb4fab9d7028150161a6e4b08b52914322c354fb97f19900d85fff3"},
         {"case":"atomic-inline-lato","width":1200,"height":900,"sha256":"d7194d126fd46770c51c14e34d7d1cbd79e012b1a71bf4fc30f1d88c6e3cae55"},
-        {"case":"atomic-inline-lato-rtl","width":1200,"height":900,"sha256":"a65a418fbd9602837593d42e9f608d664d41ecd49505f672c388ad177aed32df"}
+        {"case":"atomic-inline-lato-rtl","width":1200,"height":900,"sha256":"a65a418fbd9602837593d42e9f608d664d41ecd49505f672c388ad177aed32df"},
+        {"case":"text-wrap-break-ahem","width":1200,"height":900,"sha256":"664cfe8c5a05af7b37f016aaaa0f459c561d715c21e45f331f478cb9929f4c85"},
+        {"case":"text-wrap-break-ahem-rtl","width":1200,"height":900,"sha256":"4d7f831d325f5303b73bafba0b20e2b33e815f873770a057434e6f8656b36eff"},
+        {"case":"text-wrap-break-flex","width":1200,"height":900,"sha256":"e2d66bc6bf5e90675a5767c9e378d99ac04865cb4669a286912cf14c1b208eb6"},
+        {"case":"text-wrap-break-flex-rtl","width":1200,"height":900,"sha256":"6ae7f9f3cc41ed137094e5688a2cddf68586c2a2a83c52fcbf51bd9a4c1db58b"},
+        {"case":"text-wrap-break-lato","width":1200,"height":900,"sha256":"792ecd86ec7dc15a4d9eefc6868f0e51e5626aa1a5c99bae3364dd9fd89edcc0"},
+        {"case":"text-wrap-break-lato-rtl","width":1200,"height":900,"sha256":"53e750055c0bf411f403e0522356d305127f0c7d9b75a0ce1dfb175e818f13b7"}
       ]
     },
     {
@@ -1617,7 +1629,13 @@
         {"case":"atomic-inline-links","width":1050,"height":788,"sha256":"22590d179d96b4c1868fc42cb12098287196a50dfda8774aedc168133b8d01f2"},
         {"case":"atomic-inline-disclosure","width":1050,"height":788,"sha256":"d1334cdc3c1ef60496ca3068d600b756eb951577c62fd2d7b79c11a2fba1dbd1"},
         {"case":"atomic-inline-lato","width":1050,"height":788,"sha256":"e17c441d895f61694055f6e9a237f3c48640754be343ed7d7d7862ad66283fde"},
-        {"case":"atomic-inline-lato-rtl","width":1050,"height":788,"sha256":"112cd4f348d3c78b43ce71d1daa72ce62807859c86288091252615bd6666c78d"}
+        {"case":"atomic-inline-lato-rtl","width":1050,"height":788,"sha256":"112cd4f348d3c78b43ce71d1daa72ce62807859c86288091252615bd6666c78d"},
+        {"case":"text-wrap-break-ahem","width":1050,"height":788,"sha256":"4c499f4ad610bc6cd7baceb76d27d98ce43e824624a311d2f9e189cc6bd00009"},
+        {"case":"text-wrap-break-ahem-rtl","width":1050,"height":788,"sha256":"7b5e1c0f07399768041cf34ea938af141da7eb9963661d8d83b199beefc17c69"},
+        {"case":"text-wrap-break-flex","width":1050,"height":788,"sha256":"87bf74de65d00cb5f92e7be3473ac9cc197b9a868e259e941344fcf1aed66ea1"},
+        {"case":"text-wrap-break-flex-rtl","width":1050,"height":788,"sha256":"47012885ae27a7d142b036f7cca3f3cd67aaf2f202eebc14df2ef02b0b896439"},
+        {"case":"text-wrap-break-lato","width":1050,"height":788,"sha256":"86cdeecdf9377c01b6509efa8c127438238f3053175fdcfb016e452f8df888bb"},
+        {"case":"text-wrap-break-lato-rtl","width":1050,"height":788,"sha256":"1e76e330f8ec5c86d039533a2f0d0d94d8c1f62949331eb9e7110ed8568bba10"}
       ]
     }
   ]

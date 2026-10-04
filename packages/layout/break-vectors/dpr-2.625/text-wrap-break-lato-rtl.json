@@ -1,0 +1,11 @@
+{
+  "case": "text-wrap-break-lato-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"title:text0","lines":[[0,35],[35,69]]},
+    {"id":"wide-title:text0","lines":[[0,34]]},
+    {"id":"disclosure-text:text0","lines":[[0,28],[28,42],[42,76]]},
+    {"id":"band-text:text0","lines":[[0,11],[11,34],[34,45]]},
+    {"id":"early:text0","lines":[[0,3],[3,11],[11,19],[19,21]]}
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "case": "text-wrap-break-ahem",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"any:text0","lines":[[0,4],[4,8],[8,11],[11,13]]},
+    {"id":"bw:text0","lines":[[0,4],[4,8],[8,11],[11,13]]},
+    {"id":"wbw:text0","lines":[[0,4],[4,8],[8,11],[11,13]]},
+    {"id":"early:text0","lines":[[0,3],[3,9],[9,14],[14,16]]},
+    {"id":"nowrap:text0","lines":[[0,13]]},
+    {"id":"box:text0","lines":[[0,3]]},
+    {"id":"box-s:text0","lines":[[0,1],[1,5],[5,9]]},
+    {"id":"box:text1","lines":[[1,3]]},
+    {"id":"ls:text0","lines":[[0,3],[3,6],[6,8]]},
+    {"id":"inherit-c:text0","lines":[[0,4],[4,8],[8,10]]}
+  ]
+}

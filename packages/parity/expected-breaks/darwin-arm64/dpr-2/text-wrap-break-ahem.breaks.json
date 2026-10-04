@@ -1,0 +1,17 @@
+{
+  "case": "text-wrap-break-ahem",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"any:text0","data":"aaaaaaaaaa bb","lines":4,"units":[0,0,0,0,1,1,1,1,2,2,2,3,3],"blank":[10]},
+    {"id":"bw:text0","data":"aaaaaaaaaa bb","lines":4,"units":[0,0,0,0,1,1,1,1,2,2,2,3,3],"blank":[10]},
+    {"id":"wbw:text0","data":"aaaaaaaaaa bb","lines":4,"units":[0,0,0,0,1,1,1,1,2,2,2,3,3],"blank":[10]},
+    {"id":"early:text0","data":"aa bbbbbbbbbb cc","lines":4,"units":[0,0,0,1,1,1,1,1,1,2,2,2,2,2,3,3],"blank":[2,13]},
+    {"id":"nowrap:text0","data":"aaaaaaaaaa bb","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"box:text0","data":"aaa","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"box:text1","data":" cc","lines":1,"units":[0,0,0],"blank":[0]},
+    {"id":"box-s:text0","data":"bbbbbbbbb","lines":3,"units":[0,1,1,1,1,2,2,2,2],"blank":[]},
+    {"id":"ls:text0","data":"aa bb cc","lines":3,"units":[0,0,0,1,1,1,2,2],"blank":[2,5]},
+    {"id":"inherit-c:text0","data":"aaaaaaaaaa","lines":3,"units":[0,0,0,0,1,1,1,1,2,2],"blank":[]}
+  ]
+}

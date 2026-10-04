@@ -107,18 +107,18 @@
   "contextProbe": {
    "rounds": 1,
    "blankedRules": 9,
-   "blankedDeclarations": 61,
+   "blankedDeclarations": 56,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 274,
-  "errors": 273,
+  "diagnostics": 257,
+  "errors": 256,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
-   "DRAGON_UNPROVEN_CONTEXT [android]": 23,
-   "DRAGON_UNPROVEN_CONTEXT [ios]": 23,
-   "DRAGON_UNPROVEN_CONTEXT [web]": 23,
+   "DRAGON_UNPROVEN_CONTEXT [android]": 19,
+   "DRAGON_UNPROVEN_CONTEXT [ios]": 19,
+   "DRAGON_UNPROVEN_CONTEXT [web]": 19,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 21,
    "DRAGON_UNSUPPORTED_AT_RULE": 1,
    "DRAGON_UNSUPPORTED_AT_RULE [android]": 2,
@@ -126,7 +126,7 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 11,
    "DRAGON_UNSUPPORTED_FONT [android]": 2,
    "DRAGON_UNSUPPORTED_FONT [ios]": 2,
-   "DRAGON_UNSUPPORTED_PROPERTY": 58,
+   "DRAGON_UNSUPPORTED_PROPERTY": 53,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 3,
    "DRAGON_UNSUPPORTED_VALUE [android]": 33,
@@ -136,11 +136,11 @@
   "perTarget": {
    "web": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 23,
+     "DRAGON_UNPROVEN_CONTEXT": 19,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 21,
      "DRAGON_UNSUPPORTED_AT_RULE": 1,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
-     "DRAGON_UNSUPPORTED_PROPERTY": 58,
+     "DRAGON_UNSUPPORTED_PROPERTY": 53,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 30
     },
@@ -150,12 +150,12 @@
    },
    "ios": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 23,
+     "DRAGON_UNPROVEN_CONTEXT": 19,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 21,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_FONT": 2,
-     "DRAGON_UNSUPPORTED_PROPERTY": 58,
+     "DRAGON_UNSUPPORTED_PROPERTY": 53,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 36
     },
@@ -165,12 +165,12 @@
    },
    "android": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 23,
+     "DRAGON_UNPROVEN_CONTEXT": 19,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 21,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_FONT": 2,
-     "DRAGON_UNSUPPORTED_PROPERTY": 58,
+     "DRAGON_UNSUPPORTED_PROPERTY": 53,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 36
     },
@@ -180,11 +180,11 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 176,
-  "supportedWeb": 190,
-  "supportedIos": 176,
-  "supportedAndroid": 176,
-  "supportPercent": 60.5,
+  "supportedBothTargets": 179,
+  "supportedWeb": 199,
+  "supportedIos": 179,
+  "supportedAndroid": 179,
+  "supportPercent": 61.5,
   "elements": 62,
   "supportedElements": 45,
   "tags": {
@@ -267,9 +267,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 149,
-   "B-unwrapped": 146,
-   "C-context": 130
+   "A-authored": 144,
+   "B-unwrapped": 141,
+   "C-context": 118
   }
  },
  "features": {
@@ -730,12 +730,10 @@
    "atRule": null,
    "property": "letter-spacing",
    "value": "0",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 27,
@@ -2086,12 +2084,10 @@
    "atRule": null,
    "property": "overflow-wrap",
    "value": "break-word",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 133,
@@ -3603,12 +3599,10 @@
    "atRule": null,
    "property": "overflow-wrap",
    "value": "break-word",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 254,
@@ -3931,11 +3925,10 @@
    "atRule": "@media screen and (max-width: 640px)",
    "property": "max-width",
    "value": "20rem",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_AT_RULE"
    ]
   },
@@ -3946,12 +3939,11 @@
    "atRule": "@media screen and (max-width: 640px)",
    "property": "overflow-wrap",
    "value": "anywhere",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE",
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_AT_RULE"
    ]
   },
   {
@@ -3975,11 +3967,10 @@
    "atRule": "@media screen and (max-width: 640px)",
    "property": "width",
    "value": "20rem",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_AT_RULE"
    ]
   },
@@ -3990,11 +3981,10 @@
    "atRule": "@media screen and (max-width: 640px)",
    "property": "max-width",
    "value": "18rem",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_AT_RULE"
    ]
   },
@@ -4005,11 +3995,10 @@
    "atRule": "@media screen and (max-width: 640px)",
    "property": "width",
    "value": "18rem",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_AT_RULE"
    ]
   },
@@ -4105,12 +4094,11 @@
    "atRule": "@media screen and (max-width: 640px)",
    "property": "overflow-wrap",
    "value": "anywhere",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE",
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_AT_RULE"
    ]
   },
   {
@@ -4304,26 +4292,6 @@
     "A-authored",
     "B-unwrapped",
     "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@784-801|letter-spacing is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 784,
-    "end": 801,
-    "line": 54,
-    "column": 2,
-    "text": "letter-spacing: 0"
-   },
-   "message": "letter-spacing is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
    ]
   },
   {
@@ -5350,26 +5318,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4409-4434|overflow-wrap is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 4409,
-    "end": 4434,
-    "line": 244,
-    "column": 2,
-    "text": "overflow-wrap: break-word"
-   },
-   "message": "overflow-wrap is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -6111,26 +6059,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@7800-7825|overflow-wrap is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 7800,
-    "end": 7825,
-    "line": 456,
-    "column": 2,
-    "text": "overflow-wrap: break-word"
-   },
-   "message": "overflow-wrap is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@7905-7930|text-decoration-color: rgba(167, 175, 189, 0.45) is unsupported (support profile m1-s5); no text-decoration-color value is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -6443,46 +6371,6 @@
    "viaRelated": false,
    "passes": [
     "A-authored"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@8874-8897|overflow-wrap is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8874,
-    "end": 8897,
-    "line": 527,
-    "column": 3,
-    "text": "overflow-wrap: anywhere"
-   },
-   "message": "overflow-wrap is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@9202-9225|overflow-wrap is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 9202,
-    "end": 9225,
-    "line": 550,
-    "column": 3,
-    "text": "overflow-wrap: anywhere"
-   },
-   "message": "overflow-wrap is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
    ]
   },
   {
@@ -8550,7 +8438,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@7771-7779|flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@7771-7779|flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr, flex-row/rtl); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -8562,14 +8450,14 @@
     "column": 8,
     "text": "1 1 100%"
    },
-   "message": "flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
+   "message": "flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr, flex-row/rtl); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@7771-7779|flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@7771-7779|flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr, flex-row/rtl); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -8581,14 +8469,14 @@
     "column": 8,
     "text": "1 1 100%"
    },
-   "message": "flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
+   "message": "flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr, flex-row/rtl); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7771-7779|flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7771-7779|flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr, flex-row/rtl); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -8600,7 +8488,7 @@
     "column": 8,
     "text": "1 1 100%"
    },
-   "message": "flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
+   "message": "flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr, flex-row/rtl); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -8797,7 +8685,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8586-8620|width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8586-8620|width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <length-rem>, <percentage> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -8809,14 +8697,14 @@
     "column": 10,
     "text": "min(calc(100vw - 1.5rem), 22.5rem)"
    },
-   "message": "width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "message": "width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8586-8620|width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8586-8620|width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <length-rem>, <percentage> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -8828,14 +8716,14 @@
     "column": 10,
     "text": "min(calc(100vw - 1.5rem), 22.5rem)"
    },
-   "message": "width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "message": "width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8586-8620|width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8586-8620|width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <length-rem>, <percentage> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -8847,7 +8735,7 @@
     "column": 10,
     "text": "min(calc(100vw - 1.5rem), 22.5rem)"
    },
-   "message": "width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "message": "width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -8911,7 +8799,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8694-8709|width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8694-8709|width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <length-rem>, <percentage> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -8923,14 +8811,14 @@
     "column": 10,
     "text": "min(80%, 18rem)"
    },
-   "message": "width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "message": "width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8694-8709|width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8694-8709|width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <length-rem>, <percentage> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -8942,14 +8830,14 @@
     "column": 10,
     "text": "min(80%, 18rem)"
    },
-   "message": "width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "message": "width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8694-8709|width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8694-8709|width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <length-rem>, <percentage> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -8961,235 +8849,7 @@
     "column": 10,
     "text": "min(80%, 18rem)"
    },
-   "message": "width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8865-8870|max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 8865,
-    "end": 8870,
-    "line": 526,
-    "column": 14,
-    "text": "20rem"
-   },
-   "message": "max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8865-8870|max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 8865,
-    "end": 8870,
-    "line": 526,
-    "column": 14,
-    "text": "20rem"
-   },
-   "message": "max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8865-8870|max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 8865,
-    "end": 8870,
-    "line": 526,
-    "column": 14,
-    "text": "20rem"
-   },
-   "message": "max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8931-8936|width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 8931,
-    "end": 8936,
-    "line": 529,
-    "column": 10,
-    "text": "20rem"
-   },
-   "message": "width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8931-8936|width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 8931,
-    "end": 8936,
-    "line": 529,
-    "column": 10,
-    "text": "20rem"
-   },
-   "message": "width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8931-8936|width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 8931,
-    "end": 8936,
-    "line": 529,
-    "column": 10,
-    "text": "20rem"
-   },
-   "message": "width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8972-8977|max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 8972,
-    "end": 8977,
-    "line": 533,
-    "column": 14,
-    "text": "18rem"
-   },
-   "message": "max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8972-8977|max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 8972,
-    "end": 8977,
-    "line": 533,
-    "column": 14,
-    "text": "18rem"
-   },
-   "message": "max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8972-8977|max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 8972,
-    "end": 8977,
-    "line": 533,
-    "column": 14,
-    "text": "18rem"
-   },
-   "message": "max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8988-8993|width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 8988,
-    "end": 8993,
-    "line": 534,
-    "column": 10,
-    "text": "18rem"
-   },
-   "message": "width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8988-8993|width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 8988,
-    "end": 8993,
-    "line": 534,
-    "column": 10,
-    "text": "18rem"
-   },
-   "message": "width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8988-8993|width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 8988,
-    "end": 8993,
-    "line": 534,
-    "column": 10,
-    "text": "18rem"
-   },
-   "message": "width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "message": "width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
