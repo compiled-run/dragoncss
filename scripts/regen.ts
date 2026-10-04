@@ -65,6 +65,9 @@ export const STEPS: readonly Step[] = [
   { name: 'notices', argv: pnpm('notices:gen'), outputs: ['THIRD_PARTY_NOTICES.md'], reads: ['docs/ports.json', 'vendor/harfbuzz/COPYING'] },
   { name: 'ua', argv: pnpm('ua:capture'), outputs: ['packages/dragon/src/ua/*.generated.ts'], reads: [FONTS] },
   { name: 'capture', argv: pnpm('parity:capture'), outputs: ['packages/parity/expected/darwin-arm64/**', 'packages/parity/emitted/**', 'packages/parity/expected-fonts/**'], reads: [FIXTURES, FONTS] },
+  // MQ-R1 (T067 R7 (a)): the resize traces (Chrome through setViewportSize) of the media-runtime scripts; profile:rows reads them,
+  // so they run before it: the media rows it derives from them gate native @media in every later step's enforce-mode compile.
+  { name: 'resize-capture', argv: pnpm('parity:resize-capture'), outputs: ['packages/parity/expected-resize/**'], reads: [FIXTURES, FONTS] },
   // profile:rows judges every captured and generated output, and writes the native lanes verdict (P6a, T075J) from lanes.json.
   {
     name: 'profile-rows',
@@ -82,8 +85,6 @@ export const STEPS: readonly Step[] = [
   { name: 'pixel-capture', argv: pnpm('parity:pixel-capture'), outputs: ['packages/parity/expected-pixels/**'], reads: [FIXTURES, FONTS] },
   // T065: the frame captures (frozen-timeline Chrome) of the frame fixtures; profile:rows reads them (expected-*).
   { name: 'anim-capture', argv: pnpm('parity:anim-capture'), outputs: ['packages/parity/expected-frames/**'], reads: [FIXTURES, FONTS] },
-  // MQ-R1 (T067 R7 (a)): the resize traces (Chrome through setViewportSize) of the media-runtime scripts; profile:rows reads them.
-  { name: 'resize-capture', argv: pnpm('parity:resize-capture'), outputs: ['packages/parity/expected-resize/**'], reads: [FIXTURES, FONTS] },
   // EMS: each paint feature's vectors from its committed inputs.jsonl through the TypeScript harness (units mode).
   { name: 'paint-vectors', argv: pnpm('layout:paint-vectors'), outputs: ['packages/layout/paint-vectors/*/vectors.json'], reads: ['packages/layout/paint-vectors/**', ...ENGINE_SOURCES], imports: ['packages/translate/src/generate.ts', 'packages/translate/harness/harness.ts'] },
   { name: 'native-gen', argv: pnpm('native:gen'), outputs: ['packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'], reads: [...ENGINE_SOURCES, 'packages/layout/vectors/**', 'packages/layout/rt-vectors/**', 'packages/translate/corpus-m1-cases.json', 'packages/translate/package.json'] },
