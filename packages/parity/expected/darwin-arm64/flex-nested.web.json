@@ -88,7 +88,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "200px 48.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -169,7 +172,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "200px 48.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -250,7 +256,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "150.5px 48.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -331,7 +340,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "50px 48.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -412,7 +424,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "49px 6.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -493,7 +508,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "12px 6.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -574,7 +592,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "24px 6.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -655,7 +676,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "12px 6.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -736,7 +760,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "49px 40px",
+        "will-change": "auto"
       }
     },
     {
@@ -817,7 +844,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "46px 2.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -898,7 +928,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "46px 2.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -979,7 +1012,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "46px 2.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1060,7 +1096,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "99px 48.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1141,7 +1180,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "98px 6.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1222,7 +1264,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "32.3281px 6.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1303,7 +1348,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "32.3359px 6.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1384,7 +1432,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "32.3359px 6.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1465,7 +1516,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "98px 35.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1546,7 +1600,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "3.5px 3.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1627,7 +1684,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "3.5px 3.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1708,7 +1768,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "3.5px 3.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1789,7 +1852,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "3.5px 3.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1870,7 +1936,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "98px 5.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -1951,7 +2020,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "50px 5.5px",
+        "will-change": "auto"
       }
     },
     {
@@ -2032,7 +2104,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "50px 5.5px",
+        "will-change": "auto"
       }
     }
   ]
