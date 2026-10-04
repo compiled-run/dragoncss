@@ -1,0 +1,18 @@
+{
+  "case": "tree-attribute-equality#0",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 187,
+  "gridSha256": "b82d9949d07fc0f95b87ec1574621221e17109c7cf90bef8d3bbf3bf84fcb4b8",
+  "ids": [
+    "body",
+    "html",
+    "menu"
+  ],
+  "runs": [[2,4],[0,4],[2,91],[0,4],[2,48],[0,4],[2,4],[0,4],[1,24]]
+}

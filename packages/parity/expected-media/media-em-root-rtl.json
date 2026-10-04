@@ -31,7 +31,7 @@
    "band": 0,
    "pass": true,
    "boxesCompared": 6,
-   "valuesCompared": 414,
+   "valuesCompared": 420,
    "channelsCompared": 36,
    "problems": []
   },
@@ -41,7 +41,7 @@
    "band": 0,
    "pass": true,
    "boxesCompared": 6,
-   "valuesCompared": 414,
+   "valuesCompared": 420,
    "channelsCompared": 36,
    "problems": []
   },
@@ -51,7 +51,7 @@
    "band": 0,
    "pass": true,
    "boxesCompared": 6,
-   "valuesCompared": 414,
+   "valuesCompared": 420,
    "channelsCompared": 36,
    "problems": []
   },
@@ -61,7 +61,7 @@
    "band": 1,
    "pass": true,
    "boxesCompared": 6,
-   "valuesCompared": 414,
+   "valuesCompared": 420,
    "channelsCompared": 36,
    "problems": []
   },
@@ -71,7 +71,7 @@
    "band": 1,
    "pass": true,
    "boxesCompared": 6,
-   "valuesCompared": 414,
+   "valuesCompared": 420,
    "channelsCompared": 36,
    "problems": []
   },
@@ -81,7 +81,7 @@
    "band": 1,
    "pass": true,
    "boxesCompared": 6,
-   "valuesCompared": 414,
+   "valuesCompared": 420,
    "channelsCompared": 36,
    "problems": []
   },
@@ -91,7 +91,7 @@
    "band": 2,
    "pass": true,
    "boxesCompared": 6,
-   "valuesCompared": 414,
+   "valuesCompared": 420,
    "channelsCompared": 36,
    "problems": []
   },
@@ -101,7 +101,7 @@
    "band": 3,
    "pass": true,
    "boxesCompared": 6,
-   "valuesCompared": 414,
+   "valuesCompared": 420,
    "channelsCompared": 36,
    "problems": []
   },
@@ -111,7 +111,7 @@
    "band": 4,
    "pass": true,
    "boxesCompared": 6,
-   "valuesCompared": 414,
+   "valuesCompared": 420,
    "channelsCompared": 36,
    "problems": []
   },
@@ -121,7 +121,7 @@
    "band": 4,
    "pass": true,
    "boxesCompared": 6,
-   "valuesCompared": 414,
+   "valuesCompared": 420,
    "channelsCompared": 36,
    "problems": []
   },
@@ -131,7 +131,7 @@
    "band": 4,
    "pass": true,
    "boxesCompared": 6,
-   "valuesCompared": 414,
+   "valuesCompared": 420,
    "channelsCompared": 36,
    "problems": []
   }
