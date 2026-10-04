@@ -93,6 +93,9 @@ jobs:
         device: [dragon-320, dragon-smoke, dragon-480]
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    env:
+      # device-run.ts reads and pins each AVD's config.ini under ~/.android/avd; newer avdmanager defaults elsewhere.
+      ANDROID_AVD_HOME: /home/runner/.android/avd
     steps:
       - uses: actions/checkout@v4
         with:
