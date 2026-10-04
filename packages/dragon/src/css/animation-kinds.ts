@@ -89,6 +89,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   'grid-column-end': DISCRETE,
   'justify-items': DISCRETE,
   'justify-self': DISCRETE,
+  'pointer-events': DISCRETE,
   // PNT2: transform and transform-origin interpolate in Chrome; their writers come with ANIM-b2. will-change is discrete.
   transform: UNADMITTED,
   'transform-origin': UNADMITTED,
