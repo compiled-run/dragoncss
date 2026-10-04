@@ -73,7 +73,7 @@ export const STEPS: readonly Step[] = [
     reads: [FIXTURES, FONTS, 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
   },
   { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'], reads: [FIXTURES, FONTS] },
-  { name: 'hit-capture', argv: pnpm('parity:hit-capture'), outputs: ['packages/parity/expected-hit/*.hit.json'], reads: [FIXTURES, FONTS] },
+  { name: 'hit-capture', argv: pnpm('parity:hit-capture'), outputs: ['packages/parity/expected-hit/*.hit.json'], reads: [FIXTURES, FONTS, 'packages/parity/expected-hit/identity-base.json'] },
   { name: 'vectors', argv: pnpm('layout:vectors'), outputs: ['packages/layout/vectors/*.json'], reads: [FIXTURES, FONTS, 'packages/parity/expected/**'], lists: ['packages/layout/vectors'] },
   { name: 'dpr-vectors', argv: pnpm('layout:dpr-vectors'), outputs: ['packages/layout/vectors/dpr-*/**'], reads: [FIXTURES, 'packages/parity/expected-dpr/**'] },
   { name: 'hit-vectors', argv: pnpm('parity:hit-capture', '--vectors'), outputs: ['packages/layout/rt-vectors/hit/**'], reads: [FIXTURES, FONTS, 'packages/parity/expected-hit/**'] },
