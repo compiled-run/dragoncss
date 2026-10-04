@@ -133,18 +133,18 @@
   "contextProbe": {
    "rounds": 1,
    "blankedRules": 9,
-   "blankedDeclarations": 63,
+   "blankedDeclarations": 62,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 334,
-  "errors": 333,
+  "diagnostics": 294,
+  "errors": 293,
   "byCode": {
    "DRAGON_SELECTOR_DROPPED": 1,
-   "DRAGON_UNPROVEN_CONTEXT [android]": 25,
-   "DRAGON_UNPROVEN_CONTEXT [ios]": 25,
-   "DRAGON_UNPROVEN_CONTEXT [web]": 27,
+   "DRAGON_UNPROVEN_CONTEXT [android]": 19,
+   "DRAGON_UNPROVEN_CONTEXT [ios]": 19,
+   "DRAGON_UNPROVEN_CONTEXT [web]": 21,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
    "DRAGON_UNSUPPORTED_AT_RULE": 1,
    "DRAGON_UNSUPPORTED_AT_RULE [android]": 2,
@@ -152,23 +152,23 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 60,
+   "DRAGON_UNSUPPORTED_PROPERTY": 59,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 29,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 29,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 27
+   "DRAGON_UNSUPPORTED_VALUE [android]": 22,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 22,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 20
   },
   "perTarget": {
    "web": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 27,
+     "DRAGON_UNPROVEN_CONTEXT": 21,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_AT_RULE": 1,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_PROPERTY": 60,
+     "DRAGON_UNSUPPORTED_PROPERTY": 59,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 30
+     "DRAGON_UNSUPPORTED_VALUE": 23
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -176,14 +176,14 @@
    },
    "ios": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 25,
+     "DRAGON_UNPROVEN_CONTEXT": 19,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 60,
+     "DRAGON_UNSUPPORTED_PROPERTY": 59,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 32
+     "DRAGON_UNSUPPORTED_VALUE": 25
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -191,14 +191,14 @@
    },
    "android": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 25,
+     "DRAGON_UNPROVEN_CONTEXT": 19,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_AT_RULE": 3,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 60,
+     "DRAGON_UNSUPPORTED_PROPERTY": 59,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
-     "DRAGON_UNSUPPORTED_VALUE": 32
+     "DRAGON_UNSUPPORTED_VALUE": 25
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -206,11 +206,11 @@
    }
   },
   "declarations": 291,
-  "supportedBothTargets": 174,
-  "supportedWeb": 185,
-  "supportedIos": 174,
-  "supportedAndroid": 174,
-  "supportPercent": 59.8,
+  "supportedBothTargets": 180,
+  "supportedWeb": 194,
+  "supportedIos": 180,
+  "supportedAndroid": 180,
+  "supportPercent": 61.9,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -293,9 +293,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 143,
-   "B-unwrapped": 140,
-   "C-context": 196
+   "A-authored": 130,
+   "B-unwrapped": 127,
+   "C-context": 166
   }
  },
  "features": {
@@ -829,12 +829,10 @@
    "atRule": null,
    "property": "padding",
    "value": "0 clamp(1rem, 3vw, 3rem)",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 32,
@@ -1161,12 +1159,10 @@
    "atRule": null,
    "property": "min-height",
    "value": "clamp(24rem, 56vh, 36rem)",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 58,
@@ -2103,12 +2099,10 @@
    "atRule": null,
    "property": "max-width",
    "value": "min(92vw, 44rem)",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 132,
@@ -2515,12 +2509,10 @@
    "atRule": null,
    "property": "pointer-events",
    "value": "none",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 165,
@@ -3522,12 +3514,10 @@
    "atRule": null,
    "property": "gap",
    "value": "0.65rem",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNPROVEN_CONTEXT"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 245,
@@ -3608,12 +3598,10 @@
    "atRule": null,
    "property": "flex",
    "value": "1 1 100%",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNPROVEN_CONTEXT"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 252,
@@ -3875,11 +3863,10 @@
    "atRule": "@media screen and (max-width: 768px)",
    "property": "width",
    "value": "min(calc(100vw - 1.5rem), 22.5rem)",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_AT_RULE"
    ]
   },
@@ -3890,11 +3877,10 @@
    "atRule": "@media screen and (max-width: 768px)",
    "property": "width",
    "value": "min(72vw, 18rem)",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_AT_RULE"
    ]
   },
@@ -3905,11 +3891,10 @@
    "atRule": "@media screen and (max-width: 768px)",
    "property": "width",
    "value": "min(80%, 18rem)",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_AT_RULE"
    ]
   },
@@ -4236,7 +4221,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -4248,7 +4233,7 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4256,7 +4241,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -4268,7 +4253,7 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4276,7 +4261,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -4288,7 +4273,7 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4336,7 +4321,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -4348,7 +4333,7 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4357,7 +4342,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -4369,7 +4354,7 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4378,7 +4363,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -4390,7 +4375,7 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4439,7 +4424,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -4451,7 +4436,7 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4459,7 +4444,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -4471,7 +4456,7 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4479,7 +4464,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -4491,127 +4476,7 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 922,
-    "end": 946,
-    "line": 66,
-    "column": 11,
-    "text": "0 clamp(1rem, 3vw, 3rem)"
-   },
-   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 922,
-    "end": 946,
-    "line": 66,
-    "column": 11,
-    "text": "0 clamp(1rem, 3vw, 3rem)"
-   },
-   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 922,
-    "end": 946,
-    "line": 66,
-    "column": 11,
-    "text": "0 clamp(1rem, 3vw, 3rem)"
-   },
-   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 922,
-    "end": 946,
-    "line": 66,
-    "column": 11,
-    "text": "0 clamp(1rem, 3vw, 3rem)"
-   },
-   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 922,
-    "end": 946,
-    "line": 66,
-    "column": 11,
-    "text": "0 clamp(1rem, 3vw, 3rem)"
-   },
-   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-left values: <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 922,
-    "end": 946,
-    "line": 66,
-    "column": 11,
-    "text": "0 clamp(1rem, 3vw, 3rem)"
-   },
-   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); supported padding-right values: <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4639,7 +4504,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -4651,7 +4516,7 @@
     "column": 14,
     "text": "10vh"
    },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4659,7 +4524,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -4671,7 +4536,7 @@
     "column": 14,
     "text": "10vh"
    },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4679,7 +4544,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -4691,7 +4556,7 @@
     "column": 14,
     "text": "10vh"
    },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4752,66 +4617,6 @@
     "text": ":hover"
    },
    "message": ":hover depends on user interaction or document state, which a later package models as runtime state",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 1861,
-    "end": 1886,
-    "line": 112,
-    "column": 14,
-    "text": "clamp(24rem, 56vh, 36rem)"
-   },
-   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 1861,
-    "end": 1886,
-    "line": 112,
-    "column": 14,
-    "text": "clamp(24rem, 56vh, 36rem)"
-   },
-   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 1861,
-    "end": 1886,
-    "line": 112,
-    "column": 14,
-    "text": "clamp(24rem, 56vh, 36rem)"
-   },
-   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5379,69 +5184,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4390-4406|max-width: min(92vw,44rem) is unsupported (support profile m1-s5); supported max-width values: <calc()>, <length-em>, <length-in>, <length-px>, <length-rem>, <percentage> or none",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 4390,
-    "end": 4406,
-    "line": 243,
-    "column": 13,
-    "text": "min(92vw, 44rem)"
-   },
-   "message": "max-width: min(92vw,44rem) is unsupported (support profile m1-s5); supported max-width values: <calc()>, <length-em>, <length-in>, <length-px>, <length-rem>, <percentage> or none",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4390-4406|max-width: min(92vw,44rem) is unsupported (support profile m1-s5); supported max-width values: <calc()>, <length-em>, <length-in>, <length-px>, <length-rem>, <percentage> or none",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 4390,
-    "end": 4406,
-    "line": 243,
-    "column": 13,
-    "text": "min(92vw, 44rem)"
-   },
-   "message": "max-width: min(92vw,44rem) is unsupported (support profile m1-s5); supported max-width values: <calc()>, <length-em>, <length-in>, <length-px>, <length-rem>, <percentage> or none",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4390-4406|max-width: min(92vw,44rem) is unsupported (support profile m1-s5); supported max-width values: <calc()>, <length-em>, <length-in>, <length-px>, <length-rem>, <percentage> or none",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 4390,
-    "end": 4406,
-    "line": 243,
-    "column": 13,
-    "text": "min(92vw, 44rem)"
-   },
-   "message": "max-width: min(92vw,44rem) is unsupported (support profile m1-s5); supported max-width values: <calc()>, <length-em>, <length-in>, <length-px>, <length-rem>, <percentage> or none",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4409-4434|overflow-wrap is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -5462,7 +5204,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -5474,7 +5216,7 @@
     "column": 14,
     "text": "20vh"
    },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5482,7 +5224,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -5494,7 +5236,7 @@
     "column": 14,
     "text": "20vh"
    },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5502,7 +5244,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -5514,7 +5256,7 @@
     "column": 14,
     "text": "20vh"
    },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <length-em>, <length-px>, <length-q>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5595,26 +5337,6 @@
     "text": "border-radius: 1rem"
    },
    "message": "border-radius is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5265-5285|pointer-events is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5265,
-    "end": 5285,
-    "line": 297,
-    "column": 2,
-    "text": "pointer-events: none"
-   },
-   "message": "pointer-events is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -7245,7 +6967,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -7257,14 +6979,14 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -7276,14 +6998,14 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -7295,7 +7017,7 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -7359,7 +7081,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -7371,14 +7093,14 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -7390,14 +7112,14 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -7409,128 +7131,14 @@
     "column": 14,
     "text": "100vh"
    },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage> or unset",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 922,
-    "end": 946,
-    "line": 66,
-    "column": 11,
-    "text": "0 clamp(1rem, 3vw, 3rem)"
-   },
-   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage> or unset",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 922,
-    "end": 946,
-    "line": 66,
-    "column": 11,
-    "text": "0 clamp(1rem, 3vw, 3rem)"
-   },
-   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage> or unset",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 922,
-    "end": 946,
-    "line": 66,
-    "column": 11,
-    "text": "0 clamp(1rem, 3vw, 3rem)"
-   },
-   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage> or unset",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 922,
-    "end": 946,
-    "line": 66,
-    "column": 11,
-    "text": "0 clamp(1rem, 3vw, 3rem)"
-   },
-   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage> or unset",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 922,
-    "end": 946,
-    "line": 66,
-    "column": 11,
-    "text": "0 clamp(1rem, 3vw, 3rem)"
-   },
-   "message": "padding-left: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pc>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage> or unset",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@922-946|padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 922,
-    "end": 946,
-    "line": 66,
-    "column": 11,
-    "text": "0 clamp(1rem, 3vw, 3rem)"
-   },
-   "message": "padding-right: clamp(1rem,3vw,3rem) (set by padding: 0 clamp(1rem,3vw,3rem)) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-in>, <length-pt>, <length-px>, <length-q>, <length-rem>, <percentage>, inherit or unset",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -7542,14 +7150,14 @@
     "column": 14,
     "text": "10vh"
    },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -7561,14 +7169,14 @@
     "column": 14,
     "text": "10vh"
    },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -7580,14 +7188,14 @@
     "column": 14,
     "text": "10vh"
    },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@1370-1376|min-height:<length-rem> on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr); no min-height value is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@1370-1376|min-height:<length-rem> on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr); min-height values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <max()> or <min()>",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -7599,14 +7207,14 @@
     "column": 14,
     "text": "2.5rem"
    },
-   "message": "min-height:<length-rem> on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr); no min-height value is proven in relative-in-flex-row/ltr",
+   "message": "min-height:<length-rem> on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr); min-height values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <max()> or <min()>",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@1370-1376|min-height:<length-rem> on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr); no min-height value is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@1370-1376|min-height:<length-rem> on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr); min-height values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <max()> or <min()>",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -7618,14 +7226,14 @@
     "column": 14,
     "text": "2.5rem"
    },
-   "message": "min-height:<length-rem> on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr); no min-height value is proven in relative-in-flex-row/ltr",
+   "message": "min-height:<length-rem> on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr); min-height values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <max()> or <min()>",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@1370-1376|min-height:<length-rem> on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr); no min-height value is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@1370-1376|min-height:<length-rem> on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr); min-height values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <max()> or <min()>",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -7637,14 +7245,14 @@
     "column": 14,
     "text": "2.5rem"
    },
-   "message": "min-height:<length-rem> on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr); no min-height value is proven in relative-in-flex-row/ltr",
+   "message": "min-height:<length-rem> on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr); min-height values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <max()> or <min()>",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@1388-1394|padding-bottom:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@1388-1394|padding-bottom:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -7656,14 +7264,14 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-bottom:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "message": "padding-bottom:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@1388-1394|padding-left:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@1388-1394|padding-left:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -7675,14 +7283,14 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-left:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "message": "padding-left:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@1388-1394|padding-right:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@1388-1394|padding-right:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -7694,14 +7302,14 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-right:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "message": "padding-right:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@1388-1394|padding-top:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@1388-1394|padding-top:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -7713,14 +7321,14 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-top:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "message": "padding-top:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@1388-1394|padding-bottom:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@1388-1394|padding-bottom:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -7732,14 +7340,14 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-bottom:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "message": "padding-bottom:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@1388-1394|padding-left:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@1388-1394|padding-left:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -7751,14 +7359,14 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-left:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "message": "padding-left:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@1388-1394|padding-right:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@1388-1394|padding-right:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -7770,14 +7378,14 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-right:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "message": "padding-right:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@1388-1394|padding-top:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@1388-1394|padding-top:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -7789,14 +7397,14 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-top:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "message": "padding-top:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@1388-1394|padding-bottom:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@1388-1394|padding-bottom:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -7808,14 +7416,14 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-bottom:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "message": "padding-bottom:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@1388-1394|padding-left:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@1388-1394|padding-left:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -7827,14 +7435,14 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-left:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "message": "padding-left:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@1388-1394|padding-right:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@1388-1394|padding-right:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -7846,14 +7454,14 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-right:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "message": "padding-right:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@1388-1394|padding-top:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@1388-1394|padding-top:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -7865,64 +7473,7 @@
     "column": 11,
     "text": "0.5rem"
    },
-   "message": "padding-top:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in relative-in-flex-row/ltr: <length-px>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 1861,
-    "end": 1886,
-    "line": 112,
-    "column": 14,
-    "text": "clamp(24rem, 56vh, 36rem)"
-   },
-   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 1861,
-    "end": 1886,
-    "line": 112,
-    "column": 14,
-    "text": "clamp(24rem, 56vh, 36rem)"
-   },
-   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1861-1886|min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 1861,
-    "end": 1886,
-    "line": 112,
-    "column": 14,
-    "text": "clamp(24rem, 56vh, 36rem)"
-   },
-   "message": "min-height: clamp(24rem,56vh,36rem) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "padding-top:<length-rem> (set by padding: 0.5rem) on page/nav-call/library-button is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in relative-in-flex-row/ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in relative-in-flex-row/ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -7986,7 +7537,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -7998,14 +7549,14 @@
     "column": 14,
     "text": "20vh"
    },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -8017,14 +7568,14 @@
     "column": 14,
     "text": "20vh"
    },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "web",
@@ -8036,14 +7587,14 @@
     "column": 14,
     "text": "20vh"
    },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <length-em>, <length-px>, <length-rem>, <percentage> or auto",
+   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@5258-5262|padding-bottom:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@5258-5262|padding-bottom:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -8055,14 +7606,14 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-bottom:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "message": "padding-bottom:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@5258-5262|padding-left:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in absolute-in-block/ltr/cb-ltr: <length-px> or <percentage>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@5258-5262|padding-left:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()> or <percentage>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -8074,14 +7625,14 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-left:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in absolute-in-block/ltr/cb-ltr: <length-px> or <percentage>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "message": "padding-left:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()> or <percentage>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@5258-5262|padding-right:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@5258-5262|padding-right:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -8093,14 +7644,14 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-right:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "message": "padding-right:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@5258-5262|padding-top:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@5258-5262|padding-top:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -8112,14 +7663,14 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-top:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "message": "padding-top:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@5258-5262|padding-bottom:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@5258-5262|padding-bottom:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -8131,14 +7682,14 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-bottom:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "message": "padding-bottom:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@5258-5262|padding-left:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in absolute-in-block/ltr/cb-ltr: <length-px> or <percentage>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@5258-5262|padding-left:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()> or <percentage>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -8150,14 +7701,14 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-left:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in absolute-in-block/ltr/cb-ltr: <length-px> or <percentage>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "message": "padding-left:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()> or <percentage>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@5258-5262|padding-right:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@5258-5262|padding-right:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -8169,14 +7720,14 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-right:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "message": "padding-right:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@5258-5262|padding-top:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@5258-5262|padding-top:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -8188,14 +7739,14 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-top:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "message": "padding-top:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@5258-5262|padding-bottom:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@5258-5262|padding-bottom:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -8207,14 +7758,14 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-bottom:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "message": "padding-bottom:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-bottom values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@5258-5262|padding-left:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in absolute-in-block/ltr/cb-ltr: <length-px> or <percentage>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@5258-5262|padding-left:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()> or <percentage>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -8226,14 +7777,14 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-left:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in absolute-in-block/ltr/cb-ltr: <length-px> or <percentage>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "message": "padding-left:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-left values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()> or <percentage>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@5258-5262|padding-right:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@5258-5262|padding-right:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -8245,14 +7796,14 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-right:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "message": "padding-right:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl); padding-right values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@5258-5262|padding-top:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@5258-5262|padding-top:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -8264,7 +7815,7 @@
     "column": 11,
     "text": "1rem"
    },
-   "message": "padding-top:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in absolute-in-block/ltr/cb-ltr: <length-px>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
+   "message": "padding-top:<length-rem> (set by padding: 1rem) on page/player-call/animate-track is used in the absolute-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, flex-column/ltr, flex-row/ltr, relative-in-block/ltr, relative-in-block/rtl, root/ltr); padding-top values proven in absolute-in-block/ltr/cb-ltr: <calc()>, <clamp()>, <length-px>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-block/ltr/cb-ltr",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -8499,178 +8050,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@7554-7561|column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 7554,
-    "end": 7561,
-    "line": 444,
-    "column": 7,
-    "text": "0.65rem"
-   },
-   "message": "column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@7554-7561|row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 7554,
-    "end": 7561,
-    "line": 444,
-    "column": 7,
-    "text": "0.65rem"
-   },
-   "message": "row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@7554-7561|column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 7554,
-    "end": 7561,
-    "line": 444,
-    "column": 7,
-    "text": "0.65rem"
-   },
-   "message": "column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@7554-7561|row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 7554,
-    "end": 7561,
-    "line": 444,
-    "column": 7,
-    "text": "0.65rem"
-   },
-   "message": "row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7554-7561|column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 7554,
-    "end": 7561,
-    "line": 444,
-    "column": 7,
-    "text": "0.65rem"
-   },
-   "message": "column-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); column-gap values proven in not-flex-container/ltr: normal; gap sets column-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7554-7561|row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 7554,
-    "end": 7561,
-    "line": 444,
-    "column": 7,
-    "text": "0.65rem"
-   },
-   "message": "row-gap:<length-rem> (set by gap: 0.65rem) on page/youtube-disclosure is used in the not-flex-container/ltr context, which is not proven (proven: flex-column-single-line/ltr, flex-row-single-line/ltr); row-gap values proven in not-flex-container/ltr: normal; gap sets row-gap, which is unproven here, and none of the other longhands it sets is proven in not-flex-container/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@7771-7779|flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 7771,
-    "end": 7779,
-    "line": 454,
-    "column": 8,
-    "text": "1 1 100%"
-   },
-   "message": "flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@7771-7779|flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 7771,
-    "end": 7779,
-    "line": 454,
-    "column": 8,
-    "text": "1 1 100%"
-   },
-   "message": "flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@7771-7779|flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 7771,
-    "end": 7779,
-    "line": 454,
-    "column": 8,
-    "text": "1 1 100%"
-   },
-   "message": "flex-basis:<percentage> (set by flex: 1 1 100%) on page/disclosure-text is used in the block/ltr context, which is not proven (proven: flex-column/ltr, flex-row/ltr); flex-basis values proven in block/ltr: auto; flex sets flex-basis, which is unproven here, so write flex-grow: 1; flex-shrink: 1 instead of flex",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8552-8559|left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8552-8559|left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: <calc()>, <clamp()>, <max()>, <min()> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -8682,14 +8062,14 @@
     "column": 9,
     "text": "0.75rem"
    },
-   "message": "left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: auto",
+   "message": "left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: <calc()>, <clamp()>, <max()>, <min()> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8552-8559|left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8552-8559|left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: <calc()>, <clamp()>, <max()>, <min()> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -8701,14 +8081,14 @@
     "column": 9,
     "text": "0.75rem"
    },
-   "message": "left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: auto",
+   "message": "left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: <calc()>, <clamp()>, <max()>, <min()> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8552-8559|left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8552-8559|left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: <calc()>, <clamp()>, <max()>, <min()> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -8720,14 +8100,14 @@
     "column": 9,
     "text": "0.75rem"
    },
-   "message": "left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: auto",
+   "message": "left:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); left values proven in flex-column/ltr: <calc()>, <clamp()>, <max()>, <min()> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8568-8575|top:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); top values proven in flex-column/ltr: auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8568-8575|top:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); top values proven in flex-column/ltr: <calc()>, <clamp()>, <max()>, <min()> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -8739,14 +8119,14 @@
     "column": 8,
     "text": "0.75rem"
    },
-   "message": "top:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); top values proven in flex-column/ltr: auto",
+   "message": "top:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); top values proven in flex-column/ltr: <calc()>, <clamp()>, <max()>, <min()> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8568-8575|top:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); top values proven in flex-column/ltr: auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8568-8575|top:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); top values proven in flex-column/ltr: <calc()>, <clamp()>, <max()>, <min()> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -8758,14 +8138,14 @@
     "column": 8,
     "text": "0.75rem"
    },
-   "message": "top:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); top values proven in flex-column/ltr: auto",
+   "message": "top:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); top values proven in flex-column/ltr: <calc()>, <clamp()>, <max()>, <min()> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8568-8575|top:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); top values proven in flex-column/ltr: auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8568-8575|top:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); top values proven in flex-column/ltr: <calc()>, <clamp()>, <max()>, <min()> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -8777,185 +8157,14 @@
     "column": 8,
     "text": "0.75rem"
    },
-   "message": "top:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); top values proven in flex-column/ltr: auto",
+   "message": "top:<length-rem> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); top values proven in flex-column/ltr: <calc()>, <clamp()>, <max()>, <min()> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8586-8620|width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 8586,
-    "end": 8620,
-    "line": 506,
-    "column": 10,
-    "text": "min(calc(100vw - 1.5rem), 22.5rem)"
-   },
-   "message": "width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8586-8620|width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 8586,
-    "end": 8620,
-    "line": 506,
-    "column": 10,
-    "text": "min(calc(100vw - 1.5rem), 22.5rem)"
-   },
-   "message": "width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8586-8620|width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 8586,
-    "end": 8620,
-    "line": 506,
-    "column": 10,
-    "text": "min(calc(100vw - 1.5rem), 22.5rem)"
-   },
-   "message": "width:<min()> on page/song-call/mini-video-shell is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8646-8662|width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <clamp()>, <length-px> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 8646,
-    "end": 8662,
-    "line": 510,
-    "column": 10,
-    "text": "min(72vw, 18rem)"
-   },
-   "message": "width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <clamp()>, <length-px> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8646-8662|width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <clamp()>, <length-px> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 8646,
-    "end": 8662,
-    "line": 510,
-    "column": 10,
-    "text": "min(72vw, 18rem)"
-   },
-   "message": "width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <clamp()>, <length-px> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8646-8662|width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <clamp()>, <length-px> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 8646,
-    "end": 8662,
-    "line": 510,
-    "column": 10,
-    "text": "min(72vw, 18rem)"
-   },
-   "message": "width:<min()> on page/song-call/record is used in the relative-in-flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in relative-in-flex-column/ltr: <clamp()>, <length-px> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8694-8709|width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 8694,
-    "end": 8709,
-    "line": 514,
-    "column": 10,
-    "text": "min(80%, 18rem)"
-   },
-   "message": "width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8694-8709|width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 8694,
-    "end": 8709,
-    "line": 514,
-    "column": 10,
-    "text": "min(80%, 18rem)"
-   },
-   "message": "width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8694-8709|width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 8694,
-    "end": 8709,
-    "line": 514,
-    "column": 10,
-    "text": "min(80%, 18rem)"
-   },
-   "message": "width:<min()> on page/player-call/play-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr, block/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8865-8870|max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8865-8870|max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or none",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -8967,14 +8176,14 @@
     "column": 14,
     "text": "20rem"
    },
-   "message": "max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
+   "message": "max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or none",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8865-8870|max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8865-8870|max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or none",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -8986,14 +8195,14 @@
     "column": 14,
     "text": "20rem"
    },
-   "message": "max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
+   "message": "max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or none",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8865-8870|max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8865-8870|max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or none",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -9005,14 +8214,14 @@
     "column": 14,
     "text": "20rem"
    },
-   "message": "max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
+   "message": "max-width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or none",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8931-8936|width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8931-8936|width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -9024,14 +8233,14 @@
     "column": 10,
     "text": "20rem"
    },
-   "message": "width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "message": "width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8931-8936|width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8931-8936|width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -9043,14 +8252,14 @@
     "column": 10,
     "text": "20rem"
    },
-   "message": "width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "message": "width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8931-8936|width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8931-8936|width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -9062,14 +8271,14 @@
     "column": 10,
     "text": "20rem"
    },
-   "message": "width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "message": "width:<length-rem> on page/song-call/song-title is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8972-8977|max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8972-8977|max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or none",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -9081,14 +8290,14 @@
     "column": 14,
     "text": "18rem"
    },
-   "message": "max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
+   "message": "max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or none",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8972-8977|max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8972-8977|max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or none",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -9100,14 +8309,14 @@
     "column": 14,
     "text": "18rem"
    },
-   "message": "max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
+   "message": "max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or none",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8972-8977|max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8972-8977|max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or none",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -9119,14 +8328,14 @@
     "column": 14,
     "text": "18rem"
    },
-   "message": "max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <length-px>, <percentage> or none",
+   "message": "max-width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: block/ltr); max-width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or none",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8988-8993|width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@8988-8993|width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -9138,14 +8347,14 @@
     "column": 10,
     "text": "18rem"
    },
-   "message": "width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "message": "width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8988-8993|width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@8988-8993|width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -9157,14 +8366,14 @@
     "column": 10,
     "text": "18rem"
    },
-   "message": "width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "message": "width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8988-8993|width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@8988-8993|width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -9176,14 +8385,14 @@
     "column": 10,
     "text": "18rem"
    },
-   "message": "width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <length-px>, <percentage> or auto",
+   "message": "width:<length-rem> on page/player-call/time-control is used in the flex-column/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); width values proven in flex-column/ltr: <calc()>, <clamp()>, <length-px>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@9031-9037|min-width:<length-rem> on page/player-call/time-current is used in the flex-row/ltr context, which is not proven (proven: block/ltr); min-width values proven in flex-row/ltr: <length-px>, <length-q> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@9031-9037|min-width:<length-rem> on page/player-call/time-current is used in the flex-row/ltr context, which is not proven (proven: block/ltr); min-width values proven in flex-row/ltr: <calc()>, <clamp()>, <length-px>, <length-q>, <max()>, <min()> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -9195,14 +8404,14 @@
     "column": 14,
     "text": "2.5rem"
    },
-   "message": "min-width:<length-rem> on page/player-call/time-current is used in the flex-row/ltr context, which is not proven (proven: block/ltr); min-width values proven in flex-row/ltr: <length-px>, <length-q> or auto",
+   "message": "min-width:<length-rem> on page/player-call/time-current is used in the flex-row/ltr context, which is not proven (proven: block/ltr); min-width values proven in flex-row/ltr: <calc()>, <clamp()>, <length-px>, <length-q>, <max()>, <min()> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@9031-9037|min-width:<length-rem> on page/player-call/time-current is used in the flex-row/ltr context, which is not proven (proven: block/ltr); min-width values proven in flex-row/ltr: <length-px>, <length-q> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@9031-9037|min-width:<length-rem> on page/player-call/time-current is used in the flex-row/ltr context, which is not proven (proven: block/ltr); min-width values proven in flex-row/ltr: <calc()>, <clamp()>, <length-px>, <length-q>, <max()>, <min()> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -9214,14 +8423,14 @@
     "column": 14,
     "text": "2.5rem"
    },
-   "message": "min-width:<length-rem> on page/player-call/time-current is used in the flex-row/ltr context, which is not proven (proven: block/ltr); min-width values proven in flex-row/ltr: <length-px>, <length-q> or auto",
+   "message": "min-width:<length-rem> on page/player-call/time-current is used in the flex-row/ltr context, which is not proven (proven: block/ltr); min-width values proven in flex-row/ltr: <calc()>, <clamp()>, <length-px>, <length-q>, <max()>, <min()> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@9031-9037|min-width:<length-rem> on page/player-call/time-current is used in the flex-row/ltr context, which is not proven (proven: block/ltr); min-width values proven in flex-row/ltr: <length-px>, <length-q> or auto",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@9031-9037|min-width:<length-rem> on page/player-call/time-current is used in the flex-row/ltr context, which is not proven (proven: block/ltr); min-width values proven in flex-row/ltr: <calc()>, <clamp()>, <length-px>, <length-q>, <max()>, <min()> or auto",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -9233,7 +8442,7 @@
     "column": 14,
     "text": "2.5rem"
    },
-   "message": "min-width:<length-rem> on page/player-call/time-current is used in the flex-row/ltr context, which is not proven (proven: block/ltr); min-width values proven in flex-row/ltr: <length-px>, <length-q> or auto",
+   "message": "min-width:<length-rem> on page/player-call/time-current is used in the flex-row/ltr context, which is not proven (proven: block/ltr); min-width values proven in flex-row/ltr: <calc()>, <clamp()>, <length-px>, <length-q>, <max()>, <min()> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"

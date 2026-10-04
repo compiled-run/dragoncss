@@ -73,6 +73,7 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  pointer-events: auto;
 }
 .dg1 {
   display: block;
@@ -142,6 +143,7 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  pointer-events: auto;
 }
 .dg2 {
   display: block;
@@ -211,6 +213,7 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  pointer-events: auto;
 }
 .dg3 {
   display: block;
@@ -280,4 +283,5 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  pointer-events: auto;
 }

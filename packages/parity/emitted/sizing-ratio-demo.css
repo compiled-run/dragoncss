@@ -67,6 +67,7 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  pointer-events: auto;
 }
 .dg1 {
   display: block;
@@ -136,6 +137,7 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  pointer-events: auto;
 }
 .dg2 {
   display: flex;
@@ -205,6 +207,7 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  pointer-events: auto;
 }
 .dg3 {
   display: flex;
@@ -274,6 +277,7 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  pointer-events: auto;
 }
 .dg4 {
   display: block;
@@ -347,6 +351,7 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  pointer-events: auto;
 }
 .dg5 {
   display: block;
@@ -420,6 +425,7 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  pointer-events: auto;
 }
 .dg6 {
   display: block;
@@ -493,6 +499,7 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  pointer-events: auto;
 }
 .dg7 {
   display: block;
@@ -562,4 +569,5 @@
   grid-column-end: auto;
   justify-items: normal;
   justify-self: auto;
+  pointer-events: auto;
 }

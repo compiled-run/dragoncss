@@ -8,8 +8,11 @@ import type { BoxShape } from '../src/index.ts';
 
 const layout = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FEATURES = ['radius', 'shadow', 'gradient', 'transform', 'dash', 'scrollbar'];
-/** The seams a package has filled: dash by P6a (paint-dash.ts, its index.ts line and its vectors). */
-const FILLED = ['dash'];
+/**
+ * The seams a package has filled: dash by P6a (paint-dash.ts, its index.ts line and its vectors), transform by PNT2
+ * (paint-transform.ts, its index.ts lines and its suite, packages/layout/test/paint-transform.test.ts).
+ */
+const FILLED = ['dash', 'transform'];
 const STUBS = FEATURES.filter((f) => !FILLED.includes(f));
 
 describe('EMS: engine paint seams', () => {
@@ -33,6 +36,8 @@ describe('EMS: engine paint seams', () => {
       "export type { BoxShape } from './paint.ts';",
       "export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';",
       "export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';",
+      "export type { OriginPoint, TransformOrigin } from './paint-transform.ts';",
+      "export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';",
     ]);
   });
   it('every feature no package has filled has an empty paint-vectors suite', () => {
