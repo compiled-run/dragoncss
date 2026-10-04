@@ -112,12 +112,25 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
   const PINS = new URL('./glyph-clearance-pins.json', import.meta.url);
   type Tally = { dropped: Record<string, number>; rescued: Record<string, number> };
   const byCase = JSON.parse(readFileSync(PINS, 'utf8')) as Record<string, Record<string, Tally>>;
+  const isCounts = (v: unknown): boolean => typeof v === 'object' && v !== null && !Array.isArray(v) && Object.values(v).every((n) => Number.isInteger(n) && (n as number) > 0);
+  /** The pins file's shape problems: each case maps <target>@<dpr> to exactly { dropped, rescued } positive counts. */
+  function pinsShape(): string[] {
+    if (typeof byCase !== 'object' || byCase === null || Array.isArray(byCase)) return ['not an object of cases'];
+    return Object.entries(byCase).flatMap(([c, v]) => {
+      if (typeof v !== 'object' || v === null || Array.isArray(v)) return [`${c}: not an object of <target>@<dpr> tallies`];
+      return Object.entries(v as Record<string, unknown>).flatMap(([at, t]) => {
+        const ok = /^(ios|android)@[0-9.]+$/.test(at) && typeof t === 'object' && t !== null && Object.keys(t).sort().join() === 'dropped,rescued' && isCounts((t as Tally).dropped) && isCounts((t as Tally).rescued);
+        return ok ? [] : [`${c} ${at}: not { dropped, rescued } counts`];
+      });
+    });
+  }
   /** The pins of one <target>@<dpr>, by case. */
   const pinsAt = (at: string): Record<string, Tally> => Object.fromEntries(Object.entries(byCase).flatMap(([c, v]) => (v[at] === undefined ? [] : [[c, v[at]]])));
   const written: Record<string, Record<string, Tally>> = {};
   const bottoms = JSON.parse(readFileSync(BOTTOM_SCANLINES_PATH(), 'utf8')) as BottomScanlines;
   for (const target of ['ios', 'android'] as const) {
     it(`${target}: dropped and rescued rules and per-case glyph-bottom scanlines are pinned; every point is clear of every glyph box edge but a glyph-edge scanline's own`, () => {
+      expect(pinsShape()).toEqual([]);
       const got: Record<string, Record<string, Tally>> = {};
       const gotBottoms: Record<string, Record<string, [number, number]>> = {};
       for (const dpr of deviceDprs(target)) {
@@ -169,6 +182,8 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
         writeFileSync(PINS, `{\n${lines.join(',\n')}\n}\n`);
       }
       for (const at of Object.keys(got)) expect(got[at], at).toEqual(pinsAt(at));
+      // A pin at a DPR this target does not run would never be compared.
+      expect([...new Set(Object.values(byCase).flatMap((v) => Object.keys(v)).filter((at) => at.startsWith(`${target}@`) && !(at in got)))]).toEqual([]);
       // Regenerate with pnpm run parity:glyph-b3 -- --write-bottom-pins, and give a written reason for every change.
       expect(gotBottoms).toEqual(bottoms[target]);
     });
