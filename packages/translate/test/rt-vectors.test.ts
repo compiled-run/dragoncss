@@ -9,6 +9,7 @@ import { runLibraryCase } from '../harness/harness.ts';
 import { lockText } from '../src/check.ts';
 import { buildCorpus, RT_VECTORS_DIR, rtCases } from '../src/corpus.ts';
 import { engineFiles, engineRoots, LAYOUT_SRC, lowerAll } from '../src/generate.ts';
+import { suiteFloorProblems } from './floor.ts';
 
 type Rec = readonly (string | number | null)[];
 const records = (name: string): readonly Rec[] => (JSON.parse(readFileSync(join(RT_VECTORS_DIR, name), 'utf8')) as { records: Rec[] }).records;
@@ -49,11 +50,16 @@ describe('rt suite (ANIM-a2)', () => {
   const corpus = buildCorpus();
   const rt = corpus.suites.find((s) => s.name === 'rt');
 
-  it('is the last P1 suite, in library mode, one line per rt vector record', () => {
-    expect(corpus.suites.map((s) => s.name)).toEqual(['vectors', 'units', 'engine', 'library', 'rt']);
+  it('follows the library suite, in library mode, one line per rt vector record', () => {
+    // PIN-DERIVE: p1-floor.json keeps every P1 suite in order at no fewer cases than it had, and every rt vector file at no fewer
+    // records; a suite or record may be added without a test edit.
+    const floor = new URL('./p1-floor.json', import.meta.url);
+    expect(suiteFloorProblems(floor, 'p1', corpus.suites.map((s) => ({ name: s.name, count: s.lines.length })))).toEqual([]);
+    expect(corpus.suites.findIndex((s) => s.name === 'rt')).toBe(corpus.suites.findIndex((s) => s.name === 'library') + 1);
     expect(rt?.mode).toBe('library');
-    const n = ['timing.json', 'easing.json', 'hold.json', 'interp.json', 'advance.json', 'keyframes.json', 'transitions.json', 'animations.json'].reduce((k, f) => k + records(f).length, 0);
-    expect(n).toBe(36785 + 10439 + 903 + 6461 + 7 + 740 + 20 + 7);
+    const files = ['timing.json', 'easing.json', 'hold.json', 'interp.json', 'advance.json', 'keyframes.json', 'transitions.json', 'animations.json'];
+    expect(suiteFloorProblems(floor, 'rt-records', files.map((f) => ({ name: f, count: records(f).length })))).toEqual([]);
+    const n = files.reduce((k, f) => k + records(f).length, 0);
     expect(rt?.lines.length).toBe(n);
     expect(rt?.lines).toEqual(rtCases());
   });
