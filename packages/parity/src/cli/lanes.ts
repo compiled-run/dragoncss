@@ -9,7 +9,7 @@
 // parity:devices is parity:lanes -- --run-host --run-device. Internal: --prebuild <target> builds the app with reuse.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { deviceJobs, lanesArgs, prebuildApps } from '../device-jobs.ts';
-import { failuresByKind, runTargetOnDevices } from '../device-lanes.ts';
+import { allRunFailures, failuresByKind, runTargetOnDevices } from '../device-lanes.ts';
 import { requireDeviceLease } from '../device-run.ts';
 import type { DeviceRun, LaneFault, LanesFile } from '../lanes.ts';
 import { checkLaneParity, fileStatusProblems, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, staleCovers, staleEvidence, staleLanes, writeLanesFile } from '../lanes.ts';
@@ -90,7 +90,7 @@ if (runHost || runDevice) {
         const log = (l: string): void => console.log(`parity:lanes --run-device ${t.target}: ${l}`);
         const d = await runTargetOnDevices(t, hostRun, log, { jobs: deviceJobs(t.target, jobs, log) });
         device.set(t.target, d);
-        const all = d.sets.flatMap((s) => s.failures);
+        const all = allRunFailures(d);
         mkdirSync(repoPath('packages/parity/out'), { recursive: true });
         writeFileSync(repoPath(`packages/parity/out/device-failures-${t.target}.json`), `${JSON.stringify(all, null, 1)}\n`);
         for (const f of all) console.log(`DEVICE FAIL ${t.target} ${f.lane} ${f.case}@${f.dpr} ${f.kind}${f.node === null ? '' : ` ${f.node}`}: ${f.detail}`);
