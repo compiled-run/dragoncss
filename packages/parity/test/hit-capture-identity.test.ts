@@ -10,6 +10,7 @@ import type { IdentityManifest } from '../src/hit-capture.ts';
 import { IDENTITY_MANIFEST, IDENTITY_NEW, IDENTITY_ROOTS, parseHitCaptureArgs, withoutPointerEvents } from '../src/hit-capture.ts';
 import { repoPath } from '../src/paths.ts';
 
+const LATER_FIXTURES = /(^|\/)mqr-[^/]*$/;
 const manifest = JSON.parse(readFileSync(repoPath(IDENTITY_MANIFEST), 'utf8')) as IdentityManifest;
 
 function walk(rel: string): string[] {
@@ -61,7 +62,8 @@ describe('pointer-events changes the captures and emitted files only by its own 
 
   it('holds only SELD-R1b fixtures\' files beyond the base', () => {
     const extra = IDENTITY_ROOTS.flatMap(walk).filter((p) => (p.endsWith('.json') || p.endsWith('.css')) && manifest.files[p] === undefined);
-    expect(extra.filter((p) => !IDENTITY_NEW.test(p))).toEqual([]);
+    // Fixtures later packages add after the base are new files too: MQ-R1's media-runtime group (mqr-*).
+    expect(extra.filter((p) => !IDENTITY_NEW.test(p) && !LATER_FIXTURES.test(p))).toEqual([]);
     expect(extra.length).toBeGreaterThan(0);
   });
 

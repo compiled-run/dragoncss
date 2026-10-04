@@ -309,8 +309,8 @@ export function animationFeatures(compiled: object): readonly string[] {
 }
 
 // MQ-R1 (notes/T067-mq-r-spec.md R4, R5): the @media bands of the native output, their per-case programs and the band program.
-export type { BandAnalysis, BandCase, BandRuntimeFaults, RootSize } from './lower/band-program.ts';
-export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, MediaRuntime, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
+export type { BandAnalysis, BandCase, BandRuntimeFaults } from './lower/band-program.ts';
+export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
 export type { InternalBands } from './project.ts';
 export { MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
 import { bandStateProgram as deriveBandProgram } from './lower/band-program.ts';

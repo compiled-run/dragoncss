@@ -98,10 +98,12 @@ export function bandIndex(table: BandTable, width: number, height: number, fault
     const b = table.bands[k] as readonly boolean[];
     if (b.length !== v.length) throw new BandError(`band ${k} has ${b.length} truth values for ${v.length} atoms`);
     let same = true;
-    for (let i = 0; i < v.length; i++) if (b[i] !== v[i]) same = false;
+    for (let i = 0; i < v.length; i++) if ((b[i] as boolean) !== (v[i] as boolean)) same = false;
     if (same) return k;
   }
-  throw new BandError(`no band has the truth vector ${v.map((x) => (x ? '1' : '0')).join('')} at ${width} x ${height} css px`);
+  let bits = '';
+  for (const x of v) bits += x ? '1' : '0';
+  throw new BandError(`no band has the truth vector ${bits} at ${width} x ${height} css px`);
 }
 
 /** The band of a root of whole device px at a device pixel ratio. */

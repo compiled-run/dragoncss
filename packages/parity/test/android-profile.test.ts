@@ -3,7 +3,7 @@
 // compile, an unblocked android output for every proving case, and the Android Views emitter generating every proving case.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from 'dragon';
-import { androidProfile, compiledFeatures, createProjectWith, emitAndroidViewsCases, iosProfile, nativePrograms, NO_FAULTS } from 'dragon';
+import { androidProfile, compiledFeatures, createProjectWith, emitAndroidViewsCases, iosProfile, MEDIA_CONTEXT, nativePrograms, NO_FAULTS } from 'dragon';
 import { fixtureInput } from '../src/cases.ts';
 import { PROJECT_ID } from '../src/fixture-reader.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
@@ -13,7 +13,8 @@ import { REFERENCE_PLATFORM } from '../src/platform.ts';
 
 const cases = nativeCases();
 const byId = new Map(cases.map((n) => [n.case.id, n]));
-const promoted = androidProfile.rows.filter((r) => r.status !== 'unsupported');
+// MQ-R1: media rows are proven by resize cases, not layout cases; media-runtime-resize.test.ts checks those.
+const promoted = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context !== MEDIA_CONTEXT);
 
 /** The lane compile of native-host.ts nativeCompile, with the committed profiles enforced. */
 function enforcedNative(spec: FixtureSpec, direction: 'ltr' | 'rtl') {

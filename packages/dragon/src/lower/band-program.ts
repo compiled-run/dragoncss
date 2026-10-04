@@ -1,10 +1,10 @@
 // MQ-R1 (notes/T067-mq-r-spec.md R4, R5, R8): the @media bands of a native output. The compiler writes the band table (each
 // width and height feature of the sheet as a typed atom, each band as the truth vector of all atoms) and folds every band into the
 // state program as one more variable, env#band, internal to the runtime: every (assignment, band) pair is an assignment, so a band
-// change is the same atomic delta a setter applies. MediaRuntime is the TypeScript reference of the generated runtime: a root size
-// change computes the new band first, applies its delta, then lays out once at the new size. The device never cascades, matches or
+// change is the same atomic delta a setter applies. The TypeScript reference of the runtime that switches bands is
+// packages/parity/src/media-runtime.ts (the core imports the layout engine for types only). The device never cascades, matches or
 // evaluates CSS; it evaluates the atoms (packages/layout/src/rt-band.ts) and looks the vector up.
-import { rtBand } from '@dragon/layout';
+import type { rtBand } from '@dragon/layout';
 import type { Longhand } from '../css/properties.ts';
 import type { CssValue } from '../css/values.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
@@ -16,7 +16,7 @@ import { INITIAL_FONT_SIZE, resolveLength, serialiseFeature } from '../media/ind
 import type { Assignment, Diagnostic, Scalar, Span } from '../types.ts';
 import type { NativeBackend, NativeProgram } from './native-program.ts';
 import type { StateCase, StateFaults, StateProgram } from './state-program.ts';
-import { deriveStateProgram, NO_STATE_FAULTS, StateRuntime, stateKey } from './state-program.ts';
+import { deriveStateProgram, NO_STATE_FAULTS, stateKey } from './state-program.ts';
 
 export const BAND_PROGRAM_VERSION = 'dragon.band-program/1';
 
@@ -83,7 +83,7 @@ export type BandRuntimeFaults = {
   readonly bandDeltaDropped: boolean;
 } & rtBand.BandFaults;
 
-export const NO_BAND_RUNTIME_FAULTS: BandRuntimeFaults = { bandStale: false, resizeSkipsRelayout: false, bandDeltaDropped: false, ...rtBand.NO_BAND_FAULTS };
+export const NO_BAND_RUNTIME_FAULTS: BandRuntimeFaults = { bandStale: false, resizeSkipsRelayout: false, bandDeltaDropped: false, bandBoundaryExclusive: false };
 
 /** An assignment with env#band set to a band. */
 export const withBand = (a: Assignment, band: number): Assignment => [...a, { state: { instance: ENV_INSTANCE, state: BAND_STATE }, value: band }];
@@ -132,107 +132,6 @@ export function bandOf(sp: StateProgram, assignment: number): number {
   const v = a.assignment.find((x) => stateKey(x.state.instance, x.state.state) === BAND_KEY)?.value;
   if (typeof v !== 'number') throw new BandProgramError(`assignment ${a.key} has no band`);
   return v;
-}
-
-// ---------------------------------------------------------------- the runtime reference
-
-export type RootSize = { readonly widthPx: number; readonly heightPx: number };
-
-/**
- * The TypeScript reference of the generated media runtime: a root of whole device px at a DPR, the state runtime over the band
- * program, and the viewport the engine lays out at (the root's px / dpr). Each size change is one event: the band of the new size
- * first, its delta through env#band if it changed, then one layout at the new size. App setters go through set(), which refuses
- * env#band. layouts counts the layouts a mount would run.
- */
-export class MediaRuntime {
-  readonly states: StateRuntime;
-  readonly table: rtBand.BandTable;
-  readonly dpr: number;
-  private readonly faults: BandRuntimeFaults;
-  private readonly bandState: number;
-  private size: RootSize;
-  private laidOutSize: RootSize;
-  private laidOutProgram: NativeProgram;
-  private count = 0;
-
-  constructor(sp: StateProgram, table: rtBand.BandTable, dpr: number, root: RootSize, faults: BandRuntimeFaults = NO_BAND_RUNTIME_FAULTS, stateFaults: StateFaults = NO_STATE_FAULTS) {
-    this.bandState = bandStateIndex(sp);
-    const domain = (sp.states[this.bandState] as StateProgram['states'][number]).domain;
-    if (domain.length !== table.bands.length || domain.some((v, k) => v !== k)) throw new BandProgramError(`${BAND_KEY} has the domain ${JSON.stringify(domain)}, not the ${table.bands.length} bands of the table`);
-    this.table = table;
-    this.dpr = dpr;
-    this.faults = faults;
-    this.states = new StateRuntime(sp, stateFaults);
-    this.size = root;
-    this.laidOutSize = root;
-    // The mount's first render is in the root's own band.
-    this.moveBand(this.bandAt(root));
-    this.laidOutProgram = this.states.program();
-    this.count = 1;
-    this.states.onChange = () => {
-      this.layout();
-    };
-  }
-
-  /** The band the table gives a root size. */
-  bandAt(root: RootSize): number {
-    return rtBand.bandAtPx(this.table, root.widthPx, root.heightPx, this.dpr, this.faults);
-  }
-
-  get band(): number {
-    return bandOf(this.states.sp, this.states.assignment);
-  }
-
-  get layouts(): number {
-    return this.count;
-  }
-
-  /** An app setter: env#band is internal and cannot be set. */
-  set(key: string, value: Scalar): void {
-    if (key === BAND_KEY) throw new BandProgramError(`${BAND_KEY} is set by the root size, not by the app`);
-    this.states.set(key, value);
-  }
-
-  /** One root size change: the new band's delta, then one layout at the new size. */
-  resize(root: RootSize): void {
-    if (this.faults.resizeSkipsRelayout) return;
-    const to = this.bandAt(root);
-    this.size = root;
-    if (this.faults.bandStale) {
-      // Planted: the layout at the new size runs before the band delta, and the band moves silently afterwards.
-      this.layout();
-      const listener = this.states.onChange;
-      this.states.onChange = null;
-      try {
-        this.moveBand(to);
-      } finally {
-        this.states.onChange = listener;
-      }
-      return;
-    }
-    if (to === this.band) this.layout();
-    else this.moveBand(to);
-  }
-
-  private moveBand(to: number): void {
-    if (to !== this.band) this.states.set(BAND_KEY, to);
-  }
-
-  private layout(): void {
-    this.laidOutSize = this.size;
-    this.laidOutProgram = this.states.program();
-    this.count++;
-  }
-
-  /** The program on screen: the records and engine input of the last layout. */
-  program(): NativeProgram {
-    return this.laidOutProgram;
-  }
-
-  /** The viewport of the last layout, in CSS px. */
-  viewport(): { readonly width: number; readonly height: number } {
-    return { width: this.laidOutSize.widthPx / this.dpr, height: this.laidOutSize.heightPx / this.dpr };
-  }
 }
 
 // ---------------------------------------------------------------- R8: transitions started by size changes (until MQ-Rt)

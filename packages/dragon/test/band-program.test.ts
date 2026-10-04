@@ -1,11 +1,12 @@
-// MQ-R1 (notes/T067-mq-r-spec.md R2, R4, R5): the band table, the band state program (env#band) and the media runtime reference.
+// MQ-R1 (notes/T067-mq-r-spec.md R2, R4, R5): the band table and the band state program (env#band); the runtime reference that
+// switches bands is tested in packages/parity/test/media-runtime.test.ts.
 // The atoms evaluated by the runtime's band lookup (packages/layout/src/rt-band.ts) must give Chrome 145's matchMedia answer on
 // the whole captured media corpus, and its bands the band Chrome matches; the runtime must move bands as one delta and lay out once.
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import { rtBand } from '@dragon/layout';
 import type { Assignment, BandCase, NativeProgram, ProgramNode } from 'dragon';
-import { BAND_KEY, bandAtom, bandOf, BandProgramError, bandStateProgram, bandTableOf, MAX_STATE_TABLE_ASSIGNMENTS, MediaRuntime, NO_BAND_RUNTIME_FAULTS, programAt, StateProgramError } from 'dragon';
+import { BAND_KEY, bandAtom, bandOf, BandProgramError, bandStateProgram, bandTableOf, MAX_STATE_TABLE_ASSIGNMENTS, programAt, StateProgramError } from 'dragon';
 import { band, evaluateWithOracle, parseMediaQueryList } from '../src/media/index.ts';
 import { CAPTURE as capture, CORPUS } from './media/corpus.ts';
 
@@ -102,10 +103,6 @@ describe('bandStateProgram', () => {
       expect(programAt(sp, i), JSON.stringify(c.assignment)).toEqual(c.program);
     });
   });
-  it('is not an app setter: the runtime refuses to take env#band from the app', () => {
-    const rt = new MediaRuntime(sp, TABLE, 1, { widthPx: 400, heightPx: 300 });
-    expect(() => rt.set(BAND_KEY, 0)).toThrow(/set by the root size, not by the app/);
-  });
   it('refuses a band without every app assignment, a bad band index and an app state named env#band', () => {
     expect(() => bandStateProgram('uikit', CASES.slice(0, 3), 2, 0)).toThrow(/band 1 does not hold the same app assignments/);
     expect(() => bandStateProgram('uikit', CASES, 2, 2)).toThrow(/initial band 2/);
@@ -116,44 +113,5 @@ describe('bandStateProgram', () => {
     const many = Array.from({ length: 33 }, (_, i) => i).flatMap((i) => [0, 1].map((b): BandCase => ({ assignment: [{ state: { instance: 'doc', state: 'n' }, value: i }], isInitial: i === 0, band: b, program: program(100, 1) })));
     expect(() => bandStateProgram('uikit', many, 2, 0)).toThrow(StateProgramError);
     expect(bandStateProgram('uikit', many.filter((c) => (c.assignment[0]?.value as number) < MAX_STATE_TABLE_ASSIGNMENTS / 2), 2, 0).assignments).toHaveLength(64);
-  });
-});
-
-describe('MediaRuntime', () => {
-  const sp = bandStateProgram('uikit', CASES, 2, 1);
-  const widthOf = (rt: MediaRuntime): unknown => (rt.program().root.style as unknown as { width: unknown }).width;
-  it('starts in the root\'s own band, whatever the program\'s initial band, with one layout', () => {
-    const rt = new MediaRuntime(sp, TABLE, 2, { widthPx: 600, heightPx: 600 });
-    expect([rt.band, widthOf(rt), rt.layouts, rt.viewport()]).toEqual([0, px(100), 1, { width: 300, height: 300 }]);
-  });
-  it('moves the band and lays out once per size change, keeps the app state, and lays out once per setter', () => {
-    const rt = new MediaRuntime(sp, TABLE, 1, { widthPx: 400, heightPx: 300 });
-    rt.set('doc#open', true);
-    rt.resize({ widthPx: 320, heightPx: 300 });
-    expect([rt.band, widthOf(rt), rt.program().nodes[0]?.writes[0], rt.layouts]).toEqual([0, px(100), expect.objectContaining({ color: { r: 2, g: 0, b: 0, alpha: 255 } }), 3]);
-    rt.resize({ widthPx: 300, heightPx: 400 });
-    expect([rt.band, rt.layouts, rt.viewport()]).toEqual([0, 4, { width: 300, height: 400 }]);
-    rt.resize({ widthPx: 321, heightPx: 400 });
-    expect([rt.band, widthOf(rt), rt.layouts]).toEqual([1, px(200), 5]);
-  });
-  it('each plant breaks what it names, and only that', () => {
-    const run = (faults: Partial<typeof NO_BAND_RUNTIME_FAULTS>): [number, unknown, { width: number; height: number }] => {
-      const rt = new MediaRuntime(bandStateProgram('uikit', CASES, 2, 1, undefined, { ...NO_BAND_RUNTIME_FAULTS, ...faults }), TABLE, 1, { widthPx: 400, heightPx: 300 }, { ...NO_BAND_RUNTIME_FAULTS, ...faults });
-      rt.resize({ widthPx: 320, heightPx: 300 });
-      return [rt.band, widthOf(rt), { ...rt.viewport() }];
-    };
-    expect(run({})).toEqual([0, px(100), { width: 320, height: 300 }]);
-    expect(run({ bandBoundaryExclusive: true })).toEqual([1, px(200), { width: 320, height: 300 }]);
-    expect(run({ bandStale: true })).toEqual([0, px(200), { width: 320, height: 300 }]);
-    expect(run({ resizeSkipsRelayout: true })).toEqual([1, px(200), { width: 400, height: 300 }]);
-    // Open in the initial band, then a band change: the band delta's node record (the open colour) is lost to the base's.
-    const dropped = new MediaRuntime(bandStateProgram('uikit', CASES, 2, 1, undefined, { ...NO_BAND_RUNTIME_FAULTS, bandDeltaDropped: true }), TABLE, 1, { widthPx: 400, heightPx: 300 });
-    dropped.set('doc#open', true);
-    expect(dropped.program().nodes[0]?.writes[0]).toEqual(expect.objectContaining({ color: { r: 2, g: 0, b: 0, alpha: 255 } }));
-    dropped.resize({ widthPx: 320, heightPx: 300 });
-    expect([dropped.band, dropped.program().nodes[0]?.writes[0]]).toEqual([0, expect.objectContaining({ color: { r: 1, g: 0, b: 0, alpha: 255 } })]);
-  });
-  it('refuses a table whose bands are not the program\'s env#band domain', () => {
-    expect(() => new MediaRuntime(sp, { atoms: TABLE.atoms, bands: [[true]] }, 1, { widthPx: 1, heightPx: 1 })).toThrow(/not the 1 bands of the table/);
   });
 });

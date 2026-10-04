@@ -2,14 +2,14 @@
 // through Page.setViewportSize, with a state step morphing the DOM in place to the next assignment's rendering, and dumps every
 // element's box, text boxes and computed values after the start and after every step, at DPR 1, 2, 2.625 and 3 (authored) and at
 // DPR 1 in the compiled web rendering (chrome-dual). The host lanes run the same script on the band runtime reference
-// (lower/band-program.ts MediaRuntime) over the compile's band program: after every step its program must be the per-case program
+// (media-runtime.ts MediaRuntime) over the compile's band program: after every step its program must be the per-case program
 // of (the app assignment, the band the compile-time partition gives the size) at the step's size (the R5 oracle), its engine frames
 // must equal Chrome's in zoomed LU, its background colours Chrome's computed ones, and the compiled rendering the authored one.
 import { existsSync, readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { absoluteRects, layout } from '@dragon/layout';
 import type { Assignment, BandRuntimeFaults, Compiled, NativeProgram, Rgba8, StateProgram } from 'dragon';
-import { LONGHANDS, MediaRuntime, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, NO_BAND_RUNTIME_FAULTS, parseComputedColor, programInput, stateKey, webClassMap } from 'dragon';
+import { LONGHANDS, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, NO_BAND_RUNTIME_FAULTS, parseComputedColor, programInput, stateKey, webClassMap } from 'dragon';
 import type { CapturedNode } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { casesOf } from './cases.ts';
@@ -23,6 +23,7 @@ import { nativeCompile, referenceMeasurer } from './native-host.ts';
 import { repoPath } from './paths.ts';
 import { compileFixture, fixtureCompileInput, webCssOf } from './pipeline.ts';
 import { canonicalJsonText } from './state-cases.ts';
+import { MediaRuntime } from './media-runtime.ts';
 
 export const RESIZE_SCHEMA = 'dragon-resize-capture/1';
 export const RESIZE_DPRS: readonly number[] = [1, 2, 2.625, 3];
