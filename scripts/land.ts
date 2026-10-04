@@ -60,7 +60,7 @@ import {
   treeMatches,
 } from './merge-train-lib.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
-import { runDevicesOnCi } from './land-devices-ci.ts';
+import { runDevicesOnCi, scratchRef } from './land-devices-ci.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
 const DEVICE = '/tmp/device-lease.sh';
@@ -248,14 +248,15 @@ const ciDeviceDeps = (pr: number) => ({
       at(['add', '-A']);
       const tree = at(['write-tree']);
       const sha = checkSha(at(['commit-tree', tree, '-p', 'HEAD', '-m', `Landing tree of #${pr} for the CI device lanes (temporary; never merged)`]), 'commit-tree');
-      net(wtGit, ['push', '--quiet', 'origin', `${sha}:refs/heads/${branch}`]);
+      // Forced: the scratch branch is the driver's own (scratchRef refuses any other), and an interrupted run may have left it.
+      net(wtGit, ['push', '--quiet', 'origin', `+${sha}:${scratchRef(branch)}`]);
       return sha;
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   },
   deleteTemp: (branch: string): void => {
-    net(wtGit, ['push', '--quiet', 'origin', '--delete', branch]);
+    net(wtGit, ['push', '--quiet', 'origin', `:${scratchRef(branch)}`]);
   },
   download: (runId: number, artifact: string): { dir: string; files: string[] } => {
     const dir = mkdtempSync(join(tmpdir(), 'land-device-outcomes-'));
@@ -267,6 +268,7 @@ const ciDeviceDeps = (pr: number) => ({
     }
     return { dir, files: readdirSync(dir) };
   },
+  remove: (dir: string): void => rmSync(dir, { recursive: true, force: true }),
   sleep,
   now: () => Date.now(),
   log,
@@ -437,6 +439,8 @@ const landOne = (e: Entry): { result: 'landed' | 'merged before'; detail: string
           // Fails loudly unless every CI device and the Mac's record are there, on this tree's evidence.
           const mergeCmd = ['node', '--conditions=dragon-internal', 'packages/parity/src/cli/device-ci.ts', 'merge', ci.outcomesDir, '--local-vectors', record];
           const m = run('devices-merge', mergeCmd, WT);
+          // device-ci.ts merge exits 3 when it refuses the halves (nothing written): the PR fails with the merge's own reasons.
+          if (m.status === 3) throw new LandFailure('devices-merge', `device-ci.ts merge refused the CI outcomes and the Mac's record:\n${tail(m.log, 20)}`);
           if (m.error !== undefined || m.signal !== null || (m.status !== 0 && m.status !== 1)) failed('devices-merge', m, mergeCmd.join(' '));
         } finally {
           rmSync(ci.outcomesDir, { recursive: true, force: true });
