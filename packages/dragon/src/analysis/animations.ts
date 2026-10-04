@@ -11,7 +11,7 @@ import { admitted, animationKind } from '../css/animation-kinds.ts';
 import type { Longhand } from '../css/properties.ts';
 import { isLonghand, isShorthand, LONGHANDS } from '../css/properties.ts';
 import type { AnimItem, AnimLonghand, AnimList, EasingValue } from '../css/properties/animation.ts';
-import { ANIM_INITIAL, ANIM_LONGHANDS } from '../css/properties/animation.ts';
+import { ANIM_INITIAL, ANIM_LIST_PROPERTIES } from '../css/properties/animation.ts';
 import { shorthandHandler } from '../css/shorthands/index.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
@@ -100,7 +100,7 @@ function cascadeAnimations(rules: readonly Rule[], chain: readonly LinkedElement
 /** The computed lists: a winner's items, inherit from the parent, every other CSS-wide keyword the initial item. */
 function computedLists(winners: ReadonlyMap<AnimLonghand, Winner>, parent: ReadonlyMap<AnimLonghand, readonly AnimItem[]> | null): Map<AnimLonghand, readonly AnimItem[]> {
   const out = new Map<AnimLonghand, readonly AnimItem[]>();
-  for (const p of ANIM_LONGHANDS) {
+  for (const p of ANIM_LIST_PROPERTIES) {
     const w = winners.get(p);
     if (w === undefined || w.list.kind === 'wide') {
       const inherit = w !== undefined && w.list.kind === 'wide' && w.list.keyword === 'inherit' && parent !== null;

@@ -11,30 +11,32 @@ import { list, spanOf } from '../ast.ts';
 import { asciiLower, decodeName } from '../escapes.ts';
 import { CSS_WIDE } from '../values.ts';
 
-export const TRANSITION_LONGHANDS = ['transition-property', 'transition-duration', 'transition-timing-function', 'transition-delay', 'transition-behavior'] as const;
+// The transition and animation longhands stay out of LONGHANDS (T065 option B, C5), so these lists are not named *_LONGHANDS: the
+// registry seam (seams.test.ts) spreads every family *_LONGHANDS list into LONGHANDS.
+export const TRANSITION_LIST_PROPERTIES = ['transition-property', 'transition-duration', 'transition-timing-function', 'transition-delay', 'transition-behavior'] as const;
 
-export const ANIMATION_LONGHANDS = [
+export const ANIMATION_LIST_PROPERTIES = [
   'animation-name', 'animation-duration', 'animation-timing-function', 'animation-delay', 'animation-iteration-count', 'animation-direction',
   'animation-fill-mode', 'animation-play-state', 'animation-timeline', 'animation-range-start', 'animation-range-end', 'animation-composition',
 ] as const;
 
-export type AnimLonghand = (typeof TRANSITION_LONGHANDS)[number] | (typeof ANIMATION_LONGHANDS)[number];
+export type AnimLonghand = (typeof TRANSITION_LIST_PROPERTIES)[number] | (typeof ANIMATION_LIST_PROPERTIES)[number];
 
-export const ANIM_LONGHANDS: readonly AnimLonghand[] = [...TRANSITION_LONGHANDS, ...ANIMATION_LONGHANDS];
+export const ANIM_LIST_PROPERTIES: readonly AnimLonghand[] = [...TRANSITION_LIST_PROPERTIES, ...ANIMATION_LIST_PROPERTIES];
 
 /** The shorthands, each with its longhands; the animation shorthand resets timeline, range and composition to initial. */
 export const ANIM_SHORTHANDS: { readonly [name: string]: readonly AnimLonghand[] } = {
-  transition: TRANSITION_LONGHANDS,
-  animation: ANIMATION_LONGHANDS,
+  transition: TRANSITION_LIST_PROPERTIES,
+  animation: ANIMATION_LIST_PROPERTIES,
   'animation-range': ['animation-range-start', 'animation-range-end'],
 };
 
 export function isAnimationProperty(name: string): boolean {
-  return (ANIM_LONGHANDS as readonly string[]).includes(name) || Object.hasOwn(ANIM_SHORTHANDS, name);
+  return (ANIM_LIST_PROPERTIES as readonly string[]).includes(name) || Object.hasOwn(ANIM_SHORTHANDS, name);
 }
 
 export function isAnimLonghand(name: string): name is AnimLonghand {
-  return (ANIM_LONGHANDS as readonly string[]).includes(name);
+  return (ANIM_LIST_PROPERTIES as readonly string[]).includes(name);
 }
 
 export type StepPosition = 'jump-start' | 'jump-end' | 'jump-none' | 'jump-both' | 'start' | 'end';
