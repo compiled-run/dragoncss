@@ -117,6 +117,19 @@ export const ciState = (runs: CheckRun[]): CiState => {
   return ci.every((r) => r.status === 'completed') ? { state: 'success' } : { state: 'pending' };
 };
 
+// One poll of a CI wait. GitHub runs no pull_request CI on a PR that is CONFLICTING with its base, so before the build
+// (`conflicting` is passed only there) a conflicting PR whose clean head has no CI run proceeds; the landing commit, which contains
+// master, must still pass CI before the merge. A failed run always fails; a missing run past `appearS` fails otherwise.
+export type CiStep = 'success' | 'wait' | 'skip' | { fail: string };
+export const ciStep = (s: CiState, waitedS: number, limits: { appearS: number; waitS: number }, conflicting = false): CiStep => {
+  if (s.state === 'success') return 'success';
+  if (s.state === 'failure') return { fail: `did not succeed: ${s.conclusions.join('; ')}` };
+  if (s.state === 'none' && conflicting) return 'skip';
+  if (s.state === 'none' && waitedS >= limits.appearS) return { fail: `has no CI checks run after ${limits.appearS}s` };
+  if (waitedS >= limits.waitS) return { fail: `CI checks still ${s.state} after ${limits.waitS}s` };
+  return 'wait';
+};
+
 // What to do with a PR's base before landing: master is ready; a parent branch (or its review/* copy) whose head is already in
 // master is retargeted to master (GitHub has not moved it); a parent that has not landed is a failure, since landing the child
 // would carry the parent's commits in with it.
