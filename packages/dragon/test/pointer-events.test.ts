@@ -22,10 +22,11 @@ function parse(value: string): Diagnostic[] {
 }
 
 describe('pointer-events: registry', () => {
-  it('is the longhand right after grid (the paint families follow it), inherited, with no layout or paint aspect, and webref\'s grammar', () => {
+  it('follows grid before the paint families, inherited, with no layout or paint aspect, and webref\'s grammar', () => {
     expect([...POINTER_LONGHANDS]).toEqual(['pointer-events']);
+    // The paint families (PNT2's transform first) register after it.
     expect(LONGHANDS[LONGHANDS.indexOf('pointer-events') - 1]).toBe(GRID_LONGHANDS[GRID_LONGHANDS.length - 1]);
-    expect(LONGHANDS.slice(LONGHANDS.indexOf('pointer-events') + 1)).toEqual([...TRANSFORM_LONGHANDS]);
+    expect(LONGHANDS.indexOf(TRANSFORM_LONGHANDS[0])).toBe(LONGHANDS.indexOf('pointer-events') + 1);
     expect(INHERITED.has('pointer-events')).toBe(true);
     expect(PROPERTY_ASPECTS['pointer-events']).toEqual({ layout: false, paint: false });
     expect(grammar['pointer-events']?.initial).toBe('auto');
