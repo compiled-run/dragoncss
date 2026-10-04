@@ -602,9 +602,11 @@ describe('merge policy (.gitattributes)', () => {
     expect([...policy].filter((p) => !ignore.matches(p))).toEqual([]);
   });
 
-  it('lists exactly the regen steps\' outputs, one pattern per line, each matching a tracked file (a pattern without "/" only at the root)', () => {
+  it('lists exactly the regen steps\' outputs, sorted, one pattern per line, each matching a tracked file (a pattern without "/" only at the root)', () => {
     const outputs = STEPS.flatMap((s) => s.outputs).filter((o) => !MERGE_BY_HAND.some((h) => h.path === o));
-    expect(lines).toEqual(outputs.map((o) => `${o} merge=dragon-generated`));
+    // Sorted, so two features adding steps add their lines in different places.
+    expect(lines).toEqual([...lines].sort());
+    expect(lines).toEqual(outputs.map((o) => `${o} merge=dragon-generated`).sort());
     for (const l of lines) {
       const m = /^(\S+) merge=dragon-generated$/.exec(l);
       expect(m, l).not.toBeNull();
