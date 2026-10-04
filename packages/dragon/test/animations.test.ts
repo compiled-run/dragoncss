@@ -200,7 +200,7 @@ function stated(css: string, extra: (r: SourceRef) => TreeNode[] = () => []): Fr
 
 const compile = (css: string, profiles: 'derive' | 'enforce' = 'derive', extra?: (r: SourceRef) => TreeNode[]): readonly Diagnostic[] =>
   createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles, direction: 'ltr' }).compile(stated(css, extra)).diagnostics;
-const packages = (ds: readonly Diagnostic[]): string[] => ds.flatMap((d) => (/\(package ([A-Za-z-]+)\)/.exec(d.message)?.[1] ?? []));
+const packages = (ds: readonly Diagnostic[]): string[] => ds.flatMap((d) => (/\(package ([A-Za-z0-9-]+)\)/.exec(d.message)?.[1] ?? []));
 
 describe('animation analysis', () => {
   it('admits colour and length transitions and infinite animations, and leaves discrete pairs alone', () => {
@@ -213,6 +213,8 @@ describe('animation analysis', () => {
     expect(packages(compile('.a { border-top-width: 1px; border-top-style: solid; transition: border-top-width 1s; } .a.on { border-top-width: 3px; }'))).toEqual(['ANIM-p']);
     expect(compile('.a { border-top-width: 1px; border-top-style: solid; transition: border-top-width 1s; } .a.on { width: 3px; }')).toEqual([]);
     expect(packages(compile('.b { animation: k 1s; } @keyframes k { to { flex-grow: 2 } }'))).toEqual(['ANIM-p']);
+    // The spec's row: transform (and opacity, once it is a longhand) names ANIM-b2, the package that admits it.
+    expect(packages(compile('.b { animation: k 1s; } @keyframes k { to { transform: translateX(2px) } }'))).toEqual(['ANIM-b2']);
   });
 
   it('refuses a transitioned property an animation also sets (R12, ANIM-o) and a currentcolor pair (ANIM-cc)', () => {
