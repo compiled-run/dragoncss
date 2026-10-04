@@ -16,6 +16,6 @@ export const MEDIA: readonly FixtureSpec[] = [
   // Width and height atoms together: a band needs both axes, and the sweep crosses them (PR #38 finding 4142696777). No height
   // threshold sits at 300: at DPR 2.625 Chrome's viewport is 787.5 device px tall, so its CSS height is not exactly 300.
   both('media-two-axis'),
-  reject('reject-media-prefers-color-scheme', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (prefers-color-scheme: dark) { .a { width: 20px; } }', '@media (prefers-color-scheme: dark) in the stylesheet is not supported until MQ-R'),
-  reject('reject-media-resolution', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (max-width: 500px) and (min-resolution: 2dppx) { .a { width: 20px; } }', '@media (max-width: 500px) and (min-resolution: 2dppx) in the stylesheet is not supported until MQ-R'),
+  reject('reject-media-prefers-color-scheme', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (prefers-color-scheme: dark) { .a { width: 20px; } }', '@media (prefers-color-scheme: dark) in the stylesheet is not supported: (prefers-color-scheme: dark) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'),
+  reject('reject-media-resolution', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (max-width: 500px) and (min-resolution: 2dppx) { .a { width: 20px; } }', '@media (max-width: 500px) and (min-resolution: 2dppx) in the stylesheet is not supported: (min-resolution: 2dppx) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'),
 ];
