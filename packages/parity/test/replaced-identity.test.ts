@@ -16,7 +16,9 @@ import { environmentsOf, FIXTURES } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 import { compileFixture } from '../src/pipeline.ts';
 
-const replacedIds = new Set(REPLACED.map((f) => f.id));
+// Later fixtures that hold replaced leaves by design are not earlier cases: OVFL's overflow-replaced (images in scroll containers).
+const LATER_WITH_REPLACED: readonly string[] = ['overflow-replaced'];
+const replacedIds = new Set([...REPLACED.map((f) => f.id), ...LATER_WITH_REPLACED]);
 const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !replacedIds.has(f.id));
 
 const NEUTRAL = new Map([['object-fit', 'fill'], ['object-position', '50% 50%']]);
@@ -99,7 +101,7 @@ describe('REPL-a identity: every case that predates the replaced package is unch
     }
     expect(off).toEqual([]);
     // Every committed vector and emitted file of an earlier fixture was compared: none is left out.
-    const own = (name: string): boolean => !REPLACED.some((f) => name.startsWith(`${f.id}.`) || name.startsWith(`${f.id}-rtl.`));
+    const own = (name: string): boolean => ![...replacedIds].some((id) => name.startsWith(`${id}.`) || name.startsWith(`${id}-rtl.`));
     expect(vectors).toBe(readdirSync(repoPath('packages/layout/vectors')).filter((f) => f.endsWith('.json') && own(f)).length);
     expect(bodies).toBe(readdirSync(repoPath('packages/parity/emitted')).filter((f) => f.endsWith('.css') && own(f)).length);
   });
