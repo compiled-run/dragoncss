@@ -126,7 +126,8 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
   }
   /** The pins of one <target>@<dpr>, by case. */
   const pinsAt = (at: string): Record<string, Tally> => Object.fromEntries(Object.entries(byCase).flatMap(([c, v]) => (v[at] === undefined ? [] : [[c, v[at]]])));
-  const written: Record<string, Record<string, Tally>> = {};
+  /** The tallies computed in this run, by <target>@<dpr>: a rewrite takes these and keeps the file's pins only for the rest. */
+  const fresh: Record<string, Record<string, Tally>> = {};
   const bottoms = JSON.parse(readFileSync(BOTTOM_SCANLINES_PATH(), 'utf8')) as BottomScanlines;
   for (const target of ['ios', 'android'] as const) {
     it(`${target}: dropped and rescued rules and per-case glyph-bottom scanlines are pinned; every point is clear of every glyph box edge but a glyph-edge scanline's own`, () => {
@@ -174,9 +175,12 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
         for (const l of plantLines) for (const side of ['bottom', 'left', 'right']) expect(plantRules.has(`edge:${l.id}:glyph-${side}`), `${PLANT_CASE}@${dpr} ${l.id} glyph-${side}`).toBe(true);
       }
       if (process.env['DRAGON_PIN_WRITE'] === '1') {
-        // Keeps the other target's pins, so the ios and android tests each rewrite only their own.
-        for (const [c, v] of Object.entries(byCase)) for (const at of Object.keys(v)) if (!at.startsWith(`${target}@`)) ((written[c] ??= {})[at] = v[at] as Tally);
-        for (const [at, tallies] of Object.entries(got)) for (const [c, t] of Object.entries(tallies)) (written[c] ??= {})[at] = t;
+        // Pins this run computed replace the file's at their <target>@<dpr> (a case with no drops there loses its entry); pins of
+        // a target this run did not reach are kept, so the ios and android tests never overwrite each other's.
+        Object.assign(fresh, got);
+        const written: Record<string, Record<string, Tally>> = {};
+        for (const [c, v] of Object.entries(byCase)) for (const [at, t] of Object.entries(v)) if (!(at in fresh)) (written[c] ??= {})[at] = t;
+        for (const [at, tallies] of Object.entries(fresh)) for (const [c, t] of Object.entries(tallies)) (written[c] ??= {})[at] = t;
         const sorted = <T>(o: Record<string, T>): Record<string, T> => Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : 1)));
         const lines = Object.keys(written).sort().map((c) => `  ${JSON.stringify(c)}: ${JSON.stringify(sorted(Object.fromEntries(Object.entries(written[c] ?? {}).map(([at, t]) => [at, { dropped: sorted(t.dropped), rescued: sorted(t.rescued) }]))))}`);
         writeFileSync(PINS, `{\n${lines.join(',\n')}\n}\n`);

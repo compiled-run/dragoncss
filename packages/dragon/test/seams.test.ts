@@ -8,6 +8,7 @@ import type { Candidate } from '../src/analysis/resolve.ts';
 import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
 import type { AtRuleContext } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
+import type { Longhand } from '../src/css/properties.ts';
 import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import type { Declaration, EnclosedRules } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -64,7 +65,19 @@ describe('E2 seams: the property registry', () => {
     expect(registryProblems('INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([', 'INHERITED', [...INHERITED])).toEqual([]);
     expect(floorProblems(FLOOR, 'inherited', [...INHERITED], true)).toEqual([]);
     const byRole = (r: string): string[] => LONGHANDS.filter((p) => PROPERTY_ROLE[p] === r);
-    for (const r of ['container', 'text', 'paint']) expect(floorProblems(FLOOR, `role:${r}`, byRole(r), true), r).toEqual([]);
+    for (const r of ['item', 'container', 'text', 'paint']) expect(floorProblems(FLOOR, `role:${r}`, byRole(r), true), r).toEqual([]);
+    // Exact for every floor longhand: it keeps the one role whose floor holds it, and is inherited exactly when the inherited
+    // floor holds it, so a longhand moving into a role or into INHERITED fails too; only a new longhand may take any.
+    const floors = JSON.parse(readFileSync(FLOOR, 'utf8')) as Record<string, readonly string[]>;
+    const moved = (floors['longhands'] ?? []).flatMap((p) => {
+      const roles = ['item', 'container', 'text', 'paint'].filter((r) => floors[`role:${r}`]?.includes(p));
+      const inherited = floors['inherited']?.includes(p) === true;
+      return [
+        ...(roles.length === 1 && roles[0] === PROPERTY_ROLE[p as Longhand] ? [] : [`${p}: role ${PROPERTY_ROLE[p as Longhand]}, the floor gives ${roles.join(', ') || 'none'}`]),
+        ...(INHERITED.has(p as Longhand) === inherited ? [] : [`${p}: ${inherited ? 'no longer' : 'now'} inherited`]),
+      ];
+    });
+    expect(moved).toEqual([]);
   });
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());

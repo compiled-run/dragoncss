@@ -111,28 +111,37 @@ function reach(syntax: string, words: Set<string>, fns: Set<string>, seen: Set<s
 type Twin = { readonly decl: string; readonly plain: string; readonly written: string; readonly plainPart: string };
 const twin = (decl: string, plain: string, written: string, plainPart: string): Twin => ({ decl, plain, written, plainPart });
 
-function twinCases(): Twin[] {
+/** One spellings() call of twinCases: the name, its seed, and the escaped and plain spellings it returned. */
+type SpellCall = { readonly name: string; readonly seed: number; readonly spelled: readonly (readonly [string, string])[] };
+
+function twinCases(calls: SpellCall[] = []): Twin[] {
   const out: Twin[] = [];
   let seed = 0;
+  const spell = (name: string): [string, string][] => {
+    const s = seed++;
+    const r = spellings(name, s);
+    calls.push({ name, seed: s, spelled: r });
+    return r;
+  };
   for (const p of subset) {
     const words = new Set<string>();
     reach((grammar as Record<string, { syntax: string }>)[p]?.syntax ?? '', words, new Set(), new Set());
-    for (const w of [...words].sort()) for (const [e, w0] of spellings(w, seed++)) out.push(twin(`${p}: ${e}`, `${p}: ${w0}`, e, w0));
-    for (const [e, p0] of spellings(p, seed++)) out.push(twin(`${e}: inherit`, `${p0}: inherit`, e, p0));
+    for (const w of [...words].sort()) for (const [e, w0] of spell(w)) out.push(twin(`${p}: ${e}`, `${p}: ${w0}`, e, w0));
+    for (const [e, p0] of spell(p)) out.push(twin(`${e}: inherit`, `${p0}: inherit`, e, p0));
   }
-  for (const w of ['inherit', 'initial', 'unset', 'revert', 'revert-layer']) for (const [e, w0] of spellings(w, seed++)) out.push(twin(`width: ${e}`, `width: ${w0}`, e, w0));
+  for (const w of ['inherit', 'initial', 'unset', 'revert', 'revert-layer']) for (const [e, w0] of spell(w)) out.push(twin(`width: ${e}`, `width: ${w0}`, e, w0));
   const functions: [string, string, string][] = [
     ['color', 'rgb', '(1, 2, 3)'], ['color', 'rgba', '(1, 2, 3, 0.5)'], ['color', 'hsl', '(120deg, 50%, 50%)'], ['color', 'hsla', '(120deg 50% 50% / 0.5)'],
     ['border-top-color', 'rgb', '(1 2 3)'], ['width', 'calc', '(10px + 5%)'], ['width', 'min', '(1px, 2px)'], ['width', 'max', '(1px, 2px)'],
     ['width', 'clamp', '(1px, 2px, 3px)'], ['width', 'fit-content', '(10px)'], ['grid-template-columns', 'repeat', '(2, 10px)'],
     ['grid-template-columns', 'minmax', '(10px, 1fr)'], ['grid-template-columns', 'fit-content', '(10px)'], ['grid-auto-rows', 'minmax', '(auto, 2fr)'],
   ];
-  for (const [p, f, args] of functions) for (const [e, f0] of spellings(f, seed++)) out.push(twin(`${p}: ${e}${args}`, `${p}: ${f0}${args}`, `${e}${args}`, `${f0}${args}`));
+  for (const [p, f, args] of functions) for (const [e, f0] of spell(f)) out.push(twin(`${p}: ${e}${args}`, `${p}: ${f0}${args}`, `${e}${args}`, `${f0}${args}`));
   const units: [string, string, string][] = [
     ...['px', 'em', 'rem', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'vw', 'vh', 'vmin', 'vmax', 'ex', 'ch', 'lh', 'cqw', 'PX', 'Em'].map((u) => ['width', '10', u] as [string, string, string]),
     ['grid-template-columns', '1', 'fr'], ['grid-auto-columns', '2.5', 'fr'], ['font-size', '1.5', 'em'], ['line-height', '2', 'px'], ['margin-left', '-3', 'px'],
   ];
-  for (const [p, n, u] of units) for (const [e, u0] of spellings(u, seed++)) out.push(twin(`${p}: ${n}${e}`, `${p}: ${n}${u0}`, `${n}${e}`, `${n}${u0}`));
+  for (const [p, n, u] of units) for (const [e, u0] of spell(u)) out.push(twin(`${p}: ${n}${e}`, `${p}: ${n}${u0}`, `${n}${e}`, `${n}${u0}`));
   for (const [e, plain] of [['#\\66 00', '#f00'], ['#\\46 00', '#F00'], ['#a\\62 c', '#abc'], ['#\\31 23', '#123'], ['#\\000031 23456', '#123456'], ['#f0\\30 f', '#f00f']]) {
     out.push(twin(`color: ${e as string}`, `color: ${plain as string}`, e as string, plain as string), twin(`background-color: ${e as string}`, `background-color: ${plain as string}`, e as string, plain as string));
   }
@@ -367,9 +376,34 @@ function twinFloorProblems(twins: readonly Twin[]): string[] {
   return problems;
 }
 
+/** The twins twinCases writes outside spellings(): the six hex colours (on color and background-color) and the sixteen whole declarations. */
+const LITERAL_TWINS = 6 * 2 + 16;
+/** The escape forms each name must get, from the rule stated on spellings(), not from its code. */
+const formsOf = (name: string, seed: number): string[] => ['hex', ...(/[^0-9a-fA-F\n\r\f]/.test(name) ? ['identity'] : []), ...(seed % 3 === 0 && /^[a-z]/.test(name) ? ['uppercase'] : [])];
+/** The form an escaped spelling of `name` takes: one hex escape, one identity escape, or the uppercase form with a hex first letter. */
+function formOf(name: string, written: string, plain: string): string {
+  if (plain === name.toUpperCase() && plain !== name && /^\\[0-9a-fA-F]{1,6} /.test(written) && written.slice(written.indexOf(' ') + 1) === name.slice(1).toUpperCase()) return 'uppercase';
+  const at = written.indexOf('\\');
+  if (plain !== name || at < 0 || written.slice(0, at) !== name.slice(0, at)) return 'other';
+  const hex = /^\\([0-9a-fA-F]{1,6})(\r\n|[ \t\n\f])?/.exec(written.slice(at));
+  if (hex !== null && String.fromCodePoint(parseInt(hex[1] as string, 16)) === name[at] && written.slice(at + hex[0].length) === name.slice(at + 1)) return 'hex';
+  return written.slice(at + 1) === name.slice(at) && !/[0-9a-fA-F\n\r\f]/.test(name[at] as string) ? 'identity' : 'other';
+}
+/** Every spellings() call's problems: a missing, extra or malformed escape form. */
+const formProblems = (calls: readonly SpellCall[]): string[] => calls.flatMap((c) => {
+  const got = c.spelled.map(([w, p]) => formOf(c.name, w, p));
+  const want = formsOf(c.name, c.seed);
+  return JSON.stringify(got) === JSON.stringify(want) ? [] : [`${c.name} (seed ${c.seed}): forms ${JSON.stringify(got)}, the rule gives ${JSON.stringify(want)}`];
+});
+/** The twin count derived from the calls and the rule: what Chrome must have checked. */
+const expectedTwins = (calls: readonly SpellCall[]): number => calls.reduce((n, c) => n + formsOf(c.name, c.seed).length, 0) + LITERAL_TWINS;
+
 describe('CSS escapes: the twin set', () => {
-  it('has a twin for every keyword each subset property reaches and for its name, and never falls below its floor', () => {
-    const twins = twinCases();
+  it('has every escape form of every keyword, name, function and unit, a twin per keyword each subset property reaches, and never falls below its floor', () => {
+    const calls: SpellCall[] = [];
+    const twins = twinCases(calls);
+    expect(formProblems(calls)).toEqual([]);
+    expect(twins.length).toBe(expectedTwins(calls));
     const plains = new Set(twins.map((t) => t.plain));
     for (const p of subset) {
       const words = new Set<string>();
@@ -384,7 +418,8 @@ describe('CSS escapes: the twin set', () => {
 
 describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
   it('escaped twins read as their plain spelling, edge escapes compute like Chrome, selectors match like Chrome, and the plants are caught', async () => {
-    const twins = twinCases();
+    const calls: SpellCall[] = [];
+    const twins = twinCases(calls);
     const edges = EDGES.map(edgeItem);
     const { launchChrome } = await load<{ launchChrome: () => Promise<Browser> }>('chrome.ts');
     const browser = await launchChrome();
@@ -434,7 +469,7 @@ describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
     expect(judgeSelectors(selectorSeen)).toEqual([]);
     for (const p of planted) expect(p.problems().length, p.name).toBeGreaterThan(0);
     // PIN-DERIVE: Chrome read every twin both ways (the twin set itself is floored above); the edge and selector lists are this file's.
-    expect(twinSeen.length).toBe(twins.length);
+    expect(twinSeen.length).toBe(expectedTwins(calls));
     expect(twinSeen.filter((s) => s.chrome === undefined || s.chromePlain === undefined).map((s) => s.twin.decl)).toEqual([]);
     expect({ edges: edges.length, selectors: selectorSeen.length }).toEqual({ edges: 89, selectors: 59 });
   }, 300_000);
