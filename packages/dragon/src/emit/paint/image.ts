@@ -59,6 +59,8 @@ const KOTLIN_MEMBERS = String.raw`  /** REPL-a image: the decoded bitmap, its na
     private set
   var dragonImageFit: String = "fill"
     private set
+  /** The image's own compositing layer (dragonPaintImageStage), made on the first hardware draw. */
+  var dragonImageNode: android.graphics.RenderNode? = null
   fun dragonSetImage(base64: String, width: Double, height: Double, fit: String) {
     dragonImage = dragonDecodeImage(base64, dragonId)
     dragonImageNatural = doubleArrayOf(width, height)
@@ -74,6 +76,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.RenderNode
 import android.util.Base64
 import dev.dragon.dump.DumpJson
 
@@ -92,16 +95,45 @@ fun dragonDecodeImage(base64: String, id: String): Bitmap {
   return bitmap
 }
 
-/** The image stage: the bitmap into the destination rect, clipped to the drawn part of the content box, in device px. */
+/**
+ * The image stage: the bitmap, filtered, into the destination rect, clipped to the drawn part of the content box, in device px.
+ * On a hardware canvas it is drawn into a RenderNode with its own compositing layer over the drawn part (whole device px), which
+ * the frame composites unscaled: a filtered bitmap drawn straight into the window's frame moved other boxes' edges by one colour
+ * step on the Android emulator's renderer (#72's device run), and a layer keeps the filtered draw out of that render pass.
+ */
 fun dragonPaintImageStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape) {
   val image = v.dragonImage ?: return
   val d = v.dragonReplacedDest ?: return
   val c = v.dragonReplacedDrawn ?: return
-  canvas.save()
-  canvas.clipRect(c[0].toFloat(), c[1].toFloat(), (c[0] + c[2]).toFloat(), (c[1] + c[3]).toFloat())
   val x = d[0] + DRAGON_IMAGE_PLANT_DEVICE_PX
-  canvas.drawBitmap(image, null, RectF(x.toFloat(), d[1].toFloat(), (x + d[2]).toFloat(), (d[1] + d[3]).toFloat()), Paint(Paint.FILTER_BITMAP_FLAG))
-  canvas.restore()
+  val dest = RectF(x.toFloat(), d[1].toFloat(), (x + d[2]).toFloat(), (d[1] + d[3]).toFloat())
+  val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+  if (!canvas.isHardwareAccelerated) {
+    canvas.save()
+    canvas.clipRect(c[0].toFloat(), c[1].toFloat(), (c[0] + c[2]).toFloat(), (c[1] + c[3]).toFloat())
+    canvas.drawBitmap(image, null, dest, paint)
+    canvas.restore()
+    return
+  }
+  val l = Math.floor(c[0]).toInt()
+  val t = Math.floor(c[1]).toInt()
+  val r = Math.ceil(c[0] + c[2]).toInt()
+  val b = Math.ceil(c[1] + c[3]).toInt()
+  if (r <= l || b <= t) return
+  val node = v.dragonImageNode ?: RenderNode("dragonImage").also {
+    it.setUseCompositingLayer(true, null)
+    v.dragonImageNode = it
+  }
+  node.setPosition(l, t, r, b)
+  val inner = node.beginRecording(r - l, b - t)
+  try {
+    inner.translate(-l.toFloat(), -t.toFloat())
+    inner.clipRect(c[0].toFloat(), c[1].toFloat(), (c[0] + c[2]).toFloat(), (c[1] + c[3]).toFloat())
+    inner.drawBitmap(image, null, dest, paint)
+  } finally {
+    node.endRecording()
+  }
+  canvas.drawRenderNode(node)
 }
 
 /** The readback of the image module: the natural size, the fit and the destination rect in device px relative to the box. */

@@ -232,4 +232,24 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
     const image = files.find((f) => f.path === 'kotlin/dev/dragon/views/paint/DragonPaintImage.kt')?.text ?? '';
     expect(image).toMatch(/val bitmap = BitmapFactory\.decodeByteArray[^\n]*\n[^\n]*\n  bitmap\.prepareToDraw\(\)\n  return bitmap/);
   });
+  // #72 landing device run: a filtered bitmap drawn straight into the window's frame moved other boxes' edges by one colour step
+  // on the emulator (hit-order, replaced-fit-rtl, replaced-intrinsic). The stage draws it, still filtered, into a RenderNode with
+  // its own compositing layer on a hardware canvas, and straight in only on a software one.
+  it('the Android image stage draws the filtered bitmap through its own compositing layer on a hardware canvas', () => {
+    const image = hostSources('android', 'toolchain').find((f) => f.path === 'kotlin/dev/dragon/views/paint/DragonPaintImage.kt')?.text ?? '';
+    const at = image.indexOf('fun dragonPaintImageStage(');
+    const stage = image.slice(at, image.indexOf('\n}\n', at));
+    expect(stage).toContain('val paint = Paint(Paint.FILTER_BITMAP_FLAG)');
+    expect(stage.match(/drawBitmap\(image, null, dest, paint\)/g)?.length).toBe(2);
+    const software = stage.indexOf('if (!canvas.isHardwareAccelerated) {');
+    const layer = stage.indexOf('it.setUseCompositingLayer(true, null)');
+    expect(software).toBeGreaterThan(-1);
+    expect(layer).toBeGreaterThan(software);
+    // The only draw on the hardware canvas itself is the node; the bitmap goes into the node's recording.
+    const hardware = stage.slice(layer);
+    expect(hardware).toContain('inner.drawBitmap(image, null, dest, paint)');
+    expect(hardware).not.toContain('canvas.drawBitmap');
+    expect(hardware).toContain('canvas.drawRenderNode(node)');
+    expect(hardware).toContain('node.endRecording()');
+  });
 });
