@@ -346,8 +346,11 @@ export function plantVerdict(failures: readonly LaneFailure[], hostError: string
   return { caught: hostError === null && inked > 0 && frames === 0 && lines === 0, pixels: pixels.length, inked, frames, lines };
 }
 
-/** The sample rule a pixel problem names ("image-flat:a1:0 at 80,40: ...", "edge:a1:right: ..."), or null for a case-level one. */
-const PROBLEM_RULE = new RegExp(`^((?:${SAMPLE_RULES.join('|')}):\\S+?)(?: at |: )`);
+/**
+ * The node a pixel problem names: its rule ("image-flat:a1:0 at 80,40: ...", "edge:a1:right: ...") or glyph position
+ * ("centre:t1:line0:x: ...", native-compare.ts), any lower-case kind with hyphens; null for a case-level problem.
+ */
+const PROBLEM_RULE = /^([a-z]+(?:-[a-z]+)*:\S+?)(?: at |: )/;
 export function pixelProblemNode(problem: string): string | null {
   return PROBLEM_RULE.exec(problem)?.[1] ?? null;
 }
