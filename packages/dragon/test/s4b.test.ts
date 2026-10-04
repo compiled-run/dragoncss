@@ -51,11 +51,14 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   const paint = LONGHANDS.filter((p) => PROPERTY_ROLE[p] === 'paint');
   it('(i) paint holds exactly for the aspect-table longhands with a paint aspect and no layout aspect', () => {
     for (const p of LONGHANDS) expect(PROPERTY_ROLE[p] === 'paint', p).toBe(!PROPERTY_ASPECTS[p].layout && PROPERTY_ASPECTS[p].paint);
-    expect([...paint].sort()).toEqual(['background-color', 'border-bottom-color', 'border-left-color', 'border-right-color', 'border-top-color', 'color']);
+    expect([...paint].sort()).toEqual(['background-color', 'border-bottom-color', 'border-left-color', 'border-right-color', 'border-top-color', 'color', 'transform', 'transform-origin', 'will-change']);
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
+    // Two values of each paint longhand: two colours, or for the PNT2 longhands two transforms, origins and will-change features.
+    const pair: { readonly [p: string]: readonly [string, string] } = { transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'] };
     for (const p of paint) {
-      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; } .a { ${p}: #102030; } .b { ${p}: rgba(200, 100, 50, 0.5); }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
+      const [va, vb] = pair[p] ?? ['#102030', 'rgba(200, 100, 50, 0.5)'];
+      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: relative; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
       const m = boxes(input);
       const [a, b] = [m.get('a') as LayoutBox, m.get('b') as LayoutBox];
       expect(a.style, p).toEqual(b.style);

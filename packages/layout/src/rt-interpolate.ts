@@ -317,7 +317,8 @@ export function sinCosDegrees(degrees: number, trig: Trig): SinCos {
   return { sin: trig.sin(rad), cos: trig.cos(rad) };
 }
 
-function translateMatrix(m: Matrix2D, x: number, y: number): Matrix2D {
+/** gfx::Transform::Translate (ui/gfx/geometry/transform.cc:223-229): a float translation in the axis-aligned form, a double one once the matrix is full. */
+export function translateMatrix(m: Matrix2D, x: number, y: number): Matrix2D {
   if (!m.full) return { full: false, a: m.a, b: 0, c: 0, d: m.d, e: froundOf(m.e + froundOf(x * m.a)), f: froundOf(m.f + froundOf(y * m.d)) };
   return { full: true, a: m.a, b: m.b, c: m.c, d: m.d, e: m.a * x + m.c * y + m.e, f: m.b * x + m.d * y + m.f };
 }
@@ -343,7 +344,12 @@ function rotateMatrix(m: Matrix2D, degrees: number, trig: Trig): Matrix2D {
 
 /** ComputedStyle::ApplyTransform over the functions (transform-origin excluded), against a float border-box size. */
 export function transformMatrix(ops: readonly TransformOp[], boxWidth: number, boxHeight: number, trig: Trig): Matrix2D {
-  let m = IDENTITY_MATRIX;
+  return applyTransformOps(IDENTITY_MATRIX, ops, boxWidth, boxHeight, trig);
+}
+
+/** TransformOperation::Apply of each function in order onto m, against a float border-box size. */
+export function applyTransformOps(start: Matrix2D, ops: readonly TransformOp[], boxWidth: number, boxHeight: number, trig: Trig): Matrix2D {
+  let m = start;
   for (const op of ops) {
     const fam = family(op.fn);
     if (fam === 'translate') m = translateMatrix(m, resolveLength(op.x, froundOf(boxWidth)), resolveLength(op.y, froundOf(boxHeight)));

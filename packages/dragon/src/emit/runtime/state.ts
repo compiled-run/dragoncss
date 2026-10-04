@@ -448,6 +448,9 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'border-widths':
       case 'text-color':
         break;
+      case 'transform':
+        // PNT2 integration: a state record holds no transform write; a transformed node of a state program is refused here, by name.
+        throw new StateEmitError(`${n.id}: a transform in a state program has no state-node write (PNT2 writes transforms on the static program only)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;
