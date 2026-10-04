@@ -9,6 +9,7 @@ import { runLibraryCase } from '../harness/harness.ts';
 import { lockText } from '../src/check.ts';
 import { buildCorpus, hitCases, hitExpected, RT_VECTORS_DIR, rtCases } from '../src/corpus.ts';
 import { engineFiles, engineRoots, LAYOUT_SRC, lowerAll } from '../src/generate.ts';
+import { suiteFloorProblems } from './floor.ts';
 
 type Rec = readonly (string | number | null)[];
 const records = (name: string): readonly Rec[] => (JSON.parse(readFileSync(join(RT_VECTORS_DIR, name), 'utf8')) as { records: Rec[] }).records;
@@ -44,11 +45,16 @@ describe('rt suite (ANIM-a2)', () => {
   const corpus = buildCorpus();
   const rt = corpus.suites.find((s) => s.name === 'rt');
 
-  it('is the last P1 suite before SELD-R1b\'s hit suite, in library mode, one line per rt vector record', () => {
-    expect(corpus.suites.map((s) => s.name)).toEqual(['vectors', 'units', 'engine', 'library', 'rt', 'hit']);
+  it('follows the library suite, in library mode, one line per rt vector record', () => {
+    // PIN-DERIVE: p1-floor.json keeps every P1 suite in order at no fewer cases than it had, and every rt vector file at no fewer
+    // records; a suite or record may be added without a test edit.
+    const floor = new URL('./p1-floor.json', import.meta.url);
+    expect(suiteFloorProblems(floor, 'p1', corpus.suites.map((s) => ({ name: s.name, count: s.lines.length })))).toEqual([]);
+    expect(corpus.suites.findIndex((s) => s.name === 'rt')).toBe(corpus.suites.findIndex((s) => s.name === 'library') + 1);
     expect(rt?.mode).toBe('library');
-    const n = ['timing.json', 'easing.json', 'hold.json', 'interp.json'].reduce((k, f) => k + records(f).length, 0);
-    expect(n).toBe(36785 + 10439 + 903 + 6461);
+    const files = ['timing.json', 'easing.json', 'hold.json', 'interp.json'];
+    expect(suiteFloorProblems(floor, 'rt-records', files.map((f) => ({ name: f, count: records(f).length })))).toEqual([]);
+    const n = files.reduce((k, f) => k + records(f).length, 0);
     expect(rt?.lines.length).toBe(n);
     expect(rt?.lines).toEqual(rtCases());
   });
@@ -131,9 +137,6 @@ describe('rt suite (ANIM-a2)', () => {
     expect((JSON.parse(lockText(corpus)) as { cases: Record<string, number> }).cases['rt']).toBe(rt?.lines.length);
     expect(JSON.parse(readFileSync(join(RT_VECTORS_DIR, '../../translate/corpus.json'), 'utf8'))).toEqual(JSON.parse(lockText(corpus)));
   }, 120_000);
-});
-
-describe('hit suite (SELD-R1b)', () => {
   // The expected results are the TypeScript harness's own answers; a reference that threw or refused its line would be matched by
   // a native that fails the same way, so every hit expected result must be an answer.
   it('builds expected results only from answers, refusing a line the reference threw on or refused', () => {

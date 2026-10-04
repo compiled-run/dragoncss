@@ -27,7 +27,9 @@ Everything else here is a default you apply without asking.
 
 ## Scope (defaults; no stop, no ruling)
 - Outside your spec's file map: edit it, and list it in the PR body under "Outside the spec", one line each.
-- A pinned test your change legitimately moves: retarget it, keep its intent, and list it.
+- A pinned test your change legitimately moves: retarget it, keep its intent, and list it. Since #125, registry,
+  longhand, twin, suite and LGPL pins live in floor files (packages/*/test/*-floor.json, glyph-clearance-pins.json):
+  a new entry is appended there (`DRAGON_FLOOR_WRITE=1` / `DRAGON_PIN_WRITE=1`; they never lower), not by editing a test.
 - A Chrome/Skia/V8 citation: register it in docs/ports.json. LGPL files are class A
   (reference only, implement from spec, pin by test).
 - A generated output you add: give it a regen step (scripts/regen.ts plus .gitattributes) or a MANUAL entry.
