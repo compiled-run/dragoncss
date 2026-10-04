@@ -100,7 +100,7 @@
             {
               "corpus": "p1",
               "suite": "rt",
-              "cases": 54588
+              "cases": 55362
             },
             {
               "corpus": "p1",
@@ -143,8 +143,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "39e4013dff2cf23522bc7fac6739c00639b262d2bd53c4b30ed707c43760ac45",
-          "totalCases": 618129,
+          "caseListSha256": "f93c1a311fec44d20f4a254030786d170bc21de6e393ecfe70d4d3d07a35ebb8",
+          "totalCases": 618903,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
             "suites": [
@@ -179,9 +179,9 @@
               {
                 "corpus": "p1",
                 "suite": "rt",
-                "declared": 54588,
-                "total": 54588,
-                "pass": 54588
+                "declared": 55362,
+                "total": 55362,
+                "pass": 55362
               },
               {
                 "corpus": "p1",
@@ -255,7 +255,7 @@
               }
             ],
             "digests": {
-              "p1": "9e35d7ea73a4cb02f17b1d5a004c47df9429091fb67cd777714b9720b4cab829",
+              "p1": "ffa728b372cafd05226307e508e1e1f9b8224e1bd6492d406bbb9a9fc1cff46b",
               "extended": "10f72390d7458b2bb28ebb2bec087eb58e52befc44ca22e94818d2622524873f"
             }
           },
@@ -312,7 +312,7 @@
             {
               "corpus": "p1",
               "suite": "rt",
-              "cases": 54588
+              "cases": 55362
             },
             {
               "corpus": "p1",
@@ -355,8 +355,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "39e4013dff2cf23522bc7fac6739c00639b262d2bd53c4b30ed707c43760ac45",
-          "totalCases": 618129,
+          "caseListSha256": "f93c1a311fec44d20f4a254030786d170bc21de6e393ecfe70d4d3d07a35ebb8",
+          "totalCases": 618903,
           "run": null,
           "device": null,
           "evidence": null
@@ -724,7 +724,7 @@
             {
               "corpus": "p1",
               "suite": "rt",
-              "cases": 54588
+              "cases": 55362
             },
             {
               "corpus": "p1",
@@ -767,8 +767,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "39e4013dff2cf23522bc7fac6739c00639b262d2bd53c4b30ed707c43760ac45",
-          "totalCases": 618129,
+          "caseListSha256": "f93c1a311fec44d20f4a254030786d170bc21de6e393ecfe70d4d3d07a35ebb8",
+          "totalCases": 618903,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
             "suites": [
@@ -803,9 +803,9 @@
               {
                 "corpus": "p1",
                 "suite": "rt",
-                "declared": 54588,
-                "total": 54588,
-                "pass": 54588
+                "declared": 55362,
+                "total": 55362,
+                "pass": 55362
               },
               {
                 "corpus": "p1",
@@ -879,7 +879,7 @@
               }
             ],
             "digests": {
-              "p1": "9e35d7ea73a4cb02f17b1d5a004c47df9429091fb67cd777714b9720b4cab829",
+              "p1": "ffa728b372cafd05226307e508e1e1f9b8224e1bd6492d406bbb9a9fc1cff46b",
               "extended": "10f72390d7458b2bb28ebb2bec087eb58e52befc44ca22e94818d2622524873f"
             }
           },
@@ -936,7 +936,7 @@
             {
               "corpus": "p1",
               "suite": "rt",
-              "cases": 54588
+              "cases": 55362
             },
             {
               "corpus": "p1",
@@ -979,8 +979,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "39e4013dff2cf23522bc7fac6739c00639b262d2bd53c4b30ed707c43760ac45",
-          "totalCases": 618129,
+          "caseListSha256": "f93c1a311fec44d20f4a254030786d170bc21de6e393ecfe70d4d3d07a35ebb8",
+          "totalCases": 618903,
           "run": null,
           "device": null,
           "evidence": null
