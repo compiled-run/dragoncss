@@ -13,7 +13,7 @@
       "units": 320000,
       "engine": 20258,
       "library": 22000,
-      "rt": 54588,
+      "rt": 55362,
       "hit": 2028
     }
   },
@@ -22,13 +22,21 @@
       "timing.json",
       "easing.json",
       "hold.json",
-      "interp.json"
+      "interp.json",
+      "advance.json",
+      "keyframes.json",
+      "transitions.json",
+      "animations.json"
     ],
     "counts": {
       "timing.json": 36785,
       "easing.json": 10439,
       "hold.json": 903,
-      "interp.json": 6461
+      "interp.json": 6461,
+      "advance.json": 7,
+      "keyframes.json": 740,
+      "transitions.json": 20,
+      "animations.json": 7
     }
   },
   "extended": {

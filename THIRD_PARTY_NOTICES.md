@@ -11,6 +11,9 @@ Those files are under the licences below, with the copyright lines from their he
 
 - `cc/layers/tile_size_calculator.cc`: Copyright 2019 The Chromium Authors
 - `cc/trees/layer_tree_settings.cc`: Copyright 2011 The Chromium Authors
+- `third_party/blink/renderer/core/animation/animation_time_delta.h`: Copyright 2018 The Chromium Authors
+- `third_party/blink/renderer/core/animation/css/css_keyframe_effect_model.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/animation/interpolation_effect.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/animation/timing_calculations.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/animation/timing.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/css/css_length_resolver.cc`: Copyright 2022 The Chromium Authors
@@ -141,6 +144,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 - `third_party/blink/renderer/core/animation/animation_effect.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/animation/animation.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
+- `third_party/blink/renderer/core/animation/css/css_animations.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
+- `third_party/blink/renderer/core/animation/keyframe_effect_model.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/css_math_expression_node.cc`: Copyright (C) 2011, 2012 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/css_to_length_conversion_data.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/font_face.cc`: Copyright (C) 2013 Google Inc. All rights reserved.

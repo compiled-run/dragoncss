@@ -39,9 +39,9 @@ describe.each(['ios', 'android'] as const)('the %s device vectors verdict', (nam
       expect(declared.find((d) => d.corpus === 'extended' && d.suite === v1)?.cases, v1).toBeGreaterThan(0);
     }
     // ANIM-a2: the rt suite is declared in the P1 corpus with one case per rt vector record, and a short rt run fails the lane.
-    expect(declared.find((d) => d.corpus === 'p1' && d.suite === 'rt')?.cases).toBe(54588);
+    expect(declared.find((d) => d.corpus === 'p1' && d.suite === 'rt')?.cases).toBe(55362);
     const shortRt = whole.map((s) => (s.corpus === 'p1' && s.name === 'rt' ? { ...s, pass: s.pass - 1 } : s));
-    expect(judgeDeviceVectors(t, shortRt, digests, host)).toMatchObject({ state: 'fail', reason: expect.stringContaining('p1/rt 54587/54588, declared 54588') });
+    expect(judgeDeviceVectors(t, shortRt, digests, host)).toMatchObject({ state: 'fail', reason: expect.stringContaining('p1/rt 55361/55362, declared 55362') });
     // SELD-R1b: the hit suite is declared with one case per layout vector at every DPR (the device-hit proof), and a short run fails.
     expect(declared.find((d) => d.corpus === 'p1' && d.suite === 'hit')?.cases).toBe(2028);
     const shortHit = whole.map((s) => (s.corpus === 'p1' && s.name === 'hit' ? { ...s, pass: s.pass - 1 } : s));

@@ -71,6 +71,14 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
       if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at(f), name: st.name.text });
     }
   }
+  // ANIM-b1 (T065): the transition update, keyframe sampling and animation list ports, roots the same way.
+  for (const f of ['rt-keyframes.ts', 'rt-transition.ts', 'rt-animations.ts']) {
+    const sf = program.getSourceFile(at(f));
+    if (sf === undefined) throw new Error(`the root file ${f} is not an engine file`);
+    for (const st of sf.statements) {
+      if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at(f), name: st.name.text });
+    }
+  }
   // SELD-R1b (T047 RT-9): the hit test and tap dispatch.
   const hit = program.getSourceFile(at('rt-hit.ts')) as ts.SourceFile;
   for (const st of hit.statements) {
