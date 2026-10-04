@@ -170,7 +170,7 @@ describe('the font-shorthand group', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     const added = FONT_SHORTHAND.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     expect(ids.slice(-added.length)).toEqual(added);
-    expect(ids.length).toBe(514 + added.length);
+    expect(ids.length).toBe(545 + added.length);
   });
 });
 
