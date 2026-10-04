@@ -254,8 +254,8 @@
               }
             ],
             "digests": {
-              "p1": "b61ae433d74159ff471a6a9f8adb989ccc418127071c07bbf037ce5d200d0fc7",
-              "extended": "784801a88d697bd517eac29f610af4cd9f270c195a3e311ec79a74a6cc3e3ebb"
+              "p1": "25882be3946e1e46fc1b3a5fed69f879a10af40ef96fe535f6f2cfc9df2bff25",
+              "extended": "571cc7f3225d36062f840b6803341c861aa13f579a4e1de76d0dd02edf3f62d9"
             }
           },
           "device": null,
@@ -525,8 +525,8 @@
           "valid": 517,
           "chrome": 517,
           "engine": 517,
-          "chromeCompared": 13113,
-          "engineCompared": 13180
+          "chromeCompared": 13139,
+          "engineCompared": 13206
         },
         {
           "dpr": 3,
@@ -535,8 +535,8 @@
           "valid": 517,
           "chrome": 517,
           "engine": 517,
-          "chromeCompared": 13113,
-          "engineCompared": 13180
+          "chromeCompared": 13139,
+          "engineCompared": 13206
         }
       ],
       "dumpFaults": [
@@ -878,8 +878,8 @@
               }
             ],
             "digests": {
-              "p1": "b61ae433d74159ff471a6a9f8adb989ccc418127071c07bbf037ce5d200d0fc7",
-              "extended": "784801a88d697bd517eac29f610af4cd9f270c195a3e311ec79a74a6cc3e3ebb"
+              "p1": "25882be3946e1e46fc1b3a5fed69f879a10af40ef96fe535f6f2cfc9df2bff25",
+              "extended": "571cc7f3225d36062f840b6803341c861aa13f579a4e1de76d0dd02edf3f62d9"
             }
           },
           "device": null,
@@ -1185,8 +1185,8 @@
           "valid": 517,
           "chrome": 517,
           "engine": 517,
-          "chromeCompared": 13113,
-          "engineCompared": 13180
+          "chromeCompared": 13139,
+          "engineCompared": 13206
         },
         {
           "dpr": 3,
@@ -1195,8 +1195,8 @@
           "valid": 517,
           "chrome": 517,
           "engine": 517,
-          "chromeCompared": 13113,
-          "engineCompared": 13180
+          "chromeCompared": 13139,
+          "engineCompared": 13206
         },
         {
           "dpr": 2.625,
@@ -1205,8 +1205,8 @@
           "valid": 517,
           "chrome": 517,
           "engine": 517,
-          "chromeCompared": 13113,
-          "engineCompared": 13180
+          "chromeCompared": 13139,
+          "engineCompared": 13206
         }
       ],
       "dumpFaults": [
