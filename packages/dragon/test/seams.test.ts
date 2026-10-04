@@ -23,22 +23,26 @@ const PROPERTIES_DIR = new URL('../src/css/properties/', import.meta.url);
 const AGGREGATE = readFileSync(new URL('../src/css/properties.ts', import.meta.url), 'utf8');
 /** Every export of every properties/<family>.ts module. */
 const FAMILY_EXPORTS: Record<string, unknown> = Object.assign({}, ...(await Promise.all(readdirSync(PROPERTIES_DIR).filter((f) => f.endsWith('.ts')).map((f) => import(new URL(f, PROPERTIES_DIR).href)))) as Record<string, unknown>[]);
+/** What an aggregate block may spread: the family modules' exports and the aggregate's own. */
+const SPREADABLE: Record<string, unknown> = { ...FAMILY_EXPORTS, ...((await import('../src/css/properties.ts')) as Record<string, unknown>) };
 const BLOCKS = ['LONGHANDS = [', 'SHORTHANDS = [', 'INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([', 'PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {', 'CONTAINER_LONGHANDS: readonly Longhand[] = [', 'TEXT_ROLE_LONGHANDS: readonly Longhand[] = ['];
 const SUFFIX: Record<string, string> = { [BLOCKS[0] as string]: 'LONGHANDS', [BLOCKS[1] as string]: 'SHORTHANDS', [BLOCKS[2] as string]: 'INHERITED', [BLOCKS[3] as string]: 'ASPECTS', [BLOCKS[4] as string]: 'CONTAINER', [BLOCKS[5] as string]: 'TEXT_ROLE' };
-/** The families an aggregate block of properties.ts spreads, in order. */
-function spreadOrder(block: string): string[] {
+/** The lists an aggregate block of properties.ts spreads, in order. */
+function spreads(block: string): string[] {
   const start = AGGREGATE.indexOf(block);
   if (start < 0) throw new Error(`no ${block} block in properties.ts`);
   const body = AGGREGATE.slice(start, Math.min(...['\n]', '\n}'].map((e) => AGGREGATE.indexOf(e, start)).filter((i) => i > 0)));
-  return [...body.matchAll(/\.\.\.([A-Z_]+?)_(?:LONGHANDS|SHORTHANDS|INHERITED|ASPECTS|CONTAINER|TEXT_ROLE),/g)].map((m) => m[1] as string);
+  return [...body.matchAll(/\.\.\.([A-Z_]+),/g)].map((m) => m[1] as string);
 }
-/** A registry list against its families: the concatenation of each family's list in spread order, every family spread once. */
+/** The families an aggregate block spreads, in order. */
+const spreadOrder = (block: string): string[] => spreads(block).map((id) => id.replace(/_(?:LONGHANDS|SHORTHANDS|INHERITED|ASPECTS|CONTAINER|TEXT_ROLE)$/, ''));
+/** A registry list against its families: the concatenation of the lists it spreads, in order, every family module's list spread once. */
 function registryProblems(block: string, name: string, actual: readonly string[]): string[] {
   const suffix = SUFFIX[block] as string;
-  const order = spreadOrder(block);
+  const ids = spreads(block);
   const lists = Object.entries(FAMILY_EXPORTS).filter(([k, v]) => k.endsWith(`_${suffix}`) && Array.isArray(v) && !/_RESET_/.test(k));
-  const problems = lists.map(([k]) => k.slice(0, -suffix.length - 1)).filter((f) => order.filter((o) => o === f).length !== 1).map((f) => `${name}: family ${f} is spread ${order.filter((o) => o === f).length} times`);
-  const want = order.flatMap((f) => (FAMILY_EXPORTS[`${f}_${suffix}`] as readonly string[] | undefined) ?? [`<no ${f}_${suffix}>`]);
+  const problems = lists.map(([k]) => k).filter((k) => ids.filter((i) => i === k).length !== 1).map((k) => `${name}: ${k} is spread ${ids.filter((i) => i === k).length} times`);
+  const want = ids.flatMap((id) => (Array.isArray(SPREADABLE[id]) ? (SPREADABLE[id] as readonly string[]) : [`<${id} is not an exported list>`]));
   if (JSON.stringify([...actual]) !== JSON.stringify(want)) problems.push(`${name} is not its families in spread order: ${JSON.stringify(actual)} vs ${JSON.stringify(want)}`);
   return problems;
 }
