@@ -52,6 +52,8 @@ export const STEPS: readonly Step[] = [
   // profile:rows also writes the committed native lanes verdict (P6a, T075J) from lanes.json, which lanes-host writes later.
   { name: 'profile-rows', argv: pnpm('profile:rows'), outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'], readsLater: ['lanes-host'] },
   { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'] },
+  // OVFL: Chrome's scroll metrics of the overflow and viewport-prop cases, captured only in an overlay scrollbar environment (R2).
+  { name: 'scroll-capture', argv: pnpm('parity:scroll-capture'), outputs: ['packages/parity/expected-scroll/**'] },
   { name: 'vectors', argv: pnpm('layout:vectors'), outputs: ['packages/layout/vectors/*.json'] },
   { name: 'dpr-vectors', argv: pnpm('layout:dpr-vectors'), outputs: ['packages/layout/vectors/dpr-*/**'] },
   { name: 'break-vectors', argv: pnpm('layout:break-vectors'), outputs: ['packages/layout/break-vectors/**'] },

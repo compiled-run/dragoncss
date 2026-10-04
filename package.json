@@ -48,6 +48,7 @@
     "layout:break-vectors": "node --conditions=dragon-internal packages/parity/src/cli/break-vectors.ts",
     "parity:break-capture": "node --conditions=dragon-internal packages/parity/src/cli/break-capture.ts",
     "parity:pixel-capture": "node --conditions=dragon-internal packages/parity/src/cli/pixel-capture.ts",
+    "parity:scroll-capture": "node --conditions=dragon-internal packages/parity/src/cli/scroll-capture.ts",
     "parity:glyph-calibration": "node --conditions=dragon-internal packages/parity/src/cli/glyph-calibration.ts",
     "parity:glyph-b3": "node --conditions=dragon-internal packages/parity/src/cli/glyph-b3.ts",
     "native:devices": "node --conditions=dragon-internal packages/parity/src/cli/native-devices.ts",

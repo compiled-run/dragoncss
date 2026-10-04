@@ -198,14 +198,39 @@ export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDa
   const id = el.element.address;
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const fonts = { em: fontPx(get('font-size')), rem: rootFontSize };
-  // css-overflow-3 §3.3: overflow on html or body propagates to the viewport, which the engine does not model.
-  if ((el.element.tag === 'html' || el.element.tag === 'body') && (keywordOf(get('overflow-x')) !== 'visible' || keywordOf(get('overflow-y')) !== 'visible')) {
-    throw new LoweringError(id, 'overflow-x', `overflow on <${el.element.tag}> ${id} propagates to the viewport, which the layout engine does not model`);
-  }
   return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts);
 }
 
 const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
+
+/**
+ * css-overflow-3 §3.3 viewport propagation, resolved by the compiler so the engine never sees tags. source is the address of the
+ * element whose overflow the viewport takes: html when either axis is not visible, otherwise html's first body child when either
+ * of its axes is not visible, otherwise none (the viewport is auto). That element uses visible. direction is the viewport's: body's,
+ * or html's with no body (Chrome propagates it from body). Planted fault propagationFromBody takes body's whenever it has one.
+ */
+export type ViewportOverflow = { readonly source: string | null; readonly overflowX: Overflow; readonly overflowY: Overflow; readonly direction: 'ltr' | 'rtl' };
+
+const OVERFLOW_VALUES: readonly Overflow[] = ['visible', 'hidden', 'clip', 'auto', 'scroll'];
+
+export function viewportOverflow(root: ResolvedElement, faults: CompilerFaults): ViewportOverflow {
+  const axes = (el: ResolvedElement): [Overflow, Overflow] => [
+    keyword<Overflow>(el.element.address, (p) => (el.props.get(p) as ResolvedValue).value, 'overflow-x', OVERFLOW_VALUES),
+    keyword<Overflow>(el.element.address, (p) => (el.props.get(p) as ResolvedValue).value, 'overflow-y', OVERFLOW_VALUES),
+  ];
+  const visible = (a: [Overflow, Overflow]): boolean => a[0] === 'visible' && a[1] === 'visible';
+  const body = root.element.tag === 'html' ? root.children.find((c): c is ResolvedElement => c.kind === 'element' && c.element.tag === 'body') : undefined;
+  const dirOf = (el: ResolvedElement): 'ltr' | 'rtl' => keyword<'ltr' | 'rtl'>(el.element.address, (p) => (el.props.get(p) as ResolvedValue).value, 'direction', ['ltr', 'rtl']);
+  const direction = dirOf(body === undefined ? root : body);
+  const own = axes(root);
+  const bodyAxes = body === undefined ? null : axes(body);
+  const fromBody = body !== undefined && bodyAxes !== null && !visible(bodyAxes) && (visible(own) || faults.propagationFromBody);
+  // §3.3: visible on the viewport is auto and clip is hidden.
+  const used = (v: Overflow): Overflow => (v === 'visible' ? 'auto' : v === 'clip' ? 'hidden' : v);
+  if (fromBody && body !== undefined && bodyAxes !== null) return { source: body.element.address, overflowX: used(bodyAxes[0]), overflowY: used(bodyAxes[1]), direction };
+  if (!visible(own)) return { source: root.element.address, overflowX: used(own[0]), overflowY: used(own[1]), direction };
+  return { source: null, overflowX: 'auto', overflowY: 'auto', direction };
+}
 
 // css-align-3 §4.2: first baseline is baseline; last baseline has no layout mapping.
 function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allowed: readonly T[]): T {
@@ -225,8 +250,8 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     right: inset(id, get, 'right', l),
     bottom: inset(id, get, 'bottom', l),
     left: inset(id, get, 'left', l),
-    overflowX: keyword<Overflow>(id, get, 'overflow-x', ['visible', 'hidden']),
-    overflowY: keyword<Overflow>(id, get, 'overflow-y', ['visible', 'hidden']),
+    overflowX: keyword<Overflow>(id, get, 'overflow-x', OVERFLOW_VALUES),
+    overflowY: keyword<Overflow>(id, get, 'overflow-y', OVERFLOW_VALUES),
     direction: keyword(id, get, 'direction', ['ltr', 'rtl']),
     boxSizing,
     width: size(id, get, 'width', l),
@@ -337,7 +362,8 @@ export function assertTextCarriesContainer(container: LayoutStyle, containerId: 
 /** CSS2 §9.2.2: inline-level content: text, and an element whose box is an inline box (display: inline, <br> included). */
 const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || displayOf(c) === 'inline';
 
-type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals };
+/** propagated: the element whose overflow the viewport took (viewportOverflow), which uses visible. */
+type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly propagated: string | null; readonly images: ImageNaturals };
 
 /**
  * One piece of inline content (CSS2 §9.2.2): a text leaf, a <br> as a LineBreak, or an inline box with its own font and
@@ -383,7 +409,7 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
   if (isReplacedTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a replaced element`);
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
-  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images });
+  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), propagated: viewportOverflow(root, faults).source, images });
 }
 
 const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', 'scale-down'];
@@ -432,7 +458,9 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
 function lowerBox(el: ResolvedElement, l: Lowerer): LayoutBox {
   const id = el.element.address;
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
-  const style = lowerStyle(el, l.faults, l.ua, l.rootFontSize);
+  const own = lowerStyle(el, l.faults, l.ua, l.rootFontSize);
+  // css-overflow-3 §3.3: the element the viewport took its overflow from uses visible.
+  const style: LayoutStyle = id === l.propagated ? { ...own, overflowX: 'visible', overflowY: 'visible' } : own;
   const inline = kids.filter(isInlineLevel);
   const wrap = inline.length > 0 && (displayOf(el) === 'flex' || inline.length !== kids.length);
   const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
