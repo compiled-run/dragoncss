@@ -1,158 +1,557 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compilePattern, matchSegments, parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
-import { type Cache, lanesVerdict, MANUAL, MERGE_BY_HAND, parseCache, regen, STEPS, type Step, stepDigests, type Tree } from '../../../scripts/regen.ts';
+import { checkTrace, commandOf, type Context, type Entry, fileStore, type Io, lanesVerdict, MANUAL, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree } from '../../../scripts/regen.ts';
+import { importClosure, lockClosure, parseLock, workspaceOf } from '../../../scripts/regen-inputs.ts';
 import { repoPath } from '../src/paths.ts';
 
 const matches = (glob: string, path: string): boolean => matchSegments(compilePattern(glob), path.split('/'));
 
-// A fake repository: each step maps the tree to its new contents.
-function fake(steps: Record<string, (t: Map<string, string>) => void>, tree: Record<string, string>) {
-  const t = new Map(Object.entries(tree));
-  const ran: string[] = [];
-  const io = {
-    snapshot: (): Tree => new Map(t),
-    run: async (s: Step) => {
-      ran.push(s.name);
-      if (s.name === 'fails') return { code: 3, log: 'one\ntwo' };
-      if (s.name === 'judge') return { code: 1, log: t.get('src/a') === 'verdict' ? 'all written\n' : 'crashed\n' };
-      steps[s.name]!(t);
-      return { code: 0, log: '' };
+// A fake repository: files by path, git-like blobs, an in-memory cache store, and steps as functions over the files.
+type Files = { get: (p: string) => string | undefined; set: (p: string, v: string) => void; del: (p: string) => void; trace: (line: string) => void };
+type Impl = (f: Files) => void | { code: number; log: string } | Promise<void>;
+
+const blobOf = (c: string): string => createHash('sha1').update(c).digest('hex');
+
+function memStore(): Store & { entries: Map<string, Entry> } {
+  const entries = new Map<string, Entry>();
+  const order: string[] = [];
+  return {
+    entries,
+    get: (step, key) => entries.get(`${step}\0${key}`) ?? null,
+    put: (step, key, e) => {
+      entries.set(`${step}\0${key}`, e);
+      order.push(`${step}\0${key}`);
     },
-    saveCache: () => {},
-    log: () => {},
-    now: () => 0,
-    env: {},
+    latest: (step) => {
+      const k = order.filter((o) => o.startsWith(`${step}\0`)).at(-1);
+      return k === undefined ? null : entries.get(k)!;
+    },
   };
-  return { t, ran, io };
 }
 
-const step = (name: string, outputs: string[]): Step => ({ name, argv: [name], outputs });
+class World {
+  readonly t: Map<string, string>;
+  readonly blobs = new Map<string, string>();
+  readonly store = memStore();
+  ran: string[] = [];
+  live = 0;
+  maxLive = 0;
+  readonly impls: Record<string, Impl>;
+  constructor(files: Record<string, string>, impls: Record<string, Impl>) {
+    this.t = new Map(Object.entries(files));
+    this.impls = impls;
+  }
+  set(files: Record<string, string | null>): this {
+    for (const [p, v] of Object.entries(files)) v === null ? this.t.delete(p) : this.t.set(p, v);
+    return this;
+  }
+  io(): Io {
+    this.ran = [];
+    const snapshot = (): Tree => {
+      const tree = new Map<string, string>();
+      for (const [p, c] of [...this.t].sort()) {
+        const b = blobOf(c);
+        this.blobs.set(b, c);
+        tree.set(p, b);
+      }
+      return tree;
+    };
+    return {
+      snapshot,
+      context: (tree) => ({ tree, read: (p) => this.blobs.get(tree.get(p)!)!, scripts: { 'gen:x': 'node tools/gen.ts' }, env: { E: this.t.get('env/E') }, machine: 'test' }),
+      run: async (s) => {
+        this.ran.push(s.name);
+        this.maxLive = Math.max(this.maxLive, ++this.live);
+        const written = new Set<string>();
+        const trace: string[] = [`A\t/r\t["node","/r/${s.argv[1]}"]`];
+        const files: Files = {
+          get: (p) => {
+            trace.push(`R\t/r/${p}`);
+            return this.t.get(p);
+          },
+          set: (p, v) => {
+            written.add(p);
+            this.t.set(p, v);
+          },
+          del: (p) => {
+            written.add(p);
+            this.t.delete(p);
+          },
+          trace: (line) => trace.push(...line.split('\n')),
+        };
+        await new Promise((r) => setTimeout(r, 1));
+        const out = await this.impls[s.name]!(files);
+        this.live--;
+        return { code: out?.code ?? 0, log: out?.log ?? '', trace, touched: (paths) => new Set(paths.filter((p) => written.has(p))) };
+      },
+      restore: (files) => {
+        if (Object.values(files).some((b) => b !== null && !this.blobs.has(b))) return false;
+        for (const [p, b] of Object.entries(files)) b === null ? this.t.delete(p) : this.t.set(p, this.blobs.get(b)!);
+        return true;
+      },
+      store: this.store,
+      roots: ['/r'],
+      log: () => {},
+      now: () => 0,
+    };
+  }
+}
+
+const node = (name: string, file: string, outputs: string[], extra: Partial<Step> = {}): Step => ({ name, argv: ['node', file], outputs, ...extra });
 const opts = { force: false, check: false, from: null };
 
-describe('pnpm regen chain', () => {
-  // gen writes out/a from src/a; rows reads out/a and writes out/b; a cache from a finished run skips both.
-  const chain = [step('gen', ['out/a']), step('rows', ['out/b'])];
-  const impl = { gen: (t: Map<string, string>) => void t.set('out/a', `A(${t.get('src/a')})`), rows: (t: Map<string, string>) => void t.set('out/b', `B(${t.get('out/a')})`) };
+// gen: tools/gen.ts (imports tools/lib.ts) reads data/a and writes out/a. rows: tools/rows.ts (imports tools/lib.ts) reads
+// out/a and writes out/b. other: tools/other.ts reads data/c and writes out/c; it shares nothing with the other two.
+const SOURCES = {
+  'tools/gen.ts': "import { f } from './lib.ts';\nimport type { T } from './types.ts';\n",
+  'tools/rows.ts': "import { f } from './lib.ts';\n",
+  'tools/lib.ts': 'export const f = 1;\n',
+  'tools/types.ts': 'export type T = 1;\n',
+  'tools/other.ts': "import { g } from './other-lib.ts';\n",
+  'tools/other-lib.ts': 'export const g = 1;\n',
+  'data/a/x': '1',
+  'data/c': 'c',
+  'docs/notes.md': 'notes',
+  'data/unread': 'u',
+};
+const CHAIN = [node('gen', 'tools/gen.ts', ['out/a'], { reads: ['data/a/**'] }), node('rows', 'tools/rows.ts', ['out/b'], { reads: ['out/a'] }), node('other', 'tools/other.ts', ['out/c'], { reads: ['data/c'] })];
+const IMPL: Record<string, Impl> = {
+  gen: (f) => f.set('out/a', `A(${f.get('data/a/x')})`),
+  rows: (f) => f.set('out/b', `B(${f.get('out/a')})`),
+  other: (f) => f.set('out/c', `C(${f.get('data/c')})`),
+};
 
+/** A world after a first full run, with every step cached. */
+async function warm(): Promise<World> {
+  const w = new World(SOURCES, IMPL);
+  const r = await regen(CHAIN, opts, w.io());
+  expect(r, r.error ?? '').toMatchObject({ ok: true, error: null });
+  return w;
+}
+
+describe('pnpm regen chain', () => {
   it('runs to a fixed point, then a second run has nothing to do', async () => {
-    const f = fake(impl, { 'src/a': '1' });
-    const cache: Cache = {};
-    const r1 = await regen(chain, cache, opts, f.io);
-    expect(r1).toMatchObject({ ok: true, changed: ['out/a', 'out/b'], error: null });
-    expect(f.t.get('out/b')).toBe('B(A(1))');
-    const g = fake(impl, Object.fromEntries(f.t));
-    const r2 = await regen(chain, cache, opts, g.io);
+    const w = new World(SOURCES, IMPL);
+    const r1 = await regen(CHAIN, opts, w.io());
+    expect(r1).toMatchObject({ ok: true, changed: ['out/a', 'out/b', 'out/c'], error: null, passes: 2 });
+    expect(w.t.get('out/b')).toBe('B(A(1))');
+    const r2 = await regen(CHAIN, opts, w.io());
     expect(r2).toMatchObject({ ok: true, changed: [], ran: 0, passes: 1 });
-    expect(g.ran).toEqual([]);
+    expect(w.ran).toEqual([]);
   });
 
-  it('reruns only the steps whose inputs changed, and names a planted stale output', async () => {
-    const f = fake(impl, { 'src/a': '1' });
-    const cache: Cache = {};
-    await regen(chain, cache, opts, f.io);
-    const g = fake(impl, { ...Object.fromEntries(f.t), 'out/b': 'stale' });
-    const r = await regen(chain, cache, opts, g.io);
-    expect(g.ran).toEqual(['rows']);
-    expect(r).toMatchObject({ ok: true, changed: ['out/b'] });
-    const h = fake(impl, { ...Object.fromEntries(f.t), 'src/a': '2' });
-    expect((await regen(chain, cache, opts, h.io)).changed).toEqual(['out/a', 'out/b']);
-    expect(h.ran).toEqual(['gen', 'rows']);
+  it('reruns exactly the steps that read a changed file, and nothing for a file no step reads', async () => {
+    // Each file of the repository, edited on its own, against the steps that must rerun.
+    const cases: [string, string, string[]][] = [
+      ['tools/gen.ts', '// edited\n', ['gen']],
+      ['tools/lib.ts', '// edited\n', ['gen', 'rows']],
+      ['tools/rows.ts', '// edited\n', ['rows']],
+      ['tools/other.ts', '// edited\n', ['other']],
+      ['tools/other-lib.ts', '// edited\n', ['other']],
+      // A changed output reruns its readers; an unchanged one stops there.
+      ['data/a/x', '', ['gen', 'rows']],
+      ['data/a/new', '', ['gen']],
+      ['data/c', '', ['other']],
+      // Type-only imports load nothing; docs and unread data are read by no step.
+      ['tools/types.ts', '// edited\n', []],
+      ['docs/notes.md', '!', []],
+      ['data/unread', '!', []],
+      ['README.md', 'new file', []],
+    ];
+    for (const [path, suffix, expected] of cases) {
+      const w = await warm();
+      w.set({ [path]: `${w.t.get(path) ?? ''}${suffix || '2'}` });
+      const r = await regen(CHAIN, opts, w.io());
+      expect(r.ok, `${path}: ${r.error}`).toBe(true);
+      expect([...w.ran].sort(), path).toEqual(expected);
+    }
+  });
+
+  it('restores a planted stale output from the cache, and --check names it', async () => {
+    const w = await warm();
+    w.set({ 'out/b': 'stale' });
+    const r = await regen(CHAIN, { ...opts, check: true }, w.io());
+    expect(r).toMatchObject({ ok: true, changed: ['out/b'], ran: 0 });
+    expect(r.records.filter((x) => x.action !== 'skipped').map((x) => `${x.step} ${x.action}`)).toEqual(['rows restored']);
+    expect(w.t.get('out/b')).toBe('B(A(1))');
+    // A deleted output and an extra file under a step's outputs are restored away too.
+    w.set({ 'out/a': null });
+    expect((await regen(CHAIN, opts, w.io())).changed).toEqual(['out/a']);
+    expect(w.ran).toEqual([]);
+  });
+
+  it('runs a step instead of restoring when its recorded run read its outputs, left one untouched, or lost a blob', async () => {
+    // merge reads its own output and adds a line: its result depends on what the tree had, so only a run can make it.
+    const merge = node('merge', 'tools/gen.ts', ['out/m', 'out/keep']);
+    const impls: Record<string, Impl> = { merge: (f) => f.set('out/m', `${f.get('out/m') ?? ''}+`) };
+    const w = new World({ ...SOURCES, 'out/m': '', 'out/keep': 'k' }, impls);
+    expect((await regen([merge], opts, w.io())).ok).toBe(true);
+    const [entry] = [...w.store.entries.values()];
+    expect(entry!.restorable).toBe(false);
+    w.set({ 'out/m': 'x' });
+    await regen([merge], opts, w.io());
+    expect(w.ran).toEqual(['merge']);
+    // A pure writer whose blob is gone from the object database runs.
+    const v = await warm();
+    v.set({ 'out/b': 'stale' });
+    const b = v.store.get('rows', [...v.store.entries.keys()].find((k) => k.startsWith('rows\0'))!.split('\0')[1]!)!.outputs['out/b']!;
+    v.blobs.delete(b);
+    await regen(CHAIN, opts, v.io());
+    expect(v.ran).toEqual(['rows']);
+  });
+
+  it('keeps one entry per input state, so switching branches back and forth reruns nothing', async () => {
+    const w = await warm();
+    const a = new Map(w.t);
+    w.set({ 'data/a/x': '2' });
+    await regen(CHAIN, opts, w.io());
+    expect([...w.ran].sort()).toEqual(['gen', 'rows']);
+    const b = new Map(w.t);
+    for (const tree of [a, b, a]) {
+      w.t.clear();
+      for (const [k, v] of tree) w.t.set(k, v);
+      expect(await regen(CHAIN, opts, w.io())).toMatchObject({ ok: true, ran: 0, changed: [] });
+    }
+    // A merge that keeps one side's outputs (out/* from b) with the other side's inputs (data/a/x from a) restores a's outputs.
+    w.set({ 'out/a': b.get('out/a')!, 'out/b': b.get('out/b')!, 'data/a/x': a.get('data/a/x')! });
+    expect(await regen(CHAIN, opts, w.io())).toMatchObject({ ok: true, ran: 0, changed: ['out/a', 'out/b'] });
+    expect(w.t.get('out/b')).toBe(a.get('out/b'));
+  });
+
+  it('--explain names what each step would do and why, and changes nothing', async () => {
+    const w = await warm();
+    w.set({ 'tools/lib.ts': '// edited\n', 'out/c': 'stale' });
+    const before = new Map(w.t);
+    const r = await regen(CHAIN, { ...opts, explain: true }, w.io());
+    expect(r).toMatchObject({ ok: true, ran: 0, changed: [] });
+    expect(r.records.map((x) => `${x.step}: ${x.action} (${x.why})`)).toEqual(['gen: would run (inputs changed: tools/lib.ts)', 'rows: would run (inputs changed: tools/lib.ts)', 'other: would restore (outputs differ from the recorded run: out/c)']);
+    expect(w.ran).toEqual([]);
+    expect(w.t).toEqual(before);
+  });
+
+  it('keys a step on its command, script text, environment and machine', async () => {
+    const tree = new Map([['tools/gen.ts', 'x'], ['data/a/x', '1']].map(([p, c]) => [p!, blobOf(c!)]));
+    const ctx = (over: Partial<Context> = {}): Context => ({ tree, read: () => '', scripts: { 'gen:x': 'node tools/gen.ts' }, env: { E: '1' }, machine: 'm', ...over });
+    const s = node('gen', 'tools/gen.ts', ['out/a'], { reads: ['data/a/**'], env: ['E'] });
+    const key = (st: Step, c: Context): string => stepInputs(st, c, shared(c)).key;
+    const base = key(s, ctx());
+    expect(key(s, ctx())).toBe(base);
+    expect(key(s, ctx({ env: { E: '2' } }))).not.toBe(base);
+    expect(key(s, ctx({ env: { E: '1', OTHER: '1' } }))).toBe(base);
+    expect(key(s, ctx({ machine: 'n' }))).not.toBe(base);
+    expect(key({ ...s, argv: ['node', 'tools/gen.ts', '--x'] }, ctx())).not.toBe(base);
+    const viaScript = { ...s, argv: ['pnpm', '-s', 'run', 'gen:x'] };
+    expect(key(viaScript, ctx({ scripts: { 'gen:x': 'node tools/gen.ts --other' } }))).not.toBe(key(viaScript, ctx()));
+    // Own outputs are not inputs: their content is judged against the recorded run instead.
+    expect(key(s, ctx({ tree: new Map([...tree, ['out/a', blobOf('o')]]) }))).toBe(base);
   });
 
   it('repeats the chain while a later step feeds an earlier one, and fails loudly at the pass cap', async () => {
     // rows reads out/c, which the last step writes from out/b: two passes change files, the third changes nothing.
-    const loop = [step('gen', ['out/a']), { ...step('rows', ['out/b']), readsLater: ['lanes'] }, step('lanes', ['out/c'])];
-    const loopImpl = { ...impl, rows: (t: Map<string, string>) => void t.set('out/b', `B(${t.get('out/a')},${t.get('out/c') ?? '-'})`), lanes: (t: Map<string, string>) => void t.set('out/c', t.get('out/b')!.length > 12 ? 'C' : 'c') };
-    const f = fake(loopImpl, { 'src/a': '1' });
-    expect(await regen(loop, {}, opts, f.io)).toMatchObject({ ok: true, passes: 3 });
-    const g = fake(loopImpl, { 'src/a': '1' });
-    const r = await regen(loop, {}, opts, g.io, 2);
+    const loop = [node('gen', 'tools/gen.ts', ['out/a'], { reads: ['data/a/**'] }), node('rows', 'tools/rows.ts', ['out/b'], { reads: ['out/a', 'out/c'] }), node('lanes', 'tools/other.ts', ['out/c'], { reads: ['out/b'] })];
+    const loopImpl: Record<string, Impl> = { ...IMPL, rows: (f) => f.set('out/b', `B(${f.get('out/a')},${f.get('out/c') ?? '-'})`), lanes: (f) => f.set('out/c', f.get('out/b')!.length > 12 ? 'C' : 'c') };
+    const w = new World(SOURCES, loopImpl);
+    expect(await regen(loop, opts, w.io())).toMatchObject({ ok: true, passes: 3 });
+    expect(w.ran).toEqual(['gen', 'rows', 'lanes', 'rows', 'lanes']);
+    const v = new World(SOURCES, loopImpl);
+    const r = await regen(loop, opts, v.io(), 2);
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/no fixed point after 2 passes/);
     // A feedback loop that never settles hits the cap too.
-    const grow = { a: (t: Map<string, string>) => void t.set('out/a', `A${t.get('out/b') ?? ''}`), b: (t: Map<string, string>) => void t.set('out/b', t.get('out/a')!) };
-    const h = fake(grow, {});
-    expect((await regen([{ ...step('a', ['out/a']), readsLater: ['b'] }, step('b', ['out/b'])], {}, opts, h.io)).error).toBe('no fixed point after 5 passes; the last pass changed out/a, out/b');
+    const grow = { a: (f: Files) => f.set('out/a', `A${f.get('out/b') ?? ''}`), b: (f: Files) => f.set('out/b', f.get('out/a')!) };
+    const g = new World(SOURCES, grow);
+    expect((await regen([node('a', 'tools/gen.ts', ['out/a'], { reads: ['out/b'] }), node('b', 'tools/rows.ts', ['out/b'], { reads: ['out/a'] })], opts, g.io())).error).toBe('no fixed point after 5 passes; the last pass changed out/a, out/b');
   });
 
   it('does not take a pass whose steps changed a file and then changed it back for a fixed point', async () => {
-    const flip = { set: (t: Map<string, string>) => void t.set('out/x', 'set'), reset: (t: Map<string, string>) => void t.set('out/x', 'base') };
-    const f = fake(flip, { 'out/x': 'base' });
-    expect((await regen([step('set', ['out/x']), step('reset', ['out/x'])], {}, opts, f.io)).error).toBe('no fixed point after 5 passes; the last pass changed out/x');
+    const flip = { set: (f: Files) => f.set('out/x', 'set'), reset: (f: Files) => f.set('out/x', 'base') };
+    const w = new World({ ...SOURCES, 'out/x': 'base' }, flip);
+    expect((await regen([node('set', 'tools/gen.ts', ['out/x']), node('reset', 'tools/rows.ts', ['out/x'])], opts, w.io())).error).toBe('no fixed point after 5 passes; the last pass changed out/x');
   });
 
-  it('never reruns a step for a change under NOT_READ', () => {
-    const s = step('s', ['out/a']);
-    const d = (p: string) => stepDigests([s], s, new Map([['src/a', '1'], [p, '2']]), {}).inputs;
-    const none = stepDigests([s], s, new Map([['src/a', '1']]), {}).inputs;
-    for (const p of ['docs/goals/x/state.yaml', 'AGENTS.md', 'packages/parity/test/regen.test.ts', 'scripts/regen.ts']) expect(d(p), p).toBe(none);
-    expect(d('packages/parity/src/x.ts')).not.toBe(none);
+  it('runs independent steps in parallel and dependent ones in order, within --jobs', async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    const order: string[] = [];
+    const impls: Record<string, Impl> = {
+      gen: async (f) => {
+        order.push('gen start');
+        await gate;
+        f.set('out/a', `A(${f.get('data/a/x')})`);
+        order.push('gen end');
+      },
+      rows: (f) => void (order.push('rows'), f.set('out/b', `B(${f.get('out/a')})`)),
+      other: (f) => void (order.push('other'), release(), f.set('out/c', 'C')),
+    };
+    const w = new World(SOURCES, impls);
+    expect((await regen(CHAIN, { ...opts, jobs: 2 }, w.io())).ok).toBe(true);
+    // other ran while gen was waiting; rows waited for gen, whose output it reads.
+    expect(order).toEqual(['gen start', 'other', 'gen end', 'rows']);
+    expect(w.maxLive).toBe(2);
+    const v = new World(SOURCES, IMPL);
+    await regen(CHAIN, { ...opts, jobs: 1 }, v.io());
+    expect(v.maxLive).toBe(1);
+    expect(v.ran).toEqual(['gen', 'rows', 'other']);
   });
 
-  it('fails a step that writes outside its declared outputs, and one that exits non-zero, keeping no cache entry for it', async () => {
-    const f = fake({ gen: (t) => void t.set('src/a', 'edited') }, { 'src/a': '1' });
-    const r = await regen([step('gen', ['out/a'])], {}, opts, f.io);
-    expect(r).toMatchObject({ ok: false, error: 'gen changed files outside its declared outputs: src/a' });
-    const cache: Cache = { fails: { inputs: 'x', outputs: 'y' } };
-    const g = fake({}, {});
-    const r2 = await regen([step('fails', ['out/a'])], cache, opts, g.io);
-    expect(r2).toMatchObject({ ok: false, error: 'fails exited 3; the last lines of its output:\none\ntwo' });
-    expect(cache.fails).toBeUndefined();
+  it('fails a step that writes outside its declared outputs, and one that exits non-zero, recording no entry for it', async () => {
+    const w = new World(SOURCES, { gen: (f) => f.set('data/c', 'edited') });
+    const r = await regen([CHAIN[0]!], opts, w.io());
+    expect(r).toMatchObject({ ok: false, error: 'gen changed files outside its declared outputs: data/c' });
+    const v = new World(SOURCES, { gen: () => ({ code: 3, log: 'one\ntwo' }) });
+    expect(await regen([CHAIN[0]!], opts, v.io())).toMatchObject({ ok: false, error: 'gen exited 3; the last lines of its output:\none\ntwo' });
+    expect(v.store.entries.size).toBe(0);
+  });
+
+  it('lets the steps running beside a failed one finish and record, without blaming them for its partial outputs', async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    const w = new World(SOURCES, {
+      gen: (f) => (f.set('out/a', 'partial'), { code: 2, log: 'boom' }),
+      other: async (f) => {
+        await gate;
+        f.set('out/c', 'C');
+      },
+    });
+    const run = regen([CHAIN[0]!, CHAIN[2]!], { ...opts, jobs: 2 }, w.io());
+    setTimeout(release, 20);
+    const r = await run;
+    expect(r).toMatchObject({ ok: false, error: 'gen exited 2; the last lines of its output:\nboom', changed: ['out/a', 'out/c'] });
+    expect([...w.store.entries.keys()].map((k) => k.split('\0')[0])).toEqual(['other']);
   });
 
   it('accepts a non-zero exit only when the step judges it a recorded verdict', async () => {
-    const judge: Step = { ...step('judge', ['out/a']), verdict: (code, log) => code === 1 && log === 'all written\n' };
-    expect(await regen([judge], {}, opts, fake({}, { 'src/a': 'verdict' }).io)).toMatchObject({ ok: true, error: null });
-    expect((await regen([judge], {}, opts, fake({}, { 'src/a': 'other' }).io)).error).toBe('judge exited 1; the last lines of its output:\ncrashed\n');
+    const judge: Step = { ...CHAIN[0]!, verdict: (code, log) => code === 1 && log === 'all written\n' };
+    const impl = (log: string): Impl => (f) => (f.set('out/a', 'A'), { code: 1, log });
+    expect(await regen([judge], opts, new World(SOURCES, { gen: impl('all written\n') }).io())).toMatchObject({ ok: true, error: null });
+    expect((await regen([judge], opts, new World(SOURCES, { gen: impl('crashed\n') }).io())).error).toBe('gen exited 1; the last lines of its output:\ncrashed\n');
   });
 
-  it('reruns a step for a later step\'s outputs only when it names that step in readsLater, and refuses a bad name', async () => {
-    // first reads nothing generated; last writes out/z from src/a on every source change.
-    const make = (readsLater: string[]): Step[] => [{ ...step('first', ['out/a']), readsLater }, step('last', ['out/z'])];
-    const impl2 = { first: (t: Map<string, string>) => void t.set('out/a', 'A'), last: (t: Map<string, string>) => void t.set('out/z', `Z${t.get('src/a')}`) };
-    const f = fake(impl2, { 'src/a': '1' });
-    await regen(make([]), {}, opts, f.io);
-    expect(f.ran).toEqual(['first', 'last']);
-    const g = fake(impl2, { 'src/a': '1' });
-    await regen(make(['last']), {}, opts, g.io);
-    expect(g.ran).toEqual(['first', 'last', 'first']);
-    expect((await regen(make(['nope']), {}, opts, g.io)).error).toBe('step first is named twice or reads no later step nope');
-    expect((await regen([step('a', ['x']), step('a', ['y'])], {}, opts, g.io)).error).toMatch(/step a is named twice/);
+  it('fails a run that read a file or package its key does not cover, naming it', async () => {
+    const reads = (extra: string): Impl => (f) => (f.trace(extra), f.set('out/a', 'A'));
+    const fails = async (line: string): Promise<string | null> => (await regen([CHAIN[0]!], opts, new World(SOURCES, { gen: reads(line) }).io())).error;
+    expect(await fails('R\t/r/data/unread')).toBe('gen read files its cache key does not cover; add them to its reads (or packages) in scripts/regen.ts:\n  read data/unread');
+    expect(await fails('D\t/r/data')).toMatch(/listed data\/ \(2 unkeyed files, such as data\/c, data\/unread\)/);
+    expect(await fails('P\t/r/docs/notes.md')).toMatch(/probed docs\/notes.md/);
+    expect(await fails('X\t/r\t["swiftc","tools/other.ts"]')).toMatch(/passed to swiftc tools\/other.ts/);
+    expect(await fails('X\t/r/tools\t["gradle","build"]')).toMatch(/ran gradle in tools\//);
+    expect(await fails('R\t/r/node_modules/.pnpm/left-pad@1.0.0/node_modules/left-pad/index.js')).toMatch(/read installed package left-pad/);
+    // Keyed files, the step's own data directory, files outside the repository and pnpm reading the manifests pass.
+    for (const ok of ['R\t/r/data/a/x', 'D\t/r/data/a', 'R\t/r/tools/lib.ts', 'R\t/etc/hosts', 'R\t/r/out/a', 'X\t/r\t["node","/r/tools/gen.ts"]\nA\t/r\t["node","/r/tools/gen.ts"]']) expect(await fails(ok), ok).toBeNull();
+    // A Node child that never loaded the tracer, and a line the tracer cannot have written, fail closed.
+    expect(await fails('X\t/r\t["node","/r/tools/gen.ts"]')).toMatch(/1 traced processes for 1 Node children: a process ran without scripts\/regen-trace.ts/);
+    expect(await fails('Q\t/r/data/c')).toMatch(/unreadable trace line "Q\\t\/r\/data\/c"/);
+    expect(await fails('X\t/r\tnot json')).toMatch(/unreadable trace line/);
+    for (const bin of ['/x/node_modules/pnpm/bin/pnpm.cjs', '/x/.local/state/fnm_multishells/1_2/bin/pnpm', '/x/lib/node_modules/pnpm/dist/worker.js']) {
+      const pnpmRead = (f: Files): void => (f.trace(`A\t/r\t["/x/bin/node","${bin}","-s","run","gen"]`), f.trace('R\t/r/package.json'), f.trace('P\t/r/tools/package.json'), f.trace('R\t/r/node_modules/.pnpm-workspace-state-v1.json'), f.set('out/a', 'A'));
+      expect((await regen([CHAIN[0]!], opts, new World({ ...SOURCES, 'package.json': '{}', 'tools/package.json': '{}' }, { gen: pnpmRead }).io())).error, bin).toBeNull();
+    }
+    // The same read by the step's own process is an input it must declare.
+    const ownRead = (f: Files): void => (f.trace('R\t/r/package.json'), f.set('out/a', 'A'));
+    expect((await regen([CHAIN[0]!], opts, new World({ ...SOURCES, 'package.json': '{}' }, { gen: ownRead }).io())).error).toMatch(/read package.json/);
   });
 
-  it('--force reruns cached steps, --from starts at a step and still ends on a full pass, an unknown step is refused', async () => {
-    const f = fake(impl, { 'src/a': '1' });
-    const cache: Cache = {};
-    await regen(chain, cache, opts, f.io);
-    const g = fake(impl, Object.fromEntries(f.t));
-    expect(await regen(chain, cache, { ...opts, force: true }, g.io)).toMatchObject({ ok: true, ran: 2, passes: 1 });
-    const h = fake(impl, Object.fromEntries(f.t));
-    expect(await regen(chain, {}, { ...opts, from: 'rows' }, h.io)).toMatchObject({ ok: true, passes: 2 });
-    expect(h.ran).toEqual(['rows', 'gen']);
-    expect((await regen(chain, {}, { ...opts, from: 'nope' }, h.io)).error).toBe('unknown step nope; the steps are gen, rows');
+  it('--force reruns every step once, ignoring recorded entries; --from starts at a step and still ends on a full pass', async () => {
+    const w = await warm();
+    expect(await regen(CHAIN, { ...opts, force: true }, w.io())).toMatchObject({ ok: true, ran: 3, passes: 1 });
+    const v = new World(SOURCES, IMPL);
+    expect(await regen(CHAIN, { ...opts, from: 'rows' }, v.io())).toMatchObject({ ok: true });
+    expect(v.ran.slice(0, 2)).toEqual(['rows', 'other']);
+    expect((await regen(CHAIN, { ...opts, from: 'nope' }, v.io())).error).toBe('unknown step nope; the steps are gen, rows, other');
+    expect((await regen([CHAIN[0]!, CHAIN[0]!], opts, v.io())).error).toBe('step gen is named twice');
   });
 
-  it('keys a step on its command and environment, not on its own outputs or ignored paths', () => {
-    const s: Step = { name: 's', argv: ['a'], outputs: ['out/**'], env: ['E'] };
-    const later = step('later', ['other/x']);
-    const d = (st: Step, tree: [string, string][], env: Record<string, string>) => stepDigests([st, later], st, new Map(tree), env);
-    const base = d(s, [['src/a', '1'], ['out/o', '1'], ['other/x', '1']], { E: '1' });
-    expect(d(s, [['src/a', '1'], ['out/o', '2'], ['other/x', '2']], { E: '1' }).inputs).toBe(base.inputs);
-    expect(d(s, [['src/a', '1'], ['out/o', '2'], ['other/x', '1']], { E: '1' }).outputs).not.toBe(base.outputs);
-    expect(d(s, [['src/a', '2'], ['out/o', '1'], ['other/x', '1']], { E: '1' }).inputs).not.toBe(base.inputs);
-    expect(d(s, [['src/a', '1'], ['out/o', '1'], ['other/x', '1']], { E: '2' }).inputs).not.toBe(base.inputs);
-    expect(d({ ...s, argv: ['b'] }, [['src/a', '1'], ['out/o', '1'], ['other/x', '1']], { E: '1' }).inputs).not.toBe(base.inputs);
-    expect(d({ ...s, readsLater: ['later'] }, [['src/a', '1'], ['out/o', '1'], ['other/x', '2']], { E: '1' }).inputs).not.toBe(d({ ...s, readsLater: ['later'] }, [['src/a', '1'], ['out/o', '1'], ['other/x', '1']], { E: '1' }).inputs);
+  it('fails a step that edits one of its own inputs, recording nothing', async () => {
+    const w: World = new World(SOURCES, {});
+    w.impls.gen = (f: Files): void => {
+      f.set('out/a', 'A');
+      w.set({ 'tools/lib.ts': 'export const f = 2;\n' });
+    };
+    const r = await regen([CHAIN[0]!], opts, w.io());
+    expect(r).toMatchObject({ ok: false, error: 'gen changed files outside its declared outputs: tools/lib.ts' });
+    expect(w.store.entries.size).toBe(0);
+  });
+});
+
+describe('step inputs', () => {
+  const tree = (files: Record<string, string>): { tree: Tree; ctx: Context } => {
+    const blobs = new Map<string, string>();
+    const t = new Map(Object.entries(files).map(([p, c]) => {
+      blobs.set(blobOf(c), c);
+      return [p, blobOf(c)];
+    }));
+    return { tree: t, ctx: { tree: t, read: (p) => blobs.get(t.get(p)!)!, scripts: {}, env: {}, machine: 'm' } };
+  };
+  const LOCK = `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    devDependencies:
+      vitest:
+        specifier: ^4
+        version: 4.1.11
+
+  packages/a:
+    dependencies:
+      css-tree:
+        specifier: 3.2.1
+        version: 3.2.1
+      b:
+        specifier: workspace:*
+        version: link:../b
+
+packages:
+
+  css-tree@3.2.1:
+    resolution: {integrity: sha512-x}
+
+  mdn-data@2.12.2:
+    resolution: {integrity: sha512-y}
+
+  vitest@4.1.11:
+    resolution: {integrity: sha512-z}
+
+snapshots:
+
+  css-tree@3.2.1:
+    dependencies:
+      mdn-data: 2.12.2
+
+  mdn-data@2.12.2: {}
+
+  vitest@4.1.11: {}
+`;
+  const files = {
+    'pnpm-lock.yaml': LOCK,
+    'packages/a/package.json': '{"name":"a"}',
+    'packages/b/package.json': '{"name":"b","exports":{".":{"dragon-internal":"./src/internal.ts","default":"./src/index.ts"}}}',
+    'packages/b/src/index.ts': "export * from './x.ts';",
+    'packages/b/src/internal.ts': "export * from './index.ts';\nexport { y } from './y.ts';",
+    'packages/b/src/x.ts': 'export const x = 1;',
+    'packages/b/src/y.ts': 'export const y = 1;',
+    'packages/b/src/unused.ts': 'export const u = 1;',
+    'packages/a/src/cli.ts': "import { x } from 'b';\nimport * as csstree from 'css-tree';\nimport type { Q } from './types.ts';\nconst d = new URL('../fixtures/', import.meta.url);\nconst w = await import('./lazy.ts');\nconst s = ['import ', ', '].join('');\n",
+    'packages/a/src/types.ts': 'export type Q = 1;',
+    'packages/a/src/lazy.ts': "import { readFileSync } from 'node:fs';",
+    'packages/a/fixtures/one.html': '<p>',
+    'packages/a/fixtures/sub/two.html': '<p>',
+  };
+
+  it('follows relative, workspace (every export condition), dynamic and new URL imports, but not type-only ones', () => {
+    const { tree: t, ctx } = tree(files);
+    const c = importClosure(['packages/a/src/cli.ts'], t, ctx.read, workspaceOf(t, ctx.read));
+    expect([...c.files].sort()).toEqual(['packages/a/fixtures/one.html', 'packages/a/fixtures/sub/two.html', 'packages/a/src/cli.ts', 'packages/a/src/lazy.ts', 'packages/b/package.json', 'packages/b/src/index.ts', 'packages/b/src/internal.ts', 'packages/b/src/x.ts', 'packages/b/src/y.ts']);
+    expect([...c.externals]).toEqual(['packages/a\0css-tree']);
+    expect(c.unresolved).toEqual([]);
+    expect(importClosure(['packages/a/src/missing.ts'], t, ctx.read, workspaceOf(t, ctx.read)).unresolved).toEqual(['entry packages/a/src/missing.ts']);
+    const broken = tree({ ...files, 'packages/a/src/lazy.ts': "import './gone.ts';" });
+    expect(importClosure(['packages/a/src/cli.ts'], broken.tree, broken.ctx.read, workspaceOf(broken.tree, broken.ctx.read)).unresolved).toEqual(['packages/a/src/lazy.ts: ./gone.ts']);
   });
 
-  it('reads a malformed cache as empty and says why', () => {
-    expect(parseCache(null)).toEqual({ cache: {}, problem: null });
-    expect(parseCache('{')).toEqual({ cache: {}, problem: 'not JSON' });
-    expect(parseCache('{"version":2,"steps":{}}')).toEqual({ cache: {}, problem: 'not a version 1 cache' });
-    expect(parseCache('{"version":1,"steps":{"a":{"inputs":"x"}}}')).toEqual({ cache: {}, problem: 'step a has no digests' });
-    expect(parseCache('{"version":1,"steps":{"a":{"inputs":"x","outputs":"y"}}}')).toEqual({ cache: { a: { inputs: 'x', outputs: 'y' } }, problem: null });
+  it('keys on the lockfile entries of the imported packages and their dependencies only', () => {
+    const lock = parseLock(LOCK);
+    const c = lockClosure(lock, ['packages/a\0css-tree']);
+    expect([...c.names].sort()).toEqual(['css-tree', 'mdn-data']);
+    const key = (text: string): string => lockClosure(parseLock(text), ['packages/a\0css-tree']).key.join('\n');
+    expect(key(LOCK.replace('sha512-z', 'sha512-Z'))).toBe(key(LOCK));
+    expect(key(LOCK.replace('sha512-y', 'sha512-Y'))).not.toBe(key(LOCK));
+    expect(() => lockClosure(lock, ['packages/a\0left-pad'])).toThrow('packages/a imports left-pad, which pnpm-lock.yaml does not list for it');
+    expect(() => parseLock("lockfileVersion: '6.0'\n")).toThrow(/not lockfile version 9/);
+  });
+
+  it('reads a step command through package.json scripts and sh -c, and refuses one it cannot key', () => {
+    const scripts = { 'a:gen': 'node --conditions=dragon-internal packages/a/src/cli.ts', 'b:gen': 'node packages/b/src/x.ts --flag' };
+    expect(commandOf(['pnpm', '-s', 'run', 'a:gen', '--x'], scripts)).toEqual({ entries: ['packages/a/src/cli.ts'], scripts: ['a:gen=node --conditions=dragon-internal packages/a/src/cli.ts'] });
+    expect(commandOf(['sh', '-c', 'pnpm -s run a:gen && pnpm -s run b:gen --y'], scripts).entries).toEqual(['packages/a/src/cli.ts', 'packages/b/src/x.ts']);
+    expect(() => commandOf(['pnpm', '-s', 'run', 'nope'], scripts)).toThrow('package.json has no script nope');
+    expect(() => commandOf(['make', 'all'], scripts)).toThrow(/runs make, which regen cannot key/);
+  });
+
+  it('changes the key for an import, a data file or a package, and not for an unread file', () => {
+    const step: Step = { name: 'a', argv: ['node', 'packages/a/src/cli.ts'], outputs: ['packages/a/out/**'], reads: ['packages/a/data/**'] };
+    const key = (over: Record<string, string>): string => {
+      const { ctx } = tree({ ...files, 'packages/a/data/d.json': '1', ...over });
+      return stepInputs(step, ctx, shared(ctx)).key;
+    };
+    const base = key({});
+    for (const [p, v] of Object.entries({ 'packages/b/src/y.ts': '2', 'packages/a/fixtures/sub/two.html': '2', 'packages/a/data/d.json': '2', 'packages/a/data/new.json': '1', 'packages/b/package.json': '{"name":"b","exports":"./src/x.ts"}', 'pnpm-lock.yaml': LOCK.replace('sha512-y', 'sha512-Y') })) expect(key({ [p]: v }), p).not.toBe(base);
+    for (const [p, v] of Object.entries({ 'packages/b/src/unused.ts': '2', 'packages/a/src/types.ts': '2', 'packages/a/out/x': '1', 'README.md': '1', 'pnpm-lock.yaml': LOCK.replace('sha512-z', 'sha512-Z') })) expect(key({ [p]: v }), p).toBe(base);
+  });
+
+  it('keys a listed directory on the names directly inside it, not on their content', () => {
+    const step: Step = { name: 'a', argv: ['node', 'packages/a/src/lazy.ts'], outputs: ['packages/a/out/*.json'], lists: ['packages/a/out'] };
+    const key = (over: Record<string, string>): string => {
+      const { ctx } = tree({ ...files, 'packages/a/out/x.json': '1', 'packages/a/out/sub/y.json': '1', ...over });
+      return stepInputs(step, ctx, shared(ctx)).key;
+    };
+    const base = key({});
+    expect(key({ 'packages/a/out/sub/y.json': '2', 'packages/a/out/sub/z.json': '1', 'packages/a/out/x.json': '2' })).toBe(base);
+    expect(key({ 'packages/a/out/new.json': '1' })).not.toBe(base);
+    expect(key({ 'packages/a/out/dir/z.json': '1' })).not.toBe(base);
+    const { tree: t, ctx } = tree({ ...files, 'packages/a/out/x.json': '1', 'packages/a/out/sub/y.json': '1' });
+    const ins = stepInputs(step, ctx, shared(ctx));
+    expect(checkTrace(step, ins, t, ['A\t/r\t["node"]', 'D\t/r/packages/a/out'], ['/r']).problems).toEqual([]);
+    expect(checkTrace({ ...step, lists: [] }, ins, t, ['A\t/r\t["node"]', 'D\t/r/packages/a/out'], ['/r']).problems).toEqual(['listed packages/a/out/ (1 unkeyed files, such as packages/a/out/sub/y.json)']);
+  });
+
+  it('every regen step resolves its command and imports on this tree', () => {
+    const t = snapshotTree(repoPath('.'));
+    const read = (p: string): string => readFileSync(repoPath(p), 'utf8');
+    const ctx: Context = { tree: t, read, scripts: (JSON.parse(read('package.json')) as { scripts: Record<string, string> }).scripts, env: {}, machine: 'm' };
+    const sh = shared(ctx);
+    for (const s of STEPS) expect(stepInputs(s, ctx, sh).files.size, s.name).toBeGreaterThan(0);
+  });
+});
+
+describe('regen cache entries', () => {
+  it('reads a malformed entry as none', () => {
+    const blob = 'a'.repeat(40);
+    expect(parseEntry('{')).toBeNull();
+    expect(parseEntry(JSON.stringify({ version: 1, outputs: {}, inputs: {}, restorable: true }))).toBeNull();
+    expect(parseEntry(JSON.stringify({ version: 2, outputs: { a: 'nope' }, inputs: {}, restorable: true }))).toBeNull();
+    expect(parseEntry(JSON.stringify({ version: 2, outputs: { a: blob }, inputs: {}, restorable: 'yes' }))).toBeNull();
+    expect(parseEntry(JSON.stringify({ version: 2, outputs: { a: blob }, inputs: { b: blob }, restorable: true }))).toEqual({ outputs: { a: blob }, inputs: { b: blob }, restorable: true });
+  });
+
+  it('stores entries as files any worktree can read, and prunes old ones', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'regen-store-'));
+    try {
+      const s = fileStore(dir);
+      const e: Entry = { outputs: { a: 'b'.repeat(40) }, inputs: {}, restorable: true };
+      expect(s.get('gen', 'k')).toBeNull();
+      s.put('gen', 'k', e);
+      expect(fileStore(dir).get('gen', 'k')).toEqual(e);
+      expect(s.latest('gen')).toEqual(e);
+      writeFileSync(join(dir, 'gen', 'bad.json'), '{');
+      expect(s.get('gen', 'bad')).toBeNull();
+      expect(pruneStore(dir, 30, Date.now() + 31 * 86_400_000)).toBe(2);
+      expect(s.get('gen', 'k')).toBeNull();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('restores outputs from git blobs and refuses a missing blob', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'regen-restore-'));
+    try {
+      execFileSync('git', ['init', '-q', dir]);
+      writeFileSync(join(dir, 'f'), 'hello\n');
+      const sha = execFileSync('git', ['-C', dir, 'hash-object', '-w', 'f'], { encoding: 'utf8' }).trim();
+      writeFileSync(join(dir, 'gone'), 'x');
+      expect(restoreBlobs(dir, { 'out/g': sha, gone: null })).toBe(true);
+      expect(readFileSync(join(dir, 'out/g'), 'utf8')).toBe('hello\n');
+      expect(existsSync(join(dir, 'gone'))).toBe(false);
+      expect(restoreBlobs(dir, { 'out/h': 'f'.repeat(40) })).toBe(false);
+      expect(existsSync(join(dir, 'out/h'))).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -171,12 +570,16 @@ describe('lanes-host verdict', () => {
   });
 });
 
-describe('catch-up procedure (AGENTS.md step 2)', () => {
+describe('catch-up procedure (AGENTS.md steps 1 and 2)', () => {
   it('sets up the merge driver before the merge, so generated outputs never stop it', () => {
-    const step = readFileSync(repoPath('AGENTS.md'), 'utf8').split('\n').find((l) => l.startsWith('2. **Catch up'))!;
-    expect(step.indexOf('pnpm setup:git')).toBeGreaterThan(-1);
-    expect(step.indexOf('pnpm setup:git')).toBeLessThan(step.indexOf('git merge origin/master'));
-    expect(step.indexOf('git merge origin/master')).toBeLessThan(step.indexOf('pnpm regen'));
+    const lines = readFileSync(repoPath('AGENTS.md'), 'utf8').split('\n');
+    const branch = lines.find((l) => l.startsWith('1. **Branch.**'));
+    const verify = lines.find((l) => l.startsWith('2. **Verify on your base.**'));
+    expect(branch).toBeDefined();
+    expect(verify).toBeDefined();
+    const steps = `${branch}\n${verify}`;
+    expect(steps.indexOf('pnpm setup:git')).toBeGreaterThan(-1);
+    expect(steps.indexOf('pnpm setup:git')).toBeLessThan(steps.indexOf('Merge `origin/master` (then regen)'));
   });
 });
 
@@ -239,4 +642,17 @@ describe.runIf(process.env.DRAGON_REGEN_CHECK === '1')('pnpm regen --check on th
       writeFileSync(repoPath(file), original);
     }
   }, 3_600_000);
+
+  it('rebuilds byte-identical outputs with --force, which trusts no recorded entry', () => {
+    const outputs = (): Map<string, string> => {
+      const t = snapshotTree(repoPath('.'));
+      const own = (p: string): boolean => STEPS.some((s) => s.outputs.some((g) => matches(g, p)));
+      return new Map([...t].filter(([p]) => own(p)));
+    };
+    const before = outputs();
+    const forced = spawnSync('pnpm', ['-s', 'regen', '--force'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    expect(forced.status, forced.stdout + forced.stderr).toBe(0);
+    const after = outputs();
+    expect([...new Set([...before.keys(), ...after.keys()])].filter((p) => before.get(p) !== after.get(p))).toEqual([]);
+  }, 7_200_000);
 });

@@ -98,8 +98,9 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'p1', suite: 'units', cases: p1.unitsPerFunction * p1.unitsFunctions.length },
     { corpus: 'p1', suite: 'engine', cases: p1.mutatedVectors + p1.generatedTrees },
     { corpus: 'p1', suite: 'library', cases: p1.cases['library'] ?? 0 },
-    // ANIM-a2 (notes/T047 section 3.2): one rt case per rt vector record (timing, easing, hold and interpolation).
-    { corpus: 'p1', suite: 'rt', cases: ['timing', 'easing', 'hold', 'interp'].reduce((n, f) => n + readJson<{ readonly records: readonly unknown[] }>(`packages/layout/rt-vectors/${f}.json`).records.length, 0) },
+    // ANIM-a2 (notes/T047 section 3.2): one rt case per rt vector record (timing, easing, hold and interpolation); ANIM-b1 (T065)
+    // adds the advance, keyframe, transition and animation records.
+    { corpus: 'p1', suite: 'rt', cases: ['timing', 'easing', 'hold', 'interp', 'advance', 'keyframes', 'transitions', 'animations'].reduce((n, f) => n + readJson<{ readonly records: readonly unknown[] }>(`packages/layout/rt-vectors/${f}.json`).records.length, 0) },
     // SELD-R1b (notes/T047 RT-9): one hit case per layout vector, top-level and at every DPR, but those hitTableOf refuses (INL1a).
     { corpus: 'p1', suite: 'hit', cases: hitVectorCount() },
     { corpus: 'extended', suite: 'engine-dpr', cases: layoutCaseIds().length * x.dprSets.length },
@@ -150,7 +151,7 @@ function targetConfig(target: NativeTarget): TargetConfig {
 }
 
 let targets: readonly TargetConfig[] | null = null;
-/** The configured native targets (compiles every layout fixture once, on first use). */
+/** The configured native targets (reads every layout fixture once, on first use). */
 export function nativeTargets(): readonly TargetConfig[] {
   if (targets === null) targets = NATIVE_TARGETS.map(targetConfig);
   return targets;

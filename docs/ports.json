@@ -67,7 +67,93 @@
         { "lines": "1-3847", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/rt-timing.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/rt-animations.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/animation/animation_time_delta.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 The Chromium Authors",
+      "fileSha256": "b3e3b3d95831dca281314e0dae258bde95665f1e3043942f569d3b8600e9451e",
+      "headerSha256": "bb164409c6a3593ec3b8bb889d907af0efb2e323920ac00bd35aa1f81101ab72",
+      "ranges": [
+        { "lines": "1-138", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
         { "file": "packages/layout/src/rt-timing.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/animation/css/css_animations.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "d369f0e5be08a3ba2178fb373981cf10ca7206c8198fe589b48f9a912e053ec6",
+      "headerSha256": "7fce36fb20afb48e663abb598bae0bc2a92175288d8b927abfb0fb4ba1d369b1",
+      "ranges": [
+        { "lines": "503-705", "symbol": "CreateKeyframeEffectModel", "source": "located" },
+        { "lines": "1763-2012", "symbol": null, "source": "cited" },
+        { "lines": "2461-2685", "symbol": null, "source": "cited" },
+        { "lines": "2765-2868", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-animations.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/rt-keyframes.ts", "symbol": "groupFromRule", "use": "port" },
+        { "file": "packages/layout/src/rt-keyframes.ts", "symbol": "sampleKeyframeEffect", "use": "port" },
+        { "file": "packages/layout/src/rt-transition.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/animation/css/css_keyframe_effect_model.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "064d552130db3e97529420ae8b0ea721a9129a56fd0a5c37534593ec339c11bc",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "196-227", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-keyframes.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/animation/interpolation_effect.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "bd2439095743783b202cd6ff04c6dffd11bedf29d0b0a6bc9c1fc5e4e350e64b",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "9-56", "symbol": "InterpolationEffect::GetActiveInterpolations", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-keyframes.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/animation/keyframe_effect_model.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "7538f562bf12ca59cad7e0ff1afa85a6676bf12994e8c2740c402e20899b05c7",
+      "headerSha256": "7fce36fb20afb48e663abb598bae0bc2a92175288d8b927abfb0fb4ba1d369b1",
+      "ranges": [
+        { "lines": "506-549", "symbol": "KeyframeEffectModelBase::EnsureKeyframeGroups", "source": "located" },
+        { "lines": "563-622", "symbol": "KeyframeEffectModelBase::EnsureInterpolationEffectPopulated", "source": "located" },
+        { "lines": "689-707", "symbol": "PropertySpecificKeyframeGroup::RemoveRedundantKeyframes", "source": "located" },
+        { "lines": "842-860", "symbol": "PropertySpecificKeyframeGroup::AddSyntheticKeyframeIfRequired", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-keyframes.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/rt-keyframes.ts", "symbol": "groupFromRule", "use": "port" }
       ]
     },
     {
@@ -257,10 +343,12 @@
       "headerSha256": "1e9851604ded024932b1faf32ac34284f5dc88020b49fd177d9d2dd5f93ffc8f",
       "ranges": [
         { "lines": "50-51", "symbol": "kMaxValueForCssLength", "source": "located" },
-        { "lines": "52-53", "symbol": "kMinValueForCssLength", "source": "located" }
+        { "lines": "52-53", "symbol": "kMinValueForCssLength", "source": "located" },
+        { "lines": "486-542", "symbol": "readAngle", "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/units.ts", "symbol": "CSS_LENGTH_MAX", "use": "reference" }
+        { "file": "packages/layout/src/units.ts", "symbol": "CSS_LENGTH_MAX", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/transform.ts", "symbol": "readAngle", "use": "reference" }
       ]
     },
     {
@@ -1044,10 +1132,12 @@
       "fileSha256": "dd5e966d32e824816c0c3467aedadf2c000e87b45819b639cd9613a5d1dad35c",
       "headerSha256": "e0e2a0ae9decc58db06d38b191654021bb1aa376f267038c0c3095e572dc0b0f",
       "ranges": [
-        { "lines": "2568-2585", "symbol": null, "source": "cited" }
+        { "lines": "2568-2585", "symbol": null, "source": "cited" },
+        { "lines": "1506-1568", "symbol": null, "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/units.ts", "symbol": "lineHeightFromNumber", "use": "reference" }
+        { "file": "packages/layout/src/units.ts", "symbol": "lineHeightFromNumber", "use": "reference" },
+        { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -1522,11 +1612,13 @@
       "fileSha256": "336e1c971a0dae24c0e08c9dc634a38a53957adc7364677986e5dce81907377d",
       "headerSha256": "ec77fd6e6c5b953711352cee8d9153507376057bdd4801fef71c32b78071c8b9",
       "ranges": [
-        { "lines": "96-120", "symbol": "ValueForLength", "source": "located" }
+        { "lines": "96-120", "symbol": "ValueForLength", "source": "located" },
+        { "lines": "38-64", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/layout/src/units.ts", "symbol": "percentOf", "use": "reference" },
-        { "file": "packages/layout/src/units.ts", "symbol": "pixelsAndPercentPlainOrder", "use": "reference" }
+        { "file": "packages/layout/src/units.ts", "symbol": "pixelsAndPercentPlainOrder", "use": "reference" },
+        { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -2126,6 +2218,37 @@
       "dragon": [
         { "file": "packages/translate/harness/harness.ts", "symbol": "rtSin", "use": "port" },
         { "file": "packages/translate/harness/harness.ts", "symbol": "rtCos", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "ui/gfx/geometry/sin_cos_degrees.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "2d212352a2f9a7929e8fb83b22ec3c1f13e21947d2f897adf6890018c75a1524",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "25-110", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/emit/paint/transform.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "ui/gfx/geometry/transform.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 The Chromium Authors",
+      "fileSha256": "eeba0f6eab6f73cd962281fcc932c75413a0d15a8a3808309904974b956a9876",
+      "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
+      "ranges": [
+        { "lines": "223-229", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-interpolate.ts", "symbol": "translateMatrix", "use": "port" },
+        { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" }
       ]
     }
   ],

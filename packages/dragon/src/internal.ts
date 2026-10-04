@@ -279,3 +279,32 @@ export function hitFacts(compiled: object, assignment: Assignment): ReadonlyMap<
   walk(c.resolved);
   return out;
 }
+
+// T065 ANIM-b1: the animation tables of a compile and the runtime animator's TypeScript reference.
+export type { AnimationAnalysis, AnimValue } from './analysis/animations.ts';
+export type { AnimProgram, SlotListing, TransitionSlot } from './lower/anim-program.ts';
+export { ANIM_PROGRAM_VERSION } from './lower/anim-program.ts';
+import { lowerAnimProgram } from './lower/anim-program.ts';
+export { lowerAnimProgram };
+// T065: the TypeScript reference animator (packages/parity/src/anim-cases.ts) reads these.
+export type { EasingValue } from './css/properties/animation.ts';
+export { animationKind } from './css/animation-kinds.ts';
+
+/** The animation tables of one state program: its cases' resolved trees in the program's assignment order. */
+export function animProgramOf(compiled: object, assignments: readonly Assignment[]): import('./lower/anim-program.ts').AnimProgram | null {
+  const record = internalRecord(compiled);
+  if (record === undefined || record.animation === null) return null;
+  const cases = assignments.map((a) => {
+    const c = caseOf(compiled, a);
+    if (typeof c === 'string' || c.resolved === null) throw new Error(`no resolved case for the assignment ${JSON.stringify(a)}`);
+    return { key: c.key, resolved: c.resolved };
+  });
+  return lowerAnimProgram(record.animation, cases);
+}
+
+/** The animation features a compile uses (the support gate's keys in the animation context), sorted. */
+export function animationFeatures(compiled: object): readonly string[] {
+  const record = internalRecord(compiled);
+  if (record === undefined || record.animation === null) return [];
+  return [...new Set(record.animation.features.map((f) => f.feature))].sort();
+}

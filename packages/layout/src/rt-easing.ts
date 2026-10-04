@@ -10,6 +10,13 @@ export type RtFaults = {
   readonly rotateViaMatrix: boolean;
   readonly colorUnpremultiplied: boolean;
   readonly holdTimeLost: boolean;
+  readonly heldTimeShortcut: boolean;
+  readonly noReversalShortening: boolean;
+  readonly perKeyframeEasingIgnored: boolean;
+  readonly nameChangeKeepsAnimation: boolean;
+  readonly pauseLosesPhase: boolean;
+  readonly pauseClockRuns: boolean;
+  readonly nonNegativeUnclamped: boolean;
 };
 
 export const NO_RT_FAULTS: RtFaults = {
@@ -20,6 +27,13 @@ export const NO_RT_FAULTS: RtFaults = {
   rotateViaMatrix: false,
   colorUnpremultiplied: false,
   holdTimeLost: false,
+  heldTimeShortcut: false,
+  noReversalShortening: false,
+  perKeyframeEasingIgnored: false,
+  nameChangeKeepsAnimation: false,
+  pauseLosesPhase: false,
+  pauseClockRuns: false,
+  nonNegativeUnclamped: false,
 };
 
 export const INFINITY = 1 / 0;
