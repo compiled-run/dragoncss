@@ -4,9 +4,9 @@
 // with --match-head-commit. A PR that fails a step gets the landing-failed label and a comment, and the queue continues.
 // Run with: pnpm land <queue-file> [--dry-run]   (queue: one <branch>:<pr>:<clean-head> per line)
 import { execFileSync, spawnSync } from 'node:child_process';
-import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { loadavg } from 'node:os';
-import { dirname, join } from 'node:path';
+import { closeSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { loadavg, tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import {
   baseAction,
   ciState,
@@ -60,6 +60,7 @@ import {
   treeMatches,
 } from './merge-train-lib.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
+import { runDevicesOnCi } from './land-devices-ci.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
 const DEVICE = '/tmp/device-lease.sh';
@@ -80,6 +81,9 @@ const seconds = (name: string, fallback: number): number => {
   return Number(v);
 };
 let CI_WAIT_S = 0;
+// LAND_DEVICES=ci runs the device lanes on GitHub runners (device-lanes.yml) instead of under the local device lease.
+let DEVICES_ON = 'local';
+let DEVICES_WAIT_S = 0;
 let CI_APPEAR_S = 0;
 let QUIET_MAX_S = 0;
 const REGEN = ['pnpm', 'regen'];
@@ -232,6 +236,42 @@ const floorFileProblems = (master: string, head: string): string[] => {
   return [...new Set([...onMaster, ...onHead])].sort().flatMap((p) => floorRegressions(p, at(master, p, onMaster), at(head, p, onHead)));
 };
 
+// The landing tree as a commit apart from the worktree's HEAD and index (a scratch index), pushed to a temporary branch for CI.
+const ciDeviceDeps = (pr: number) => ({
+  gh: (args: string[]) => gh([...args, '--repo', REPO]),
+  pushTemp: (branch: string): string => {
+    const dir = mkdtempSync(join(tmpdir(), 'land-devices-'));
+    try {
+      const index = join(dir, 'index');
+      copyFileSync(resolve(WT, text(wtGit, ['rev-parse', '--git-path', 'index'])), index);
+      const at = (args: string[]): string => execFileSync('git', ['-C', WT, ...args], { encoding: 'utf8', env: { ...process.env, GIT_INDEX_FILE: index } }).trim();
+      at(['add', '-A']);
+      const tree = at(['write-tree']);
+      const sha = checkSha(at(['commit-tree', tree, '-p', 'HEAD', '-m', `Landing tree of #${pr} for the CI device lanes (temporary; never merged)`]), 'commit-tree');
+      net(wtGit, ['push', '--quiet', 'origin', `${sha}:refs/heads/${branch}`]);
+      return sha;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+  deleteTemp: (branch: string): void => {
+    net(wtGit, ['push', '--quiet', 'origin', '--delete', branch]);
+  },
+  download: (runId: number, artifact: string): Record<string, string> => {
+    const dir = mkdtempSync(join(tmpdir(), 'land-device-records-'));
+    try {
+      gh(['run', 'download', String(runId), '--repo', REPO, '-n', artifact, '-D', dir]);
+      // upload-artifact keeps the paths below the common root (packages/parity/out), so the files sit at the top.
+      return Object.fromEntries(readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => [f, readFileSync(join(dir, f), 'utf8')]));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+  sleep,
+  now: () => Date.now(),
+  log,
+});
+
 const resetWorktree = (master: string): void => {
   try {
     wtGit(['rev-parse', '-q', '--verify', 'MERGE_HEAD']);
@@ -363,15 +403,22 @@ const landOne = (e: Entry): { result: 'landed' | 'merged before'; detail: string
     }
     if (runDevices) {
       const started = Date.now();
-      const d = run('devices', [DEVICE, ...DEVICES], WT);
-      // master's device-pixels lane fails on purpose, so the exit code says nothing; the judgement against master decides.
-      if (d.error !== undefined || d.signal !== null || (d.status !== 0 && d.status !== 1)) failed('devices', d, DEVICES.join(' '));
+      let ran = DEVICES.join(' ');
+      if (DEVICES_ON === 'ci') {
+        const ci = runDevicesOnCi({ pr: e.pr, deps: ciDeviceDeps(e.pr), appearS: CI_APPEAR_S, waitS: DEVICES_WAIT_S });
+        for (const [name, body] of Object.entries(ci.files)) writeFileSync(join(WT, 'packages/parity/out', name), body);
+        ran = `device-lanes.yml on CI for the landing tree ${ci.sha} (${ci.url})`;
+      } else {
+        const d = run('devices', [DEVICE, ...DEVICES], WT);
+        // master's device-pixels lane fails on purpose, so the exit code says nothing; the judgement against master decides.
+        if (d.error !== undefined || d.signal !== null || (d.status !== 0 && d.status !== 1)) failed('devices', d, DEVICES.join(' '));
+      }
       const problems = judgeDevices(master, started);
       if (problems.length > 0) throw new LandFailure('judge-devices', `the device run differs from master's device evidence:\n  ${problems.join('\n  ')}`);
       r = heavy('regen-after-devices', REGEN);
       if (r.error !== undefined || r.status !== 0) failed('regen-after-devices', r, 'pnpm regen');
-      commands.push(DEVICES.join(' '), REGEN.join(' '));
-      device = 'ran; every lane passes or fails as on master';
+      commands.push(ran, REGEN.join(' '));
+      device = `ran${DEVICES_ON === 'ci' ? ' on CI' : ''}; every lane passes or fails as on master`;
     }
     log(`  device lanes: ${device}`);
     const head = commitRegen(wtGit, 1, member, commands, 'Land');
@@ -569,6 +616,9 @@ const main = (): number => {
   CI_WAIT_S = seconds('LAND_CI_WAIT', 5400);
   CI_APPEAR_S = seconds('LAND_CI_APPEAR', 900);
   QUIET_MAX_S = seconds('LAND_QUIET_MAX', 5400);
+  DEVICES_ON = env['LAND_DEVICES'] ?? 'local';
+  if (DEVICES_ON !== 'local' && DEVICES_ON !== 'ci') throw new Error(`land: LAND_DEVICES must be local or ci, not ${JSON.stringify(DEVICES_ON)}`);
+  DEVICES_WAIT_S = seconds('LAND_DEVICES_WAIT', 7200);
   MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
   // The default reviewer is the main checkout's lookup script, never the PR's own copy in the driver worktree.
   REVIEW_CMD = env['LAND_REVIEW_CMD'] ?? `node --conditions=dragon-internal '${join(MAIN, 'scripts/land-review-lookup.ts')}'`;
