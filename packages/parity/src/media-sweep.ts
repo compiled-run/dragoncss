@@ -1,6 +1,7 @@
 // The web band sweep (notes/T025 §3 B item 8): every fixture of the media group rendered in Chrome, authored and compiled, at a
-// sample width inside every @media band and at each side of every band boundary. Dragon's web output is one stylesheet for all
-// widths, so each rendering pair must have equal boxes, computed values and colour channels (the chrome-dual comparison).
+// sample width inside every @media band and at each side of every band boundary, orientation and aspect-ratio ones included.
+// Dragon's web output is one stylesheet for all widths, so each rendering pair must have equal boxes, computed values and colour
+// channels (the chrome-dual comparison).
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { parse } from 'css-tree';
@@ -8,7 +9,7 @@ import type { CssNode } from 'css-tree';
 import type { CompilerFaults, Environment, FrontEndResult } from 'dragon';
 import { createProjectWith, NO_FAULTS, resolvedColors, resolvedTextColors, WEB_CSS_PATH, webClassMap } from 'dragon';
 import type { Band, BandPartition } from '../../dragon/src/media/index.ts';
-import { band, bandAt, parseMediaQueryList } from '../../dragon/src/media/index.ts';
+import { band, bandAt, contains, parseMediaQueryList } from '../../dragon/src/media/index.ts';
 import { captureFixture } from './capture.ts';
 import { CHROME_VERSION } from './chrome.ts';
 import { compareDual } from './dual.ts';
@@ -87,18 +88,21 @@ export function partitionOf(css: string): BandPartition | null {
 
 const inRange = (n: number): boolean => n >= SWEEP_RANGE.min && n <= SWEEP_RANGE.max;
 
-/** Whole-px values of one axis: each side of every finite interval end, and one value inside each interval. */
+/**
+ * Whole-px values of one axis: each side of every finite interval end, and one value inside each interval. Ends are read at the
+ * authored thresholds (an end sits up to 1/64 px from its threshold), so the samples are the same whole px either way.
+ */
 function axisSamples(intervals: readonly Band['width'][number][]): number[] {
   const out = new Set<number>();
   for (const i of intervals) {
-    for (const e of [i.lo, i.hi]) {
+    for (const e of [i.nominalLo, i.nominalHi]) {
       if (!Number.isFinite(e) || e === 0) continue;
       for (const n of [Math.floor(e) - 1, Math.floor(e), Math.ceil(e), Math.ceil(e) + 1]) if (inRange(n)) out.add(n);
     }
-    const hi = Number.isFinite(i.hi) ? i.hi : i.lo + 200;
-    const mid = Math.floor((i.lo + hi) / 2);
+    const hi = Number.isFinite(i.nominalHi) ? i.nominalHi : i.nominalLo + 200;
+    const mid = Math.floor((i.nominalLo + hi) / 2);
     for (const n of [mid, mid + 1]) {
-      if (inRange(n) && (n > i.lo || (i.loInclusive && n === i.lo)) && (n < i.hi || (i.hiInclusive && n === i.hi))) {
+      if (inRange(n) && contains(i, n)) {
         out.add(n);
         break;
       }
@@ -107,16 +111,34 @@ function axisSamples(intervals: readonly Band['width'][number][]): number[] {
   return [...out].sort((a, b) => a - b);
 }
 
+/** The width/height ratios where the orientation and aspect-ratio atoms change (1 for orientation). */
+function ratioBoundaries(partition: Partition): number[] {
+  const values = partition.atoms.flatMap((a) => {
+    if (a.axis !== 'ratio' || a.feature.form === 'boolean') return [];
+    if (a.feature.base === 'orientation') return [1];
+    return [a.feature.value, a.feature.left?.value, a.feature.right?.value].flatMap((v) => (v?.kind === 'ratio' && v.num > 0 && v.den > 0 ? [v.num / v.den] : []));
+  });
+  return [...new Set(values)];
+}
+
+const around = (v: number): number[] => [Math.floor(v) - 1, Math.floor(v), Math.ceil(v), Math.ceil(v) + 1].filter(inRange);
+
 /**
  * The sweep's viewports: the cross product of the width samples and the height samples, so a band that needs both axes, and every
- * corner where a width and a height boundary meet, is sampled. An axis without atoms takes the fixture's value only. Each viewport
- * carries the band it lies in; every band must hold at least one (the caller fails a band that none reaches).
+ * corner where a width and a height boundary meet, is sampled. An axis without atoms takes the fixture's value only. With ratio
+ * atoms (orientation, aspect-ratio), each width sample adds the heights around each ratio boundary and each height sample the
+ * widths around it. Each viewport carries the band it lies in; every band must hold at least one (the caller fails a band that
+ * none reaches).
  */
 export function sampleViewports(partition: Partition, base: Viewport): { readonly samples: readonly (Viewport & { readonly band: number })[]; readonly unsampled: readonly number[] } {
   const on = (axis: 'width' | 'height'): number[] => (partition.atoms.some((a) => a.axis === axis) ? axisSamples(partition.bands.flatMap((b) => b[axis])) : [base[axis]]);
-  const heights = on('height');
+  const ratios = ratioBoundaries(partition);
+  const [widths0, heights0] = [on('width'), on('height')];
+  const sorted = (xs: number[]): number[] => [...new Set(xs)].sort((a, b) => a - b);
+  const widths = sorted([...widths0, ...heights0.flatMap((h) => ratios.flatMap((r) => around(h * r)))]);
+  const heights = sorted([...heights0, ...widths0.flatMap((w) => ratios.flatMap((r) => around(w / r)))]);
   const samples: (Viewport & { band: number })[] = [];
-  for (const width of on('width')) {
+  for (const width of widths) {
     for (const height of heights) {
       const at = bandAt(partition, { width, height });
       if (at === null) throw new Error(`no band holds ${width}x${height}`);

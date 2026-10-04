@@ -1,4 +1,5 @@
-// Evaluates a parsed media query list over a viewport in CSS px, with MQ4's three-valued logic for <general-enclosed>.
+// Evaluates a parsed media query list over a viewport in CSS px, with MQ4's three-valued logic for <general-enclosed> and
+// Chrome 145's comparisons (notes/T067 R2).
 import type { MediaFaults } from './faults.ts';
 import { NO_MEDIA_FAULTS } from './faults.ts';
 import { INITIAL_FONT_SIZE, resolveLength } from './length.ts';
@@ -23,50 +24,77 @@ const not = (v: Kleene): Kleene => (v === 'unknown' ? v : !v);
 const and = (vs: readonly Kleene[]): Kleene => (vs.includes(false) ? false : vs.includes('unknown') ? 'unknown' : true);
 const or = (vs: readonly Kleene[]): Kleene => (vs.includes(true) ? true : vs.includes('unknown') ? 'unknown' : false);
 
-function compare(a: number, op: Comparison, b: number): boolean {
+/** Chrome's slack on <=, >= and = media comparisons: one LayoutUnit (media_query_evaluator.cc CompareDoubleValue, M2). */
+export const MEDIA_EPSILON = 1 / 64;
+
+/** The operator with its sides swapped: `v op feature` is `feature reversed(op) v`. */
+export const REVERSED: Readonly<Record<Comparison, Comparison>> = { '<': '>', '<=': '>=', '>': '<', '>=': '<=', '=': '=' };
+
+/**
+ * Chrome's comparison of a feature value with a query value (R2): <=, >= and = allow 1/64 of slack, < and > are exact, and a
+ * negative query value is true only for > and >= (css-mediaqueries-4 "false in the negative range").
+ */
+export function compareMedia(actual: number, op: Comparison, query: number, faults: MediaFaults = NO_MEDIA_FAULTS): boolean {
+  if (query < 0) return op === '>' || op === '>=';
+  const eps = faults.mediaCompareExact ? 0 : MEDIA_EPSILON;
   switch (op) {
     case '<':
-      return a < b;
+      return actual < query;
     case '<=':
-      return a <= b;
+      return actual <= query + eps;
     case '>':
-      return a > b;
+      return actual > query;
     case '>=':
-      return a >= b;
+      return actual >= query - eps;
     case '=':
-      return a === b;
+      return Math.abs(actual - query) <= eps;
   }
 }
 
-/** Decides one width or height feature; the other features are answered from the environment by evaluateFeature. */
+/** The operator of a plain (min-/max-/exact) feature. */
+export const plainOp = (prefix: MediaFeature['prefix']): Comparison => (prefix === 'min' ? '>=' : prefix === 'max' ? '<=' : '=');
+
+/** The comparisons a plain or range feature makes, each as `feature op value`; the feature holds when all of them do. */
+export function comparisonsOf(f: MediaFeature, faults: MediaFaults = NO_MEDIA_FAULTS): { readonly op: Comparison; readonly value: MediaValue }[] {
+  if (f.form === 'boolean') return [];
+  if (f.form === 'plain') {
+    const exclusive = f.prefix === 'max' && faults.maxWidthExclusive && (f.base === 'width' || f.base === 'height');
+    return [{ op: exclusive ? '<' : plainOp(f.prefix), value: f.value as MediaValue }];
+  }
+  return [...(f.left === null ? [] : [{ op: REVERSED[f.left.op], value: f.left.value }]), ...(f.right === null ? [] : [{ op: f.right.op, value: f.right.value }])];
+}
+
+/** Decides one feature, as a band's truth assignment does. */
 export type FeatureOracle = (feature: MediaFeature) => boolean;
+
+/** The whole CSS px orientation and aspect-ratio compare: Chrome reads the media size into an int (truncation, M3). */
+export function ratioSize(env: MediaEnvironment, untruncated: boolean): { readonly width: number; readonly height: number } {
+  return untruncated ? env : { width: Math.trunc(env.width), height: Math.trunc(env.height) };
+}
 
 /** Evaluates one feature Dragon supports. Throws for a refused feature. */
 export function evaluateFeature(f: MediaFeature, env: MediaEnvironment, faults: MediaFaults = NO_MEDIA_FAULTS): boolean {
   if (f.refused !== null) throw new Error(`media feature ${f.name} is refused`);
   const emBase = faults.emFromRoot ? (env.rootFontSize ?? INITIAL_FONT_SIZE) : INITIAL_FONT_SIZE;
-  if (f.base === 'orientation') return f.form === 'boolean' || (f.value as MediaValue & { kind: 'ident' }).name === (env.height >= env.width ? 'portrait' : 'landscape');
+  if (f.base === 'orientation') {
+    // A square viewport is portrait; the boolean form is true for any size.
+    if (f.form === 'boolean') return true;
+    const { width, height } = ratioSize(env, faults.orientationUntruncated);
+    return (f.value as MediaValue & { kind: 'ident' }).name === (width > height ? 'landscape' : 'portrait');
+  }
   if (f.base === 'aspect-ratio') {
-    // w/h against num/den, cross-multiplied so integer viewports compare exactly.
-    if (f.form === 'boolean') return env.width !== 0;
-    const lhs = (v: MediaValue): number => env.width * (v as MediaValue & { kind: 'ratio' }).den;
-    const rhs = (v: MediaValue): number => env.height * (v as MediaValue & { kind: 'ratio' }).num;
-    if (f.form === 'plain') {
-      const v = f.value as MediaValue;
-      return compare(lhs(v), f.prefix === 'min' ? '>=' : f.prefix === 'max' ? '<=' : '=', rhs(v));
-    }
-    return (f.left === null || compare(rhs(f.left.value), f.left.op, lhs(f.left.value))) && (f.right === null || compare(lhs(f.right.value), f.right.op, rhs(f.right.value)));
+    // w/h against num/den, cross-multiplied as Chrome does (w * den against h * num); the boolean form is always true.
+    if (f.form === 'boolean') return true;
+    const { width, height } = ratioSize(env, faults.aspectRatioUntruncated);
+    return comparisonsOf(f, faults).every(({ op, value }) => {
+      const r = value as MediaValue & { kind: 'ratio' };
+      return compareMedia(width * r.den, op, height * r.num, faults);
+    });
   }
   const actual = f.base === 'width' ? env.width : env.height;
   const px = (v: MediaValue): number => resolveLength((v as MediaValue & { kind: 'length' }).length, emBase);
   if (f.form === 'boolean') return actual !== 0;
-  if (f.form === 'plain') {
-    const v = px(f.value as MediaValue);
-    if (f.prefix === 'min') return actual >= v;
-    if (f.prefix === 'max') return faults.maxWidthExclusive ? actual < v : actual <= v;
-    return actual === v;
-  }
-  return (f.left === null || compare(px(f.left.value), f.left.op, actual)) && (f.right === null || compare(actual, f.right.op, px(f.right.value)));
+  return comparisonsOf(f, faults).every(({ op, value }) => compareMedia(actual, op, px(value), faults));
 }
 
 function evalCondition(c: MediaCondition, decide: (f: MediaFeature) => boolean, faults: MediaFaults): Kleene {
