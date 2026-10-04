@@ -104,7 +104,8 @@ describe('the refusals that stay', () => {
       return errors(compile(input)).filter((d) => d.code === 'DRAGON_UNSUPPORTED_ELEMENT').map((d) => d.message);
     };
     for (const [outer, inner] of [['strong', 'b'], ['address', 'em'], ['h2', 'em'], ['b', 'i'], ['em', 'b']] as const) expect(nest(outer, inner), `${inner} in ${outer}`).toEqual([]);
-    const bold = compile(inputOf('text-weight-nested-bold'));
+    // Lato faces: no error under phase C's native lowering (off by default until TXT1a-2 phase R).
+    const bold = compile(inputOf('text-weight-nested-bold'), true);
     expect(listed(bold)).toEqual([]);
   });
 });
