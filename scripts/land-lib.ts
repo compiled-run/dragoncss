@@ -410,6 +410,88 @@ export const retargetChildrenThenDelete = (o: { repo: string; branch: string; gh
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
+// Floors may only rise (PIN-DERIVE). A floor is a minimum checked against the tree, so a merge resolution that lowers one passes
+// every test and silently stops protecting; the landing commit's floors are therefore compared with origin/master's.
+// Formats, from the helpers that read them:
+// - packages/{dragon,parity}/test/floor.ts: { key: [names] }. Every name stays; an ordered floor keeps its order, and an unordered
+//   one is written sorted, so keeping master's names in master's relative order is required of every list.
+// - packages/translate/test/floor.ts: { key: { order: [suites], counts: { suite: n } } }. Suites stay in order; counts never fall.
+// - css-escapes-floor.json (css-escapes.test.ts): { key: n }. Keys stay; counts never fall.
+// - glyph-clearance-pins.json (pixel-reference.test.ts): { case: { "<target>@<dpr>": { dropped: { kind: n }, rescued: { kind: n } } } },
+//   exact pins of the rules a case's comparison drops and rescues. For a case master pins, no rescued count falls and no dropped
+//   count rises (a missing count is 0), so the comparison never covers less; a new case is free.
+
+export const isFloorFile = (path: string): boolean => /^packages\/[^/]+\/test\/([^/]+-floor|glyph-clearance-pins)\.json$/.test(path);
+
+const isCounts = (v: unknown): v is Record<string, number> => isObject(v) && Object.values(v).every((n) => typeof n === 'number' && Number.isFinite(n));
+const isNames = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
+const isSuiteFloor = (v: unknown): v is { order: string[]; counts: Record<string, number> } => isObject(v) && isNames(v.order) && isCounts(v.counts);
+
+const namesProblems = (key: string, was: string[], now: string[]): string[] => {
+  const gone = was.filter((x) => !now.includes(x));
+  const problems = gone.map((x) => `${key}: ${JSON.stringify(x)} removed`);
+  const kept = was.filter((x) => now.includes(x));
+  const at = kept.map((x) => now.indexOf(x));
+  for (let i = 1; i < at.length; i++) if (at[i]! < at[i - 1]!) problems.push(`${key}: ${JSON.stringify(kept[i])} now comes before ${JSON.stringify(kept[i - 1])}`);
+  return problems;
+};
+const countsProblems = (key: string, was: Record<string, number>, now: Record<string, number>): string[] =>
+  Object.entries(was).flatMap(([k, n]) => (now[k] === undefined ? [`${key}.${k}: removed (was ${n})`] : now[k]! < n ? [`${key}.${k}: lowered ${n} -> ${now[k]}`] : []));
+
+const pinsProblems = (was: Record<string, unknown>, now: Record<string, unknown>): string[] => {
+  const problems: string[] = [];
+  const tally = (v: unknown, side: 'dropped' | 'rescued'): Record<string, number> => (isObject(v) && isCounts(v[side]) ? v[side] : {});
+  for (const [c, wasAt] of Object.entries(was)) {
+    const nowAt = isObject(now[c]) ? now[c] : {};
+    if (!isObject(wasAt)) continue;
+    for (const at of new Set([...Object.keys(wasAt), ...Object.keys(nowAt)])) {
+      const [wr, nr] = [tally(wasAt[at], 'rescued'), tally(nowAt[at], 'rescued')];
+      for (const [k, n] of Object.entries(wr)) if ((nr[k] ?? 0) < n) problems.push(`${c} ${at} rescued.${k}: lowered ${n} -> ${nr[k] ?? 0}`);
+      const [wd, nd] = [tally(wasAt[at], 'dropped'), tally(nowAt[at], 'dropped')];
+      for (const [k, n] of Object.entries(nd)) if (n > (wd[k] ?? 0)) problems.push(`${c} ${at} dropped.${k}: raised ${wd[k] ?? 0} -> ${n}`);
+    }
+  }
+  return problems;
+};
+
+/** Why the landing commit's version of a floor file (`now`, null when absent) is below master's (`was`, null when absent). */
+export const floorRegressions = (path: string, was: string | null, now: string | null): string[] => {
+  if (was === null) return [];
+  if (now === null) return [`${path}: removed (it is on master)`];
+  let w: unknown;
+  let n: unknown;
+  try {
+    w = JSON.parse(was);
+    n = JSON.parse(now);
+  } catch (error) {
+    return [`${path}: not JSON on one side: ${error instanceof Error ? error.message : String(error)}`];
+  }
+  if (!isObject(w) || !isObject(n)) return [`${path}: not a JSON object on one side`];
+  const problems: string[] = [];
+  const out = (p: string): number => problems.push(`${path}: ${p}`);
+  if (/glyph-clearance-pins\.json$/.test(path)) {
+    const shape = (v: Record<string, unknown>): boolean => Object.values(v).every((at) => isObject(at) && Object.values(at).every((t) => isObject(t) && isCounts(t.dropped) && isCounts(t.rescued)));
+    if (!shape(w) || !shape(n)) return [`${path}: not { case: { at: { dropped, rescued } } } on one side`];
+    for (const p of pinsProblems(w, n)) out(p);
+    return problems;
+  }
+  for (const [key, wv] of Object.entries(w)) {
+    const nv = n[key];
+    if (nv === undefined) out(`${key}: removed`);
+    else if (isNames(wv)) isNames(nv) ? namesProblems(key, wv, nv).forEach(out) : out(`${key}: no longer a list of names`);
+    else if (typeof wv === 'number') typeof nv !== 'number' ? out(`${key}: no longer a number`) : nv < wv ? out(`${key}: lowered ${wv} -> ${nv}`) : 0;
+    else if (isSuiteFloor(wv)) {
+      if (!isSuiteFloor(nv)) out(`${key}: no longer { order, counts }`);
+      else {
+        namesProblems(`${key}.order`, wv.order, nv.order).forEach(out);
+        countsProblems(`${key}.counts`, wv.counts, nv.counts).forEach(out);
+      }
+    } else out(`${key}: a floor shape the driver cannot judge`);
+  }
+  return problems;
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
 // The queue loop: a failed PR is recorded and the queue continues; only a Fatal error (master in an unexpected state) stops it.
 
 export class LandFailure extends Error {
