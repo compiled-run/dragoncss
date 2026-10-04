@@ -22,7 +22,7 @@ import { OUTLINE_SHORTHANDS } from '../src/css/shorthands/outline.ts';
 import { RADIUS_SHORTHANDS } from '../src/css/shorthands/radius.ts';
 import type { Longhand } from '../src/css/properties.ts';
 import { applyPlant, emitNativeSupport, SUPPORT_FILES, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
-import { isPaintKind, nativePaints, PAINT_EMITTERS, paintPlants, stagePainters } from '../src/emit/paint/registry.ts';
+import { isPaintKind, nativePaints, PAINT_EMITTERS, paintPlants, soleHook, stagePainters } from '../src/emit/paint/registry.ts';
 import { PAINT_STAGES } from '../src/emit/paint/types.ts';
 import type { BorderWrite } from '../src/lower/paint/border.ts';
 import type { AnyLowering } from '../src/lower/paint/registry.ts';
@@ -57,7 +57,8 @@ function programs() {
 
 describe('EMS: the paint registries', () => {
   it('lowering, emission and paint values register every module once, in PAINT_MODULE_NAMES order', () => {
-    expect([...PAINT_MODULE_NAMES]).toEqual(['background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'transform', 'gradient', 'scroll', 'fixed', 'scrollbar', 'image', 'foreign-view', 'control']);
+    // PIN-DERIVE: the EMS module order is a floor; a module appended later (T150a: visibility) needs no edit here.
+    expect(floorProblems(FLOOR, 'paintModules', PAINT_MODULE_NAMES, true)).toEqual([]);
     expect(PAINT_LOWERINGS.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
     expect(PAINT_EMITTERS.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
     expect(PAINT_VALUES.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
@@ -159,10 +160,16 @@ describe('EMS: native support', () => {
       expect(stagePainters(b, 'border')).toEqual(['dragonPaintBorderStage']);
       expect(body).toContain(`dragonPaintBorderStage(${args})`);
       expect(text.indexOf('dragonAfterLayoutBorder(v, shape, scale)')).toBeLessThan(text.indexOf('dragonAfterLayoutClip(v, shape, scale)'));
-      const applied = ['dragonAppliedBackground', 'dragonAppliedBorder', 'dragonAppliedClip'].map((f) => text.indexOf(`${f}(v)`));
+      // PIN-DERIVE: the readbacks are the modules' own, in registry order (background, border and clip among them); the rounded
+      // path is nil until a module provides the hook (PNT1: radius), and then calls it.
+      const readbacks = nativePaints(b).flatMap((m) => (m.native.applied === null ? [] : [m.native.applied]));
+      expect(readbacks, b).toEqual(expect.arrayContaining(['dragonAppliedBackground', 'dragonAppliedBorder', 'dragonAppliedClip']));
+      const applied = readbacks.map((f) => text.indexOf(`${f}(v)`));
       expect(applied.every((i) => i > 0)).toBe(true);
       expect([...applied].sort((x, y) => x - y)).toEqual(applied);
-      expect(text).toMatch(b === 'uikit' ? /return nil\n}/ : /: Path\? = null\n/);
+      const rounded = soleHook(b, 'roundedPath');
+      if (rounded === null) expect(text).toMatch(b === 'uikit' ? /return nil\n}/ : /: Path\? = null\n/);
+      else expect(text).toContain(`${rounded}(v, shape`);
     }
     // A module has a native file exactly when it is not a stub.
     for (const b of ['uikit', 'android-views'] as const) expect(nativePaints(b).filter((m) => m.native.file !== null).map((m) => m.name), b).toEqual(PAINT_MODULE_NAMES.filter((n) => !isStub(n)));

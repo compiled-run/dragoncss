@@ -1,4 +1,22 @@
 {
+  "paintModules": [
+    "background",
+    "border",
+    "clip",
+    "radius",
+    "shadow",
+    "effects",
+    "stacking",
+    "outline",
+    "transform",
+    "gradient",
+    "scroll",
+    "fixed",
+    "scrollbar",
+    "image",
+    "foreign-view",
+    "control"
+  ],
   "paintKinds": [
     "background-color",
     "border-widths",
