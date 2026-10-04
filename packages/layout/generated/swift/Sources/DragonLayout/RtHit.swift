@@ -64,7 +64,7 @@ public final class HitError: JsError {
   public let detail: JsString
   public init(_ detail: JsString) throws {
     self.detail = detail
-    super.init(message: jsConcat(S.s204, detail))
+    super.init(message: jsConcat(S.s205, detail))
   }
 }
 
@@ -231,7 +231,7 @@ public func rtHit_node(_ ctx: HitCtx, _ i: Double) throws -> HitNode {
   let n: HitNode? = jsAt(ctx.nodes, i)
   // ts: packages/layout/src/rt-hit.ts:111
   if (n == nil) {
-    throw try HitError(jsConcat(S.s248, jsNumberToString(i)))
+    throw try HitError(jsConcat(S.s249, jsNumberToString(i)))
   }
   return try jsUnwrap(n)
 }
@@ -260,7 +260,7 @@ public func rtHit_reversedChildren(_ ctx: HitCtx, _ i: Double) throws -> JsArray
   let own: JsArray<Double>? = jsAt(ctx.children, i)
   // ts: packages/layout/src/rt-hit.ts:136
   if (own == nil) {
-    throw try HitError(jsConcat(S.s246, jsNumberToString(i)))
+    throw try HitError(jsConcat(S.s247, jsNumberToString(i)))
   }
   return try jsUnwrap(own)
 }
@@ -316,7 +316,7 @@ public func rtHit_lineHit(_ ctx: HitCtx, _ block: HitNode, _ line: HitNode, _ at
   let own: JsArray<Double>? = jsAt(ctx.lineTexts, at)
   // ts: packages/layout/src/rt-hit.ts:172
   if (own == nil) {
-    throw try HitError(jsConcat(S.s250, jsNumberToString(at)))
+    throw try HitError(jsConcat(S.s251, jsNumberToString(at)))
   }
   let texts: JsArray<HitNode> = JsArray<HitNode>([])
   // ts: packages/layout/src/rt-hit.ts:174
@@ -475,7 +475,7 @@ public func rtHit_layerVisible(_ ctx: HitCtx, _ i: Double) throws -> Bool {
 public func rtHit_prepareHit(_ nodes: JsArray<HitNode>, _ faults: HitFaults) throws -> HitPrepared {
   // ts: packages/layout/src/rt-hit.ts:263
   if (jsLength(nodes) == 0.0) {
-    throw try HitError(S.s101)
+    throw try HitError(S.s102)
   }
   let children: JsArray<JsArray<Double>> = try jsMap(nodes, { (_unused0: HitNode) throws -> JsArray<Double> in
     return JsArray<Double>([])
@@ -485,21 +485,21 @@ public func rtHit_prepareHit(_ nodes: JsArray<HitNode>, _ faults: HitFaults) thr
     if (i == 0.0) {
       // ts: packages/layout/src/rt-hit.ts:267
       if ((n.parent != -1.0) || (n.kind != S.s_box)) {
-        throw try HitError(S.s253)
+        throw try HitError(S.s254)
       }
       return
     }
     // ts: packages/layout/src/rt-hit.ts:270
     if ((n.parent < 0.0) || (n.parent >= i)) {
-      throw try HitError(jsConcat(S.s203, jsNumberToString(i), S.s16, jsNumberToString(n.parent), S.s47))
+      throw try HitError(jsConcat(S.s204, jsNumberToString(i), S.s16, jsNumberToString(n.parent), S.s47))
     }
     // ts: packages/layout/src/rt-hit.ts:271
     if ((n.target < 0.0) || (n.target >= jsLength(nodes))) {
-      throw try HitError(jsConcat(S.s203, jsNumberToString(i), S.s17, jsNumberToString(n.target)))
+      throw try HitError(jsConcat(S.s204, jsNumberToString(i), S.s17, jsNumberToString(n.target)))
     }
     // ts: packages/layout/src/rt-hit.ts:272
     if ((n.kind != S.s_box) && (!((jsIsInteger(n.line) && (n.line >= 0.0)) && (n.line < jsLength(nodes))))) {
-      throw try HitError(jsConcat(S.s203, jsNumberToString(i), S.s12, jsNumberToString(n.line)))
+      throw try HitError(jsConcat(S.s204, jsNumberToString(i), S.s12, jsNumberToString(n.line)))
     }
     _ = try jsPush(jsUnwrap(jsAt(children, n.parent)), i)
 })
@@ -508,7 +508,7 @@ public func rtHit_prepareHit(_ nodes: JsArray<HitNode>, _ faults: HitFaults) thr
     let n: HitNode? = jsAt(nodes, i)
     // ts: packages/layout/src/rt-hit.ts:277
     if (n == nil) {
-      throw try HitError(jsConcat(S.s248, jsNumberToString(i)))
+      throw try HitError(jsConcat(S.s249, jsNumberToString(i)))
     }
     return try jsUnwrap(n).order
   }
@@ -523,7 +523,7 @@ public func rtHit_prepareHit(_ nodes: JsArray<HitNode>, _ faults: HitFaults) thr
     let n: HitNode? = jsAt(nodes, i)
     // ts: packages/layout/src/rt-hit.ts:287
     if (n == nil) {
-      throw try HitError(jsConcat(S.s248, jsNumberToString(i)))
+      throw try HitError(jsConcat(S.s249, jsNumberToString(i)))
     }
     // ts: packages/layout/src/rt-hit.ts:288
     if try (((i > 0.0) && (jsUnwrap(n).kind == S.s_box)) && jsUnwrap(n).layer) {
@@ -532,7 +532,7 @@ public func rtHit_prepareHit(_ nodes: JsArray<HitNode>, _ faults: HitFaults) thr
     let own: JsArray<Double>? = jsAt(ordered, i)
     // ts: packages/layout/src/rt-hit.ts:290
     if (own == nil) {
-      throw try HitError(jsConcat(S.s246, jsNumberToString(i)))
+      throw try HitError(jsConcat(S.s247, jsNumberToString(i)))
     }
     // ts: packages/layout/src/rt-hit.ts:291
     do {
@@ -654,7 +654,7 @@ public func rtHit_activationTarget(_ nodes: JsArray<HitNode>, _ activation: JsAr
     let n: HitNode? = jsAt(nodes, at)
     // ts: packages/layout/src/rt-hit.ts:345
     if (n == nil) {
-      throw try HitError(jsConcat(S.s248, jsNumberToString(at)))
+      throw try HitError(jsConcat(S.s249, jsNumberToString(at)))
     }
     try at = jsUnwrap(n).parent
   }
@@ -666,7 +666,7 @@ public func rtHit_rectOf(_ s: TableState, _ id: JsString) throws -> LayoutRect {
   let r: LayoutRect? = s.abs.get(id)
   // ts: packages/layout/src/rt-hit.ts:378
   if (r == nil) {
-    throw try HitError(jsConcat(S.s328, id))
+    throw try HitError(jsConcat(S.s329, id))
   }
   return try jsUnwrap(r)
 }
@@ -676,7 +676,7 @@ public func rtHit_zoomedBox(_ s: TableState, _ id: JsString) throws -> LayoutBox
   let b: LayoutBox? = s.zoomed.get(id)
   // ts: packages/layout/src/rt-hit.ts:384
   if (b == nil) {
-    throw try HitError(jsConcat(S.s251, id))
+    throw try HitError(jsConcat(S.s252, id))
   }
   return try jsUnwrap(b)
 }
@@ -993,7 +993,7 @@ public func rtHit_boxNodes(_ s: TableState, _ b: LayoutBox, _ parent: Double, _ 
     let f: HitFact? = s.facts.get(b.id)
     // ts: packages/layout/src/rt-hit.ts:571
     if (f == nil) {
-      throw try HitError(jsConcat(S.s247, b.id))
+      throw try HitError(jsConcat(S.s248, b.id))
     }
     try pe = ((s.faults.pointerEventsNotInherited && jsUnwrap(f).inherited) ? S.s_auto : jsUnwrap(f).pointerEvents)
     own = i
@@ -1001,7 +1001,7 @@ public func rtHit_boxNodes(_ s: TableState, _ b: LayoutBox, _ parent: Double, _ 
   }
   // ts: packages/layout/src/rt-hit.ts:576
   if (own < 0.0) {
-    throw try HitError(jsConcat(S.s115, b.id, S.s14))
+    throw try HitError(jsConcat(S.s116, b.id, S.s14))
   }
   let r: LayoutRect = try rtHit_rectOf(s, b.id)
   let border: Edges = try box_resolveBorder(rtHit_zoomedBox(s, b.id).style, s.ctx.devicePixelRatio)
@@ -1051,7 +1051,7 @@ public func rtHit_boxNodes(_ s: TableState, _ b: LayoutBox, _ parent: Double, _ 
 
 // ts: packages/layout/src/rt-hit.ts:600
 public func rtHit_inlineRefusal(_ id: JsString, _ kind: JsString) throws -> JsString {
-  return jsConcat(id, S.s20, ((kind == S.s_br) ? S.s97 : S.s112), S.s48)
+  return jsConcat(id, S.s20, ((kind == S.s_br) ? S.s98 : S.s113), S.s48)
 }
 
 // ts: packages/layout/src/rt-hit.ts:604
@@ -1090,7 +1090,7 @@ public func rtHit_hitTableOf(_ input: LayoutInput, _ measurer: TextMeasurer, _ f
   let out: any U_LayoutResult_ok_LayoutResult_unsupported = try layout_layout(input, measurer)
   // ts: packages/layout/src/rt-hit.ts:623
   if (out.kind != S.s_ok) {
-    throw try HitError(jsConcat(S.s329, (out as! LayoutResult_unsupported).unsupported.code, S.s7, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s42))
+    throw try HitError(jsConcat(S.s330, (out as! LayoutResult_unsupported).unsupported.code, S.s7, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s42))
   }
   let zoomed: LayoutInput = try layout_zoomInput(input, block_NO_ENGINE_FAULTS)
   let zmap: JsStringMap<LayoutBox> = JsStringMap<LayoutBox>()
@@ -1168,7 +1168,7 @@ public func rtHit_hitGrid(_ t: HitTable, _ width: Double, _ height: Double) thro
       let block: HitNode? = jsAt(t.nodes, n.parent)
       // ts: packages/layout/src/rt-hit.ts:677
       if (block == nil) {
-        throw try HitError(jsConcat(S.s228, jsNumberToString(i), S.s13))
+        throw try HitError(jsConcat(S.s229, jsNumberToString(i), S.s13))
       }
       let lx: JsArray<Double> = JsArray<Double>([])
       let ly: JsArray<Double> = JsArray<Double>([])
@@ -1215,7 +1215,7 @@ public func rtHit_hitRuns(_ t: HitTable, _ grid: JsArray<HitPoint>, _ faults: Hi
       let id: JsString? = try jsAt(t.ids, rtHit_hitAt(prepared, p.x, p.y))
       // ts: packages/layout/src/rt-hit.ts:703
       if (id == nil) {
-        throw try HitError(S.s100)
+        throw try HitError(S.s101)
       }
       // ts: packages/layout/src/rt-hit.ts:704
       if try ((count > 0.0) && (jsUnwrap(id) == prev)) {
