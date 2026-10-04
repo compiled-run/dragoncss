@@ -45,7 +45,7 @@ describe('OVFL scroll metrics against Chrome', () => {
   const ids = all.flatMap((f) => f.cases.map((c) => c.id));
 
   it('covers the overflow and viewport-prop fixtures, each case committed at every DPR and nothing else', () => {
-    expect(ids.length).toBe(22); // ovfl-a's 18, plus overflow-clip-both, overflow-auto-fits and overflow-hidden-x-auto-y with its rtl twin
+    expect(ids.length).toBe(24); // ovfl-a's 18, plus overflow-clip-both, overflow-auto-fits, overflow-hidden-x-auto-y and overflow-replaced with their rtl twins
     for (const dpr of SCROLL_DPRS) {
       const files = readdirSync(expectedScrollDir(dpr)).filter((f) => f.endsWith('.scroll.json')).map((f) => f.replace(/\.scroll\.json$/, '')).sort();
       expect(files, `DPR ${dpr}`).toEqual([...ids].sort());

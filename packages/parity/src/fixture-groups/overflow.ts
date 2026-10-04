@@ -23,6 +23,8 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   layout('overflow-clip-both'),
   layout('overflow-auto-fits'),
   both('overflow-hidden-x-auto-y'),
+  // REPL-a images in scroll containers: a replaced box adds its border box and its in-flow bounds (pre-landing review of #96).
+  both('overflow-replaced'),
   // OVFL-p: a percentage relative offset inside a scroll container is refused on native targets (overflow.ts does not decide it).
   reject('reject-overflow-percent-relative', 'DRAGON_UNPROVEN_CONTEXT', '10%', 'position: relative with a percentage top on k inside the scroll container sc'),
 ];
