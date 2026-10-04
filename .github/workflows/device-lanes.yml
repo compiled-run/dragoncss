@@ -1,0 +1,206 @@
+# CI-OFFLOAD step 3-4: the device lanes of a commit on GitHub-hosted standard runners, one job per matrix device, in parallel.
+# iOS simulators run on xcode-27 (Xcode 27.0, the local Mac's) with the pinned iOS 26.5 (23F77) runtime; Android emulators run
+# on ubuntu-latest with KVM and the x86_64 android-36 image (device-run.ts androidImage). Each job writes its outcome with the
+# evidence stamp it ran under (packages/parity/src/cli/device-ci.ts one); the merge job writes the lanes.json and
+# device-failures-<target>.json records a local `parity:devices` run writes, uploaded as the device-records artifact, and lists
+# how every device lane compares with the records committed at that commit. Nothing is committed or pushed.
+# Trigger: workflow_dispatch with a commit sha (the landing driver, LAND_DEVICES=ci), or the `devices` label on a pull request.
+name: device-lanes
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit to run the device lanes of (it must be reachable from a branch of this repository)
+        required: true
+        type: string
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+concurrency:
+  group: device-lanes-${{ inputs.sha || github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+env:
+  # One device per runner: no other work shares its memory (device-run.ts memoryReserve).
+  DRAGON_DEVICE_RESERVE_GIB: '0'
+jobs:
+  resolve:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'devices'
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.r.outputs.sha }}
+    steps:
+      - id: r
+        env:
+          SHA: ${{ inputs.sha || github.event.pull_request.head.sha }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::not a full commit sha: $SHA"; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "device lanes of $SHA" >> "$GITHUB_STEP_SUMMARY"
+  ios:
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ['iPhone 17', 'iPad (A16)']
+    runs-on: xcode-27
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: The pinned iOS 26.5 (23F77) simulator runtime
+        run: |
+          have() { xcrun simctl list runtimes -j | jq -e '.runtimes[] | select(.buildversion == "23F77" and .isAvailable)' >/dev/null; }
+          start=$(date +%s)
+          have || xcodebuild -downloadPlatform iOS -buildVersion 26.5
+          have || { xcrun simctl list runtimes; echo "::error::iOS 26.5 (23F77) is not installed"; exit 1; }
+          echo "runtime ready in $(( $(date +%s) - start )) s"
+          xcodebuild -version
+          sw_vers
+      - name: Run ${{ matrix.device }}
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/out" /tmp/dragon-device.lock
+          echo $$ > /tmp/dragon-device.lock/pid
+          slug=$(echo "$DEVICE" | tr -c 'A-Za-z0-9-' '_')
+          start=$(date +%s)
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts one ios "$DEVICE" "$RUNNER_TEMP/out/ios-$slug.json" 2>&1 | tee "$RUNNER_TEMP/out/ios-$slug.log"
+          code=${PIPESTATUS[0]}
+          echo "ios $DEVICE: exit $code in $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$code"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: outcome-ios-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/out
+  android:
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [dragon-320, dragon-smoke, dragon-480]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+      - name: JDK 17, kotlinc and the Android SDK packages (the local Mac's versions, from Homebrew)
+        run: |
+          brew install openjdk@17 kotlin
+          echo "JAVA_HOME=$(brew --prefix openjdk@17)" >> "$GITHUB_ENV"
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdk" --licenses >/dev/null || true
+          "$sdk" --install emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64' >/dev/null
+          "$sdk" --list_installed | grep -E 'emulator|system-images|build-tools;36|platforms;android-36'
+      - name: Run ${{ matrix.device }}
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          "$JAVA_HOME/bin/java" -version
+          kotlinc -version
+          mkdir -p "$RUNNER_TEMP/out" /tmp/dragon-device.lock
+          echo $$ > /tmp/dragon-device.lock/pid
+          start=$(date +%s)
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts one android "$DEVICE" "$RUNNER_TEMP/out/android-$DEVICE.json" 2>&1 | tee "$RUNNER_TEMP/out/android-$DEVICE.log"
+          code=${PIPESTATUS[0]}
+          echo "android $DEVICE: exit $code in $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$code"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: outcome-android-${{ matrix.device }}
+          path: ${{ runner.temp }}/out
+  merge:
+    needs: [resolve, ios, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: outcome-*
+          path: ${{ runner.temp }}/outcomes
+          merge-multiple: true
+      - name: Keep the committed records to compare with
+        run: mkdir -p "$RUNNER_TEMP/committed" && cp packages/parity/out/lanes.json packages/parity/out/device-failures-*.json "$RUNNER_TEMP/committed/"
+      - name: Merge the device outcomes into the lane records
+        run: |
+          mkdir -p "$RUNNER_TEMP/merge" && cp "$RUNNER_TEMP"/outcomes/*.json "$RUNNER_TEMP/merge/"
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts merge "$RUNNER_TEMP/merge"
+      - name: Compare every device lane with the committed records
+        run: |
+          cat > "$RUNNER_TEMP/compare.mts" <<'EOF'
+          // Per device lane: the state, and the failure set (lane, case, DPR, node, kind) with and without its detail text.
+          import { readFileSync } from 'node:fs';
+          const [a, b] = [process.env.RUNNER_TEMP + '/committed', 'packages/parity/out'];
+          const read = (d: string, f: string): any => JSON.parse(readFileSync(`${d}/${f}`, 'utf8'));
+          const rows: string[] = ['| target | lane | committed | CI | failure set (lane, case, dpr, node, kind) | detail text |', '|---|---|---|---|---|---|'];
+          let same = true;
+          for (const t of ['ios', 'android']) {
+            const la = read(a, 'lanes.json').targets.find((x: any) => x.target === t);
+            const lb = read(b, 'lanes.json').targets.find((x: any) => x.target === t);
+            const fa = read(a, `device-failures-${t}.json`);
+            const fb = read(b, `device-failures-${t}.json`);
+            for (const l of la.lanes.filter((x: any) => x.where === 'device')) {
+              const m = lb.lanes.find((x: any) => x.lane === l.lane);
+              const key = (f: any): string => JSON.stringify([f.lane, f.case, f.dpr, f.node, f.kind]);
+              const ka = fa.filter((f: any) => f.lane === l.lane).map(key).sort();
+              const kb = fb.filter((f: any) => f.lane === l.lane).map(key).sort();
+              const da = fa.filter((f: any) => f.lane === l.lane).map((f: any) => key(f) + f.detail).sort();
+              const db = fb.filter((f: any) => f.lane === l.lane).map((f: any) => key(f) + f.detail).sort();
+              const setSame = JSON.stringify(ka) === JSON.stringify(kb);
+              const onlyA = ka.filter((k: string) => !kb.includes(k)).length;
+              const onlyB = kb.filter((k: string) => !ka.includes(k)).length;
+              const detailSame = JSON.stringify(da) === JSON.stringify(db);
+              if (m?.state !== l.state || !setSame || !detailSame) same = false;
+              rows.push(`| ${t} | ${l.lane} | ${l.state}${l.reason ? ` (${l.reason})` : ''} | ${m?.state ?? 'missing'}${m?.reason ? ` (${m.reason})` : ''} | ${setSame ? `same (${ka.length})` : `differs: ${onlyA} only committed, ${onlyB} only CI`} | ${detailSame ? 'same' : 'differs'} |`);
+            }
+          }
+          const out = `${rows.join('\n')}\n\n${same ? 'Every device lane judges exactly as the committed records.' : 'Some device lanes differ from the committed records (see the device-records artifact).'}\n`;
+          console.log(out);
+          import('node:fs').then((fs) => fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY!, out));
+          EOF
+          node "$RUNNER_TEMP/compare.mts"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: device-records
+          path: |
+            packages/parity/out/lanes.json
+            packages/parity/out/device-failures-ios.json
+            packages/parity/out/device-failures-android.json

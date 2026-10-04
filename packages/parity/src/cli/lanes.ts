@@ -9,10 +9,10 @@
 // parity:devices is parity:lanes -- --run-host --run-device. Internal: --prebuild <target> builds the app with reuse.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { deviceJobs, lanesArgs, prebuildApps } from '../device-jobs.ts';
-import { allRunFailures, failuresByKind, runTargetOnDevices } from '../device-lanes.ts';
+import { allRunFailures, deviceFailuresText, failuresByKind, runTargetOnDevices } from '../device-lanes.ts';
 import { requireDeviceLease } from '../device-run.ts';
 import type { DeviceRun, LaneFault, LanesFile } from '../lanes.ts';
-import { checkLaneParity, fileStatusProblems, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, staleCovers, staleEvidence, staleLanes, writeLanesFile } from '../lanes.ts';
+import { checkLaneParity, committedHostRun, fileStatusProblems, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, staleEvidence, staleLanes, writeLanesFile } from '../lanes.ts';
 import { buildAndroid, buildIos } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import type { NativeTarget } from '../targets.ts';
@@ -86,13 +86,13 @@ if (runHost || runDevice) {
     const settled = await Promise.allSettled(
       mine.filter((t) => !failedBuilds.includes(t.target)).map(async (t) => {
         // A committed host run judges the device vectors only while it still describes the configuration.
-        const hostRun = host.get(t.target) ?? (committed !== null && staleLanes(committed, targets).some((p) => staleCovers(p, t.target, 'layout-vectors-host')) ? null : hostOf(committed, t.target));
+        const hostRun = host.get(t.target) ?? committedHostRun(committed, targets, t.target);
         const log = (l: string): void => console.log(`parity:lanes --run-device ${t.target}: ${l}`);
         const d = await runTargetOnDevices(t, hostRun, log, { jobs: deviceJobs(t.target, jobs, log) });
         device.set(t.target, d);
         const all = allRunFailures(d);
         mkdirSync(repoPath('packages/parity/out'), { recursive: true });
-        writeFileSync(repoPath(`packages/parity/out/device-failures-${t.target}.json`), `${JSON.stringify(all, null, 1)}\n`);
+        writeFileSync(repoPath(`packages/parity/out/device-failures-${t.target}.json`), deviceFailuresText(d));
         for (const f of all) console.log(`DEVICE FAIL ${t.target} ${f.lane} ${f.case}@${f.dpr} ${f.kind}${f.node === null ? '' : ` ${f.node}`}: ${f.detail}`);
         console.log(`parity:lanes --run-device ${t.target}: ${all.length} failures ${JSON.stringify(failuresByKind(all))} (listed in packages/parity/out/device-failures-${t.target}.json)`);
         for (const s of d.sets) for (const r of s.faults) console.log(`  dump fault ${r.fault} (check ${r.check}) at DPR ${s.dpr}: caught ${r.caught}/${r.applicable} real dumps${r.uncaught.length === 0 ? '' : `; UNCAUGHT in ${r.uncaught.join(', ')}`}`);
@@ -146,9 +146,3 @@ if (requireAll) {
   }
 }
 process.exitCode = exit;
-
-function hostOf(f: LanesFile | null, target: NativeTarget): HostRun | null {
-  const l = f?.targets.find((t) => t.target === target)?.lanes.find((x) => x.lane === 'layout-vectors-host');
-  if (l === undefined || l.run === null) return null;
-  return { state: l.state, reason: l.reason, toolchain: l.run.toolchain, suites: l.run.suites, digests: l.run.digests };
-}

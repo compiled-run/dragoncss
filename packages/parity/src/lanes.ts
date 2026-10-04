@@ -634,6 +634,17 @@ export function writeLanesFile(f: LanesFile): void {
   writeFileSync(repoPath(LANES_JSON), lanesJsonText(f));
 }
 
+/**
+ * The committed host run of a target, which judges its device vectors lane, while it still describes the configuration; else null
+ * (the device run then reports the vectors lane without a host run to judge it against).
+ */
+export function committedHostRun(f: LanesFile | null, targets: readonly TargetConfig[], target: NativeTarget): HostRun | null {
+  if (f === null || staleLanes(f, targets).some((p) => staleCovers(p, target, 'layout-vectors-host'))) return null;
+  const l = f.targets.find((t) => t.target === target)?.lanes.find((x) => x.lane === 'layout-vectors-host');
+  if (l === undefined || l.run === null) return null;
+  return { state: l.state, reason: l.reason, toolchain: l.run.toolchain, suites: l.run.suites, digests: l.run.digests };
+}
+
 export function readLanesFile(): LanesFile | null {
   return existsSync(repoPath(LANES_JSON)) ? (JSON.parse(readFileSync(repoPath(LANES_JSON), 'utf8')) as LanesFile) : null;
 }
