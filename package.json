@@ -54,7 +54,9 @@
     "native:devices": "node --conditions=dragon-internal packages/parity/src/cli/native-devices.ts",
     "native:gallery": "node --conditions=dragon-internal packages/parity/src/cli/gallery.ts",
     "rt:oracle": "node --conditions=dragon-internal scripts/capture-rt-oracle.ts",
-    "tw:sweep": "node --conditions=dragon-internal packages/tailwind-sweep/src/cli/sweep.ts"
+    "tw:sweep": "node --conditions=dragon-internal packages/tailwind-sweep/src/cli/sweep.ts",
+    "parity:hit-capture": "node --conditions=dragon-internal packages/parity/src/cli/hit-capture.ts",
+    "parity:hit-report": "node --conditions=dragon-internal packages/parity/src/cli/hit-report.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",
