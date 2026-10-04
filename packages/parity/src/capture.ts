@@ -6,7 +6,7 @@
 import type { Browser, Page } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
-import { CHROME_VERSION, harnessStyle, openPage } from './chrome.ts';
+import { CHROME_VERSION, injectHarness, openPage } from './chrome.ts';
 import { BROWSER_FLAVOUR, hostPlatform } from './platform.ts';
 
 export type CapturedNode = {
@@ -109,9 +109,7 @@ export async function captureFixtureInFrame(browser: Browser, fixture: string, h
     const handle = await page.waitForSelector('iframe', { state: 'attached' });
     const child = await handle.contentFrame();
     if (child === null) throw new Error(`${fixture}: no iframe document`);
-    const injected = html.replace(/<head>/i, `<head><style data-dragon-harness>${harnessStyle(env)}</style>`);
-    if (injected === html) throw new Error('fixture HTML has no <head>');
-    await child.setContent(injected);
+    await child.setContent(injectHarness(html, env));
     const failed = await child.evaluate(async (qs: string[]) => {
       await document.fonts.load('10px Ahem');
       await document.fonts.ready;

@@ -165,6 +165,13 @@ export const IDENTITY_ROOTS: readonly string[] = ['packages/parity/expected', 'p
 export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.json';
 /** Files that are new with SELD-R1b's fixtures (hit-*, reject-pointer-events-*), not in the base. */
 export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-)[^/]*$/;
+/** Files of fixtures added after SELD-R1b (MQ-R0's media-orientation, media-aspect-ratio and media-epsilon), not in the base either. */
+export const IDENTITY_LATER = /(^|\/)media-(orientation|aspect-ratio|epsilon)(-rtl)?\.(web\.json|css)$/;
+/** Base files a later ruled change moves beyond the pointer-events key, each with its ruling; the identity skips only these. */
+export const IDENTITY_RULED: Readonly<Record<string, string>> = {
+  'packages/parity/emitted/media-range.css': 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted; the Chrome captures stay byte-identical',
+  'packages/parity/emitted/media-range-rtl.css': 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted; the Chrome captures stay byte-identical',
+};
 
 /**
  * A committed output with the pointer-events key removed: the "pointer-events" computed value of every captured element, and the

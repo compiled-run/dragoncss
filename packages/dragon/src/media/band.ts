@@ -8,6 +8,7 @@ import { NO_MEDIA_FAULTS } from './faults.ts';
 import { INITIAL_FONT_SIZE, resolveLength } from './length.ts';
 import { featuresOfList, serialiseFeature } from './parse.ts';
 import type { Comparison, MediaFeature, MediaQueryList, MediaValue } from './parse.ts';
+import { wholeAtOrAbove, wholeAtOrBelow } from './viewport.ts';
 
 export const MAX_BANDS = 16;
 /** The band count stops being counted past this many (the sheet is refused either way). */
@@ -49,7 +50,7 @@ export function contains(i: Interval, v: number): boolean {
 /** Whether a whole number lies in the interval. */
 export function holdsWholePx(i: Interval): boolean {
   if (i.hi === Infinity) return true;
-  for (let n = Math.ceil(i.lo); n <= Math.floor(i.hi); n++) if (contains(i, n)) return true;
+  for (let n = wholeAtOrAbove(i.lo); n <= wholeAtOrBelow(i.hi); n++) if (contains(i, n)) return true;
   return false;
 }
 
@@ -245,9 +246,9 @@ function extend(alternatives: Dnf | null, dnf: Dnf): Dnf | null {
 
 /** The whole CSS px a width or height interval truncates to: W >= lo and W <= hi (hi null when unbounded). */
 function wholeRange(i: Interval): { readonly lo: bigint; readonly hi: bigint | null } | null {
-  const lo = Math.floor(i.lo);
+  const lo = wholeAtOrBelow(i.lo);
   if (i.hi === Infinity) return { lo: BigInt(lo), hi: null };
-  const hi = i.hiInclusive ? Math.floor(i.hi) : Math.ceil(i.hi) - 1;
+  const hi = i.hiInclusive ? wholeAtOrBelow(i.hi) : wholeAtOrAbove(i.hi) - 1;
   return hi < lo ? null : { lo: BigInt(lo), hi: BigInt(hi) };
 }
 

@@ -6,6 +6,7 @@ import { INITIAL_FONT_SIZE, resolveLength } from './length.ts';
 import { featuresOfList } from './parse.ts';
 import type { Comparison, MediaCondition, MediaFeature, MediaQuery, MediaQueryList, MediaValue } from './parse.ts';
 import { serialiseFeature } from './parse.ts';
+import { wholePx } from './viewport.ts';
 
 export type MediaEnvironment = {
   readonly width: number;
@@ -69,7 +70,7 @@ export type FeatureOracle = (feature: MediaFeature) => boolean;
 
 /** The whole CSS px orientation and aspect-ratio compare: Chrome reads the media size into an int (truncation, M3). */
 export function ratioSize(env: MediaEnvironment, untruncated: boolean): { readonly width: number; readonly height: number } {
-  return untruncated ? env : { width: Math.trunc(env.width), height: Math.trunc(env.height) };
+  return untruncated ? env : { width: wholePx(env.width), height: wholePx(env.height) };
 }
 
 /** Evaluates one feature Dragon supports. Throws for a refused feature. */

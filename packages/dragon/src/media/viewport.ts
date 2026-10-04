@@ -1,5 +1,6 @@
 // The media size Chrome 145 evaluates for a root of whole device px (notes/T067 R3). These are measurements (M1, M4, M5):
-// local_frame_view.cc, which computes them, is LGPL and is only a reference.
+// local_frame_view.cc, which computes them, is LGPL and is only a reference. Every Chrome-ported rounding of the media evaluator
+// (the float media size, device px, and the int width and height orientation and aspect-ratio read) lives here, nowhere else in media/.
 import type { MediaFaults } from './faults.ts';
 import { NO_MEDIA_FAULTS } from './faults.ts';
 
@@ -37,4 +38,19 @@ export function mediaViewport(px: { readonly width: number; readonly height: num
 /** The media viewport Chrome evaluates for an emulated main frame of the given CSS px size. */
 export function emulatedMediaViewport(viewport: { readonly width: number; readonly height: number }, dpr: number, faults: MediaFaults = NO_MEDIA_FAULTS): { readonly width: number; readonly height: number } {
   return mediaViewport({ width: emulatedDevicePx(viewport.width, dpr, faults), height: emulatedDevicePx(viewport.height, dpr, faults) }, dpr, faults);
+}
+
+/** The int Chrome reads a media size into for orientation and aspect-ratio: truncation toward zero (M3). */
+export function wholePx(size: number): number {
+  return Math.trunc(size);
+}
+
+/** The whole px at or below a media size (floor). */
+export function wholeAtOrBelow(size: number): number {
+  return Math.floor(size);
+}
+
+/** The whole px at or above a media size (ceil). */
+export function wholeAtOrAbove(size: number): number {
+  return Math.ceil(size);
 }

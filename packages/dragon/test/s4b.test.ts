@@ -74,6 +74,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       if (f.includes(`${join('src', 'fonts')}${sep}`)) continue;
       // The forms port Blink's Decimal and geometry math (LayoutUnit truncation), so src/forms/** is exempt by path.
       if (f.includes(`${join('src', 'forms')}${sep}`)) continue;
+      // MQ-R0: media/viewport.ts ports Chrome's media size (float32 size, device px, int read for orientation and aspect-ratio); only that file.
+      if (f.endsWith(join('src', 'media', 'viewport.ts'))) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });

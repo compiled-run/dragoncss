@@ -1,13 +1,14 @@
 // The pointer-events identity (PM capture ruling on T063J): adding the pointer-events longhand may change the Chrome captures
 // and the emitted CSS only by its own key. Every capture and emitted file of the base (expected-hit/identity-base.json, written by
 // pnpm run parity:hit-capture -- --identity-base <rev>) must still exist and, with that key removed, hash to the base's; every
-// other file under those roots belongs to a SELD-R1b fixture.
+// other file under those roots belongs to a SELD-R1b fixture or a later one (IDENTITY_LATER). IDENTITY_RULED lists the base files a
+// later ruling moves; only their hash is skipped.
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { IdentityManifest } from '../src/hit-capture.ts';
-import { IDENTITY_MANIFEST, IDENTITY_NEW, IDENTITY_ROOTS, parseHitCaptureArgs, withoutPointerEvents } from '../src/hit-capture.ts';
+import { IDENTITY_LATER, IDENTITY_MANIFEST, IDENTITY_NEW, IDENTITY_ROOTS, IDENTITY_RULED, parseHitCaptureArgs, withoutPointerEvents } from '../src/hit-capture.ts';
 import { repoPath } from '../src/paths.ts';
 
 const manifest = JSON.parse(readFileSync(repoPath(IDENTITY_MANIFEST), 'utf8')) as IdentityManifest;
@@ -36,9 +37,12 @@ describe('pointer-events changes the captures and emitted files only by its own 
         differ.push(`${path}: missing`);
         continue;
       }
+      if (IDENTITY_RULED[path] !== undefined) continue;
       if (createHash('sha256').update(withoutPointerEvents(path, text), 'utf8').digest('hex') !== sha) differ.push(path);
     }
     expect(differ).toEqual([]);
+    // A ruled file is a base file that still exists; it is skipped only for the hash, never for the key check below.
+    for (const path of Object.keys(IDENTITY_RULED)) expect([path, manifest.files[path] !== undefined]).toEqual([path, true]);
   });
 
   it('adds the key to every captured element and emitted rule', () => {
@@ -59,10 +63,10 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(files).toBeGreaterThan(Object.keys(manifest.files).length);
   });
 
-  it('holds only SELD-R1b fixtures\' files beyond the base', () => {
+  it('holds only SELD-R1b fixtures\' and later fixtures\' files beyond the base', () => {
     const extra = IDENTITY_ROOTS.flatMap(walk).filter((p) => (p.endsWith('.json') || p.endsWith('.css')) && manifest.files[p] === undefined);
-    expect(extra.filter((p) => !IDENTITY_NEW.test(p))).toEqual([]);
-    expect(extra.length).toBeGreaterThan(0);
+    expect(extra.filter((p) => !IDENTITY_NEW.test(p) && !IDENTITY_LATER.test(p))).toEqual([]);
+    expect(extra.filter((p) => IDENTITY_NEW.test(p)).length).toBeGreaterThan(0);
   });
 
   it('catches a byte that differs beyond the key', () => {
