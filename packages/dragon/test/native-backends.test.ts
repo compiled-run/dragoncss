@@ -6,7 +6,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { checkedConversionSource, inputFunctions, STYLE_FIELDS } from '../src/emit/native-support.ts';
 import type { EmitCase, NativeProgram } from '../src/internal.ts';
@@ -142,7 +142,9 @@ function trapRun(lang: 'swift' | 'kotlin', dir: string): { tool: Tool; outcomes:
 describe('the checked int conversion (View.layout ints)', () => {
   for (const lang of ['swift', 'kotlin'] as const) {
     it(`${lang}: traps on 1.5, 2^31 and -2^31 - 1, and passes 7 and -2^31`, async () => {
-      const { tool, outcomes } = trapRun(lang, join(tmpdir(), `dragon-t014-checked-${lang}-${process.pid}`));
+      const dir = join(tmpdir(), `dragon-t014-checked-${lang}-${process.pid}`);
+      onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
+      const { tool, outcomes } = trapRun(lang, dir);
       if (!tool.ok) {
         // Reported as blocked (owner tooling), never as a pass: the lane records it the same way (lanes.ts).
         const native = (await import(pathToFileURL(join(root, 'packages/translate/src/native.ts')).href)) as { swiftTool: () => unknown; kotlinTool: () => unknown };
