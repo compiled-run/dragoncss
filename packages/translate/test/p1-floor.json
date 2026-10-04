@@ -5,14 +5,16 @@
       "units",
       "engine",
       "library",
-      "rt"
+      "rt",
+      "hit"
     ],
     "counts": {
       "vectors": 258,
       "units": 320000,
       "engine": 20258,
       "library": 22000,
-      "rt": 55362
+      "rt": 55362,
+      "hit": 2028
     }
   },
   "rt-records": {
