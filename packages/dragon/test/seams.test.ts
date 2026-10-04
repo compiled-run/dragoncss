@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resolve.ts';
 import type { Candidate } from '../src/analysis/resolve.ts';
 import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
+import { keyframesAtRule } from '../src/css/at-rules/keyframes.ts';
 import type { AtRuleContext } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../src/css/properties/grid.ts';
@@ -85,9 +86,9 @@ describe('E2 seams: FIXTURES', () => {
   });
 });
 
-describe('E2 seams: every at-rule but @media is still refused', () => {
-  // MQ-a made @media conditional; its own seam test follows.
-  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media'), 'Font-Face', 'unknown-thing', '-webkit-keyframes'];
+describe('E2 seams: every at-rule but @media and @keyframes is still refused', () => {
+  // MQ-a made @media conditional and ANIM-b1 accepted a top-level @keyframes (keyframes.test.ts); @-webkit-keyframes stays refused.
+  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'keyframes'), 'Font-Face', 'unknown-thing', '-webkit-keyframes'];
   const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@supports (display: flex) { @${n} z { .b { height: 3px; } } }`];
   const run = (text: string): { text: string; diagnostics: Diagnostic[]; enclosed: EnclosedRules[]; rules: number } => {
     const diagnostics: Diagnostic[] = [];
@@ -97,7 +98,7 @@ describe('E2 seams: every at-rule but @media is still refused', () => {
   };
   const atRules = (ds: readonly Diagnostic[]): [string, string][] => ds.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.code, d.message]);
   it('every registered name but font-face and media is refused today', () => {
-    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : refuseAtRule);
+    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : name === 'keyframes' ? keyframesAtRule : refuseAtRule);
     expect(atRuleHandler('MEDIA')).toBe(mediaAtRule);
     expect(atRuleHandler('no-such-rule')).toBe(refuseAtRule);
     expect(atRuleHandler('Font-Face')).toBe(acceptFontFace);
@@ -142,8 +143,9 @@ describe('E2 seams: every at-rule but @media is still refused', () => {
     }
   });
   it('the diagnostics and enclosed rules are byte-identical to 4c1331c', () => {
-    // media and MEDIA left the list with MQ-a. At cb1a4b2d this list gave 0a07dd1a…, and the full list gave the 4c1331c pin 4cfb6ef0….
-    const pinned = ['charset', 'color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'keyframes', 'layer', 'namespace', 'page', 'position-try', 'property', 'scope', 'starting-style', 'supports', 'view-transition', 'Font-Face', 'unknown-thing', '-webkit-keyframes'];
+    // media and MEDIA left the list with MQ-a, and keyframes with ANIM-b1 (T065): with keyframes it gave 0a07dd1a…, and without
+    // it the base before ANIM-b1 gives ba217ee5…, so every other at-rule is unchanged. At cb1a4b2d the full list gave 4cfb6ef0….
+    const pinned = ['charset', 'color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'layer', 'namespace', 'page', 'position-try', 'property', 'scope', 'starting-style', 'supports', 'view-transition', 'Font-Face', 'unknown-thing', '-webkit-keyframes'];
     const runs = pinned.flatMap((n) => sheets(n).map((text) => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
@@ -158,7 +160,7 @@ describe('E2 seams: every at-rule but @media is still refused', () => {
       }
       return x;
     }));
-    expect(sha(strip(runs))).toBe('0a07dd1a2792ee5f25fe56b981852996a7e54cce342a294d1fd51880928560c7');
+    expect(sha(strip(runs))).toBe('ba217ee53c94a43b1fddf3b1f9c0573977263270b58cfa25737eeaad0c547561');
     expect(added.length).toBeGreaterThan(0);
     for (const x of added) expect([[], null, false]).toContainEqual(x);
   });

@@ -22,6 +22,9 @@ import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts'
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
+import type { AnimationDeclValue } from './properties/animation.ts';
+import type { KeyframesSource } from './at-rules/keyframes.ts';
+import { isAnimationProperty, parseAnimationDeclaration } from './properties/animation.ts';
 
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
@@ -50,6 +53,8 @@ export type Declaration = {
   readonly custom?: CustomValue;
   /** A declaration whose value holds var(); its longhands are empty until substitution (css-variables-1 §3.1). */
   readonly pending?: PendingSubstitution;
+  /** T065: a transition or animation declaration; its longhands are empty, and analysis/animations.ts cascades these values. */
+  readonly animation?: AnimationDeclValue;
 };
 
 /** A class selector in this rule matches only class symbols with this owner and sheet (docs/api.md §3.1). */
@@ -71,7 +76,7 @@ export type SheetUse = { readonly id: string; readonly owner: string; readonly s
  */
 export type EnclosedRules = { readonly atRule: Diagnostic; readonly span: Span; readonly rules: readonly Rule[]; readonly diagnostics: readonly Diagnostic[] };
 
-type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[] };
+type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[] };
 
 /**
  * Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block.
@@ -79,8 +84,8 @@ type ParseState = { order: number; readonly base: Span; readonly text: string; r
  */
 type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top'; readonly conditions: readonly RuleCondition[] };
 
-/** fontFaces: collects the accepted @font-face rules, in document order, for the fonts module. */
-export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = []): Rule[] {
+/** fontFaces: collects the accepted @font-face rules, in document order, for the fonts module; keyframes the @keyframes (T065). */
+export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = [], keyframes: KeyframesSource[] = []): Rule[] {
   const text = preprocessInput(authoredText);
   // Chrome 145 reads a literal U+0000 as U+FFFD inside a name but not where it would start a hash or follow a leading "-" (probed),
   // so Dragon reports it rather than guess which reading applies.
@@ -109,7 +114,7 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
   }
   const rules: Rule[] = [];
-  const st: ParseState = { order: orderStart, base, text, use, fontFaces };
+  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes };
   parseTopLevel(list(ast, 'children'), st, { label: 'the stylesheet', selectors: 'top', conditions: [] }, diagnostics, enclosed, rules);
   return rules;
 }
@@ -166,6 +171,10 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
     const outcome = handleAtRule(context);
     if (outcome.kind === 'font-face') {
       st.fontFaces.push(outcome.context);
+      return;
+    }
+    if (outcome.kind === 'keyframes') {
+      st.keyframes.push({ context: outcome.context, base: st.base, text: st.text, use: st.use });
       return;
     }
     const block = node['block'] as CssNode | null | undefined;
@@ -234,6 +243,11 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   }
   const important = priority === false ? {} : { important: true as const };
   if (property.startsWith('--')) return parseCustomDeclaration(property, valueNode, span, valueSpan, order, important, diagnostics);
+  if (isAnimationProperty(property)) {
+    const source = sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start);
+    const animation = parseAnimationDeclaration(property, valueNode, { span, valueSpan, text, source, base }, diagnostics);
+    return animation === null ? null : { property, text, span, valueSpan, longhands: [], order, ...important, animation };
+  }
   if (!isLonghand(property) && !isShorthand(property)) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_PROPERTY', {
       origin: authored(span),
