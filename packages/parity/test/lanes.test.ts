@@ -10,6 +10,7 @@ import { atDpr, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from '../src/dpr.ts
 import { declaredLayoutCaseCount, groupFixtures, MILESTONE_1_LAYOUT_CASES } from '../src/case-count.ts';
 import type { HostRun, KotlinLookup, LaneFault } from '../src/lanes.ts';
 import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
+import { HIT_LANE, scriptCases, STATE_LANE } from '../src/device-lanes.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
@@ -23,6 +24,11 @@ const ios = targets.find((t) => t.target === 'ios') as TargetConfig;
 const android = targets.find((t) => t.target === 'android') as TargetConfig;
 const lane = (t: TargetConfig, id: string) => t.lanes.find((l) => l.lane === id);
 const ids = layoutCaseIds();
+const stateCaseCount = (name: string): number => {
+  const t = targets.find((x) => x.target === name);
+  if (t === undefined) throw new Error(`no native target ${name}`);
+  return scriptCases(t.target).length;
+};
 
 describe('native targets', () => {
   it('ios and android, each with the eight lanes in order', () => {
@@ -219,10 +225,14 @@ describe('committed out/lanes.json', () => {
         if (l.lane === 'device-pixels') expect(['pass', 'fail'], `${t.target} ${l.lane}`).toContain(l.state);
         else expect(l.state, `${t.target} ${l.lane}`).toBe('pass');
         expect([...(l.device?.sets.map((s) => s.dpr) ?? [])].sort(), `${t.target} ${l.lane}`).toEqual(l.sets.map((s) => s.dpr).sort());
+        // SELD-R1b: device-states runs the state script cases, every check; device-hit runs every layout case and compares only
+        // hit points (b), the other counts exactly 0.
+        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : ids.length;
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
-          expect(s.cases).toBe(ids.length);
-          expect(s.compared.a > 0 && s.compared.b > 0 && s.compared.c > 0 && s.compared.d > 0 && s.compared.breaks > 0).toBe(true);
+          expect(s.cases, `${t.target} ${l.lane} ${s.dpr}`).toBe(cases);
+          if (l.lane === HIT_LANE) expect([s.compared.a, s.compared.b > 0, s.compared.c, s.compared.d, s.compared.breaks], `${t.target} ${l.lane} ${s.dpr}`).toEqual([0, true, 0, 0, 0]);
+          else expect(s.compared.a > 0 && s.compared.b > 0 && s.compared.c > 0 && s.compared.d > 0 && s.compared.breaks > 0, `${t.target} ${l.lane} ${s.dpr}`).toBe(true);
         }
         if (l.lane === 'device-pixels') {
           expect(l.device?.trust?.map((x) => [x.dpr, x.mismatches])).toEqual(l.device?.sets.map((s) => [s.dpr, 0]));
