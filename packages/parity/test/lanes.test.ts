@@ -17,7 +17,7 @@ import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
 import { SAMPLE_RULES } from '../src/samples.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
-import { corpusSuites, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest } from '../src/targets.ts';
+import { corpusSuites, declaredSuites, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest } from '../src/targets.ts';
 
 const targets = nativeTargets();
 const sources = laneSources();
@@ -222,6 +222,13 @@ describe('committed out/lanes.json', () => {
     for (const id of refused) expect(id, id).toMatch(/^transform-/);
     expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...ids].sort());
     expect(hitCaseCount()).toBe(ids.length - refused.length);
+    // The declared device-hit sets hold exactly those cases (targets.ts hitCaseIds), in layout order, at every device DPR.
+    expect(hitCaseIds()).toEqual(hitCases().map((n) => n.case.id));
+    for (const t of nativeTargets()) {
+      const lane = t.lanes.find((l) => l.lane === HIT_LANE);
+      expect(lane?.sets.length, t.target).toBe(t.dprs.length);
+      for (const set of lane?.sets ?? []) expect(set.ids, `${t.target} ${set.dpr}`).toEqual(hitCaseIds());
+    }
   });
   it('every device lane ran (P5): per DPR the device, OS, both scales, a dump per case and the counts compared; vectors equal the host lane; every dump fault caught; capture trust on every device', () => {
     if (f === null) return;
