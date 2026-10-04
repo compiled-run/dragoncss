@@ -203,7 +203,7 @@ jobs:
               rows.push(`| ${t} | ${l.lane} | ${l.state}${l.reason ? ` (${l.reason})` : ''} | ${m?.state ?? 'missing'}${m?.reason ? ` (${m.reason})` : ''} | ${setSame ? `same (${ka.length})` : `differs: ${onlyA} only committed, ${onlyB} only CI`} | ${detailSame ? 'same' : 'differs'} |`);
             }
           }
-          const out = `${rows.join('\n')}\n\n${same ? 'Every device lane run on CI judges exactly as the committed records (android layout-vectors-device is the Mac'"'"'s).' : 'Some device lanes differ from the committed records (see the device-records-ci-half artifact).'}\n`;
+          const out = `${rows.join('\n')}\n\n${same ? 'Every device lane run on CI judges exactly as the committed records (android layout-vectors-device runs on the Mac).' : 'Some device lanes differ from the committed records (see the device-records-ci-half artifact).'}\n`;
           console.log(out);
           import('node:fs').then((fs) => fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY!, out));
           EOF
