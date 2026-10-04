@@ -14,6 +14,7 @@ import type { PaintSampleContext, PaintSamples } from '../src/paint-samples/regi
 import { PAINT_SAMPLE_MODULES } from '../src/paint-samples/types.ts';
 import type { SampleBox } from '../src/samples.ts';
 import { generateSamples, SAMPLE_RULES } from '../src/samples.ts';
+import { PAINT_MODULE_NAMES } from '../../dragon/src/lower/paint/types.ts';
 
 const SIZE = { width: 200, height: 120 };
 const box: SampleBox = { id: 'n1', left: 20, top: 20, right: 120, bottom: 80, border: { top: 4, right: 4, bottom: 4, left: 4 }, radius: 0, clips: true };
@@ -22,7 +23,8 @@ const ctx = (): PaintSampleContext => ({ program: { version: 'v', backend: 'uiki
 describe('EMS: paint samples', () => {
   it('registers every module once in the paint registry order, each a stub for now', () => {
     expect(PAINT_SAMPLES.map((m) => m.name)).toEqual([...PAINT_SAMPLE_MODULES]);
-    expect([...PAINT_SAMPLE_MODULES]).toEqual(['background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'transform', 'gradient', 'scroll', 'fixed', 'scrollbar', 'image', 'foreign-view', 'control']);
+    // PIN-DERIVE: the paint registry order is the compiler's module order (dragon test/paint-seams.test.ts pins that list).
+    expect([...PAINT_SAMPLE_MODULES]).toEqual([...PAINT_MODULE_NAMES]);
   });
   it('keeps the base points unchanged, in order, when no module adds or suppresses one', () => {
     const c = ctx();
@@ -39,8 +41,11 @@ describe('EMS: paint samples', () => {
 
 describe('EMS: per-kind channel deltas', () => {
   it('appends shadow and gradient to SAMPLE_RULES and maps every kind to GATE_CHANNEL_DELTA', () => {
+    // PIN-DERIVE: the base kinds stay first and in order, shadow and gradient follow them, and a later kind may follow those.
+    const base = ['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph'];
+    expect(SAMPLE_RULES.slice(0, base.length + 2)).toEqual([...base, 'shadow', 'gradient']);
     // REPL-a appends image-flat after them (R8), also at GATE_CHANNEL_DELTA.
-    expect(SAMPLE_RULES.slice(-3)).toEqual(['shadow', 'gradient', 'image-flat']);
+    expect(SAMPLE_RULES).toContain('image-flat');
     expect(Object.keys(CHANNEL_DELTA_BY_KIND)).toEqual([...SAMPLE_RULES]);
     for (const k of SAMPLE_RULES) expect(CHANNEL_DELTA_BY_KIND[k], k).toBe(GATE_CHANNEL_DELTA);
     expect(SHADOW_CHANNEL_DELTA).toBe(GATE_CHANNEL_DELTA);

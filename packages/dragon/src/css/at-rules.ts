@@ -8,6 +8,7 @@ import type { MediaQueryList } from '../media/index.ts';
 import { mediaAtoms, parseMediaPrelude, parseMediaQueryList, refusalsOf, serialiseMediaQueryList } from '../media/index.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { asciiLower } from './escapes.ts';
+import { keyframesAtRule } from './at-rules/keyframes.ts';
 
 /**
  * One at-rule as the driver meets it: its node, its name as written, where it sits ('the stylesheet', 'a rule block',
@@ -27,6 +28,7 @@ export type RuleCondition = { readonly list: MediaQueryList; readonly text: stri
 export type AtRuleOutcome =
   | { readonly kind: 'refuse'; readonly diagnostic: Diagnostic }
   | { readonly kind: 'font-face'; readonly context: AtRuleContext }
+  | { readonly kind: 'keyframes'; readonly context: AtRuleContext }
   | { readonly kind: 'conditional'; readonly condition: RuleCondition };
 
 export type AtRuleHandler = (at: AtRuleContext) => AtRuleOutcome;
@@ -91,7 +93,7 @@ export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
   'font-feature-values': refuseAtRule,
   'font-palette-values': refuseAtRule,
   import: refuseAtRule,
-  keyframes: refuseAtRule,
+  keyframes: keyframesAtRule,
   layer: refuseAtRule,
   media: mediaAtRule,
   namespace: refuseAtRule,

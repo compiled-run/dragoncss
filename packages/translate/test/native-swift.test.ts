@@ -16,7 +16,9 @@ describe('Swift host run (native:swift)', () => {
     }
     // A suite that timed out, crashed or wrote a short result fails here with its cause (exit, signal, stderr tail), not only a count.
     expect(r.suites.filter((s) => s.cause !== null).map((s) => `${s.name}: ${s.cause}`)).toEqual([]);
-    expect(r.suites.map((s) => `${s.name} ${s.pass}/${s.total}`)).toEqual(['vectors 258/258', 'units 320000/320000', 'engine 20258/20258', 'library 22000/22000', 'rt 54588/54588']);
+    // PIN-DERIVE: every suite of the corpus ran in full and passed, sized from the corpus rather than literals; rt-vectors.test.ts
+    // keeps the corpus above its floor (p1-floor.json), so a shrunk corpus fails there even where this run is blocked.
+    expect(r.suites.map((s) => `${s.name} ${s.pass}/${s.total}`)).toEqual(c.suites.map((s) => `${s.name} ${s.lines.length}/${s.lines.length}`));
     expect(r.status).toBe('pass');
   }, 600_000);
 });

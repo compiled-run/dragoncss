@@ -354,6 +354,71 @@ describe('zlibInflate and the PNG decode refusal (Macroscope 4169579864: CRC-val
     }
   });
 
+  it('rejects an incomplete Huffman code as zlib inflate_table does, except a single one-bit literal/length or distance code', async () => {
+    const { zlibInflate } = await import('../../src/images/inflate.ts');
+    // A one-block dynamic-Huffman zlib stream, written bit by bit (RFC 1951 §3.2.7). The code-length code is complete: symbols
+    // 0, 1, 2 and 18 at two bits each. lit and dist give each symbol's code length; body lists the literal/length symbols to emit.
+    const stream = (lit: ReadonlyMap<number, number>, dist: readonly number[], body: readonly number[], out: readonly number[]): Uint8Array => {
+      const bytes: number[] = [0x78, 0x01];
+      let acc = 0;
+      let n = 0;
+      const put = (v: number, bits: number): void => {
+        for (let i = 0; i < bits; i++) {
+          acc |= ((v >>> i) & 1) << n++;
+          if (n === 8) { bytes.push(acc); acc = 0; n = 0; }
+        }
+      };
+      const code = (c: number, len: number): void => { for (let i = len - 1; i >= 0; i--) put((c >>> i) & 1, 1); };
+      const canonical = (lens: readonly number[]): number[] => {
+        const codes: number[] = [];
+        let next = 0;
+        for (let len = 1; len < 16; len++) {
+          for (let s2 = 0; s2 < lens.length; s2++) if (lens[s2] === len) codes[s2] = next++;
+          next <<= 1;
+        }
+        return codes;
+      };
+      put(1, 1); put(2, 2); put(0, 5); put(dist.length - 1, 5); put(14, 4);
+      const order = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1];
+      const clen = (sym: number): number => ([0, 1, 2, 18].includes(sym) ? 2 : 0);
+      for (const sym of order) put(clen(sym), 3);
+      const clCodes = canonical(Array.from({ length: 19 }, (_, i) => clen(i)));
+      const litLens = Array.from({ length: 257 }, (_, i) => lit.get(i) ?? 0);
+      const all = [...litLens, ...dist];
+      for (let i = 0; i < all.length;) {
+        let run = 0;
+        while (all[i + run] === 0 && run < 138 && i + run < all.length) run++;
+        if (run >= 11) { code(clCodes[18] as number, 2); put(run - 11, 7); i += run; continue; }
+        code(clCodes[all[i] as number] as number, 2);
+        i++;
+      }
+      const litCodes = canonical(litLens);
+      for (const sym of body) code(litCodes[sym] as number, litLens[sym] as number);
+      if (n > 0) bytes.push(acc);
+      let a = 1;
+      let b = 0;
+      for (const x of out) { a = (a + x) % 65521; b = (b + a) % 65521; }
+      return Uint8Array.from([...bytes, (b >>> 8) & 0xff, b & 0xff, (a >>> 8) & 0xff, a & 0xff]);
+    };
+    // Literal 0 and end-of-block at two bits each: two of four two-bit codes, so the code is incomplete. zlib: "invalid literal/lengths set".
+    expect(() => zlibInflate(stream(new Map([[0, 2], [256, 2]]), [1], [0, 256], [0]))).toThrow(/incomplete literal\/length code/);
+    // The same with a complete literal/length code (0, 1 and 256 at 1, 2 and 2 bits) inflates.
+    expect([...zlibInflate(stream(new Map([[0, 1], [1, 2], [256, 2]]), [1], [0, 1, 256], [0, 1]))]).toEqual([0, 1]);
+    // A single one-bit literal/length code (end-of-block only) and a single one-bit distance code are allowed, as in zlib.
+    expect([...zlibInflate(stream(new Map([[256, 1]]), [1], [256], []))]).toEqual([]);
+    // An incomplete distance code with a longest code over one bit is not. zlib: "invalid distances set".
+    expect(() => zlibInflate(stream(new Map([[0, 1], [1, 2], [256, 2]]), [2, 2], [0, 1, 256], [0, 1]))).toThrow(/incomplete distance code/);
+    // An incomplete code-length code (only symbol 0, at one bit) is never allowed. zlib: "invalid code lengths set".
+    const clIncomplete = Uint8Array.from([0x78, 0x01, 0b00000101, 0b10000000, 0b00000000, 0b00000001, 0, 0, 0, 0, 0, 0]);
+    expect(() => zlibInflate(clIncomplete)).toThrow(/incomplete code length code/);
+    // node:zlib agrees on every case above.
+    expect(() => inflateSync(stream(new Map([[0, 2], [256, 2]]), [1], [0, 256], [0]))).toThrow(/invalid literal\/lengths set/);
+    expect(() => inflateSync(stream(new Map([[0, 1], [1, 2], [256, 2]]), [2, 2], [0, 1, 256], [0, 1]))).toThrow(/invalid distances set/);
+    expect(() => inflateSync(clIncomplete)).toThrow(/invalid code lengths set/);
+    expect([...inflateSync(stream(new Map([[0, 1], [1, 2], [256, 2]]), [1], [0, 1, 256], [0, 1]))]).toEqual([0, 1]);
+    expect([...inflateSync(stream(new Map([[256, 1]]), [1], [256], []))]).toEqual([]);
+  });
+
   it('refuses a PNG whose chunks and CRCs are valid but whose image data does not decode, and accepts the corpus PNGs it accepted', async () => {
     const { crc32, parsePng } = await import('../../src/images/png.ts');
     const { deflateSync } = await import('node:zlib');

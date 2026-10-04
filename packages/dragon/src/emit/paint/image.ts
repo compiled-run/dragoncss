@@ -86,7 +86,10 @@ fun dragonDecodeImage(base64: String, id: String): Bitmap {
   val options = BitmapFactory.Options()
   options.inPreferredConfig = Bitmap.Config.ARGB_8888
   options.inScaled = false
-  return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: throw IllegalStateException("dragon: " + id + ": the image bytes do not decode")
+  val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: throw IllegalStateException("dragon: " + id + ": the image bytes do not decode")
+  // Upload the texture now, not on the first draw, so the frame that presents the box already holds the image.
+  bitmap.prepareToDraw()
+  return bitmap
 }
 
 /** The image stage: the bitmap into the destination rect, clipped to the drawn part of the content box, in device px. */
