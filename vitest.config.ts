@@ -5,6 +5,7 @@ export default defineConfig({
   ssr: { resolve: { conditions: ['dragon-internal', 'module', 'node', 'import', 'default'] } },
   test: {
     include: ['packages/*/test/**/*.test.ts'],
+    globalSetup: ['scripts/vitest-tmpdir.ts'],
     testTimeout: 120_000,
     hookTimeout: 120_000,
   },
