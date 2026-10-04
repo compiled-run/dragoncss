@@ -111,6 +111,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
   };
   const declLine = (el: ResolvedElement, p: (typeof LONGHANDS)[number]): string => {
     const v = (el.props.get(p) as ResolvedValue).value;
+    // A folded order calculation that is not a whole number stays a calculation, which Chrome rounds as the engine does.
+    if (p === 'order' && v.kind === 'number' && !Number.isInteger(v.value)) return `  ${p}: calc(${valueText(v)});`;
     return `  ${p}: ${p === 'font-family' ? familyText(v) : valueText(v)};`;
   };
   const classOf = new Map<string, Map<string, string>>();

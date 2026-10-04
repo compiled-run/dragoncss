@@ -729,6 +729,7 @@ const FAULT_KEYS: readonly string[] = [
   'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled', 'lhUnsnapped',
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
   'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak',
+  'orderHalfEven', 'orderUnclamped',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -769,6 +770,8 @@ function decodeFaults(v: JsonValue): EngineFaults {
     fitWithoutEpsilon: b('fitWithoutEpsilon'),
     breakAfterSolidus: b('breakAfterSolidus'),
     noHyphenDigitBreak: b('noHyphenDigitBreak'),
+    orderHalfEven: b('orderHalfEven'),
+    orderUnclamped: b('orderUnclamped'),
   };
 }
 

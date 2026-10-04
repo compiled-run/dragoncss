@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w { width: 100px; height: 40px; padding-top: 1px; }
+.x { height: 5px; }
+.max { margin-bottom: calc(1e9px); }
+.min { margin-top: calc(-1e9px); }
+.max-exact { margin-bottom: calc(33554429px); }
+.below-max { margin-top: calc(-33554428px); }
+.min-plus { margin-top: calc(-1e9px + 5px); }
+.cap { max-width: calc(1e9px); max-height: calc(33554429px); min-height: calc(1e10px - 1e10px + 2px); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="w1" class="w"><div data-dragon-id="a1" class="x max"></div><div data-dragon-id="b1" class="x min"></div></div>
+<div data-dragon-id="w2" class="w"><div data-dragon-id="a2" class="x max-exact"></div><div data-dragon-id="b2" class="x below-max"></div></div>
+<div data-dragon-id="w3" class="w"><div data-dragon-id="a3" class="x max"></div><div data-dragon-id="b3" class="x min-plus"></div></div>
+<div data-dragon-id="w4" class="w"><div data-dragon-id="c" class="x cap"></div></div>
+</body>
+</html>
