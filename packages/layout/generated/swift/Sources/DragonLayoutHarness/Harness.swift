@@ -148,82 +148,84 @@ enum HS {
   static let s141 = JsString(": expected an object")
   static let s142 = JsString(": expected keys ")
   static let s143 = JsString(": inline content without a strut (validateLayoutInput rejects it)")
-  static let s144 = JsString(": missing item ")
-  static let s145 = JsString(": missing key ")
-  static let s146 = JsString(": unexpected ")
-  static let s147 = JsString(": unknown calculation kind ")
-  static let s148 = JsString(": unknown inline-level node kind ")
-  static let s149 = JsString(": unknown kind ")
-  static let s150 = JsString(":line")
-  static let s151 = JsString("; its font metric rounding is unmeasured")
-  static let s152 = JsString("; validateLayoutInput rejects this input")
+  static let s144 = JsString(": its scrollable overflow is not decided here (R16, INL2)")
+  static let s145 = JsString(": missing item ")
+  static let s146 = JsString(": missing key ")
+  static let s147 = JsString(": unexpected ")
+  static let s148 = JsString(": unknown calculation kind ")
+  static let s149 = JsString(": unknown inline-level node kind ")
+  static let s150 = JsString(": unknown kind ")
+  static let s151 = JsString(":line")
+  static let s152 = JsString("; its font metric rounding is unmeasured")
+  static let s153 = JsString("; validateLayoutInput rejects this input")
   static let s_Ahem = JsString("Ahem")
-  static let s154 = JsString("Ahem ascent and descent round to the nearest whole px, with an exact half rounded down (units.ts roundFontMetricToWholePx).")
-  static let s155 = JsString("CSS 2.2 \u{a7}10.3.8, \u{a7}10.6.5")
-  static let s156 = JsString("CSS2 \u{a7}10.8, css-break-3 \u{a7}5.4")
-  static let s157 = JsString("CSS2 \u{a7}10.8.1")
-  static let s158 = JsString("CSS2 \u{a7}9.2.1.1, \u{a7}10.3.7")
-  static let s159 = JsString("CSS2 \u{a7}9.4.2")
-  static let s160 = JsString("CSS2 \u{a7}9.4.3")
-  static let s161 = JsString("Glyph advances and metrics use the font size times 100, truncated (units.ts platformFontSize); line-height numbers still multiply the computed size.")
-  static let s162 = JsString("LayoutUnit raw value must be an integer, got ")
+  static let s155 = JsString("Ahem ascent and descent round to the nearest whole px, with an exact half rounded down (units.ts roundFontMetricToWholePx).")
+  static let s156 = JsString("CSS 2.2 \u{a7}10.3.8, \u{a7}10.6.5")
+  static let s157 = JsString("CSS2 \u{a7}10.8, css-break-3 \u{a7}5.4")
+  static let s158 = JsString("CSS2 \u{a7}10.8.1")
+  static let s159 = JsString("CSS2 \u{a7}9.2.1.1, \u{a7}10.3.7")
+  static let s160 = JsString("CSS2 \u{a7}9.4.2")
+  static let s161 = JsString("CSS2 \u{a7}9.4.3")
+  static let s162 = JsString("Glyph advances and metrics use the font size times 100, truncated (units.ts platformFontSize); line-height numbers still multiply the computed size.")
+  static let s163 = JsString("LayoutUnit raw value must be an integer, got ")
   static let s_NaN = JsString("NaN")
-  static let s164 = JsString("NaN * 1")
-  static let s165 = JsString("U+")
-  static let s166 = JsString("U+200B in the whitespace before a <br> in the rtl paragraph of ")
-  static let s167 = JsString("U+200B in the whitespace that ends the rtl paragraph of ")
-  static let s168 = JsString("UAX #9 L1")
-  static let s169 = JsString("UAX #9 W1-W7, N1-N2")
+  static let s165 = JsString("NaN * 1")
+  static let s166 = JsString("U+")
+  static let s167 = JsString("U+200B in the whitespace before a <br> in the rtl paragraph of ")
+  static let s168 = JsString("U+200B in the whitespace that ends the rtl paragraph of ")
+  static let s169 = JsString("UAX #9 L1")
+  static let s170 = JsString("UAX #9 W1-W7, N1-N2")
   static let s_X = JsString("X")
-  static let s171 = JsString("[")
-  static let s172 = JsString("[\"harness-error\",")
-  static let s173 = JsString("[\"ok\",")
-  static let s174 = JsString("[\"ok\",[")
-  static let s175 = JsString("[\"refused\",")
-  static let s176 = JsString("[\"threw\"]")
-  static let s177 = JsString("[\"unsupported\",")
-  static let s178 = JsString("[1]")
-  static let s179 = JsString("[2]")
-  static let s180 = JsString("[3]")
-  static let s181 = JsString("[4]")
-  static let s182 = JsString("[4][")
-  static let s183 = JsString("[5]")
-  static let s184 = JsString("[6]")
-  static let s185 = JsString("[7]")
-  static let s186 = JsString("\\")
-  static let s187 = JsString("\\\"")
-  static let s188 = JsString("\\\\")
-  static let s189 = JsString("\\u00")
-  static let s190 = JsString("\\u000")
-  static let s191 = JsString("]")
-  static let s192 = JsString("],[")
-  static let s193 = JsString("]: ")
-  static let s194 = JsString("]: iterations ")
-  static let s195 = JsString("]]")
-  static let s196 = JsString("a ")
-  static let s197 = JsString("a border width calculation reached layout; the environment pass resolves it")
-  static let s198 = JsString("a descent of exactly n + 0.5 px rounds to n: 12.5px, 17.5px and 22.5px Ahem have glyph boxes 12, 17 and 22 px tall, not 13, 18 and 23")
-  static let s199 = JsString("a percentage height on a box whose end margins may collapse through it: its basis is not decided here")
-  static let s200 = JsString("a relative offset with a percentage top or bottom in a margin-collapsing flow: its basis is not decided here")
-  static let s201 = JsString("a relative offset with a percentage top or bottom inside a scroll container: its basis is not decided here")
-  static let s202 = JsString("a relative offset with a percentage top or bottom on the root: its basis is not decided here")
+  static let s172 = JsString("[")
+  static let s173 = JsString("[\"harness-error\",")
+  static let s174 = JsString("[\"ok\",")
+  static let s175 = JsString("[\"ok\",[")
+  static let s176 = JsString("[\"refused\",")
+  static let s177 = JsString("[\"threw\"]")
+  static let s178 = JsString("[\"unsupported\",")
+  static let s179 = JsString("[1]")
+  static let s180 = JsString("[2]")
+  static let s181 = JsString("[3]")
+  static let s182 = JsString("[4]")
+  static let s183 = JsString("[4][")
+  static let s184 = JsString("[5]")
+  static let s185 = JsString("[6]")
+  static let s186 = JsString("[7]")
+  static let s187 = JsString("\\")
+  static let s188 = JsString("\\\"")
+  static let s189 = JsString("\\\\")
+  static let s190 = JsString("\\u00")
+  static let s191 = JsString("\\u000")
+  static let s192 = JsString("]")
+  static let s193 = JsString("],[")
+  static let s194 = JsString("]: ")
+  static let s195 = JsString("]: iterations ")
+  static let s196 = JsString("]]")
+  static let s197 = JsString("a ")
+  static let s198 = JsString("a border width calculation reached layout; the environment pass resolves it")
+  static let s199 = JsString("a descent of exactly n + 0.5 px rounds to n: 12.5px, 17.5px and 22.5px Ahem have glyph boxes 12, 17 and 22 px tall, not 13, 18 and 23")
+  static let s200 = JsString("a percentage height on a box whose end margins may collapse through it: its basis is not decided here")
+  static let s201 = JsString("a relative offset with a percentage top or bottom in a margin-collapsing flow: its basis is not decided here")
+  static let s202 = JsString("a relative offset with a percentage top or bottom inside a scroll container: its basis is not decided here")
+  static let s203 = JsString("a relative offset with a percentage top or bottom on the root: its basis is not decided here")
   static let s_absolute = JsString("absolute")
   static let s_absoluteSize = JsString("absoluteSize")
-  static let s205 = JsString("absolutely positioned ")
-  static let s206 = JsString("absolutely positioned replaced ")
+  static let s206 = JsString("absolutely positioned ")
+  static let s207 = JsString("absolutely positioned replaced ")
   static let s_abspos_in_inline = JsString("abspos-in-inline")
   static let s_absposInFlow = JsString("absposInFlow")
   static let s_active = JsString("active")
   static let s_after = JsString("after")
   static let s_ahem_metric_half_down = JsString("ahem-metric-half-down")
-  static let s212 = JsString("ahem/darwin-arm64")
-  static let s213 = JsString("align-content: baseline (not yet supported)")
+  static let s213 = JsString("ahem/darwin-arm64")
+  static let s214 = JsString("align-content: baseline (not yet supported)")
   static let s_alignContent = JsString("alignContent")
   static let s_alignItems = JsString("alignItems")
   static let s_alignSelf = JsString("alignSelf")
   static let s_all = JsString("all")
   static let s_alternate = JsString("alternate")
   static let s_alternate_reverse = JsString("alternate-reverse")
+  static let s221 = JsString("an atomic inline in the inline formatting context of ")
   static let s_angle = JsString("angle")
   static let s_anonymous = JsString("anonymous")
   static let s_arr = JsString("arr")
@@ -232,14 +234,14 @@ enum HS {
   static let s_auto_ratio = JsString("auto-ratio")
   static let s_axis = JsString("axis")
   static let s_backwards = JsString("backwards")
-  static let s228 = JsString("bad escape")
-  static let s229 = JsString("bad hex digit")
+  static let s230 = JsString("bad escape")
+  static let s231 = JsString("bad hex digit")
   static let s_baseline = JsString("baseline")
   static let s_baselineFromBorderTop = JsString("baselineFromBorderTop")
   static let s_before = JsString("before")
   static let s_begin_layer = JsString("begin-layer")
   static let s_bidi_neutral = JsString("bidi-neutral")
-  static let s235 = JsString("blendOp needs at least one operation")
+  static let s237 = JsString("blendOp needs at least one operation")
   static let s_block = JsString("block")
   static let s_bool = JsString("bool")
   static let s_border_box = JsString("border-box")
@@ -259,7 +261,7 @@ enum HS {
   static let s_breakOffByOne = JsString("breakOffByOne")
   static let s_cachedRangeWidth = JsString("cachedRangeWidth")
   static let s_calc = JsString("calc")
-  static let s255 = JsString("calc(")
+  static let s257 = JsString("calc(")
   static let s_calcDoubleEval = JsString("calcDoubleEval")
   static let s_calcLeafUnzoomed = JsString("calcLeafUnzoomed")
   static let s_calcNoNonNegClamp = JsString("calcNoNonNegClamp")
@@ -285,27 +287,27 @@ enum HS {
   static let s_column_reverse = JsString("column-reverse")
   static let s_columnGap = JsString("columnGap")
   static let s_contain = JsString("contain")
-  static let s281 = JsString("containing block ")
+  static let s283 = JsString("containing block ")
   static let s_content = JsString("content")
   static let s_content_box = JsString("content-box")
-  static let s284 = JsString("control character in string")
+  static let s286 = JsString("control character in string")
   static let s_cover = JsString("cover")
-  static let s286 = JsString("css-align-3 \u{a7}8.1")
-  static let s287 = JsString("css-align-3 \u{a7}9.3")
-  static let s288 = JsString("css-flexbox-1 \u{a7}7.2.3")
-  static let s289 = JsString("css-flexbox-1 \u{a7}9.3")
-  static let s290 = JsString("css-flexbox-1 \u{a7}9.8")
-  static let s291 = JsString("css-flexbox-1 \u{a7}9.9.2")
-  static let s292 = JsString("css-fonts-4 \u{a7}5")
-  static let s293 = JsString("css-text-3 \u{a7}5")
-  static let s294 = JsString("css-text-3 \u{a7}7.3")
-  static let s295 = JsString("css-text-4 \u{a7}5.1")
+  static let s288 = JsString("css-align-3 \u{a7}8.1")
+  static let s289 = JsString("css-align-3 \u{a7}9.3")
+  static let s290 = JsString("css-flexbox-1 \u{a7}7.2.3")
+  static let s291 = JsString("css-flexbox-1 \u{a7}9.3")
+  static let s292 = JsString("css-flexbox-1 \u{a7}9.8")
+  static let s293 = JsString("css-flexbox-1 \u{a7}9.9.2")
+  static let s294 = JsString("css-fonts-4 \u{a7}5")
+  static let s295 = JsString("css-text-3 \u{a7}5")
+  static let s296 = JsString("css-text-3 \u{a7}7.3")
+  static let s297 = JsString("css-text-4 \u{a7}5.1")
   static let s_cssLengthFixed = JsString("cssLengthFixed")
   static let s_cubic_bezier = JsString("cubic-bezier")
-  static let s298 = JsString("cubic-bezier easing without a curve")
+  static let s300 = JsString("cubic-bezier easing without a curve")
   static let s_cumulativeShareRounded = JsString("cumulativeShareRounded")
-  static let s300 = JsString("cumulativeShareRounded needs a non-negative total and positive parts")
-  static let s301 = JsString("cumulativeShareTruncated needs a non-negative total and a positive denominator")
+  static let s302 = JsString("cumulativeShareRounded needs a non-negative total and positive parts")
+  static let s303 = JsString("cumulativeShareTruncated needs a non-negative total and a positive denominator")
   static let s_darwin_arm64 = JsString("darwin-arm64")
   static let s_dashed = JsString("dashed")
   static let s_defaultHeight = JsString("defaultHeight")
@@ -314,7 +316,7 @@ enum HS {
   static let s_deg = JsString("deg")
   static let s_device_px = JsString("device-px")
   static let s_devicePixelRatio = JsString("devicePixelRatio")
-  static let s310 = JsString("digit expected")
+  static let s312 = JsString("digit expected")
   static let s_direction = JsString("direction")
   static let s_display = JsString("display")
   static let s_distributedOffset = JsString("distributedOffset")
@@ -326,7 +328,7 @@ enum HS {
   static let s_doubleMaxStep = JsString("doubleMaxStep")
   static let s_doubleMinStep = JsString("doubleMinStep")
   static let s_dpr = JsString("dpr")
-  static let s322 = JsString("duplicate key ")
+  static let s324 = JsString("duplicate key ")
   static let s_dynamic = JsString("dynamic")
   static let s_e = JsString("e")
   static let s_ease = JsString("ease")
@@ -336,14 +338,14 @@ enum HS {
   static let s_element = JsString("element")
   static let s_em = JsString("em")
   static let s_emLeafPx = JsString("emLeafPx")
-  static let s332 = JsString("empty case")
+  static let s334 = JsString("empty case")
   static let s_end = JsString("end")
   static let s_end_layer = JsString("end-layer")
   static let s_env = JsString("env")
   static let s_equal = JsString("equal")
   static let s_ex = JsString("ex")
   static let s_exUntruncatedFontSize = JsString("exUntruncatedFontSize")
-  static let s339 = JsString("expected U+")
+  static let s341 = JsString("expected U+")
   static let s_explicitPercent = JsString("explicitPercent")
   static let s_explicitPixels = JsString("explicitPixels")
   static let s_expr = JsString("expr")
@@ -357,7 +359,7 @@ enum HS {
   static let s_flex = JsString("flex")
   static let s_flex_baseline = JsString("flex-baseline")
   static let s_flex_basis_content = JsString("flex-basis-content")
-  static let s353 = JsString("flex-basis: content (not yet supported)")
+  static let s355 = JsString("flex-basis: content (not yet supported)")
   static let s_flex_dependent = JsString("flex-dependent")
   static let s_flex_end = JsString("flex-end")
   static let s_flex_intrinsic_wrap_column = JsString("flex-intrinsic-wrap-column")
@@ -387,10 +389,10 @@ enum HS {
   static let s_fround = JsString("fround")
   static let s_growShare = JsString("growShare")
   static let s_gutterReserved = JsString("gutterReserved")
-  static let s383 = JsString("h3b:text0:line0")
+  static let s385 = JsString("h3b:text0:line0")
   static let s_half_down = JsString("half-down")
-  static let s385 = JsString("half2:text0:line0")
-  static let s386 = JsString("half:text0:line0")
+  static let s387 = JsString("half2:text0:line0")
+  static let s388 = JsString("half:text0:line0")
   static let s_halfLeadingSpec = JsString("halfLeadingSpec")
   static let s_halfLeadingUnflooredPerBox = JsString("halfLeadingUnflooredPerBox")
   static let s_hard = JsString("hard")
@@ -404,16 +406,16 @@ enum HS {
   static let s_image = JsString("image")
   static let s_indefinite = JsString("indefinite")
   static let s_infinity = JsString("infinity")
-  static let s400 = JsString("infinity * 1")
+  static let s402 = JsString("infinity * 1")
   static let s_initialLineWidthZoomed = JsString("initialLineWidthZoomed")
   static let s_inline = JsString("inline")
-  static let s403 = JsString("inline box ")
+  static let s405 = JsString("inline box ")
   static let s_inline_box_decoration = JsString("inline-box-decoration")
   static let s_inline_box_position = JsString("inline-box-position")
   static let s_inline_empty_line = JsString("inline-empty-line")
   static let s_input = JsString("input")
-  static let s408 = JsString("integer multiplier expected, got ")
-  static let s409 = JsString("intrinsic inline size of a multi-line column flex container")
+  static let s410 = JsString("integer multiplier expected, got ")
+  static let s411 = JsString("intrinsic inline size of a multi-line column flex container")
   static let s_invert = JsString("invert")
   static let s_isInteger = JsString("isInteger")
   static let s_jump_both = JsString("jump-both")
@@ -435,14 +437,14 @@ enum HS {
   static let s_lineHeightFromNumber = JsString("lineHeightFromNumber")
   static let s_lineHeightIgnoresInlineBoxes = JsString("lineHeightIgnoresInlineBoxes")
   static let s_linear = JsString("linear")
-  static let s431 = JsString("lone surrogate")
+  static let s433 = JsString("lone surrogate")
   static let s_ltr = JsString("ltr")
   static let s_map = JsString("map")
   static let s_marginBottom = JsString("marginBottom")
   static let s_marginLeft = JsString("marginLeft")
   static let s_marginRight = JsString("marginRight")
   static let s_marginTop = JsString("marginTop")
-  static let s438 = JsString("matrix(")
+  static let s440 = JsString("matrix(")
   static let s_max = JsString("max")
   static let s_max_height = JsString("max-height")
   static let s_max_width = JsString("max-width")
@@ -458,26 +460,26 @@ enum HS {
   static let s_minMaxEndMarginSpec = JsString("minMaxEndMarginSpec")
   static let s_minWidth = JsString("minWidth")
   static let s_minimumFontSizeIgnored = JsString("minimumFontSizeIgnored")
-  static let s454 = JsString("missing argument ")
-  static let s455 = JsString("missing items")
-  static let s456 = JsString("missing keys")
-  static let s457 = JsString("missing mode")
-  static let s458 = JsString("missing strings")
-  static let s459 = JsString("missing text")
+  static let s456 = JsString("missing argument ")
+  static let s457 = JsString("missing items")
+  static let s458 = JsString("missing keys")
+  static let s459 = JsString("missing mode")
+  static let s460 = JsString("missing strings")
+  static let s461 = JsString("missing text")
   static let s_mixed_text_wrap_mode = JsString("mixed-text-wrap-mode")
-  static let s461 = JsString("mulDiv needs a non-negative integer multiplier and a positive integer divisor")
-  static let s462 = JsString("multi-line column flex container with an indefinite height (not yet supported)")
+  static let s463 = JsString("mulDiv needs a non-negative integer multiplier and a positive integer divisor")
+  static let s464 = JsString("multi-line column flex container with an indefinite height (not yet supported)")
   static let s_natural = JsString("natural")
   static let s_near = JsString("near")
-  static let s465 = JsString("no ")
-  static let s466 = JsString("no absolute rect for ")
-  static let s467 = JsString("no end margin strut for ")
-  static let s468 = JsString("no laid-out box ")
-  static let s469 = JsString("no platform rules are registered for ")
+  static let s467 = JsString("no ")
+  static let s468 = JsString("no absolute rect for ")
+  static let s469 = JsString("no end margin strut for ")
+  static let s470 = JsString("no laid-out box ")
+  static let s471 = JsString("no platform rules are registered for ")
   static let s_no_platform_rules = JsString("no-platform-rules")
   static let s_noHyphenDigitBreak = JsString("noHyphenDigitBreak")
   static let s_non_negative = JsString("non-negative")
-  static let s473 = JsString("non-zero integer divisor expected, got ")
+  static let s475 = JsString("non-zero integer divisor expected, got ")
   static let s_none = JsString("none")
   static let s_normal = JsString("normal")
   static let s_nowrap = JsString("nowrap")
@@ -499,24 +501,24 @@ enum HS {
   static let s_paddingLeft = JsString("paddingLeft")
   static let s_paddingRight = JsString("paddingRight")
   static let s_paddingTop = JsString("paddingTop")
-  static let s495 = JsString("paint case ")
-  static let s496 = JsString("paint-dash: border style ")
-  static let s497 = JsString("paint-dash: no opacity group")
-  static let s498 = JsString("paint-dash: no side ")
-  static let s499 = JsString("paint-dash: no style for side ")
-  static let s500 = JsString("paint-dash: no value at ")
-  static let s501 = JsString("paint:dash:borderNeedsSidePainter")
-  static let s502 = JsString("paint:dash:borderPaintOps")
-  static let s503 = JsString("paint:dash:selectBestDashGap")
+  static let s497 = JsString("paint case ")
+  static let s498 = JsString("paint-dash: border style ")
+  static let s499 = JsString("paint-dash: no opacity group")
+  static let s500 = JsString("paint-dash: no side ")
+  static let s501 = JsString("paint-dash: no style for side ")
+  static let s502 = JsString("paint-dash: no value at ")
+  static let s503 = JsString("paint:dash:borderNeedsSidePainter")
+  static let s504 = JsString("paint:dash:borderPaintOps")
+  static let s505 = JsString("paint:dash:selectBestDashGap")
   static let s_parent = JsString("parent")
   static let s_percent = JsString("percent")
   static let s_percent_gap = JsString("percent-gap")
   static let s_percent_height_flex = JsString("percent-height-flex")
   static let s_percentOf = JsString("percentOf")
-  static let s509 = JsString("percentage flex-basis against an indefinite main size is treated as content (not yet supported)")
-  static let s510 = JsString("percentage gap (not yet supported)")
-  static let s511 = JsString("percentage height against a flexed or stretched size that is not definite")
-  static let s512 = JsString("percentage top or bottom against a flexed or stretched size that is not definite")
+  static let s511 = JsString("percentage flex-basis against an indefinite main size is treated as content (not yet supported)")
+  static let s512 = JsString("percentage gap (not yet supported)")
+  static let s513 = JsString("percentage height against a flexed or stretched size that is not definite")
+  static let s514 = JsString("percentage top or bottom against a flexed or stretched size that is not definite")
   static let s_pixels = JsString("pixels")
   static let s_pixels_and_percent = JsString("pixels-and-percent")
   static let s_pixelsAndPercentAt = JsString("pixelsAndPercentAt")
@@ -525,8 +527,8 @@ enum HS {
   static let s_position = JsString("position")
   static let s_product = JsString("product")
   static let s_px = JsString("px")
-  static let s521 = JsString("q2:text0:line0")
-  static let s522 = JsString("q:text0:line1")
+  static let s523 = JsString("q2:text0:line0")
+  static let s524 = JsString("q:text0:line1")
   static let s_range = JsString("range")
   static let s_ratio = JsString("ratio")
   static let s_rects = JsString("rects")
@@ -538,8 +540,8 @@ enum HS {
   static let s_replaced_out_of_flow = JsString("replaced-out-of-flow")
   static let s_restore = JsString("restore")
   static let s_reverse = JsString("reverse")
-  static let s534 = JsString("rgb(")
-  static let s535 = JsString("rgba(")
+  static let s536 = JsString("rgb(")
+  static let s537 = JsString("rgba(")
   static let s_right = JsString("right")
   static let s_root = JsString("root")
   static let s_rootFontSize = JsString("rootFontSize")
@@ -550,19 +552,19 @@ enum HS {
   static let s_row = JsString("row")
   static let s_row_reverse = JsString("row-reverse")
   static let s_rowGap = JsString("rowGap")
-  static let s546 = JsString("rt trig argument ")
+  static let s548 = JsString("rt trig argument ")
   static let s_rt_easing = JsString("rt-easing")
-  static let s548 = JsString("rt-easing: expected [op, easing, timeMs]")
+  static let s550 = JsString("rt-easing: expected [op, easing, timeMs]")
   static let s_rt_hold = JsString("rt-hold")
-  static let s550 = JsString("rt-hold: expected [op, timing, timeMs, elapsedSeconds]")
+  static let s552 = JsString("rt-hold: expected [op, timing, timeMs, elapsedSeconds]")
   static let s_rt_interp = JsString("rt-interp")
-  static let s552 = JsString("rt-interp: a steps keyframe easing is outside the rt vectors (linear or cubic-bezier only)")
-  static let s553 = JsString("rt-interp: expected [op, from, to, effectEasing, keyframeEasing, timeMs, boxWidth, boxHeight]")
+  static let s554 = JsString("rt-interp: a steps keyframe easing is outside the rt vectors (linear or cubic-bezier only)")
+  static let s555 = JsString("rt-interp: expected [op, from, to, effectEasing, keyframeEasing, timeMs, boxWidth, boxHeight]")
   static let s_rt_timing = JsString("rt-timing")
-  static let s555 = JsString("rt-timing: expected [op, timing, timeMs]")
+  static let s557 = JsString("rt-timing: expected [op, timing, timeMs]")
   static let s_rtl = JsString("rtl")
   static let s_rtlAsLtr = JsString("rtlAsLtr")
-  static let s558 = JsString("s1:text0:line1")
+  static let s560 = JsString("s1:text0:line1")
   static let s_safeArea = JsString("safeArea")
   static let s_safeAreaIgnored = JsString("safeAreaIgnored")
   static let s_save = JsString("save")
@@ -589,14 +591,14 @@ enum HS {
   static let s_space_evenly = JsString("space-evenly")
   static let s_spaceOnlyBreaks = JsString("spaceOnlyBreaks")
   static let s_specifiedSize = JsString("specifiedSize")
-  static let s585 = JsString("spline sample ")
+  static let s587 = JsString("spline sample ")
   static let s_start = JsString("start")
   static let s_static = JsString("static")
   static let s_staticPosLtr = JsString("staticPosLtr")
   static let s_step_end = JsString("step-end")
   static let s_step_start = JsString("step-start")
   static let s_steps = JsString("steps")
-  static let s592 = JsString("steps(")
+  static let s594 = JsString("steps(")
   static let s_str = JsString("str")
   static let s_stretch = JsString("stretch")
   static let s_stretch_explicit = JsString("stretch-explicit")
@@ -608,10 +610,10 @@ enum HS {
   static let s_term = JsString("term")
   static let s_terms = JsString("terms")
   static let s_text = JsString("text")
-  static let s604 = JsString("text in the rtl paragraph of ")
-  static let s605 = JsString("text runs with different text-wrap-mode in one formatting context of ")
+  static let s606 = JsString("text in the rtl paragraph of ")
+  static let s607 = JsString("text runs with different text-wrap-mode in one formatting context of ")
   static let s_text_align = JsString("text-align")
-  static let s607 = JsString("text-align: justify is not yet proven against Chrome")
+  static let s609 = JsString("text-align: justify is not yet proven against Chrome")
   static let s_text_bottom = JsString("text-bottom")
   static let s_text_fractional_font_size = JsString("text-fractional-font-size")
   static let s_text_glyph = JsString("text-glyph")
@@ -619,25 +621,25 @@ enum HS {
   static let s_textAdvance = JsString("textAdvance")
   static let s_textAlign = JsString("textAlign")
   static let s_textWrapMode = JsString("textWrapMode")
-  static let s615 = JsString("the box has no aspect ratio")
-  static let s616 = JsString("third_party/blink/renderer/platform/fonts/font_description.cc lines 268-279 at 145.0.7632.6 (EffectiveFontSize: floorf(size * PrecisionMultiplier()) / PrecisionMultiplier()) with font_cache_key.h line 53 (kFontSizePrecisionMultiplier = 100). The code is not platform-specific, but the rule is measured only on darwin-arm64 (notes/T035-slice-4a.md), so it is keyed there.")
-  static let s617 = JsString("third_party/blink/renderer/platform/fonts/font_metrics.cc at 145.0.7632.6 rounds with SkScalarRoundToScalar (halves up, lines 111-112), so the half-down result on macOS is taken to come from the CoreText metric values; inferred, not traced. Lines 114-126 move 1 px from ascent to descent on Linux, ChromeOS, Android and Fuchsia, which this rule does not claim.")
+  static let s617 = JsString("the box has no aspect ratio")
+  static let s618 = JsString("third_party/blink/renderer/platform/fonts/font_description.cc lines 268-279 at 145.0.7632.6 (EffectiveFontSize: floorf(size * PrecisionMultiplier()) / PrecisionMultiplier()) with font_cache_key.h line 53 (kFontSizePrecisionMultiplier = 100). The code is not platform-specific, but the rule is measured only on darwin-arm64 (notes/T035-slice-4a.md), so it is keyed there.")
+  static let s619 = JsString("third_party/blink/renderer/platform/fonts/font_metrics.cc at 145.0.7632.6 rounds with SkScalarRoundToScalar (halves up, lines 111-112), so the half-down result on macOS is taken to come from the CoreText metric values; inferred, not traced. Lines 114-126 move 1 px from ascent to descent on Linux, ChromeOS, Android and Fuchsia, which this rule does not claim.")
   static let s_top = JsString("top")
-  static let s619 = JsString("trailing characters")
+  static let s621 = JsString("trailing characters")
   static let s_transform = JsString("transform")
   static let s_translate = JsString("translate")
   static let s_translateX = JsString("translateX")
   static let s_translateY = JsString("translateY")
   static let s_true = JsString("true")
   static let s_trunc = JsString("trunc")
-  static let s626 = JsString("unknown function ")
-  static let s627 = JsString("unknown operation ")
+  static let s628 = JsString("unknown function ")
+  static let s629 = JsString("unknown operation ")
   static let s_unsupported = JsString("unsupported")
-  static let s629 = JsString("unterminated string")
+  static let s631 = JsString("unterminated string")
   static let s_untruncatedFontSize = JsString("untruncatedFontSize")
   static let s_value = JsString("value")
   static let s_vertical_align = JsString("vertical-align")
-  static let s633 = JsString("vertical-align other than baseline on ")
+  static let s635 = JsString("vertical-align other than baseline on ")
   static let s_verticalAlign = JsString("verticalAlign")
   static let s_viewport = JsString("viewport")
   static let s_viewportDirection = JsString("viewportDirection")
@@ -648,7 +650,7 @@ enum HS {
   static let s_viewportUnitsUnceiled = JsString("viewportUnitsUnceiled")
   static let s_visible = JsString("visible")
   static let s_whiteSpaceCollapse = JsString("whiteSpaceCollapse")
-  static let s644 = JsString("whole px expected, got ")
+  static let s646 = JsString("whole px expected, got ")
   static let s_width = JsString("width")
   static let s_wrap = JsString("wrap")
   static let s_wrap_reverse = JsString("wrap-reverse")
@@ -836,7 +838,7 @@ func harness_skipWs(_ c: Cursor) throws -> Void {
 func harness_expect(_ c: Cursor, _ cp: Double) throws -> Void {
   // ts: packages/translate/harness/harness.ts:144
   if try (harness_peek(c) != cp) {
-    try harness_fail(jsConcat(HS.s339, jsToStringRadix16(cp), HS.s5, jsNumberToString(c.pos)))
+    try harness_fail(jsConcat(HS.s341, jsToStringRadix16(cp), HS.s5, jsNumberToString(c.pos)))
   }
   c.pos += 1.0
 }
@@ -874,7 +876,7 @@ func harness_hexDigit(_ cp: Double) throws -> Double {
   if ((cp >= 65.0) && (cp <= 70.0)) {
     return ((cp - 65.0) + 10.0)
   }
-  try harness_fail(HS.s229)
+  try harness_fail(HS.s231)
 }
 
 // ts: packages/translate/harness/harness.ts:163
@@ -898,12 +900,12 @@ func harness_parseString(_ c: Cursor) throws -> JsString {
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/translate/harness/harness.ts:175
   do {
-    loop4: while true {
-      loop4_body: do {
+    loop5: while true {
+      loop5_body: do {
         let ch: Double = try harness_peek(c)
         // ts: packages/translate/harness/harness.ts:177
         if (ch == -1.0) {
-          try harness_fail(HS.s629)
+          try harness_fail(HS.s631)
         }
         c.pos += 1.0
         // ts: packages/translate/harness/harness.ts:179
@@ -912,12 +914,12 @@ func harness_parseString(_ c: Cursor) throws -> JsString {
         }
         // ts: packages/translate/harness/harness.ts:180
         if (ch < 32.0) {
-          try harness_fail(HS.s284)
+          try harness_fail(HS.s286)
         }
         // ts: packages/translate/harness/harness.ts:181
         if (ch != 92.0) {
           _ = jsPush(out, ch)
-          break loop4_body
+          break loop5_body
         }
         let e: Double = try harness_peek(c)
         c.pos += 1.0
@@ -944,15 +946,15 @@ func harness_parseString(_ c: Cursor) throws -> JsString {
             if ((lo >= 56320.0) && (lo <= 57343.0)) {
               _ = jsPush(out, ((((u - 55296.0) * 1024.0) + (lo - 56320.0)) + 65536.0))
             } else {
-              try harness_fail(HS.s431)
+              try harness_fail(HS.s433)
             }
           } else if ((u >= 55296.0) && (u <= 57343.0)) {
-            try harness_fail(HS.s431)
+            try harness_fail(HS.s433)
           } else {
             _ = jsPush(out, u)
           }
         } else {
-          try harness_fail(HS.s228)
+          try harness_fail(HS.s230)
         }
       }
     }
@@ -971,7 +973,7 @@ func harness_parseNum(_ c: Cursor) throws -> Double {
   func digits() throws -> Void {
     // ts: packages/translate/harness/harness.ts:214
     if try (!harness_isDigit(harness_peek(c))) {
-      try harness_fail(HS.s310)
+      try harness_fail(HS.s312)
     }
     // ts: packages/translate/harness/harness.ts:215
     while try harness_isDigit(harness_peek(c)) {
@@ -1017,14 +1019,14 @@ func harness_parseArray(_ c: Cursor) throws -> any U_JsonArr_JsonBool_JsonNull_J
   }
   // ts: packages/translate/harness/harness.ts:240
   do {
-    loop3: while true {
-      loop3_body: do {
+    loop4: while true {
+      loop4_body: do {
         _ = try jsPush(items, harness_parseValue(c))
         try harness_skipWs(c)
         // ts: packages/translate/harness/harness.ts:243
         if try (harness_peek(c) == 44.0) {
           c.pos += 1.0
-          break loop3_body
+          break loop4_body
         }
         try harness_expect(c, 93.0)
         return JsonArr(HS.s_arr, items)
@@ -1046,8 +1048,8 @@ func harness_parseObject(_ c: Cursor) throws -> any U_JsonArr_JsonBool_JsonNull_
   }
   // ts: packages/translate/harness/harness.ts:261
   do {
-    loop2: while true {
-      loop2_body: do {
+    loop3: while true {
+      loop3_body: do {
         try harness_skipWs(c)
         let key: JsString = try harness_parseString(c)
         try harness_skipWs(c)
@@ -1055,7 +1057,7 @@ func harness_parseObject(_ c: Cursor) throws -> any U_JsonArr_JsonBool_JsonNull_
         let v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr = try harness_parseValue(c)
         // ts: packages/translate/harness/harness.ts:267
         if values.has(key) {
-          try harness_fail(jsConcat(HS.s322, key))
+          try harness_fail(jsConcat(HS.s324, key))
         }
         _ = jsPush(keys, key)
         _ = values.set(key, v)
@@ -1063,7 +1065,7 @@ func harness_parseObject(_ c: Cursor) throws -> any U_JsonArr_JsonBool_JsonNull_
         // ts: packages/translate/harness/harness.ts:271
         if try (harness_peek(c) == 44.0) {
           c.pos += 1.0
-          break loop2_body
+          break loop3_body
         }
         try harness_expect(c, 125.0)
         return JsonObj(HS.s_obj, keys, values)
@@ -1124,7 +1126,7 @@ func harness_parseJson(_ text: JsString) throws -> any U_JsonArr_JsonBool_JsonNu
   try harness_skipWs(c)
   // ts: packages/translate/harness/harness.ts:307
   if (c.pos != jsLength(cps)) {
-    try harness_fail(HS.s619)
+    try harness_fail(HS.s621)
   }
   return v
 }
@@ -1148,7 +1150,7 @@ func harness_obj(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, _
       _i3 += 1
       // ts: packages/translate/harness/harness.ts:316
       if (!(v as! JsonObj).values.has(k)) {
-        try harness_fail(jsConcat(path, HS.s145, k))
+        try harness_fail(jsConcat(path, HS.s146, k))
       }
     }
   }
@@ -1160,7 +1162,7 @@ func harness_field(_ o: JsonObj, _ k: JsString, _ path: JsString) throws -> any 
   let v: (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)? = o.values.get(k)
   // ts: packages/translate/harness/harness.ts:322
   if (v == nil) {
-    try harness_fail(jsConcat(path, HS.s145, k))
+    try harness_fail(jsConcat(path, HS.s146, k))
   }
   return try jsUnwrap(v)
 }
@@ -1208,7 +1210,7 @@ func harness_lit(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, _
   if try (!jsSome(allowed, { (a: JsString) throws -> Bool in
     return (a == s)
 })) {
-    try harness_fail(jsConcat(path, HS.s146, s))
+    try harness_fail(jsConcat(path, HS.s147, s))
   }
   return s
 }
@@ -1231,7 +1233,7 @@ func harness_numField(_ o: JsonObj, _ k: JsString, _ path: JsString) throws -> D
 func harness_calcTerms(_ o: JsonObj, _ path: JsString) throws -> JsArray<any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength> {
   let out: JsArray<any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength> = JsArray<any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength>([])
   try jsForEachI(harness_arr(harness_field(o, HS.s_terms, path), jsConcat(path, HS.s101)), { (t: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, i: Double) throws -> Void in
-    _ = try jsPush(out, harness_calcExpr(t, jsConcat(path, HS.s103, jsNumberToString(i), HS.s191)))
+    _ = try jsPush(out, harness_calcExpr(t, jsConcat(path, HS.s103, jsNumberToString(i), HS.s192)))
 })
   // ts: packages/translate/harness/harness.ts:366
   if (jsLength(out) == 0.0) {
@@ -1336,7 +1338,7 @@ func harness_calcExpr(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonS
     let o: JsonObj = try harness_obj(v, JsArray<JsString>([HS.s_kind, HS.s_pixels, HS.s_percent, HS.s_explicitPixels, HS.s_explicitPercent]), path)
     return try PixelsAndPercent(HS.s_pixels_and_percent, harness_numField(o, HS.s_pixels, path), harness_numField(o, HS.s_percent, path), harness_bool(harness_field(o, HS.s_explicitPixels, path), jsConcat(path, HS.s78)), harness_bool(harness_field(o, HS.s_explicitPercent, path), jsConcat(path, HS.s77)))
   }
-  try harness_fail(jsConcat(path, HS.s147, k))
+  try harness_fail(jsConcat(path, HS.s148, k))
 }
 
 // ts: packages/translate/harness/harness.ts:434
@@ -1432,7 +1434,7 @@ func harness_sizeValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_Json
     _ = try harness_obj(v, JsArray<JsString>([HS.s_kind]), path)
     return Auto(HS.s_auto)
   }
-  try harness_fail(jsConcat(path, HS.s149, k))
+  try harness_fail(jsConcat(path, HS.s150, k))
 }
 
 // ts: packages/translate/harness/harness.ts:492
@@ -1455,7 +1457,7 @@ func harness_maxSizeValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_J
     _ = try harness_obj(v, JsArray<JsString>([HS.s_kind]), path)
     return NoneValue(HS.s_none)
   }
-  try harness_fail(jsConcat(path, HS.s149, k))
+  try harness_fail(jsConcat(path, HS.s150, k))
 }
 
 // ts: packages/translate/harness/harness.ts:504
@@ -1473,7 +1475,7 @@ func harness_paddingValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_J
   if (k == HS.s_percent) {
     return try Percent(HS.s_percent, harness_numField(harness_obj(v, JsArray<JsString>([HS.s_kind, HS.s_value]), path), HS.s_value, path))
   }
-  try harness_fail(jsConcat(path, HS.s149, k))
+  try harness_fail(jsConcat(path, HS.s150, k))
 }
 
 // ts: packages/translate/harness/harness.ts:512
@@ -1491,7 +1493,7 @@ func harness_borderValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_Js
   if (k == HS.s_device_px) {
     return try DevicePx(HS.s_device_px, harness_numField(harness_obj(v, JsArray<JsString>([HS.s_kind, HS.s_value]), path), HS.s_value, path))
   }
-  try harness_fail(jsConcat(path, HS.s149, k))
+  try harness_fail(jsConcat(path, HS.s150, k))
 }
 
 // ts: packages/translate/harness/harness.ts:520
@@ -1514,7 +1516,7 @@ func harness_gapValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonS
     _ = try harness_obj(v, JsArray<JsString>([HS.s_kind]), path)
     return NormalValue(HS.s_normal)
   }
-  try harness_fail(jsConcat(path, HS.s149, k))
+  try harness_fail(jsConcat(path, HS.s150, k))
 }
 
 // ts: packages/translate/harness/harness.ts:532
@@ -1542,7 +1544,7 @@ func harness_flexBasisValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj
     _ = try harness_obj(v, JsArray<JsString>([HS.s_kind]), path)
     return ContentValue(HS.s_content)
   }
-  try harness_fail(jsConcat(path, HS.s149, k))
+  try harness_fail(jsConcat(path, HS.s150, k))
 }
 
 // ts: packages/translate/harness/harness.ts:548
@@ -1569,7 +1571,7 @@ func harness_lineHeightValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonOb
     _ = try harness_obj(v, JsArray<JsString>([HS.s_kind]), path)
     return NormalValue(HS.s_normal)
   }
-  try harness_fail(jsConcat(path, HS.s149, k))
+  try harness_fail(jsConcat(path, HS.s150, k))
 }
 
 // ts: packages/translate/harness/harness.ts:561
@@ -1587,7 +1589,7 @@ func harness_aspectRatioValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonO
     let height: Double = try harness_numField(o, HS.s_height, path)
     return ((k == HS.s_ratio) ? (AspectRatioValue_ratio(HS.s_ratio, width, height) as any U_AspectRatioValue_autoRatio_AspectRatioValue_ratio_Auto) : (AspectRatioValue_autoRatio(HS.s_auto_ratio, width, height) as any U_AspectRatioValue_autoRatio_AspectRatioValue_ratio_Auto))
   }
-  try harness_fail(jsConcat(path, HS.s149, k))
+  try harness_fail(jsConcat(path, HS.s150, k))
 }
 
 // ts: packages/translate/harness/harness.ts:584
@@ -1610,7 +1612,7 @@ func harness_verticalAlignValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_Jso
     let o: JsonObj = try harness_obj(v, JsArray<JsString>([HS.s_kind, HS.s_value]), path)
     return try VerticalAlignKeywordValue(HS.s_keyword, harness_lit(harness_field(o, HS.s_value, path), JsArray<JsString>([HS.s_baseline, HS.s_sub, HS.s_super, HS.s_text_top, HS.s_text_bottom, HS.s_middle, HS.s_top, HS.s_bottom]), jsConcat(path, HS.s106)))
   }
-  try harness_fail(jsConcat(path, HS.s149, k))
+  try harness_fail(jsConcat(path, HS.s150, k))
 }
 
 // ts: packages/translate/harness/harness.ts:598
@@ -1647,7 +1649,7 @@ func harness_naturalSizeValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonO
     let o: JsonObj = try harness_obj(v, JsArray<JsString>([HS.s_kind, HS.s_width, HS.s_height]), path)
     return try NaturalSizeValue_image(HS.s_image, harness_numField(o, HS.s_width, path), harness_numField(o, HS.s_height, path))
   }
-  try harness_fail(jsConcat(path, HS.s149, k))
+  try harness_fail(jsConcat(path, HS.s150, k))
 }
 
 // ts: packages/translate/harness/harness.ts:676
@@ -1661,7 +1663,7 @@ func harness_objectPositionValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_Js
   if (k == HS.s_percent) {
     return try Percent(HS.s_percent, harness_numField(harness_obj(v, JsArray<JsString>([HS.s_kind, HS.s_value]), path), HS.s_value, path))
   }
-  try harness_fail(jsConcat(path, HS.s149, k))
+  try harness_fail(jsConcat(path, HS.s150, k))
 }
 
 // ts: packages/translate/harness/harness.ts:683
@@ -1675,7 +1677,7 @@ func harness_decodeBox(_ o: JsonObj, _ path: JsString) throws -> LayoutBox {
   _ = try harness_obj(o, JsArray<JsString>([HS.s_kind, HS.s_id, HS.s_boxType, HS.s_style, HS.s_strut, HS.s_children]), path)
   let children: JsArray<any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = JsArray<any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf>([])
   try jsForEachI(harness_arr(harness_field(o, HS.s_children, path), jsConcat(path, HS.s75)), { (c: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, i: Double) throws -> Void in
-    _ = try jsPush(children, harness_decodeNode(c, jsConcat(path, HS.s76, jsNumberToString(i), HS.s191)))
+    _ = try jsPush(children, harness_decodeNode(c, jsConcat(path, HS.s76, jsNumberToString(i), HS.s192)))
 })
   let strut: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr = try harness_field(o, HS.s_strut, path)
   return try LayoutBox(HS.s_box, harness_str(harness_field(o, HS.s_id, path), jsConcat(path, HS.s83)), harness_lit(harness_field(o, HS.s_boxType, path), JsArray<JsString>([HS.s_element, HS.s_anonymous]), jsConcat(path, HS.s74)), harness_decodeStyle(harness_field(o, HS.s_style, path), jsConcat(path, HS.s99)), ((strut.kind == HS.s_null) ? (nil as LineStrut?) : (harness_decodeStrut(((strut as! any U_JsonArr_JsonBool_JsonNum_JsonObj_JsonStr) as! any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr), jsConcat(path, HS.s98)) as LineStrut?)), children)
@@ -1692,7 +1694,7 @@ func harness_decodeInline(_ o: JsonObj, _ path: JsString) throws -> InlineBox {
   _ = try harness_obj(o, JsArray<JsString>([HS.s_kind, HS.s_id, HS.s_style, HS.s_font, HS.s_lineHeight, HS.s_children]), path)
   let children: JsArray<any U_InlineBox_LineBreak_TextLeaf> = JsArray<any U_InlineBox_LineBreak_TextLeaf>([])
   try jsForEachI(harness_arr(harness_field(o, HS.s_children, path), jsConcat(path, HS.s75)), { (c: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, i: Double) throws -> Void in
-    _ = try jsPush(children, harness_decodeInlineChild(c, jsConcat(path, HS.s76, jsNumberToString(i), HS.s191)))
+    _ = try jsPush(children, harness_decodeInlineChild(c, jsConcat(path, HS.s76, jsNumberToString(i), HS.s192)))
 })
   return try InlineBox(HS.s_inline, harness_str(harness_field(o, HS.s_id, path), jsConcat(path, HS.s83)), harness_decodeStyle(harness_field(o, HS.s_style, path), jsConcat(path, HS.s99)), harness_fontSpec(harness_field(o, HS.s_font, path), jsConcat(path, HS.s81)), harness_lineHeightValue(harness_field(o, HS.s_lineHeight, path), jsConcat(path, HS.s85)), children)
 }
@@ -1722,7 +1724,7 @@ func harness_decodeInlineChild(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_Json
   if (k == HS.s_br) {
     return try harness_decodeBreak((v as! JsonObj), path)
   }
-  try harness_fail(jsConcat(path, HS.s148, k))
+  try harness_fail(jsConcat(path, HS.s149, k))
 }
 
 // ts: packages/translate/harness/harness.ts:750
@@ -1785,13 +1787,13 @@ func harness_q(_ s: JsString) throws -> JsString {
       let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
       // ts: packages/translate/harness/harness.ts:849
       if (ch == HS.s34) {
-        out += HS.s187
-      } else if (ch == HS.s186) {
         out += HS.s188
+      } else if (ch == HS.s187) {
+        out += HS.s189
       } else if (cp < 16.0) {
-        try out += jsConcat(HS.s190, jsToStringRadix16(cp))
+        try out += jsConcat(HS.s191, jsToStringRadix16(cp))
       } else if (cp < 32.0) {
-        try out += jsConcat(HS.s189, jsToStringRadix16(cp))
+        try out += jsConcat(HS.s190, jsToStringRadix16(cp))
       } else {
         out += ch
       }
@@ -1807,7 +1809,7 @@ func harness_h(_ x: Double) throws -> JsString {
 
 // ts: packages/translate/harness/harness.ts:863
 func harness_scrollRecord(_ s: ScrollMetrics) throws -> JsString {
-  return try jsConcat(HS.s171, harness_q(s.id), HS.s62, harness_h(s.clientWidth), HS.s62, harness_h(s.clientHeight), HS.s62, harness_h(s.scrollRect.x), HS.s62, harness_h(s.scrollRect.y), HS.s62, harness_h(s.scrollRect.width), HS.s62, harness_h(s.scrollRect.height), HS.s191)
+  return try jsConcat(HS.s172, harness_q(s.id), HS.s62, harness_h(s.clientWidth), HS.s62, harness_h(s.clientHeight), HS.s62, harness_h(s.scrollRect.x), HS.s62, harness_h(s.scrollRect.y), HS.s62, harness_h(s.scrollRect.width), HS.s62, harness_h(s.scrollRect.height), HS.s192)
 }
 
 // ts: packages/translate/harness/harness.ts:871
@@ -1815,7 +1817,7 @@ func harness_scrollSuffix(_ input: LayoutInput, _ measurer: TextMeasurer, _ dire
   let r: any U_ScrollMetricsResult_ok_ScrollMetricsResult_refused = try overflow_scrollMetricsWithFaults(input, measurer, ((direction == HS.s_rtl) ? HS.s_rtl : HS.s_ltr), faults)
   // ts: packages/translate/harness/harness.ts:873
   if (r.kind == HS.s_refused) {
-    return try jsConcat(HS.s67, harness_q((r as! ScrollMetricsResult_refused).nodeId), HS.s62, harness_q((r as! ScrollMetricsResult_refused).detail), HS.s191)
+    return try jsConcat(HS.s67, harness_q((r as! ScrollMetricsResult_refused).nodeId), HS.s62, harness_q((r as! ScrollMetricsResult_refused).detail), HS.s192)
   }
   var out: JsString = try jsConcat(HS.s66, harness_scrollRecord((r as! ScrollMetricsResult_ok).viewport), HS.s65)
   try jsForEachI((r as! ScrollMetricsResult_ok).containers, { (c: ScrollMetrics, i: Double) throws -> Void in
@@ -1825,7 +1827,7 @@ func harness_scrollSuffix(_ input: LayoutInput, _ measurer: TextMeasurer, _ dire
     }
     try out += harness_scrollRecord(c)
 })
-  return jsConcat(out, HS.s195)
+  return jsConcat(out, HS.s196)
 }
 
 // ts: packages/translate/harness/harness.ts:883
@@ -1842,23 +1844,23 @@ func harness_runEngineCase(_ line: JsString) throws -> JsString {
     let m: any U_MeasurerChoice_ok_MeasurerChoice_refused = try platform_measurerFor(platform)
     // ts: packages/translate/harness/harness.ts:893
     if (m.kind != HS.s_ok) {
-      return try jsConcat(HS.s175, harness_q((m as! MeasurerChoice_refused).code), HS.s191)
+      return try jsConcat(HS.s176, harness_q((m as! MeasurerChoice_refused).code), HS.s192)
     }
     let r: any U_LayoutResult_ok_LayoutResult_unsupported = try layout_layoutWithFaults(input, (m as! MeasurerChoice_ok).measurer, faults)
     // ts: packages/translate/harness/harness.ts:895
     if (r.kind != HS.s_ok) {
       let u: LayoutUnsupported = (r as! LayoutResult_unsupported).unsupported
-      return try jsConcat(HS.s177, harness_q(u.code), HS.s62, harness_q(u.nodeId), HS.s62, harness_q(u.specSection), HS.s62, harness_q(u.detail), HS.s191)
+      return try jsConcat(HS.s178, harness_q(u.code), HS.s62, harness_q(u.nodeId), HS.s62, harness_q(u.specSection), HS.s62, harness_q(u.detail), HS.s192)
     }
-    var out: JsString = try jsConcat(HS.s173, harness_q((m as! MeasurerChoice_ok).key), HS.s65)
+    var out: JsString = try jsConcat(HS.s174, harness_q((m as! MeasurerChoice_ok).key), HS.s65)
     try jsForEachI((r as! LayoutResult_ok).boxes, { (b: LayoutRect, i: Double) throws -> Void in
     // ts: packages/translate/harness/harness.ts:901
     if (i > 0.0) {
       out += HS.s62
     }
-    try out += jsConcat(HS.s171, harness_q(b.id), HS.s62, ((b.parent == nil) ? HS.s_null : harness_q(jsUnwrap(b.parent))), HS.s62, harness_h(b.x), HS.s62, harness_h(b.y), HS.s62, harness_h(b.width), HS.s62, harness_h(b.height), HS.s191)
+    try out += jsConcat(HS.s172, harness_q(b.id), HS.s62, ((b.parent == nil) ? HS.s_null : harness_q(jsUnwrap(b.parent))), HS.s62, harness_h(b.x), HS.s62, harness_h(b.y), HS.s62, harness_h(b.width), HS.s62, harness_h(b.height), HS.s192)
 })
-    out += HS.s192
+    out += HS.s193
     var first: Bool = true
     // ts: packages/translate/harness/harness.ts:906
     for (id, rect) in try layout_absoluteRects((r as! LayoutResult_ok).boxes).entries {
@@ -1867,15 +1869,15 @@ func harness_runEngineCase(_ line: JsString) throws -> JsString {
         out += HS.s62
       }
       first = false
-      try out += jsConcat(HS.s171, harness_q(id), HS.s62, harness_h(rect.x), HS.s62, harness_h(rect.y), HS.s62, harness_h(rect.width), HS.s62, harness_h(rect.height), HS.s191)
+      try out += jsConcat(HS.s172, harness_q(id), HS.s62, harness_h(rect.x), HS.s62, harness_h(rect.y), HS.s62, harness_h(rect.width), HS.s62, harness_h(rect.height), HS.s192)
     }
-    return try jsConcat(out, HS.s191, (scroll ? harness_scrollSuffix(input, (m as! MeasurerChoice_ok).measurer, direction, faults) : HS.s0), HS.s191)
+    return try jsConcat(out, HS.s192, (scroll ? harness_scrollSuffix(input, (m as! MeasurerChoice_ok).measurer, direction, faults) : HS.s0), HS.s192)
   } catch let e {
     // ts: packages/translate/harness/harness.ts:913
     if (e is HarnessError) {
-      return try jsConcat(HS.s172, harness_q((e as! HarnessError).detail), HS.s191)
+      return try jsConcat(HS.s173, harness_q((e as! HarnessError).detail), HS.s192)
     }
-    return HS.s176
+    return HS.s177
   }
 }
 
@@ -1884,9 +1886,9 @@ func harness_arg(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_Js
   let v: (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)? = jsAt(a, i)
   // ts: packages/translate/harness/harness.ts:920
   if (v == nil) {
-    try harness_fail(jsConcat(HS.s454, jsNumberToString(i)))
+    try harness_fail(jsConcat(HS.s456, jsNumberToString(i)))
   }
-  return try hostHexBits(harness_str(jsUnwrap(v), jsConcat(HS.s51, jsNumberToString(i), HS.s191)))
+  return try hostHexBits(harness_str(jsUnwrap(v), jsConcat(HS.s51, jsNumberToString(i), HS.s192)))
 }
 
 // ts: packages/translate/harness/harness.ts:924
@@ -1959,12 +1961,12 @@ func harness_unitsResult(_ name: JsString, _ a: JsArray<any U_JsonArr_JsonBool_J
     let v: (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)? = jsAt(a, 1.0)
     // ts: packages/translate/harness/harness.ts:992
     if (v == nil) {
-      try harness_fail(HS.s457)
+      try harness_fail(HS.s459)
     }
     let mode: JsString = try harness_lit(jsUnwrap(v), JsArray<JsString>([HS.s_space_between, HS.s_space_around, HS.s_space_evenly]), HS.s53)
     return try units_distributedOffset(mode, harness_arg(a, 2.0), harness_arg(a, 3.0), harness_arg(a, 4.0))
   default:
-    try harness_fail(jsConcat(HS.s626, name))
+    try harness_fail(jsConcat(HS.s628, name))
   }
 }
 
@@ -1972,46 +1974,46 @@ func harness_unitsResult(_ name: JsString, _ a: JsArray<any U_JsonArr_JsonBool_J
 func harness_paintResult(_ name: JsString, _ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr>) throws -> JsString? {
   // ts: packages/translate/harness/harness.ts:1009
   if (jsLength(a) == 0.0) {
-    try harness_fail(jsConcat(HS.s495, name, HS.s10))
+    try harness_fail(jsConcat(HS.s497, name, HS.s10))
   }
   // ts: packages/translate/harness/harness.ts:1010
-  if (name == HS.s503) {
-    return try jsConcat(HS.s173, harness_h(paintDash_selectBestDashGap(harness_arg(a, 1.0), harness_arg(a, 2.0), harness_arg(a, 3.0))), HS.s191)
+  if (name == HS.s505) {
+    return try jsConcat(HS.s174, harness_h(paintDash_selectBestDashGap(harness_arg(a, 1.0), harness_arg(a, 2.0), harness_arg(a, 3.0))), HS.s192)
   }
   // ts: packages/translate/harness/harness.ts:1011
-  if (name == HS.s501) {
-    return try jsConcat(HS.s173, (paintDash_borderNeedsSidePainter(harness_bitsList(a, 1.0), harness_strList(a, 2.0), harness_bitsList(a, 3.0)) ? HS.s_true : HS.s_false), HS.s191)
+  if (name == HS.s503) {
+    return try jsConcat(HS.s174, (paintDash_borderNeedsSidePainter(harness_bitsList(a, 1.0), harness_strList(a, 2.0), harness_bitsList(a, 3.0)) ? HS.s_true : HS.s_false), HS.s192)
   }
   // ts: packages/translate/harness/harness.ts:1012
-  if (name == HS.s502) {
+  if (name == HS.s504) {
     let faults: DashFaults = try DashFaults(harness_flagAt(a, 8.0), harness_flagAt(a, 9.0))
-    return try jsConcat(HS.s174, harness_commaList(jsMap(paintDash_borderPaintOps(harness_arg(a, 1.0), harness_arg(a, 2.0), harness_arg(a, 3.0), harness_arg(a, 4.0), harness_bitsList(a, 5.0), harness_strList(a, 6.0), harness_bitsList(a, 7.0), faults), harness_borderOpJson)), HS.s195)
+    return try jsConcat(HS.s175, harness_commaList(jsMap(paintDash_borderPaintOps(harness_arg(a, 1.0), harness_arg(a, 2.0), harness_arg(a, 3.0), harness_arg(a, 4.0), harness_bitsList(a, 5.0), harness_strList(a, 6.0), harness_bitsList(a, 7.0), faults), harness_borderOpJson)), HS.s196)
   }
   return nil
 }
 
 // ts: packages/translate/harness/harness.ts:1020
 func harness_bitsList(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr>, _ i: Double) throws -> JsArray<Double> {
-  return try jsMap(harness_arr(harness_item(a, i, HS.s35), jsConcat(HS.s51, jsNumberToString(i), HS.s191)), { (v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr) throws -> Double in
-    return try hostHexBits(harness_str(v, jsConcat(HS.s51, jsNumberToString(i), HS.s191)))
+  return try jsMap(harness_arr(harness_item(a, i, HS.s35), jsConcat(HS.s51, jsNumberToString(i), HS.s192)), { (v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr) throws -> Double in
+    return try hostHexBits(harness_str(v, jsConcat(HS.s51, jsNumberToString(i), HS.s192)))
 })
 }
 
 // ts: packages/translate/harness/harness.ts:1025
 func harness_strList(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr>, _ i: Double) throws -> JsArray<JsString> {
-  return try jsMap(harness_arr(harness_item(a, i, HS.s35), jsConcat(HS.s51, jsNumberToString(i), HS.s191)), { (v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr) throws -> JsString in
-    return try harness_str(v, jsConcat(HS.s51, jsNumberToString(i), HS.s191))
+  return try jsMap(harness_arr(harness_item(a, i, HS.s35), jsConcat(HS.s51, jsNumberToString(i), HS.s192)), { (v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr) throws -> JsString in
+    return try harness_str(v, jsConcat(HS.s51, jsNumberToString(i), HS.s192))
 })
 }
 
 // ts: packages/translate/harness/harness.ts:1029
 func harness_flagAt(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr>, _ i: Double) throws -> Bool {
-  return try harness_bool(harness_item(a, i, HS.s35), jsConcat(HS.s51, jsNumberToString(i), HS.s191))
+  return try harness_bool(harness_item(a, i, HS.s35), jsConcat(HS.s51, jsNumberToString(i), HS.s192))
 }
 
 // ts: packages/translate/harness/harness.ts:1034
 func harness_borderOpJson(_ o: BorderOp) throws -> JsString {
-  return try jsConcat(HS.s171, harness_q(o.op), HS.s62, harness_h(o.side), HS.s62, harness_h(o.alpha), HS.s62, (o.antialias ? HS.s_true : HS.s_false), HS.s65, harness_commaList(jsMap(o.points, harness_h)), HS.s195)
+  return try jsConcat(HS.s172, harness_q(o.op), HS.s62, harness_h(o.side), HS.s62, harness_h(o.alpha), HS.s62, (o.antialias ? HS.s_true : HS.s_false), HS.s65, harness_commaList(jsMap(o.points, harness_h)), HS.s196)
 }
 
 // ts: packages/translate/harness/harness.ts:1038
@@ -2038,7 +2040,7 @@ func harness_runUnitsCase(_ line: JsString) throws -> JsString {
     let first: (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)? = jsAt(a, 0.0)
     // ts: packages/translate/harness/harness.ts:1049
     if (first == nil) {
-      try harness_fail(HS.s332)
+      try harness_fail(HS.s334)
     }
     let name: JsString = try harness_str(jsUnwrap(first), HS.s52)
     // ts: packages/translate/harness/harness.ts:1051
@@ -2048,20 +2050,20 @@ func harness_runUnitsCase(_ line: JsString) throws -> JsString {
       if (paint != nil) {
         return try jsUnwrap(paint)
       }
-      return try jsConcat(HS.s173, harness_h(harness_unitsResult(name, a)), HS.s191)
+      return try jsConcat(HS.s174, harness_h(harness_unitsResult(name, a)), HS.s192)
     } catch let e {
       // ts: packages/translate/harness/harness.ts:1056
       if (e is HarnessError) {
         throw (e as! HarnessError)
       }
-      return HS.s176
+      return HS.s177
     }
   } catch let e {
     // ts: packages/translate/harness/harness.ts:1060
     if (e is HarnessError) {
-      return try jsConcat(HS.s172, harness_q((e as! HarnessError).detail), HS.s191)
+      return try jsConcat(HS.s173, harness_q((e as! HarnessError).detail), HS.s192)
     }
-    return HS.s176
+    return HS.s177
   }
 }
 
@@ -2070,7 +2072,7 @@ func harness_item(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_J
   let v: (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)? = jsAt(a, i)
   // ts: packages/translate/harness/harness.ts:1069
   if (v == nil) {
-    try harness_fail(jsConcat(path, HS.s144, jsNumberToString(i)))
+    try harness_fail(jsConcat(path, HS.s145, jsNumberToString(i)))
   }
   return try jsUnwrap(v)
 }
@@ -2093,32 +2095,32 @@ func harness_runSnapCase(_ line: JsString) throws -> JsString {
     let o: JsonObj = try harness_obj(harness_parseJson(line), JsArray<JsString>([HS.s_dpr, HS.s_rects]), HS.s35)
     _ = try hostHexBits(harness_str(harness_field(o, HS.s_dpr, HS.s35), HS.s36))
     let rects: JsArray<LayoutRect> = try jsMapI(harness_arr(harness_field(o, HS.s_rects, HS.s35), HS.s40), { (r: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, i: Double) throws -> LayoutRect in
-    return try harness_decodeRect(r, jsConcat(HS.s41, jsNumberToString(i), HS.s191))
+    return try harness_decodeRect(r, jsConcat(HS.s41, jsNumberToString(i), HS.s192))
 })
     // ts: packages/translate/harness/harness.ts:1097
     do {
-      var out: JsString = HS.s174
+      var out: JsString = HS.s175
       try jsForEachI(snap_snapEdges(rects), { (r: SnappedRect, i: Double) throws -> Void in
     // ts: packages/translate/harness/harness.ts:1100
     if (i > 0.0) {
       out += HS.s62
     }
-    try out += jsConcat(HS.s171, harness_q(r.id), HS.s62, harness_h(r.left), HS.s62, harness_h(r.top), HS.s62, harness_h(r.right), HS.s62, harness_h(r.bottom), HS.s62, harness_h(r.width), HS.s62, harness_h(r.height), HS.s191)
+    try out += jsConcat(HS.s172, harness_q(r.id), HS.s62, harness_h(r.left), HS.s62, harness_h(r.top), HS.s62, harness_h(r.right), HS.s62, harness_h(r.bottom), HS.s62, harness_h(r.width), HS.s62, harness_h(r.height), HS.s192)
 })
-      return jsConcat(out, HS.s195)
+      return jsConcat(out, HS.s196)
     } catch let e {
       // ts: packages/translate/harness/harness.ts:1105
       if (e is HarnessError) {
         throw (e as! HarnessError)
       }
-      return HS.s176
+      return HS.s177
     }
   } catch let e {
     // ts: packages/translate/harness/harness.ts:1109
     if (e is HarnessError) {
-      return try jsConcat(HS.s172, harness_q((e as! HarnessError).detail), HS.s191)
+      return try jsConcat(HS.s173, harness_q((e as! HarnessError).detail), HS.s192)
     }
-    return HS.s176
+    return HS.s177
   }
 }
 
@@ -2156,7 +2158,7 @@ func harness_libraryResult(_ op: JsString, _ a: JsArray<any U_JsonArr_JsonBool_J
     let v: (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)? = jsAt(a, 1.0)
     // ts: packages/translate/harness/harness.ts:1145
     if (v == nil) {
-      try harness_fail(HS.s455)
+      try harness_fail(HS.s457)
     }
     let items: JsArray<SortItem> = try jsMap(harness_arr(jsUnwrap(v), HS.s53), { (x: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr) throws -> SortItem in
     return try harness_sortItem(x, HS.s53)
@@ -2174,12 +2176,12 @@ func harness_libraryResult(_ op: JsString, _ a: JsArray<any U_JsonArr_JsonBool_J
         try out += jsConcat(((out == HS.s0) ? HS.s0 : HS.s62), harness_q(it.tag))
       }
     }
-    return jsConcat(HS.s171, out, HS.s191)
+    return jsConcat(HS.s172, out, HS.s192)
   case HS.s_map:
     let v: (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)? = jsAt(a, 1.0)
     // ts: packages/translate/harness/harness.ts:1153
     if (v == nil) {
-      try harness_fail(HS.s456)
+      try harness_fail(HS.s458)
     }
     let m: JsStringMap<Double> = JsStringMap<Double>()
     try jsForEachI(harness_arr(jsUnwrap(v), HS.s53), { (k: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, i: Double) throws -> Void in
@@ -2188,14 +2190,14 @@ func harness_libraryResult(_ op: JsString, _ a: JsArray<any U_JsonArr_JsonBool_J
     var out: JsString = HS.s0
     // ts: packages/translate/harness/harness.ts:1159
     for (k, i) in m.entries {
-      try out += jsConcat(((out == HS.s0) ? HS.s0 : HS.s62), HS.s171, harness_q(k), HS.s62, harness_h(i), HS.s191)
+      try out += jsConcat(((out == HS.s0) ? HS.s0 : HS.s62), HS.s172, harness_q(k), HS.s62, harness_h(i), HS.s192)
     }
-    return jsConcat(HS.s171, out, HS.s191)
+    return jsConcat(HS.s172, out, HS.s192)
   case HS.s_codePoints:
     let v: (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)? = jsAt(a, 1.0)
     // ts: packages/translate/harness/harness.ts:1164
     if (v == nil) {
-      try harness_fail(HS.s459)
+      try harness_fail(HS.s461)
     }
     var out: JsString = HS.s0
     // ts: packages/translate/harness/harness.ts:1166
@@ -2208,37 +2210,37 @@ func harness_libraryResult(_ op: JsString, _ a: JsArray<any U_JsonArr_JsonBool_J
         try out += jsConcat(((out == HS.s0) ? HS.s0 : HS.s62), harness_h(jsUnwrap(jsCodePointAt0(ch))))
       }
     }
-    return jsConcat(HS.s171, out, HS.s191)
+    return jsConcat(HS.s172, out, HS.s192)
   case HS.s_equal:
     let x: (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)? = jsAt(a, 1.0)
     let y: (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)? = jsAt(a, 2.0)
     // ts: packages/translate/harness/harness.ts:1172
     if ((x == nil) || (y == nil)) {
-      try harness_fail(HS.s458)
+      try harness_fail(HS.s460)
     }
     return try ((harness_str(jsUnwrap(x), HS.s53) == harness_str(jsUnwrap(y), HS.s54)) ? HS.s_true : HS.s_false)
   case HS.s_rt_timing:
     // ts: packages/translate/harness/harness.ts:1177
     if (jsLength(a) != 3.0) {
-      try harness_fail(HS.s555)
+      try harness_fail(HS.s557)
     }
     return try harness_rtTimingResult(harness_rtTimingSpec(harness_item(a, 1.0, HS.s35), HS.s53), harness_rtFinite(a, 2.0, HS.s35), 0.0)
   case HS.s_rt_hold:
     // ts: packages/translate/harness/harness.ts:1180
     if (jsLength(a) != 4.0) {
-      try harness_fail(HS.s550)
+      try harness_fail(HS.s552)
     }
     return try harness_rtTimingResult(harness_rtTimingSpec(harness_item(a, 1.0, HS.s35), HS.s53), harness_rtFinite(a, 2.0, HS.s35), harness_rtFinite(a, 3.0, HS.s35))
   case HS.s_rt_easing:
     // ts: packages/translate/harness/harness.ts:1183
     if (jsLength(a) != 3.0) {
-      try harness_fail(HS.s548)
+      try harness_fail(HS.s550)
     }
     return try harness_rtTimingResult(harness_rtOneIteration(harness_rtEasing(harness_item(a, 1.0, HS.s35), HS.s53)), harness_rtFinite(a, 2.0, HS.s35), 0.0)
   case HS.s_rt_interp:
     return try harness_rtInterpResult(a)
   default:
-    try harness_fail(jsConcat(HS.s627, op))
+    try harness_fail(jsConcat(HS.s629, op))
   }
 }
 
@@ -2250,24 +2252,24 @@ func harness_runLibraryCase(_ line: JsString) throws -> JsString {
     let first: (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)? = jsAt(a, 0.0)
     // ts: packages/translate/harness/harness.ts:1197
     if (first == nil) {
-      try harness_fail(HS.s332)
+      try harness_fail(HS.s334)
     }
     // ts: packages/translate/harness/harness.ts:1198
     do {
-      return try jsConcat(HS.s173, harness_libraryResult(harness_str(jsUnwrap(first), HS.s52), a), HS.s191)
+      return try jsConcat(HS.s174, harness_libraryResult(harness_str(jsUnwrap(first), HS.s52), a), HS.s192)
     } catch let e {
       // ts: packages/translate/harness/harness.ts:1201
       if (e is HarnessError) {
         throw (e as! HarnessError)
       }
-      return HS.s176
+      return HS.s177
     }
   } catch let e {
     // ts: packages/translate/harness/harness.ts:1205
     if (e is HarnessError) {
-      return try jsConcat(HS.s172, harness_q((e as! HarnessError).detail), HS.s191)
+      return try jsConcat(HS.s173, harness_q((e as! HarnessError).detail), HS.s192)
     }
-    return HS.s176
+    return HS.s177
   }
 }
 
@@ -2276,7 +2278,7 @@ func harness_rtFinite(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonO
   let v: Double = try harness_arg(a, i)
   // ts: packages/translate/harness/harness.ts:1229
   if (!(v).isFinite) {
-    try harness_fail(jsConcat(path, HS.s171, jsNumberToString(i), HS.s193, hostBitsHex(v), HS.s15))
+    try harness_fail(jsConcat(path, HS.s172, jsNumberToString(i), HS.s194, hostBitsHex(v), HS.s15))
   }
   return v
 }
@@ -2286,7 +2288,7 @@ func harness_rtIterations(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_J
   let v: Double = try harness_arg(a, i)
   // ts: packages/translate/harness/harness.ts:1236
   if ((v).isNaN || (v < 0.0)) {
-    try harness_fail(jsConcat(path, HS.s171, jsNumberToString(i), HS.s194, hostBitsHex(v), HS.s16))
+    try harness_fail(jsConcat(path, HS.s172, jsNumberToString(i), HS.s195, hostBitsHex(v), HS.s16))
   }
   return v
 }
@@ -2389,7 +2391,7 @@ func harness_rtTimingSpec(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_J
   if (jsLength(a) != 8.0) {
     try harness_fail(jsConcat(path, HS.s126))
   }
-  return try EffectTimingSpec(harness_rtFinite(a, 0.0, path), harness_rtFinite(a, 1.0, path), harness_rtFinite(a, 2.0, path), harness_rtIterations(a, 3.0, path), harness_rtFinite(a, 4.0, path), harness_rtDirection(harness_item(a, 5.0, path), jsConcat(path, HS.s183)), harness_rtFill(harness_item(a, 6.0, path), jsConcat(path, HS.s184)), rtEasing_easingFromSpec(harness_rtEasing(harness_item(a, 7.0, path), jsConcat(path, HS.s185))))
+  return try EffectTimingSpec(harness_rtFinite(a, 0.0, path), harness_rtFinite(a, 1.0, path), harness_rtFinite(a, 2.0, path), harness_rtIterations(a, 3.0, path), harness_rtFinite(a, 4.0, path), harness_rtDirection(harness_item(a, 5.0, path), jsConcat(path, HS.s184)), harness_rtFill(harness_item(a, 6.0, path), jsConcat(path, HS.s185)), rtEasing_easingFromSpec(harness_rtEasing(harness_item(a, 7.0, path), jsConcat(path, HS.s186))))
 }
 
 // ts: packages/translate/harness/harness.ts:1300
@@ -2405,7 +2407,7 @@ func harness_rtBits(_ v: Double?) throws -> JsString {
 // ts: packages/translate/harness/harness.ts:1309
 func harness_rtTimingResult(_ spec: EffectTimingSpec, _ timeMs: Double, _ elapsedSeconds: Double) throws -> JsString {
   let t: ComputedTiming = try rtTiming_computeTiming(spec, rtTiming_currentTimeAt(rtTiming_seekPaused(timeMs, 0.0, 1.0), elapsedSeconds, harness_RT_NO_FAULTS), harness_RT_NO_FAULTS)
-  return try jsConcat(HS.s171, harness_rtBits(t.progress), HS.s62, harness_rtBits(t.currentIteration), HS.s191)
+  return try jsConcat(HS.s172, harness_rtBits(t.progress), HS.s62, harness_rtBits(t.currentIteration), HS.s192)
 }
 
 // ts: packages/translate/harness/harness.ts:1315
@@ -2476,7 +2478,7 @@ func harness_rtOp(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, 
   if (jsLength(a) != 6.0) {
     try harness_fail(jsConcat(path, HS.s127))
   }
-  return try TransformOp(harness_rtTransformFn(harness_item(a, 0.0, path), path), harness_rtLength(harness_item(a, 1.0, path), jsConcat(path, HS.s178)), harness_rtLength(harness_item(a, 2.0, path), jsConcat(path, HS.s179)), harness_rtFinite(a, 3.0, path), harness_rtFinite(a, 4.0, path), harness_rtFinite(a, 5.0, path))
+  return try TransformOp(harness_rtTransformFn(harness_item(a, 0.0, path), path), harness_rtLength(harness_item(a, 1.0, path), jsConcat(path, HS.s179)), harness_rtLength(harness_item(a, 2.0, path), jsConcat(path, HS.s180)), harness_rtFinite(a, 3.0, path), harness_rtFinite(a, 4.0, path), harness_rtFinite(a, 5.0, path))
 }
 
 // ts: packages/translate/harness/harness.ts:1351
@@ -2488,11 +2490,11 @@ func harness_rtValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonSt
   }
   let k: JsString = try harness_lit(harness_item(a, 0.0, path), JsArray<JsString>([HS.s_opacity, HS.s_length, HS.s_angle, HS.s_color, HS.s_transform]), path)
   let n: Double = try harness_rtFinite(a, 1.0, path)
-  let length: LengthValue = try harness_rtLength(harness_item(a, 2.0, path), jsConcat(path, HS.s179))
-  let color: LegacyColor = try harness_rtColor(harness_item(a, 3.0, path), jsConcat(path, HS.s180))
+  let length: LengthValue = try harness_rtLength(harness_item(a, 2.0, path), jsConcat(path, HS.s180))
+  let color: LegacyColor = try harness_rtColor(harness_item(a, 3.0, path), jsConcat(path, HS.s181))
   let ops: JsArray<TransformOp> = JsArray<TransformOp>([])
-  try jsForEachI(harness_arr(harness_item(a, 4.0, path), jsConcat(path, HS.s181)), { (o: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, i: Double) throws -> Void in
-    _ = try jsPush(ops, harness_rtOp(o, jsConcat(path, HS.s182, jsNumberToString(i), HS.s191)))
+  try jsForEachI(harness_arr(harness_item(a, 4.0, path), jsConcat(path, HS.s182)), { (o: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, i: Double) throws -> Void in
+    _ = try jsPush(ops, harness_rtOp(o, jsConcat(path, HS.s183, jsNumberToString(i), HS.s192)))
 })
   // ts: packages/translate/harness/harness.ts:1362
   if (k == HS.s_opacity) {
@@ -2522,7 +2524,7 @@ func harness_rtMagnitude(_ x: Double) throws -> Double {
 func harness_rtKernelDomain(_ x: Double) throws -> Void {
   // ts: packages/translate/harness/harness.ts:1394
   if try (!(harness_rtMagnitude(x) < hostHexBits(HS.s117))) {
-    try harness_fail(jsConcat(HS.s546, hostBitsHex(x), HS.s21))
+    try harness_fail(jsConcat(HS.s548, hostBitsHex(x), HS.s21))
   }
 }
 
@@ -2565,7 +2567,7 @@ func harness_rtCos(_ x: Double) throws -> Double {
 func harness_rtInterpResult(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr>) throws -> JsString {
   // ts: packages/translate/harness/harness.ts:1427
   if (jsLength(a) != 8.0) {
-    try harness_fail(HS.s553)
+    try harness_fail(HS.s555)
   }
   let from: AnimatedValue = try harness_rtValue(harness_item(a, 1.0, HS.s35), HS.s53)
   let to: AnimatedValue = try harness_rtValue(harness_item(a, 2.0, HS.s35), HS.s54)
@@ -2573,11 +2575,11 @@ func harness_rtInterpResult(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum
   let keyframe: EasingSpec = try harness_rtEasing(harness_item(a, 4.0, HS.s35), HS.s56)
   // ts: packages/translate/harness/harness.ts:1432
   if (keyframe.kind == HS.s_steps) {
-    try harness_fail(HS.s552)
+    try harness_fail(HS.s554)
   }
   let t: ComputedTiming = try rtTiming_computeTiming(harness_rtOneIteration(effect), rtTiming_currentTimeAt(rtTiming_seekPaused(harness_rtFinite(a, 5.0, HS.s35), 0.0, 1.0), 0.0, harness_RT_NO_FAULTS), harness_RT_NO_FAULTS)
   let p: Double = try ((t.progress == nil) ? 0.0 : jsUnwrap(t.progress))
   let local: Double = try ((keyframe.kind == HS.s_cubic_bezier) ? rtEasing_solveBezier(rtEasing_cubicBezier(keyframe.x1, keyframe.y1, keyframe.x2, keyframe.y2), p, harness_RT_NO_FAULTS) : p)
   let v: InterpolatedValue = try rtInterpolate_interpolateValue(from, to, local, harness_RT_NO_FAULTS)
-  return try jsConcat(HS.s171, harness_rtBits(t.progress), HS.s62, harness_q((v.refused ? HS.s_refused : rtInterpolate_serializeValue(v.value, harness_rtFinite(a, 6.0, HS.s35), harness_rtFinite(a, 7.0, HS.s35), harness_RT_TRIG))), HS.s191)
+  return try jsConcat(HS.s172, harness_rtBits(t.progress), HS.s62, harness_q((v.refused ? HS.s_refused : rtInterpolate_serializeValue(v.value, harness_rtFinite(a, 6.0, HS.s35), harness_rtFinite(a, 7.0, HS.s35), harness_RT_TRIG))), HS.s192)
 }
