@@ -201,7 +201,7 @@ describe('BASE pins', () => {
     expect(FIXTURE_GROUPS.map((g) => g.id).slice(-3)).toEqual(['text-weight', 'font-shorthand', 'text-decoration']);
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     const added = TEXT_WEIGHT.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    expect(ids.slice(502, 502 + added.length)).toEqual(added);
+    expect(ids.slice(533, 533 + added.length)).toEqual(added);
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
     const changed = git('diff', '--name-status', BASE, '--', 'packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels')
