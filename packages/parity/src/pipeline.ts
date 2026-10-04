@@ -113,10 +113,28 @@ function referenceMeasurer() {
   return m.measurer;
 }
 
-export function compileFixture(spec: FixtureSpec, faults: CompilerFaults = NO_FAULTS, profiles: 'enforce' | 'derive' = 'enforce', direction: Direction = 'ltr', transformInput: (input: FrontEndResult) => FrontEndResult = (i) => i): { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> } {
-  // TXT1-C: a fonts fixture's font map, with its pinned faces' vendored files as snapshot assets.
+/** The front-end input a fixture compiles from; a fonts fixture's pinned faces' vendored files ride along as snapshot assets (TXT1-C). */
+export function fixtureCompileInput(spec: FixtureSpec): FrontEndResult {
   const fonts = fontMapOf(spec.id);
-  const input = transformInput(fonts === undefined ? fixtureInput(spec) : withFontMapAssets(fixtureInput(spec), fonts));
+  return fonts === undefined ? fixtureInput(spec) : withFontMapAssets(fixtureInput(spec), fonts);
+}
+
+const enforcedCompiles = new Map<string, Compiled<'ios' | 'web'>>();
+
+/** compileFixture(spec, NO_FAULTS, 'enforce', direction).compiled, compiled once per fixture and direction in this process. */
+export function enforcedCompile(spec: FixtureSpec, direction: Direction): Compiled<'ios' | 'web'> {
+  const key = `${spec.id} ${direction}`;
+  let c = enforcedCompiles.get(key);
+  if (c === undefined) {
+    c = compileFixture(spec, NO_FAULTS, 'enforce', direction).compiled;
+    enforcedCompiles.set(key, c);
+  }
+  return c;
+}
+
+export function compileFixture(spec: FixtureSpec, faults: CompilerFaults = NO_FAULTS, profiles: 'enforce' | 'derive' = 'enforce', direction: Direction = 'ltr', transformInput: (input: FrontEndResult) => FrontEndResult = (i) => i): { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> } {
+  const fonts = fontMapOf(spec.id);
+  const input = transformInput(fixtureCompileInput(spec));
   const rootFont = spec.kind === 'layout' ? spec.rootFont : 'ahem';
   // MQ-a: the native output is the @media band holding the fixed parity viewport, which is exact for every case here.
   const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} }, ...(fonts === undefined ? {} : { fonts }) }, { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont, foldViewport: ENVIRONMENT.viewport });
