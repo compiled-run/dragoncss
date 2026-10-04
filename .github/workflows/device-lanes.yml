@@ -68,8 +68,23 @@ jobs:
           have || xcodebuild -downloadPlatform iOS -buildVersion 23F77
           have || { xcrun simctl list runtimes; echo "::error::iOS 26.5 (23F77) is not installed"; exit 1; }
           echo "runtime ready in $(( $(date +%s) - start )) s"
-          xcodebuild -version
           sw_vers
+      - name: Xcode 27.0 (27A266a) and the Swift the committed host lane records
+        run: |
+          xcodebuild -version
+          xcodebuild -version | grep -qx 'Build version 27A266a' || { echo "::error::Xcode is not 27.0 (27A266a), the Mac's"; exit 1; }
+          cat > "$RUNNER_TEMP/toolchain.mts" <<'EOF'
+          // The host toolchains the committed lanes.json records (layout-vectors-host): the CI apps must be built by the same ones.
+          import { readFileSync } from 'node:fs';
+          const target = process.argv[2] as 'ios' | 'android';
+          const { swiftTool, kotlinTool } = await import(`${process.env.GITHUB_WORKSPACE}/packages/translate/src/native.ts`);
+          const lanes = JSON.parse(readFileSync('packages/parity/out/lanes.json', 'utf8'));
+          const want = lanes.targets.find((t: any) => t.target === target)?.lanes.find((l: any) => l.lane === 'layout-vectors-host')?.run?.toolchain ?? null;
+          const have = target === 'ios' ? (swiftTool()?.version ?? null) : (kotlinTool()?.version ?? null);
+          console.log(`${target}: runner ${JSON.stringify(have)}, lanes.json ${JSON.stringify(want)}`);
+          if (have === null || have !== want) { console.error(`the runner's ${target} toolchain differs from the committed lanes.json host lane's`); process.exit(1); }
+          EOF
+          node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts" ios
       - name: Run ${{ matrix.device }}
         env:
           DEVICE: ${{ matrix.device }}
@@ -126,6 +141,20 @@ jobs:
           yes | "$sdk" --licenses >/dev/null || true
           "$sdk" --install emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64' >/dev/null
           "$sdk" --list_installed | grep -E 'emulator|system-images|build-tools;36|platforms;android-36'
+      - name: kotlinc and the JDK the committed host lane records
+        run: |
+          cat > "$RUNNER_TEMP/toolchain.mts" <<'EOF'
+          // The host toolchains the committed lanes.json records (layout-vectors-host): the CI apps must be built by the same ones.
+          import { readFileSync } from 'node:fs';
+          const target = process.argv[2] as 'ios' | 'android';
+          const { swiftTool, kotlinTool } = await import(`${process.env.GITHUB_WORKSPACE}/packages/translate/src/native.ts`);
+          const lanes = JSON.parse(readFileSync('packages/parity/out/lanes.json', 'utf8'));
+          const want = lanes.targets.find((t: any) => t.target === target)?.lanes.find((l: any) => l.lane === 'layout-vectors-host')?.run?.toolchain ?? null;
+          const have = target === 'ios' ? (swiftTool()?.version ?? null) : (kotlinTool()?.version ?? null);
+          console.log(`${target}: runner ${JSON.stringify(have)}, lanes.json ${JSON.stringify(want)}`);
+          if (have === null || have !== want) { console.error(`the runner's ${target} toolchain differs from the committed lanes.json host lane's`); process.exit(1); }
+          EOF
+          node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts" android
           # This avdmanager writes AVDs under ~/.config/.android whatever ANDROID_AVD_HOME says; one directory serves both.
           mkdir -p "$HOME/.android/avd" "$HOME/.config"
           ln -sfn "$HOME/.android" "$HOME/.config/.android"
@@ -206,6 +235,8 @@ jobs:
           const out = `${rows.join('\n')}\n\n${same ? 'Every device lane run on CI judges exactly as the committed records (android layout-vectors-device runs on the Mac).' : 'Some device lanes differ from the committed records (see the device-records-ci-half artifact).'}\n`;
           console.log(out);
           import('node:fs').then((fs) => fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY!, out));
+          // A lane that judges differently from the committed records fails the run.
+          if (!same) process.exitCode = 1;
           EOF
           node "$RUNNER_TEMP/compare.mts"
       - name: Upload the device outcomes (the landing driver merges them with the Mac's vectors record)

@@ -18,6 +18,8 @@ import { buildAndroid, buildIos, nativeCases } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import { nativeTargets } from '../targets.ts';
 
+// Exit codes: 0 merged with lane parity; 1 a parity failure, or a blocked device; 2 usage; 3 a refused merge (a missing,
+// repeated or foreign half), with nothing written.
 const USAGE = 'usage: device-ci.ts one <ios|android> <device> <outcome.json> | vectors <record.json> | merge <dir> (--local-vectors <record.json> | --ci-half)';
 const [mode, ...rest] = process.argv.slice(2);
 const targets = nativeTargets();
@@ -47,6 +49,8 @@ if (mode === 'one' && rest.length === 3) {
   const outcome = await runOneDevice(t, spec, host, build.artifact, () => cases, vectors, log);
   writeFileSync(out, ciOutcomeText({ schema: OUTCOME_SCHEMA, target: t.target, device: spec.name, evidence, producedOn: producerLabel(), outcome }));
   log(`outcome written to ${out}${outcome.blocked === null ? '' : ` (blocked: ${outcome.blocked})`}`);
+  // A blocked device fails its job: the run is not device evidence (the outcome is still uploaded to show why).
+  if (outcome.blocked !== null) process.exitCode = 1;
 } else if (mode === 'vectors' && rest.length === 1) {
   const out = rest[0]!;
   const t = targets.find((x) => x.target === LOCAL_VECTORS.target)!;
@@ -70,10 +74,18 @@ if (mode === 'one' && rest.length === 3) {
   log(`record written to ${out}`);
 } else if (mode === 'merge' && rest.length >= 2 && ((rest[1] === '--local-vectors' && rest.length === 3) || (rest[1] === '--ci-half' && rest.length === 2))) {
   const dir = rest[0]!;
-  const local = rest[1] === '--ci-half' ? 'ci-half' : parseVectorsRecord(readFileSync(rest[2]!, 'utf8'), rest[2]!);
-  const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
-  const outcomes = files.map((f) => parseCiOutcome(readFileSync(join(dir, f), 'utf8'), f));
-  const runs = mergeCiOutcomes(outcomes, local, deviceEvidence);
+  let files: string[] = [];
+  let local: ReturnType<typeof parseVectorsRecord> | 'ci-half' = 'ci-half';
+  let runs: ReturnType<typeof mergeCiOutcomes>;
+  try {
+    local = rest[1] === '--ci-half' ? 'ci-half' : parseVectorsRecord(readFileSync(rest[2]!, 'utf8'), rest[2]!);
+    files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
+    runs = mergeCiOutcomes(files.map((f) => parseCiOutcome(readFileSync(join(dir, f), 'utf8'), f)), local, deviceEvidence);
+  } catch (e) {
+    // A refused merge exits 3, apart from a merged run whose parity fails (1), so the landing driver names it.
+    console.error(`device-ci merge: REFUSED: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(3);
+  }
   mkdirSync(repoPath('packages/parity/out'), { recursive: true });
   for (const [target, d] of runs) {
     writeFileSync(repoPath(`packages/parity/out/device-failures-${target}.json`), deviceFailuresText(d));

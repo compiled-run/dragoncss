@@ -5,6 +5,8 @@ import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   commitRegen,
+  archOf,
+  archRebaseline,
   deviceRunProblems,
   deviceRunWrote,
   isAncestor,
@@ -356,6 +358,50 @@ describe('the device run against the base\'s device evidence', () => {
     expect(deviceRunProblems(master, same, [])).toEqual([]);
     const fewer = ev({ ios: { 'device-frames': 'pass', 'device-pixels': 'fail' }, android: { 'device-frames': 'pass', 'device-pixels': 'pass' } }, { ios: [px('a')], android: [] });
     expect(deviceRunProblems(master, fewer, [])).toEqual([]);
+  });
+
+  // Architecture binding (PM ruling on #132): device-pixels on master ran on the arm64 image.
+  const withModels = (arch: string, pixels: string, failures: unknown[]) =>
+    parseDeviceEvidence(
+      {
+        parity: { pass: true, problems: [] },
+        targets: [
+          { target: 'android', lanes: [
+            { lane: 'device-frames', state: 'pass', device: { sets: [{ dpr: 2, device: { name: 'dragon-320', model: `Android SDK built for ${arch} / dragon-320` }, cases: 5, dumps: 5, failures: 0 }] } },
+            { lane: 'device-pixels', state: pixels, device: { sets: [{ dpr: 2, device: { name: 'dragon-320', model: `Android SDK built for ${arch} / dragon-320` }, cases: 5, dumps: 5, failures: failures.length }] } },
+          ] },
+        ],
+      },
+      () => failures,
+      arch,
+    );
+  const armMaster = withModels('arm64', 'fail', [px('a'), px('b')]);
+
+  it('fails a run whose device lane ran on another architecture than master\'s record, naming both, even with fewer failures', () => {
+    expect(archOf('Android SDK built for x86_64 / dragon-320')).toBe('x86_64');
+    expect(archOf('iPhone 17')).toBe('iPhone 17');
+    expect(deviceRunProblems(armMaster, withModels('arm64', 'fail', [px('a')]), [])).toEqual([]);
+    expect(deviceRunProblems(armMaster, withModels('x86_64', 'fail', [px('a')]), [])).toEqual([
+      'android device-frames: dragon-320 at DPR 2 ran on "Android SDK built for x86_64 / dragon-320" (x86_64), master\'s record on "Android SDK built for arm64 / dragon-320" (arm64): changing a lane\'s architecture is an explicit rebaseline (LAND_ARCH_REBASELINE)',
+      'android device-pixels: dragon-320 at DPR 2 ran on "Android SDK built for x86_64 / dragon-320" (x86_64), master\'s record on "Android SDK built for arm64 / dragon-320" (arm64): changing a lane\'s architecture is an explicit rebaseline (LAND_ARCH_REBASELINE)',
+    ]);
+    // After a rebaseline to x86_64, a local arm64 fallback fails the same way instead of replacing the evidence.
+    expect(deviceRunProblems(withModels('x86_64', 'fail', [px('a'), px('b')]), withModels('arm64', 'fail', [px('a'), px('b')]), [])).toHaveLength(2);
+  });
+
+  it('rebaselines an architecture only with master\'s states and exactly master\'s failures', () => {
+    expect(deviceRunProblems(armMaster, withModels('x86_64', 'fail', [px('b'), px('a')]), [], { rebaseline: true })).toEqual([]);
+    expect(deviceRunProblems(armMaster, withModels('x86_64', 'fail', [px('a')]), [], { rebaseline: true })).toEqual(['android device-pixels: an architecture rebaseline needs master\'s state and exactly master\'s failures; master fail with 2, this run fail with 1']);
+    expect(deviceRunProblems(armMaster, withModels('x86_64', 'pass', []), [], { rebaseline: true })[0]).toContain('master fail with 2, this run pass with 0');
+  });
+
+  it('takes LAND_ARCH_REBASELINE only for the PR it names, recorded in that PR\'s body', () => {
+    const body = 'What changed\nArch rebaseline: android device-frames..device-hit from arm64 to x86_64 (CI)\n';
+    expect(archRebaseline(undefined, 132, body)).toEqual({ rebaseline: false, problem: null });
+    expect(archRebaseline('132', 132, body)).toEqual({ rebaseline: true, problem: null });
+    expect(archRebaseline('132', 135, body)).toEqual({ rebaseline: false, problem: null });
+    expect(archRebaseline('132', 132, 'no record')).toEqual({ rebaseline: false, problem: 'LAND_ARCH_REBASELINE names #132, but its body has no "Arch rebaseline: <lanes and architectures>" line' });
+    expect(archRebaseline('x', 132, body).problem).toBe('LAND_ARCH_REBASELINE must be a PR number, not "x"');
   });
 
   it('stops on a new failure, a lane that newly fails or did not run, a stale lane, failed lane parity, or a missing target', () => {

@@ -265,8 +265,11 @@ export const commitRegen = (git: Git, k: number, member: Member, commands: strin
 export const LANES_JSON = 'packages/parity/out/lanes.json';
 export const failuresJson = (target: string): string => `packages/parity/out/device-failures-${target}.json`;
 
-/** One DPR set of a device lane's run: the device it ran on, the cases it had, the dumps it got and the failures it judged. */
-export type DeviceSet = { dpr: number; device: string; cases: number; dumps: number; failures: number };
+/**
+ * One DPR set of a device lane's run: the device it ran on, the device model it reported (an Android model names the image's
+ * architecture, "Android SDK built for arm64"), the cases it had, the dumps it got and the failures it judged.
+ */
+export type DeviceSet = { dpr: number; device: string; model: string | null; cases: number; dumps: number; failures: number };
 /**
  * One target's lane states, its listed device failures (each as "<lane> <case> <dpr> <node> <kind>") and, per lane with a
  * device run record, the DPR sets it ran.
@@ -296,7 +299,9 @@ export const parseDeviceEvidence = (lanes: unknown, failures: (target: string) =
         const ok = isObject(d) && typeof d.dpr === 'number' && isObject(d.device) && typeof d.device.name === 'string' && d.device.name !== '';
         const counts = ok && [d.cases, d.dumps, d.failures].every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0);
         if (!ok || !counts) return bad(`${t.target} ${l.lane}: a device set is not { dpr, device: { name }, cases, dumps, failures }`);
-        sets.push({ dpr: d.dpr as number, device: (d.device as { name: string }).name, cases: d.cases as number, dumps: d.dumps as number, failures: d.failures as number });
+        const model = (d.device as { model?: unknown }).model;
+        if (model !== undefined && typeof model !== 'string') return bad(`${t.target} ${l.lane}: a device set's model is not a string`);
+        sets.push({ dpr: d.dpr as number, device: (d.device as { name: string }).name, model: model ?? null, cases: d.cases as number, dumps: d.dumps as number, failures: d.failures as number });
       }
       runs.set(l.lane, sets);
     }
@@ -317,10 +322,49 @@ export const parseDeviceEvidence = (lanes: unknown, failures: (target: string) =
   return { parityPass: pass, parityProblems: problems as string[], targets };
 };
 
+/** The architecture a device model names: the image ABI of an Android model, else the model itself (an iOS simulator). */
+export const archOf = (model: string): string => /built for (\S+)/.exec(model)?.[1] ?? model;
+
+/**
+ * Architecture binding (PM ruling on #132): every DPR set of a lane must have run on the device model, so the architecture, of
+ * master's record for that set. A run on another model would replace master's evidence with another architecture's, against
+ * which later landings on the first are judged; that is only an explicit rebaseline. Returns the lanes whose model changed.
+ */
+export const modelChanges = (base: TargetEvidence, run: TargetEvidence, target: string): { lane: string; detail: string }[] => {
+  const out: { lane: string; detail: string }[] = [];
+  for (const [lane, sets] of run.runs) {
+    const was = base.runs.get(lane);
+    if (was === undefined) continue;
+    for (const s of sets) {
+      const b = was.find((x) => x.dpr === s.dpr && x.device === s.device);
+      if (b === undefined || b.model === null || s.model === null || b.model === s.model) continue;
+      out.push({ lane, detail: `${target} ${lane}: ${s.device} at DPR ${s.dpr} ran on "${s.model}" (${archOf(s.model)}), master's record on "${b.model}" (${archOf(b.model)})` });
+    }
+  }
+  return out;
+};
+
 // A position's device run passes when lane parity passes, nothing is stale, every lane of every target that master has
-// passes or fails as it does on master, and a failing lane lists no failure master does not (it may list fewer).
-export const deviceRunProblems = (base: DeviceEvidence, run: DeviceEvidence, stale: readonly string[]): string[] => {
+// passes or fails as it does on master, and a failing lane lists no failure master does not (it may list fewer). Each lane runs
+// on master's device models (modelChanges); with rebaseline (the landing of the PR that switches a lane's architecture), a lane
+// may change model only with master's state and exactly master's failures, so the new architecture's baseline equals the old.
+export const deviceRunProblems = (base: DeviceEvidence, run: DeviceEvidence, stale: readonly string[], opts: { readonly rebaseline?: boolean } = {}): string[] => {
   const problems: string[] = [];
+  for (const [target, b] of base.targets) {
+    const r = run.targets.get(target);
+    if (r === undefined) continue;
+    const changes = modelChanges(b, r, target);
+    if (opts.rebaseline !== true) {
+      for (const c of changes) problems.push(`${c.detail}: changing a lane's architecture is an explicit rebaseline (LAND_ARCH_REBASELINE)`);
+      continue;
+    }
+    for (const lane of new Set(changes.map((c) => c.lane))) {
+      const [was, now] = [b.lanes.get(lane), r.lanes.get(lane)];
+      const known = [...(b.failures.get(lane) ?? [])].sort();
+      const listed = [...(r.failures.get(lane) ?? [])].sort();
+      if (was !== now || JSON.stringify(known) !== JSON.stringify(listed)) problems.push(`${target} ${lane}: an architecture rebaseline needs master's state and exactly master's failures; master ${was} with ${known.length}, this run ${now} with ${listed.length}`);
+    }
+  }
   if (!run.parityPass) problems.push(`lane parity fails: ${run.parityProblems.join('; ')}`);
   for (const s of stale) problems.push(`stale: ${s}`);
   for (const [target, b] of base.targets) {
@@ -373,6 +417,19 @@ const newLaneProblems = (target: string, lane: string, b: TargetEvidence, r: Tar
     if (s.failures > 0) problems.push(`${what} has ${s.failures} failure(s) on ${key(s)}`);
   }
   return problems;
+};
+
+/**
+ * LAND_ARCH_REBASELINE: the PR number whose landing may change a device lane's architecture. It applies only to that PR, and only
+ * when its body records it on a line starting "Arch rebaseline:". Returns whether this landing rebaselines, or why the setting is
+ * refused.
+ */
+export const archRebaseline = (setting: string | undefined, pr: number, body: string): { rebaseline: boolean; problem: string | null } => {
+  if (setting === undefined || setting === '') return { rebaseline: false, problem: null };
+  if (!/^[1-9]\d*$/.test(setting)) return { rebaseline: false, problem: `LAND_ARCH_REBASELINE must be a PR number, not ${JSON.stringify(setting)}` };
+  if (Number(setting) !== pr) return { rebaseline: false, problem: null };
+  if (!/^Arch rebaseline: \S/m.test(body)) return { rebaseline: false, problem: `LAND_ARCH_REBASELINE names #${pr}, but its body has no "Arch rebaseline: <lanes and architectures>" line` };
+  return { rebaseline: true, problem: null };
 };
 
 // Whether the device run wrote lanes.json: by its modification time, not its content, since a run of a tree whose evidence is
