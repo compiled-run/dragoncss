@@ -7,6 +7,7 @@ import { createProject } from '../src/index.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, POINTER_LONGHANDS, PROPERTY_ASPECTS } from '../src/css/properties.ts';
 import { GRID_LONGHANDS } from '../src/css/properties/grid.ts';
+import { TRANSFORM_LONGHANDS } from '../src/css/properties/transform.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { ACTIVATION_TAGS, hitFacts } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
@@ -21,10 +22,11 @@ function parse(value: string): Diagnostic[] {
 }
 
 describe('pointer-events: registry', () => {
-  it('is the longhand after grid, inherited, with no layout or paint aspect, and webref\'s grammar', () => {
+  it('follows grid before the paint families, inherited, with no layout or paint aspect, and webref\'s grammar', () => {
     expect([...POINTER_LONGHANDS]).toEqual(['pointer-events']);
-    // It follows the grid family; PNT2's transform family, a paint family registered last, comes after it.
-    expect(LONGHANDS[LONGHANDS.indexOf(GRID_LONGHANDS[GRID_LONGHANDS.length - 1] as (typeof LONGHANDS)[number]) + 1]).toBe('pointer-events');
+    // The paint families (PNT2's transform first) register after it.
+    expect(LONGHANDS[LONGHANDS.indexOf('pointer-events') - 1]).toBe(GRID_LONGHANDS[GRID_LONGHANDS.length - 1]);
+    expect(LONGHANDS.indexOf(TRANSFORM_LONGHANDS[0])).toBe(LONGHANDS.indexOf('pointer-events') + 1);
     expect(INHERITED.has('pointer-events')).toBe(true);
     expect(PROPERTY_ASPECTS['pointer-events']).toEqual({ layout: false, paint: false });
     expect(grammar['pointer-events']?.initial).toBe('auto');

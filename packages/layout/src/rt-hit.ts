@@ -41,8 +41,10 @@ export type HitNode = {
   readonly absolute: boolean;
   /** Painted atomically (a flex item): all its phases are tested together, in the parent's foreground phase. */
   readonly atomic: boolean;
-  /** The flex order among siblings (order-modified document order); 0 for every other box. */
+  /** The flex item's place in its container's fragment order (its atomic paint); 0 for every other box. */
   readonly order: number;
+  /** The CSS order of an in-flow flex item, which orders positioned boxes among siblings; 0 for every other box. */
+  readonly layerOrder: number;
   /** The index of the inline line a text piece or line belongs to, within its block; -1 for boxes. */
   readonly line: number;
   /** A text piece's glyph ink (its glyph bounds rounded out to whole pixels); 0 for boxes and lines. */
@@ -272,21 +274,21 @@ export function prepareHit(nodes: readonly HitNode[], faults: HitFaults): HitPre
     if (n.kind !== 'box' && !(Number.isInteger(n.line) && n.line >= 0 && n.line < nodes.length)) throw new HitError(`hit node ${i} has line ${n.line}`);
     (children[n.parent] as number[]).push(i);
   });
-  const orderOf = (i: number): number => {
+  const nodeOf = (i: number): HitNode => {
     const n = nodes[i];
     if (n === undefined) throw new HitError(`no hit node ${i}`);
-    return n.order;
+    return n;
   };
-  // Order-modified document order is a stable sort by order.
-  const ordered = children.map((own) => own.slice(0).sort((a, b) => orderOf(a) - orderOf(b)));
-  // The layers in paint order: a preorder walk in order-modified document order (measured: Chrome stacks positioned flex items
-  // by order).
+  // The atomic paint follows fragment order, a stable sort by order.
+  const ordered = children.map((own) => own.slice(0).sort((a, b) => nodeOf(a).order - nodeOf(b).order));
+  // The layers in paint order: a preorder walk in order-modified document order, a stable sort by the CSS order with an absolute
+  // child at 0 (measured: Chrome 145 does not reverse positioned items under a reverse direction).
+  const layerOrdered = children.map((own) => own.slice(0).sort((a, b) => nodeOf(a).layerOrder - nodeOf(b).layerOrder));
   const layers: number[] = [];
   const collect = (i: number): void => {
-    const n = nodes[i];
-    if (n === undefined) throw new HitError(`no hit node ${i}`);
+    const n = nodeOf(i);
     if (i > 0 && n.kind === 'box' && n.layer) layers.push(i);
-    const own = ordered[i];
+    const own = layerOrdered[i];
     if (own === undefined) throw new HitError(`no children list for ${i}`);
     for (const c of own) collect(c);
   };
@@ -548,7 +550,7 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
     if (p.rect.x < x0) x0 = p.rect.x;
     if (p.rect.x + p.rect.width > x1) x1 = p.rect.x + p.rect.width;
   }
-  pushNode(s, { kind: 'line', parent, target, x: x0, y: top - run.halfLeading, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe }, `${b.id}:hitline${k}`, false);
+  pushNode(s, { kind: 'line', parent, target, x: x0, y: top - run.halfLeading, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe }, `${b.id}:hitline${k}`, false);
   for (const p of own) {
     const q = p.rect;
     // Ahem's ink: the glyph run's bounds rounded out to whole pixels in the run's own space (from the run origin to n em, and
@@ -558,7 +560,7 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
     const above = p.full ? floorOf(-0.8 * em) : 0;
     pushNode(s, {
       kind: 'text', parent, target, x: q.x, y: q.y, width: q.width, height: q.height, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0,
-      layer: false, absolute: false, atomic: false, order: 0, line: k, inkLeft: q.x, inkTop: baseline + above * LU_PX, inkRight: q.x - floorOf(-(glyphs * em)) * LU_PX,
+      layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: q.x, inkTop: baseline + above * LU_PX, inkRight: q.x - floorOf(-(glyphs * em)) * LU_PX,
       inkBottom: baseline - floorOf(-0.2 * em) * LU_PX, pointerEvents: pe,
     }, q.id, false);
   }
@@ -583,7 +585,8 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   pushNode(s, {
     kind: 'box', parent, target: own, x: r.x, y: r.y, width: r.width, height: r.height, clips: b.style.overflowX === 'hidden',
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: b.style.position !== 'static',
-    absolute: b.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order, line: -1,
+    absolute: b.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order,
+    layerOrder: orders !== null && b.style.position !== 'absolute' ? b.style.order : 0, line: -1,
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe,
   }, b.id, act);
   const leaves: TextLeaf[] = [];
@@ -618,7 +621,8 @@ function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Ma
   pushNode(s, {
     kind: 'box', parent, target: s.nodes.length, x: r.x, y: r.y, width: r.width, height: r.height, clips: c.style.overflowX === 'hidden',
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: c.style.position !== 'static',
-    absolute: c.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order, line: -1,
+    absolute: c.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order,
+    layerOrder: orders !== null && c.style.position !== 'absolute' ? c.style.order : 0, line: -1,
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe,
   }, c.id, f.activation);
 }
