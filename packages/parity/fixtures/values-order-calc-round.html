@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.f { display: flex; width: 300px; height: 8px; --h: 0.5; --n: -1.5; }
+.l { width: 10px; }
+.x { width: 20px; }
+.h { width: 30px; }
+#p1 > .l, #p1 > .h { order: 2; } #p1 > .x { order: calc(1.5); }
+#p2 > .l, #p2 > .h { order: -1; } #p2 > .x { order: calc(-1.5); }
+#p3 > .l, #p3 > .h { order: 1; } #p3 > .x { order: calc(0.5); }
+#p4 > .l, #p4 > .h { order: 0; } #p4 > .x { order: calc(-0.5); }
+#p5 > .l, #p5 > .h { order: 3; } #p5 > .x { order: calc(2.5); }
+#p6 > .l, #p6 > .h { order: -2; } #p6 > .x { order: calc(-2.5); }
+#p7 > .l, #p7 > .h { order: 1; } #p7 > .x { order: calc(1.49); }
+#p8 > .l, #p8 > .h { order: -2; } #p8 > .x { order: calc(-1.51); }
+#p9 > .l, #p9 > .h { order: 1; } #p9 > .x { order: calc(0.49999999999999994); }
+#p10 > .l, #p10 > .h { order: 0; } #p10 > .x { order: calc(-0.49999999999999994); }
+#p11 > .l, #p11 > .h { order: 2147483647; } #p11 > .x { order: calc(3000000000); }
+#p12 > .l, #p12 > .h { order: -2147483648; } #p12 > .x { order: calc(-3000000000); }
+#p13 > .l, #p13 > .h { order: 2147483647; } #p13 > .x { order: calc(1e300); }
+#p14 > .l, #p14 > .h { order: -2147483648; } #p14 > .x { order: calc(-1e300); }
+#p15 > .l, #p15 > .h { order: 2147483647; } #p15 > .x { order: calc(2147483647.5); }
+#p16 > .l, #p16 > .h { order: 2147483647; } #p16 > .x { order: calc(2147483646.5); }
+#p17 > .l, #p17 > .h { order: -2147483648; } #p17 > .x { order: calc(-2147483648.5); }
+#p18 > .l, #p18 > .h { order: 2; } #p18 > .x { order: clamp(0.5, 1.5, 3); }
+#p19 > .l, #p19 > .h { order: 3; } #p19 > .x { order: min(2.5, 7); }
+#p20 > .l, #p20 > .h { order: -1; } #p20 > .x { order: max(-1.5, -4); }
+#p21 > .l, #p21 > .h { order: -2; } #p21 > .x { order: clamp(-2.5, -9, 0); }
+#p22 > .l, #p22 > .h { order: 2; } #p22 > .x { order: calc(min(0.25, 1) * 6); }
+#p23 > .l, #p23 > .h { order: 2; } #p23 > .x { order: calc(var(--h) * 3); }
+#p24 > .l, #p24 > .h { order: -1; } #p24 > .x { order: max(var(--n), -9); }
+#p25 > .l, #p25 > .h { order: 2147483647; } #p25 > .x { order: 3000000000; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="p1" id="p1" class="f"><div data-dragon-id="p1l" class="l"></div><div data-dragon-id="p1x" class="x"></div><div data-dragon-id="p1h" class="h"></div></div>
+<div data-dragon-id="p2" id="p2" class="f"><div data-dragon-id="p2l" class="l"></div><div data-dragon-id="p2x" class="x"></div><div data-dragon-id="p2h" class="h"></div></div>
+<div data-dragon-id="p3" id="p3" class="f"><div data-dragon-id="p3l" class="l"></div><div data-dragon-id="p3x" class="x"></div><div data-dragon-id="p3h" class="h"></div></div>
+<div data-dragon-id="p4" id="p4" class="f"><div data-dragon-id="p4l" class="l"></div><div data-dragon-id="p4x" class="x"></div><div data-dragon-id="p4h" class="h"></div></div>
+<div data-dragon-id="p5" id="p5" class="f"><div data-dragon-id="p5l" class="l"></div><div data-dragon-id="p5x" class="x"></div><div data-dragon-id="p5h" class="h"></div></div>
+<div data-dragon-id="p6" id="p6" class="f"><div data-dragon-id="p6l" class="l"></div><div data-dragon-id="p6x" class="x"></div><div data-dragon-id="p6h" class="h"></div></div>
+<div data-dragon-id="p7" id="p7" class="f"><div data-dragon-id="p7l" class="l"></div><div data-dragon-id="p7x" class="x"></div><div data-dragon-id="p7h" class="h"></div></div>
+<div data-dragon-id="p8" id="p8" class="f"><div data-dragon-id="p8l" class="l"></div><div data-dragon-id="p8x" class="x"></div><div data-dragon-id="p8h" class="h"></div></div>
+<div data-dragon-id="p9" id="p9" class="f"><div data-dragon-id="p9l" class="l"></div><div data-dragon-id="p9x" class="x"></div><div data-dragon-id="p9h" class="h"></div></div>
+<div data-dragon-id="p10" id="p10" class="f"><div data-dragon-id="p10l" class="l"></div><div data-dragon-id="p10x" class="x"></div><div data-dragon-id="p10h" class="h"></div></div>
+<div data-dragon-id="p11" id="p11" class="f"><div data-dragon-id="p11l" class="l"></div><div data-dragon-id="p11x" class="x"></div><div data-dragon-id="p11h" class="h"></div></div>
+<div data-dragon-id="p12" id="p12" class="f"><div data-dragon-id="p12l" class="l"></div><div data-dragon-id="p12x" class="x"></div><div data-dragon-id="p12h" class="h"></div></div>
+<div data-dragon-id="p13" id="p13" class="f"><div data-dragon-id="p13l" class="l"></div><div data-dragon-id="p13x" class="x"></div><div data-dragon-id="p13h" class="h"></div></div>
+<div data-dragon-id="p14" id="p14" class="f"><div data-dragon-id="p14l" class="l"></div><div data-dragon-id="p14x" class="x"></div><div data-dragon-id="p14h" class="h"></div></div>
+<div data-dragon-id="p15" id="p15" class="f"><div data-dragon-id="p15l" class="l"></div><div data-dragon-id="p15x" class="x"></div><div data-dragon-id="p15h" class="h"></div></div>
+<div data-dragon-id="p16" id="p16" class="f"><div data-dragon-id="p16l" class="l"></div><div data-dragon-id="p16x" class="x"></div><div data-dragon-id="p16h" class="h"></div></div>
+<div data-dragon-id="p17" id="p17" class="f"><div data-dragon-id="p17l" class="l"></div><div data-dragon-id="p17x" class="x"></div><div data-dragon-id="p17h" class="h"></div></div>
+<div data-dragon-id="p18" id="p18" class="f"><div data-dragon-id="p18l" class="l"></div><div data-dragon-id="p18x" class="x"></div><div data-dragon-id="p18h" class="h"></div></div>
+<div data-dragon-id="p19" id="p19" class="f"><div data-dragon-id="p19l" class="l"></div><div data-dragon-id="p19x" class="x"></div><div data-dragon-id="p19h" class="h"></div></div>
+<div data-dragon-id="p20" id="p20" class="f"><div data-dragon-id="p20l" class="l"></div><div data-dragon-id="p20x" class="x"></div><div data-dragon-id="p20h" class="h"></div></div>
+<div data-dragon-id="p21" id="p21" class="f"><div data-dragon-id="p21l" class="l"></div><div data-dragon-id="p21x" class="x"></div><div data-dragon-id="p21h" class="h"></div></div>
+<div data-dragon-id="p22" id="p22" class="f"><div data-dragon-id="p22l" class="l"></div><div data-dragon-id="p22x" class="x"></div><div data-dragon-id="p22h" class="h"></div></div>
+<div data-dragon-id="p23" id="p23" class="f"><div data-dragon-id="p23l" class="l"></div><div data-dragon-id="p23x" class="x"></div><div data-dragon-id="p23h" class="h"></div></div>
+<div data-dragon-id="p24" id="p24" class="f"><div data-dragon-id="p24l" class="l"></div><div data-dragon-id="p24x" class="x"></div><div data-dragon-id="p24h" class="h"></div></div>
+<div data-dragon-id="p25" id="p25" class="f"><div data-dragon-id="p25l" class="l"></div><div data-dragon-id="p25x" class="x"></div><div data-dragon-id="p25h" class="h"></div></div>
+</body>
+</html>

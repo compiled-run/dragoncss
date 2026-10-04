@@ -191,6 +191,11 @@ export type InternalOptions = {
   readonly rootFont?: RootFont;
   readonly supportProfiles?: SupportProfiles;
   readonly foldViewport?: Viewport;
+  /**
+   * Native targets lower real bundled faces (TXT1a-2 phase C). Off by default: phase R, the device GlyphShaper over the T081 bridges,
+   * is not built, and the device runtime measures and draws only the bundled Ahem (emit/native-support.ts DragonBridge.measurer).
+   */
+  readonly nativeRealFaces?: boolean;
 };
 
 type Viewport = { readonly width: number; readonly height: number };
@@ -204,6 +209,7 @@ type Resolved = {
   /** Snapshots (snapshotProfile): the support checks and the digest read these same objects. */
   readonly supportProfiles: Required<SupportProfiles>;
   readonly foldViewport: Viewport | null;
+  readonly nativeRealFaces: boolean;
 };
 
 function deepFreeze<T>(v: T): T {
@@ -704,7 +710,9 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua });
     const computedAt = diagnostics.length;
     const realFaces = realFacesOf(resolved, projectFonts, options.ua);
-    const realFaceAt = (address: string): boolean => realFaces.has(address);
+    // Off by default (InternalOptions.nativeRealFaces): native targets keep refusing real faces, and the engine lane lowers them in
+    // engine mode (TXT1a-1's deferred font refusal).
+    const realFaceAt = (address: string): boolean => options.nativeRealFaces && realFaces.has(address);
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt);
     // The UA font-weight and font-style refusal is native-only: the engine resolves those faces (engine mode refuses synthesis).
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
@@ -1000,6 +1008,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     profiles: targets.map((t) => profileText(profileFor(profiles, t))),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
+    ...(options.nativeRealFaces ? { nativeRealFaces: true } : {}),
     direction: options.direction,
     config,
     input: canonicalInput(input),
@@ -1211,6 +1220,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     ua: choice.dataset,
     supportProfiles: snapshotProfiles(options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles),
     foldViewport: options.foldViewport === undefined ? null : checkedViewport(options.foldViewport),
+    nativeRealFaces: options.nativeRealFaces === true,
   };
   const configDiagnostics = validateConfig(config);
   const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown };

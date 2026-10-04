@@ -34,6 +34,9 @@ describe('devices of a target at once', () => {
   const outcome = (device: string, extra: Partial<DeviceOutcome> = {}): DeviceOutcome => ({
     device,
     set: { dpr: set.dpr, device: { ...set.device, name: device }, cases: set.cases, dumps: set.dumps, compared: set.compared, dumpsSha256: 'x', failures: [{ lane: 'device-frames', case: 'c', dpr: 3, node: null, kind: 'frame-chrome', detail: 'd' }], faults: [{ fault: 'frame-shift-1px', check: 'a', applicable: 1, caught: 1, uncaught: [] }] } as unknown as DeviceSet,
+    // SELD-R1b: the script and hit sets travel with the batch set.
+    states: { dpr: set.dpr, device: { ...set.device, name: device }, cases: 126, dumps: 126, compared: set.compared, dumpsSha256: 's', failures: [], faults: [] } as unknown as DeviceSet,
+    hits: { dpr: set.dpr, device: { ...set.device, name: device }, cases: set.cases, dumps: set.cases, compared: set.compared, dumpsSha256: 'h', failures: [], faults: [] } as unknown as DeviceSet,
     trust: { device, dpr: set.dpr, rows: [] },
     vectors: null,
     blocked: null,
@@ -50,7 +53,10 @@ describe('devices of a target at once', () => {
     expect(() => parseOutcome(JSON.stringify({ ...o, set: { ...o.set, compared: { a: 1 } } }), 'iPhone 17')).toThrow(/set.compared is not the five check counts/);
     expect(() => parseOutcome(JSON.stringify({ ...o, trust: { ...o.trust, rows: [{ case: 'x', points: 'many', mismatches: [] }] } }), 'iPhone 17')).toThrow(/trust is not this device's trust rows/);
     expect(() => parseOutcome(JSON.stringify({ ...o, trust: null }), 'iPhone 17')).toThrow(/a set without its capture-trust rows/);
-    expect(parseOutcome(JSON.stringify({ ...o, set: null, trust: null, blocked: 'did not boot' }), 'iPhone 17').blocked).toBe('did not boot');
+    expect(parseOutcome(JSON.stringify({ ...o, set: null, states: null, hits: null, trust: null, blocked: 'did not boot' }), 'iPhone 17').blocked).toBe('did not boot');
+    expect(() => parseOutcome(JSON.stringify({ ...o, states: undefined }), 'iPhone 17')).toThrow(/a set without its states set/);
+    expect(() => parseOutcome(JSON.stringify({ ...o, hits: { ...o.hits, failures: 'none' } }), 'iPhone 17')).toThrow(/hits.failures is not a failure list/);
+    expect(() => parseOutcome(JSON.stringify({ ...o, states: { ...o.states, device: { name: 'other' } } }), 'iPhone 17')).toThrow(/states.device is not this device/);
   });
   it('a device job is checked before any device work', () => {
     const job: DeviceJob = { target: 'android', device: 'dragon-320', artifact: repoPath('package.json'), host: null, vectors: true };

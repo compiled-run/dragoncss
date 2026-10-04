@@ -41,6 +41,9 @@ const SUBSET = [
 
   // Grid (css-grid-2), after the writing-mode family.
   ...GRID_LONGHANDS, ...GRID_SHORTHANDS,
+
+  // SELD-R1b: pointer-events, after grid.
+  'pointer-events',
 ] as const;
 
 /**

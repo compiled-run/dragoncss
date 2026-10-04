@@ -44,7 +44,9 @@ describe('grid family: registry', () => {
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow',
       'grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'justify-items', 'justify-self',
     ]);
-    expect(LONGHANDS.slice(-GRID_LONGHANDS.length)).toEqual([...GRID_LONGHANDS]);
+    // SELD-R1b appends pointer-events after grid; grid stays after every earlier family.
+    expect(LONGHANDS.slice(-GRID_LONGHANDS.length - 1, -1)).toEqual([...GRID_LONGHANDS]);
+    expect(LONGHANDS[LONGHANDS.length - 1]).toBe('pointer-events');
     expect(SHORTHANDS.slice(-GRID_SHORTHANDS.length)).toEqual([...GRID_SHORTHANDS]);
     for (const p of GRID_LONGHANDS) {
       expect(INHERITED.has(p), p).toBe(false);
