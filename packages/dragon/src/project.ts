@@ -711,7 +711,11 @@ const interactionKey = (caseKey: string, v: InteractionValue): string => `${case
 function webInteraction(c: CaseResult): WebInteraction | undefined {
   if (c.partition === null || c.interaction.length === 0) return undefined;
   const members = stateMembers(c.partition);
-  return { candidates: c.partition.candidates, states: c.interaction.map((i, k) => ({ members: members[k] ?? [], root: i.resolved })) };
+  return { candidates: c.partition.candidates, states: c.interaction.map((i, k) => {
+    const own = members[k];
+    if (own === undefined || own.length === 0) throw new Error(`interaction state ${i.value.key} of ${c.key} stands for no combination`);
+    return { members: own, root: i.resolved };
+  }) };
 }
 
 /** The @media conditions of the sheet: each distinct at-rule once, in source order. */

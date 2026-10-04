@@ -150,7 +150,7 @@ describe('differential corpus (native-strategy.md 1.7)', () => {
     expect(c.digest).toBe(lockedDigest());
     const n = Object.fromEntries(c.suites.map((s) => [s.name, s.lines.length]));
     // ANIM-a2 appends the rt suite (one line per rt vector record); the four P1 suites keep their sizes.
-    expect(n).toEqual({ vectors: 258, units: 320000, engine: 20258, library: 22000, rt: 55362, hit: 2028 });
+    expect(n).toEqual({ vectors: 258, units: 320000, engine: 20258, library: 22000, rt: 55362, hit: 2060 });
     expect(c.engineSplit.ok / 20258).toBeGreaterThanOrEqual(0.5);
     expect(c.engineSplit.threw + c.engineSplit.harnessError).toBe(0);
   });
