@@ -185,6 +185,10 @@
       "inline-breaks-fit-rtl": [2,11],
       "opacity-basic": [2,2],
       "opacity-basic-rtl": [2,2],
+      "stacking-foreground": [3,3],
+      "stacking-foreground-rtl": [3,3],
+      "stacking-mix": [4,4],
+      "stacking-mix-rtl": [4,4],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -373,6 +377,10 @@
       "inline-breaks-fit-rtl": [2,11],
       "opacity-basic": [2,2],
       "opacity-basic-rtl": [2,2],
+      "stacking-foreground": [3,3],
+      "stacking-foreground-rtl": [3,3],
+      "stacking-mix": [4,4],
+      "stacking-mix-rtl": [4,4],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     }
@@ -563,6 +571,10 @@
       "inline-breaks-fit-rtl": [2,11],
       "opacity-basic": [2,2],
       "opacity-basic-rtl": [2,2],
+      "stacking-foreground": [3,3],
+      "stacking-foreground-rtl": [3,3],
+      "stacking-mix": [4,4],
+      "stacking-mix-rtl": [4,4],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -751,6 +763,10 @@
       "inline-breaks-fit-rtl": [2,11],
       "opacity-basic": [2,2],
       "opacity-basic-rtl": [2,2],
+      "stacking-foreground": [3,3],
+      "stacking-foreground-rtl": [3,3],
+      "stacking-mix": [4,4],
+      "stacking-mix-rtl": [4,4],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     },
@@ -939,6 +955,10 @@
       "inline-breaks-fit-rtl": [2,11],
       "opacity-basic": [2,2],
       "opacity-basic-rtl": [2,2],
+      "stacking-foreground": [3,3],
+      "stacking-foreground-rtl": [3,3],
+      "stacking-mix": [4,4],
+      "stacking-mix-rtl": [4,4],
       "values-calc-intrinsic": [4,4],
       "values-calc-intrinsic-rtl": [4,4]
     }

@@ -1,11 +1,12 @@
 // PNT1 stacking facts and the native placement (T046 §1, RT-9): every node of the stacking fixtures carries the facts rt-hit.ts
 // reads (paint-order index, stacking context, host, clip chain; radii where rounded), and on every case of the corpus the device's
 // placement, emulated here step for step as native-support.ts DragonTree.apply and the stacking module's sort do it (views added
-// in engine box order to their host's container, the container sorted after each box: flow children in place, layer items by
-// bucket and rank), puts every layer item where Appendix E paints it, and gives the [host, index] each paint-order write expects.
-// Flow siblings keep the engine's box order, which is not tree order for reversed or reordered flex items (a paint order the native
-// tree had before PNT1, visible only where such items overlap), so the order check is on every pair that holds a layer item (and
-// no box kept under a clip).
+// in engine box order to their host's container, the container sorted whenever a view joins it: flow children in place, the
+// foreground by rank, layer items by bucket and rank), puts every layer item and every hosted text leaf and flex item where
+// Appendix E paints it, and gives the [host, index] each paint-order and paint-foreground write expects. Flow siblings keep the
+// engine's box order, which is not tree order for reversed flex lines (a paint order the native tree had before PNT1, visible only
+// where such boxes overlap), so the order check is on every pair that holds a layer item or a text leaf (and no node kept under a
+// clip: underClip, foregroundClip).
 import { describe, expect, it } from 'vitest';
 import type { NativeProgram, ProgramNode } from 'dragon';
 import { nativePrograms } from 'dragon';
@@ -13,25 +14,33 @@ import { casesOf, fixtureInput } from '../src/cases.ts';
 import { FIXTURE_GROUPS, FIXTURES } from '../src/fixtures.ts';
 import { engineBoxes, nativeCompile } from '../src/native-host.ts';
 
-type Facts = { paintOrder: number; context: string | null; createsContext: boolean; layer: string; host: string | null; clipChain: readonly string[]; underClip: boolean };
+type Facts = { paintOrder: number; context: string | null; createsContext: boolean; layer: string; atomic: boolean; host: string | null; clipChain: readonly string[]; underClip: boolean; textPaintOrder: readonly number[]; foregroundClip: boolean };
 const factsOf = (n: ProgramNode): Facts | undefined => n.facts['stacking'] as Facts | undefined;
 
 /** The device's placement of a program: children per container after DragonTree.apply's insertions and the stacking sorts. */
-function emulate(p: NativeProgram): { order: string[]; index: Map<string, [string, number]> } {
+function emulate(p: NativeProgram): { order: string[]; index: Map<string, [string, number]>; nodeIndex: Map<string, [string, number]> } {
   const byId = new Map(p.nodes.map((n) => [n.id, n]));
-  const key = (n: ProgramNode): [number, number] => {
+  // The foreground placements, by the id each entry places (written on its box or its text leaves' box).
+  const fg = new Map<string, { host: string; rank: number }>();
+  for (const n of p.nodes) for (const w of n.writes) if (w.kind === 'paint-foreground') for (const e of w.entries) fg.set(e.id, { host: w.host, rank: e.rank });
+  const key = (n: ProgramNode): [number, number, number] => {
     const w = n.writes.find((x) => x.kind === 'paint-order');
-    return w === undefined || w.kind !== 'paint-order' ? [0, 0] : [w.bucket, w.rank];
+    if (w !== undefined && w.kind === 'paint-order') return [w.bucket, 0, w.rank];
+    const f = fg.get(n.id);
+    return f === undefined ? [0, 0, 0] : [0, 1, f.rank];
   };
   const hostOf = (n: ProgramNode): string | null => {
     const w = n.writes.find((x) => x.kind === 'paint-order');
-    return w !== undefined && w.kind === 'paint-order' ? w.host : n.parent;
+    return w !== undefined && w.kind === 'paint-order' ? w.host : (fg.get(n.id)?.host ?? n.parent);
   };
   const containers = new Map<string, ProgramNode[]>();
+  // A stable sort by [bucket, phase, rank], then the current index: flow children keep their place.
   const sort = (c: ProgramNode[]): void => {
-    if (!c.some((n) => key(n)[0] !== 0)) return;
     const keyed = c.map((n, i) => ({ n, k: [...key(n), i] as number[] }));
-    keyed.sort((a, b) => (a.k[0] as number) - (b.k[0] as number) || (a.k[0] === 0 ? 0 : (a.k[1] as number) - (b.k[1] as number)) || (a.k[2] as number) - (b.k[2] as number));
+    keyed.sort((a, b) => {
+      for (let j = 0; j < 4; j++) if (a.k[j] !== b.k[j]) return (a.k[j] as number) - (b.k[j] as number);
+      return 0;
+    });
     c.splice(0, c.length, ...keyed.map((x) => x.n));
   };
   // DragonTree.apply walks the engine's boxes in order (lines are skipped; text leaves and boxes are placed in that order).
@@ -44,21 +53,23 @@ function emulate(p: NativeProgram): { order: string[]; index: Map<string, [strin
     const c = containers.get(h) ?? [];
     containers.set(h, c);
     c.push(n);
-    // The stacking module's after-layout hook sorts the container of every box it places.
-    if (n.kind !== 'text') sort(c);
+    // The stacking module sorts a container whenever a view joins it (didAddSubview, onViewAdded, the clip view's listener).
+    sort(c);
   }
   const order: string[] = [];
   const index = new Map<string, [string, number]>();
+  const nodeIndex = new Map<string, [string, number]>();
   const walk = (id: string): void => {
     order.push(id);
     const c = containers.get(id) ?? [];
     c.filter((n) => n.kind !== 'text').forEach((n, i) => index.set(n.id, [id, i]));
+    c.forEach((n, i) => nodeIndex.set(n.id, [id, c.slice(0, i).filter((x) => x.kind !== 'text').length]));
     for (const n of c) walk(n.id);
   };
   const root = p.nodes.find((n) => n.parent === null);
   if (root === undefined) throw new Error('no root');
   walk(root.id);
-  return { order, index };
+  return { order, index, nodeIndex };
 }
 
 const programsOf = (spec: (typeof FIXTURES)[number]) =>
@@ -71,7 +82,7 @@ const programsOf = (spec: (typeof FIXTURES)[number]) =>
 describe('PNT1 stacking facts (rt-hit.ts)', () => {
   const stacking = (FIXTURE_GROUPS.find((g) => g.id === 'stacking')?.fixtures ?? []).flatMap(programsOf);
   it('covers the three stacking fixtures in both directions', () => {
-    expect(stacking.map((s) => s.id)).toEqual(['stacking-basic', 'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl']);
+    expect(stacking.map((s) => s.id)).toEqual(['stacking-basic', 'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-foreground', 'stacking-foreground-rtl', 'stacking-mix', 'stacking-mix-rtl', 'stacking-flex-order', 'stacking-flex-order-rtl']);
   });
   for (const { id, p } of stacking) {
     it(`${id}: every box has its paint-order index, stacking context, host and clip chain; the indices are a permutation`, () => {
@@ -99,31 +110,57 @@ describe('the device placement gives Appendix E order on every case', () => {
   it('covers every layout case of the corpus', () => {
     expect(all.length).toBeGreaterThan(400);
   });
-  it('the emulated native order is the paint order, and every paint-order write expects its emulated [host, index]', () => {
+  it('the emulated native order is the paint order, and every paint-order and paint-foreground write expects its emulated [host, index]', () => {
     const problems: string[] = [];
     let written = 0;
+    let foreground = 0;
+    let textPairs = 0;
     for (const { id, p } of all) {
-      const { order, index } = emulate(p);
-      const boxes = p.nodes.filter((n) => n.kind !== 'text');
+      const { order, index, nodeIndex } = emulate(p);
+      const byId = new Map(p.nodes.map((n) => [n.id, n]));
+      // Each node's Appendix E index, whether it is a layer item or a text leaf, and whether it paints under a clip natively.
+      const info = new Map<string, { order: number; keyed: boolean; clip: boolean }>();
+      for (const n of p.nodes) {
+        if (n.kind === 'text') continue;
+        const f = factsOf(n) as Facts;
+        info.set(n.id, { order: f.paintOrder, keyed: f.layer !== 'flow', clip: f.underClip || (f.atomic && f.foregroundClip) });
+        const texts = p.nodes.filter((x) => x.parent === n.id && x.kind === 'text');
+        // White space only paints nothing and is never hosted (lower/paint/stacking.ts blank), so it is not compared.
+        texts.forEach((t, k) => info.set(t.id, { order: f.textPaintOrder[k] as number, keyed: true, clip: f.foregroundClip || f.underClip || /^[ \t\n\r\f]*$/.test(t.text ?? '') }));
+      }
       const at = new Map(order.map((x, k) => [x, k]));
-      for (const a of boxes) {
-        const fa = factsOf(a) as Facts;
-        for (const b of boxes) {
-          const fb = factsOf(b) as Facts;
-          // A box that stays under an overflow clip its layer would leave paints in the clip's order (lower/paint/stacking.ts).
-          if (a === b || (fa.layer === 'flow' && fb.layer === 'flow') || fa.underClip || fb.underClip) continue;
-          if (fa.paintOrder < fb.paintOrder !== (at.get(a.id) as number) < (at.get(b.id) as number)) problems.push(`${id}: ${a.id} and ${b.id} paint in the other order natively`);
+      for (const a of p.nodes) {
+        const ia = info.get(a.id);
+        if (ia === undefined) throw new Error(`${id} ${a.id}: no paint order`);
+        for (const b of p.nodes) {
+          const ib = info.get(b.id) as { order: number; keyed: boolean; clip: boolean };
+          // A node that stays under an overflow clip its layer would leave paints in the clip's order (lower/paint/stacking.ts); a
+          // text leaf of collapsed white space is not laid out, so it has no view.
+          if (a === b || (!ia.keyed && !ib.keyed) || ia.clip || ib.clip || !at.has(a.id) || !at.has(b.id)) continue;
+          if (a.kind === 'text' || b.kind === 'text') textPairs++;
+          if (ia.order < ib.order !== (at.get(a.id) as number) < (at.get(b.id) as number)) problems.push(`${id}: ${a.id} and ${b.id} paint in the other order natively`);
         }
       }
       for (const n of p.nodes) {
-        const w = n.writes.find((x) => x.kind === 'paint-order');
-        if (w === undefined || w.kind !== 'paint-order') continue;
-        written++;
-        const at = index.get(n.id);
-        if (at === undefined || at[0] !== w.host || at[1] !== w.index) problems.push(`${id} ${n.id}: expects [${w.host}, ${w.index}], the placement gives ${JSON.stringify(at)}`);
+        for (const w of n.writes) {
+          if (w.kind === 'paint-order') {
+            written++;
+            const got = index.get(n.id);
+            if (got === undefined || got[0] !== w.host || got[1] !== w.index) problems.push(`${id} ${n.id}: expects [${w.host}, ${w.index}], the placement gives ${JSON.stringify(got)}`);
+          }
+          if (w.kind === 'paint-foreground') {
+            foreground++;
+            for (const e of w.entries) {
+              const got = nodeIndex.get(e.id);
+              if (byId.get(e.id) === undefined || got === undefined || got[0] !== w.host || got[1] !== e.index) problems.push(`${id} ${n.id}: expects ${e.id} at [${w.host}, ${e.index}], the placement gives ${JSON.stringify(got)}`);
+            }
+          }
+        }
       }
     }
     expect(problems).toEqual([]);
     expect(written).toBeGreaterThan(0);
+    expect(foreground).toBeGreaterThan(0);
+    expect(textPairs).toBeGreaterThan(0);
   });
 });

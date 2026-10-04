@@ -14,7 +14,7 @@ import { zIndexValue } from '../src/css/properties/effects.ts';
 import type { LayoutBox, LayoutNode } from '@dragon/layout';
 import type { ResolvedElement } from '../src/analysis/resolve.ts';
 import type { Targets } from '../src/types.ts';
-import { div, expectCatalogued, explainOne, inputFor } from './helpers.ts';
+import { div, expectCatalogued, explainOne, inputFor, text } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/z.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -25,9 +25,9 @@ function declare(value: string): { declaration: Declaration | null; diagnostics:
   return { declaration: rules[0]?.declarations[0] ?? null, diagnostics, css };
 }
 
-type Opts = { position?: StackNode['position']; z?: number; opacity?: number; clips?: boolean };
-const n = (id: string, o: Opts, ...children: StackNode[]): StackNode => ({ id, position: o.position ?? 'static', z: o.z ?? null, opacity: o.opacity ?? 1, clips: o.clips ?? false, text: false, children });
-const t = (id: string): StackNode => ({ id, position: 'static', z: null, opacity: 1, clips: false, text: true, children: [] });
+type Opts = { position?: StackNode['position']; z?: number; opacity?: number; clips?: boolean; atomic?: boolean; flexOrder?: number };
+const n = (id: string, o: Opts, ...children: StackNode[]): StackNode => ({ id, position: o.position ?? 'static', z: o.z ?? null, opacity: o.opacity ?? 1, clips: o.clips ?? false, text: false, atomic: o.atomic ?? false, flexOrder: o.flexOrder ?? 0, blank: false, children });
+const t = (id: string, blank = false): StackNode => ({ id, position: 'static', z: null, opacity: 1, clips: false, text: true, atomic: false, flexOrder: 0, blank, children: [] });
 
 describe('z-index: parse and computed values (Chrome 145 getComputedStyle)', () => {
   const cases: [string, string][] = [
@@ -61,11 +61,13 @@ describe('Appendix E paint order', () => {
   it('paints z < 0, then flow, then z auto and 0 in tree order, then z > 0 by z, in the root context', () => {
     const root = n('html', {}, n('body', {}, n('f1', {}, t('f1:text0')), n('p', { position: 'absolute', z: 2 }), n('q', { position: 'absolute', z: -1 }), n('r', { position: 'relative' }), n('s', { position: 'absolute', z: 1 }), n('f2', {})));
     const s = stackingOf(root);
-    expect(s.order).toEqual(['html', 'q', 'body', 'f1', 'f1:text0', 'f2', 'r', 's', 'p']);
+    expect(s.order).toEqual(['html', 'q', 'body', 'f1', 'f2', 'f1:text0', 'r', 's', 'p']);
     expect(s.native).toEqual(s.order);
     expect(s.writes.get('p')).toEqual({ host: 'html', bucket: 2, rank: 3, index: 4 });
     expect(s.writes.get('q')).toEqual({ host: 'html', bucket: -1, rank: 0, index: 0 });
-    expect(s.facts.get('p')).toEqual({ paintOrder: 8, context: 'html', createsContext: true, layer: 'positive', host: 'html', clipChain: [], underClip: false });
+    expect(s.facts.get('p')).toEqual({ paintOrder: 8, context: 'html', createsContext: true, layer: 'positive', atomic: false, host: 'html', clipChain: [], underClip: false, textPaintOrder: [], foregroundClip: false });
+    expect(s.facts.get('f1')).toMatchObject({ textPaintOrder: [5], foregroundClip: false });
+    expect(s.foreground.get('f1')).toEqual({ host: 'html', entries: [{ id: 'f1:text0', rank: 5, index: 2 }] });
     expect(s.facts.get('f1')?.layer).toBe('flow');
   });
   it('places every layer item even where tree order paints right, since the device adds out-of-flow views after the flow', () => {
@@ -94,6 +96,45 @@ describe('Appendix E paint order', () => {
   it('a flex item with a z-index is a stacking context (the tree gives it its z), and a static box ignores z', () => {
     const s = stackingOf(n('html', {}, n('flex', {}, n('i1', { z: 3 }), n('i2', {}))));
     expect(s.order).toEqual(['html', 'flex', 'i2', 'i1']);
+  });
+  it('a paint root paints its block backgrounds, then its foreground: text above every later background of the root', () => {
+    const s = stackingOf(n('html', {}, n('body', {}, n('b', {}, t('b:t')), n('c', {}, n('c1', {}), n('c2', {}, t('c2:t'))))));
+    expect(s.order).toEqual(['html', 'body', 'b', 'c', 'c1', 'c2', 'b:t', 'c2:t']);
+    expect(s.native).toEqual(s.order);
+    expect(s.foreground.get('b')).toEqual({ host: 'html', entries: [{ id: 'b:t', rank: 6, index: 1 }] });
+    expect(s.foreground.get('c2')).toEqual({ host: 'html', entries: [{ id: 'c2:t', rank: 7, index: 1 }] });
+    expect(s.facts.get('b')).toMatchObject({ textPaintOrder: [6], foregroundClip: false, atomic: false });
+    // White space only paints no ink and may not be laid out at all, so it stays in its box.
+    const blank = stackingOf(n('html', {}, n('b', {}, t('b:sp', true), t('b:t')), n('c', {})));
+    expect(blank.foreground.get('b')?.entries.map((e) => e.id)).toEqual(['b:t']);
+    // A box that is a paint root keeps its own text: a layer item's text paints in its own view, after its own flow.
+    const item = stackingOf(n('html', {}, n('r', { position: 'relative' }, t('r:t')), n('after', {})));
+    expect(item.foreground.size).toBe(0);
+    expect(item.order).toEqual(['html', 'after', 'r', 'r:t']);
+  });
+  it('a flex item paints atomically in its root\'s foreground, in order-modified document order, above later block backgrounds', () => {
+    const s = stackingOf(n('html', {}, n('flex', {}, n('i1', { atomic: true, flexOrder: 1 }, t('i1:t')), n('i2', { atomic: true })), n('after', {}, t('after:t'))));
+    expect(s.order).toEqual(['html', 'flex', 'after', 'i2', 'i1', 'i1:t', 'after:t']);
+    expect(s.native).toEqual(s.order);
+    expect(s.foreground.get('i1')).toEqual({ host: 'html', entries: [{ id: 'i1', rank: 4, index: 3 }] });
+    expect(s.foreground.get('i2')).toEqual({ host: 'html', entries: [{ id: 'i2', rank: 3, index: 2 }] });
+    expect(s.foreground.get('after')).toEqual({ host: 'html', entries: [{ id: 'after:t', rank: 6, index: 4 }] });
+    expect(s.facts.get('i1')).toMatchObject({ atomic: true, layer: 'flow', host: 'html' });
+    // A flex item with a z-index is a layer item, not atomic.
+    expect(stackingOf(n('html', {}, n('flex', {}, n('i', { atomic: true, z: 1 })))).facts.get('i')).toMatchObject({ atomic: false, layer: 'positive' });    // A relative flex item between two ordered items does not break the order (Claude review on #87): b (order 0) paints before a (order 1).
+    const mixed = stackingOf(n('html', {}, n('flex', {}, n('a', { atomic: true, flexOrder: 1 }), n('rel', { position: 'relative', flexOrder: 0 }), n('b', { atomic: true }))));
+    expect(mixed.order.indexOf('b')).toBeLessThan(mixed.order.indexOf('a'));
+    expect(mixed.order).toEqual(['html', 'flex', 'b', 'a', 'rel']);
+  });
+  it('a clip that is not a paint root hosts its foreground in its own place, flagged foregroundClip (Chrome paints it after the root\'s later backgrounds)', () => {
+    const s = stackingOf(n('html', {}, n('clip', { clips: true }, n('b', {}, t('b:t')), n('c', {})), n('d', {})));
+    expect(s.order).toEqual(['html', 'clip', 'b', 'c', 'd', 'b:t']);
+    expect(s.native).toEqual(['html', 'clip', 'b', 'c', 'b:t', 'd']);
+    expect(s.foreground.get('b')).toEqual({ host: 'clip', entries: [{ id: 'b:t', rank: 5, index: 2 }] });
+    expect(s.facts.get('b')?.foregroundClip).toBe(true);
+    expect(s.facts.get('c')?.foregroundClip).toBe(false);
+    // A clip's own text stays in it, flagged the same way.
+    expect(stackingOf(n('html', {}, n('clip', { clips: true }, t('clip:t')), n('d', {}))).facts.get('clip')?.foregroundClip).toBe(true);
   });
   it('an absolute box escapes an overflow clip that is not its containing block, and stays under one that is', () => {
     const escaping = stackingOf(n('html', {}, n('row', { position: 'relative' }, n('clip', { clips: true }, n('d', { position: 'absolute', z: 3 })), n('l', {}))));
@@ -150,6 +191,37 @@ describe('stacking: lowering and emission', () => {
     expect(STACKING_EMITTER.lines['android-views']('v3', z as never, w)).toEqual(['  dragonSetPaintOrder(t, v3, "html", 2, 0)']);
     expect(STACKING_EMITTER.applied({} as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box: {} as never, size: [0, 0], fontSize: null })).toEqual(['html', w.index]);
   });
+  it('writes the foreground placements of a box\'s text and of a flex item, and emits dragonSetForeground on both backends', () => {
+    const p = programs('.a { height: 10px; font-family: Ahem; font-size: 10px; } .f { display: flex; } .i { width: 10px; height: 10px; }', (r) => [div(r, 'w', [], [div(r, 'a', ['a'], [text(r, 'at', 'XX')])]), div(r, 'f', ['f'], [div(r, 'i', ['i'])])]);
+    const a = p.uikit.nodes.find((x) => x.id === 'a');
+    const fa = a?.writes.find((x) => x.kind === 'paint-foreground');
+    if (fa === undefined || fa.kind !== 'paint-foreground') throw new Error('no paint-foreground write on a');
+    expect(fa).toEqual(expect.objectContaining({ key: 'dragonStacking.foreground', technique: 'dragon-owned-paint', host: 'html', css: [] }));
+    expect(fa.entries.map((e) => e.id)).toEqual(['a:text0']);
+    const i = p.uikit.nodes.find((x) => x.id === 'i');
+    const fi = i?.writes.find((x) => x.kind === 'paint-foreground');
+    if (fi === undefined || fi.kind !== 'paint-foreground') throw new Error('no paint-foreground write on i');
+    expect(fi.entries.map((e) => e.id)).toEqual(['i']);
+    const [e] = fa.entries;
+    if (e === undefined) throw new Error('no entry');
+    expect(STACKING_EMITTER.lines.uikit('v2', a as never, fa)).toEqual([`  dragonSetForeground(t, v2, "html", ["a:text0"], [${e.rank}])`]);
+    expect(STACKING_EMITTER.lines['android-views']('v2', a as never, fa)).toEqual([`  dragonSetForeground(t, v2, "html", listOf("a:text0"), intArrayOf(${e.rank}))`]);
+    expect(STACKING_EMITTER.applied({} as never, 'uikit', fa, 2, { border: [0, 0, 0, 0], box: {} as never, size: [0, 0], fontSize: null })).toEqual(['html', e.index]);
+    expect(() => STACKING_EMITTER.lines.uikit('v2', a as never, { ...fa, entries: [] })).toThrow(/no entries/);
+  });
+  it('PNT1-MIX: a flex item, a relative box and a clip mixing text with a block child compile, the text hosted after the block', () => {
+    const p = programs('body { font-family: Ahem; font-size: 10px; } .s { display: flex; } .r { position: relative; } .c { overflow: hidden; height: 30px; } .q { height: 10px; margin-top: -5px; background-color: rgb(1, 2, 3); }', (r) => [
+      div(r, 's', ['s'], [div(r, 'm', [], [text(r, 'mt', 'XX'), div(r, 'mq', ['q'])])]),
+      div(r, 'rel', ['r'], [text(r, 'rt', 'XX'), div(r, 'rq', ['q'])]),
+      div(r, 'clip', ['c'], [text(r, 'ct', 'XX'), div(r, 'cq', ['q'])]),
+    ]);
+    const fg = (id: string) => p.uikit.nodes.find((x) => x.id === id)?.writes.flatMap((w) => (w.kind === 'paint-foreground' ? [[w.host, w.entries.map((e) => [e.id, e.index])]] : []));
+    // The text sits in an anonymous box, hosted under its box after the block child (one box view before it: the block).
+    expect(fg('m:anon0')).toEqual([['m', [['m:text0', 2]]]]);
+    expect(fg('rel:anon0')).toEqual([['rel', [['rel:text0', 2]]]]);
+    expect(fg('clip:anon0')).toEqual([['clip', [['clip:text0', 2]]]]);
+    expect(fg('m')).toEqual([['html', [['m', 1]]]]);
+  });
   it('escapes host ids exactly as native-support.ts stringLit does', () => {
     for (const s of ['a/b', 'x:anon0', 'q"\\$', 'é', '😀', '\n']) for (const lang of ['swift', 'kotlin'] as const) expect(nativeString(lang, s), `${lang} ${s}`).toBe(stringLit(lang, s));
   });
@@ -162,7 +234,7 @@ describe('the stack tree of a layout tree with a replaced leaf (REPL-a)', () => 
     const img: LayoutNode = { kind: 'replaced', id: 'img', style: style('relative') } as unknown as LayoutNode;
     const root: LayoutBox = { kind: 'box', id: 'root', boxType: 'element', style: style('static'), children: [img] };
     const tree = layoutStackTree(root, new Map([['root', el(null)], ['img', el(3, 0.5)]]));
-    expect(tree.children).toEqual([{ id: 'img', position: 'relative', z: 3, opacity: 0.5, clips: false, text: false, children: [] }]);
+    expect(tree.children).toEqual([{ id: 'img', position: 'relative', z: 3, opacity: 0.5, clips: false, text: false, atomic: false, flexOrder: 0, blank: false, children: [] }]);
     expect(() => layoutStackTree(root, new Map([['root', el(null)]]))).toThrow('img: no resolved element for the layout box');
   });
 });

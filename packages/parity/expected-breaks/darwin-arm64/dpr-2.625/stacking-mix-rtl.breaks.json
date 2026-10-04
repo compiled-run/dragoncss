@@ -1,0 +1,11 @@
+{
+  "case": "stacking-mix-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"mx-item:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"mx-item:text1","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"mx-rel:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"mx-clip:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}

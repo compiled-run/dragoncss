@@ -1,0 +1,9 @@
+{
+  "case": "stacking-foreground-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"fg-short:text0","lines":[[0,7]]},
+    {"id":"fg-inner:text0","lines":[[0,3]]},
+    {"id":"fg-item:text0","lines":[[0,2]]}
+  ]
+}

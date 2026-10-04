@@ -62,6 +62,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'alpha-ignored': ['opacity-basic'],
   // stacking-basic samples the interiors of overlapping boxes, whose colours swap when the layer items sort beneath the flow.
   'order-swap': ['stacking-basic'],
+  // stacking-foreground's glyph interiors over later block backgrounds take those backgrounds when the foreground sorts beneath them.
+  'foreground-under': ['stacking-foreground'],
   // outline-solid's ring points and scanlines (rules border:<id>:outline-* and edge:<id>:outline-*) see a 1 device px shift.
   'outline-offset-1': ['outline-solid'],
 };
@@ -73,6 +75,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'shadow-offset-1': /^shadow:/,
   'alpha-ignored': /^op-/,
   'order-swap': /^interior:/,
+  'foreground-under': /^glyph:/,
   'outline-offset-1': /^(border|edge):[^:]+:outline-/,
 };
 /** The lane each paint plant must fail: device-pixels for paint, device-applied for a native property the readback sees. */
@@ -83,6 +86,7 @@ export const PLANT_LANES: { readonly [P in PaintPlant]: 'device-pixels' | 'devic
   'shadow-offset-1': 'device-pixels',
   'alpha-ignored': 'device-applied',
   'order-swap': 'device-pixels',
+  'foreground-under': 'device-pixels',
   'outline-offset-1': 'device-pixels',
 };
 /** The devices of the raster plant runs (section 4 item 5). */

@@ -54,7 +54,7 @@ describe('EMS: the paint registries', () => {
     expect(PAINT_VALUES.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
   });
   it('the paint write kinds are the background, border and clip modules\' and every one has a vocabulary entry on both backends', () => {
-    expect(PAINT_EMITTERS.flatMap((m) => m.kinds)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'border-radius', 'box-shadow', 'opacity', 'paint-order', 'outline']);
+    expect(PAINT_EMITTERS.flatMap((m) => m.kinds)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'border-radius', 'box-shadow', 'opacity', 'paint-order', 'paint-foreground', 'outline']);
     for (const m of PAINT_LOWERINGS) {
       for (const k of Object.keys(m.css)) {
         expect(isPaintKind(k), k).toBe(true);
@@ -62,7 +62,7 @@ describe('EMS: the paint registries', () => {
         for (const b of ['uikit', 'android-views'] as const) expect(VOCABULARY[b][k as keyof (typeof VOCABULARY)['uikit']]).toEqual((m.vocabulary[b] as Record<string, unknown>)[k]);
       }
     }
-    expect(Object.keys(VOCABULARY.uikit)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'border-radius', 'box-shadow', 'opacity', 'paint-order', 'outline', 'font', 'text-color']);
+    expect(Object.keys(VOCABULARY.uikit)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'border-radius', 'box-shadow', 'opacity', 'paint-order', 'paint-foreground', 'outline', 'font', 'text-color']);
     expect(isPaintKind('font')).toBe(false);
     expect(isPaintKind('text-color')).toBe(false);
   });
@@ -84,9 +84,9 @@ describe('EMS: the paint registries', () => {
       for (const b of ['uikit', 'android-views'] as const) expect(e?.native[b], name).toEqual({ boxMembers: '', file: null, stages: {}, afterLayout: null, applied: null, roundedPath: null, container: null });
       expect(PAINT_LOWERINGS.find((m) => m.name === name)?.css, name).toEqual({});
     }
-    // The border module (P6a) declares the two dash plants, then radius, shadow, effects, stacking and outline (PNT1) theirs, in registry order; every stub declares none.
-    expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored', 'order-swap', 'outline-offset-1']);
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored', 'order-swap', 'outline-offset-1']);
+    // The border module (P6a) declares the two dash plants, then radius, shadow, effects, stacking (with the foreground) and outline (PNT1) theirs, in registry order; every stub declares none.
+    expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored', 'order-swap', 'foreground-under', 'outline-offset-1']);
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored', 'order-swap', 'foreground-under', 'outline-offset-1']);
   });
 });
 

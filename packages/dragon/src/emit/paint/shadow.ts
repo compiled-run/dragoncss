@@ -2,9 +2,10 @@
 // the translated paint-shadow.ts rasters the outer shadows into a premultiplied bitmap shown by a companion view directly beneath
 // the box (DragonTree.companion: the same host, the box's frame, the bitmap reaching outside it), clipped out of the border box, and
 // the inset shadows into a bitmap the inset-shadow stage draws, clipped to the padding box. Both are the *Over layers: each shadow
-// blitted onto the backdrop the box's ancestors paint (and its own background, for inset) as Chrome blits it, then encoded as the
-// pixel whose platform composite over that backdrop is Chrome's colour. A background write re-applies the shadows of the box and
-// its descendants, whose backdrop it changes. Layers change with implicit actions disabled; nothing animates.
+// blitted onto the backdrop the box's DOM ancestors paint (and its own background, for inset) as Chrome blits it, then encoded as
+// the pixel whose platform composite over that backdrop is Chrome's colour. The ancestors are the DOM chain, not the native views
+// above the box: a box hosted out of its parent (a flex item in its root's foreground, PNT1 stacking) still paints above them. A
+// background write re-applies the shadows of the box and of its DOM descendants with shadows, whose backdrop it changes. Layers change with implicit actions disabled; nothing animates.
 import type { ShadowValue } from '../../lower/paint/shadow.ts';
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
@@ -24,6 +25,10 @@ const SWIFT_MEMBERS = String.raw`  /// The computed shadows in list order (css p
   /// The inset shadows as a premultiplied bitmap and its rect in the view's points, drawn at the inset-shadow stage.
   public var dragonInsetShadowImage: CGImage? = nil
   public var dragonInsetShadowRect: CGRect = .zero
+  /// The tree the shadow write came from (the backdrop walks the DOM ancestors through it), and the DOM descendants with shadow
+  /// writes, whose backdrop this box's background is part of.
+  public weak var dragonShadowTree: DragonTree? = nil
+  public var dragonShadowedDescendants: [DragonBoxView] = []
 `;
 
 const SWIFT = String.raw`import UIKit
@@ -51,6 +56,10 @@ public final class DragonShadowView: UIView {
 /// first time), then every after-layout hook re-applies the paint.
 public func dragonSetShadows(_ t: DragonTree, _ v: DragonBoxView, _ shadows: [ShadowInput]) {
   v.dragonShadows = shadows
+  if v.dragonShadowTree == nil {
+    v.dragonShadowTree = t
+    for a in dragonShadowAncestors(v) where !a.dragonShadowedDescendants.contains(where: { $0 === v }) { a.dragonShadowedDescendants.append(v) }
+  }
   if v.dragonShadowView == nil && shadows.contains(where: { !$0.inset }) {
     let s = DragonShadowView()
     v.dragonShadowView = s
@@ -60,15 +69,23 @@ public func dragonSetShadows(_ t: DragonTree, _ v: DragonBoxView, _ shadows: [Sh
   v.setNeedsDisplay()
 }
 
-/// The backdrop of a box's shadows: each ancestor box's background over its (rounded) border box, outermost first, then the box's
-/// own when own is set (the inset shadows); the white root is beneath.
-public func dragonShadowBackdrop(_ v: DragonBoxView, own: Bool) -> [BackdropFill] {
-  var chain: [DragonBoxView] = own ? [v] : []
-  var p = v.superview
-  while let s = p {
-    if let b = s as? DragonBoxView { chain.insert(b, at: 0) }
-    p = s.superview
+/// A box's DOM ancestors, outermost first, through the tree of its shadow write.
+public func dragonShadowAncestors(_ v: DragonBoxView) -> [DragonBoxView] {
+  guard let t = v.dragonShadowTree else { fatalError("dragon: \(v.dragonId): a shadow backdrop without the tree of its shadow write") }
+  var chain: [DragonBoxView] = []
+  var id = v.dragonParent
+  while let pid = id {
+    guard let b = t.node(pid) as? DragonBoxView else { fatalError("dragon: \(v.dragonId): the DOM ancestor \(pid) is not a built box") }
+    chain.insert(b, at: 0)
+    id = b.dragonParent
   }
+  return chain
+}
+
+/// The backdrop of a box's shadows: each DOM ancestor box's background over its (rounded) border box, outermost first, then the
+/// box's own when own is set (the inset shadows); the white root is beneath.
+public func dragonShadowBackdrop(_ v: DragonBoxView, own: Bool) -> [BackdropFill] {
+  let chain = dragonShadowAncestors(v) + (own ? [v] : [])
   var out: [BackdropFill] = []
   for b in chain {
     let c = b.dragonBackgroundColor
@@ -79,12 +96,10 @@ public func dragonShadowBackdrop(_ v: DragonBoxView, own: Bool) -> [BackdropFill
   return out
 }
 
-/// After a background write: the shadows of the box and of every descendant box, whose backdrop the write changed.
+/// After a background write: the shadows of the box and of every DOM descendant with shadows, whose backdrop the write changed.
 public func dragonShadowBackdropChanged(_ v: DragonBoxView) {
   if !v.dragonShadows.isEmpty { dragonAfterLayoutShadow(v, v.dragonShape, v.dragonScale) }
-  for s in v.dragonContainer.subviews {
-    if let b = s as? DragonBoxView { dragonShadowBackdropChanged(b) }
-  }
+  for b in v.dragonShadowedDescendants where !b.dragonShadows.isEmpty { dragonAfterLayoutShadow(b, b.dragonShape, b.dragonScale) }
 }
 
 /// A premultiplied sRGB RGBA8 image from a paint-shadow.ts layer, or nil for an empty one.
@@ -155,6 +170,12 @@ const KOTLIN_MEMBERS = String.raw`  /** The computed shadows in list order (css 
   var dragonInsetShadowOffset = intArrayOf(0, 0)
   /** The device scale of the last layout. */
   var dragonShadowScale = 1.0
+  /**
+   * The tree the shadow write came from (the backdrop walks the DOM ancestors through it), and the DOM descendants with shadow
+   * writes, whose backdrop this box's background is part of.
+   */
+  var dragonShadowTree: DragonTree? = null
+  val dragonShadowedDescendants = ArrayList<DragonBoxView>()
 `;
 
 const KOTLIN = String.raw`package dev.dragon.views
@@ -192,6 +213,10 @@ class DragonShadowView(ctx: Context) : DragonGroup(ctx) {
  */
 fun dragonSetShadows(t: DragonTree, v: DragonBoxView, shadows: Array<ShadowInput>) {
   v.dragonShadows = shadows
+  if (v.dragonShadowTree == null) {
+    v.dragonShadowTree = t
+    for (a in dragonShadowAncestors(v)) if (a.dragonShadowedDescendants.none { it === v }) a.dragonShadowedDescendants.add(v)
+  }
   if (v.dragonShadowView == null && shadows.any { !it.inset }) {
     val s = DragonShadowView(v.context)
     v.dragonShadowView = s
@@ -201,18 +226,26 @@ fun dragonSetShadows(t: DragonTree, v: DragonBoxView, shadows: Array<ShadowInput
   v.invalidate()
 }
 
+/** A box's DOM ancestors, outermost first, through the tree of its shadow write. */
+fun dragonShadowAncestors(v: DragonBoxView): List<DragonBoxView> {
+  val t = v.dragonShadowTree ?: throw IllegalStateException("dragon: " + v.dragonId + ": a shadow backdrop without the tree of its shadow write")
+  val chain = ArrayList<DragonBoxView>()
+  var id = v.dragonParent
+  while (id != null) {
+    val b = t.node(id) as? DragonBoxView ?: throw IllegalStateException("dragon: " + v.dragonId + ": the DOM ancestor " + id + " is not a built box")
+    chain.add(0, b)
+    id = b.dragonParent
+  }
+  return chain
+}
+
 /**
- * The backdrop of a box's shadows: each ancestor box's background over its (rounded) border box, outermost first, then the box's
- * own when own is set (the inset shadows); the white root is beneath.
+ * The backdrop of a box's shadows: each DOM ancestor box's background over its (rounded) border box, outermost first, then the
+ * box's own when own is set (the inset shadows); the white root is beneath.
  */
 fun dragonShadowBackdrop(v: DragonBoxView, own: Boolean): MutableList<BackdropFill> {
-  val chain = ArrayList<DragonBoxView>()
+  val chain = ArrayList<DragonBoxView>(dragonShadowAncestors(v))
   if (own) chain.add(v)
-  var p = v.parent
-  while (p != null) {
-    if (p is DragonBoxView) chain.add(0, p)
-    p = p.parent
-  }
   val out = ArrayList<BackdropFill>()
   for (b in chain) {
     val c = b.dragonBackgroundColor
@@ -223,14 +256,10 @@ fun dragonShadowBackdrop(v: DragonBoxView, own: Boolean): MutableList<BackdropFi
   return out
 }
 
-/** After a background write: the shadows of the box and of every descendant box, whose backdrop the write changed. */
+/** After a background write: the shadows of the box and of every DOM descendant with shadows, whose backdrop the write changed. */
 fun dragonShadowBackdropChanged(v: DragonBoxView) {
   if (v.dragonShadows.isNotEmpty()) dragonAfterLayoutShadow(v, v.dragonShape, v.dragonShadowScale)
-  val g = v.dragonContainer
-  for (i in 0 until g.childCount) {
-    val c = g.getChildAt(i)
-    if (c is DragonBoxView) dragonShadowBackdropChanged(c)
-  }
+  for (b in v.dragonShadowedDescendants) if (b.dragonShadows.isNotEmpty()) dragonAfterLayoutShadow(b, b.dragonShape, b.dragonShadowScale)
 }
 
 /** A premultiplied RGBA8 bitmap from a paint-shadow.ts layer, or null for an empty one. */
