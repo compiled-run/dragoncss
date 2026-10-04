@@ -51,8 +51,8 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `property text-decoration-color` | 291 | 291 | 291 | 1 |
 | `selector pseudo-element ::placeholder` | 291 | 291 | 291 | 1 |
 | `property border-spacing` | 105 | 105 | 105 | 6 |
-| `property transform` | 94 | 94 | 94 | 16 |
 | `property scale` | 90 | 90 | 90 | 10 |
+| `value transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-` | 90 | 90 | 90 | 12 |
 | `property -webkit-backdrop-filter` | 74 | 74 | 74 | 9 |
 | `property scroll-margin` | 70 | 70 | 70 | 4 |
 | `property scroll-margin-block` | 70 | 70 | 70 | 4 |
