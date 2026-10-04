@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -13,6 +13,10 @@ import {
   Fatal,
   findingsComment,
   isQuiet,
+  clearStaleQuiet,
+  releaseQuiet,
+  requestQuiet,
+  waitForQuiet,
   isTransient,
   isUnreviewed,
   LandFailure,
@@ -22,6 +26,8 @@ import {
   REVIEW_PROMPT,
   type ReviewRecord,
   reviewedPatch,
+  parseChildPrs,
+  retargetChildrenThenDelete,
   reviewerEnv,
   reviewVerdict,
   runQueue,
@@ -180,6 +186,49 @@ describe('CI, base, worktree and quiet decisions', () => {
     expect(isQuiet(0, 19.9)).toBe(true);
     expect(isQuiet(1, 2)).toBe(false);
     expect(isQuiet(0, 20)).toBe(false);
+  });
+
+  it('holds the quiet request while it waits, and drops it when the wait ends, quiet or not', () => {
+    const path = join(tempDir(), 'dragon-train-quiet');
+    let clock = 0;
+    const held: boolean[] = [];
+    const wait = (quietAt: number, ceilingMs: number, quiet?: () => boolean) =>
+      waitForQuiet({
+        quiet: quiet ?? (() => (held.push(existsSync(path)), clock >= quietAt)),
+        request: () => requestQuiet(path, 4242),
+        release: () => releaseQuiet(path, 4242),
+        sleep: (ms) => (clock += ms),
+        now: () => clock,
+        ceilingMs,
+        pollMs: 1000,
+      });
+    // Quiet after 3 polls: the request was held on every poll and is gone when the rerun starts.
+    expect(wait(3000, 10_000)).toBe(true);
+    expect(held).toEqual([true, true, true, true]);
+    expect(existsSync(path)).toBe(false);
+    // Never quiet: fails at the ceiling instead of hanging, and still drops the request.
+    clock = 0;
+    expect(wait(Number.POSITIVE_INFINITY, 5000)).toBe(false);
+    expect(clock).toBe(5000);
+    expect(existsSync(path)).toBe(false);
+    // A failure while waiting drops it too.
+    expect(() => wait(0, 5000, () => { throw new Error('readdir failed'); })).toThrow('readdir failed');
+    expect(existsSync(path)).toBe(false);
+  });
+
+  it('never removes another process\'s quiet request, and clears one whose driver is gone', () => {
+    const path = join(tempDir(), 'dragon-train-quiet');
+    requestQuiet(path, 7);
+    releaseQuiet(path, 8);
+    expect(readFileSync(path, 'utf8')).toBe('7');
+    expect(clearStaleQuiet(path, () => true)).toBe(false);
+    expect(existsSync(path)).toBe(true);
+    expect(clearStaleQuiet(path, () => false)).toBe(true);
+    expect(existsSync(path)).toBe(false);
+    writeFileSync(path, 'garbage');
+    expect(clearStaleQuiet(path, () => true)).toBe(true);
+    expect(clearStaleQuiet(path, () => true)).toBe(false);
+    releaseQuiet(path, 7);
   });
 
   it('reads pr:review\'s UNREVIEWED banner, which pr-review.ts prints', () => {
@@ -521,5 +570,84 @@ describe('the precomputed review lookup (the default reviewer)', () => {
     expect(lookupReview(JSON.stringify({ pr: '3', head, findings: [] }), 'p', '3', head)).toMatchObject({ ok: false });
     expect(lookupReview(JSON.stringify({ pr: 3, head, findings: [], verdict: 'pass' }), 'p', '3', head)).toMatchObject({ ok: false, error: expect.stringMatching(/exactly/) });
     expect(lookupReview(JSON.stringify({ pr: 3, head }), 'p', '3', head)).toMatchObject({ ok: false });
+  });
+});
+
+describe('deleting a merged branch only after its child PRs move to master', () => {
+  // A fake gh over a set of open PRs and their bases; `failEdit` PRs refuse the retarget, `stick` PRs accept it but keep their base.
+  const fakeGh = (prs: Record<number, string>, opts: { failEdit?: number[]; stick?: number[]; failList?: boolean; failDelete?: boolean } = {}) => {
+    const calls: string[] = [];
+    let deleted: string | null = null;
+    const gh = (args: string[]): string => {
+      calls.push(args.join(' '));
+      const flag = (name: string): string => args[args.indexOf(name) + 1]!;
+      if (args[0] === 'pr' && args[1] === 'list') {
+        if (opts.failList) throw Object.assign(new Error('Command failed'), { stderr: 'HTTP 404: Not Found' });
+        return JSON.stringify(Object.entries(prs).filter(([, b]) => b === flag('--base')).map(([n, b]) => ({ number: Number(n), baseRefName: b })));
+      }
+      if (args[0] === 'pr' && args[1] === 'edit') {
+        const n = Number(args[2]);
+        if (opts.failEdit?.includes(n)) throw Object.assign(new Error('Command failed'), { stderr: 'GraphQL: Resource not accessible' });
+        if (!opts.stick?.includes(n)) prs[n] = flag('--base');
+        return '';
+      }
+      if (args[0] === 'api' && args[2] === 'DELETE') {
+        if (opts.failDelete) throw Object.assign(new Error('Command failed'), { stderr: 'HTTP 422: Reference does not exist' });
+        deleted = args[3]!;
+        return '';
+      }
+      throw new Error(`unexpected gh ${args.join(' ')}`);
+    };
+    return { gh, calls, prs, deleted: () => deleted };
+  };
+  const run = (f: ReturnType<typeof fakeGh>) => {
+    const lines: string[] = [];
+    return { r: retargetChildrenThenDelete({ repo: 'o/r', branch: 'land-5b', gh: f.gh, log: (l) => lines.push(l) }), lines };
+  };
+
+  it('retargets every open child PR to master, logs each, then deletes the branch last', () => {
+    const f = fakeGh({ 127: 'land-5b', 128: 'land-5b', 130: 'master', 131: 'other' });
+    const { r, lines } = run(f);
+    expect(r).toEqual({ retargeted: [127, 128], deleted: true, problems: [] });
+    expect(f.prs).toEqual({ 127: 'master', 128: 'master', 130: 'master', 131: 'other' });
+    expect(lines).toEqual(['  #127 was based on land-5b; retargeted to master', '  #128 was based on land-5b; retargeted to master', '  deleted branch land-5b']);
+    expect(f.deleted()).toBe('repos/o/r/git/refs/heads/land-5b');
+    expect(f.calls.at(-1)).toBe('api -X DELETE repos/o/r/git/refs/heads/land-5b');
+    expect(f.calls.findIndex((c) => c.startsWith('api'))).toBeGreaterThan(f.calls.findLastIndex((c) => c.startsWith('pr edit')));
+  });
+
+  it('deletes a branch with no child PRs', () => {
+    const f = fakeGh({ 5: 'master' });
+    expect(run(f).r).toEqual({ retargeted: [], deleted: true, problems: [] });
+  });
+
+  it('keeps the branch when a retarget fails, still moving the others, and reports it', () => {
+    const f = fakeGh({ 127: 'land-5b', 128: 'land-5b' }, { failEdit: [127] });
+    const { r } = run(f);
+    expect(r.deleted).toBe(false);
+    expect(r.retargeted).toEqual([128]);
+    expect(r.problems).toEqual(['kept branch land-5b so no PR based on it is closed', '#127 is based on land-5b and could not be retargeted to master: GraphQL: Resource not accessible']);
+    expect(f.deleted()).toBeNull();
+  });
+
+  it('keeps the branch when a child is still based on it after the retarget, or the list cannot be read', () => {
+    const stuck = fakeGh({ 127: 'land-5b' }, { stick: [127] });
+    expect(run(stuck).r).toMatchObject({ deleted: false, problems: ['kept branch land-5b so no PR based on it is closed', 'open PRs still based on land-5b: #127'] });
+    expect(stuck.deleted()).toBeNull();
+    const unlisted = fakeGh({ 127: 'land-5b' }, { failList: true });
+    expect(run(unlisted).r).toMatchObject({ deleted: false, problems: [expect.stringMatching(/kept branch land-5b: could not list/)] });
+    expect(unlisted.calls.some((c) => c.startsWith('pr edit') || c.startsWith('api'))).toBe(false);
+  });
+
+  it('reports a failed delete after the retargets', () => {
+    const f = fakeGh({ 127: 'land-5b' }, { failDelete: true });
+    expect(run(f).r).toEqual({ retargeted: [127], deleted: false, problems: ['could not delete branch land-5b: HTTP 422: Reference does not exist'] });
+  });
+
+  it('checks gh pr list output', () => {
+    expect(parseChildPrs('[{"number":3,"baseRefName":"b"}]', 'b')).toEqual([3]);
+    expect(() => parseChildPrs('[{"number":3,"baseRefName":"c"}]', 'b')).toThrow();
+    expect(() => parseChildPrs('{}', 'b')).toThrow();
+    expect(() => parseChildPrs('[{"number":"3","baseRefName":"b"}]', 'b')).toThrow();
   });
 });
