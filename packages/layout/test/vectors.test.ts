@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { layout, measurerFor, validateLayoutInput } from '../src/index.ts';
+import { styleSchema } from '../src/validate.ts';
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'vectors');
 const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
@@ -51,7 +52,7 @@ describe('(e) the documented vector format (vectors/README.md)', () => {
   };
   it('the example input validates with every field present, and laying it out gives the documented output', () => {
     const input = block('vector-input') as { root: { style: Record<string, unknown>; children: { style: Record<string, unknown> }[] } };
-    expect(Object.keys(input.root.style).length).toBe(42);
+    expect(Object.keys(input.root.style).sort()).toEqual(Object.keys(styleSchema.fields).sort());
     expect(validateLayoutInput(input).ok).toBe(true);
     expect(run({ platform: 'darwin-arm64', measurer: 'ahem/darwin-arm64', input, output: null })).toEqual(block('vector-output'));
     // No defaults: dropping any one style field of the example is a validation error.

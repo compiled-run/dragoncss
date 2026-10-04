@@ -10,7 +10,7 @@ import type { ResolvedElement } from '../analysis/resolve.ts';
 import type { LengthRange } from '../css/animation-kinds.ts';
 import { admitted, animationKind } from '../css/animation-kinds.ts';
 import type { AnimItem, AnimLonghand, EasingValue } from '../css/properties/animation.ts';
-import { ANIM_LONGHANDS } from '../css/properties/animation.ts';
+import { ANIM_LIST_PROPERTIES } from '../css/properties/animation.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import type { WebAnimations } from '../emit/web-css.ts';
 import type { Longhand } from '../css/properties.ts';
@@ -215,7 +215,7 @@ export function webAnimationsOf(analysis: AnimationAnalysis, valueText: (v: CssV
     lines: (caseKey, address) => {
       const ea = byKey.get(caseKey)?.elements.get(address);
       if (ea === undefined || ea.declarations.length === 0) return [];
-      return ANIM_LONGHANDS.map((p) => `  ${p}: ${(ea.lists.get(p) ?? []).map((i) => itemText(p, i)).join(', ')};`);
+      return ANIM_LIST_PROPERTIES.map((p) => `  ${p}: ${(ea.lists.get(p) ?? []).map((i) => itemText(p, i)).join(', ')};`);
     },
     sources: (caseKey) => {
       const c = byKey.get(caseKey);

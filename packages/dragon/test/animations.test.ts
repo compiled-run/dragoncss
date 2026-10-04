@@ -3,7 +3,7 @@
 import { parse } from 'css-tree';
 import { describe, expect, it } from 'vitest';
 import type { AnimItem, AnimLonghand } from '../src/css/properties/animation.ts';
-import { ANIM_INITIAL, ANIMATION_LONGHANDS, animationRefusal, parseAnimationDeclaration, parseAnimationValue, TRANSITION_LONGHANDS } from '../src/css/properties/animation.ts';
+import { ANIM_INITIAL, ANIMATION_LIST_PROPERTIES, animationRefusal, parseAnimationDeclaration, parseAnimationValue, TRANSITION_LIST_PROPERTIES } from '../src/css/properties/animation.ts';
 import type { Diagnostic, DraftTree, FrontEndResult, SourceRef, TreeNode } from '../src/index.ts';
 import { fontPx } from '../src/analysis/animations.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
@@ -121,7 +121,7 @@ function shown(i: AnimItem): string {
 function computed(property: string, value: string): string[] | null {
   const r = parseAnimationValue(property, parse(value, { context: 'value', positions: true }));
   if (r.kind === 'invalid') return null;
-  const family: readonly AnimLonghand[] = property.startsWith('transition') ? TRANSITION_LONGHANDS : ANIMATION_LONGHANDS;
+  const family: readonly AnimLonghand[] = property.startsWith('transition') ? TRANSITION_LIST_PROPERTIES : ANIMATION_LIST_PROPERTIES;
   // animation-duration: auto computes to 0s on the document timeline, and stays auto on another one.
   const timeline = r.value.longhands.get('animation-timeline');
   const documentTimeline = timeline === undefined || timeline.kind === 'wide' || timeline.items.every((i) => i.kind === 'keyword' && i.value === 'auto');
