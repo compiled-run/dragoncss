@@ -78,3 +78,33 @@ export async function openPage(browser: Browser, html: string, env: PageEnvironm
   if (dpr !== env.devicePixelRatio) throw new Error(`device pixel ratio must be ${env.devicePixelRatio}, got ${dpr}`);
   return page;
 }
+
+/**
+ * T065 R2: openPage for a frame fixture, with every animation held by the frozen document timeline (CDP
+ * Animation.setPlaybackRate 0 before the content loads), so a frame capture moves time only by setting currentTime. The page
+ * navigates to a fresh document (a routed URL) rather than setContent: setContent rewrites about:blank, whose timeline ran
+ * before the rate was set, so it froze at a few milliseconds instead of 0.
+ */
+const FROZEN_URL = 'http://dragon.test/frame';
+
+export async function openFrozenPage(browser: Browser, html: string, env: PageEnvironment): Promise<Page> {
+  const context = await browser.newContext({ viewport: { width: env.viewport.width, height: env.viewport.height }, deviceScaleFactor: env.devicePixelRatio });
+  const page = await context.newPage();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Animation.enable');
+  await cdp.send('Animation.setPlaybackRate', { playbackRate: 0 });
+  const injected = html.replace(/<head>/i, `<head><style data-dragon-harness>${harnessStyle(env)}</style>`);
+  if (injected === html) throw new Error('fixture HTML has no <head>');
+  await page.route(FROZEN_URL, (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: injected }));
+  await page.goto(FROZEN_URL);
+  await page.evaluate(async () => {
+    await document.fonts.load('10px Ahem');
+    await document.fonts.ready;
+    await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+  });
+  const dpr = await page.evaluate(() => window.devicePixelRatio);
+  if (dpr !== env.devicePixelRatio) throw new Error(`device pixel ratio must be ${env.devicePixelRatio}, got ${dpr}`);
+  const t = await page.evaluate(() => document.timeline.currentTime);
+  if (t !== 0) throw new Error(`the document timeline is not frozen at 0: ${String(t)}`);
+  return page;
+}

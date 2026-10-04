@@ -1,0 +1,2 @@
+.box { padding-left: 2px; width: 2px; margin-left: 2px; height: 5px; background-color: rgb(10, 10, 10); color: rgb(10, 10, 10); transition: all 1s cubic-bezier(0.5, -1, 0.5, 2); }
+.box.on { padding-left: 50px; width: 50px; margin-left: 50px; background-color: rgb(250, 250, 250); color: rgb(250, 250, 250); }

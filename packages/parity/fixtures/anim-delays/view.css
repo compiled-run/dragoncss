@@ -1,0 +1,8 @@
+.d { width: 10px; height: 10px; background-color: rgb(0, 0, 0); }
+.d.on { width: 90px; height: 20px; background-color: rgb(200, 100, 50); }
+.pos { transition: background-color 1s linear 0.5s; }
+.neg { transition: background-color 1s linear -0.5s; }
+.st1 { transition: width 0.5s ease 0.1s; }
+.st2 { transition: width 0.5s ease 0.2s; }
+.st3 { transition: width 0.5s ease 0.3s; }
+.list { transition-property: width, background-color, height; transition-duration: 1s, 0.5s; transition-timing-function: linear; }

@@ -59,6 +59,24 @@ export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[])
   return rows;
 }
 
+/**
+ * T065: the animation rows (context `animation`) from the frame cases that pass the host frame lanes (anim-report), web only:
+ * exact through chrome-dual at every sample. iOS and Android rows wait for the native animator and its device-anim lane, so
+ * no native output claims motion it does not run.
+ */
+/** T065: the context of every animation row; its proofs are frame cases (anim-frames.test.ts), not layout cases (parity.test.ts). */
+export const ANIMATION_CONTEXT = 'animation';
+
+export function deriveAnimationRows(target: ProfileTarget, passing: readonly { readonly id: string; readonly features: readonly string[] }[]): ProfileRow[] {
+  if (target !== 'web') return [];
+  const features = [...new Set(passing.flatMap((c) => c.features))].sort();
+  return features.map((feature) => {
+    const ids = passing.filter((c) => c.features.includes(feature)).map((c) => c.id);
+    const valueSubset = feature.slice(feature.indexOf(':') + 1);
+    return { feature, context: ANIMATION_CONTEXT, status: 'exact', proofs: [{ aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context: ANIMATION_CONTEXT, cases: ids }] };
+  });
+}
+
 export function profileSource(target: ProfileTarget, rows: readonly ProfileRow[]): string {
   const name = `${target}Profile`;
   const q = (s: string): string => JSON.stringify(s);

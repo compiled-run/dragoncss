@@ -22,7 +22,7 @@ import { OUTLINE_SHORTHANDS } from '../src/css/shorthands/outline.ts';
 import { RADIUS_SHORTHANDS } from '../src/css/shorthands/radius.ts';
 import type { Longhand } from '../src/css/properties.ts';
 import { applyPlant, emitNativeSupport, SUPPORT_FILES, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
-import { isPaintKind, nativePaints, PAINT_EMITTERS, paintPlants, stagePainters } from '../src/emit/paint/registry.ts';
+import { isPaintKind, nativePaints, PAINT_EMITTERS, paintPlants, soleHook, stagePainters } from '../src/emit/paint/registry.ts';
 import { PAINT_STAGES } from '../src/emit/paint/types.ts';
 import type { BorderWrite } from '../src/lower/paint/border.ts';
 import type { AnyLowering } from '../src/lower/paint/registry.ts';
@@ -30,13 +30,23 @@ import { checkPaintLowerings, PAINT_LOWERINGS } from '../src/lower/paint/registr
 import type { PaintLowering } from '../src/lower/paint/types.ts';
 import { PAINT_MODULE_NAMES } from '../src/lower/paint/types.ts';
 import { createProjectWith, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
+import { floorProblems } from './floor.ts';
 import { div, inputFor, text } from './helpers.ts';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const CSS = 'body { margin: 0; font-family: Ahem; font-size: 10px; } .a { padding: 3px; border: 2px dashed red; background-color: #3366ff; overflow: hidden; }';
 const input = inputFor(CSS, (r) => [div(r, 'a', ['a'], [text(r, 't', 'AB'), div(r, 'b', [])])]);
-// PNT2 filled the transform module (test/paint-transform.test.ts); the other modules past clip stay stubs.
-const STUBS = PAINT_MODULE_NAMES.filter((n) => n !== 'background' && n !== 'border' && n !== 'clip' && n !== 'transform');
+// PIN-DERIVE: append-only floors (paint-seams-floor.json) stand where literal lists stood; a module adds entries without a test edit.
+const FLOOR = new URL('./paint-seams-floor.json', import.meta.url);
+const SEAMS_FLOOR = new URL('./seams-floor.json', import.meta.url);
+/** A module that lowers, emits and adds nothing; EMS made every module past clip one, and a package fills it (PNT2: transform). */
+const isStub = (name: string): boolean => {
+  const e = PAINT_EMITTERS.find((m) => m.name === name);
+  const empty = { boxMembers: '', file: null, stages: {}, afterLayout: null, applied: null, roundedPath: null, container: null };
+  return e !== undefined && e.kinds.length === 0 && e.plants.length === 0 && Object.keys(PAINT_LOWERINGS.find((m) => m.name === name)?.css ?? {}).length === 0
+    && (['uikit', 'android-views'] as const).every((b) => JSON.stringify(e.native[b]) === JSON.stringify(empty));
+};
+const STUBS = PAINT_MODULE_NAMES.filter(isStub);
 
 function programs() {
   const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
@@ -47,13 +57,16 @@ function programs() {
 
 describe('EMS: the paint registries', () => {
   it('lowering, emission and paint values register every module once, in PAINT_MODULE_NAMES order', () => {
-    expect([...PAINT_MODULE_NAMES]).toEqual(['background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'transform', 'gradient', 'scroll', 'fixed', 'scrollbar', 'image', 'foreign-view', 'control']);
+    // PIN-DERIVE: the EMS module order is a floor; a module appended later (T150a: visibility) needs no edit here.
+    expect(floorProblems(FLOOR, 'paintModules', PAINT_MODULE_NAMES, true)).toEqual([]);
     expect(PAINT_LOWERINGS.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
     expect(PAINT_EMITTERS.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
     expect(PAINT_VALUES.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
   });
   it('the paint write kinds are the background, border, clip and transform modules\' and every one has a vocabulary entry on both backends', () => {
-    expect(PAINT_EMITTERS.flatMap((m) => m.kinds)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'transform']);
+    // Each module emits exactly the kinds it lowers, and no kind the floor holds is gone.
+    for (const m of PAINT_EMITTERS) expect([...m.kinds], m.name).toEqual(Object.keys(PAINT_LOWERINGS.find((l) => l.name === m.name)?.css ?? {}));
+    expect(floorProblems(FLOOR, 'paintKinds', PAINT_EMITTERS.flatMap((m) => m.kinds), true)).toEqual([]);
     for (const m of PAINT_LOWERINGS) {
       for (const k of Object.keys(m.css)) {
         expect(isPaintKind(k), k).toBe(true);
@@ -61,7 +74,7 @@ describe('EMS: the paint registries', () => {
         for (const b of ['uikit', 'android-views'] as const) expect(VOCABULARY[b][k as keyof (typeof VOCABULARY)['uikit']]).toEqual((m.vocabulary[b] as Record<string, unknown>)[k]);
       }
     }
-    expect(Object.keys(VOCABULARY.uikit)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'transform', 'font', 'text-color']);
+    for (const b of ['uikit', 'android-views'] as const) expect(Object.keys(VOCABULARY[b]), b).toEqual([...PAINT_EMITTERS.flatMap((m) => m.kinds), 'font', 'text-color']);
     expect(isPaintKind('font')).toBe(false);
     expect(isPaintKind('text-color')).toBe(false);
   });
@@ -75,7 +88,8 @@ describe('EMS: the paint registries', () => {
     expect(() => checkPaintLowerings(PAINT_LOWERINGS.map((m, i) => (i === 1 ? uikitShort : m)))).toThrow(/border paint lowering's uikit vocabulary names border-widths, its longhands name/);
     expect(() => checkPaintLowerings([...PAINT_LOWERINGS].reverse())).toThrow(/not in PAINT_MODULE_NAMES order/);
   });
-  it('the stub modules lower nothing, emit nothing and add no native code or plants', () => {
+  it('the stub modules lower nothing, emit nothing and add no native code or plants; a filled module never goes back to a stub', () => {
+    expect(floorProblems(FLOOR, 'filledPaintModules', PAINT_MODULE_NAMES.filter((n) => !isStub(n)), false)).toEqual([]);
     for (const name of STUBS) {
       const e = PAINT_EMITTERS.find((m) => m.name === name);
       expect(e?.kinds, name).toEqual([]);
@@ -83,9 +97,11 @@ describe('EMS: the paint registries', () => {
       for (const b of ['uikit', 'android-views'] as const) expect(e?.native[b], name).toEqual({ boxMembers: '', file: null, stages: {}, afterLayout: null, applied: null, roundedPath: null, container: null });
       expect(PAINT_LOWERINGS.find((m) => m.name === name)?.css, name).toEqual({});
     }
-    // The border module (P6a) declares the two dash plants, the transform module (PNT2) its two; every stub declares none.
-    expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'transform-origin-ignored', 'translate-percent-of-parent']);
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'transform-origin-ignored', 'translate-percent-of-parent']);
+    // Each plant stays with the module that declared it (P6a: border's two dash plants); the support plants are the two glyph
+    // plants, then the paint plants in registry order, then any later ones.
+    expect(floorProblems(FLOOR, 'paintPlants', PAINT_EMITTERS.flatMap((m) => m.plants.map((p) => `${m.name}:${p.name}`)), true)).toEqual([]);
+    expect(SUPPORT_PLANTS.slice(0, 2 + paintPlants().length)).toEqual(['glyph-offset-1', 'glyph-offset-y-1', ...paintPlants().map((p) => p.name)]);
+    expect(floorProblems(FLOOR, 'supportPlants', SUPPORT_PLANTS, true)).toEqual([]);
   });
 });
 
@@ -116,8 +132,15 @@ describe('EMS: programs', () => {
 
 describe('EMS: native support', () => {
   it('emits the stages file and one file per paint module with native code, under Support/Paint and views/paint', () => {
-    expect(SUPPORT_FILES.uikit).toEqual(['Support/DragonChecked.swift', 'Support/DragonFontTables.swift', 'Support/DragonViews.swift', 'Support/DragonBridge.swift', 'Support/DragonTree.swift', 'Support/DragonPaintStages.swift', 'Support/Paint/DragonPaintBackground.swift', 'Support/Paint/DragonPaintBorder.swift', 'Support/Paint/DragonPaintClip.swift', 'Support/Paint/DragonPaintTransform.swift', 'Support/DragonClock.swift', 'Support/DragonState.swift']);
-    expect(SUPPORT_FILES['android-views']).toEqual(['kotlin/dev/dragon/views/DragonChecked.kt', 'kotlin/dev/dragon/views/DragonFontTables.kt', 'kotlin/dev/dragon/views/DragonViews.kt', 'kotlin/dev/dragon/views/DragonBridge.kt', 'kotlin/dev/dragon/views/DragonTree.kt', 'kotlin/dev/dragon/views/DragonPaintStages.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBackground.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBorder.kt', 'kotlin/dev/dragon/views/paint/DragonPaintClip.kt', 'kotlin/dev/dragon/views/paint/DragonPaintTransform.kt', 'kotlin/dev/dragon/views/DragonClock.kt', 'kotlin/dev/dragon/views/DragonState.kt']);
+    // The core files, the stages file, then one file per module with native code in registry order, then the runtime files.
+    for (const [b, dir, paintDir, ext] of [['uikit', 'Support/', 'Support/Paint/', 'swift'], ['android-views', 'kotlin/dev/dragon/views/', 'kotlin/dev/dragon/views/paint/', 'kt']] as const) {
+      const files = SUPPORT_FILES[b];
+      const core = ['DragonChecked', 'DragonFontTables', 'DragonViews', 'DragonBridge', 'DragonTree', 'DragonPaintStages'].map((f) => `${dir}${f}.${ext}`);
+      const paint = nativePaints(b).filter((m) => m.native.file !== null).map((m) => `${paintDir}${m.stem}.${ext}`);
+      expect(files.slice(0, core.length + paint.length), b).toEqual([...core, ...paint]);
+      expect(files.slice(core.length + paint.length).filter((f) => f.startsWith(paintDir)), b).toEqual([]);
+      expect(floorProblems(FLOOR, `supportFiles:${b}`, files, true), b).toEqual([]);
+    }
     for (const f of emitNativeSupport('android-views')) expect(f.text, f.path).toContain('\npackage dev.dragon.views\n');
   });
   it('applies a support plant only when its source text occurs exactly once across the support files', () => {
@@ -137,12 +160,19 @@ describe('EMS: native support', () => {
       expect(stagePainters(b, 'border')).toEqual(['dragonPaintBorderStage']);
       expect(body).toContain(`dragonPaintBorderStage(${args})`);
       expect(text.indexOf('dragonAfterLayoutBorder(v, shape, scale)')).toBeLessThan(text.indexOf('dragonAfterLayoutClip(v, shape, scale)'));
-      const applied = ['dragonAppliedBackground', 'dragonAppliedBorder', 'dragonAppliedClip'].map((f) => text.indexOf(`${f}(v)`));
+      // PIN-DERIVE: the readbacks are the modules' own, in registry order (background, border and clip among them); the rounded
+      // path is nil until a module provides the hook (PNT1: radius), and then calls it.
+      const readbacks = nativePaints(b).flatMap((m) => (m.native.applied === null ? [] : [m.native.applied]));
+      expect(readbacks, b).toEqual(expect.arrayContaining(['dragonAppliedBackground', 'dragonAppliedBorder', 'dragonAppliedClip']));
+      const applied = readbacks.map((f) => text.indexOf(`${f}(v)`));
       expect(applied.every((i) => i > 0)).toBe(true);
       expect([...applied].sort((x, y) => x - y)).toEqual(applied);
-      expect(text).toMatch(b === 'uikit' ? /return nil\n}/ : /: Path\? = null\n/);
+      const rounded = soleHook(b, 'roundedPath');
+      if (rounded === null) expect(text).toMatch(b === 'uikit' ? /return nil\n}/ : /: Path\? = null\n/);
+      else expect(text).toContain(`${rounded}(v, shape`);
     }
-    expect(nativePaints('uikit').filter((m) => m.native.file !== null).map((m) => m.stem)).toEqual(['DragonPaintBackground', 'DragonPaintBorder', 'DragonPaintClip', 'DragonPaintTransform']);
+    // A module has a native file exactly when it is not a stub.
+    for (const b of ['uikit', 'android-views'] as const) expect(nativePaints(b).filter((m) => m.native.file !== null).map((m) => m.name), b).toEqual(PAINT_MODULE_NAMES.filter((n) => !isStub(n)));
   });
   it('keeps the case code on the modules\' public writers, which repaint when a runtime write changes them', () => {
     const swift = emitNativeSupport('uikit').map((f) => f.text).join('\n');
@@ -163,17 +193,22 @@ describe('EMS: native support', () => {
 });
 
 describe('EMS: CSS families and paint values', () => {
-  it('registers the paint families (empty until their packages fill them; PNT2 filled transform) and the two shorthand files empty', () => {
+  it('registers the paint families, each empty until its package fills it (PNT2 filled transform), and wired when filled', () => {
     expect(transform.TRANSFORM_LONGHANDS).toEqual(['transform', 'transform-origin', 'will-change']);
     expect(transform.TRANSFORM_SHORTHANDS).toEqual([]);
-    for (const [name, fam] of [['RADIUS', radius], ['SHADOW', shadow], ['EFFECTS', effects], ['OUTLINE', outline], ['BACKGROUND_LAYERS', backgroundLayers], ['SCROLLBAR', scrollbar]] as const) {
+    // PIN-DERIVE: an empty family is wholly empty; a filled one has an aspect per longhand, each a registered longhand, and a
+    // handler per shorthand, so a family is never half registered.
+    for (const [name, fam] of [['RADIUS', radius], ['SHADOW', shadow], ['EFFECTS', effects], ['OUTLINE', outline], ['TRANSFORM', transform], ['BACKGROUND_LAYERS', backgroundLayers], ['SCROLLBAR', scrollbar]] as const) {
       const f = fam as unknown as Record<string, unknown>;
-      expect(f[`${name}_LONGHANDS`], name).toEqual([]);
-      expect(f[`${name}_SHORTHANDS`], name).toEqual([]);
-      expect(f[`${name}_ASPECTS`], name).toEqual({});
+      const longhands = f[`${name}_LONGHANDS`] as readonly string[];
+      const shorthands = f[`${name}_SHORTHANDS`] as readonly string[];
+      expect(Object.keys(f[`${name}_ASPECTS`] as object), name).toEqual([...longhands]);
+      for (const l of longhands) expect((LONGHANDS as readonly string[]).includes(l), `${name} ${l}`).toBe(true);
+      for (const s of shorthands) expect(Object.keys(SHORTHAND_HANDLERS), `${name} ${s}`).toContain(s);
     }
-    expect(RADIUS_SHORTHANDS).toEqual({});
-    expect(OUTLINE_SHORTHANDS).toEqual({});
+    for (const [name, handlers] of [['RADIUS', RADIUS_SHORTHANDS], ['OUTLINE', OUTLINE_SHORTHANDS]] as const) {
+      for (const [s, h] of Object.entries(handlers)) expect(SHORTHAND_HANDLERS[s as keyof typeof SHORTHAND_HANDLERS], `${name} ${s}`).toBe(h);
+    }
     expect(Object.keys(SHORTHAND_HANDLERS).length).toBe(SHORTHANDS.length);
   });
   it('runs computePaintValues at the end of computeLengths; the stubs leave every value alone', () => {
@@ -185,6 +220,7 @@ describe('EMS: CSS families and paint values', () => {
     computeLengths(props, 16, 16);
     expect([...props.entries()].map(([k, x]) => [k, x.value])).toEqual([['font-size', { kind: 'length', value: 10, unit: 'px' }], ['width', { kind: 'length', value: 20, unit: 'px' }]]);
     // SIZE-ar: aspect-ratio is a longhand (box family, after max-height); PNT2 adds transform, transform-origin and will-change.
-    expect((LONGHANDS as readonly string[]).length).toBe(72);
+    // PIN-DERIVE: the seams floor holds every longhand there has been, in order, so none goes missing.
+    expect(floorProblems(SEAMS_FLOOR, 'longhands', LONGHANDS, true)).toEqual([]);
   });
 });

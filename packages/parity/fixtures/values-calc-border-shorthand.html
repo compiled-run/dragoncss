@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.x { width: 40px; height: 10px; margin-bottom: 2px; }
+.a { border: calc(1px + 0.15em) solid #000; }
+.b { border-top: min(3px, 0.1em) solid #000; border-right: max(1px, 0.25em) dashed #000; border-bottom: clamp(1px, 0.5em, 3px) solid #000; border-left: calc(0.7px + 0.1px) solid #000; }
+.c { border-block: calc(2px * 2) solid #000; border-inline: max(1px, 0.4em) solid #000; }
+.d { border-block-start: min(2px, 1em) solid #000; border-block-end: calc(1em - 7px) solid #000; border-inline-start: clamp(1px, 3px, 5px) solid #000; border-inline-end: calc(2.5px) solid #000; }
+.e { border: solid #000 max(0.2em, 1.5px); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="x a"></div><div data-dragon-id="b" class="x b"></div><div data-dragon-id="c" class="x c"></div><div data-dragon-id="d" class="x d"></div><div data-dragon-id="e" class="x e"></div>
+</body>
+</html>

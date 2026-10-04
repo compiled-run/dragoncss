@@ -8,11 +8,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { LayoutRect } from '@dragon/layout';
 import { layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
-import type { Compiled, Environment } from 'dragon';
-import { nativeLayoutProjection, NO_FAULTS } from 'dragon';
+import { nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { atDpr, committedDprCapture, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
-import type { FixtureSpec } from './fixtures.ts';
 import { spawnChild } from './device-exec.ts';
 import type { ExecResult } from './device-exec.ts';
 import { checkAgainstChrome, checkAgainstEngine, DUMP_FAULTS, referenceDump } from './native-compare.ts';
@@ -20,10 +18,11 @@ import { validateNativeDump } from './native-dump.ts';
 import { committedPixelManifestProblems } from './pixel-reference.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
-import { compileFixture } from './pipeline.ts';
+import { enforcedCompile } from './pipeline.ts';
 import { SAMPLE_RULES } from './samples.ts';
 import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './device-lanes.ts';
-import { DEVICE_CHECK_LANES, failuresByKind, laneFailures } from './device-lanes.ts';
+import type { DeviceLaneId } from './device-lanes.ts';
+import { DEVICE_CHECK_LANES, failuresByKind, HIT_LANE, laneFailures, STATE_LANE } from './device-lanes.ts';
 import type { DeviceEvidence } from './device-evidence.ts';
 import { deviceEvidence, evidenceProblems } from './device-evidence.ts';
 import type { DeviceRecord } from './device-run.ts';
@@ -331,23 +330,12 @@ export async function runHostLane(t: TargetConfig, opts: HostOptions = {}): Prom
 export type ReferenceRow = { readonly dpr: number; readonly role: 'shared' | 'extra'; readonly cases: number; readonly valid: number; readonly chrome: number; readonly engine: number; readonly chromeCompared: number; readonly engineCompared: number; readonly failures: readonly string[] };
 
 /**
- * For every layout case at every device DPR of each target: the TS engine through the target's projection, snapped by snapRect
- * into a ts-reference dump, which must validate and pass (a) against Chrome at that DPR and (d) against the engine.
+ * For every layout case (or those of the fixtures given) at every device DPR of each target: the TS engine through the target's
+ * projection, snapped by snapRect into a ts-reference dump, which must validate and pass (a) against Chrome at that DPR and (d) against the engine.
  */
-export function referenceProof(targets: readonly TargetConfig[]): { readonly target: NativeTarget; readonly rows: readonly ReferenceRow[] }[] {
+export function referenceProof(targets: readonly TargetConfig[], all: ReturnType<typeof layoutCases> = layoutCases()): { readonly target: NativeTarget; readonly rows: readonly ReferenceRow[] }[] {
   const m = measurerFor(REFERENCE_PLATFORM);
   if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
-  const compiled = new Map<string, Compiled<'ios' | 'web'>>();
-  const compiledFor = (spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'web'> => {
-    const key = `${spec.id} ${direction}`;
-    let c = compiled.get(key);
-    if (c === undefined) {
-      c = compileFixture(spec, NO_FAULTS, 'enforce', direction).compiled;
-      compiled.set(key, c);
-    }
-    return c;
-  };
-  const all = layoutCases();
   return targets.map((t) => ({
     target: t.target,
     rows: t.dprs.map((dpr): ReferenceRow => {
@@ -361,7 +349,7 @@ export function referenceProof(targets: readonly TargetConfig[]): { readonly tar
       for (const f of all) {
         for (const c of f.cases) {
           cases++;
-          const comp = compiledFor(f.spec, c.environment.direction);
+          const comp = enforcedCompile(f.spec, c.environment.direction);
           const env = atDpr(c.environment, dpr);
           const p = t.projection(comp, env, c.assignment);
           if (p.kind === 'blocked') {
@@ -447,6 +435,9 @@ export type DeviceLaneRun = {
 export type DeviceRun = {
   readonly vectors: (HostRun & { readonly device: string }) | null;
   readonly sets: readonly DeviceSet[];
+  /** SELD-R1b: the case scripts' sets (device-states) and the hit records' sets (device-hit), one per device; absent before them. */
+  readonly states?: readonly DeviceSet[];
+  readonly hits?: readonly DeviceSet[];
   readonly trust: readonly { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] }[];
   /** A tooling fault that stopped the run (a device that failed to boot twice, a device that cannot hold the root). */
   readonly blocked: string | null;
@@ -508,17 +499,17 @@ export function trustCoverageProblems(dprs: readonly number[], trust: DeviceRun[
   return out;
 }
 
-function deviceLaneRecord(l: LaneConfig, r: DeviceRun): LaneRecord {
-  const lane = l.lane as (typeof DEVICE_CHECK_LANES)[number];
-  const failures = laneFailures(r.sets, lane);
+function deviceLaneRecord(l: LaneConfig, r: DeviceRun, runSets: readonly DeviceSet[] = r.sets): LaneRecord {
+  const lane = l.lane as DeviceLaneId;
+  const failures = laneFailures(runSets, lane);
   const problems: string[] = [];
   for (const s of l.sets) {
-    const got = r.sets.filter((x) => x.dpr === s.dpr);
+    const got = runSets.filter((x) => x.dpr === s.dpr);
     if (got.length === 0) problems.push(`DPR ${s.dpr} was not run`);
     else if (got.length > 1) problems.push(`DPR ${s.dpr} was run ${got.length} times (${got.map((x) => x.device.name).join(', ')})`);
     else if ((got[0] as DeviceSet).dumps !== s.ids.length) problems.push(`DPR ${s.dpr}: ${(got[0] as DeviceSet).dumps}/${s.ids.length} dumps`);
   }
-  for (const x of r.sets) if (!l.sets.some((s) => s.dpr === x.dpr)) problems.push(`DPR ${x.dpr} (${x.device.name}) is not a declared DPR of the lane`);
+  for (const x of runSets) if (!l.sets.some((s) => s.dpr === x.dpr)) problems.push(`DPR ${x.dpr} (${x.device.name}) is not a declared DPR of the lane`);
   const trust = lane === 'device-pixels' ? r.trust.map((t) => ({ device: t.device, dpr: t.dpr, cases: t.rows.length, points: t.rows.reduce((n, x) => n + x.points, 0), mismatches: t.rows.reduce((n, x) => n + x.mismatches.length, 0) })) : null;
   if (trust !== null) {
     for (const t of trust) if (t.mismatches > 0 || t.points === 0) problems.push(`capture trust on ${t.device}: ${t.mismatches} mismatches in ${t.points} points`);
@@ -526,8 +517,8 @@ function deviceLaneRecord(l: LaneConfig, r: DeviceRun): LaneRecord {
   }
   if (failures.length > 0) problems.push(`${failures.length} failures (${Object.entries(failuresByKind(failures)).map(([k, n]) => `${k} ${n}`).join(', ')})`);
   if (r.blocked !== null) problems.unshift(r.blocked);
-  const state: LaneState = r.blocked !== null && r.sets.length === 0 ? 'blocked (owner tooling)' : problems.length === 0 ? 'pass' : 'fail';
-  const sets = r.sets.map((s): DeviceSetRecord => {
+  const state: LaneState = r.blocked !== null && runSets.length === 0 ? 'blocked (owner tooling)' : problems.length === 0 ? 'pass' : 'fail';
+  const sets = runSets.map((s): DeviceSetRecord => {
     const mine = s.failures.filter((f) => f.lane === lane);
     return { dpr: s.dpr, device: s.device, cases: s.cases, dumps: s.dumps, compared: s.compared, dumpsSha256: s.dumpsSha256, failures: mine.length, failuresByKind: failuresByKind(mine) };
   });
@@ -570,6 +561,8 @@ function lanesFileOf(targets: readonly TargetConfig[], problems: readonly string
         }
         const d = device.get(t.target);
         if (d !== undefined) {
+          if (l.lane === STATE_LANE) return deviceLaneRecord(l, d, d.states ?? []);
+          if (l.lane === HIT_LANE) return deviceLaneRecord(l, d, d.hits ?? []);
           if (l.lane !== 'layout-vectors-device') return deviceLaneRecord(l, d);
           if (d.vectors === null) return laneRecord(l, d.blocked === null ? 'not run' : 'blocked (owner tooling)', d.blocked ?? DEVICE_NOT_RUN, null);
           return laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests }, null, d.evidence);

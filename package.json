@@ -25,6 +25,9 @@
     "build": "node scripts/build-dist.ts",
     "pr:review": "node scripts/pr-review.ts",
     "train": "node scripts/merge-train.ts",
+    "land": "node scripts/land.ts",
+    "land:review-lookup": "node --conditions=dragon-internal scripts/land-review-lookup.ts",
+    "evidence:stamp": "node --conditions=dragon-internal scripts/evidence-stamp.ts",
     "layout:subset": "node packages/translate/src/cli/subset.ts",
     "linebreak:gen": "node scripts/gen-linebreak-data.ts",
     "notices:gen": "node scripts/gen-third-party-notices.ts",
@@ -54,6 +57,10 @@
     "native:gallery": "node --conditions=dragon-internal packages/parity/src/cli/gallery.ts",
     "rt:oracle": "node --conditions=dragon-internal scripts/capture-rt-oracle.ts",
     "tw:sweep": "node --conditions=dragon-internal packages/tailwind-sweep/src/cli/sweep.ts",
+    "parity:hit-capture": "node --conditions=dragon-internal packages/parity/src/cli/hit-capture.ts",
+    "parity:hit-report": "node --conditions=dragon-internal packages/parity/src/cli/hit-report.ts",
+    "parity:anim-capture": "node --conditions=dragon-internal packages/parity/src/cli/anim-capture.ts",
+    "parity:anim-report": "node --conditions=dragon-internal packages/parity/src/cli/anim-report.ts",
     "parity:quads-capture": "node --conditions=dragon-internal packages/parity/src/cli/quads-capture.ts"
   },
   "devDependencies": {

@@ -85,14 +85,22 @@ import {
   zoomFontSize,
   zoomViewportPx,
 } from '../../layout/src/units.ts';
+import type { AnimationEntry, AnimationState, KeyframesRule } from '../../layout/src/rt-animations.ts';
+import { runAnimationScript } from '../../layout/src/rt-animations.ts';
 import type { EasingSpec, RtFaults, StepPosition } from '../../layout/src/rt-easing.ts';
-import { cubicBezier, easingFromSpec, solveBezier } from '../../layout/src/rt-easing.ts';
+import { cubicBezier, easingFromSpec, LINEAR, solveBezier } from '../../layout/src/rt-easing.ts';
 import type { TransformOrigin } from '../../layout/src/paint-transform.ts';
 import { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from '../../layout/src/paint-transform.ts';
-import type { AnimatedValue, LegacyColor, LengthValue, Matrix2D, TransformFn, TransformOp, Trig } from '../../layout/src/rt-interpolate.ts';
+import type { AnimatedValue, LegacyColor, LengthValue, Matrix2D, TransformFn, TransformOp, Trig, ValueRange } from '../../layout/src/rt-interpolate.ts';
 import { interpolateValue, serializeValue } from '../../layout/src/rt-interpolate.ts';
-import type { EffectTimingSpec, FillMode, PlaybackDirection } from '../../layout/src/rt-timing.ts';
-import { computeTiming, currentTimeAt, seekPaused } from '../../layout/src/rt-timing.ts';
+import type { RuleKeyframe } from '../../layout/src/rt-keyframes.ts';
+import { groupFromRule, sampleKeyframeEffect } from '../../layout/src/rt-keyframes.ts';
+import type { EffectTimingSpec, FillMode, PlaybackDirection, SecondsTiming } from '../../layout/src/rt-timing.ts';
+import { advanceHeld, computeSecondsTiming, computeTiming, currentTimeAt, HELD_ZERO, seekPaused } from '../../layout/src/rt-timing.ts';
+import type { ScriptStep, TransitionListing, TransitionState } from '../../layout/src/rt-transition.ts';
+import { runTransitionScript } from '../../layout/src/rt-transition.ts';
+import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit.ts';
+import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
@@ -731,6 +739,7 @@ const FAULT_KEYS: readonly string[] = [
   'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled', 'lhUnsnapped',
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
   'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak',
+  'orderHalfEven', 'orderUnclamped',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -771,6 +780,8 @@ function decodeFaults(v: JsonValue): EngineFaults {
     fitWithoutEpsilon: b('fitWithoutEpsilon'),
     breakAfterSolidus: b('breakAfterSolidus'),
     noHyphenDigitBreak: b('noHyphenDigitBreak'),
+    orderHalfEven: b('orderHalfEven'),
+    orderUnclamped: b('orderUnclamped'),
   };
 }
 
@@ -1165,6 +1176,18 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
       return rtTimingResult(rtOneIteration(rtEasing(item(a, 1, '$'), '$[1]')), rtFinite(a, 2, '$'), 0);
     case 'rt-interp':
       return rtInterpResult(a);
+    // ANIM-b (T065): held-time steps, keyframe samples, transition scripts and animation scripts.
+    case 'rt-advance':
+      return rtAdvanceResult(a);
+    case 'rt-keyframes':
+      return rtKeyframesResult(a);
+    case 'rt-transitions':
+      return rtTransitionsResult(a);
+    case 'rt-animations':
+      return rtAnimationsResult(a);
+    // hit suite (SELD-R1b, T047 RT-9): the hit table, derived grid and answers of a layout vector's input.
+    case 'rt-hit':
+      return rtHitResult(a);
     default:
       return fail(`unknown operation ${op}`);
   }
@@ -1199,6 +1222,13 @@ const RT_NO_FAULTS: RtFaults = {
   rotateViaMatrix: false,
   colorUnpremultiplied: false,
   holdTimeLost: false,
+  heldTimeShortcut: false,
+  noReversalShortening: false,
+  perKeyframeEasingIgnored: false,
+  nameChangeKeepsAnimation: false,
+  pauseLosesPhase: false,
+  pauseClockRuns: false,
+  nonNegativeUnclamped: false,
 };
 
 /**
@@ -1416,4 +1446,174 @@ function rtInterpResult(a: readonly JsonValue[]): string {
   const local = keyframe.kind === 'cubic-bezier' ? solveBezier(cubicBezier(keyframe.x1, keyframe.y1, keyframe.x2, keyframe.y2), p, RT_NO_FAULTS) : p;
   const v = interpolateValue(from, to, local, RT_NO_FAULTS);
   return `[${rtBits(t.progress)},${q(v.refused ? 'refused' : serializeValue(v.value, rtFinite(a, 6, '$'), rtFinite(a, 7, '$'), RT_TRIG))}]`;
+}
+
+// ---------------------------------------------------------------- rt suite, ANIM-b (T065)
+
+function rtRange(v: JsonValue, path: string): ValueRange {
+  return lit(v, ['all', 'non-negative'], path) === 'all' ? 'all' : 'non-negative';
+}
+
+/** A seconds timing [delay, duration, iterations, direction, fill, easing], numbers as bits. */
+function rtSeconds(v: JsonValue, path: string): SecondsTiming {
+  const a = arr(v, path);
+  if (a.length !== 6) return fail(`${path}: expected [delay, duration, iterations, direction, fill, easing]`);
+  return { delay: rtFinite(a, 0, path), duration: rtFinite(a, 1, path), iterations: rtIterations(a, 2, path), direction: rtDirection(item(a, 3, path), `${path}[3]`), fill: rtFill(item(a, 4, path), `${path}[4]`), easing: easingFromSpec(rtEasing(item(a, 5, path), `${path}[5]`)) };
+}
+
+/** The value a block that does not set the property carries; groupFromRule never reads it. */
+const RT_UNSET: AnimatedValue = { kind: 'opacity', number: 0, length: { kind: 'px', px: 0, percent: 0 }, color: { r: 0, g: 0, b: 0, alpha: 0 }, ops: [] };
+
+/** An @keyframes rule's blocks [[offset, easing or null, value or null], ...]. */
+function rtRule(v: JsonValue, path: string): RuleKeyframe[] {
+  const out: RuleKeyframe[] = [];
+  arr(v, path).forEach((b, i) => {
+    const p = `${path}[${i}]`;
+    const k = arr(b, p);
+    if (k.length !== 3) fail(`${p}: expected [offset, easing, value]`);
+    const e = item(k, 1, p);
+    const value = item(k, 2, p);
+    out.push({ offset: rtFinite(k, 0, p), hasEasing: e.kind !== 'null', easing: e.kind === 'null' ? LINEAR : easingFromSpec(rtEasing(e, `${p}[1]`)), sets: value.kind !== 'null', value: value.kind === 'null' ? RT_UNSET : rtValue(value, `${p}[2]`) });
+  });
+  return out;
+}
+
+/** Script steps [['s', state] or ['a', deltaMs], ...]. */
+function rtSteps(v: JsonValue, path: string): ScriptStep[] {
+  const out: ScriptStep[] = [];
+  arr(v, path).forEach((s, i) => {
+    const p = `${path}[${i}]`;
+    const k = arr(s, p);
+    if (k.length !== 2) fail(`${p}: expected [kind, number]`);
+    const n = rtFinite(k, 1, p);
+    if (lit(item(k, 0, p), ['s', 'a'], p) === 's') out.push({ kind: 'state', state: n, deltaMs: 0 });
+    else out.push({ kind: 'advance', state: 0, deltaMs: n });
+  });
+  return out;
+}
+
+function rtShow(v: AnimatedValue, a: readonly JsonValue[], at: number): string {
+  return serializeValue(v, rtFinite(a, at, '$'), rtFinite(a, at + 1, '$'), RT_TRIG);
+}
+
+/** Held-time steps: [op, [deltaMs, ...]] -> the current time in ms after each step. */
+function rtAdvanceResult(a: readonly JsonValue[]): string {
+  if (a.length !== 2) return fail('rt-advance: expected [op, deltas]');
+  const deltas = arr(item(a, 1, '$'), '$[1]');
+  let held = HELD_ZERO;
+  let out = '';
+  for (let i = 0; i < deltas.length; i++) {
+    held = advanceHeld(held, rtFinite(deltas, i, '$[1]'), RT_NO_FAULTS);
+    out += `${i > 0 ? ',' : ''}${h(held.seconds * 1000)}`;
+  }
+  return `[${out}]`;
+}
+
+/** A keyframe sample: [op, range, underlying, rule, timing, timeMs, boxWidth, boxHeight] -> [progress, value]. */
+function rtKeyframesResult(a: readonly JsonValue[]): string {
+  if (a.length !== 8) return fail('rt-keyframes: expected [op, range, underlying, rule, timing, timeMs, boxWidth, boxHeight]');
+  const range = rtRange(item(a, 1, '$'), '$[1]');
+  const underlying = rtValue(item(a, 2, '$'), '$[2]');
+  const rule = rtRule(item(a, 3, '$'), '$[3]');
+  const timing = rtSeconds(item(a, 4, '$'), '$[4]');
+  const seconds = rtFinite(a, 5, '$') / 1000;
+  const t = computeSecondsTiming({ delay: timing.delay, duration: timing.duration, iterations: timing.iterations, direction: timing.direction, fill: timing.fill, easing: LINEAR }, seconds, RT_NO_FAULTS);
+  const v = sampleKeyframeEffect(timing, seconds, groupFromRule(rule, timing.easing), underlying, range, RT_NO_FAULTS);
+  const value = v === null ? rtShow(underlying, a, 6) : v.refused ? 'refused' : rtShow(v.value, a, 6);
+  return `[${rtBits(t.progress)},${q(value)}]`;
+}
+
+/** A transition script: [op, range, states [[value, [mode, delay, duration, easing]], ...], steps, boxWidth, boxHeight]. */
+function rtTransitionsResult(a: readonly JsonValue[]): string {
+  if (a.length !== 6) return fail('rt-transitions: expected [op, range, states, steps, boxWidth, boxHeight]');
+  const states: TransitionState[] = [];
+  arr(item(a, 2, '$'), '$[2]').forEach((s, i) => {
+    const p = `$[2][${i}]`;
+    const k = arr(s, p);
+    if (k.length !== 2) fail(`${p}: expected [value, listing]`);
+    const l = arr(item(k, 1, p), `${p}[1]`);
+    if (l.length !== 4) fail(`${p}[1]: expected [mode, delay, duration, easing]`);
+    const delay = rtFinite(l, 1, p);
+    const duration = rtFinite(l, 2, p);
+    const easing = easingFromSpec(rtEasing(item(l, 3, p), `${p}[1][3]`));
+    const mode = lit(item(l, 0, p), ['listed', 'unlisted', 'initial'], p);
+    let listing: TransitionListing = { mode: 'initial', delay, duration, easing };
+    if (mode === 'listed') listing = { mode: 'listed', delay, duration, easing };
+    else if (mode === 'unlisted') listing = { mode: 'unlisted', delay, duration, easing };
+    states.push({ value: rtValue(item(k, 0, p), `${p}[0]`), listing });
+  });
+  let out = '';
+  runTransitionScript(states, rtRange(item(a, 1, '$'), '$[1]'), rtSteps(item(a, 3, '$'), '$[3]'), RT_NO_FAULTS).forEach((r, i) => {
+    out += `${i > 0 ? ',' : ''}[${q(rtShow(r.value, a, 4))},${r.durationMs === null ? 'null' : h(r.durationMs)}]`;
+  });
+  return `[${out}]`;
+}
+
+/** An animation script: [op, range, rules [[name, rule], ...], states [[base, [[name, hasKeyframes, paused, timing], ...]], ...], steps, boxWidth, boxHeight]. */
+function rtAnimationsResult(a: readonly JsonValue[]): string {
+  if (a.length !== 7) return fail('rt-animations: expected [op, range, rules, states, steps, boxWidth, boxHeight]');
+  const rules: KeyframesRule[] = [];
+  arr(item(a, 2, '$'), '$[2]').forEach((r, i) => {
+    const p = `$[2][${i}]`;
+    const k = arr(r, p);
+    if (k.length !== 2) fail(`${p}: expected [name, rule]`);
+    rules.push({ name: str(item(k, 0, p), p), keyframes: rtRule(item(k, 1, p), `${p}[1]`) });
+  });
+  const states: AnimationState[] = [];
+  arr(item(a, 3, '$'), '$[3]').forEach((s, i) => {
+    const p = `$[3][${i}]`;
+    const k = arr(s, p);
+    if (k.length !== 2) fail(`${p}: expected [base, entries]`);
+    const entries: AnimationEntry[] = [];
+    arr(item(k, 1, p), `${p}[1]`).forEach((e, j) => {
+      const q2 = `${p}[1][${j}]`;
+      const x = arr(e, q2);
+      if (x.length !== 4) fail(`${q2}: expected [name, hasKeyframes, paused, timing]`);
+      entries.push({ name: str(item(x, 0, q2), q2), hasKeyframes: bool(item(x, 1, q2), q2), paused: bool(item(x, 2, q2), q2), timing: rtSeconds(item(x, 3, q2), `${q2}[3]`) });
+    });
+    states.push({ base: rtValue(item(k, 0, p), `${p}[0]`), entries });
+  });
+  let out = '';
+  runAnimationScript(states, rules, rtRange(item(a, 1, '$'), '$[1]'), rtSteps(item(a, 4, '$'), '$[4]'), RT_NO_FAULTS).forEach((r, i) => {
+    let names = '';
+    let times = '';
+    let plays = '';
+    r.names.forEach((n, j) => {
+      names += `${j > 0 ? ',' : ''}${q(n)}`;
+    });
+    r.currentTimesMs.forEach((t, j) => {
+      times += `${j > 0 ? ',' : ''}${h(t)}`;
+    });
+    r.playStates.forEach((ps, j) => {
+      plays += `${j > 0 ? ',' : ''}${q(ps)}`;
+    });
+    out += `${i > 0 ? ',' : ''}[[${names}],[${times}],[${plays}],${q(rtShow(r.value, a, 5))}]`;
+  });
+  return `[${out}]`;
+}
+
+// ---------------------------------------------------------------- hit suite (SELD-R1b, T047 RT-9)
+
+const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false };
+const HIT_CLEAN: HitFaults = { ignorePointerEventsNone: false, reversedOrder: false };
+
+/** A hit read: [op, platform, input, facts] -> the run-length encoded answers at every point of the input's derived grid. */
+function rtHitResult(a: readonly JsonValue[]): string {
+  if (a.length !== 4) return fail('rt-hit: expected [op, platform, input, facts]');
+  const platform = str(item(a, 1, '$'), '$[1]');
+  const input = decodeInput(item(a, 2, '$'));
+  const facts = new Map<string, HitFact>();
+  arr(item(a, 3, '$'), '$[3]').forEach((f, i) => {
+    const path = `$[3][${i.toString(16)}]`;
+    const g = arr(f, path);
+    if (g.length !== 4) return fail(`${path}: expected [id, pointerEvents, inherited, activation]`);
+    const pe = str(item(g, 1, path), path);
+    if (pe !== 'auto' && pe !== 'none') return fail(`${path}: pointer-events ${pe} is not auto or none`);
+    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path) });
+  });
+  const m = measurerFor(platform);
+  if (m.kind !== 'ok') return fail(`rt-hit: no measurer for ${platform}`);
+  const t = hitTableOf(input, m.measurer, facts, HIT_TABLE_CLEAN);
+  const zoom = input.devicePixelRatio * 64;
+  return q(hitRuns(t, hitGrid(t, input.viewport.width * zoom, input.viewport.height * zoom), HIT_CLEAN));
 }
