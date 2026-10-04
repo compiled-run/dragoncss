@@ -124,9 +124,9 @@ jobs:
           yes | "$sdk" --licenses >/dev/null || true
           "$sdk" --install emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64' >/dev/null
           "$sdk" --list_installed | grep -E 'emulator|system-images|build-tools;36|platforms;android-36'
-          env | grep -i '^android' | sort
-          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n probe -k 'system-images;android-36;default;x86_64' -d pixel_7
-          find / -name 'probe.avd' -o -name 'probe.ini' 2>/dev/null | grep -v proc || true
+          # This avdmanager writes AVDs under ~/.config/.android whatever ANDROID_AVD_HOME says; one directory serves both.
+          mkdir -p "$HOME/.android/avd" "$HOME/.config"
+          ln -sfn "$HOME/.android" "$HOME/.config/.android"
       - name: Run ${{ matrix.device }}
         env:
           DEVICE: ${{ matrix.device }}
