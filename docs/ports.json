@@ -961,10 +961,12 @@
       "fileSha256": "dd5e966d32e824816c0c3467aedadf2c000e87b45819b639cd9613a5d1dad35c",
       "headerSha256": "e0e2a0ae9decc58db06d38b191654021bb1aa376f267038c0c3095e572dc0b0f",
       "ranges": [
-        { "lines": "2568-2585", "symbol": null, "source": "cited" }
+        { "lines": "2568-2585", "symbol": null, "source": "cited" },
+        { "lines": "1506-1568", "symbol": null, "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/units.ts", "symbol": "lineHeightFromNumber", "use": "reference" }
+        { "file": "packages/layout/src/units.ts", "symbol": "lineHeightFromNumber", "use": "reference" },
+        { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -1409,11 +1411,13 @@
       "fileSha256": "336e1c971a0dae24c0e08c9dc634a38a53957adc7364677986e5dce81907377d",
       "headerSha256": "ec77fd6e6c5b953711352cee8d9153507376057bdd4801fef71c32b78071c8b9",
       "ranges": [
-        { "lines": "96-120", "symbol": "ValueForLength", "source": "located" }
+        { "lines": "96-120", "symbol": "ValueForLength", "source": "located" },
+        { "lines": "38-64", "symbol": null, "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/layout/src/units.ts", "symbol": "percentOf", "use": "reference" },
-        { "file": "packages/layout/src/units.ts", "symbol": "pixelsAndPercentPlainOrder", "use": "reference" }
+        { "file": "packages/layout/src/units.ts", "symbol": "pixelsAndPercentPlainOrder", "use": "reference" },
+        { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -1998,6 +2002,22 @@
       "dragon": [
         { "file": "packages/translate/harness/harness.ts", "symbol": "rtSin", "use": "port" },
         { "file": "packages/translate/harness/harness.ts", "symbol": "rtCos", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "ui/gfx/geometry/transform.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 The Chromium Authors",
+      "fileSha256": "eeba0f6eab6f73cd962281fcc932c75413a0d15a8a3808309904974b956a9876",
+      "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
+      "ranges": [
+        { "lines": "223-229", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-interpolate.ts", "symbol": "translateMatrix", "use": "port" },
+        { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" }
       ]
     }
   ],
