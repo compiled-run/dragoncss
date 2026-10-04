@@ -7,7 +7,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import type { CompilerFaults, Environment, FrontEndResult } from 'dragon';
-import { createProjectWith, NO_FAULTS, nativeLayoutProjection, resolvedTextColors } from 'dragon';
+import { createProjectWith, engineLayoutProjection, NO_FAULTS, resolvedTextColors } from 'dragon';
 import type { LayoutBox, InlineChild, TextFont } from '@dragon/layout';
 import { textDecoration as td, zoomInput, NO_ENGINE_FAULTS } from '@dragon/layout';
 import type { AppliedDecoration, DecorationAnalysisFaults } from '../../dragon/src/analysis/text-decoration.ts';
@@ -114,7 +114,8 @@ function prepare(f: FontFixture, c: ParityCase, dpr: number): Prepared {
   if (hit !== undefined) return hit;
   const decorated = compileHtml(f, c.authoredHtml, c.environment.direction);
   const stripped = compileHtml(f, strippedHtml(c.authoredHtml), c.environment.direction);
-  const projection = nativeLayoutProjection(stripped, atDpr(c.environment, dpr), c.assignment);
+  // The engine lane's projection: native refuses real faces until TXT1a-2 phase R, and the engine lowers them in engine mode.
+  const projection = engineLayoutProjection(stripped, atDpr(c.environment, dpr), c.assignment);
   if (projection.kind !== 'ready') throw new Error(`${key}: the stripped copy has no layout projection: ${projection.reason}`);
   const m = referenceShapedMeasurer();
   const texts = engineTextLines(projection.input, m);
