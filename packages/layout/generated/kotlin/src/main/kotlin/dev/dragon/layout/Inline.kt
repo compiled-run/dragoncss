@@ -339,12 +339,12 @@ fun inline_contentIndex(items: JsArray<Inline_Item>, boxParent: JsArray<Double>,
   // ts: packages/layout/src/inline.ts:279
   run {
     var i: Double = 0.0
-    loop4@ while ((i < jsLength(items))) {
-      loop4_body@ do {
+    loop5@ while ((i < jsLength(items))) {
+      loop5_body@ do {
         val it: Inline_Item = jsUnwrap(jsAt(items, i))
         // ts: packages/layout/src/inline.ts:281
         if (((!inline_isContent(it)) || (!inline_within(boxParent, it.box, b)))) {
-          break@loop4_body
+          break@loop5_body
         }
         // ts: packages/layout/src/inline.ts:282
         if ((!last)) {
@@ -547,27 +547,27 @@ fun inline_ahemOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boolean
   // ts: packages/layout/src/inline.ts:403
   run {
     var i: Double = 1.0
-    loop5@ while ((i < jsLength(cps))) {
-      loop5_body@ do {
+    loop6@ while ((i < jsLength(cps))) {
+      loop6_body@ do {
         val cur: Double = jsUnwrap(jsAt(cps, i))
         val last: Double = jsUnwrap(jsAt(cps, (i - 1.0)))
         // ts: packages/layout/src/inline.ts:407
         if ((cur == inline_SPACE)) {
-          break@loop5_body
+          break@loop6_body
         }
         // ts: packages/layout/src/inline.ts:408
         if ((last == inline_SPACE)) {
           jsPush(out, i)
-          break@loop5_body
+          break@loop6_body
         }
         // ts: packages/layout/src/inline.ts:413
         if ((cur == inline_ZWSP)) {
-          break@loop5_body
+          break@loop6_body
         }
         // ts: packages/layout/src/inline.ts:414
         if ((last == inline_ZWSP)) {
           jsPush(out, i)
-          break@loop5_body
+          break@loop6_body
         }
         var breaks: Boolean = false
         // ts: packages/layout/src/inline.ts:420
@@ -901,12 +901,12 @@ fun inline_placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: Double):
       // ts: packages/layout/src/inline.ts:647
       run {
         var j: Double = line.start
-        loop2@ while ((j < line.end)) {
-          loop2_body@ do {
+        loop3@ while ((j < line.end)) {
+          loop3_body@ do {
             val it: Inline_Item = jsUnwrap(jsAt(ifc.items, j))
             // ts: packages/layout/src/inline.ts:649
             if (!jsStrEq(it.kind, "br")) {
-              break@loop2_body
+              break@loop3_body
             }
             val p: BoxMetrics = (if ((it.box < 0.0)) ifc.strut else jsUnwrap(jsAt(ifc.boxMetrics, it.box)))
             jsPush(breaks, it.br)
@@ -1072,11 +1072,11 @@ fun inline_collectFragments(ifc: Ifc, lines: JsArray<PlacedLine>, origin: Point,
         // ts: packages/layout/src/inline.ts:737
         run {
           var j: Double = 0.0
-          loop3@ while ((j < jsLength(line.breaks))) {
-            loop3_body@ do {
+          loop4@ while ((j < jsLength(line.breaks))) {
+            loop4_body@ do {
               // ts: packages/layout/src/inline.ts:738
               if ((jsUnwrap(jsAt(line.breaks, j)) != ri)) {
-                break@loop3_body
+                break@loop4_body
               }
               val r: Rect = jsUnwrap(jsAt(line.breakRects, j))
               out.placed.set(br.id, Placed(Frag(br.id, r.width, r.height, null, jsArrayOf<Placed>(), jsArrayOf<OutOfFlow>()), units_add(origin.x, r.x), units_add(origin.y, r.y)))
