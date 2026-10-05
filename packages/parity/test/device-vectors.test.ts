@@ -44,6 +44,8 @@ describe.each(['ios', 'android'] as const)('the %s device vectors verdict', (nam
     expect(judgeDeviceVectors(t, shortRt, digests, host)).toMatchObject({ state: 'fail', reason: expect.stringContaining('p1/rt 55361/55362, declared 55362') });
     // SELD-R1b: the hit suite is declared with one case per layout vector at every DPR (the device-hit proof), and a short run fails.
     expect(declared.find((d) => d.corpus === 'p1' && d.suite === 'hit')?.cases).toBe(2060);
+    // ANIM-b1 3b: the animator suite is declared with one case per frame case.
+    expect(declared.find((d) => d.corpus === 'p1' && d.suite === 'animator')?.cases).toBe(18);
     const shortHit = whole.map((s) => (s.corpus === 'p1' && s.name === 'hit' ? { ...s, pass: s.pass - 1 } : s));
     expect(judgeDeviceVectors(t, shortHit, digests, host)).toMatchObject({ state: 'fail', reason: expect.stringContaining('p1/hit 2059/2060, declared 2060') });
     const extra: DeviceSuiteResult = { corpus: 'extended', name: 'undeclared-suite', total: 5, pass: 5, cause: null, mismatches: [] };

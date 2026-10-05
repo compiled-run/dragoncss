@@ -16,7 +16,8 @@ import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Assignment, Origin, Target } from './types.ts';
 
-export * from './index.ts';
+// The public API without createProject, whose committed lanes verdict (create-project.ts) the harness passes itself.
+export * from './api.ts';
 export { createProjectWith, COMPILER_VERSION } from './project.ts';
 export type { InternalOptions } from './project.ts';
 export type { CompilerFaults } from './faults.ts';
@@ -301,7 +302,7 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
 // T065 ANIM-b1: the animation tables of a compile and the runtime animator's TypeScript reference.
 export type { AnimationAnalysis, AnimValue } from './analysis/animations.ts';
 export type { AnimProgram, SlotListing, TransitionSlot } from './lower/anim-program.ts';
-export { ANIM_PROGRAM_VERSION } from './lower/anim-program.ts';
+export { ANIM_PROGRAM_VERSION, animTablesOf } from './lower/anim-program.ts';
 import { lowerAnimProgram } from './lower/anim-program.ts';
 export { lowerAnimProgram };
 // T065: the TypeScript reference animator (packages/parity/src/anim-cases.ts) reads these.

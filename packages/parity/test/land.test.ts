@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -6,6 +6,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   backoffMs,
   baseAction,
+  type BatchOps,
+  bisectPrefixes,
   ciState,
   ciStep,
   claudeReviewGate,
@@ -14,7 +16,10 @@ import {
   findingsComment,
   floorRegressions,
   isFloorFile,
+  failingTestFiles,
   isQuiet,
+  ignoredFilesArgs,
+  ignoredToRemove,
   clearStaleQuiet,
   releaseQuiet,
   requestQuiet,
@@ -22,6 +27,20 @@ import {
   isTransient,
   isUnreviewed,
   LandFailure,
+  cleanUpAfterDriver,
+  clearsUnproved,
+  interruptedStatus,
+  lockState,
+  MERGES_LOG,
+  parseBatchSize,
+  parseLstart,
+  parseMerges,
+  parsePidFile,
+  parsePublishMark,
+  parseUnproved,
+  proveRestingMaster,
+  PUBLISH_MARK,
+  provedTree,
   parseLandArgs,
   parseQueue,
   parseReview,
@@ -32,6 +51,7 @@ import {
   retargetChildrenThenDelete,
   reviewerEnv,
   reviewVerdict,
+  runBatches,
   runQueue,
   runReviewer,
   splitPatch,
@@ -39,7 +59,7 @@ import {
   withRetry,
   worktreesOf,
 } from '../../../scripts/land-lib.ts';
-import { commitRegen, type Member, memberTip, mergeMember, predictPosition, tipProblem, treeMatches } from '../../../scripts/merge-train-lib.ts';
+import { commitRegen, type Member, memberTip, mergeMember, planPositions, predictPosition, tipProblem, treeMatches } from '../../../scripts/merge-train-lib.ts';
 import { parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
 import { type CheckRun, type Git, ignoreAt, regenOnlyProblems } from '../../../scripts/pr-review-vouch.ts';
 import { parseLanesForStamp, stampProblems } from '../../../scripts/evidence-stamp.ts';
@@ -186,11 +206,31 @@ describe('CI, base, worktree and quiet decisions', () => {
 
   it('waits for a quiet machine: no other heavy job and load under 20', () => {
     expect(isQuiet(0, 19.9)).toBe(true);
-    expect(isQuiet(1, 2)).toBe(false);
+    expect(isQuiet(1, 2)).toBe(true); // idle machine: a held slot doesn't keep it from being quiet
+    expect(isQuiet(1, 6)).toBe(false);
+    expect(isQuiet(2, 12)).toBe(false);
     expect(isQuiet(0, 20)).toBe(false);
   });
 
-  it('holds the quiet request while it waits, and drops it when the wait ends, quiet or not', () => {
+  it('reads the failing test files from a vitest log, and refuses a log with no summary', () => {
+    const log = [
+      ' \x1b[31mFAIL\x1b[39m ',
+      ' FAIL  packages/translate/test/translate.test.ts > differential corpus > is deterministic',
+      'Error: Test timed out in 120000ms.',
+      ' FAIL  packages/parity/test/lanes.test.ts > committed out/lanes.json > every device lane ran',
+      ' FAIL  packages/translate/test/translate.test.ts > subset > accepts',
+      ' FAIL  packages/parity/test/lanes-concurrent.test.ts [ packages/parity/test/lanes-concurrent.test.ts ]',
+      '',
+      ' Test Files  3 failed | 180 passed (183)',
+      '      Tests  4 failed | 4800 passed (4804)',
+    ].join('\n');
+    expect(failingTestFiles(log)).toEqual(['packages/parity/test/lanes-concurrent.test.ts', 'packages/parity/test/lanes.test.ts', 'packages/translate/test/translate.test.ts']);
+    expect(failingTestFiles('\x1b[1m Test Files \x1b[22m 1 passed (1)\n')).toEqual([]);
+    // Killed or crashed before the summary: no list to trust.
+    expect(failingTestFiles(' FAIL  packages/parity/test/lanes.test.ts > x\n')).toBeNull();
+  });
+
+  it('holds the quiet request while it waits, and drops it when the wait ends unless asked to hold it through the rerun', () => {
     const path = join(tempDir(), 'dragon-train-quiet');
     let clock = 0;
     const held: boolean[] = [];
@@ -212,6 +252,27 @@ describe('CI, base, worktree and quiet decisions', () => {
     clock = 0;
     expect(wait(Number.POSITIVE_INFINITY, 5000)).toBe(false);
     expect(clock).toBe(5000);
+    expect(existsSync(path)).toBe(false);
+    // With hold (the driver's rerun): a quiet result keeps the request held so nothing starts beside the rerun; the caller
+    // releases it. A failed wait still drops it.
+    const holding = (quietAt: number, ceilingMs: number) =>
+      waitForQuiet({
+        quiet: () => clock >= quietAt,
+        request: () => requestQuiet(path, 4242),
+        release: () => releaseQuiet(path, 4242),
+        sleep: (ms) => (clock += ms),
+        now: () => clock,
+        ceilingMs,
+        pollMs: 1000,
+        hold: true,
+      });
+    clock = 0;
+    expect(holding(2000, 10_000)).toBe(true);
+    expect(readFileSync(path, 'utf8')).toBe('4242');
+    releaseQuiet(path, 4242);
+    expect(existsSync(path)).toBe(false);
+    clock = 0;
+    expect(holding(Number.POSITIVE_INFINITY, 3000)).toBe(false);
     expect(existsSync(path)).toBe(false);
     // A failure while waiting drops it too.
     expect(() => wait(0, 5000, () => { throw new Error('readdir failed'); })).toThrow('readdir failed');
@@ -428,6 +489,675 @@ describe('the queue loop', () => {
     expect(s).toContain('FAILED #2 b2 at claude-review: 1 finding(s)');
     expect(s).toContain('1 PR(s) failed');
     expect(statusText({ queue: 'q', startedAt: 't0', now: 't1', running: e(3), outcomes: [], fatal: null, total: 3, done: false })).toContain('landing now: #3 b3');
+  });
+});
+
+describe('batched landing (runBatches with fakes)', () => {
+  const e = (pr: number): Entry => ({ branch: `b${pr}`, pr, clean: sha('a') });
+  type Pos = { head: string; prev: string; prs: number[] };
+  // A fake driver: master is the list of landed PRs; a position's tree is the PRs merged into it; `broken` PRs fail any proof
+  // of a tree that holds them, `conflicts` fail their build, and `reject`/`publishFail` fail admission or publishing.
+  const harness = (
+    o: { broken?: number[]; conflicts?: number[]; reject?: number[]; publishFail?: number[]; fatalAt?: number; merged?: number[]; masterRed?: boolean; fixedBy?: [number, number]; installFails?: string } = {},
+  ) => {
+    const master: number[] = [];
+    const trace: string[] = [];
+    const failures: string[] = [];
+    const mergedBefore = new Set(o.merged ?? []);
+    const name = (prs: number[]): string => (prs.length === 0 ? 'master' : `m+${prs.join('+')}`);
+    const heads = new Map<string, number[]>();
+    const ops: BatchOps<{ pr: number }, Pos> = {
+      admit: (x, earlier) => {
+        trace.push(`admit #${x.pr}${earlier.length ? ` after ${earlier.map((y) => `#${y.pr}`).join(' ')}` : ''}`);
+        if (mergedBefore.has(x.pr)) return { merged: 'merged as x' };
+        if (o.reject?.includes(x.pr)) throw new LandFailure('claude-review-before', `#${x.pr} has a Medium finding at its head`);
+        return { ticket: { pr: x.pr } };
+      },
+      base: () => {
+        const h = name(master);
+        heads.set(h, [...master]);
+        return h;
+      },
+      build: (prev, x, t, k) => {
+        trace.push(`build #${x.pr} at ${k} on ${prev}`);
+        if (t.pr !== x.pr) throw new Error('ticket mixed up');
+        if (o.conflicts?.includes(x.pr)) throw new LandFailure('merge', `merging b${x.pr} failed; conflicts in src/a.ts`);
+        const prs = [...heads.get(prev)!, x.pr];
+        const head = name(prs);
+        heads.set(head, prs);
+        return { head, prev, prs };
+      },
+      verify: (built) => {
+        trace.push(`verify ${built.map((b) => b.position.head).join(' ')}`);
+        built.forEach((b, i) => expect(b.position.prev).toBe(i === 0 ? name(master) : built[i - 1]!.position.head));
+      },
+      prove: (p) => {
+        trace.push(`prove ${p.head}`);
+        if (o.installFails === p.head) throw new LandFailure('install', 'pnpm install --frozen-lockfile exited 1: ECONNRESET');
+        if (o.masterRed) throw new LandFailure('test', `pnpm test on ${p.head} failed: t0.test.ts`);
+        const bad = p.prs.filter((n) => o.broken?.includes(n));
+        // `fixedBy` [a, b]: PR a breaks a test that PR b fixes, so only a tree with a and without b fails.
+        if (o.fixedBy && p.prs.includes(o.fixedBy[0]) && !p.prs.includes(o.fixedBy[1])) bad.push(o.fixedBy[0]);
+        if (bad.length > 0) throw new LandFailure('test', `pnpm test on ${p.head} failed: 2 files (t${bad.join(',t')}.test.ts)`);
+      },
+      proveMaster: (m) => {
+        trace.push(`prove master ${m}`);
+        if (o.masterRed) throw new LandFailure('test', `pnpm test on master failed: t0.test.ts`);
+      },
+      publish: (x, p) => {
+        trace.push(`publish #${x.pr}`);
+        if (o.fatalAt === x.pr) throw new Fatal(`#${x.pr} merged, but master differs`);
+        // The merge gate: master holds exactly the previous position.
+        expect(heads.get(p.prev)).toEqual(master);
+        if (o.publishFail?.includes(x.pr)) throw new LandFailure('ci', `#${x.pr} landing commit CI failed`);
+        master.push(x.pr);
+        return `merged at ${p.head}`;
+      },
+      onFail: (x, f) => failures.push(`#${x.pr} ${f.step}: ${f.message}`),
+      onOutcome: () => {},
+      log: () => {},
+    };
+    return { ops, master, trace, failures };
+  };
+  const results = (r: { outcomes: { entry: Entry; result: string; step?: string }[] }): string[] => r.outcomes.map((x) => `#${x.entry.pr} ${x.result}${x.step ? ` at ${x.step}` : ''}`);
+
+  it('proves a batch once and publishes each PR in order at its own position', () => {
+    const h = harness();
+    const r = runBatches([e(1), e(2), e(3), e(4)], 4, h.ops);
+    expect(results(r)).toEqual(['#1 landed', '#2 landed', '#3 landed', '#4 landed']);
+    expect(h.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+1+2+3+4']);
+    expect(h.trace.filter((t) => t.startsWith('build'))).toEqual(['build #1 at 1 on master', 'build #2 at 2 on m+1', 'build #3 at 3 on m+1+2', 'build #4 at 4 on m+1+2+3']);
+    expect(h.master).toEqual([1, 2, 3, 4]);
+    expect(r).toMatchObject({ fatal: null, exit: 0 });
+  });
+
+  it('splits a long queue into batches of the given size, each built on the master the one before left', () => {
+    const h = harness();
+    const r = runBatches([1, 2, 3, 4, 5].map(e), 2, h.ops);
+    expect(results(r).every((x) => x.endsWith('landed'))).toBe(true);
+    expect(h.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+1+2', 'prove m+1+2+3+4', 'prove m+1+2+3+4+5']);
+    expect(h.trace).toContain('build #3 at 1 on m+1+2');
+  });
+
+  it('bisects a failing batch: finds the culprit in log2(n) more proofs, lands the PRs before it and requeues the rest', () => {
+    const h = harness({ broken: [4] });
+    const r = runBatches([1, 2, 3, 4, 5].map(e), 5, h.ops);
+    // Top (5) fails; then positions 2 and 3 pass and 4 fails: 3 more proofs, ceil(log2 5).
+    expect(h.trace.filter((t) => t.startsWith('prove')).slice(0, 4)).toEqual(['prove m+1+2+3+4+5', 'prove m+1+2', 'prove m+1+2+3', 'prove m+1+2+3+4']);
+    expect(results(r)).toEqual(['#1 landed', '#2 landed', '#3 landed', '#4 failed at test', '#5 landed']);
+    // The culprit gets its own failing run (its position's), not the top's, and the bisect that found it.
+    expect(h.failures).toEqual([expect.stringMatching(/^#4 test: pnpm test on m\+1\+2\+3\+4 failed: 2 files \(t4\.test\.ts\)\n\nFound by bisecting the batch #1 #2 #3 #4 #5 \(4 proofs\): master with #1 #2 #3 passes, adding #4 fails\.$/)]);
+    // #5 is rebuilt on the new master without #4, and proved on its own tree.
+    expect(h.trace.slice(-4)).toEqual(['build #5 at 1 on m+1+2+3', 'verify m+1+2+3+5', 'prove m+1+2+3+5', 'publish #5']);
+    expect(h.master).toEqual([1, 2, 3, 5]);
+    expect(r.exit).toBe(1);
+  });
+
+  it('finds a culprit in the first position, and fails a batch of one with no bisect', () => {
+    const h = harness({ broken: [1] });
+    const r = runBatches([1, 2, 3].map(e), 3, h.ops);
+    expect(results(r)).toEqual(['#1 failed at test', '#2 landed', '#3 landed']);
+    expect(h.failures[0]).toMatch(/master passes, adding #1 fails/);
+    // Position 1 fails, so master is proved before #1 is blamed.
+    expect(h.trace.filter((t) => t.startsWith('prove')).slice(0, 3)).toEqual(['prove m+1+2+3', 'prove m+1', 'prove master master']);
+    const one = harness({ broken: [7] });
+    expect(results(runBatches([e(7)], 4, one.ops))).toEqual(['#7 failed at test']);
+    expect(one.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+7', 'prove master master']);
+    expect(one.failures).toEqual(['#7 test: pnpm test on m+7 failed: 2 files (t7.test.ts)']);
+  });
+
+  it('ejects a PR whose merge conflicts and builds the next one on the position before it', () => {
+    const h = harness({ conflicts: [2] });
+    const r = runBatches([1, 2, 3].map(e), 3, h.ops);
+    expect(results(r)).toEqual(['#2 failed at merge', '#1 landed', '#3 landed']);
+    expect(h.trace).toContain('build #3 at 2 on m+1');
+    expect(h.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+1+3']);
+  });
+
+  it('ejects a PR whose review is not clean for its head before any build, and fills the batch from the queue', () => {
+    const h = harness({ reject: [2], merged: [3] });
+    const r = runBatches([1, 2, 3, 4, 5].map(e), 2, h.ops);
+    expect(results(r).slice(0, 2)).toEqual(['#2 failed at claude-review-before', '#3 merged before']);
+    expect(h.trace.some((t) => t.startsWith('build #2'))).toBe(false);
+    expect(h.trace.filter((t) => t.startsWith('verify'))).toEqual(['verify m+1 m+1+4', 'verify m+1+4+5']);
+    // Admission sees the PRs admitted before it in the same batch (a child PR may be based on one of their branches).
+    expect(h.trace.filter((t) => t.startsWith('admit'))).toEqual(['admit #1', 'admit #2 after #1', 'admit #3 after #1', 'admit #4 after #1', 'admit #5']);
+    expect(h.failures).toEqual(['#2 claude-review-before: #2 has a Medium finding at its head']);
+  });
+
+  it('stops a batch at a failed publish and requeues every PR after it, the culprit too (its verdict assumed that prefix)', () => {
+    const h = harness({ publishFail: [2], broken: [4] });
+    const r = runBatches([1, 2, 3, 4].map(e), 4, h.ops);
+    expect(results(r)).toEqual(['#1 landed', '#2 failed at ci', '#3 landed', '#4 failed at test']);
+    // Never published on a master that lacks the previous position (the fake publish checks it), and #3 was rebuilt without #2.
+    expect(h.trace).toContain('build #3 at 1 on m+1');
+    expect(h.master).toEqual([1, 3]);
+  });
+
+  it('stops everything on a fatal error, recording it against the PR being handled', () => {
+    const h = harness({ fatalAt: 2 });
+    const r = runBatches([1, 2, 3].map(e), 3, h.ops);
+    expect(results(r)).toEqual(['#1 landed', '#2 failed at fatal']);
+    expect(r).toMatchObject({ fatal: '#2 merged, but master differs', exit: 1 });
+    expect(h.trace.at(-1)).toBe('publish #2');
+  });
+
+  it('stops with "master is red" when master itself fails, blaming no PR and writing no note', () => {
+    const h = harness({ masterRed: true });
+    const r = runBatches([1, 2, 3].map(e), 3, h.ops);
+    expect(r.fatal).toMatch(/^master is red: master master itself fails pnpm test, so no PR of the batch #1 #2 #3 is blamed:\npnpm test on master failed/);
+    expect(r.outcomes).toEqual([]);
+    expect(h.failures).toEqual([]);
+    expect(h.trace.some((t) => t.startsWith('publish'))).toBe(false);
+    expect(r.exit).toBe(1);
+  });
+
+  it('proves master\'s new tree when publishing stops part-way, and stops loudly when it fails', () => {
+    // #2 breaks a test that #3 fixes; the top passes, #1 and #2 merge, #3 fails to publish: master rests on an unproved tree.
+    const h = harness({ fixedBy: [2, 3], publishFail: [3] });
+    const r = runBatches([1, 2, 3].map(e), 3, h.ops);
+    expect(h.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+1+2+3', 'prove m+1+2']);
+    expect(results(r)).toEqual(['#1 landed', '#2 landed', '#3 failed at ci', '#2 failed at fatal']);
+    expect(h.failures.at(-1)).toMatch(/^#2 master-red: master now rests on #2's position m\+1\+2, which was not the batch's proven top, and it fails pnpm test\. The driver stopped\./);
+    expect(r.fatal).toMatch(/master now rests on #2's position/);
+    // A resting tree that passes lets the queue continue; one already proved (a bisect probe) is not proved again.
+    const ok = harness({ publishFail: [3] });
+    expect(results(runBatches([1, 2, 3, 4].map(e), 4, ok.ops))).toEqual(['#1 landed', '#2 landed', '#3 failed at ci', '#4 landed']);
+    expect(ok.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+1+2+3+4', 'prove m+1+2', 'prove m+1+2+4']);
+    const probed = harness({ broken: [4], publishFail: [3] });
+    runBatches([1, 2, 3, 4].map(e), 4, probed.ops);
+    expect(probed.trace.filter((t) => t.startsWith('prove')).slice(0, 3)).toEqual(['prove m+1+2+3+4', 'prove m+1+2', 'prove m+1+2+3']);
+    expect(probed.trace.slice(probed.trace.indexOf('publish #3') + 1, probed.trace.indexOf('publish #3') + 2)).toEqual(['admit #4']);
+  });
+
+  it('treats an error outside the test while proving as the driver\'s, never as a verdict on a prefix', () => {
+    const h = harness({ broken: [4], installFails: 'm+1+2' });
+    const r = runBatches([1, 2, 3, 4].map(e), 4, h.ops);
+    expect(r.fatal).toMatch(/^proving position 2 failed outside the test, at install, so it says nothing about the tree: pnpm install/);
+    expect(h.failures).toEqual([]);
+    const top = harness({ installFails: 'm+1+2' });
+    expect(runBatches([1, 2].map(e), 2, top.ops).fatal).toMatch(/proving #2's position \(the batch top\) failed outside the test, at install/);
+    expect(top.trace.some((t) => t.startsWith('publish'))).toBe(false);
+  });
+
+  it('stops on a master it cannot read, rather than building on nothing', () => {
+    const h = harness();
+    const r = runBatches([e(1)], 2, { ...h.ops, base: () => { throw new Error('git fetch: could not resolve host'); } });
+    expect(r.fatal).toMatch(/could not read master: git fetch/);
+  });
+
+  it('treats a chain that is not what it claims as fatal, before any proof', () => {
+    const h = harness();
+    const r = runBatches([1, 2].map(e), 2, { ...h.ops, verify: () => { throw new Error('position 2 is not the merge it was built as'); } });
+    expect(r.fatal).toMatch(/not the chain of positions it claims: position 2/);
+    expect(h.trace.some((t) => t.startsWith('prove') || t.startsWith('publish'))).toBe(false);
+  });
+
+  it('bisects in at most ceil(log2 n) proofs, whatever the culprit', () => {
+    for (let n = 1; n <= 8; n++) {
+      for (let c = 1; c <= n; c++) {
+        const seen: number[] = [];
+        const r = bisectPrefixes(n, new LandFailure('test', 'top'), (k) => {
+          seen.push(k);
+          if (k >= c) throw new LandFailure('test', `at ${k}`);
+        });
+        expect(r.culprit).toBe(c);
+        expect(r.failure.message).toBe(c === n ? 'top' : `at ${c}`);
+        expect(r.proofs).toBe(seen.length);
+        expect(r.proofs).toBeLessThanOrEqual(Math.ceil(Math.log2(n)));
+      }
+    }
+    expect(() => bisectPrefixes(4, new LandFailure('test', 'top'), () => { throw new Fatal('master moved'); })).toThrow(Fatal);
+  });
+
+  it('skips the master proof only when master has the tree of a commit this run proved', () => {
+    const trees = new Map([['p1', 'T1'], ['p2', 'T2'], ['p3', 'T2']]);
+    const sameAs = (tree: string) => (c: string): boolean => trees.get(c) === tree;
+    expect(provedTree(['p1', 'p2', 'p3'], sameAs('T2'))).toBe('p3');
+    expect(provedTree(['p1', 'p2'], sameAs('T1'))).toBe('p1');
+    expect(provedTree(['p1', 'p2'], sameAs('T9'))).toBeNull();
+    expect(provedTree([], sameAs('T1'))).toBeNull();
+  });
+
+  it('stops gracefully between batches when asked: the batch it is on lands, nothing new starts, no PR fails', () => {
+    const h = harness();
+    let asked = false;
+    const r = runBatches([1, 2, 3, 4, 5].map(e), 2, {
+      ...h.ops,
+      publish: (x, p, t) => {
+        const out = h.ops.publish(x, p, t);
+        if (x.pr === 1) asked = true; // asked mid-batch: #2, in the same batch, still lands
+        return out;
+      },
+      stopRequested: () => asked,
+    });
+    expect(results(r)).toEqual(['#1 landed', '#2 landed']);
+    expect(r.stopped.map((x) => x.pr)).toEqual([3, 4, 5]);
+    expect(r).toMatchObject({ fatal: null, exit: 0 });
+    expect(h.trace.some((t) => t.startsWith('admit #3'))).toBe(false);
+    const s = statusText({ queue: 'q', startedAt: 't0', now: 't1', running: null, outcomes: r.outcomes, fatal: null, total: 5, done: true, stopped: r.stopped });
+    expect(s).toMatch(/^land STOPPED ON REQUEST t1/);
+    expect(s).toContain('stop requested: not started #3 #4 #5 (no PR failed for it)');
+    // Requeued PRs (after a culprit) are not started either once a stop is asked.
+    const b = harness({ broken: [2] });
+    const rb = runBatches([1, 2, 3].map(e), 3, { ...b.ops, stopRequested: () => b.trace.includes('publish #1') });
+    expect(results(rb)).toEqual(['#1 landed', '#2 failed at test']);
+    expect(rb.stopped.map((x) => x.pr)).toEqual([3]);
+    expect(runBatches([e(1)], 2, { ...harness().ops, stopRequested: () => true })).toMatchObject({ outcomes: [], stopped: [e(1)], exit: 0 });
+  });
+
+  it('records an interrupt in the status, naming what merged and never calling a merged PR "not failed"', () => {
+    const before = 'land RUNNING 10:00 (started 09:00) queue q: 1 of 3 handled\nlanding now: #7 b7\n  landed #6 b6: merged as x\n';
+    const base = { previous: before, how: 'SIGTERM', now: '10:05', publishing: null, merges: [], unproved: null };
+    expect(interruptedStatus(base)).toBe(
+      'land INTERRUPTED 10:05 by SIGTERM (was: land RUNNING 10:00 (started 09:00) queue q: 1 of 3 handled)\ninterrupted while #7 b7 was landing; it was not failed, and its step\'s work is discarded\n  landed #6 b6: merged as x\n',
+    );
+    expect(interruptedStatus({ ...base, previous: '', how: 'SIGINT' })).toBe('land INTERRUPTED 10:05 by SIGINT\ninterrupted between PRs\n');
+    const merges = [{ pr: 6, merge: sha('a'), head: sha('b') }, { pr: 7, merge: sha('c'), head: sha('d') }];
+    const merged = interruptedStatus({ ...base, publishing: { pr: 7, head: sha('d'), merged: null }, merges, unproved: { pr: 7, head: sha('d') } });
+    expect(merged).toContain(`#7 MERGED as ${sha('c')} when interrupted; its post-merge tree check and branch cleanup did not run`);
+    expect(merged).toContain(`merged in this run: #6 (${sha('a').slice(0, 12)}), #7 (${sha('c').slice(0, 12)})`);
+    expect(merged).toContain(`master rests on #7's position ${sha('d')}, which no full test has proved; the next run proves it before anything else`);
+    expect(merged).not.toContain('not failed');
+    expect(interruptedStatus({ ...base, publishing: { pr: 7, head: sha('d'), merged: null } })).toContain(`interrupted while merging #7 (position ${sha('d')}); check whether it merged`);
+  });
+
+  it('reads the driver\'s run files strictly', () => {
+    expect(parsePublishMark(JSON.stringify({ pr: 3, head: sha('a'), merged: null }))).toEqual({ pr: 3, head: sha('a'), merged: null });
+    for (const bad of [null, '{', '{"pr":"3","head":"x","merged":null}', '[]']) expect(parsePublishMark(bad)).toBeNull();
+    expect(parseMerges(`3 ${sha('a')} ${sha('b')}\ngarbage\n4 ${sha('c')} ${sha('d')}\n`)).toEqual([{ pr: 3, merge: sha('a'), head: sha('b') }, { pr: 4, merge: sha('c'), head: sha('d') }]);
+    expect(parseUnproved(null)).toBeNull();
+    expect(parseUnproved(JSON.stringify({ pr: 3, head: sha('a') }))).toEqual({ pr: 3, head: sha('a') });
+    // An unreadable record is not "nothing to prove".
+    expect(parseUnproved('{"pr":')).toMatchObject({ pr: 0, head: expect.stringMatching(/^unreadable/) });
+    expect(parseLstart('Sun Oct  4 21:59:58 2026\n')).toBe('Sun Oct  4 21:59:58 2026');
+    expect(parseLstart('')).toBeNull();
+    expect(parsePidFile('123\n')).toBe(123);
+    for (const bad of [null, '', '1', '-5', 'x', '12x']) expect(parsePidFile(bad)).toBeNull();
+  });
+
+  it('holds the lock while the supervisor or its driver lives, and never takes a reused pid for either', () => {
+    const procs = (live: Record<number, string>) => (pid: number) => live[pid] ?? null;
+    const sup = { pid: 10, start: 'Sun 21:00' };
+    const drv = { pid: 11, start: 'Sun 21:01' };
+    expect(lockState(sup, drv, procs({ 10: 'Sun 21:00', 11: 'Sun 21:01' }))).toBe('held');
+    expect(lockState(sup, drv, procs({ 10: 'Sun 21:00' }))).toBe('held');
+    expect(lockState(sup, drv, procs({ 11: 'Sun 21:01' }))).toBe('orphan');
+    expect(lockState(sup, drv, procs({}))).toBe('free');
+    // The pids live again, but as other processes (started later): nothing is held and no group is killed.
+    expect(lockState(sup, drv, procs({ 10: 'Mon 09:00', 11: 'Mon 09:01' }))).toBe('free');
+    // No start time recorded (a run died between its two writes): held while that pid lives, and never killed as an orphan.
+    expect(lockState({ pid: 10, start: '' }, drv, procs({ 10: 'whatever' }))).toBe('held');
+    expect(lockState({ pid: 10, start: '' }, drv, procs({}))).toBe('free');
+    expect(lockState(null, { pid: 11, start: '' }, procs({ 11: 'Mon 09:01' }))).toBe('held');
+    expect(lockState(null, null, procs({ 1: 'x' }))).toBe('free');
+  });
+
+  it('starts the merge critical section just before gh pr merge, so an interrupt during CI and review waits acts at once', () => {
+    const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
+    const body = src.slice(src.indexOf('const publishInside'));
+    const mark = body.indexOf('writeFileSync(runFile(PUBLISH_MARK)');
+    expect(mark).toBeGreaterThan(body.indexOf("waitCi('ci'"));
+    expect(mark).toBeGreaterThan(body.indexOf('mergeGate('));
+    expect(mark).toBeLessThan(body.indexOf('ghMerge(e.pr'));
+    expect(src).not.toMatch(/simctl|emulatorPids|process\.kill\(pid, 'SIGKILL'\)/);
+  });
+
+  it('cleans up after a dead driver: release, reset and status, each despite the others failing, and never a device', () => {
+    const files = new Map<string, string>([
+      [PUBLISH_MARK, JSON.stringify({ pr: 7, head: sha('d'), merged: sha('c') })],
+      [MERGES_LOG, `7 ${sha('c')} ${sha('d')}\n`],
+    ]);
+    const done: string[] = [];
+    let status = 'land RUNNING t\nlanding now: #7 b7\n';
+    const problems = cleanUpAfterDriver({
+      how: 'SIGTERM',
+      now: 't9',
+      read: (f) => files.get(f) ?? null,
+      unproved: () => ({ pr: 7, head: sha('d') }),
+      release: () => {
+        done.push('release');
+        throw new Error('rm failed');
+      },
+      reset: () => done.push('reset'),
+      status: { read: () => status, write: (t) => (status = t) },
+      log: () => {},
+    });
+    expect(done).toEqual(['release', 'reset']);
+    expect(problems).toEqual(['releasing the quiet request and priority: rm failed']);
+    expect(status).toMatch(/^land INTERRUPTED t9 by SIGTERM/);
+    expect(status).toContain('#7 MERGED as');
+  });
+
+  it('proves the tree an interrupted run left master on first, logs a red master loudly, and never blocks the queue', () => {
+    const calls: string[] = [];
+    const logs: string[] = [];
+    const prove = (fail?: Error) => () => {
+      calls.push('prove');
+      if (fail) throw fail;
+    };
+    const clear = () => calls.push('clear');
+    expect(proveRestingMaster(null, prove(), clear, (l) => logs.push(l))).toBeNull();
+    expect(calls).toEqual([]);
+    expect(proveRestingMaster({ pr: 7, head: sha('d') }, prove(), clear, (l) => logs.push(l))).toBe(true);
+    expect(calls).toEqual(['prove', 'clear']);
+    calls.length = 0;
+    // Red: logged, the record kept, and the run carries on (no throw, no refusal).
+    expect(proveRestingMaster({ pr: 7, head: sha('d') }, prove(new LandFailure('test', 'red: t1.test.ts')), clear, (l) => logs.push(l))).toBe(false);
+    expect(calls).toEqual(['prove']);
+    expect(logs.at(-1)).toMatch(/^!!! MASTER IS RED: it rests on #7's position .* carrying on, so a batch whose top passes can land the fix:\nred: t1\.test\.ts$/);
+    expect(proveRestingMaster({ pr: 7, head: sha('d') }, prove(new LandFailure('install', 'ECONNRESET')), clear, (l) => logs.push(l))).toBe(false);
+    expect(logs.at(-1)).toMatch(/^!!! could not prove master: .*install/);
+  });
+
+  it('clears the unproved record only when master is on a proven tree', () => {
+    const mastersTree = (commits: string[]) => (c: string) => commits.includes(c);
+    const rec = { head: sha('d') };
+    expect(clearsUnproved(rec, sha('d'), mastersTree([sha('d')]))).toBe(true); // master proved where it rests
+    expect(clearsUnproved(rec, sha('m'), mastersTree([sha('m')]))).toBe(true); // master moved to this proved tree by a publish
+    expect(clearsUnproved(rec, sha('e'), mastersTree([sha('d')]))).toBe(false); // a passing batch on top of master that has not landed
+    expect(clearsUnproved(null, sha('d'), mastersTree([sha('d')]))).toBe(false);
+    expect(clearsUnproved({ head: 'unreadable "{"' }, sha('d'), mastersTree([sha('d')]))).toBe(true);
+  });
+
+  it('reads LAND_BATCH strictly', () => {
+    expect(parseBatchSize(undefined)).toBe(4);
+    expect(parseBatchSize('1')).toBe(1);
+    expect(parseBatchSize('8')).toBe(8);
+    for (const bad of ['0', '9', '-1', '2.5', 'four', '']) expect(() => parseBatchSize(bad)).toThrow(/LAND_BATCH/);
+    expect(() => runBatches([e(1)], 0, harness().ops)).toThrow(/batch size/);
+  });
+});
+
+describe('the supervisor with real processes', () => {
+  const lib = repoPath('scripts/land-lib.ts');
+  // A fake driver: records its pid and its step's pid, runs a long step (spawnSync, as the driver does), and records "resumed"
+  // if it ever gets past the step, which is where the old driver went on to fail PRs after a SIGTERM.
+  const setup = (driverBody: (dir: string) => string, o: { graceMs?: number; deferCapMs?: number; slowSpawnMs?: number } = {}): { dir: string; run: () => { done: Promise<{ code: number | null; out: string }>; pid: number } } => {
+    const dir = tempDir();
+    // Every file the fakes write is written whole (temp file, then rename), so a reader never sees it half-written.
+    const atomic = (src: string): string =>
+      `import { renameSync as __rename, writeFileSync as __write } from 'node:fs';\nconst put = (p, b) => { __write(p + '.tmp', b); __rename(p + '.tmp', p); };\n${src.replaceAll('writeFileSync(', 'put(')}`;
+    writeFileSync(join(dir, 'driver.mjs'), atomic(driverBody(dir)));
+    writeFileSync(
+      join(dir, 'supervisor.mjs'),
+      atomic(`import { existsSync, writeFileSync } from 'node:fs';\nimport { supervise } from ${JSON.stringify(lib)};\n` +
+        `const r = await supervise({ command: process.execPath, args: [${JSON.stringify(join(dir, 'driver.mjs'))}], env: process.env, graceMs: ${o.graceMs ?? 5000}, deferCapMs: ${o.deferCapMs ?? 60_000}, pollMs: 50, ` +
+        `publishing: () => existsSync(${JSON.stringify(join(dir, 'publishing'))}), ` +
+        `onSpawn: (pid) => { writeFileSync(${JSON.stringify(join(dir, 'spawned'))}, String(pid)); const t = Date.now(); while (Date.now() - t < ${o.slowSpawnMs ?? 0}); }, ` +
+        `onReady: () => writeFileSync(${JSON.stringify(join(dir, 'ready'))}, 'x'), ` +
+        `onStop: () => writeFileSync(${JSON.stringify(join(dir, 'stop'))}, 'x'), log: (l) => console.log(l) });\n` +
+        `console.log(JSON.stringify(r)); process.exitCode = r.code;\n`),
+    );
+    return {
+      dir,
+      run: () => {
+        const p = spawn(process.execPath, [join(dir, 'supervisor.mjs')], { stdio: ['ignore', 'pipe', 'inherit'] });
+        let out = '';
+        p.stdout.on('data', (d: Buffer) => (out += d.toString()));
+        return { pid: p.pid!, done: new Promise((resolve) => p.on('exit', (code) => resolve({ code, out }))) };
+      },
+    };
+  };
+  const waitFor = async (path: string): Promise<string> => {
+    for (let i = 0; i < 400; i++) {
+      if (existsSync(path)) return readFileSync(path, 'utf8');
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    throw new Error(`${path} never appeared`);
+  };
+  // Waits until the file holds `n` positive pids, retrying on content that is missing or not (yet) that.
+  const waitForPids = async (path: string, n = 1): Promise<number[]> => {
+    for (let i = 0; i < 400; i++) {
+      const pids = existsSync(path) ? readFileSync(path, 'utf8').trim().split(/\s+/).map(Number) : [];
+      if (pids.length === n && pids.every((p) => Number.isInteger(p) && p > 1)) return pids;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    throw new Error(`${path} never held ${n} pid(s)`);
+  };
+  const dead = (pid: number): boolean => {
+    try {
+      process.kill(pid, 0);
+      return false;
+    } catch {
+      return true;
+    }
+  };
+
+  it('SIGTERM kills the driver and its running step at once, and the driver never goes on to fail a PR', async () => {
+    const { dir, run } = setup(
+      (dir) => `import { spawn, spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\n` +
+        `if (process.env.LAND_SUPERVISED !== '1') process.exit(9);\n` +
+        `const probe = spawn('sleep', ['60'], { stdio: 'ignore' });\n` + // the step's own child, in the same group
+        `writeFileSync(${JSON.stringify(join(dir, 'pids'))}, process.pid + ' ' + probe.pid);\n` +
+        `spawnSync('sleep', ['60']);\n` +
+        `writeFileSync(${JSON.stringify(join(dir, 'resumed'))}, 'the step "failed" and the driver went on');\n`,
+    );
+    const s = run();
+    await waitFor(join(dir, 'ready'));
+    const [driver, step] = (await waitForPids(join(dir, 'pids'), 2)) as [number, number];
+    const t0 = Date.now();
+    process.kill(s.pid, 'SIGTERM');
+    const { code, out } = await s.done;
+    expect(code).toBe(130);
+    expect(JSON.parse(out.trim().split('\n').at(-1)!)).toMatchObject({ code: 130, interrupted: 'SIGTERM', pid: driver });
+    expect(Date.now() - t0).toBeLessThan(4000);
+    expect(dead(driver) && dead(step)).toBe(true);
+    expect(existsSync(join(dir, 'resumed'))).toBe(false);
+  }, 20_000);
+
+  it('waits for a publish in progress before interrupting, and kills at once on a second signal', async () => {
+    // The driver "publishes" for 1.5 s (the marker exists), then runs a long step.
+    const body = (dir: string) =>
+      `import { spawnSync } from 'node:child_process';\nimport { rmSync, writeFileSync } from 'node:fs';\n` +
+      `writeFileSync(${JSON.stringify(join(dir, 'publishing'))}, 'x');\nwriteFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\n` +
+      `spawnSync('sleep', ['1.5']);\nwriteFileSync(${JSON.stringify(join(dir, 'published'))}, 'x');\nrmSync(${JSON.stringify(join(dir, 'publishing'))});\n` +
+      `spawnSync('sleep', ['60']);\nwriteFileSync(${JSON.stringify(join(dir, 'resumed'))}, 'x');\n`;
+    const a = setup(body);
+    const s = a.run();
+    await waitFor(join(a.dir, 'ready'));
+    await waitForPids(join(a.dir, 'pids'));
+    process.kill(s.pid, 'SIGTERM');
+    const r = await s.done;
+    expect(r.code).toBe(130);
+    expect(r.out).toContain('the driver is merging a PR; interrupting once that merge and its checks end');
+    expect(existsSync(join(a.dir, 'published'))).toBe(true); // the publish finished
+    expect(existsSync(join(a.dir, 'resumed'))).toBe(false); // and nothing after it ran
+    const b = setup(body);
+    const s2 = b.run();
+    await waitFor(join(b.dir, 'ready'));
+    await waitForPids(join(b.dir, 'pids'));
+    process.kill(s2.pid, 'SIGTERM');
+    await new Promise((res) => setTimeout(res, 300));
+    process.kill(s2.pid, 'SIGTERM');
+    const r2 = await s2.done;
+    expect(r2.out).toContain('SIGTERM again: killing the driver group now');
+    expect(existsSync(join(b.dir, 'published'))).toBe(false);
+  }, 20_000);
+
+  it('SIGKILLs a step that ignores SIGTERM once the grace period is over', async () => {
+    const { dir, run } = setup(
+      (dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\n` +
+        `writeFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\n` +
+        `spawnSync('/bin/sh', ['-c', 'trap "" TERM; echo $$ > ${join(dir, 'step')}.tmp && mv ${join(dir, 'step')}.tmp ${join(dir, 'step')}; while :; do sleep 0.1; done']);\n`,
+      { graceMs: 1000 },
+    );
+    const s = run();
+    await waitFor(join(dir, 'ready'));
+    await waitForPids(join(dir, 'pids'));
+    const [step] = (await waitForPids(join(dir, 'step'))) as [number];
+    const t0 = Date.now();
+    process.kill(s.pid, 'SIGTERM');
+    const r = await s.done;
+    expect(r.code).toBe(130);
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(900);
+    expect(dead(step)).toBe(true);
+  }, 20_000);
+
+  it('reports a driver killed from elsewhere as a death by signal, so the supervisor cleans up after it', async () => {
+    const { dir, run } = setup((dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\nspawnSync('sleep', ['60']);\n`);
+    const s = run();
+    await waitFor(join(dir, 'ready'));
+    const [driver] = (await waitForPids(join(dir, 'pids'))) as [number];
+    expect(await waitForPids(join(dir, 'spawned'))).toEqual([driver]);
+    process.kill(driver, 'SIGKILL');
+    const r = await s.done;
+    expect(JSON.parse(r.out.trim().split('\n').at(-1)!)).toMatchObject({ interrupted: null, signal: 'SIGKILL', pid: driver });
+  }, 20_000);
+
+  it('gives the driver its supervisor\'s pid, so a driver whose supervisor dies stops itself', async () => {
+    const { dir, run } = setup(
+      (dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\n` +
+        `writeFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\n` +
+        `for (let i = 0; i < 200; i++) { if (String(process.ppid) !== process.env.LAND_SUPERVISOR_PID) { writeFileSync(${JSON.stringify(join(dir, 'orphan'))}, 'x'); process.exit(3); } spawnSync('sleep', ['0.1']); }\n`,
+    );
+    const s = run();
+    await waitFor(join(dir, 'ready'));
+    const [driver] = (await waitForPids(join(dir, 'pids'))) as [number];
+    process.kill(s.pid, 'SIGKILL');
+    await waitFor(join(dir, 'orphan'));
+    for (let i = 0; i < 40 && !dead(driver); i++) await new Promise((res) => setTimeout(res, 50));
+    expect(dead(driver)).toBe(true);
+  }, 20_000);
+
+  it('acts on a signal that arrives before the driver is recorded, rather than dying of it', async () => {
+    // onSpawn takes 3 s (a slow ps), far beyond scheduler jitter; the SIGTERM sent once it starts lands inside it.
+    const { dir, run } = setup(
+      (dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\nspawnSync('sleep', ['60']);\nwriteFileSync(${JSON.stringify(join(dir, 'resumed'))}, 'x');\n`,
+      { slowSpawnMs: 3000 },
+    );
+    const s = run();
+    const [driver] = (await waitForPids(join(dir, 'spawned'))) as [number];
+    process.kill(s.pid, 'SIGTERM');
+    const r = await s.done;
+    expect(r.code).toBe(130);
+    expect(JSON.parse(r.out.trim().split('\n').at(-1)!)).toMatchObject({ interrupted: 'SIGTERM', pid: driver });
+    expect(dead(driver)).toBe(true);
+    expect(existsSync(join(dir, 'resumed'))).toBe(false);
+  }, 20_000);
+
+  it('SIGUSR1 asks for a graceful stop: the driver finishes and exits on its own', async () => {
+    const { dir, run } = setup(
+      (dir) => `import { spawnSync } from 'node:child_process';\nimport { existsSync, writeFileSync } from 'node:fs';\n` +
+        `writeFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\n` +
+        `for (let i = 0; i < 100 && !existsSync(${JSON.stringify(join(dir, 'stop'))}); i++) spawnSync('sleep', ['0.1']);\n` +
+        `writeFileSync(${JSON.stringify(join(dir, 'finished'))}, 'x');\n`,
+    );
+    const s = run();
+    await waitFor(join(dir, 'ready'));
+    await waitForPids(join(dir, 'pids'));
+    process.kill(s.pid, 'SIGUSR1');
+    const { code, out } = await s.done;
+    expect(code).toBe(0);
+    expect(out).toContain('SIGUSR1: graceful stop requested');
+    expect(JSON.parse(out.trim().split('\n').at(-1)!)).toMatchObject({ code: 0, interrupted: null });
+    expect(existsSync(join(dir, 'finished'))).toBe(true);
+  }, 20_000);
+});
+
+describe('a batch of positions on a scratch repository', () => {
+  const dir = tempDir();
+  const config = ['user.name=t', 'user.email=t@t', 'commit.gpgsign=false', 'core.hooksPath=/dev/null'].flatMap((c) => ['-c', c]);
+  const git: Git = (args, input) => execFileSync('git', [...config, ...args], { cwd: dir, input, stdio: ['pipe', 'pipe', 'pipe'] });
+  const commit = (files: Record<string, string>, m: string): string => {
+    for (const [p, body] of Object.entries(files)) {
+      mkdirSync(dirname(join(dir, p)), { recursive: true });
+      writeFileSync(join(dir, p), body);
+    }
+    git(['add', '-A']);
+    git(['commit', '-q', '--allow-empty', '-m', m]);
+    return git(['rev-parse', 'HEAD']).toString().trim();
+  };
+  const lines = (tag: string): string => Array.from({ length: 12 }, (_, i) => `export const ${tag}${i} = ${i};\n`).join('');
+  git(['init', '-q', '-b', 'master']);
+  const master = commit({ '.macroscope/ignore.md': '---\nignoreTests: false\n---\n**/out/**\ndocs/goals/**\n', 'src/a.ts': lines('a'), 'src/b.ts': lines('b'), 'src/c.ts': lines('c'), 'out/x.json': '0\n' }, 'base');
+  const branch = (name: string, files: Record<string, string>): Member => {
+    git(['checkout', '-q', '-b', name, master]);
+    const clean = commit(files, name);
+    return { branch: name, pr: name.charCodeAt(0), clean };
+  };
+  const a = branch('a', { 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 33') });
+  const b = branch('b', { 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 34') }); // conflicts with a
+  const c = branch('c', { 'src/c.ts': lines('c').replace('c5 = 5', 'c5 = 55') });
+  git(['checkout', '-q', '--detach', master]);
+  // The driver's build loop: each member on the position before it; a conflict ejects the member and the chain stays put.
+  const built: { member: Member; prev: string; merge: string; head: string }[] = [];
+  const ejected: string[] = [];
+  let prev = master;
+  for (const m of [a, b, c]) {
+    try {
+      const merge = mergeMember(git, prev, m, built.length + 1, m.clean, 'Land');
+      writeFileSync(join(dir, 'out/x.json'), `${built.length + 1}\n`);
+      const head = commitRegen(git, built.length + 1, m, ['pnpm regen'], 'Land');
+      built.push({ member: m, prev, merge, head });
+      prev = head;
+    } catch (error) {
+      ejected.push(`${m.branch}: ${(error as Error).message}`);
+    }
+  }
+
+  it('ejects the conflicting member, leaving no merge in progress, and chains the next on the position before it', () => {
+    expect(ejected).toEqual([expect.stringMatching(/^b: .*conflicts in src\/a\.ts/)]);
+    expect(built.map((x) => x.member.branch)).toEqual(['a', 'c']);
+    expect(built[1]!.prev).toBe(built[0]!.head);
+    expect(() => git(['rev-parse', '-q', '--verify', 'MERGE_HEAD'])).toThrow();
+  });
+
+  it('builds positions that are exactly what they claim: the chain checks out, each regen commit is regen-only and vouchable', () => {
+    const plan = planPositions(git, built.map((x) => x.member), built.map((x) => x.head));
+    expect(plan.base).toBe(master);
+    expect(plan.positions.map((p) => [p.prev, p.merge, p.tip])).toEqual(built.map((x) => [x.prev, x.merge, x.member.clean]));
+    for (const x of built) {
+      const ignore = ignoreAt(git, x.head);
+      if ('error' in ignore) throw new Error(ignore.error);
+      expect(regenOnlyProblems(git, x.head, ignore)).toEqual([]);
+      expect(predictPosition(git, x.member, { prev: x.prev, merge: x.merge, head: x.head, tip: x.member.clean }).ok).toBe(true);
+    }
+    // Position 1 holds a and not c: an intermediate master is a's tree only.
+    expect(git(['show', `${built[0]!.head}:src/c.ts`]).toString()).toBe(lines('c'));
+    expect(git(['show', `${built[1]!.head}:src/c.ts`]).toString()).toContain('c5 = 55');
+  });
+
+  it('cleans ignored outputs of another tree before a proof, keeping installs and build caches', () => {
+    const d = tempDir();
+    const g = (args: string[]): string => execFileSync('git', [...config, ...args], { cwd: d, encoding: 'utf8' });
+    g(['init', '-q']);
+    const files: Record<string, string> = {
+      '.gitignore': 'node_modules/\npackages/translate/out/\npackages/parity/out/*\n!packages/parity/out/kept.json\n*.tsbuildinfo\nvendor/wpt/\nbuild/\ndist/\n',
+      'packages/parity/out/kept.json': '{}\n',
+    };
+    for (const [path, body] of Object.entries(files)) {
+      mkdirSync(dirname(join(d, path)), { recursive: true });
+      writeFileSync(join(d, path), body);
+    }
+    g(['add', '-A']);
+    g(['commit', '-q', '-m', 'x']);
+    const stale = ['packages/parity/out/report.html', 'packages/x/tsconfig.tsbuildinfo', 'packages/dragon/dist/index.js'];
+    // Ignored files nested in a kept tree stay too: node_modules/.pnpm/*/dist/ holds every installed package's code (the
+    // first version deleted vitest's dist/ this way and every later test run failed to start).
+    const kept = [
+      'node_modules/a/index.js',
+      'node_modules/.pnpm/vitest@4/node_modules/vitest/dist/cli.js',
+      'packages/p/node_modules/b/index.js',
+      'packages/p/node_modules/b/dist/x.js',
+      'vendor/wpt/css/t.html',
+      'packages/layout/generated/kotlin/build/x.class',
+      'packages/translate/out/kotlin/0123abcd/harness.jar',
+      'packages/translate/out/swift/0123abcd/harness',
+    ];
+    for (const path of [...stale, ...kept]) {
+      mkdirSync(dirname(join(d, path)), { recursive: true });
+      writeFileSync(join(d, path), 'x');
+    }
+    for (const p of ignoredToRemove(g(ignoredFilesArgs()))) rmSync(join(d, p), { force: true });
+    expect(stale.filter((path) => existsSync(join(d, path)))).toEqual([]);
+    expect(kept.filter((path) => existsSync(join(d, path)))).toEqual(kept);
+    expect(existsSync(join(d, 'packages/parity/out/kept.json'))).toBe(true);
+  });
+
+  it('refuses a chain whose positions are out of order or skip one', () => {
+    expect(() => planPositions(git, [c, a], [built[1]!.head, built[0]!.head])).toThrow();
+    expect(() => planPositions(git, [a, c], [built[0]!.head, built[0]!.head])).toThrow();
   });
 });
 

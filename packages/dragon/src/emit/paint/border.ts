@@ -290,7 +290,7 @@ fun dragonDrawBorders(canvas: Canvas, w: Float, h: Float, widths: IntArray, styl
 }
 `;
 
-export const BORDER_EMITTER: PaintEmitter<'border-widths' | 'border-styles' | 'border-colors'> = {
+export const BORDER_EMITTER: PaintEmitter<'border-widths' | 'border-styles' | 'border-colors', 'dash-phase-1' | 'dash-gap-unfitted'> = {
   name: 'border',
   kinds: ['border-widths', 'border-styles', 'border-colors'],
   lines: {

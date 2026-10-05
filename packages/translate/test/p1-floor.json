@@ -6,7 +6,8 @@
       "engine",
       "library",
       "rt",
-      "hit"
+      "hit",
+      "animator"
     ],
     "counts": {
       "vectors": 258,
@@ -14,7 +15,8 @@
       "engine": 20258,
       "library": 22000,
       "rt": 55362,
-      "hit": 2028
+      "hit": 2028,
+      "animator": 18
     }
   },
   "rt-records": {
