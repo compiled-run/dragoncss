@@ -1,0 +1,161 @@
+// LAND_DEVICES=ci: the landing driver's device step on GitHub runners. A position's tree is committed apart (never on the PR
+// branch) and force-pushed to the driver's scratch branch, device-lanes.yml is dispatched on master for that commit and its run
+// found by its run-name, waited for, and its device-outcomes artifact handed back, for the driver to merge (device-ci.ts merge)
+// and judge against the previous position as a local run is judged. The scratch branch is deleted whatever happens.
+import { LandFailure } from './land-lib.ts';
+
+export const DEVICE_WORKFLOW = 'device-lanes.yml';
+export const OUTCOMES_ARTIFACT = 'device-outcomes';
+export const TEMP_PREFIX = 'land-devices/pr-';
+export const tempBranch = (pr: number): string => `${TEMP_PREFIX}${pr}`;
+/** The driver's scratch branch, the only ref it force-pushes or deletes: exactly land-devices/pr-<n>, never a PR branch. */
+export function scratchRef(branch: string): string {
+  if (!/^land-devices\/pr-[1-9]\d*$/.test(branch)) throw new Error(`${JSON.stringify(branch)} is not a land-devices/pr-<n> scratch branch`);
+  return `refs/heads/${branch}`;
+}
+export const runTitle = (sha: string): string => `device lanes of ${sha}`;
+
+export type DevicesCiDeps = {
+  /** gh with the given arguments (the repository is passed by the caller); returns stdout, throws on failure. */
+  readonly gh: (args: string[]) => string;
+  /**
+   * Commits the landing tree apart and force-pushes it to the scratch branch (scratchRef), so a branch an interrupted run left
+   * behind never blocks the next; returns the commit sha.
+   */
+  readonly pushTemp: (branch: string) => string;
+  readonly deleteTemp: (branch: string) => void;
+  /** Downloads the run's named artifact into a fresh directory and returns its path and the names of the files in it. */
+  readonly download: (runId: number, artifact: string) => { readonly dir: string; readonly files: readonly string[] };
+  /** Removes a downloaded directory. */
+  readonly remove: (dir: string) => void;
+  /**
+   * Records the CI run in flight (its scratch branch, and its run once found), or null once it is settled, so a supervisor that
+   * kills an interrupted driver can cancel the run and delete the branch (the driver dies by signal, past every finally).
+   */
+  readonly record: (inflight: { readonly branch: string; readonly runId: number | null } | null) => void;
+  readonly sleep: (ms: number) => void;
+  readonly now: () => number;
+  readonly log: (line: string) => void;
+};
+
+export type DevicesCiResult = { readonly sha: string; readonly url: string; readonly outcomesDir: string };
+
+type RunRow = { databaseId: number; displayTitle: string; createdAt: string; headBranch: string; status: string; conclusion: string | null; url: string };
+const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
+
+/** gh run list/view JSON, checked: a malformed answer stops the step instead of being read as "no run yet". */
+export function parseRunRows(text: string): RunRow[] {
+  const v: unknown = JSON.parse(text);
+  const rows = Array.isArray(v) ? v : [v];
+  return rows.map((r) => {
+    const opt = (k: string): boolean => r[k] === undefined || typeof r[k] === 'string';
+    if (!isObj(r) || typeof r['databaseId'] !== 'number' || typeof r['status'] !== 'string' || typeof r['url'] !== 'string' || !(r['conclusion'] === null || typeof r['conclusion'] === 'string') || !opt('displayTitle') || !opt('createdAt') || !opt('headBranch')) {
+      throw new Error(`unexpected gh run JSON: ${JSON.stringify(r).slice(0, 200)}`);
+    }
+    return { databaseId: r['databaseId'], displayTitle: (r['displayTitle'] as string | undefined) ?? '', createdAt: (r['createdAt'] as string | undefined) ?? '', headBranch: (r['headBranch'] as string | undefined) ?? '', status: r['status'], conclusion: r['conclusion'] as string | null, url: r['url'] };
+  });
+}
+
+/** The device outcome files of the artifact: at least one, all JSON files (device-ci.ts merge checks each device and stamp). */
+export function outcomeFiles(files: readonly string[]): string[] {
+  const json = files.filter((f) => f.endsWith('.json'));
+  if (json.length === 0 || json.length !== files.length) throw new Error(`the ${OUTCOMES_ARTIFACT} artifact holds ${files.length === 0 ? 'nothing' : files.join(', ')}, not device outcome files`);
+  return json;
+}
+
+/**
+ * Runs the device lanes of the landing tree on CI and returns its records. Throws a LandFailure('devices') when the run cannot
+ * be started or found, does not finish within waitS, or does not succeed; the temporary branch is deleted in every case.
+ */
+export function runDevicesOnCi(o: { readonly pr: number; readonly deps: DevicesCiDeps; readonly appearS: number; readonly waitS: number; readonly pollS?: number }): DevicesCiResult {
+  const { deps } = o;
+  const poll = (o.pollS ?? 30) * 1000;
+  const branch = tempBranch(o.pr);
+  let pushed = false;
+  let run: RunRow | undefined;
+  let outcomesDir: string | null = null;
+  try {
+    deps.record({ branch, runId: null });
+    const sha = deps.pushTemp(branch);
+    pushed = true;
+    const t0 = deps.now();
+    deps.gh(['workflow', 'run', DEVICE_WORKFLOW, '--ref', 'master', '-f', `sha=${sha}`]);
+    deps.log(`  device lanes on CI: dispatched ${DEVICE_WORKFLOW} for ${sha} (branch ${branch})`);
+    while (run === undefined) {
+      const rows = parseRunRows(deps.gh(['run', 'list', '--workflow', DEVICE_WORKFLOW, '--event', 'workflow_dispatch', '--branch', 'master', '--limit', '20', '--json', 'databaseId,displayTitle,createdAt,headBranch,status,conclusion,url']));
+      // Only master's workflow, dispatched after this dispatch (2 min clock skew): not an earlier run for the same commit, and not
+      // a run of the workflow dispatched from another branch.
+      run = rows.find((r) => r.headBranch === 'master' && r.displayTitle === runTitle(sha) && Date.parse(r.createdAt) >= t0 - 120_000);
+      if (run !== undefined) break;
+      if (deps.now() - t0 > o.appearS * 1000) throw new LandFailure('devices', `no ${DEVICE_WORKFLOW} run for ${sha} appeared within ${o.appearS}s of the dispatch`);
+      deps.sleep(Math.min(poll, 10_000));
+    }
+    deps.log(`  device lanes on CI: ${run.url}`);
+    deps.record({ branch, runId: run.databaseId });
+    while (run.status !== 'completed') {
+      if (deps.now() - t0 > o.waitS * 1000) throw new LandFailure('devices', `the CI device run ${run.url} did not finish within ${o.waitS}s (status ${run.status})`);
+      deps.sleep(poll);
+      run = { ...run, ...parseRunRows(deps.gh(['run', 'view', String(run.databaseId), '--json', 'databaseId,status,conclusion,url']))[0]! };
+    }
+    if (run.conclusion !== 'success') throw new LandFailure('devices', `the CI device run ${run.url} concluded ${run.conclusion ?? 'without a conclusion'}`);
+    const got = deps.download(run.databaseId, OUTCOMES_ARTIFACT);
+    outcomesDir = got.dir;
+    const files = outcomeFiles(got.files);
+    deps.log(`  device lanes on CI: ${files.length} device outcomes of ${run.url} in ${Math.round((deps.now() - t0) / 1000)}s`);
+    outcomesDir = null;
+    return { sha, url: run.url, outcomesDir: got.dir };
+  } catch (e) {
+    // Nothing of a failed step is left running or on disk: the run is cancelled, its downloaded outcomes removed.
+    if (run !== undefined && run.status !== 'completed') {
+      try {
+        deps.gh(['run', 'cancel', String(run.databaseId)]);
+        deps.log(`  device lanes on CI: cancelled ${run.url}`);
+      } catch (c) {
+        deps.log(`  device lanes on CI: could not cancel ${run.url}: ${c instanceof Error ? c.message : String(c)}`);
+      }
+    }
+    if (outcomesDir !== null) deps.remove(outcomesDir);
+    // Every failure of this step (a refused push, a malformed gh answer, a bad artifact) fails the PR at the devices step.
+    throw e instanceof LandFailure ? e : new LandFailure('devices', `the CI device lanes failed: ${e instanceof Error ? e.message : String(e)}`);
+  } finally {
+    deps.record(null);
+    if (pushed) {
+      try {
+        deps.deleteTemp(branch);
+      } catch (e) {
+        // The next run force-pushes over it, so a branch left behind is only a warning.
+        deps.log(`  device lanes on CI: WARNING could not delete ${branch} (the next run replaces it): ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+  }
+}
+
+/**
+ * After an interrupted driver: cancels the CI device run it recorded in flight and deletes its scratch branch. A malformed record
+ * is logged and dropped; each failure is logged (the run may have ended; the next run replaces the branch).
+ */
+export function abandonInflight(text: string, o: { readonly cancel: (runId: number) => void; readonly deleteBranch: (branch: string) => void; readonly log: (line: string) => void }): void {
+  let v: unknown;
+  try {
+    v = JSON.parse(text);
+  } catch {
+    o.log('the CI run record left in flight is not JSON; dropped');
+    return;
+  }
+  const r = (typeof v === 'object' && v !== null ? v : {}) as { branch?: unknown; runId?: unknown };
+  if (typeof r.runId === 'number') {
+    try {
+      o.cancel(r.runId);
+      o.log(`cancelled the CI device run ${r.runId} the interrupted driver left`);
+    } catch {
+      o.log(`could not cancel the CI device run ${r.runId} (it may have ended)`);
+    }
+  }
+  if (typeof r.branch === 'string') {
+    try {
+      o.deleteBranch(r.branch);
+    } catch {
+      o.log(`could not delete ${r.branch}; the next CI device run replaces it`);
+    }
+  }
+}

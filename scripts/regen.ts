@@ -7,7 +7,7 @@
 // input. The cache lives in the git common directory, shared by every worktree, one entry per (step, key): a step is skipped
 // when an entry for its key recorded the outputs the tree has now, and its outputs are restored from the entry's git blobs when
 // they differ and the recorded run wrote every output without reading any of them. Steps that neither read nor write each
-// other's files run in parallel (--jobs, default 2). --check exits 1 naming every file the run changed (and leaves them
+// other's files run in parallel (--jobs, default 4). --check exits 1 naming every file the run changed (and leaves them
 // regenerated); --force ignores entries recorded before this run; --from starts the first pass at that step; --explain prints
 // what each step would do and why, and changes nothing. --skip <step> leaves a step out of every pass and --only <step> leaves out
 // all the others (both repeatable): .github/workflows/regen-on-ci.yml runs the Chrome steps and lanes-host on different machines.
@@ -21,6 +21,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { compilePattern, matchSegments } from './macroscope-ignore.ts';
 import { importClosure, lockClosure, NODE_IMPORT_CONDITIONS, parseLock, type ReadText, scanSource, type Tree, type Workspace, workspaceOf } from './regen-inputs.ts';
 import { BG2 } from './regen-steps/bg2.ts';
+import { ENV_SAFE } from './regen-steps/env-safe.ts';
 import { OVFL } from './regen-steps/ovfl.ts';
 import { PNT1 } from './regen-steps/pnt1.ts';
 import { PNT2 } from './regen-steps/pnt2.ts';
@@ -106,6 +107,7 @@ const LEGACY_STEPS: readonly Step[] = [
  */
 export const REGEN_FEATURES: { readonly [feature: string]: RegenFeature } = {
   bg2: BG2,
+  'env-safe': ENV_SAFE,
   ovfl: OVFL,
   pnt1: PNT1,
   pnt2: PNT2,
@@ -154,7 +156,8 @@ const LEGACY_MANUAL: readonly ManualOutput[] = [
 export const MANUAL: readonly ManualOutput[] = [...LEGACY_MANUAL, ...Object.keys(REGEN_FEATURES).sort().flatMap((id) => REGEN_FEATURES[id]?.manual ?? [])];
 
 export const MAX_PASSES = 5;
-export const DEFAULT_JOBS = 2;
+// Measured on master (forced, one heavy-lease slot, load 16-46): --jobs 2 took 787 s, --jobs 4 took 467 s, both byte-identical.
+export const DEFAULT_JOBS = 4;
 
 export const sha256 = (s: string): string => createHash('sha256').update(s).digest('hex');
 
