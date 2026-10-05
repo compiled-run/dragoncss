@@ -28,7 +28,7 @@ describe('pointer-events: registry', () => {
     // The paint families (PNT1's radius first, then PNT2's transform after it) register after it.
     expect(LONGHANDS[LONGHANDS.indexOf('pointer-events') - 1]).toBe(GRID_LONGHANDS[GRID_LONGHANDS.length - 1]);
     expect(LONGHANDS.indexOf(RADIUS_LONGHANDS[0])).toBe(LONGHANDS.indexOf('pointer-events') + 1);
-    expect(LONGHANDS.indexOf(TRANSFORM_LONGHANDS[0])).toBeGreaterThan(LONGHANDS.indexOf(RADIUS_LONGHANDS[RADIUS_LONGHANDS.length - 1]));
+    expect(LONGHANDS.indexOf(TRANSFORM_LONGHANDS[0])).toBeGreaterThan(LONGHANDS.indexOf(RADIUS_LONGHANDS[3]));
     expect(INHERITED.has('pointer-events')).toBe(true);
     expect(PROPERTY_ASPECTS['pointer-events']).toEqual({ layout: false, paint: false });
     expect(grammar['pointer-events']?.initial).toBe('auto');
