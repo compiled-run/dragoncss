@@ -1,11 +1,11 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compilePattern, matchSegments, parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
-import { checkTrace, commandOf, type Context, type Entry, fileStore, type Io, lanesVerdict, MANUAL, matcher, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree } from '../../../scripts/regen.ts';
+import { checkTrace, commandOf, type Context, type Entry, fileStore, type Io, lanesVerdict, MANUAL, matcher, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree, worktreeLock } from '../../../scripts/regen.ts';
 import { exportTargetsUnder, importClosure, lockClosure, NODE_IMPORT_CONDITIONS, parseLock, workspaceOf } from '../../../scripts/regen-inputs.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -758,4 +758,38 @@ describe.runIf(process.env.DRAGON_REGEN_CHECK === '1')('pnpm regen --check on th
     const after = outputs();
     expect([...new Set([...before.keys(), ...after.keys()])].filter((p) => before.get(p) !== after.get(p))).toEqual([]);
   }, 7_200_000);
+});
+
+describe('one regen per worktree', () => {
+  it('refuses a second regen while the first holds the worktree, takes over a dead or half-made lock, and leaves other worktrees free', () => {
+    const base = mkdtempSync(join(tmpdir(), 'regen-lock-'));
+    try {
+      const a = join(base, 'a');
+      const b = join(base, 'b');
+      mkdirSync(a);
+      mkdirSync(b);
+      const live = new Set([100, 200]);
+      const alive = (pid: number): boolean => live.has(pid);
+      const first = worktreeLock(a, 100, alive);
+      expect(readFileSync(join(a, 'dragon-regen.lock', 'pid'), 'utf8')).toBe('100\n');
+      expect(() => worktreeLock(a, 200, alive)).toThrow(/another regen \(pid 100\) is running in this worktree/);
+      // Another worktree has its own git dir and its own lock.
+      worktreeLock(b, 200, alive).release();
+      first.release();
+      expect(existsSync(join(a, 'dragon-regen.lock'))).toBe(false);
+      // The owner died without releasing: the next regen takes the lock over.
+      worktreeLock(a, 300, alive);
+      expect(worktreeLock(a, 200, alive)).toBeDefined();
+      expect(readFileSync(join(a, 'dragon-regen.lock', 'pid'), 'utf8')).toBe('200\n');
+      // A lock without a pid is being made: it blocks for a minute, then counts as abandoned.
+      rmSync(join(a, 'dragon-regen.lock'), { recursive: true });
+      mkdirSync(join(a, 'dragon-regen.lock'));
+      expect(() => worktreeLock(a, 200, alive)).toThrow(/another regen \(pid starting\)/);
+      const old = (Date.now() - 120_000) / 1000;
+      utimesSync(join(a, 'dragon-regen.lock'), old, old);
+      expect(() => worktreeLock(a, 200, alive)).not.toThrow();
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
 });
