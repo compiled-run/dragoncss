@@ -522,6 +522,7 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
 
   it('keeps the rapidhash and fdlibm notices, copyright and licence text, in the files that port them', () => {
     for (const kind of NOTICE_IN_FILE) {
+      // The entry Dragon ports under this licence; a reference-only entry of the same licence carries no notice in a Dragon file.
       const e = registry.entries.find((x) => x.licence === kind && x.dragon.some((d) => d.use === 'port'))!;
       expect(e, kind).toBeDefined();
       const port = e.dragon.find((d) => d.use === 'port')!;

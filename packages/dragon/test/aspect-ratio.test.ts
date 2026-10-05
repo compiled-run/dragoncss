@@ -112,3 +112,23 @@ describe('the layout ratio the lowering gives the engine', () => {
     expect(compile('.a { aspect-ratio: 2; height: 50px; }').diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE')).toEqual([]);
   });
 });
+
+describe('object-position keywords (REPL-a, Macroscope 4164413914)', () => {
+  it('reads an escaped or upper-case edge keyword as the keyword, as Chrome 145 computes it', async () => {
+    const { parseValueText } = await import('../src/analysis/computed.ts');
+    const left = parseValueText('object-position', 'left top');
+    expect(left).toEqual({ kind: 'position', x: { unit: '%', value: 0 }, y: { unit: '%', value: 0 } });
+    for (const v of [String.raw`\6c eft top`, String.raw`\6C eft \74op`, 'LEFT Top', String.raw`l\65 ft top`]) expect(parseValueText('object-position', v), v).toEqual(left);
+    expect(parseValueText('object-position', String.raw`\72ight b\6fttom`)).toEqual(parseValueText('object-position', 'right bottom'));
+  });
+
+  it('refuses an offset past the range of a number instead of carrying Infinity to the emitter (Macroscope 4164997169)', () => {
+    for (const v of ['1e999px 0', '0 1e999%', 'left 1e999px top 0', '-1e999px 50%']) {
+      const c = compile(`.a { object-position: ${v}; }`);
+      const d = c.diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
+      expect(d.map((x) => x.message).join(' '), v).toContain('an offset past the range of a number is not supported in object-position');
+    }
+    expect(compile('.a { object-position: 1e30px 0; }').diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE')).toEqual([]);
+  });
+});
+
