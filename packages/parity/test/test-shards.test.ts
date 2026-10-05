@@ -13,7 +13,7 @@ describe('test shards', () => {
   });
   it('splits longest first onto the least loaded shard, every file once, unknown files at the median', () => {
     const d = { a: 10, b: 7, c: 5, d: 4, e: 1 };
-    expect(plan(['a', 'b', 'c', 'd', 'e'], d, 2)).toEqual([['a', 'e'], ['b', 'c', 'd']]);
+    expect(plan(['a', 'b', 'c', 'd', 'e'], d, 2)).toEqual([['a', 'd'], ['b', 'c', 'e']]);
     const shards = plan(['a', 'b', 'c', 'd', 'e', 'new'], d, 3);
     expect(shards.flat().sort()).toEqual(['a', 'b', 'c', 'd', 'e', 'new']);
     expect(() => plan(['a'], d, 0)).toThrow('shard count must be a positive whole number');
