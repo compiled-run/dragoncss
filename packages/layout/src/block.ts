@@ -19,12 +19,13 @@ import {
   sumEdges,
 } from './box.ts';
 import { layoutFlexContainer } from './flex.ts';
+import type { GridFaults } from './grid.ts';
+import { layoutGridContainer } from './grid.ts';
 import { layoutInline } from './inline.ts';
 import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
 import type { TextMeasurer } from './text.ts';
-import { unsupported } from './unsupported.ts';
 
 /** Seeded engine errors, so the parity harness can prove it fails (docs/api.md §7). The product runs with NO_ENGINE_FAULTS. */
 export type EngineFaults = {
@@ -141,7 +142,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   orderUnclamped: false,
 };
 
-export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
+/** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
+export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults; readonly gridFaults: GridFaults };
 
 /** css-writing-modes-4 §2.1: the box's inline base direction. */
 export function directionOf(ctx: Ctx, box: LayoutNode): Direction {
@@ -236,8 +238,21 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
   }
 
-  // The grid engine (grid.ts) lands in the next GRID G1a package; the compiler has no profile row for display: grid until then.
-  if (s.display === 'grid') unsupported('grid-layout', box.id, 'css-grid-2 §12', 'grid layout (the grid engine is not in this build)');
+  if (s.display === 'grid') {
+    const r = layoutGridContainer(ctx, box, {
+      pad,
+      bor,
+      contentWidth,
+      definiteInnerHeight: fixedBorderBox === null ? null : contentBox(fixedBorderBox, vbp),
+      innerHeightMinMax: {
+        min: contentBox(minMax.min, vbp),
+        max: minMax.max === null ? null : contentBox(minMax.max, vbp),
+      },
+    });
+    const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
+    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
+    return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
+  }
 
   const canCollapseTop = !a.formattingContextRoot && bor.top === 0 && pad.top === 0;
   const r = layoutBlockFlow(ctx, box, {

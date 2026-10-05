@@ -2,12 +2,11 @@
 // the emitted Swift and Kotlin (typed engine constructors, no CSS, selector, class name or JSON decoding), and the checked int
 // conversion, which traps on 1.5 and on 2^31 in both languages on the host.
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it, onTestFinished } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { checkedConversionSource, inputFunctions, STYLE_FIELDS } from '../src/emit/native-support.ts';
 import type { EmitCase, NativeProgram } from '../src/internal.ts';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, nativeLayoutProjection, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
@@ -87,6 +86,20 @@ describe('the emitted Swift and Kotlin', () => {
       for (const rule of CSS.split('}').map((r) => r.trim()).filter((r) => r.length > 0)) expect(src).not.toContain(rule);
     }
     for (const src of [swift, kotlin]) for (const cls of ['a', 'b', 'c']) expect(src).not.toMatch(new RegExp(`\\.${cls}(?![\\w-])`));
+  });
+  it('construct the engine Ctx with every parameter of the translated Ctx, so the support compiles against the current engine', () => {
+    // Only the device build compiles the support, so a field added to Ctx (gridFaults) is caught here on the host.
+    const gen = join(root, 'packages', 'layout', 'generated');
+    const swiftInit = /public final class Ctx \{[^]*?public init\(([^)]*)\)/.exec(readFileSync(join(gen, 'swift', 'Sources', 'DragonLayout', 'Block.swift'), 'utf8'))?.[1];
+    const kotlinInit = /\nclass Ctx\(([^)]*)\)/.exec(readFileSync(join(gen, 'kotlin', 'src', 'main', 'kotlin', 'dev', 'dragon', 'layout', 'Block.kt'), 'utf8'))?.[1];
+    for (const [backend, params] of [['uikit', swiftInit], ['android-views', kotlinInit]] as const) {
+      if (params === undefined) throw new Error(`no Ctx constructor in the generated ${backend} engine`);
+      const arity = params.split(',').filter((x) => x.trim() !== '').length;
+      const calls = emitNativeSupport(backend).flatMap((f) => [...f.text.matchAll(/\bCtx\(([^()]*)\)/g)].map((m) => m[1] as string));
+      expect(calls.length, backend).toBeGreaterThan(0);
+      for (const args of calls) expect(args.split(',').length, `${backend}: Ctx(${args})`).toBe(arity);
+    }
+    expect(emitNativeSupport('android-views').some((f) => f.text.includes('import dev.dragon.layout.grid_NO_GRID_FAULTS'))).toBe(true);
   });
 });
 

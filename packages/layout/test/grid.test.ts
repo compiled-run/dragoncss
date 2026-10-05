@@ -1,7 +1,10 @@
-// GRID G1a engine input: the validator's grid shape rules, with a planted input for each.
+// GRID G1a engine checks beside the G-P differential test (packages/parity/test/grid-corpus-*.test.ts): the grid arithmetic
+// helpers, the validator's grid shape rules with a planted input for each, and small engine cases pinned to Chrome 145 corpus values.
 import { describe, expect, it } from 'vitest';
 import type { GridContainerStyle, GridItemStyle, LayoutBox, LayoutInput, TrackSize } from '../src/index.ts';
-import { ahemMeasurer, layout, validateLayoutInput } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, layout, validateLayoutInput } from '../src/index.ts';
+import type { LU } from '../src/units.ts';
+import { equalShare, frLeftover, frShareToLu, intDiv, intMod, rawOverFloat, setFlexFactor } from '../src/units.ts';
 import { anon, box, neutralEnvironment, text } from './helpers.ts';
 
 const fr = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'fr', value } });
@@ -23,6 +26,42 @@ function grid(g: GridContainerStyle, items: readonly LayoutBox[], width = 100): 
   return box('g', { display: 'grid', width: { kind: 'px', value: width }, grid: g }, items.map((b) => ({ ...b, style: { ...b.style, gridItem: b.style.gridItem ?? autoItem } })));
 }
 
+function boxesOf(root: LayoutBox): Map<string, { x: number; y: number; width: number; height: number }> {
+  const r = layout(input(box('root', {}, [root])), ahemMeasurer);
+  if (r.kind !== 'ok') throw new Error(`unsupported: ${r.unsupported.code}`);
+  return new Map([...absoluteRects(r.boxes)].map(([id, b]) => [id, { x: b.x, y: b.y, width: b.width, height: b.height }]));
+}
+
+describe('grid arithmetic (units.ts)', () => {
+  it('an equal share wraps in unsigned 32-bit arithmetic and truncates (Blink TSA:647, GR5)', () => {
+    expect(equalShare(6400 as LU, 1, 3)).toBe(2133);
+    expect(equalShare(6400 as LU, 2, 3)).toBe(4266);
+    // 2^31 - 1 raw units times 4 tracks wraps modulo 2^32 before the division, as int * wtf_size_t does.
+    expect(equalShare(2147483647 as LU, 4, 4)).toBe(1073741823);
+    expect(equalShare(1073741824 as LU, 4, 1)).toBe(0);
+    expect(() => equalShare(64 as LU, 1, 0)).toThrow(/positive divisor/);
+  });
+
+  it('fr shares are float32 with the leftover carried and FLT_EPSILON added (GR12): 1fr x3 over 100px is 2133 x3', () => {
+    const f = rawOverFloat(6400 as LU, 3);
+    let leftover = 0;
+    const sizes: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const share = Math.fround(Math.fround(f * setFlexFactor(1, 1)) + leftover);
+      const lu = frShareToLu(share);
+      sizes.push(lu);
+      leftover = frLeftover(share, lu);
+    }
+    expect(sizes).toEqual([2133, 2133, 2133]);
+  });
+
+  it('integer division and remainder truncate toward zero, as C++ does', () => {
+    expect(intDiv(-7, 2)).toBe(-3);
+    expect(intMod(-7, 2)).toBe(-1);
+    expect(intMod(7, 3)).toBe(1);
+    expect(() => intDiv(1, 0)).toThrow(/non-zero divisor/);
+  });
+});
 
 describe('the validator\'s grid rules, each with a planted input', () => {
   const ok = input(box('root', {}, [grid(gridStyle({ templateColumns: [{ count: 2, sizes: [fr(1)] }], explicitColumnCount: 2 }), [box('a', {})])]));
@@ -94,9 +133,25 @@ describe('the validator\'s grid rules, each with a planted input', () => {
   });
 });
 
-describe('display: grid before the grid engine', () => {
-  it('is refused with a typed unsupported result, never laid out as a block', () => {
-    const r = layout(input(box('root', {}, [grid(gridStyle({ templateColumns: [{ count: 1, sizes: [fr(1)] }], explicitColumnCount: 1 }), [box('a', {})])])), ahemMeasurer);
-    expect(r.kind === 'unsupported' && r.unsupported.code).toBe('grid-layout');
+describe('grid engine cases pinned to the Chrome 145 corpus (docs/research/grid-spike/probe, DPR 1, ltr)', () => {
+  it('s-fr-three-sets: 1fr 1fr 1fr over 100px gives 2133 raw units each (float32 leftover)', () => {
+    const m = boxesOf(grid(gridStyle({ templateColumns: [{ count: 1, sizes: [fr(1)] }, { count: 1, sizes: [fr(1)] }, { count: 1, sizes: [fr(1)] }], explicitColumnCount: 3 }), ['a', 'b', 'c'].map((id) => box(id, { height: { kind: 'px', value: 10 } }))));
+    expect(['a', 'b', 'c'].map((id) => m.get(id)?.width)).toEqual([2133, 2133, 2133]);
+  });
+  it('s-stretch-remainder: auto auto auto stretched over 100px gives 2133, 2133, 2134 (the remainder goes to the last set)', () => {
+    const m = boxesOf(grid(gridStyle({ templateColumns: [{ count: 1, sizes: [AUTO] }, { count: 1, sizes: [AUTO] }, { count: 1, sizes: [AUTO] }], explicitColumnCount: 3 }), ['a', 'b', 'c'].map((id) => box(id, { height: { kind: 'px', value: 10 } }))));
+    expect(['a', 'b', 'c'].map((id) => m.get(id)?.width)).toEqual([2133, 2133, 2134]);
+  });
+  it('p-dense: dense packing fills the hole before an earlier item', () => {
+    const span = (n: number): GridItemStyle => ({ ...autoItem, column: { kind: 'auto', span: n } });
+    const items = [span(3), span(2), autoItem, autoItem, span(3)].map((gi, k) => box(`i${k}`, { height: { kind: 'px', value: 5 }, gridItem: gi }));
+    const m = boxesOf(grid(gridStyle({ templateColumns: [{ count: 4, sizes: [px(20)] }], explicitColumnCount: 4, autoRows: [px(10)], dense: true }), items));
+    const g = m.get('g');
+    if (g === undefined) throw new Error('no grid box');
+    // Four 20px (1280 LU) columns, 10px (640 LU) rows: i1 wraps to row 2, dense packing puts i2 and i3 in the holes before it.
+    expect(['i0', 'i1', 'i2', 'i3', 'i4'].map((id) => {
+      const b = m.get(id);
+      return b === undefined ? null : [b.x - g.x, b.y - g.y, b.width, b.height];
+    })).toEqual([[0, 0, 3840, 320], [0, 640, 2560, 320], [3840, 0, 1280, 320], [2560, 640, 1280, 320], [0, 1280, 3840, 320]]);
   });
 });

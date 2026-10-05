@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { join } from 'node:path';
 import type { Page } from 'playwright';
 import type { Ctx, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, fromCssPx, layout, NO_ENGINE_FAULTS, placeLines, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
+import { absoluteRects, fromCssPx, layout, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
@@ -65,7 +65,7 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
     cache.set(id, w);
     return w;
   };
-  const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS };
+  const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
   const out: EngineText[] = [];
   for (const r of boxes) {
     // A replaced leaf has no text: only text leaves have lines to break.
@@ -375,7 +375,7 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
     guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("no leaf \(id)") }
     let scalars = Array(leaves[li].text.description.unicodeScalars)
     func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
-    let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+    let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
     let placed = try inline_placeLines(ctx, p, JsArray(leaves), try contentWidth(pId)).items
     var lines: [String] = []
     for line in placed {
@@ -453,7 +453,7 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
     val li = leaves.indexOfFirst { it.id == id }
     val leafText = leaves[li].text
     fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
-    val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+    val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
     val placed = inline_placeLines(ctx, p, leaves, contentWidth(pId))
     val lines = ArrayList<String>()
     for (line in placed) {

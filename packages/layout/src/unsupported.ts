@@ -14,7 +14,9 @@ export type UnsupportedCode =
   | 'flex-intrinsic-wrap-column'
   | 'replaced-out-of-flow'
   | 'line-break'
-  | 'grid-layout';
+  | 'grid-baseline'
+  | 'grid-abspos'
+  | 'grid-replaced';
 
 export type LayoutUnsupported = {
   readonly code: UnsupportedCode;

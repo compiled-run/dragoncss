@@ -644,7 +644,7 @@ public final class DragonTree {
       let scalars = Array(leaves[li].text.description.unicodeScalars)
       func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
       // The engine's own lines: inline.ts placeLines, translated, over the zoomed context. Each line gives this leaf's piece.
-      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
       let placed = try inline_placeLines(ctx, p, JsArray(leaves), try contentWidth(pId)).items
       let pieces = boxes.enumerated().filter { DragonTree.isLine($0.element) && $0.element.parent?.description == id }
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
@@ -1219,6 +1219,7 @@ import dev.dragon.layout.block_NO_ENGINE_FAULTS
 import dev.dragon.layout.box_resolveBorder
 import dev.dragon.layout.box_resolvePadding
 import dev.dragon.layout.inline_placeLines
+import dev.dragon.layout.grid_NO_GRID_FAULTS
 import dev.dragon.layout.layout_absoluteRects
 import dev.dragon.layout.layout_layout
 import dev.dragon.layout.layout_zoomInput
@@ -1396,7 +1397,7 @@ class DragonTree(val context: Context) {
       val leafText = leaves[li].text
       fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
       // The engine's own lines: inline.ts placeLines, translated, over the zoomed context. Each line gives this leaf's piece.
-      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
       val placed = inline_placeLines(ctx, p, leaves, contentWidth(pId))
       val pieces = boxes.indices.filter { isLine(boxes[it]) && boxes[it].parent == id }
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
