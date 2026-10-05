@@ -1,6 +1,6 @@
 // Paint order on the native tree (T046 §1, lower/paint/stacking.ts): the case code writes each layer item's host, bucket and rank
-// through dragonSetPaintOrder, which hosts the view under its layer's view (DragonTree.host, used when the tree places frames) and
-// stores its sort key. After every layout of a box, its host view's children are put in paint order: flow children (bucket 0) keep
+// through dragonSetPaintOrder, which hosts the view under its layer's view (DragonTree.host, used when the tree places frames), inside a
+// clip-chain view when that takes it out of overflow clips (DragonTree.clipChain), and stores its sort key. After every layout of a box, its host view's children are put in paint order: flow children (bucket 0) keep
 // their tree order and every view that is not a box view (a text view) sorts with them, and the layer items follow by bucket and rank
 // (z < 0 first). Only child order changes: zPosition, translationZ and elevation are never used. The readback is the live host and the view's
 // index among the host's box views.
@@ -37,23 +37,35 @@ const SWIFT = String.raw`import UIKit
 /// Whether the sort puts layer items beneath the flow children; false except in the order-swap plant build.
 public let dragonOrderPlantSwapped = false
 
-/// The paint order write of a box (runtime writer): its host (placed there when the tree applies frames) and its sort key; the
-/// host's children are then sorted.
-public func dragonSetPaintOrder(_ t: DragonTree, _ v: DragonBoxView, _ host: String, _ bucket: Int, _ rank: Int) {
+/// The paint order write of a box (runtime writer): its host and the clips it is taken out of (placed there when the tree applies
+/// frames) and its sort key; the host's children are then sorted.
+public func dragonSetPaintOrder(_ t: DragonTree, _ v: DragonBoxView, _ host: String, _ bucket: Int, _ rank: Int, _ clips: [String]) {
   if bucket < -1 || bucket > 2 || rank < 0 { fatalError("dragon: \(v.dragonId): paint order bucket \(bucket) or rank \(rank) is out of range") }
   v.dragonPaintBucket = bucket
   v.dragonPaintRank = rank
   t.host(v.dragonId, host)
-  if let c = v.superview { dragonSortPaintOrder(c) }
+  t.clipChain(v.dragonId, clips)
+  if let c = dragonPaintContainer(v) { dragonSortPaintOrder(c) }
+}
+
+/// The view a box is sorted in: its superview, or its clip-chain view's.
+public func dragonPaintContainer(_ v: UIView) -> UIView? {
+  guard let s = v.superview else { return nil }
+  return s is DragonClipChainView ? s.superview : s
+}
+
+/// The box a child of a container paints: a box view, or the owner of a clip-chain view.
+private func dragonPaintOwner(_ s: UIView) -> DragonBoxView? {
+  return (s as? DragonBoxView) ?? (s as? DragonClipChainView)?.dragonOwner
 }
 
 /// Puts a container's children in paint order: flow children (and views that are not box views) in their current (tree) order,
 /// then layer items by bucket and rank. Only moves views when the order changes.
 public func dragonSortPaintOrder(_ c: UIView) {
   let subs = c.subviews
-  if !subs.contains(where: { (($0 as? DragonBoxView)?.dragonPaintBucket ?? 0) != 0 }) { return }
+  if !subs.contains(where: { (dragonPaintOwner($0)?.dragonPaintBucket ?? 0) != 0 }) { return }
   func key(_ s: UIView, _ i: Int) -> [Int] {
-    guard let b = s as? DragonBoxView, b.dragonPaintBucket != 0 else { return [0, 0, i] }
+    guard let b = dragonPaintOwner(s), b.dragonPaintBucket != 0 else { return [0, 0, i] }
     let bucket = dragonOrderPlantSwapped ? -3 + b.dragonPaintBucket : b.dragonPaintBucket
     return [bucket, b.dragonPaintRank, i]
   }
@@ -64,15 +76,15 @@ public func dragonSortPaintOrder(_ c: UIView) {
 
 /// After every layout of a box: its host's children in paint order (a box placed after a layer item sorts beneath it).
 public func dragonAfterLayoutStacking(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
-  if let c = v.superview { dragonSortPaintOrder(c) }
+  if let c = dragonPaintContainer(v) { dragonSortPaintOrder(c) }
 }
 
 /// The readback of the stacking module: the live host (the box whose view or clip view holds this one) and the view's index among
 /// that container's box views.
 public func dragonAppliedStacking(_ v: DragonBoxView) -> DumpJsonObject {
   if v.dragonPaintBucket == 0 { return [] }
-  guard let c = v.superview, let host = (c as? DragonBoxView) ?? (c.superview as? DragonBoxView) else { return [("dragonStacking.order", .null)] }
-  let boxes = c.subviews.compactMap { $0 as? DragonBoxView }
+  guard let c = dragonPaintContainer(v), let host = (c as? DragonBoxView) ?? (c.superview as? DragonBoxView) else { return [("dragonStacking.order", .null)] }
+  let boxes = c.subviews.compactMap { dragonPaintOwner($0) }
   guard let i = boxes.firstIndex(where: { $0 === v }) else { fatalError("dragon: \(v.dragonId) is not among its container's box views") }
   return [("dragonStacking.order", .array([.string(host.dragonId), .number(Double(i))]))]
 }
@@ -93,17 +105,27 @@ import dev.dragon.dump.DumpJson
 const val DRAGON_ORDER_PLANT_SWAPPED = false
 
 /**
- * The paint order write of a box (runtime writer): its host (placed there when the tree applies frames) and its sort key; the
- * host's children are then sorted.
+ * The paint order write of a box (runtime writer): its host and the clips it is taken out of (placed there when the tree applies
+ * frames) and its sort key; the host's children are then sorted.
  */
-fun dragonSetPaintOrder(t: DragonTree, v: DragonBoxView, host: String, bucket: Int, rank: Int) {
+fun dragonSetPaintOrder(t: DragonTree, v: DragonBoxView, host: String, bucket: Int, rank: Int, clips: List<String>) {
   if (bucket < -1 || bucket > 2 || rank < 0) throw IllegalStateException("dragon: " + v.dragonId + ": paint order bucket " + bucket + " or rank " + rank + " is out of range")
   v.dragonPaintBucket = bucket
   v.dragonPaintRank = rank
   t.host(v.dragonId, host)
-  val c = v.parent
-  if (c is ViewGroup) dragonSortPaintOrder(c)
+  t.clipChain(v.dragonId, clips)
+  val c = dragonPaintContainer(v)
+  if (c != null) dragonSortPaintOrder(c)
 }
+
+/** The view a box is sorted in: its parent, or its clip-chain view's. */
+fun dragonPaintContainer(v: View): ViewGroup? {
+  val s = v.parent as? ViewGroup ?: return null
+  return if (s is DragonClipChainView) s.parent as? ViewGroup else s
+}
+
+/** The box a child of a container paints: a box view, or the owner of a clip-chain view. */
+private fun dragonPaintOwner(s: View): DragonBoxView? = (s as? DragonBoxView) ?: (s as? DragonClipChainView)?.dragonOwner
 
 /**
  * Puts a container's children in paint order: flow children (and views that are not box views) in their current (tree) order,
@@ -111,9 +133,9 @@ fun dragonSetPaintOrder(t: DragonTree, v: DragonBoxView, host: String, bucket: I
  */
 fun dragonSortPaintOrder(c: ViewGroup) {
   val subs = (0 until c.childCount).map { c.getChildAt(it) }
-  if (subs.none { it is DragonBoxView && it.dragonPaintBucket != 0 }) return
+  if (subs.none { (dragonPaintOwner(it)?.dragonPaintBucket ?: 0) != 0 }) return
   fun key(s: View, i: Int): IntArray {
-    val b = s as? DragonBoxView
+    val b = dragonPaintOwner(s)
     if (b == null || b.dragonPaintBucket == 0) return intArrayOf(0, 0, i)
     val bucket = if (DRAGON_ORDER_PLANT_SWAPPED) -3 + b.dragonPaintBucket else b.dragonPaintBucket
     return intArrayOf(bucket, b.dragonPaintRank, i)
@@ -134,8 +156,8 @@ fun dragonSortPaintOrder(c: ViewGroup) {
 
 /** After every layout of a box: its host's children in paint order (a box placed after a layer item sorts beneath it). */
 fun dragonAfterLayoutStacking(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
-  val c = v.parent
-  if (c is ViewGroup) dragonSortPaintOrder(c)
+  val c = dragonPaintContainer(v)
+  if (c != null) dragonSortPaintOrder(c)
 }
 
 /**
@@ -144,10 +166,10 @@ fun dragonAfterLayoutStacking(v: DragonBoxView, shape: DragonBoxShape, scale: Do
  */
 fun dragonAppliedStacking(v: DragonBoxView): List<Pair<String, DumpJson>> {
   if (v.dragonPaintBucket == 0) return emptyList()
-  val c = v.parent as? ViewGroup
+  val c = dragonPaintContainer(v)
   val host = (c as? DragonBoxView) ?: (c?.parent as? DragonBoxView)
   if (c == null || host == null) return listOf(Pair("dragonStacking.order", DumpJson.Null))
-  val boxes = (0 until c.childCount).map { c.getChildAt(it) }.filterIsInstance<DragonBoxView>()
+  val boxes = (0 until c.childCount).mapNotNull { dragonPaintOwner(c.getChildAt(it)) }
   val i = boxes.indexOfFirst { it === v }
   if (i < 0) throw IllegalStateException("dragon: " + v.dragonId + " is not among its container's box views")
   return listOf(Pair("dragonStacking.order", DumpJson.Arr(listOf(DumpJson.Str(host.dragonId), DumpJson.Num(i.toDouble())))))
@@ -158,8 +180,8 @@ export const STACKING_EMITTER: PaintEmitter<'paint-order', 'order-swap'> = {
   name: 'stacking',
   kinds: ['paint-order'],
   lines: {
-    uikit: (v, _n, w) => [`  dragonSetPaintOrder(t, ${v}, ${nativeString('swift', w.host)}, ${int(w.bucket, 'bucket')}, ${int(w.rank, 'rank')})`],
-    'android-views': (v, _n, w) => [`  dragonSetPaintOrder(t, ${v}, ${nativeString('kotlin', w.host)}, ${int(w.bucket, 'bucket')}, ${int(w.rank, 'rank')})`],
+    uikit: (v, _n, w) => [`  dragonSetPaintOrder(t, ${v}, ${nativeString('swift', w.host)}, ${int(w.bucket, 'bucket')}, ${int(w.rank, 'rank')}, [${w.clips.map((c) => nativeString('swift', c)).join(', ')}])`],
+    'android-views': (v, _n, w) => [`  dragonSetPaintOrder(t, ${v}, ${nativeString('kotlin', w.host)}, ${int(w.bucket, 'bucket')}, ${int(w.rank, 'rank')}, listOf(${w.clips.map((c) => nativeString('kotlin', c)).join(', ')}))`],
   },
   applied: (_e, _b, w) => [w.host, w.index],
   native: {

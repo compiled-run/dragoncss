@@ -4,8 +4,8 @@
 // in engine box order to their host's container, the container sorted after each box: flow children in place, layer items by
 // bucket and rank), puts every layer item where Appendix E paints it, and gives the [host, index] each paint-order write expects.
 // Flow siblings keep the engine's box order, which is not tree order for reversed or reordered flex items (a paint order the native
-// tree had before PNT1, visible only where such items overlap), so the order check is on every pair that holds a layer item (and
-// no box kept under a clip).
+// tree had before PNT1, visible only where such items overlap), so the order check is on every pair that holds a layer item. A
+// clip-chain view stands in its owner's place, so the emulation places its owner there.
 import { describe, expect, it } from 'vitest';
 import type { NativeProgram, ProgramNode } from 'dragon';
 import { nativePrograms } from 'dragon';
@@ -13,7 +13,7 @@ import { casesOf, fixtureInput } from '../src/cases.ts';
 import { FIXTURE_GROUPS, FIXTURES } from '../src/fixtures.ts';
 import { engineBoxes, nativeCompile } from '../src/native-host.ts';
 
-type Facts = { paintOrder: number; context: string | null; createsContext: boolean; layer: string; host: string | null; clipChain: readonly string[]; underClip: boolean };
+type Facts = { paintOrder: number; context: string | null; createsContext: boolean; layer: string; host: string | null; clipChain: readonly string[]; hostClips: readonly string[] };
 const factsOf = (n: ProgramNode): Facts | undefined => n.facts['stacking'] as Facts | undefined;
 
 /** The device's placement of a program: children per container after DragonTree.apply's insertions and the stacking sorts. */
@@ -70,8 +70,8 @@ const programsOf = (spec: (typeof FIXTURES)[number]) =>
 
 describe('PNT1 stacking facts (rt-hit.ts)', () => {
   const stacking = (FIXTURE_GROUPS.find((g) => g.id === 'effects')?.fixtures ?? []).filter((f) => f.id.startsWith('stacking-')).flatMap(programsOf);
-  it('covers the four stacking fixtures in both directions', () => {
-    expect(stacking.map((s) => s.id)).toEqual(['stacking-basic', 'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-transform', 'stacking-transform-rtl']);
+  it('covers the five stacking fixtures in both directions', () => {
+    expect(stacking.map((s) => s.id)).toEqual(['stacking-basic', 'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-transform', 'stacking-transform-rtl', 'stacking-clip-chain', 'stacking-clip-chain-rtl']);
   });
   for (const { id, p } of stacking) {
     it(`${id}: every box has its paint-order index, stacking context, host and clip chain; the indices are a permutation`, () => {
@@ -110,8 +110,7 @@ describe('the device placement gives Appendix E order on every case', () => {
         const fa = factsOf(a) as Facts;
         for (const b of boxes) {
           const fb = factsOf(b) as Facts;
-          // A box that stays under an overflow clip its layer would leave paints in the clip's order (lower/paint/stacking.ts).
-          if (a === b || (fa.layer === 'flow' && fb.layer === 'flow') || fa.underClip || fb.underClip) continue;
+          if (a === b || (fa.layer === 'flow' && fb.layer === 'flow')) continue;
           if (fa.paintOrder < fb.paintOrder !== (at.get(a.id) as number) < (at.get(b.id) as number)) problems.push(`${id}: ${a.id} and ${b.id} paint in the other order natively`);
         }
       }

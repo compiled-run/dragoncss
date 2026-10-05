@@ -1,6 +1,6 @@
-// The stacking refusal (T046 §1, lower/paint/stacking.ts): a box with an integer z-index whose layer would take it out of an overflow
-// clip in its containing-block chain needs a clip-chain wrapper around its re-hosted view, which EMS's hosting hook does not have,
-// so it is refused on the native targets. The web target paints it itself.
+// The stacking refusal (T046 §1, lower/paint/stacking.ts): a box that a native ancestor's clip view would clip although the clip is
+// not in its containing-block chain (an absolute box re-hosted under a stacking context inside the clip) cannot be taken out of that
+// clip by a clip-chain view, so it is refused on the native targets. The web target paints it itself.
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import type { StackNode } from '../../lower/paint/stacking.ts';
 import { stackingOf, transformedForStacking } from '../../lower/paint/stacking.ts';
@@ -61,23 +61,19 @@ export function checkStackingClips(el: ResolvedElement, targets: readonly string
     for (const c of e.children) if (c.kind === 'element') walk(c);
   };
   walk(el);
-  for (const { id, clip, kind } of stackingOf(resolvedStackTree(el)).clipped) {
+  for (const { id, clip } of stackingOf(resolvedStackTree(el)).clipped) {
     const at = byId.get(id);
     if (at === undefined) throw new Error(`${id}: a clipped stacking item that is not an element`);
     for (const t of targets) {
       if (t === 'web') continue;
-      const key = `${t}|stacking-${kind}|${id}`;
+      const key = `${t}|stacking-clip|${id}`;
       if (reported.has(key)) continue;
       reported.add(key);
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
         origin: itemOrigin(at),
         target: t,
-        message: kind === 'order'
-          ? `${id} paints in a stacking context outside ${clip}, whose overflow clip applies to it, and Chrome paints it after content ${t} would paint above it under that clip; ${t} would need a clip-chain view around it, which PNT1's hosting does not have yet`
-          : `${id} is not clipped by ${clip} in Chrome (its containing block is outside it), but ${t} hosts it under a stacking context inside ${clip}'s clip view, which would clip it; PNT1's hosting cannot take it out of that clip yet`,
-        manual: kind === 'order'
-          ? `Make ${clip} a stacking context (position: relative with a z-index), so the box stacks inside its clip, or move the box out of the clipping element.`
-          : `Make the stacking context between ${clip} and ${id} its containing block (position: relative), or move ${id} out of ${clip}.`,
+        message: `${id} is not clipped by ${clip} in Chrome (its containing block is outside it), but ${t} hosts it under a stacking context inside ${clip}'s clip view, which would clip it; PNT1's hosting cannot take it out of that clip yet`,
+        manual: `Make the stacking context between ${clip} and ${id} its containing block (position: relative), or move ${id} out of ${clip}.`,
         basis: 'computed-value',
       }));
     }

@@ -293,7 +293,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
-  // PNT1: a z-index box whose layer would leave an overflow clip of its containing-block chain (analysis/paint-values/stacking.ts).
+  // PNT1: a box a native clip view would clip outside its containing-block chain (analysis/paint-values/stacking.ts).
   checkStackingClips(root, targets, diagnostics, reported);
 }
 

@@ -63,16 +63,16 @@ describe('Appendix E paint order', () => {
     const s = stackingOf(root);
     expect(s.order).toEqual(['html', 'q', 'body', 'f1', 'f1:text0', 'f2', 'r', 's', 'p']);
     expect(s.native).toEqual(s.order);
-    expect(s.writes.get('p')).toEqual({ host: 'html', bucket: 2, rank: 3, index: 4 });
-    expect(s.writes.get('q')).toEqual({ host: 'html', bucket: -1, rank: 0, index: 0 });
-    expect(s.facts.get('p')).toEqual({ paintOrder: 8, context: 'html', createsContext: true, layer: 'positive', host: 'html', clipChain: [], underClip: false });
+    expect(s.writes.get('p')).toEqual({ host: 'html', bucket: 2, rank: 3, index: 4, clips: [] });
+    expect(s.writes.get('q')).toEqual({ host: 'html', bucket: -1, rank: 0, index: 0, clips: [] });
+    expect(s.facts.get('p')).toEqual({ paintOrder: 8, context: 'html', createsContext: true, layer: 'positive', host: 'html', clipChain: [], hostClips: [] });
     expect(s.facts.get('f1')?.layer).toBe('flow');
   });
   it('places every layer item even where tree order paints right, since the device adds out-of-flow views after the flow', () => {
     const s = stackingOf(n('html', {}, n('body', {}, n('a', {}), n('b', { position: 'relative' }, n('c', { position: 'absolute' })))));
     expect([...s.writes.keys()]).toEqual(['b', 'c']);
-    expect(s.writes.get('b')).toEqual({ host: 'html', bucket: 1, rank: 0, index: 1 });
-    expect(s.writes.get('c')).toEqual({ host: 'b', bucket: 1, rank: 1, index: 0 });
+    expect(s.writes.get('b')).toEqual({ host: 'html', bucket: 1, rank: 0, index: 1, clips: [] });
+    expect(s.writes.get('c')).toEqual({ host: 'b', bucket: 1, rank: 1, index: 0, clips: [] });
     expect(s.native).toEqual(s.order);
     expect(s.facts.get('a')?.host).toBe('body');
   });
@@ -103,32 +103,36 @@ describe('Appendix E paint order', () => {
     const s = stackingOf(n('html', {}, n('flex', {}, n('i1', { z: 3 }), n('i2', {}))));
     expect(s.order).toEqual(['html', 'flex', 'i2', 'i1']);
   });
-  it('an absolute box escapes an overflow clip that is not its containing block, and stays under one that is', () => {
+  it('an absolute box escapes an overflow clip that is not its containing block; one that is stays in force through a clip-chain view', () => {
     const escaping = stackingOf(n('html', {}, n('row', { position: 'relative' }, n('clip', { clips: true }, n('d', { position: 'absolute', z: 3 })), n('l', {}))));
-    expect(escaping.facts.get('d')).toMatchObject({ host: 'html', clipChain: [], underClip: false });
-    expect(escaping.clipped).toEqual([]);
-    const clipped = stackingOf(n('html', {}, n('clip', { clips: true }, n('d', { position: 'relative', z: 3 })), n('l', {})));
-    expect(clipped.facts.get('d')).toMatchObject({ host: 'clip', clipChain: ['clip'], underClip: true });
-    expect(clipped.clipped).toEqual([{ id: 'd', clip: 'clip', kind: 'order' }]);
+    expect(escaping.facts.get('d')).toMatchObject({ host: 'html', clipChain: [], hostClips: [] });
+    expect(escaping.writes.get('d')?.clips).toEqual([]);
+    const clipped = stackingOf(n('html', {}, n('clip', { clips: true }, n('d', { position: 'relative', z: 3 })), n('l', { position: 'relative' })));
+    expect(clipped.facts.get('d')).toMatchObject({ host: 'html', clipChain: ['clip'], hostClips: ['clip'] });
+    expect(clipped.writes.get('d')).toMatchObject({ host: 'html', bucket: 2, clips: ['clip'] });
+    expect(clipped.order).toEqual(['html', 'clip', 'l', 'd']);
+    expect(clipped.native).toEqual(clipped.order);
+    expect(clipped.clipped).toEqual([]);
+    // Every clip of the containing-block chain between the box and its host, nearest first; a clip that is not in it is left out.
+    const nested = stackingOf(n('html', {}, n('outer', { clips: true, position: 'relative' }, n('mid', {}, n('inner', { clips: true }, n('d', { position: 'absolute', z: 1 }))), n('skip', { clips: true }, n('e', { position: 'absolute', z: 1 })))));
+    expect(nested.writes.get('d')?.clips).toEqual(['outer']);
+    expect(nested.writes.get('e')?.clips).toEqual(['outer']);
+    const chain = stackingOf(n('html', {}, n('a', { clips: true }, n('b', { clips: true }, n('d', { position: 'relative', z: 1 })))));
+    expect(chain.writes.get('d')?.clips).toEqual(['b', 'a']);
+    expect(chain.clipped).toEqual([]);
     const fixed = stackingOf(n('html', {}, n('clip', { clips: true }, n('d', { position: 'fixed', z: 3 })), n('l', {})));
-    expect(fixed.facts.get('d')).toMatchObject({ host: 'html', clipChain: [], underClip: false, createsContext: true });
+    expect(fixed.facts.get('d')).toMatchObject({ host: 'html', clipChain: [], hostClips: [], createsContext: true });
     expect(fixed.clipped).toEqual([]);
     expect(stackingOf(n('html', {}, n('s', { position: 'sticky' }))).facts.get('s')?.createsContext).toBe(true);
-    const last = stackingOf(n('html', {}, n('l', {}), n('clip', { clips: true }, n('d', { position: 'relative', z: 3 }))));
-    expect(last.facts.get('d')).toMatchObject({ host: 'clip', underClip: true });
-    expect(last.clipped).toEqual([]);
-    const auto = stackingOf(n('html', {}, n('clip', { clips: true }, n('d', { position: 'relative' })), n('l', {})));
-    expect(auto.facts.get('d')).toMatchObject({ host: 'clip', underClip: true });
-    // A z-index auto box too: under the clip it paints before l, which Appendix E paints below it (finding 1).
-    expect(auto.clipped).toEqual([{ id: 'd', clip: 'clip', kind: 'order' }]);
   });
-  it('reports a layer item of any z-index kept under a clip whose native order differs (review of #196, finding 1)', () => {
-    // body > [C (overflow: hidden) > P (opacity 0.5, or relative, or transformed), S]: Appendix E paints C S P; under C, P paints before S.
+  it('orders every layer item of any z-index taken out of a clip as Appendix E does, through its clip-chain view (review of #196, finding 1)', () => {
+    // body > [C (overflow: hidden) > P (opacity 0.5, or relative, or transformed), S]: Appendix E paints C S P, and so does the native tree.
     for (const p of [{ opacity: 0.5 }, { position: 'relative' as const }, { transformed: true }]) {
       const s = stackingOf(n('html', {}, n('body', {}, n('C', { clips: true }, n('P', p)), n('S', {}))));
       expect(s.order, JSON.stringify(p)).toEqual(['html', 'body', 'C', 'S', 'P']);
-      expect(s.native, JSON.stringify(p)).toEqual(['html', 'body', 'C', 'P', 'S']);
-      expect(s.clipped, JSON.stringify(p)).toEqual([{ id: 'P', clip: 'C', kind: 'order' }]);
+      expect(s.native, JSON.stringify(p)).toEqual(s.order);
+      expect(s.writes.get('P'), JSON.stringify(p)).toMatchObject({ host: 'html', clips: ['C'] });
+      expect(s.clipped, JSON.stringify(p)).toEqual([]);
     }
   });
   it('reports a box a stacking context inside a clip would take into that clip, which its containing-block chain is not in (finding 2)', () => {
@@ -148,30 +152,25 @@ describe('Appendix E paint order', () => {
     // A positioned O is I's containing block, so C clips I in Chrome too: nothing to report.
     const positioned = stackingOf(n('html', {}, n('body', {}, n('C', { clips: true }, n('O', { opacity: 0.5, position: 'relative' }, n('I', { position: 'absolute' }))))));
     expect(positioned.facts.get('I')?.clipChain).toEqual(['C']);
-    expect(positioned.clipped.filter((c) => c.kind === 'clip')).toEqual([]);
+    expect(positioned.clipped).toEqual([]);
   });
 });
 
-describe('stacking: refusals on the native targets', () => {
+describe('stacking: the clip refusal on the native targets', () => {
   const compile = (css: string, body: Parameters<typeof inputFor>[1], targets: Targets = { ios: { minimum: '15.0' }, web: {} }) =>
     createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; } ${css}`, body));
-  it('a z-index box whose layer is outside an overflow clip in its containing-block chain, and that would paint below a later box, is refused on ios only, at the z-index', () => {
-    const c = compile('.clip { overflow: hidden; height: 20px; } .d { position: relative; z-index: 2; height: 30px; } .after { position: relative; height: 5px; }', (r) => [div(r, 'clip', ['clip'], [div(r, 'd', ['d'])]), div(r, 'after', ['after'])]);
-    const errs = c.diagnostics.filter((d) => d.severity === 'error');
-    expect(errs.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
-    expect(errs[0]?.message).toMatch(/^d paints in a stacking context outside clip, whose overflow clip applies to it/);
-    expectCatalogued(errs);
+  it('compiles a box of any z-index taken out of a clip of its containing-block chain, with the clip on its write', () => {
+    for (const css of ['.clip { overflow: hidden; height: 20px; } .d { position: relative; z-index: 2; height: 30px; } .after { position: relative; height: 5px; }', '.clip { overflow: hidden; height: 20px; } .d { will-change: opacity; height: 30px; } .after { height: 5px; margin-top: -10px; background-color: red; }']) {
+      const c = compile(css, (r) => [div(r, 'clip', ['clip'], [div(r, 'd', ['d'])]), div(r, 'after', ['after'])]);
+      expect(c.diagnostics.filter((d) => d.severity === 'error'), css).toEqual([]);
+    }
   });
-  it('refuses both review repros on ios only, at the declaration that makes the box a layer item', () => {
-    const order = compile('.c { overflow: hidden; height: 20px; } .p { position: relative; height: 30px; } .s { height: 20px; margin-top: -20px; background-color: red; }', (r) => [div(r, 'c', ['c'], [div(r, 'p', ['p'])]), div(r, 's', ['s'])]);
-    const oe = order.diagnostics.filter((d) => d.severity === 'error');
-    expect(oe.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
-    expect(oe[0]?.message).toMatch(/^p paints in a stacking context outside c, whose overflow clip applies to it/);
+  it('refuses a box a stacking context would take into a clip outside its containing-block chain, on ios only, at its position', () => {
     const escape = compile('.c { overflow: hidden; height: 20px; } .o { will-change: opacity; height: 10px; } .i { position: absolute; top: 60px; width: 10px; height: 10px; }', (r) => [div(r, 'c', ['c'], [div(r, 'o', ['o'], [div(r, 'i', ['i'])])])]);
     const ee = escape.diagnostics.filter((d) => d.severity === 'error');
     expect(ee.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
     expect(ee[0]?.message).toMatch(/^i is not clipped by c in Chrome \(its containing block is outside it\)/);
-    expectCatalogued([...oe, ...ee]);
+    expectCatalogued(ee);
   });
   it('a z-index auto box under such a clip, a z-index box whose clip is not its containing block, and one that nothing paints after compile', () => {
     for (const css of ['.clip { overflow: hidden; height: 20px; } .d { position: relative; height: 30px; }', '.row { position: relative; } .clip { overflow: hidden; height: 20px; } .d { position: absolute; z-index: 2; height: 30px; }', '.clip { overflow: hidden; height: 20px; } .d { position: relative; z-index: 2; height: 30px; }']) {
@@ -197,8 +196,11 @@ describe('stacking: lowering and emission', () => {
     for (const x of p['android-views'].nodes) if (x.kind !== 'text') expect(x.facts['stacking'], x.id).toBeDefined();
     const w = z?.writes.find((x) => x.kind === 'paint-order');
     if (w === undefined || w.kind !== 'paint-order') throw new Error('no paint-order write');
-    expect(STACKING_EMITTER.lines.uikit('v3', z as never, w)).toEqual(['  dragonSetPaintOrder(t, v3, "html", 2, 0)']);
-    expect(STACKING_EMITTER.lines['android-views']('v3', z as never, w)).toEqual(['  dragonSetPaintOrder(t, v3, "html", 2, 0)']);
+    expect(STACKING_EMITTER.lines.uikit('v3', z as never, w)).toEqual(['  dragonSetPaintOrder(t, v3, "html", 2, 0, [])']);
+    expect(STACKING_EMITTER.lines['android-views']('v3', z as never, w)).toEqual(['  dragonSetPaintOrder(t, v3, "html", 2, 0, listOf())']);
+    const clipped = { ...w, clips: ['a"b', 'c'] };
+    expect(STACKING_EMITTER.lines.uikit('v3', z as never, clipped)).toEqual(['  dragonSetPaintOrder(t, v3, "html", 2, 0, ["a\\"b", "c"])']);
+    expect(STACKING_EMITTER.lines['android-views']('v3', z as never, clipped)).toEqual(['  dragonSetPaintOrder(t, v3, "html", 2, 0, listOf("a\\"b", "c"))']);
     expect(STACKING_EMITTER.applied({} as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box: {} as never, fontSize: null, replaced: null })).toEqual(['html', w.index]);
   });
   it('refuses a box of another tree than the case it computed, even when its id matches', () => {

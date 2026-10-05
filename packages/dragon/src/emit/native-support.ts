@@ -204,6 +204,19 @@ public final class DragonClipView: UIView {
   required init?(coder: NSCoder) { fatalError("DragonClipView is built in code") }
 }
 
+/// A clip-chain view (PNT1 stacking): a re-hosted box's wrapper in its host, clipping it to the intersection of the padding boxes of
+/// the overflow clips its re-hosting takes it out of; it sorts in its owner's place among the host's children.
+public final class DragonClipChainView: UIView {
+  public weak var dragonOwner: DragonBoxView?
+  public init() {
+    super.init(frame: .zero)
+    clipsToBounds = true
+    backgroundColor = nil
+    isOpaque = false
+  }
+  required init?(coder: NSCoder) { fatalError("DragonClipChainView is built in code") }
+}
+
 /// The box geometry every paint stage and after-layout hook receives: the snapped border-box edges (left, top, right, bottom) and
 /// the border widths (top, right, bottom, left) in device px, and the eight corner radii in device px (horizontal then vertical,
 /// top-left first), zero until the radius module fills them (PNT1).
@@ -516,12 +529,17 @@ public final class DragonTree {
   private var parents: [String: String?] = [:]
   private var textMetrics: [String: (halfLeading: Double, ascent: Double, descent: Double)] = [:]
   private var hosts: [String: String] = [:]
+  private var clipChains: [String: [String]] = [:]
+  private var clipChainViews: [String: DragonClipChainView] = [:]
   private var companions: [String: [UIView]] = [:]
   public init() {}
 
   /// Hosting (PNT1): node id's view is added to host's container instead of its DOM parent's; frames stay absolute from the
   /// engine and the dump stays in DOM terms.
   public func host(_ id: String, _ host: String) { hosts[id] = host }
+  /// The overflow clips (DOM ancestors of node id) its hosting takes it out of: it is placed in a clip-chain view over the
+  /// intersection of their padding boxes; [] for none.
+  public func clipChain(_ id: String, _ clips: [String]) { clipChains[id] = clips.isEmpty ? nil : clips }
   /// A companion view placed directly beneath node id in the same host, with the node's frame (outer shadows, PNT1).
   public func companion(_ id: String, _ view: UIView) { companions[id, default: []].append(view) }
   /// A built node's view, for the runtime writers (RT-1, RT-2, RT-11).
@@ -590,6 +608,23 @@ public final class DragonTree {
         guard let pv = views[h] as? DragonBoxView, let pe = edges[h], let pb = borders[h] else { fatalError("dragon: \(id) has no placed parent box \(h)") }
         container = pv.dragonContainer
         origin = pv.dragonClipView == nil ? [pe[0], pe[1]] : [pe[0] + pb[3], pe[1] + pb[0]]
+      }
+      if let chain = clipChains[id] {
+        // The clips are DOM ancestors, so they are placed already; their padding boxes intersect in absolute device px.
+        var clip = [-Double.infinity, -Double.infinity, Double.infinity, Double.infinity]
+        for c in chain {
+          guard let ce = edges[c], let cb = borders[c] else { fatalError("dragon: \(id) is clipped by \(c), which is not placed") }
+          clip = [max(clip[0], ce[0] + cb[3]), max(clip[1], ce[1] + cb[0]), min(clip[2], ce[2] - cb[1]), min(clip[3], ce[3] - cb[2])]
+        }
+        clip[2] = max(clip[2], clip[0])
+        clip[3] = max(clip[3], clip[1])
+        let w = clipChainViews[id] ?? DragonClipChainView()
+        clipChainViews[id] = w
+        w.dragonOwner = v as? DragonBoxView
+        container.addSubview(w)
+        w.frame = CGRect(x: CGFloat(clip[0] - origin[0]) / cg, y: CGFloat(clip[1] - origin[1]) / cg, width: CGFloat(clip[2] - clip[0]) / cg, height: CGFloat(clip[3] - clip[1]) / cg)
+        container = w
+        origin = [clip[0], clip[1]]
       }
       let frame = CGRect(x: CGFloat(e.left - origin[0]) / cg, y: CGFloat(e.top - origin[1]) / cg, width: CGFloat(e.right - e.left) / cg, height: CGFloat(e.bottom - e.top) / cg)
       for c in companions[id] ?? [] {
@@ -982,6 +1017,18 @@ class DragonRootView(ctx: Context) : DragonGroup(ctx) {
   init { background = ColorDrawable(0xffffffff.toInt()) }
 }
 
+/**
+ * A clip-chain view (PNT1 stacking): a re-hosted box's wrapper in its host, clipping it to the intersection of the padding boxes of
+ * the overflow clips its re-hosting takes it out of; it sorts in its owner's place among the host's children.
+ */
+class DragonClipChainView(ctx: Context) : DragonGroup(ctx) {
+  var dragonOwner: DragonBoxView? = null
+  override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+    clipBounds = Rect(0, 0, r - l, b - t)
+    super.onLayout(changed, l, t, r, b)
+  }
+}
+
 /** css-overflow-3 §3: the padding box of an overflow: hidden node; its children are clipped to its bounds (clipBounds). */
 class DragonClipView(ctx: Context) : DragonGroup(ctx) {
   override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
@@ -1255,6 +1302,8 @@ class DragonTree(val context: Context) {
   private val parents = HashMap<String, String?>()
   private val textMetrics = HashMap<String, DoubleArray>()
   private val hosts = HashMap<String, String>()
+  private val clipChains = HashMap<String, List<String>>()
+  private val clipChainViews = HashMap<String, DragonClipChainView>()
   private val companions = HashMap<String, ArrayList<android.view.View>>()
 
   /**
@@ -1262,6 +1311,11 @@ class DragonTree(val context: Context) {
    * engine and the dump stays in DOM terms.
    */
   fun host(id: String, host: String) { hosts[id] = host }
+  /**
+   * The overflow clips (DOM ancestors of node id) its hosting takes it out of: it is placed in a clip-chain view over the
+   * intersection of their padding boxes; empty for none.
+   */
+  fun clipChain(id: String, clips: List<String>) { if (clips.isEmpty()) clipChains.remove(id) else clipChains[id] = clips }
   /** A companion view placed directly beneath node id in the same host, with the node's frame (outer shadows, PNT1). */
   fun companion(id: String, view: android.view.View) { companions.getOrPut(id) { ArrayList() }.add(view) }
   /** A built node's view, for the runtime writers (RT-1, RT-2, RT-11). */
@@ -1335,6 +1389,27 @@ class DragonTree(val context: Context) {
         container = pv.dragonContainer
         ox = if (pv.dragonClipView == null) pe[0] else pe[0] + pb[3]
         oy = if (pv.dragonClipView == null) pe[1] else pe[1] + pb[0]
+      }
+      val chain = clipChains[id]
+      if (chain != null) {
+        // The clips are DOM ancestors, so they are placed already; their padding boxes intersect in absolute device px.
+        val clip = doubleArrayOf(Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY)
+        for (c in chain) {
+          val ce = edges[c] ?: throw IllegalStateException("dragon: " + id + " is clipped by " + c + ", which is not placed")
+          val cb = borders[c] ?: throw IllegalStateException("dragon: " + id + " is clipped by " + c + ", which has no borders")
+          clip[0] = maxOf(clip[0], ce[0] + cb[3]); clip[1] = maxOf(clip[1], ce[1] + cb[0])
+          clip[2] = minOf(clip[2], ce[2] - cb[1]); clip[3] = minOf(clip[3], ce[3] - cb[2])
+        }
+        clip[2] = maxOf(clip[2], clip[0])
+        clip[3] = maxOf(clip[3], clip[1])
+        val w = clipChainViews.getOrPut(id) { DragonClipChainView(context) }
+        w.dragonOwner = v as? DragonBoxView
+        (w.parent as? android.view.ViewGroup)?.removeView(w)
+        container.addView(w)
+        setFrame(w.dragonFrame, clip[0] - ox, clip[1] - oy, clip[2] - ox, clip[3] - oy, id + " clip chain")
+        container = w
+        ox = clip[0]
+        oy = clip[1]
       }
       for (c in companions[id] ?: emptyList<android.view.View>()) {
         container.addView(c)

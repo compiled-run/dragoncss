@@ -5,12 +5,11 @@
 // in (z, tree) order, then z-index auto or 0 in tree order, then z > 0 in (z, tree) order. Every box of normal flow paints as one
 // unit with its flow descendants, the model the native nesting draws. A layer item is re-hosted under the view where its layer
 // paints: its stacking context for z < 0 and z > 0, else the nearest positioned z-index auto ancestor inside that context (whose
-// positioned descendants follow it in tree order), and it is sorted there after the flow children. A re-hosting that would take a
-// box out of an overflow clip in its containing-block chain stays under the clip instead (EMS has no clip-chain hook), which is
-// Chrome's order everywhere but where the box overlaps content painted after the clipper; a box that needs it, and whose native order
-// then differs from Appendix E's against some node, is refused (analysis/paint-values/stacking.ts), and so is a box a native
-// ancestor's clip view would clip although the clip is not in its containing-block chain. Every layer item
-// gets a write; flow boxes get none.
+// positioned descendants follow it in tree order), and it is sorted there after the flow children. When the re-hosting takes a box out
+// of overflow clips in its containing-block chain, the write names those clips: the device hosts the box in a clip-chain view over
+// the intersection of their padding boxes, which sorts in the box's place. A box a native ancestor's clip view would clip although
+// that clip is not in its containing-block chain is refused (analysis/paint-values/stacking.ts). Every layer item gets a write; flow
+// boxes get none.
 import type { LayoutBox, LayoutNode } from '@dragon/layout';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
@@ -48,12 +47,12 @@ export type StackingFacts = {
   readonly host: string | null;
   /** The overflow clips that apply (the clipping ancestors in the containing-block chain), nearest first. */
   readonly clipChain: readonly string[];
-  /** Whether the node stays under a clip its layer would take it out of (see the header). */
-  readonly underClip: boolean;
+  /** The clips its re-hosting takes the node out of, which its clip-chain view applies (see the header); [] for none. */
+  readonly hostClips: readonly string[];
 };
 
 /** A node's placement among its host's children: bucket -1 (z < 0), 0 (flow), 1 (auto or 0), 2 (z > 0), then rank. */
-export type Placement = { readonly host: string; readonly bucket: number; readonly rank: number };
+export type Placement = { readonly host: string; readonly bucket: number; readonly rank: number; readonly clips: readonly string[] };
 
 /** A placement with the node's index among the box views its host ends up with. */
 export type PlacedWrite = Placement & { readonly index: number };
@@ -62,15 +61,14 @@ export type Stacking = {
   readonly facts: ReadonlyMap<string, StackingFacts>;
   /** The placement of every layer item. */
   readonly writes: ReadonlyMap<string, PlacedWrite>;
-  /** Appendix E's order of the node ids, and the native order the placements give (equal unless a node stays under a clip). */
+  /** Appendix E's order of the node ids, and the native order the placements give (always equal). */
   readonly order: readonly string[];
   readonly native: readonly string[];
   /**
-   * The nodes the native tree paints wrongly, with the clip at fault: 'order', a layer item kept under a clip of its containing-block
-   * chain, which then paints in another order than Appendix E's against some node; 'clip', a node a native ancestor's clip view
-   * clips although that clip is not in its containing-block chain (a re-hosting under a stacking context inside the clip).
+   * The nodes the native tree clips wrongly, with the clip at fault: a node a native ancestor's clip view clips although that clip is
+   * not in its containing-block chain (a re-hosting under a stacking context inside the clip), or the reverse.
    */
-  readonly clipped: readonly { readonly id: string; readonly clip: string; readonly kind: 'order' | 'clip' }[];
+  readonly clipped: readonly { readonly id: string; readonly clip: string; readonly kind: 'clip' }[];
 };
 
 type Info = {
@@ -168,10 +166,9 @@ export function stackingOf(root: StackNode): Stacking {
   };
   paint(top);
 
-  // Placements: every layer item under its layer's view, or under the nearest clip its layer would take it out of.
+  // Placements: every layer item under its layer's view, with the clips of its containing-block chain it is taken out of.
   const placement = new Map<string, Placement>();
-  const underClip = new Set<string>();
-  const clipped: { id: string; clip: string; kind: 'order' | 'clip' }[] = [];
+  const clipped: { id: string; clip: string; kind: 'clip' }[] = [];
   const rankOf = new Map<string, number>();
   for (const s of all) if (s.sc) itemsOf(s).forEach((it, k) => rankOf.set(it.node.id, k));
   for (const i of all) {
@@ -180,13 +177,9 @@ export function stackingOf(root: StackNode): Stacking {
     const l = layerOf(i);
     let host: Info = s;
     if (l === 'positioned') for (let a = i.parent; a !== null && a !== s; a = a.parent) if (a.item && !a.sc) { host = a; break; }
-    let crossing: Info | null = null;
-    for (let a = i.parent; a !== null && a !== host; a = a.parent) if (a.node.clips && inBlockChain(a, i) && crossing === null) crossing = a;
-    if (crossing !== null) {
-      host = crossing;
-      underClip.add(i.node.id);
-    }
-    placement.set(i.node.id, { host: host.node.id, bucket: l === 'negative' ? -1 : l === 'positioned' ? 1 : 2, rank: rankOf.get(i.node.id) as number });
+    const clips: string[] = [];
+    for (let a = i.parent; a !== null && a !== host; a = a.parent) if (a.node.clips && inBlockChain(a, i)) clips.push(a.node.id);
+    placement.set(i.node.id, { host: host.node.id, bucket: l === 'negative' ? -1 : l === 'positioned' ? 1 : 2, rank: rankOf.get(i.node.id) as number, clips });
   }
 
   const nativeOrder = (p: ReadonlyMap<string, Placement>, indices: Map<string, number> = new Map()): string[] => {
@@ -223,32 +216,24 @@ export function stackingOf(root: StackNode): Stacking {
   const indices = new Map<string, number>();
   const native = nativeOrder(placement, indices);
   const writes = new Map([...placement].map(([id, q]) => [id, { ...q, index: indices.get(id) as number }]));
-  if (underClip.size === 0 && !same(native, order)) throw new ProgramError(`${root.id}: the placements give the native order ${native.join(' ')}, not Appendix E's ${order.join(' ')}`);
-  // An item kept under a clip paints wrongly when it (or its subtree) and some other node paint in the other order natively.
-  const inOrder = new Map(order.map((id, k) => [id, k]));
-  const inNative = new Map(native.map((id, k) => [id, k]));
-  const subtree = (i: Info): string[] => [i.node.id, ...kids(i).flatMap(subtree)];
-  for (const i of all) {
-    if (!underClip.has(i.node.id)) continue;
-    const mine = new Set(subtree(i));
-    const at = (m: ReadonlyMap<string, number>, id: string): number => m.get(id) as number;
-    const swapped = order.some((y) => !mine.has(y) && [...mine].some((x) => at(inOrder, x) < at(inOrder, y) !== at(inNative, x) < at(inNative, y)));
-    if (swapped) clipped.push({ id: i.node.id, clip: (placement.get(i.node.id) as Placement).host, kind: 'order' });
-  }
+  if (!same(native, order)) throw new ProgramError(`${root.id}: the placements give the native order ${native.join(' ')}, not Appendix E's ${order.join(' ')}`);
 
   const chainOf = (i: Info): string[] => {
     const out: string[] = [];
     for (let a = i.parent; a !== null; a = a.parent) if (a.node.clips && inBlockChain(a, i)) out.push(a.node.id);
     return out;
   };
-  // The clips the native tree applies to a node are its native ancestors' (each hosts its children in a clip view); they must be its
-  // containing-block chain's. A node is reported where the difference starts: its native parent paints right.
+  // The clips the native tree applies to a node are its native ancestors' (each hosts its children in a clip view) and the clip-chain
+  // views' of itself and of those ancestors; they must be its containing-block chain's. A node is reported where the difference starts: its native parent paints right.
   const nativeParent = (i: Info): Info | null => (i.parent === null ? null : (infos.get(placement.get(i.node.id)?.host ?? i.parent.node.id) as Info));
   const wrong = new Map<string, string>();
   for (const i of all) {
     const chain = new Set(chainOf(i));
-    const applied: string[] = [];
-    for (let a = nativeParent(i); a !== null; a = nativeParent(a)) if (a.node.clips) applied.push(a.node.id);
+    const applied: string[] = [...(placement.get(i.node.id)?.clips ?? [])];
+    for (let a = nativeParent(i); a !== null; a = nativeParent(a)) {
+      if (a.node.clips) applied.push(a.node.id);
+      applied.push(...(placement.get(a.node.id)?.clips ?? []));
+    }
     const extra = applied.find((c) => !chain.has(c));
     const missing = [...chain].find((c) => !applied.includes(c));
     if (extra !== undefined || missing !== undefined) wrong.set(i.node.id, (extra ?? missing) as string);
@@ -270,7 +255,7 @@ export function stackingOf(root: StackNode): Stacking {
       layer: layerOf(i),
       host: i.parent === null ? null : (writes.get(i.node.id)?.host ?? i.parent.node.id),
       clipChain,
-      underClip: underClip.has(i.node.id),
+      hostClips: placement.get(i.node.id)?.clips ?? [],
     });
   }
   return { facts, writes, order, native, clipped };
@@ -309,7 +294,7 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
   return node(root, false);
 }
 
-export type StackingWrite = { readonly kind: 'paint-order'; readonly host: string; readonly bucket: number; readonly rank: number; readonly index: number };
+export type StackingWrite = { readonly kind: 'paint-order'; readonly host: string; readonly bucket: number; readonly rank: number; readonly index: number; readonly clips: readonly string[] };
 
 /** The stacking of the case being lowered: computed at its root box, which the lowering visits first, with that tree's nodes. */
 let current: { readonly nodes: WeakSet<LayoutNode>; readonly stacking: Stacking } | null = null;
@@ -340,7 +325,7 @@ function caseStacking(box: LayoutNode, el: ResolvedElement | null): Stacking {
   return current.stacking;
 }
 
-const STACKING_PAINT = 'Dragon computes CSS2 Appendix E paint order at compile time: a positioned box or stacking context is hosted under the view its layer paints in (its stacking context, or its nearest positioned z-index auto ancestor there) and sorted after the flow children by layer and rank; sibling order is native child order (no zPosition, translationZ or elevation)';
+const STACKING_PAINT = 'Dragon computes CSS2 Appendix E paint order at compile time: a positioned box or stacking context is hosted under the view its layer paints in (its stacking context, or its nearest positioned z-index auto ancestor there) and sorted after the flow children by layer and rank, inside a clip-chain view when that takes it out of overflow clips of its containing-block chain; sibling order is native child order (no zPosition, translationZ or elevation)';
 
 export const STACKING_LOWERING: PaintLowering<StackingWrite> = {
   name: 'stacking',
@@ -353,6 +338,6 @@ export const STACKING_LOWERING: PaintLowering<StackingWrite> = {
     const stacking = caseStacking(box, el);
     facts['stacking'] = stacking.facts.get(box.id) as StackingFacts;
     const w = stacking.writes.get(box.id);
-    return w === undefined ? [] : [{ kind: 'paint-order', host: w.host, bucket: w.bucket, rank: w.rank, index: w.index }];
+    return w === undefined ? [] : [{ kind: 'paint-order', host: w.host, bucket: w.bucket, rank: w.rank, index: w.index, clips: w.clips }];
   },
 };

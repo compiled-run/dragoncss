@@ -52,7 +52,7 @@ public enum DragonStateWrite {
   case borderStyles([String])
   case borderColors([DragonRGBA8])
   case clip
-  case paintOrder(String, Int, Int)
+  case paintOrder(String, Int, Int, [String])
   case text(String, String, DragonRGBA8)
 }
 
@@ -159,7 +159,7 @@ public final class DragonStateMachine {
         case .borderStyles(let s): v.dragonBorderStyles = s
         case .borderColors(let c): v.dragonBorderColors = c
         case .clip: v.dragonEnableClip()
-        case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)
+        case .paintOrder(let host, let bucket, let rank, let clips): dragonSetPaintOrder(t, v, host, bucket, rank, clips)
         case .text: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
@@ -247,7 +247,7 @@ sealed class DragonStateWrite {
   class BorderStyles(val s: Array<String>) : DragonStateWrite()
   class BorderColors(val c: Array<DragonRGBA8>) : DragonStateWrite()
   object Clip : DragonStateWrite()
-  class PaintOrder(val host: String, val bucket: Int, val rank: Int) : DragonStateWrite()
+  class PaintOrder(val host: String, val bucket: Int, val rank: Int, val clips: List<String>) : DragonStateWrite()
   class Text(val text: String, val family: String, val color: DragonRGBA8) : DragonStateWrite()
 }
 
@@ -349,7 +349,7 @@ class DragonStateMachine(
           is DragonStateWrite.BorderStyles -> v.dragonBorderStyles = w.s
           is DragonStateWrite.BorderColors -> v.dragonBorderColors = w.c
           is DragonStateWrite.Clip -> v.dragonEnableClip()
-          is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)
+          is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank, w.clips)
           is DragonStateWrite.Text -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
@@ -445,7 +445,7 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
         break;
       case 'paint-order': {
         if (!Number.isInteger(w.bucket) || !Number.isInteger(w.rank)) throw new StateEmitError(`${n.id}: paint order bucket ${w.bucket} or rank ${w.rank} is not an integer`);
-        writes.push(lang === 'swift' ? `.paintOrder(${q(w.host)}, ${w.bucket}, ${w.rank})` : `DragonStateWrite.PaintOrder(${q(w.host)}, ${w.bucket}, ${w.rank})`);
+        writes.push(lang === 'swift' ? `.paintOrder(${q(w.host)}, ${w.bucket}, ${w.rank}, [${w.clips.map(q).join(', ')}])` : `DragonStateWrite.PaintOrder(${q(w.host)}, ${w.bucket}, ${w.rank}, listOf<String>(${w.clips.map(q).join(', ')}))`);
         break;
       }
       case 'font': {
