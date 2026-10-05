@@ -7,7 +7,11 @@ import type { Assignment, BandCase, NativeProgram, ProgramNode } from 'dragon';
 import { BAND_KEY, bandStateProgram, NO_BAND_RUNTIME_FAULTS } from 'dragon';
 import { MediaRuntime } from '../src/media-runtime.ts';
 import { rtBand } from '@dragon/layout';
-import { bandTableOf, closeThresholds, nativeBandOfViewport, nativeBands } from 'dragon';
+import { readFileSync } from 'node:fs';
+import { bandTableOf, closeThresholds, createProjectWith, nativeBandOfViewport, nativeBandPrograms, nativeBands, nativePrograms, NO_FAULTS } from 'dragon';
+import { fixtureToInput, PROJECT_ID } from '../src/fixture-reader.ts';
+import { NATIVE_CONFIG } from '../src/native-host.ts';
+import { repoPath } from '../src/paths.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
 import { FIXTURES } from '../src/fixtures.ts';
 import { nativeCompile } from '../src/native-host.ts';
@@ -112,5 +116,24 @@ describe('the band lookup over whole device px, off the 8 px grid (PR #140 revie
     if (p.kind !== 'bands') throw new Error(p.detail);
     expect(closeThresholds(p)).not.toBeNull();
     expect(() => rtBand.bandAtPx(bandTableOf(p), 1400, 1000, 3.5, rtBand.NO_BAND_FAULTS)).toThrow(/no band has the truth vector 11/);
+  });
+});
+
+describe('an img under a transform that only a band change moves (PR #140 review)', () => {
+  it('is drawn directly (layer false) in every band\'s program, and in the per-case programs, so a band switch never resamples a stale layer', () => {
+    const png = /src="(data:image\/png;base64,[^"]+)"/.exec(readFileSync(repoPath('packages/parity/fixtures/replaced-demo.html'), 'utf8'))?.[1];
+    if (png === undefined) throw new Error('no PNG in replaced-demo');
+    const html = `<!DOCTYPE html><html data-dragon-id="html"><head><style>body { margin: 0; font-family: Ahem; font-size: 10px; }
+img { display: block; width: 40px; height: 20px; } .s { transform: scale(1); } @media (min-width: 384px) { .s { transform: scale(1.5); } }</style></head>
+<body data-dragon-id="body"><div data-dragon-id="s" class="s"><img data-dragon-id="a" src="${png}"></div><img data-dragon-id="c" src="${png}"></body></html>`;
+    const compiled = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', foldViewport: { width: 400, height: 300 } }).compile(fixtureToInput('img-band-transform', html));
+    const layers = (p: ReturnType<typeof nativePrograms>, b: 'uikit' | 'android-views') => {
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      return p.programs[b].nodes.flatMap((n) => n.writes.flatMap((w) => (w.kind === 'replaced-image' ? [[n.id, w.layer]] : [])));
+    };
+    const bands = nativeBands(compiled);
+    expect(bands?.table.bands.length).toBe(2);
+    for (const band of [0, 1]) for (const b of ['uikit', 'android-views'] as const) expect(layers(nativeBandPrograms(compiled, [], band), b), `band ${band} ${b}`).toEqual([['a', false], ['c', true]]);
+    expect(layers(nativePrograms(compiled, []), 'uikit')).toEqual([['a', false], ['c', true]]);
   });
 });

@@ -232,6 +232,16 @@ export type NativePrograms =
   | { readonly kind: 'blocked'; readonly reason: string };
 
 /**
+ * The elements whose transform changes at run time: between any two reachable assignments, and (MQ-R1) between any two @media
+ * bands, since native switches bands at run time; so an img under one gets the direct draw in every band's program. Transitions and
+ * animations come from the fold band's analysis: native refuses those that differ between bands.
+ */
+function movingOf(record: NonNullable<ReturnType<typeof internalRecord>>): ReadonlySet<string> {
+  const resolved = record.bands === null ? record.cases.map((x) => x.resolved) : record.bands.cases.flat().map((x) => x.resolved);
+  return movingTransforms(resolved, record.animation);
+}
+
+/**
  * Both native backends' lowered programs of one case (docs/research/native-strategy.md 1.1): from the one nativeLowered tree and
  * the case's resolved paint values. Ready only when the result configures and checks both ios and android.
  */
@@ -243,8 +253,7 @@ export function nativePrograms(compiled: object, assignment: Assignment): Native
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
   try {
     const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
-    const moving = movingTransforms(record.cases.map((x) => x.resolved), record.animation);
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, moving) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record)) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -362,9 +371,7 @@ export function nativeBandPrograms(compiled: object, assignment: Assignment, ban
   if (c === undefined) return { kind: 'blocked', reason: `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}` };
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: `the case has no native lowering in band ${band}` };
   try {
-    // Banded animations are refused natively, so the fold band's animation analysis holds every band's moving transforms.
-    const moving = movingTransforms(cases.map((x) => x.resolved), record.animation);
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, moving) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record)) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
