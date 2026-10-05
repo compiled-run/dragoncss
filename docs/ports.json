@@ -744,6 +744,21 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/box_fragment_builder.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "afafce938439bdf772b40da828dd43f52d847309be84687a8130d199982bcc85",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "241-366", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/overflow.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -997,6 +1012,37 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/scrollable_overflow_calculator.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "ecd5297897cc627341d3f135083db7e1419c4800a6262d361f640a937b1b9924",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "1-323", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/overflow.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/scrollable_overflow_calculator.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "6eb14649337a60418790968385bfdd1aad40267738b8e2bca10c59e0e3faffff",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "44-52", "symbol": "AddChild", "source": "located" },
+        { "lines": "72-80", "symbol": "AddOverflow", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/overflow.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/paint/box_border_painter.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -1100,6 +1146,27 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "css-overflow-3 §2.2 (the scrollport is part of the scrollable overflow) and Chrome observation (one unite with the client size)",
+        "proof": [
+          "packages/layout/test/overflow.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Lesser General Public License",
+      "copyright": "Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc. All rights; Portions are Copyright (C) 1998 Netscape Communications Corporation.",
+      "fileSha256": "8d9666a054ecb1ec2acae2d6f5ef5e6d7f6c0f0f82da50e9e49f44de1bba3d89",
+      "headerSha256": "e90c3f9b59e22d2cea011aeca45ae8fc107991725f0d70453339ea6588cfd06d",
+      "ranges": [
+        { "lines": "968-982", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/overflow.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

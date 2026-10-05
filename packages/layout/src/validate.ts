@@ -84,8 +84,8 @@ export const styleSchema = obj({
   right: inset,
   bottom: inset,
   left: inset,
-  overflowX: lit('visible', 'hidden'),
-  overflowY: lit('visible', 'hidden'),
+  overflowX: lit('visible', 'hidden', 'clip', 'auto', 'scroll'),
+  overflowY: lit('visible', 'hidden', 'clip', 'auto', 'scroll'),
   direction: lit('ltr', 'rtl'),
   boxSizing: lit('content-box', 'border-box'),
   width: size,
@@ -440,11 +440,16 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null));
   checkInlineContent(value, children, path, errors);
   const style = value['style'];
-  if (isRecord(style) && style['overflowX'] !== style['overflowY']) {
-    errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
+  if (isRecord(style) && clipsOnly(style['overflowX']) !== clipsOnly(style['overflowY'])) {
+    errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be a computed pair: css-overflow-3 §3.1 computes visible beside hidden, auto or scroll to auto, and clip to hidden' });
   }
   if (value['boxType'] === 'anonymous') checkAnonymous(value, children, path, errors, parentId);
   if (isRecord(style)) checkRatioBlockLengths(style, path, errors);
+}
+
+/** css-overflow-3 §3.1: visible and clip stay as they are only beside visible or clip. */
+function clipsOnly(v: unknown): boolean {
+  return v === 'visible' || v === 'clip';
 }
 
 /** A length that holds a percentage: a percentage, or a calculation with one. */

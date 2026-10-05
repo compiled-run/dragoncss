@@ -357,6 +357,137 @@ export function unitsCalcCases(): string[] {
   return out;
 }
 
+// ---------------------------------------------------------------- scroll containers (OVFL)
+
+/** Every LayoutStyle field at its initial value, which engine-overflow's boxes start from. */
+const OVERFLOW_STYLE: Json = {
+  display: 'block', position: 'static', top: { kind: 'auto' }, right: { kind: 'auto' }, bottom: { kind: 'auto' }, left: { kind: 'auto' },
+  overflowX: 'visible', overflowY: 'visible', direction: 'ltr', boxSizing: 'content-box', width: { kind: 'auto' }, height: { kind: 'auto' },
+  minWidth: { kind: 'auto' }, minHeight: { kind: 'auto' }, maxWidth: { kind: 'none' }, maxHeight: { kind: 'none' },
+  marginTop: { kind: 'px', value: 0 }, marginRight: { kind: 'px', value: 0 }, marginBottom: { kind: 'px', value: 0 }, marginLeft: { kind: 'px', value: 0 },
+  paddingTop: { kind: 'px', value: 0 }, paddingRight: { kind: 'px', value: 0 }, paddingBottom: { kind: 'px', value: 0 }, paddingLeft: { kind: 'px', value: 0 },
+  borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
+  flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
+  alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
+  aspectRatio: { kind: 'auto' },
+};
+
+/** engine-overflow: generated scroll containers with scroll metrics, appended after every earlier suite so their inputs do not move. */
+export const OVERFLOW_SPEC = { engineOverflow: 3000 } as const;
+
+/** The OVFL engine faults engine-overflow draws from, with the earlier faults its trees exercise. */
+const OVERFLOW_FAULT_NAMES: readonly (keyof EngineFaults)[] = ['gutterReserved', 'overflowIgnoresPadding', 'relativeShiftsFlow', 'scrollMinAuto', 'cbIgnoresPadding', 'rtlAsLtr'];
+
+/** css-overflow-3 §3.1 computed pairs: both axes in visible and clip, or both in hidden, auto and scroll. */
+const OVERFLOW_PAIRS: readonly (readonly [string, string])[] = [
+  ['visible', 'visible'], ['hidden', 'hidden'], ['auto', 'auto'], ['scroll', 'scroll'], ['clip', 'clip'], ['visible', 'clip'], ['clip', 'visible'],
+  ['hidden', 'auto'], ['auto', 'hidden'], ['scroll', 'auto'], ['hidden', 'scroll'],
+];
+
+/**
+ * Generated scroll containers (OVFL): block and flex boxes with random overflow pairs, sizes, padding, borders and margins (negative
+ * ones included), relative and absolutely positioned children, block-level replaced leaves, nested containers and Ahem text, in both directions at every DPR,
+ * some with an OVFL planted fault. Each line carries viewportDirection, so the harness also runs scrollMetrics.
+ */
+export function engineOverflowCases(): string[] {
+  const r = new Rng(EXTENDED_SPEC.seed * 71);
+  const out: string[] = [];
+  let n = 0;
+  const pxv = (v: number): Json => ({ kind: 'px', value: v });
+  const len = (choices: readonly number[]): Json => (r.chance(0.3) ? { kind: 'auto' } : pxv(r.pick(choices)));
+  while (out.length < OVERFLOW_SPEC.engineOverflow) {
+    const rtl = r.chance(0.3);
+    const direction = rtl ? 'rtl' : 'ltr';
+    let ids = 0;
+    const font = (size: number): Json => ({ family: 'Ahem', size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true });
+    const box = (depth: number, parentFlex: boolean): Json => {
+      const id = `n${ids++}`;
+      const [ox, oy] = r.pick(OVERFLOW_PAIRS) as readonly [string, string];
+      const display = depth < 3 && r.chance(0.25) ? 'flex' : 'block';
+      const position = r.chance(0.12) ? 'relative' : r.chance(0.08) && depth > 0 ? 'absolute' : 'static';
+      const style: Json = {
+        ...OVERFLOW_STYLE,
+        display,
+        position,
+        direction: r.chance(0.1) ? (rtl ? 'ltr' : 'rtl') : direction,
+        overflowX: ox,
+        overflowY: oy,
+        width: len([0, 10, 25, 40, 60, 90, 150, 12.5]),
+        height: len([0, 10, 20, 35, 50, 80, 7.25]),
+        marginTop: pxv(r.pick([0, 0, 3, 8, -4, 12])),
+        marginRight: pxv(r.pick([0, 0, 5, -6, 15, -40])),
+        marginBottom: pxv(r.pick([0, 0, 4, 9, -5, -30, 20])),
+        marginLeft: pxv(r.pick([0, 0, 2, 7, -3])),
+        paddingTop: pxv(r.pick([0, 0, 2, 5])),
+        paddingRight: pxv(r.pick([0, 0, 3, 7.5])),
+        paddingBottom: pxv(r.pick([0, 0, 4, 9])),
+        paddingLeft: pxv(r.pick([0, 0, 1, 6])),
+        borderTopWidth: pxv(r.pick([0, 0, 1, 2])),
+        borderRightWidth: pxv(r.pick([0, 0, 1, 3])),
+        borderBottomWidth: pxv(r.pick([0, 0, 1, 2])),
+        borderLeftWidth: pxv(r.pick([0, 0, 1, 4])),
+        flexShrink: parentFlex && r.chance(0.5) ? 0 : 1,
+      };
+      if (position === 'relative') {
+        style['left'] = r.chance(0.5) ? pxv(r.pick([5, -7, 20])) : { kind: 'auto' };
+        style['top'] = r.chance(0.5) ? pxv(r.pick([6, -9, 30])) : { kind: 'auto' };
+      }
+      if (position === 'absolute') {
+        style['left'] = r.chance(0.6) ? pxv(r.pick([0, 15, 70, -10])) : { kind: 'auto' };
+        style['top'] = r.chance(0.6) ? pxv(r.pick([0, 25, 90, -5])) : { kind: 'auto' };
+        style['width'] = pxv(r.pick([10, 30, 120]));
+        style['height'] = pxv(r.pick([10, 40, 100]));
+      }
+      if (depth >= 3 || r.chance(0.25)) {
+        // Inline content: Ahem words in one text leaf (no positioned siblings, so no abspos-in-inline refusal).
+        const size = r.pick([10, 16, 12.5]);
+        const words: string[] = [];
+        const count = 1 + r.int(5);
+        for (let i = 0; i < count; i++) words.push('XabcXY'.slice(0, 1 + r.int(6)).repeat(1 + r.int(3)));
+        style['textAlign'] = r.pick(['start', 'end', 'center', 'left', 'right']);
+        style['display'] = 'block';
+        return { kind: 'box', id, boxType: 'element', style, children: [{ kind: 'text', id: `t${ids++}`, text: words.join(' '), font: font(size), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' }] };
+      }
+      const kids: Json[] = [];
+      const count = r.int(4);
+      for (let i = 0; i < count; i++) kids.push(r.chance(0.15) ? replacedLeaf() : box(depth + 1, display === 'flex'));
+      return { kind: 'box', id, boxType: 'element', style, children: kids };
+    };
+    // A block-level replaced leaf (REPL-a): its border box, margins and relative offset count in its scroll container.
+    const replacedLeaf = (): Json => ({
+      kind: 'replaced',
+      id: `n${ids++}`,
+      style: {
+        ...OVERFLOW_STYLE,
+        display: 'block',
+        position: r.chance(0.2) ? 'relative' : 'static',
+        top: r.chance(0.5) ? pxv(r.pick([4, -6])) : { kind: 'auto' },
+        width: len([20, 64, 150]),
+        height: len([10, 40, 120]),
+        marginTop: pxv(r.pick([0, 3, -4])),
+        marginBottom: pxv(r.pick([0, 5, -8])),
+        marginLeft: pxv(r.pick([0, 2])),
+        paddingRight: pxv(r.pick([0, 3])),
+        borderBottomWidth: pxv(r.pick([0, 2])),
+      },
+      natural: { kind: 'image', width: r.pick([160, 40, 64]), height: r.pick([80, 64]) },
+      defaultWidth: 300,
+      defaultHeight: 150,
+      objectFit: 'fill',
+      objectPositionX: { kind: 'percent', value: 50 },
+      objectPositionY: { kind: 'percent', value: 50 },
+    });
+    const container = box(0, false);
+    const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...OVERFLOW_STYLE, display: 'block', direction }, children: [container] };
+    const input: Json = { viewport: { width: 400, height: 300 }, devicePixelRatio: r.pick([1, 2, 3, 2.625]), viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root };
+    n++;
+    if (!validateLayoutInput(input).ok) throw new Error(`engine-overflow: generated input ${n} is invalid: ${JSON.stringify(validateLayoutInput(input))}`);
+    const faults = r.chance(0.2) ? { ...NO_ENGINE_FAULTS, [r.pick(OVERFLOW_FAULT_NAMES)]: true } : NO_ENGINE_FAULTS;
+    out.push(JSON.stringify({ platform: 'darwin-arm64', faults, input, viewportDirection: r.chance(0.8) ? direction : rtl ? 'ltr' : 'rtl' }));
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- the extended corpus
 
 export type ExtendedCorpus = Corpus & {
@@ -378,6 +509,7 @@ export function buildExtendedCorpus(): ExtendedCorpus {
   const goldenLines = calcGoldenCases().map((v) => v.line);
   const engineCalc = engineCalcCases();
   const unitsCalc = unitsCalcCases();
+  const engineOverflow = engineOverflowCases();
   const suites: Suite[] = [
     { name: 'vectors-m2', mode: 'engine', lines: m2Lines, expected: m2Lines.map(runEngineCase) },
     { name: 'vectors-dpr', mode: 'engine', lines: dprLines, expected: dprLines.map(runEngineCase) },
@@ -389,6 +521,8 @@ export function buildExtendedCorpus(): ExtendedCorpus {
     { name: 'calc-goldens', mode: 'engine', lines: goldenLines, expected: goldenLines.map(runEngineCase) },
     { name: 'engine-calc', mode: 'engine', lines: engineCalc, expected: engineCalc.map(runEngineCase) },
     { name: 'units-calc', mode: 'units', lines: unitsCalc, expected: unitsCalc.map(runUnitsCase) },
+    // OVFL: a new suite only, after the V1 ones.
+    { name: 'engine-overflow', mode: 'engine', lines: engineOverflow, expected: engineOverflow.map(runEngineCase) },
   ];
   const d = digestsOf(suites);
   const engineSplit: Split = split(suites[2]?.expected ?? []);
@@ -406,6 +540,7 @@ export function extendedLockText(c: ExtendedCorpus): string {
     calcUnitsPerFunction: CALC_SPEC.unitsPerFunction,
     calcUnitsFunctions: UNITS_CALC_FUNCTIONS,
     engineCalc: CALC_SPEC.engineCalc,
+    engineOverflow: OVERFLOW_SPEC.engineOverflow,
     snapGenerated: EXTENDED_SPEC.snapGenerated,
     snapVectors: c.snapVectors.length,
     cases: Object.fromEntries(c.suites.map((s) => [s.name, s.lines.length])),
