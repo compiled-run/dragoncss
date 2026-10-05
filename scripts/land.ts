@@ -82,7 +82,7 @@ import {
   treeMatches,
 } from './merge-train-lib.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
-import { runDevicesOnCi, scratchRef } from './land-devices-ci.ts';
+import { abandonInflight, runDevicesOnCi, scratchRef } from './land-devices-ci.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
 const DEVICE = '/tmp/device-lease.sh';
@@ -99,6 +99,8 @@ const REVIEW_DIR = env['LAND_REVIEW_DIR'] ?? '/tmp/land-reviews';
 const RUN_DIR = env['LAND_RUN_DIR'] ?? '/tmp/dragon-land.run';
 const UNPROVED = env['LAND_UNPROVED'] ?? '/tmp/dragon-land.unproved.json';
 const runFile = (name: string): string => join(RUN_DIR, name);
+/** The CI device run a driver has in flight (land-devices-ci.ts record), for the supervisor to cancel after an interrupt. */
+const CI_INFLIGHT = 'ci-inflight.json';
 const readOrNull = (path: string): string | null => {
   try {
     return readFileSync(path, 'utf8');
@@ -327,6 +329,10 @@ const ciDeviceDeps = (pr: number) => ({
     return { dir, files: readdirSync(dir) };
   },
   remove: (dir: string): void => rmSync(dir, { recursive: true, force: true }),
+  record: (inflight: { readonly branch: string; readonly runId: number | null } | null): void => {
+    if (inflight === null) rmSync(runFile(CI_INFLIGHT), { force: true });
+    else writeFileSync(runFile(CI_INFLIGHT), JSON.stringify(inflight));
+  },
   sleep,
   now: () => Date.now(),
   log,
@@ -947,6 +953,22 @@ const cleanUpAfter = (driverPid: number, how: string): void => {
   try {
     MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
   } catch {}
+  // A CI device run the interrupted driver had in flight is cancelled and its scratch branch deleted (the driver died by signal,
+  // past its own cleanup).
+  try {
+    const raw = readOrNull(runFile(CI_INFLIGHT));
+    if (raw !== null) {
+      const repo = REPO !== '' ? REPO : execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'], { encoding: 'utf8' }).trim();
+      abandonInflight(raw, {
+        cancel: (id) => void execFileSync('gh', ['run', 'cancel', String(id), '--repo', repo], { stdio: 'ignore' }),
+        deleteBranch: (b) => void execFileSync('git', ['-C', MAIN, 'push', '--quiet', 'origin', `:${scratchRef(b)}`], { stdio: 'ignore' }),
+        log,
+      });
+      rmSync(runFile(CI_INFLIGHT), { force: true });
+    }
+  } catch (error) {
+    log(`the CI device run left in flight could not be cleaned up: ${msg(error)}`);
+  }
   cleanUpAfterDriver({
     how,
     now: stamp(),

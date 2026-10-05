@@ -28,6 +28,11 @@ export type DevicesCiDeps = {
   readonly download: (runId: number, artifact: string) => { readonly dir: string; readonly files: readonly string[] };
   /** Removes a downloaded directory. */
   readonly remove: (dir: string) => void;
+  /**
+   * Records the CI run in flight (its scratch branch, and its run once found), or null once it is settled, so a supervisor that
+   * kills an interrupted driver can cancel the run and delete the branch (the driver dies by signal, past every finally).
+   */
+  readonly record: (inflight: { readonly branch: string; readonly runId: number | null } | null) => void;
   readonly sleep: (ms: number) => void;
   readonly now: () => number;
   readonly log: (line: string) => void;
@@ -70,6 +75,7 @@ export function runDevicesOnCi(o: { readonly pr: number; readonly deps: DevicesC
   let run: RunRow | undefined;
   let outcomesDir: string | null = null;
   try {
+    deps.record({ branch, runId: null });
     const sha = deps.pushTemp(branch);
     pushed = true;
     const t0 = deps.now();
@@ -85,6 +91,7 @@ export function runDevicesOnCi(o: { readonly pr: number; readonly deps: DevicesC
       deps.sleep(Math.min(poll, 10_000));
     }
     deps.log(`  device lanes on CI: ${run.url}`);
+    deps.record({ branch, runId: run.databaseId });
     while (run.status !== 'completed') {
       if (deps.now() - t0 > o.waitS * 1000) throw new LandFailure('devices', `the CI device run ${run.url} did not finish within ${o.waitS}s (status ${run.status})`);
       deps.sleep(poll);
@@ -111,6 +118,7 @@ export function runDevicesOnCi(o: { readonly pr: number; readonly deps: DevicesC
     // Every failure of this step (a refused push, a malformed gh answer, a bad artifact) fails the PR at the devices step.
     throw e instanceof LandFailure ? e : new LandFailure('devices', `the CI device lanes failed: ${e instanceof Error ? e.message : String(e)}`);
   } finally {
+    deps.record(null);
     if (pushed) {
       try {
         deps.deleteTemp(branch);
@@ -118,6 +126,36 @@ export function runDevicesOnCi(o: { readonly pr: number; readonly deps: DevicesC
         // The next run force-pushes over it, so a branch left behind is only a warning.
         deps.log(`  device lanes on CI: WARNING could not delete ${branch} (the next run replaces it): ${e instanceof Error ? e.message : String(e)}`);
       }
+    }
+  }
+}
+
+/**
+ * After an interrupted driver: cancels the CI device run it recorded in flight and deletes its scratch branch. A malformed record
+ * is logged and dropped; each failure is logged (the run may have ended; the next run replaces the branch).
+ */
+export function abandonInflight(text: string, o: { readonly cancel: (runId: number) => void; readonly deleteBranch: (branch: string) => void; readonly log: (line: string) => void }): void {
+  let v: unknown;
+  try {
+    v = JSON.parse(text);
+  } catch {
+    o.log('the CI run record left in flight is not JSON; dropped');
+    return;
+  }
+  const r = (typeof v === 'object' && v !== null ? v : {}) as { branch?: unknown; runId?: unknown };
+  if (typeof r.runId === 'number') {
+    try {
+      o.cancel(r.runId);
+      o.log(`cancelled the CI device run ${r.runId} the interrupted driver left`);
+    } catch {
+      o.log(`could not cancel the CI device run ${r.runId} (it may have ended)`);
+    }
+  }
+  if (typeof r.branch === 'string') {
+    try {
+      o.deleteBranch(r.branch);
+    } catch {
+      o.log(`could not delete ${r.branch}; the next CI device run replaces it`);
     }
   }
 }

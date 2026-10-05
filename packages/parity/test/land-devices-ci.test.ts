@@ -3,7 +3,7 @@
 // with the temporary branch deleted.
 import { describe, expect, it } from 'vitest';
 import { LandFailure } from '../../../scripts/land-lib.ts';
-import { type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, scratchRef, tempBranch } from '../../../scripts/land-devices-ci.ts';
+import { abandonInflight, type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, scratchRef, tempBranch } from '../../../scripts/land-devices-ci.ts';
 
 const SHA = 'a'.repeat(40);
 const T0 = Date.parse('2026-10-04T12:00:00Z');
@@ -41,6 +41,7 @@ function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; concl
       return { dir: '/tmp/outcomes', files: o.files ?? OUTCOMES };
     },
     remove: (dir) => void calls.push(`remove ${dir}`),
+    record: (x) => void calls.push(`record ${x === null ? 'null' : `${x.branch} ${x.runId ?? '-'}`}`),
     sleep: (ms) => {
       clock += ms;
     },
@@ -65,7 +66,7 @@ describe('LAND_DEVICES=ci', () => {
     const f = fake({ appearAfter: 1, doneAfter: 2 });
     const r = run(f);
     expect(r).toEqual({ sha: SHA, url: 'https://ci/run/7', outcomesDir: '/tmp/outcomes' });
-    expect(f.calls).toEqual([`push ${tempBranch(42)}`, 'workflow run', 'run list', 'run list', 'run view', 'run view', 'run view', `download 7 ${OUTCOMES_ARTIFACT}`, `delete ${tempBranch(42)}`]);
+    expect(f.calls).toEqual([`record ${tempBranch(42)} -`, `push ${tempBranch(42)}`, 'workflow run', 'run list', 'run list', `record ${tempBranch(42)} 7`, 'run view', 'run view', 'run view', `download 7 ${OUTCOMES_ARTIFACT}`, 'record null', `delete ${tempBranch(42)}`]);
   });
   it('takes only a run of this dispatch, not an older run for the same commit', () => {
     const old: Run = { databaseId: 3, displayTitle: runTitle(SHA), createdAt: new Date(T0 - 3_600_000).toISOString(), headBranch: 'master', status: 'completed', conclusion: 'failure', url: 'https://ci/run/3' };
@@ -88,7 +89,7 @@ describe('LAND_DEVICES=ci', () => {
   it('cancels the CI run when the step fails while it runs, and removes downloaded outcomes it rejects', () => {
     const slow = fake({ doneAfter: 1e9 });
     failure(() => run(slow, 600));
-    expect(slow.calls.slice(-2)).toEqual(['run cancel', `delete ${tempBranch(42)}`]);
+    expect(slow.calls.slice(-3)).toEqual(['run cancel', 'record null', `delete ${tempBranch(42)}`]);
     const red = fake({ ghBad: false, conclusion: null, doneAfter: 1e9 });
     failure(() => run(red, 60));
     expect(red.calls).toContain('run cancel');
@@ -112,7 +113,7 @@ describe('LAND_DEVICES=ci', () => {
     expect(failure(() => run(fake({ ghBad: true })))).toMatchObject({ step: 'devices', message: expect.stringContaining('unexpected gh run JSON') });
     const refused = fake({ pushFails: true });
     expect(failure(() => run(refused))).toMatchObject({ step: 'devices', message: 'the CI device lanes failed: push refused' });
-    expect(refused.calls).toEqual([`push ${tempBranch(42)}`]);
+    expect(refused.calls).toEqual([`record ${tempBranch(42)} -`, `push ${tempBranch(42)}`, 'record null']);
     expect(failure(() => run(fake({ files: [] })))).toMatchObject({ message: expect.stringContaining('the device-outcomes artifact holds nothing') });
   });
   it('checks gh run rows and the outcome files', () => {
@@ -120,5 +121,23 @@ describe('LAND_DEVICES=ci', () => {
     expect(() => parseRunRows('[{"databaseId":"1","status":"x","conclusion":null,"url":"u"}]')).toThrow('unexpected gh run JSON');
     expect(outcomeFiles(OUTCOMES)).toEqual(OUTCOMES);
     expect(() => outcomeFiles([...OUTCOMES, 'notes.txt'])).toThrow('not device outcome files');
+  });
+});
+
+describe('an interrupted driver\'s CI run (#135 review)', () => {
+  it('is cancelled and its scratch branch deleted by the supervisor; a failure of either is logged, a bad record dropped', () => {
+    const calls: string[] = [];
+    const o = { cancel: (id: number) => void calls.push(`cancel ${id}`), deleteBranch: (b: string) => void calls.push(`delete ${b}`), log: (l: string) => void calls.push(l) };
+    abandonInflight(JSON.stringify({ branch: tempBranch(42), runId: 7 }), o);
+    expect(calls).toEqual(['cancel 7', 'cancelled the CI device run 7 the interrupted driver left', `delete ${tempBranch(42)}`]);
+    calls.length = 0;
+    abandonInflight(JSON.stringify({ branch: tempBranch(42), runId: null }), o);
+    expect(calls).toEqual([`delete ${tempBranch(42)}`]);
+    calls.length = 0;
+    abandonInflight(JSON.stringify({ branch: tempBranch(42), runId: 7 }), { ...o, cancel: () => { throw new Error('ended'); }, deleteBranch: () => { throw new Error('net'); } });
+    expect(calls).toEqual(['could not cancel the CI device run 7 (it may have ended)', 'could not delete land-devices/pr-42; the next CI device run replaces it']);
+    calls.length = 0;
+    abandonInflight('{', o);
+    expect(calls).toEqual(['the CI run record left in flight is not JSON; dropped']);
   });
 });
