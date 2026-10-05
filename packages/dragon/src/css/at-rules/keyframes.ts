@@ -7,6 +7,7 @@ import { generate } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../../types.ts';
 import type { AtRuleContext, AtRuleHandler } from '../at-rules.ts';
+import { resolveAlias } from '../aliases.ts';
 import { list, spanOf } from '../ast.ts';
 import { asciiLower, decodeName } from '../escapes.ts';
 import type { Longhand } from '../properties.ts';
@@ -133,7 +134,7 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
       continue;
     }
     const written = decodeName(String(d['property']));
-    const property = written.startsWith('--') ? written : asciiLower(written);
+    const property = written.startsWith('--') ? written : resolveAlias(asciiLower(written));
     const valueNode = d['value'] as CssNode;
     const valueSpan = spanOf(valueNode, src.base);
     const text = generate(valueNode);

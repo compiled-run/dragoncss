@@ -484,6 +484,7 @@
         { "lines": "6031-6033", "symbol": "ConsumeGenericFamily", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/grid-values.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/css/math.ts", "symbol": "MathGrammar", "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": null, "use": "port" },

@@ -6,6 +6,7 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
+import { resolveAlias } from './aliases.ts';
 import type { AtRuleContext, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
 import { asciiLower, canonicalizeEscapes, decodeName, preprocessInput, trimValue } from './escapes.ts';
@@ -226,8 +227,8 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
 function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: number, diagnostics: Diagnostic[]): Declaration | null {
   // css-syntax-3 §4.3.7: a property name is the identifier's value, so \63 olor is color and --\61 is --a.
   const written = decodeName(String(d['property']));
-  // css-variables-1 §2: custom property names are case-sensitive.
-  const property = written.startsWith('--') ? written : asciiLower(written);
+  // css-variables-1 §2: custom property names are case-sensitive. A legacy alias is its property (aliases.ts).
+  const property = written.startsWith('--') ? written : resolveAlias(asciiLower(written));
   const span = spanOf(d, base);
   const valueNode = d['value'] as CssNode;
   const valueSpan = spanOf(valueNode, base);
