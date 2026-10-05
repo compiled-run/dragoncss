@@ -113,6 +113,8 @@ describe('what env() refuses, by name', () => {
     expect(refusal('.x { width: calc(env(safe-area-inset-top) + 2); }')).toMatch(/^DRAGON_UNSUPPORTED_VALUE .*adds a number and a length/);
     expect(refusal('.x { font-size: env(safe-area-inset-top); }')).toMatch(/^DRAGON_UNSUPPORTED_VALUE .*font-size/);
     expect(refusal('.x { color: env(safe-area-inset-top); }')).toMatch(/^DRAGON_CSS_INVALID_VALUE/);
+    expect(refusal('.x { width: env(nope, var(--a)); }')).toMatch(/holds var\(\) in its fallback, and Dragon does not substitute env\(\) fallbacks/);
+    expect(refusal('.x { animation: k 1s; } @keyframes k { from { width: env(safe-area-inset-left); } to { width: 100px; } }')).toMatch(/^DRAGON_UNSUPPORTED_VALUE width: env\(safe-area-inset-left\) in @keyframes k is unsupported: no frame fixture proves a keyframe that reads env\(\)/);
   });
 });
 

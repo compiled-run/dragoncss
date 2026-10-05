@@ -22,7 +22,7 @@ import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
 import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
-import { checkEnvCalls, ENV_FIX, firstEnv, grammarText } from './env.ts';
+import { checkEnvCalls, ENV_FIX, envVarRefusal, firstEnv, grammarText } from './env.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
@@ -246,6 +246,12 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     return null;
   }
   const important = priority === false ? {} : { important: true as const };
+  // css-env-1: env() is read before var() is substituted, so a var() inside env() is refused on the text as written.
+  const envVar = envVarRefusal(sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start));
+  if (envVar !== null) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `${property}: ${text} is unsupported: ${envVar}`, manual: ENV_FIX }));
+    return null;
+  }
   if (property.startsWith('--')) return parseCustomDeclaration(property, valueNode, span, valueSpan, order, important, diagnostics);
   if (isAnimationProperty(property)) {
     const source = sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start);

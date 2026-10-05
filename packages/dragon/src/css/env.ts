@@ -119,3 +119,31 @@ export function envAsZero(text: string): string {
     i = j + 1;
   }
 }
+
+/**
+ * Why a value's env() call that holds var() is refused, checked on the source text before var() substitution, or null. Chrome reads
+ * env()'s name as written: a var() name makes the declaration invalid (dropped at parse time; in a custom property, invalid at
+ * computed-value time), and a var() in a safe-area name's fallback is never used. Dragon substitutes var() before it reads env(),
+ * so it refuses both rather than resolve a name Chrome never sees.
+ */
+export function envVarRefusal(source: string): string | null {
+  const re = /(^|[^A-Za-z0-9_\\-])env\(/gi;
+  for (let m = re.exec(source); m !== null; m = re.exec(source)) {
+    const open = m.index + m[0].length;
+    let depth = 1;
+    let j = open;
+    for (; j < source.length && depth > 0; j++) {
+      if (source[j] === '(') depth++;
+      else if (source[j] === ')') depth--;
+    }
+    const args = source.slice(open, depth === 0 ? j - 1 : j);
+    if (!/var\(/i.test(args)) continue;
+    const call = `env(${args})`;
+    if (/^[ \t\n\r\f]*var\(/i.test(args)) return `${call} names its variable with var(), and Chrome takes only a literal name, so it drops the declaration (or, in a custom property, makes it invalid at computed-value time)`;
+    const name = /^[ \t\n\r\f]*([A-Za-z0-9_-]+)/.exec(args)?.[1] ?? '';
+    return SAFE_AREA_NAMES.has(name)
+      ? `${call} holds var() in its fallback; Chrome never uses a safe-area name's fallback and renders the inset, but Dragon does not substitute var() inside env()`
+      : `${call} holds var() in its fallback, and Dragon does not substitute env() fallbacks`;
+  }
+  return null;
+}
