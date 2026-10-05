@@ -4,7 +4,7 @@
 // Build output goes to the gitignored packages/parity/out/native/<target>/; nothing native is committed.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, linkSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
 import type { LayoutInput, LayoutRect } from '@dragon/layout';
@@ -25,6 +25,7 @@ import type { EncoderLanguage } from './native-encoders.ts';
 import { constructDump, encoderSource, KOTLIN_DUMP_PACKAGE } from './native-encoders.ts';
 import { referenceDump } from './native-compare.ts';
 import type { NativeDump } from './native-dump.ts';
+import { BUILD_CACHE, hit, publish, pruneCache, replace } from '../../translate/src/build-cache.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { NativeTarget } from './targets.ts';
@@ -45,7 +46,7 @@ export const nativeOut = (target: NativeTarget): string => repoPath(`packages/pa
 export function nativeCompile(spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'android'> {
   if (spec.kind !== 'layout') throw new Error(`${spec.id} is not a layout fixture`);
   // MQ-a: every native case runs in the parity environment's viewport, so its @media band is the one holding it.
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport });
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport, interactionLanes: true });
   return project.compile(fixtureInput(spec));
 }
 
@@ -611,32 +612,83 @@ export function androidTools(): AndroidTools {
 
 export type BuildResult = { readonly target: NativeTarget; readonly cases: number; readonly sourceSha256: string; readonly artifact: string; readonly log: readonly string[] };
 
-/** Build options: a plant, and reuse, which keeps an artifact built from the same source tree (its sha256 is stamped beside it). */
+/** Build options: a plant, and reuse, which takes the build from the machine-wide cache when its key is there (appCacheKey). */
 export type BuildOptions = { readonly plant?: BuildPlant | null; readonly reuse?: boolean };
 
 /** The build directory of a target: a planted build never overwrites the clean one. */
 export const buildDir = (target: NativeTarget, plant: BuildPlant | null = null): string => (plant === null ? nativeOut(target) : join(nativeOut(target), `plant-${plant}`));
 
-const stampOf = (artifact: string): string => `${artifact}.sha256`;
-/** The reuse stamp: the source tree and the bundled Ahem.ttf the build copies beside it, so a font change forces a rebuild. */
+/** The source tree and the bundled Ahem.ttf the build copies beside it, so a font change forces a rebuild. */
 export function reuseStamp(sourceSha256: string): string {
   return `${sourceSha256} ahem ${createHash('sha256').update(readFileSync(repoPath('vendor/fonts/Ahem.ttf'))).digest('hex')}`;
 }
-function reused(artifact: string, sha: string): boolean {
-  return existsSync(artifact) && existsSync(stampOf(artifact)) && readFileSync(stampOf(artifact), 'utf8') === reuseStamp(sha);
+
+/**
+ * An app build's commands as they run, each the tool then its arguments, with the build's own directory written $W and each
+ * host path or machine fact a $TOKEN (expand). The commands are hashed as written, so the cache key covers every argument and,
+ * through the file lists, the module each source builds in; a token's meaning is covered by the inputs hashed beside it.
+ */
+export type AppCommand = readonly string[];
+
+/** A command with its tokens replaced: $W and each other $NAME by its value (an unknown token throws). */
+export function expand(cmd: AppCommand, values: Readonly<Record<string, string>>): string[] {
+  return cmd.map((a) =>
+    a.replace(/\$([A-Z_]+)/g, (_m, name: string) => {
+      const v = values[name];
+      if (v === undefined) throw new Error(`no value for $${name} in ${JSON.stringify(a)}`);
+      return v;
+    }),
+  );
 }
 
 /**
- * How the iOS host app is built: the engine and runtime support (DragonCore) at -O, as before; the generated case code (DragonCases,
- * 18 MB of straight-line LayoutBox construction that -O gains nothing on) at -Onone; the host (main, the hit facts, the case
- * tables and any planted file) at -O in the app's own module, DragonHost, which Info.plist and main.swift name. Swift has no
- * fast-math, so no float result depends on the optimisation level. Part of the reuse stamp, so an app built another way is rebuilt.
+ * The cache key of an app build: the source tree and Ahem (reuseStamp), every command exactly as it runs (expand's tokens aside),
+ * the inputs those tokens stand for (tool versions and the content of the jars and keystore the commands read), and the host.
  */
-export const IOS_BUILD = 'modules DragonCore -O, DragonCases -Onone, DragonHost -O';
+export function appCacheKey(sourceSha256: string, commands: readonly AppCommand[], inputs: Readonly<Record<string, string>>): string {
+  const sorted = Object.fromEntries(Object.entries(inputs).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+  return createHash('sha256').update(JSON.stringify({ stamp: reuseStamp(sourceSha256), commands, inputs: sorted, host: `${process.platform}-${process.arch}` })).digest('hex').slice(0, 24);
+}
+
+const fileSha = (path: string): string => createHash('sha256').update(readFileSync(path)).digest('hex');
+
+/**
+ * Builds an app into the machine-wide cache (#158's, kind ios-app or apk) unless its key is there: in a work directory beside the
+ * entry, published by one rename, so a hit is always a whole build, shared by every worktree; the sources and intermediates are
+ * removed before publishing, leaving only `keep`. With reuse off the build always runs and replaces the entry. A failed command removes the work directory and throws its output.
+ */
+function cachedApp(kind: 'ios-app' | 'apk', key: string, artifact: string, complete: (dir: string) => boolean, reuse: boolean, build: (work: string, log: string[]) => void, keep: readonly string[]): { readonly dir: string; readonly log: string[] } {
+  const dir = join(BUILD_CACHE, kind, key);
+  if (reuse && complete(dir) && hit(dir, join(dir, artifact))) return { dir, log: [`cached ${dir} (key ${key})`] };
+  const work = `${dir}.build-${process.pid}`;
+  rmSync(work, { recursive: true, force: true });
+  mkdirSync(work, { recursive: true });
+  const log: string[] = [];
+  try {
+    build(work, log);
+  } catch (e) {
+    rmSync(work, { recursive: true, force: true });
+    throw e;
+  }
+  for (const n of readdirSync(work)) if (!keep.includes(n)) rmSync(join(work, n), { recursive: true, force: true });
+  // A forced rebuild (reuse off) replaces the entry, so it repairs a damaged one; otherwise an equal entry already there is kept.
+  if (reuse) publish(work, dir);
+  else replace(work, dir);
+  pruneCache(BUILD_CACHE, dir);
+  log.push(`published ${dir} (key ${key})`);
+  return { dir, log };
+}
+
 /** The case tables stay in DragonHost: main.swift reads DragonHost.dragonCaseTable. */
 const IOS_TABLES = ['Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift'];
 
-/** The Swift files of each iOS module, by path; every file in exactly one, and none of the three empty (else a thrown error). */
+/**
+ * The Swift files of each iOS module, by path; every file in exactly one, and none of the three empty (else a thrown error). The
+ * engine and runtime support (DragonCore) build at -O; the generated case code (DragonCases, 18 MB of straight-line LayoutBox
+ * construction that -O gains nothing on, checked by casesCodeProblems) at -Onone; the host (main, the hit facts, the case tables
+ * and any planted file) at -O in the app's own module, DragonHost, which Info.plist and main.swift name. Swift has no fast-math,
+ * so no float result depends on the optimisation level.
+ */
 export function iosModules(paths: readonly string[]): { readonly core: string[]; readonly cases: string[]; readonly host: string[] } {
   const swift = paths.filter((p) => p.endsWith('.swift'));
   const core = swift.filter((p) => p.startsWith('DragonLayout/') || p.startsWith('Support/'));
@@ -647,92 +699,127 @@ export function iosModules(paths: readonly string[]): { readonly core: string[];
   return { core, cases, host };
 }
 
-/** The iOS host app: swiftc for the iOS 15 simulator target (three modules, IOS_BUILD), Info.plist and Ahem, ad-hoc signed. */
+/**
+ * Why a DragonCases source is not straight-line construction code, which is all -Onone may build: a control flow statement, a
+ * ternary (the typed state setters' Bool encoding `v ? <int> : <int>` aside, whose numbers follow the fixture's value order), assert, precondition or fatalError, outside string literals
+ * and comments. An enum's `case` is a declaration, so it is allowed; a `switch` is not. Empty when the source is construction only.
+ */
+export function casesCodeProblems(path: string, text: string): string[] {
+  const code = text.replace(/"(?:[^"\\\n]|\\.)*"/g, '""').replace(/\/\/[^\n]*/g, '').replace(/\bv \? \d+ : \d+\b/g, 'v');
+  const words = [...code.matchAll(/\b(if|guard|else|while|for|repeat|switch|break|continue|fallthrough|throw|try|defer|assert|assertionFailure|precondition|preconditionFailure|fatalError)\b/g)].map((m) => `\`${m[1] as string}\``);
+  const ternary = / \? [^\n]*? : /.test(code) ? ['a ternary'] : [];
+  return [...new Set([...words, ...ternary])].map((w) => `${path}: ${w} in code built at -Onone (DragonCases holds construction code only)`);
+}
+
+/** The iOS app's build commands for its source paths ($CORES is the -j width, which changes no output). */
+export function iosCommands(paths: readonly string[]): AppCommand[] {
+  const mods = iosModules(paths);
+  const src = (ps: readonly string[]): string[] => ps.map((p) => `$W/src/${p}`);
+  const swiftc = ['xcrun', '-sdk', 'iphonesimulator', 'swiftc', '-target', IOS_TARGET, '-j', '$CORES'];
+  const implicit = (flag: string, mod: string): string[] => ['-Xfrontend', flag, '-Xfrontend', mod];
+  const library = (name: string, opt: string, extra: readonly string[], sources: readonly string[]): string[] => [...swiftc, opt, ...extra, '-parse-as-library', '-module-name', name, '-I', '$W/modules', '-emit-module', '-emit-module-path', `$W/modules/${name}.swiftmodule`, '-emit-library', '-static', '-o', `$W/modules/lib${name}.a`, ...src(sources)];
+  // -force_load links every object of both libraries, as one module did, whether or not the host names it.
+  const load = (name: string): string[] => ['-Xlinker', '-force_load', '-Xlinker', `$W/modules/lib${name}.a`];
+  return [
+    library('DragonCore', '-O', [], mods.core),
+    // -enable-testing: DragonHost's case tables read the cases' internal declarations through a testable import.
+    library('DragonCases', '-Onone', ['-enable-testing', ...implicit('-import-module', 'DragonCore')], mods.cases),
+    [...swiftc, '-O', '-module-name', 'DragonHost', '-I', '$W/modules', ...implicit('-import-module', 'DragonCore'), ...implicit('-testable-import-module', 'DragonCases'), ...load('DragonCore'), ...load('DragonCases'), '-o', '$W/DragonHost.app/DragonHost', ...src(mods.host)],
+    ['cp', '$W/src/Info.plist', '$W/DragonHost.app/Info.plist'],
+    ['cp', '$AHEM', '$W/DragonHost.app/Ahem.ttf'],
+    ['codesign', '--force', '--sign', '-', '--timestamp=none', '$W/DragonHost.app'],
+  ];
+}
+
+const ms = (t0: number): string => ((Date.now() - t0) / 1000).toFixed(1);
+
+/** The iOS host app: swiftc for the iOS 15 simulator target (three modules, iosCommands), Info.plist and Ahem, ad-hoc signed. */
 export function buildIos(opts: BuildOptions = {}): BuildResult {
-  const dir = buildDir('ios', opts.plant ?? null);
   const toolchain = xcodeVersion();
   const files = hostSources('ios', toolchain, opts.plant ?? null);
   const sha = sourceTreeSha256(files);
-  const app = join(dir, 'build', 'DragonHost.app');
-  // The build recipe is part of the reuse stamp, so an app built another way is never reused.
-  const stamp = `${sha} ${IOS_BUILD}`;
-  if (opts.reuse === true && reused(app, stamp)) return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: app, log: [`reused ${app} (source sha256 ${sha})`] };
-  rmSync(stampOf(app), { force: true });
-  const src = writeSources(dir, files);
-  rmSync(app, { recursive: true, force: true });
-  mkdirSync(app, { recursive: true });
-  const mods = iosModules(files.map((f) => f.path));
-  const abs = (ps: readonly string[]): string[] => ps.map((p) => join(src, p));
-  const lib = join(dir, 'build', 'modules');
-  rmSync(lib, { recursive: true, force: true });
-  mkdirSync(lib, { recursive: true });
-  const swiftc = ['-sdk', 'iphonesimulator', 'swiftc', '-target', IOS_TARGET, '-j', String(availableParallelism())];
-  const implicit = (flag: string, mod: string): string[] => ['-Xfrontend', flag, '-Xfrontend', mod];
-  const library = (name: string, opt: string, extra: readonly string[], sources: readonly string[]): string[] => [...swiftc, opt, ...extra, '-parse-as-library', '-module-name', name, '-I', lib, '-emit-module', '-emit-module-path', join(lib, `${name}.swiftmodule`), '-emit-library', '-static', '-o', join(lib, `lib${name}.a`), ...abs(sources)];
-  const log: string[] = [];
-  let t0 = Date.now();
-  must(run('xcrun', library('DragonCore', '-O', [], mods.core), { timeoutMs: 1_800_000 }), 'swiftc DragonCore (iOS 15 simulator)');
-  log.push(`swiftc ${IOS_TARGET} DragonCore -O: ${mods.core.length} files in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
-  t0 = Date.now();
-  // -enable-testing: DragonHost's case tables read the cases' internal declarations through a testable import.
-  must(run('xcrun', library('DragonCases', '-Onone', ['-enable-testing', ...implicit('-import-module', 'DragonCore')], mods.cases), { timeoutMs: 1_800_000 }), 'swiftc DragonCases (iOS 15 simulator)');
-  log.push(`swiftc ${IOS_TARGET} DragonCases -Onone: ${mods.cases.length} files in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
-  t0 = Date.now();
-  // -force_load links every object of both libraries, as one module did, whether or not the host names it.
-  const load = (name: string): string[] => ['-Xlinker', '-force_load', '-Xlinker', join(lib, `lib${name}.a`)];
-  must(run('xcrun', [...swiftc, '-O', '-module-name', 'DragonHost', '-I', lib, ...implicit('-import-module', 'DragonCore'), ...implicit('-testable-import-module', 'DragonCases'), ...load('DragonCore'), ...load('DragonCases'), '-o', join(app, 'DragonHost'), ...abs(mods.host)], { timeoutMs: 1_800_000 }), 'swiftc DragonHost (iOS 15 simulator)');
-  log.push(`swiftc ${IOS_TARGET} DragonHost -O: ${mods.host.length} files in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
-  copyFileSync(join(src, 'Info.plist'), join(app, 'Info.plist'));
-  copyFileSync(repoPath('vendor/fonts/Ahem.ttf'), join(app, 'Ahem.ttf'));
-  must(run('codesign', ['--force', '--sign', '-', '--timestamp=none', app]), 'codesign -s -');
-  log.push('codesign --sign - (ad hoc)');
-  writeFileSync(stampOf(app), reuseStamp(stamp));
-  return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: app, log };
+  const commands = iosCommands(files.map((f) => f.path));
+  const cases = new Set(iosModules(files.map((f) => f.path)).cases);
+  const notConstruction = files.filter((f) => cases.has(f.path)).flatMap((f) => casesCodeProblems(f.path, f.text));
+  if (notConstruction.length > 0) throw new Error(`the iOS case code is built at -Onone, so it must be construction code only:\n  ${notConstruction.slice(0, 20).join('\n  ')}`);
+  // The Xcode version is in the sources (DragonToolchain.swift); the simulator SDK and swiftc are named here.
+  const inputs = { sdk: must(run('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-version']), 'xcrun --show-sdk-version').trim(), swiftc: must(run('xcrun', ['-sdk', 'iphonesimulator', 'swiftc', '-version']), 'swiftc -version').trim() };
+  const key = appCacheKey(sha, commands, inputs);
+  const { dir, log } = cachedApp('ios-app', key, 'DragonHost.app/DragonHost', (d) => existsSync(join(d, 'DragonHost.app', 'Info.plist')), opts.reuse === true, (work, out) => {
+    writeSources(work, files);
+    mkdirSync(join(work, 'modules'), { recursive: true });
+    mkdirSync(join(work, 'DragonHost.app'), { recursive: true });
+    const values = { W: work, CORES: String(availableParallelism()), AHEM: repoPath('vendor/fonts/Ahem.ttf') };
+    const names = ['swiftc DragonCore -O', 'swiftc DragonCases -Onone', 'swiftc DragonHost -O', 'Info.plist', 'Ahem.ttf', 'codesign --sign - (ad hoc)'];
+    for (const [i, c] of commands.entries()) {
+      const t0 = Date.now();
+      const [cmd, ...args] = expand(c, values);
+      must(run(cmd as string, args, { timeoutMs: 1_800_000 }), `${names[i]} (iOS 15 simulator)`);
+      out.push(`${names[i]}: ${ms(t0)} s`);
+    }
+  }, ['DragonHost.app']);
+  return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: join(dir, 'DragonHost.app'), log };
+}
+
+/** The Android APK's build commands for its Kotlin source paths (tokens: the SDK tools, the jars, the keystore and Ahem). */
+export function androidCommands(ktPaths: readonly string[]): AppCommand[] {
+  return [
+    ['mkdir', '-p', '$W/assets/fonts', '$W/dex'],
+    ['cp', '$AHEM', '$W/assets/fonts/Ahem.ttf'],
+    ['$BT/aapt2', 'link', '--manifest', '$W/src/AndroidManifest.xml', '-I', '$ANDROID_JAR', '-A', '$W/assets', '--min-sdk-version', String(NATIVE_CONFIG.android.minSdk), '--target-sdk-version', String(ANDROID_TARGET_SDK), '-o', '$W/base.apk'],
+    ['$KOTLINC', '-J-Xmx8g', '-cp', '$ANDROID_JAR', '-jvm-target', '1.8', '-nowarn', '-d', '$W/classes.jar', ...ktPaths.map((p) => `$W/src/${p}`)],
+    ['$BT/d8', '--release', '--min-api', String(NATIVE_CONFIG.android.minSdk), '--lib', '$ANDROID_JAR', '--output', '$W/dex', '$W/classes.jar', '$KOTLIN_STDLIB'],
+    // The dex files in name order (C locale), added at the APK's root.
+    ['sh', '-c', 'cd "$W/dex" && LC_ALL=C zip -q -j ../base.apk classes*.dex'],
+    ['$BT/zipalign', '-p', '-f', '4', '$W/base.apk', '$W/aligned.apk'],
+    ['$BT/apksigner', 'sign', '--ks', '$KEYSTORE', '--ks-pass', 'pass:android', '--key-pass', 'pass:android', '--ks-key-alias', 'dragondebug', '--out', '$W/DragonHost.apk', '$W/aligned.apk'],
+  ];
+}
+
+/** The debug keystore every APK is signed with: one per machine, beside the cache, made once (a concurrent maker's is kept). */
+function debugKeystore(tools: AndroidTools, env: NodeJS.ProcessEnv): string {
+  const keystore = join(BUILD_CACHE, 'debug.keystore');
+  if (existsSync(keystore)) return keystore;
+  mkdirSync(BUILD_CACHE, { recursive: true });
+  const tmp = `${keystore}.${process.pid}`;
+  rmSync(tmp, { force: true });
+  must(run(join(tools.javaHome, 'bin', 'keytool'), ['-genkeypair', '-keystore', tmp, '-storepass', 'android', '-keypass', 'android', '-alias', 'dragondebug', '-keyalg', 'RSA', '-keysize', '2048', '-validity', '10000', '-dname', 'CN=Dragon Debug,O=Dragon,C=US'], { env }), 'keytool');
+  try {
+    linkSync(tmp, keystore);
+  } catch (e) {
+    if (!existsSync(keystore)) throw new Error(`could not place the debug keystore at ${keystore}: ${(e as Error).message}`);
+  } finally {
+    rmSync(tmp, { force: true });
+  }
+  return keystore;
 }
 
 /** The Android host APK from the SDK tools alone: aapt2 link, kotlinc against android.jar, d8 --min-api 31, zipalign, apksigner. */
 export function buildAndroid(opts: BuildOptions = {}): BuildResult & { readonly dexes: readonly string[]; readonly tools: AndroidTools } {
   const tools = androidTools();
-  const dir = buildDir('android', opts.plant ?? null);
   const kotlinVersion = must(run(tools.kotlinc, ['-version']), 'kotlinc -version').trim().split('\n').pop() ?? '';
   const toolchain = `${kotlinVersion.replace(/^info:\s*/, '')}; d8 and aapt2 ${ANDROID_BUILD_TOOLS}; android-${ANDROID_TARGET_SDK}.jar; no Gradle`;
   const files = hostSources('android', toolchain, opts.plant ?? null);
   const sha = sourceTreeSha256(files);
-  const build = join(dir, 'build');
-  const apk = join(build, 'DragonHost.apk');
-  const dexDir = join(build, 'dex');
-  if (opts.reuse === true && reused(apk, sha)) return { target: 'android', cases: emitCases('android').length, sourceSha256: sha, artifact: apk, log: [`reused ${apk} (source sha256 ${sha})`], dexes: readdirSync(dexDir).filter((f) => /^classes\d*\.dex$/.test(f)).sort().map((d) => join(dexDir, d)), tools };
-  const src = writeSources(dir, files);
-  rmSync(build, { recursive: true, force: true });
-  mkdirSync(join(build, 'assets', 'fonts'), { recursive: true });
-  mkdirSync(join(build, 'dex'), { recursive: true });
-  copyFileSync(repoPath('vendor/fonts/Ahem.ttf'), join(build, 'assets', 'fonts', 'Ahem.ttf'));
-  const bt = (t: string): string => join(tools.buildTools, t);
   const env = { ...process.env, JAVA_HOME: tools.javaHome, PATH: `${join(tools.javaHome, 'bin')}:${process.env['PATH'] ?? ''}` };
-  const log: string[] = [];
-  const base = join(build, 'base.apk');
-  must(run(bt('aapt2'), ['link', '--manifest', join(src, 'AndroidManifest.xml'), '-I', tools.androidJar, '-A', join(build, 'assets'), '--min-sdk-version', String(NATIVE_CONFIG.android.minSdk), '--target-sdk-version', String(ANDROID_TARGET_SDK), '-o', base], { env }), 'aapt2 link');
-  log.push('aapt2 link: manifest, android-36 android.jar, assets/fonts/Ahem.ttf');
-  const kt = files.filter((f) => f.path.endsWith('.kt')).map((f) => join(src, f.path));
-  const classes = join(build, 'classes.jar');
-  let t0 = Date.now();
-  must(run(tools.kotlinc, ['-J-Xmx8g', '-cp', tools.androidJar, '-jvm-target', '1.8', '-nowarn', '-d', classes, ...kt], { env, timeoutMs: 1_800_000 }), 'kotlinc');
-  log.push(`kotlinc -cp android.jar: ${kt.length} files in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
-  t0 = Date.now();
-  must(run(bt('d8'), ['--release', '--min-api', String(NATIVE_CONFIG.android.minSdk), '--lib', tools.androidJar, '--output', join(build, 'dex'), classes, tools.kotlinStdlib], { env, timeoutMs: 1_800_000 }), 'd8');
-  const dexes = readdirSync(join(build, 'dex')).filter((f) => /^classes\d*\.dex$/.test(f)).sort();
-  log.push(`d8 --min-api ${NATIVE_CONFIG.android.minSdk} with kotlin-stdlib: ${dexes.join(', ')} in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
-  must(run('zip', ['-q', '-j', base, ...dexes.map((d) => join(build, 'dex', d))]), 'zip classes.dex');
-  const aligned = join(build, 'aligned.apk');
-  must(run(bt('zipalign'), ['-p', '-f', '4', base, aligned]), 'zipalign');
-  const keystore = join(nativeOut('android'), 'debug.keystore');
-  if (!existsSync(keystore)) {
-    must(run(join(tools.javaHome, 'bin', 'keytool'), ['-genkeypair', '-keystore', keystore, '-storepass', 'android', '-keypass', 'android', '-alias', 'dragondebug', '-keyalg', 'RSA', '-keysize', '2048', '-validity', '10000', '-dname', 'CN=Dragon Debug,O=Dragon,C=US'], { env }), 'keytool');
-  }
-  must(run(bt('apksigner'), ['sign', '--ks', keystore, '--ks-pass', 'pass:android', '--key-pass', 'pass:android', '--ks-key-alias', 'dragondebug', '--out', apk, aligned], { env }), 'apksigner sign');
-  log.push('zipalign -p 4; apksigner sign with a debug key generated under out/');
-  writeFileSync(stampOf(apk), reuseStamp(sha));
-  return { target: 'android', cases: emitCases('android').length, sourceSha256: sha, artifact: apk, log, dexes: dexes.map((d) => join(build, 'dex', d)), tools };
+  const keystore = debugKeystore(tools, env);
+  const commands = androidCommands(files.filter((f) => f.path.endsWith('.kt')).map((f) => f.path));
+  // kotlinc, the build tools and android.jar's level are in the sources (DragonToolchain.kt); the bytes each token stands for are here.
+  const inputs = { buildTools: tools.buildTools.split('/').pop() ?? '', androidJar: fileSha(tools.androidJar), kotlinStdlib: fileSha(tools.kotlinStdlib), keystore: fileSha(keystore), java: must(run(join(tools.javaHome, 'bin', 'java'), ['-version']), 'java -version').trim() };
+  const key = appCacheKey(sha, commands, inputs);
+  const dexesOf = (d: string): string[] => (existsSync(join(d, 'dex')) ? readdirSync(join(d, 'dex')).filter((f) => /^classes\d*\.dex$/.test(f)).sort().map((x) => join(d, 'dex', x)) : []);
+  const { dir, log } = cachedApp('apk', key, 'DragonHost.apk', (d) => dexesOf(d).length > 0, opts.reuse === true, (work, out) => {
+    writeSources(work, files);
+    const values = { W: work, AHEM: repoPath('vendor/fonts/Ahem.ttf'), BT: tools.buildTools, ANDROID_JAR: tools.androidJar, KOTLINC: tools.kotlinc, KOTLIN_STDLIB: tools.kotlinStdlib, KEYSTORE: keystore };
+    const names = ['mkdir', 'Ahem.ttf', 'aapt2 link', 'kotlinc', 'd8', 'zip classes.dex', 'zipalign', 'apksigner sign'];
+    for (const [i, c] of commands.entries()) {
+      const t0 = Date.now();
+      const [cmd, ...args] = expand(c, values);
+      must(run(cmd as string, args, { env, timeoutMs: 1_800_000 }), names[i] as string);
+      out.push(`${names[i]}: ${ms(t0)} s`);
+    }
+  }, ['DragonHost.apk', 'dex']);
+  return { target: 'android', cases: emitCases('android').length, sourceSha256: sha, artifact: join(dir, 'DragonHost.apk'), log, dexes: dexesOf(dir), tools };
 }
 
 // ---------------------------------------------------------------- dump encoders on the host

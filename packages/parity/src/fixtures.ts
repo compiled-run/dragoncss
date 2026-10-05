@@ -8,18 +8,22 @@ import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
+import { ENV } from './fixture-groups/env.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INLINE } from './fixture-groups/inline.ts';
+import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
+import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
+import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNITS } from './fixture-groups/units.ts';
 import { VALUES } from './fixture-groups/values.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
@@ -84,18 +88,22 @@ export const GROUPS = {
   'border-paint': BORDER_PAINT,
   'cascade-var': CASCADE_VAR,
   contexts: CONTEXTS,
+  env: ENV,
   fonts: FONTS,
   grid: GRID,
   inline: INLINE,
+  interaction: INTERACTION,
   'logical-props': LOGICAL_PROPS,
   media: MEDIA,
   'milestone-1': MILESTONE_1,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
+  'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
   selectors: SELECTORS,
   showcase: SHOWCASE,
   'sizing-ratio': SIZING,
   states: STATES,
+  transforms: TRANSFORMS,
   units: UNITS,
   values: VALUES,
   'writing-mode': WRITING_MODE,

@@ -195,8 +195,18 @@
       "hit-order-rtl": [4,5],
       "hit-pointer-events": [4,5],
       "hit-pointer-events-rtl": [4,5],
+      "interaction-hover": [2,3],
+      "interaction-hover-rtl": [2,3],
+      "interaction-focus": [1,1],
+      "interaction-focus-rtl": [1,1],
+      "interaction-active": [1,1],
+      "interaction-active-rtl": [1,1],
+      "interaction-combo": [1,1],
+      "interaction-combo-rtl": [1,1],
       "replaced-demo": [1,1],
-      "replaced-demo-rtl": [1,1]
+      "replaced-demo-rtl": [1,1],
+      "transform-nested": [0,1],
+      "transform-text": [0,3]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -393,8 +403,18 @@
       "hit-order-rtl": [4,5],
       "hit-pointer-events": [4,5],
       "hit-pointer-events-rtl": [4,5],
+      "interaction-hover": [2,3],
+      "interaction-hover-rtl": [2,3],
+      "interaction-focus": [1,1],
+      "interaction-focus-rtl": [1,1],
+      "interaction-active": [1,1],
+      "interaction-active-rtl": [1,1],
+      "interaction-combo": [1,1],
+      "interaction-combo-rtl": [1,1],
       "replaced-demo": [1,1],
-      "replaced-demo-rtl": [1,1]
+      "replaced-demo-rtl": [1,1],
+      "transform-nested": [0,1],
+      "transform-text": [0,3]
     }
   },
   "android": {
@@ -593,8 +613,18 @@
       "hit-order-rtl": [4,5],
       "hit-pointer-events": [4,5],
       "hit-pointer-events-rtl": [4,5],
+      "interaction-hover": [2,3],
+      "interaction-hover-rtl": [2,3],
+      "interaction-focus": [1,1],
+      "interaction-focus-rtl": [1,1],
+      "interaction-active": [1,1],
+      "interaction-active-rtl": [1,1],
+      "interaction-combo": [1,1],
+      "interaction-combo-rtl": [1,1],
       "replaced-demo": [1,1],
-      "replaced-demo-rtl": [1,1]
+      "replaced-demo-rtl": [1,1],
+      "transform-nested": [0,1],
+      "transform-text": [0,3]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -791,8 +821,18 @@
       "hit-order-rtl": [4,5],
       "hit-pointer-events": [4,5],
       "hit-pointer-events-rtl": [4,5],
+      "interaction-hover": [2,3],
+      "interaction-hover-rtl": [2,3],
+      "interaction-focus": [1,1],
+      "interaction-focus-rtl": [1,1],
+      "interaction-active": [1,1],
+      "interaction-active-rtl": [1,1],
+      "interaction-combo": [1,1],
+      "interaction-combo-rtl": [1,1],
       "replaced-demo": [1,1],
-      "replaced-demo-rtl": [1,1]
+      "replaced-demo-rtl": [1,1],
+      "transform-nested": [0,1],
+      "transform-text": [0,3]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -989,8 +1029,18 @@
       "hit-order-rtl": [4,5],
       "hit-pointer-events": [4,5],
       "hit-pointer-events-rtl": [4,5],
+      "interaction-hover": [2,3],
+      "interaction-hover-rtl": [2,3],
+      "interaction-focus": [1,1],
+      "interaction-focus-rtl": [1,1],
+      "interaction-active": [1,1],
+      "interaction-active-rtl": [1,1],
+      "interaction-combo": [1,1],
+      "interaction-combo-rtl": [1,1],
       "replaced-demo": [1,1],
-      "replaced-demo-rtl": [1,1]
+      "replaced-demo-rtl": [1,1],
+      "transform-nested": [0,1],
+      "transform-text": [0,3]
     }
   }
 }

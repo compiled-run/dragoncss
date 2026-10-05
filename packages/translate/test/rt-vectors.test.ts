@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runLibraryCase } from '../harness/harness.ts';
 import { lockText } from '../src/check.ts';
-import { buildCorpus, hitCases, hitExpected, RT_VECTORS_DIR, rtCases } from '../src/corpus.ts';
+import { buildCorpus, checkHitRefusals, hitCases, hitExpected, RT_VECTORS_DIR, rtCases } from '../src/corpus.ts';
 import { engineFiles, engineRoots, LAYOUT_SRC, lowerAll } from '../src/generate.ts';
 import { suiteFloorProblems } from './floor.ts';
 
@@ -169,4 +169,13 @@ describe('rt suite (ANIM-a2)', () => {
     expect(() => hitExpected([lines[0] as string, noFacts])).toThrow(/hit case 1: the TypeScript reference answered \["threw"\]/);
     expect(() => hitExpected([JSON.stringify(['rt-hit', first[1], first[2]])])).toThrow(/hit case 0: the TypeScript reference answered \["harness-error"/);
   }, 120_000);
+});
+
+describe('the hit suite skips refused cases only with a reason (PNT2, T064 R13)', () => {
+  it('throws on a refused case without a reason or with facts', () => {
+    expect(() => checkHitRefusals({ a: [] }, { b: 'transform on b: hit testing through transforms is SELD-R2b (T146)' })).not.toThrow();
+    expect(() => checkHitRefusals({ a: [] }, { b: '' })).toThrow(/needs a reason/);
+    expect(() => checkHitRefusals({ a: [] }, { b: 3 })).toThrow(/needs a reason/);
+    expect(() => checkHitRefusals({ a: [] }, { a: 'why' })).toThrow(/no facts/);
+  });
 });

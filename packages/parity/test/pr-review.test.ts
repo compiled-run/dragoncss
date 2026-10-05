@@ -15,6 +15,9 @@ import {
   reviewExit,
   SPENDING_LIMIT,
   spendingLimitWaived,
+  waivedWithoutCorrectness,
+  CORRECTNESS,
+  CORRECTNESS_GRACE_MS,
   type Git,
   type Ignore,
   ignoreAt,
@@ -26,6 +29,7 @@ import {
   type CheckRun,
   correctnessSucceeded,
   type Earlier,
+  judgedHead,
   outcome,
   settled,
   verdictOf,
@@ -499,12 +503,51 @@ describe('the Macroscope spending-limit waiver', () => {
     expect(reviewExit(outcome(mixed, new Map(), HEAD), 0)).toBe(1);
     const reverse = [ci('success'), run('skipped', 'Per-review cost limit exceeded (workspace setting).'), ...all.slice(1)];
     expect(reviewExit(outcome(reverse, new Map(), HEAD), 0)).toBe(1);
+    // Only the proof guard, and no CI completion time: not (yet) the missing-correctness case below.
     expect(spendingLimitWaived([ci('success'), limit('Macroscope - Proof guard')])).toBe(false);
     expect(spendingLimitWaived([ci('success'), { ...all[0]!, conclusion: 'neutral' }])).toBe(false);
   });
 
   it('never clears an unanswered finding from an earlier commit', () => {
     expect(reviewExit(outcome([ci('success'), ...all], new Map(), HEAD), 1)).toBe(1);
+  });
+
+  // #175: at its limit Macroscope created only the proof guard (limit-skipped) and never the correctness check.
+  it('waives a commit with no correctness check once CI has passed for 5 minutes and every Macroscope check present hit the limit', () => {
+    const passedAt = Date.parse('2026-10-05T10:00:00Z');
+    const ciDone = (at: string | null = '2026-10-05T10:00:00Z', conclusion: string | null = 'success'): CheckRun => ({ ...ci(conclusion), completed_at: at });
+    const guard = limit('Macroscope - Proof guard');
+    const runs = [ciDone(), guard];
+    const minutes = (m: number): number => passedAt + m * 60_000;
+    expect(CORRECTNESS_GRACE_MS).toBe(5 * 60_000);
+    // Within the grace: still waiting for the correctness check.
+    expect(spendingLimitWaived(runs, minutes(4.9))).toBe(false);
+    expect(settled(runs, new Map(), HEAD, minutes(4.9))).toBe(false);
+    expect(outcome(runs, new Map(), HEAD, minutes(4.9)).pending).toEqual([CORRECTNESS]);
+    // After it: the waiver, reported as unreviewed (so the landing driver's Claude review still runs), and pr:review exits 0.
+    expect(spendingLimitWaived(runs, minutes(5))).toBe(true);
+    expect(waivedWithoutCorrectness(runs, minutes(5))).toBe(true);
+    expect(settled(runs, new Map(), HEAD, minutes(5))).toBe(true);
+    expect(outcome(runs, new Map(), HEAD, minutes(5))).toEqual({ pending: [], failed: [], unreviewed: true });
+    expect(reviewExit(outcome(runs, new Map(), HEAD, minutes(5)), 0)).toBe(0);
+    // The grace counts from the last CI run to finish.
+    expect(spendingLimitWaived([ciDone(), { ...ciDone('2026-10-05T10:03:00Z'), html_url: 'pr' }, guard], minutes(6))).toBe(false);
+    // Never: CI not passed, not finished, or undated; a Macroscope check that is not limit-skipped; no Macroscope check at all.
+    expect(spendingLimitWaived([ciDone(undefined, 'failure'), guard], minutes(60))).toBe(false);
+    expect(spendingLimitWaived([{ ...ciDone(null, null), status: 'in_progress' }, guard], minutes(60))).toBe(false);
+    expect(spendingLimitWaived([ciDone(null), guard], minutes(60))).toBe(false);
+    expect(spendingLimitWaived([ciDone(), run('success', 'Proof guard: no issues found', 'Macroscope - Proof guard')], minutes(60))).toBe(false);
+    expect(spendingLimitWaived([ciDone()], minutes(60))).toBe(false);
+    // A correctness check that appears later decides as before.
+    expect(waivedWithoutCorrectness([...runs, all[0]!], minutes(60))).toBe(false);
+    expect(spendingLimitWaived([...runs, run(null, null)], minutes(60))).toBe(false);
+  });
+
+  it('reads a check run\'s completed_at strictly', () => {
+    const good = { name: 'checks', status: 'completed', conclusion: 'success', html_url: 'u', output: { title: null }, completed_at: '2026-10-05T10:00:00Z' };
+    expect(parseCheckRunPages([{ check_runs: [good] }])[0]!.completed_at).toBe('2026-10-05T10:00:00Z');
+    expect(parseCheckRunPages([{ check_runs: [{ ...good, completed_at: null }] }])[0]!.completed_at).toBeNull();
+    expect(() => parseCheckRunPages([{ check_runs: [{ ...good, completed_at: 5 }] }])).toThrow();
   });
 });
 
@@ -576,5 +619,15 @@ describe('the CI run is required', () => {
     expect(() => parsePrHead({ headRefOid: HEAD.sha, mergeable: 'conflicting' })).toThrow();
     expect(() => parsePrHead({ headRefOid: 'abc', mergeable: 'MERGEABLE' })).toThrow();
     expect(() => parsePrHead(null)).toThrow();
+  });
+});
+
+describe('--conflicts-ok (GitHub mergeability ignores the merge drivers)', () => {
+  it('turns only CONFLICTING into UNKNOWN, and only when asked', () => {
+    const head = { sha: 'a'.repeat(40), mergeable: 'CONFLICTING' as const };
+    expect(judgedHead(head, true)).toEqual({ sha: head.sha, mergeable: 'UNKNOWN' });
+    expect(judgedHead(head, false)).toBe(head);
+    const clean = { sha: head.sha, mergeable: 'MERGEABLE' as const };
+    expect(judgedHead(clean, true)).toBe(clean);
   });
 });

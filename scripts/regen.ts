@@ -7,7 +7,7 @@
 // input. The cache lives in the git common directory, shared by every worktree, one entry per (step, key): a step is skipped
 // when an entry for its key recorded the outputs the tree has now, and its outputs are restored from the entry's git blobs when
 // they differ and the recorded run wrote every output without reading any of them. Steps that neither read nor write each
-// other's files run in parallel (--jobs, default 2). --check exits 1 naming every file the run changed (and leaves them
+// other's files run in parallel (--jobs, default 4). --check exits 1 naming every file the run changed (and leaves them
 // regenerated); --force ignores entries recorded before this run; --from starts the first pass at that step; --explain prints
 // what each step would do and why, and changes nothing. --skip <step> leaves a step out of every pass and --only <step> leaves out
 // all the others (both repeatable): .github/workflows/regen-on-ci.yml runs the Chrome steps and lanes-host on different machines.
@@ -21,10 +21,14 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { compilePattern, matchSegments } from './macroscope-ignore.ts';
 import { importClosure, lockClosure, NODE_IMPORT_CONDITIONS, parseLock, type ReadText, scanSource, type Tree, type Workspace, workspaceOf } from './regen-inputs.ts';
 import { BG2 } from './regen-steps/bg2.ts';
+import { ENV_SAFE } from './regen-steps/env-safe.ts';
 import { OVFL } from './regen-steps/ovfl.ts';
 import { PNT1 } from './regen-steps/pnt1.ts';
 import { PNT2 } from './regen-steps/pnt2.ts';
 import { ENGINE_SOURCES, FIXTURES, FONTS, type ManualOutput, placeSteps, pnpm, type RegenFeature, type Step } from './regen-steps/step.ts';
+
+// The device evidence stamp (device-evidence.ts EVIDENCE_CODE) digests these as files without importing them: the CI device code.
+const EVIDENCE_READS = ['packages/parity/src/device-ci.ts', 'packages/parity/src/cli/device-ci.ts'];
 import { TDEC } from './regen-steps/tdec.ts';
 import { TXT1A } from './regen-steps/txt1a.ts';
 import { TXT2 } from './regen-steps/txt2.ts';
@@ -61,7 +65,7 @@ const LEGACY_STEPS: readonly Step[] = [
     name: 'profile-rows',
     argv: pnpm('profile:rows'),
     outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'],
-    reads: [FIXTURES, FONTS, 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
+    reads: [FIXTURES, FONTS, ...EVIDENCE_READS, 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
   },
   { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'], reads: [FIXTURES, FONTS] },
   { name: 'hit-capture', argv: pnpm('parity:hit-capture'), outputs: ['packages/parity/expected-hit/*.hit.json'], reads: [FIXTURES, FONTS], lists: ['packages/parity/expected-hit'] },
@@ -91,7 +95,7 @@ const LEGACY_STEPS: readonly Step[] = [
     outputs: ['packages/parity/out/lanes.json'],
     env: ['JAVA_HOME', 'ANDROID_HOME'],
     verdict: lanesVerdict,
-    reads: [FIXTURES, FONTS, ...ENGINE_SOURCES, 'packages/parity/expected-*/**', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus*.json', 'packages/translate/package.json', 'packages/translate/harness/**', 'packages/translate/src/**'],
+    reads: [FIXTURES, FONTS, ...ENGINE_SOURCES, ...EVIDENCE_READS, 'packages/parity/expected-*/**', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus*.json', 'packages/translate/package.json', 'packages/translate/harness/**', 'packages/translate/src/**'],
     imports: ['packages/translate/src/native.ts', 'packages/translate/src/cli/native.ts'],
     packages: ['typescript'],
   },
@@ -103,6 +107,7 @@ const LEGACY_STEPS: readonly Step[] = [
  */
 export const REGEN_FEATURES: { readonly [feature: string]: RegenFeature } = {
   bg2: BG2,
+  'env-safe': ENV_SAFE,
   ovfl: OVFL,
   pnt1: PNT1,
   pnt2: PNT2,
@@ -151,7 +156,8 @@ const LEGACY_MANUAL: readonly ManualOutput[] = [
 export const MANUAL: readonly ManualOutput[] = [...LEGACY_MANUAL, ...Object.keys(REGEN_FEATURES).sort().flatMap((id) => REGEN_FEATURES[id]?.manual ?? [])];
 
 export const MAX_PASSES = 5;
-export const DEFAULT_JOBS = 2;
+// Measured on master (forced, one heavy-lease slot, load 16-46): --jobs 2 took 787 s, --jobs 4 took 467 s, both byte-identical.
+export const DEFAULT_JOBS = 4;
 
 export const sha256 = (s: string): string => createHash('sha256').update(s).digest('hex');
 
@@ -872,6 +878,41 @@ export function localIo(root: string, storeDir: string, logDir: string): Io {
   };
 }
 
+/**
+ * One regen per worktree: a second one beside it would see the first's writes in its snapshots and blame its own step for them
+ * (MQ-R1 2026-10-05: profile-rows "changed" expected-dpr while the other run's dpr-capture wrote it). The lock is a directory
+ * made atomically in the worktree's own git dir, holding the owner's pid; a lock whose owner is gone is taken over.
+ */
+export function worktreeLock(gitDir: string, pid: number, alive: (pid: number) => boolean, now: number = Date.now()): { release: () => void } {
+  const dir = join(gitDir, 'dragon-regen.lock');
+  const pidFile = join(dir, 'pid');
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      mkdirSync(dir);
+      writeFileSync(pidFile, `${pid}\n`);
+      return { release: () => rmSync(dir, { recursive: true, force: true }) };
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+    }
+    const text = existsSync(pidFile) ? readFileSync(pidFile, 'utf8').trim() : '';
+    const holder = /^\d+$/.test(text) ? Number(text) : null;
+    // A lock without a pid is one being made right now, unless it is older than a minute (its maker died in between).
+    const stale = holder === null ? now - statSync(dir).mtimeMs > 60_000 : !alive(holder);
+    if (!stale) throw new Error(`another regen (pid ${holder ?? 'starting'}) is running in this worktree; two at once would blame each other's writes on their own steps. Wait for it, or remove ${dir} if it is gone`);
+    rmSync(dir, { recursive: true, force: true });
+  }
+  throw new Error(`could not take the regen lock ${dir}`);
+}
+
+const pidAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'EPERM';
+  }
+};
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const opts: { force: boolean; check: boolean; from: string | null; jobs: number; explain: boolean; skip: string[] } = { force: false, check: false, from: null, jobs: Number(process.env.DRAGON_REGEN_JOBS ?? DEFAULT_JOBS), explain: false, skip: [] };
@@ -905,6 +946,14 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   const root = git(['rev-parse', '--show-toplevel']).trim();
+  let lock: { release: () => void };
+  try {
+    lock = worktreeLock(resolve(root, git(['-C', root, 'rev-parse', '--git-dir']).trim()), process.pid, pidAlive);
+  } catch (e) {
+    console.error(`regen: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(2);
+  }
+  process.on('exit', () => lock.release());
   const logDir = join(root, 'node_modules/.cache/dragon-regen');
   mkdirSync(logDir, { recursive: true });
   const storeDir = join(resolve(root, git(['-C', root, 'rev-parse', '--git-common-dir']).trim()), 'dragon-regen', 'v2');
