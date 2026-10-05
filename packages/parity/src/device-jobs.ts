@@ -5,7 +5,8 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
-import type { DeviceOutcome, RunLog } from './device-lanes.ts';
+import type { Readable, Writable } from 'node:stream';
+import type { DeviceOutcome, HostSource, RunLog } from './device-lanes.ts';
 import { afterRelease, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE } from './device-lanes.ts';
 import type { DeviceHandle, DeviceSpec } from './device-run.ts';
 import { spawnChild } from './device-exec.ts';
@@ -30,8 +31,15 @@ export function deviceJobs(target: NativeTarget, requested: number | null, log: 
   return jobs;
 }
 
+/** A job's host run that is handed to its process on stdin, after the device: the host lanes were still running when it started. */
+export const HOST_ON_STDIN = 'stdin';
+
 /** What a device process is handed. */
-export type DeviceJob = { readonly target: NativeTarget; readonly device: string; readonly artifact: string; readonly host: HostRun | null; readonly vectors: boolean };
+export type DeviceJob = { readonly target: NativeTarget; readonly device: string; readonly artifact: string; readonly host: HostRun | null | typeof HOST_ON_STDIN; readonly vectors: boolean };
+/** A device job as the parent holds it: its host run may still be running. */
+export type DeviceTask = Omit<DeviceJob, 'host'> & { readonly host: HostSource };
+
+const isHostRun = (h: unknown): h is HostRun => isObj(h) && typeof h['state'] === 'string' && Array.isArray(h['suites']) && isObj(h['digests']);
 
 /** A device job read from its file, checked: a malformed one stops the process before any device work. */
 export function parseDeviceJob(text: string): DeviceJob {
@@ -41,7 +49,7 @@ export function parseDeviceJob(text: string): DeviceJob {
   if (o['target'] !== 'ios' && o['target'] !== 'android') problems.push('target is not ios or android');
   if (!DEVICE_MATRIX.some((d) => d.target === o['target'] && d.name === o['device'])) problems.push(`device ${JSON.stringify(o['device'])} is not a matrix device of the target`);
   if (typeof o['artifact'] !== 'string' || !existsSync(o['artifact'])) problems.push('artifact is not an existing path');
-  if (o['host'] !== null && (typeof o['host'] !== 'object' || typeof (o['host'] as Record<string, unknown>)['state'] !== 'string')) problems.push('host is neither null nor a host run');
+  if (o['host'] !== null && o['host'] !== HOST_ON_STDIN && !isHostRun(o['host'])) problems.push(`host is neither null, ${HOST_ON_STDIN} nor a host run`);
   if (typeof o['vectors'] !== 'boolean') problems.push('vectors is not a boolean');
   if (problems.length > 0) throw new Error(`malformed device job: ${problems.join('; ')}`);
   return o as unknown as DeviceJob;
@@ -130,25 +138,80 @@ export function parseHandle(text: string, spec: DeviceSpec): DeviceHandle {
 }
 
 /**
- * Runs one device job in its own process, its log lines forwarded. The device is booted here, while the process computes its cases,
- * handed to it on stdin, and stopped here once the process has exited, whatever it did: the outcome, or an error naming the device.
+ * The host run a device process is handed on its second stdin line (HOST_ON_STDIN), or the reason the host lanes failed (thrown,
+ * so the vectors lane is never judged without its host run).
  */
-export function runDeviceChild(job: DeviceJob, spec: DeviceSpec, log: RunLog): Promise<DeviceOutcome> {
+export function parseHostLine(text: string): HostRun | null {
+  let v: unknown;
+  try {
+    v = JSON.parse(text);
+  } catch {
+    throw new Error('the device process was handed no host run (the run stopped before the host lanes finished)');
+  }
+  if (isObj(v) && typeof v['hostError'] === 'string') throw new Error(`the host lanes failed: ${v['hostError']}`);
+  if (!isObj(v) || !('host' in v) || (v['host'] !== null && !isHostRun(v['host']))) throw new Error('the device process was handed a malformed host run');
+  return v['host'] as HostRun | null;
+}
+
+const message = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+/**
+ * Writes a device process's stdin: the boot's handle, or why the boot failed, on the first line; then, for a host run still
+ * running, the run (or why the host lanes failed) on the second line once it is known; then the end.
+ */
+export function handOver(stdin: Writable | null, booting: Promise<DeviceHandle>, later: Promise<HostRun | null> | null): void {
+  if (stdin === null) return;
+  // A process that has already exited cannot take its device or its host run; its exit is reported by its done, so the write error adds nothing.
+  stdin.on('error', () => undefined);
+  const line = (v: unknown): string => `${JSON.stringify(v)}\n`;
+  booting.then(
+    (h) => {
+      if (later === null) return void stdin.end(line({ handle: h }));
+      stdin.write(line({ handle: h }));
+      later.then(
+        (host) => stdin.end(line({ host })),
+        (e: unknown) => stdin.end(line({ hostError: message(e) })),
+      );
+    },
+    (e: unknown) => stdin.end(line({ blocked: message(e) })),
+  );
+}
+
+/**
+ * Reads what handOver wrote, in a device process: the handle line, and with hostOnStdin the host run from the next line (an input
+ * that ends early gives an empty line, which each parse refuses). The host run is awaited only by the vectors verdict, so its
+ * rejection is not left unhandled when the run ends without it. close() stops reading.
+ */
+export function handedOver(input: Readable, hostOnStdin: boolean): { readonly handle: Promise<string>; readonly host: Promise<HostRun | null> | null; readonly close: () => void } {
+  const rl = createInterface({ input });
+  const lines = rl[Symbol.asyncIterator]();
+  const next = async (): Promise<string> => {
+    const r = await lines.next();
+    return r.done === true ? '' : r.value;
+  };
+  const handle = next();
+  const host = hostOnStdin ? handle.then(next).then(parseHostLine) : null;
+  host?.catch(() => undefined);
+  return { handle, host, close: () => rl.close() };
+}
+
+/**
+ * Runs one device job in its own process, its log lines forwarded. The device is booted here (or was booted early, by EarlyBoots),
+ * while the process computes its cases, handed to it on stdin, and stopped here once the process has exited, whatever it did: the
+ * outcome, or an error naming the device. A host run still running is handed on a second line once it is known.
+ */
+export function runDeviceChild(task: DeviceTask, spec: DeviceSpec, log: RunLog, booting: Promise<DeviceHandle> = boot(spec)): Promise<DeviceOutcome> {
+  const later = task.host instanceof Promise ? task.host : null;
+  const job: DeviceJob = { ...task, host: later === null ? (task.host as HostRun | null) : HOST_ON_STDIN };
   const dir = jobDir(job.target);
   mkdirSync(dir, { recursive: true });
   const jobFile = join(dir, `${slug(job.device)}.job.json`);
   const outFile = join(dir, `${slug(job.device)}.outcome.json`);
   rmSync(outFile, { force: true });
   writeFileSync(jobFile, JSON.stringify(job));
-  const booting = boot(spec);
   const handle = booting.catch(() => null);
   const { child: p, done } = spawnChild(process.execPath, ['--conditions=dragon-internal', repoPath('packages/parity/src/cli/device-one.ts'), jobFile, outFile], { stdio: ['pipe', 'pipe', 'pipe'] });
-  // A process that has already exited cannot take its device; its exit is reported by done, so the write error adds nothing.
-  p.stdin?.on('error', () => undefined);
-  booting.then(
-    (h) => p.stdin?.end(JSON.stringify({ handle: h })),
-    (e: unknown) => p.stdin?.end(JSON.stringify({ blocked: e instanceof Error ? e.message : String(e) })),
-  );
+  handOver(p.stdin, booting, later);
   if (p.stdout !== null) createInterface({ input: p.stdout }).on('line', (l) => log(l));
   const outcome = done
     .then(
@@ -210,10 +273,51 @@ export async function pool<T, R>(items: readonly T[], jobs: number, f: (x: T) =>
   return out;
 }
 
-/** The devices of a target, jobs at a time, each in its own process; the outcomes in matrix order. */
-export function runDevicesInChildren(target: NativeTarget, specs: readonly DeviceSpec[], jobs: number, jobOf: (spec: DeviceSpec) => DeviceJob, log: RunLog): Promise<DeviceOutcome[]> {
+/** The devices of a target, jobs at a time, each in its own process; the outcomes in matrix order. A device booted early is taken. */
+export function runDevicesInChildren(target: NativeTarget, specs: readonly DeviceSpec[], jobs: number, jobOf: (spec: DeviceSpec) => DeviceTask, log: RunLog, early: EarlyBoots | null = null): Promise<DeviceOutcome[]> {
   if (specs.some((s) => s.target !== target)) throw new Error(`a device of another target in the ${target} run`);
-  return pool(specs, jobs, (spec) => runDeviceChild(jobOf(spec), spec, log), (spec) => SOLO_DEVICES.includes(spec.name));
+  return pool(specs, jobs, (spec) => runDeviceChild(jobOf(spec), spec, log, early?.take(spec) ?? boot(spec)), (spec) => SOLO_DEVICES.includes(spec.name));
+}
+
+/** The devices a run of a target starts first, so the ones worth booting early: the first `jobs` of its matrix, solo devices last. */
+export function earlySpecs(target: NativeTarget, jobs: number): DeviceSpec[] {
+  return DEVICE_MATRIX.filter((d) => d.target === target && !SOLO_DEVICES.includes(d.name)).slice(0, Math.max(1, jobs));
+}
+
+/**
+ * Devices booted ahead of their runs (parity:lanes boots them while the apps build and the host lanes run), each admitted by the
+ * memory budget as any boot is. A run takes its device's boot and owns its stop from then on; every boot not taken is stopped by
+ * releaseRest, so none outlives the run. A failed early boot is the taker's answer, as a failed boot of its own would be.
+ */
+export class EarlyBoots {
+  private readonly boots = new Map<string, { readonly spec: DeviceSpec; readonly booting: Promise<DeviceHandle> }>();
+  constructor(specs: readonly DeviceSpec[], bootIt: (spec: DeviceSpec) => Promise<DeviceHandle> = boot) {
+    for (const spec of specs) {
+      if (this.boots.has(spec.name)) throw new Error(`${spec.name} is booted early twice`);
+      const booting = bootIt(spec);
+      booting.catch(() => undefined);
+      this.boots.set(spec.name, { spec, booting });
+    }
+  }
+  /** The early boot of a device, handed over once (later calls give undefined). */
+  take(spec: DeviceSpec): Promise<DeviceHandle> | undefined {
+    const b = this.boots.get(spec.name);
+    this.boots.delete(spec.name);
+    return b?.booting;
+  }
+  /** Stops the early boots not taken (of the devices `which` picks), once each has booted or failed; the stops' problems. */
+  async releaseRest(log: RunLog, which: (spec: DeviceSpec) => boolean = () => true, stop: (h: DeviceHandle, log: RunLog) => Promise<string | null> = release): Promise<string[]> {
+    const problems: string[] = [];
+    for (const [name, b] of [...this.boots]) {
+      if (!which(b.spec)) continue;
+      this.boots.delete(name);
+      const h = await b.booting.catch(() => null);
+      if (h === null) continue;
+      const p = await stop(h, log).catch((e: unknown) => `${name} could not be stopped: ${message(e)}`);
+      if (p !== null) problems.push(p);
+    }
+    return problems;
+  }
 }
 
 

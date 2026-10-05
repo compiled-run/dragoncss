@@ -14,6 +14,7 @@ import { expectedDigest, expectedDump } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA } from './compare.ts';
 import type { DeviceHandle, DeviceRecord, DeviceSpec } from './device-run.ts';
+import type { EarlyBoots } from './device-jobs.ts';
 import { runDevicesInChildren } from './device-jobs.ts';
 import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, recordProblems, release, runApp, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
 import { deviceEvidence } from './device-evidence.ts';
@@ -374,6 +375,8 @@ export function failuresByKind(fs: readonly LaneFailure[]): Record<string, numbe
 // ---------------------------------------------------------------- a target's device run
 
 export type RunLog = (line: string) => void;
+/** The host run that judges a target's device vectors lane: known, or still running (parity:lanes overlaps the host lanes). */
+export type HostSource = HostRun | null | Promise<HostRun | null>;
 
 /** What one device of a target's matrix gives the run: its DPR set, capture-trust rows and vectors lane, or why it was blocked. */
 export type DeviceOutcome = {
@@ -395,7 +398,7 @@ export type DeviceOutcome = {
  * so the run is the one a sequential run makes. A device that fails to boot twice, or cannot hold the root, is a tooling fault:
  * its DPR is recorded as not run, never as a pass.
  */
-export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, log: RunLog, opts: { readonly vectors?: boolean; readonly jobs?: number } = {}): Promise<DeviceRun> {
+export async function runTargetOnDevices(t: TargetConfig, host: HostSource, log: RunLog, opts: { readonly vectors?: boolean; readonly jobs?: number; readonly early?: EarlyBoots | null } = {}): Promise<DeviceRun> {
   // Stamped before any device work: the code, reference data and app sources this run is made and judged with.
   const evidence = deviceEvidence(t.target);
   const cases = nativeCases();
@@ -407,10 +410,13 @@ export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, 
   const specs = DEVICE_MATRIX.filter((d) => d.target === t.target);
   const vectors = opts.vectors !== false;
   const jobs = Math.min(opts.jobs ?? 1, specs.length);
+  const early = opts.early ?? null;
+  // Only the vectors device waits for a host run still running; the others are handed what is known now.
+  const hostOf = (spec: DeviceSpec): HostSource => (host instanceof Promise && !(vectors && spec.name === VECTOR_DEVICES[t.target]) ? null : host);
   const outcomes =
     jobs <= 1
-      ? await sequentially(specs, (spec) => runOneDevice(t, spec, host, build.artifact, () => cases, vectors, log))
-      : await runDevicesInChildren(t.target, specs, jobs, (spec) => ({ target: t.target, device: spec.name, artifact: build.artifact, host, vectors }), log);
+      ? await sequentially(specs, (spec) => runOneDevice(t, spec, hostOf(spec), build.artifact, () => cases, vectors, log, { boot: () => early?.take(spec) ?? boot(spec), release: (h) => release(h, log) }))
+      : await runDevicesInChildren(t.target, specs, jobs, (spec) => ({ target: t.target, device: spec.name, artifact: build.artifact, host: hostOf(spec), vectors }), log, early);
   return mergeOutcomes(outcomes, evidence);
 }
 
@@ -535,7 +541,7 @@ export function afterRelease(o: DeviceOutcome, problem: string | null): DeviceOu
 }
 
 /** One device of the matrix: boot, the batch launch and its checks, the capture-trust launch and, on the vectors device, the vectors lane. */
-export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostRun | null, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog, source: DeviceSource = { boot: () => boot(spec), release: (h) => release(h, log) }): Promise<DeviceOutcome> {
+export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostSource, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog, source: DeviceSource = { boot: () => boot(spec), release: (h) => release(h, log) }): Promise<DeviceOutcome> {
   const backend = BACKEND_OF[t.target];
   const none = { device: spec.name, set: null, trust: null, vectors: null };
   let h: DeviceHandle;
