@@ -129,7 +129,7 @@ public func position_blockInset(_ box: any U_LayoutBox_ReplacedLeaf, _ v: any U_
   }
   // ts: packages/layout/src/position.ts:57
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s148, S.s286)
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s149, S.s292)
   }
   return try box_resolveLengthOrNull((v as! any U_LengthCalc_Percent_Px), nil, faults)
 }
