@@ -6,7 +6,12 @@ import type { Diagnostic } from '../src/index.ts';
 import { querySupport } from '../src/index.ts';
 import type { EmitCase, NativeProgram } from '../src/internal.ts';
 import { createProjectWith, emitAndroidViewsCases, emitUikitCases, nativePrograms, NO_FAULTS } from '../src/internal.ts';
+import { androidProfile } from '../src/profiles/android.ts';
+import { iosProfile } from '../src/profiles/ios.ts';
 import { NOT_APPLICABLE_NATIVE } from '../src/profiles/not-applicable-native.ts';
+import type { SupportProfile } from '../src/profiles/types.ts';
+import { statusOf } from '../src/profiles/types.ts';
+import { webProfile } from '../src/profiles/web.ts';
 import { div, expectCatalogued, inputFor } from './helpers.ts';
 
 const BASE = '.a { width: 10px; height: 10px; background-color: red; }';
@@ -139,10 +144,13 @@ describe('off the list, a declaration or rule is still refused on every target',
     });
   }
 
-  it('will-change: transform stays refused on every target (a transform makes a containing block and stacking context)', () => {
+  it('will-change: transform is never not-applicable on native, and each target follows its transform support (PNT2)', () => {
+    // A transform hint makes a containing block and stacking context, a visible effect, so it is never not-applicable; whether it
+    // compiles is the profiles' will-change:transform row (PNT2): checked where a target supports it, blocked where it does not.
     const c = compile(`${BASE}\n.a { will-change: transform; }`, { web: {}, ...NATIVE });
-    expect(c.targets).toEqual({ web: 'blocked', ios: 'blocked', android: 'blocked' });
     expect(c.diagnostics.some((d) => d.code === 'DRAGON_NOT_APPLICABLE_NATIVE')).toBe(false);
+    const supported = (p: SupportProfile): boolean => statusOf(p, 'will-change:transform', 'paint/ltr') !== 'unsupported';
+    expect(c.targets).toEqual({ web: supported(webProfile) ? 'checked' : 'blocked', ios: supported(iosProfile) ? 'checked' : 'blocked', android: supported(androidProfile) ? 'checked' : 'blocked' });
   });
 });
 
