@@ -15574,7 +15574,7 @@
     "css/css-flexbox/abspos/abspos-autopos-vlr-rtl.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/abspos/abspos-autopos-vrl-ltr.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/abspos/abspos-autopos-vrl-rtl.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
-    "css/css-flexbox/abspos/abspos-descendent-001.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNSUPPORTED_VALUE:overflow-x:auto","status":"not-runnable"},
+    "css/css-flexbox/abspos/abspos-descendent-001.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNPROVEN_CONTEXT:display:none","status":"not-runnable"},
     "css/css-flexbox/abspos/dynamic-align-self-001.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/abspos/flex-abspos-align-self-safe-outer-cb-001.tentative.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/abspos/flex-abspos-align-self-safe-outer-cb-002.tentative.html": {"missing":"kind:reftest","status":"not-runnable"},
