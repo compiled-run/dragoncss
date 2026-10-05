@@ -223,6 +223,16 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     expect(unavailable(() => runDevicesOnCi({ pr: 42, deps: early.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 })).message).toContain('failed in setup (chrome (1) (Playwright');
     expect(() => parseJobs('{"jobs":[{"name":"a","status":"completed","steps":[{"name":1}]}]}')).toThrow('unexpected gh run step');
   });
+  it('does not blame the tree for a summary that failed because a shard died in setup and wrote no report (#199 review)', () => {
+    const job = (name: string, stepName: string) => ({ name, status: 'completed', conclusion: 'failure', steps: [{ name: stepName, status: 'completed', conclusion: 'failure' }] });
+    const swift = job('native (2)', 'Swift 6.4.0 (swift.org) and kotlinc 2.4.20');
+    const summary = job('summary', "Every test's state, and the failures");
+    expect(failedJobs([swift, summary])).toEqual({ verdict: [], setup: ['native (2) (Swift 6.4.0 (swift.org) and kotlinc 2.4.20)', "summary (Every test's state, and the failures)"] });
+    // With every shard through its setup, a failing summary is the tree's (a failed test, a file not run).
+    expect(failedJobs([summary]).verdict).toEqual(["summary (Every test's state, and the failures)"]);
+    // A shard's own failed tests still blame the tree beside another shard's setup failure.
+    expect(failedJobs([swift, job('chrome (1)', 'vitest run (every other file, shard 1/3)'), summary]).verdict).toEqual(['chrome (1) (vitest run (every other file, shard 1/3))']);
+  });
   it('waits at least as long as the longest chain of job timeouts in each workflow', () => {
     const minutes = (f: string): number[] => [...readFileSync(repoPath(`.github/workflows/${f}`), 'utf8').matchAll(/timeout-minutes: (\d+)/g)].map((m) => Number(m[1]));
     const full = minutes('full-test.yml');

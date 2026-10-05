@@ -103,6 +103,7 @@ export function parseJobs(text: string): CiJob[] {
  * run, its merge and comparison (device-lanes.yml). Every other step (checkout, pnpm install, the toolchain and Chromium and WPT
  * downloads, the runtime and SDK installs, cache and artifact steps) is setup: its failure says nothing about the tree.
  */
+export const SUMMARY_STEP = "Every test's state";
 export const VERDICT_STEP = /^(vitest run|Every test's state|pnpm regen --check|No native run was blocked|Device run |Merge the device outcomes|Compare every device lane)/;
 
 /**
@@ -117,6 +118,14 @@ export function failedJobs(jobs: readonly CiJob[]): { verdict: string[]; setup: 
     const step = j.steps.find((st) => st.conclusion === 'failure') ?? j.steps.find((st) => st.status !== 'completed' || (st.conclusion !== 'success' && st.conclusion !== 'skipped'));
     if (step !== undefined && VERDICT_STEP.test(step.name)) verdict.push(`${j.name} (${step.name})`);
     else setup.push(`${j.name} (${step?.name ?? 'no step'})`);
+  }
+  // The summary fails whenever a shard wrote no report, and a shard that died in setup writes none: with a setup failure in the
+  // run, the summary's failure is that shard's, not the tree's (#199 review).
+  if (setup.length > 0) {
+    for (const v of verdict.filter((x) => x.includes(`(${SUMMARY_STEP}`))) {
+      verdict.splice(verdict.indexOf(v), 1);
+      setup.push(v);
+    }
   }
   return { verdict, setup };
 }
