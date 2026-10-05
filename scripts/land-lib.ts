@@ -163,7 +163,10 @@ export const worktreesOf = (porcelain: string, branch: string, shas: readonly st
 
 // The quiet-machine gate: no heavy slot held by a live process of anyone else, and a 1-minute load under 20.
 export const QUIET_LOAD = 20;
-export const isQuiet = (otherHeavyHolders: number, load1: number): boolean => otherHeavyHolders === 0 && load1 < QUIET_LOAD;
+// A machine this idle is quiet even with a heavy slot held: a holder sitting near-idle (a profiling run, a job waiting on a
+// device) kept the gate shut for over an hour at load ~1. The quiet request still stops new jobs from starting meanwhile.
+export const IDLE_LOAD = 6;
+export const isQuiet = (otherHeavyHolders: number, load1: number): boolean => load1 < IDLE_LOAD || (otherHeavyHolders === 0 && load1 < QUIET_LOAD);
 
 // While the driver waits for quiet it holds /tmp/dragon-train-quiet (its pid), which stops /tmp/heavy-lease.sh from starting
 // new jobs beside the train. It keeps holding it through the quiet rerun (waitForQuiet's `hold`), so jobs queued behind the
@@ -220,7 +223,9 @@ export const waitForQuiet = (o: { quiet: () => boolean; request: () => void; rel
 
 // Before proving a tree other than the one just built, ignored outputs of other trees go (reports, lane outputs, tsbuildinfo);
 // installs, fetched WPT and native build caches stay, since no test reads them as results.
-export const KEEP_IGNORED = ['node_modules/', 'vendor/wpt/', 'build/', '.build/', '.swiftpm/', '.zig-cache/', 'zig-out/', 'Cargo.lock', '.vercel/'];
+// packages/translate/out/{kotlin,swift}/ are content-keyed harness build caches (native.ts buildKotlin/buildSwift): valid for any
+// tree, and removing their files (but not their directories) once left stale entries that blocked every later build (#164).
+export const KEEP_IGNORED = ['node_modules/', 'vendor/wpt/', 'build/', '.build/', '.swiftpm/', '.zig-cache/', 'zig-out/', 'Cargo.lock', '.vercel/', 'packages/translate/out/kotlin/', 'packages/translate/out/swift/'];
 // Lists every ignored file (NUL-separated). `git clean -X` with `-e !kept/` negations (the first version) un-ignores a kept
 // directory, so git descends into it and deletes the ignored files nested inside: node_modules/.pnpm/*/dist/ (every installed
 // package's code) went, and every later test run failed to start. Pathspec excludes don't help either: git clean removes a

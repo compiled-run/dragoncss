@@ -58,13 +58,22 @@ The research measured `-num-threads 8` as no gain (87 vs 88 s).
 
 ## 3. Kotlin harness build
 
-| Flags | Build | Note |
-|---|---:|---|
-| `-nowarn -include-runtime` (today) | 10.9 s | |
-| + `-J-XX:TieredStopAtLevel=1` | 7.6 s | single run; repeat pending |
-| + `-J-XX:+UseParallelGC` | 9.2 s | single run |
+Two repetitions of each flag set, back to back in one job. The class bytes were identical across every flag set.
 
-Run time is the JVM's (`java -jar`, 0.08 s startup per suite), so it is not the cost. The research measured a hello-world kotlinc at 12 s: kotlinc's own JVM start-up and JIT warm-up are most of a small compile. #158 removes the build on most PRs. A warm compiler daemon would save about the same again, only on engine PRs.
+| Flags | Harness build, rep 1 / rep 2 | Android app kotlinc, rep 1 / rep 2 |
+|---|---:|---:|
+| today (`-nowarn -include-runtime`; app `-J-Xmx8g`) | 31.7 / 8.6 s | 94.6 / 29.6 s |
+| `-Xbackend-threads=0` (parallel codegen) | 19.7 / 7.8 s | 75.3 / 31.0 s |
+| `-J-XX:TieredStopAtLevel=1` (C1 only) | 14.5 / 7.7 s | 51.0 / 50.7 s |
+| both | 5.8 / 6.6 s | 41.0 / 42.8 s |
+
+Rep 1 ran under heavy load and rep 2 on a quieter machine. Read rep 2:
+- Harness: the flags save 1–2 s of 8.6 s, about the size of the run-to-run noise.
+- App: C1-only makes the large compile slower (29.6 → 50.7 s), and parallel codegen is neutral.
+
+Running the harness (`java -jar`, 0.08 s per suite) is not the cost.
+
+**Stopped: marginal.** After #158 a Kotlin harness build happens only on engine or translator PRs, and the best flag set saves about 2 s per build there. A warm compiler daemon (the Kotlin build-tools API) would save kotlinc's ~5–10 s start-up per build on those PRs only, for a new long-lived process to manage. Not worth it.
 
 ## 4. App builds for the device lanes (packages/parity/src/native-host.ts)
 
@@ -75,8 +84,8 @@ There is no xcodebuild and no Gradle here. The iOS host app is one `swiftc -O -j
 | iOS `swiftc -O -j 18` (today) | 94–119 s | |
 | iOS `swiftc -O -wmo -num-threads 18` | 784 s | much worse |
 | iOS `swiftc -Onone -j 18` | 11 s | 8.5x faster to build; see design decisions |
-| Android kotlinc (today) | 23 s quiet, 188 s under load | |
-| Android kotlinc `-Xbackend-threads=0` | 19.6 s | identical class bytes |
+| Android kotlinc (today) | 23–30 s quiet, 95–188 s under load | |
+| Android kotlinc `-Xbackend-threads=0` | 19.6–31 s | identical class bytes; neutral within noise |
 | Android d8 `--release` with kotlin-stdlib | 15 s | |
 
 ## Design decisions left (large wins this lane did not take)
@@ -94,5 +103,17 @@ There is no xcodebuild and no Gradle here. The iOS host app is one `swiftc -O -j
 | PR | Change | Status |
 |---|---|---|
 | #156 | Sort keys serialised once and the profile row index; adds scripts/bench-compile.ts | CI green, UNREVIEWED (Macroscope limit), clean head dbc6f38887 |
-| #158 | Machine-wide Swift/Kotlin harness build cache | CI green, UNREVIEWED, clean head d72d0fe415 |
+| #158 | Machine-wide Swift/Kotlin harness build cache. After review: atomic prune (rename to trash, then delete), a 3 GB LRU cap, OS/arch in the Swift key, merged with #164 | CI green, UNREVIEWED, clean head 1a40baf383 (cap never evicts an entry used in the last 2 h; invalid DRAGON_NATIVE_CACHE_MAX_MB throws) |
 | #160 | Digest profiles and asset bytes by SHA-256 (regen commit; device step pending) | CI green, UNREVIEWED, clean head 1a85b27d5e |
+| #164 | Fix: a stale harness cache entry (the landing driver's ignored-file cleanup deletes the artifacts but keeps the directories) is replaced, never returned without its artifact. This was the root cause of land-147's "Unable to access jarfile" | merged |
+
+## Where each target stopped
+
+| Target | Baseline | Now (all PRs) | Next candidate and its share of what remains |
+|---|---:|---:|---|
+| Dragon compile, 506 parity cases | 19.4–26.4 s | 1.05 s (25x) | `resolve.ts` visit, ≤10%: marginal |
+| Dragon compile, music player | 570–735 ms | 15 ms (46x) | none above 10% |
+| Swift harness, a new checkout (planted + native files) | 741 s | 262 s (warm cache) | the remaining time is suite run time at `-O`. Engine `-typecheck` overlap ≈10%. Planted `-Onone` needs a decision |
+| Kotlin harness, a new checkout (planted + native files) | 270 s | 138 s (warm cache) | JVM flags save ~2 s per build, only on engine PRs: marginal |
+| iOS host app | 94–119 s | unchanged | `-Onone` for the case code, 8.5x. Needs a design decision (above) |
+| Android host APK (kotlinc + d8) | 38–203 s | unchanged | kotlinc flags neutral. A d8-dexed kotlin-stdlib cache saves ≤15 s (<10% under load). A cases/engine split needs a design decision |
