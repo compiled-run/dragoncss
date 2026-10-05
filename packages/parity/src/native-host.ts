@@ -25,7 +25,7 @@ import type { EncoderLanguage } from './native-encoders.ts';
 import { constructDump, encoderSource, KOTLIN_DUMP_PACKAGE } from './native-encoders.ts';
 import { referenceDump } from './native-compare.ts';
 import type { NativeDump } from './native-dump.ts';
-import { BUILD_CACHE, hit, publish, pruneCache } from '../../translate/src/build-cache.ts';
+import { BUILD_CACHE, hit, publish, pruneCache, replace } from '../../translate/src/build-cache.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { NativeTarget } from './targets.ts';
@@ -655,7 +655,7 @@ const fileSha = (path: string): string => createHash('sha256').update(readFileSy
 /**
  * Builds an app into the machine-wide cache (#158's, kind ios-app or apk) unless its key is there: in a work directory beside the
  * entry, published by one rename, so a hit is always a whole build, shared by every worktree; the sources and intermediates are
- * removed before publishing, leaving only `keep`. A failed command removes the work directory and throws its output.
+ * removed before publishing, leaving only `keep`. With reuse off the build always runs and replaces the entry. A failed command removes the work directory and throws its output.
  */
 function cachedApp(kind: 'ios-app' | 'apk', key: string, artifact: string, complete: (dir: string) => boolean, reuse: boolean, build: (work: string, log: string[]) => void, keep: readonly string[]): { readonly dir: string; readonly log: string[] } {
   const dir = join(BUILD_CACHE, kind, key);
@@ -671,7 +671,9 @@ function cachedApp(kind: 'ios-app' | 'apk', key: string, artifact: string, compl
     throw e;
   }
   for (const n of readdirSync(work)) if (!keep.includes(n)) rmSync(join(work, n), { recursive: true, force: true });
-  publish(work, dir);
+  // A forced rebuild (reuse off) replaces the entry, so it repairs a damaged one; otherwise an equal entry already there is kept.
+  if (reuse) publish(work, dir);
+  else replace(work, dir);
   pruneCache(BUILD_CACHE, dir);
   log.push(`published ${dir} (key ${key})`);
   return { dir, log };
@@ -699,11 +701,11 @@ export function iosModules(paths: readonly string[]): { readonly core: string[];
 
 /**
  * Why a DragonCases source is not straight-line construction code, which is all -Onone may build: a control flow statement, a
- * ternary (the typed state setters' Bool encoding `v ? 1 : 0` aside), assert, precondition or fatalError, outside string literals
+ * ternary (the typed state setters' Bool encoding `v ? <int> : <int>` aside, whose numbers follow the fixture's value order), assert, precondition or fatalError, outside string literals
  * and comments. An enum's `case` is a declaration, so it is allowed; a `switch` is not. Empty when the source is construction only.
  */
 export function casesCodeProblems(path: string, text: string): string[] {
-  const code = text.replace(/"(?:[^"\\\n]|\\.)*"/g, '""').replace(/\/\/[^\n]*/g, '').replace(/\bv \? 1 : 0\b/g, 'v');
+  const code = text.replace(/"(?:[^"\\\n]|\\.)*"/g, '""').replace(/\/\/[^\n]*/g, '').replace(/\bv \? \d+ : \d+\b/g, 'v');
   const words = [...code.matchAll(/\b(if|guard|else|while|for|repeat|switch|break|continue|fallthrough|throw|try|defer|assert|assertionFailure|precondition|preconditionFailure|fatalError)\b/g)].map((m) => `\`${m[1] as string}\``);
   const ternary = / \? [^\n]*? : /.test(code) ? ['a ternary'] : [];
   return [...new Set([...words, ...ternary])].map((w) => `${path}: ${w} in code built at -Onone (DragonCases holds construction code only)`);

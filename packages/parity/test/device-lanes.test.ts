@@ -240,6 +240,12 @@ describe('build reuse', () => {
     for (const bad of ['if x { y() }', 'guard x else { return }', 'for i in a {}', 'switch v { default: break }', 'assert(x)', 'precondition(x)', 'fatalError()', 'let y = x > 0 ? a : b']) expect(casesCodeProblems('C.swift', bad), bad).not.toEqual([]);
     // Words inside string literals and comments, an enum's cases and the setters' Bool encoding are not code.
     for (const ok of ['JsString("if for while")', '// for every case', 'public enum E: Int { case v_0 = 0; case v_1 = 1 }', 'machine.set(0, v ? 1 : 0)', 'JsString("a \\" ? b : c")']) expect(casesCodeProblems('C.swift', ok), ok).toEqual([]);
+    // The setter's numbers follow the fixture's value order: a fixture whose first case sets a boolean true emits `v ? 0 : 1`,
+    // or any other pair of value indices. Each is the setter's Bool encoding, not control flow.
+    for (const [t, f] of [[0, 1], [1, 0], [3, 2], [12, 7]]) expect(casesCodeProblems('C.swift', `  /// doc/t#checked\n  public func set_doc_t_checked(_ v: Bool) { machine.set(${t}, v ? ${t} : ${f}) }`)).toEqual([]);
+    // The exemption is the emitter's exact shape (state.ts); any other ternary is still caught.
+    expect(readFileSync(repoPath('packages/dragon/src/emit/runtime/state.ts'), 'utf8')).toContain('(_ v: Bool) { machine.set(${i}, v ? ${t} : ${f}) }');
+    for (const bad of ['machine.set(0, v ? a : 1)', 'machine.set(0, w ? 1 : 0)', 'machine.set(0, v ? 1.5 : 0)']) expect(casesCodeProblems('C.swift', bad), bad).not.toEqual([]);
   });
 });
 

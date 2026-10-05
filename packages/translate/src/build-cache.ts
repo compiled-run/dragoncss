@@ -117,3 +117,26 @@ export function publish(work: string, dir: string): void {
   }
 }
 
+/**
+ * Puts a fresh build in place of its entry, whatever was there (a forced rebuild, which must repair a damaged entry): the old
+ * entry is moved aside by one rename, the build moved in by another, and the old one deleted. A build another process published
+ * between the two renames is equally fresh, so it is kept and this one removed.
+ */
+export function replace(work: string, dir: string): void {
+  const trash = `${dir}.trash-${process.pid}`;
+  rmSync(trash, { recursive: true, force: true });
+  let moved = false;
+  try {
+    renameSync(dir, trash);
+    moved = true;
+  } catch {
+    // No entry yet.
+  }
+  try {
+    renameSync(work, dir);
+  } catch (e) {
+    if (!existsSync(dir)) throw new Error(`could not put the build ${work} in place at ${dir}: ${(e as Error).message}`);
+    rmSync(work, { recursive: true, force: true });
+  }
+  if (moved) rmSync(trash, { recursive: true, force: true });
+}

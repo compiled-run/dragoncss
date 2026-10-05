@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Corpus, Suite } from '../src/corpus.ts';
 import type { Exec, RunResult } from '../src/native.ts';
-import { CACHE_KINDS } from '../src/build-cache.ts';
+import { CACHE_KINDS, replace } from '../src/build-cache.ts';
 import { allPass, BUILD_CACHE, buildKotlin, cacheMaxBytes, swiftExec, buildSwift, describe as describeRun, execSuite, OUT, outputCause, publish, pruneCache, runSuites, stderrTail, suiteCause, withToolTmp } from '../src/native.ts';
 
 /** The longest a fake harness may run unless a test sets its own limit; below the 30 s test timeout. */
@@ -236,6 +236,25 @@ describe('the machine-wide native build cache', () => {
     expect(names(root, 'apk')).toEqual(['new-apk']);
     expect(names(root, 'swift')).toEqual(['small']);
     expect(CACHE_KINDS).toEqual(['swift', 'kotlin', 'ios-app', 'apk']);
+  }, TEST_MS);
+
+  it('a forced rebuild replaces its entry, damaged or not; with no entry it is put in place', () => {
+    const { root, make } = setup();
+    const dir = make('apk', 'key', 0);
+    rmSync(join(dir, 'harness'));
+    writeFileSync(join(dir, 'damaged'), 'x');
+    const work = join(root, 'apk', 'key.build-1');
+    mkdirSync(work, { recursive: true });
+    writeFileSync(join(work, 'DragonHost.apk'), 'fresh');
+    replace(work, dir);
+    expect(readdirSync(dir).sort()).toEqual(['DragonHost.apk']);
+    expect(readFileSync(join(dir, 'DragonHost.apk'), 'utf8')).toBe('fresh');
+    expect(names(root, 'apk')).toEqual(['key']);
+    const work2 = join(root, 'apk', 'new.build-1');
+    mkdirSync(work2, { recursive: true });
+    writeFileSync(join(work2, 'DragonHost.apk'), 'first');
+    replace(work2, join(root, 'apk', 'new'));
+    expect(names(root, 'apk')).toEqual(['key', 'new']);
   }, TEST_MS);
 
   it('the size cap never evicts an entry used in the last 2 hours: it is exceeded and logged instead', () => {
