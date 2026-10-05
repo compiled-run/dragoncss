@@ -1,0 +1,67 @@
+// The sweep's Chrome session serves overlapping calls on its pages: each verdict equals the one-page session's, in any order.
+import { describe, expect, it } from 'vitest';
+import { launchChrome } from '../../parity/src/chrome.ts';
+import { fromPageJson, openChrome } from '../src/chrome.ts';
+import { fixtureHtml } from '../src/dragon.ts';
+import { flatten } from '../src/flatten.ts';
+import { publishedCss } from '../src/tailwind.ts';
+
+describe('the sweep Chrome session', () => {
+  it('reads a page result from its tagged JSON string exactly as Playwright returns the value itself, -0, NaN and infinities included', async () => {
+    const value = `[{ id: 'u', box: [-0, 0, NaN, Infinity, -Infinity, 0.1 + 0.2, -1.5e-7], computed: [['a', 'x\\ud800y'], ['b', '\\u00e9\\u{1F600}']] }]`;
+    const tagged = `JSON.stringify(${value}, (k, v) => typeof v === 'number' && (Object.is(v, -0) || !Number.isFinite(v)) ? { __dragonNumber: Object.is(v, -0) ? '-0' : String(v) } : v)`;
+    const browser = await launchChrome();
+    try {
+      const page = await browser.newPage();
+      const direct = await page.evaluate(value);
+      const viaJson = fromPageJson(await page.evaluate(tagged));
+      expect(viaJson).toEqual(direct);
+      const box = (viaJson as { box: number[] }[])[0]!.box;
+      expect(Object.is(box[0], -0)).toBe(true);
+      expect(Object.is(box[1], 0)).toBe(true);
+    } finally {
+      await browser.close();
+    }
+    expect(() => fromPageJson([1])).toThrow(/not a JSON string/);
+    expect(() => fromPageJson('[{"__dragonNumber":"7"}]')).toThrow(/unknown number/);
+  }, 60_000);
+
+  it('rejects a page count that is not a whole number of at least 1', async () => {
+    await expect(openChrome(0)).rejects.toThrow(/whole number of pages/);
+    await expect(openChrome(1.5)).rejects.toThrow(/whole number of pages/);
+  });
+
+  it('gives overlapping calls on 3 pages the verdicts of one page, called one at a time', async () => {
+    const cases = await Promise.all(
+      ['flex', 'p-4', 'hidden', 'grid', 'mt-2', 'block'].map(async (u) => {
+        const css = await publishedCss([u]);
+        // Every other case planted: the compiled side loses its rule, so Chrome sees a difference.
+        const compiled = u.length % 2 === 0 ? flatten(css).css : '';
+        return { key: u, authoredHtml: fixtureHtml([u], css), compiledHtml: fixtureHtml([u], compiled) };
+      }),
+    );
+    const conditions = ['display: flex', 'display: flexx', 'selector(:hover)', 'selector(::nope)'];
+    const one = await openChrome(1);
+    let sequential: { duals: string[][]; parses: boolean[] };
+    try {
+      const duals: string[][] = [];
+      for (const c of cases) duals.push(await one.dual(c));
+      const parses: boolean[] = [];
+      for (const c of conditions) parses.push(await one.supports(c));
+      sequential = { duals, parses };
+    } finally {
+      await one.close();
+    }
+    const three = await openChrome(3);
+    try {
+      expect(three.pages).toBe(3);
+      const [duals, parses] = await Promise.all([Promise.all(cases.map((c) => three.dual(c))), Promise.all(conditions.map((c) => three.supports(c)))]);
+      expect({ duals, parses }).toEqual(sequential);
+    } finally {
+      await three.close();
+    }
+    expect(sequential.duals.some((d) => d.length > 0)).toBe(true);
+    expect(sequential.duals.some((d) => d.length === 0)).toBe(true);
+    expect(sequential.parses).toEqual([true, false, true, false]);
+  }, 120_000);
+});

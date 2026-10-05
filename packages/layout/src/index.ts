@@ -54,6 +54,9 @@ export * as rtInterpolate from './rt-interpolate.ts';
 export * as rtKeyframes from './rt-keyframes.ts';
 export * as rtTransition from './rt-transition.ts';
 export * as rtAnimations from './rt-animations.ts';
+// ANIM-b1 3b (T065 R16): the runtime animator, one implementation for the TypeScript reference and the generated runtimes.
+export * as rtAnimator from './rt-animator.ts';
+export type { AnimTables, EasingCode, EntryCode, ValueCode } from './rt-animator.ts';
 // MQ-R1 (T067 R4): the @media band lookup a native root runs on a size change.
 export * as rtBand from './rt-band.ts';
 export type { OriginPoint, TransformOrigin } from './paint-transform.ts';

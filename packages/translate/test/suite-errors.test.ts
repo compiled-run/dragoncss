@@ -1,12 +1,13 @@
 // T132: a fake harness that crashes, is killed, times out or writes a short, missing or long result gives a named cause, never a bare count.
 // Every fake harness runs under spawnSync with a bounded timeout, so none outlives its test; every corpus and result folder a test
 // writes under packages/translate/out is removed after it, pass or fail.
-import { existsSync, readdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Corpus, Suite } from '../src/corpus.ts';
 import type { Exec, RunResult } from '../src/native.ts';
-import { allPass, buildKotlin, buildSwift, describe as describeRun, execSuite, OUT, outputCause, runSuites, stderrTail, suiteCause, withToolTmp } from '../src/native.ts';
+import { allPass, buildKotlin, buildSwift, describe as describeRun, execSuite, OUT, outputCause, publish, runSuites, stderrTail, suiteCause, withToolTmp } from '../src/native.ts';
 
 /** The longest a fake harness may run unless a test sets its own limit; below the 30 s test timeout. */
 const FAKE_MS = 20_000;
@@ -146,4 +147,47 @@ describe('T132: a harness that does not account for every case is a named error'
     })).toThrow('planted');
     expect(existsSync(seen)).toBe(false);
   });
+});
+
+describe('the harness build cache recovers from a stale entry', () => {
+  /** Every file under dir removed, its directories kept: what the landing driver's ignored-file cleanup left under out/. */
+  const deleteFilesOnly = (dir: string): void => {
+    for (const n of readdirSync(dir)) {
+      const p = join(dir, n);
+      if (statSync(p).isDirectory()) deleteFilesOnly(p);
+      else rmSync(p);
+    }
+  };
+
+  it('a cache directory whose jar was deleted is rebuilt and republished, never returned without its jar', () => {
+    const bin = mkdtempSync(join(tmpdir(), 'dragon-fake-kotlinc-'));
+    made.push(bin);
+    const kotlinc = join(bin, 'kotlinc');
+    writeFileSync(kotlinc, '#!/bin/sh\nwhile [ $# -gt 1 ]; do if [ "$1" = -d ]; then echo built > "$2"; fi; shift; done\n');
+    chmodSync(kotlinc, 0o755);
+    const tool = { kotlinc, javaHome: '/nonexistent', version: `stale-entry-${process.pid}` };
+    const files = new Map([['harness/Main.kt', 'fun main() {}']]);
+    const first = buildKotlin(tool, files);
+    made.push(dirname(first.jar));
+    expect([first.cached, readFileSync(first.jar, 'utf8')]).toEqual([false, 'built\n']);
+    expect(buildKotlin(tool, files).cached).toBe(true);
+    deleteFilesOnly(dirname(first.jar));
+    expect(existsSync(join(dirname(first.jar), 'src'))).toBe(true);
+    const again = buildKotlin(tool, files);
+    expect([again.jar, again.cached, readFileSync(again.jar, 'utf8')]).toEqual([first.jar, false, 'built\n']);
+    expect(readdirSync(dirname(dirname(first.jar))).filter((d) => d.endsWith(`.build-${process.pid}`))).toEqual([]);
+  }, TEST_MS);
+
+  it('publish keeps a concurrent winner that has the artifacts and drops its own copy', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dragon-publish-'));
+    made.push(root);
+    const dir = join(root, 'key');
+    const work = join(root, 'key.build-1');
+    for (const [d, text] of [[dir, 'winner'], [work, 'mine']] as const) {
+      mkdirSync(join(d, 'src'), { recursive: true });
+      writeFileSync(join(d, 'harness.jar'), text);
+    }
+    publish(work, dir);
+    expect([readFileSync(join(dir, 'harness.jar'), 'utf8'), existsSync(work)]).toEqual(['winner', false]);
+  }, TEST_MS);
 });

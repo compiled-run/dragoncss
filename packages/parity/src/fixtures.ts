@@ -5,23 +5,23 @@ import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
-import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
+import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INLINE } from './fixture-groups/inline.ts';
-import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
+import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
-import { STATES } from './fixture-groups/states.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
+import { STATES } from './fixture-groups/states.ts';
 import { UNITS } from './fixture-groups/units.ts';
-import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
 import { VALUES } from './fixture-groups/values.ts';
+import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
 
 /**
  * The reference environment of every case in this lane (docs/api.md §7, §10.1): an input to the projection, the engine and Chrome.
@@ -71,33 +71,72 @@ export type FixtureSpec =
     };
 
 /**
- * The fixture groups, in run order: FIXTURES is their concatenation. milestone-1 comes first and never changes; a feature
- * package adds its own packages/parity/src/fixture-groups/<group>.ts and appends one entry here.
+ * Every fixture group, one line per group, sorted by id: a feature adds its packages/parity/src/fixture-groups/<group>.ts, its
+ * import and one line here, each in sorted order (test/registry-claims.test.ts).
+ */
+export const GROUPS = {
+  animations: ANIMATIONS,
+  attributes: ATTRIBUTES,
+  background: BACKGROUND,
+  'block-elements': BLOCK_ELEMENTS,
+  'border-paint': BORDER_PAINT,
+  'cascade-var': CASCADE_VAR,
+  contexts: CONTEXTS,
+  fonts: FONTS,
+  grid: GRID,
+  inline: INLINE,
+  'logical-props': LOGICAL_PROPS,
+  media: MEDIA,
+  'media-runtime': MEDIA_RUNTIME,
+  'milestone-1': MILESTONE_1,
+  'phrasing-blockified': PHRASING_BLOCKIFIED,
+  selectors: SELECTORS,
+  showcase: SHOWCASE,
+  'sizing-ratio': SIZING,
+  states: STATES,
+  units: UNITS,
+  values: VALUES,
+  'writing-mode': WRITING_MODE,
+} as const satisfies { readonly [id: string]: readonly FixtureSpec[] };
+
+export type FixtureGroupId = keyof typeof GROUPS;
+
+/**
+ * The run order of the groups that landed before the per-feature split, frozen: milestone-1 first and never changes, and values
+ * stays the last before states (the extended corpus keys its vectors on the values- prefix, values.test.ts).
+ */
+export const LEGACY_RUN_ORDER: readonly FixtureGroupId[] = [
+  'milestone-1',
+  'logical-props',
+  'background',
+  'selectors',
+  'block-elements',
+  'units',
+  'contexts',
+  'writing-mode',
+  'cascade-var',
+  'attributes',
+  'grid',
+  'showcase',
+  'phrasing-blockified',
+  'fonts',
+  'media',
+  'border-paint',
+  'sizing-ratio',
+  'inline',
+  'animations',
+  'values',
+  'states',
+];
+
+/**
+ * The fixture groups, in run order: the legacy groups, then every later group in id order. FIXTURES is their concatenation.
+ * A new group can therefore land between two later groups and move their cases in FIXTURES; no check depends on that position
+ * (pin a group's place in LEGACY_RUN_ORDER instead), and `pnpm regen` rebuilds the outputs that list cases in run order.
  */
 export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: readonly FixtureSpec[] }[] = [
-  { id: 'milestone-1', fixtures: MILESTONE_1 },
-  { id: 'logical-props', fixtures: LOGICAL_PROPS },
-  { id: 'background', fixtures: BACKGROUND },
-  { id: 'selectors', fixtures: SELECTORS },
-  { id: 'block-elements', fixtures: BLOCK_ELEMENTS },
-  { id: 'units', fixtures: UNITS },
-  { id: 'contexts', fixtures: CONTEXTS },
-  { id: 'writing-mode', fixtures: WRITING_MODE },
-  { id: 'cascade-var', fixtures: CASCADE_VAR },
-  { id: 'attributes', fixtures: ATTRIBUTES },
-  { id: 'grid', fixtures: GRID },
-  { id: 'showcase', fixtures: SHOWCASE },
-  { id: 'phrasing-blockified', fixtures: PHRASING_BLOCKIFIED },
-  { id: 'fonts', fixtures: FONTS },
-  { id: 'media', fixtures: MEDIA },
-  { id: 'border-paint', fixtures: BORDER_PAINT },
-  { id: 'sizing-ratio', fixtures: SIZING },
-  { id: 'inline', fixtures: INLINE },
-  { id: 'animations', fixtures: ANIMATIONS },
-  { id: 'media-runtime', fixtures: MEDIA_RUNTIME },
-  // values stays last: the extended corpus keys its vectors on the values- prefix (values.test.ts).
-  { id: 'values', fixtures: VALUES },
-  { id: 'states', fixtures: STATES },
-];
+  ...LEGACY_RUN_ORDER,
+  ...(Object.keys(GROUPS) as FixtureGroupId[]).filter((id) => !LEGACY_RUN_ORDER.includes(id)).sort(),
+].map((id) => ({ id, fixtures: GROUPS[id] }));
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);

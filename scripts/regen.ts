@@ -1,5 +1,6 @@
-// pnpm regen [--check] [--force] [--from <step>] [--jobs <n>] [--explain]: regenerates every generated output from the sources
-// and repeats the chain until a pass changes nothing (profile rows feed the captures, lanes.json feeds the profile rows).
+// pnpm regen [--check] [--force] [--from <step>] [--jobs <n>] [--explain] [--skip <step>] [--only <step>]: regenerates every
+// generated output from the sources and repeats the chain until a pass changes nothing (profile rows feed the captures,
+// lanes.json feeds the profile rows).
 // A step's cache key is the content of exactly what it reads (scripts/regen-inputs.ts): the import closure of its entry files,
 // its declared data globs, the lockfile entries of the packages it imports, its command and its environment. Every step runs
 // under scripts/regen-trace.ts, and a run that read a tree file or package outside that set fails, so the key cannot miss an
@@ -8,7 +9,9 @@
 // they differ and the recorded run wrote every output without reading any of them. Steps that neither read nor write each
 // other's files run in parallel (--jobs, default 2). --check exits 1 naming every file the run changed (and leaves them
 // regenerated); --force ignores entries recorded before this run; --from starts the first pass at that step; --explain prints
-// what each step would do and why, and changes nothing.
+// what each step would do and why, and changes nothing. --skip <step> leaves a step out of every pass and --only <step> leaves out
+// all the others (both repeatable): .github/workflows/regen-on-ci.yml runs the Chrome steps and lanes-host on different machines.
+// A skipped step's outputs are not judged, so only the whole split reaches a fixed point.
 // Device lanes are never run: lanes-host rewrites only the host rows of lanes.json and keeps device records that are still current.
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -16,30 +19,21 @@ import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readdirSync, rea
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { compilePattern, matchSegments } from './macroscope-ignore.ts';
-import { importClosure, lockClosure, parseLock, type ReadText, scanSource, type Tree, type Workspace, workspaceOf } from './regen-inputs.ts';
+import { importClosure, lockClosure, NODE_IMPORT_CONDITIONS, parseLock, type ReadText, scanSource, type Tree, type Workspace, workspaceOf } from './regen-inputs.ts';
+import { BG2 } from './regen-steps/bg2.ts';
+import { MQ_R1 } from './regen-steps/mq-r1.ts';
+import { OVFL } from './regen-steps/ovfl.ts';
+import { PNT1 } from './regen-steps/pnt1.ts';
+import { PNT2 } from './regen-steps/pnt2.ts';
+import { ENGINE_SOURCES, FIXTURES, FONTS, type ManualOutput, placeSteps, pnpm, type RegenFeature, type Step } from './regen-steps/step.ts';
+import { TDEC } from './regen-steps/tdec.ts';
+import { TXT1A } from './regen-steps/txt1a.ts';
+import { TXT2 } from './regen-steps/txt2.ts';
 
 export type { Tree } from './regen-inputs.ts';
+export type { ManualOutput, RegenFeature, Step } from './regen-steps/step.ts';
 
-export type Step = {
-  readonly name: string;
-  readonly argv: readonly string[];
-  /** Every committed path the step writes (macroscope-ignore glob syntax); a change anywhere else fails the run. */
-  readonly outputs: readonly string[];
-  /** Tree files the step reads as data (fixtures, case lists, other steps' outputs), beyond the import closure of its code. */
-  readonly reads?: readonly string[];
-  /** Directories the step lists without reading every file below them: the names directly inside each are inputs. */
-  readonly lists?: readonly string[];
-  /** Modules the step imports by a computed path: their import closures are inputs too. */
-  readonly imports?: readonly string[];
-  /** Installed packages the step reads as files rather than importing them. */
-  readonly packages?: readonly string[];
-  /** Environment variables that are inputs of the step. */
-  readonly env?: readonly string[];
-  /** Whether a non-zero exit is a verdict the step recorded rather than a failure to regenerate. */
-  readonly verdict?: (code: number, log: string) => boolean;
-};
 
-const pnpm = (...a: string[]): string[] => ['pnpm', '-s', 'run', ...a];
 // parity:lanes exits 1 when a lane's state is fail (device-pixels on master); it prints this line only after writing lanes.json
 // with no parity problem.
 const LANES_AGREE = 'parity:lanes: lanes, case lists, tolerances, sample rules, dump faults and the projection agree on ios and android';
@@ -56,18 +50,13 @@ export function lanesVerdict(code: number, log: string): boolean {
 }
 
 // reads, imports and packages come from a traced run of every step (scripts/regen-trace.ts); a run that reads anything else fails.
-const FIXTURES = 'packages/parity/fixtures/**';
-const FONTS = 'vendor/fonts/**';
-// The translator reads the layout engine's sources as text and lowers them to Swift and Kotlin.
-const ENGINE_SOURCES = ['packages/layout/src/**', 'packages/layout/package.json'];
-export const STEPS: readonly Step[] = [
+// The steps that landed before the per-feature split, in run order. A later feature's steps, extra outputs and MANUAL entries
+// live in regen-steps/<feature>.ts (REGEN_FEATURES); STEPS places each feature step after the step it names.
+const LEGACY_STEPS: readonly Step[] = [
   { name: 'grammar', argv: pnpm('grammar:gen'), outputs: ['packages/dragon/src/css/grammar.generated.ts'] },
   { name: 'notices', argv: pnpm('notices:gen'), outputs: ['THIRD_PARTY_NOTICES.md'], reads: ['docs/ports.json', 'vendor/harfbuzz/COPYING'] },
   { name: 'ua', argv: pnpm('ua:capture'), outputs: ['packages/dragon/src/ua/*.generated.ts'], reads: [FONTS] },
   { name: 'capture', argv: pnpm('parity:capture'), outputs: ['packages/parity/expected/darwin-arm64/**', 'packages/parity/emitted/**', 'packages/parity/expected-fonts/**'], reads: [FIXTURES, FONTS] },
-  // MQ-R1 (T067 R7 (a)): the resize traces (Chrome through setViewportSize) of the media-runtime scripts; profile:rows reads them,
-  // so they run before it: the media rows it derives from them gate native @media in every later step's enforce-mode compile.
-  { name: 'resize-capture', argv: pnpm('parity:resize-capture'), outputs: ['packages/parity/expected-resize/**'], reads: [FIXTURES, FONTS] },
   // profile:rows judges every captured and generated output, and writes the native lanes verdict (P6a, T075J) from lanes.json.
   {
     name: 'profile-rows',
@@ -85,6 +74,8 @@ export const STEPS: readonly Step[] = [
   { name: 'pixel-capture', argv: pnpm('parity:pixel-capture'), outputs: ['packages/parity/expected-pixels/**'], reads: [FIXTURES, FONTS] },
   // T065: the frame captures (frozen-timeline Chrome) of the frame fixtures; profile:rows reads them (expected-*).
   { name: 'anim-capture', argv: pnpm('parity:anim-capture'), outputs: ['packages/parity/expected-frames/**'], reads: [FIXTURES, FONTS] },
+  // ANIM-b1 3b: the animator suite's vectors (every frame case's tables, resolved inputs and script); native-gen reads them.
+  { name: 'anim-vectors', argv: pnpm('parity:anim-vectors'), outputs: ['packages/layout/rt-vectors/animator/**'], reads: [FIXTURES, FONTS] },
   // EMS: each paint feature's vectors from its committed inputs.jsonl through the TypeScript harness (units mode).
   { name: 'paint-vectors', argv: pnpm('layout:paint-vectors'), outputs: ['packages/layout/paint-vectors/*/vectors.json'], reads: ['packages/layout/paint-vectors/**', ...ENGINE_SOURCES], imports: ['packages/translate/src/generate.ts', 'packages/translate/harness/harness.ts'] },
   { name: 'native-gen', argv: pnpm('native:gen'), outputs: ['packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'], reads: [...ENGINE_SOURCES, 'packages/layout/vectors/**', 'packages/layout/rt-vectors/**', 'packages/translate/corpus-m1-cases.json', 'packages/translate/package.json'] },
@@ -107,13 +98,31 @@ export const STEPS: readonly Step[] = [
   },
 ];
 
+/**
+ * Every feature's regen additions, one line per feature, sorted by feature id: a feature adds regen-steps/<feature>.ts, its import
+ * and one line here, each in sorted order (packages/parity/test/registry-claims.test.ts).
+ */
+export const REGEN_FEATURES: { readonly [feature: string]: RegenFeature } = {
+  bg2: BG2,
+  'mq-r1': MQ_R1,
+  ovfl: OVFL,
+  pnt1: PNT1,
+  pnt2: PNT2,
+  tdec: TDEC,
+  txt1a: TXT1A,
+  txt2: TXT2,
+};
+
+/** Every regen step, in run order: the legacy steps with the features' steps and extra outputs placed (placeSteps). */
+export const STEPS: readonly Step[] = placeSteps(LEGACY_STEPS, REGEN_FEATURES);
+
 /** Regen outputs a merge must not keep from one side: wpt fail entries carry a hand-written reason, deviation and issue. */
 export const MERGE_BY_HAND: readonly { readonly path: string; readonly why: string }[] = [
   { path: 'packages/wpt/expectations/web.json', why: 'fail entries keep a hand-written reason, deviation and issue across runs' },
 ];
 
 /** Tracked outputs under the generated shapes of .macroscope/ignore.md that regen does not rebuild, and what produces them. */
-export const MANUAL: readonly { readonly command: string; readonly outputs: readonly string[] }[] = [
+const LEGACY_MANUAL: readonly ManualOutput[] = [
   { command: '/tmp/device-lease.sh pnpm run parity:devices (device lanes)', outputs: ['packages/parity/out/device-failures-*.json'] },
   { command: 'pnpm run north-star:capture', outputs: ['examples/*/chrome/**'] },
   // A paint package's vector inputs are written from the input list it pins (paint-dash.test.ts dashVectorInputs, PNT2's
@@ -139,6 +148,9 @@ export const MANUAL: readonly { readonly command: string; readonly outputs: read
   { command: 'none: frozen by hand (calc goldens, the M1 case list, vector format notes)', outputs: ['packages/layout/vectors/calc/**', 'packages/layout/vectors/README.md', 'packages/translate/corpus-m1-cases.json'] },
   { command: 'the research spikes\' own probes and notes', outputs: ['docs/research/**'] },
 ];
+
+/** The legacy MANUAL entries, then every feature's, in feature id order. */
+export const MANUAL: readonly ManualOutput[] = [...LEGACY_MANUAL, ...Object.keys(REGEN_FEATURES).sort().flatMap((id) => REGEN_FEATURES[id]?.manual ?? [])];
 
 export const MAX_PASSES = 5;
 export const DEFAULT_JOBS = 2;
@@ -180,8 +192,10 @@ export type Context = {
 };
 
 /** The node entry files and script texts of a step's command: `pnpm -s run <script>`, `node [flags] <file>`, `sh -c '<a> && <b>'`. */
-export function commandOf(argv: readonly string[], scripts: Readonly<Record<string, string>>): { entries: string[]; scripts: string[] } {
+export function commandOf(argv: readonly string[], scripts: Readonly<Record<string, string>>): { entries: string[]; scripts: string[]; conditions: string[][] } {
   const entries: string[] = [];
+  /** Per node invocation, its --conditions flags. */
+  const conditions: string[][] = [];
   const texts: string[] = [];
   const words = (s: string): string[] => s.trim().split(/\s+/);
   const visit = (a: readonly string[], depth: number): void => {
@@ -201,15 +215,19 @@ export function commandOf(argv: readonly string[], scripts: Readonly<Record<stri
       return;
     }
     if (a[0] === 'node') {
-      const file = a.slice(1).find((w) => !w.startsWith('-'));
-      if (file === undefined) throw new Error(`regen: node command without a file: ${a.join(' ')}`);
-      entries.push(file);
+      const at = a.slice(1).findIndex((w) => !w.startsWith('-'));
+      if (at < 0) throw new Error(`regen: node command without a file: ${a.join(' ')}`);
+      const flags = a.slice(1, at + 1);
+      // Only --conditions=<name> is understood; any other spelling of it would be keyed wrongly, so it is refused.
+      if (flags.some((f) => /^(-C|--conditions)$/.test(f))) throw new Error(`regen: write node's conditions as --conditions=<name>: ${a.join(' ')}`);
+      entries.push(a[at + 1]!);
+      conditions.push(flags.filter((f) => f.startsWith('--conditions=')).map((f) => f.slice('--conditions='.length)));
       return;
     }
     throw new Error(`regen: a step command runs ${a[0]}, which regen cannot key; run it from a node script`);
   };
   visit(argv, 0);
-  return { entries, scripts: texts };
+  return { entries, scripts: texts, conditions };
 }
 
 export type Inputs = {
@@ -242,7 +260,9 @@ export function stepInputs(step: Step, ctx: Context, sh: Shared): Inputs {
     }
     return hit;
   };
-  const closure = importClosure([...cmd.entries, ...(step.imports ?? [])], ctx.tree, ctx.read, sh.ws, scan);
+  // A workspace package resolves to the entries Node picks under the step's own conditions (internal.ts under dragon-internal).
+  const conditions = cmd.conditions.map((c) => new Set([...NODE_IMPORT_CONDITIONS, ...c]));
+  const closure = importClosure([...cmd.entries, ...(step.imports ?? [])], ctx.tree, ctx.read, sh.ws, scan, conditions);
   if (closure.unresolved.length > 0) throw new Error(`regen: ${step.name}: imports that resolve to no tree file: ${closure.unresolved.join('; ')}`);
   const reads = matcher(step.reads ?? []);
   const files = new Set(closure.files);
@@ -488,7 +508,8 @@ export type RunResult = {
 };
 
 export type Io = {
-  readonly snapshot: () => Tree;
+  /** The working tree without the paths matching exclude (running steps' outputs), whose files it never reads. */
+  readonly snapshot: (exclude?: readonly string[]) => Tree;
   readonly context: (tree: Tree) => Context;
   readonly run: (step: Step) => Promise<RunResult>;
   /** Writes the given outputs (null deletes); false when a blob is missing. */
@@ -500,7 +521,7 @@ export type Io = {
 };
 
 /** explain: decide every step of one pass (skip, restore or run, and why) and change nothing. */
-export type Options = { readonly force: boolean; readonly check: boolean; readonly from: string | null; readonly jobs?: number; readonly explain?: boolean };
+export type Options = { readonly force: boolean; readonly check: boolean; readonly from: string | null; readonly jobs?: number; readonly explain?: boolean; readonly skip?: readonly string[] };
 export type StepRecord = { readonly pass: number; readonly step: string; readonly action: 'skipped' | 'restored' | 'ran' | 'would restore' | 'would run'; readonly ms: number; readonly changed: number; readonly why: string };
 export type Result = { readonly ok: boolean; readonly changed: readonly string[]; readonly ran: number; readonly passes: number; readonly error: string | null; readonly records: readonly StepRecord[] };
 
@@ -535,6 +556,11 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
   for (const [i, s] of steps.entries()) if (steps.findIndex((x) => x.name === s.name) !== i) return fail(`step ${s.name} is named twice`);
   const first = opts.from === null ? 0 : steps.findIndex((s) => s.name === opts.from);
   if (first < 0) return fail(`unknown step ${opts.from}; the steps are ${steps.map((s) => s.name).join(', ')}`);
+  const skip = new Set(opts.skip ?? []);
+  const unknown = [...skip].filter((n) => !steps.some((s) => s.name === n));
+  if (unknown.length > 0) return fail(`unknown step ${unknown.join(', ')} to skip; the steps are ${steps.map((s) => s.name).join(', ')}`);
+  if (skip.size === steps.length) return fail('every step is skipped');
+  if (skip.size > 0) io.log(`not run (--skip or --only): ${steps.filter((s) => skip.has(s.name)).map((s) => s.name).join(', ')}`);
   const jobs = Math.max(1, opts.jobs ?? DEFAULT_JOBS);
   const start = io.snapshot();
   const t0 = io.now();
@@ -565,9 +591,11 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
   for (let pass = 1; pass <= maxPasses; pass++) {
     const touched = new Set<string>();
     const tp = io.now();
-    const pending = steps.slice(pass === 1 ? first : 0);
+    const pending = steps.slice(pass === 1 ? first : 0).filter((s) => !skip.has(s.name));
     const running = new Map<string, { step: Step; inputs: Inputs; promise: Promise<{ name: string; r: RunResult }>; ts: number; why: string }>();
     let error: string | null = null;
+    // The outputs of the steps still running (all but the one finishing): a snapshot must not read files they are rewriting.
+    const busy = (done: string | null): string[] => [...running.values()].filter((x) => x.step.name !== done).flatMap((x) => x.step.outputs);
     const finish = (s: Step, before: Inputs, after: Tree, ts: number, action: 'ran' | 'restored', reason: string, r: RunResult | null): string | null => {
       const beside = [...running.values()].filter((x) => x.step !== s);
       const others = beside.map((x) => matcher(x.step.outputs));
@@ -650,7 +678,7 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
               break;
             }
             if (restored) {
-              const after = io.snapshot();
+              const after = io.snapshot(busy(null));
               if (!sameMap(outputsOf(s, after), hit.outputs)) {
                 error = `${s.name}: restoring its recorded outputs left different files`;
                 break;
@@ -675,7 +703,7 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
       }
       const { name, r } = await Promise.race([...running.values()].map((x) => x.promise));
       const job = running.get(name)!;
-      const after = io.snapshot();
+      const after = io.snapshot(busy(name));
       if (r.code !== 0 && !(job.step.verdict?.(r.code, r.log) ?? false)) {
         running.delete(name);
         // Its partial outputs stay on disk; take them into the tree so the steps still running are not blamed for them.
@@ -716,21 +744,31 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
 
 const git = (args: readonly string[], env?: NodeJS.ProcessEnv): string => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, env: env ?? process.env });
 
-/** The working tree as git would commit it with `git add -A`, read through a copy of the index so the real index is untouched. */
-export function snapshotTree(root: string): Tree {
+/** A regen output glob as a git exclude pathspec with the same matches (a glob without `/` matches at any depth). */
+export function excludePathspec(glob: string): string {
+  compilePattern(glob);
+  return `:(exclude,glob)${glob.includes('/') ? glob : `**/${glob}`}`;
+}
+
+/**
+ * The working tree as git would commit it with `git add -A`, read through a copy of the index so the real index is untouched.
+ * Paths matching exclude are left out and never read: a running step may be deleting and rewriting them.
+ */
+export function snapshotTree(root: string, exclude: readonly string[] = []): Tree {
+  const skip = matcher(exclude);
   const dir = mkdtempSync(join(tmpdir(), 'dragon-regen-'));
   try {
     const index = join(dir, 'index');
     const real = resolve(root, git(['-C', root, 'rev-parse', '--git-path', 'index']).trim());
     if (existsSync(real)) copyFileSync(real, index);
     const env = { ...process.env, GIT_INDEX_FILE: index };
-    git(['-C', root, 'add', '-A'], env);
+    git(['-C', root, 'add', '-A', '--', '.', ...exclude.map(excludePathspec)], env);
     const tree = new Map<string, string>();
     for (const rec of git(['-C', root, 'ls-files', '-s', '-z'], env).split('\0')) {
       if (rec === '') continue;
       const m = /^\d+ ([0-9a-f]+) (\d)\t(.+)$/s.exec(rec);
       if (m === null) throw new Error(`regen: unexpected git ls-files record ${JSON.stringify(rec)}`);
-      tree.set(m[3]!, m[1]!);
+      if (!skip(m[3]!)) tree.set(m[3]!, m[1]!);
     }
     return tree;
   } finally {
@@ -783,7 +821,7 @@ export function localIo(root: string, storeDir: string, logDir: string): Io {
   const machine = JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version });
   const texts = new Map<string, string>();
   return {
-    snapshot: () => snapshotTree(root),
+    snapshot: (exclude) => snapshotTree(root, exclude),
     context: (tree) => {
       const read = (p: string): string => {
         const b = tree.get(p);
@@ -838,7 +876,8 @@ export function localIo(root: string, storeDir: string, logDir: string): Io {
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
-  const opts: { force: boolean; check: boolean; from: string | null; jobs: number; explain: boolean } = { force: false, check: false, from: null, jobs: Number(process.env.DRAGON_REGEN_JOBS ?? DEFAULT_JOBS), explain: false };
+  const opts: { force: boolean; check: boolean; from: string | null; jobs: number; explain: boolean; skip: string[] } = { force: false, check: false, from: null, jobs: Number(process.env.DRAGON_REGEN_JOBS ?? DEFAULT_JOBS), explain: false, skip: [] };
+  const only: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === '--force') opts.force = true;
@@ -846,11 +885,23 @@ async function main(): Promise<void> {
     else if (a === '--explain') opts.explain = true;
     else if (a === '--from' && i + 1 < args.length && !args[i + 1]!.startsWith('--')) opts.from = args[++i]!;
     else if (a === '--jobs' && i + 1 < args.length && /^[1-9]\d*$/.test(args[i + 1]!)) opts.jobs = Number(args[++i]!);
+    else if (a === '--skip' && i + 1 < args.length && !args[i + 1]!.startsWith('--')) opts.skip.push(args[++i]!);
+    else if (a === '--only' && i + 1 < args.length && !args[i + 1]!.startsWith('--')) only.push(args[++i]!);
     else {
-      console.error(`regen: unknown argument ${JSON.stringify(a)}; usage: pnpm regen [--check] [--force] [--from <step>] [--jobs <n>] [--explain]`);
+      console.error(`regen: unknown argument ${JSON.stringify(a)}; usage: pnpm regen [--check] [--force] [--from <step>] [--jobs <n>] [--explain] [--skip <step>]... [--only <step>]...`);
       process.exit(2);
     }
   }
+  if (only.length > 0 && opts.skip.length > 0) {
+    console.error('regen: --skip and --only cannot be combined');
+    process.exit(2);
+  }
+  const badOnly = only.filter((n) => !STEPS.some((s) => s.name === n));
+  if (badOnly.length > 0) {
+    console.error(`regen: unknown step ${badOnly.join(', ')} for --only; the steps are ${STEPS.map((s) => s.name).join(', ')}`);
+    process.exit(2);
+  }
+  if (only.length > 0) opts.skip = STEPS.map((s) => s.name).filter((n) => !only.includes(n));
   if (!Number.isInteger(opts.jobs) || opts.jobs < 1) {
     console.error(`regen: DRAGON_REGEN_JOBS must be a positive integer, not ${JSON.stringify(process.env.DRAGON_REGEN_JOBS)}`);
     process.exit(2);
