@@ -1,6 +1,6 @@
 // The landing supervisor (supervise in scripts/land-lib.ts) with real processes: signals, process groups, deferral and orphans.
-// Apart from land.test.ts so a failure under load costs only this file's solo rerun. No assertion here bounds a wait from above:
-// every window is seconds wide, every wait is generous, and only the order of events and the processes' fates are checked.
+// Apart from land.test.ts so a failure under load costs only this file's solo rerun. Waits are bounded only loosely:
+// every window is seconds wide, every wait is generous; the one upper bound (30 s against a 600 s step) is far above any load.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -77,16 +77,19 @@ describe('the supervisor with real processes', () => {
     const { dir, run } = setup(
       (dir) => `import { spawn, spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\n` +
         `if (process.env.LAND_SUPERVISED !== '1') process.exit(9);\n` +
-        `const probe = spawn('sleep', ['60'], { stdio: 'ignore' });\n` + // the step's own child, in the same group
+        `const probe = spawn('sleep', ['600'], { stdio: 'ignore' });\n` + // the step's own child, in the same group
         `writeFileSync(${JSON.stringify(join(dir, 'pids'))}, process.pid + ' ' + probe.pid);\n` +
-        `spawnSync('sleep', ['60']);\n` +
+        `spawnSync('sleep', ['600']);\n` +
         `writeFileSync(${JSON.stringify(join(dir, 'resumed'))}, 'the step "failed" and the driver went on');\n`,
     );
     const s = run();
     await waitFor(join(dir, 'ready'));
     const [driver, step] = (await waitForPids(join(dir, 'pids'), 2)) as [number, number];
+    const t0 = Date.now();
     process.kill(s.pid, 'SIGTERM');
     const { code, out } = await s.done;
+    // "At once" against a 600 s step: a bound of 30 s is far above any load, and far below the step it cuts short.
+    expect(Date.now() - t0).toBeLessThan(30_000);
     expect(code).toBe(130);
     expect(JSON.parse(out.trim().split('\n').at(-1)!)).toMatchObject({ code: 130, interrupted: 'SIGTERM', pid: driver });
     expect(dead(driver) && dead(step)).toBe(true);
