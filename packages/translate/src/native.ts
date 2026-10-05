@@ -2,8 +2,8 @@
 // with the TypeScript reference, byte for byte (every double is its IEEE bit pattern).
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Corpus, Split, Suite } from './corpus.ts';
 import { split } from './corpus.ts';
@@ -11,6 +11,12 @@ import type { Files } from './generate.ts';
 import { ROOT } from './generate.ts';
 
 export const OUT = join(ROOT, 'packages/translate/out');
+
+/**
+ * Built harnesses, shared by every worktree on the machine (DRAGON_NATIVE_CACHE overrides; CI points it at a cached path). A build
+ * is keyed by its sources, flags and compiler version, and lands in its directory by one rename, so a hit is always a whole build.
+ */
+export const BUILD_CACHE = process.env['DRAGON_NATIVE_CACHE'] || join(homedir(), '.cache', 'dragon-native');
 
 export const SWIFT_FLAGS = ['-O', '-wmo', '-suppress-warnings', '-module-name', 'DragonHarness'];
 export const KOTLIN_FLAGS = ['-nowarn', '-include-runtime'];
@@ -97,6 +103,30 @@ function writeFiles(dir: string, files: Files): void {
   }
 }
 
+/** A cached build exists; its directory's time is refreshed, so pruneCache keeps what is still used. */
+function hit(dir: string, artifact: string): boolean {
+  if (!existsSync(artifact)) return false;
+  try {
+    const now = new Date();
+    utimesSync(dir, now, now);
+  } catch {
+    // Only a prune of an entry unused for 14 days removes it, and this one was just used; its artifact was there.
+  }
+  return true;
+}
+
+const DAY_MS = 24 * 3600 * 1000;
+
+/** Removes the cache entries under root unused for 14 days, and work directories a killed build left over a day ago. */
+export function pruneCache(root: string, now = Date.now()): void {
+  if (!existsSync(root)) return;
+  for (const name of readdirSync(root)) {
+    const at = join(root, name);
+    const st = statSync(at, { throwIfNoEntry: false });
+    if (st !== undefined && now - st.mtimeMs > (name.includes('.build-') ? DAY_MS : 14 * DAY_MS)) rmSync(at, { recursive: true, force: true });
+  }
+}
+
 /** Moves a finished build into its cache directory; a concurrent build of the same key may have won, which is equivalent. */
 function publish(work: string, dir: string): void {
   try {
@@ -115,9 +145,9 @@ function failBuild(work: string, message: string): never {
 /** Compiles the Swift harness; returns the binary. Cached on sources, flags and compiler version. */
 export function buildSwift(tool: SwiftTool, files: Files): { binary: string; seconds: number; cached: boolean } {
   const key = filesKey(files, [...SWIFT_FLAGS, tool.version]);
-  const dir = join(OUT, 'swift', key);
+  const dir = join(BUILD_CACHE, 'swift', key);
   const binary = join(dir, 'harness');
-  if (existsSync(binary)) return { binary, seconds: 0, cached: true };
+  if (hit(dir, binary)) return { binary, seconds: 0, cached: true };
   const work = `${dir}.build-${process.pid}`;
   rmSync(work, { recursive: true, force: true });
   writeFiles(join(work, 'src'), files);
@@ -132,15 +162,16 @@ export function buildSwift(tool: SwiftTool, files: Files): { binary: string; sec
     if (!r.ok) failBuild(work, `swiftc failed:\n${r.out.slice(0, 4000)}`);
   });
   publish(work, dir);
+  pruneCache(join(BUILD_CACHE, 'swift'));
   return { binary, seconds: (Date.now() - t) / 1000, cached: false };
 }
 
 /** Compiles the Kotlin harness to a jar. Cached on sources, flags and compiler version. */
 export function buildKotlin(tool: KotlinTool, files: Files): { jar: string; seconds: number; cached: boolean } {
   const key = filesKey(files, [...KOTLIN_FLAGS, tool.version]);
-  const dir = join(OUT, 'kotlin', key);
+  const dir = join(BUILD_CACHE, 'kotlin', key);
   const jar = join(dir, 'harness.jar');
-  if (existsSync(jar)) return { jar, seconds: 0, cached: true };
+  if (hit(dir, jar)) return { jar, seconds: 0, cached: true };
   const work = `${dir}.build-${process.pid}`;
   rmSync(work, { recursive: true, force: true });
   writeFiles(join(work, 'src'), files);
@@ -150,6 +181,7 @@ export function buildKotlin(tool: KotlinTool, files: Files): { jar: string; seco
   const r = run(tool.kotlinc, [...KOTLIN_FLAGS, ...srcs, '-d', join(work, 'harness.jar')], env);
   if (!r.ok) failBuild(work, `kotlinc failed:\n${r.out.slice(0, 4000)}`);
   publish(work, dir);
+  pruneCache(join(BUILD_CACHE, 'kotlin'));
   return { jar, seconds: (Date.now() - t) / 1000, cached: false };
 }
 

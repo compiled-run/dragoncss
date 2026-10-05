@@ -1,12 +1,13 @@
 // T132: a fake harness that crashes, is killed, times out or writes a short, missing or long result gives a named cause, never a bare count.
 // Every fake harness runs under spawnSync with a bounded timeout, so none outlives its test; every corpus and result folder a test
 // writes under packages/translate/out is removed after it, pass or fail.
-import { existsSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Corpus, Suite } from '../src/corpus.ts';
 import type { Exec, RunResult } from '../src/native.ts';
-import { allPass, buildKotlin, buildSwift, describe as describeRun, execSuite, OUT, outputCause, runSuites, stderrTail, suiteCause, withToolTmp } from '../src/native.ts';
+import { allPass, BUILD_CACHE, buildKotlin, buildSwift, describe as describeRun, execSuite, OUT, pruneCache, outputCause, runSuites, stderrTail, suiteCause, withToolTmp } from '../src/native.ts';
 
 /** The longest a fake harness may run unless a test sets its own limit; below the 30 s test timeout. */
 const FAKE_MS = 20_000;
@@ -126,7 +127,7 @@ describe('T132: a harness that does not account for every case is a named error'
 
   it('a failed build removes its work directory and throws the compiler output', () => {
     const files = new Map([['harness/Main.kt', 'fun main() {}'], ['Sources/DragonLayout/A.swift', 'let a = 1']]);
-    const leftovers = (lang: string): string[] => (existsSync(join(OUT, lang)) ? readdirSync(join(OUT, lang)).filter((d) => d.endsWith(`.build-${process.pid}`)) : []);
+    const leftovers = (lang: string): string[] => (existsSync(join(BUILD_CACHE, lang)) ? readdirSync(join(BUILD_CACHE, lang)).filter((d) => d.endsWith(`.build-${process.pid}`)) : []);
     expect(() => buildKotlin({ kotlinc: process.execPath, javaHome: '/nonexistent', version: 't132-failed-build' }, files)).toThrow(/^kotlinc failed:/);
     expect(leftovers('kotlin')).toEqual([]);
     expect(() => buildSwift({ swiftc: process.execPath, version: 't132-failed-build' }, files)).toThrow(/^swiftc -typecheck of the engine module failed:/);
@@ -146,4 +147,28 @@ describe('T132: a harness that does not account for every case is a named error'
     })).toThrow('planted');
     expect(existsSync(seen)).toBe(false);
   });
+});
+
+describe('the machine-wide native build cache', () => {
+  it('pruneCache removes entries unused for 14 days and work directories older than a day, and keeps the rest', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dragon-prune-'));
+    try {
+      const now = Date.now();
+      const day = 24 * 3600 * 1000;
+      const make = (name: string, ageDays: number): void => {
+        mkdirSync(join(root, name, 'sub'), { recursive: true });
+        const t = new Date(now - ageDays * day);
+        utimesSync(join(root, name), t, t);
+      };
+      make('old-entry', 15);
+      make('used-entry', 13);
+      make('key.build-1', 2);
+      make('key.build-2', 0.5);
+      pruneCache(root, now);
+      expect(readdirSync(root).sort()).toEqual(['key.build-2', 'used-entry']);
+      pruneCache(join(root, 'missing'), now);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, TEST_MS);
 });
