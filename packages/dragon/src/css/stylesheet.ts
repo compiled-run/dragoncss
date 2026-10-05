@@ -22,6 +22,7 @@ import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
 import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
+import { checkEnvCalls, ENV_FIX, envVarRefusal, firstEnv, grammarText } from './env.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
@@ -245,6 +246,12 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     return null;
   }
   const important = priority === false ? {} : { important: true as const };
+  // css-env-1: env() is read before var() is substituted, so a var() inside env() is refused on the text as written.
+  const envVar = envVarRefusal(sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start));
+  if (envVar !== null) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `${property}: ${text} is unsupported: ${envVar}`, manual: ENV_FIX }));
+    return null;
+  }
   if (property.startsWith('--')) return parseCustomDeclaration(property, valueNode, span, valueSpan, order, important, diagnostics);
   if (isAnimationProperty(property)) {
     const source = sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start);
@@ -386,8 +393,17 @@ function invalidMath(property: string, tokens: readonly CssNode[], base: Span, s
 /** Grammar validation, token conversion and shorthand expansion of one value; base locates a shorthand refusal in sheetText. */
 export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, tokens: readonly CssNode[], base: Span, sheetText: string): ParsedValue {
   const wide = tokens.length === 1 && tokens[0]?.type === 'Identifier' && CSS_WIDE.has(asciiLower(String(tokens[0]['name'])));
+  // css-env-1: env() is checked before the grammar, which is matched with each inset substituted (css/env.ts).
+  const env = wide ? null : firstEnv(tokens);
+  if (env !== null) {
+    const special = property === 'aspect-ratio' || property === 'object-position' || GRID_VALUE_PROPERTIES.has(property) || TRANSFORM_VALUE_PROPERTIES.has(property);
+    const bad = special ? { node: env, reason: `env() in ${property} is not supported` } : checkEnvCalls(tokens);
+    if (bad !== null) {
+      return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(bad.node, base)), message: `${property}: ${generate(bad.node)} is unsupported: ${bad.reason}`, manual: ENV_FIX }) };
+    }
+  }
   if (!wide) {
-    const match = webrefLexer().matchProperty(property, valueNode);
+    const match = webrefLexer().matchProperty(property, env === null ? valueNode : grammarText(tokens));
     if (match.error !== null) return { kind: 'invalid' };
     // css-tree types a math function loosely; Chrome drops one its math parser rejects (css/math.ts mathInvalidity).
     const mathInvalid = GRID_VALUE_PROPERTIES.has(property) ? null : invalidMath(property, tokens, base, sheetText);

@@ -6,7 +6,7 @@ import { NO_RT_FAULTS } from '../src/rt-easing.ts';
 import type { AnimTables, EasingCode, ListingCode, ValueCode } from '../src/rt-animator.ts';
 import { animatorAdvance, animatorBusy, animatorEvent, animatorFrame, animatorStart, colorOf, frameColors, lengthBase, NO_ANIMATOR_FAULTS, patchInput } from '../src/rt-animator.ts';
 import { legacyColor, serializeColor, serializeValue } from '../src/rt-interpolate.ts';
-import { box, control, neutralEnvironment, pct, px } from './helpers.ts';
+import { box, control, divStyle, neutralEnvironment, pct, px } from './helpers.ts';
 
 const LINEAR: EasingCode = { kind: 'linear', x1: 0, y1: 0, x2: 0, y2: 0, steps: 1, position: 'end' };
 const NONE: ValueCode = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false };
@@ -50,6 +50,22 @@ describe('rt-animator', () => {
     s = animatorAdvance(s, TABLES, INPUTS, 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
     expect(frameText(TABLES, s)).toEqual([]);
     expect(animatorBusy(s)).toBe(false);
+  });
+
+  // REPL-a follow-up: an img or iframe is a replaced leaf, not a box; the animator read and patched only boxes, so a length
+  // animation on an img was dropped on native without a word.
+  it('reads and patches the lengths of a replaced leaf (img, iframe) as of a box', () => {
+    const leaf = (width: number) => ({ kind: 'replaced', id: 'i', style: { ...divStyle, width: px(width), marginLeft: pct(10) }, natural: { kind: 'image', width: 10, height: 8 }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: px(0), objectPositionY: px(0) }) as const;
+    const withImg = (width: number): LayoutInput => ({ viewport, devicePixelRatio: 1, ...neutralEnvironment(viewport), root: box('root', {}, [box('p', {}, [leaf(width) as never])]) });
+    expect(show(lengthBase(withImg(40), 'i', 'width') as never)).toBe('40px');
+    expect(show(lengthBase(withImg(40), 'i', 'margin-left') as never)).toBe('10%');
+    const v = { kind: 'length' as const, number: 0, length: { kind: 'px' as const, px: 25, percent: 0 }, color: { r: 0, g: 0, b: 0, alpha: 0 }, ops: [] };
+    const tables: AnimTables = { ...TABLES, slots: [{ ...(TABLES.slots[0] as AnimTables['slots'][number]), node: 'i' }] };
+    const patched = patchInput(withImg(40), [{ node: 'i', property: 'width', value: v }], tables);
+    const img = (patched.root.children[0] as ReturnType<typeof box>).children[0] as ReturnType<typeof leaf>;
+    expect(img.kind).toBe('replaced');
+    expect(img.style.width).toEqual({ kind: 'px', value: 25 });
+    expect(img.style.marginLeft).toEqual({ kind: 'percent', value: 10 });
   });
 
   it('cancels a transition when its node goes away, and refuses an assignment or a step it does not have', () => {

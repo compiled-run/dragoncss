@@ -191,10 +191,11 @@ function zeroOf(kind: TrackKind): AnimatedValue {
   return { kind: kind, number: 0, length: ZERO_PX, color: TRANSPARENT, ops: [] };
 }
 
-/** The style of the box or control box with an id; a control's contents are boxes too. */
+/** The style of the box, control box or replaced leaf (img, iframe) with an id; a control's contents are boxes too. */
 function findStyle(b: LayoutBox | ControlBox, id: string): LayoutStyle | null {
   if (b.id === id) return b.style;
   for (const c of b.children) {
+    if (c.kind === 'replaced' && c.id === id) return c.style;
     if (c.kind !== 'box' && c.kind !== 'control') continue;
     const f = findStyle(c, id);
     if (f !== null) return f;
@@ -526,10 +527,16 @@ function patchStyle(id: string, s: LayoutStyle, frame: readonly FrameEntry[], t:
   return style;
 }
 
+/** A replaced leaf (img, iframe) is sized by its style as a box is, so its lengths animate too. */
 function patchChild(c: LayoutBox | ControlBox | TextLeaf | ReplacedLeaf, frame: readonly FrameEntry[], t: AnimTables): LayoutBox | ControlBox | TextLeaf | ReplacedLeaf {
   if (c.kind === 'box') return patchBox(c, frame, t);
   if (c.kind === 'control') return patchControl(c, frame, t);
+  if (c.kind === 'replaced') return patchReplaced(c, frame, t);
   return c;
+}
+
+function patchReplaced(c: ReplacedLeaf, frame: readonly FrameEntry[], t: AnimTables): ReplacedLeaf {
+  return { ...c, style: patchStyle(c.id, c.style, frame, t) };
 }
 
 function patchBox(b: LayoutBox, frame: readonly FrameEntry[], t: AnimTables): LayoutBox {

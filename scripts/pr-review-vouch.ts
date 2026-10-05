@@ -248,6 +248,11 @@ export const verdictOf = (run: CheckRun, vouches: ReadonlyMap<string, Vouch>, wa
   return ['success', 'neutral', 'skipped'].includes(run.conclusion ?? '') ? 'passed' : 'failed';
 };
 
+// GitHub judges mergeability with plain text merges, without the repository's merge drivers (.gitattributes: dragon-generated,
+// dragon-floor, dragon-sorted), so it reports CONFLICTING for a PR those drivers merge cleanly. The landing driver passes
+// --conflicts-ok before its build: its merge train merges with the drivers and fails the PR at "merge" on a real conflict.
+export const judgedHead = (head: PrHead, conflictsOk: boolean): PrHead => (conflictsOk && head.mergeable === 'CONFLICTING' ? { ...head, mergeable: 'UNKNOWN' } : head);
+
 // Macroscope's correctness review starts only after CI passes, so a green CI alone is not "done"; a failed check or a
 // conflicting PR ends the wait. A missing CI run is waited for, since GitHub may not have queued it yet.
 export const settled = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>, head: PrHead, now: number = Date.now()): boolean => {
