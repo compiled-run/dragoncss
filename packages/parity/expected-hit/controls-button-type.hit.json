@@ -1,0 +1,20 @@
+{
+  "case": "controls-button-type",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 26,
+  "gridSha256": "08c779bae8096c3f0bc09e870c273d9bf62e23b4e3d1da8b55ceeefc865ab6e9",
+  "ids": [
+    "body",
+    "html",
+    "t-empty",
+    "t-none",
+    "t-reset"
+  ],
+  "runs": [[3,1],[0,3],[4,1],[0,1],[2,1],[0,1],[2,1],[0,1],[1,16]]
+}
