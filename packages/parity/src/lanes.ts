@@ -408,6 +408,8 @@ export type LaneRecord = {
   readonly device: DeviceLaneRun | null;
   /** A device lane's evidence stamp, written by the device run (device-evidence.ts); null for host lanes and lanes not run. */
   readonly evidence: DeviceEvidence | null;
+  /** The hosts that produced a device lane merged from several (device-ci.ts); absent for a run made on one machine. */
+  readonly producedOn?: readonly string[];
 };
 
 /** One DPR set of a device lane run. */
@@ -443,6 +445,8 @@ export type DeviceRun = {
   readonly blocked: string | null;
   /** The evidence stamp of the code, reference data and app the run was made and judged with. */
   readonly evidence: DeviceEvidence;
+  /** A run merged from several hosts (device-ci.ts): the host of each device's outcome, and of the vectors run. */
+  readonly producedOn?: { readonly devices: Readonly<Record<string, string>>; readonly vectors: string | null };
 };
 
 /** The real-dump fault rows of a target, per DPR. */
@@ -561,11 +565,17 @@ function lanesFileOf(targets: readonly TargetConfig[], problems: readonly string
         }
         const d = device.get(t.target);
         if (d !== undefined) {
-          if (l.lane === STATE_LANE) return deviceLaneRecord(l, d, d.states ?? []);
-          if (l.lane === HIT_LANE) return deviceLaneRecord(l, d, d.hits ?? []);
-          if (l.lane !== 'layout-vectors-device') return deviceLaneRecord(l, d);
-          if (d.vectors === null) return laneRecord(l, d.blocked === null ? 'not run' : 'blocked (owner tooling)', d.blocked ?? DEVICE_NOT_RUN, null);
-          return laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests }, null, d.evidence);
+          // A merged run names the hosts of each lane: the devices whose sets it holds, or the vectors run's host.
+          const hosts = (r: LaneRecord): LaneRecord => {
+            if (d.producedOn === undefined) return r;
+            const of = r.lane === 'layout-vectors-device' ? (d.producedOn.vectors === null ? [] : [d.producedOn.vectors]) : (r.device?.sets ?? []).map((s) => d.producedOn!.devices[s.device.name] ?? `unknown host of ${s.device.name}`);
+            return { ...r, producedOn: [...new Set(of)].sort() };
+          };
+          if (l.lane === STATE_LANE) return hosts(deviceLaneRecord(l, d, d.states ?? []));
+          if (l.lane === HIT_LANE) return hosts(deviceLaneRecord(l, d, d.hits ?? []));
+          if (l.lane !== 'layout-vectors-device') return hosts(deviceLaneRecord(l, d));
+          if (d.vectors === null) return hosts(laneRecord(l, d.blocked === null ? 'not run' : 'blocked (owner tooling)', d.blocked ?? DEVICE_NOT_RUN, null));
+          return hosts(laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests }, null, d.evidence));
         }
         // A device lane is carried only with the current evidence stamp: same lane code, reference data and app source.
         if (keep && evidenceProblems(kept.evidence, deviceEvidence(t.target)).length === 0) return { ...kept, device: kept.device ?? null };
@@ -632,6 +642,17 @@ export const lanesJsonText = (f: LanesFile): string => `${JSON.stringify(f, null
 export function writeLanesFile(f: LanesFile): void {
   mkdirSync(repoPath('packages/parity/out'), { recursive: true });
   writeFileSync(repoPath(LANES_JSON), lanesJsonText(f));
+}
+
+/**
+ * The committed host run of a target, which judges its device vectors lane, while it still describes the configuration; else null
+ * (the device run then reports the vectors lane without a host run to judge it against).
+ */
+export function committedHostRun(f: LanesFile | null, targets: readonly TargetConfig[], target: NativeTarget): HostRun | null {
+  if (f === null || staleLanes(f, targets).some((p) => staleCovers(p, target, 'layout-vectors-host'))) return null;
+  const l = f.targets.find((t) => t.target === target)?.lanes.find((x) => x.lane === 'layout-vectors-host');
+  if (l === undefined || l.run === null) return null;
+  return { state: l.state, reason: l.reason, toolchain: l.run.toolchain, suites: l.run.suites, digests: l.run.digests };
 }
 
 export function readLanesFile(): LanesFile | null {

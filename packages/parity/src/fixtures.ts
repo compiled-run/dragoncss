@@ -10,6 +10,7 @@ import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INLINE } from './fixture-groups/inline.ts';
+import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
@@ -87,6 +88,7 @@ export const GROUPS = {
   fonts: FONTS,
   grid: GRID,
   inline: INLINE,
+  interaction: INTERACTION,
   'logical-props': LOGICAL_PROPS,
   media: MEDIA,
   'media-runtime': MEDIA_RUNTIME,

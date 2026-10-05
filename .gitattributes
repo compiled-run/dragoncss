@@ -33,3 +33,8 @@ packages/tailwind-sweep/snapshot/** merge=dragon-generated
 packages/translate/corpus-dpr.json merge=dragon-generated
 packages/translate/corpus.json merge=dragon-generated
 packages/wpt/snapshots/** merge=dragon-generated
+
+# Floor and pin files: a structural merge (scripts/floor-merge.ts) takes the larger of two raised counts and the union of two
+# extended lists, so two PRs that both raise a floor do not conflict; anything else it leaves as a conflict. Needs `pnpm setup:git`.
+packages/*/test/*-floor.json merge=dragon-floor
+packages/*/test/glyph-clearance-pins.json merge=dragon-floor

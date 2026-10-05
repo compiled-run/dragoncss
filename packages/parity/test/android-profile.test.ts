@@ -3,7 +3,7 @@
 // compile, an unblocked android output for every proving case, and the Android Views emitter generating every proving case.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from 'dragon';
-import { androidProfile, compiledFeatures, createProjectWith, emitAndroidViewsCases, iosProfile, MEDIA_CONTEXT, nativePrograms, NO_FAULTS } from 'dragon';
+import { androidProfile, compiledFeatures, createProjectWith, emitAndroidViewsCases, interactionPartitionOf, iosProfile, MEDIA_CONTEXT, nativePrograms, NO_FAULTS } from 'dragon';
 import { fixtureInput } from '../src/cases.ts';
 import { PROJECT_ID } from '../src/fixture-reader.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
@@ -74,19 +74,31 @@ describe('the android profile follows the iOS rule', () => {
   it('every case proving a promoted row compiles for android unblocked, with ready programs, and the Android Views emitter generates it', () => {
     const proving = new Set(promoted.flatMap((r) => r.proofs.flatMap((p) => p.cases)));
     expect(proving.size).toBeGreaterThan(0);
+    // A SELD-R2a forced case "<case>~ix<k>" is interaction state k of a native case: its programs in that state must be ready too.
+    const forced = (id: string): { base: string; k: number } | null => {
+      const m = /^(.*)~ix(\d+)(-rtl)?$/.exec(id);
+      return m === null ? null : { base: `${m[1]}${m[3] ?? ''}`, k: Number(m[2]) };
+    };
     for (const id of proving) {
-      const n = byId.get(id);
+      const f = forced(id);
+      const n = byId.get(f === null ? id : f.base);
       if (n === undefined) throw new Error(`${id} proves an android row and is not a native case`);
       const c = enforcedOf(n.spec, n.case.environment.direction);
       expect(c.outputs.android.kind, id).not.toBe('blocked');
       expect(c.diagnostics.filter((x) => x.target === 'android' && x.severity === 'error').map((x) => `${x.code} ${x.message}`), id).toEqual([]);
       expect(nativePrograms(c, n.case.assignment).kind, id).toBe('ready');
+      if (f !== null) {
+        const state = interactionPartitionOf(c, n.case.assignment)?.states[f.k];
+        if (state === undefined) throw new Error(`${id}: no interaction state ${f.k}`);
+        expect(nativePrograms(c, n.case.assignment, state.key).kind, id).toBe('ready');
+      }
     }
+    const unforced = [...proving].filter((id) => forced(id) === null);
     const emitted = emitCases('android').filter((e) => proving.has(e.id));
-    expect(emitted.map((e) => e.id).sort()).toEqual([...proving].sort());
+    expect(emitted.map((e) => e.id).sort()).toEqual(unforced.sort());
     const files = emitAndroidViewsCases(emitted);
     const text = files.map((f) => f.text).join('\n');
-    for (const id of proving) expect(text.includes(`// case ${id}\n`), id).toBe(true);
+    for (const id of unforced) expect(text.includes(`// case ${id}\n`), id).toBe(true);
   });
 
   it('every resize case proving a media row compiles for android unblocked, enforced, and runs its android-views band program on the resize lanes', () => {
