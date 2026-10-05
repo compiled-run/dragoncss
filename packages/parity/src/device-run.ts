@@ -615,6 +615,16 @@ async function saveGolden(h: { readonly serial: string; readonly spec: AvdDevice
   log(`${h.spec.name}: golden snapshot saved in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
 }
 
+/**
+ * What a failed boot attempt does next. A golden snapshot that failed is always dropped. An emulator that exited is left alone
+ * (its serial may be someone else's), unless it was a first attempt from the snapshot: a forced snapshot load that fails exits the
+ * emulator, so that exit is the snapshot's and the retry is cold. A live one is stopped, then retried once.
+ */
+export function failedAttemptStep(golden: boolean, alive: boolean, attempt: number): { readonly dropGolden: boolean; readonly next: 'retry' | 'left-alone' | 'stop-then-retry' | 'stop-then-fail' } {
+  if (!alive) return { dropGolden: golden, next: golden && attempt === 1 ? 'retry' : 'left-alone' };
+  return { dropGolden: golden, next: attempt >= 2 ? 'stop-then-fail' : 'stop-then-retry' };
+}
+
 /** Boots an AVD headless on its own console port; provision pins the matrix keys first (the floor probe AVD is not in the matrix). */
 export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<DeviceHandle> {
   return withDeviceSlot(spec, () => bootAvdHeld(spec, provision));
@@ -634,7 +644,13 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
     return { ...h, startedHere: false };
   }
   // A matrix AVD quickboots from its golden snapshot while the snapshot's key is current; the floor probe AVD always boots cold.
-  const key = provision ? currentGoldenKey(spec, tools) : null;
+  let key: string | null = null;
+  try {
+    if (provision) key = currentGoldenKey(spec, tools);
+  } catch (e) {
+    // Without a key no snapshot is loaded or saved: the boot is the cold one it always was.
+    console.log(`${spec.name}: no golden snapshot key (this boot is cold and saves none): ${e instanceof Error ? e.message : String(e)}`);
+  }
   let golden = key !== null && goldenCurrent(spec.name, key);
   for (let attempt = 1; ; attempt++) {
     const log = emulatorLog(spec.name);
@@ -652,20 +668,25 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
       });
       break;
     } catch (e) {
+      const step = failedAttemptStep(golden, p.alive(), attempt);
+      // A snapshot that would not boot is dropped: the retry, and every boot after it until a new one is saved, is cold.
+      if (step.dropGolden) {
+        console.log(`${spec.name}: the golden snapshot did not boot, so it is dropped and the retry is cold: ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
+        dropGolden(spec.name);
+        golden = false;
+      }
+      if (step.next === 'retry') {
+        await sleep(5000);
+        continue;
+      }
       // Only the emulator this attempt spawned is killed: if it exited (say, the port was taken), the serial is someone else's.
-      if (!p.alive()) throw new Error(`the ${spec.name} emulator exited (${p.exited() ?? 'unknown'}) before it booted; ${serial} is left alone (tooling fault): ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
+      if (step.next === 'left-alone') throw new Error(`the ${spec.name} emulator exited (${p.exited() ?? 'unknown'}) before it booted; ${serial} is left alone (tooling fault): ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
       // An emulator that never attached is not reached by adb emu kill, so the process this attempt spawned is stopped as well,
       // whatever the kill gave; a stop that fails keeps the device's memory held (failBoot).
       const problems = await stopAll([() => stopDevice({ ...h, startedHere: true }), () => stopSpawned(p, spec.name)]);
       if (problems.length > 0) throw new DeviceLeftRunning(`the ${spec.name} emulator failed to boot (${e instanceof Error ? e.message : String(e)}); and ${problems.join('; ')}`);
       await sleep(5000);
-      if (attempt === 2) throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
-      // A snapshot that would not load is dropped: the retry, and every boot after it until a new one is saved, is cold.
-      if (golden) {
-        console.log(`${spec.name}: the golden snapshot did not boot, so it is dropped and the retry is cold: ${e instanceof Error ? e.message : String(e)}`);
-        dropGolden(spec.name);
-        golden = false;
-      }
+      if (step.next === 'stop-then-fail') throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
     }
   }
   console.log(`${serial}: ${golden ? `booted from the golden snapshot ${GOLDEN_SNAPSHOT}` : 'booted cold'}`);
@@ -673,7 +694,10 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
     const live = liveProblems(spec, readLive(h), expectSdk);
     if (live.length > 0) throw new Error(`${serial} booted but is not the matrix device: ${live.join('; ')} (tooling fault)`);
     await prepareAvd(h);
-    if (key !== null && !golden) await saveGolden({ ...h, spec }, key, (l) => console.log(l));
+    if (key !== null && !golden) {
+      // The snapshot only saves time: a save that fails is logged and leaves no key, and the run goes on with this checked boot.
+      await saveGolden({ ...h, spec }, key, (l) => console.log(l)).catch((x: unknown) => console.log(`${spec.name}: the golden snapshot was not saved (the next boot is cold again): ${x instanceof Error ? x.message : String(x)}`));
+    }
   } catch (e) {
     if (golden) dropGolden(spec.name);
     // This runner started it, so it stops it rather than leave the port taken.
