@@ -5,7 +5,7 @@
 // different edits of one string, an order the two sides disagree on) is left to the person as an ordinary text conflict.
 // Run by git as: node scripts/floor-merge.ts %O %A %B %P   (writes the result into %A; exit 1 leaves a conflict)
 import { spawnSync } from 'node:child_process';
-import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { floorRegressions } from './land-lib.ts';
 
@@ -29,8 +29,10 @@ const kind = (v: unknown): string => (v === null ? 'null' : Array.isArray(v) ? '
 const sortedNames = (xs: readonly string[]): boolean => xs.every((x, i) => i === 0 || xs[i - 1]! < x);
 
 // Order-preserving union of two extended lists of names: every name of either, each side's order kept; a name the base had
-// that a side dropped, a repeated name, or two orders that cannot both hold is refused. Sorted inputs give a sorted result.
-export const unionList = (at: string, o: readonly Json[] | undefined, a: readonly Json[], b: readonly Json[]): Json[] => {
+// that a side dropped, a repeated name, two orders that cannot both hold, or two sides inserting at the same place (whose
+// order only the merged sources know) is refused. Sorted inputs give a sorted result.
+// `keys` (an object's key order, which no floor reads) places theirs after ours at a shared place instead of refusing.
+export const unionList = (at: string, o: readonly Json[] | undefined, a: readonly Json[], b: readonly Json[], keys = false): Json[] => {
   if (![...(o ?? []), ...a, ...b].every((x) => typeof x === 'string')) return refuse(at, 'a list of something other than names');
   const [os, as, bs] = [(o ?? []) as string[], a as string[], b as string[]];
   for (const [side, xs] of [['ours', as], ['theirs', bs]] as const) {
@@ -47,9 +49,12 @@ export const unionList = (at: string, o: readonly Json[] | undefined, a: readonl
       if (i < after) refuse(at, `the two sides order ${JSON.stringify(x)} differently`);
       after = i;
     } else {
-      // After its predecessor in theirs, and after what ours added there, so each side's additions stay together.
+      // Right after its predecessor in theirs. If ours added names there too, the order of the two is a guess: refused.
       let pos = after + 1;
-      while (pos < out.length && !bs.includes(out[pos]!)) pos++;
+      if (pos < out.length && !bs.includes(out[pos]!)) {
+        if (!keys) refuse(at, `both sides added names after ${after < 0 ? 'the start' : JSON.stringify(out[after])} (${JSON.stringify(out[pos])} and ${JSON.stringify(x)}); their order is not known`);
+        while (pos < out.length && !bs.includes(out[pos]!)) pos++;
+      }
       out.splice(pos, 0, x);
       after = pos;
     }
@@ -67,7 +72,7 @@ export const mergeJson = (at: string, o: Json | undefined, a: Json, b: Json, flo
   if (Array.isArray(a) && Array.isArray(b)) return unionList(at, Array.isArray(o) ? o : undefined, a, b);
   if (isObj(a) && isObj(b)) {
     const base = isObj(o) ? o : {};
-    const keys = unionList(`${at} keys`, Object.keys(base), Object.keys(a), Object.keys(b)) as string[];
+    const keys = unionList(`${at} keys`, Object.keys(base), Object.keys(a), Object.keys(b), true) as string[];
     return Object.fromEntries(keys.map((k) => [k, k in a && k in b ? mergeJson(`${at}.${k}`, base[k], a[k]!, b[k]!, floors) : (k in a ? a[k] : b[k])!]));
   }
   return refuse(at, `both sides changed ${JSON.stringify(o)} differently (${JSON.stringify(a)}, ${JSON.stringify(b)})`);
@@ -89,10 +94,9 @@ export const mergeFloorFile = (path: string, base: string, ours: string, theirs:
   };
   const o = base.trim() === '' ? undefined : parse(base, 'the base');
   const merged = format(path, mergeJson('', o, parse(ours, 'ours'), parse(theirs, 'theirs'), !isPins(path)));
-  if (!isPins(path)) {
-    const lower = [...floorRegressions(path, ours, merged), ...floorRegressions(path, theirs, merged)];
-    if (lower.length > 0) refuse('', `the merge would lower a floor: ${lower.slice(0, 3).join('; ')}`);
-  }
+  // Floors and pins alike (for pins: no rescued count falls, no dropped count rises) against each side.
+  const lower = [...floorRegressions(path, ours, merged), ...floorRegressions(path, theirs, merged)];
+  if (lower.length > 0) refuse('', `the merge would lower a floor: ${lower.slice(0, 3).join('; ')}`);
   return merged;
 };
 
@@ -103,13 +107,24 @@ if (process.argv[1] !== undefined && realpathSync(resolve(process.argv[1])) === 
     console.error('usage: floor-merge.ts %O %A %B %P');
     process.exit(2);
   }
+  // %A is replaced whole (temp file, then rename), so it is ours or the merge, never half of one.
+  const put = (text: string): void => {
+    writeFileSync(`${a}.floor-merge`, text);
+    renameSync(`${a}.floor-merge`, a);
+  };
+  const ours = readFileSync(a, 'utf8');
   try {
-    writeFileSync(a, mergeFloorFile(path, readFileSync(o, 'utf8'), readFileSync(a, 'utf8'), readFileSync(b, 'utf8')));
+    put(mergeFloorFile(path, readFileSync(o, 'utf8'), ours, readFileSync(b, 'utf8')));
     console.error(`floor-merge: merged ${path}`);
   } catch (error) {
-    // Left to the person: git's own text merge, with conflict markers, in place of ours.
+    // Left to the person: git's own text merge of ours (restored as it was) with theirs, with conflict markers.
     console.error(`floor-merge: ${path} left as a conflict: ${error instanceof Error ? error.message : String(error)}`);
-    spawnSync('git', ['merge-file', '-L', 'ours', '-L', 'base', '-L', 'theirs', a, o, b], { stdio: 'ignore' });
+    try {
+      put(ours);
+    } catch {}
+    rmSync(`${a}.floor-merge`, { force: true });
+    const r = spawnSync('git', ['merge-file', '-L', 'ours', '-L', 'base', '-L', 'theirs', a, o, b], { stdio: 'ignore' });
+    if (r.error !== undefined || r.status === null || r.status < 0) console.error(`floor-merge: git merge-file failed; ${path} is ours, unmerged`);
     process.exit(1);
   }
 }
