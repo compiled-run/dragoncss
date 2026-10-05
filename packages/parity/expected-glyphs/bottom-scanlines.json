@@ -195,6 +195,8 @@
       "hit-order-rtl": [4,5],
       "hit-pointer-events": [4,5],
       "hit-pointer-events-rtl": [4,5],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "transform-nested": [0,1],
       "transform-text": [0,3]
     },
@@ -393,6 +395,8 @@
       "hit-order-rtl": [4,5],
       "hit-pointer-events": [4,5],
       "hit-pointer-events-rtl": [4,5],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "transform-nested": [0,1],
       "transform-text": [0,3]
     }
@@ -593,6 +597,8 @@
       "hit-order-rtl": [4,5],
       "hit-pointer-events": [4,5],
       "hit-pointer-events-rtl": [4,5],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "transform-nested": [0,1],
       "transform-text": [0,3]
     },
@@ -791,6 +797,8 @@
       "hit-order-rtl": [4,5],
       "hit-pointer-events": [4,5],
       "hit-pointer-events-rtl": [4,5],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "transform-nested": [0,1],
       "transform-text": [0,3]
     },
@@ -989,6 +997,8 @@
       "hit-order-rtl": [4,5],
       "hit-pointer-events": [4,5],
       "hit-pointer-events-rtl": [4,5],
+      "replaced-demo": [1,1],
+      "replaced-demo-rtl": [1,1],
       "transform-nested": [0,1],
       "transform-text": [0,3]
     }
