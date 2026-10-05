@@ -84,13 +84,16 @@ if (runHost || runDevice) {
   try {
     // The apps build in their own processes while the host lanes run; a target whose build failed runs no devices and fails the run.
     const builds = runDevice ? prebuildApps(mine.map((t) => t.target), (l) => console.log(l)) : Promise.resolve([]);
-    const hostRuns = runHost ? Promise.all(targets.map(async (t) => host.set(t.target, await runHostLane(t)))).then(() => undefined) : null;
+    const h0 = Date.now();
+    const hostRuns = runHost ? Promise.all(targets.map(async (t) => host.set(t.target, await runHostLane(t)))).then(() => console.log(`parity:lanes --run-host: host lanes done in ${((Date.now() - h0) / 1000).toFixed(0)} s`)) : null;
     // Judged below, after the devices are stopped; a host run a device waits on is handed its failure.
     hostRuns?.catch(() => undefined);
     const hostPhase = (async () => {
       if (hostRuns === null) return;
       await hostRuns;
+      const r0 = Date.now();
       reference = referenceProof(targets);
+      console.log(`parity:lanes --run-host: reference proof done in ${((Date.now() - r0) / 1000).toFixed(0)} s`);
       for (const r of reference) for (const row of r.rows) for (const f of row.failures.slice(0, 20)) console.log(`REFERENCE FAIL ${r.target} ${f}`);
       if (reference.some((r) => r.rows.some((row) => row.failures.length > 0))) exit = 1;
     })();
