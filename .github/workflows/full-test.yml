@@ -4,8 +4,8 @@
 # The groups and the shards are scripts/test-shards.ts's: files split by their recorded durations (scripts/test-durations.json),
 # longest first onto the least loaded shard, so the shards end together. The summary checks every test file ran exactly once.
 #   platform-free: packages/layout and packages/dragon (as ci.yml) on ubuntu-latest, except the native files.
-#   native (ubuntu-24.04-arm, 2 shards): the files that compile with swiftc or kotlinc (swift.org Swift 6.4.0, Kotlin 2.4.20).
-#   chrome (macos-26, 2 shards): every other file; macOS 26 is where the Chrome captures are byte-identical to the Mac's
+#   native (ubuntu-24.04-arm, 4 shards): the files that compile with swiftc or kotlinc (swift.org Swift 6.4.0, Kotlin 2.4.20).
+#   chrome (macos-26, 3 shards): every other file; macOS 26 is where the Chrome captures are byte-identical to the Mac's
 #     (capture-proof.yml), and kotlinc and the JDK are the versions lanes.json records.
 #   regen: `pnpm regen --check` split as regen-on-ci.yml splits it (the Chrome steps on macos-26, lanes-host on xcode-27); on a
 #     tree at its fixed point both halves change nothing.
@@ -82,7 +82,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 120
     env:
@@ -116,10 +116,10 @@ jobs:
           swiftc --version 2>&1 | tee /dev/stderr | grep -q 'Swift version 6.4 ' || swiftc --version 2>&1 | grep -q 'swift-6.4.0-RELEASE' || { echo "::error::not Swift 6.4.0"; exit 1; }
           kotlinc -version 2>&1 | tee /dev/stderr | grep -q 'kotlinc-jvm 2.4.20' || { echo "::error::not kotlinc 2.4.20"; exit 1; }
           java -version
-      - name: vitest run (native files, shard ${{ matrix.shard }}/2)
+      - name: vitest run (native files, shard ${{ matrix.shard }}/4)
         run: |
           mkdir -p "$RUNNER_TEMP/report"
-          files=(); while IFS= read -r f; do files+=("$f"); done < <(node scripts/test-shards.ts plan native ${{ matrix.shard }} 2)
+          files=(); while IFS= read -r f; do files+=("$f"); done < <(node scripts/test-shards.ts plan native ${{ matrix.shard }} 4)
           npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/native-${{ matrix.shard }}.json"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -132,7 +132,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     runs-on: macos-26
     timeout-minutes: 120
     steps:
@@ -164,10 +164,10 @@ jobs:
           brew install openjdk@17
           brew upgrade kotlin || brew install kotlin
           echo "ANDROID_HOME=${ANDROID_HOME:-unset}"; find "${ANDROID_HOME:-/nonexistent}/platforms" -maxdepth 1 2>&1 | tail -3
-      - name: vitest run (every other file, shard ${{ matrix.shard }}/2)
+      - name: vitest run (every other file, shard ${{ matrix.shard }}/3)
         run: |
           mkdir -p "$RUNNER_TEMP/report"
-          files=(); while IFS= read -r f; do files+=("$f"); done < <(node scripts/test-shards.ts plan chrome ${{ matrix.shard }} 2)
+          files=(); while IFS= read -r f; do files+=("$f"); done < <(node scripts/test-shards.ts plan chrome ${{ matrix.shard }} 3)
           npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/chrome-${{ matrix.shard }}.json"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -194,7 +194,7 @@ jobs:
           merge-multiple: true
       - name: Every test's state, and the failures
         env:
-          EXPECT: platform-free.json native-1.json native-2.json chrome-1.json chrome-2.json
+          EXPECT: platform-free.json native-1.json native-2.json native-3.json native-4.json chrome-1.json chrome-2.json chrome-3.json
         run: |
           cat > "$RUNNER_TEMP/summary.mjs" <<'EOF'
           // Merges the shards' vitest JSON reports. A missing report is a failure: the run proves nothing about its files.
@@ -235,8 +235,7 @@ jobs:
           name: full-test-results
           path: ${{ runner.temp }}/full-test-results.json
 
-  # After the Chrome shards, so a full test holds at most 3 macOS jobs at once (the free plan runs 5): 2 Chrome shards and
-  # regen-host, then regen-chrome.
+  # Both regen halves start after the Chrome shards, so a full test holds at most 3 macOS jobs at once (the free plan runs 5).
   regen-chrome:
     needs: [resolve, chrome]
     if: always() && needs.resolve.result == 'success'
@@ -254,7 +253,7 @@ jobs:
           node-version: '24.15.0'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: regen --skip needs #124
+      - name: regen --skip (since #124)
         run: |
           grep -q -- "'--skip'" scripts/regen.ts || { echo "::error::scripts/regen.ts has no --skip (regen-on-ci, PR 124); the split fixed-point check cannot run"; exit 1; }
       - uses: actions/cache/restore@v4
@@ -282,7 +281,8 @@ jobs:
         run: pnpm regen --check --skip lanes-host
 
   regen-host:
-    needs: resolve
+    needs: [resolve, chrome]
+    if: always() && needs.resolve.result == 'success'
     runs-on: xcode-27
     timeout-minutes: 60
     steps:
