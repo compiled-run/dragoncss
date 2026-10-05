@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSy
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Corpus, Split, Suite } from './corpus.ts';
-import { split } from './corpus.ts';
+import { canonicalNan, sameResult, split } from './corpus.ts';
 import type { Files } from './generate.ts';
 import { ROOT } from './generate.ts';
 
@@ -179,7 +179,8 @@ export function corpusFiles(c: Corpus): Map<string, string> {
     const p = join(dir, `${s.name}.jsonl`);
     if (!existsSync(p)) {
       mkdirSync(dir, { recursive: true });
-      writeFileSync(`${p}.${process.pid}`, `${s.lines.join('\n')}\n`);
+      // The inputs as the digest covers them: every NaN the one quiet NaN, whatever host generated them.
+      writeFileSync(`${p}.${process.pid}`, `${s.lines.map(canonicalNan).join('\n')}\n`);
       renameSync(`${p}.${process.pid}`, p);
     }
     paths.set(s.name, p);
@@ -217,7 +218,7 @@ function runSuite(c: Corpus, s: Suite, exec: Exec, inputs: Map<string, string>, 
   const mismatches: Mismatch[] = [];
   for (let i = 0; i < s.expected.length; i++) {
     const g = got[i] ?? '<missing>';
-    if (g === s.expected[i]) pass++;
+    if (sameResult(s.expected[i] as string, g)) pass++;
     else if (mismatches.length < 5) mismatches.push({ index: i, input: s.lines[i] as string, expected: s.expected[i] as string, got: g });
   }
   if (got.length !== s.expected.length && mismatches.length < 5) mismatches.push({ index: -1, input: '', expected: `${s.expected.length} lines`, got: `${got.length} lines` });
