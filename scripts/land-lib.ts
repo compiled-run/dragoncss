@@ -902,6 +902,10 @@ export const runBatches = <T, P extends { head: string }>(
         try {
           done({ entry: b.entry, result: 'landed', detail: ops.publish(b.entry, b.position, b.ticket) });
         } catch (error) {
+          // The next batch stood on this batch's top, which will not land: stop its builder now, before anything else runs,
+          // so its proofs never compete with the resting-tree proof below.
+          if (pending) ops.log('batch: a publish failed; the batch being prepared on its top is thrown away');
+          cancel();
           failed(b.entry, error);
           break;
         }

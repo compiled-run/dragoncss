@@ -915,6 +915,17 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(h.failures.filter((f) => f.startsWith('#3'))).toEqual(['#3 claude-review-before: #3 has a Medium finding at its head']);
   });
 
+  it('stops the builder as soon as a publish fails, before the proof of the tree master rests on', () => {
+    // #2 breaks a test that #3 fixes; the top passes, #1 and #2 merge, #3 fails to publish: master rests on m+1+2.
+    const h = harness({ fixedBy: [2, 3], publishFail: [3] });
+    const r = runBatches([1, 2, 3, 4].map(e), 3, { ...h.ops, next: h.next() });
+    const t = h.trace;
+    expect(t.indexOf('next cancel')).toBeGreaterThan(t.indexOf('publish #3'));
+    expect(t.indexOf('next cancel')).toBeLessThan(t.indexOf('prove m+1+2'));
+    expect(t.filter((x) => x === 'next cancel')).toHaveLength(1);
+    expect(r.fatal).toMatch(/master now rests on #2's position/);
+  });
+
   it('prepares nothing ahead of a batch whose top failed, and discards the prepared batch on a stop request', () => {
     const b = harness({ broken: [2] });
     runBatches([1, 2, 3].map(e), 2, { ...b.ops, next: b.next() });

@@ -840,19 +840,44 @@ const builderMain = (): number => {
     put(serializePrepared(round));
     log(`prepared: ${round.built.length} position(s), ${round.good} proven to land`);
   } catch (error) {
-    put(JSON.stringify({ fatal: error instanceof Fatal ? error.message : `the builder failed: ${msg(error)}` }));
+    // A Fatal (a chain that is not what it claims) stops the run; anything else (its worktree, git, a full disk) is the
+    // builder's own trouble: it writes nothing, and the driver prepares the batch itself.
+    if (error instanceof Fatal) put(JSON.stringify({ fatal: error.message }));
+    else {
+      log(`!!! the builder could not prepare the batch (${msg(error)}); the driver prepares it itself`);
+      return 1;
+    }
   }
   return 0;
 };
 
-const processTree = (root: number): number[] => {
-  const rows = execFileSync('ps', ['-axo', 'pid=,ppid='], { encoding: 'utf8' })
+// The live (not zombie) processes of a process group.
+const groupMembers = (pgid: number): number[] =>
+  execFileSync('ps', ['-axo', 'pid=,pgid=,stat='], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
     .trim()
     .split('\n')
-    .map((l) => l.trim().split(/\s+/).map(Number) as [number, number]);
-  const out = [root];
-  for (let i = 0; i < out.length; i++) for (const [pid, ppid] of rows) if (ppid === out[i] && !out.includes(pid)) out.push(pid);
-  return out;
+    .flatMap((l) => {
+      const [pid, group, stat] = l.trim().split(/\s+/);
+      return Number(group) === pgid && !/^Z/.test(stat ?? '') ? [Number(pid)] : [];
+    });
+// The builder runs in its own process group (so every process it starts, vitest workers included, goes with it). Its pid and
+// start time are kept in the run directory, so the supervisor stops it too when the driver dies.
+const BUILDER_FILE = 'builder.pid';
+const stopBuilder = (pid: number, start: string | null): void => {
+  // A leader that is another process now means the pid was reused, so the group is not the builder's. A leader that is gone
+  // still leaves its group id reserved while any member lives, so the group signal can only reach the builder's processes.
+  const now = startOf(pid);
+  if (now !== null && start !== null && now !== start) return;
+  const signal = (sig: NodeJS.Signals): void => {
+    try {
+      process.kill(-pid, sig);
+    } catch {}
+  };
+  signal('SIGTERM');
+  for (let i = 0; i < 120 && groupMembers(pid).length > 0; i++) sleep(250);
+  signal('SIGKILL');
+  releaseQuiet(QUIET_FILE, pid);
+  if (readOrNull(PRIORITY)?.trim() === String(pid)) rmSync(PRIORITY, { force: true });
 };
 // Alive and not a zombie (this synchronous driver never reaps its children).
 const running = (pid: number): boolean => {
@@ -867,22 +892,11 @@ const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
   let pid: number | null = null;
   const inPath = runFile('next-input.json');
   const outPath = runFile('next-output.json');
+  let start: string | null = null;
   const stop = (): void => {
     if (pid === null) return;
-    const tree = processTree(pid);
-    for (const p of tree.reverse()) {
-      try {
-        process.kill(p, 'SIGTERM');
-      } catch {}
-    }
-    for (let i = 0; i < 120 && tree.some(running); i++) sleep(250);
-    for (const p of tree.filter(running)) {
-      try {
-        process.kill(p, 'SIGKILL');
-      } catch {}
-    }
-    releaseQuiet(QUIET_FILE, pid);
-    if (readOrNull(PRIORITY)?.trim() === String(pid)) rmSync(PRIORITY, { force: true });
+    stopBuilder(pid, start);
+    rmSync(runFile(BUILDER_FILE), { force: true });
     pid = null;
   };
   return {
@@ -893,6 +907,7 @@ const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
       const fd = openSync('/tmp/land-next.log', 'a');
       try {
         const child = spawn(process.execPath, [...process.execArgv, process.argv[1]!, queueFile], {
+          detached: true,
           stdio: ['ignore', fd, fd],
           env: { ...env, LAND_ROLE: 'builder', LAND_BUILDER_INPUT: inPath, LAND_BUILDER_OUTPUT: outPath, LAND_WORKTREE: WT_NEXT, LAND_WORKTREE_MAIN: WT, [SUPERVISOR_PID_ENV]: String(process.pid) },
         });
@@ -900,13 +915,18 @@ const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
       } finally {
         closeSync(fd);
       }
+      if (pid !== null) {
+        start = startOf(pid);
+        writeFileSync(runFile(BUILDER_FILE), `${pid} ${start ?? ''}`);
+      }
       log(`pipelining: preparing the next batch on ${base} (builder pid ${pid}, log /tmp/land-next.log)`);
     },
     collect: () => {
       const empty: Prepared<Ticket, Built> = { base: '', consumed: [], results: [], built: [], good: 0, proven: [], culprit: null };
       log('pipelining: waiting for the prepared batch');
       while (!existsSync(outPath) && pid !== null && running(pid)) sleep(5000);
-      pid = null;
+      // Done: whatever of its group is left (it wrote its output, or died without) goes.
+      stop();
       const text = readOrNull(outPath);
       if (text === null) {
         log('!!! the builder ended without a prepared batch; preparing it here instead');
@@ -1009,6 +1029,16 @@ const cleanUpAfter = (driverPid: number, how: string): void => {
   try {
     MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
   } catch {}
+  // The builder has its own process group, which an interrupt of the driver's group does not reach.
+  const builder = /^([1-9]\d*) ?(.*)$/.exec(readOrNull(runFile(BUILDER_FILE))?.trim() ?? '');
+  if (builder) {
+    log(`stopping the driver's builder (pid ${builder[1]})`);
+    try {
+      stopBuilder(Number(builder[1]), builder[2] || null);
+    } catch (error) {
+      log(`WARNING could not stop the builder: ${errorText(error).split('\n')[0]}`);
+    }
+  }
   cleanUpAfterDriver({
     how,
     now: stamp(),
