@@ -3,6 +3,7 @@
 //         each rendered in the sweep environment; on every element the border box and every standard computed property
 //         (getComputedStyle's full list, custom properties excluded) must be equal. There is no tolerance.
 //   parses: whether Chrome keeps a declaration or selector that Dragon reports invalid (CSS.supports).
+import { availableParallelism } from 'node:os';
 import type { Browser, Page } from 'playwright';
 import { harnessStyle, launchChrome } from '../../parity/src/chrome.ts';
 import { ELEMENT_IDS, SWEEP_ENVIRONMENT } from './dragon.ts';
@@ -62,23 +63,46 @@ export function compareCaptures(authored: readonly Captured[], compiled: readonl
 }
 
 export type ChromeSession = {
+  /** How many calls the session serves at once, each on its own page. */
+  readonly pages: number;
   dual(c: DualCase): Promise<string[]>;
   /** CSS.supports for "property: value" or for "selector(...)". */
   supports(condition: string): Promise<boolean>;
   close(): Promise<void>;
 };
 
-export async function openChrome(): Promise<ChromeSession> {
+/** Pages a session opens by default: one per core, at most 8. */
+export const DEFAULT_PAGES = Math.max(1, Math.min(8, availableParallelism()));
+
+/** One browser with `pages` pages, each in its own context; a call waits for a free page, so calls may overlap. */
+export async function openChrome(pages: number = DEFAULT_PAGES): Promise<ChromeSession> {
+  if (!Number.isInteger(pages) || pages < 1) throw new Error(`a Chrome session needs a whole number of pages, at least 1, not ${pages}`);
   const browser: Browser = await launchChrome();
   try {
-    const context = await browser.newContext({ viewport: { ...SWEEP_ENVIRONMENT.viewport }, deviceScaleFactor: SWEEP_ENVIRONMENT.devicePixelRatio });
-    const page = await context.newPage();
+    const free: Page[] = [];
+    for (let i = 0; i < pages; i++) {
+      const context = await browser.newContext({ viewport: { ...SWEEP_ENVIRONMENT.viewport }, deviceScaleFactor: SWEEP_ENVIRONMENT.devicePixelRatio });
+      free.push(await context.newPage());
+    }
+    const waiting: ((p: Page) => void)[] = [];
+    const withPage = async <T>(run: (page: Page) => Promise<T>): Promise<T> => {
+      const page = free.pop() ?? (await new Promise<Page>((r) => waiting.push(r)));
+      try {
+        return await run(page);
+      } finally {
+        const next = waiting.shift();
+        if (next === undefined) free.push(page);
+        else next(page);
+      }
+    };
     return {
-      dual: async (c) => compareCaptures(await capture(page, c.authoredHtml), await capture(page, c.compiledHtml)),
-      supports: async (condition) => {
-        await page.setContent('<!DOCTYPE html><html><head></head><body></body></html>');
-        return (await page.evaluate(`CSS.supports(${JSON.stringify(condition)})`)) as boolean;
-      },
+      pages,
+      dual: (c) => withPage(async (page) => compareCaptures(await capture(page, c.authoredHtml), await capture(page, c.compiledHtml))),
+      supports: (condition) =>
+        withPage(async (page) => {
+          await page.setContent('<!DOCTYPE html><html><head></head><body></body></html>');
+          return (await page.evaluate(`CSS.supports(${JSON.stringify(condition)})`)) as boolean;
+        }),
       close: () => browser.close(),
     };
   } catch (e) {

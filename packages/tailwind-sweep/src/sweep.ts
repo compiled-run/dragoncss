@@ -158,16 +158,38 @@ export async function sweep(openChrome: () => Promise<ChromeSession>, log: (line
   const parses = new Map<string, boolean>();
   const chrome = await openChrome();
   try {
-    for (const u of list) {
+    // One check per utility at a time on each of the session's pages; the verdicts are keyed, so their order changes nothing.
+    const parseOf = new Map<string, Promise<boolean>>();
+    const check = async (u: (typeof list)[number]): Promise<void> => {
       const row = rowOf(u.name);
-      if (row.result === null) continue;
+      if (row.result === null) return;
       if (row.result.compiledHtml !== null) dual.set(u.name, await chrome.dual({ key: u.name, authoredHtml: row.result.authoredHtml, compiledHtml: row.result.compiledHtml }));
       for (const t of TARGETS) {
         const b = row.result.blockers[t];
         const cond = b !== null && INVALID_CODES.has(b.code) ? parseCondition(b) : null;
-        if (cond !== null && !parses.has(cond)) parses.set(cond, await chrome.supports(cond));
+        if (cond === null) continue;
+        let p = parseOf.get(cond);
+        if (p === undefined) {
+          p = chrome.supports(cond);
+          parseOf.set(cond, p);
+        }
+        parses.set(cond, await p);
       }
-    }
+    };
+    let next = 0;
+    let failed = false;
+    const lane = async (): Promise<void> => {
+      try {
+        while (next < list.length && !failed) await check(list[next++] as (typeof list)[number]);
+      } catch (e) {
+        // The other lanes stop at their next utility instead of running on against a browser about to close.
+        failed = true;
+        throw e;
+      }
+    };
+    // Every lane has stopped before the browser closes; the first failure is the one reported.
+    const failure = (await Promise.allSettled(Array.from({ length: chrome.pages }, lane))).find((r) => r.status === 'rejected');
+    if (failure !== undefined) throw failure.reason;
   } finally {
     await chrome.close();
   }
