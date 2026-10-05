@@ -3,6 +3,7 @@
 // killed), batch launches of the host app with the run file, pulled dumps, the per-device record (model, OS and build, the scale
 // from the device profile and from the app, the window and stage in device px, the text scale), the root-fits-window check, and
 // the OS screenshots of the capture-trust probe. Devices boot only under the device lease, within one in-memory budget.
+import { createHash } from 'node:crypto';
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, rmSync, writeFileSync } from 'node:fs';
 import { freemem, homedir, tmpdir, totalmem } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -542,6 +543,78 @@ export function liveProblems(spec: AvdDeviceSpec, live: LiveAvd, expectSdk: numb
   return out;
 }
 
+// ---------------------------------------------------------------- the golden snapshot (quickboot)
+
+/**
+ * The snapshot a matrix AVD quickboots from: saved right after a cold boot and prepareAvd, the host app uninstalled and the vectors
+ * dir removed, so every run starts from the same device state (a cold boot keeps whatever earlier runs left on the data disk).
+ * It is loaded with -no-snapshot-save, so a run never changes it, and a boot from it is judged as a cold one is (liveProblems,
+ * prepareAvd and the focus wait all run again).
+ */
+export const GOLDEN_SNAPSHOT = 'dragon-golden';
+/** Where the key of an AVD's golden snapshot is kept: a snapshot whose key is not the current one is never loaded. */
+export const goldenKeyFile = (name: string): string => join(avdDir(name), `${GOLDEN_SNAPSHOT}.key`);
+
+/** The emulator flags every boot shares; the renderer is the pixel evidence's, so it is never changed. */
+const EMULATOR_FLAGS = ['-no-window', '-no-audio', '-no-boot-anim', '-gpu', ANDROID_RENDERER] as const;
+
+/** The emulator arguments of a boot: a cold boot that saves nothing, or a forced load of the golden snapshot that saves nothing. */
+export function emulatorArgs(spec: AvdDeviceSpec, golden: boolean): string[] {
+  const snapshot = golden ? ['-snapshot', GOLDEN_SNAPSHOT, '-force-snapshot-load', '-no-snapshot-save'] : ['-no-snapshot'];
+  return ['-avd', spec.name, '-port', String(spec.port), ...snapshot, ...EMULATOR_FLAGS];
+}
+
+/** What a golden snapshot was taken with: change any of them and the snapshot is taken again from a cold boot. */
+export type GoldenParts = { readonly emulator: string; readonly image: string; readonly imageProperties: string; readonly config: string; readonly flags: readonly string[]; readonly provision: string };
+
+export const goldenKey = (parts: GoldenParts): string => createHash('sha256').update(JSON.stringify(parts)).digest('hex');
+
+/**
+ * The key of an AVD's golden snapshot now: the emulator version, the system image and its package properties, the AVD's whole
+ * config.ini (the matrix keys pinned), the boot flags, and the provisioning code (prepareAvd, its settle wait and saveGolden).
+ */
+export function currentGoldenKey(spec: AvdDeviceSpec, tools: AndroidTools): string {
+  return goldenKey({
+    emulator: exec(tools.emulator, ['-version'], { timeoutMs: 60_000 }).stdout.split('\n')[0]?.trim() ?? '',
+    image: ANDROID_IMAGE,
+    imageProperties: readFileSync(join(tools.home, ...ANDROID_IMAGE.split(';'), 'source.properties'), 'utf8'),
+    config: readFileSync(join(avdDir(spec.name), 'config.ini'), 'utf8'),
+    flags: emulatorArgs(spec, true),
+    provision: [prepareAvd, waitForSettledFocus, saveGolden, TEXT_SCALE.android, SETTLE_SAMPLES, SETTLE_INTERVAL_MS].map(String).join('\n'),
+  });
+}
+
+/** Whether the AVD's golden snapshot exists and its recorded key is the current one. */
+export function goldenCurrent(name: string, key: string): boolean {
+  const f = goldenKeyFile(name);
+  if (!existsSync(f) || !existsSync(join(avdDir(name), 'snapshots', GOLDEN_SNAPSHOT, 'snapshot.pb'))) return false;
+  return readFileSync(f, 'utf8').trim() === key;
+}
+
+/** Forgets the golden snapshot (its key), so the next boot is cold and takes it again. */
+export function dropGolden(name: string): void {
+  rmSync(goldenKeyFile(name), { force: true });
+}
+
+/**
+ * Takes the golden snapshot of a cold-booted, prepared matrix AVD: the host app uninstalled and the vectors dir removed first, then
+ * the snapshot saved, then its key written. A save that fails leaves no key, so it is never loaded; the run goes on with this boot.
+ */
+async function saveGolden(h: { readonly serial: string; readonly spec: AvdDeviceSpec; readonly tools: AndroidTools }, key: string, log: (line: string) => void): Promise<void> {
+  dropGolden(h.spec.name);
+  const t0 = Date.now();
+  adb(h, ['uninstall', HOST_BUNDLE], 120_000, 'uninstalling fails when the app is not installed; the package list read next decides');
+  if (adb(h, ['shell', 'pm', 'list', 'packages', HOST_BUNDLE]).stdout.includes(`package:${HOST_BUNDLE}`)) throw new Error(`${h.serial}: ${HOST_BUNDLE} is still installed after adb uninstall (tooling fault)`);
+  adb(h, ['shell', 'rm', '-rf', '/data/local/tmp/dragon-vectors']);
+  const r = adb(h, ['emu', 'avd', 'snapshot', 'save', GOLDEN_SNAPSHOT], 600_000, 'a failed save leaves no key, so the snapshot is never loaded; the run goes on with this cold boot');
+  if (!r.ok || !/^OK/m.test(r.stdout)) {
+    log(`${h.spec.name}: the golden snapshot was not saved (the next boot is cold again): ${r.out.trim().slice(-300)}`);
+    return;
+  }
+  writeFileSync(goldenKeyFile(h.spec.name), `${key}\n`);
+  log(`${h.spec.name}: golden snapshot saved in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+}
+
 /** Boots an AVD headless on its own console port; provision pins the matrix keys first (the floor probe AVD is not in the matrix). */
 export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<DeviceHandle> {
   return withDeviceSlot(spec, () => bootAvdHeld(spec, provision));
@@ -560,9 +633,12 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
     await prepareAvd(h);
     return { ...h, startedHere: false };
   }
+  // A matrix AVD quickboots from its golden snapshot while the snapshot's key is current; the floor probe AVD always boots cold.
+  const key = provision ? currentGoldenKey(spec, tools) : null;
+  let golden = key !== null && goldenCurrent(spec.name, key);
   for (let attempt = 1; ; attempt++) {
     const log = emulatorLog(spec.name);
-    const p = spawnDetached(tools.emulator, ['-avd', spec.name, '-port', String(spec.port), '-no-window', '-no-audio', '-no-snapshot', '-no-boot-anim', '-gpu', ANDROID_RENDERER], log);
+    const p = spawnDetached(tools.emulator, emulatorArgs(spec, golden), log);
     try {
       await poll(`${serial} to attach`, 240_000, () => {
         p.check();
@@ -584,13 +660,22 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
       if (problems.length > 0) throw new DeviceLeftRunning(`the ${spec.name} emulator failed to boot (${e instanceof Error ? e.message : String(e)}); and ${problems.join('; ')}`);
       await sleep(5000);
       if (attempt === 2) throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
+      // A snapshot that would not load is dropped: the retry, and every boot after it until a new one is saved, is cold.
+      if (golden) {
+        console.log(`${spec.name}: the golden snapshot did not boot, so it is dropped and the retry is cold: ${e instanceof Error ? e.message : String(e)}`);
+        dropGolden(spec.name);
+        golden = false;
+      }
     }
   }
+  console.log(`${serial}: ${golden ? `booted from the golden snapshot ${GOLDEN_SNAPSHOT}` : 'booted cold'}`);
   try {
     const live = liveProblems(spec, readLive(h), expectSdk);
     if (live.length > 0) throw new Error(`${serial} booted but is not the matrix device: ${live.join('; ')} (tooling fault)`);
     await prepareAvd(h);
+    if (key !== null && !golden) await saveGolden({ ...h, spec }, key, (l) => console.log(l));
   } catch (e) {
+    if (golden) dropGolden(spec.name);
     // This runner started it, so it stops it rather than leave the port taken.
     return failBoot(e, [() => stopDevice({ ...h, startedHere: true })]);
   }

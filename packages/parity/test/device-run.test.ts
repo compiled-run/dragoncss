@@ -2,11 +2,15 @@
 // covers every device DPR of each target with exactly one device, AVD display keys are pinned, and a device record fails on a scale
 // disagreement, a root that does not fit (never cropped) and a text scale other than the pinned one.
 import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { repoPath } from '../src/paths.ts';
 import { trustCoverageProblems } from '../src/lanes.ts';
-import type { DeviceRecord, DeviceSpec } from '../src/device-run.ts';
+import type { AvdDeviceSpec, DeviceRecord, DeviceSpec, GoldenParts } from '../src/device-run.ts';
 import type { SettleState } from '../src/device-run.ts';
+import { ANDROID_RENDERER, avdDir, dropGolden, emulatorArgs, GOLDEN_SNAPSHOT, goldenCurrent, goldenKey, goldenKeyFile } from '../src/device-run.ts';
 import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, isGlyphPlant, judgeGlyphPlant, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from 'dragon';
 import { paintPlants } from '../../dragon/src/emit/paint/registry.ts';
@@ -238,5 +242,59 @@ describe('an AVD settles on the home screen before the app starts (T112)', () =>
     const bad = feed(['adb exited 1: error: device offline'], 3).state;
     expect(settleTimeoutMessage('emulator-5582', 300_000, bad, 3)).toBe('emulator-5582 did not settle on the home screen within 300 s (tooling fault): the last dumpsys window output had no single mCurrentFocus and mFocusedApp: "adb exited 1: error: device offline"; 1 samples, 0 focus changes, 1 unparseable');
     expect(settleTimeoutMessage('emulator-5582', 300_000, SETTLE_START)).toMatch(/no sample was read/);
+  });
+});
+
+// DEVICE-SPEED (b): a matrix AVD quickboots from its golden snapshot, taken after a cold boot and prepareAvd, while its key is current.
+describe('the golden snapshot (Android quickboot)', () => {
+  const avd = DEVICE_MATRIX.find((d) => d.target === 'android') as AvdDeviceSpec;
+  const parts: GoldenParts = { emulator: 'Android emulator version 37.1.11.0', image: 'system-images;android-36;default;arm64-v8a', imageProperties: 'Pkg.Revision=2\n', config: 'hw.lcd.density=320\n', flags: emulatorArgs(avd, true), provision: 'async function prepareAvd() {}' };
+
+  it('a cold boot saves nothing; a quickboot forces the golden snapshot and saves nothing back; both keep the pinned renderer', () => {
+    const cold = emulatorArgs(avd, false);
+    const quick = emulatorArgs(avd, true);
+    expect(cold).toEqual(['-avd', avd.name, '-port', String(avd.port), '-no-snapshot', '-no-window', '-no-audio', '-no-boot-anim', '-gpu', ANDROID_RENDERER]);
+    expect(quick).toEqual(['-avd', avd.name, '-port', String(avd.port), '-snapshot', GOLDEN_SNAPSHOT, '-force-snapshot-load', '-no-snapshot-save', '-no-window', '-no-audio', '-no-boot-anim', '-gpu', ANDROID_RENDERER]);
+    expect(ANDROID_RENDERER).toBe('swiftshader_indirect');
+  });
+
+  it('the key changes with the emulator, the image, its properties, the AVD config, the flags or the provisioning code', () => {
+    const k = goldenKey(parts);
+    expect(goldenKey({ ...parts })).toBe(k);
+    for (const [field, v] of [['emulator', 'Android emulator version 37.2.0.0'], ['image', 'system-images;android-36;default;x86_64'], ['imageProperties', 'Pkg.Revision=3\n'], ['config', 'hw.lcd.density=420\n'], ['flags', emulatorArgs(avd, false)], ['provision', 'async function prepareAvd() { step(); }']] as const) {
+      expect(goldenKey({ ...parts, [field]: v }), field).not.toBe(k);
+    }
+  });
+
+  it('a snapshot is loaded only with its snapshot data and its recorded key equal to the current one; a dropped one never is', () => {
+    const home = mkdtempSync(join(tmpdir(), 'dragon-golden-'));
+    const was = process.env['HOME'];
+    process.env['HOME'] = home;
+    try {
+      expect(avdDir(avd.name).startsWith(home)).toBe(true);
+      mkdirSync(avdDir(avd.name), { recursive: true });
+      const key = goldenKey(parts);
+      expect(goldenCurrent(avd.name, key)).toBe(false);
+      writeFileSync(goldenKeyFile(avd.name), `${key}\n`);
+      // A key with no snapshot data (a save that never finished) is not loaded.
+      expect(goldenCurrent(avd.name, key)).toBe(false);
+      mkdirSync(join(avdDir(avd.name), 'snapshots', GOLDEN_SNAPSHOT), { recursive: true });
+      writeFileSync(join(avdDir(avd.name), 'snapshots', GOLDEN_SNAPSHOT, 'snapshot.pb'), 'x');
+      expect(goldenCurrent(avd.name, key)).toBe(true);
+      expect(goldenCurrent(avd.name, goldenKey({ ...parts, config: 'hw.lcd.density=480\n' }))).toBe(false);
+      dropGolden(avd.name);
+      expect(goldenCurrent(avd.name, key)).toBe(false);
+    } finally {
+      process.env['HOME'] = was;
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it('every emulator boot of the runner goes through emulatorArgs, so none can drop the renderer or save into the snapshot', () => {
+    const src = readFileSync(repoPath('packages/parity/src/device-run.ts'), 'utf8');
+    expect(src.match(/spawnDetached\(tools\.emulator, /g)).toHaveLength(1);
+    expect(src).toContain('spawnDetached(tools.emulator, emulatorArgs(spec, golden), log)');
+    // The snapshot is written only by saveGolden, right after a cold boot and prepareAvd.
+    expect(src.match(/'snapshot', 'save'/g)).toHaveLength(1);
   });
 });
