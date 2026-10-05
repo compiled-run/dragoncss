@@ -163,7 +163,10 @@ export const worktreesOf = (porcelain: string, branch: string, shas: readonly st
 
 // The quiet-machine gate: no heavy slot held by a live process of anyone else, and a 1-minute load under 20.
 export const QUIET_LOAD = 20;
-export const isQuiet = (otherHeavyHolders: number, load1: number): boolean => otherHeavyHolders === 0 && load1 < QUIET_LOAD;
+// A machine this idle is quiet even with a heavy slot held: a holder sitting near-idle (a profiling run, a job waiting on a
+// device) kept the gate shut for over an hour at load ~1. The quiet request still stops new jobs from starting meanwhile.
+export const IDLE_LOAD = 6;
+export const isQuiet = (otherHeavyHolders: number, load1: number): boolean => load1 < IDLE_LOAD || (otherHeavyHolders === 0 && load1 < QUIET_LOAD);
 
 // While the driver waits for quiet it holds /tmp/dragon-train-quiet (its pid), which stops /tmp/heavy-lease.sh from starting
 // new jobs beside the train. It keeps holding it through the quiet rerun (waitForQuiet's `hold`), so jobs queued behind the

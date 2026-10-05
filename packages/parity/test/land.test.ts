@@ -206,7 +206,9 @@ describe('CI, base, worktree and quiet decisions', () => {
 
   it('waits for a quiet machine: no other heavy job and load under 20', () => {
     expect(isQuiet(0, 19.9)).toBe(true);
-    expect(isQuiet(1, 2)).toBe(false);
+    expect(isQuiet(1, 2)).toBe(true); // idle machine: a held slot doesn't keep it from being quiet
+    expect(isQuiet(1, 6)).toBe(false);
+    expect(isQuiet(2, 12)).toBe(false);
     expect(isQuiet(0, 20)).toBe(false);
   });
 
