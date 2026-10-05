@@ -16,8 +16,15 @@ export const DURATIONS_FILE = 'scripts/test-durations.json';
 /** The test files that compile the generated engine or a probe with swiftc or kotlinc, whatever their split into files. */
 const NATIVE = /^packages\/translate\/test\/(native|planted)-[^/]*\.test\.ts$|^packages\/translate\/test\/calc-probe[^/]*\.test\.ts$|^packages\/dragon\/test\/native-backends[^/]*\.test\.ts$|^packages\/parity\/test\/line-breaks-host-(swift|kotlin)[^/]*\.test\.ts$/;
 
-export function groupOf(file: string): Group {
-  if (NATIVE.test(file)) return 'native';
+/**
+ * A test that uses a native toolchain (the host lanes' tool lookups, builds and runs, or swiftc or kotlinc by name) runs on the
+ * native shards, which require both toolchains, whatever its name: off them a missing toolchain reads as "blocked (owner
+ * tooling)", which those tests accept.
+ */
+export const TOOLCHAIN_USE = /\b(swiftTool|kotlinTool|runTarget|buildSwift|buildKotlin|swiftExec|kotlinExec|runHostLane|runTargetOnDevices)\(|['"`](swiftc|kotlinc|xcrun)['"`]/;
+
+export function groupOf(file: string, text: string = ''): Group {
+  if (NATIVE.test(file) || TOOLCHAIN_USE.test(text)) return 'native';
   if (/^packages\/(layout|dragon)\//.test(file)) return 'platform-free';
   return 'chrome';
 }
@@ -116,6 +123,9 @@ export function durationsOf(reports: readonly Report[], root: string): Record<st
   return Object.fromEntries(Object.entries(out).sort(([a], [b]) => (a < b ? -1 : 1)));
 }
 
+/** The group of a test file of this tree, by its name and its content. */
+export const groupOfFile = (file: string, root: string = ROOT): Group => groupOf(file, readFileSync(join(root, file), 'utf8'));
+
 function main(): void {
   const [mode, ...rest] = process.argv.slice(2);
   const durations = (): Record<string, number> => parseDurations(readFileSync(join(ROOT, DURATIONS_FILE), 'utf8'));
@@ -123,11 +133,11 @@ function main(): void {
     const [group, shard, count] = [rest[0] as Group, Number(rest[1]), Number(rest[2])];
     if (!GROUPS.includes(group)) throw new Error(`unknown group ${group}; the groups are ${GROUPS.join(', ')}`);
     if (!Number.isInteger(shard) || shard < 1 || shard > count) throw new Error(`shard ${rest[1]} is not 1..${rest[2]}`);
-    const files = plan(testFiles().filter((f) => groupOf(f) === group), durations(), count)[shard - 1]!;
+    const files = plan(testFiles().filter((f) => groupOfFile(f) === group), durations(), count)[shard - 1]!;
     if (files.length === 0) throw new Error(`${group} shard ${shard}/${count} has no files; lower the shard count`);
     console.log(files.join('\n'));
   } else if (mode === 'all' && rest.length === 0) {
-    for (const f of testFiles()) console.log(`${f}\t${groupOf(f)}`);
+    for (const f of testFiles()) console.log(`${f}\t${groupOfFile(f)}`);
   } else if (mode === 'refresh' && rest.length > 0) {
     const files = durationsOf(rest.map((p) => JSON.parse(readFileSync(p, 'utf8')) as Report), ROOT);
     writeFileSync(join(ROOT, DURATIONS_FILE), `${JSON.stringify({ note: 'Seconds per test file on the CI runners (full-test.yml), written by node scripts/test-shards.ts refresh <reports>.', files }, null, 1)}\n`);

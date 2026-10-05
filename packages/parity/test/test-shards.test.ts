@@ -14,6 +14,13 @@ describe('test shards', () => {
     expect(groupOf('packages/parity/test/line-breaks-host-kotlin.test.ts')).toBe('native');
     expect(groupOf('packages/parity/test/line-breaks.test.ts')).toBe('chrome');
   });
+  it('puts every test that uses a native toolchain on the native group by its content, whatever its name', () => {
+    expect(groupOf('packages/layout/test/kotlin-snap.test.ts', "const tool = kotlinTool();\n")).toBe('native');
+    expect(groupOf('packages/translate/test/engine-swift.test.ts', "spawnSync('swiftc', ['-O'])")).toBe('native');
+    expect(groupOf('packages/translate/test/paint-roots.test.ts', 'const r = runTarget(target, corpus, files);')).toBe('native');
+    expect(groupOf('packages/parity/test/lanes-x.test.ts', 'await runHostLane(android, {});')).toBe('native');
+    expect(groupOf('packages/parity/test/other.test.ts', 'const swiftToolchain = 1; // swiftc is mentioned in prose')).toBe('chrome');
+  });
   it('splits longest first onto the least loaded shard, every file once, unknown files at the median', () => {
     const d = { a: 10, b: 7, c: 5, d: 4, e: 1 };
     expect(plan(['a', 'b', 'c', 'd', 'e'], d, 2)).toEqual([['a', 'd'], ['b', 'c', 'e']]);
