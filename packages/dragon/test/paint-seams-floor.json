@@ -23,17 +23,21 @@
     "border-styles",
     "border-colors",
     "padding-box-clip",
-    "transform"
+    "transform",
+    "replaced-image",
+    "foreign-view"
   ],
   "paintPlants": [
     "border:dash-phase-1",
-    "border:dash-gap-unfitted"
+    "border:dash-gap-unfitted",
+    "image:image-offset-1"
   ],
   "supportPlants": [
     "glyph-offset-1",
     "glyph-offset-y-1",
     "dash-phase-1",
-    "dash-gap-unfitted"
+    "dash-gap-unfitted",
+    "image-offset-1"
   ],
   "supportFiles:uikit": [
     "Support/DragonChecked.swift",
@@ -46,6 +50,8 @@
     "Support/Paint/DragonPaintBorder.swift",
     "Support/Paint/DragonPaintClip.swift",
     "Support/Paint/DragonPaintTransform.swift",
+    "Support/Paint/DragonPaintImage.swift",
+    "Support/Paint/DragonPaintForeignView.swift",
     "Support/DragonClock.swift",
     "Support/DragonState.swift"
   ],
@@ -60,6 +66,8 @@
     "kotlin/dev/dragon/views/paint/DragonPaintBorder.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintClip.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintTransform.kt",
+    "kotlin/dev/dragon/views/paint/DragonPaintImage.kt",
+    "kotlin/dev/dragon/views/paint/DragonPaintForeignView.kt",
     "kotlin/dev/dragon/views/DragonClock.kt",
     "kotlin/dev/dragon/views/DragonState.kt"
   ],
@@ -67,6 +75,8 @@
     "background",
     "border",
     "clip",
+    "foreign-view",
+    "image",
     "transform"
   ]
 }

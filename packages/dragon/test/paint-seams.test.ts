@@ -29,9 +29,10 @@ import type { AnyLowering } from '../src/lower/paint/registry.ts';
 import { checkPaintLowerings, PAINT_LOWERINGS } from '../src/lower/paint/registry.ts';
 import type { PaintLowering } from '../src/lower/paint/types.ts';
 import { PAINT_MODULE_NAMES } from '../src/lower/paint/types.ts';
-import { createProjectWith, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
+import type { ElementNode } from '../src/internal.ts';
+import { createProjectWith, emitAndroidViewsCases, emitUikitCases, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
 import { floorProblems } from './floor.ts';
-import { div, inputFor, text } from './helpers.ts';
+import { always, div, inputFor, text } from './helpers.ts';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const CSS = 'body { margin: 0; font-family: Ahem; font-size: 10px; } .a { padding: 3px; border: 2px dashed red; background-color: #3366ff; overflow: hidden; }';
@@ -157,7 +158,8 @@ describe('EMS: native support', () => {
       const text = emitNativeSupport(b).find((f) => f.path === file)?.text ?? '';
       const body = text.slice(text.indexOf('dragonPaintBox('), text.indexOf('Registration point (EMS): after every layout'));
       expect(body.match(/\/\/ [a-z-]+/g)).toEqual(PAINT_STAGES.map((s) => `// ${s}`));
-      expect(stagePainters(b, 'border')).toEqual(['dragonPaintBorderStage']);
+      // REPL-a: the image stage paints after the border, in registry order (CSS2 Appendix E: replaced content after the border).
+      expect(stagePainters(b, 'border')).toEqual(['dragonPaintBorderStage', 'dragonPaintImageStage']);
       expect(body).toContain(`dragonPaintBorderStage(${args})`);
       expect(text.indexOf('dragonAfterLayoutBorder(v, shape, scale)')).toBeLessThan(text.indexOf('dragonAfterLayoutClip(v, shape, scale)'));
       // PIN-DERIVE: the readbacks are the modules' own, in registry order (background, border and clip among them); the rounded
@@ -222,5 +224,80 @@ describe('EMS: CSS families and paint values', () => {
     // SIZE-ar: aspect-ratio is a longhand (box family, after max-height); PNT2 adds transform, transform-origin and will-change.
     // PIN-DERIVE: the seams floor holds every longhand there has been, in order, so none goes missing.
     expect(floorProblems(SEAMS_FLOOR, 'longhands', LONGHANDS, true)).toEqual([]);
+  });
+});
+
+describe('REPL-a foreign view: the iframe src literal (author input in emitted Swift and Kotlin)', () => {
+  it('escapes exactly as native-support.ts stringLit does, on quotes, backslashes, $, controls, non-ASCII and astral characters', async () => {
+    const { srcLit } = await import('../src/emit/paint/foreign-view.ts');
+    const { stringLit } = await import('../src/emit/native-support.ts');
+    const srcs = ['https://example.com/a?b=1&c=2', 'a"b', 'a\\b', '${x}', '\\(x)', 'tab\there', 'nl\nhere', '\u0000\u007f', 'café', ' ', 'emoji 😀', ''];
+    for (const s of srcs) {
+      expect(srcLit(s, 'uikit'), s).toBe(stringLit('swift', s));
+      expect(srcLit(s, 'android-views'), s).toBe(stringLit('kotlin', s));
+    }
+    expect(srcLit('a"b\\$', 'android-views')).toBe('"a\\"b\\\\\\$"');
+    expect(srcLit(null, 'uikit')).toBe('nil');
+    expect(srcLit(null, 'android-views')).toBe('null');
+  });
+});
+
+describe('REPL-a foreign view: a production build loads the iframe src (R9)', () => {
+  // A src with a $ (a Kotlin template character) and & and ?, padded with white space that HTML strips.
+  const SRC = 'https://example.com/embed/x?autoplay=1&t=$1';
+  const iframeInput = inputFor('body { margin: 0; } .v { display: block; width: 320px; height: 180px; border: 0; }', (r) => {
+    const el = div(r, 'v', ['v']);
+    return [{ ...el, tag: 'iframe', attributes: [{ name: 'src', value: [{ when: always, value: ` ${SRC}\n` }], origin: el.origin }] } as ElementNode];
+  });
+  const compiled = () => {
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(iframeInput);
+    expect(c.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    return p.programs;
+  };
+  /** The body of a top-level Swift or Kotlin function in an emitted file, from its signature to the closing brace in column 0. */
+  const body = (text: string, signature: string): string => {
+    const at = text.indexOf(signature);
+    expect(at, signature).toBeGreaterThan(-1);
+    return text.slice(at, text.indexOf('\n}\n', at));
+  };
+
+  it('lowers the src, passes it to dragonSetForeignView, and the shipped support loads it: only a lane host clears the flag', () => {
+    const p = compiled();
+    const one = { id: 'iframe', fixture: 'iframe', direction: 'ltr' as const, compilerDigest: 'd', viewport: { width: 400, height: 300 }, expectedDigests: [] };
+    for (const b of ['uikit', 'android-views'] as const) {
+      expect(p[b].nodes.find((n) => n.id === 'v')?.writes.find((w) => w.kind === 'foreign-view'), b).toMatchObject({ src: SRC });
+    }
+    const swiftCase = emitUikitCases([{ ...one, program: p.uikit }]).map((f) => f.text).join('\n');
+    const kotlinCase = emitAndroidViewsCases([{ ...one, program: p['android-views'] }]).map((f) => f.text).join('\n');
+    expect(swiftCase).toMatch(/dragonSetForeignView\(v\d+, src: "https:\/\/example\.com\/embed\/x\?autoplay=1&t=\$1"\)/);
+    expect(kotlinCase).toMatch(/dragonSetForeignView\(v\d+, "https:\/\/example\.com\/embed\/x\?autoplay=1&t=\\\$1"\)/);
+    // The support files are what a ready native output ships (project.ts nativeOutputState); none of them, and no case file,
+    // clears the flag, so the web view loads the src it was given.
+    const swift = emitNativeSupport('uikit').map((f) => f.text).join('\n');
+    const kotlin = emitNativeSupport('android-views').map((f) => f.text).join('\n');
+    for (const [name, t] of [['swift', swift], ['kotlin', kotlin], ['swift cases', swiftCase], ['kotlin cases', kotlinCase]] as const) {
+      expect(t.match(/dragonForeignViewLoadsSrc\s*=/g)?.length ?? 0, name).toBe(name.endsWith('cases') ? 0 : 1);
+    }
+    expect(swift).toContain('\npublic var dragonForeignViewLoadsSrc = true\n');
+    expect(kotlin).toContain('\nvar dragonForeignViewLoadsSrc = true\n');
+    const swiftSet = body(swift, 'public func dragonSetForeignView(_ v: DragonBoxView, src: String?) {');
+    expect(swiftSet).toContain('let target = dragonForeignViewLoadsSrc ? src : nil');
+    expect(swiftSet).toContain('guard let url = URL(string: target ?? "about:blank")');
+    expect(swiftSet.match(/\.load\(/g)).toEqual(['.load(']);
+    expect(swiftSet).toContain('web.load(URLRequest(url: url))');
+    const kotlinSet = body(kotlin, 'fun dragonSetForeignView(v: DragonBoxView, src: String?) {');
+    expect(kotlinSet.match(/\.load[A-Za-z]*\(/g)).toEqual(['.loadUrl(']);
+    expect(kotlinSet).toContain('web.loadUrl(if (dragonForeignViewLoadsSrc && src != null) src else "about:blank")');
+  });
+  // #72 landing device run: every Dragon group draws its children unclipped, and a WebView drawn without a clip cleared the whole
+  // window behind it on the emulator (blank captures of the iframe fixtures). The host group clips the web view to its frame.
+  it('the Android web view host group clips its web view to its frame, which no other Dragon group does', () => {
+    const kotlin = emitNativeSupport('android-views').map((f) => f.text).join('\n');
+    expect(body(kotlin, 'open class DragonGroup(ctx: Context) : ViewGroup(ctx) {')).toContain('\n    clipChildren = false\n');
+    const host = body(kotlin, 'class DragonForeignHost(ctx: Context) : DragonGroup(ctx) {');
+    expect(host).toContain('\n  init {\n    clipChildren = true\n  }\n');
+    expect(kotlin.match(/clipChildren = true/g)).toEqual(['clipChildren = true']);
   });
 });

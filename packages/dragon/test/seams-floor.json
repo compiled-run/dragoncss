@@ -25,6 +25,8 @@
     "padding-right",
     "padding-bottom",
     "padding-left",
+    "object-fit",
+    "object-position",
     "border-top-width",
     "border-right-width",
     "border-bottom-width",
@@ -189,6 +191,8 @@
     "text-wrap-mode"
   ],
   "role:paint": [
+    "object-fit",
+    "object-position",
     "border-top-color",
     "border-right-color",
     "border-bottom-color",

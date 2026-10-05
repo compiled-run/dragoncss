@@ -23,6 +23,11 @@ Everything else here is a default you apply without asking.
   Do NOT run the full `pnpm test` locally: the landing driver runs it once on the merged tree, reruns failing
   files alone, and sends the PR back with the exact failing tests if any fail for real. A review round reruns
   only its targeted tests (plus regen if generator inputs changed). Don't rerun a step that passed.
+- Regen on CI (#124, preferred over a local regen): push your source commits and add the `regen` label to your PR (or
+  `gh workflow run regen-on-ci.yml -f branch=<branch>`). Wait for the github-actions[bot] commit "Regenerate on CI: pnpm regen
+  (regen-on-ci)" or the run summary "already at a fixed point; no commit", then `git pull --ff-only`. Never push to the
+  branch while a regen-on-ci run is in progress (its push would be refused; label again). A local regen through the queue
+  stays allowed when the runners are down or slow.
 - Catch up (`git merge origin/master`, then regen) only when GitHub says CONFLICTING, the driver asks,
   or your parent has merged. Never rebuild a branch as -v2: merge its parent forward.
 - Device-record tests that fail only for a missing device run are "device step pending"

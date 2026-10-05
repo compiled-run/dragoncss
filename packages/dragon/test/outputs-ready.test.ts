@@ -3,7 +3,8 @@
 // support digest, while the web digest stays the compilation digest.
 import { describe, expect, it } from 'vitest';
 import { createProject } from '../src/index.ts';
-import { nativeDigest, nativeOutputState } from '../src/project.ts';
+import { createProjectWith, nativeDigest, nativeOutputState } from '../src/project.ts';
+import { NO_FAULTS } from '../src/faults.ts';
 import { NATIVE_LANES } from '../src/profiles/native-lanes.ts';
 import { emitNativeSupport } from '../src/emit/native-support.ts';
 import { div, inputFor } from './helpers.ts';
@@ -46,6 +47,23 @@ describe('the native output state', () => {
     }
     expect(NATIVE_LANES.ios.notPassing.length + NATIVE_LANES.ios.stale.length).toBeGreaterThan(0);
     expect(NATIVE_LANES.android.notPassing.length + NATIVE_LANES.android.stale.length).toBeGreaterThan(0);
+  });
+  it('is analysis-only, saying so, when no verdict is given; createProject gives the committed one and a given verdict decides', () => {
+    expect(nativeOutputState('ios', DIGEST, null)).toMatchObject({ kind: 'analysis-only', digest: nativeDigest(DIGEST, 'ios'), reason: expect.stringMatching(/no committed lanes verdict was given/) });
+    const config = { projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } } as const;
+    const input = inputFor('', (r) => [div(r, 'a', [])]);
+    const base = { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' } as const;
+    // A passing verdict given to the compile makes both ready, so the absent verdict below is never read as passing.
+    const passing = createProjectWith(config, { ...base, nativeLanes: { ios: PASSING, android: PASSING } }).compile(input);
+    const none = createProjectWith(config, base).compile(input);
+    const committed = createProjectWith(config, { ...base, nativeLanes: NATIVE_LANES }).compile(input);
+    const pub = createProject(config).compile(input);
+    for (const t of ['ios', 'android'] as const) {
+      expect(passing.outputs[t].kind, t).toBe('ready');
+      expect(none.outputs[t], t).toMatchObject({ kind: 'analysis-only', reason: expect.stringMatching(/no committed lanes verdict was given/) });
+      expect(pub.outputs[t], t).toEqual(committed.outputs[t]);
+    }
+    expect(pub.digest).toBe(none.digest);
   });
 });
 
