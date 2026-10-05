@@ -1121,7 +1121,7 @@ describe('a batch of positions on a scratch repository', () => {
     const g = (args: string[]): string => execFileSync('git', [...config, ...args], { cwd: d, encoding: 'utf8' });
     g(['init', '-q']);
     const files: Record<string, string> = {
-      '.gitignore': 'node_modules/\npackages/parity/out/*\n!packages/parity/out/kept.json\n*.tsbuildinfo\nvendor/wpt/\nbuild/\ndist/\n',
+      '.gitignore': 'node_modules/\npackages/translate/out/\npackages/parity/out/*\n!packages/parity/out/kept.json\n*.tsbuildinfo\nvendor/wpt/\nbuild/\ndist/\n',
       'packages/parity/out/kept.json': '{}\n',
     };
     for (const [path, body] of Object.entries(files)) {
@@ -1140,6 +1140,8 @@ describe('a batch of positions on a scratch repository', () => {
       'packages/p/node_modules/b/dist/x.js',
       'vendor/wpt/css/t.html',
       'packages/layout/generated/kotlin/build/x.class',
+      'packages/translate/out/kotlin/0123abcd/harness.jar',
+      'packages/translate/out/swift/0123abcd/harness',
     ];
     for (const path of [...stale, ...kept]) {
       mkdirSync(dirname(join(d, path)), { recursive: true });
