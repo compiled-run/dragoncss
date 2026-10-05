@@ -220,7 +220,9 @@ export const waitForQuiet = (o: { quiet: () => boolean; request: () => void; rel
 
 // Before proving a tree other than the one just built, ignored outputs of other trees go (reports, lane outputs, tsbuildinfo);
 // installs, fetched WPT and native build caches stay, since no test reads them as results.
-export const KEEP_IGNORED = ['node_modules/', 'vendor/wpt/', 'build/', '.build/', '.swiftpm/', '.zig-cache/', 'zig-out/', 'Cargo.lock', '.vercel/'];
+// packages/translate/out/{kotlin,swift}/ are content-keyed harness build caches (native.ts buildKotlin/buildSwift): valid for any
+// tree, and removing their files (but not their directories) once left stale entries that blocked every later build (#164).
+export const KEEP_IGNORED = ['node_modules/', 'vendor/wpt/', 'build/', '.build/', '.swiftpm/', '.zig-cache/', 'zig-out/', 'Cargo.lock', '.vercel/', 'packages/translate/out/kotlin/', 'packages/translate/out/swift/'];
 // Lists every ignored file (NUL-separated). `git clean -X` with `-e !kept/` negations (the first version) un-ignores a kept
 // directory, so git descends into it and deletes the ignored files nested inside: node_modules/.pnpm/*/dist/ (every installed
 // package's code) went, and every later test run failed to start. Pathspec excludes don't help either: git clean removes a
