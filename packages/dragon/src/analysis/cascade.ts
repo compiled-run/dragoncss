@@ -7,7 +7,8 @@ import type { CompilerFaults } from '../faults.ts';
 import type { LinkedElement } from './link.ts';
 import type { DirectionContext } from './logical.ts';
 import { elementDirection, hasDirectionalValues, inDirection } from './logical.ts';
-import { selectorMatches, specificityFor } from './match.ts';
+import type { InteractionState } from './match.ts';
+import { NO_INTERACTION, selectorMatches, specificityFor } from './match.ts';
 import type { CustomProperties, SubstitutedDeclaration, Substitution, VarScope } from './variables.ts';
 import { computeCustoms } from './variables.ts';
 
@@ -63,11 +64,11 @@ const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var(
  * order: custom properties first (over the parent's, inherited), then direction with var() substituted, then every other
  * longhand with each flow-relative declaration mapped to the physical side of that direction.
  */
-export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties): CascadeResult {
+export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties, ix: InteractionState = NO_INTERACTION): CascadeResult {
   const customs = new Map<string, { declaration: Declaration; specificity: readonly [number, number, number] }>();
   for (const rule of rules) {
     for (const sel of rule.selectors) {
-      if (!selectorMatches(rule, sel, chain, chain.length - 1, 0, faults)) continue;
+      if (!selectorMatches(rule, sel, chain, chain.length - 1, 0, faults, ix)) continue;
       const specificity = specificityFor(sel, faults);
       for (const d of rule.declarations) {
         if (d.custom === undefined) continue;
@@ -85,7 +86,7 @@ export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedEle
   const candidates: (readonly [Longhand, Candidate])[] = [];
   for (const rule of rules) {
     for (const sel of rule.selectors) {
-      if (!selectorMatches(rule, sel, chain, chain.length - 1, 0, faults)) continue;
+      if (!selectorMatches(rule, sel, chain, chain.length - 1, 0, faults, ix)) continue;
       const specificity = specificityFor(sel, faults);
       for (const declared of rule.declarations) {
         const d = own === null ? declared : inDirection(declared, own, faults);
