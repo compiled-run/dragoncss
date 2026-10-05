@@ -4,6 +4,7 @@
 // landing order, pinned by test/diagnostic-codes.json), then every other feature in id order, each pinned by
 // test/diagnostic-codes/<feature>.json.
 import { ANIM_B1 } from './codes/anim-b1.ts';
+import { NA_NATIVE } from './codes/na-native.ts';
 import { REPL_A } from './codes/repl-a.ts';
 import { S2 } from './codes/s2.ts';
 import { S3A } from './codes/s3a.ts';
@@ -15,6 +16,7 @@ import { TXT1C } from './codes/txt1c.ts';
 
 export const DIAGNOSTIC_FEATURES = {
   'anim-b1': ANIM_B1,
+  'na-native': NA_NATIVE,
   'repl-a': REPL_A,
   s2: S2,
   s3a: S3A,
