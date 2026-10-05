@@ -1,0 +1,18 @@
+{
+  "case": "controls-button-block-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 16,
+  "gridSha256": "79368b8de9a5071c61929ba444729963841c2126bc01c26a778971ad1116ec45",
+  "ids": [
+    "b8",
+    "body",
+    "wrap"
+  ],
+  "runs": [[1,3],[2,5],[1,3],[2,4],[0,1]]
+}
