@@ -2,8 +2,8 @@
 // with the TypeScript reference, byte for byte (every double is its IEEE bit pattern).
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Corpus, Split, Suite } from './corpus.ts';
 import { canonicalNan, sameResult, split } from './corpus.ts';
@@ -11,6 +11,12 @@ import type { Files } from './generate.ts';
 import { ROOT } from './generate.ts';
 
 export const OUT = join(ROOT, 'packages/translate/out');
+
+/**
+ * Built harnesses, shared by every worktree on the machine (DRAGON_NATIVE_CACHE overrides; CI points it at a cached path). A build
+ * is keyed by its sources, flags and compiler version, and lands in its directory by one rename, so a hit is always a whole build.
+ */
+export const BUILD_CACHE = process.env['DRAGON_NATIVE_CACHE'] || join(homedir(), '.cache', 'dragon-native');
 
 export const SWIFT_FLAGS = ['-O', '-wmo', '-suppress-warnings', '-module-name', 'DragonHarness'];
 export const KOTLIN_FLAGS = ['-nowarn', '-include-runtime'];
@@ -97,6 +103,83 @@ function writeFiles(dir: string, files: Files): void {
   }
 }
 
+/** A cached build exists; its directory's time is refreshed, so pruneCache keeps what is still used. */
+function hit(dir: string, artifact: string): boolean {
+  if (!existsSync(artifact)) return false;
+  touch(dir);
+  return true;
+}
+
+/** Marks a cache entry used now; a missing entry is left for the caller's spawn to report. */
+function touch(dir: string): void {
+  try {
+    const now = new Date();
+    utimesSync(dir, now, now);
+  } catch {
+    // Nothing to mark: the spawn that follows reports the missing artifact loudly.
+  }
+}
+
+const DAY_MS = 24 * 3600 * 1000;
+/** The cache's size cap; past it, the least recently used entries go first. */
+export function cacheMaxBytes(env: string | undefined): number {
+  if (env === undefined || env === '') return 3072 * 1024 * 1024;
+  const mb = Number(env);
+  if (env.trim() === '' || !Number.isFinite(mb) || mb < 0) throw new Error(`DRAGON_NATIVE_CACHE_MAX_MB must be a finite number of MB, 0 or more; got ${JSON.stringify(env)}`);
+  return mb * 1024 * 1024;
+}
+export const CACHE_MAX_BYTES = cacheMaxBytes(process.env['DRAGON_NATIVE_CACHE_MAX_MB']);
+/** An entry used this recently may have a suite running from it, so the size cap never evicts it. */
+export const IN_USE_MS = 2 * 3600 * 1000;
+
+function sizeOf(path: string): number {
+  const st = statSync(path, { throwIfNoEntry: false });
+  if (st === undefined) return 0;
+  if (!st.isDirectory()) return st.size;
+  return readdirSync(path).reduce((n, c) => n + sizeOf(join(path, c)), 0);
+}
+
+/** Moves an entry out of every reader's way in one rename, then deletes it, so a killed prune never leaves a half-removed entry. */
+function evict(root: string, name: string): void {
+  const trash = join(root, `${name}.trash-${process.pid}`);
+  try {
+    renameSync(join(root, name), trash);
+  } catch {
+    return;
+  }
+  rmSync(trash, { recursive: true, force: true });
+}
+
+/**
+ * Prunes each language directory under cacheRoot: entries unused for 14 days, work directories a killed build left over a day
+ * ago and trash a killed prune left; then, while the cache is over maxBytes, the least recently used entries except keep.
+ */
+export function pruneCache(cacheRoot: string, keep: string | null, now = Date.now(), maxBytes = CACHE_MAX_BYTES): void {
+  const entries: { root: string; name: string; mtimeMs: number; bytes: number }[] = [];
+  for (const lang of ['swift', 'kotlin']) {
+    const root = join(cacheRoot, lang);
+    if (!existsSync(root)) continue;
+    for (const name of readdirSync(root)) {
+      const st = statSync(join(root, name), { throwIfNoEntry: false });
+      if (st === undefined) continue;
+      const age = now - st.mtimeMs;
+      if (name.includes('.trash-')) rmSync(join(root, name), { recursive: true, force: true });
+      else if (name.includes('.build-')) {
+        if (age > DAY_MS) rmSync(join(root, name), { recursive: true, force: true });
+      } else if (age > 14 * DAY_MS) evict(root, name);
+      else entries.push({ root, name, mtimeMs: st.mtimeMs, bytes: sizeOf(join(root, name)) });
+    }
+  }
+  let total = entries.reduce((n, e) => n + e.bytes, 0);
+  for (const e of entries.sort((a, b) => a.mtimeMs - b.mtimeMs)) {
+    if (total <= maxBytes) break;
+    if (join(e.root, e.name) === keep || now - e.mtimeMs < IN_USE_MS) continue;
+    evict(e.root, e.name);
+    total -= e.bytes;
+  }
+  if (total > maxBytes) console.warn(`native build cache ${cacheRoot}: ${(total / 1048576).toFixed(0)} MB, over its ${(maxBytes / 1048576).toFixed(0)} MB cap; every remaining entry was used in the last 2 hours, so none was evicted`);
+}
+
 /**
  * Moves a finished build into its cache directory. A concurrent build of the same key may have won, which is equivalent. A
  * directory that lacks the build's artifacts is a stale entry (something deleted files under out/ and left the directories),
@@ -132,10 +215,11 @@ function failBuild(work: string, message: string): never {
 
 /** Compiles the Swift harness; returns the binary. Cached on sources, flags and compiler version. */
 export function buildSwift(tool: SwiftTool, files: Files): { binary: string; seconds: number; cached: boolean } {
-  const key = filesKey(files, [...SWIFT_FLAGS, tool.version]);
-  const dir = join(OUT, 'swift', key);
+  // The version line names no target triple, and a binary runs only on the OS and architecture it was built for.
+  const key = filesKey(files, [...SWIFT_FLAGS, tool.version, `${process.platform}-${process.arch}`]);
+  const dir = join(BUILD_CACHE, 'swift', key);
   const binary = join(dir, 'harness');
-  if (existsSync(binary)) return { binary, seconds: 0, cached: true };
+  if (hit(dir, binary)) return { binary, seconds: 0, cached: true };
   const work = `${dir}.build-${process.pid}`;
   rmSync(work, { recursive: true, force: true });
   writeFiles(join(work, 'src'), files);
@@ -150,15 +234,16 @@ export function buildSwift(tool: SwiftTool, files: Files): { binary: string; sec
     if (!r.ok) failBuild(work, `swiftc failed:\n${r.out.slice(0, 4000)}`);
   });
   publish(work, dir);
+  pruneCache(BUILD_CACHE, dir);
   return { binary, seconds: (Date.now() - t) / 1000, cached: false };
 }
 
 /** Compiles the Kotlin harness to a jar. Cached on sources, flags and compiler version. */
 export function buildKotlin(tool: KotlinTool, files: Files): { jar: string; seconds: number; cached: boolean } {
   const key = filesKey(files, [...KOTLIN_FLAGS, tool.version]);
-  const dir = join(OUT, 'kotlin', key);
+  const dir = join(BUILD_CACHE, 'kotlin', key);
   const jar = join(dir, 'harness.jar');
-  if (existsSync(jar)) return { jar, seconds: 0, cached: true };
+  if (hit(dir, jar)) return { jar, seconds: 0, cached: true };
   const work = `${dir}.build-${process.pid}`;
   rmSync(work, { recursive: true, force: true });
   writeFiles(join(work, 'src'), files);
@@ -168,6 +253,7 @@ export function buildKotlin(tool: KotlinTool, files: Files): { jar: string; seco
   const r = run(tool.kotlinc, [...KOTLIN_FLAGS, ...srcs, '-d', join(work, 'harness.jar')], env);
   if (!r.ok) failBuild(work, `kotlinc failed:\n${r.out.slice(0, 4000)}`);
   publish(work, dir);
+  pruneCache(BUILD_CACHE, dir);
   return { jar, seconds: (Date.now() - t) / 1000, cached: false };
 }
 
@@ -257,7 +343,10 @@ export function suiteCause(r: { readonly status: number | null; readonly signal:
 }
 
 export function swiftExec(binary: string): Exec {
-  return (mode, input, output) => execSuite(binary, [mode, input, output]);
+  return (mode, input, output) => {
+    touch(dirname(binary));
+    return execSuite(binary, [mode, input, output]);
+  };
 }
 
 /**
@@ -267,7 +356,10 @@ export function swiftExec(binary: string): Exec {
 export const KOTLIN_HEAP = '-Xmx2g';
 
 export function kotlinExec(tool: KotlinTool, jar: string): Exec {
-  return (mode, input, output) => execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', KOTLIN_HEAP, '-jar', jar, mode, input, output]);
+  return (mode, input, output) => {
+    touch(dirname(jar));
+    return execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', KOTLIN_HEAP, '-jar', jar, mode, input, output]);
+  };
 }
 
 /** Every case matched and every process accounted for its cases: a suite with a cause (say, extra lines) does not pass. */

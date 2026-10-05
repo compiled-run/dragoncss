@@ -1,5 +1,6 @@
 // The core's own SHA-256 and UTF-8 (digest.ts) against node:crypto, and the pre-serialized profile text (CanonicalText) against a
-// fresh canonicalJson. The digest bytes must never change: compiled digests are carried in device evidence.
+// fresh canonicalJson, and bytes entering a digest as their SHA-256. Compiled digests are carried in device evidence, so a change to
+// what they cover is a deliberate one, regenerated in one commit.
 import { createHash, randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { CanonicalText, canonicalJson, sha256Hex, sha256HexBytes, sha256HexCore, utf8 } from '../src/digest.ts';
@@ -63,6 +64,16 @@ describe('digest.ts', () => {
     const viaText = canonicalJson({ ...value, a: new CanonicalText(canonicalJson(COMMITTED_PROFILES.android)) });
     expect(viaText).toBe(direct);
     expect(sha256Hex(viaText)).toBe(sha256Hex(direct));
+  });
+
+  it('bytes enter canonical JSON as their SHA-256, so every byte still counts and a font costs one hash', () => {
+    const bytes = randomBytes(4096);
+    expect(canonicalJson(bytes)).toBe(JSON.stringify(`sha256:${nodeSha(bytes)}`));
+    expect(canonicalJson({ asset: bytes })).toBe(`{"asset":${JSON.stringify(`sha256:${nodeSha(bytes)}`)}}`);
+    const edited = Uint8Array.from(bytes);
+    edited[4095] = (edited[4095] as number) ^ 1;
+    expect(canonicalJson(edited)).not.toBe(canonicalJson(bytes));
+    expect(canonicalJson(new Uint8Array(0))).toBe(JSON.stringify(`sha256:${nodeSha(new Uint8Array(0))}`));
   });
 
   it('a project reads one deep-frozen copy of its profiles, so editing the caller profile changes neither its checks nor its digest', () => {

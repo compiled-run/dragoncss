@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import type { ElementNode } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import { attributeRefusal, NEUTRAL_ATTRIBUTES, neutralAttribute } from '../src/attributes.ts';
+import { dimensionRefusal, iframeSrcRefusal, iframeSrcUrl, parseDimension, presentationalHints } from '../src/analysis/elements/replaced.ts';
 import { HTML_CASE_INSENSITIVE_ATTRIBUTES } from '../src/analysis/match.ts';
 import { OBSERVED_ATTRIBUTE_CASE_INSENSITIVE, PSEUDO_CLASS_VALID, PSEUDO_ELEMENT_VALID, SELECTOR_VALIDITY_CHROME } from '../src/css/selector-validity.generated.ts';
 import { always, div, expectCatalogued, inputFor } from './helpers.ts';
@@ -63,12 +64,17 @@ describe('the rendering-neutral attribute table', () => {
 describe('refused attributes name the package that owns their effect', () => {
   it.each([
     ['input', 'type', 'FORM-a'], ['input', 'min', 'FORM-a'], ['input', 'max', 'FORM-a'], ['input', 'value', 'FORM-a'],
-    ['img', 'src', 'REPL'], ['img', 'alt', 'REPL'], ['img', 'width', 'REPL'], ['img', 'height', 'REPL'],
+    ['div', 'src', 'REPL'], ['div', 'alt', 'REPL'], ['div', 'width', 'REPL'], ['div', 'height', 'REPL'], ['iframe', 'alt', 'REPL'],
     ['a', 'href', 'INL1'], ['a', 'rel', 'INL1'], ['a', 'target', 'INL1'], ['html', 'lang', 'TXT1-C'], ['div', 'dir', 'bidi'],
     ['div', 'hidden', 'display'], ['div', 'style', 'SOV'], ['div', 'tabindex', 'not proven neutral'],
     ['div', 'constructor', 'not proven neutral'], ['div', 'toString', 'not proven neutral'],
   ])('<%s %s> names %s', (tag, name, owner) => {
     expect(attributeRefusal(tag, name)).toContain(owner);
+  });
+
+  it('REPL-a handles src, alt, width and height on img, and src (Phase B: the web view loads it), width and height on iframe', () => {
+    for (const name of ['src', 'alt', 'width', 'height']) expect(attributeRefusal('img', name), name).toBeNull();
+    for (const name of ['src', 'width', 'height']) expect(attributeRefusal('iframe', name), name).toBeNull();
   });
 
   it('compiles neutral attributes silently and refuses the others with the owner in the message', () => {
@@ -121,3 +127,86 @@ describe('Chrome observations (scripts/capture-selector-validity.ts)', () => {
     expect(Object.values(PSEUDO_CLASS_VALID).every((v) => v.valid === v.supports)).toBe(true);
   });
 });
+
+describe('REPL-a width and height attributes (HTML §2.3.4.4 dimension values, §15.4.5 hints)', () => {
+  const LONG = '9'.repeat(400);
+
+  it('parses lengths and percentages after leading ASCII white space and ignores what follows the number', () => {
+    expect(parseDimension('100')).toEqual({ kind: 'length', value: 100 });
+    expect(parseDimension(' \t\n50.5px')).toEqual({ kind: 'length', value: 50.5 });
+    expect(parseDimension('25%')).toEqual({ kind: 'percentage', value: 25 });
+    expect(parseDimension('10.')).toEqual({ kind: 'length', value: 10 });
+    expect(parseDimension('1e5')).toEqual({ kind: 'length', value: 1 });
+    expect(parseDimension('0')).toEqual({ kind: 'length', value: 0 });
+  });
+
+  it('takes no number from a value that does not start with a digit, or whose digits overflow a double', () => {
+    for (const t of ['', 'abc', '-5', '+5', '.5', '\u00a07', LONG, `${LONG}%`]) expect(parseDimension(t), t.slice(0, 12)).toBeNull();
+  });
+
+  it('maps an img\'s two lengths to auto && ratio, a percentage only to its own property, and nothing on other tags', () => {
+    const hints = (tag: string, attrs: Record<string, string>) => Object.fromEntries(presentationalHints(tag, new Map(Object.entries(attrs))));
+    expect(hints('img', { width: '90', height: '30' })).toEqual({
+      width: { kind: 'length', value: 90, unit: 'px' },
+      height: { kind: 'length', value: 30, unit: 'px' },
+      'aspect-ratio': { kind: 'ratio', auto: true, width: 90, height: 30 },
+    });
+    expect(hints('img', { width: '90', height: '25%' })).toEqual({ width: { kind: 'length', value: 90, unit: 'px' }, height: { kind: 'percentage', value: 25 } });
+    expect(hints('iframe', { width: '120', height: '40' })).toEqual({ width: { kind: 'length', value: 120, unit: 'px' }, height: { kind: 'length', value: 40, unit: 'px' } });
+    expect(hints('div', { width: '90', height: '30' })).toEqual({});
+    expect(hints('img', { width: LONG, height: '30' })).toEqual({ height: { kind: 'length', value: 30, unit: 'px' } });
+  });
+
+  it('refuses a width or height whose digits overflow a double, on replaced tags only', () => {
+    expect(dimensionRefusal('img', 'width', LONG)).toContain('400 digits');
+    expect(dimensionRefusal('iframe', 'height', ` ${LONG}.5%`)).toContain('400 digits');
+    expect(dimensionRefusal('img', 'width', '99999999')).toBeNull();
+    expect(dimensionRefusal('img', 'width', 'abc')).toBeNull();
+    expect(dimensionRefusal('img', 'alt', LONG)).toBeNull();
+    expect(dimensionRefusal('div', 'width', LONG)).toBeNull();
+  });
+
+  it('a compile reports the overflowing attribute as DRAGON_UNSUPPORTED_ATTRIBUTE', () => {
+    const attr = (name: string, value: string) => ({ name, value: [{ when: always, value }], origin: { kind: 'unlocated', reason: 'test' } as const });
+    const project = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } });
+    const tree = (w: string) => inputFor('.a { display: block; }', (r) => [{ ...div(r, 'a', ['a']), tag: 'iframe', attributes: [attr('width', w), attr('height', '10')] } as ElementNode]);
+    const bad = project.compile(tree(LONG)).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ATTRIBUTE');
+    expect(bad.map((d) => d.message)).toEqual(['attribute width on a is not supported: its value starts with 400 digits, past the range of a length']);
+    expectCatalogued(bad);
+    expect(project.compile(tree('99999999')).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ATTRIBUTE')).toEqual([]);
+  });
+});
+
+describe('REPL-a Phase B iframe src (R9: the web view loads it)', () => {
+  it('takes an absolute https URL in RFC 3986 characters with well-formed % escapes, stripped of ASCII white space as HTML does', () => {
+    expect(iframeSrcUrl('https://www.youtube.com/embed/DwTzcZxyUUg?autoplay=1&mute=1')).toBe('https://www.youtube.com/embed/DwTzcZxyUUg?autoplay=1&mute=1');
+    expect(iframeSrcUrl(' \thttps://example.com\n')).toBe('https://example.com');
+    expect(iframeSrcUrl('HTTPS://EXAMPLE.COM/a%20b%c3%A9#x')).toBe('HTTPS://EXAMPLE.COM/a%20b%c3%A9#x');
+    for (const ok of ['https://[::1]/embed', 'https://[2001:db8::7]:8443/v?x=1#t=2', 'https://user:pw@example.com:443/a/b;c?d=e/f?g#h/i?', 'https://127.0.0.1/x', 'https://example.com', 'https://example.com/', 'https://[::]/', 'https://[1:2:3:4:5:6:7:8]/', 'https://[::ffff:192.0.2.1]/', 'https://[1:2:3:4:5:6:192.0.2.1]/', 'https://example.com:65535/', 'https://my_host.example.com./']) expect(iframeSrcUrl(ok), ok).toBe(ok);
+    // http is blocked in an app build (App Transport Security, Android's cleartext default), so it is refused (Macroscope 4169579880);
+    // a % that does not start two hex digits is read differently by Foundation and Android (Macroscope 4169579866).
+    const refused = ['http://example.com', ' HTTP://example.com/embed', 'https://example.com/a%zz', 'https://example.com/%', 'https://example.com/a%4', 'https://example.com/?q=100%', 'https://ex%ample.com/',
+      // Brackets only around a valid IPv6 literal in the host (Macroscope 4170043826); a bad port; a second #; brackets in a path.
+      'https://[x]', 'https://[x]/embed', 'https://[::1', 'https://[1:2:3]/', 'https://example.com:99999/', 'https://example.com:8a/', 'https://example.com/a#b#c', 'https://example.com/[a]', 'https://@/', 'https://:443/',
+      'https://[1::2::3]/', 'https://[1:2:3:4:5:6:7:8:9]/', 'https://[::ffff:999.0.0.1]/', 'https://[v1.x]/', 'https://example.com:65536/', 'https://exa!mple.com/', 'https://example..com/'];
+    for (const bad of ['', '/embed/x', 'embed.html', '//example.com/x', 'javascript:alert(1)', 'data:text/html,x', 'about:blank', 'file:///etc/passwd', 'https://', 'https:///x', 'https://example.com/a b', 'https://exämple.com', 'https://example.com/"x"', 'https://example.com/<x>', ...refused]) {
+      expect(iframeSrcUrl(bad), bad).toBeNull();
+      expect(iframeSrcRefusal('iframe', 'src', bad), bad).toContain('absolute https URL');
+    }
+    expect(iframeSrcRefusal('img', 'src', '/a.png')).toBeNull();
+    expect(iframeSrcRefusal('iframe', 'width', '/x')).toBeNull();
+  });
+
+  it('a compile refuses a relative, http or malformed-escape iframe src and accepts an absolute https one', () => {
+    const attr = (name: string, value: string) => ({ name, value: [{ when: always, value }], origin: { kind: 'unlocated', reason: 'test' } as const });
+    const project = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } });
+    const tree = (src: string) => inputFor('.a { display: block; border: 0; }', (r) => [{ ...div(r, 'a', ['a']), tag: 'iframe', attributes: [attr('src', src)] } as ElementNode]);
+    const codes = (src: string) => project.compile(tree(src)).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ATTRIBUTE').map((d) => d.message);
+    const refusal = 'attribute src on a is not supported: a native web view loads only a well-formed absolute https URL (RFC 3986; it has no document URL to resolve a relative one against, and an app build blocks plain http)';
+    expect(codes('/embed/x')).toEqual([refusal]);
+    expect(codes('http://example.com/embed')).toEqual([refusal]);
+    expect(codes('https://example.com/a%zz')).toEqual([refusal]);
+    expect(codes('https://example.com/embed')).toEqual([]);
+  });
+});
+

@@ -8,7 +8,8 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpat
 import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
 import type { LayoutInput, LayoutRect } from '@dragon/layout';
-import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, resolveBorder, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import type { LU } from '@dragon/layout';
+import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, replacedPaint, resolveBorder, resolvePadding, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
@@ -87,7 +88,7 @@ export function referenceMeasurer() {
 
 /** The TS engine the expected dumps are projected with: the helpers the device runs translated, and the float a platform stores. */
 export function expectedEngine(): ExpectedEngine {
-  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround };
+  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround };
 }
 
 const emitted = new Map<NativeTarget, EmitCase[]>();
@@ -167,6 +168,8 @@ func dragonWrite(_ path: String, _ text: String) {
 /// inside the safe area, and writes one dump per case, the bridge record and the device record into DRAGON_OUT.
 func dragonRun(window: UIWindow, host: UIView) {
   UIView.setAnimationsEnabled(false)
+  // R9: lane and test hosts never load network content; every iframe web view loads about:blank.
+  dragonForeignViewLoadsSrc = false
   let env = ProcessInfo.processInfo.environment
   guard let out = env["DRAGON_OUT"] else { fatalError("dragon host: DRAGON_OUT is not set") }
   // --dragon-cases wins over a run file left in the container by an earlier run.
@@ -308,6 +311,7 @@ import dev.dragon.views.DragonBridge
 import dev.dragon.views.DragonRun
 import dev.dragon.views.DragonStateMount
 import dev.dragon.views.DragonTree
+import dev.dragon.views.dragonForeignViewLoadsSrc
 import dev.dragon.views.dragonReadRun
 import dev.dragon.views.dragonSamples
 import java.io.File
@@ -330,6 +334,8 @@ class DragonActivity : Activity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    // R9: lane and test hosts never load network content; every iframe web view loads about:blank.
+    dragonForeignViewLoadsSrc = false
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     frame.setBackgroundColor(0xffffffff.toInt())
     frame.setOnApplyWindowInsetsListener { v, insets ->
@@ -399,17 +405,17 @@ class DragonActivity : Activity() {
       tree.apply(c.input(scale), bridge.measurer, scale, bridge)
       frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
     }
-    // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, then compositor copies of the window until
-    // two consecutive copies are equal (a copy of a frame before the tree was presented differs from the next one).
-    var drawnAt = -1
-    fun settle(frames: Int) {
-      Choreographer.getInstance().postFrameCallback {
-        if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
-        if (drawnAt < 0 || frames < drawnAt + 2) {
-          if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
-          settle(frames + 1)
-          return@postFrameCallback
-        }
+    // The tree redrawn, then the block once that frame is committed to the display. Only the commit shows the frame holds the
+    // redraw: the UI-thread draw is recorded before RenderThread presents it.
+    fun afterCommittedFrame(block: () -> Unit) {
+      tree.root.viewTreeObserver.registerFrameCommitCallback { main.post { block() } }
+      tree.root.invalidate()
+    }
+    // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, a frame of the redrawn tree committed to
+    // the display, then compositor copies of the window, each after a committed frame of its own, until two consecutive copies
+    // are equal.
+    fun capture() {
+      run {
         val t1 = SystemClock.elapsedRealtimeNanos()
         deviceRecord(tree)
         val at = IntArray(2)
@@ -436,7 +442,8 @@ class DragonActivity : Activity() {
             if (sha != previous) {
               if (attempt >= 6000) throw IllegalStateException("dragon host: " + id + ": no two consecutive copies were equal after " + attempt + " copies")
               previous = sha
-              Choreographer.getInstance().postFrameCallback { copy(attempt + 1) }
+              // The next copy is of another committed frame of the same tree, so equal copies show two frames drew it alike.
+              afterCommittedFrame { copy(attempt + 1) }
               return@OnPixelCopyFinishedListener
             }
             val pixels = DumpPixels("PixelCopy", w.toDouble(), h.toDouble(), sha, dragonSamples(bytes, w, h, run.points[id] ?: emptyList()))
@@ -469,6 +476,18 @@ class DragonActivity : Activity() {
           }
         }
         copy(0)
+      }
+    }
+    var drawnAt = -1
+    fun settle(frames: Int) {
+      Choreographer.getInstance().postFrameCallback {
+        if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
+        if (drawnAt < 0 || frames < drawnAt + 2) {
+          if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
+          settle(frames + 1)
+          return@postFrameCallback
+        }
+        afterCommittedFrame { capture() }
       }
     }
     settle(1)
@@ -607,28 +626,67 @@ function reused(artifact: string, sha: string): boolean {
   return existsSync(artifact) && existsSync(stampOf(artifact)) && readFileSync(stampOf(artifact), 'utf8') === reuseStamp(sha);
 }
 
-/** The iOS host app: swiftc for the iOS 15 simulator target with -O, Info.plist and Ahem, ad-hoc signed. */
+/**
+ * How the iOS host app is built: the engine and runtime support (DragonCore) at -O, as before; the generated case code (DragonCases,
+ * 18 MB of straight-line LayoutBox construction that -O gains nothing on) at -Onone; the host (main, the hit facts, the case
+ * tables and any planted file) at -O in the app's own module, DragonHost, which Info.plist and main.swift name. Swift has no
+ * fast-math, so no float result depends on the optimisation level. Part of the reuse stamp, so an app built another way is rebuilt.
+ */
+export const IOS_BUILD = 'modules DragonCore -O, DragonCases -Onone, DragonHost -O';
+/** The case tables stay in DragonHost: main.swift reads DragonHost.dragonCaseTable. */
+const IOS_TABLES = ['Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift'];
+
+/** The Swift files of each iOS module, by path; every file in exactly one, and none of the three empty (else a thrown error). */
+export function iosModules(paths: readonly string[]): { readonly core: string[]; readonly cases: string[]; readonly host: string[] } {
+  const swift = paths.filter((p) => p.endsWith('.swift'));
+  const core = swift.filter((p) => p.startsWith('DragonLayout/') || p.startsWith('Support/'));
+  const cases = swift.filter((p) => p.startsWith('Cases/') && !IOS_TABLES.includes(p));
+  const host = swift.filter((p) => !core.includes(p) && !cases.includes(p));
+  for (const t of IOS_TABLES) if (!host.includes(t)) throw new Error(`the iOS host sources have no ${t}`);
+  if (core.length === 0 || cases.length === 0 || !host.includes('Host/main.swift')) throw new Error(`the iOS host sources do not split into DragonCore (${core.length}), DragonCases (${cases.length}) and DragonHost with main.swift`);
+  return { core, cases, host };
+}
+
+/** The iOS host app: swiftc for the iOS 15 simulator target (three modules, IOS_BUILD), Info.plist and Ahem, ad-hoc signed. */
 export function buildIos(opts: BuildOptions = {}): BuildResult {
   const dir = buildDir('ios', opts.plant ?? null);
   const toolchain = xcodeVersion();
   const files = hostSources('ios', toolchain, opts.plant ?? null);
   const sha = sourceTreeSha256(files);
   const app = join(dir, 'build', 'DragonHost.app');
-  if (opts.reuse === true && reused(app, sha)) return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: app, log: [`reused ${app} (source sha256 ${sha})`] };
+  // The build recipe is part of the reuse stamp, so an app built another way is never reused.
+  const stamp = `${sha} ${IOS_BUILD}`;
+  if (opts.reuse === true && reused(app, stamp)) return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: app, log: [`reused ${app} (source sha256 ${sha})`] };
   rmSync(stampOf(app), { force: true });
   const src = writeSources(dir, files);
   rmSync(app, { recursive: true, force: true });
   mkdirSync(app, { recursive: true });
-  const swift = files.filter((f) => f.path.endsWith('.swift')).map((f) => join(src, f.path));
+  const mods = iosModules(files.map((f) => f.path));
+  const abs = (ps: readonly string[]): string[] => ps.map((p) => join(src, p));
+  const lib = join(dir, 'build', 'modules');
+  rmSync(lib, { recursive: true, force: true });
+  mkdirSync(lib, { recursive: true });
+  const swiftc = ['-sdk', 'iphonesimulator', 'swiftc', '-target', IOS_TARGET, '-j', String(availableParallelism())];
+  const implicit = (flag: string, mod: string): string[] => ['-Xfrontend', flag, '-Xfrontend', mod];
+  const library = (name: string, opt: string, extra: readonly string[], sources: readonly string[]): string[] => [...swiftc, opt, ...extra, '-parse-as-library', '-module-name', name, '-I', lib, '-emit-module', '-emit-module-path', join(lib, `${name}.swiftmodule`), '-emit-library', '-static', '-o', join(lib, `lib${name}.a`), ...abs(sources)];
   const log: string[] = [];
-  const t0 = Date.now();
-  must(run('xcrun', ['-sdk', 'iphonesimulator', 'swiftc', '-target', IOS_TARGET, '-O', '-j', String(availableParallelism()), '-module-name', 'DragonHost', '-o', join(app, 'DragonHost'), ...swift], { timeoutMs: 1_800_000 }), 'swiftc (iOS 15 simulator)');
-  log.push(`swiftc ${IOS_TARGET} -O: ${swift.length} files in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  let t0 = Date.now();
+  must(run('xcrun', library('DragonCore', '-O', [], mods.core), { timeoutMs: 1_800_000 }), 'swiftc DragonCore (iOS 15 simulator)');
+  log.push(`swiftc ${IOS_TARGET} DragonCore -O: ${mods.core.length} files in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  t0 = Date.now();
+  // -enable-testing: DragonHost's case tables read the cases' internal declarations through a testable import.
+  must(run('xcrun', library('DragonCases', '-Onone', ['-enable-testing', ...implicit('-import-module', 'DragonCore')], mods.cases), { timeoutMs: 1_800_000 }), 'swiftc DragonCases (iOS 15 simulator)');
+  log.push(`swiftc ${IOS_TARGET} DragonCases -Onone: ${mods.cases.length} files in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  t0 = Date.now();
+  // -force_load links every object of both libraries, as one module did, whether or not the host names it.
+  const load = (name: string): string[] => ['-Xlinker', '-force_load', '-Xlinker', join(lib, `lib${name}.a`)];
+  must(run('xcrun', [...swiftc, '-O', '-module-name', 'DragonHost', '-I', lib, ...implicit('-import-module', 'DragonCore'), ...implicit('-testable-import-module', 'DragonCases'), ...load('DragonCore'), ...load('DragonCases'), '-o', join(app, 'DragonHost'), ...abs(mods.host)], { timeoutMs: 1_800_000 }), 'swiftc DragonHost (iOS 15 simulator)');
+  log.push(`swiftc ${IOS_TARGET} DragonHost -O: ${mods.host.length} files in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   copyFileSync(join(src, 'Info.plist'), join(app, 'Info.plist'));
   copyFileSync(repoPath('vendor/fonts/Ahem.ttf'), join(app, 'Ahem.ttf'));
   must(run('codesign', ['--force', '--sign', '-', '--timestamp=none', app]), 'codesign -s -');
   log.push('codesign --sign - (ad hoc)');
-  writeFileSync(stampOf(app), reuseStamp(sha));
+  writeFileSync(stampOf(app), reuseStamp(stamp));
   return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: app, log };
 }
 

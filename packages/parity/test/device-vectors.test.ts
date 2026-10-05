@@ -1,5 +1,6 @@
 // layout-vectors-device (notes/T015-p4-review-p5-plan.md section 4 item 2), without a device: the device verdict passes only when
 // every declared suite ran whole, both corpus digests are the manifests', and counts and digests equal the host lane's run.
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { DeviceSuiteResult } from '../src/device-vectors.ts';
 import { judgeDeviceVectors } from '../src/device-vectors.ts';
@@ -42,12 +43,15 @@ describe.each(['ios', 'android'] as const)('the %s device vectors verdict', (nam
     expect(declared.find((d) => d.corpus === 'p1' && d.suite === 'rt')?.cases).toBe(55362);
     const shortRt = whole.map((s) => (s.corpus === 'p1' && s.name === 'rt' ? { ...s, pass: s.pass - 1 } : s));
     expect(judgeDeviceVectors(t, shortRt, digests, host)).toMatchObject({ state: 'fail', reason: expect.stringContaining('p1/rt 55361/55362, declared 55362') });
-    // SELD-R1b: the hit suite is declared with one case per layout vector at every DPR (the device-hit proof), and a short run fails.
-    expect(declared.find((d) => d.corpus === 'p1' && d.suite === 'hit')?.cases).toBe(2060);
+    // SELD-R1b: the hit suite is declared with one case per layout vector at every DPR (the device-hit proof), at no fewer cases
+    // than translate's p1-floor.json holds, and a short run fails.
+    const hit = declared.find((d) => d.corpus === 'p1' && d.suite === 'hit')?.cases ?? 0;
+    const p1Floor = JSON.parse(readFileSync(new URL('../../translate/test/p1-floor.json', import.meta.url), 'utf8')) as { p1: { counts: { hit: number } } };
+    expect(hit).toBeGreaterThanOrEqual(p1Floor.p1.counts.hit);
     // ANIM-b1 3b: the animator suite is declared with one case per frame case.
     expect(declared.find((d) => d.corpus === 'p1' && d.suite === 'animator')?.cases).toBe(18);
     const shortHit = whole.map((s) => (s.corpus === 'p1' && s.name === 'hit' ? { ...s, pass: s.pass - 1 } : s));
-    expect(judgeDeviceVectors(t, shortHit, digests, host)).toMatchObject({ state: 'fail', reason: expect.stringContaining('p1/hit 2059/2060, declared 2060') });
+    expect(judgeDeviceVectors(t, shortHit, digests, host)).toMatchObject({ state: 'fail', reason: expect.stringContaining(`p1/hit ${hit - 1}/${hit}, declared ${hit}`) });
     const extra: DeviceSuiteResult = { corpus: 'extended', name: 'undeclared-suite', total: 5, pass: 5, cause: null, mismatches: [] };
     expect(judgeDeviceVectors(t, [...whole, extra], digests, host)).toMatchObject({ state: 'fail', reason: expect.stringContaining('extended/undeclared-suite is not a declared suite') });
   });
