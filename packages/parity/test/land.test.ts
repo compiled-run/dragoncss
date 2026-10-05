@@ -38,6 +38,7 @@ import {
   lockState,
   MERGES_LOG,
   parseBatchSize,
+  runWatchdog,
   parseLstart,
   parseMerges,
   parsePidFile,
@@ -967,6 +968,35 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(bad({ proven: [5] })).toThrow(/out of range/);
     expect(bad({ consumed: [{ pr: 3 }] })).toThrow(/malformed/);
     expect(bad({ results: [{ entry: e(3), failure: { step: 1 } }] })).toThrow(/failure is malformed/);
+  });
+
+  it('the builder\'s watchdog stops the builder only once the driver is gone, and only when it is still ours', () => {
+    const run = (o: { driverDiesAt?: number; builderEndsAt?: number; builderIgnoresTerm?: boolean; ours?: boolean }) => {
+      let t = 0;
+      let termed = false;
+      const did: string[] = [];
+      const alive = (): boolean => (o.builderEndsAt === undefined || t < o.builderEndsAt) && !(termed && !o.builderIgnoresTerm) && !did.includes('SIGKILL');
+      const result = runWatchdog({
+        driverAlive: () => o.driverDiesAt === undefined || t < o.driverDiesAt,
+        builderAlive: alive,
+        builderIsOurs: () => o.ours !== false,
+        signal: (sig) => {
+          did.push(sig);
+          if (sig === 'SIGTERM') termed = true;
+        },
+        release: () => did.push('release'),
+        sleep: (ms) => void (t += ms),
+        log: () => {},
+        graceMs: 5000,
+      });
+      return { result, did, t };
+    };
+    expect(run({ builderEndsAt: 3000 })).toEqual({ result: 'builder ended', did: [], t: 3000 });
+    expect(run({ driverDiesAt: 2000 })).toMatchObject({ result: 'stopped the builder', did: ['SIGTERM', 'release'] });
+    const stubborn = run({ driverDiesAt: 2000, builderIgnoresTerm: true });
+    expect(stubborn).toMatchObject({ result: 'stopped the builder', did: ['SIGTERM', 'SIGKILL', 'release'] });
+    expect(stubborn.t).toBeGreaterThanOrEqual(2000 + 5000);
+    expect(run({ driverDiesAt: 2000, ours: false })).toMatchObject({ result: 'not ours', did: [] });
   });
 
   it('reads LAND_BATCH strictly', () => {

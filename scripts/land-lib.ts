@@ -1251,3 +1251,42 @@ export const supervise = (o: {
       finish();
     });
   });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The builder's watchdog (scripts/land-watchdog.ts): a detached process in its own session that stops the builder's process
+// group once the driver is gone, however it died (kill -9 of supervisor and driver included), so no builder finishes a long
+// step holding the heavy priority, a quiet request or the device lease. It ends by itself once the builder's group is gone.
+
+export type WatchdogOps = {
+  /** Whether the driver is still the process recorded (pid and start time). */
+  driverAlive: () => boolean;
+  /** Whether any live process of the builder's group is left. */
+  builderAlive: () => boolean;
+  /** Whether the builder's leader, if still there, is the process recorded (not a reused pid). */
+  builderIsOurs: () => boolean;
+  signal: (sig: 'SIGTERM' | 'SIGKILL') => void;
+  /** Releases what the builder held (quiet request, priority), each only if it names the builder. */
+  release: () => void;
+  sleep: (ms: number) => void;
+  log: (line: string) => void;
+  pollMs?: number;
+  graceMs?: number;
+};
+export const runWatchdog = (o: WatchdogOps): 'builder ended' | 'stopped the builder' | 'not ours' => {
+  const poll = o.pollMs ?? 1000;
+  for (;;) {
+    if (!o.builderAlive()) return 'builder ended';
+    if (!o.driverAlive()) break;
+    o.sleep(poll);
+  }
+  if (!o.builderIsOurs()) {
+    o.log('the driver is gone, but the builder\'s pid is another process now; nothing to stop');
+    return 'not ours';
+  }
+  o.log('the driver is gone; stopping the builder\'s process group');
+  o.signal('SIGTERM');
+  for (let waited = 0; waited < (o.graceMs ?? 30_000) && o.builderAlive(); waited += poll) o.sleep(poll);
+  if (o.builderAlive()) o.signal('SIGKILL');
+  o.release();
+  return 'stopped the builder';
+};

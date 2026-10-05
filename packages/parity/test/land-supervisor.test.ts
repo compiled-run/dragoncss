@@ -1,13 +1,21 @@
 // The landing supervisor (supervise in scripts/land-lib.ts) with real processes: signals, process groups, deferral and orphans.
 // Apart from land.test.ts so a failure under load costs only this file's solo rerun. Waits are bounded only loosely:
 // every window is seconds wide, every wait is generous; the one upper bound (30 s against a 600 s step) is far above any load.
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { repoPath } from '../src/paths.ts';
 
+// A process (group) with any live, non-zombie member.
+const groupAlive = (pgid: number): boolean =>
+  execFileSync('ps', ['-axo', 'pgid=,stat='], { encoding: 'utf8' })
+    .split('\n')
+    .some((l) => {
+      const [g, stat] = l.trim().split(/\s+/);
+      return Number(g) === pgid && !/^Z/.test(stat ?? '');
+    });
 const temps: string[] = [];
 const tempDir = (): string => {
   const d = mkdtempSync(join(tmpdir(), 'land-sup-'));
@@ -202,5 +210,46 @@ describe('the supervisor with real processes', () => {
     expect(out).toContain('SIGUSR1: graceful stop requested');
     expect(JSON.parse(out.trim().split('\n').at(-1)!)).toMatchObject({ code: 0, interrupted: null });
     expect(existsSync(join(dir, 'finished'))).toBe(true);
+  }, 90_000);
+
+  it('the builder watchdog kills the builder\'s whole group when the driver is killed with -9, and releases what it held', async () => {
+    const dir = tempDir();
+    const lstart = (pid: number): string => execFileSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8' }).trim();
+    const driver = spawn('sleep', ['600'], { stdio: 'ignore' });
+    // The builder: its own group, with a child that would outlive it.
+    const builder = spawn('/bin/sh', ['-c', 'sleep 600 & sleep 600; wait'], { detached: true, stdio: 'ignore' });
+    const [d, b] = [driver.pid!, builder.pid!];
+    await new Promise((r) => setTimeout(r, 300));
+    const quiet = join(dir, 'quiet');
+    const priority = join(dir, 'priority');
+    writeFileSync(quiet, String(b));
+    writeFileSync(priority, '1'); // another process's priority: kept
+    const log = join(dir, 'log');
+    const w = spawn(process.execPath, [repoPath('scripts/land-watchdog.ts'), String(d), lstart(d), String(b), lstart(b), quiet, priority, log], { detached: true, stdio: 'ignore' });
+    const watchdogDone = new Promise((r) => w.on('exit', r));
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(groupAlive(b)).toBe(true); // the driver lives: nothing happens
+    process.kill(d, 'SIGKILL');
+    await watchdogDone;
+    for (let i = 0; i < 600 && groupAlive(b); i++) await new Promise((r) => setTimeout(r, 50));
+    expect(groupAlive(b)).toBe(false);
+    expect(existsSync(quiet)).toBe(false);
+    expect(readFileSync(priority, 'utf8')).toBe('1');
+    expect(readFileSync(log, 'utf8')).toContain('stopped the builder');
+  }, 90_000);
+
+  it('the builder watchdog ends by itself when the builder ends first', async () => {
+    const dir = tempDir();
+    const lstart = (pid: number): string => execFileSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8' }).trim();
+    const driver = spawn('sleep', ['600'], { stdio: 'ignore' });
+    const builder = spawn('/bin/sh', ['-c', 'sleep 2'], { detached: true, stdio: 'ignore' });
+    const [d, b] = [driver.pid!, builder.pid!];
+    await new Promise((r) => setTimeout(r, 300));
+    const log = join(dir, 'log');
+    const w = spawn(process.execPath, [repoPath('scripts/land-watchdog.ts'), String(d), lstart(d), String(b), lstart(b), join(dir, 'q'), join(dir, 'p'), log], { detached: true, stdio: 'ignore' });
+    await new Promise((r) => w.on('exit', r));
+    expect(readFileSync(log, 'utf8')).toContain('builder ended');
+    expect(() => process.kill(d, 0)).not.toThrow(); // the driver was never touched
+    process.kill(d, 'SIGKILL');
   }, 90_000);
 });

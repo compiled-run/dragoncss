@@ -831,10 +831,21 @@ const builderMain = (): number => {
   try {
     const input = JSON.parse(readFileSync(inPath, 'utf8')) as { base: string; queue: Entry[]; earlier: Entry[]; size: number };
     const base = checkSha(input.base, 'builder base');
-    if (!existsSync(WT)) git(['worktree', 'add', '-q', '--detach', WT, base]);
-    // A builder stopped mid-step may have left its worktree's index lock behind.
-    rmSync(join(text(wtGit, ['rev-parse', '--absolute-git-dir']), 'index.lock'), { force: true });
-    resetWorktree(base);
+    const setUpWorktree = (): void => {
+      if (!existsSync(WT)) git(['worktree', 'add', '-q', '--detach', WT, base]);
+      // A builder stopped mid-step may have left its worktree's index lock behind.
+      rmSync(join(text(wtGit, ['rev-parse', '--absolute-git-dir']), 'index.lock'), { force: true });
+      resetWorktree(base);
+    };
+    try {
+      setUpWorktree();
+    } catch (error) {
+      // A worktree a killed builder left broken: remove it, let git forget it, and add it again, once.
+      log(`the builder worktree ${WT} is broken (${msg(error).split('\n')[0]}); removing it and adding it again`);
+      rmSync(WT, { recursive: true, force: true });
+      git(['worktree', 'prune']);
+      setUpWorktree();
+    }
     log(`preparing the next batch on ${base} in ${WT}`);
     const round = prepareRound<Ticket, Built>([...input.queue], input.size, () => base, { admit, build: buildPosition, verify: verifyChain, prove: proveTree, proveMaster, log }, { earlier: input.earlier, baseProven: true });
     put(serializePrepared(round));
@@ -866,8 +877,10 @@ const BUILDER_FILE = 'builder.pid';
 const stopBuilder = (pid: number, start: string | null): void => {
   // A leader that is another process now means the pid was reused, so the group is not the builder's. A leader that is gone
   // still leaves its group id reserved while any member lives, so the group signal can only reach the builder's processes.
+  // With no recorded start time the group cannot be told from a reused pid's, so nothing is signalled.
+  if (start === null || start === '') return log(`  not stopping the builder (pid ${pid}): its start time was not recorded`);
   const now = startOf(pid);
-  if (now !== null && start !== null && now !== start) return;
+  if (now !== null && now !== start) return;
   const signal = (sig: NodeJS.Signals): void => {
     try {
       process.kill(-pid, sig);
@@ -886,6 +899,17 @@ const running = (pid: number): boolean => {
   } catch {
     return false;
   }
+};
+
+// Started with each builder, detached in its own session: it stops the builder's group if this driver dies, however it dies.
+const startWatchdog = (builder: number, builderStart: string | null): void => {
+  const driverStart = startOf(process.pid);
+  if (builderStart === null || driverStart === null) return log('  !!! no watchdog for the builder: a start time is unknown');
+  const w = spawn(process.execPath, [join(dirname(process.argv[1]!), 'land-watchdog.ts'), String(process.pid), driverStart, String(builder), builderStart, QUIET_FILE, PRIORITY, LOG], {
+    detached: true,
+    stdio: 'ignore',
+  });
+  w.unref();
 };
 
 const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
@@ -918,6 +942,7 @@ const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
       if (pid !== null) {
         start = startOf(pid);
         writeFileSync(runFile(BUILDER_FILE), `${pid} ${start ?? ''}`);
+        startWatchdog(pid, start);
       }
       log(`pipelining: preparing the next batch on ${base} (builder pid ${pid}, log /tmp/land-next.log)`);
     },
