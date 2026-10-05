@@ -1,5 +1,5 @@
 {
- "schema": "dragon-north-star-check/2",
+ "schema": "dragon-north-star-check/3",
  "source": "examples/music-player/tree (the Markless demos/music-player-ssr components as a dragon/tree@0 fixture) + styles.css",
  "compiler": {
   "entry": "createProject (public)",
@@ -106,15 +106,17 @@
   ],
   "contextProbe": {
    "rounds": 2,
-   "blankedRules": 9,
-   "blankedDeclarations": 47,
+   "blankedRules": 6,
+   "blankedDeclarations": 43,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 357,
+  "diagnostics": 369,
   "errors": 356,
   "byCode": {
+   "DRAGON_NOT_APPLICABLE_NATIVE [android]": 6,
+   "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 6,
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 19,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 19,
@@ -125,8 +127,10 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 11,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 41,
-   "DRAGON_UNSUPPORTED_SELECTOR": 9,
+   "DRAGON_UNSUPPORTED_PROPERTY": 37,
+   "DRAGON_UNSUPPORTED_PROPERTY [web]": 4,
+   "DRAGON_UNSUPPORTED_SELECTOR": 6,
+   "DRAGON_UNSUPPORTED_SELECTOR [web]": 3,
    "DRAGON_UNSUPPORTED_VALUE": 3,
    "DRAGON_UNSUPPORTED_VALUE [android]": 49,
    "DRAGON_UNSUPPORTED_VALUE [ios]": 49,
@@ -144,7 +148,8 @@
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
-    }
+    },
+    "infos": {}
    },
    "ios": {
     "errors": {
@@ -153,12 +158,15 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 2,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 41,
-     "DRAGON_UNSUPPORTED_SELECTOR": 9,
+     "DRAGON_UNSUPPORTED_PROPERTY": 37,
+     "DRAGON_UNSUPPORTED_SELECTOR": 6,
      "DRAGON_UNSUPPORTED_VALUE": 52
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
+    },
+    "infos": {
+     "DRAGON_NOT_APPLICABLE_NATIVE": 6
     }
    },
    "android": {
@@ -168,21 +176,28 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 2,
      "DRAGON_UNSUPPORTED_ELEMENT": 11,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 41,
-     "DRAGON_UNSUPPORTED_SELECTOR": 9,
+     "DRAGON_UNSUPPORTED_PROPERTY": 37,
+     "DRAGON_UNSUPPORTED_SELECTOR": 6,
      "DRAGON_UNSUPPORTED_VALUE": 52
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
+    },
+    "infos": {
+     "DRAGON_NOT_APPLICABLE_NATIVE": 6
     }
    }
   },
   "declarations": 291,
+  "notApplicableNative": 8,
+  "notApplicableIos": 8,
+  "notApplicableAndroid": 8,
+  "applicableDeclarations": 283,
   "supportedBothTargets": 181,
   "supportedWeb": 201,
   "supportedIos": 181,
   "supportedAndroid": 181,
-  "supportPercent": 62.2,
+  "supportPercent": 64,
   "elements": 62,
   "supportedElements": 45,
   "tags": {
@@ -265,9 +280,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 151,
-   "B-unwrapped": 147,
-   "C-context": 210
+   "A-authored": 163,
+   "B-unwrapped": 159,
+   "C-context": 229
   }
  },
  "features": {
@@ -694,8 +709,8 @@
    "property": "cursor",
    "value": "pointer",
    "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
+   "ios": "not-applicable",
+   "android": "not-applicable",
    "codes": [
     "DRAGON_UNSUPPORTED_PROPERTY"
    ]
@@ -2296,8 +2311,8 @@
    "property": "cursor",
    "value": "pointer",
    "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
+   "ios": "not-applicable",
+   "android": "not-applicable",
    "codes": [
     "DRAGON_UNSUPPORTED_PROPERTY"
    ]
@@ -3664,8 +3679,8 @@
    "property": "scrollbar-color",
    "value": "rgba(155, 155, 155, 0.5) transparent",
    "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
+   "ios": "not-applicable",
+   "android": "not-applicable",
    "codes": [
     "DRAGON_UNSUPPORTED_PROPERTY"
    ]
@@ -3692,8 +3707,8 @@
    "property": "width",
    "value": "5px",
    "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
+   "ios": "not-applicable",
+   "android": "not-applicable",
    "codes": [
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
@@ -3706,8 +3721,8 @@
    "property": "background",
    "value": "transparent",
    "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
+   "ios": "not-applicable",
+   "android": "not-applicable",
    "codes": [
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
@@ -3720,8 +3735,8 @@
    "property": "background-color",
    "value": "rgba(155, 155, 155, 0.5)",
    "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
+   "ios": "not-applicable",
+   "android": "not-applicable",
    "codes": [
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
@@ -3734,8 +3749,8 @@
    "property": "border",
    "value": "transparent",
    "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
+   "ios": "not-applicable",
+   "android": "not-applicable",
    "codes": [
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
@@ -3748,8 +3763,8 @@
    "property": "border-radius",
    "value": "20px",
    "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
+   "ios": "not-applicable",
+   "android": "not-applicable",
    "codes": [
     "DRAGON_UNSUPPORTED_PROPERTY",
     "DRAGON_UNSUPPORTED_SELECTOR"
@@ -4268,10 +4283,52 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@690-705|cursor is not supported in milestone 1",
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|android|css@690-705|cursor has no effect on android: it sets the mouse pointer shape, and a touch screen has no pointer; the android output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 690,
+    "end": 705,
+    "line": 43,
+    "column": 2,
+    "text": "cursor: pointer"
+   },
+   "message": "cursor has no effect on android: it sets the mouse pointer shape, and a touch screen has no pointer; the android output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|ios|css@690-705|cursor has no effect on ios: it sets the mouse pointer shape, and a touch screen has no pointer; the ios output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 690,
+    "end": 705,
+    "line": 43,
+    "column": 2,
+    "text": "cursor: pointer"
+   },
+   "message": "cursor has no effect on ios: it sets the mouse pointer shape, and a touch screen has no pointer; the ios output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_PROPERTY|web|css@690-705|cursor is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
-   "target": null,
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 690,
@@ -4284,7 +4341,8 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -5411,10 +5469,52 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4893-4908|cursor is not supported in milestone 1",
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|android|css@4893-4908|cursor has no effect on android: it sets the mouse pointer shape, and a touch screen has no pointer; the android output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4893,
+    "end": 4908,
+    "line": 273,
+    "column": 2,
+    "text": "cursor: pointer"
+   },
+   "message": "cursor has no effect on android: it sets the mouse pointer shape, and a touch screen has no pointer; the android output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|ios|css@4893-4908|cursor has no effect on ios: it sets the mouse pointer shape, and a touch screen has no pointer; the ios output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4893,
+    "end": 4908,
+    "line": 273,
+    "column": 2,
+    "text": "cursor: pointer"
+   },
+   "message": "cursor has no effect on ios: it sets the mouse pointer shape, and a touch screen has no pointer; the ios output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_PROPERTY|web|css@4893-4908|cursor is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
-   "target": null,
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 4893,
@@ -5427,7 +5527,8 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -6232,10 +6333,52 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@8034-8087|scrollbar-color is not supported in milestone 1",
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|android|css@8034-8087|scrollbar-color has no effect on android: it colours a desktop scrollbar; native scroll views draw the platform scroll indicator in the system style; the android output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8034,
+    "end": 8087,
+    "line": 470,
+    "column": 2,
+    "text": "scrollbar-color: rgba(155, 155, 155, 0.5) transparent"
+   },
+   "message": "scrollbar-color has no effect on android: it colours a desktop scrollbar; native scroll views draw the platform scroll indicator in the system style; the android output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|ios|css@8034-8087|scrollbar-color has no effect on ios: it colours a desktop scrollbar; native scroll views draw the platform scroll indicator in the system style; the ios output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8034,
+    "end": 8087,
+    "line": 470,
+    "column": 2,
+    "text": "scrollbar-color: rgba(155, 155, 155, 0.5) transparent"
+   },
+   "message": "scrollbar-color has no effect on ios: it colours a desktop scrollbar; native scroll views draw the platform scroll indicator in the system style; the ios output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_PROPERTY|web|css@8034-8087|scrollbar-color is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
-   "target": null,
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 8034,
@@ -6248,7 +6391,8 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -6272,10 +6416,52 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8117-8136|pseudo-element ::-webkit-scrollbar is not supported: pseudo-elements generate boxes Dragon does not build yet (the scrollbar package OVFL-s)",
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|android|css@8117-8136|the ::-webkit-scrollbar rule has no effect on android: it styles a desktop scrollbar box; native scroll views draw the platform scroll indicator instead; the android output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8117,
+    "end": 8136,
+    "line": 474,
+    "column": 2,
+    "text": "::-webkit-scrollbar"
+   },
+   "message": "the ::-webkit-scrollbar rule has no effect on android: it styles a desktop scrollbar box; native scroll views draw the platform scroll indicator instead; the android output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|ios|css@8117-8136|the ::-webkit-scrollbar rule has no effect on ios: it styles a desktop scrollbar box; native scroll views draw the platform scroll indicator instead; the ios output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8117,
+    "end": 8136,
+    "line": 474,
+    "column": 2,
+    "text": "::-webkit-scrollbar"
+   },
+   "message": "the ::-webkit-scrollbar rule has no effect on ios: it styles a desktop scrollbar box; native scroll views draw the platform scroll indicator instead; the ios output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|web|css@8117-8136|pseudo-element ::-webkit-scrollbar is not supported: pseudo-elements generate boxes Dragon does not build yet (the scrollbar package OVFL-s)",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
-   "target": null,
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 8117,
@@ -6288,14 +6474,57 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8156-8181|pseudo-element ::-webkit-scrollbar-track is not supported: pseudo-elements generate boxes Dragon does not build yet (the scrollbar package OVFL-s)",
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|android|css@8156-8181|the ::-webkit-scrollbar-track rule has no effect on android: it styles a desktop scrollbar track; native scroll views draw no track; the android output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8156,
+    "end": 8181,
+    "line": 478,
+    "column": 2,
+    "text": "::-webkit-scrollbar-track"
+   },
+   "message": "the ::-webkit-scrollbar-track rule has no effect on android: it styles a desktop scrollbar track; native scroll views draw no track; the android output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|ios|css@8156-8181|the ::-webkit-scrollbar-track rule has no effect on ios: it styles a desktop scrollbar track; native scroll views draw no track; the ios output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8156,
+    "end": 8181,
+    "line": 478,
+    "column": 2,
+    "text": "::-webkit-scrollbar-track"
+   },
+   "message": "the ::-webkit-scrollbar-track rule has no effect on ios: it styles a desktop scrollbar track; native scroll views draw no track; the ios output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|web|css@8156-8181|pseudo-element ::-webkit-scrollbar-track is not supported: pseudo-elements generate boxes Dragon does not build yet (the scrollbar package OVFL-s)",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
-   "target": null,
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 8156,
@@ -6308,14 +6537,57 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_SELECTOR|*|css@8214-8239|pseudo-element ::-webkit-scrollbar-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (the scrollbar package OVFL-s)",
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|android|css@8214-8239|the ::-webkit-scrollbar-thumb rule has no effect on android: it styles a desktop scrollbar thumb; native scroll views draw the platform scroll indicator instead; the android output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8214,
+    "end": 8239,
+    "line": 482,
+    "column": 2,
+    "text": "::-webkit-scrollbar-thumb"
+   },
+   "message": "the ::-webkit-scrollbar-thumb rule has no effect on android: it styles a desktop scrollbar thumb; native scroll views draw the platform scroll indicator instead; the android output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|ios|css@8214-8239|the ::-webkit-scrollbar-thumb rule has no effect on ios: it styles a desktop scrollbar thumb; native scroll views draw the platform scroll indicator instead; the ios output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8214,
+    "end": 8239,
+    "line": 482,
+    "column": 2,
+    "text": "::-webkit-scrollbar-thumb"
+   },
+   "message": "the ::-webkit-scrollbar-thumb rule has no effect on ios: it styles a desktop scrollbar thumb; native scroll views draw the platform scroll indicator instead; the ios output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|web|css@8214-8239|pseudo-element ::-webkit-scrollbar-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (the scrollbar package OVFL-s)",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
-   "target": null,
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 8214,
@@ -6328,14 +6600,15 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@8310-8329|border-radius is not supported in milestone 1",
+   "key": "DRAGON_UNSUPPORTED_PROPERTY|web|css@8310-8329|border-radius is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
-   "target": null,
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 8310,
@@ -6348,7 +6621,8 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
