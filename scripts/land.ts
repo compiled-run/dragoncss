@@ -23,6 +23,9 @@ import {
   isQuiet,
   QUIET_FILE,
   cleanIgnoredArgs,
+  provedTree,
+  SOLO_RERUN_MAX,
+  failingTestFiles,
   clearStaleQuiet,
   releaseQuiet,
   requestQuiet,
@@ -138,7 +141,8 @@ const remoteHead = (branch: string): string | null => {
 
 // ---- steps -----------------------------------------------------------------------------------------------------------
 let current: Entry | null = null;
-let lastBuilt: string | null = null; // the position the last build left in the worktree, untouched since
+let lastBuilt: string | null = null;
+const proved: string[] = []; // every commit whose full test passed in this run // the position the last build left in the worktree, untouched since
 const stepLog = (pr: number, step: string): string => `/tmp/land-${pr}-${step}.log`;
 const tail = (path: string, n = 30): string => {
   try {
@@ -462,17 +466,30 @@ const proveCommit = (head: string, what: string): void => {
   }
   let t = heavy('test', ['pnpm', 'test']);
   if (t.error !== undefined || t.status !== 0) {
-    log('  pnpm test failed; waiting for a quiet machine to run it once more');
+    // Under load the suite's failures are mostly timeouts. Each failing file is rerun alone on a quiet machine, with the
+    // same assertions and timeouts; every one must pass. A crashed run, or too many failing files, reruns the whole suite.
+    const files = t.error === undefined ? failingTestFiles(readFileSync(t.log, 'utf8')) : null;
+    const solo = files !== null && files.length > 0 && files.length <= SOLO_RERUN_MAX;
+    log(`  pnpm test failed; waiting for a quiet machine to rerun ${solo ? `its ${files.length} failing file(s) one at a time` : 'it once more'}`);
     if (!waitQuiet()) throw new LandFailure('test', `pnpm test failed (log ${t.log}), and no quiet machine came within ${QUIET_MAX_S}s to run it once more\n${tail(t.log, 15)}`);
     try {
-      t = heavy('test-quiet', ['pnpm', 'test']);
+      if (solo) {
+        for (const [i, f] of files.entries()) {
+          const r = heavy(`test-solo-${i + 1}`, ['pnpm', 'vitest', 'run', f]);
+          if (r.error !== undefined || r.status !== 0) failed('test', r, `${f}, rerun alone on a quiet machine,`);
+        }
+      } else {
+        t = heavy('test-quiet', ['pnpm', 'test']);
+      }
     } finally {
       releaseQuiet(QUIET_FILE, process.pid);
     }
-    if (t.error !== undefined || t.status !== 0) failed('test', t, 'pnpm test on a quiet machine');
-    log('  pnpm test passed on a quiet machine');
+    if (solo) log(`  pnpm test: each failing file passed alone on a quiet machine (${files.join(', ')})`);
+    else if (t.error !== undefined || t.status !== 0) failed('test', t, 'pnpm test on a quiet machine');
+    else log('  pnpm test passed on a quiet machine');
   }
   requireTracked('test', 'pnpm test');
+  proved.push(head);
 };
 const proveTree = (p: Built, e: Entry): void => {
   current = e;
@@ -480,6 +497,8 @@ const proveTree = (p: Built, e: Entry): void => {
 };
 const proveMaster = (master: string): void => {
   current = null;
+  const same = provedTree(proved, (h) => treeMatches(git, master, h).ok);
+  if (same !== null) return log(`  master ${master} has the tree of ${same} outside docs/goals/**, which passed pnpm test in this run; not proving it again`);
   proveCommit(master, 'master');
 };
 
