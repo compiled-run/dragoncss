@@ -101,6 +101,19 @@ describe('grid lowering', () => {
     expect(performance.now() - start).toBeLessThan(20000);
   }, 30000);
 
+  it('places a replaced child of a grid container, and refuses display: grid on a replaced element', () => {
+    const iframe = (r: Parameters<Parameters<typeof inputFor>[1]>[0], id: string): ReturnType<typeof div> => ({ ...div(r, id, [id]), tag: 'iframe' });
+    const c = compile('.g { display: grid; } .f { grid-column: 2; border: none; }', (r) => [div(r, 'g', ['g'], [iframe(r, 'f')])]);
+    const p = iosLayoutProjection(c, ENV, []);
+    if (p.kind !== 'ready') throw new Error(`blocked: ${p.reason} ${c.diagnostics.map((d) => d.message).join('; ')}`);
+    const find = (b: LayoutBox): LayoutBox | undefined => (b.style.display === 'grid' ? b : b.children.map((k) => (k.kind === 'box' ? find(k) : undefined)).find((x) => x !== undefined));
+    const leaf = find(p.input.root)?.children[0];
+    expect(leaf?.kind).toBe('replaced');
+    expect(leaf?.kind === 'replaced' ? leaf.style.gridItem : null).toEqual({ column: { kind: 'definite', start: 1, end: 2 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' });
+    const rc = compile('.f { display: grid; border: none; }', (r) => [iframe(r, 'f')]);
+    expect(iosLayoutProjection(rc, ENV, []).kind).not.toBe('ready');
+    expect(rc.diagnostics.map((d) => d.message).join('\n')).toContain('display: grid on <iframe> f is not supported');
+  });
   it('wraps text directly in a grid container in an auto-placed anonymous grid item', () => {
     const m = boxes('.g { display: grid; grid-template-columns: 30px 30px; }', (r) => [div(r, 'g', ['g'], [text(r, 't', 'XX'), div(r, 'b', [])])]);
     expect(m.get('g:anon0')?.style.gridItem).toEqual({ column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' });

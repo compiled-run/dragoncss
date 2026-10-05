@@ -69,6 +69,20 @@ describe('the validator\'s grid rules, each with a planted input', () => {
     });
     expect(codes(anonymous).some((c) => c.startsWith('grid-shape $.root.children[0].children[0].style.gridItem'))).toBe(true);
   });
+  it('checks a replaced child of a grid container like a box child, and refuses a replaced grid container', () => {
+    const leaf = (style: Record<string, unknown>): unknown => ({ kind: 'replaced', id: 'i', style: { ...box('x', {}).style, ...style }, natural: { kind: 'image', width: 10, height: 10 }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: { kind: 'px', value: 0 }, objectPositionY: { kind: 'px', value: 0 } });
+    const withLeaf = (style: Record<string, unknown>): unknown => mutate((r) => {
+      (r.children[0] as unknown as { children: unknown[] }).children = [leaf(style)];
+    });
+    expect(codes(withLeaf({ gridItem: autoItem }))).toEqual([]);
+    expect(codes(withLeaf({}))).toContain('grid-shape $.root.children[0].children[0].style.gridItem');
+    const placedOutside = input(box('root', {}, []));
+    (placedOutside.root as unknown as { children: unknown[] }).children = [leaf({ gridItem: autoItem })];
+    expect(codes(placedOutside)).toContain('grid-shape $.root.children[0].style.gridItem');
+    const replacedGrid = input(box('root', {}, []));
+    (replacedGrid.root as unknown as { children: unknown[] }).children = [leaf({ display: 'grid', grid: gridStyle({}) })];
+    expect(codes(replacedGrid)).toContain('grid-shape $.root.children[0].style.grid');
+  });
   it('judges an anonymous item by its values, not by the order of its keys', () => {
     const reordered = input(box('root', {}, [grid(gridStyle({}), [anon('g:anon0', {}, [text('g:text0', 'X')])])]));
     const a = (reordered.root.children[0] as unknown as { children: { style: Record<string, unknown> }[] }).children[0] as { style: Record<string, unknown> };
