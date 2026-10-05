@@ -7,6 +7,7 @@ import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
+import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
@@ -87,6 +88,7 @@ export const GROUPS = {
   'border-paint': BORDER_PAINT,
   'cascade-var': CASCADE_VAR,
   contexts: CONTEXTS,
+  'display-legacy': DISPLAY_LEGACY,
   effects: EFFECTS,
   env: ENV,
   fonts: FONTS,

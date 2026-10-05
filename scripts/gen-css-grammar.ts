@@ -60,6 +60,23 @@ const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
   'writing-mode': 'lr | lr-tb | rl | rl-tb | tb | tb-rl',
 };
 
+/**
+ * Properties whose whole grammar is Chrome 145's instead of webref's. display: Blink Display::ParseSingleValue and
+ * ParseDisplayMultipleKeywords. Outside is block or inline (no run-in), inside never grid-lanes (CSSGridLanesLayout is off),
+ * ruby-text is the only ruby internal value, and the legacy keywords run from inline-block to -webkit-inline-flex in Blink's
+ * keyword order, so they take -webkit-box, -webkit-inline-box, -webkit-flex and -webkit-inline-flex. Pinned against Chrome by
+ * packages/parity/test/display-parse.test.ts.
+ */
+const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
+  display: [
+    '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
+    '[ block | inline ]? && [ flow | flow-root ]? && list-item',
+    'table-row-group | table-header-group | table-footer-group | table-row | table-cell | table-column-group | table-column | table-caption | ruby-text',
+    'contents | none',
+    'inline-block | inline-table | inline-flex | inline-grid | -webkit-box | -webkit-inline-box | -webkit-flex | -webkit-inline-flex',
+  ].join(' | '),
+};
+
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));
 const typesByName = new Map(css.types.map((t) => [t.name, t]));
 // Functional notations such as <rgb()> are listed under webref's functions, keyed with their parentheses.
@@ -79,7 +96,7 @@ while (queue.length > 0) {
     const p = propsByName.get(next.name);
     if (p === undefined || p.syntax === undefined) throw new Error(`webref has no syntax for property ${next.name}`);
     const extension = SYNTAX_EXTENSIONS[next.name];
-    syntax = extension === undefined ? p.syntax : `${p.syntax} | ${extension}`;
+    syntax = SYNTAX_OVERRIDES[next.name] ?? (extension === undefined ? p.syntax : `${p.syntax} | ${extension}`);
     properties.set(next.name, { ...p, syntax });
   } else {
     if (types.has(next.name) || CSS_TREE_GENERICS.has(next.name)) continue;
