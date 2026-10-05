@@ -17,6 +17,7 @@ import { compareDual } from './dual.ts';
 import { compiledFixtureHtml, PROJECT_ID, readHtmlFixture } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { directionSuffix, environmentsOf, FIXTURE_GROUPS } from './fixtures.ts';
+import { CHROME_PAGES, inOrder } from './chrome-pool.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 
@@ -221,9 +222,8 @@ export async function sweepFixture(spec: FixtureSpec, browser: Browser, faults: 
       records.push({ ...empty, bands, problem: `no whole-px viewport in ${SWEEP_RANGE.min}-${SWEEP_RANGE.max}, and no frame at zoom ${FRAME_ZOOM}, lies in band ${fractional.unsampled.join(', ')}` });
       continue;
     }
-    const samples: SweepSample[] = [];
-    let firstBody: string | null = null;
-    for (const v of viewports) {
+    // CHROME_PAGES samples at once, each capture in its own context; the samples, and the first-body check, keep viewport order.
+    const runs = await inOrder(viewports, CHROME_PAGES, async (v) => {
       const at: Environment = { ...env, viewport: { width: v.width, height: v.height } };
       const { compiled, css } = compileAt(input, env.direction, at.viewport, faults);
       const classOf = webClassMap(compiled, []);
@@ -231,11 +231,9 @@ export async function sweepFixture(spec: FixtureSpec, browser: Browser, faults: 
       const textColors = resolvedTextColors(compiled, []);
       const base = { width: v.width, height: v.height, ...(v.frame === undefined ? {} : { frame: v.frame }), band: v.band };
       if (css === null || classOf === null || colors === null || textColors === null) {
-        samples.push({ ...base, pass: false, boxesCompared: 0, valuesCompared: 0, channelsCompared: 0, problems: [`web output not ready: ${compiled.diagnostics.map((d) => `${d.code} ${d.message}`).join('; ')}`] });
-        continue;
+        return { base, body: null, sample: { ...base, pass: false, boxesCompared: 0, valuesCompared: 0, channelsCompared: 0, problems: [`web output not ready: ${compiled.diagnostics.map((d) => `${d.code} ${d.message}`).join('; ')}`] } };
       }
       const body = css.slice(css.indexOf('\n') + 1);
-      if (firstBody === null) firstBody = body;
       const id = `${spec.id}${directionSuffix(env.direction)}@${v.width}x${v.height}`;
       const frame = v.frame;
       const condition = (partition.bands[v.band] as Band).condition;
@@ -243,9 +241,19 @@ export async function sweepFixture(spec: FixtureSpec, browser: Browser, faults: 
         frame === undefined ? captureFixture(browser, id, page, at) : captureFixtureInFrame(browser, id, page, { ...env }, frame, [...exactFrameChecks(frame), condition]);
       const authored = await capture(html);
       const compiledCapture = await capture(compiledFixtureHtml(html, css, classOf));
-      const dual = compareDual(authored, compiledCapture, colors, textColors);
-      const problems = [...(body === firstBody ? [] : ['the web CSS differs from the first sample\'s: it must not depend on the fold viewport']), ...dual.problems];
-      samples.push({ ...base, pass: problems.length === 0, boxesCompared: dual.boxesCompared, valuesCompared: dual.valuesCompared, channelsCompared: dual.channelsCompared, problems });
+      return { base, body, dual: compareDual(authored, compiledCapture, colors, textColors) };
+    });
+    const samples: SweepSample[] = [];
+    let firstBody: string | null = null;
+    for (const r of runs) {
+      if (r.body === null) {
+        samples.push(r.sample as SweepSample);
+        continue;
+      }
+      if (firstBody === null) firstBody = r.body;
+      const dual = r.dual as ReturnType<typeof compareDual>;
+      const problems = [...(r.body === firstBody ? [] : ['the web CSS differs from the first sample\'s: it must not depend on the fold viewport']), ...dual.problems];
+      samples.push({ ...r.base, pass: problems.length === 0, boxesCompared: dual.boxesCompared, valuesCompared: dual.valuesCompared, channelsCompared: dual.channelsCompared, problems });
     }
     records.push({ fixture: spec.id, direction: env.direction, chrome: CHROME_VERSION, bands, samples, problem: null });
   }
