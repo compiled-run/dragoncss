@@ -12,7 +12,7 @@ import type { DeviceOutcome, DeviceSet } from '../src/device-lanes.ts';
 import { afterRelease, mergeOutcomes } from '../src/device-lanes.ts';
 import type { AvdDeviceSpec, DeviceHandle, IosDeviceSpec } from '../src/device-run.ts';
 import { ExecError, exec, execAsync, execBytes, spawnChild } from '../src/device-exec.ts';
-import { spawnDetached, stopStartedNow } from '../src/device-run.ts';
+import { noteStartedSim, spawnDetached, stopStartedNow } from '../src/device-run.ts';
 import { admitDevice, admits, DEVICE_MATRIX, DEVICE_MEMORY, DeviceLeftRunning, failBoot, heldBytes, isAncestor, leaseHolder, MEMORY_RESERVE, parentPid, parseVmStat, release, releaseDeviceMemory, requireDeviceLease, stopDevice, stopSpawned, withDeviceSlot } from '../src/device-run.ts';
 import type { HostRun, LanesFile } from '../src/lanes.ts';
 import { readLanesFile } from '../src/lanes.ts';
@@ -280,6 +280,21 @@ describe('early boots and signals (review of #159)', () => {
     expect(p.alive()).toBe(false);
     // An exited one is forgotten, so a later signal stops nothing twice.
     expect(stopStartedNow()).toEqual([]);
+  });
+  it('one stop that throws on a signal does not leave the other devices up', async () => {
+    const p = spawnDetached('sleep', ['60']);
+    noteStartedSim('U-A', 'iPhone 17');
+    noteStartedSim('U-B', 'iPad (A16)');
+    const tried: string[] = [];
+    const out = stopStartedNow((udid) => {
+      tried.push(udid);
+      if (udid === 'U-A') throw new Error('simctl timed out');
+    });
+    expect(tried).toEqual(['U-A', 'U-B']);
+    expect(out).toEqual(['an emulator process (SIGTERM)', 'the iPhone 17 simulator: the stop FAILED: simctl timed out', 'the iPad (A16) simulator']);
+    for (let i = 0; i < 100 && p.alive(); i++) await new Promise((r) => setTimeout(r, 20));
+    expect(p.alive()).toBe(false);
+    expect(stopStartedNow(() => undefined)).toEqual([]);
   });
   it('parity:lanes stops the devices it started on SIGTERM and SIGINT, and prints every device failure when the host phase fails', () => {
     const src = readFileSync(repoPath('packages/parity/src/cli/lanes.ts'), 'utf8');

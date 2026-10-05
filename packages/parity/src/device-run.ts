@@ -419,7 +419,7 @@ async function bootIosHeld(spec: IosDeviceSpec): Promise<DeviceHandle> {
 
 async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Promise<DeviceHandle> {
   for (let attempt = 1; ; attempt++) {
-    if (was === 'Shutdown') startedSims.set(udid, spec.name);
+    if (was === 'Shutdown') noteStartedSim(udid, spec.name);
     if (simState(udid) !== 'Booted') exec('xcrun', ['simctl', 'boot', udid], { allowFailure: 'a simulator that started booting meanwhile refuses a second boot; bootstatus below judges the boot' });
     // Awaited, not blocking, so the cases are computed while the simulator boots.
     const b = await execAsync('xcrun', ['simctl', 'bootstatus', udid, '-b'], { timeoutMs: 300_000, allowFailure: 'a failed boot is retried once from a stopped simulator, then fails naming this output' });
@@ -441,22 +441,31 @@ function serialsRunning(tools: AndroidTools): string[] {
 /** The devices this process started and has not yet stopped: its detached emulators, and the simulators it booted. */
 const startedNow = new Set<{ readonly kill: () => void }>();
 const startedSims = new Map<string, string>();
+/** Records a simulator this process boots, so a signal shuts it down (stopStartedNow) until stopDevice has. */
+export const noteStartedSim = (udid: string, name: string): void => void startedSims.set(udid, name);
 
 /**
  * Stops, without waiting, every device this process started and has not stopped (for a SIGTERM or SIGINT, when no cleanup of
- * the run will run): each detached emulator gets SIGTERM, and each simulator booted here is shut down. Returns what it stopped.
+ * the run will run): each detached emulator gets SIGTERM, and each simulator booted here is shut down. Each stop is tried on its
+ * own, so one that throws does not leave the rest running. Returns what it stopped, and each stop that failed.
  */
-export function stopStartedNow(): string[] {
+export function stopStartedNow(simShutdown: (udid: string) => void = (udid) => void exec('xcrun', ['simctl', 'shutdown', udid], { allowFailure: 'a simulator already shut down refuses; on a signal every one is tried, none waited on' })): string[] {
   const out: string[] = [];
+  const attempt = (what: string, stop: () => void): void => {
+    try {
+      stop();
+      out.push(what);
+    } catch (e) {
+      out.push(`${what}: the stop FAILED: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
   for (const e of [...startedNow]) {
-    e.kill();
     startedNow.delete(e);
-    out.push('an emulator process (SIGTERM)');
+    attempt('an emulator process (SIGTERM)', e.kill);
   }
   for (const [udid, name] of [...startedSims]) {
-    exec('xcrun', ['simctl', 'shutdown', udid], { allowFailure: 'a simulator already shut down refuses; on a signal every one is tried, none waited on' });
     startedSims.delete(udid);
-    out.push(`the ${name} simulator`);
+    attempt(`the ${name} simulator`, () => simShutdown(udid));
   }
   return out;
 }
