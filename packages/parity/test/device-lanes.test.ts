@@ -7,7 +7,7 @@ import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CaseReference, DeviceCheckLane, FailureKind, TrustCase } from '../src/device-lanes.ts';
-import { captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, isSampleRule, readDump, splitByLines, trustFailuresOf } from '../src/device-lanes.ts';
+import { blankCapture, captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, isSampleRule, readDump, splitByLines, STAGE_RGBA, trustFailuresOf } from '../src/device-lanes.ts';
 import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
 import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSamples } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
@@ -143,6 +143,32 @@ describe('dump identity and malformed samples (round 6)', () => {
   it("the capture must be the target's compositor capture", () => {
     expect(kinds({ ...d, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), capture: 'PixelCopy' } })).toContain('capture-kind');
   });
+  // #72 landing device run: whole-window blank captures surfaced as hundreds of pixel mismatches; they are one harness failure.
+  it('a capture that is the bare stage where Chrome paints is one blank-capture failure of the case, not pixel mismatches', () => {
+    const px = d.pixels as NonNullable<typeof d.pixels>;
+    const blankDump = { ...d, pixels: { ...px, samples: px.samples.map((s) => ({ ...s, rgba: [...STAGE_RGBA] })) } };
+    const o = evaluateCase('ios', n, 3, blankDump, ref);
+    expect(o.failures.filter((f) => f.lane === 'device-pixels').map((f) => [f.kind, f.node])).toEqual([['blank-capture', 'capture']]);
+    expect(o.failures.find((f) => f.kind === 'blank-capture')?.detail).toMatch(new RegExp(`^blank capture: either a harness fault or nothing painted; the capture is the stage colour \\[255,255,255,255\\] at all ${px.samples.length} samples, where Chrome paints other colours at \\d+$`));
+    expect(o.passingSamples).toEqual([]);
+    // One sample that is not the stage makes the capture an ordinary one, judged sample by sample.
+    const painted = px.samples.findIndex((s) => s.rgba.some((v, k) => v !== STAGE_RGBA[k]));
+    expect(painted).toBeGreaterThan(-1);
+    const partial = { ...d, pixels: { ...px, samples: px.samples.map((s, i) => (i === painted ? s : { ...s, rgba: [...STAGE_RGBA] })) } };
+    const kindsOf = evaluateCase('ios', n, 3, partial, ref).failures.filter((f) => f.lane === 'device-pixels').map((f) => f.kind);
+    expect(kindsOf.length).toBeGreaterThan(0);
+    expect(kindsOf.every((k) => k === 'pixel')).toBe(true);
+  });
+  it('blankCapture: a stage-coloured capture is blank only where Chrome paints another colour at one of its samples', () => {
+    const img = (rgba: readonly number[]) => ({ width: 2, height: 1, data: new Uint8Array([...rgba, ...STAGE_RGBA]) });
+    const white = [{ x: 0, y: 0, rgba: [...STAGE_RGBA] }, { x: 1, y: 0, rgba: [...STAGE_RGBA] }];
+    expect(blankCapture(white, img([0, 0, 0, 255]))).toMatch(/at all 2 samples, where Chrome paints other colours at 1$/);
+    expect(blankCapture(white, img(STAGE_RGBA))).toBeNull();
+    expect(blankCapture([{ x: 0, y: 0, rgba: [254, 255, 255, 255] }, white[1] as (typeof white)[number]], img([0, 0, 0, 255]))).toBeNull();
+    expect(blankCapture([], img([0, 0, 0, 255]))).toBeNull();
+    // A sample outside the Chrome raster counts as no paint (checkCasePixels reports the point mismatch itself).
+    expect(blankCapture([{ x: 5, y: 0, rgba: [...STAGE_RGBA] }], img([0, 0, 0, 255]))).toBeNull();
+  });
   it('an unknown sample rule is a pixel failure, not a crash of the run', () => {
     const samples = (d.pixels as NonNullable<typeof d.pixels>).samples.map((s, i) => (i === 0 ? { ...s, rule: 'bogus:x' } : s));
     const o = evaluateCase('ios', n, 3, { ...d, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), samples } }, ref);
@@ -221,5 +247,23 @@ describe('capture trust', () => {
     writeFileSync(dumpFile(dir, n.case.id, 3), JSON.stringify({ ...d, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), width: 1199 } }));
     expect(captureTrust(dir, [tc], 3, [0, 0])[0]?.mismatches).toEqual(['the in-app capture is 1199x900, the raster rule 1200x900']);
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+// #72 landing device run: an image sample failure must name its rule as its node, like every other sample kind, or the
+// device-failures file holds an entry the landing driver's strict parser refuses.
+describe('pixelProblemNode', () => {
+  it('names the rule of every sample kind, hyphenated ones included, and the glyph-position ones, and null for a case-level problem', async () => {
+    const { pixelProblemNode } = await import('../src/device-lanes.ts');
+    const { SAMPLE_RULES } = await import('../src/samples.ts');
+    expect(pixelProblemNode('image-flat:a1:0 at 80,40: native [255,255,255,255], Chrome [230,40,40,255] (channel delta limit 0)')).toBe('image-flat:a1:0');
+    expect(pixelProblemNode('edge:a1:image-left: Chrome shows an edge 3.000 device px along the scanline, the native capture none')).toBe('edge:a1:image-left');
+    expect(pixelProblemNode('interior:a1 at 72,22: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)')).toBe('interior:a1');
+    for (const k of SAMPLE_RULES) expect(pixelProblemNode(`${k}:n3:1 at 1,2: native [0,0,0,255], Chrome [1,1,1,255]`), k).toBe(`${k}:n3:1`);
+    // Glyph-position problems (native-compare.ts) keep their node too; parity:glyph-b3 reads it from the failure list.
+    expect(pixelProblemNode('centre:t1:line0:x: glyph centre at 12.500 device px, Chrome 13.000; differs by more than 0.5 device px')).toBe('centre:t1:line0:x');
+    expect(pixelProblemNode('bottom:t1:line0:y: glyph bottom edge at 40.000 device px, Chrome 41.000; differs by more than 0.5 device px')).toBe('bottom:t1:line0:y');
+    expect(pixelProblemNode('the dump has no pixels')).toBeNull();
+    expect(pixelProblemNode('raster rule: 800x600, the capture 800x601')).toBeNull();
   });
 });

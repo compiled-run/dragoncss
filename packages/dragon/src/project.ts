@@ -2,6 +2,10 @@
 // Every reachable assignment is resolved, checked and lowered as its own case; nothing is deduplicated (docs/api.md §7).
 import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
+import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced.ts';
+import { compileImages, imageMapProblem } from './images/compile.ts';
+import type { CompiledImages } from './images/compile.ts';
+import type { ImageAssetMap } from './images/manifest.ts';
 import { CanonicalText, canonicalJson, sha256Hex } from './digest.ts';
 import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
@@ -159,6 +163,8 @@ export type InternalRecord = {
   readonly fonts: FamilyKeyContext;
   /** T065: the transitions and animations of the native band's cases, null when the analysis did not run. */
   readonly animation: AnimationAnalysis | null;
+  /** REPL-a: the bytes of every drawable image src, for the native image paint. */
+  readonly images: ReadonlyMap<string, Uint8Array>;
 };
 
 const records = new WeakMap<object, InternalRecord>();
@@ -235,13 +241,17 @@ function fontMapMessage(e: FontMapError): string {
   }
 }
 
-function validateConfig(config: { projectId: unknown; targets: unknown; fonts?: unknown }): Diagnostic[] {
+function validateConfig(config: { projectId: unknown; targets: unknown; fonts?: unknown; images?: unknown }): Diagnostic[] {
   const out: Diagnostic[] = [];
   const bad = (message: string, manual: string): void => {
     out.push(diagnostic('DRAGON_CONFIG_INVALID', { origin: unlocated('configuration'), message, manual }));
   };
   if (typeof config.projectId !== 'string' || config.projectId.length === 0) bad('projectId must be a non-empty string', 'Set projectId.');
-  for (const k of Object.keys(config)) if (k !== 'projectId' && k !== 'targets' && k !== 'fonts') bad(`unknown configuration key "${k}"`, `Remove ${k}.`);
+  for (const k of Object.keys(config)) if (k !== 'projectId' && k !== 'targets' && k !== 'fonts' && k !== 'images') bad(`unknown configuration key "${k}"`, `Remove ${k}.`);
+  if (config.images !== undefined) {
+    const problem = imageMapProblem(config.images);
+    if (problem !== null) bad(problem, 'Set images to { "<src>": "<snapshot asset id>" }.');
+  }
   if (config.fonts !== undefined) {
     const v = validateFontMap(config.fonts);
     if (!v.ok) for (const e of v.errors) out.push(diagnostic('DRAGON_FONT_MAP_INVALID', { origin: unlocated('configuration fonts'), message: fontMapMessage(e) }));
@@ -284,6 +294,13 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
         const refusal = attributeRefusal(n.tag, a.name);
         if (refusal !== null) {
           diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${refusal}`, manual: 'Remove the attribute, or keep only rendering-neutral attributes (id, data-*, aria-*, role, title, ui-*); select state with a class or an attribute.' }));
+        }
+        for (const c of a.value) {
+          if (c.value === null) continue;
+          const dimension = dimensionRefusal(n.tag, a.name, c.value);
+          if (dimension !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${dimension}`, manual: 'Give the attribute a width or height in CSS px, or set the size in CSS.' }));
+          const src = iframeSrcRefusal(n.tag, a.name, c.value);
+          if (src !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${src}`, manual: 'Give the iframe an absolute https URL.' }));
         }
       }
       checkTemplates(n.children, diagnostics);
@@ -752,7 +769,7 @@ function profileDigest(profile: SupportProfile): string {
 /** A property name css-tree's default lexer knows (the MDN data it bundles): its css-tree.d.ts declares only what the parser uses. */
 const isKnownProperty = (name: string): boolean => (cssTree as unknown as { readonly lexer: { getProperty(n: string): unknown } }).lexer.getProperty(name) !== null;
 
-function analyze<K extends string>(config: { projectId: string; targets: object; fonts?: unknown }, configDiagnostics: readonly Diagnostic[], options: Resolved, input: FrontEndResult): Analysis<K> {
+function analyze<K extends string>(config: { projectId: string; targets: object; fonts?: unknown; images?: ImageAssetMap }, configDiagnostics: readonly Diagnostic[], options: Resolved, input: FrontEndResult): Analysis<K> {
   const targets = Object.keys(config.targets).filter((k): k is KnownTarget => (KNOWN_TARGETS as readonly string[]).includes(k)).sort();
   const diagnostics: Diagnostic[] = [...configDiagnostics];
   const profiles = options.supportProfiles;
@@ -760,6 +777,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   let linked: Linked | null = null;
   let cases: CaseResult[] = [];
   let fonts: ProjectFonts | null = null;
+  let images: CompiledImages | null = null;
   // MQ-a: every band's cases, band 0 first (one entry for a sheet without @media), and the band the native output comes from.
   let bandCases: { readonly band: Band | null; readonly cases: CaseResult[] }[] = [];
   let animation: AnimationAnalysis | null = null;
@@ -842,6 +860,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       bandCases = passes.map((p) => p.result);
       diagnostics.push(...mergePasses(passes.map((p) => p.diagnostics)));
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
+      // REPL-a: the images every band's resolved cases reference, read once.
+      const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
+      images = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]))), config.images, assetBytes, diagnostics);
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
       animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
       if (options.profiles === 'enforce') gateAnimationFeatures(animation, targets, (t) => profileFor(profiles, t as KnownTarget), diagnostics);
@@ -904,6 +925,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     config,
     input: canonicalInput(input),
     ...(fontsDigest === null ? {} : { fonts: fontsDigest }),
+    // The image manifest enters the digest only when the project has images or an image map, as fonts do.
+    ...(images === null || images.digestInput === null ? {} : { images: images.digestInput }),
   };
   // A sheet with one band keeps its digest; with more, the bands and the fold viewport are compilation inputs (MQ-a).
   const multiBand = bands !== null && bands.partition.bands.length > 1;
@@ -919,7 +942,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     for (const c of cases) {
       if (c.resolved === null) continue;
       try {
-        lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua));
+        lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals));
       } catch (e) {
         if (!(e instanceof LoweringError)) throw e;
         const id = `${e.nodeId}|${e.property}|${e.message}`;
@@ -971,6 +994,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       linked,
       fonts: fonts === null ? NO_FONTS : fonts.keys,
       animation,
+      images: images === null ? new Map() : images.bytes,
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,
@@ -1018,6 +1042,10 @@ function valueOrigin(root: ResolvedElement, address: string, p: Longhand, chrome
   if (v.declaration !== null) return authored(v.declaration.span);
   if (v.origin === 'inherited' && hit.parent !== null) return { kind: 'inherited', element: hit.parent.element.address, from: valueOrigin(root, hit.parent.element.address, p, chromeVersion) };
   if (v.origin === 'user-agent') return { kind: 'builtin', dataset: `chrome-${chromeVersion} computed`, entry: `${hit.el.element.tag} ${p}` };
+  if (v.origin === 'presentational-hint') {
+    const attribute = hit.el.element.node.attributes.find((a) => a.name === (p === 'aspect-ratio' ? 'width' : p));
+    return attribute === undefined ? hit.el.element.node.origin : attribute.origin;
+  }
   if (v.origin === 'environment') return { kind: 'builtin', dataset: 'reference environment', entry: `${p} ${valueToString(v.value)}` };
   return { kind: 'builtin', dataset: `@webref/css ${webrefVersion} initial`, entry: p };
 }
@@ -1059,9 +1087,13 @@ function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>, chromeV
       assignment: c.assignment,
       property: q.property,
       value: valueToString(v.value),
-      cascade: v.origin,
+      // A presentational hint is author-level in the cascade (css-cascade-5 §6.1); its origin names the attribute.
+      cascade: v.origin === 'presentational-hint' ? 'author' : v.origin,
       origin: valueOrigin(c.resolved, address, p, chromeVersion),
-      losing: v.losing.map((d) => ({ origin: authored(d.span), reason: 'lower specificity or earlier in the style order' })),
+      losing: v.losing.map((d) => ({
+        origin: authored(d.span),
+        reason: d === v.forcedOver ? `the user agent forces ${q.property} on this element whatever the cascade says` : 'lower specificity or earlier in the style order',
+      })),
       support: used === null || used === undefined ? null : { feature: used.feature, context: used.context, status: statusOf(profile, used.feature, used.context) },
     });
   }
@@ -1092,7 +1124,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
   };
   const configDiagnostics = validateConfig(config);
-  const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown };
+  const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown; images?: ImageAssetMap };
   return deepFreeze({
     compile(input: FrontEndResult): Compiled<K> {
       const a = analyze<K>(snapshotConfig, configDiagnostics, resolved, input);
