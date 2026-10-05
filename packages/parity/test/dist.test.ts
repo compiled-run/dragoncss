@@ -8,7 +8,8 @@ import { join, relative } from 'node:path';
 import type { Browser, Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Compiled, FrontEndResult } from 'dragon';
-import { createProject } from 'dragon';
+// createProject is the public entry's own (create-project.ts); the internal entry 'dragon' resolves to leaves it out.
+import { createProject } from '../../dragon/src/index.ts';
 import { launchChrome } from '../src/chrome.ts';
 import { fixtureInput } from '../src/cases.ts';
 import { PROJECT_ID } from '../src/fixture-reader.ts';
