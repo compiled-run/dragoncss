@@ -27,7 +27,8 @@ Everything else here is a default you apply without asking.
   `gh workflow run regen-on-ci.yml -f branch=<branch>`). Wait for the github-actions[bot] commit "Regenerate on CI: pnpm regen
   (regen-on-ci)" or the run summary "already at a fixed point; no commit", then `git pull --ff-only`. Never push to the
   branch while a regen-on-ci run is in progress (its push would be refused; label again). A local regen through the queue
-  stays allowed when the runners are down or slow.
+  stays allowed when the runners are down or slow: if your regen-on-ci run has been queued for 15 minutes or more, run
+  `pnpm regen` locally through /tmp/job.sh instead (the Mac is mostly idle now), commit its outputs and push.
 - Catch up (`git merge origin/master`, then regen) only when GitHub says CONFLICTING, the driver asks,
   or your parent has merged. Never rebuild a branch as -v2: merge its parent forward.
 - Device-record tests that fail only for a missing device run are "device step pending"
