@@ -3,7 +3,7 @@
 // the device scale (border widths, the padding-box clip, the text instance size) come from the TS engine with the same helpers
 // the generated code runs on the device through the translated engine. The digest of an expected dump is embedded in the
 // generated code, keyed by case and DPR. The compiler core imports the engine for types only, so the host passes the TS engine in.
-import type { Edges, EngineFaults, InlineChild, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, SnappedRect, TextMeasurer } from '@dragon/layout';
+import type { Edges, EngineFaults, InlineChild, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, ObjectRect, ReplacedLeaf, ReplacedPaint, SnappedRect, TextMeasurer } from '@dragon/layout';
 import { canonicalJson, sha256Hex } from '../digest.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { NativeBackend, NativeProgram, ProgramNode, ProgramWrite } from '../lower/native-program.ts';
@@ -35,17 +35,23 @@ export type ExpectedEngine = {
   readonly zoomInput: (input: LayoutInput, faults: EngineFaults) => LayoutInput;
   readonly noFaults: EngineFaults;
   readonly resolveBorder: (style: LayoutStyle, devicePixelRatio: number) => Edges;
+  /** REPL-a: padding against a containing block's content width, and a replaced box's paint rects (layout paint.ts). */
+  readonly resolvePadding: (style: LayoutStyle, cbInline: number) => Edges;
+  readonly replacedPaint: (leaf: ReplacedLeaf, content: ObjectRect) => ReplacedPaint;
   readonly luPerPx: number;
   readonly platformFontSize: (px: number) => number;
   readonly zoomFontSize: (px: number, zoom: number) => number;
   readonly float32: (x: number) => number;
 };
 
+/** A replaced box's paint rects in device px relative to its snapped border box: [x, y, width, height]; drawn null for none. */
+export type ReplacedGeometry = { readonly content: readonly number[]; readonly dest: readonly number[]; readonly drawn: readonly number[] | null };
+
 /**
- * The device values of one node at one scale, from the engine: border widths in whole device px, the snapped border box, and a
- * text run's computed font size in device px from the resolved input (null for a box).
+ * The device values of one node at one scale, from the engine: border widths in whole device px, the snapped border box, a text
+ * run's computed font size in device px from the resolved input (null for a box), and for a replaced box its paint rects.
  */
-export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly fontSize: number | null };
+export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly fontSize: number | null; readonly replaced: ReplacedGeometry | null };
 
 const rgba = (c: { r: number; g: number; b: number; alpha: number }): number[] => [c.r, c.g, c.b, c.alpha];
 
@@ -119,6 +125,48 @@ export function borderDevicePx(engine: ExpectedEngine, input: LayoutInput): Map<
 
 const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(`${r.parent}:line`);
 
+/**
+ * The paint rects of every replaced leaf of the zoomed input, from its content box in absolute LU: the border box less its
+ * borders and its padding against the parent's content width (the viewport's for the root), as the device computes them.
+ */
+export function replacedGeometries(engine: ExpectedEngine, input: LayoutInput, boxes: readonly LayoutRect[]): Map<string, ReplacedPaint> {
+  const zoomed = engine.zoomInput(input, engine.noFaults);
+  const abs = new Map<string, { x: number; y: number; width: number; height: number }>();
+  for (const b of boxes) {
+    const p = b.parent === null ? undefined : abs.get(b.parent);
+    abs.set(b.id, { x: (p === undefined ? 0 : p.x) + b.x, y: (p === undefined ? 0 : p.y) + b.y, width: b.width, height: b.height });
+  }
+  const out = new Map<string, ReplacedPaint>();
+  const contentWidth = (id: string, style: LayoutStyle, cb: number): number => {
+    const r = abs.get(id);
+    if (r === undefined) throw new Error(`no laid-out box ${id}`);
+    const bor = engine.resolveBorder(style, zoomed.devicePixelRatio);
+    const pad = engine.resolvePadding(style, cb);
+    return r.width - bor.left - bor.right - pad.left - pad.right;
+  };
+  const walk = (b: LayoutBox, cb: number): void => {
+    const inner = contentWidth(b.id, b.style, cb);
+    for (const c of b.children) {
+      if (c.kind === 'box') walk(c, inner);
+      else if (c.kind === 'replaced') {
+        const r = abs.get(c.id);
+        if (r === undefined) throw new Error(`no laid-out box ${c.id}`);
+        const bor = engine.resolveBorder(c.style, zoomed.devicePixelRatio);
+        const pad = engine.resolvePadding(c.style, inner);
+        const left = bor.left + pad.left;
+        const top = bor.top + pad.top;
+        const content = { x: r.x + left, y: r.y + top, width: Math.max(0, r.width - left - bor.right - pad.right), height: Math.max(0, r.height - top - bor.bottom - pad.bottom) } as ObjectRect;
+        out.set(c.id, engine.replacedPaint(c, content));
+      }
+    }
+  };
+  walk(zoomed.root, zoomed.viewport.width * engine.luPerPx);
+  return out;
+}
+
+/** A pixel rect relative to a snapped box. */
+const relative = (r: { x: number; y: number; width: number; height: number }, box: SnappedRect): number[] => [r.x - box.left, r.y - box.top, r.width, r.height];
+
 /** The expected dump of a program at a device DPR: every laid-out node (engine order), its native class and applied map. */
 export function expectedDump(p: NativeProgram, caseId: string, viewport: { readonly width: number; readonly height: number }, dpr: number, engine: ExpectedEngine): ExpectedDump {
   const input = programInput(p, viewport, dpr);
@@ -127,13 +175,16 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
   const snapped = engine.snapEdges(out.boxes);
   const borders = borderDevicePx(engine, input);
   const fontSizes = resolvedFontSizes(engine, input);
+  const replaced = replacedGeometries(engine, input, out.boxes);
   const byId = new Map(p.nodes.map((n) => [n.id, n]));
   const nodes: ExpectedNode[] = [];
   out.boxes.forEach((r, i) => {
     if (isLine(r)) return;
     const n = byId.get(r.id);
     if (n === undefined) throw new Error(`${caseId}@${dpr}: the engine laid out ${r.id}, which the program does not have`);
-    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box: snapped[i] as SnappedRect, fontSize: fontSizes.get(r.id) ?? null };
+    const box = snapped[i] as SnappedRect;
+    const rp = replaced.get(r.id);
+    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box, fontSize: fontSizes.get(r.id) ?? null, replaced: rp === undefined ? null : { content: relative(rp.content, box), dest: relative(rp.dest, box), drawn: rp.drawn === null ? null : relative(rp.drawn, box) } };
     const applied: { [key: string]: JsonValue } = {};
     for (const w of n.writes) applied[w.key] = appliedValue(engine, p.backend, w, dpr, g);
     nodes.push({ id: n.id, kind: n.kind, native: n.native, applied });

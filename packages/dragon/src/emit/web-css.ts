@@ -59,6 +59,8 @@ export function valueText(v: CssValue): string {
       return serializeColor(v.value);
     case 'ratio':
       return `${v.auto ? 'auto ' : ''}${cssNumber(v.width)} / ${cssNumber(v.height)}`;
+    case 'position':
+      return `${cssNumber(v.x.value)}${v.x.unit} ${cssNumber(v.y.value)}${v.y.unit}`;
     case 'other':
       return v.text;
   }

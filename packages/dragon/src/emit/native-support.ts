@@ -223,6 +223,11 @@ public final class DragonBoxView: UIView, DragonNodeView {
   public let dragonParent: String?
   /// The shape of the last layout, passed to every paint stage.
   public var dragonShape = DragonBoxShape(edges: [0, 0, 0, 0], borders: [0, 0, 0, 0])
+  /// REPL-a: a replaced box's content box, destination rect and drawn part in device px relative to the box ([x, y, width,
+  /// height]), from the translated engine after layout (paint.ts replacedPaint); nil for a box that is not replaced.
+  public var dragonReplacedContent: [Double]? = nil
+  public var dragonReplacedDest: [Double]? = nil
+  public var dragonReplacedDrawn: [Double]? = nil
 ${boxMembers('uikit')}  public init(dragonId: String, kind: String, parent: String?) {
     self.dragonId = dragonId
     self.dragonKind = kind
@@ -556,6 +561,7 @@ public final class DragonTree {
     let zoomed = try layout_zoomInput(input, block_NO_ENGINE_FAULTS)
     var zBoxes: [String: LayoutBox] = [:]
     var zStyles: [String: LayoutStyle] = [:]
+    var zLeaves: [(String, ReplacedLeaf)] = []
     var zParent: [String: String] = [:]
     // A text leaf's, inline box's or <br>'s container is the block container of its inline formatting context, through any
     // inline boxes.
@@ -574,7 +580,7 @@ public final class DragonTree {
       for c in b.children.items {
         if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
         else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
-        else if let rl = c as? ReplacedLeaf { zParent[rl.id.description] = b.id.description; zStyles[rl.id.description] = rl.style }
+        else if let rl = c as? ReplacedLeaf { zParent[rl.id.description] = b.id.description; zStyles[rl.id.description] = rl.style; zLeaves.append((rl.id.description, rl)) }
         else if let ib = c as? InlineBox { walkInline(ib, b.id.description) }
         else if let br = c as? LineBreak { walkInline(br, b.id.description) }
       }
@@ -637,6 +643,21 @@ public final class DragonTree {
       let w = r.width - bor.left - bor.right - pad.left - pad.right
       contentCache[id] = w
       return w
+    }
+    // REPL-a: each replaced box's paint rects from its content box (border box less borders and padding against the parent's
+    // content width), through the translated engine; the paint modules read them in their after-layout hooks and stages.
+    for (id, leaf) in zLeaves {
+      guard let bv = views[id] as? DragonBoxView, let e = edges[id], let a = abs.get(leaf.id), let pId = zParent[id] else { fatalError("dragon: replaced \(id) is not placed") }
+      let pad = try box_resolvePadding(leaf.style, try contentWidth(pId))
+      let bor = try box_resolveBorder(leaf.style, zoomed.devicePixelRatio)
+      let content = ObjectRect(a.x + bor.left + pad.left, a.y + bor.top + pad.top, max(0, a.width - bor.left - bor.right - pad.left - pad.right), max(0, a.height - bor.top - bor.bottom - pad.top - pad.bottom))
+      let p = try paint_replacedPaint(leaf, content)
+      func rel(_ r: PixelRect) -> [Double] { return [r.x - e[0], r.y - e[1], r.width, r.height] }
+      bv.dragonReplacedContent = rel(p.content)
+      bv.dragonReplacedDest = rel(p.dest)
+      bv.dragonReplacedDrawn = p.drawn.map(rel)
+      dragonAfterLayout(bv, bv.dragonShape, s)
+      bv.setNeedsDisplay()
     }
     for id in order {
       guard let tv = views[id] as? DragonTextView else { continue }
@@ -825,6 +846,9 @@ fun dragonCheckedInt(v: Double, what: String): Int {
 
 /** Round half up to whole device px (Blink LayoutUnit::Round), for a live text extent the native text engine measured. */
 fun dragonHalfUp(v: Double): Double = kotlin.math.floor(v + 0.5)
+
+/** The whole device px covering a rect given as x, y, width, height in device px: left, top, right, bottom. */
+fun dragonCoveringPx(r: DoubleArray): IntArray = intArrayOf(kotlin.math.floor(r[0]).toInt(), kotlin.math.floor(r[1]).toInt(), kotlin.math.ceil(r[0] + r[2]).toInt(), kotlin.math.ceil(r[1] + r[3]).toInt())
 `;
 
 const KOTLIN_FONT_TABLES = String.raw`package dev.dragon.views
@@ -1030,6 +1054,13 @@ class DragonBoxShape(val edges: DoubleArray, val borders: DoubleArray, val radii
 class DragonBoxView(ctx: Context, override val dragonId: String, override val dragonKind: String, override val dragonParent: String?) : DragonGroup(ctx), DragonNodeView {
   /** The shape of the last layout, passed to every paint stage. */
   var dragonShape = DragonBoxShape(DoubleArray(4), DoubleArray(4))
+  /**
+   * REPL-a: a replaced box's content box, destination rect and drawn part in device px relative to the box (x, y, width, height),
+   * from the translated engine after layout (paint.ts replacedPaint); null for a box that is not replaced.
+   */
+  var dragonReplacedContent: DoubleArray? = null
+  var dragonReplacedDest: DoubleArray? = null
+  var dragonReplacedDrawn: DoubleArray? = null
 ${boxMembers('android-views')}  val dragonContainer: ViewGroup get() = dragonClipView ?: this
   override fun onDraw(canvas: Canvas) {
     super.onDraw(canvas)
@@ -1233,7 +1264,10 @@ import dev.dragon.layout.LayoutInput
 import dev.dragon.layout.LayoutRect
 import dev.dragon.layout.LayoutResult_ok
 import dev.dragon.layout.LayoutStyle
+import dev.dragon.layout.ObjectRect
+import dev.dragon.layout.PixelRect
 import dev.dragon.layout.ReplacedLeaf
+import dev.dragon.layout.paint_replacedPaint
 import dev.dragon.layout.TextLeaf
 import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
@@ -1326,6 +1360,7 @@ class DragonTree(val context: Context) {
     val zoomed = layout_zoomInput(input, block_NO_ENGINE_FAULTS)
     val zBoxes = HashMap<String, LayoutBox>()
     val zStyles = HashMap<String, LayoutStyle>()
+    val zLeaves = ArrayList<ReplacedLeaf>()
     val zParent = HashMap<String, String>()
     // A text leaf's, inline box's or <br>'s container is the block container of its inline formatting context, through any
     // inline boxes.
@@ -1343,7 +1378,7 @@ class DragonTree(val context: Context) {
       zStyles[b.id] = b.style
       for (c in b.children) {
         if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) } else if (c is TextLeaf) zParent[c.id] = b.id
-        else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style }
+        else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style; zLeaves.add(c) }
         else if (c is InlineBox) walkInline(c, b.id)
         else if (c is LineBreak) walkInline(c, b.id)
       }
@@ -1409,6 +1444,25 @@ class DragonTree(val context: Context) {
       val w = r.width - bor.left - bor.right - pad.left - pad.right
       contentCache[id] = w
       return w
+    }
+    // REPL-a: each replaced box's paint rects from its content box (border box less borders and padding against the parent's
+    // content width), through the translated engine; the paint modules read them in their after-layout hooks and stages.
+    for (leaf in zLeaves) {
+      val id = leaf.id
+      val bv = views[id] as? DragonBoxView ?: throw IllegalStateException("dragon: replaced " + id + " has no box view")
+      val e = edges[id] ?: throw IllegalStateException("dragon: replaced " + id + " is not placed")
+      val a = abs.get(id) ?: throw IllegalStateException("dragon: no absolute rect for " + id)
+      val pId = zParent[id] ?: throw IllegalStateException("dragon: replaced " + id + " has no parent")
+      val pad = box_resolvePadding(leaf.style, contentWidth(pId))
+      val bor = box_resolveBorder(leaf.style, zoomed.devicePixelRatio)
+      val content = ObjectRect(a.x + bor.left + pad.left, a.y + bor.top + pad.top, maxOf(0.0, a.width - bor.left - bor.right - pad.left - pad.right), maxOf(0.0, a.height - bor.top - bor.bottom - pad.top - pad.bottom))
+      val p = paint_replacedPaint(leaf, content)
+      fun rel(r: PixelRect): DoubleArray = doubleArrayOf(r.x - e[0], r.y - e[1], r.width, r.height)
+      bv.dragonReplacedContent = rel(p.content)
+      bv.dragonReplacedDest = rel(p.dest)
+      bv.dragonReplacedDrawn = p.drawn?.let { rel(it) }
+      dragonAfterLayout(bv, bv.dragonShape, scale)
+      bv.invalidate()
     }
     for (id in order) {
       val tv = views[id] as? DragonTextView ?: continue
