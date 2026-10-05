@@ -1,7 +1,7 @@
 // The CI full test's split (scripts/test-shards.ts): the runner group of every file, and shards balanced by recorded durations
 // that hold every file of their group exactly once.
 import { describe, expect, it } from 'vitest';
-import { durationsOf, groupOf, parseDurations, plan, testFiles } from '../../../scripts/test-shards.ts';
+import { costs, durationsOf, groupOf, parseDurations, plan, testFiles } from '../../../scripts/test-shards.ts';
 
 describe('test shards', () => {
   it('puts the swiftc and kotlinc builds on the native group, whatever their split into files', () => {
@@ -10,6 +10,9 @@ describe('test shards', () => {
     expect(groupOf('packages/layout/test/units.test.ts')).toBe('platform-free');
     expect(groupOf('packages/parity/test/native-host.test.ts')).toBe('chrome');
     expect(groupOf('packages/parity/test/parity-determinism-1.test.ts')).toBe('chrome');
+    expect(groupOf('packages/parity/test/line-breaks-host-swift.test.ts')).toBe('native');
+    expect(groupOf('packages/parity/test/line-breaks-host-kotlin.test.ts')).toBe('native');
+    expect(groupOf('packages/parity/test/line-breaks.test.ts')).toBe('chrome');
   });
   it('splits longest first onto the least loaded shard, every file once, unknown files at the median', () => {
     const d = { a: 10, b: 7, c: 5, d: 4, e: 1 };
@@ -18,6 +21,12 @@ describe('test shards', () => {
     expect(shards.flat().sort()).toEqual(['a', 'b', 'c', 'd', 'e', 'new']);
     expect(() => plan(['a'], d, 0)).toThrow('shard count must be a positive whole number');
   });
+  it('costs a file split off a recorded one at its share of the parent, the parent too while it remains', () => {
+    const d = { 't/planted-swift.test.ts': 700, 't/parity.test.ts': 400, 't/x.test.ts': 2, 't/y.test.ts': 4, 't/z.test.ts': 6 };
+    const c = costs(['t/planted-swift-a.test.ts', 't/planted-swift-b.test.ts', 't/parity.test.ts', 't/parity-determinism-1.test.ts', 't/new.test.ts'], d);
+    expect(Object.fromEntries(c)).toEqual({ 't/planted-swift-a.test.ts': 350, 't/planted-swift-b.test.ts': 350, 't/parity.test.ts': 200, 't/parity-determinism-1.test.ts': 200, 't/new.test.ts': 6 });
+  });
+
   it('lists every test file vitest runs', () => {
     const files = testFiles();
     expect(files).toContain('packages/parity/test/test-shards.test.ts');

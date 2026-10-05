@@ -4,8 +4,8 @@
 # The groups and the shards are scripts/test-shards.ts's: files split by their recorded durations (scripts/test-durations.json),
 # longest first onto the least loaded shard, so the shards end together. The summary checks every test file ran exactly once.
 #   platform-free: packages/layout and packages/dragon (as ci.yml) on ubuntu-latest, except the native files.
-#   native (xcode-27, 2 shards): the files that compile with swiftc or kotlinc, on the local Mac's Xcode 27.0 (Swift 6.4).
-#   chrome (macos-26, 3 shards): every other file; macOS 26 is where the Chrome captures are byte-identical to the Mac's
+#   native (ubuntu-24.04-arm, 2 shards): the files that compile with swiftc or kotlinc (swift.org Swift 6.4.0, Kotlin 2.4.20).
+#   chrome (macos-26, 2 shards): every other file; macOS 26 is where the Chrome captures are byte-identical to the Mac's
 #     (capture-proof.yml), and kotlinc and the JDK are the versions lanes.json records.
 #   regen: `pnpm regen --check` split as regen-on-ci.yml splits it (the Chrome steps on macos-26, lanes-host on xcode-27); on a
 #     tree at its fixed point both halves change nothing.
@@ -74,77 +74,10 @@ jobs:
           name: report-platform-free
           path: ${{ runner.temp }}/report
 
+  # The native files on arm64 Linux (PM 2026-10-05): swift.org Swift 6.4.0 (the Swift of Xcode 27.0) and Kotlin 2.4.20 on JDK 17,
+  # off the 5-job macOS cap. Proved in run 37257861551: every native test passed on both this and xcode-27, and those tests
+  # compare every corpus result bit for bit (the Swift and Kotlin engines reproduce every suite exactly on both).
   native:
-    needs: resolve
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2]
-    runs-on: xcode-27
-    timeout-minutes: 120
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.resolve.outputs.sha }}
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.33.2
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24.15.0'
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Xcode 27.0 (27A266a), JDK 17 and kotlinc, checked against the host toolchains lanes.json records
-        run: |
-          xcodebuild -version | grep -qx 'Build version 27A266a' || { xcodebuild -version; echo "::error::Xcode is not 27.0 (27A266a), the Mac's"; exit 1; }
-          brew install openjdk@17
-          brew upgrade kotlin || brew install kotlin
-          cat > "$RUNNER_TEMP/toolchain.mts" <<'EOF'
-          import { readFileSync } from 'node:fs';
-          const { swiftTool, kotlinTool } = await import(`${process.env.GITHUB_WORKSPACE}/packages/translate/src/native.ts`);
-          const lanes = JSON.parse(readFileSync('packages/parity/out/lanes.json', 'utf8'));
-          let bad = 0;
-          for (const target of ['ios', 'android']) {
-            const want = lanes.targets.find((t: any) => t.target === target)?.lanes.find((l: any) => l.lane === 'layout-vectors-host')?.run?.toolchain ?? null;
-            const have = target === 'ios' ? (swiftTool()?.version ?? null) : (kotlinTool()?.version ?? null);
-            console.log(`${target}: runner ${JSON.stringify(have)}, lanes.json ${JSON.stringify(want)}`);
-            if (have === null || have !== want) bad++;
-          }
-          if (bad > 0) { console.error('the runner toolchains differ from the committed lanes.json host lanes'); process.exit(1); }
-          EOF
-          node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts"
-      - name: Cache Playwright's Chromium (chromium-1208 for Playwright 1.58.2)
-        uses: actions/cache@v4
-        with:
-          path: ~/Library/Caches/ms-playwright
-          key: playwright-1.58.2-macos-${{ runner.arch }}
-      # The harness builds are content-addressed (sources, flags and compiler version) under packages/translate/out, so restoring
-      # older ones is safe: a build of other inputs is a directory nobody reads.
-      - name: Cache the Swift and Kotlin harness builds
-        uses: actions/cache@v4
-        with:
-          path: |
-            packages/translate/out/swift
-            packages/translate/out/kotlin
-          key: native-builds-xcode27-${{ hashFiles('packages/layout/generated/**', 'packages/translate/harness/**', 'packages/translate/src/**', 'packages/translate/test/**') }}
-          restore-keys: native-builds-xcode27-
-      - name: Playwright 1.58.2 Chromium
-        run: pnpm --filter @dragon/parity exec playwright install chromium
-      - name: vitest run (native files, shard ${{ matrix.shard }}/2)
-        run: |
-          mkdir -p "$RUNNER_TEMP/report"
-          files=(); while IFS= read -r f; do files+=("$f"); done < <(node scripts/test-shards.ts plan native ${{ matrix.shard }} 2)
-          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/native-${{ matrix.shard }}.json"
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: report-native-${{ matrix.shard }}
-          path: ${{ runner.temp }}/report
-
-  # Trial (PM 2026-10-05): the native files on arm64 Linux (swift.org Swift 6.4.0, the Swift of Xcode 27.0; Kotlin 2.4.20 on a
-  # JDK 17), off the 5-job macOS cap. Its report is kept apart (linux-native-*) and does not count yet: the native tests compare
-  # every result bit for bit, so passing every one on both runners is the byte-identity proof before the native group moves here.
-  native-linux:
     needs: resolve
     strategy:
       fail-fast: false
@@ -183,15 +116,15 @@ jobs:
           swiftc --version 2>&1 | tee /dev/stderr | grep -q 'Swift version 6.4 ' || swiftc --version 2>&1 | grep -q 'swift-6.4.0-RELEASE' || { echo "::error::not Swift 6.4.0"; exit 1; }
           kotlinc -version 2>&1 | tee /dev/stderr | grep -q 'kotlinc-jvm 2.4.20' || { echo "::error::not kotlinc 2.4.20"; exit 1; }
           java -version
-      - name: vitest run (native files, shard ${{ matrix.shard }}/2, on Linux)
+      - name: vitest run (native files, shard ${{ matrix.shard }}/2)
         run: |
           mkdir -p "$RUNNER_TEMP/report"
           files=(); while IFS= read -r f; do files+=("$f"); done < <(node scripts/test-shards.ts plan native ${{ matrix.shard }} 2)
-          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/linux-native-${{ matrix.shard }}.json"
+          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/native-${{ matrix.shard }}.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: linux-native-${{ matrix.shard }}
+          name: report-native-${{ matrix.shard }}
           path: ${{ runner.temp }}/report
 
   chrome:
@@ -199,7 +132,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2]
     runs-on: macos-26
     timeout-minutes: 120
     steps:
@@ -231,10 +164,10 @@ jobs:
           brew install openjdk@17
           brew upgrade kotlin || brew install kotlin
           echo "ANDROID_HOME=${ANDROID_HOME:-unset}"; find "${ANDROID_HOME:-/nonexistent}/platforms" -maxdepth 1 2>&1 | tail -3
-      - name: vitest run (every other file, shard ${{ matrix.shard }}/3)
+      - name: vitest run (every other file, shard ${{ matrix.shard }}/2)
         run: |
           mkdir -p "$RUNNER_TEMP/report"
-          files=(); while IFS= read -r f; do files+=("$f"); done < <(node scripts/test-shards.ts plan chrome ${{ matrix.shard }} 3)
+          files=(); while IFS= read -r f; do files+=("$f"); done < <(node scripts/test-shards.ts plan chrome ${{ matrix.shard }} 2)
           npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/chrome-${{ matrix.shard }}.json"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -261,7 +194,7 @@ jobs:
           merge-multiple: true
       - name: Every test's state, and the failures
         env:
-          EXPECT: platform-free.json native-1.json native-2.json chrome-1.json chrome-2.json chrome-3.json
+          EXPECT: platform-free.json native-1.json native-2.json chrome-1.json chrome-2.json
         run: |
           cat > "$RUNNER_TEMP/summary.mjs" <<'EOF'
           // Merges the shards' vitest JSON reports. A missing report is a failure: the run proves nothing about its files.
@@ -302,8 +235,11 @@ jobs:
           name: full-test-results
           path: ${{ runner.temp }}/full-test-results.json
 
+  # After the Chrome shards, so a full test holds at most 3 macOS jobs at once (the free plan runs 5): 2 Chrome shards and
+  # regen-host, then regen-chrome.
   regen-chrome:
-    needs: resolve
+    needs: [resolve, chrome]
+    if: always() && needs.resolve.result == 'success'
     runs-on: macos-26
     timeout-minutes: 240
     steps:
