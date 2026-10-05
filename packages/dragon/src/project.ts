@@ -737,16 +737,16 @@ function canonicalInput(input: FrontEndResult): unknown {
   };
 }
 
-/** Each profile snapshot's canonical JSON, written once: profiles are megabytes, and a snapshot never changes. */
-const profileTexts = new WeakMap<SupportProfile, CanonicalText>();
-function profileText(profile: SupportProfile): CanonicalText {
-  if (!profileSnapshots.has(profile)) throw new Error('profileText reads only profile snapshots');
-  let t = profileTexts.get(profile);
-  if (t === undefined) {
-    t = new CanonicalText(canonicalJson(profile));
-    profileTexts.set(profile, t);
+/** Each profile snapshot's SHA-256 over its canonical JSON, computed once: profiles are megabytes, and a snapshot never changes. */
+const profileDigests = new WeakMap<SupportProfile, string>();
+function profileDigest(profile: SupportProfile): string {
+  if (!profileSnapshots.has(profile)) throw new Error('profileDigest reads only profile snapshots');
+  let d = profileDigests.get(profile);
+  if (d === undefined) {
+    d = `sha256:${sha256Hex(canonicalJson(profile))}`;
+    profileDigests.set(profile, d);
   }
-  return t;
+  return d;
 }
 
 /** A property name css-tree's default lexer knows (the MDN data it bundles): its css-tree.d.ts declares only what the parser uses. */
@@ -897,7 +897,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // The reference platform of the UA dataset and the environment's root font are compilation inputs (docs/api.md §10.1).
     platform: options.ua.platform,
     rootFont: options.rootFont,
-    profiles: targets.map((t) => profileText(profileFor(profiles, t))),
+    profiles: targets.map((t) => profileDigest(profileFor(profiles, t))),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
     direction: options.direction,
