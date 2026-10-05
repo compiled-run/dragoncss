@@ -14,7 +14,7 @@ import { casesOf, fixtureInput } from '../src/cases.ts';
 import { expectedPath } from '../src/committed.ts';
 import { exactInZoomedLu } from '../src/compare.ts';
 import { atDpr, committedDprCapture, runDprCase } from '../src/dpr.ts';
-import { FIXTURE_GROUPS, FIXTURES } from '../src/fixtures.ts';
+import { FIXTURE_GROUPS, FIXTURES, LEGACY_RUN_ORDER } from '../src/fixtures.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { repoPath } from '../src/paths.ts';
@@ -27,8 +27,9 @@ const spec = (id: string): FixtureSpec => FIXTURES.find((f) => f.id === id) as F
 const committed = (c: ParityCase, dpr: number): WebCapture => (dpr === 1 ? (JSON.parse(readFileSync(expectedPath(c.id), 'utf8')) as WebCapture) : committedDprCapture(c.id, dpr));
 
 describe('values group registration (fixture-groups/values.ts)', () => {
-  it('is the last group before SELD-R1b\'s states; every layout fixture runs in both directions and every id carries the values- prefix the corpus keys on', () => {
-    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-2)).toEqual(['values', 'states']);
+  it('is the last legacy group before SELD-R1b\'s states; every layout fixture runs in both directions and every id carries the values- prefix the corpus keys on', () => {
+    // Groups added after the per-feature split run after the legacy groups (fixtures.ts LEGACY_RUN_ORDER).
+    expect(FIXTURE_GROUPS.map((g) => g.id).slice(LEGACY_RUN_ORDER.length - 2, LEGACY_RUN_ORDER.length)).toEqual(['values', 'states']);
     for (const f of VALUES) expect(f.id.startsWith('values-'), f.id).toBe(true);
     for (const f of LAYOUT) expect(f.kind === 'layout' && f.environments, f.id).toEqual(['ltr', 'rtl']);
     expect(LAYOUT.length).toBeGreaterThanOrEqual(25);

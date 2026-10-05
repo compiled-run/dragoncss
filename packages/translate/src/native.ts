@@ -166,11 +166,29 @@ export function pruneCache(cacheRoot: string, keep: string | null, now = Date.no
   }
 }
 
-/** Moves a finished build into its cache directory; a concurrent build of the same key may have won, which is equivalent. */
-function publish(work: string, dir: string): void {
+/**
+ * Moves a finished build into its cache directory. A concurrent build of the same key may have won, which is equivalent. A
+ * directory that lacks the build's artifacts is a stale entry (something deleted files under out/ and left the directories),
+ * which would otherwise block every later publish of the key while the caller runs an artifact that is not there: it is replaced.
+ */
+export function publish(work: string, dir: string): void {
   try {
     renameSync(work, dir);
+    return;
   } catch {
+    // The directory exists: a concurrent winner, or a stale entry.
+  }
+  const artifacts = readdirSync(work).filter((n) => n !== 'src');
+  if (artifacts.every((n) => existsSync(join(dir, n)))) {
+    rmSync(work, { recursive: true, force: true });
+    return;
+  }
+  rmSync(dir, { recursive: true, force: true });
+  try {
+    renameSync(work, dir);
+  } catch (e) {
+    // A concurrent build may have published between the removal and this rename.
+    if (!artifacts.every((n) => existsSync(join(dir, n)))) throw new Error(`could not publish the build ${work} to ${dir}: ${(e as Error).message}`);
     rmSync(work, { recursive: true, force: true });
   }
 }
