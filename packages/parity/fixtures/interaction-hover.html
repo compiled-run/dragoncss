@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.a { width: 100px; height: 20px; background-color: #ccc; }
+.a:hover { background-color: #0c0; }
+.b { width: 50px; height: 10px; background-color: #c0c; }
+.a:hover + .b { margin-left: 10px; }
+.card { width: 120px; padding: 4px; background-color: #eee; }
+.card:hover .title { width: 60px; background-color: #c00; }
+.title { width: 30px; height: 10px; background-color: #999; }
+.song { height: 10px; background-color: #333; }
+.song:hover { background-color: #555; color: #fff; }
+.song.selected { background-color: #090; }
+.tall { width: 50px; height: 10px; background-color: #00c; }
+.tall:hover { height: 30px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="a"></div>
+<div data-dragon-id="b" class="b"></div>
+<div data-dragon-id="card" class="card"><div data-dragon-id="title" class="title"></div><div data-dragon-id="tx">XX</div></div>
+<div data-dragon-id="s1" class="song">X</div>
+<div data-dragon-id="s2" class="song selected">X</div>
+<div data-dragon-id="tall" class="tall"></div>
+</body>
+</html>
