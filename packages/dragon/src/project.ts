@@ -170,6 +170,11 @@ export type InternalRecord = {
   readonly fonts: FamilyKeyContext;
   /** T065: the transitions and animations of the native band's cases, null when the analysis did not run. */
   readonly animation: AnimationAnalysis | null;
+  /**
+   * SELD-R2: the native targets on which a compile outside the parity lanes refuses this document's interaction rules
+   * (nativeInteractionRefusals). In a lanes compile those targets lower, but their cases prove no profile row users could use.
+   */
+  readonly laneOnlyNative: readonly ('ios' | 'android')[];
 };
 
 const records = new WeakMap<object, InternalRecord>();
@@ -850,6 +855,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   // MQ-a: every band's cases, band 0 first (one entry for a sheet without @media), and the band the native output comes from.
   let bandCases: { readonly band: Band | null; readonly cases: CaseResult[] }[] = [];
   let animation: AnimationAnalysis | null = null;
+  let laneOnlyNative: ('ios' | 'android')[] = [];
   let bands: Bands | null = null;
   let nativeBand = 0;
   const valid = configDiagnostics.length === 0 ? validateInput(input, config.projectId, diagnostics) : null;
@@ -875,7 +881,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // T065: the @keyframes blocks parse with the stylesheet, so their refusals come whether or not the analysis runs.
     const keyframesRules = parseKeyframesRules(keyframeSources, diagnostics);
     diagnostics.push(...interactionRefusals(rules));
-    if (!options.interactionLanes) diagnostics.push(...nativeInteractionRefusals(rules, NATIVE_TARGETS.filter((t) => targets.includes(t))));
+    const nativeRefusals = nativeInteractionRefusals(rules, NATIVE_TARGETS.filter((t) => targets.includes(t)));
+    if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
+    else diagnostics.push(...nativeRefusals);
     const conditions = conditionsOf(rules);
     const partition = conditions.length === 0 ? null : band(conditions.map((c) => c.list));
     if (partition !== null && partition.kind === 'refused') {
@@ -1062,6 +1070,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       linked,
       fonts: fonts === null ? NO_FONTS : fonts.keys,
       animation,
+      laneOnlyNative,
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,

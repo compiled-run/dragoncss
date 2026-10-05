@@ -102,6 +102,11 @@ export function interactionPartitionOf(compiled: object, assignment: Assignment)
   return typeof c === 'string' ? null : c.partition;
 }
 
+/** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
+export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
+  return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
+}
+
 /** Dragon's reachable assignments, in its enumeration order, with the initial case marked. */
 export function compiledCases(compiled: object): readonly { readonly assignment: Assignment; readonly isInitial: boolean }[] {
   const record = internalRecord(compiled);

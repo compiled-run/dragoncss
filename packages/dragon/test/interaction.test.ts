@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import type { CompilerFaults, Diagnostic, FrontEndResult, InteractionPartition, InteractionState } from '../src/internal.ts';
 import { interactionPartition, isFocusable } from '../src/analysis/interaction.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
-import { comboIndex, conditionsExclusive, createProjectWith, gatedConditions, HIT_MODELLED, hitUnmodelledFact, interactionCondition, LONGHANDS, NO_FAULTS, stateMembers } from '../src/internal.ts';
+import { comboIndex, conditionsExclusive, createProjectWith, gatedConditions, HIT_MODELLED, hitUnmodelledFact, interactionCondition, laneOnlyNative, LONGHANDS, NO_FAULTS, stateMembers } from '../src/internal.ts';
 import type { ResolvedElement } from '../src/analysis/resolve.ts';
 import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -232,6 +232,11 @@ describe('interaction states: what no target can carry yet', () => {
     // The lanes compile the states on native; a document without interaction rules is not refused anywhere.
     expect(errors(compile({}, css).diagnostics)).toEqual([]);
     expect(errors(compile({}, `${BODY}.a { width: 1px; }`, tree, TARGETS, 'enforce', false).diagnostics)).toEqual([]);
+    // A lanes compile records the targets a user's compile refuses, so its cases prove no native profile row (profile-rows.ts).
+    expect(laneOnlyNative(compile({}, css), 'ios')).toBe(true);
+    expect(laneOnlyNative(compile({}, css), 'android')).toBe(true);
+    expect(laneOnlyNative(compile({}, `${BODY}.a { width: 1px; }`), 'ios')).toBe(false);
+    expect(laneOnlyNative(compile({}, css, tree, { web: {}, ios: { minimum: '15.0' } } as { readonly web: object }), 'android')).toBe(false);
   });
 
   it('refuses transition and animation declarations in an interaction rule on every target, as before SELD-R2', () => {
