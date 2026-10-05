@@ -506,7 +506,8 @@ const admit = (e: Entry, earlier: readonly Entry[]): { merged: string } | { tick
   const ci = waitCi('ci-before', pr.headOid, `#${e.pr} head`, () => parsePrHead(JSON.parse(gh(['pr', 'view', String(e.pr), '--repo', REPO, '--json', 'headRefOid,mergeable']))).mergeable === 'CONFLICTING');
   // Its review must be clean at the current head (GitHub runs no review of a conflicting head, so that waits for the landing commit).
   if (ci === 'success') {
-    const review = run('review-before', ['pnpm', '-s', 'pr:review', String(e.pr), '--wait'], MAIN);
+    // --conflicts-ok: GitHub's CONFLICTING ignores the merge drivers; the merge train below decides (judgedHead).
+    const review = run('review-before', ['pnpm', '-s', 'pr:review', String(e.pr), '--wait', '--conflicts-ok'], MAIN);
     if (review.error !== undefined || review.status !== 0) failed('review-before', review, `pnpm -s pr:review ${e.pr} (before the build)`);
     const out = readFileSync(review.log, 'utf8');
     if (!out.includes(`PR #${e.pr} at ${pr.headOid}`)) throw new LandFailure('review-before', `pr:review judged another head than ${pr.headOid} (log ${review.log})`);
