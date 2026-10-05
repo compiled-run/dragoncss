@@ -527,5 +527,20 @@
     "replaced-demo-rtl": [["body","auto",true,false],["cover","auto",true,false],["html","auto",false,false],["label","auto",true,false],["player","auto",true,false],["record","auto",true,false],["shell","auto",true,false],["song","auto",true,false],["song-cover","auto",true,false],["title","auto",true,false],["video","auto",true,false]],
     "replaced-fit": [["body","auto",true,false],["grid","auto",true,false],["html","auto",false,false],["i0","auto",true,false],["i1","auto",true,false],["i10","auto",true,false],["i11","auto",true,false],["i12","auto",true,false],["i13","auto",true,false],["i14","auto",true,false],["i15","auto",true,false],["i16","auto",true,false],["i17","auto",true,false],["i18","auto",true,false],["i19","auto",true,false],["i2","auto",true,false],["i20","auto",true,false],["i21","auto",true,false],["i22","auto",true,false],["i23","auto",true,false],["i3","auto",true,false],["i4","auto",true,false],["i5","auto",true,false],["i6","auto",true,false],["i7","auto",true,false],["i8","auto",true,false],["i9","auto",true,false]],
     "replaced-fit-rtl": [["body","auto",true,false],["grid","auto",true,false],["html","auto",false,false],["i0","auto",true,false],["i1","auto",true,false],["i10","auto",true,false],["i11","auto",true,false],["i12","auto",true,false],["i13","auto",true,false],["i14","auto",true,false],["i15","auto",true,false],["i16","auto",true,false],["i17","auto",true,false],["i18","auto",true,false],["i19","auto",true,false],["i2","auto",true,false],["i20","auto",true,false],["i21","auto",true,false],["i22","auto",true,false],["i23","auto",true,false],["i3","auto",true,false],["i4","auto",true,false],["i5","auto",true,false],["i6","auto",true,false],["i7","auto",true,false],["i8","auto",true,false],["i9","auto",true,false]]
+  },
+  "refused": {
+    "transform-rotate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
+    "transform-scale": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
+    "transform-translate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
+    "transform-origin": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
+    "transform-nested": "transform on outer, inner, leaf, second: hit testing through transforms is SELD-R2b (T146)",
+    "transform-text": "transform on a, b, c: hit testing through transforms is SELD-R2b (T146)",
+    "transform-matrix": "transform on a0, a1, a2, a3, a4: hit testing through transforms is SELD-R2b (T146)",
+    "transform-demo": "transform on record, one, two, dot, video, button: hit testing through transforms is SELD-R2b (T146)",
+    "transform-clip": "transform on wide, turned: hit testing through transforms is SELD-R2b (T146)",
+    "transform-will-change": "transform on a3, a4: hit testing through transforms is SELD-R2b (T146)",
+    "transform-flex": "transform on i1, i2, i3, i4: hit testing through transforms is SELD-R2b (T146)",
+    "transform-direction": "transform on a0, a1, a2, a3: hit testing through transforms is SELD-R2b (T146)",
+    "transform-direction-rtl": "transform on a0, a1, a2, a3: hit testing through transforms is SELD-R2b (T146)"
   }
 }
