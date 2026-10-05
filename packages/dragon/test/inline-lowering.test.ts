@@ -75,6 +75,22 @@ describe('inline boxes and <br>s in the engine input', () => {
   });
 });
 
+describe('replaced leaves and the line strut (REPL-a with INL1a)', () => {
+  // Review finding 3 on #91: a replaced leaf is a box of its own, not inline content, so it never gives its container a strut.
+  const css = `${CSS} iframe { display: block; border: 0; }`;
+  const shape = (tree: (r: SourceRef) => TreeNode[]): unknown => {
+    const p = iosLayoutProjection(project().compile(inputFor(css, tree)), ENV, []);
+    if (p.kind !== 'ready') throw new Error(`projection blocked: ${p.reason}`);
+    const d = p.input.root.children.flatMap((k) => (k.kind === 'box' ? k.children : [])).find((k) => k.kind === 'box' && k.id === 'd');
+    if (d === undefined || d.kind !== 'box') throw new Error('no box d');
+    return { strut: d.strut === null ? null : d.strut.font.size, children: d.children.map((k) => (k.kind === 'box' ? { box: k.id, strut: k.strut === null ? null : k.strut.font.size } : { [k.kind]: k.id })) };
+  };
+  it('a block holding only a replaced element has no line strut; text beside one goes into an anonymous box that has it', () => {
+    expect(shape((r) => [el(r, 'd', 'div', [], [el(r, 'f', 'iframe')])])).toEqual({ strut: null, children: [{ replaced: 'f' }] });
+    expect(shape((r) => [el(r, 'd', 'div', [], [text(r, 't0', 'a'), el(r, 'f', 'iframe')])])).toEqual({ strut: null, children: [{ box: 'd:anon0', strut: 10 }, { replaced: 'f' }] });
+  });
+});
+
 describe('refusals', () => {
   it('a background on an inline box is refused on ios and android, naming INL1b, and painted on web; a transparent one is not refused', () => {
     // The native runtime places inline box views unpainted until INL1b, so the review's highlighted span must not compile checked there.
