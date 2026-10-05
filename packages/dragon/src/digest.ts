@@ -1,4 +1,5 @@
-// Synchronous SHA-256 (FIPS 180-4) over UTF-8, so the core needs no Node crypto.
+// Synchronous SHA-256 (FIPS 180-4) over UTF-8, so the core needs no Node crypto; under Node the same digest comes from its native
+// hash, which is many times faster on the profile text every compilation hashes.
 
 const K = new Int32Array([
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01,
@@ -10,12 +11,30 @@ const K = new Int32Array([
   0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 ]);
 
+type NativeHash = { update(data: string | Uint8Array, encoding?: 'utf8'): NativeHash; digest(encoding: 'hex'): string };
+type NativeCrypto = { createHash(algorithm: 'sha256'): NativeHash };
+
+/** node:crypto through process.getBuiltinModule when the core runs under Node; null anywhere else. */
+function nativeCrypto(): NativeCrypto | null {
+  const proc = (globalThis as { process?: { getBuiltinModule?: (id: string) => unknown } }).process;
+  const mod = typeof proc?.getBuiltinModule === 'function' ? proc.getBuiltinModule('node:crypto') : undefined;
+  return typeof (mod as Partial<NativeCrypto> | undefined)?.createHash === 'function' ? (mod as NativeCrypto) : null;
+}
+const NATIVE = nativeCrypto();
+
 export function sha256Hex(text: string): string {
-  return sha256HexBytes(utf8(text));
+  // Node's UTF-8 replaces a lone surrogate with U+FFFD, while utf8() keeps its three bytes: such text takes the core's path.
+  if (NATIVE !== null && (text as unknown as { isWellFormed(): boolean }).isWellFormed()) return NATIVE.createHash('sha256').update(text, 'utf8').digest('hex');
+  return sha256HexCore(utf8(text));
 }
 
 /** SHA-256 of raw bytes (assets). */
 export function sha256HexBytes(data: Uint8Array): string {
+  return NATIVE === null ? sha256HexCore(data) : NATIVE.createHash('sha256').update(data).digest('hex');
+}
+
+/** The core's own SHA-256, used wherever Node's is not available. */
+export function sha256HexCore(data: Uint8Array): string {
   const bitLength = data.length * 8;
   const padded = new Uint8Array(((data.length + 9 + 63) >> 6) << 6);
   padded.set(data);
