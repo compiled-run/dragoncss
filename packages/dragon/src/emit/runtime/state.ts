@@ -451,6 +451,10 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'transform':
         // PNT2 integration: a state record holds no transform write; a transformed node of a state program is refused here, by name.
         throw new StateEmitError(`${n.id}: a transform in a state program has no state-node write (PNT2 writes transforms on the static program only)`);
+      case 'replaced-image':
+      case 'foreign-view':
+        // REPL-a draws an image or hosts a web view from its own paint stage; the state runtime does not rebuild either yet.
+        throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;

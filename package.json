@@ -60,7 +60,8 @@
     "parity:hit-capture": "node --conditions=dragon-internal packages/parity/src/cli/hit-capture.ts",
     "parity:hit-report": "node --conditions=dragon-internal packages/parity/src/cli/hit-report.ts",
     "parity:anim-capture": "node --conditions=dragon-internal packages/parity/src/cli/anim-capture.ts",
-    "parity:anim-report": "node --conditions=dragon-internal packages/parity/src/cli/anim-report.ts"
+    "parity:anim-report": "node --conditions=dragon-internal packages/parity/src/cli/anim-report.ts",
+    "parity:anim-vectors": "node --conditions=dragon-internal packages/parity/src/cli/anim-vectors.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",
