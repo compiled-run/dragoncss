@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Corpus, Suite } from '../src/corpus.ts';
 import type { Exec, RunResult } from '../src/native.ts';
+import { CACHE_KINDS } from '../src/build-cache.ts';
 import { allPass, BUILD_CACHE, buildKotlin, cacheMaxBytes, swiftExec, buildSwift, describe as describeRun, execSuite, OUT, outputCause, publish, pruneCache, runSuites, stderrTail, suiteCause, withToolTmp } from '../src/native.ts';
 
 /** The longest a fake harness may run unless a test sets its own limit; below the 30 s test timeout. */
@@ -222,6 +223,19 @@ describe('the machine-wide native build cache', () => {
     expect(names(root, 'swift')).toEqual(['key.build-2', 'used-entry']);
     expect(names(root, 'kotlin')).toEqual(['kept']);
     pruneCache(join(root, 'missing'), null, now);
+  }, TEST_MS);
+
+  it('the device lanes\' app builds (ios-app, apk) are pruned with the harness builds, under the one size cap', () => {
+    const { root, now, make } = setup();
+    make('ios-app', 'old-app', 15);
+    make('ios-app', 'big-app', 3, 300);
+    make('apk', 'new-apk', 0.5, 100);
+    make('swift', 'small', 1, 100);
+    pruneCache(root, null, now, 250);
+    expect(names(root, 'ios-app')).toEqual([]);
+    expect(names(root, 'apk')).toEqual(['new-apk']);
+    expect(names(root, 'swift')).toEqual(['small']);
+    expect(CACHE_KINDS).toEqual(['swift', 'kotlin', 'ios-app', 'apk']);
   }, TEST_MS);
 
   it('the size cap never evicts an entry used in the last 2 hours: it is exceeded and logged instead', () => {
