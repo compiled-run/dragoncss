@@ -294,8 +294,8 @@ describe('interaction states: hit model (R13)', () => {
   const css = BODY + '.h { width: 10px; height: 10px; transform: translateX(5px); } .k:hover { background-color: #0c0; }';
   const body = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'h', ['h']), div(r, 'k', ['k'])];
 
-  // Transform values are not proven in any context yet, so the enforced profiles refuse them first and R13 adds nothing; the
-  // derived profiles compile them, which is what R13 guards.
+  // Since PNT2 (#74) the enforced profiles compile translateX() too, so R13 refuses in both modes (spec §10: the owned rise that
+  // SELD-R2b clears).
   it('refuses an interaction rule on native in a case with an unmodelled paint fact, and not on web', () => {
     expect(otherErrors(compile({}, css, body, TARGETS, 'derive').diagnostics)).toEqual([
       'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover needs Dragon hit testing through transform on h, which is not built yet (package SELD-R2b)',
@@ -303,7 +303,10 @@ describe('interaction states: hit model (R13)', () => {
     ]);
     const web = compile({}, css, body, { web: {} }, 'derive');
     expect(otherErrors(web.diagnostics)).toEqual([]);
-    expect(errors(compile({}, css, body).diagnostics).filter((m) => m.startsWith('DRAGON_UNSUPPORTED_SELECTOR'))).toEqual([]);
+    expect(errors(compile({}, css, body).diagnostics).filter((m) => m.startsWith('DRAGON_UNSUPPORTED_SELECTOR'))).toEqual([
+      'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover needs Dragon hit testing through transform on h, which is not built yet (package SELD-R2b)',
+      'DRAGON_UNSUPPORTED_SELECTOR [android] :hover needs Dragon hit testing through transform on h, which is not built yet (package SELD-R2b)',
+    ]);
     expect(otherErrors(compile({}, css.replace('transform: translateX(5px);', ''), body, TARGETS, 'derive').diagnostics)).toEqual([]);
   });
 
