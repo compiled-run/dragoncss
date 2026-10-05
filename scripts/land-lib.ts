@@ -51,7 +51,9 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   full test, 1 to 8, default 4; 1 lands one PR per proof), LAND_PIPELINE (0 turns off preparing the next batch, in
   LAND_WORKTREE_NEXT, default /tmp/dragon-land-next, while a batch publishes), LAND_DEVICES (local, the default: the device lanes
   under /tmp/device-lease.sh; ci: device-lanes.yml on GitHub runners for each position's tree; the local run until master has
-  device-lanes.yml), LAND_DEVICES_WAIT (seconds, 7200)`;
+  device-lanes.yml), LAND_DEVICES_WAIT (seconds, 7200), LAND_TEST (local, the default: pnpm test here; ci: full-test.yml on GitHub
+  runners for each proved tree; the local test until master has full-test.yml), LAND_TEST_WAIT (seconds, 5400), LAND_CI_START (seconds a
+  CI run may go without starting a job before the step runs locally instead, default 900)`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;

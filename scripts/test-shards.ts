@@ -21,7 +21,7 @@ const NATIVE = /^packages\/translate\/test\/(native|planted)-[^/]*\.test\.ts$|^p
  * native shards, which require both toolchains, whatever its name: off them a missing toolchain reads as "blocked (owner
  * tooling)", which those tests accept.
  */
-export const TOOLCHAIN_USE = /\b(swiftTool|kotlinTool|runTarget|buildSwift|buildKotlin|swiftExec|kotlinExec|runHostLane|runTargetOnDevices)\(|['"`](swiftc|kotlinc|xcrun)['"`]/;
+export const TOOLCHAIN_USE = /\b(swiftTool|kotlinTool|runTarget|buildSwift|buildKotlin|swiftExec|kotlinExec|runHostLane|runTargetOnDevices|buildIos|buildAndroid|buildIosHarness|buildAndroidHarness)\(|['"`](swiftc|kotlinc|xcrun)['"`]/;
 
 export function groupOf(file: string, text: string = ''): Group {
   if (NATIVE.test(file) || TOOLCHAIN_USE.test(text)) return 'native';
