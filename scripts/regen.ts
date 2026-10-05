@@ -19,7 +19,7 @@ import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readdirSync, rea
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { compilePattern, matchSegments } from './macroscope-ignore.ts';
-import { importClosure, lockClosure, parseLock, type ReadText, scanSource, type Tree, type Workspace, workspaceOf } from './regen-inputs.ts';
+import { importClosure, lockClosure, NODE_IMPORT_CONDITIONS, parseLock, type ReadText, scanSource, type Tree, type Workspace, workspaceOf } from './regen-inputs.ts';
 import { BG2 } from './regen-steps/bg2.ts';
 import { OVFL } from './regen-steps/ovfl.ts';
 import { PNT1 } from './regen-steps/pnt1.ts';
@@ -78,10 +78,10 @@ const LEGACY_STEPS: readonly Step[] = [
   // EMS: each paint feature's vectors from its committed inputs.jsonl through the TypeScript harness (units mode).
   { name: 'paint-vectors', argv: pnpm('layout:paint-vectors'), outputs: ['packages/layout/paint-vectors/*/vectors.json'], reads: ['packages/layout/paint-vectors/**', ...ENGINE_SOURCES], imports: ['packages/translate/src/generate.ts', 'packages/translate/harness/harness.ts'] },
   { name: 'native-gen', argv: pnpm('native:gen'), outputs: ['packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'], reads: [...ENGINE_SOURCES, 'packages/layout/vectors/**', 'packages/layout/rt-vectors/**', 'packages/translate/corpus-m1-cases.json', 'packages/translate/package.json'] },
-  { name: 'north-star', argv: pnpm('north-star:check'), outputs: ['examples/music-player/dragon/north-star-check.json'], reads: [FONTS, 'examples/music-player/snapshot.html', 'examples/music-player/styles.css', 'examples/music-player/tree/**'] },
+  { name: 'north-star', argv: pnpm('north-star:check'), outputs: ['examples/music-player/dragon/north-star-check.json'], reads: [FONTS, 'examples/music-player/snapshot.html', 'examples/music-player/styles.css', 'examples/music-player/tree/**', 'examples/music-player/covers/**'] },
   // wpt:update-expectations merges the run into expectations/web.json and copies the run's Chrome snapshots into snapshots/.
-  { name: 'wpt', argv: ['sh', '-c', 'pnpm -s run wpt:run --target web && pnpm -s run wpt:update-expectations --target web'], outputs: ['packages/wpt/expectations/web.json', 'packages/wpt/snapshots/**'], env: ['DRAGON_WPT_DIR'], reads: ['packages/wpt/wpt.lock', 'packages/wpt/interop-labels.json'] },
-  { name: 'tw-sweep', argv: pnpm('tw:sweep'), outputs: ['packages/tailwind-sweep/snapshot/**'], reads: [FONTS] },
+  { name: 'wpt', argv: ['sh', '-c', 'pnpm -s run wpt:run --target web && pnpm -s run wpt:update-expectations --target web'], outputs: ['packages/wpt/expectations/web.json', 'packages/wpt/snapshots/**'], env: ['DRAGON_WPT_DIR'], reads: [FIXTURES, 'packages/wpt/wpt.lock', 'packages/wpt/interop-labels.json'] },
+  { name: 'tw-sweep', argv: pnpm('tw:sweep'), outputs: ['packages/tailwind-sweep/snapshot/**'], reads: [FIXTURES, FONTS] },
   { name: 'glyph-b3', argv: pnpm('parity:glyph-b3', '--write-bottom-pins'), outputs: ['packages/parity/expected-glyphs/bottom-scanlines.json'], reads: [FIXTURES, FONTS] },
   { name: 'media-sweep', argv: ['node', '--conditions=dragon-internal', 'packages/parity/src/cli/media-sweep.ts'], outputs: ['packages/parity/expected-media/**'], reads: [FIXTURES, FONTS] },
   // lanes-host builds the generated engine with swiftc and kotlinc and runs the host lanes over every vector and capture.
@@ -190,8 +190,10 @@ export type Context = {
 };
 
 /** The node entry files and script texts of a step's command: `pnpm -s run <script>`, `node [flags] <file>`, `sh -c '<a> && <b>'`. */
-export function commandOf(argv: readonly string[], scripts: Readonly<Record<string, string>>): { entries: string[]; scripts: string[] } {
+export function commandOf(argv: readonly string[], scripts: Readonly<Record<string, string>>): { entries: string[]; scripts: string[]; conditions: string[][] } {
   const entries: string[] = [];
+  /** Per node invocation, its --conditions flags. */
+  const conditions: string[][] = [];
   const texts: string[] = [];
   const words = (s: string): string[] => s.trim().split(/\s+/);
   const visit = (a: readonly string[], depth: number): void => {
@@ -211,15 +213,19 @@ export function commandOf(argv: readonly string[], scripts: Readonly<Record<stri
       return;
     }
     if (a[0] === 'node') {
-      const file = a.slice(1).find((w) => !w.startsWith('-'));
-      if (file === undefined) throw new Error(`regen: node command without a file: ${a.join(' ')}`);
-      entries.push(file);
+      const at = a.slice(1).findIndex((w) => !w.startsWith('-'));
+      if (at < 0) throw new Error(`regen: node command without a file: ${a.join(' ')}`);
+      const flags = a.slice(1, at + 1);
+      // Only --conditions=<name> is understood; any other spelling of it would be keyed wrongly, so it is refused.
+      if (flags.some((f) => /^(-C|--conditions)$/.test(f))) throw new Error(`regen: write node's conditions as --conditions=<name>: ${a.join(' ')}`);
+      entries.push(a[at + 1]!);
+      conditions.push(flags.filter((f) => f.startsWith('--conditions=')).map((f) => f.slice('--conditions='.length)));
       return;
     }
     throw new Error(`regen: a step command runs ${a[0]}, which regen cannot key; run it from a node script`);
   };
   visit(argv, 0);
-  return { entries, scripts: texts };
+  return { entries, scripts: texts, conditions };
 }
 
 export type Inputs = {
@@ -252,7 +258,9 @@ export function stepInputs(step: Step, ctx: Context, sh: Shared): Inputs {
     }
     return hit;
   };
-  const closure = importClosure([...cmd.entries, ...(step.imports ?? [])], ctx.tree, ctx.read, sh.ws, scan);
+  // A workspace package resolves to the entries Node picks under the step's own conditions (internal.ts under dragon-internal).
+  const conditions = cmd.conditions.map((c) => new Set([...NODE_IMPORT_CONDITIONS, ...c]));
+  const closure = importClosure([...cmd.entries, ...(step.imports ?? [])], ctx.tree, ctx.read, sh.ws, scan, conditions);
   if (closure.unresolved.length > 0) throw new Error(`regen: ${step.name}: imports that resolve to no tree file: ${closure.unresolved.join('; ')}`);
   const reads = matcher(step.reads ?? []);
   const files = new Set(closure.files);

@@ -14,6 +14,7 @@ import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
+import { REPLACED } from './fixture-groups/replaced.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
@@ -89,6 +90,7 @@ export const GROUPS = {
   media: MEDIA,
   'milestone-1': MILESTONE_1,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
+  replaced: REPLACED,
   selectors: SELECTORS,
   showcase: SHOWCASE,
   'sizing-ratio': SIZING,

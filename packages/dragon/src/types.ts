@@ -205,8 +205,11 @@ export type GeneratedAsset = { readonly path: string; readonly hash: string; rea
 
 export type { FontMap, FontMapEntry, GenericKey, PinnedFace } from './fonts/font-map.ts';
 
-/** The project configuration: its identity, its targets and, optionally, the font map (docs/api.md, Fonts). */
-export type ProjectConfig<T extends Targets> = { readonly projectId: string; readonly targets: T; readonly fonts?: FontMap };
+/** REPL-a: image src (as written in the tree) to the id of the snapshot asset holding its bytes. */
+export type ImageMap = { readonly [src: string]: string };
+
+/** The project configuration: its identity, its targets and, optionally, the font map (docs/api.md, Fonts) and the image map. */
+export type ProjectConfig<T extends Targets> = { readonly projectId: string; readonly targets: T; readonly fonts?: FontMap; readonly images?: ImageMap };
 
 export type ArtifactState =
   /** assets: the web output's bundled fonts; empty when the project uses none. */
