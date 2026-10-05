@@ -1,6 +1,6 @@
 // The checked parts of land.ts: queue and argument parsing, retries of network calls, the CI verdict, the Claude review gate and
 // the queue loop that records a failed PR and continues. The git and device judgements come from merge-train-lib.ts.
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { type CheckRun, CI_CHECK } from './pr-review-vouch.ts';
 
@@ -577,6 +577,8 @@ export type BatchOps<T, P extends { head: string }> = {
   verify: (built: readonly { entry: Entry; ticket: T; position: P }[]) => void;
   /** Proves the tree of one position (the full test). Throws LandFailure at step "test" when the test fails. */
   prove: (position: P, e: Entry) => void;
+  /** True when the PM asked for a graceful stop (STOP_FILE or SIGUSR1): no new batch starts. */
+  stopRequested?: () => boolean;
   /** Proves master's own tree, before a bisect blames the first PR of a batch. Throws LandFailure at step "test" when it fails. */
   proveMaster: (master: string) => void;
   /** Pushes, reviews and merges one PR at its position. Throws LandFailure (that PR fails) or Fatal. */
@@ -643,7 +645,7 @@ export const runBatches = <T, P extends { head: string }>(
   entries: readonly Entry[],
   size: number,
   ops: BatchOps<T, P>,
-): { outcomes: Outcome[]; fatal: string | null; exit: 0 | 1 } => {
+): { outcomes: Outcome[]; fatal: string | null; exit: 0 | 1; stopped: Entry[] } => {
   if (!Number.isInteger(size) || size < 1) return fail(`batch size ${size}`);
   const queue = [...entries];
   const outcomes: Outcome[] = [];
@@ -662,6 +664,11 @@ export const runBatches = <T, P extends { head: string }>(
   let at: Entry | null = null;
   try {
     while (queue.length > 0) {
+      // A graceful stop: the batch before has landed what it could; nothing new starts.
+      if (ops.stopRequested?.() === true) {
+        ops.log(`stop requested: not starting ${prs(queue)}`);
+        break;
+      }
       const admitted: { entry: Entry; ticket: T }[] = [];
       while (admitted.length < size && queue.length > 0) {
         const e = (at = queue.shift()!);
@@ -772,11 +779,23 @@ export const runBatches = <T, P extends { head: string }>(
     if (at !== null) outcomes.push({ entry: at, result: 'failed', step: 'fatal', detail: fatal });
     ops.onOutcome(outcomes);
   }
-  return { outcomes, fatal, exit: fatal === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1 };
+  const stopped = fatal === null ? queue : [];
+  return { outcomes, fatal, exit: fatal === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1, stopped };
 };
 
-export const statusText = (o: { queue: string; startedAt: string; now: string; running: Entry | null; outcomes: readonly Outcome[]; fatal: string | null; total: number; done: boolean }): string => {
-  const lines = [`land ${o.done ? (o.fatal ? 'STOPPED' : 'DONE') : 'RUNNING'} ${o.now} (started ${o.startedAt}) queue ${o.queue}: ${o.outcomes.length} of ${o.total} handled`];
+export const statusText = (o: {
+  queue: string;
+  startedAt: string;
+  now: string;
+  running: Entry | null;
+  outcomes: readonly Outcome[];
+  fatal: string | null;
+  total: number;
+  done: boolean;
+  stopped?: readonly Entry[];
+}): string => {
+  const asked = o.done && !o.fatal && (o.stopped?.length ?? 0) > 0;
+  const lines = [`land ${o.done ? (o.fatal ? 'STOPPED' : asked ? 'STOPPED ON REQUEST' : 'DONE') : 'RUNNING'} ${o.now} (started ${o.startedAt}) queue ${o.queue}: ${o.outcomes.length} of ${o.total} handled`];
   if (o.fatal) lines.push(`fatal: ${o.fatal}`);
   if (o.running) lines.push(`landing now: #${o.running.pr} ${o.running.branch}`);
   for (const r of o.outcomes) {
@@ -784,6 +803,73 @@ export const statusText = (o: { queue: string; startedAt: string; now: string; r
     lines.push(r.result === 'failed' ? `  FAILED ${id} at ${r.step}: ${r.detail}` : `  ${r.result === 'landed' ? 'landed' : 'merged before'} ${id}: ${r.detail}`);
   }
   const failed = o.outcomes.filter((r) => r.result === 'failed').length;
-  if (o.done) lines.push(failed === 0 && !o.fatal ? 'every PR landed' : `${failed} PR(s) failed; each has the landing-failed label and a comment naming the step`);
+  if (asked) lines.push(`stop requested: not started ${o.stopped!.map((e) => `#${e.pr}`).join(' ')} (no PR failed for it)`);
+  if (o.done) lines.push(failed === 0 && !o.fatal ? (asked ? 'every PR handled landed' : 'every PR landed') : `${failed} PR(s) failed; each has the landing-failed label and a comment naming the step`);
   return `${lines.join('\n')}\n`;
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Stopping. A synchronous driver cannot run a signal handler while a step runs (spawnSync), so `pnpm land` is a supervisor:
+// it holds the lock and runs the driver in its own process group with no signal handlers of its own. SIGINT, SIGTERM or
+// SIGHUP to the supervisor kills that whole group at once (driver and running step, SIGKILL after a grace period), so no
+// step fails into a PR failure; it is recorded as "interrupted". SIGUSR1 (or touching STOP_FILE) asks for a graceful stop:
+// the driver finishes the batch it is on and starts no other.
+
+export const STOP_FILE = '/tmp/dragon-land.stop';
+export const SUPERVISED_ENV = 'LAND_SUPERVISED';
+
+export const interruptedStatus = (previous: string, signal: string, now: string): string => {
+  const lines = previous.trimEnd().split('\n').filter((l) => l !== '');
+  const running = lines.find((l) => l.startsWith('landing now: '));
+  const head = `land INTERRUPTED ${now} by ${signal}${lines[0]?.startsWith('land ') ? ` (was: ${lines[0]})` : ''}`;
+  const rest = lines.slice(lines[0]?.startsWith('land ') ? 1 : 0).filter((l) => !l.startsWith('landing now: '));
+  const note = running ? `interrupted while ${running.slice('landing now: '.length)} was landing; it was not failed, and its step's work is discarded` : 'interrupted between PRs';
+  return `${[head, note, ...rest].join('\n')}\n`;
+};
+
+export type Supervised = { code: number; interrupted: NodeJS.Signals | null; pid: number };
+export const supervise = (o: {
+  command: string;
+  args: readonly string[];
+  env: NodeJS.ProcessEnv;
+  graceMs: number;
+  onStop: () => void;
+  log: (line: string) => void;
+}): Promise<Supervised> =>
+  new Promise((resolve, reject) => {
+    const child = spawn(o.command, [...o.args], { detached: true, stdio: 'inherit', env: { ...o.env, [SUPERVISED_ENV]: '1' } });
+    const pid = child.pid;
+    if (pid === undefined) {
+      child.once('error', reject);
+      return;
+    }
+    let interrupted: NodeJS.Signals | null = null;
+    let timer: NodeJS.Timeout | null = null;
+    const group = (sig: NodeJS.Signals): void => {
+      try {
+        process.kill(-pid, sig);
+      } catch {}
+    };
+    const onSignal = (sig: NodeJS.Signals): void => {
+      if (interrupted !== null) return group('SIGKILL'); // a second signal does not wait for the grace period
+      interrupted = sig;
+      o.log(`${sig}: interrupting the driver (pid ${pid}) and its running step`);
+      group('SIGTERM');
+      timer = setTimeout(() => group('SIGKILL'), o.graceMs);
+    };
+    const onUsr1 = (): void => {
+      o.log('SIGUSR1: graceful stop requested; the driver finishes its batch and starts no other');
+      o.onStop();
+    };
+    const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
+    for (const s of signals) process.on(s, onSignal);
+    process.on('SIGUSR1', onUsr1);
+    child.once('exit', (code, signal) => {
+      for (const s of signals) process.off(s, onSignal);
+      process.off('SIGUSR1', onUsr1);
+      if (timer !== null) clearTimeout(timer);
+      // Whatever of the step's process group outlived the driver goes too.
+      if (interrupted !== null) setTimeout(() => (group('SIGKILL'), resolve({ code: 130, interrupted, pid })), 1000);
+      else resolve({ code: code ?? (signal ? 128 : 1), interrupted, pid });
+    });
+  });

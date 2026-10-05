@@ -27,6 +27,10 @@ import {
   SOLO_RERUN_MAX,
   failingTestFiles,
   clearStaleQuiet,
+  interruptedStatus,
+  STOP_FILE,
+  SUPERVISED_ENV,
+  supervise,
   releaseQuiet,
   requestQuiet,
   waitForQuiet,
@@ -666,28 +670,16 @@ const main = (): number => {
     dryRun(entries);
     return 0;
   }
-  lock();
+  // The supervisor (below) holds the lock and handles SIGINT, SIGTERM and SIGHUP by killing this process group; this process
+  // keeps their default action, so a signal ends it at once, mid-step, without reporting the step as a PR failure.
   const cleanup = (): void => {
     releaseQuiet(QUIET_FILE, process.pid);
     releasePriority();
-    unlock();
-  };
-  const alive = (pid: number): boolean => {
-    try {
-      process.kill(pid, 0);
-      return true;
-    } catch {
-      return false;
-    }
   };
   if (clearStaleQuiet(QUIET_FILE, alive)) log(`removed a stale ${QUIET_FILE} left by a driver that is gone`);
   process.on('exit', cleanup);
-  for (const s of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
-    process.on(s, () => {
-      cleanup();
-      process.exit(130);
-    });
-  }
+  // SIGUSR1 sent here rather than to the supervisor still asks for a graceful stop (its default action would kill the driver).
+  process.on('SIGUSR1', requestStop);
   prepareWorktree();
   const startedAt = stamp();
   log(`=== pnpm land ${args.queue}: ${entries.map((e) => `#${e.pr}`).join(' ')} in batches of up to ${BATCH} (pid ${process.pid}, worktree ${WT})`);
@@ -712,6 +704,11 @@ const main = (): number => {
     proveMaster: (m) => (write(false, null, null), proveMaster(m)),
     publish: (e, p, t) => (write(false, null, e), publish(e, p, t)),
     onFail: reportFailure,
+    stopRequested: () => {
+      if (!existsSync(STOP_FILE)) return false;
+      rmSync(STOP_FILE, { force: true });
+      return true;
+    },
     onOutcome: (o) => {
       latest = o;
       write(false, null);
@@ -719,7 +716,7 @@ const main = (): number => {
     log,
   });
   current = null;
-  write(true, result.fatal);
+  writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: latest, fatal: result.fatal, total: entries.length, done: true, stopped: result.stopped }));
   try {
     resetWorktree(fetchMaster());
   } catch {}
@@ -727,8 +724,56 @@ const main = (): number => {
   return result.exit;
 };
 
+const alive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+const requestStop = (): void => writeFileSync(STOP_FILE, `${process.pid}\n`);
+
+// The supervisor: checks the arguments, holds the lock, runs the driver (this file, LAND_SUPERVISED=1) in its own process group,
+// and on an interrupt records it and cleans up after the driver (its quiet request and priority, the driver worktree).
+const supervisor = async (): Promise<number> => {
+  const args = parseLandArgs(process.argv.slice(2));
+  const driver = { command: process.execPath, args: [...process.execArgv, process.argv[1]!, ...process.argv.slice(2)], env, graceMs: 20_000, onStop: requestStop, log };
+  if (args.dryRun) return (await supervise(driver)).code;
+  lock();
+  try {
+    if (existsSync(STOP_FILE)) {
+      rmSync(STOP_FILE, { force: true });
+      log(`removed ${STOP_FILE}, left from before this run`);
+    }
+    log(`land supervisor pid ${process.pid}: kill -TERM ${process.pid} interrupts; kill -USR1 ${process.pid} or touch ${STOP_FILE} stops after the current batch`);
+    const r = await supervise(driver);
+    if (r.interrupted !== null) {
+      releaseQuiet(QUIET_FILE, r.pid);
+      try {
+        if (readFileSync(PRIORITY, 'utf8').trim() === String(r.pid)) rmSync(PRIORITY, { force: true });
+      } catch {}
+      try {
+        MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
+        if (existsSync(WT)) resetWorktree(text(wtGit, ['rev-parse', 'HEAD']));
+      } catch (error) {
+        log(`could not reset the driver worktree ${WT}: ${errorText(error).split('\n')[0]}`);
+      }
+      let previous = '';
+      try {
+        previous = readFileSync(STATUS, 'utf8');
+      } catch {}
+      writeFileSync(STATUS, interruptedStatus(previous, r.interrupted, stamp()));
+      log(readFileSync(STATUS, 'utf8').trimEnd());
+    }
+    return r.code;
+  } finally {
+    unlock();
+  }
+};
+
 try {
-  process.exitCode = main();
+  process.exitCode = env[SUPERVISED_ENV] === '1' ? main() : await supervisor();
 } catch (error) {
   console.error(`\nland stopped: ${msg(error)}`);
   process.exitCode = 2;
