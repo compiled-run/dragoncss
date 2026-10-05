@@ -78,6 +78,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.RenderNode
 import android.util.Base64
+import android.view.View
 import dev.dragon.dump.DumpJson
 
 /** Device px added to the drawn destination x; 0 except in the image-offset-1 raster plant build, which proves the pixel lane sees the image. */
@@ -108,18 +109,20 @@ fun dragonPaintImageStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShap
   val x = d[0] + DRAGON_IMAGE_PLANT_DEVICE_PX
   val dest = RectF(x.toFloat(), d[1].toFloat(), (x + d[2]).toFloat(), (d[1] + d[3]).toFloat())
   val paint = Paint(Paint.FILTER_BITMAP_FLAG)
-  if (!canvas.isHardwareAccelerated) {
+  val px = dragonCoveringPx(c)
+  val l = px[0]
+  val t = px[1]
+  val r = px[2]
+  val b = px[3]
+  // Direct draw (sampled once through the full matrix) on a software canvas, under a scale, rotation, skew or fractional
+  // translate of the box or an ancestor (a layer would be resampled), and for a layer over the GPU's texture size limit.
+  if (!canvas.isHardwareAccelerated || r - l > canvas.maximumBitmapWidth || b - t > canvas.maximumBitmapHeight || !dragonWholePxTranslate(v)) {
     canvas.save()
     canvas.clipRect(c[0].toFloat(), c[1].toFloat(), (c[0] + c[2]).toFloat(), (c[1] + c[3]).toFloat())
     canvas.drawBitmap(image, null, dest, paint)
     canvas.restore()
     return
   }
-  val px = dragonCoveringPx(c)
-  val l = px[0]
-  val t = px[1]
-  val r = px[2]
-  val b = px[3]
   if (r <= l || b <= t) return
   val node = v.dragonImageNode ?: RenderNode("dragonImage").also {
     it.setUseCompositingLayer(true, null)
@@ -135,6 +138,21 @@ fun dragonPaintImageStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShap
     node.endRecording()
   }
   canvas.drawRenderNode(node)
+}
+
+/** Whether the view and every ancestor map to their parent by at most a whole-device-px translate (each View matrix). */
+fun dragonWholePxTranslate(v: View): Boolean {
+  val m = FloatArray(9)
+  var at: View? = v
+  while (at != null) {
+    val matrix = at.matrix
+    if (!matrix.isIdentity) {
+      matrix.getValues(m)
+      if (m[0] != 1f || m[1] != 0f || m[3] != 0f || m[4] != 1f || m[6] != 0f || m[7] != 0f || m[8] != 1f || m[2] % 1f != 0f || m[5] % 1f != 0f) return false
+    }
+    at = at.parent as? View
+  }
+  return true
 }
 
 /** The readback of the image module: the natural size, the fit and the destination rect in device px relative to the box. */

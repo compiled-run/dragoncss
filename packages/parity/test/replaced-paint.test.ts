@@ -241,10 +241,18 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
     const stage = image.slice(at, image.indexOf('\n}\n', at));
     expect(stage).toContain('val paint = Paint(Paint.FILTER_BITMAP_FLAG)');
     expect(stage.match(/drawBitmap\(image, null, dest, paint\)/g)?.length).toBe(2);
-    const software = stage.indexOf('if (!canvas.isHardwareAccelerated) {');
+    // Review of #72 at db8f8f4542: a layer under a transform is resampled, and one over the texture limit is not made. The direct
+    // draw (as before the layer) covers a software canvas, a layer over the GPU's maximum bitmap size, and a box or ancestor whose
+    // View matrix is more than a whole-device-px translate.
+    const direct = stage.indexOf('if (!canvas.isHardwareAccelerated || r - l > canvas.maximumBitmapWidth || b - t > canvas.maximumBitmapHeight || !dragonWholePxTranslate(v)) {');
     const layer = stage.indexOf('it.setUseCompositingLayer(true, null)');
-    expect(software).toBeGreaterThan(-1);
-    expect(layer).toBeGreaterThan(software);
+    expect(direct).toBeGreaterThan(-1);
+    expect(layer).toBeGreaterThan(direct);
+    expect(stage.slice(direct, stage.indexOf('return\n', direct))).toContain('canvas.drawBitmap(image, null, dest, paint)');
+    const at2 = image.indexOf('fun dragonWholePxTranslate(v: View): Boolean {');
+    const whole = image.slice(at2, image.indexOf('\n}\n', at2));
+    expect(whole).toContain('at = at.parent as? View');
+    expect(whole).toContain('if (m[0] != 1f || m[1] != 0f || m[3] != 0f || m[4] != 1f || m[6] != 0f || m[7] != 0f || m[8] != 1f || m[2] % 1f != 0f || m[5] % 1f != 0f) return false');
     // The only draw on the hardware canvas itself is the node; the bitmap goes into the node's recording.
     const hardware = stage.slice(layer);
     expect(hardware).toContain('inner.drawBitmap(image, null, dest, paint)');

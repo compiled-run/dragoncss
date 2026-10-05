@@ -185,14 +185,15 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
 export const STAGE_RGBA: readonly number[] = [255, 255, 255, 255];
 
 /**
- * A capture that is the bare stage at every sample where Chrome paints something else at one or more of them: the host copied a
- * frame without the case's paint, a harness fault reported once for the case, not as a pixel mismatch per sample. Null otherwise.
+ * A capture that is the bare stage at every sample where Chrome paints something else at one or more of them: a frame without the
+ * case's paint (a harness fault, or a tree that painted nothing), reported once for the case, not as a pixel mismatch per
+ * sample. Null otherwise.
  */
 export function blankCapture(samples: readonly { readonly x: number; readonly y: number; readonly rgba: readonly number[] }[], chrome: RgbaImage): string | null {
   if (samples.length === 0 || !samples.every((s) => s.rgba.length === 4 && s.rgba.every((v, k) => v === STAGE_RGBA[k]))) return null;
   const painted = samples.filter((s) => Number.isInteger(s.x) && Number.isInteger(s.y) && s.x >= 0 && s.y >= 0 && s.x < chrome.width && s.y < chrome.height && pixelAt(chrome, s.x, s.y).some((v, k) => v !== STAGE_RGBA[k])).length;
   if (painted === 0) return null;
-  return `the capture is the blank stage [${STAGE_RGBA.join(',')}] at all ${samples.length} samples, where Chrome paints other colours at ${painted}: the host copied a frame without the case's paint (a harness fault, not a paint mismatch)`;
+  return `blank capture: either a harness fault or nothing painted; the capture is the stage colour [${STAGE_RGBA.join(',')}] at all ${samples.length} samples, where Chrome paints other colours at ${painted}`;
 }
 
 // ---------------------------------------------------------------- a DPR set
