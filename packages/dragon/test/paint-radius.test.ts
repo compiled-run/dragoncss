@@ -99,6 +99,15 @@ describe('border-radius: refusals', () => {
     }
   });
 
+  it('env() in a radius is refused by name, before the grammar substitutes it', () => {
+    for (const p of ['border-radius', '-webkit-border-radius', 'border-top-left-radius']) {
+      const { declaration, diagnostics, css } = declare(p, '4px env(safe-area-inset-top)');
+      expect(declaration, p).toBeNull();
+      expect(diagnostics.map((d) => [d.code, d.message]), p).toEqual([['DRAGON_UNSUPPORTED_VALUE', `${p}: env(safe-area-inset-top) is unsupported: env() in ${p} is not supported`]]);
+      expect(spanOf(css, diagnostics[0] as Diagnostic)).toBe('env(safe-area-inset-top)');
+    }
+  });
+
   it('a rounded box with a dashed, dotted or double border side is refused for ios and android at the radius declaration (PNT1b), and not for web', () => {
     for (const style of ['dashed', 'dotted', 'double']) {
       const { c, input } = compile(`.a { width: 40px; height: 20px; border: 2px ${style} blue; border-radius: 6px; }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
