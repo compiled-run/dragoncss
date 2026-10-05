@@ -33,15 +33,34 @@ export function checkCaptured(raw: unknown): Captured[] {
   return out;
 }
 
+/** Marks a number JSON cannot carry (-0, NaN, ±Infinity) so the page's JSON string stays lossless; fromPageJson restores it. */
+const NUMBER_TAG = '__dragonNumber';
+
+/** The page result, parsed from the JSON string capture returns (Playwright's own serializer is ~5x slower on these dumps). */
+export function fromPageJson(text: unknown): unknown {
+  if (typeof text !== 'string') throw new Error(`the page capture is not a JSON string: ${typeof text}`);
+  return JSON.parse(text, (_k, v: unknown) => {
+    if (typeof v !== 'object' || v === null || Array.isArray(v)) return v;
+    const keys = Object.keys(v);
+    if (keys.length !== 1 || keys[0] !== NUMBER_TAG) return v;
+    const t = (v as Record<string, unknown>)[NUMBER_TAG];
+    if (t === '-0') return -0;
+    if (t === 'NaN') return NaN;
+    if (t === 'Infinity') return Infinity;
+    if (t === '-Infinity') return -Infinity;
+    throw new Error(`the page capture tags an unknown number ${JSON.stringify(t)}`);
+  });
+}
+
 async function capture(page: Page, html: string): Promise<Captured[]> {
   await page.setContent(injected(html));
-  return checkCaptured(await page.evaluate(`Array.from(document.querySelectorAll('[data-dragon-id]')).map((el) => {
+  return checkCaptured(fromPageJson(await page.evaluate(`JSON.stringify(Array.from(document.querySelectorAll('[data-dragon-id]')).map((el) => {
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
     const computed = [];
     for (let i = 0; i < cs.length; i++) { const p = cs[i]; if (!p.startsWith('--')) computed.push([p, cs.getPropertyValue(p)]); }
     return { id: el.getAttribute('data-dragon-id'), box: [r.x, r.y, r.width, r.height], computed };
-  })`));
+  }), (k, v) => typeof v === 'number' && (Object.is(v, -0) || !Number.isFinite(v)) ? { ${NUMBER_TAG}: Object.is(v, -0) ? '-0' : String(v) } : v)`)));
 }
 
 /** Every difference between the two renderings; none means Chrome agrees with Dragon. */
