@@ -10,7 +10,7 @@ import { repoPath } from '../src/paths.ts';
 import { trustCoverageProblems } from '../src/lanes.ts';
 import type { AvdDeviceSpec, DeviceRecord, DeviceSpec, GoldenParts } from '../src/device-run.ts';
 import type { SettleState } from '../src/device-run.ts';
-import { ANDROID_RENDERER, avdDir, dropGolden, emulatorArgs, failedAttemptStep, GOLDEN_SNAPSHOT, goldenCurrent, goldenKey, goldenKeyFile } from '../src/device-run.ts';
+import { ANDROID_RENDERER, avdDir, dropGolden, emulatorArgs, failedAttemptStep, GOLDEN_SNAPSHOT, goldenEnabled, goldenCurrent, goldenKey, goldenKeyFile } from '../src/device-run.ts';
 import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, isGlyphPlant, judgeGlyphPlant, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from 'dragon';
 import { paintPlants } from '../../dragon/src/emit/paint/registry.ts';
@@ -288,6 +288,12 @@ describe('the golden snapshot (Android quickboot)', () => {
       process.env['HOME'] = was;
       rmSync(home, { recursive: true, force: true });
     }
+  });
+
+  it('a CI runner (fresh every job) neither loads nor saves a snapshot; this Mac does', () => {
+    expect(goldenEnabled({ CI: 'true' })).toBe(false);
+    expect(goldenEnabled({})).toBe(true);
+    expect(goldenEnabled({ CI: 'false' })).toBe(true);
   });
 
   it('a snapshot that fails to boot is dropped and the retry is cold, even when the forced load made the emulator exit', () => {

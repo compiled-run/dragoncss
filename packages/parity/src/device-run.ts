@@ -584,6 +584,9 @@ export function currentGoldenKey(spec: AvdDeviceSpec, tools: AndroidTools): stri
   });
 }
 
+/** A CI runner is fresh every job, so a snapshot saved there is never loaded again: its boots stay cold and save nothing. */
+export const goldenEnabled = (env: Readonly<Record<string, string | undefined>> = process.env): boolean => env['CI'] !== 'true';
+
 /** Whether the AVD's golden snapshot exists and its recorded key is the current one. */
 export function goldenCurrent(name: string, key: string): boolean {
   const f = goldenKeyFile(name);
@@ -646,7 +649,7 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
   // A matrix AVD quickboots from its golden snapshot while the snapshot's key is current; the floor probe AVD always boots cold.
   let key: string | null = null;
   try {
-    if (provision) key = currentGoldenKey(spec, tools);
+    if (provision && goldenEnabled()) key = currentGoldenKey(spec, tools);
   } catch (e) {
     // Without a key no snapshot is loaded or saved: the boot is the cold one it always was.
     console.log(`${spec.name}: no golden snapshot key (this boot is cold and saves none): ${e instanceof Error ? e.message : String(e)}`);
