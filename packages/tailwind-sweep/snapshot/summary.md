@@ -5,8 +5,8 @@
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
 | web | 4144 (17.8%) | 19141 (82.2%) | 1 | 0 | 0 |
-| ios | 4125 (17.7%) | 18542 (79.6%) | 1 | 0 | 618 |
-| android | 4125 (17.7%) | 18542 (79.6%) | 1 | 0 | 618 |
+| ios | 4125 (17.7%) | 19124 (82.1%) | 1 | 0 | 36 |
+| android | 4125 (17.7%) | 19124 (82.1%) | 1 | 0 | 36 |
 
 As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
 
@@ -19,7 +19,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | spacing | 1308 | 1302 / 6 / 0 / 0 / 0 | 1302 / 6 / 0 / 0 / 0 | 1302 / 6 / 0 / 0 / 0 |
 | sizing | 1015 | 899 / 116 / 0 / 0 / 0 | 899 / 116 / 0 / 0 / 0 | 899 / 116 / 0 / 0 / 0 |
 | typography | 261 | 21 / 240 / 0 / 0 / 0 | 21 / 240 / 0 / 0 / 0 | 21 / 240 / 0 / 0 / 0 |
-| colours | 14842 | 70 / 14772 / 0 / 0 / 0 | 70 / 14190 / 0 / 0 / 582 | 70 / 14190 / 0 / 0 / 582 |
+| colours | 14842 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 |
 | backgrounds | 151 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 |
 | borders | 250 | 75 / 175 / 0 / 0 / 0 | 75 / 175 / 0 / 0 / 0 | 75 / 175 / 0 / 0 / 0 |
 | effects | 1178 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 |
@@ -39,7 +39,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `value oklch()` | 4004 | 4004 | 4004 | 14 |
 | `property box-shadow` | 1489 | 1489 | 1489 | 8 |
 | `property background-image` | 964 | 964 | 964 | 8 |
-| `property scrollbar-color` | 582 | 0 | 0 | 2 |
+| `property scrollbar-color` | 582 | 582 | 582 | 2 |
 | `property translate` | 444 | 444 | 444 | 24 |
 | `property filter` | 351 | 351 | 351 | 10 |
 | `property text-shadow` | 298 | 298 | 298 | 2 |
