@@ -626,28 +626,67 @@ function reused(artifact: string, sha: string): boolean {
   return existsSync(artifact) && existsSync(stampOf(artifact)) && readFileSync(stampOf(artifact), 'utf8') === reuseStamp(sha);
 }
 
-/** The iOS host app: swiftc for the iOS 15 simulator target with -O, Info.plist and Ahem, ad-hoc signed. */
+/**
+ * How the iOS host app is built: the engine and runtime support (DragonCore) at -O, as before; the generated case code (DragonCases,
+ * 18 MB of straight-line LayoutBox construction that -O gains nothing on) at -Onone; the host (main, the hit facts, the case
+ * tables and any planted file) at -O in the app's own module, DragonHost, which Info.plist and main.swift name. Swift has no
+ * fast-math, so no float result depends on the optimisation level. Part of the reuse stamp, so an app built another way is rebuilt.
+ */
+export const IOS_BUILD = 'modules DragonCore -O, DragonCases -Onone, DragonHost -O';
+/** The case tables stay in DragonHost: main.swift reads DragonHost.dragonCaseTable. */
+const IOS_TABLES = ['Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift'];
+
+/** The Swift files of each iOS module, by path; every file in exactly one, and none of the three empty (else a thrown error). */
+export function iosModules(paths: readonly string[]): { readonly core: string[]; readonly cases: string[]; readonly host: string[] } {
+  const swift = paths.filter((p) => p.endsWith('.swift'));
+  const core = swift.filter((p) => p.startsWith('DragonLayout/') || p.startsWith('Support/'));
+  const cases = swift.filter((p) => p.startsWith('Cases/') && !IOS_TABLES.includes(p));
+  const host = swift.filter((p) => !core.includes(p) && !cases.includes(p));
+  for (const t of IOS_TABLES) if (!host.includes(t)) throw new Error(`the iOS host sources have no ${t}`);
+  if (core.length === 0 || cases.length === 0 || !host.includes('Host/main.swift')) throw new Error(`the iOS host sources do not split into DragonCore (${core.length}), DragonCases (${cases.length}) and DragonHost with main.swift`);
+  return { core, cases, host };
+}
+
+/** The iOS host app: swiftc for the iOS 15 simulator target (three modules, IOS_BUILD), Info.plist and Ahem, ad-hoc signed. */
 export function buildIos(opts: BuildOptions = {}): BuildResult {
   const dir = buildDir('ios', opts.plant ?? null);
   const toolchain = xcodeVersion();
   const files = hostSources('ios', toolchain, opts.plant ?? null);
   const sha = sourceTreeSha256(files);
   const app = join(dir, 'build', 'DragonHost.app');
-  if (opts.reuse === true && reused(app, sha)) return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: app, log: [`reused ${app} (source sha256 ${sha})`] };
+  // The build recipe is part of the reuse stamp, so an app built another way is never reused.
+  const stamp = `${sha} ${IOS_BUILD}`;
+  if (opts.reuse === true && reused(app, stamp)) return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: app, log: [`reused ${app} (source sha256 ${sha})`] };
   rmSync(stampOf(app), { force: true });
   const src = writeSources(dir, files);
   rmSync(app, { recursive: true, force: true });
   mkdirSync(app, { recursive: true });
-  const swift = files.filter((f) => f.path.endsWith('.swift')).map((f) => join(src, f.path));
+  const mods = iosModules(files.map((f) => f.path));
+  const abs = (ps: readonly string[]): string[] => ps.map((p) => join(src, p));
+  const lib = join(dir, 'build', 'modules');
+  rmSync(lib, { recursive: true, force: true });
+  mkdirSync(lib, { recursive: true });
+  const swiftc = ['-sdk', 'iphonesimulator', 'swiftc', '-target', IOS_TARGET, '-j', String(availableParallelism())];
+  const implicit = (flag: string, mod: string): string[] => ['-Xfrontend', flag, '-Xfrontend', mod];
+  const library = (name: string, opt: string, extra: readonly string[], sources: readonly string[]): string[] => [...swiftc, opt, ...extra, '-parse-as-library', '-module-name', name, '-I', lib, '-emit-module', '-emit-module-path', join(lib, `${name}.swiftmodule`), '-emit-library', '-static', '-o', join(lib, `lib${name}.a`), ...abs(sources)];
   const log: string[] = [];
-  const t0 = Date.now();
-  must(run('xcrun', ['-sdk', 'iphonesimulator', 'swiftc', '-target', IOS_TARGET, '-O', '-j', String(availableParallelism()), '-module-name', 'DragonHost', '-o', join(app, 'DragonHost'), ...swift], { timeoutMs: 1_800_000 }), 'swiftc (iOS 15 simulator)');
-  log.push(`swiftc ${IOS_TARGET} -O: ${swift.length} files in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  let t0 = Date.now();
+  must(run('xcrun', library('DragonCore', '-O', [], mods.core), { timeoutMs: 1_800_000 }), 'swiftc DragonCore (iOS 15 simulator)');
+  log.push(`swiftc ${IOS_TARGET} DragonCore -O: ${mods.core.length} files in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  t0 = Date.now();
+  // -enable-testing: DragonHost's case tables read the cases' internal declarations through a testable import.
+  must(run('xcrun', library('DragonCases', '-Onone', ['-enable-testing', ...implicit('-import-module', 'DragonCore')], mods.cases), { timeoutMs: 1_800_000 }), 'swiftc DragonCases (iOS 15 simulator)');
+  log.push(`swiftc ${IOS_TARGET} DragonCases -Onone: ${mods.cases.length} files in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  t0 = Date.now();
+  // -force_load links every object of both libraries, as one module did, whether or not the host names it.
+  const load = (name: string): string[] => ['-Xlinker', '-force_load', '-Xlinker', join(lib, `lib${name}.a`)];
+  must(run('xcrun', [...swiftc, '-O', '-module-name', 'DragonHost', '-I', lib, ...implicit('-import-module', 'DragonCore'), ...implicit('-testable-import-module', 'DragonCases'), ...load('DragonCore'), ...load('DragonCases'), '-o', join(app, 'DragonHost'), ...abs(mods.host)], { timeoutMs: 1_800_000 }), 'swiftc DragonHost (iOS 15 simulator)');
+  log.push(`swiftc ${IOS_TARGET} DragonHost -O: ${mods.host.length} files in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   copyFileSync(join(src, 'Info.plist'), join(app, 'Info.plist'));
   copyFileSync(repoPath('vendor/fonts/Ahem.ttf'), join(app, 'Ahem.ttf'));
   must(run('codesign', ['--force', '--sign', '-', '--timestamp=none', app]), 'codesign -s -');
   log.push('codesign --sign - (ad hoc)');
-  writeFileSync(stampOf(app), reuseStamp(sha));
+  writeFileSync(stampOf(app), reuseStamp(stamp));
   return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: app, log };
 }
 
