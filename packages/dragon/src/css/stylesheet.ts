@@ -15,7 +15,7 @@ import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
 import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
-import { markNotApplicable, notApplicableRule, scrollbarRuleMayHide } from './not-applicable.ts';
+import { markNotApplicable, notApplicableRule, scrollbarColorMayHide, scrollbarRuleIsCosmetic } from './not-applicable.ts';
 import type { NotApplicableEntry } from '../profiles/not-applicable-native.ts';
 import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
 import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
@@ -152,12 +152,13 @@ function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enc
     if (parsed !== null) declarations.push(parsed);
   }
   if (selectors === null) {
-    // NA-NATIVE: a rule styling only listed pseudo-elements (and not hiding the scrollbar) is left out of the native outputs.
+    // NA-NATIVE: a rule styling only listed pseudo-elements, and never hiding the scrollbar, is left out of the native outputs.
     const refusals = diagnostics.slice(before, afterSelectors);
     const entries = notApplicableRule(node['prelude'] as CssNode, st.base, refusals);
-    if (entries !== null && entries[0] !== undefined && !scrollbarRuleMayHide(declarations)) {
-      refusals.forEach((d, i) => markNotApplicable(d, entries[i] as NotApplicableEntry, 'item'));
-      for (const d of diagnostics.slice(afterSelectors)) markNotApplicable(d, entries[0], 'inside');
+    // Only a block of allowlisted colour and shape declarations, with nothing refused or nested in it, qualifies.
+    const onlyDeclarations = list(node['block'] as CssNode, 'children').every((c) => c.type === 'Declaration' || (c.type === 'Raw' && EMPTY_RAW.test(String(c['value']))));
+    if (entries !== null && onlyDeclarations && diagnostics.length === afterSelectors && scrollbarRuleIsCosmetic(declarations)) {
+      refusals.forEach((d, i) => markNotApplicable(d, entries[i] as NotApplicableEntry));
     }
     return null;
   }
@@ -269,7 +270,7 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
       edits: [{ span, replacement: '' }],
     });
     const entry = notApplicableEntry('property', property);
-    if (entry !== null) markNotApplicable(refusal, entry, 'item');
+    if (entry !== null && !(property === 'scrollbar-color' && scrollbarColorMayHide(valueNode))) markNotApplicable(refusal, entry);
     diagnostics.push(refusal);
     return null;
   }

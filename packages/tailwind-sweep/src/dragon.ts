@@ -111,8 +111,8 @@ export function compileUtility(classes: readonly string[], sweptCss: string, pub
 }
 
 /**
- * The text of target t's DRAGON_NOT_APPLICABLE_NATIVE items when they explain every web refusal: the refusal is at an item's own span
- * (a listed property), or inside the block of the rule an item's selector opens (a listed pseudo-element rule). Null otherwise.
+ * The text of target t's DRAGON_NOT_APPLICABLE_NATIVE items when they explain every web refusal: the refusal is at an item's own span,
+ * or (for a pseudo-element item) inside the block of the rule its selector opens. Null otherwise.
  */
 export function notApplicableOn(input: FrontEndResult, diagnostics: readonly Diagnostic[], t: Target): string | null {
   const items = diagnostics.filter((d) => d.code === 'DRAGON_NOT_APPLICABLE_NATIVE' && d.severity === 'info' && d.target === t && d.origin.kind === 'authored');
@@ -126,8 +126,10 @@ export function notApplicableOn(input: FrontEndResult, diagnostics: readonly Dia
       const a = spanOf(i);
       if (a === null || a.source.uri !== s.source.uri) return false;
       if (a.start === s.start && a.end === s.end) return true;
+      // Only a pseudo-element item (its selector, "::...") opens a block whose refusals it explains; a property item is its own span.
       const text = textOf(a.source.uri);
-      const close = text === undefined ? -1 : text.indexOf('}', a.end);
+      if (text === undefined || !text.slice(a.start, a.end).startsWith('::')) return false;
+      const close = text.indexOf('}', a.end);
       return close >= 0 && s.start >= a.start && s.end <= close;
     });
   };

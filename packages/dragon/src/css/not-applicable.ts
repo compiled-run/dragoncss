@@ -1,6 +1,6 @@
 // NA-NATIVE: how a refusal of an entry of profiles/not-applicable-native.ts becomes per-target. The parse driver marks the target-less
-// refusal of a listed property or pseudo-element rule (and the refusals inside such a rule); splitNotApplicable then scopes each
-// marked refusal to the web target, and adds a DRAGON_NOT_APPLICABLE_NATIVE info per native target for the listed item itself.
+// refusal of a listed property, or of a pseudo-element rule whose block is only allowlisted colours and shapes; splitNotApplicable
+// then scopes each marked refusal to the web target, and adds a DRAGON_NOT_APPLICABLE_NATIVE info per native target.
 import type { CssNode } from 'css-tree';
 import { diagnostic } from '../diagnostics/catalogue.ts';
 import type { NotApplicableEntry } from '../profiles/not-applicable-native.ts';
@@ -8,14 +8,17 @@ import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import { asciiLower } from './escapes.ts';
+import type { Declaration } from './stylesheet.ts';
+import type { CssValue } from './values.ts';
+import { tokenValue } from './values.ts';
 
-/** 'item': the refusal of the listed property or rule itself; 'inside': a refusal inside a listed rule, which native never reads. */
-type Mark = { readonly entry: NotApplicableEntry; readonly role: 'item' | 'inside' };
+/** The listed property or pseudo-element rule whose refusal this is. */
+type Mark = { readonly entry: NotApplicableEntry };
 
 const MARKS = new WeakMap<Diagnostic, Mark>();
 
-export function markNotApplicable(d: Diagnostic, entry: NotApplicableEntry, role: Mark['role']): void {
-  MARKS.set(d, { entry, role });
+export function markNotApplicable(d: Diagnostic, entry: NotApplicableEntry): void {
+  MARKS.set(d, { entry });
 }
 
 /** The mark of a target-less refusal the parse driver made, or null. */
@@ -45,16 +48,33 @@ export function notApplicableRule(prelude: CssNode, base: Span, refusals: readon
   return entries;
 }
 
-/** A positive length written as a plain number and unit, such as 5px; anything else could hide the scrollbar or need resolving. */
-const POSITIVE_LENGTH = /^(?:\d+\.?\d*|\.\d+)(?:px|em|rem)$/i;
+/** The colour and shape properties a scrollbar pseudo-element rule may set and still be not applicable on native. */
+const COSMETIC: ReadonlySet<string> = new Set(['background-color', 'background', 'border-radius', 'border-color', 'color']);
+
+/** A colour that is visible: an opaque or translucent colour, or currentcolor. transparent, alpha 0 and anything unresolved are not. */
+function visibleColor(v: CssValue): boolean {
+  return (v.kind === 'color' && v.value.alpha > 0) || (v.kind === 'keyword' && v.value === 'currentcolor');
+}
 
 /**
- * Whether a scrollbar pseudo-element rule may hide the scrollbar (display, visibility, or a width or height that is not a positive
- * length): hiding it is visible on native too (like scrollbar-width: none), so such a rule is not on the list.
+ * Whether a scrollbar pseudo-element rule only recolours or reshapes the scrollbar: every declaration is on the allowlist, a
+ * background sets only its colour, every colour is visible (a transparent or alpha-0 colour is a hiding idiom) and every radius is
+ * a length or percentage. Anything else (a size, display, var(), a CSS-wide keyword) could hide it, which is visible on native.
  */
-export function scrollbarRuleMayHide(declarations: readonly { readonly property: string; readonly text: string }[]): boolean {
-  return declarations.some((d) => d.property === 'display' || d.property === 'visibility'
-    || ((d.property === 'width' || d.property === 'height') && !(POSITIVE_LENGTH.test(d.text.trim()) && Number.parseFloat(d.text) > 0)));
+export function scrollbarRuleIsCosmetic(declarations: readonly Declaration[]): boolean {
+  return declarations.every((d) => COSMETIC.has(d.property) && d.pending === undefined && d.custom === undefined && d.longhands.length > 0
+    && d.longhands.filter((lh) => lh.explicit).every((lh) => (lh.property.endsWith('color') ? visibleColor(lh.value) : lh.property.endsWith('radius') && (lh.value.kind === 'length' || lh.value.kind === 'percentage')))
+    && (d.property !== 'background' || d.longhands.filter((lh) => lh.explicit).every((lh) => lh.property === 'background-color')));
+}
+
+/** Whether a scrollbar-color value may hide the scrollbar: anything but auto or two visible colours (transparent thumb or track). */
+export function scrollbarColorMayHide(valueNode: CssNode): boolean {
+  const tokens = list(valueNode, 'children').filter((n) => n.type !== 'WhiteSpace');
+  if (tokens.length === 1 && tokens[0]?.type === 'Identifier' && asciiLower(String(tokens[0]['name'])) === 'auto') return false;
+  return tokens.length !== 2 || !tokens.every((t) => {
+    const v = tokenValue(t, 'color');
+    return typeof v !== 'string' && visibleColor(v);
+  });
 }
 
 const NATIVE = ['ios', 'android'] as const;
@@ -71,11 +91,9 @@ export function splitNotApplicable(diagnostics: readonly Diagnostic[], targets: 
     const mark = notApplicableMark(d);
     if (mark === null) return [d];
     const out: Diagnostic[] = web ? [{ ...d, target: 'web' }] : [];
-    if (mark.role === 'item') {
-      const { entry } = mark;
-      const what = entry.kind === 'property' ? entry.name : `the ::${entry.name} rule`;
-      for (const t of native) out.push(diagnostic('DRAGON_NOT_APPLICABLE_NATIVE', { origin: d.origin, target: t, message: `${what} has no effect on ${t}: ${entry.reason}; the ${t} output leaves it out` }));
-    }
+    const { entry } = mark;
+    const what = entry.kind === 'property' ? entry.name : `the ::${entry.name} rule`;
+    for (const t of native) out.push(diagnostic('DRAGON_NOT_APPLICABLE_NATIVE', { origin: d.origin, target: t, message: `${what} has no effect on ${t}: ${entry.reason}; the ${t} output leaves it out` }));
     return out;
   });
 }

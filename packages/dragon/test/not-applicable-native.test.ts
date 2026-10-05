@@ -16,9 +16,9 @@ const NATIVE = { ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
 const CASES: Record<string, string> = {
   cursor: '.a { cursor: pointer; }',
   'scrollbar-color': '.a { scrollbar-color: red blue; }',
-  '-webkit-scrollbar': '.a::-webkit-scrollbar { width: 5px; }',
-  '-webkit-scrollbar-thumb': '.a::-webkit-scrollbar-thumb { background-color: red; border-radius: 20px; }',
-  '-webkit-scrollbar-track': '.a::-webkit-scrollbar-track { background: transparent; }',
+  '-webkit-scrollbar': '.a::-webkit-scrollbar { background-color: #eee; }',
+  '-webkit-scrollbar-thumb': '.a::-webkit-scrollbar-thumb { background: rgba(155, 155, 155, 0.5); border-color: red; color: blue; }',
+  '-webkit-scrollbar-track': '.a::-webkit-scrollbar-track { background-color: #333; }',
 };
 
 function compile(css: string, targets: object) {
@@ -109,7 +109,21 @@ describe('off the list, a declaration or rule is still refused on every target',
     '::-webkit-scrollbar-corner (not listed)': '.a::-webkit-scrollbar-corner { background: red; }',
     'a scrollbar rule hiding it with display': '.a::-webkit-scrollbar { display: none; }',
     'a scrollbar rule hiding it with a zero width': '.a::-webkit-scrollbar { width: 0; }',
-    'a scrollbar rule with a width that needs resolving': '.a::-webkit-scrollbar { width: var(--w, 4px); }',
+    'a scrollbar rule hiding it with visibility (a refused declaration)': '.a::-webkit-scrollbar { visibility: hidden; }',
+    'a scrollbar rule hiding it with a zero max-width': '.a::-webkit-scrollbar { max-width: 0; }',
+    'a scrollbar rule hiding it with a zero inline-size': '.a::-webkit-scrollbar { inline-size: 0; }',
+    'a scrollbar rule hiding it inside a nested @media': '.a::-webkit-scrollbar { @media (min-width: 1px) { display: none; } }',
+    'a scrollbar rule setting a size, even a positive one (off the allowlist)': '.a::-webkit-scrollbar { width: 5px; }',
+    'a scrollbar rule with a colour that needs resolving': '.a::-webkit-scrollbar { background-color: var(--c, red); }',
+    'a scrollbar rule with a CSS-wide colour': '.a::-webkit-scrollbar { background-color: inherit; }',
+    'a transparent scrollbar track': '.a::-webkit-scrollbar-track { background: transparent; }',
+    'a scrollbar thumb with an alpha-0 colour': '.a::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0); }',
+    'a scrollbar thumb with a transparent border colour': '.a::-webkit-scrollbar-thumb { background-color: red; border-color: transparent; }',
+    'a scrollbar thumb with a refused declaration (border-radius)': '.a::-webkit-scrollbar-thumb { background-color: red; border-radius: 20px; }',
+    'scrollbar-color with a transparent track': '.a { scrollbar-color: red transparent; }',
+    'scrollbar-color transparent transparent': '.a { scrollbar-color: transparent transparent; }',
+    'scrollbar-color with an alpha-0 thumb': '.a { scrollbar-color: rgba(0, 0, 0, 0) red; }',
+    'scrollbar-color with a colour that needs resolving': '.a { scrollbar-color: var(--c) red; }',
     'a selector list that also styles a real element': '.a, .a::-webkit-scrollbar { width: 5px; }',
     'a scrollbar pseudo-element followed by a pseudo-class': '.a::-webkit-scrollbar:hover { width: 5px; }',
   };
@@ -130,7 +144,27 @@ describe('off the list, a declaration or rule is still refused on every target',
   });
 });
 
-describe('querySupport possibilities', () => {
+describe('a nested at-rule in a scrollbar rule', () => {
+  it('keeps the rule refused everywhere, and its at-rule refusal keeps its related entries in a mixed project', () => {
+    const css = `${BASE}\n.a::-webkit-scrollbar { @media (min-width: 1px) { zoom: 2; } }`;
+    const atRule = (targets: object) => compile(css, targets).diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_NESTED_RULE' || d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
+    const webOnly = atRule({ web: {} });
+    const mixed = atRule({ web: {}, ...NATIVE });
+    expect(webOnly).toBeDefined();
+    expect(mixed).toEqual(webOnly);
+    expect(compile(css, { web: {}, ...NATIVE }).targets).toEqual({ web: 'blocked', ios: 'blocked', android: 'blocked' });
+  });
+});
+
+describe('querySupport', () => {
+  it('a resolved query of cursor on a native target answers not-applicable, like a possibilities query', () => {
+    const c = compile(`${BASE}\n.a { cursor: pointer; }`, { web: {}, ...NATIVE });
+    for (const target of ['ios', 'android'] as const) {
+      expect(querySupport({ kind: 'resolved', result: c, target, node: 'a', instance: 'doc', assignment: [], property: 'cursor' })).toEqual({ kind: 'not-applicable', declaration: 'cursor', reason: expect.stringContaining(`cursor has no effect on ${target}`) });
+    }
+    expect(querySupport({ kind: 'resolved', result: c, target: 'web', node: 'a', instance: 'doc', assignment: [], property: 'cursor' }).kind).toBe('blocked');
+  });
+
   it('answers not-applicable for a listed property on ios and android, never as supported, and keeps refusing it on web', () => {
     for (const target of [{ kind: 'ios', minimum: '15.0' }, { kind: 'android', minSdk: 31 }] as const) {
       const a = querySupport({ kind: 'possibilities', target, css: 'cursor: pointer' });

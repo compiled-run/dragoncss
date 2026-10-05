@@ -229,6 +229,14 @@ describe('not applicable on native', () => {
     expect(notApplicableOn(input, [...items, ...covered, d('DRAGON_UNSUPPORTED_PROPERTY', 'error', 'web', 'zoom: 2;')], 'ios')).toBeNull();
     expect(notApplicableOn(input, [...items, d('DRAGON_UNSUPPORTED_PROPERTY', 'error', null as unknown as string, 'cursor: pointer;')], 'ios')).toBeNull();
     expect(notApplicableOn(input, covered, 'ios')).toBeNull();
+    // A property item explains only its own declaration, not a later refusal in the same rule.
+    const later = '.d { cursor: pointer; transition: x; }';
+    const input2 = { snapshot: { sources: [{ ref: source, text: later, displayPath: 'u' }] } } as unknown as FrontEndResult;
+    const at2 = (find: string) => ({ kind: 'authored' as const, span: { source, start: later.indexOf(find), end: later.indexOf(find) + find.length } });
+    const d2 = (code: string, severity: 'error' | 'info', target: string, find: string) => ({ code, severity, target, origin: at2(find), message: '', why: '', related: [], fix: null, profile: null }) as unknown as Diagnostic;
+    const cursorItems = [d2('DRAGON_NOT_APPLICABLE_NATIVE', 'info', 'ios', 'cursor: pointer;'), d2('DRAGON_UNSUPPORTED_PROPERTY', 'error', 'web', 'cursor: pointer;')];
+    expect(notApplicableOn(input2, cursorItems, 'ios')).toBe('cursor: pointer;');
+    expect(notApplicableOn(input2, [...cursorItems, d2('DRAGON_UNSUPPORTED_VALUE', 'error', 'web', 'transition: x;')], 'ios')).toBeNull();
   });
 
   it('the snapshot format round-trips the na-native outcome, and the summary counts it on its own', () => {
