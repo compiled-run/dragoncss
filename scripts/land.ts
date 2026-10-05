@@ -6,9 +6,9 @@
 // --match-head-commit. A PR that fails a step gets the landing-failed label and a comment, and the queue continues.
 // Run with: pnpm land <queue-file> [--dry-run]   (queue: one <branch>:<pr>:<clean-head> per line)
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import {
   baseAction,
   ciState,
@@ -54,6 +54,7 @@ import {
   backoffMs,
   type ReviewRecord,
   type NextRound,
+  unsafeWorktree,
   parseBatchSize,
   parsePrepared,
   type Prepared,
@@ -816,6 +817,24 @@ const verifyChain = (built: readonly { entry: Entry; ticket: Ticket; position: B
 // ---- pipelining ------------------------------------------------------------------------------------------------------
 // The builder: prepares one round (admission, positions, proof and bisect) on the given base in WT_NEXT and writes it out.
 // It publishes nothing, labels nothing and writes no status; the driver adopts its round or throws it away.
+// A path with symlinks resolved (/tmp is /private/tmp on macOS), for the parts of it that exist.
+const resolvePath = (p: string): string => {
+  const parts = resolve(p).split('/');
+  for (let i = parts.length; i > 0; i--) {
+    const head = parts.slice(0, i).join('/') || '/';
+    try {
+      return join(realpathSync(head), ...parts.slice(i));
+    } catch {}
+  }
+  return resolve(p);
+};
+// Refuses a builder worktree that is, contains or sits inside the main checkout, the driver's worktree or any listed worktree.
+const checkNextWorktree = (next: string, driverWorktree: string): void => {
+  const listed = text(git, ['worktree', 'list', '--porcelain']).split('\n').flatMap((l) => (l.startsWith('worktree ') ? [l.slice(9)] : []));
+  const problem = unsafeWorktree(next, [MAIN, driverWorktree, ...listed.filter((w) => resolvePath(w) !== resolvePath(next))], resolvePath);
+  if (problem !== null) throw new Error(`land: LAND_WORKTREE_NEXT: ${problem}; the builder removes and re-adds it, so it must be a worktree of its own`);
+};
+
 const builderMain = (): number => {
   setUp();
   const inPath = env['LAND_BUILDER_INPUT']!;
@@ -831,10 +850,22 @@ const builderMain = (): number => {
   try {
     const input = JSON.parse(readFileSync(inPath, 'utf8')) as { base: string; queue: Entry[]; earlier: Entry[]; size: number };
     const base = checkSha(input.base, 'builder base');
-    if (!existsSync(WT)) git(['worktree', 'add', '-q', '--detach', WT, base]);
-    // A builder stopped mid-step may have left its worktree's index lock behind.
-    rmSync(join(text(wtGit, ['rev-parse', '--absolute-git-dir']), 'index.lock'), { force: true });
-    resetWorktree(base);
+    checkNextWorktree(WT, WT_MAIN);
+    const setUpWorktree = (): void => {
+      if (!existsSync(WT)) git(['worktree', 'add', '-q', '--detach', WT, base]);
+      // A builder stopped mid-step may have left its worktree's index lock behind.
+      rmSync(join(text(wtGit, ['rev-parse', '--absolute-git-dir']), 'index.lock'), { force: true });
+      resetWorktree(base);
+    };
+    try {
+      setUpWorktree();
+    } catch (error) {
+      // A worktree a killed builder left broken: remove it, let git forget it, and add it again, once.
+      log(`the builder worktree ${WT} is broken (${msg(error).split('\n')[0]}); removing it and adding it again`);
+      rmSync(WT, { recursive: true, force: true });
+      git(['worktree', 'prune']);
+      setUpWorktree();
+    }
     log(`preparing the next batch on ${base} in ${WT}`);
     const round = prepareRound<Ticket, Built>([...input.queue], input.size, () => base, { admit, build: buildPosition, verify: verifyChain, prove: proveTree, proveMaster, log }, { earlier: input.earlier, baseProven: true });
     put(serializePrepared(round));
@@ -866,8 +897,10 @@ const BUILDER_FILE = 'builder.pid';
 const stopBuilder = (pid: number, start: string | null): void => {
   // A leader that is another process now means the pid was reused, so the group is not the builder's. A leader that is gone
   // still leaves its group id reserved while any member lives, so the group signal can only reach the builder's processes.
+  // With no recorded start time the group cannot be told from a reused pid's, so nothing is signalled.
+  if (start === null || start === '') return log(`  not stopping the builder (pid ${pid}): its start time was not recorded`);
   const now = startOf(pid);
-  if (now !== null && start !== null && now !== start) return;
+  if (now !== null && now !== start) return;
   const signal = (sig: NodeJS.Signals): void => {
     try {
       process.kill(-pid, sig);
@@ -886,6 +919,17 @@ const running = (pid: number): boolean => {
   } catch {
     return false;
   }
+};
+
+// Started with each builder, detached in its own session: it stops the builder's group if this driver dies, however it dies.
+const startWatchdog = (builder: number, builderStart: string | null): void => {
+  const driverStart = startOf(process.pid);
+  if (builderStart === null || driverStart === null) return log('  !!! no watchdog for the builder: a start time is unknown');
+  const w = spawn(process.execPath, [join(dirname(process.argv[1]!), 'land-watchdog.ts'), String(process.pid), driverStart, String(builder), builderStart, QUIET_FILE, PRIORITY, LOG], {
+    detached: true,
+    stdio: 'ignore',
+  });
+  w.unref();
 };
 
 const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
@@ -918,6 +962,7 @@ const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
       if (pid !== null) {
         start = startOf(pid);
         writeFileSync(runFile(BUILDER_FILE), `${pid} ${start ?? ''}`);
+        startWatchdog(pid, start);
       }
       log(`pipelining: preparing the next batch on ${base} (builder pid ${pid}, log /tmp/land-next.log)`);
     },
@@ -969,6 +1014,7 @@ const main = (): number => {
   // A synchronous driver cannot act on SIGUSR1 in time; it is kept from killing the driver, and the stop goes to the supervisor.
   process.on('SIGUSR1', () => log(`SIGUSR1 reached the driver, which ignores it; send it to the supervisor (pid ${env[SUPERVISOR_PID_ENV]}, in ${LOCK}/pid)`));
   prepareWorktree();
+  if (PIPELINE) checkNextWorktree(WT_NEXT, WT);
   const startedAt = stamp();
   log(`=== pnpm land ${args.queue}: ${entries.map((e) => `#${e.pr}`).join(' ')} in batches of up to ${BATCH} (pid ${process.pid}, worktree ${WT})`);
   let latest: readonly Outcome[] = [];
