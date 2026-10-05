@@ -27,12 +27,11 @@ import {
   SOLO_RERUN_MAX,
   failingTestFiles,
   clearStaleQuiet,
-  bootedSimulators,
   cleanUpAfterDriver,
-  DEVICES_MARK,
-  emulatorPids,
+  clearsUnproved,
   lockState,
   MERGES_LOG,
+  parseLstart,
   parsePidFile,
   parseUnproved,
   proveRestingMaster,
@@ -106,12 +105,12 @@ const readOrNull = (path: string): string | null => {
   }
 };
 const readUnproved = (): { pr: number; head: string } | null => parseUnproved(readOrNull(UNPROVED));
-const runningEmulators = (): number[] => emulatorPids(execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
-const runningSimulators = (): string[] => {
+// A process's start time (`ps -o lstart=`), which tells it from a later process that reused its pid; null when it is gone.
+const startOf = (pid: number): string | null => {
   try {
-    return bootedSimulators(execFileSync('xcrun', ['simctl', 'list', 'devices', 'booted', '-j'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
+    return parseLstart(execFileSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
   } catch {
-    return [];
+    return null;
   }
 };
 let REVIEW_CMD = '';
@@ -473,14 +472,7 @@ const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => {
   }
   if (runDevices) {
     const started = Date.now();
-    // What runs before the device step, so an interrupt can stop exactly the emulators and simulators it started.
-    writeFileSync(runFile(DEVICES_MARK), JSON.stringify({ emulators: runningEmulators(), simulators: runningSimulators() }));
-    let d: Run;
-    try {
-      d = run('devices', [DEVICE, ...DEVICES], WT);
-    } finally {
-      rmSync(runFile(DEVICES_MARK), { force: true });
-    }
+    const d = run('devices', [DEVICE, ...DEVICES], WT);
     // master's device-pixels lane fails on purpose, so the exit code says nothing; the judgement against the previous position decides.
     if (d.error !== undefined || d.signal !== null || (d.status !== 0 && d.status !== 1)) failed('devices', d, DEVICES.join(' '));
     const problems = judgeDevices(prev, started);
@@ -542,7 +534,10 @@ const proveCommit = (head: string, what: string): void => {
   }
   requireTracked('test', 'pnpm test');
   proved.push(head);
-  if (readUnproved()?.head === head) rmSync(UNPROVED, { force: true });
+  if (clearsUnproved(readUnproved(), head, (a, b) => isAncestor(git, a, b))) {
+    rmSync(UNPROVED, { force: true });
+    log('  this proof contains the unproved position master was left on; record cleared');
+  }
 };
 const proveTree = (p: Built, e: Entry): void => {
   current = e;
@@ -556,7 +551,8 @@ const proveMaster = (master: string): void => {
 };
 
 // Publishes one PR at its position, once the PR before it has merged: push, CI, pr:review, Claude review, merge, tree check.
-// From the push to the end of the post-merge cleanup it is a critical section (PUBLISH_MARK): an interrupt waits for it.
+// From just before gh pr merge to the end of the post-merge cleanup it is a critical section (PUBLISH_MARK): an interrupt waits
+// for it. Before that, an interrupt is safe at any point: at most the PR branch moved by a fast-forward, which admission accepts.
 const publish = (e: Entry, b: Built, t: Ticket): string => {
   try {
     return publishInside(e, b, t);
@@ -578,7 +574,6 @@ const publishInside = (e: Entry, b: Built, t: Ticket): string => {
   // Push (a plain push: git refuses anything but a fast-forward of the PR head), then CI and pr:review on it.
   const before = prView(e.pr);
   if (before.headOid !== p.prHead) throw new LandFailure('push', `PR #${e.pr} moved from ${p.prHead} to ${before.headOid} during the build`);
-  writeFileSync(runFile(PUBLISH_MARK), JSON.stringify({ pr: e.pr, head: p.head, merged: null }));
   if (before.headOid !== p.head) {
     try {
       net(git, ['push', '--quiet', 'origin', `${p.head}:refs/heads/${e.branch}`]);
@@ -605,6 +600,7 @@ const publishInside = (e: Entry, b: Built, t: Ticket): string => {
       if (text(gitAt(w), ['rev-parse', '--abbrev-ref', 'HEAD']) === e.branch) gitAt(w)(['checkout', '-q', '--detach']);
     } catch {}
   }
+  writeFileSync(runFile(PUBLISH_MARK), JSON.stringify({ pr: e.pr, head: p.head, merged: null }));
   ghMerge(e.pr, p.head);
   const mergeSha = prView(e.pr).mergeCommit ?? '0'.repeat(40);
   writeFileSync(runFile(MERGES_LOG), `${e.pr} ${mergeSha} ${p.head}\n`, { flag: 'a' });
@@ -684,7 +680,7 @@ const dryRun = (entries: Entry[]): void => {
 };
 
 // ---- main ------------------------------------------------------------------------------------------------------------
-// The lock holds the supervisor's pid (pid) and its driver's (driver); it is held while either lives (lockState).
+// The lock holds the supervisor (pid, pid-start) and its driver (driver, driver-start); it is held while either lives (lockState).
 const LOCK_PID = join(LOCK, 'pid');
 const LOCK_DRIVER = join(LOCK, 'driver');
 const groupAlive = (pid: number): boolean => {
@@ -695,34 +691,45 @@ const groupAlive = (pid: number): boolean => {
     return false;
   }
 };
-// Takes the lock; returns the pid of a dead run's driver when one was left (its leftovers need cleaning), else null.
+const lockProc = (path: string): { pid: number; start: string } | null => {
+  const pid = parsePidFile(readOrNull(path));
+  return pid === null ? null : { pid, start: (readOrNull(`${path}-start`) ?? '').trim() };
+};
+const recordProc = (path: string, pid: number): void => {
+  writeFileSync(path, String(pid));
+  writeFileSync(`${path}-start`, startOf(pid) ?? '');
+};
+// Takes the lock; returns the pid of a dead run's driver when one was recorded (its leftovers need cleaning), else null.
 const lock = (): number | null => {
   for (;;) {
     try {
       mkdirSync(LOCK);
-      writeFileSync(LOCK_PID, String(process.pid));
+      recordProc(LOCK_PID, process.pid);
       return null;
     } catch (error) {
       if ((error as { code?: unknown }).code !== 'EEXIST') throw error;
     }
-    const sup = parsePidFile(readOrNull(LOCK_PID));
-    const driver = parsePidFile(readOrNull(LOCK_DRIVER));
-    const state = lockState(sup, driver, alive);
-    if (state === 'held') throw new Error(`land: another driver (supervisor pid ${sup}) holds ${LOCK}`);
+    const sup = lockProc(LOCK_PID);
+    const driver = lockProc(LOCK_DRIVER);
+    const state = lockState(sup, driver, startOf);
+    if (state === 'held') throw new Error(`land: another driver (supervisor pid ${sup?.pid}) holds ${LOCK}`);
     if (state === 'orphan') {
-      log(`a driver (pid ${driver}) is still running without its supervisor (pid ${sup}); killing its process group`);
+      // The pid and its start time both match the recorded driver, so this group is that driver's, not a reused pid's.
+      log(`a driver (pid ${driver!.pid}, started ${driver!.start}) is still running without its supervisor; killing its process group`);
       try {
-        process.kill(-driver!, 'SIGTERM');
+        process.kill(-driver!.pid, 'SIGTERM');
       } catch {}
-      for (let i = 0; i < 80 && groupAlive(driver!); i++) sleep(250);
-      try {
-        process.kill(-driver!, 'SIGKILL');
-      } catch {}
+      for (let i = 0; i < 80 && groupAlive(driver!.pid); i++) sleep(250);
+      if (startOf(driver!.pid) === driver!.start) {
+        try {
+          process.kill(-driver!.pid, 'SIGKILL');
+        } catch {}
+      }
     }
     rmSync(LOCK, { recursive: true, force: true });
     mkdirSync(LOCK);
-    writeFileSync(LOCK_PID, String(process.pid));
-    return driver;
+    recordProc(LOCK_PID, process.pid);
+    return driver?.pid ?? null;
   }
 };
 const unlock = (): void => {
@@ -772,18 +779,14 @@ const main = (): number => {
   const startedAt = stamp();
   log(`=== pnpm land ${args.queue}: ${entries.map((e) => `#${e.pr}`).join(' ')} in batches of up to ${BATCH} (pid ${process.pid}, worktree ${WT})`);
   let latest: readonly Outcome[] = [];
-  // master left on an unproved position by an interrupted run is proved before anything else.
-  let resting: string | null;
-  try {
-    resting = proveRestingMaster(readUnproved(), () => proveMaster(fetchMaster()), () => rmSync(UNPROVED, { force: true }), log);
-  } catch (error) {
-    resting = msg(error);
+  // master left on an unproved position by an interrupted run is proved first; the result is logged loudly, never blocking.
+  const resting = readUnproved();
+  if (resting !== null && !/^[0-9a-f]{40}$/.test(resting.head)) {
+    const master = fetchMaster();
+    log(`!!! ${UNPROVED} is unreadable (${resting.head}); recording master ${master} as unproved instead`);
+    writeFileSync(UNPROVED, JSON.stringify({ pr: 0, head: master }));
   }
-  if (resting !== null) {
-    writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: [], fatal: resting, total: entries.length, done: true }));
-    log(readFileSync(STATUS, 'utf8').trimEnd());
-    return 1;
-  }
+  proveRestingMaster(readUnproved(), () => proveMaster(fetchMaster()), () => rmSync(UNPROVED, { force: true }), log);
   const write = (done: boolean, fatal: string | null, running: Entry | null = current): void =>
     writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: done ? null : running, outcomes: latest, fatal, total: entries.length, done }));
   const result = runBatches<Ticket, Built>(entries, BATCH, {
@@ -836,8 +839,7 @@ const requestStop = (): void => writeFileSync(STOP_FILE, `${process.pid}\n`);
 
 // The supervisor: checks the arguments, holds the lock, runs the driver (this file, LAND_SUPERVISED=1) in its own process group,
 // and on an interrupt records it and cleans up after the driver (its quiet request and priority, the driver worktree).
-// After a driver died abnormally (interrupted, killed, orphaned): stop the devices its run started, release what it held,
-// reset the driver worktree and write the status.
+// After a driver died abnormally (interrupted, killed, orphaned): release what it held, reset the driver worktree, write the status.
 const cleanUpAfter = (driverPid: number, how: string): void => {
   try {
     MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
@@ -847,12 +849,6 @@ const cleanUpAfter = (driverPid: number, how: string): void => {
     now: stamp(),
     read: (name) => readOrNull(runFile(name)),
     unproved: readUnproved,
-    devices: {
-      emulators: runningEmulators,
-      simulators: runningSimulators,
-      kill: (pid) => process.kill(pid, 'SIGKILL'),
-      shutdown: (udid) => void execFileSync('xcrun', ['simctl', 'shutdown', udid], { stdio: 'ignore' }),
-    },
     release: () => {
       releaseQuiet(QUIET_FILE, driverPid);
       if (readOrNull(PRIORITY)?.trim() === String(driverPid)) rmSync(PRIORITY, { force: true });
@@ -877,7 +873,7 @@ const supervisor = async (): Promise<number> => {
     graceMs: seconds('LAND_KILL_GRACE', 60) * 1000,
     deferCapMs: seconds('LAND_INTERRUPT_CAP', 3 * 3600) * 1000,
     publishing: () => existsSync(runFile(PUBLISH_MARK)),
-    onSpawn: (pid: number) => writeFileSync(LOCK_DRIVER, String(pid)),
+    onSpawn: (pid: number) => recordProc(LOCK_DRIVER, pid),
     onStop: requestStop,
     log,
   };
@@ -891,7 +887,7 @@ const supervisor = async (): Promise<number> => {
       rmSync(STOP_FILE, { force: true });
       log(`removed ${STOP_FILE}, left from before this run`);
     }
-    log(`land supervisor pid ${process.pid}: kill -TERM ${process.pid} interrupts (after a publish in progress); kill -USR1 ${process.pid} or touch ${STOP_FILE} stops after the current batch`);
+    log(`land supervisor pid ${process.pid}: kill -TERM ${process.pid} interrupts (after a merge in progress); kill -USR1 ${process.pid} or touch ${STOP_FILE} stops after the current batch`);
     const r = await supervise(driver);
     if (r.interrupted !== null) cleanUpAfter(r.pid, r.interrupted);
     else if (r.signal !== null) cleanUpAfter(r.pid, `the driver's death by ${r.signal}`);

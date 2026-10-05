@@ -26,15 +26,13 @@ import {
   isTransient,
   isUnreviewed,
   LandFailure,
-  bootedSimulators,
   cleanUpAfterDriver,
-  DEVICES_MARK,
-  emulatorPids,
+  clearsUnproved,
   interruptedStatus,
   lockState,
   MERGES_LOG,
   parseBatchSize,
-  parseDevicesMark,
+  parseLstart,
   parseMerges,
   parsePidFile,
   parsePublishMark,
@@ -758,7 +756,7 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(merged).toContain(`merged in this run: #6 (${sha('a').slice(0, 12)}), #7 (${sha('c').slice(0, 12)})`);
     expect(merged).toContain(`master rests on #7's position ${sha('d')}, which no full test has proved; the next run proves it before anything else`);
     expect(merged).not.toContain('not failed');
-    expect(interruptedStatus({ ...base, publishing: { pr: 7, head: sha('d'), merged: null } })).toContain(`interrupted while publishing #7 (position ${sha('d')}), before its merge; it was not failed`);
+    expect(interruptedStatus({ ...base, publishing: { pr: 7, head: sha('d'), merged: null } })).toContain(`interrupted while merging #7 (position ${sha('d')}); check whether it merged`);
   });
 
   it('reads the driver\'s run files strictly', () => {
@@ -769,32 +767,38 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(parseUnproved(JSON.stringify({ pr: 3, head: sha('a') }))).toEqual({ pr: 3, head: sha('a') });
     // An unreadable record is not "nothing to prove".
     expect(parseUnproved('{"pr":')).toMatchObject({ pr: 0, head: expect.stringMatching(/^unreadable/) });
-    expect(parseDevicesMark(JSON.stringify({ emulators: [123], simulators: ['U-1'] }))).toEqual({ emulators: [123], simulators: ['U-1'] });
-    expect(parseDevicesMark(JSON.stringify({ emulators: ['123'], simulators: [] }))).toBeNull();
+    expect(parseLstart('Sun Oct  4 21:59:58 2026\n')).toBe('Sun Oct  4 21:59:58 2026');
+    expect(parseLstart('')).toBeNull();
     expect(parsePidFile('123\n')).toBe(123);
     for (const bad of [null, '', '1', '-5', 'x', '12x']) expect(parsePidFile(bad)).toBeNull();
   });
 
-  it('holds the lock while the supervisor or its driver lives, and reports a driver left without its supervisor', () => {
-    const alive = (live: number[]) => (pid: number) => live.includes(pid);
-    expect(lockState(10, 11, alive([10, 11]))).toBe('held');
-    expect(lockState(10, 11, alive([10]))).toBe('held');
-    expect(lockState(10, 11, alive([11]))).toBe('orphan');
-    expect(lockState(10, 11, alive([]))).toBe('free');
-    expect(lockState(null, null, alive([1]))).toBe('free');
+  it('holds the lock while the supervisor or its driver lives, and never takes a reused pid for either', () => {
+    const procs = (live: Record<number, string>) => (pid: number) => live[pid] ?? null;
+    const sup = { pid: 10, start: 'Sun 21:00' };
+    const drv = { pid: 11, start: 'Sun 21:01' };
+    expect(lockState(sup, drv, procs({ 10: 'Sun 21:00', 11: 'Sun 21:01' }))).toBe('held');
+    expect(lockState(sup, drv, procs({ 10: 'Sun 21:00' }))).toBe('held');
+    expect(lockState(sup, drv, procs({ 11: 'Sun 21:01' }))).toBe('orphan');
+    expect(lockState(sup, drv, procs({}))).toBe('free');
+    // The pids live again, but as other processes (started later): nothing is held and no group is killed.
+    expect(lockState(sup, drv, procs({ 10: 'Mon 09:00', 11: 'Mon 09:01' }))).toBe('free');
+    expect(lockState(sup, { pid: 11, start: '' }, procs({ 11: '' }))).toBe('free');
+    expect(lockState(null, null, procs({ 1: 'x' }))).toBe('free');
   });
 
-  it('finds the emulators and booted simulators a device step started', () => {
-    const ps = '  101 /opt/android/emulator/qemu/darwin-aarch64/qemu-system-aarch64 -avd dragon-smoke\n  102 /opt/android/emulator/emulator -avd x\n  103 adb -L tcp:5037 fork-server server\n  104 node scripts/emulator-helper.ts\n';
-    expect(emulatorPids(ps)).toEqual([101, 102]);
-    const sims = JSON.stringify({ devices: { 'iOS-18': [{ udid: 'A', state: 'Booted' }, { udid: 'B', state: 'Shutdown' }], 'iOS-17': [{ udid: 'C', state: 'Booted' }] } });
-    expect(bootedSimulators(sims)).toEqual(['A', 'C']);
-    expect(() => bootedSimulators('{}')).toThrow(/simctl/);
+  it('starts the merge critical section just before gh pr merge, so an interrupt during CI and review waits acts at once', () => {
+    const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
+    const body = src.slice(src.indexOf('const publishInside'));
+    const mark = body.indexOf('writeFileSync(runFile(PUBLISH_MARK)');
+    expect(mark).toBeGreaterThan(body.indexOf("waitCi('ci'"));
+    expect(mark).toBeGreaterThan(body.indexOf('mergeGate('));
+    expect(mark).toBeLessThan(body.indexOf('ghMerge(e.pr'));
+    expect(src).not.toMatch(/simctl|emulatorPids|process\.kill\(pid, 'SIGKILL'\)/);
   });
 
-  it('cleans up after a dead driver: only the devices its run started, then release, reset and status, each despite the others failing', () => {
+  it('cleans up after a dead driver: release, reset and status, each despite the others failing, and never a device', () => {
     const files = new Map<string, string>([
-      [DEVICES_MARK, JSON.stringify({ emulators: [101], simulators: ['A'] })],
       [PUBLISH_MARK, JSON.stringify({ pr: 7, head: sha('d'), merged: sha('c') })],
       [MERGES_LOG, `7 ${sha('c')} ${sha('d')}\n`],
     ]);
@@ -805,7 +809,6 @@ describe('batched landing (runBatches with fakes)', () => {
       now: 't9',
       read: (f) => files.get(f) ?? null,
       unproved: () => ({ pr: 7, head: sha('d') }),
-      devices: { emulators: () => [101, 202], simulators: () => ['A', 'B'], kill: (pid) => done.push(`kill ${pid}`), shutdown: (u) => done.push(`shutdown ${u}`) },
       release: () => {
         done.push('release');
         throw new Error('rm failed');
@@ -814,30 +817,41 @@ describe('batched landing (runBatches with fakes)', () => {
       status: { read: () => status, write: (t) => (status = t) },
       log: () => {},
     });
-    expect(done).toEqual(['kill 202', 'shutdown B', 'release', 'reset']);
+    expect(done).toEqual(['release', 'reset']);
     expect(problems).toEqual(['releasing the quiet request and priority: rm failed']);
     expect(status).toMatch(/^land INTERRUPTED t9 by SIGTERM/);
     expect(status).toContain('#7 MERGED as');
-    // No device step ran: no device is touched.
-    const none: string[] = [];
-    cleanUpAfterDriver({ how: 'x', now: 't', read: () => null, unproved: () => null, devices: { emulators: () => [1], simulators: () => ['A'], kill: () => none.push('kill'), shutdown: () => none.push('shutdown') }, release: () => {}, reset: () => {}, status: { read: () => '', write: () => {} }, log: () => {} });
-    expect(none).toEqual([]);
   });
 
-  it('proves the tree an interrupted run left master on before anything else, and refuses to start on a red one', () => {
+  it('proves the tree an interrupted run left master on first, logs a red master loudly, and never blocks the queue', () => {
     const calls: string[] = [];
-    const prove = (fail?: LandFailure | Error) => () => {
+    const logs: string[] = [];
+    const prove = (fail?: Error) => () => {
       calls.push('prove');
       if (fail) throw fail;
     };
-    expect(proveRestingMaster(null, prove(), () => calls.push('clear'), () => {})).toBeNull();
+    const clear = () => calls.push('clear');
+    expect(proveRestingMaster(null, prove(), clear, (l) => logs.push(l))).toBeNull();
     expect(calls).toEqual([]);
-    expect(proveRestingMaster({ pr: 7, head: sha('d') }, prove(), () => calls.push('clear'), () => {})).toBeNull();
+    expect(proveRestingMaster({ pr: 7, head: sha('d') }, prove(), clear, (l) => logs.push(l))).toBe(true);
     expect(calls).toEqual(['prove', 'clear']);
     calls.length = 0;
-    expect(proveRestingMaster({ pr: 7, head: sha('d') }, prove(new LandFailure('test', 'red: t1.test.ts')), () => calls.push('clear'), () => {})).toMatch(/^master is red: it rests on #7's position .* fails pnpm test:\nred: t1\.test\.ts$/);
+    // Red: logged, the record kept, and the run carries on (no throw, no refusal).
+    expect(proveRestingMaster({ pr: 7, head: sha('d') }, prove(new LandFailure('test', 'red: t1.test.ts')), clear, (l) => logs.push(l))).toBe(false);
     expect(calls).toEqual(['prove']);
-    expect(() => proveRestingMaster({ pr: 7, head: sha('d') }, prove(new LandFailure('install', 'ECONNRESET')), () => {}, () => {})).toThrow(Fatal);
+    expect(logs.at(-1)).toMatch(/^!!! MASTER IS RED: it rests on #7's position .* carrying on, so a batch whose top passes can land the fix:\nred: t1\.test\.ts$/);
+    expect(proveRestingMaster({ pr: 7, head: sha('d') }, prove(new LandFailure('install', 'ECONNRESET')), clear, (l) => logs.push(l))).toBe(false);
+    expect(logs.at(-1)).toMatch(/^!!! could not prove master: .*install/);
+  });
+
+  it('clears the unproved record only on a passing proof that contains the recorded position', () => {
+    const anc = (pairs: [string, string][]) => (a: string, b: string) => pairs.some(([x, y]) => x === a && y === b);
+    const rec = { head: sha('d') };
+    expect(clearsUnproved(rec, sha('d'), anc([]))).toBe(true);
+    expect(clearsUnproved(rec, sha('e'), anc([[sha('d'), sha('e')]]))).toBe(true); // a batch built on that master passed
+    expect(clearsUnproved(rec, sha('f'), anc([]))).toBe(false); // a tree without it
+    expect(clearsUnproved(null, sha('d'), anc([]))).toBe(false);
+    expect(clearsUnproved({ head: 'unreadable "{"' }, sha('d'), () => true)).toBe(false);
   });
 
   it('reads LAND_BATCH strictly', () => {
@@ -924,7 +938,7 @@ describe('the supervisor with real processes', () => {
     process.kill(s.pid, 'SIGTERM');
     const r = await s.done;
     expect(r.code).toBe(130);
-    expect(r.out).toContain('the driver is publishing a PR; interrupting once that publish ends');
+    expect(r.out).toContain('the driver is merging a PR; interrupting once that merge and its checks end');
     expect(existsSync(join(a.dir, 'published'))).toBe(true); // the publish finished
     expect(existsSync(join(a.dir, 'resumed'))).toBe(false); // and nothing after it ran
     const b = setup(body);
