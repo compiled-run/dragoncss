@@ -105,7 +105,8 @@ if (runHost || runDevice) {
         const hostRun: HostSource = hostRuns !== null ? hostRuns.then(() => host.get(t.target) ?? null) : committed !== null && staleLanes(committed, targets).some((p) => staleCovers(p, t.target, 'layout-vectors-host')) ? null : hostOf(committed, t.target);
         if (hostRun instanceof Promise) hostRun.catch(() => undefined);
         const log = logOf(t.target);
-        const d = await runTargetOnDevices(t, hostRun, log, { jobs: jobsOf.get(t.target) ?? 1, early });
+        // A boot of this target its run did not take (the run threw first) is stopped as soon as the run ends.
+        const d = await runTargetOnDevices(t, hostRun, log, { jobs: jobsOf.get(t.target) ?? 1, early }).finally(() => stopEarly((x) => x === t.target));
         device.set(t.target, d);
         const all = allRunFailures(d);
         mkdirSync(repoPath('packages/parity/out'), { recursive: true });
