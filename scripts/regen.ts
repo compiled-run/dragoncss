@@ -17,29 +17,19 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { compilePattern, matchSegments } from './macroscope-ignore.ts';
 import { importClosure, lockClosure, parseLock, type ReadText, scanSource, type Tree, type Workspace, workspaceOf } from './regen-inputs.ts';
+import { BG2 } from './regen-steps/bg2.ts';
+import { OVFL } from './regen-steps/ovfl.ts';
+import { PNT1 } from './regen-steps/pnt1.ts';
+import { PNT2 } from './regen-steps/pnt2.ts';
+import { ENGINE_SOURCES, FIXTURES, FONTS, type ManualOutput, placeSteps, pnpm, type RegenFeature, type Step } from './regen-steps/step.ts';
+import { TDEC } from './regen-steps/tdec.ts';
+import { TXT1A } from './regen-steps/txt1a.ts';
+import { TXT2 } from './regen-steps/txt2.ts';
 
 export type { Tree } from './regen-inputs.ts';
+export type { ManualOutput, RegenFeature, Step } from './regen-steps/step.ts';
 
-export type Step = {
-  readonly name: string;
-  readonly argv: readonly string[];
-  /** Every committed path the step writes (macroscope-ignore glob syntax); a change anywhere else fails the run. */
-  readonly outputs: readonly string[];
-  /** Tree files the step reads as data (fixtures, case lists, other steps' outputs), beyond the import closure of its code. */
-  readonly reads?: readonly string[];
-  /** Directories the step lists without reading every file below them: the names directly inside each are inputs. */
-  readonly lists?: readonly string[];
-  /** Modules the step imports by a computed path: their import closures are inputs too. */
-  readonly imports?: readonly string[];
-  /** Installed packages the step reads as files rather than importing them. */
-  readonly packages?: readonly string[];
-  /** Environment variables that are inputs of the step. */
-  readonly env?: readonly string[];
-  /** Whether a non-zero exit is a verdict the step recorded rather than a failure to regenerate. */
-  readonly verdict?: (code: number, log: string) => boolean;
-};
 
-const pnpm = (...a: string[]): string[] => ['pnpm', '-s', 'run', ...a];
 // parity:lanes exits 1 when a lane's state is fail (device-pixels on master); it prints this line only after writing lanes.json
 // with no parity problem.
 const LANES_AGREE = 'parity:lanes: lanes, case lists, tolerances, sample rules, dump faults and the projection agree on ios and android';
@@ -56,11 +46,9 @@ export function lanesVerdict(code: number, log: string): boolean {
 }
 
 // reads, imports and packages come from a traced run of every step (scripts/regen-trace.ts); a run that reads anything else fails.
-const FIXTURES = 'packages/parity/fixtures/**';
-const FONTS = 'vendor/fonts/**';
-// The translator reads the layout engine's sources as text and lowers them to Swift and Kotlin.
-const ENGINE_SOURCES = ['packages/layout/src/**', 'packages/layout/package.json'];
-export const STEPS: readonly Step[] = [
+// The steps that landed before the per-feature split, in run order. A later feature's steps, extra outputs and MANUAL entries
+// live in regen-steps/<feature>.ts (REGEN_FEATURES); STEPS places each feature step after the step it names.
+const LEGACY_STEPS: readonly Step[] = [
   { name: 'grammar', argv: pnpm('grammar:gen'), outputs: ['packages/dragon/src/css/grammar.generated.ts'] },
   { name: 'notices', argv: pnpm('notices:gen'), outputs: ['THIRD_PARTY_NOTICES.md'], reads: ['docs/ports.json', 'vendor/harfbuzz/COPYING'] },
   { name: 'ua', argv: pnpm('ua:capture'), outputs: ['packages/dragon/src/ua/*.generated.ts'], reads: [FONTS] },
@@ -106,13 +94,30 @@ export const STEPS: readonly Step[] = [
   },
 ];
 
+/**
+ * Every feature's regen additions, one line per feature, sorted by feature id: a feature adds regen-steps/<feature>.ts, its import
+ * and one line here, each in sorted order (packages/parity/test/registry-claims.test.ts).
+ */
+export const REGEN_FEATURES: { readonly [feature: string]: RegenFeature } = {
+  bg2: BG2,
+  ovfl: OVFL,
+  pnt1: PNT1,
+  pnt2: PNT2,
+  tdec: TDEC,
+  txt1a: TXT1A,
+  txt2: TXT2,
+};
+
+/** Every regen step, in run order: the legacy steps with the features' steps and extra outputs placed (placeSteps). */
+export const STEPS: readonly Step[] = placeSteps(LEGACY_STEPS, REGEN_FEATURES);
+
 /** Regen outputs a merge must not keep from one side: wpt fail entries carry a hand-written reason, deviation and issue. */
 export const MERGE_BY_HAND: readonly { readonly path: string; readonly why: string }[] = [
   { path: 'packages/wpt/expectations/web.json', why: 'fail entries keep a hand-written reason, deviation and issue across runs' },
 ];
 
 /** Tracked outputs under the generated shapes of .macroscope/ignore.md that regen does not rebuild, and what produces them. */
-export const MANUAL: readonly { readonly command: string; readonly outputs: readonly string[] }[] = [
+const LEGACY_MANUAL: readonly ManualOutput[] = [
   { command: '/tmp/device-lease.sh pnpm run parity:devices (device lanes)', outputs: ['packages/parity/out/device-failures-*.json'] },
   { command: 'pnpm run north-star:capture', outputs: ['examples/*/chrome/**'] },
   // A paint package's vector inputs are written from the input list it pins (paint-dash.test.ts dashVectorInputs, PNT2's
@@ -138,6 +143,9 @@ export const MANUAL: readonly { readonly command: string; readonly outputs: read
   { command: 'none: frozen by hand (calc goldens, the M1 case list, vector format notes)', outputs: ['packages/layout/vectors/calc/**', 'packages/layout/vectors/README.md', 'packages/translate/corpus-m1-cases.json'] },
   { command: 'the research spikes\' own probes and notes', outputs: ['docs/research/**'] },
 ];
+
+/** The legacy MANUAL entries, then every feature's, in feature id order. */
+export const MANUAL: readonly ManualOutput[] = [...LEGACY_MANUAL, ...Object.keys(REGEN_FEATURES).sort().flatMap((id) => REGEN_FEATURES[id]?.manual ?? [])];
 
 export const MAX_PASSES = 5;
 export const DEFAULT_JOBS = 2;
