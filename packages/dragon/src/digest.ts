@@ -76,7 +76,8 @@ export class CanonicalText {
 export function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (value instanceof CanonicalText) return value.json;
-  if (value instanceof Uint8Array) return JSON.stringify(Array.from(value));
+  // Bytes (font assets, megabytes each) enter a digest as their SHA-256, never as a number per byte.
+  if (value instanceof Uint8Array) return JSON.stringify(`sha256:${sha256HexBytes(value)}`);
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   const entries = Object.entries(value as Record<string, unknown>)
     .filter(([, v]) => v !== undefined)
