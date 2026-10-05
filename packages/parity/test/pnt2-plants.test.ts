@@ -12,7 +12,10 @@ const f = (lane: LaneFailure['lane'], kind: LaneFailure['kind'], node: string): 
 
 describe('PNT2: transform raster plants', () => {
   it('run on the origin and translate fixtures of the transforms group', () => {
-    expect(SUPPORT_PLANTS.filter((p) => !isGlyphPlant(p)).slice(-2)).toEqual(['transform-origin-ignored', 'translate-percent-of-parent']);
+    // Both transform plants are paint plants, in the transform emitter's order (other modules' plants may follow them).
+    const paint = SUPPORT_PLANTS.filter((p) => !isGlyphPlant(p));
+    const at = paint.indexOf('transform-origin-ignored');
+    expect(paint.slice(at, at + 2)).toEqual(['transform-origin-ignored', 'translate-percent-of-parent']);
     expect([PLANT_CASES['transform-origin-ignored'], PLANT_CASES['translate-percent-of-parent']]).toEqual([['transform-origin'], ['transform-translate']]);
     const transforms = (FIXTURE_GROUPS.find((g) => g.id === 'transforms')?.fixtures ?? []).map((x) => x.id);
     for (const c of [...PLANT_CASES['transform-origin-ignored'], ...PLANT_CASES['translate-percent-of-parent']]) expect(transforms).toContain(c);
