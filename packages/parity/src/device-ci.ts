@@ -86,3 +86,37 @@ export function mergeCiOutcomes(outcomes: readonly CiOutcome[], evidenceOf: (t: 
   }
   return runs;
 }
+
+type LanesRecords = { readonly targets: readonly { readonly target: string; readonly lanes: readonly { readonly lane: string; readonly where: string; readonly state: string; readonly reason: string | null }[] }[] };
+type Failure = { readonly lane: string; readonly case: string; readonly dpr: number; readonly node: string | null; readonly kind: string; readonly detail: string };
+export type LaneComparison = { readonly target: string; readonly lane: string; readonly committed: string; readonly ci: string; readonly set: string; readonly detail: string; readonly same: boolean };
+
+/**
+ * Every device lane of the merged CI records against the records committed at the tested commit: the state, and the failure set
+ * (lane, case, DPR, node, kind) with and without its detail text. It informs a run made for review (the `devices` label); a run
+ * the landing driver dispatches is judged by the driver against the previous position, since its tree's own committed records
+ * are the "not run" ones its regen wrote (judgeCommitted false).
+ */
+export function compareWithCommitted(committed: { readonly lanes: LanesRecords; readonly failures: (t: string) => readonly Failure[] }, ci: { readonly lanes: LanesRecords; readonly failures: (t: string) => readonly Failure[] }): { readonly rows: readonly LaneComparison[]; readonly same: boolean } {
+  const rows: LaneComparison[] = [];
+  const key = (f: Failure): string => JSON.stringify([f.lane, f.case, f.dpr, f.node, f.kind]);
+  for (const t of committed.lanes.targets) {
+    const mine = ci.lanes.targets.find((x) => x.target === t.target);
+    for (const l of t.lanes.filter((x) => x.where === 'device')) {
+      const m = mine?.lanes.find((x) => x.lane === l.lane);
+      const a = committed.failures(t.target).filter((f) => f.lane === l.lane);
+      const b = ci.failures(t.target).filter((f) => f.lane === l.lane);
+      const [ka, kb] = [a.map(key).sort(), b.map(key).sort()];
+      const [da, db] = [a.map((f) => key(f) + f.detail).sort(), b.map((f) => key(f) + f.detail).sort()];
+      const setSame = JSON.stringify(ka) === JSON.stringify(kb);
+      const detailSame = JSON.stringify(da) === JSON.stringify(db);
+      const fmt = (x: { state: string; reason: string | null } | undefined): string => (x === undefined ? 'missing' : `${x.state}${x.reason === null ? '' : ` (${x.reason})`}`);
+      rows.push({ target: t.target, lane: l.lane, committed: fmt(l), ci: fmt(m), set: setSame ? `same (${ka.length})` : `differs: ${ka.filter((k) => !kb.includes(k)).length} only committed, ${kb.filter((k) => !ka.includes(k)).length} only CI`, detail: detailSame ? 'same' : 'differs', same: m?.state === l.state && setSame && detailSame });
+    }
+  }
+  return { rows, same: rows.every((r) => r.same) };
+}
+
+/** The comparison as a markdown table, with its verdict line. */
+export const comparisonText = (c: ReturnType<typeof compareWithCommitted>): string =>
+  `${['| target | lane | committed | CI | failure set (lane, case, dpr, node, kind) | detail text |', '|---|---|---|---|---|---|', ...c.rows.map((r) => `| ${r.target} | ${r.lane} | ${r.committed} | ${r.ci} | ${r.set} | ${r.detail} |`)].join('\n')}\n\n${c.same ? 'Every device lane judges exactly as the committed records.' : 'Some device lanes differ from the committed records.'}\n`;

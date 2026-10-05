@@ -1,7 +1,8 @@
 // CI device lanes (device-ci.ts): the pinned iOS runtime, the host's Android image, the CI memory reserve, and the merge of
 // per-device outcomes, which refuses a missing, repeated or foreign outcome instead of merging a subset.
 import { describe, expect, it } from 'vitest';
-import { ciOutcomeText, type CiOutcome, mergeCiOutcomes, OUTCOME_SCHEMA, parseCiOutcome, producerLabel } from '../src/device-ci.ts';
+import { ciOutcomeText, type CiOutcome, compareWithCommitted, comparisonText, mergeCiOutcomes, OUTCOME_SCHEMA, parseCiOutcome, producerLabel } from '../src/device-ci.ts';
+import { allRunFailures } from '../src/device-lanes.ts';
 import { lanesFile, laneSources, checkLaneParity } from '../src/lanes.ts';
 import { nativeTargets } from '../src/targets.ts';
 import type { DeviceEvidence } from '../src/device-evidence.ts';
@@ -94,5 +95,25 @@ describe('host labels', () => {
   it('names a GitHub Actions run by runner and URL, and anything else as this machine', () => {
     expect(producerLabel({ GITHUB_ACTIONS: 'true', RUNNER_OS: 'Linux', RUNNER_ARCH: 'X64', ImageOS: 'ubuntu24', GITHUB_SERVER_URL: 'https://github.com', GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '9' })).toBe('GitHub Actions Linux X64 (ubuntu24) run https://github.com/o/r/actions/runs/9');
     expect(producerLabel({}, 'darwin', 'arm64')).toBe('local darwin-arm64');
+  });
+});
+
+describe('the merge job on a landing tree whose device lanes are "not run" (#132 review)', () => {
+  it('merges, and only reports the difference from the tree\'s own records unless judging a run for review', () => {
+    const targets = nativeTargets();
+    const problems = checkLaneParity(targets, laneSources());
+    // The landing tree after its regen: every device lane "not run", no failures listed.
+    const notRun = lanesFile(targets, problems, new Map(), null);
+    for (const t of notRun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state, `${t.target} ${l.lane}`).toBe('not run');
+    // The workflow's merge step: every device's outcome, merged on top of that file.
+    const runs = mergeCiOutcomes(all(), () => stamp('a'));
+    const merged = lanesFile(targets, problems, new Map(), null, runs, notRun);
+    const failures = (t: string): ReturnType<typeof allRunFailures> => allRunFailures(runs.get(t as 'ios' | 'android')!);
+    const c = compareWithCommitted({ lanes: notRun, failures: () => [] }, { lanes: merged, failures });
+    expect(c.same).toBe(false);
+    expect(c.rows.find((r) => r.target === 'android' && r.lane === 'device-frames')).toMatchObject({ committed: expect.stringMatching(/^not run/), same: false });
+    expect(comparisonText(c)).toContain('Some device lanes differ from the committed records.');
+    // The same records compare equal, so a review run of an unchanged tree passes its --judge.
+    expect(compareWithCommitted({ lanes: merged, failures }, { lanes: merged, failures }).same).toBe(true);
   });
 });

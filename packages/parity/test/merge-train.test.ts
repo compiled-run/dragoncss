@@ -7,6 +7,7 @@ import {
   commitRegen,
   archOf,
   archRebaseline,
+  vectorsArchOf,
   deviceRunProblems,
   deviceRunWrote,
   isAncestor,
@@ -387,6 +388,22 @@ describe('the device run against the base\'s device evidence', () => {
     ]);
     // After a rebaseline to x86_64, a local arm64 fallback fails the same way instead of replacing the evidence.
     expect(deviceRunProblems(withModels('x86_64', 'fail', [px('a'), px('b')]), withModels('arm64', 'fail', [px('a'), px('b')]), [])).toHaveLength(2);
+  });
+
+  it('binds the android vectors lane to the ABI its toolchain names (it has no device sets)', () => {
+    const vec = (abi: string | null) =>
+      parseDeviceEvidence(
+        { parity: { pass: true, problems: [] }, targets: [{ target: 'android', lanes: [{ lane: 'layout-vectors-device', state: 'pass', run: { toolchain: `kotlinc-jvm 2.4.20; d8 --min-api 31; ART app_process on dragon-smoke (Android 16${abi === null ? '' : `, ${abi}`})` }, device: null }] }] },
+        () => [],
+        't',
+      );
+    expect(vectorsArchOf('kotlinc; ART app_process on dragon-smoke (Android 16, x86_64)')).toEqual({ device: 'dragon-smoke', abi: 'x86_64' });
+    expect(vectorsArchOf('kotlinc; ART app_process on dragon-smoke (Android 16)')).toBeNull();
+    expect(deviceRunProblems(vec('arm64-v8a'), vec('arm64-v8a'), [])).toEqual([]);
+    expect(deviceRunProblems(vec('arm64-v8a'), vec('x86_64'), [])).toEqual(["android layout-vectors-device: the vectors ran on dragon-smoke (x86_64), master's record on dragon-smoke (arm64-v8a): changing a lane's architecture is an explicit rebaseline (LAND_ARCH_REBASELINE)"]);
+    // A record from before the ABI was written binds nothing until a run writes it.
+    expect(deviceRunProblems(vec(null), vec('x86_64'), [])).toEqual([]);
+    expect(deviceRunProblems(vec('arm64-v8a'), vec('x86_64'), [], { rebaseline: true })).toEqual([]);
   });
 
   it('rebaselines an architecture only with master\'s states and exactly master\'s failures', () => {

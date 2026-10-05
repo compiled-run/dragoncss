@@ -274,7 +274,14 @@ export type DeviceSet = { dpr: number; device: string; model: string | null; cas
  * One target's lane states, its listed device failures (each as "<lane> <case> <dpr> <node> <kind>") and, per lane with a
  * device run record, the DPR sets it ran.
  */
-export type TargetEvidence = { lanes: Map<string, string>; failures: Map<string, Set<string>>; runs: Map<string, DeviceSet[]> };
+export type TargetEvidence = { lanes: Map<string, string>; failures: Map<string, Set<string>>; runs: Map<string, DeviceSet[]>; vectorsArch?: Map<string, { device: string; abi: string }> };
+
+/** The device and ABI a device vectors run names in its toolchain ("ART app_process on dragon-smoke (Android 16, x86_64)"), if any. */
+export const vectorsArchOf = (toolchain: unknown): { device: string; abi: string } | null => {
+  if (typeof toolchain !== 'string') return null;
+  const m = /ART app_process on (\S+) \(Android [^,)]+, ([\w-]+)\)/.exec(toolchain);
+  return m === null ? null : { device: m[1] as string, abi: m[2] as string };
+};
 export type DeviceEvidence = { parityPass: boolean; parityProblems: string[]; targets: Map<string, TargetEvidence> };
 
 export const parseDeviceEvidence = (lanes: unknown, failures: (target: string) => unknown, what: string): DeviceEvidence => {
@@ -288,10 +295,13 @@ export const parseDeviceEvidence = (lanes: unknown, failures: (target: string) =
     if (targets.has(t.target)) return bad(`target ${t.target} is listed twice`);
     const states = new Map<string, string>();
     const runs = new Map<string, DeviceSet[]>();
+    const vectorsArch = new Map<string, { device: string; abi: string }>();
     for (const l of t.lanes) {
       if (!isObject(l) || typeof l.lane !== 'string' || typeof l.state !== 'string') return bad(`a ${t.target} lane is not { lane, state }`);
       if (states.has(l.lane)) return bad(`${t.target} lists lane ${l.lane} twice`);
       states.set(l.lane, l.state);
+      const va = isObject(l.run) ? vectorsArchOf(l.run.toolchain) : null;
+      if (va !== null) vectorsArch.set(l.lane, va);
       if (l.device === undefined || l.device === null) continue;
       if (!isObject(l.device) || !Array.isArray(l.device.sets)) return bad(`${t.target} ${l.lane}: device is not null or { sets }`);
       const sets: DeviceSet[] = [];
@@ -317,7 +327,7 @@ export const parseDeviceEvidence = (lanes: unknown, failures: (target: string) =
       own.add(`${f.lane} ${f.case} ${f.dpr} ${f.node} ${f.kind}`);
       byLane.set(f.lane, own);
     }
-    targets.set(t.target, { lanes: states, failures: byLane, runs });
+    targets.set(t.target, { lanes: states, failures: byLane, runs, vectorsArch });
   }
   return { parityPass: pass, parityProblems: problems as string[], targets };
 };
@@ -340,6 +350,11 @@ export const modelChanges = (base: TargetEvidence, run: TargetEvidence, target: 
       if (b === undefined || b.model === null || s.model === null || b.model === s.model) continue;
       out.push({ lane, detail: `${target} ${lane}: ${s.device} at DPR ${s.dpr} ran on "${s.model}" (${archOf(s.model)}), master's record on "${b.model}" (${archOf(b.model)})` });
     }
+  }
+  // A vectors run has no device sets; its toolchain names the device and ABI it ran on.
+  for (const [lane, now] of run.vectorsArch ?? []) {
+    const was = base.vectorsArch?.get(lane);
+    if (was !== undefined && (was.abi !== now.abi || was.device !== now.device)) out.push({ lane, detail: `${target} ${lane}: the vectors ran on ${now.device} (${now.abi}), master's record on ${was.device} (${was.abi})` });
   }
   return out;
 };

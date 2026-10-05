@@ -196,53 +196,29 @@ jobs:
           pattern: outcome-*
           path: ${{ runner.temp }}/outcomes
           merge-multiple: true
-      - name: Keep the committed records to compare with
-        run: mkdir -p "$RUNNER_TEMP/committed" && cp packages/parity/out/lanes.json packages/parity/out/device-failures-*.json "$RUNNER_TEMP/committed/"
-      - name: Merge the device outcomes into the lane records
-        run: |
-          mkdir -p "$RUNNER_TEMP/merge" && cp "$RUNNER_TEMP"/outcomes/*.json "$RUNNER_TEMP/merge/"
-          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts merge "$RUNNER_TEMP/merge"
-      - name: Compare every device lane with the committed records
-        run: |
-          cat > "$RUNNER_TEMP/compare.mts" <<'EOF'
-          // Per device lane: the state, and the failure set (lane, case, DPR, node, kind) with and without its detail text.
-          import { readFileSync } from 'node:fs';
-          const [a, b] = [process.env.RUNNER_TEMP + '/committed', 'packages/parity/out'];
-          const read = (d: string, f: string): any => JSON.parse(readFileSync(`${d}/${f}`, 'utf8'));
-          const rows: string[] = ['| target | lane | committed | CI | failure set (lane, case, dpr, node, kind) | detail text |', '|---|---|---|---|---|---|'];
-          let same = true;
-          for (const t of ['ios', 'android']) {
-            const la = read(a, 'lanes.json').targets.find((x: any) => x.target === t);
-            const lb = read(b, 'lanes.json').targets.find((x: any) => x.target === t);
-            const fa = read(a, `device-failures-${t}.json`);
-            const fb = read(b, `device-failures-${t}.json`);
-            for (const l of la.lanes.filter((x: any) => x.where === 'device')) {
-              const m = lb.lanes.find((x: any) => x.lane === l.lane);
-              const key = (f: any): string => JSON.stringify([f.lane, f.case, f.dpr, f.node, f.kind]);
-              const ka = fa.filter((f: any) => f.lane === l.lane).map(key).sort();
-              const kb = fb.filter((f: any) => f.lane === l.lane).map(key).sort();
-              const da = fa.filter((f: any) => f.lane === l.lane).map((f: any) => key(f) + f.detail).sort();
-              const db = fb.filter((f: any) => f.lane === l.lane).map((f: any) => key(f) + f.detail).sort();
-              const setSame = JSON.stringify(ka) === JSON.stringify(kb);
-              const onlyA = ka.filter((k: string) => !kb.includes(k)).length;
-              const onlyB = kb.filter((k: string) => !ka.includes(k)).length;
-              const detailSame = JSON.stringify(da) === JSON.stringify(db);
-              if (m?.state !== l.state || !setSame || !detailSame) same = false;
-              rows.push(`| ${t} | ${l.lane} | ${l.state}${l.reason ? ` (${l.reason})` : ''} | ${m?.state ?? 'missing'}${m?.reason ? ` (${m.reason})` : ''} | ${setSame ? `same (${ka.length})` : `differs: ${onlyA} only committed, ${onlyB} only CI`} | ${detailSame ? 'same' : 'differs'} |`);
-            }
-          }
-          const out = `${rows.join('\n')}\n\n${same ? 'Every device lane judges exactly as the committed records.' : 'Some device lanes differ from the committed records (see the device-records artifact).'}\n`;
-          console.log(out);
-          import('node:fs').then((fs) => fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY!, out));
-          // A lane that judges differently from the committed records fails the run.
-          if (!same) process.exitCode = 1;
-          EOF
-          node "$RUNNER_TEMP/compare.mts"
+      # The outcomes are uploaded first, whatever the merge and the comparison say: the landing driver merges and judges them itself.
       - name: Upload the device outcomes (the landing driver merges them itself)
         uses: actions/upload-artifact@v4
         with:
           name: device-outcomes
-          path: ${{ runner.temp }}/merge/*.json
+          path: ${{ runner.temp }}/outcomes/*.json
+      - name: Keep the committed records to compare with
+        run: mkdir -p "$RUNNER_TEMP/committed" && cp packages/parity/out/lanes.json packages/parity/out/device-failures-*.json "$RUNNER_TEMP/committed/"
+      # A run for review (the `devices` label) is judged here against the tested commit's records. A run the landing driver
+      # dispatches is not: its tree's records are the "not run" ones its regen wrote, and the driver judges it against the previous
+      # position, as a local run is judged; so the merge and the comparison only report there.
+      - name: Merge the device outcomes into the lane records
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/merge" && cp "$RUNNER_TEMP"/outcomes/*.json "$RUNNER_TEMP/merge/"
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts merge "$RUNNER_TEMP/merge"
+      - name: Compare every device lane with the committed records
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          JUDGE: ${{ github.event_name == 'pull_request' && '--judge' || '' }}
+        run: |
+          # shellcheck disable=SC2086
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts compare "$RUNNER_TEMP/committed" $JUDGE
       - uses: actions/upload-artifact@v4
         if: always()
         with:

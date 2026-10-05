@@ -4,9 +4,11 @@
 //     and host.
 //   merge <dir>: merges every outcome in <dir> (all matrix devices of both targets, this tree's evidence) and writes out/lanes.json
 //     and out/device-failures-<target>.json as parity:lanes --run-device does.
+//   compare <committed-dir> [--judge]: compares the merged records with the copies in <committed-dir> (the tested commit's); with
+//     --judge (a run for review) a difference exits 1, without it (a run the landing driver judges itself) it only reports.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ciOutcomeText, mergeCiOutcomes, OUTCOME_SCHEMA, parseCiOutcome, producerLabel } from '../device-ci.ts';
+import { ciOutcomeText, compareWithCommitted, comparisonText, mergeCiOutcomes, OUTCOME_SCHEMA, parseCiOutcome, producerLabel } from '../device-ci.ts';
 import { deviceEvidence } from '../device-evidence.ts';
 import { allRunFailures, deviceFailuresText, failuresByKind, runOneDevice } from '../device-lanes.ts';
 import { DEVICE_MATRIX, requireDeviceLease } from '../device-run.ts';
@@ -17,7 +19,7 @@ import { nativeTargets } from '../targets.ts';
 
 // Exit codes: 0 merged with lane parity; 1 a parity failure, or a blocked device; 2 usage; 3 a refused merge (a missing,
 // repeated or foreign half), with nothing written.
-const USAGE = 'usage: device-ci.ts one <ios|android> <device> <outcome.json> | merge <dir>';
+const USAGE = 'usage: device-ci.ts one <ios|android> <device> <outcome.json> | merge <dir> | compare <committed-dir> [--judge]';
 const [mode, ...rest] = process.argv.slice(2);
 const targets = nativeTargets();
 
@@ -74,6 +76,15 @@ if (mode === 'one' && rest.length === 3) {
     console.log(`device-ci merge: parity FAILS:\n  ${status.join('\n  ')}`);
     process.exitCode = 1;
   } else console.log(`device-ci merge: ${files.length} outcomes merged into packages/parity/out (lanes.json, device-failures-ios.json, device-failures-android.json)`);
+} else if (mode === 'compare' && (rest.length === 1 || (rest.length === 2 && rest[1] === '--judge'))) {
+  const read = (dir: string, f: string): unknown => JSON.parse(readFileSync(join(dir, f), 'utf8'));
+  const side = (dir: string) => ({ lanes: read(dir, 'lanes.json') as Parameters<typeof compareWithCommitted>[0]['lanes'], failures: (t: string) => read(dir, `device-failures-${t}.json`) as ReturnType<Parameters<typeof compareWithCommitted>[0]['failures']> });
+  const c = compareWithCommitted(side(rest[0]!), side(repoPath('packages/parity/out')));
+  const text = comparisonText(c);
+  console.log(text);
+  if (process.env['GITHUB_STEP_SUMMARY'] !== undefined) writeFileSync(process.env['GITHUB_STEP_SUMMARY'], text, { flag: 'a' });
+  if (!c.same && rest[1] === '--judge') process.exitCode = 1;
+  else if (!c.same) console.log('device-ci compare: reported only; the landing driver judges this run against its previous position');
 } else {
   console.error(USAGE);
   process.exit(2);
