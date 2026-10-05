@@ -1,6 +1,6 @@
 // The media size Chrome 145 evaluates for a root of whole device px (notes/T067 R3). These are measurements (M1, M4, M5):
-// local_frame_view.cc, which computes them, is LGPL and is only a reference. Every Chrome-ported rounding of the media evaluator
-// (the float media size, device px, and the int width and height orientation and aspect-ratio read) lives here, nowhere else in media/.
+// local_frame_view.cc, which computes them, is LGPL and is only a reference. Every rounding media/ needs to match Chrome's measured
+// behaviour (the float media size, device px, the int width and height orientation and aspect-ratio read) lives here and nowhere else.
 import type { MediaFaults } from './faults.ts';
 import { NO_MEDIA_FAULTS } from './faults.ts';
 
