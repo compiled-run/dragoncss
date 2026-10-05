@@ -18,8 +18,11 @@ Everything else here is a default you apply without asking.
   (one theme, ~150 KB reviewed), and is built to land within about a day. If you need unlanded work, wait for it or
   have the PM fold it in; never build on top of an unlanded branch. Existing stacks drain as they are.
 - Develop with targeted `vitest run <files>` and `pnpm typecheck` (no queue needed).
-- At the end of the branch: one `pnpm regen`, one full `pnpm test` (through the queue), commit.
-  Don't rerun a step that passed.
+- At the end of the branch (owner, 2026-10-04: prove once, in the driver): one `pnpm regen` (through the queue),
+  commit its outputs, run the targeted tests for what you touched plus `pnpm typecheck`, push, open the PR.
+  Do NOT run the full `pnpm test` locally: the landing driver runs it once on the merged tree, reruns failing
+  files alone, and sends the PR back with the exact failing tests if any fail for real. A review round reruns
+  only its targeted tests (plus regen if generator inputs changed). Don't rerun a step that passed.
 - Catch up (`git merge origin/master`, then regen) only when GitHub says CONFLICTING, the driver asks,
   or your parent has merged. Never rebuild a branch as -v2: merge its parent forward.
 - Device-record tests that fail only for a missing device run are "device step pending"
