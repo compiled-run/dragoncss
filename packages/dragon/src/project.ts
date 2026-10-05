@@ -724,7 +724,8 @@ type Analysis<K extends string> = {
 
 /** Order-free input lists sorted canonically, so the digest does not depend on their order (S5 (c)). */
 function canonicalInput(input: FrontEndResult): unknown {
-  const sorted = (v: unknown): unknown => (Array.isArray(v) ? [...v].sort((a, b) => (canonicalJson(a) < canonicalJson(b) ? -1 : canonicalJson(a) > canonicalJson(b) ? 1 : 0)) : v);
+  // Each entry is serialised once, as its sort key, and enters the digest as that text: assets hold megabytes of font bytes.
+  const sorted = (v: unknown): unknown => (Array.isArray(v) ? v.map((x) => new CanonicalText(canonicalJson(x))).sort((a, b) => (a.json < b.json ? -1 : a.json > b.json ? 1 : 0)) : v);
   const raw = input as unknown as Record<string, unknown>;
   const snap = raw['snapshot'];
   const tree = raw['tree'];
