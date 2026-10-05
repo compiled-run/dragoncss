@@ -15,7 +15,7 @@ import type { EasingValue } from '../properties/animation.ts';
 import { isAnimationProperty, parseAnimationValue } from '../properties/animation.ts';
 import type { CssValue, SheetUse } from '../stylesheet.ts';
 import { parseValue } from '../stylesheet.ts';
-import { CSS_WIDE } from '../values.ts';
+import { CSS_WIDE, ENV_VALUE_TYPE } from '../values.ts';
 
 /** An accepted @keyframes as the parse driver collects it, with what its declarations need to be located. */
 export type KeyframesSource = { readonly context: AtRuleContext; readonly base: Span; readonly text: string; readonly use: SheetUse };
@@ -180,6 +180,11 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
     }
     const parsed = parseValue(property as Parameters<typeof parseValue>[0], valueNode, tokens, src.base, src.text);
     if (parsed.kind === 'ok') {
+      // ENV-SAFE: no frame fixture proves a keyframe that reads a safe-area inset, and keyframe rows are keyed by property alone.
+      if (parsed.longhands.some((lh) => lh.value.kind === 'other' && lh.value.type === ENV_VALUE_TYPE)) {
+        refuse('DRAGON_UNSUPPORTED_VALUE', `${property}: ${text} in @keyframes ${name} is unsupported: no frame fixture proves a keyframe that reads env() yet`, valueSpan);
+        continue;
+      }
       for (const lh of parsed.longhands) values.push({ property: lh.property, value: lh.value, span, valueSpan, text });
       continue;
     }
