@@ -5,7 +5,7 @@
 // passes CI, pr:review and a Claude correctness review while Macroscope is at its limit, and merges pinned with
 // --match-head-commit. A PR that fails a step gets the landing-failed label and a comment, and the queue continues.
 // Run with: pnpm land <queue-file> [--dry-run]   (queue: one <branch>:<pr>:<clean-head> per line)
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -53,7 +53,12 @@ import {
   RETRIES,
   backoffMs,
   type ReviewRecord,
+  type NextRound,
   parseBatchSize,
+  parsePrepared,
+  type Prepared,
+  prepareRound,
+  serializePrepared,
   runBatches,
   retargetChildrenThenDelete,
   reviewerEnv,
@@ -91,6 +96,13 @@ const LOCK = '/tmp/dragon-land.lock';
 const LABEL = 'landing-failed';
 const env = process.env;
 const WT = env['LAND_WORKTREE'] ?? '/tmp/dragon-land';
+// Pipelining (LAND_PIPELINE, default on): a builder process (LAND_ROLE=builder) prepares the next batch in its own worktree.
+const ROLE = env['LAND_ROLE'] === 'builder' ? 'builder' : 'driver';
+const WT_MAIN = env['LAND_WORKTREE_MAIN'] ?? WT;
+const WT_NEXT = env['LAND_WORKTREE_NEXT'] ?? '/tmp/dragon-land-next';
+const PIPELINE = env['LAND_PIPELINE'] !== '0';
+// Worktrees the driver and its builder own, never a member's.
+const OWN = (): string[] => [MAIN, WT, WT_MAIN, WT_NEXT];
 const STATUS = env['LAND_STATUS'] ?? '/tmp/land.status';
 const LOG = env['LAND_LOG'] ?? '/tmp/land.log';
 const REVIEW_DIR = env['LAND_REVIEW_DIR'] ?? '/tmp/land-reviews';
@@ -135,7 +147,7 @@ const stamp = (): string => {
   return `${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, '0')}-${`${d.getDate()}`.padStart(2, '0')} ${d.toTimeString().slice(0, 8)}`;
 };
 const log = (line: string): void => {
-  const out = `${stamp().slice(11)} ${line}`;
+  const out = `${stamp().slice(11)} ${ROLE === 'builder' ? '[next] ' : ''}${line}`;
   console.log(out);
   writeFileSync(LOG, `${out}\n`, { flag: 'a' });
 };
@@ -308,7 +320,7 @@ const resetWorktree = (master: string, ignored = false): void => {
 
 const seedRegenCache = (e: Entry, shas: string[]): void => {
   const porcelain = text(git, ['worktree', 'list', '--porcelain']);
-  for (const w of worktreesOf(porcelain, e.branch, shas, [MAIN, WT])) {
+  for (const w of worktreesOf(porcelain, e.branch, shas, OWN())) {
     const from = join(w, 'node_modules/.cache/dragon-regen/state.json');
     if (!existsSync(from)) continue;
     mkdirSync(join(WT, 'node_modules/.cache/dragon-regen'), { recursive: true });
@@ -602,7 +614,7 @@ const publishInside = (e: Entry, b: Built, t: Ticket): string => {
   if (gate.length > 0) throw new LandFailure('merge-gate', gate.join('\n'));
   const porcelain = text(git, ['worktree', 'list', '--porcelain']);
   // The local branch is deleted after the merge (git branch -D), which a worktree that has it checked out would block.
-  for (const w of worktreesOf(porcelain, e.branch, [], [MAIN, WT])) {
+  for (const w of worktreesOf(porcelain, e.branch, [], OWN())) {
     try {
       if (text(gitAt(w), ['rev-parse', '--abbrev-ref', 'HEAD']) === e.branch) gitAt(w)(['checkout', '-q', '--detach']);
     } catch {}
@@ -635,7 +647,7 @@ const publishInside = (e: Entry, b: Built, t: Ticket): string => {
     log(`  WARNING ${notes.at(-1)}`);
   }
   // Cleanup: the member's worktrees (only when clean) and its local branch.
-  for (const w of worktreesOf(text(git, ['worktree', 'list', '--porcelain']), e.branch, [p.clean, p.prHead], [MAIN, WT])) {
+  for (const w of worktreesOf(text(git, ['worktree', 'list', '--porcelain']), e.branch, [p.clean, p.prHead], OWN())) {
     try {
       if (text(gitAt(w), ['status', '--porcelain', '--untracked-files=no']) === '') {
         git(['worktree', 'remove', '--force', w]);
@@ -784,8 +796,7 @@ const prepareWorktree = (): void => {
   if (dirty !== '') throw new Error(`land: the driver worktree ${WT} is not clean:\n${dirty}`);
 };
 
-const main = (): number => {
-  const args = parseLandArgs(process.argv.slice(2));
+const setUp = (): void => {
   CI_WAIT_S = seconds('LAND_CI_WAIT', 5400);
   CI_APPEAR_S = seconds('LAND_CI_APPEAR', 900);
   QUIET_MAX_S = seconds('LAND_QUIET_MAX', 5400);
@@ -795,6 +806,159 @@ const main = (): number => {
   REVIEW_CMD = env['LAND_REVIEW_CMD'] ?? `node --conditions=dragon-internal '${join(MAIN, 'scripts/land-review-lookup.ts')}'`;
   REPO = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']).trim();
   if (!/^[\w.-]+\/[\w.-]+$/.test(REPO)) throw new Error(`land: gh repo view printed ${JSON.stringify(REPO)}`);
+};
+
+// Each position is exactly a merge of [previous position, the PR's tip] plus one regen commit, chained on its base.
+const verifyChain = (built: readonly { entry: Entry; ticket: Ticket; position: Built }[]): void => {
+  const plan = planPositions(git, built.map((b) => b.ticket.member), built.map((b) => b.position.head));
+  const base = built[0]!.position.prev;
+  if (plan.base !== base) throw new Error(`the chain starts on ${plan.base}, not ${base}`);
+  plan.positions.forEach((q, i) => {
+    const b = built[i]!.position;
+    if (q.prev !== b.prev || q.merge !== b.merge || q.tip !== b.tip) throw new Error(`position ${i + 1} (#${built[i]!.entry.pr}) is not the merge it was built as`);
+  });
+};
+
+// ---- pipelining ------------------------------------------------------------------------------------------------------
+// The builder: prepares one round (admission, positions, proof and bisect) on the given base in WT_NEXT and writes it out.
+// It publishes nothing, labels nothing and writes no status; the driver adopts its round or throws it away.
+const builderMain = (): number => {
+  setUp();
+  const inPath = env['LAND_BUILDER_INPUT']!;
+  const outPath = env['LAND_BUILDER_OUTPUT']!;
+  process.on('exit', () => {
+    releaseQuiet(QUIET_FILE, process.pid);
+    releasePriority();
+  });
+  const put = (body: string): void => {
+    writeFileSync(`${outPath}.tmp`, body);
+    renameSync(`${outPath}.tmp`, outPath);
+  };
+  try {
+    const input = JSON.parse(readFileSync(inPath, 'utf8')) as { base: string; queue: Entry[]; earlier: Entry[]; size: number };
+    const base = checkSha(input.base, 'builder base');
+    if (!existsSync(WT)) git(['worktree', 'add', '-q', '--detach', WT, base]);
+    // A builder stopped mid-step may have left its worktree's index lock behind.
+    rmSync(join(text(wtGit, ['rev-parse', '--absolute-git-dir']), 'index.lock'), { force: true });
+    resetWorktree(base);
+    log(`preparing the next batch on ${base} in ${WT}`);
+    const round = prepareRound<Ticket, Built>([...input.queue], input.size, () => base, { admit, build: buildPosition, verify: verifyChain, prove: proveTree, proveMaster, log }, { earlier: input.earlier, baseProven: true });
+    put(serializePrepared(round));
+    log(`prepared: ${round.built.length} position(s), ${round.good} proven to land`);
+  } catch (error) {
+    // A Fatal (a chain that is not what it claims) stops the run; anything else (its worktree, git, a full disk) is the
+    // builder's own trouble: it writes nothing, and the driver prepares the batch itself.
+    if (error instanceof Fatal) put(JSON.stringify({ fatal: error.message }));
+    else {
+      log(`!!! the builder could not prepare the batch (${msg(error)}); the driver prepares it itself`);
+      return 1;
+    }
+  }
+  return 0;
+};
+
+// The live (not zombie) processes of a process group.
+const groupMembers = (pgid: number): number[] =>
+  execFileSync('ps', ['-axo', 'pid=,pgid=,stat='], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+    .trim()
+    .split('\n')
+    .flatMap((l) => {
+      const [pid, group, stat] = l.trim().split(/\s+/);
+      return Number(group) === pgid && !/^Z/.test(stat ?? '') ? [Number(pid)] : [];
+    });
+// The builder runs in its own process group (so every process it starts, vitest workers included, goes with it). Its pid and
+// start time are kept in the run directory, so the supervisor stops it too when the driver dies.
+const BUILDER_FILE = 'builder.pid';
+const stopBuilder = (pid: number, start: string | null): void => {
+  // A leader that is another process now means the pid was reused, so the group is not the builder's. A leader that is gone
+  // still leaves its group id reserved while any member lives, so the group signal can only reach the builder's processes.
+  const now = startOf(pid);
+  if (now !== null && start !== null && now !== start) return;
+  const signal = (sig: NodeJS.Signals): void => {
+    try {
+      process.kill(-pid, sig);
+    } catch {}
+  };
+  signal('SIGTERM');
+  for (let i = 0; i < 120 && groupMembers(pid).length > 0; i++) sleep(250);
+  signal('SIGKILL');
+  releaseQuiet(QUIET_FILE, pid);
+  if (readOrNull(PRIORITY)?.trim() === String(pid)) rmSync(PRIORITY, { force: true });
+};
+// Alive and not a zombie (this synchronous driver never reaps its children).
+const running = (pid: number): boolean => {
+  try {
+    return !/^Z/.test(execFileSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim());
+  } catch {
+    return false;
+  }
+};
+
+const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
+  let pid: number | null = null;
+  const inPath = runFile('next-input.json');
+  const outPath = runFile('next-output.json');
+  let start: string | null = null;
+  const stop = (): void => {
+    if (pid === null) return;
+    stopBuilder(pid, start);
+    rmSync(runFile(BUILDER_FILE), { force: true });
+    pid = null;
+  };
+  return {
+    start: (base, queue, earlier, size) => {
+      stop();
+      rmSync(outPath, { force: true });
+      writeFileSync(inPath, JSON.stringify({ base, queue, earlier, size }));
+      const fd = openSync('/tmp/land-next.log', 'a');
+      try {
+        const child = spawn(process.execPath, [...process.execArgv, process.argv[1]!, queueFile], {
+          detached: true,
+          stdio: ['ignore', fd, fd],
+          env: { ...env, LAND_ROLE: 'builder', LAND_BUILDER_INPUT: inPath, LAND_BUILDER_OUTPUT: outPath, LAND_WORKTREE: WT_NEXT, LAND_WORKTREE_MAIN: WT, [SUPERVISOR_PID_ENV]: String(process.pid) },
+        });
+        pid = child.pid ?? null;
+      } finally {
+        closeSync(fd);
+      }
+      if (pid !== null) {
+        start = startOf(pid);
+        writeFileSync(runFile(BUILDER_FILE), `${pid} ${start ?? ''}`);
+      }
+      log(`pipelining: preparing the next batch on ${base} (builder pid ${pid}, log /tmp/land-next.log)`);
+    },
+    collect: () => {
+      const empty: Prepared<Ticket, Built> = { base: '', consumed: [], results: [], built: [], good: 0, proven: [], culprit: null };
+      log('pipelining: waiting for the prepared batch');
+      while (!existsSync(outPath) && pid !== null && running(pid)) sleep(5000);
+      // Done: whatever of its group is left (it wrote its output, or died without) goes.
+      stop();
+      const text = readOrNull(outPath);
+      if (text === null) {
+        log('!!! the builder ended without a prepared batch; preparing it here instead');
+        return empty;
+      }
+      let round: Prepared<Ticket, Built> | { fatal: string };
+      try {
+        round = parsePrepared<Ticket, Built>(text);
+      } catch (error) {
+        log(`!!! the prepared batch is unreadable (${msg(error)}); preparing it here instead`);
+        return empty;
+      }
+      if ('fatal' in round) throw new Fatal(`while preparing the next batch: ${round.fatal}`);
+      for (const k of round.proven) proved.push(round.built[k - 1]!.position.head);
+      return round;
+    },
+    cancel: () => {
+      if (pid !== null) log('pipelining: stopping the builder; its batch is thrown away');
+      stop();
+    },
+  };
+};
+
+const main = (): number => {
+  const args = parseLandArgs(process.argv.slice(2));
+  setUp();
   const entries = parseQueue(readFileSync(args.queue, 'utf8'));
   if (args.dryRun) {
     dryRun(entries);
@@ -828,16 +992,7 @@ const main = (): number => {
     admit: (e, earlier) => (write(false, null, e), admit(e, earlier)),
     base: fetchMaster,
     build: (prev, e, t, k) => (write(false, null, e), buildPosition(prev, e, t, k)),
-    // Each position is exactly a merge of [previous position, the PR's tip] plus one regen commit, chained on master.
-    verify: (built) => {
-      const plan = planPositions(git, built.map((b) => b.ticket.member), built.map((b) => b.position.head));
-      const base = built[0]!.position.prev;
-      if (plan.base !== base) throw new Error(`the chain starts on ${plan.base}, not ${base}`);
-      plan.positions.forEach((q, i) => {
-        const b = built[i]!.position;
-        if (q.prev !== b.prev || q.merge !== b.merge || q.tip !== b.tip) throw new Error(`position ${i + 1} (#${built[i]!.entry.pr}) is not the merge it was built as`);
-      });
-    },
+    verify: verifyChain,
     prove: (p, e) => (write(false, null, e), proveTree(p, e)),
     proveMaster: (m) => (write(false, null, null), proveMaster(m)),
     publish: (e, p, t) => (write(false, null, e), publish(e, p, t)),
@@ -852,6 +1007,7 @@ const main = (): number => {
       write(false, null);
     },
     log,
+    ...(PIPELINE ? { next: nextRound(args.queue) } : {}),
   });
   current = null;
   writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: latest, fatal: result.fatal, total: entries.length, done: true, stopped: result.stopped }));
@@ -879,6 +1035,16 @@ const cleanUpAfter = (driverPid: number, how: string): void => {
   try {
     MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
   } catch {}
+  // The builder has its own process group, which an interrupt of the driver's group does not reach.
+  const builder = /^([1-9]\d*) ?(.*)$/.exec(readOrNull(runFile(BUILDER_FILE))?.trim() ?? '');
+  if (builder) {
+    log(`stopping the driver's builder (pid ${builder[1]})`);
+    try {
+      stopBuilder(Number(builder[1]), builder[2] || null);
+    } catch (error) {
+      log(`WARNING could not stop the builder: ${errorText(error).split('\n')[0]}`);
+    }
+  }
   cleanUpAfterDriver({
     how,
     now: stamp(),
@@ -934,7 +1100,7 @@ const supervisor = async (): Promise<number> => {
 };
 
 try {
-  process.exitCode = env[SUPERVISED_ENV] === '1' ? main() : await supervisor();
+  process.exitCode = ROLE === 'builder' ? builderMain() : env[SUPERVISED_ENV] === '1' ? main() : await supervisor();
 } catch (error) {
   console.error(`\nland stopped: ${msg(error)}`);
   process.exitCode = 2;
