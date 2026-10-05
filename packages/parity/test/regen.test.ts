@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compilePattern, matchSegments, parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
 import { checkTrace, commandOf, type Context, type Entry, fileStore, type Io, lanesVerdict, MANUAL, matcher, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree } from '../../../scripts/regen.ts';
-import { importClosure, lockClosure, parseLock, workspaceOf } from '../../../scripts/regen-inputs.ts';
+import { exportTargetsUnder, importClosure, lockClosure, NODE_IMPORT_CONDITIONS, parseLock, workspaceOf } from '../../../scripts/regen-inputs.ts';
 import { repoPath } from '../src/paths.ts';
 
 const matches = (glob: string, path: string): boolean => matchSegments(compilePattern(glob), path.split('/'));
@@ -423,6 +423,23 @@ describe('pnpm regen chain', () => {
     expect((await regen([CHAIN[0]!, CHAIN[0]!], opts, v.io())).error).toBe('step gen is named twice');
   });
 
+  it('--skip leaves a step out of every pass, and a later run without it finishes the split chain', async () => {
+    const w = new World(SOURCES, IMPL);
+    const r1 = await regen(CHAIN, { ...opts, skip: ['rows'] }, w.io());
+    expect(r1).toMatchObject({ ok: true, changed: ['out/a', 'out/c'] });
+    expect(w.t.has('out/b')).toBe(false);
+    w.set({ 'data/a/x': '2' });
+    const r2 = await regen(CHAIN, { ...opts, skip: ['gen', 'other'] }, w.io());
+    expect(r2).toMatchObject({ ok: true, changed: ['out/b'] });
+    expect(w.ran).toEqual(['rows']);
+    expect(w.t.get('out/b')).toBe('B(A(1))');
+    const r3 = await regen(CHAIN, opts, w.io());
+    expect(r3).toMatchObject({ ok: true, changed: ['out/a', 'out/b'] });
+    expect(w.t.get('out/b')).toBe('B(A(2))');
+    expect((await regen(CHAIN, { ...opts, skip: ['nope'] }, w.io())).error).toBe('unknown step nope to skip; the steps are gen, rows, other');
+    expect((await regen(CHAIN, { ...opts, skip: ['gen', 'rows', 'other'] }, w.io())).error).toBe('every step is skipped');
+  });
+
   it('fails a step that edits one of its own inputs, recording nothing', async () => {
     const w: World = new World(SOURCES, {});
     w.impls.gen = (f: Files): void => {
@@ -511,6 +528,25 @@ snapshots:
     expect(importClosure(['packages/a/src/cli.ts'], broken.tree, broken.ctx.read, workspaceOf(broken.tree, broken.ctx.read)).unresolved).toEqual(['packages/a/src/lazy.ts: ./gone.ts']);
   });
 
+  it('under a step\'s conditions, follows only the workspace entry Node picks for each of its processes', () => {
+    const { tree: t, ctx } = tree({ ...files, 'packages/b/src/index.ts': "export * from './x.ts';\nexport * from './public-only.ts';", 'packages/b/src/public-only.ts': 'export const p = 1;' });
+    const under = (...sets: string[][]): string[] => [...importClosure(['packages/a/src/cli.ts'], t, ctx.read, workspaceOf(t, ctx.read), undefined, sets.map((c) => new Set([...NODE_IMPORT_CONDITIONS, ...c]))).files].filter((f) => f.startsWith('packages/b/src/')).sort();
+    // internal.ts re-exports index.ts here, so the public file is reached through it: the narrowing follows real imports only.
+    expect(under(['dragon-internal'])).toEqual(['packages/b/src/index.ts', 'packages/b/src/internal.ts', 'packages/b/src/public-only.ts', 'packages/b/src/x.ts', 'packages/b/src/y.ts']);
+    const { tree: t2, ctx: c2 } = tree({ ...files, 'packages/b/src/internal.ts': "export * from './x.ts';\nexport { y } from './y.ts';" });
+    const closure = (sets: string[][] | undefined): string[] => [...importClosure(['packages/a/src/cli.ts'], t2, c2.read, workspaceOf(t2, c2.read), undefined, sets?.map((c) => new Set([...NODE_IMPORT_CONDITIONS, ...c]))).files].filter((f) => f.startsWith('packages/b/src/')).sort();
+    expect(closure([['dragon-internal']])).toEqual(['packages/b/src/internal.ts', 'packages/b/src/x.ts', 'packages/b/src/y.ts']);
+    expect(closure([[]])).toEqual(['packages/b/src/index.ts', 'packages/b/src/x.ts']);
+    // Two processes, one with the condition and one without: both entries.
+    expect(closure([['dragon-internal'], []])).toEqual(['packages/b/src/index.ts', 'packages/b/src/internal.ts', 'packages/b/src/x.ts', 'packages/b/src/y.ts']);
+    // No conditions given: every target under every condition, as before.
+    expect(closure(undefined)).toEqual(['packages/b/src/index.ts', 'packages/b/src/internal.ts', 'packages/b/src/x.ts', 'packages/b/src/y.ts']);
+    expect(exportTargetsUnder({ '.': { 'dragon-internal': './i.ts', default: './d.ts' } }, new Set(['node']))).toEqual(['./d.ts']);
+    expect(exportTargetsUnder({ '.': { node: { import: './n.mjs' }, default: './d.ts' } }, new Set(['node', 'import']))).toEqual(['./n.mjs']);
+    expect(exportTargetsUnder('./main.js', new Set())).toEqual(['./main.js']);
+    expect(exportTargetsUnder({ './sub': './s.ts' }, new Set(['node']))).toEqual([]);
+  });
+
   it('keys on the lockfile entries of the imported packages and their dependencies only', () => {
     const lock = parseLock(LOCK);
     const c = lockClosure(lock, ['packages/a\0css-tree']);
@@ -524,18 +560,25 @@ snapshots:
 
   it('reads a step command through package.json scripts and sh -c, and refuses one it cannot key', () => {
     const scripts = { 'a:gen': 'node --conditions=dragon-internal packages/a/src/cli.ts', 'b:gen': 'node packages/b/src/x.ts --flag' };
-    expect(commandOf(['pnpm', '-s', 'run', 'a:gen', '--x'], scripts)).toEqual({ entries: ['packages/a/src/cli.ts'], scripts: ['a:gen=node --conditions=dragon-internal packages/a/src/cli.ts'] });
+    expect(commandOf(['pnpm', '-s', 'run', 'a:gen', '--x'], scripts)).toEqual({ entries: ['packages/a/src/cli.ts'], scripts: ['a:gen=node --conditions=dragon-internal packages/a/src/cli.ts'], conditions: [['dragon-internal']] });
+    expect(commandOf(['sh', '-c', 'pnpm -s run a:gen && pnpm -s run b:gen --y'], scripts).conditions).toEqual([['dragon-internal'], []]);
+    expect(() => commandOf(['node', '-C', 'dragon-internal', 'x.ts'], scripts)).toThrow(/--conditions=<name>/);
     expect(commandOf(['sh', '-c', 'pnpm -s run a:gen && pnpm -s run b:gen --y'], scripts).entries).toEqual(['packages/a/src/cli.ts', 'packages/b/src/x.ts']);
     expect(() => commandOf(['pnpm', '-s', 'run', 'nope'], scripts)).toThrow('package.json has no script nope');
     expect(() => commandOf(['make', 'all'], scripts)).toThrow(/runs make, which regen cannot key/);
   });
 
   it('changes the key for an import, a data file or a package, and not for an unread file', () => {
-    const step: Step = { name: 'a', argv: ['node', 'packages/a/src/cli.ts'], outputs: ['packages/a/out/**'], reads: ['packages/a/data/**'] };
-    const key = (over: Record<string, string>): string => {
+    // Under dragon-internal, b resolves to internal.ts, which imports y.ts.
+    const step: Step = { name: 'a', argv: ['node', '--conditions=dragon-internal', 'packages/a/src/cli.ts'], outputs: ['packages/a/out/**'], reads: ['packages/a/data/**'] };
+    const keyOf = (s: Step, over: Record<string, string>): string => {
       const { ctx } = tree({ ...files, 'packages/a/data/d.json': '1', ...over });
-      return stepInputs(step, ctx, shared(ctx)).key;
+      return stepInputs(s, ctx, shared(ctx)).key;
     };
+    const key = (over: Record<string, string>): string => keyOf(step, over);
+    // Without the condition b resolves to index.ts alone, and y.ts is no input.
+    const plain: Step = { ...step, argv: ['node', 'packages/a/src/cli.ts'] };
+    expect(keyOf(plain, { 'packages/b/src/y.ts': '2' })).toBe(keyOf(plain, {}));
     const base = key({});
     for (const [p, v] of Object.entries({ 'packages/b/src/y.ts': '2', 'packages/a/fixtures/sub/two.html': '2', 'packages/a/data/d.json': '2', 'packages/a/data/new.json': '1', 'packages/b/package.json': '{"name":"b","exports":"./src/x.ts"}', 'pnpm-lock.yaml': LOCK.replace('sha512-y', 'sha512-Y') })) expect(key({ [p]: v }), p).not.toBe(base);
     for (const [p, v] of Object.entries({ 'packages/b/src/unused.ts': '2', 'packages/a/src/types.ts': '2', 'packages/a/out/x': '1', 'README.md': '1', 'pnpm-lock.yaml': LOCK.replace('sha512-z', 'sha512-Z') })) expect(key({ [p]: v }), p).toBe(base);
@@ -659,9 +702,11 @@ describe('merge policy (.gitattributes)', () => {
     expect([...policy].filter((p) => !ignore.matches(p))).toEqual([]);
   });
 
-  it('lists exactly the regen steps\' outputs, one pattern per line, each matching a tracked file (a pattern without "/" only at the root)', () => {
+  it('lists exactly the regen steps\' outputs, sorted, one pattern per line, each matching a tracked file (a pattern without "/" only at the root)', () => {
     const outputs = STEPS.flatMap((s) => s.outputs).filter((o) => !MERGE_BY_HAND.some((h) => h.path === o));
-    expect(lines).toEqual(outputs.map((o) => `${o} merge=dragon-generated`));
+    // Sorted, so two features adding steps add their lines in different places.
+    expect(lines).toEqual([...lines].sort());
+    expect(lines).toEqual(outputs.map((o) => `${o} merge=dragon-generated`).sort());
     for (const l of lines) {
       const m = /^(\S+) merge=dragon-generated$/.exec(l);
       expect(m, l).not.toBeNull();

@@ -470,13 +470,32 @@ export type Corpus = {
   readonly digests: Readonly<Record<string, string>>;
 };
 
-/** Per-suite digests (inputs and TypeScript results) and the corpus digest over them. */
+const NAN_SIGN_PAYLOAD = /"([0-9a-f]{16})"/g;
+const isNanBits = (hex: string): boolean => {
+  const v = BigInt(`0x${hex}`);
+  return ((v >> 52n) & 0x7ffn) === 0x7ffn && (v & 0xfffffffffffffn) !== 0n;
+};
+
+/**
+ * A corpus line with every NaN's bits written as the one quiet NaN, 7ff8000000000000 (PM ruling, 2026-10-04). JavaScript gives
+ * NaN sign and payload bits no meaning, and hosts differ in them: x86-64 makes 0 * Infinity fff8000000000000, arm64
+ * 7ff8000000000000 (units-m2 #45946 and #46835, zoomFontSize with NaN inputs, failed only on the x86_64 emulator). Every other
+ * value keeps its exact bits: -0 is still 8000000000000000, and a NaN never equals a number.
+ */
+export function canonicalNan(line: string): string {
+  return line.replace(NAN_SIGN_PAYLOAD, (tok, hex: string) => (isNanBits(hex) ? '"7ff8000000000000"' : tok));
+}
+
+/** Whether a native result line equals the TypeScript one: exact, except that any NaN matches any NaN. */
+export const sameResult = (expected: string, got: string): boolean => expected === got || canonicalNan(expected) === canonicalNan(got);
+
+/** Per-suite digests (inputs and TypeScript results, NaNs canonical) and the corpus digest over them. */
 export function digestsOf(suites: readonly Suite[]): { readonly digest: string; readonly digests: Record<string, string> } {
   const digests: Record<string, string> = {};
   const all = createHash('sha256');
   for (const s of suites) {
     const h = createHash('sha256');
-    for (let i = 0; i < s.lines.length; i++) h.update(s.lines[i] as string).update('\n').update(s.expected[i] as string).update('\n');
+    for (let i = 0; i < s.lines.length; i++) h.update(canonicalNan(s.lines[i] as string)).update('\n').update(canonicalNan(s.expected[i] as string)).update('\n');
     digests[s.name] = h.digest('hex');
     all.update(`${s.name} ${digests[s.name]}\n`);
   }

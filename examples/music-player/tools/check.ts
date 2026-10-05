@@ -52,6 +52,17 @@ const FONT_ASSETS = FONT_FILES.map((file) => {
   const bytes = new Uint8Array(readFileSync(new URL(`../../../${asset(file)}`, import.meta.url)));
   return { id: asset(file), hash: `sha256:${createHash('sha256').update(bytes).digest('hex')}`, bytes };
 });
+/**
+ * REPL-a (R1): the four YouTube cover URLs map to the committed PNG stand-ins (covers/*.png, the same files the NS-REF Chrome
+ * route serves), labelled stand-ins like the pinned fonts. They enter the snapshot as assets named by their repository path.
+ */
+const COVER_IDS = ['DwTzcZxyUUg', 'm_qlgFQs7E4', 'UQ0KmrvBPaY', 'JhkqWaiYgA8'] as const;
+const coverAsset = (id: string): string => `examples/music-player/covers/${id}.png`;
+export const IMAGES: { readonly [src: string]: string } = Object.fromEntries(COVER_IDS.map((id) => [`https://i.ytimg.com/vi/${id}/maxresdefault.jpg`, coverAsset(id)]));
+const COVER_ASSETS = COVER_IDS.map((id) => {
+  const bytes = new Uint8Array(readFileSync(new URL(`../../../${coverAsset(id)}`, import.meta.url)));
+  return { id: coverAsset(id), hash: `sha256:${createHash('sha256').update(bytes).digest('hex')}`, bytes };
+});
 type TargetId = (typeof TARGET_IDS)[number];
 
 type Pass = 'A-authored' | 'B-unwrapped' | 'C-context';
@@ -125,8 +136,8 @@ export function projectTree(spec: TreeFixtureFile): TreeFixtureFile {
 
 function compile(id: string, css: string, projected: boolean): { input: FrontEndResult; diagnostics: readonly Diagnostic[]; targets: Record<string, string> } {
   const read = readTreeFixtureDir(TREE_DIR, id, { text: (file, text) => (file === STYLES_SOURCE ? css : text), ...(projected ? { spec: projectTree } : {}) });
-  const input: FrontEndResult = { ...read, snapshot: { ...read.snapshot, assets: [...read.snapshot.assets, ...FONT_ASSETS] } };
-  const compiled = createProject({ projectId: PROJECT_ID, targets: TARGETS, fonts: FONTS }).compile(input);
+  const input: FrontEndResult = { ...read, snapshot: { ...read.snapshot, assets: [...read.snapshot.assets, ...FONT_ASSETS, ...COVER_ASSETS] } };
+  const compiled = createProject({ projectId: PROJECT_ID, targets: TARGETS, fonts: FONTS, images: IMAGES }).compile(input);
   return { input, diagnostics: compiled.diagnostics, targets: { ...compiled.targets } };
 }
 
@@ -297,7 +308,7 @@ function main(): void {
   const report = {
     schema: 'dragon-north-star-check/2',
     source: 'examples/music-player/tree (the Markless demos/music-player-ssr components as a dragon/tree@0 fixture) + styles.css',
-    compiler: { entry: 'createProject (public)', targets: TARGETS, fonts: { map: FONTS, assets: FONT_ASSETS.map((a) => ({ id: a.id, hash: a.hash })) } },
+    compiler: { entry: 'createProject (public)', targets: TARGETS, fonts: { map: FONTS, assets: FONT_ASSETS.map((a) => ({ id: a.id, hash: a.hash })) }, images: { map: IMAGES, assets: COVER_ASSETS.map((a) => ({ id: a.id, hash: a.hash })) } },
     method: {
       passes: {
         'A-authored': 'the tree and stylesheet as written, all cases in one compile',
