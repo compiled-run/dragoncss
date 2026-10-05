@@ -106,18 +106,31 @@ function writeFiles(dir: string, files: Files): void {
 /** A cached build exists; its directory's time is refreshed, so pruneCache keeps what is still used. */
 function hit(dir: string, artifact: string): boolean {
   if (!existsSync(artifact)) return false;
+  touch(dir);
+  return true;
+}
+
+/** Marks a cache entry used now; a missing entry is left for the caller's spawn to report. */
+function touch(dir: string): void {
   try {
     const now = new Date();
     utimesSync(dir, now, now);
   } catch {
-    // Only a prune of an entry unused for 14 days removes it, and this one was just used; its artifact was there.
+    // Nothing to mark: the spawn that follows reports the missing artifact loudly.
   }
-  return true;
 }
 
 const DAY_MS = 24 * 3600 * 1000;
 /** The cache's size cap; past it, the least recently used entries go first. */
-export const CACHE_MAX_BYTES = Number(process.env['DRAGON_NATIVE_CACHE_MAX_MB'] || 3072) * 1024 * 1024;
+export function cacheMaxBytes(env: string | undefined): number {
+  if (env === undefined || env === '') return 3072 * 1024 * 1024;
+  const mb = Number(env);
+  if (env.trim() === '' || !Number.isFinite(mb) || mb < 0) throw new Error(`DRAGON_NATIVE_CACHE_MAX_MB must be a finite number of MB, 0 or more; got ${JSON.stringify(env)}`);
+  return mb * 1024 * 1024;
+}
+export const CACHE_MAX_BYTES = cacheMaxBytes(process.env['DRAGON_NATIVE_CACHE_MAX_MB']);
+/** An entry used this recently may have a suite running from it, so the size cap never evicts it. */
+export const IN_USE_MS = 2 * 3600 * 1000;
 
 function sizeOf(path: string): number {
   const st = statSync(path, { throwIfNoEntry: false });
@@ -160,10 +173,11 @@ export function pruneCache(cacheRoot: string, keep: string | null, now = Date.no
   let total = entries.reduce((n, e) => n + e.bytes, 0);
   for (const e of entries.sort((a, b) => a.mtimeMs - b.mtimeMs)) {
     if (total <= maxBytes) break;
-    if (join(e.root, e.name) === keep) continue;
+    if (join(e.root, e.name) === keep || now - e.mtimeMs < IN_USE_MS) continue;
     evict(e.root, e.name);
     total -= e.bytes;
   }
+  if (total > maxBytes) console.warn(`native build cache ${cacheRoot}: ${(total / 1048576).toFixed(0)} MB, over its ${(maxBytes / 1048576).toFixed(0)} MB cap; every remaining entry was used in the last 2 hours, so none was evicted`);
 }
 
 /**
@@ -328,7 +342,10 @@ export function suiteCause(r: { readonly status: number | null; readonly signal:
 }
 
 export function swiftExec(binary: string): Exec {
-  return (mode, input, output) => execSuite(binary, [mode, input, output]);
+  return (mode, input, output) => {
+    touch(dirname(binary));
+    return execSuite(binary, [mode, input, output]);
+  };
 }
 
 /**
@@ -338,7 +355,10 @@ export function swiftExec(binary: string): Exec {
 export const KOTLIN_HEAP = '-Xmx2g';
 
 export function kotlinExec(tool: KotlinTool, jar: string): Exec {
-  return (mode, input, output) => execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', KOTLIN_HEAP, '-jar', jar, mode, input, output]);
+  return (mode, input, output) => {
+    touch(dirname(jar));
+    return execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', KOTLIN_HEAP, '-jar', jar, mode, input, output]);
+  };
 }
 
 /** Every case matched and every process accounted for its cases: a suite with a cause (say, extra lines) does not pass. */

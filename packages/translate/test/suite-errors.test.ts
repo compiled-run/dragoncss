@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Corpus, Suite } from '../src/corpus.ts';
 import type { Exec, RunResult } from '../src/native.ts';
-import { allPass, BUILD_CACHE, buildKotlin, buildSwift, describe as describeRun, execSuite, OUT, outputCause, publish, pruneCache, runSuites, stderrTail, suiteCause, withToolTmp } from '../src/native.ts';
+import { allPass, BUILD_CACHE, buildKotlin, cacheMaxBytes, swiftExec, buildSwift, describe as describeRun, execSuite, OUT, outputCause, publish, pruneCache, runSuites, stderrTail, suiteCause, withToolTmp } from '../src/native.ts';
 
 /** The longest a fake harness may run unless a test sets its own limit; below the 30 s test timeout. */
 const FAKE_MS = 20_000;
@@ -222,6 +222,40 @@ describe('the machine-wide native build cache', () => {
     expect(names(root, 'swift')).toEqual(['key.build-2', 'used-entry']);
     expect(names(root, 'kotlin')).toEqual(['kept']);
     pruneCache(join(root, 'missing'), null, now);
+  }, TEST_MS);
+
+  it('the size cap never evicts an entry used in the last 2 hours: it is exceeded and logged instead', () => {
+    const { root, now, make } = setup();
+    make('swift', 'a-old', 5, 100);
+    make('swift', 'b-in-use', 0.05, 100);
+    make('kotlin', 'c-in-use', 0.01, 100);
+    const warned: string[] = [];
+    const warn = console.warn;
+    console.warn = (m: string) => warned.push(m);
+    try {
+      pruneCache(root, null, now, 50);
+    } finally {
+      console.warn = warn;
+    }
+    expect([...names(root, 'swift'), ...names(root, 'kotlin')]).toEqual(['b-in-use', 'c-in-use']);
+    expect(warned).toHaveLength(1);
+    expect(warned[0]).toMatch(/over its 0 MB cap; every remaining entry was used in the last 2 hours/);
+  }, TEST_MS);
+
+  it('each suite spawn marks its cache entry used, so a long run is never evicted from under it', () => {
+    const { root, make } = setup();
+    const entry = make('swift', 'running', 3);
+    const old = statSync(entry).mtimeMs;
+    swiftExec(join(entry, 'harness'))('engine', '/nonexistent-in', join(root, 'out.jsonl'));
+    expect(statSync(entry).mtimeMs).toBeGreaterThan(old + 2 * 24 * 3600 * 1000);
+  }, TEST_MS);
+
+  it('DRAGON_NATIVE_CACHE_MAX_MB must be a finite number of MB, 0 or more', () => {
+    expect(cacheMaxBytes(undefined)).toBe(3072 * 1024 * 1024);
+    expect(cacheMaxBytes('')).toBe(3072 * 1024 * 1024);
+    expect(cacheMaxBytes('0')).toBe(0);
+    expect(cacheMaxBytes('1.5')).toBe(1.5 * 1024 * 1024);
+    for (const bad of ['abc', '-1', 'Infinity', 'NaN', ' ', '12mb']) expect(() => cacheMaxBytes(bad), bad).toThrow(/DRAGON_NATIVE_CACHE_MAX_MB must be a finite number of MB, 0 or more/);
   }, TEST_MS);
 
   it('over the size cap, the least recently used entries go first, never the one just published', () => {
