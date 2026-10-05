@@ -98,12 +98,13 @@ export function scrollCaptureJson(c: ScrollCapture): string {
 const isRecordArray = (v: unknown): v is ScrollRecord[] =>
   Array.isArray(v) && v.every((r) => typeof r === 'object' && r !== null && typeof (r as ScrollRecord).id === 'string' && ['scrollWidth', 'scrollHeight', 'clientWidth', 'clientHeight'].every((k) => Number.isInteger((r as Record<string, unknown>)[k])));
 
-/** A capture's text, checked for its shape, its case, its DPR and its overlay scrollbar environment; where names it in errors. */
+/** A capture's text, checked for its shape, its case, its DPR, its platform and direction and its overlay scrollbar environment; where names it in errors. */
 export function parseScrollCapture(text: string, caseId: string, dpr: number, where: string): ScrollCapture {
   const v = JSON.parse(text) as unknown;
   if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error(`${where} is not a scroll capture object`);
   const o = v as Record<string, unknown>;
   if (o['case'] !== caseId || o['devicePixelRatio'] !== dpr || o['chrome'] !== CHROME_VERSION || !isRecordArray(o['records'])) throw new Error(`${where} is not a scroll capture of ${caseId} at DPR ${dpr}`);
+  if (o['platform'] !== REFERENCE_PLATFORM || (o['direction'] !== 'ltr' && o['direction'] !== 'rtl')) throw new Error(`${where}: platform ${JSON.stringify(o['platform'])} or direction ${JSON.stringify(o['direction'])} is not a ${REFERENCE_PLATFORM} capture in ltr or rtl`);
   if (o['scrollbars'] !== 'overlay') throw new Error(`${where}: scrollbars is ${JSON.stringify(o['scrollbars'])}, not overlay (decisions.md, overlay-scrollbar rule)`);
   if (o['scrollbarArgs'] !== SCROLLBAR_ARGS.join(' ')) throw new Error(`${where}: scrollbarArgs is ${JSON.stringify(o['scrollbarArgs'])}, not ${JSON.stringify(SCROLLBAR_ARGS.join(' '))}`);
   if (o['records'][0]?.id !== 'viewport') throw new Error(`${caseId} at DPR ${dpr}: the first record is not the viewport`);

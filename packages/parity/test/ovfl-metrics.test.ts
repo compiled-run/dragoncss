@@ -13,6 +13,8 @@ import { compileFixture } from '../src/pipeline.ts';
 import type { ScrollRecord } from '../src/scroll-metrics.ts';
 import { adjustInt, adjustLayoutUnitRound, assertOverlayScrollbars, CLASSIC_SCROLLBARS, committedScrollCapture, compiledScrollFixture, engineScrollRecords, expectedScrollDir, OVERLAY_PROBE_STYLE, parseScrollCapture, SCROLL_DPRS, SCROLLBAR_ARGS, scrollCases, scrollProblems, viewportDirectionOf } from '../src/scroll-metrics.ts';
 import { CHROME_VERSION } from '../src/chrome.ts';
+import { REFERENCE_PLATFORM } from '../src/platform.ts';
+import { OVERFLOW } from '../src/fixture-groups/overflow.ts';
 
 const all = scrollCases();
 const compiled = new Map<string, Compiled<'ios' | 'web'>>();
@@ -45,7 +47,12 @@ describe('OVFL scroll metrics against Chrome', () => {
   const ids = all.flatMap((f) => f.cases.map((c) => c.id));
 
   it('covers the overflow and viewport-prop fixtures, each case committed at every DPR and nothing else', () => {
-    expect(ids.length).toBe(24); // ovfl-a's 18, plus overflow-clip-both, overflow-auto-fits, overflow-hidden-x-auto-y and overflow-replaced with their rtl twins
+    // Every layout fixture of the overflow group, each in ltr and rtl (its -rtl twin), and the two earlier overflow: hidden
+    // fixtures (ltr only) that the overflow- prefix also takes.
+    const own = OVERFLOW.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
+    expect(own.length).toBe(30);
+    expect(ids.filter((id) => !own.includes(id))).toEqual(['overflow-hidden-bfc', 'overflow-hidden-flex-min-size']);
+    expect(own.filter((id) => !ids.includes(id))).toEqual([]);
     for (const dpr of SCROLL_DPRS) {
       const files = readdirSync(expectedScrollDir(dpr)).filter((f) => f.endsWith('.scroll.json')).map((f) => f.replace(/\.scroll\.json$/, '')).sort();
       expect(files, `DPR ${dpr}`).toEqual([...ids].sort());
@@ -175,13 +182,15 @@ describe('the capture environment (R2: overlay scrollbars only)', () => {
   });
 
   it('every committed capture records overlay scrollbars, and a capture without them is refused', () => {
-    const capture = { case: 'c', chrome: CHROME_VERSION, platform: 'p', devicePixelRatio: 2, direction: 'ltr', scrollbars: 'overlay', scrollbarArgs: '-AppleShowScrollBars WhenScrolling', records: [{ id: 'viewport', scrollWidth: 1, scrollHeight: 1, clientWidth: 1, clientHeight: 1 }] };
+    const capture = { case: 'c', chrome: CHROME_VERSION, platform: REFERENCE_PLATFORM, devicePixelRatio: 2, direction: 'ltr', scrollbars: 'overlay', scrollbarArgs: '-AppleShowScrollBars WhenScrolling', records: [{ id: 'viewport', scrollWidth: 1, scrollHeight: 1, clientWidth: 1, clientHeight: 1 }] };
     expect(parseScrollCapture(JSON.stringify(capture), 'c', 2, 'x').scrollbars).toBe('overlay');
     expect(() => parseScrollCapture(JSON.stringify({ ...capture, scrollbars: 'classic' }), 'c', 2, 'x')).toThrow('scrollbars is "classic", not overlay');
     const { scrollbars: _s, ...without } = capture;
     expect(() => parseScrollCapture(JSON.stringify(without), 'c', 2, 'x')).toThrow('scrollbars is undefined, not overlay');
     expect(() => parseScrollCapture(JSON.stringify({ ...capture, scrollbarArgs: '' }), 'c', 2, 'x')).toThrow('scrollbarArgs is ""');
     expect(() => parseScrollCapture('[]', 'c', 2, 'x')).toThrow('not a scroll capture object');
+    expect(() => parseScrollCapture(JSON.stringify({ ...capture, platform: 'linux-x64' }), 'c', 2, 'x')).toThrow('platform "linux-x64"');
+    expect(() => parseScrollCapture(JSON.stringify({ ...capture, direction: 'up' }), 'c', 2, 'x')).toThrow('direction "up"');
     for (const dpr of SCROLL_DPRS) for (const f of all) for (const c of f.cases) expect(committedScrollCapture(c.id, dpr)).toMatchObject({ scrollbars: 'overlay', scrollbarArgs: SCROLLBAR_ARGS.join(' ') });
   });
 });
