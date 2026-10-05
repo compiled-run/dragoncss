@@ -25,7 +25,7 @@ import type { NativePaint, PaintEmitter, PaintPlant, PaintStage } from './types.
 import { PAINT_STAGES } from './types.ts';
 
 /** Registration point (EMS): the paint emitters in PAINT_MODULE_NAMES order. */
-export const PAINT_EMITTERS: readonly PaintEmitter<string>[] = [
+const EMITTERS = [
   BACKGROUND_EMITTER,
   BORDER_EMITTER,
   CLIP_EMITTER,
@@ -42,7 +42,9 @@ export const PAINT_EMITTERS: readonly PaintEmitter<string>[] = [
   IMAGE_EMITTER,
   FOREIGN_VIEW_EMITTER,
   CONTROL_EMITTER,
-] as readonly PaintEmitter<string>[];
+] as const;
+
+export const PAINT_EMITTERS: readonly PaintEmitter<string>[] = EMITTERS as readonly PaintEmitter<string>[];
 
 if (PAINT_EMITTERS.map((m) => m.name).join() !== PAINT_MODULE_NAMES.join()) throw new Error('the paint emitter registry is not in PAINT_MODULE_NAMES order');
 
@@ -98,8 +100,8 @@ export function soleHook(backend: NativeBackend, hook: 'roundedPath' | 'containe
   return fns[0] ?? null;
 }
 
-/** The names of the paint modules' raster plants; a module adds its plant names here. */
-export type PaintPlantName = 'dash-phase-1' | 'dash-gap-unfitted';
+/** The names of the paint modules' raster plants: each module declares its own in its emitter's type (PaintEmitter<K, P>). */
+export type PaintPlantName = (typeof EMITTERS)[number] extends infer E ? (E extends { readonly plants: readonly PaintPlant<infer P>[] } ? P : never) : never;
 
 /** Every raster plant the paint modules declare, in registry order. */
 export function paintPlants(): readonly PaintPlant[] {

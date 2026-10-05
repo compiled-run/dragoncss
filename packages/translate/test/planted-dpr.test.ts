@@ -1,5 +1,5 @@
 // The extended planted fault (notes/T010-p2-triage.md ruling 4): snap-truncating-division must fail at least one case of the
-// extended corpus on both targets. The P1 faults stay pinned by planted-swift.test.ts and planted-kotlin.test.ts; the CLI
+// extended corpus on both targets. The P1 faults stay pinned by planted-<target>-<fault>.test.ts (planted.ts); the CLI
 // (pnpm run native:planted) runs every EXTENDED_FAULTS fault on both corpora.
 import { describe, expect, it } from 'vitest';
 import { expectedFiles, runTarget } from '../src/check.ts';

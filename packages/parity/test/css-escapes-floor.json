@@ -122,6 +122,8 @@
   "min-height": 17,
   "min-inline-size": 17,
   "min-width": 17,
+  "object-fit": 6,
+  "object-position": 16,
   "order": 1,
   "overflow": 6,
   "overflow-x": 6,

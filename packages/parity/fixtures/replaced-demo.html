@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.record { position: relative; width: 240px; height: 240px; background-color: #222; }
+.record-label { position: absolute; top: 32%; left: 32%; width: 36%; height: 36%; border: 4px solid #111; overflow: hidden; }
+.record-label img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.library-song { display: flex; align-items: center; width: 300px; padding: 4px; background-color: #eee; }
+.library-song img { width: 6.5rem; aspect-ratio: 16 / 9; object-fit: contain; }
+.shell { position: relative; width: 320px; aspect-ratio: 16 / 9; border: 1px solid #555; overflow: hidden; }
+.player { width: 100%; height: 100%; }
+.player iframe { display: block; width: 100%; height: 100%; border: 0; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="record" class="record"><div data-dragon-id="label" class="record-label"><img data-dragon-id="cover" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAASCAIAAAC1qksFAAAAL0lEQVR42mN4pqFBEtLYYkMSYhi1YNSCUQtsGDTc7pCEPpyQIwmNWjBqwagFJ+QAIcYODlCK4s4AAAAASUVORK5CYII="></div></div>
+<div data-dragon-id="song" class="library-song"><img data-dragon-id="song-cover" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAASCAIAAAC1qksFAAAAL0lEQVR42mN4pqFBEtLYYkMSYhi1YNSCUQtsGDTc7pCEPpyQIwmNWjBqwagFJ+QAIcYODlCK4s4AAAAASUVORK5CYII="><div data-dragon-id="title">XX XX</div></div>
+<div data-dragon-id="shell" class="shell"><div data-dragon-id="player" class="player"><iframe data-dragon-id="video"></iframe></div></div>
+</body>
+</html>

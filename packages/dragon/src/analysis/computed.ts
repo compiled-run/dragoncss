@@ -9,8 +9,9 @@ import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
-import { ratioValue } from '../css/values.ts';
-import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
+import { positionOffsetText, positionValue, ratioValue } from '../css/values.ts';
+import type { UaDataset, UaKey } from '../ua/datasets.ts';
+import { uaRows } from '../ua/datasets.ts';
 import type { Span } from '../types.ts';
 import type { Candidate } from './cascade.ts';
 import type { LinkedElement } from './link.ts';
@@ -19,7 +20,8 @@ import { substituteWinner } from './variables.ts';
 import { computePaintValues } from './paint-values/index.ts';
 
 /** environment: the root's direction and font, seeded from the reference environment (docs/api.md §7), never from an author declaration. */
-export type Origin = 'author' | 'inherited' | 'user-agent' | 'initial' | 'environment';
+/** presentational-hint: an HTML attribute mapped to a property (HTML §15.4.5), below author rules (css-cascade-5 §6.1). */
+export type Origin = 'author' | 'presentational-hint' | 'inherited' | 'user-agent' | 'initial' | 'environment';
 
 /**
  * The environment facts resolution reads: the document's base direction and root font, given to the root element, and the Chrome
@@ -41,6 +43,8 @@ export type ResolvedValue = {
   readonly losing: readonly Declaration[];
   /** Present when the winning declaration held var(); declaration is then as substituted (analysis/variables.ts). */
   readonly substitution?: Substitution;
+  /** The author declaration that won the cascade and that a forced UA value then overrode (ELB-2 userAgentForced); it heads losing. */
+  readonly forcedOver?: Declaration;
 };
 
 const valueCache = new Map<string, CssValue>();
@@ -54,7 +58,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   const children = (node['children'] as { toArray(): CssNode[] }).toArray().filter((n) => n.type !== 'WhiteSpace');
   let v: CssValue;
   const only = children[0];
-  const ratio = property === 'aspect-ratio' ? ratioValue(children) : null;
+  const ratio = property === 'aspect-ratio' ? ratioValue(children) : property === 'object-position' ? positionValue(children) : null;
   const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property);
   const color = isColor && only !== undefined && children.length === 1 ? parseColorNode(only) : null;
   if (ratio !== null && ratio !== 'invalid' && !('token' in ratio)) v = ratio;
@@ -92,9 +96,10 @@ export function isInitialByProvenance(v: ResolvedValue, property: Longhand): boo
 }
 
 // css-cascade-5 §6.3 (user-agent origin): the captured table pins, per tag, the longhands a Chrome UA rule sets.
-export function userAgentValue(tag: CapturedTag, property: Longhand, ua: UaDataset): CssValue | null {
-  if (!ua.userAgentLonghands[tag].includes(property)) return null;
-  const own = ua.computed[tag][property];
+export function userAgentValue(tag: UaKey, property: Longhand, ua: UaDataset): CssValue | null {
+  const rows = uaRows(ua, tag);
+  if (!rows.longhands.includes(property)) return null;
+  const own = rows.computed[property];
   if (own === undefined) throw new Error(`no captured value for ${tag} ${property}`);
   return parseValueText(property, own);
 }
@@ -105,8 +110,8 @@ export function userAgentValue(tag: CapturedTag, property: Longhand, ua: UaDatas
  * computed font size otherwise (css-values-4 §6.1.1). A font size that is not a length (a value the profiles refuse) leaves the
  * value in em. Null when no UA rule sets it.
  */
-export function declaredUserAgentValue(tag: CapturedTag, property: Longhand, ua: UaDataset, direction: 'ltr' | 'rtl', ownFontSize: CssValue, parentFontSize: CssValue): CssValue | null {
-  const text = ua.userAgentDeclared[tag][direction][property];
+export function declaredUserAgentValue(tag: UaKey, property: Longhand, ua: UaDataset, direction: 'ltr' | 'rtl', ownFontSize: CssValue, parentFontSize: CssValue): CssValue | null {
+  const text = uaRows(ua, tag).declared[direction][property];
   if (text === undefined) return null;
   const em = /^(-?[0-9.]+)em$/.exec(text);
   if (em === null) return parseValueText(property, text);
@@ -116,7 +121,7 @@ export function declaredUserAgentValue(tag: CapturedTag, property: Longhand, ua:
 }
 
 /** Origin of every longhand on an element with no author rules, as the resolver decides it; pinned by ua.test.ts. */
-export function defaultOrigin(tag: CapturedTag, property: Longhand, isRoot: boolean, ua: UaDataset, rootFont: RootFont): Origin {
+export function defaultOrigin(tag: UaKey, property: Longhand, isRoot: boolean, ua: UaDataset, rootFont: RootFont): Origin {
   if (userAgentValue(tag, property, ua) !== null) return 'user-agent';
   if (isRoot && (property === 'direction' || (property === 'font-family' && rootFont === 'ahem'))) return 'environment';
   return INHERITED.has(property) && !isRoot ? 'inherited' : 'initial';
@@ -219,6 +224,8 @@ export function valueToString(v: CssValue): string {
       return serializeColor(v.value);
     case 'ratio':
       return `${v.auto ? 'auto ' : ''}${v.width} / ${v.height}`;
+    case 'position':
+      return `${positionOffsetText(v.x)} ${positionOffsetText(v.y)}`;
     case 'other':
       return v.text;
   }
