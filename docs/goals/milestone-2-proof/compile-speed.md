@@ -103,7 +103,7 @@ There is no xcodebuild and no Gradle here. The iOS host app is one `swiftc -O -j
 | PR | Change | Status |
 |---|---|---|
 | #156 | Sort keys serialised once and the profile row index; adds scripts/bench-compile.ts | CI green, UNREVIEWED (Macroscope limit), clean head dbc6f38887 |
-| #158 | Machine-wide Swift/Kotlin harness build cache. After review: atomic prune (rename to trash, then delete), a 3 GB LRU cap, OS/arch in the Swift key, merged with #164 | CI green, UNREVIEWED, clean head 968d852d17 |
+| #158 | Machine-wide Swift/Kotlin harness build cache. After review: atomic prune (rename to trash, then delete), a 3 GB LRU cap, OS/arch in the Swift key, merged with #164 | CI green, UNREVIEWED, clean head 1a40baf383 (cap never evicts an entry used in the last 2 h; invalid DRAGON_NATIVE_CACHE_MAX_MB throws) |
 | #160 | Digest profiles and asset bytes by SHA-256 (regen commit; device step pending) | CI green, UNREVIEWED, clean head 1a85b27d5e |
 | #164 | Fix: a stale harness cache entry (the landing driver's ignored-file cleanup deletes the artifacts but keeps the directories) is replaced, never returned without its artifact. This was the root cause of land-147's "Unable to access jarfile" | merged |
 
