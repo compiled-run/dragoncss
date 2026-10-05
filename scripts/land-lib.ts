@@ -810,52 +810,232 @@ export const statusText = (o: {
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Stopping. A synchronous driver cannot run a signal handler while a step runs (spawnSync), so `pnpm land` is a supervisor:
-// it holds the lock and runs the driver in its own process group with no signal handlers of its own. SIGINT, SIGTERM or
-// SIGHUP to the supervisor kills that whole group at once (driver and running step, SIGKILL after a grace period), so no
-// step fails into a PR failure; it is recorded as "interrupted". SIGUSR1 (or touching STOP_FILE) asks for a graceful stop:
-// the driver finishes the batch it is on and starts no other.
+// it holds the lock (recording its own pid and the driver's) and runs the driver in its own process group with the default
+// action for SIGINT, SIGTERM and SIGHUP. An interrupt to the supervisor kills that whole group (driver and running step), so no
+// step fails into a PR failure; while the driver is inside a publish (from the push to the post-merge tree check, PUBLISH_MARK)
+// the interrupt waits for it to finish, up to a cap. SIGUSR1 to the supervisor (or touching STOP_FILE) asks for a graceful
+// stop: the driver finishes the batch it is on and starts no other. Whenever the driver dies abnormally the supervisor cleans
+// up after it: devices the run started, its quiet request and priority, the driver worktree, and the status.
 
 export const STOP_FILE = '/tmp/dragon-land.stop';
 export const SUPERVISED_ENV = 'LAND_SUPERVISED';
+export const SUPERVISOR_PID_ENV = 'LAND_SUPERVISOR_PID';
+// Files the driver writes in the run directory for its supervisor.
+export const PUBLISH_MARK = 'publish.json'; // { pr, head, merged: <merge sha> | null } while inside a publish
+export const MERGES_LOG = 'merges.log'; // "<pr> <merge sha> <position head>" per merge, appended right after it
+export const DEVICES_MARK = 'devices.json'; // { emulators: [pid], simulators: [udid] } running before the device step
 
-export const interruptedStatus = (previous: string, signal: string, now: string): string => {
-  const lines = previous.trimEnd().split('\n').filter((l) => l !== '');
+const isPid = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v > 1;
+
+export type PublishMark = { pr: number; head: string; merged: string | null };
+export const parsePublishMark = (text: string | null): PublishMark | null => {
+  if (text === null) return null;
+  let v: unknown;
+  try {
+    v = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!isObject(v) || typeof v.pr !== 'number' || typeof v.head !== 'string' || !(v.merged === null || typeof v.merged === 'string')) return null;
+  return { pr: v.pr, head: v.head, merged: v.merged };
+};
+// The record of a merged position no full test has passed: { pr, head }. Unreadable is treated as present (proved again).
+export const parseUnproved = (text: string | null): { pr: number; head: string } | null => {
+  if (text === null) return null;
+  try {
+    const v: unknown = JSON.parse(text);
+    if (isObject(v) && typeof v.pr === 'number' && typeof v.head === 'string' && /^[0-9a-f]{40}$/.test(v.head)) return { pr: v.pr, head: v.head };
+  } catch {}
+  return { pr: 0, head: `unreadable ${JSON.stringify(text.slice(0, 80))}` };
+};
+export type Merge = { pr: number; merge: string; head: string };
+export const parseMerges = (text: string | null): Merge[] =>
+  (text ?? '').split('\n').flatMap((l) => {
+    const m = /^([1-9]\d*) ([0-9a-f]{40}) ([0-9a-f]{40})$/.exec(l.trim());
+    return m ? [{ pr: Number(m[1]), merge: m[2]!, head: m[3]! }] : [];
+  });
+
+// The status after the driver died mid-run: it names what merged in this run, and never calls a merged PR "not failed".
+export const interruptedStatus = (o: { previous: string; how: string; now: string; publishing: PublishMark | null; merges: readonly Merge[]; unproved: { pr: number; head: string } | null }): string => {
+  const lines = o.previous.trimEnd().split('\n').filter((l) => l !== '');
+  const first = lines[0]?.startsWith('land ') ? lines.shift()! : null;
   const running = lines.find((l) => l.startsWith('landing now: '));
-  const head = `land INTERRUPTED ${now} by ${signal}${lines[0]?.startsWith('land ') ? ` (was: ${lines[0]})` : ''}`;
-  const rest = lines.slice(lines[0]?.startsWith('land ') ? 1 : 0).filter((l) => !l.startsWith('landing now: '));
-  const note = running ? `interrupted while ${running.slice('landing now: '.length)} was landing; it was not failed, and its step's work is discarded` : 'interrupted between PRs';
-  return `${[head, note, ...rest].join('\n')}\n`;
+  const rest = lines.filter((l) => !l.startsWith('landing now: '));
+  const out = [`land INTERRUPTED ${o.now} by ${o.how}${first ? ` (was: ${first})` : ''}`];
+  const merged = new Map(o.merges.map((m) => [m.pr, m]));
+  if (o.publishing !== null) {
+    const m = o.publishing.merged ?? merged.get(o.publishing.pr)?.merge ?? null;
+    out.push(m !== null ? `#${o.publishing.pr} MERGED as ${m} when interrupted; its post-merge tree check and branch cleanup did not run` : `interrupted while publishing #${o.publishing.pr} (position ${o.publishing.head}), before its merge; it was not failed`);
+  } else out.push(running ? `interrupted while ${running.slice('landing now: '.length)} was landing; it was not failed, and its step's work is discarded` : 'interrupted between PRs');
+  if (o.merges.length > 0) out.push(`merged in this run: ${o.merges.map((m) => `#${m.pr} (${m.merge.slice(0, 12)})`).join(', ')}`);
+  if (o.unproved !== null) out.push(`master rests on #${o.unproved.pr}'s position ${o.unproved.head}, which no full test has proved; the next run proves it before anything else`);
+  return `${[...out, ...rest].join('\n')}\n`;
 };
 
-export type Supervised = { code: number; interrupted: NodeJS.Signals | null; pid: number };
+// The lock records the supervisor and the driver; it is held while either lives. A live driver whose supervisor is gone is an
+// orphan the next run kills before it takes the lock.
+export type LockState = 'free' | 'held' | 'orphan';
+export const lockState = (supervisor: number | null, driver: number | null, alive: (pid: number) => boolean): LockState =>
+  supervisor !== null && alive(supervisor) ? 'held' : driver !== null && alive(driver) ? 'orphan' : 'free';
+export const parsePidFile = (text: string | null): number | null => {
+  const t = (text ?? '').trim();
+  return /^[1-9]\d*$/.test(t) && isPid(Number(t)) ? Number(t) : null;
+};
+
+// Device processes of a run: Android emulators (their qemu process) from `ps -axo pid=,command=`, booted simulators from
+// `xcrun simctl list devices booted -j`. The run's own are those running after its device step started that were not before.
+export const emulatorPids = (ps: string): number[] =>
+  ps.split('\n').flatMap((l) => {
+    const m = /^\s*(\d+)\s+(.*)$/.exec(l);
+    return m && /(^|\/)(qemu-system-[\w-]+|emulator\d*)(\s|$)/.test(m[2]!.split(' -')[0]!) ? [Number(m[1])] : [];
+  });
+export const bootedSimulators = (json: string): string[] => {
+  const v: unknown = JSON.parse(json);
+  if (!isObject(v) || !isObject(v.devices)) return fail(`simctl list printed ${json.slice(0, 200)}`);
+  return Object.values(v.devices).flatMap((list) => (Array.isArray(list) ? list.flatMap((d: unknown) => (isObject(d) && d.state === 'Booted' && typeof d.udid === 'string' ? [d.udid] : [])) : []));
+};
+export const parseDevicesMark = (text: string | null): { emulators: number[]; simulators: string[] } | null => {
+  if (text === null) return null;
+  try {
+    const v: unknown = JSON.parse(text);
+    if (isObject(v) && Array.isArray(v.emulators) && v.emulators.every(isPid) && Array.isArray(v.simulators) && v.simulators.every((u) => typeof u === 'string')) return { emulators: v.emulators, simulators: v.simulators };
+  } catch {}
+  return null;
+};
+
+// Everything the supervisor does after the driver died abnormally; each part runs even when another fails.
+export const cleanUpAfterDriver = (o: {
+  how: string;
+  now: string;
+  read: (runFile: string) => string | null;
+  unproved: () => { pr: number; head: string } | null;
+  devices: { emulators: () => number[]; simulators: () => string[]; kill: (pid: number) => void; shutdown: (udid: string) => void };
+  release: () => void;
+  reset: () => void;
+  status: { read: () => string; write: (text: string) => void };
+  log: (line: string) => void;
+}): string[] => {
+  const problems: string[] = [];
+  const step = (what: string, fn: () => void): void => {
+    try {
+      fn();
+    } catch (error) {
+      problems.push(`${what}: ${errorText(error).split('\n')[0]}`);
+    }
+  };
+  const before = parseDevicesMark(o.read(DEVICES_MARK));
+  if (before !== null) {
+    step('stopping the run\'s emulators', () => {
+      for (const pid of o.devices.emulators().filter((p) => !before.emulators.includes(p))) {
+        o.log(`killing emulator pid ${pid}, started by the interrupted device step`);
+        o.devices.kill(pid);
+      }
+    });
+    step('shutting down the run\'s simulators', () => {
+      for (const udid of o.devices.simulators().filter((u) => !before.simulators.includes(u))) {
+        o.log(`shutting down simulator ${udid}, booted by the interrupted device step`);
+        o.devices.shutdown(udid);
+      }
+    });
+  }
+  step('releasing the quiet request and priority', o.release);
+  step('resetting the driver worktree', o.reset);
+  step('writing the status', () =>
+    o.status.write(interruptedStatus({ previous: o.status.read(), how: o.how, now: o.now, publishing: parsePublishMark(o.read(PUBLISH_MARK)), merges: parseMerges(o.read(MERGES_LOG)), unproved: o.unproved() })),
+  );
+  for (const p of problems) o.log(`WARNING after the driver died: ${p}`);
+  return problems;
+};
+
+// Before anything else, a run proves the tree master was left on by an interrupted run (a merged position no full test
+// passed). Returns null when there is none or it passes, else why the run must not start.
+export const proveRestingMaster = (unproved: { pr: number; head: string } | null, prove: () => void, clear: () => void, log: (line: string) => void): string | null => {
+  if (unproved === null) return null;
+  log(`master rests on #${unproved.pr}'s position ${unproved.head}, merged by an interrupted run without a full test; proving master first`);
+  const v = proofVerdict(`master (left on #${unproved.pr}'s position by an interrupted run)`, prove);
+  if (v !== true) return `master is red: it rests on #${unproved.pr}'s position ${unproved.head}, merged by an interrupted run, and fails pnpm test:\n${v.message}`;
+  clear();
+  return null;
+};
+
+export type Supervised = { code: number; interrupted: NodeJS.Signals | null; signal: NodeJS.Signals | null; pid: number };
 export const supervise = (o: {
   command: string;
   args: readonly string[];
   env: NodeJS.ProcessEnv;
+  /** SIGTERM to SIGKILL, for the whole process group (device runs tear down in it). */
   graceMs: number;
+  /** How long an interrupt waits for a publish in progress (PUBLISH_MARK) before killing it anyway. */
+  deferCapMs: number;
+  /** Whether the driver is inside a publish now. */
+  publishing: () => boolean;
+  onSpawn: (pid: number) => void;
   onStop: () => void;
   log: (line: string) => void;
+  pollMs?: number;
 }): Promise<Supervised> =>
   new Promise((resolve, reject) => {
-    const child = spawn(o.command, [...o.args], { detached: true, stdio: 'inherit', env: { ...o.env, [SUPERVISED_ENV]: '1' } });
+    const child = spawn(o.command, [...o.args], { detached: true, stdio: 'inherit', env: { ...o.env, [SUPERVISED_ENV]: '1', [SUPERVISOR_PID_ENV]: String(process.pid) } });
     const pid = child.pid;
     if (pid === undefined) {
       child.once('error', reject);
       return;
     }
+    o.onSpawn(pid);
+    const poll = o.pollMs ?? 250;
     let interrupted: NodeJS.Signals | null = null;
-    let timer: NodeJS.Timeout | null = null;
-    const group = (sig: NodeJS.Signals): void => {
+    let exited: { code: number | null; signal: NodeJS.Signals | null } | null = null;
+    let killing = false;
+    const timers: NodeJS.Timeout[] = [];
+    const group = (sig: NodeJS.Signals | 0): boolean => {
       try {
         process.kill(-pid, sig);
-      } catch {}
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    // SIGTERM to the group, then SIGKILL once the grace period is over; done when no process of the group is left.
+    const kill = (): void => {
+      if (killing) return;
+      killing = true;
+      group('SIGTERM');
+      const t0 = Date.now();
+      const tick = setInterval(() => {
+        if (!group(0)) {
+          clearInterval(tick);
+          finish();
+        } else if (Date.now() - t0 >= o.graceMs) group('SIGKILL');
+      }, poll);
+      timers.push(tick);
     };
     const onSignal = (sig: NodeJS.Signals): void => {
-      if (interrupted !== null) return group('SIGKILL'); // a second signal does not wait for the grace period
+      if (interrupted !== null) {
+        o.log(`${sig} again: killing the driver group now`);
+        group('SIGKILL');
+        killing = false;
+        return kill();
+      }
       interrupted = sig;
-      o.log(`${sig}: interrupting the driver (pid ${pid}) and its running step`);
-      group('SIGTERM');
-      timer = setTimeout(() => group('SIGKILL'), o.graceMs);
+      if (!o.publishing()) {
+        o.log(`${sig}: interrupting the driver (pid ${pid}) and its running step`);
+        return kill();
+      }
+      o.log(`${sig}: the driver is publishing a PR; interrupting once that publish ends (at most ${Math.round(o.deferCapMs / 1000)}s; send ${sig} again to kill it now)`);
+      const t0 = Date.now();
+      const wait = setInterval(() => {
+        if (exited !== null || killing) return clearInterval(wait);
+        if (!o.publishing()) {
+          clearInterval(wait);
+          o.log('the publish ended; interrupting the driver');
+          kill();
+        } else if (Date.now() - t0 >= o.deferCapMs) {
+          clearInterval(wait);
+          o.log(`!!! the publish did not end within ${Math.round(o.deferCapMs / 1000)}s; killing the driver INSIDE a publish: master and the PR may be half-landed, see the status`);
+          kill();
+        }
+      }, poll);
+      timers.push(wait);
     };
     const onUsr1 = (): void => {
       o.log('SIGUSR1: graceful stop requested; the driver finishes its batch and starts no other');
@@ -864,12 +1044,25 @@ export const supervise = (o: {
     const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
     for (const s of signals) process.on(s, onSignal);
     process.on('SIGUSR1', onUsr1);
-    child.once('exit', (code, signal) => {
+    let done = false;
+    const finish = (): void => {
+      if (done || exited === null) return;
+      done = true;
       for (const s of signals) process.off(s, onSignal);
       process.off('SIGUSR1', onUsr1);
-      if (timer !== null) clearTimeout(timer);
-      // Whatever of the step's process group outlived the driver goes too.
-      if (interrupted !== null) setTimeout(() => (group('SIGKILL'), resolve({ code: 130, interrupted, pid })), 1000);
-      else resolve({ code: code ?? (signal ? 128 : 1), interrupted, pid });
+      for (const t of timers) clearInterval(t);
+      // An interrupt that never had to kill (the driver ended on its own while it waited for a publish) is no interrupt.
+      const killed = killing ? interrupted : null;
+      resolve({ code: killed !== null ? 130 : (exited.code ?? 128), interrupted: killed, signal: killed !== null ? null : exited.signal, pid });
+    };
+    child.once('exit', (code, signal) => {
+      exited = { code, signal };
+      // After an interrupt or a death by signal, whatever of the group outlived the driver gets its grace period, then SIGKILL.
+      if (killing || signal !== null) {
+        if (!group(0)) return finish();
+        if (!killing) kill();
+        return;
+      }
+      finish();
     });
   });
