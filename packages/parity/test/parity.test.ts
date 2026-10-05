@@ -14,11 +14,12 @@ import { GATE_DEVICE_PX } from '../src/compare.ts';
 import { ENVIRONMENT, environmentsOf, FIXTURES, RTL_ENVIRONMENT } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 import type { CaseOutcome, FixtureOutcome } from '../src/pipeline.ts';
-import { caseCountProblems, runFixture, topologyProblems } from '../src/pipeline.ts';
-import { fixtureInput } from '../src/cases.ts';
+import { caseCountProblems, forcedCases, runFixture, topologyProblems } from '../src/pipeline.ts';
+import { fixtureInput, isForcedCaseId } from '../src/cases.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { compilerChromeDeviations } from '../src/compiler-deviations.ts';
 import { readTreeExpectation } from '../src/tree-fixture.ts';
+import { prepareOf } from '../src/forced-pseudo.ts';
 import { ANIMATION_CONTEXT, deriveRows } from '../src/profile-rows.ts';
 import { animFixtures } from '../src/anim-cases.ts';
 import { DETERMINISM_CHUNKS, determinismChunk, shuffled } from './determinism.ts';
@@ -114,7 +115,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   for (const spec of FIXTURES) {
     it(`${spec.id} (${spec.format} ${spec.kind})`, async () => {
       const live = async (c: ParityCase): Promise<WebCapture> => {
-        const capture = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra);
+        const capture = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, prepareOf(c));
         captures.set(c.id, capture);
         expect(captureJson(capture), `${c.id}: the live capture must equal the committed expected file`).toBe(readFileSync(expectedPath(c.id), 'utf8'));
         return capture;
@@ -130,7 +131,9 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
         expect(d.severity, d.code).toBe(entry.severity);
       }
       if (spec.kind === 'layout') {
-        expect(outcome.cases.length).toBe(outcome.expectedCases);
+        // SELD-R2a forced cases run beside the reachable cases and are not counted among them; each one is a forcedCases entry.
+        expect(outcome.cases.filter((c) => !isForcedCaseId(c.id)).length).toBe(outcome.expectedCases);
+        expect(outcome.cases.filter((c) => isForcedCaseId(c.id)).map((c) => c.id)).toEqual(forcedCases(spec).map((c) => c.id));
         expect(outcome.dragonCases).toBe(outcome.expectedCases);
         for (const e of outcome.environments) expect([e.renderer, e.dragon], `${spec.id} ${e.direction}`).toEqual([e.expected, e.expected]);
         for (const c of outcome.cases) {
@@ -756,7 +759,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     expect(report.summary.casesPassed).toBe(report.summary.cases);
     for (const o of ordered) for (const c of o.cases) expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'pass', 'chrome-dual': 'pass' });
     for (const cc of report.summary.caseCounts) {
-      expect(cc.cases.length, cc.fixture).toBe(cc.expected);
+      expect(cc.cases.filter((id) => !isForcedCaseId(id)).length, cc.fixture).toBe(cc.expected);
       expect(cc.renderer, cc.fixture).toBe(cc.expected);
       expect(cc.dragon, cc.fixture).toBe(cc.expected);
       for (const e of cc.environments) expect([e.renderer, e.dragon], `${cc.fixture} ${e.direction}`).toEqual([e.expected, e.expected]);
@@ -828,7 +831,8 @@ describe('renderer isolation', () => {
     const src = readdirSync(repoPath('packages/parity/src')).filter((f) => f.endsWith('.ts')).map((f) => [f, readFileSync(repoPath(`packages/parity/src/${f}`), 'utf8')] as const);
     expect(src.filter(([, t]) => t.includes('data-dragon-harness')).map(([f]) => f)).toEqual(['chrome.ts']);
     const pipeline = readFileSync(repoPath('packages/parity/src/pipeline.ts'), 'utf8');
-    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.compiledHtml\(webCss, classOf\), c\.environment, c\.computedExtra\)/);
-    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.authoredHtml, c\.environment, c\.computedExtra\)/);
+    // A SELD-R2a forced case passes the same prepare hook (CSS.forcePseudoState) to both renderings.
+    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.compiledHtml\(webCss, classOf\), c\.environment, c\.computedExtra, prepareOf\(c\)\)/);
+    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.authoredHtml, c\.environment, c\.computedExtra, prepareOf\(c\)\)/);
   });
 });
