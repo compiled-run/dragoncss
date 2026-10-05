@@ -59,12 +59,16 @@ const KOTLIN_MEMBERS = String.raw`  /** REPL-a image: the decoded bitmap, its na
     private set
   var dragonImageFit: String = "fill"
     private set
+  /** Whether the stage may draw through its own layer: false under a transform that moves at run time (lower/paint/image.ts). */
+  var dragonImageLayer: Boolean = false
+    private set
   /** The image's own compositing layer (dragonPaintImageStage), made on the first hardware draw. */
   var dragonImageNode: android.graphics.RenderNode? = null
-  fun dragonSetImage(base64: String, width: Double, height: Double, fit: String) {
+  fun dragonSetImage(base64: String, width: Double, height: Double, fit: String, layer: Boolean) {
     dragonImage = dragonDecodeImage(base64, dragonId)
     dragonImageNatural = doubleArrayOf(width, height)
     dragonImageFit = fit
+    dragonImageLayer = layer
     invalidate()
   }
 `;
@@ -114,9 +118,10 @@ fun dragonPaintImageStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShap
   val t = px[1]
   val r = px[2]
   val b = px[3]
-  // Direct draw (sampled once through the full matrix) on a software canvas, under a scale, rotation, skew or fractional
-  // translate of the box or an ancestor (a layer would be resampled), and for a layer over the GPU's texture size limit.
-  if (!canvas.isHardwareAccelerated || r - l > canvas.maximumBitmapWidth || b - t > canvas.maximumBitmapHeight || !dragonWholePxTranslate(v)) {
+  // Direct draw (sampled once through the full matrix) on a software canvas, under a transform that moves at run time (the
+  // compiler's layer flag), under a scale, rotation, skew or fractional translate of the box or an ancestor (a layer would be
+  // resampled), and for a layer over the GPU's texture size limit.
+  if (!canvas.isHardwareAccelerated || !v.dragonImageLayer || r - l > canvas.maximumBitmapWidth || b - t > canvas.maximumBitmapHeight || !dragonWholePxTranslate(v)) {
     canvas.save()
     canvas.clipRect(c[0].toFloat(), c[1].toFloat(), (c[0] + c[2]).toFloat(), (c[1] + c[3]).toFloat())
     canvas.drawBitmap(image, null, dest, paint)
@@ -181,7 +186,7 @@ export const IMAGE_EMITTER: PaintEmitter<'replaced-image'> = {
   kinds: ['replaced-image'],
   lines: {
     uikit: (v, _n, w) => [`  ${v}.dragonSetImage(${base64Lit(w.data)}, width: ${pxLit(w.width)}, height: ${pxLit(w.height)}, fit: ${keywordLit(w.fit)})`],
-    'android-views': (v, _n, w) => [`  ${v}.dragonSetImage(${base64Lit(w.data)}, ${pxLit(w.width)}, ${pxLit(w.height)}, ${keywordLit(w.fit)})`],
+    'android-views': (v, _n, w) => [`  ${v}.dragonSetImage(${base64Lit(w.data)}, ${pxLit(w.width)}, ${pxLit(w.height)}, ${keywordLit(w.fit)}, ${w.layer ? 'true' : 'false'})`],
   },
   applied: (_e, backend, w, dpr, g) => {
     if (g.replaced === null) throw new Error('an image write on a box that is not replaced');
