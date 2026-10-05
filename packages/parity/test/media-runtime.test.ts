@@ -8,7 +8,7 @@ import { BAND_KEY, bandStateProgram, NO_BAND_RUNTIME_FAULTS } from 'dragon';
 import { MediaRuntime } from '../src/media-runtime.ts';
 import { rtBand } from '@dragon/layout';
 import { readFileSync } from 'node:fs';
-import { bandTableOf, closeThresholds, createProjectWith, nativeBandOfViewport, nativeBandPrograms, nativeBands, nativePrograms, NO_FAULTS } from 'dragon';
+import { bandTableOf, createProjectWith, nativeBandOfViewport, nativeBandPrograms, nativeBands, nativePrograms, NO_FAULTS } from 'dragon';
 import { fixtureToInput, PROJECT_ID } from '../src/fixture-reader.ts';
 import { NATIVE_CONFIG } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
@@ -88,34 +88,29 @@ describe('MediaRuntime', () => {
 describe('the band lookup over whole device px, off the 8 px grid (PR #140 review)', () => {
   const DPRS = [1, 1.75, 2, 2.625, 3, 3.5];
   const sheets = FIXTURES.filter((f): f is FixtureSpec & { kind: 'layout' } => f.kind === 'layout' && /^(media|mqr)-/.test(f.id)).map((f) => ({ id: f.id, compiled: nativeCompile(f, 'ltr') }));
-  it('maps every root from 0 to 2048 device px wide or high at DPR 1, 1.75, 2, 2.625, 3 and 3.5 to a band; away from a threshold, the partition\'s', () => {
+  it('maps every root from 0 to 2048 device px wide or high at DPR 1, 1.75, 2, 2.625, 3 and 3.5 to the band MQ-R0\'s partition gives the same media size', () => {
     let checked = 0;
     for (const s of sheets) {
       const bands = nativeBands(s.compiled);
-      // A sheet with thresholds within 1/64 px (media-range) is refused for run-time switching until MQ-R0 (the next test).
-      if (bands === null || bands.closeThresholds !== null) continue;
-      const thresholds = bands.table.atoms.flatMap((a) => a.comparisons.map((c) => c.value));
-      const near = (v: number): boolean => thresholds.some((t) => Math.abs(v - t) <= 1 / 64);
+      if (bands === null) continue;
       for (const dpr of DPRS) {
         for (let px = 0; px <= 2048; px++) {
           for (const [w, h] of [[px, 600], [px, 1400], [600, px], [1400, px]] as const) {
             const k = rtBand.bandAtPx(bands.table, w, h, dpr, rtBand.NO_BAND_FAULTS);
             checked++;
-            const mw = rtBand.mediaSize(w, dpr);
-            const mh = rtBand.mediaSize(h, dpr);
-            if (!near(mw) && !near(mh)) expect(k, `${s.id} ${w}x${h} px at ${dpr}`).toBe(nativeBandOfViewport(s.compiled, { width: mw, height: mh }));
+            const want = nativeBandOfViewport(s.compiled, { width: rtBand.mediaSize(w, dpr), height: rtBand.mediaSize(h, dpr) });
+            if (k !== want) expect(k, `${s.id} ${w}x${h} px at ${dpr}`).toBe(want);
           }
         }
       }
     }
-    expect(checked).toBeGreaterThan(500_000);
+    expect(sheets.map((s) => s.id)).toEqual(expect.arrayContaining(['media-range', 'media-epsilon', 'media-orientation', 'media-aspect-ratio']));
+    expect(checked).toBeGreaterThan(700_000);
   }, 600_000);
-  it('the review\'s sheet, refused natively at compile time (MQ-R0), is the one whose exact partition the lookup cannot cover; so is media-range\'s', () => {
-    expect(sheets.filter((s) => nativeBands(s.compiled)?.closeThresholds != null).map((s) => s.id)).toEqual(['media-range']);
+  it('the review\'s sheet, (width <= 400px) with (width > 400px), finds the band where both hold at 1400 px and DPR 3.5 (400.0000305 css px)', () => {
     const p = band(['(width <= 400px)', '(width > 400px)'].map((q) => parseMediaQueryList(q)));
     if (p.kind !== 'bands') throw new Error(p.detail);
-    expect(closeThresholds(p)).not.toBeNull();
-    expect(() => rtBand.bandAtPx(bandTableOf(p), 1400, 1000, 3.5, rtBand.NO_BAND_FAULTS)).toThrow(/no band has the truth vector 11/);
+    expect(p.bands[rtBand.bandAtPx(bandTableOf(p), 1400, 1000, 3.5, rtBand.NO_BAND_FAULTS)]?.truth).toEqual([true, true]);
   });
 });
 

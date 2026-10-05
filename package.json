@@ -8,7 +8,7 @@
     "typecheck": "tsc -b && tsc -b packages/text-shaper/test",
     "test": "vitest run",
     "regen": "node scripts/regen.ts",
-    "setup:git": "git config merge.dragon-generated.name 'keep this side; pnpm regen rebuilds it' && git config merge.dragon-generated.driver true && git config merge.dragon-floor.name 'structural merge of floors and pins (scripts/floor-merge.ts)' && git config merge.dragon-floor.driver 'node scripts/floor-merge.ts %O %A %B %P'",
+    "setup:git": "git config merge.dragon-generated.name 'keep this side; pnpm regen rebuilds it' && git config merge.dragon-generated.driver true && git config merge.dragon-floor.name 'structural merge of floors and pins (scripts/floor-merge.ts)' && git config merge.dragon-floor.driver 'node scripts/floor-merge.ts %O %A %B %P' && git config merge.dragon-sorted.name 'interleave additions to the sorted registries (scripts/sorted-merge.ts)' && git config merge.dragon-sorted.driver 'node scripts/sorted-merge.ts %O %A %B %P'",
     "grammar:gen": "node scripts/gen-css-grammar.ts",
     "ua:capture": "node --conditions=dragon-internal scripts/capture-ua-defaults.ts",
     "parity:capture": "node --conditions=dragon-internal packages/parity/src/cli/capture.ts",

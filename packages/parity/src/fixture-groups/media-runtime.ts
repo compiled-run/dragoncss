@@ -2,8 +2,7 @@
 // time. Each fixture runs as a layout case at 400x300 like every other, and its resize script (RESIZE_SCRIPTS) runs on the band
 // runtime and in Chrome (packages/parity/src/resize-capture.ts): a dump after the start and after every step, at DPR 1, 2, 2.625
 // and 3. Every size is a multiple of 8 CSS px and at most 400x400, so it is whole device px at every DPR and every portrait stage
-// holds it (R7 (a)). The 1/64 px threshold, orientation and aspect-ratio cases (mqr-epsilon, mqr-orientation) need MQ-R0's
-// evaluator and come with it; a transition a size change starts (R8) is refused on native only, so its reject is a compiler test
+// holds it (R7 (a)). mqr-orientation proves MQ-R0's ratio atoms; a transition a size change starts (R8) is refused on native only, so its reject is a compiler test
 // (packages/dragon/test/media-runtime.test.ts), not a fixture here, where a reject must block every output.
 import type { Scalar } from 'dragon';
 import type { FixtureSpec } from '../fixtures.ts';
@@ -17,6 +16,7 @@ export const MEDIA_RUNTIME: readonly FixtureSpec[] = [
   both('mqr-nested'),
   both('mqr-music-shape'),
   both('mqr-forms'),
+  both('mqr-orientation'),
   reject('reject-mqr-17-bands', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (min-width: 100px) { .a { width: 1px; } }', 'the @media rules of this document split the viewport into 17 bands, more than 16, which is not supported yet (package MQ-R4)'),
   reject('reject-mqr-env-feature', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (prefers-reduced-motion: reduce) { .a { width: 20px; } }', '@media (prefers-reduced-motion: reduce) in the stylesheet is not supported: (prefers-reduced-motion: reduce) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'),
 ];
@@ -46,6 +46,8 @@ export const RESIZE_SCRIPTS: readonly ResizeScript[] = [
   // The other comparison forms the media rows cover: plain = (with its 1/64 px slack at 352), a strict < range, an em max- (24em is
   // 384px at the initial 16px) and a <= range on height; every width group in both height groups.
   { fixture: 'mqr-forms', start: { width: 400, height: 304 }, steps: [r(400, 400), r(384, 400), r(384, 304), r(352, 304), r(352, 400), r(344, 400), r(328, 400), r(328, 304), r(336, 320)] },
+  // MQ-R0's ratio atoms: landscape, portrait (a square is portrait) and a min-aspect-ratio of 4/3, at, above and below it.
+  { fixture: 'mqr-orientation', start: { width: 400, height: 296 }, steps: [r(352, 264), r(352, 304), r(304, 304), r(304, 400), r(400, 296)] },
 ];
 
 /** The largest root a resize script may ask for, so every portrait stage of the device matrix holds it (R7 (a)). */

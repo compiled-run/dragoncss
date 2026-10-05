@@ -7,7 +7,7 @@ import type { LayoutBox } from '@dragon/layout';
 import { rtBand } from '@dragon/layout';
 import type { Assignment, BandCase, NativeProgram, ProgramNode } from 'dragon';
 import { BAND_KEY, bandAtom, bandOf, BandProgramError, bandStateProgram, bandTableOf, MAX_STATE_TABLE_ASSIGNMENTS, programAt, StateProgramError } from 'dragon';
-import { band, evaluateWithOracle, parseMediaQueryList } from '../src/media/index.ts';
+import { band, evaluateFeature, evaluateWithOracle, featuresOfList, parseMediaQueryList } from '../src/media/index.ts';
 import { CAPTURE as capture, CORPUS } from './media/corpus.ts';
 
 const atomsOf = (q: string) => parseMediaQueryList(q);
@@ -113,5 +113,29 @@ describe('bandStateProgram', () => {
     const many = Array.from({ length: 33 }, (_, i) => i).flatMap((i) => [0, 1].map((b): BandCase => ({ assignment: [{ state: { instance: 'doc', state: 'n' }, value: i }], isInitial: i === 0, band: b, program: program(100, 1) })));
     expect(() => bandStateProgram('uikit', many, 2, 0)).toThrow(StateProgramError);
     expect(bandStateProgram('uikit', many.filter((c) => (c.assignment[0]?.value as number) < MAX_STATE_TABLE_ASSIGNMENTS / 2), 2, 0).assignments).toHaveLength(64);
+  });
+});
+
+describe('one comparison rule: rt-band\'s atoms against MQ-R0\'s media evaluator (media/evaluate.ts)', () => {
+  it('agree on every captured feature Dragon evaluates, at whole, fractional and 1/64 and 1/128 px neighbours of every threshold', () => {
+    const features = capture.queries.flatMap((q) => featuresOfList(atomsOf(q.query))).filter((f) => f.refused === null && ['width', 'height', 'orientation', 'aspect-ratio'].includes(f.base));
+    const thresholds = [...new Set(features.flatMap((f) => bandAtom(f).comparisons.map((c) => c.value)))].filter((v) => v > 0);
+    const d = [0, 1 / 64, -1 / 64, 1 / 128, -1 / 128, 0.01, -0.01, 0.5, -0.5, 1, -1];
+    const sizes = [...new Set([0, 1, 300, 300.19, 400.0000305, 411.4285888671875, ...thresholds.flatMap((t) => d.map((x) => t + x))])].filter((v) => v >= 0);
+    let compared = 0;
+    const mismatches: string[] = [];
+    for (const f of features) {
+      const atom = bandAtom(f);
+      for (const w of sizes) {
+        for (const h of [300, 400.25, 400.75, w]) {
+          compared++;
+          const a = rtBand.atomHolds(atom, w, h, rtBand.NO_BAND_FAULTS);
+          const b = evaluateFeature(f, { width: w, height: h });
+          if (a !== b) mismatches.push(`${f.name} at ${w}x${h}: rt-band ${a}, media ${b}`);
+        }
+      }
+    }
+    expect(mismatches.slice(0, 10)).toEqual([]);
+    expect(compared).toBeGreaterThan(50_000);
   });
 });

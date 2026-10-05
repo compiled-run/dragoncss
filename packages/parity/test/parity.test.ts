@@ -33,6 +33,8 @@ import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
 import { fontEmittedPath, fontExpectedPath, liveFontAuthored, runFontFixture } from '../src/fonts-run.ts';
+import { ENV_FIXTURES } from '../src/fixture-groups/env.ts';
+import { envEmittedPath, envExpectedPath, liveEnvAuthored, runEnvFixture } from '../src/env-run.ts';
 import type { FrontEndResult } from 'dragon';
 
 let browser: Browser;
@@ -61,7 +63,10 @@ function specFor(id: string): (typeof FIXTURES)[number] {
 const fontOutcomes = new Map<string, CaseOutcome[]>();
 const corpusCases = (): CaseOutcome[] => FIXTURES.flatMap((f) => (outcomes.get(f.id)?.cases ?? []));
 const fontCasesRun = (): CaseOutcome[] => FONT_FIXTURES.flatMap((f) => fontOutcomes.get(f.spec.id) ?? []);
-const allCases = (): CaseOutcome[] => [...corpusCases(), ...fontCasesRun()];
+/** ENV-SAFE: the web-only env() cases (env-run.ts), which prove web rows through chrome-dual alone under their safe-area insets. */
+const envOutcomes = new Map<string, CaseOutcome[]>();
+const envCasesRun = (): CaseOutcome[] => ENV_FIXTURES.flatMap((f) => envOutcomes.get(f.spec.id) ?? []);
+const allCases = (): CaseOutcome[] => [...corpusCases(), ...fontCasesRun(), ...envCasesRun()];
 const recorded = async (c: ParityCase): Promise<WebCapture> => {
   const hit = captures.get(c.id);
   if (hit === undefined) throw new Error(`no live capture for ${c.id}`);
@@ -81,9 +86,10 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     // Frame fixtures (T065) are registered by their frames.json sidecar (anim-cases.ts animFixtures) and are not layout fixtures.
     const frames = animFixtures().map((f) => f.id);
     for (const id of frames) expect(FIXTURES.some((f) => f.id === id), `${id} is both a frame fixture and in FIXTURES`).toBe(false);
-    const registered = new Set([...[...FIXTURES, ...FONT_FIXTURES.map((f) => f.spec)].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...frames]);
-    for (const f of FONT_FIXTURES) expect(statSync(`${dir}/${f.spec.id}.html`).isFile(), f.spec.id).toBe(true);
-    expect(new Set([...FIXTURES.map((f) => f.id), ...FONT_FIXTURES.map((f) => f.spec.id)]).size).toBe(FIXTURES.length + FONT_FIXTURES.length);
+    const webOnly = [...FONT_FIXTURES, ...ENV_FIXTURES].map((f) => f.spec);
+    const registered = new Set([...[...FIXTURES, ...webOnly].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...frames]);
+    for (const f of webOnly) expect(statSync(`${dir}/${f.id}.html`).isFile(), f.id).toBe(true);
+    expect(new Set([...FIXTURES.map((f) => f.id), ...webOnly.map((f) => f.id)]).size).toBe(FIXTURES.length + webOnly.length);
     for (const e of entries) expect(registered.has(e), `${e} is not in FIXTURES`).toBe(true);
     for (const f of FIXTURES) {
       if (f.format === 'html') expect(statSync(`${dir}/${f.id}.html`).isFile(), f.id).toBe(true);
@@ -185,6 +191,41 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       }
     }, 240_000);
   }
+
+  for (const f of ENV_FIXTURES) {
+    it(`${f.spec.id} (web-only env() fixture: chrome-dual alone, insets ${JSON.stringify(f.safeArea)})`, async () => {
+      const live = liveEnvAuthored(browser, f);
+      const recordLive = async (c: ParityCase): Promise<WebCapture> => {
+        const capture = await live(c);
+        captures.set(c.id, capture);
+        expect(captureJson(capture), `${c.id}: the live capture must equal the committed expected-env file`).toBe(readFileSync(envExpectedPath(c.id), 'utf8'));
+        return capture;
+      };
+      const cases = await runEnvFixture(f, browser, { authored: recordLive });
+      envOutcomes.set(f.spec.id, cases);
+      expect(cases.map((c) => c.direction)).toEqual(f.spec.kind === 'layout' ? f.spec.environments : []);
+      for (const c of cases) {
+        expect(c.reason, c.id).toBeNull();
+        expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'not-run', 'chrome-dual': 'pass' });
+        expect(c.features.ios, c.id).toEqual([]);
+        expect(c.features.web.some((k) => k.includes(':<env()>@')), c.id).toBe(true);
+      }
+      for (const d of ['ltr', 'rtl'] as const) {
+        const web = compileFixture(f.spec, NO_FAULTS, 'enforce', d).compiled.outputs.web;
+        expect(web.kind === 'ready' ? web.files[0]?.text : null, `${f.spec.id} ${d}: emitted web CSS must equal the committed file`).toBe(readFileSync(envEmittedPath(f.spec.id, d), 'utf8'));
+      }
+    }, 240_000);
+  }
+
+  it('planted fault envResolvedToZero: a compiler that resolves the insets at build time fails chrome-dual under nonzero insets', async () => {
+    const f = ENV_FIXTURES.find((x) => x.spec.id === 'env-safe-area-portrait') as (typeof ENV_FIXTURES)[number];
+    const cases = await runEnvFixture(f, browser, { authored: recorded, faults: { ...NO_FAULTS, envResolvedToZero: true } });
+    expect(cases.length).toBeGreaterThan(0);
+    for (const c of cases) {
+      expect(c.lanes['chrome-dual'], c.id).toBe('fail');
+      expect(c.reason, c.id).toMatch(/chrome-dual: /);
+    }
+  }, 240_000);
 
   it('committed captures are exactly the cases of this run, under the reference platform key only', () => {
     expect(readdirSync(repoPath('packages/parity/expected'))).toEqual([REFERENCE_PLATFORM]);
@@ -441,7 +482,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     expect(iosProfile.rows.filter((r) => r.feature.startsWith('font-family:Ahem')).map((r) => r.context).sort()).toEqual([...textContexts].sort());
     expect(iosProfile.rows.some((r) => r.feature === 'width:<length-px>' && r.context === 'block/ltr')).toBe(true);
     expect(iosProfile.rows.some((r) => r.feature === 'width:<length-px>' && r.context === 'block/rtl')).toBe(true);
-    expect(iosProfile.rows.some((r) => r.feature === 'margin-top:auto' && r.context === 'block/ltr')).toBe(false);
+    expect(iosProfile.rows.some((r) => r.feature === 'margin-right:<length-mm>' && r.context === 'block/ltr')).toBe(false);
   });
 
   it('no row of one direction is proven by a case that laid it out in the other: every proving case has an element of the facet direction in its Chrome capture', () => {
@@ -738,8 +779,9 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('writes the report and summary.md: at least 114 layout fixtures, at least 110 hand-written; failed 0; unsupportedCodes []; every case in both environments passes both lanes; platform darwin-arm64; the Linux lane unavailable (not run); every exact row linked to passing cases', () => {
     const ordered = FIXTURES.map((f) => outcomes.get(f.id)).filter((o): o is FixtureOutcome => o !== undefined);
     expect(ordered.length).toBe(FIXTURES.length);
-    const report = buildReport(ordered, fontCasesRun());
-    expect(report.summary.webOnly).toEqual({ cases: fontCasesRun().length, passed: fontCasesRun().length, failed: [] });
+    const webOnly = [...fontCasesRun(), ...envCasesRun()];
+    const report = buildReport(ordered, webOnly);
+    expect(report.summary.webOnly).toEqual({ cases: webOnly.length, passed: webOnly.length, failed: [] });
     expect(report.summary.webOnly.cases).toBeGreaterThan(0);
     writeReport(report);
     expect(report.summary.fixtures).toBeGreaterThanOrEqual(137);

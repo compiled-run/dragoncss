@@ -341,10 +341,10 @@ export function animationFeatures(compiled: object): readonly string[] {
 
 // MQ-R1 (notes/T067-mq-r-spec.md R4, R5): the @media bands of the native output, their per-case programs and the band program.
 export type { BandAnalysis, BandCase, BandRuntimeFaults } from './lower/band-program.ts';
-export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, closeThresholds, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
+export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
 export type { InternalBands } from './project.ts';
 export { MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
-import { bandStateProgram as deriveBandProgram, closeThresholds as closeThresholdsOf } from './lower/band-program.ts';
+import { bandStateProgram as deriveBandProgram } from './lower/band-program.ts';
 import { assignmentKey as keyOfAssignment } from './analysis/link.ts';
 import { bandAt as partitionBandAt } from './media/index.ts';
 import { MEDIA_AT_RULE_FEATURE as MEDIA_AT_RULE_FEATURE_KEY, mediaFeatureKey as mediaFeatureKeyOf } from './project.ts';
@@ -352,10 +352,10 @@ import type { BandRuntimeFaults } from './lower/band-program.ts';
 import type { StateFaults, StateProgram } from './lower/state-program.ts';
 
 /** The @media bands of a compile's native output: the band table, each band's condition and the per-case programs' band; null without @media. */
-export function nativeBands(compiled: object): { readonly table: import('@dragon/layout').rtBand.BandTable; readonly conditions: readonly string[]; readonly initial: number; readonly closeThresholds: { readonly a: string; readonly b: string } | null } | null {
+export function nativeBands(compiled: object): { readonly table: import('@dragon/layout').rtBand.BandTable; readonly conditions: readonly string[]; readonly initial: number } | null {
   const record = internalRecord(compiled);
   if (record === undefined || record.bands === null) return null;
-  return { table: record.bands.table, conditions: record.bands.conditions, initial: record.bands.initial, closeThresholds: closeThresholdsOf(record.bands.partition) };
+  return { table: record.bands.table, conditions: record.bands.conditions, initial: record.bands.initial };
 }
 
 /** The media profile keys a compile's native output uses (T067 R13): the at-rule and each atom's feature, sorted; none without @media. */

@@ -686,8 +686,9 @@ describe('catch-up procedure (AGENTS.md steps 1 and 2)', () => {
 describe('merge policy (.gitattributes)', () => {
   const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter((p) => p !== '');
   const policy = new Set(execFileSync('git', ['ls-files', '-z', ':(attr:merge=dragon-generated)'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter((p) => p !== ''));
-  // The dragon-generated lines; the dragon-floor lines (floor and pin files, scripts/floor-merge.ts) are checked in land.test.ts.
-  const lines = readFileSync(repoPath('.gitattributes'), 'utf8').split('\n').filter((l) => l.trim() !== '' && !l.startsWith('#') && !/ merge=dragon-floor$/.test(l));
+  // The dragon-generated lines; the dragon-floor lines (floor and pin files, scripts/floor-merge.ts) are checked in
+  // floor-merge.test.ts and the dragon-sorted lines (sorted registries, scripts/sorted-merge.ts) in sorted-merge.test.ts.
+  const lines = readFileSync(repoPath('.gitattributes'), 'utf8').split('\n').filter((l) => l.trim() !== '' && !l.startsWith('#') && !/ merge=dragon-(floor|sorted)$/.test(l));
   const written = (p: string): boolean => STEPS.some((s) => s.outputs.some((g) => matches(g, p)));
   const byHand = (p: string): boolean => MERGE_BY_HAND.some((h) => matches(h.path, p));
 

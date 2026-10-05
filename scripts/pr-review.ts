@@ -1,5 +1,5 @@
 // Prints a PR's check runs and the Macroscope review comments nobody has answered yet; exits 1 while anything is open.
-// Run with: pnpm run pr:review [<pr number>] [--wait]
+// Run with: pnpm run pr:review [<pr number>] [--wait] [--conflicts-ok]
 import { execFileSync } from 'node:child_process';
 import {
   CORRECTNESS,
@@ -11,6 +11,7 @@ import {
   type Ignore,
   ignoreAt,
   isVouchableSkip,
+  judgedHead,
   outcome,
   parsePrHead,
   type PrHead,
@@ -44,6 +45,7 @@ const isMacroscope = (login: string): boolean => login.toLowerCase().includes('m
 
 const args = process.argv.slice(2);
 const wait = args.includes('--wait');
+const conflictsOk = args.includes('--conflicts-ok');
 const pr = args.find((a) => /^\d+$/.test(a)) ?? gh(['pr', 'view', '--json', 'number', '--jq', '.number']).trim();
 if (!/^\d+$/.test(pr)) throw new Error(`pr-review: not a PR number: ${JSON.stringify(pr)}`);
 const repo = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']).trim();
@@ -51,7 +53,9 @@ const repo = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOw
 let head: PrHead = { sha: '', mergeable: 'UNKNOWN' };
 let sha = '';
 const checkRuns = (): CheckRun[] => {
-  head = parsePrHead(JSON.parse(gh(['pr', 'view', pr, '--json', 'headRefOid,mergeable'])));
+  const seen = parsePrHead(JSON.parse(gh(['pr', 'view', pr, '--json', 'headRefOid,mergeable'])));
+  if (conflictsOk && seen.mergeable === 'CONFLICTING' && head.sha !== seen.sha) console.error(`pr-review: GitHub reports ${seen.sha} CONFLICTING; --conflicts-ok leaves that to the merge train's drivers`);
+  head = judgedHead(seen, conflictsOk);
   sha = head.sha;
   return runsOf(sha);
 };

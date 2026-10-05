@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 import type { Compiled, FrontEndResult } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import { createProjectWith, MAX_STATE_TABLE_ASSIGNMENTS, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, nativePrograms, NO_FAULTS } from '../src/internal.ts';
-import { closeThresholds, refuseBandedStateSpace } from '../src/lower/band-program.ts';
+import { bandTableOf, refuseBandedStateSpace } from '../src/lower/band-program.ts';
+import { rtBand } from '@dragon/layout';
 import { band, parseMediaQueryList } from '../src/media/index.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Diagnostic } from '../src/index.ts';
@@ -98,20 +99,14 @@ describe('the native refusals MQ-R1 adds beside R8 (PR #140 review)', () => {
     const c = derive('.a { width: 10px; height: 5px; } @keyframes k { to { flex-grow: 2; } } @media (max-width: 300px) { .a { animation: k 1s; } }');
     expect(c.diagnostics.some((d) => d.message.startsWith('flex-grow in @keyframes k cannot be animated yet'))).toBe(true);
   });
-  it('thresholds within 1/64 px with slack are refused natively until MQ-R0, since the exact partition has no band for what Chrome matches there', () => {
-    const { i, c } = publicCompile('.a { width: 10px; height: 5px; } @media (width <= 400px) { .a { width: 20px; } } @media (width > 400px) { .a { width: 30px; } }');
-    const r = c.diagnostics.filter((d) => d.message.includes('(package MQ-R0)'));
-    expect(r.map((d) => [d.code, d.target, spanTextOf(i, d), d.message])).toEqual(['ios', 'android'].map((t) => ['DRAGON_UNSUPPORTED_AT_RULE', t, '@media (width <= 400px) { .a { width: 20px; } }', `@media (width <= 400px) and (width > 400px) meet within 1/64 px, where Chrome's 1/64 px slack lets a viewport match a combination the ${t} bands do not hold yet (package MQ-R0)`]));
-    expect((c.outputs as Record<string, { kind: string }>)['web']?.kind).toBe('ready');
-    const partition = (q: string[]) => {
-      const p = band(q.map((x) => parseMediaQueryList(x)));
-      if (p.kind !== 'bands') throw new Error(p.detail);
-      return p;
-    };
-    expect(closeThresholds(partition(['(max-width: 400px)', '(min-width: 401px)']))).toBeNull();
-    expect(closeThresholds(partition(['(max-width: 400px)', '(min-width: 400.01px)']))).not.toBeNull();
-    expect(closeThresholds(partition(['(width < 400px)', '(width > 400px)']))).toBeNull();
-    expect(closeThresholds(partition(['(max-width: 400px)', '(max-height: 400px)']))).toBeNull();
+  it('thresholds within 1/64 px are accepted natively: MQ-R0\'s partition holds every combination Chrome\'s slack gives, so the lookup finds a band', () => {
+    const { c } = publicCompile('.a { width: 10px; height: 5px; } @media (width <= 400px) { .a { width: 20px; } } @media (width > 400px) { .a { width: 30px; } }');
+    expect(c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE')).toEqual([]);
+    const p = band(['(width <= 400px)', '(width > 400px)'].map((x) => parseMediaQueryList(x)));
+    if (p.kind !== 'bands') throw new Error(p.detail);
+    // The review's root: 1400 px at DPR 3.5 is 400.0000305 css px, where both atoms hold (vector 11).
+    const k = rtBand.bandAtPx(bandTableOf(p), 1400, 1000, 3.5, rtBand.NO_BAND_FAULTS);
+    expect(p.bands[k]?.truth).toEqual([true, true]);
   });
   it('the (assignment, band) pairs of a native state table are capped at 64, as a diagnostic at the first @media', () => {
     const text = '@media (max-width: 300px) { .a { width: 1px; } }';

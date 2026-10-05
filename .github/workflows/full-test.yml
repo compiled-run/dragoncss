@@ -64,10 +64,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: vitest run packages/layout packages/dragon (but the native file)
         run: |
+          set -o pipefail
           mkdir -p "$RUNNER_TEMP/report"
           list=$(node scripts/test-shards.ts plan platform-free 1 1) || { echo "::error::the shard planner failed"; exit 1; }
           files=(); while IFS= read -r f; do files+=("$f"); done <<< "$list"
-          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/platform-free.json"
+          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/platform-free.json" 2>&1 | tee "$RUNNER_TEMP/shard.log"
+      - name: No native run was blocked (owner tooling)
+        run: |
+          # The run lines native.ts describe() prints (the test titles that mention "blocked" are not run lines).
+          if grep -nE 'status blocked \(owner tooling\)|native:(swift|kotlin): (swiftc not found|no JDK 17\+ or kotlinc)' "$RUNNER_TEMP/shard.log"; then echo "::error::a native run was blocked (owner tooling): its toolchain was missing, so the test proved nothing"; exit 1; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -131,11 +136,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/report"
           list=$(node scripts/test-shards.ts plan native ${{ matrix.shard }} 4) || { echo "::error::the shard planner failed"; exit 1; }
           files=(); while IFS= read -r f; do files+=("$f"); done <<< "$list"
-          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/native-${{ matrix.shard }}.json" 2>&1 | tee "$RUNNER_TEMP/native.log"
-      - name: No native test ran blocked on a runner with both toolchains
+          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/native-${{ matrix.shard }}.json" 2>&1 | tee "$RUNNER_TEMP/shard.log"
+      - name: No native run was blocked (owner tooling)
         run: |
           # The run lines native.ts describe() prints (the test titles that mention "blocked" are not run lines).
-          if grep -nE 'status blocked \(owner tooling\)|native:(swift|kotlin): (swiftc not found|no JDK 17\+ or kotlinc)' "$RUNNER_TEMP/native.log"; then echo "::error::a native run was blocked (owner tooling) on a native shard, which has both toolchains"; exit 1; fi
+          if grep -nE 'status blocked \(owner tooling\)|native:(swift|kotlin): (swiftc not found|no JDK 17\+ or kotlinc)' "$RUNNER_TEMP/shard.log"; then echo "::error::a native run was blocked (owner tooling): its toolchain was missing, so the test proved nothing"; exit 1; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -188,10 +193,15 @@ jobs:
           echo "ANDROID_HOME=${ANDROID_HOME:-unset}"; find "${ANDROID_HOME:-/nonexistent}/platforms" -maxdepth 1 2>&1 | tail -3
       - name: vitest run (every other file, shard ${{ matrix.shard }}/3)
         run: |
+          set -o pipefail
           mkdir -p "$RUNNER_TEMP/report"
           list=$(node scripts/test-shards.ts plan chrome ${{ matrix.shard }} 3) || { echo "::error::the shard planner failed"; exit 1; }
           files=(); while IFS= read -r f; do files+=("$f"); done <<< "$list"
-          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/chrome-${{ matrix.shard }}.json"
+          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/chrome-${{ matrix.shard }}.json" 2>&1 | tee "$RUNNER_TEMP/shard.log"
+      - name: No native run was blocked (owner tooling)
+        run: |
+          # The run lines native.ts describe() prints (the test titles that mention "blocked" are not run lines).
+          if grep -nE 'status blocked \(owner tooling\)|native:(swift|kotlin): (swiftc not found|no JDK 17\+ or kotlinc)' "$RUNNER_TEMP/shard.log"; then echo "::error::a native run was blocked (owner tooling): its toolchain was missing, so the test proved nothing"; exit 1; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

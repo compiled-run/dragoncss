@@ -64,21 +64,26 @@ describe('MQ-a: @media in the parse driver', () => {
     expect(c?.text).toBe('screen and (max-width: 25em)');
     expect(text.slice(c?.span.start, c?.span.end)).toBe(text);
   });
-  it('environment features (until MQ-R2 or MQ-R3), aspect-ratio, orientation and values Dragon does not evaluate are refused on every target', () => {
+  it('environment features (until MQ-R2 or MQ-R3) and values Dragon does not evaluate are refused on every target', () => {
     for (const [prelude, why] of [
       ['(prefers-color-scheme: dark)', '(prefers-color-scheme: dark) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
       ['(max-width: 400px) and (resolution: 2dppx)', '(resolution: 2dppx) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
       ['(hover)', '(hover) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
       ['(prefers-contrast: more)', '(prefers-contrast: more) depends on the device or the user, which Dragon does not read yet (package MQ-R3)'],
       ['(hover) and (color)', '(hover), (color) depends on the device or the user, which Dragon does not read yet (package MQ-R3)'],
-      ['(orientation: portrait)', '(orientation: portrait) is not a width or height feature'],
-      ['(min-aspect-ratio: 4/3)', '(min-aspect-ratio: 4 / 3) is not a width or height feature'],
       ['(max-width: 10vw)', '(max-width: 10vw) uses a value Dragon does not evaluate'],
     ] as const) {
       const { rules, diagnostics, enclosed } = parse(`@media ${prelude} { .a { width: 2px; } }`);
       expect(rules, prelude).toEqual([]);
-      expect(diagnostics.map((d) => [d.code, d.target, d.message]), prelude).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', null, expect.stringMatching(new RegExp(`^@media .* in the stylesheet is not supported: ${why.replace(/[()/]/g, '\\$&')}; only width and height media features are supported$`))]]);
+      expect(diagnostics.map((d) => [d.code, d.target, d.message]), prelude).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', null, expect.stringMatching(new RegExp(`^@media .* in the stylesheet is not supported: ${why.replace(/[()/]/g, '\\$&')}; only width, height, orientation and aspect-ratio media features are supported$`))]]);
       expect(enclosed.length, prelude).toBe(1);
+    }
+  });
+  it('MQ-R0: orientation and aspect-ratio are conditional, like width and height', () => {
+    for (const prelude of ['(orientation: portrait)', '(min-aspect-ratio: 4/3)', '(orientation: landscape) and (max-width: 500px)']) {
+      const { rules, diagnostics } = parse(`@media ${prelude} { .a { width: 2px; } }`);
+      expect(diagnostics, prelude).toEqual([]);
+      expect(rules.map((r) => r.condition?.map((c) => c.text)), prelude).toEqual([[prelude.replace('4/3', '4 / 3')]]);
     }
   });
   it('@media in a rule block (css-nesting-1) and @media without a block stay refused', () => {
@@ -113,6 +118,19 @@ describe('MQ-a: the band fold', () => {
     expect(width(compile(TWO, { foldViewport: { width: 400.5, height: 300 } }).c)).toBe('10px');
     const folded = compile(TWO, { foldViewport: { width: 400, height: 300 } }).c;
     expect([folded.outputs.ios.kind, folded.outputs.web.kind, folded.ok]).toEqual(['analysis-only', 'ready', true]);
+  });
+  it('MQ-R0: an orientation band folds by whole px (a square is portrait), and the web output writes its block', () => {
+    const css = '.a { width: 10px; height: 5px; } @media (orientation: portrait) { .a { width: 20px; } }';
+    expect(width(compile(css, { foldViewport: { width: 400, height: 300 } }).c)).toBe('10px');
+    expect(width(compile(css, { foldViewport: { width: 300, height: 400 } }).c)).toBe('20px');
+    expect(width(compile(css, { foldViewport: { width: 400.5, height: 400 } }).c)).toBe('20px');
+    expect(webCss(compile(css, { foldViewport: { width: 400, height: 300 } }).c).endsWith('}\n@media (not (orientation: portrait)) {\n.dg2 {\n  width: 10px;\n}\n}\n')).toBe(true);
+  });
+  it('MQ-R0: a max-width boundary has Chrome\'s 1/64 px of slack, and < is exact', () => {
+    const css = '.a { width: 10px; height: 5px; } @media (max-width: 399.99px) { .a { width: 20px; } } @media (width < 400px) { .a { height: 6px; } }';
+    expect(width(compile(css, { foldViewport: { width: 400, height: 300 } }).c)).toBe('20px');
+    expect(explainOne(compile(css, { foldViewport: { width: 400, height: 300 } }).c, 'ios', 'a', 'height').value).toBe('5px');
+    expect(width(compile(css, { foldViewport: { width: 400.01, height: 300 } }).c)).toBe('10px');
   });
   it('em in a media query is 16px whatever the root font size', () => {
     const css = 'html { font-size: 20px; } .a { width: 10px; } @media (max-width: 25em) { .a { width: 20px; } }';
@@ -176,13 +194,13 @@ describe('MQ-a: the band fold', () => {
     expect(supports?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[ios\]: display: grid/), expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[web\]: display: grid/)]);
   });
   it('the rules inside an unsupported at-rule are analysed against every band\'s cascade, for every target (MQ-R1)', () => {
-    // At the 400px fold the body is flex and margin-top: auto is proven; above 500px the body is block, where neither target proves it.
-    const { c } = compile('.a { width: 10px; } @media (max-width: 500px) { body { display: flex; } } @supports (display: flex) { .a { margin-top: auto; } }', { foldViewport: { width: 400, height: 300 } });
+    // At the 400px fold the body is flex and margin-right: 6mm is proven; above 500px the body is block, where neither target proves it.
+    const { c } = compile('.a { width: 10px; } @media (max-width: 500px) { body { display: flex; } } @supports (display: flex) { .a { margin-right: 6mm; } }', { foldViewport: { width: 400, height: 300 } });
     const supports = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
-    expect(supports?.related.map((r) => r.message)).toEqual(['ios', 'web'].map((t) => expect.stringMatching(new RegExp(`^DRAGON_UNPROVEN_CONTEXT \\[${t}\\]: margin-top:auto on a is used in the block\\/ltr context`))));
+    expect(supports?.related.map((r) => r.message)).toEqual(['ios', 'web'].map((t) => expect.stringMatching(new RegExp(`^DRAGON_UNPROVEN_CONTEXT \\[${t}\\]: margin-right:<length-mm> on a is used in the block\\/ltr context`))));
   });
   it('a value unsupported only inside a band outside the fold blocks native too, which switches to that band at run time (MQ-R1)', () => {
-    const { c } = compile('.a { width: 10px; } @media (min-width: 500px) { .a { margin-top: auto; } }', { foldViewport: { width: 400, height: 300 } });
+    const { c } = compile('.a { width: 10px; } @media (min-width: 500px) { .a { margin-right: 6mm; } }', { foldViewport: { width: 400, height: 300 } });
     expect(c.diagnostics.map((d) => [d.code, d.target]).sort()).toEqual([['DRAGON_UNPROVEN_CONTEXT', 'ios'], ['DRAGON_UNPROVEN_CONTEXT', 'web']]);
     expect([c.outputs.ios.kind, c.outputs.web.kind]).toEqual(['blocked', 'blocked']);
   });

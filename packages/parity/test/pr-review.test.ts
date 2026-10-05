@@ -29,6 +29,7 @@ import {
   type CheckRun,
   correctnessSucceeded,
   type Earlier,
+  judgedHead,
   outcome,
   settled,
   verdictOf,
@@ -618,5 +619,15 @@ describe('the CI run is required', () => {
     expect(() => parsePrHead({ headRefOid: HEAD.sha, mergeable: 'conflicting' })).toThrow();
     expect(() => parsePrHead({ headRefOid: 'abc', mergeable: 'MERGEABLE' })).toThrow();
     expect(() => parsePrHead(null)).toThrow();
+  });
+});
+
+describe('--conflicts-ok (GitHub mergeability ignores the merge drivers)', () => {
+  it('turns only CONFLICTING into UNKNOWN, and only when asked', () => {
+    const head = { sha: 'a'.repeat(40), mergeable: 'CONFLICTING' as const };
+    expect(judgedHead(head, true)).toEqual({ sha: head.sha, mergeable: 'UNKNOWN' });
+    expect(judgedHead(head, false)).toBe(head);
+    const clean = { sha: head.sha, mergeable: 'MERGEABLE' as const };
+    expect(judgedHead(clean, true)).toBe(clean);
   });
 });

@@ -51,10 +51,10 @@ import type { CompilerFaults } from './faults.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
 import { PROGRAM_VERSIONS } from './lower/native-program.ts';
 import type { BandAnalysis } from './lower/band-program.ts';
-import { bandTableOf, refuseBandedNativeAnimations, refuseBandedStateSpace, refuseCloseThresholds, refuseSizeTransitions } from './lower/band-program.ts';
+import { bandTableOf, refuseBandedNativeAnimations, refuseBandedStateSpace, refuseSizeTransitions } from './lower/band-program.ts';
 import type { rtBand } from '@dragon/layout';
 import type { Band, BandPartition } from './media/index.ts';
-import { band, bandAt, evaluateInBand, featuresOfList } from './media/index.ts';
+import { band, bandAt, evaluateInBand, featuresOfList, holdsWholePx } from './media/index.ts';
 import { androidProfile } from './profiles/android.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
@@ -982,9 +982,6 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       nativeBand = nativeBandIndex(bands, options.foldViewport, options.faults);
       // MQ-R1 (T067 R13): native switches bands at run time where its profile proves each feature; the profile rows decide.
       if (options.profiles === 'enforce') gateMediaFeatures(conditions, targets, profiles, diagnostics);
-      // MQ-R1: thresholds within 1/64 px give Chrome a band the exact partition lacks; a native output that switches bands at run
-      // time (no fold viewport) refuses them until MQ-R0. With a fold viewport it is resolved for that one viewport, and never looks a band up.
-      if (options.foldViewport === null) refuseCloseThresholds(partition, conditions, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics);
     }
     for (const c of valid.components.values()) checkTemplates(c.root, diagnostics);
     // MQ-a, MQ-R1: every band is checked for every target, since native switches bands at run time as web does; a rule-level check
@@ -1147,7 +1144,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     else if (t === 'ios' || t === 'android') outputs[key] = nativeOutputState(t, digest, options.nativeLanes === null ? null : options.nativeLanes[t]);
     else {
       const webFonts = fonts === null || !fonts.used ? null : webFontsOf(fonts, options.faults);
-      const [base, ...extra] = bandCases.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement, interaction: webInteraction(c) })) }));
+      const whole = (b: Band | null): boolean => b === null || (b.width.some(holdsWholePx) && b.height.some(holdsWholePx));
+      const webBands = options.faults.mediaFractionalBandDropped ? bandCases.filter((r, k) => k === 0 || whole(r.band)) : bandCases;
+      const [base, ...extra] = webBands.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement, interaction: webInteraction(c) })) }));
       const first = base as { condition: string; cases: { key: string; root: ResolvedElement; interaction?: WebInteraction | undefined }[] };
       web = emitWebCss(first.cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText), first.condition, !options.faults.webHoverUngated);
       outputs[key] = { kind: 'ready', digest, files: web.files, assets: webFonts === null ? [] : webFonts.assets() };

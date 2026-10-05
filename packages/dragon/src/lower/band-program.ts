@@ -69,69 +69,6 @@ export function bandTableOf(partition: Extract<BandPartition, { kind: 'bands' }>
   return { atoms: partition.atoms.map((a) => bandAtom(a.feature)), bands: partition.bands.map((b: Band) => [...b.truth]) };
 }
 
-/** 1/64 px: the slack Chrome gives >=, <= and = (rt-band.ts MEDIA_EPSILON; the core cannot import the engine's value). */
-const SLACK = 1 / 64;
-
-/** One comparison held exactly, or with Chrome's slack (a negative query holds only for > and >=, either way). */
-function holdsAt(c: rtBand.BandComparison, v: number, slack: boolean): boolean {
-  if (c.value < 0) return c.op === 'gt' || c.op === 'ge';
-  const e = slack ? SLACK : 0;
-  if (c.op === 'lt') return v < c.value;
-  if (c.op === 'gt') return v > c.value;
-  if (c.op === 'le') return v <= c.value + e;
-  if (c.op === 'ge') return v >= c.value - e;
-  return Math.abs(v - c.value) <= e;
-}
-
-/**
- * The width or height atoms whose truth values Chrome's 1/64 px slack (>=, <= and =) combines in a way the exact partition
- * (media/band.ts) never does, as the two atom texts of the first such combination; null when there is none. There the runtime
- * lookup would meet a truth vector no band has. Each atom's truth is piecewise constant on its axis with breakpoints at its
- * thresholds and 1/64 px either side, so evaluating both ways at every breakpoint and between them finds every combination.
- * MQ-R0 makes the partition itself take the slack, and with it this refusal goes.
- */
-export function closeThresholds(partition: Extract<BandPartition, { kind: 'bands' }>): { readonly a: string; readonly b: string } | null {
-  for (const axis of ['width', 'height'] as const) {
-    const atoms = partition.atoms.flatMap((a) => (a.feature.base === axis ? [{ text: a.text, atom: bandAtom(a.feature) }] : []));
-    if (atoms.length < 2) continue;
-    const marks = [...new Set([0, ...atoms.flatMap((a) => a.atom.comparisons.flatMap((c) => (c.value < 0 ? [] : [c.value - SLACK, c.value, c.value + SLACK])))])].filter((v) => v >= 0).sort((x, y) => x - y);
-    const points = [...marks, ...marks.slice(1).map((v, i) => (v + (marks[i] as number)) / 2), (marks[marks.length - 1] as number) + 1];
-    const vector = (v: number, slack: boolean): boolean[] => atoms.map((a) => (a.atom.comparisons.length === 0 ? v !== 0 : a.atom.comparisons.every((c) => holdsAt(c, v, slack))));
-    const exact = new Set(points.map((v) => vector(v, false).join()));
-    for (const v of points) {
-      const got = vector(v, true);
-      if (exact.has(got.join())) continue;
-      // Name two atoms whose pair of values the exact partition never has.
-      for (let i = 0; i < atoms.length; i++) {
-        for (let j = i + 1; j < atoms.length; j++) {
-          if (!points.some((w) => {
-            const x = vector(w, false);
-            return x[i] === got[i] && x[j] === got[j];
-          })) return { a: (atoms[i] as { text: string }).text, b: (atoms[j] as { text: string }).text };
-        }
-      }
-      return { a: (atoms[0] as { text: string }).text, b: (atoms[1] as { text: string }).text };
-    }
-  }
-  return null;
-}
-
-/** MQ-R1: the native refusal of closeThresholds, once per native target, at the first condition that uses either atom. */
-export function refuseCloseThresholds(partition: Extract<BandPartition, { kind: 'bands' }>, conditions: readonly RuleCondition[], targets: readonly ('ios' | 'android')[], diagnostics: Diagnostic[]): void {
-  const close = closeThresholds(partition);
-  if (close === null || targets.length === 0) return;
-  const c = conditions.find((x) => x.text.includes(close.a) || x.text.includes(close.b)) ?? conditions[0];
-  if (c === undefined) return;
-  for (const t of targets) {
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
-      origin: authored(c.span),
-      target: t,
-      message: `@media ${close.a} and ${close.b} meet within 1/64 px, where Chrome's 1/64 px slack lets a viewport match a combination the ${t} bands do not hold yet (package MQ-R0)`,
-      manual: 'Move the two thresholds at least 1/64 px apart (for example (max-width: 400px) with (min-width: 401px)).',
-    }));
-  }
-}
-
 /**
  * MQ-R1: the state table of a native output holds every (app assignment, band) pair, so the 64-assignment limit counts bands. A
  * sheet that splits a document past it is refused on each native target at its first @media, not left to fail when the program is built.

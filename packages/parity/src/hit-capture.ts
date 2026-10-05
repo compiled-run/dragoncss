@@ -186,9 +186,15 @@ export const IDENTITY_ROOTS: readonly string[] = ['packages/parity/expected', 'p
 export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.json';
 /**
  * Files that are new since the identity base: SELD-R1b's fixtures (hit-*, reject-pointer-events-*), SELD-R2a's (interaction-*,
- * reject-interaction-*) and the fixtures of PNT2's transforms group (transform-*, reject-transform-*), which landed after it.
+ * reject-interaction-*), the fixtures of PNT2's transforms group (transform-*, reject-transform-*) and CTX-PROOF's (ctx-proof-*),
+ * which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-)[^/]*$/;
+/** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
+export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
+  'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
+  'packages/parity/emitted/media-range-rtl.css': { sha256: '281d321b2c05e0d1a2b7d810eafdb11b3f5e3c76baba447b983f23716ae4bd1f', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
+};
 
 /**
  * A committed output with the pointer-events key removed: the "pointer-events" computed value of every captured element, and the

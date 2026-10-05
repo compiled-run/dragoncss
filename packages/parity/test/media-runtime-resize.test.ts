@@ -90,12 +90,12 @@ describe('the resize host lanes against the committed Chrome traces', () => {
 describe('media rows (profile:rows from the resize lanes, T067 R13)', () => {
   const passing = resizeReport().passing.map((c) => ({ id: c.id, features: mediaFeatures(c.compiled) }));
   const rowsOf = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context === MEDIA_CONTEXT);
-  it('are exactly what profile:rows derives from the passing resize cases, per target, and prove @media width and height natively', () => {
+  it('are exactly what profile:rows derives from the passing resize cases, per target, and prove @media width, height, orientation and aspect-ratio natively', () => {
     expect(rowsOf(webProfile.rows)).toEqual(deriveMediaRows('web', passing));
     expect(rowsOf(iosProfile.rows)).toEqual(deriveMediaRows('ios', passing));
     expect(rowsOf(androidProfile.rows)).toEqual(deriveMediaRows('android', passing));
     for (const profile of [iosProfile, androidProfile]) {
-      expect(rowsOf(profile.rows).map((r) => [r.feature, r.status, r.proofs.map((p) => [p.aspect, p.lane])])).toEqual(['at-rule:@media', 'media-feature:height', 'media-feature:width'].map((f) => [f, 'exact', [['layout', 'linux-dragon-layout']]]));
+      expect(rowsOf(profile.rows).map((r) => [r.feature, r.status, r.proofs.map((p) => [p.aspect, p.lane])])).toEqual(['at-rule:@media', 'media-feature:aspect-ratio', 'media-feature:height', 'media-feature:orientation', 'media-feature:width'].map((f) => [f, 'exact', [['layout', 'linux-dragon-layout']]]));
     }
   }, 600_000);
   it('name exactly the passing cases that use their key; a case without @media proves none', () => {
