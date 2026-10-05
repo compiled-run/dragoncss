@@ -11,6 +11,7 @@ import { declaredLayoutCaseCount, groupFixtures, MILESTONE_1_LAYOUT_CASES } from
 import type { HostRun, KotlinLookup, LaneFault } from '../src/lanes.ts';
 import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
 import { HIT_LANE, scriptCases, STATE_LANE } from '../src/device-lanes.ts';
+import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
@@ -24,6 +25,9 @@ const ios = targets.find((t) => t.target === 'ios') as TargetConfig;
 const android = targets.find((t) => t.target === 'android') as TargetConfig;
 const lane = (t: TargetConfig, id: string) => t.lanes.find((l) => l.lane === id);
 const ids = layoutCaseIds();
+let hitCount: number | null = null;
+/** The cases device-hit runs: hit-capture.ts hitCases, every layout case the hit lane does not refuse. */
+const hitCaseCount = (): number => (hitCount ??= hitCases().length);
 const stateCaseCount = (name: string): number => {
   const t = targets.find((x) => x.target === name);
   if (t === undefined) throw new Error(`no native target ${name}`);
@@ -212,6 +216,20 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
+  it('device-hit runs exactly the hit cases: every layout case but those the hit lane refuses by name, the PNT2 transform cases (T146)', () => {
+    const refused = hitRefusedCases().map((r) => r.id);
+    expect(refused.length).toBeGreaterThan(0);
+    for (const id of refused) expect(id, id).toMatch(/^transform-/);
+    expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...ids].sort());
+    expect(hitCaseCount()).toBe(ids.length - refused.length);
+    // The declared device-hit sets hold exactly those cases (targets.ts hitCaseIds), in layout order, at every device DPR.
+    expect(hitCaseIds()).toEqual(hitCases().map((n) => n.case.id));
+    for (const t of nativeTargets()) {
+      const lane = t.lanes.find((l) => l.lane === HIT_LANE);
+      expect(lane?.sets.length, t.target).toBe(t.dprs.length);
+      for (const set of lane?.sets ?? []) expect(set.ids, `${t.target} ${set.dpr}`).toEqual(hitCaseIds());
+    }
+  });
   it('every device lane ran (P5): per DPR the device, OS, both scales, a dump per case and the counts compared; vectors equal the host lane; every dump fault caught; capture trust on every device', () => {
     if (f === null) return;
     for (const t of f.targets) {
@@ -225,10 +243,9 @@ describe('committed out/lanes.json', () => {
         if (l.lane === 'device-pixels') expect(['pass', 'fail'], `${t.target} ${l.lane}`).toContain(l.state);
         else expect(l.state, `${t.target} ${l.lane}`).toBe('pass');
         expect([...(l.device?.sets.map((s) => s.dpr) ?? [])].sort(), `${t.target} ${l.lane}`).toEqual(l.sets.map((s) => s.dpr).sort());
-        // SELD-R1b: device-states runs the state script cases, every check; device-hit runs every layout case and compares only
-        // hit points (b), the other counts exactly 0.
-        // INL1a: device-hit runs the hit cases (hitCaseIds: every layout case but those hitTableOf refuses).
-        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseIds().length : ids.length;
+        // SELD-R1b: device-states runs the state script cases, every check; device-hit runs every hit case (the layout cases but
+        // those the hit lane refuses by name, hit-capture.ts hitCases) and compares only hit points (b), the other counts exactly 0.
+        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : ids.length;
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
           expect(s.cases, `${t.target} ${l.lane} ${s.dpr}`).toBe(cases);

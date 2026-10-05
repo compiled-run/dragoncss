@@ -6,7 +6,6 @@ import { join } from 'node:path';
 import type { EngineFaults } from '../../layout/src/block.ts';
 import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle, LineStrut, TextLeaf } from '../../layout/src/input.ts';
-import { hitRefusal } from '../../layout/src/rt-hit.ts';
 import { validateLayoutInput } from '../../layout/src/validate.ts';
 import { runEngineCase, runLibraryCase, runSnapCase, runUnitsCase } from '../harness/harness.ts';
 import { bitsHex } from '../harness/host.ts';
@@ -602,18 +601,26 @@ export const HIT_FACTS = join(RT_VECTORS_DIR, 'hit/facts.json');
  * vector's input and its case's hit facts. The TypeScript harness's answers are the expected results; Swift and Kotlin must equal
  * them, and packages/parity hit-report proves the TypeScript hit test equals Chrome at DPR 1.
  */
+/** Throws unless every refused hit case carries a written reason and has no facts. */
+export function checkHitRefusals(facts: Record<string, unknown>, refused: Record<string, unknown>): void {
+  for (const [id, why] of Object.entries(refused)) if (typeof why !== 'string' || why === '' || facts[id] !== undefined) throw new Error(`hit facts: refused case ${id} needs a reason and no facts`);
+}
+
 export function hitCases(): string[] {
-  const facts = (JSON.parse(readFileSync(HIT_FACTS, 'utf8')) as { cases: Record<string, unknown> }).cases;
+  const file = JSON.parse(readFileSync(HIT_FACTS, 'utf8')) as { cases: Record<string, unknown>; refused?: Record<string, unknown> };
+  const facts = file.cases;
+  // A case the hit lane refuses by name (parity hit-capture.ts hitRefusal) has no hit line; it must carry a written reason.
+  const refused = file.refused ?? {};
+  checkHitRefusals(facts, refused);
   const out: string[] = [];
   for (const dir of ['', 'dpr-2', 'dpr-3', 'dpr-2.625']) {
     const at = dir === '' ? VECTORS_DIR : join(VECTORS_DIR, dir);
     for (const file of readdirSync(at).filter((f) => f.endsWith('.json')).sort()) {
       const id = file.slice(0, -'.json'.length);
-      const v = JSON.parse(readFileSync(join(at, file), 'utf8')) as { platform: string; input: LayoutInput };
-      // An input hitTableOf refuses (INL1a inline boxes and <br>s) has no hit facts and is not a hit case.
-      if (hitRefusal(v.input) !== null) continue;
+      if (refused[id] !== undefined) continue;
       const f = facts[id];
       if (f === undefined) throw new Error(`no hit facts for vector ${dir === '' ? '' : `${dir}/`}${file}; run pnpm run parity:hit-capture -- --vectors`);
+      const v = JSON.parse(readFileSync(join(at, file), 'utf8')) as { platform: string; input: unknown };
       out.push(JSON.stringify(['rt-hit', v.platform, v.input, f]));
     }
   }

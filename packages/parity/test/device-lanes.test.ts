@@ -13,7 +13,7 @@ import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSampl
 import type { NativeDump } from '../src/native-dump.ts';
 import { REFERENCE_LANE, validateNativeDump } from '../src/native-dump.ts';
 import type { NativeCase } from '../src/native-host.ts';
-import { hostSources, IOS_BUILD, iosModules, nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
+import { androidCommands, appCacheKey, casesCodeProblems, expand, hostSources, iosCommands, iosModules, nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
 import { casePoints, expectedPixelsPath, rasterSize } from '../src/pixel-reference.ts';
 import type { NativeTarget } from '../src/targets.ts';
@@ -202,7 +202,52 @@ describe('build reuse', () => {
     expect(iosModules([...paths, 'Host/DragonPlanted.swift']).host).toContain('Host/DragonPlanted.swift');
     expect(() => iosModules(paths.filter((p) => p !== 'Cases/DragonCaseTable.swift'))).toThrow(/no Cases\/DragonCaseTable.swift/);
     expect(() => iosModules(paths.filter((p) => !/^Cases\/DragonCases\d/.test(p) && !/^Cases\/DragonStates\d/.test(p)))).toThrow(/do not split/);
-    expect(IOS_BUILD).toBe('modules DragonCore -O, DragonCases -Onone, DragonHost -O');
+  });
+  it('the app cache key hashes every command argument and the module assignment, not a label', () => {
+    const paths = hostSources('ios', 'x').map((f) => f.path);
+    const cmds = iosCommands(paths);
+    const key = appCacheKey('abc', cmds, { sdk: '26.5' });
+    expect(appCacheKey('abc', iosCommands(paths), { sdk: '26.5' })).toBe(key);
+    // Each module's optimisation level and file list is in its command, so moving a file or changing a flag changes the key.
+    const flip = cmds.map((c) => c.map((a) => (a === '-Onone' ? '-O' : a)));
+    expect(appCacheKey('abc', flip, { sdk: '26.5' })).not.toBe(key);
+    const caseFile = iosModules(paths).cases[0] as string;
+    const moved = cmds.map((c, i) => (i === 0 ? [...c, `$W/src/${caseFile}`] : i === 1 ? c.filter((a) => a !== `$W/src/${caseFile}`) : c));
+    expect(appCacheKey('abc', moved, { sdk: '26.5' })).not.toBe(key);
+    expect(appCacheKey('abd', cmds, { sdk: '26.5' })).not.toBe(key);
+    expect(appCacheKey('abc', cmds, { sdk: '26.6' })).not.toBe(key);
+    // The commands name the modules' levels and files exactly.
+    const [core, cases, host] = cmds as [string[], string[], string[]];
+    expect(core).toContain('-O');
+    expect(cases).toEqual(expect.arrayContaining(['-Onone', '-enable-testing']));
+    expect(host).toContain('-O');
+    expect(cases.filter((a) => a.startsWith('$W/src/'))).toEqual(iosModules(paths).cases.map((p) => `$W/src/${p}`));
+    const kt = hostSources('android', 'x').filter((f) => f.path.endsWith('.kt')).map((f) => f.path);
+    const a = androidCommands(kt);
+    expect(appCacheKey('abc', a, { keystore: 'k1' })).not.toBe(appCacheKey('abc', a, { keystore: 'k2' }));
+    expect(appCacheKey('abc', a.map((c) => c.map((x) => (x === '-J-Xmx8g' ? '-J-Xmx4g' : x))), {})).not.toBe(appCacheKey('abc', a, {}));
+  });
+  it('commands run with their tokens expanded; an unknown token is an error, never a literal path', () => {
+    expect(expand(['cp', '$W/src/Info.plist', '$W/DragonHost.app/Info.plist'], { W: '/w' })).toEqual(['cp', '/w/src/Info.plist', '/w/DragonHost.app/Info.plist']);
+    expect(() => expand(['$BT/d8'], { W: '/w' })).toThrow(/no value for \$BT/);
+    // Every token the commands use has a value where they run.
+    const tokens = (cs: readonly (readonly string[])[]): string[] => [...new Set(cs.flatMap((c) => c.flatMap((x) => [...x.matchAll(/\$([A-Z_]+)/g)].map((m) => m[1] as string))))].sort();
+    expect(tokens(iosCommands(hostSources('ios', 'x').map((f) => f.path)))).toEqual(['AHEM', 'CORES', 'W']);
+    expect(tokens(androidCommands(['a.kt']))).toEqual(['AHEM', 'ANDROID_JAR', 'BT', 'KEYSTORE', 'KOTLINC', 'KOTLIN_STDLIB', 'W']);
+  });
+  it('the code built at -Onone is construction code only: no control flow, ternary, assert or precondition', () => {
+    const files = hostSources('ios', 'x');
+    const cases = new Set(iosModules(files.map((f) => f.path)).cases);
+    expect(files.filter((f) => cases.has(f.path)).flatMap((f) => casesCodeProblems(f.path, f.text))).toEqual([]);
+    for (const bad of ['if x { y() }', 'guard x else { return }', 'for i in a {}', 'switch v { default: break }', 'assert(x)', 'precondition(x)', 'fatalError()', 'let y = x > 0 ? a : b']) expect(casesCodeProblems('C.swift', bad), bad).not.toEqual([]);
+    // Words inside string literals and comments, an enum's cases and the setters' Bool encoding are not code.
+    for (const ok of ['JsString("if for while")', '// for every case', 'public enum E: Int { case v_0 = 0; case v_1 = 1 }', 'machine.set(0, v ? 1 : 0)', 'JsString("a \\" ? b : c")']) expect(casesCodeProblems('C.swift', ok), ok).toEqual([]);
+    // The setter's numbers follow the fixture's value order: a fixture whose first case sets a boolean true emits `v ? 0 : 1`,
+    // or any other pair of value indices. Each is the setter's Bool encoding, not control flow.
+    for (const [t, f] of [[0, 1], [1, 0], [3, 2], [12, 7]]) expect(casesCodeProblems('C.swift', `  /// doc/t#checked\n  public func set_doc_t_checked(_ v: Bool) { machine.set(${t}, v ? ${t} : ${f}) }`)).toEqual([]);
+    // The exemption is the emitter's exact shape (state.ts); any other ternary is still caught.
+    expect(readFileSync(repoPath('packages/dragon/src/emit/runtime/state.ts'), 'utf8')).toContain('(_ v: Bool) { machine.set(${i}, v ? ${t} : ${f}) }');
+    for (const bad of ['machine.set(0, v ? a : 1)', 'machine.set(0, w ? 1 : 0)', 'machine.set(0, v ? 1.5 : 0)']) expect(casesCodeProblems('C.swift', bad), bad).not.toEqual([]);
   });
 });
 

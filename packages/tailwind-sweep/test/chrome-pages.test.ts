@@ -26,6 +26,20 @@ describe('the sweep Chrome session', () => {
     expect(() => fromPageJson('[{"__dragonNumber":"7"}]')).toThrow(/unknown number/);
   }, 60_000);
 
+  it('measures ch and ex on Ahem, not a fallback font, on 8 cold pages at once', async () => {
+    // Ahem: 1ch = 1em and 1ex = 0.8em at the 16px root, so these equal the px sides only once Ahem has loaded.
+    const doc = (css: string): string => fixtureHtml(['u'], `.u { ${css} }\n`);
+    const pairs = Array.from({ length: 16 }, (_, i) => ({ key: `k${i}`, authoredHtml: doc(`width: ${i + 1}ch; height: ${(i + 1) * 5}ex`), compiledHtml: doc(`width: ${(i + 1) * 16}px; height: ${(i + 1) * 64}px`) }));
+    const chrome = await openChrome(8);
+    try {
+      const out = await Promise.all(pairs.map((p) => chrome.dual(p)));
+      // Only the boxes are compared here: the computed width and height keep their authored units.
+      expect(out.map((problems) => problems.filter((x) => x.includes(': box '))), 'a box measured on a fallback font').toEqual(pairs.map(() => []));
+    } finally {
+      await chrome.close();
+    }
+  }, 120_000);
+
   it('rejects a page count that is not a whole number of at least 1', async () => {
     await expect(openChrome(0)).rejects.toThrow(/whole number of pages/);
     await expect(openChrome(1.5)).rejects.toThrow(/whole number of pages/);

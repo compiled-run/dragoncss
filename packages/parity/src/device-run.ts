@@ -59,12 +59,18 @@ export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(
 export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
+  // PNT2: each transform plant runs on the case its paint moves.
+  'transform-origin-ignored': ['transform-origin'],
+  'translate-percent-of-parent': ['transform-translate'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
 };
 /** The sample rules a paint plant's device-pixels failures must name: border bands and edges for the dash plants. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
+  // A transform moves every pixel of the box, so any colour rule may catch it.
+  'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
+  'translate-percent-of-parent': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'image-offset-1': /^(image-flat:|edge:)/,
 };
 /** The devices of the raster plant runs (section 4 item 5). */
