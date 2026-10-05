@@ -190,13 +190,13 @@ describe('MQ-a: the band fold', () => {
     expect(supports?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[ios\]: display: grid/), expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[web\]: display: grid/)]);
   });
   it('the rules inside an unsupported at-rule are analysed against every band\'s cascade, web in each band and native in its own', () => {
-    // At the 400px fold the body is flex and margin-top: auto is proven; above 500px the body is block, where web does not prove it.
-    const { c } = compile('.a { width: 10px; } @media (max-width: 500px) { body { display: flex; } } @supports (display: flex) { .a { margin-top: auto; } }', { foldViewport: { width: 400, height: 300 } });
+    // At the 400px fold the body is flex and margin-right: 6mm is proven; above 500px the body is block, where web does not prove it.
+    const { c } = compile('.a { width: 10px; } @media (max-width: 500px) { body { display: flex; } } @supports (display: flex) { .a { margin-right: 6mm; } }', { foldViewport: { width: 400, height: 300 } });
     const supports = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
-    expect(supports?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNPROVEN_CONTEXT \[web\]: margin-top:auto on a is used in the block\/ltr context/)]);
+    expect(supports?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNPROVEN_CONTEXT \[web\]: margin-right:<length-mm> on a is used in the block\/ltr context/)]);
   });
   it('a value unsupported only inside a band outside the fold still blocks web, and not native', () => {
-    const { c } = compile('.a { width: 10px; } @media (min-width: 500px) { .a { margin-top: auto; } }', { foldViewport: { width: 400, height: 300 } });
+    const { c } = compile('.a { width: 10px; } @media (min-width: 500px) { .a { margin-right: 6mm; } }', { foldViewport: { width: 400, height: 300 } });
     expect(c.diagnostics.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNPROVEN_CONTEXT', 'web']]);
     expect([c.outputs.ios.kind, c.outputs.web.kind]).toEqual(['analysis-only', 'blocked']);
   });

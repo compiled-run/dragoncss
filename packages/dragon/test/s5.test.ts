@@ -189,27 +189,27 @@ describe('T005 rec 2: a shorthand-set longhand names the authored shorthand, its
 });
 
 describe('T005 rec 3: diagnostics inside an unsupported at-rule are reported in the same pass', () => {
-  const R3 = 'body { margin: 0; }\n@media (min-width: 300px) {\n  .caption { width: 80px; }\n}\n.caption { font-size: 10px; line-height: 12px; color: #24292e; margin-top: auto; }\n';
+  const R3 = 'body { margin: 0; }\n@media (min-width: 300px) {\n  .caption { width: 80px; }\n}\n.caption { font-size: 10px; line-height: 12px; color: #24292e; margin-right: 6mm; }\n';
   it('T005 R3 through the public entry: DRAGON_UNSUPPORTED_AT_RULE, DRAGON_UNSUPPORTED_FONT and DRAGON_UNPROVEN_CONTEXT in one pass, every output blocked', () => {
     const input = inputFor(R3, (r) => [div(r, 'caption', ['caption'], [text(r, 't', 'CAPTION TEXT')])]);
     const c = both().compile(input);
     const codes = [...new Set(c.diagnostics.map((d) => d.code))].sort();
     expect(codes).toEqual(['DRAGON_UNPROVEN_CONTEXT', 'DRAGON_UNSUPPORTED_AT_RULE', 'DRAGON_UNSUPPORTED_FONT']);
-    expect(spanTextOf(input, c.diagnostics.find((d) => d.code === 'DRAGON_UNPROVEN_CONTEXT') as Diagnostic)).toBe('auto');
+    expect(spanTextOf(input, c.diagnostics.find((d) => d.code === 'DRAGON_UNPROVEN_CONTEXT') as Diagnostic)).toBe('6mm');
     expect(blockedEverywhere(c)).toBe(true);
     expectCatalogued(c.diagnostics);
   });
   it('the enclosed rules are analysed with the block unwrapped, top-level and nested: their diagnostics are related entries that start with the code, and nothing is emitted', () => {
     // A top-level @media is conditional since MQ-a, so the unsupported top-level at-rule here is @container.
-    const css = `${FONT}\n@container (min-width: 1px) { .a { display: grid; } }\n.b { width: 5px; @supports (display: flex) { margin-top: auto; } }\n`;
+    const css = `${FONT}\n@container (min-width: 1px) { .a { display: grid; } }\n.b { width: 5px; @supports (display: flex) { margin-right: 6mm; } }\n`;
     const input = inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]);
     const c = both().compile(input);
     const atRules = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
     expect(atRules.length).toBe(2);
     const [media, supports] = atRules as [Diagnostic, Diagnostic];
     expect(media.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[ios\]: display: grid is unsupported/), expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[web\]: display: grid is unsupported/)]);
-    expect(supports.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNPROVEN_CONTEXT \[ios\]: margin-top:auto on b is used in the block\/ltr context/), expect.stringMatching(/^DRAGON_UNPROVEN_CONTEXT \[web\]: margin-top:auto on b/)]);
-    for (const r of [...media.related, ...supports.related]) expect(spanTextOf(input, { ...media, origin: r.origin })).toMatch(/^(grid|auto)$/);
+    expect(supports.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNPROVEN_CONTEXT \[ios\]: margin-right:<length-mm> on b is used in the block\/ltr context/), expect.stringMatching(/^DRAGON_UNPROVEN_CONTEXT \[web\]: margin-right:<length-mm> on b/)]);
+    for (const r of [...media.related, ...supports.related]) expect(spanTextOf(input, { ...media, origin: r.origin })).toMatch(/^(grid|6mm)$/);
     // The unwrapped rules never reach the top-level diagnostics or an output.
     expect(c.diagnostics.map((d) => d.code).sort()).toEqual(['DRAGON_UNSUPPORTED_AT_RULE', 'DRAGON_UNSUPPORTED_AT_RULE']);
     expect(blockedEverywhere(c)).toBe(true);
@@ -237,10 +237,10 @@ describe('T005 rec 6: unsupported-value and unproven-context messages list the s
     const c = both().compile(inputFor('.g { display: grid; }', (r) => [div(r, 'g', ['g'])]));
     for (const d of c.diagnostics) expect(d.message).toMatch(/^display: grid is unsupported \(support profile m1-s5\); in block\/ltr use block, flex or none$/);
   });
-  it('margin-top: auto in block flow lists the margin-top values proven there', () => {
-    const c = both().compile(inputFor(`${FONT} .a { margin-top: auto; }`, (r) => [div(r, 'a', ['a'])]));
+  it('margin-right: 6mm in block flow lists the margin-right values proven there', () => {
+    const c = both().compile(inputFor(`${FONT} .a { margin-right: 6mm; }`, (r) => [div(r, 'a', ['a'])]));
     const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNPROVEN_CONTEXT' && x.target === 'ios') as Diagnostic;
-    expect(d.message).toMatch(/; margin-top values proven in block\/ltr: .*<length-px>/);
+    expect(d.message).toMatch(/; margin-right values proven in block\/ltr: .*<length-px>/);
   });
 });
 
