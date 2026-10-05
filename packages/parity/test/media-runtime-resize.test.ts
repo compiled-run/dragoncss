@@ -67,7 +67,7 @@ describe('the resize host lanes against the committed Chrome traces', () => {
   it('a capture with a box moved by one px fails the frames; a compiled capture that differs fails chrome-dual; a missing one fails', () => {
     const c = byId('mqr-nested~resize');
     const moved = tampered((cap) => (cap.rendering !== 'authored' ? cap : { ...cap, samples: cap.samples.map((s, i) => (i !== 2 ? s : { ...s, nodes: s.nodes.map((n) => (n.id === 'b' ? { ...n, width: n.width + 1 } : n)) })) }));
-    expect(resizeCaseReport(c, [2], NO_BAND_RUNTIME_FAULTS, moved).failures.some((f) => f.startsWith(`${c.id} DPR 2 step 2 (352x304)`))).toBe(true);
+    expect(resizeCaseReport(c, [2], NO_BAND_RUNTIME_FAULTS, moved).failures.some((f) => f.startsWith(`${c.id} DPR 2 uikit step 2 (352x304)`))).toBe(true);
     const dual = tampered((cap) => (cap.rendering !== 'compiled' ? cap : { ...cap, samples: cap.samples.slice(0, -1) }));
     expect(resizeCaseReport(c, [1], NO_BAND_RUNTIME_FAULTS, dual).failures.some((f) => f.includes('chrome-dual'))).toBe(true);
     expect(resizeCaseReport(c, [3], NO_BAND_RUNTIME_FAULTS, () => null).failures).toEqual([`${c.id} DPR 3: no committed resize capture (pnpm run parity:resize-capture)`]);
