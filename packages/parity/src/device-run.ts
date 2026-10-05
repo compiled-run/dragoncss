@@ -419,6 +419,7 @@ async function bootIosHeld(spec: IosDeviceSpec): Promise<DeviceHandle> {
 
 async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Promise<DeviceHandle> {
   for (let attempt = 1; ; attempt++) {
+    if (was === 'Shutdown') noteStartedSim(udid, spec.name);
     if (simState(udid) !== 'Booted') exec('xcrun', ['simctl', 'boot', udid], { allowFailure: 'a simulator that started booting meanwhile refuses a second boot; bootstatus below judges the boot' });
     // Awaited, not blocking, so the cases are computed while the simulator boots.
     const b = await execAsync('xcrun', ['simctl', 'bootstatus', udid, '-b'], { timeoutMs: 300_000, allowFailure: 'a failed boot is retried once from a stopped simulator, then fails naming this output' });
@@ -435,6 +436,38 @@ async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Prom
 function serialsRunning(tools: AndroidTools): string[] {
   // A failed read throws (PR #42 finding 4150454065): it is not an empty list, which would say every emulator has stopped.
   return exec(tools.adb, ['devices']).stdout.split('\n').map((l) => /^(emulator-\d+)\s+device/.exec(l)?.[1]).filter((s): s is string => s !== undefined);
+}
+
+/** The devices this process started and has not yet stopped: its detached emulators, and the simulators it booted. */
+const startedNow = new Set<{ readonly kill: () => void }>();
+const startedSims = new Map<string, string>();
+/** Records a simulator this process boots, so a signal shuts it down (stopStartedNow) until stopDevice has. */
+export const noteStartedSim = (udid: string, name: string): void => void startedSims.set(udid, name);
+
+/**
+ * Stops, without waiting, every device this process started and has not stopped (for a SIGTERM or SIGINT, when no cleanup of
+ * the run will run): each detached emulator gets SIGTERM, and each simulator booted here is shut down. Each stop is tried on its
+ * own, so one that throws does not leave the rest running. Returns what it stopped, and each stop that failed.
+ */
+export function stopStartedNow(simShutdown: (udid: string) => void = (udid) => void exec('xcrun', ['simctl', 'shutdown', udid], { allowFailure: 'a simulator already shut down refuses; on a signal every one is tried, none waited on' })): string[] {
+  const out: string[] = [];
+  const attempt = (what: string, stop: () => void): void => {
+    try {
+      stop();
+      out.push(what);
+    } catch (e) {
+      out.push(`${what}: the stop FAILED: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+  for (const e of [...startedNow]) {
+    startedNow.delete(e);
+    attempt('an emulator process (SIGTERM)', e.kill);
+  }
+  for (const [udid, name] of [...startedSims]) {
+    startedSims.delete(udid);
+    attempt(`the ${name} simulator`, () => simShutdown(udid));
+  }
+  return out;
 }
 
 /**
@@ -462,6 +495,11 @@ export function spawnDetached(cmd: string, args: readonly string[], logPath: str
     failure = e;
   });
   p.unref();
+  // A detached emulator is outside this process group, so a signal to the group does not reach it: stopStartedNow does.
+  const entry = { kill: (): void => void p.kill('SIGTERM') };
+  startedNow.add(entry);
+  const forget = (): void => void startedNow.delete(entry);
+  done.then(forget, forget);
   const alive = (): boolean => failure === null && p.exitCode === null && p.signalCode === null;
   return {
     check: () => {
@@ -724,7 +762,11 @@ export async function stopDevice(h: DeviceHandle): Promise<string | null> {
   if ('udid' in h) {
     const r = exec('xcrun', ['simctl', 'shutdown', h.udid], { allowFailure: 'shutting down a simulator already shut down fails; the state read next decides' });
     const state = simState(h.udid);
-    return state === 'Shutdown' || state === 'missing' ? null : `the ${h.spec.name} simulator is ${state} after simctl shutdown (exit ${r.status}): ${r.out.slice(-300)}`;
+    if (state === 'Shutdown' || state === 'missing') {
+      startedSims.delete(h.udid);
+      return null;
+    }
+    return `the ${h.spec.name} simulator is ${state} after simctl shutdown (exit ${r.status}): ${r.out.slice(-300)}`;
   }
   adb(h, ['emu', 'kill'], 120_000, 'an emulator that is going away may not answer; the poll for its serial to disappear decides');
   try {
