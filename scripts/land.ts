@@ -22,6 +22,7 @@ import {
   isFloorFile,
   isQuiet,
   QUIET_FILE,
+  cleanIgnoredArgs,
   clearStaleQuiet,
   releaseQuiet,
   requestQuiet,
@@ -137,6 +138,7 @@ const remoteHead = (branch: string): string | null => {
 
 // ---- steps -----------------------------------------------------------------------------------------------------------
 let current: Entry | null = null;
+let lastBuilt: string | null = null; // the position the last build left in the worktree, untouched since
 const stepLog = (pr: number, step: string): string => `/tmp/land-${pr}-${step}.log`;
 const tail = (path: string, n = 30): string => {
   try {
@@ -238,13 +240,15 @@ const floorFileProblems = (master: string, head: string): string[] => {
   return [...new Set([...onMaster, ...onHead])].sort().flatMap((p) => floorRegressions(p, at(master, p, onMaster), at(head, p, onHead)));
 };
 
-const resetWorktree = (master: string): void => {
+// `ignored` also removes ignored outputs (test reports, lane outputs), keeping installs and build caches (KEEP_IGNORED).
+const resetWorktree = (master: string, ignored = false): void => {
   try {
     wtGit(['rev-parse', '-q', '--verify', 'MERGE_HEAD']);
     wtGit(['merge', '--abort']);
   } catch {}
   wtGit(['checkout', '-q', '-f', '--detach', master]);
   wtGit(['clean', '-q', '-fd']);
+  if (ignored) wtGit(cleanIgnoredArgs());
 };
 
 const seedRegenCache = (e: Entry, shas: string[]): void => {
@@ -389,6 +393,7 @@ const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => {
   current = e;
   holdPriority();
   log(`=== #${e.pr} ${e.branch}: position ${k} on ${prev}`);
+  lastBuilt = null;
   // A child of a PR earlier in the batch lands only on top of its parent's position, never with the parent's commits on their own.
   if (t.parent !== null && !isAncestor(git, t.parent.head, prev)) throw new LandFailure('retarget', `PR targets the branch of #${t.parent.pr}, which did not build in this batch; land its parent first`);
   resetWorktree(prev);
@@ -440,16 +445,19 @@ const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => {
   log('  floors: none below the previous position');
   const prediction = predictPosition(wtGit, t.member, { prev, merge, head, tip: t.tip });
   log(`  Macroscope vouch prediction: ${prediction.vouch.ok ? 'an "already reviewed" skip will be vouched for' : `not vouchable (${prediction.vouch.reason}); a full review will run unless at the limit`}`);
+  lastBuilt = head;
   return { prev, merge, head, tip: t.tip, device };
 };
 
-// The full test of one position's tree, rerun once on a quiet machine when it fails.
-const proveTree = (p: Built, e: Entry): void => {
-  current = e;
+// The full test of one commit's tree, rerun once on a quiet machine when it fails. Only the tree the last build left is tested
+// in place; any other commit (a bisect probe, master, a top whose later member was ejected) is checked out clean, ignored
+// outputs of other trees included.
+const proveCommit = (head: string, what: string): void => {
   holdPriority();
-  log(`  proving ${p.head} (#${e.pr}'s position): pnpm test`);
-  if (text(wtGit, ['rev-parse', 'HEAD']) !== p.head) {
-    resetWorktree(p.head);
+  log(`  proving ${head} (${what}): pnpm test`);
+  if (lastBuilt !== head || text(wtGit, ['rev-parse', 'HEAD']) !== head || text(wtGit, ['status', '--porcelain=v1', '--untracked-files=all']) !== '') {
+    lastBuilt = null;
+    resetWorktree(head, true);
     must('install', ['pnpm', 'install', '--frozen-lockfile'], WT);
   }
   let t = heavy('test', ['pnpm', 'test']);
@@ -465,6 +473,14 @@ const proveTree = (p: Built, e: Entry): void => {
     log('  pnpm test passed on a quiet machine');
   }
   requireTracked('test', 'pnpm test');
+};
+const proveTree = (p: Built, e: Entry): void => {
+  current = e;
+  proveCommit(p.head, `#${e.pr}'s position`);
+};
+const proveMaster = (master: string): void => {
+  current = null;
+  proveCommit(master, 'master');
 };
 
 // Publishes one PR at its position, once the PR before it has merged: push, CI, pr:review, Claude review, merge, tree check.
@@ -674,6 +690,7 @@ const main = (): number => {
       });
     },
     prove: (p, e) => (write(false, null, e), proveTree(p, e)),
+    proveMaster: (m) => (write(false, null, null), proveMaster(m)),
     publish: (e, p, t) => (write(false, null, e), publish(e, p, t)),
     onFail: reportFailure,
     onOutcome: (o) => {

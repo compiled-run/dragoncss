@@ -17,6 +17,7 @@ import {
   floorRegressions,
   isFloorFile,
   isQuiet,
+  cleanIgnoredArgs,
   clearStaleQuiet,
   releaseQuiet,
   requestQuiet,
@@ -461,7 +462,9 @@ describe('batched landing (runBatches with fakes)', () => {
   type Pos = { head: string; prev: string; prs: number[] };
   // A fake driver: master is the list of landed PRs; a position's tree is the PRs merged into it; `broken` PRs fail any proof
   // of a tree that holds them, `conflicts` fail their build, and `reject`/`publishFail` fail admission or publishing.
-  const harness = (o: { broken?: number[]; conflicts?: number[]; reject?: number[]; publishFail?: number[]; fatalAt?: number; merged?: number[] } = {}) => {
+  const harness = (
+    o: { broken?: number[]; conflicts?: number[]; reject?: number[]; publishFail?: number[]; fatalAt?: number; merged?: number[]; masterRed?: boolean; fixedBy?: [number, number]; installFails?: string } = {},
+  ) => {
     const master: number[] = [];
     const trace: string[] = [];
     const failures: string[] = [];
@@ -495,8 +498,16 @@ describe('batched landing (runBatches with fakes)', () => {
       },
       prove: (p) => {
         trace.push(`prove ${p.head}`);
+        if (o.installFails === p.head) throw new LandFailure('install', 'pnpm install --frozen-lockfile exited 1: ECONNRESET');
+        if (o.masterRed) throw new LandFailure('test', `pnpm test on ${p.head} failed: t0.test.ts`);
         const bad = p.prs.filter((n) => o.broken?.includes(n));
+        // `fixedBy` [a, b]: PR a breaks a test that PR b fixes, so only a tree with a and without b fails.
+        if (o.fixedBy && p.prs.includes(o.fixedBy[0]) && !p.prs.includes(o.fixedBy[1])) bad.push(o.fixedBy[0]);
         if (bad.length > 0) throw new LandFailure('test', `pnpm test on ${p.head} failed: 2 files (t${bad.join(',t')}.test.ts)`);
+      },
+      proveMaster: (m) => {
+        trace.push(`prove master ${m}`);
+        if (o.masterRed) throw new LandFailure('test', `pnpm test on master failed: t0.test.ts`);
       },
       publish: (x, p) => {
         trace.push(`publish #${x.pr}`);
@@ -552,9 +563,11 @@ describe('batched landing (runBatches with fakes)', () => {
     const r = runBatches([1, 2, 3].map(e), 3, h.ops);
     expect(results(r)).toEqual(['#1 failed at test', '#2 landed', '#3 landed']);
     expect(h.failures[0]).toMatch(/master passes, adding #1 fails/);
+    // Position 1 fails, so master is proved before #1 is blamed.
+    expect(h.trace.filter((t) => t.startsWith('prove')).slice(0, 3)).toEqual(['prove m+1+2+3', 'prove m+1', 'prove master master']);
     const one = harness({ broken: [7] });
     expect(results(runBatches([e(7)], 4, one.ops))).toEqual(['#7 failed at test']);
-    expect(one.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+7']);
+    expect(one.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+7', 'prove master master']);
     expect(one.failures).toEqual(['#7 test: pnpm test on m+7 failed: 2 files (t7.test.ts)']);
   });
 
@@ -592,6 +605,44 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(results(r)).toEqual(['#1 landed', '#2 failed at fatal']);
     expect(r).toMatchObject({ fatal: '#2 merged, but master differs', exit: 1 });
     expect(h.trace.at(-1)).toBe('publish #2');
+  });
+
+  it('stops with "master is red" when master itself fails, blaming no PR and writing no note', () => {
+    const h = harness({ masterRed: true });
+    const r = runBatches([1, 2, 3].map(e), 3, h.ops);
+    expect(r.fatal).toMatch(/^master is red: master master itself fails pnpm test, so no PR of the batch #1 #2 #3 is blamed:\npnpm test on master failed/);
+    expect(r.outcomes).toEqual([]);
+    expect(h.failures).toEqual([]);
+    expect(h.trace.some((t) => t.startsWith('publish'))).toBe(false);
+    expect(r.exit).toBe(1);
+  });
+
+  it('proves master\'s new tree when publishing stops part-way, and stops loudly when it fails', () => {
+    // #2 breaks a test that #3 fixes; the top passes, #1 and #2 merge, #3 fails to publish: master rests on an unproved tree.
+    const h = harness({ fixedBy: [2, 3], publishFail: [3] });
+    const r = runBatches([1, 2, 3].map(e), 3, h.ops);
+    expect(h.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+1+2+3', 'prove m+1+2']);
+    expect(results(r)).toEqual(['#1 landed', '#2 landed', '#3 failed at ci', '#2 failed at fatal']);
+    expect(h.failures.at(-1)).toMatch(/^#2 master-red: master now rests on #2's position m\+1\+2, which was not the batch's proven top, and it fails pnpm test\. The driver stopped\./);
+    expect(r.fatal).toMatch(/master now rests on #2's position/);
+    // A resting tree that passes lets the queue continue; one already proved (a bisect probe) is not proved again.
+    const ok = harness({ publishFail: [3] });
+    expect(results(runBatches([1, 2, 3, 4].map(e), 4, ok.ops))).toEqual(['#1 landed', '#2 landed', '#3 failed at ci', '#4 landed']);
+    expect(ok.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+1+2+3+4', 'prove m+1+2', 'prove m+1+2+4']);
+    const probed = harness({ broken: [4], publishFail: [3] });
+    runBatches([1, 2, 3, 4].map(e), 4, probed.ops);
+    expect(probed.trace.filter((t) => t.startsWith('prove')).slice(0, 3)).toEqual(['prove m+1+2+3+4', 'prove m+1+2', 'prove m+1+2+3']);
+    expect(probed.trace.slice(probed.trace.indexOf('publish #3') + 1, probed.trace.indexOf('publish #3') + 2)).toEqual(['admit #4']);
+  });
+
+  it('treats an error outside the test while proving as the driver\'s, never as a verdict on a prefix', () => {
+    const h = harness({ broken: [4], installFails: 'm+1+2' });
+    const r = runBatches([1, 2, 3, 4].map(e), 4, h.ops);
+    expect(r.fatal).toMatch(/^proving position 2 failed outside the test, at install, so it says nothing about the tree: pnpm install/);
+    expect(h.failures).toEqual([]);
+    const top = harness({ installFails: 'm+1+2' });
+    expect(runBatches([1, 2].map(e), 2, top.ops).fatal).toMatch(/proving #2's position \(the batch top\) failed outside the test, at install/);
+    expect(top.trace.some((t) => t.startsWith('publish'))).toBe(false);
   });
 
   it('stops on a master it cannot read, rather than building on nothing', () => {
@@ -694,6 +745,32 @@ describe('a batch of positions on a scratch repository', () => {
     // Position 1 holds a and not c: an intermediate master is a's tree only.
     expect(git(['show', `${built[0]!.head}:src/c.ts`]).toString()).toBe(lines('c'));
     expect(git(['show', `${built[1]!.head}:src/c.ts`]).toString()).toContain('c5 = 55');
+  });
+
+  it('cleans ignored outputs of another tree before a proof, keeping installs and build caches', () => {
+    const d = tempDir();
+    const g = (args: string[]): string => execFileSync('git', [...config, ...args], { cwd: d, encoding: 'utf8' });
+    g(['init', '-q']);
+    const files: Record<string, string> = {
+      '.gitignore': 'node_modules/\npackages/parity/out/*\n!packages/parity/out/kept.json\n*.tsbuildinfo\nvendor/wpt/\nbuild/\n',
+      'packages/parity/out/kept.json': '{}\n',
+    };
+    for (const [path, body] of Object.entries(files)) {
+      mkdirSync(dirname(join(d, path)), { recursive: true });
+      writeFileSync(join(d, path), body);
+    }
+    g(['add', '-A']);
+    g(['commit', '-q', '-m', 'x']);
+    const stale = ['packages/parity/out/report.html', 'packages/x/tsconfig.tsbuildinfo'];
+    const kept = ['node_modules/a/index.js', 'packages/p/node_modules/b/index.js', 'vendor/wpt/css/t.html', 'packages/layout/generated/kotlin/build/x.class'];
+    for (const path of [...stale, ...kept]) {
+      mkdirSync(dirname(join(d, path)), { recursive: true });
+      writeFileSync(join(d, path), 'x');
+    }
+    g(cleanIgnoredArgs());
+    expect(stale.filter((path) => existsSync(join(d, path)))).toEqual([]);
+    expect(kept.filter((path) => existsSync(join(d, path)))).toEqual(kept);
+    expect(existsSync(join(d, 'packages/parity/out/kept.json'))).toBe(true);
   });
 
   it('refuses a chain whose positions are out of order or skip one', () => {
