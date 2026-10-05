@@ -128,7 +128,8 @@ describe('dependency boundaries', () => {
   });
   it('diagnostics are built only from the catalogue: no other source file sets a severity or a why', () => {
     for (const f of files(src)) {
-      if (f.endsWith(join('diagnostics', 'catalogue.ts')) || f.endsWith('types.ts')) continue;
+      // The catalogue is catalogue.ts, its entry helpers (entry.ts) and each feature's entries (diagnostics/codes/<feature>.ts).
+      if (f.endsWith(join('diagnostics', 'catalogue.ts')) || f.endsWith(join('diagnostics', 'entry.ts')) || f.includes(`${join('src', 'diagnostics', 'codes')}${sep}`) || f.endsWith('types.ts')) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/severity: '(error|warning|info)'|\bwhy: '/);
     }
   });
