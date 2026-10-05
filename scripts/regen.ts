@@ -487,7 +487,8 @@ export type RunResult = {
 };
 
 export type Io = {
-  readonly snapshot: () => Tree;
+  /** The working tree without the paths matching exclude (running steps' outputs), whose files it never reads. */
+  readonly snapshot: (exclude?: readonly string[]) => Tree;
   readonly context: (tree: Tree) => Context;
   readonly run: (step: Step) => Promise<RunResult>;
   /** Writes the given outputs (null deletes); false when a blob is missing. */
@@ -567,6 +568,8 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
     const pending = steps.slice(pass === 1 ? first : 0);
     const running = new Map<string, { step: Step; inputs: Inputs; promise: Promise<{ name: string; r: RunResult }>; ts: number; why: string }>();
     let error: string | null = null;
+    // The outputs of the steps still running (all but the one finishing): a snapshot must not read files they are rewriting.
+    const busy = (done: string | null): string[] => [...running.values()].filter((x) => x.step.name !== done).flatMap((x) => x.step.outputs);
     const finish = (s: Step, before: Inputs, after: Tree, ts: number, action: 'ran' | 'restored', reason: string, r: RunResult | null): string | null => {
       const beside = [...running.values()].filter((x) => x.step !== s);
       const others = beside.map((x) => matcher(x.step.outputs));
@@ -649,7 +652,7 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
               break;
             }
             if (restored) {
-              const after = io.snapshot();
+              const after = io.snapshot(busy(null));
               if (!sameMap(outputsOf(s, after), hit.outputs)) {
                 error = `${s.name}: restoring its recorded outputs left different files`;
                 break;
@@ -674,7 +677,7 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
       }
       const { name, r } = await Promise.race([...running.values()].map((x) => x.promise));
       const job = running.get(name)!;
-      const after = io.snapshot();
+      const after = io.snapshot(busy(name));
       if (r.code !== 0 && !(job.step.verdict?.(r.code, r.log) ?? false)) {
         running.delete(name);
         // Its partial outputs stay on disk; take them into the tree so the steps still running are not blamed for them.
@@ -715,21 +718,31 @@ export async function regen(steps: readonly Step[], opts: Options, io: Io, maxPa
 
 const git = (args: readonly string[], env?: NodeJS.ProcessEnv): string => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, env: env ?? process.env });
 
-/** The working tree as git would commit it with `git add -A`, read through a copy of the index so the real index is untouched. */
-export function snapshotTree(root: string): Tree {
+/** A regen output glob as a git exclude pathspec with the same matches (a glob without `/` matches at any depth). */
+export function excludePathspec(glob: string): string {
+  compilePattern(glob);
+  return `:(exclude,glob)${glob.includes('/') ? glob : `**/${glob}`}`;
+}
+
+/**
+ * The working tree as git would commit it with `git add -A`, read through a copy of the index so the real index is untouched.
+ * Paths matching exclude are left out and never read: a running step may be deleting and rewriting them.
+ */
+export function snapshotTree(root: string, exclude: readonly string[] = []): Tree {
+  const skip = matcher(exclude);
   const dir = mkdtempSync(join(tmpdir(), 'dragon-regen-'));
   try {
     const index = join(dir, 'index');
     const real = resolve(root, git(['-C', root, 'rev-parse', '--git-path', 'index']).trim());
     if (existsSync(real)) copyFileSync(real, index);
     const env = { ...process.env, GIT_INDEX_FILE: index };
-    git(['-C', root, 'add', '-A'], env);
+    git(['-C', root, 'add', '-A', '--', '.', ...exclude.map(excludePathspec)], env);
     const tree = new Map<string, string>();
     for (const rec of git(['-C', root, 'ls-files', '-s', '-z'], env).split('\0')) {
       if (rec === '') continue;
       const m = /^\d+ ([0-9a-f]+) (\d)\t(.+)$/s.exec(rec);
       if (m === null) throw new Error(`regen: unexpected git ls-files record ${JSON.stringify(rec)}`);
-      tree.set(m[3]!, m[1]!);
+      if (!skip(m[3]!)) tree.set(m[3]!, m[1]!);
     }
     return tree;
   } finally {
@@ -782,7 +795,7 @@ export function localIo(root: string, storeDir: string, logDir: string): Io {
   const machine = JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version });
   const texts = new Map<string, string>();
   return {
-    snapshot: () => snapshotTree(root),
+    snapshot: (exclude) => snapshotTree(root, exclude),
     context: (tree) => {
       const read = (p: string): string => {
         const b = tree.get(p);
