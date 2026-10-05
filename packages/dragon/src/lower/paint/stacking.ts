@@ -7,8 +7,9 @@
 // paints: its stacking context for z < 0 and z > 0, else the nearest positioned z-index auto ancestor inside that context (whose
 // positioned descendants follow it in tree order), and it is sorted there after the flow children. A re-hosting that would take a
 // box out of an overflow clip in its containing-block chain stays under the clip instead (EMS has no clip-chain hook), which is
-// Chrome's order everywhere but where the box overlaps content painted after the clipper; a z-index box that needs it is refused
-// (analysis/paint-values/stacking.ts). Every layer item gets a write; flow boxes get none.
+// Chrome's order everywhere but where the box overlaps content painted after the clipper; a z-index box that needs it, and whose
+// native order then differs from Appendix E's against some node, is refused (analysis/paint-values/stacking.ts). Every layer item
+// gets a write; flow boxes get none.
 import type { LayoutBox, LayoutNode } from '@dragon/layout';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
@@ -63,7 +64,7 @@ export type Stacking = {
   /** Appendix E's order of the node ids, and the native order the placements give (equal unless a node stays under a clip). */
   readonly order: readonly string[];
   readonly native: readonly string[];
-  /** Layer items with an integer z-index that stay under a clip, with the clip. */
+  /** Layer items with an integer z-index that stay under a clip and so paint in another order than Appendix E's, with the clip. */
   readonly clipped: readonly { readonly id: string; readonly clip: string }[];
 };
 
@@ -176,7 +177,6 @@ export function stackingOf(root: StackNode): Stacking {
     if (crossing !== null) {
       host = crossing;
       underClip.add(i.node.id);
-      if (i.node.z !== null) clipped.push({ id: i.node.id, clip: crossing.node.id });
     }
     placement.set(i.node.id, { host: host.node.id, bucket: l === 'negative' ? -1 : l === 'positioned' ? 1 : 2, rank: rankOf.get(i.node.id) as number });
   }
@@ -216,6 +216,17 @@ export function stackingOf(root: StackNode): Stacking {
   const native = nativeOrder(placement, indices);
   const writes = new Map([...placement].map(([id, q]) => [id, { ...q, index: indices.get(id) as number }]));
   if (underClip.size === 0 && !same(native, order)) throw new ProgramError(`${root.id}: the placements give the native order ${native.join(' ')}, not Appendix E's ${order.join(' ')}`);
+  // A z-index item kept under a clip is clipped when it (or its subtree) and some other node paint in the other order natively.
+  const inOrder = new Map(order.map((id, k) => [id, k]));
+  const inNative = new Map(native.map((id, k) => [id, k]));
+  const subtree = (i: Info): string[] => [i.node.id, ...kids(i).flatMap(subtree)];
+  for (const i of all) {
+    if (!underClip.has(i.node.id) || i.node.z === null) continue;
+    const mine = new Set(subtree(i));
+    const at = (m: ReadonlyMap<string, number>, id: string): number => m.get(id) as number;
+    const swapped = order.some((y) => !mine.has(y) && [...mine].some((x) => at(inOrder, x) < at(inOrder, y) !== at(inNative, x) < at(inNative, y)));
+    if (swapped) clipped.push({ id: i.node.id, clip: (placement.get(i.node.id) as Placement).host });
+  }
 
   const facts = new Map<string, StackingFacts>();
   const at = new Map(order.map((id, k) => [id, k]));
@@ -270,8 +281,18 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
 
 export type StackingWrite = { readonly kind: 'paint-order'; readonly host: string; readonly bucket: number; readonly rank: number; readonly index: number };
 
-/** The stacking of the case being lowered: computed at its root box, which the lowering visits first. */
-let current: { readonly root: LayoutBox; readonly stacking: Stacking } | null = null;
+/** The stacking of the case being lowered: computed at its root box, which the lowering visits first, with that tree's nodes. */
+let current: { readonly nodes: WeakSet<LayoutNode>; readonly stacking: Stacking } | null = null;
+
+const treeNodes = (root: LayoutBox): WeakSet<LayoutNode> => {
+  const out = new WeakSet<LayoutNode>();
+  const walk = (b: LayoutNode): void => {
+    out.add(b);
+    if (b.kind === 'box') for (const c of b.children) if (c.kind !== 'text') walk(c);
+  };
+  walk(root);
+  return out;
+};
 
 function caseStacking(box: LayoutNode, el: ResolvedElement | null): Stacking {
   if (el !== null && el.element.tag === 'html') {
@@ -282,9 +303,10 @@ function caseStacking(box: LayoutNode, el: ResolvedElement | null): Stacking {
       for (const c of e.children) if (c.kind === 'element') walk(c);
     };
     walk(el);
-    current = { root: box, stacking: stackingOf(layoutStackTree(box, elements)) };
+    current = { nodes: treeNodes(box), stacking: stackingOf(layoutStackTree(box, elements)) };
   }
-  if (current === null || !current.stacking.facts.has(box.id)) throw new ProgramError(`${box.id}: the stacking lowering did not see this box's root first`);
+  // A box of another tree (a stale stacking) is an error, never a lookup by a coincident id.
+  if (current === null || !current.nodes.has(box) || !current.stacking.facts.has(box.id)) throw new ProgramError(`${box.id}: the stacking lowering did not see this box's root first`);
   return current.stacking;
 }
 

@@ -332,8 +332,47 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
 });
 
 // The cases of the rest of the corpus whose paint order PNT1 changes (every layer item gets a placement): the model in the Appendix E
-// order equals Chrome at every non-edge point. var-logical is left out by name: its dashed border sides are not in the model.
-const MODEL_OUT = ['var-logical'];
+// order equals Chrome at every non-edge point. A case is left out only for paint the model does not draw, each named by modelOut and
+// pinned in OUT below, so a new case outside the model is seen: an image or a web view, a transform other than a whole-device-px
+// translation, a border style other than solid, or flow siblings the engine lays out in another order than the tree's (flex order and
+// reversed directions: Chrome paints them in order-modified document order, which the native views follow and the model does not).
+function modelOut(p: NativeProgram, viewport: { width: number; height: number }): string | null {
+  for (const n of p.nodes) {
+    for (const w of n.writes) {
+      if (w.kind === 'replaced-image' || w.kind === 'foreign-view') return `${n.id} draws ${w.kind}`;
+      if (w.kind === 'border-styles' && w.styles.some((x) => x !== 'solid' && x !== 'none' && x !== 'hidden')) return `${n.id} has a ${w.styles.join(' ')} border`;
+    }
+  }
+  for (const dpr of DPRS) {
+    try {
+      translationOf(p, p.nodes[p.nodes.length - 1]?.id ?? '', dpr);
+      for (const n of p.nodes) translationOf(p, n.id, dpr);
+    } catch (e) {
+      return (e as Error).message;
+    }
+  }
+  const engine = expectedEngine();
+  const out = engine.layout(programInput(p, viewport, 2), engine.measurer);
+  if (out.kind !== 'ok') throw new Error('the engine refused the case');
+  // Only the flow siblings of each parent: the layer items are sorted into Appendix E order on the device, whatever order the engine
+  // lays them out in.
+  const at = new Map(out.boxes.map((r, k) => [r.id, k]));
+  const flow = p.nodes.filter((n) => n.kind !== 'text' && (n.facts['stacking'] as { layer: string } | undefined)?.layer === 'flow');
+  for (const parent of new Set(flow.map((n) => n.parent))) {
+    const siblings = flow.filter((n) => n.parent === parent).map((n) => n.id);
+    const laidOut = [...siblings].sort((x, y) => (at.get(x) as number) - (at.get(y) as number));
+    if (laidOut.join() !== siblings.join()) return `the engine lays out the flow children of ${parent} in another order than the tree`;
+  }
+  return null;
+}
+
+/** The corpus cases outside the model (modelOut), pinned: a change here is a decision, not drift. */
+const OUT = [
+  'hit-order', 'hit-order-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
+  'transform-clip', 'transform-demo', 'transform-direction', 'transform-direction-rtl', 'transform-flex', 'transform-matrix', 'transform-nested',
+  'transform-origin', 'transform-rotate', 'transform-scale', 'transform-text', 'transform-translate', 'transform-will-change', 'var-logical',
+  'var-logical-rtl',
+];
 
 describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'s order', () => {
   const reached = CORPUS.filter((f) => f.kind === 'layout' && !GROUPS.some((g) => FIXTURE_GROUPS.find((x) => x.id === g)?.fixtures.includes(f))).flatMap((spec) =>
@@ -341,15 +380,15 @@ describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'
       const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
       if (r.kind !== 'ready') throw new Error(`${c.id}: ${r.reason}`);
       const p = r.programs.uikit;
-      return p.nodes.some((n) => n.writes.some((w) => w.kind === 'paint-order')) ? [{ spec, c, p }] : [];
+      return p.nodes.some((n) => n.writes.some((w) => w.kind === 'paint-order')) ? [{ spec, c, p, out: modelOut(p, c.environment.viewport) }] : [];
     }),
   );
-  it('reaches the positioned, flex-abspos, context, phrasing and values cases', () => {
-    expect(reached.length).toBeGreaterThan(80);
-    expect(MODEL_OUT.every((id) => reached.some((r) => r.spec.id === id))).toBe(true);
+  it('reaches the positioned, flex-abspos, context, phrasing and values cases, and leaves out exactly the pinned cases', () => {
+    expect(reached.filter((r) => r.out === null).length).toBeGreaterThan(80);
+    expect(reached.filter((r) => r.out !== null).map((r) => r.c.id).sort()).toEqual(OUT);
   });
-  for (const { spec, c, p } of reached) {
-    if (MODEL_OUT.includes(spec.id)) continue;
+  for (const { c, p, out } of reached) {
+    if (out !== null) continue;
     it(`${c.id}`, () => {
       const { problems, compared } = modelProblems(c.id, p, c.environment.viewport);
       expect(problems).toEqual([]);

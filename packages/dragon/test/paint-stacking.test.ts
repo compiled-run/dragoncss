@@ -9,7 +9,7 @@ import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { nativeString, STACKING_EMITTER } from '../src/emit/paint/stacking.ts';
 import { stringLit } from '../src/emit/native-support.ts';
 import type { StackNode } from '../src/lower/paint/stacking.ts';
-import { layoutStackTree, stackingOf } from '../src/lower/paint/stacking.ts';
+import { layoutStackTree, STACKING_LOWERING, stackingOf } from '../src/lower/paint/stacking.ts';
 import { zIndexValue } from '../src/css/properties/effects.ts';
 import type { LayoutBox, LayoutNode } from '@dragon/layout';
 import type { ResolvedElement } from '../src/analysis/resolve.ts';
@@ -114,6 +114,9 @@ describe('Appendix E paint order', () => {
     expect(fixed.facts.get('d')).toMatchObject({ host: 'html', clipChain: [], underClip: false, createsContext: true });
     expect(fixed.clipped).toEqual([]);
     expect(stackingOf(n('html', {}, n('s', { position: 'sticky' }))).facts.get('s')?.createsContext).toBe(true);
+    const last = stackingOf(n('html', {}, n('l', {}), n('clip', { clips: true }, n('d', { position: 'relative', z: 3 }))));
+    expect(last.facts.get('d')).toMatchObject({ host: 'clip', underClip: true });
+    expect(last.clipped).toEqual([]);
     const auto = stackingOf(n('html', {}, n('clip', { clips: true }, n('d', { position: 'relative' })), n('l', {})));
     expect(auto.facts.get('d')).toMatchObject({ host: 'clip', underClip: true });
     expect(auto.clipped).toEqual([]);
@@ -123,15 +126,15 @@ describe('Appendix E paint order', () => {
 describe('stacking: refusals on the native targets', () => {
   const compile = (css: string, body: Parameters<typeof inputFor>[1], targets: Targets = { ios: { minimum: '15.0' }, web: {} }) =>
     createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; } ${css}`, body));
-  it('a z-index box whose layer is outside an overflow clip in its containing-block chain is refused on ios only, at the z-index', () => {
-    const c = compile('.clip { overflow: hidden; height: 20px; } .d { position: relative; z-index: 2; height: 30px; }', (r) => [div(r, 'clip', ['clip'], [div(r, 'd', ['d'])])]);
+  it('a z-index box whose layer is outside an overflow clip in its containing-block chain, and that would paint below a later box, is refused on ios only, at the z-index', () => {
+    const c = compile('.clip { overflow: hidden; height: 20px; } .d { position: relative; z-index: 2; height: 30px; } .after { position: relative; height: 5px; }', (r) => [div(r, 'clip', ['clip'], [div(r, 'd', ['d'])]), div(r, 'after', ['after'])]);
     const errs = c.diagnostics.filter((d) => d.severity === 'error');
     expect(errs.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
     expect(errs[0]?.message).toMatch(/^d has z-index 2 and paints in a stacking context outside clip/);
     expectCatalogued(errs);
   });
-  it('a z-index auto box under such a clip and a z-index box whose clip is not its containing block compile', () => {
-    for (const css of ['.clip { overflow: hidden; height: 20px; } .d { position: relative; height: 30px; }', '.row { position: relative; } .clip { overflow: hidden; height: 20px; } .d { position: absolute; z-index: 2; height: 30px; }']) {
+  it('a z-index auto box under such a clip, a z-index box whose clip is not its containing block, and one that nothing paints after compile', () => {
+    for (const css of ['.clip { overflow: hidden; height: 20px; } .d { position: relative; height: 30px; }', '.row { position: relative; } .clip { overflow: hidden; height: 20px; } .d { position: absolute; z-index: 2; height: 30px; }', '.clip { overflow: hidden; height: 20px; } .d { position: relative; z-index: 2; height: 30px; }']) {
       const c = compile(css, (r) => [div(r, 'row', ['row'], [div(r, 'clip', ['clip'], [div(r, 'd', ['d'])])])]);
       expect(c.diagnostics.filter((d) => d.severity === 'error'), css).toEqual([]);
     }
@@ -157,6 +160,12 @@ describe('stacking: lowering and emission', () => {
     expect(STACKING_EMITTER.lines.uikit('v3', z as never, w)).toEqual(['  dragonSetPaintOrder(t, v3, "html", 2, 0)']);
     expect(STACKING_EMITTER.lines['android-views']('v3', z as never, w)).toEqual(['  dragonSetPaintOrder(t, v3, "html", 2, 0)']);
     expect(STACKING_EMITTER.applied({} as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box: {} as never, fontSize: null, replaced: null })).toEqual(['html', w.index]);
+  });
+  it('refuses a box of another tree than the case it computed, even when its id matches', () => {
+    const p = programs('.a { height: 10px; }', (r) => [div(r, 'a', ['a'])]);
+    expect(p.uikit.nodes.some((x) => x.id === 'a')).toBe(true);
+    const stranger = { kind: 'box', id: 'a', boxType: 'element', style: {}, children: [] } as unknown as LayoutNode;
+    expect(() => STACKING_LOWERING.lower({ box: stranger, el: null, facts: {} } as never)).toThrow("a: the stacking lowering did not see this box's root first");
   });
   it('escapes host ids exactly as native-support.ts stringLit does', () => {
     for (const s of ['a/b', 'x:anon0', 'q"\\$', 'é', '😀', '\n']) for (const lang of ['swift', 'kotlin'] as const) expect(nativeString(lang, s), `${lang} ${s}`).toBe(stringLit(lang, s));

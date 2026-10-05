@@ -10,7 +10,7 @@
 // escaping an overflow clip that is not its containing block, the music player's z-index 40 button over two later z-index 20 and 30
 // overlays, and transformed and will-change: opacity boxes, which paint in the z-index 0 layer. Sample centres sit in the overlaps,
 // so the device pixels compare the order. The rejects: a percentage calculation in opacity, a z-index calculation that is not a whole
-// number, and a z-index box that would leave the overflow clip of its containing block.
+// number, and a z-index box that would leave the overflow clip of its containing block while a later positioned box paints over it.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
