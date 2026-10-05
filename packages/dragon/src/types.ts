@@ -280,6 +280,8 @@ export type SupportCandidate = {
 export type SupportAnswer =
   | { readonly kind: 'needs-context'; readonly declaration: string; readonly candidates: readonly SupportCandidate[] }
   | { readonly kind: 'unsupported'; readonly declaration: string; readonly reason: string }
+  /** NA-NATIVE: a native target, and a declaration on the not-applicable list (profiles/not-applicable-native.ts). */
+  | { readonly kind: 'not-applicable'; readonly declaration: string; readonly reason: string }
   | { readonly kind: 'decided'; readonly cases: readonly { readonly assignment: Assignment; readonly decision: SupportCandidate | null }[] }
   | { readonly kind: 'blocked'; readonly diagnostics: readonly Diagnostic[] }
   | { readonly kind: 'invalid-query'; readonly diagnostics: readonly Diagnostic[] };

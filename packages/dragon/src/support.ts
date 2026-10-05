@@ -8,6 +8,7 @@ import { usedKeys } from './analysis/context.ts';
 import { inDomain } from './analysis/input.ts';
 import { isLonghand, PROPERTY_ROLE } from './css/properties.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
+import { notApplicableMark } from './css/not-applicable.ts';
 import type { ProfileRow, SupportProfile } from './profiles/types.ts';
 import { ANDROID_MIN_SDK, COMMITTED_PROFILES, findResolved, internalRecord, profileFor, validAndroid } from './project.ts';
 import type { Diagnostic, SupportAnswer, SupportCandidate, SupportQuery } from './types.ts';
@@ -35,6 +36,9 @@ function possibilities(target: unknown, css: unknown): SupportAnswer {
   const ref = { uri: 'dragon-query://support', revision: 'query', hash: `sha256:${sha256Hex(text)}` };
   const problems: Diagnostic[] = [];
   const rules = parseStylesheet(text, { source: ref, start: 0, end: text.length }, { id: 'query', owner: 'query', scope: 'document' }, 0, problems);
+  // NA-NATIVE: a listed property has no meaning on a native target; web still refuses it.
+  const na = t.kind === 'web' || problems.length !== 1 || rules.length !== 1 || rules[0]?.declarations.length !== 0 ? null : notApplicableMark(problems[0] as Diagnostic);
+  if (na !== null && na.role === 'item') return { kind: 'not-applicable', declaration: css.trim(), reason: `${na.entry.name} has no effect on ${t.kind}: ${na.entry.reason}` };
   if (problems.length > 0) return { kind: 'invalid-query', diagnostics: problems };
   const declarations = rules.flatMap((r) => r.declarations);
   if (rules.length !== 1 || declarations.length !== 1) return invalid('css must hold exactly one declaration, for example "gap: 7px"');

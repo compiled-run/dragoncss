@@ -55,6 +55,8 @@ export const DIAGNOSTIC_CODES = [
   'DRAGON_FONT_VARIABLE_REFUSED',
   // ANIM-b1.
   'DRAGON_ANIMATION_NO_EFFECT',
+  // NA-NATIVE.
+  'DRAGON_NOT_APPLICABLE_NATIVE',
 ] as const;
 
 export type DiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];
