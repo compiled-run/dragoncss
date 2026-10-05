@@ -1,7 +1,9 @@
 // The sweep's Chrome session serves overlapping calls on its pages: each verdict equals the one-page session's, in any order.
 import { describe, expect, it } from 'vitest';
 import { launchChrome } from '../../parity/src/chrome.ts';
-import { fromPageJson, openChrome } from '../src/chrome.ts';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { FONT_WAIT_MS, fromPageJson, openChrome } from '../src/chrome.ts';
 import { fixtureHtml } from '../src/dragon.ts';
 import { flatten } from '../src/flatten.ts';
 import { publishedCss } from '../src/tailwind.ts';
@@ -39,6 +41,26 @@ describe('the sweep Chrome session', () => {
       await chrome.close();
     }
   }, 120_000);
+
+  it('fails a capture whose fonts are still loading after FONT_WAIT_MS, rather than measuring a fallback font or hanging', async () => {
+    // A font server that accepts the request and never answers keeps the page's FontFaceSet loading.
+    const server = createServer(() => {});
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+    const port = (server.address() as AddressInfo).port;
+    // The font starts loading at the load event, so setContent returns and the capture's own wait is what meets it.
+    const hang = `<script>addEventListener('load', () => { const f = new FontFace('Hang', 'url(http://127.0.0.1:${port}/hang.ttf)'); document.fonts.add(f); f.load(); });</script>`;
+    const html = fixtureHtml(['u'], '.u { font-family: Hang; }\n').replace('</head>', `${hang}</head>`);
+    const chrome = await openChrome(1);
+    const t = Date.now();
+    try {
+      await expect(chrome.dual({ key: 'hang', authoredHtml: html, compiledHtml: html })).rejects.toThrow(/fonts are "still loading after 10000 ms", not loaded/);
+      expect(Date.now() - t).toBeGreaterThanOrEqual(FONT_WAIT_MS);
+    } finally {
+      await chrome.close();
+      server.closeAllConnections();
+      server.close();
+    }
+  }, 60_000);
 
   it('rejects a page count that is not a whole number of at least 1', async () => {
     await expect(openChrome(0)).rejects.toThrow(/whole number of pages/);
