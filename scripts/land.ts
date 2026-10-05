@@ -203,6 +203,7 @@ const waitQuiet = (): boolean =>
     sleep,
     now: Date.now,
     ceilingMs: QUIET_MAX_S * 1000,
+    hold: true,
   });
 
 const requireTracked = (step: string, what: string): void => {
@@ -389,7 +390,11 @@ const landOne = (e: Entry): { result: 'landed' | 'merged before'; detail: string
     if (t.error !== undefined || t.status !== 0) {
       log('  pnpm test failed; waiting for a quiet machine to run it once more');
       if (!waitQuiet()) throw new LandFailure('test', `pnpm test failed (log ${t.log}), and no quiet machine came within ${QUIET_MAX_S}s to run it once more\n${tail(t.log, 15)}`);
-      t = heavy('test-quiet', ['pnpm', 'test']);
+      try {
+        t = heavy('test-quiet', ['pnpm', 'test']);
+      } finally {
+        releaseQuiet(QUIET_FILE, process.pid);
+      }
       if (t.error !== undefined || t.status !== 0) failed('test', t, 'pnpm test on a quiet machine');
       log('  pnpm test passed on a quiet machine');
     }
