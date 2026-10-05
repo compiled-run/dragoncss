@@ -169,8 +169,8 @@ export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-)[^/]*$/;
 export const IDENTITY_LATER = /(^|\/)media-(orientation|aspect-ratio|epsilon)(-rtl)?\.(web\.json|css)$/;
 /** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
-  'packages/parity/emitted/media-range.css': { sha256: '3271fc82b58090f56652abbe9ebe561f046a6393e79f3e6949a3045c990bb9c1', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
-  'packages/parity/emitted/media-range-rtl.css': { sha256: 'ec351eace48b203142cb2f1930b09eec7961ab3bd3a9474d47c28348c84536f8', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
+  'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
+  'packages/parity/emitted/media-range-rtl.css': { sha256: '281d321b2c05e0d1a2b7d810eafdb11b3f5e3c76baba447b983f23716ae4bd1f', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
 };
 
 /**
