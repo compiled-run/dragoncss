@@ -22,11 +22,11 @@ const problems: string[] = [];
 let checked = 0;
 let styles = 0;
 
-/** Removes the new fields from every style in a box tree, checking each is present, null and in last place. */
+/** Removes the new fields from every style in a box tree (boxes and replaced leaves), checking each is present, null and in last place. */
 function strip(box: Json, path: string): Json {
   if (box === null || typeof box !== 'object' || Array.isArray(box)) return box;
   const b = box as { [k: string]: Json };
-  if (b['kind'] !== 'box') return b;
+  if (b['kind'] !== 'box' && b['kind'] !== 'replaced') return b;
   const style = b['style'] as { [k: string]: Json };
   const keys = Object.keys(style);
   const tail = keys.slice(keys.length - NEW_FIELDS.length);
@@ -34,6 +34,8 @@ function strip(box: Json, path: string): Json {
   for (const f of NEW_FIELDS) if (style[f] !== null) problems.push(`${path}: ${f} is ${JSON.stringify(style[f])}, expected null on an existing vector`);
   styles++;
   const kept = Object.fromEntries(Object.entries(style).filter(([k]) => !(NEW_FIELDS as readonly string[]).includes(k)));
+  // A replaced leaf (REPL-a) has a style and no children.
+  if (b['kind'] === 'replaced') return { ...b, style: kept };
   const children = (b['children'] as Json[]).map((c, i) => strip(c, `${path}.children[${i}]`));
   return { ...b, style: kept, children };
 }
