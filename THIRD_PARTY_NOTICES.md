@@ -423,7 +423,7 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## Chromium files with a BSD licence in their own header (header-bsd-10)
+## Kimmo Kinnunen, Apple and Intel: BSD 2-Clause (kinnunen-bsd-2)
 
 - `third_party/blink/renderer/core/css/media_query_evaluator.cc`: Copyright (C) 2006 Kimmo Kinnunen <kimmo.t.kinnunen@nokia.com>.; Copyright (C) 2013 Apple Inc. All rights reserved.; Copyright (C) 2013 Intel Corporation. All rights reserved.
 
