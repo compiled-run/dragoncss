@@ -222,4 +222,14 @@ describe('PNT2: lowering and emission', () => {
     expect(kotlin).toContain('  dragonAfterLayoutTransform(v, shape, scale)\n');
     expect(kotlin).not.toContain('setAnimationMatrix');
   });
+  it('each raster plant changes exactly its one line on both backends', () => {
+    for (const plant of ['transform-origin-ignored', 'translate-percent-of-parent'] as const) {
+      for (const b of ['uikit', 'android-views'] as const) {
+        const clean = emitNativeSupport(b);
+        const planted = emitNativeSupport(b, plant);
+        const changed = planted.filter((f, i) => f.text !== clean[i]?.text).map((f) => f.path);
+        expect(changed, `${plant} ${b}`).toEqual([b === 'uikit' ? 'Support/Paint/DragonPaintTransform.swift' : 'kotlin/dev/dragon/views/paint/DragonPaintTransform.kt']);
+      }
+    }
+  });
 });

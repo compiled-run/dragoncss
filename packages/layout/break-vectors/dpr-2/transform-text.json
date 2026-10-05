@@ -1,0 +1,9 @@
+{
+  "case": "transform-text",
+  "dpr": 2,
+  "texts": [
+    {"id":"a:text0","lines":[[0,6]]},
+    {"id":"b:text0","lines":[[0,2]]},
+    {"id":"c:text0","lines":[[0,4]]}
+  ]
+}

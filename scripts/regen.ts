@@ -872,6 +872,41 @@ export function localIo(root: string, storeDir: string, logDir: string): Io {
   };
 }
 
+/**
+ * One regen per worktree: a second one beside it would see the first's writes in its snapshots and blame its own step for them
+ * (MQ-R1 2026-10-05: profile-rows "changed" expected-dpr while the other run's dpr-capture wrote it). The lock is a directory
+ * made atomically in the worktree's own git dir, holding the owner's pid; a lock whose owner is gone is taken over.
+ */
+export function worktreeLock(gitDir: string, pid: number, alive: (pid: number) => boolean, now: number = Date.now()): { release: () => void } {
+  const dir = join(gitDir, 'dragon-regen.lock');
+  const pidFile = join(dir, 'pid');
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      mkdirSync(dir);
+      writeFileSync(pidFile, `${pid}\n`);
+      return { release: () => rmSync(dir, { recursive: true, force: true }) };
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+    }
+    const text = existsSync(pidFile) ? readFileSync(pidFile, 'utf8').trim() : '';
+    const holder = /^\d+$/.test(text) ? Number(text) : null;
+    // A lock without a pid is one being made right now, unless it is older than a minute (its maker died in between).
+    const stale = holder === null ? now - statSync(dir).mtimeMs > 60_000 : !alive(holder);
+    if (!stale) throw new Error(`another regen (pid ${holder ?? 'starting'}) is running in this worktree; two at once would blame each other's writes on their own steps. Wait for it, or remove ${dir} if it is gone`);
+    rmSync(dir, { recursive: true, force: true });
+  }
+  throw new Error(`could not take the regen lock ${dir}`);
+}
+
+const pidAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'EPERM';
+  }
+};
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const opts: { force: boolean; check: boolean; from: string | null; jobs: number; explain: boolean; skip: string[] } = { force: false, check: false, from: null, jobs: Number(process.env.DRAGON_REGEN_JOBS ?? DEFAULT_JOBS), explain: false, skip: [] };
@@ -905,6 +940,14 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   const root = git(['rev-parse', '--show-toplevel']).trim();
+  let lock: { release: () => void };
+  try {
+    lock = worktreeLock(resolve(root, git(['-C', root, 'rev-parse', '--git-dir']).trim()), process.pid, pidAlive);
+  } catch (e) {
+    console.error(`regen: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(2);
+  }
+  process.on('exit', () => lock.release());
   const logDir = join(root, 'node_modules/.cache/dragon-regen');
   mkdirSync(logDir, { recursive: true });
   const storeDir = join(resolve(root, git(['-C', root, 'rev-parse', '--git-common-dir']).trim()), 'dragon-regen', 'v2');
