@@ -7,7 +7,6 @@ import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
-import { CTX_PROOF_REM } from './fixture-groups/ctx-proof-rem.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INLINE } from './fixture-groups/inline.ts';
@@ -15,6 +14,7 @@ import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
+import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
@@ -84,7 +84,6 @@ export const GROUPS = {
   'border-paint': BORDER_PAINT,
   'cascade-var': CASCADE_VAR,
   contexts: CONTEXTS,
-  'ctx-proof-rem': CTX_PROOF_REM,
   fonts: FONTS,
   grid: GRID,
   inline: INLINE,
@@ -92,6 +91,7 @@ export const GROUPS = {
   media: MEDIA,
   'milestone-1': MILESTONE_1,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
+  'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
   selectors: SELECTORS,
   showcase: SHOWCASE,

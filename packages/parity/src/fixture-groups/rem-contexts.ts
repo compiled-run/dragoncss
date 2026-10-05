@@ -4,6 +4,6 @@
 import type { FixtureSpec } from '../fixtures.ts';
 import { both } from './define.ts';
 
-export const CTX_PROOF_REM: readonly FixtureSpec[] = [
+export const REM_CONTEXTS: readonly FixtureSpec[] = [
   both('ctx-proof-rem'),
 ];
