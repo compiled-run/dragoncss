@@ -2,11 +2,11 @@
 // with the TypeScript reference, byte for byte (every double is its IEEE bit pattern).
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Corpus, Split, Suite } from './corpus.ts';
-import { split } from './corpus.ts';
+import { canonicalNan, sameResult, split } from './corpus.ts';
 import type { Files } from './generate.ts';
 import { ROOT } from './generate.ts';
 
@@ -97,11 +97,29 @@ function writeFiles(dir: string, files: Files): void {
   }
 }
 
-/** Moves a finished build into its cache directory; a concurrent build of the same key may have won, which is equivalent. */
-function publish(work: string, dir: string): void {
+/**
+ * Moves a finished build into its cache directory. A concurrent build of the same key may have won, which is equivalent. A
+ * directory that lacks the build's artifacts is a stale entry (something deleted files under out/ and left the directories),
+ * which would otherwise block every later publish of the key while the caller runs an artifact that is not there: it is replaced.
+ */
+export function publish(work: string, dir: string): void {
   try {
     renameSync(work, dir);
+    return;
   } catch {
+    // The directory exists: a concurrent winner, or a stale entry.
+  }
+  const artifacts = readdirSync(work).filter((n) => n !== 'src');
+  if (artifacts.every((n) => existsSync(join(dir, n)))) {
+    rmSync(work, { recursive: true, force: true });
+    return;
+  }
+  rmSync(dir, { recursive: true, force: true });
+  try {
+    renameSync(work, dir);
+  } catch (e) {
+    // A concurrent build may have published between the removal and this rename.
+    if (!artifacts.every((n) => existsSync(join(dir, n)))) throw new Error(`could not publish the build ${work} to ${dir}: ${(e as Error).message}`);
     rmSync(work, { recursive: true, force: true });
   }
 }
@@ -161,7 +179,8 @@ export function corpusFiles(c: Corpus): Map<string, string> {
     const p = join(dir, `${s.name}.jsonl`);
     if (!existsSync(p)) {
       mkdirSync(dir, { recursive: true });
-      writeFileSync(`${p}.${process.pid}`, `${s.lines.join('\n')}\n`);
+      // The inputs as the digest covers them: every NaN the one quiet NaN, whatever host generated them.
+      writeFileSync(`${p}.${process.pid}`, `${s.lines.map(canonicalNan).join('\n')}\n`);
       renameSync(`${p}.${process.pid}`, p);
     }
     paths.set(s.name, p);
@@ -199,7 +218,7 @@ function runSuite(c: Corpus, s: Suite, exec: Exec, inputs: Map<string, string>, 
   const mismatches: Mismatch[] = [];
   for (let i = 0; i < s.expected.length; i++) {
     const g = got[i] ?? '<missing>';
-    if (g === s.expected[i]) pass++;
+    if (sameResult(s.expected[i] as string, g)) pass++;
     else if (mismatches.length < 5) mismatches.push({ index: i, input: s.lines[i] as string, expected: s.expected[i] as string, got: g });
   }
   if (got.length !== s.expected.length && mismatches.length < 5) mismatches.push({ index: -1, input: '', expected: `${s.expected.length} lines`, got: `${got.length} lines` });
