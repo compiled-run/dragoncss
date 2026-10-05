@@ -775,8 +775,9 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('writes the report and summary.md: at least 114 layout fixtures, at least 110 hand-written; failed 0; unsupportedCodes []; every case in both environments passes both lanes; platform darwin-arm64; the Linux lane unavailable (not run); every exact row linked to passing cases', () => {
     const ordered = FIXTURES.map((f) => outcomes.get(f.id)).filter((o): o is FixtureOutcome => o !== undefined);
     expect(ordered.length).toBe(FIXTURES.length);
-    const report = buildReport(ordered, fontCasesRun());
-    expect(report.summary.webOnly).toEqual({ cases: fontCasesRun().length, passed: fontCasesRun().length, failed: [] });
+    const webOnly = [...fontCasesRun(), ...envCasesRun()];
+    const report = buildReport(ordered, webOnly);
+    expect(report.summary.webOnly).toEqual({ cases: webOnly.length, passed: webOnly.length, failed: [] });
     expect(report.summary.webOnly.cases).toBeGreaterThan(0);
     writeReport(report);
     expect(report.summary.fixtures).toBeGreaterThanOrEqual(137);
