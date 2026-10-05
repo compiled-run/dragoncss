@@ -454,7 +454,7 @@ public final class NaturalSizeValue_none: U_NaturalSizeValue_image_NaturalSizeVa
 }
 
 // ts: packages/layout/src/input.ts:258
-public final class ReplacedLeaf: U_ControlBox_LayoutBox_ReplacedLeaf, U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf, U_ControlBox_ReplacedLeaf_TextLeaf, U_LayoutBox_ReplacedLeaf, U_ReplacedLeaf_TextLeaf {
+public final class ReplacedLeaf: U_ControlBox_LayoutBox_ReplacedLeaf, U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf, U_ControlBox_ReplacedLeaf_TextLeaf, U_ReplacedLeaf_TextLeaf {
   public let kind: JsString
   public let id: JsString
   public let style: LayoutStyle
@@ -524,7 +524,7 @@ public final class ControlBox: U_ControlBox_LayoutBox, U_ControlBox_LayoutBox_Re
 }
 
 // ts: packages/layout/src/input.ts:297
-public final class LayoutBox: U_ControlBox_LayoutBox, U_ControlBox_LayoutBox_ReplacedLeaf, U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf, U_LayoutBox_ReplacedLeaf {
+public final class LayoutBox: U_ControlBox_LayoutBox, U_ControlBox_LayoutBox_ReplacedLeaf, U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf {
   public let kind: JsString
   public let id: JsString
   public let boxType: JsString

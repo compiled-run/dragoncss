@@ -272,7 +272,7 @@ class ReplacedLeaf(
   val objectFit: String,
   val objectPositionX: U_Percent_Px,
   val objectPositionY: U_Percent_Px,
-) : U_ControlBox_LayoutBox_ReplacedLeaf, U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf, U_ControlBox_ReplacedLeaf_TextLeaf, U_LayoutBox_ReplacedLeaf, U_ReplacedLeaf_TextLeaf
+) : U_ControlBox_LayoutBox_ReplacedLeaf, U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf, U_ControlBox_ReplacedLeaf_TextLeaf, U_ReplacedLeaf_TextLeaf
 
 // ts: packages/layout/src/input.ts:279
 class ControlKind_range(
@@ -308,7 +308,7 @@ class LayoutBox(
   override val boxType: String,
   override val style: LayoutStyle,
   override val children: JsArray<U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf>,
-) : U_ControlBox_LayoutBox, U_ControlBox_LayoutBox_ReplacedLeaf, U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf, U_LayoutBox_ReplacedLeaf
+) : U_ControlBox_LayoutBox, U_ControlBox_LayoutBox_ReplacedLeaf, U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf
 
 // ts: packages/layout/src/input.ts:306
 class Viewport(
