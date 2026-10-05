@@ -55,7 +55,7 @@ const LEGACY_STEPS: readonly Step[] = [
   { name: 'grammar', argv: pnpm('grammar:gen'), outputs: ['packages/dragon/src/css/grammar.generated.ts'] },
   { name: 'notices', argv: pnpm('notices:gen'), outputs: ['THIRD_PARTY_NOTICES.md'], reads: ['docs/ports.json', 'vendor/harfbuzz/COPYING'] },
   { name: 'ua', argv: pnpm('ua:capture'), outputs: ['packages/dragon/src/ua/*.generated.ts'], reads: [FONTS] },
-  { name: 'capture', argv: pnpm('parity:capture'), outputs: ['packages/parity/expected/darwin-arm64/**', 'packages/parity/emitted/**', 'packages/parity/expected-fonts/**'], reads: [FIXTURES, FONTS] },
+  { name: 'capture', argv: pnpm('parity:capture'), outputs: ['packages/parity/expected/darwin-arm64/**', 'packages/parity/emitted/**', 'packages/parity/expected-fonts/**', 'packages/parity/expected-env/**'], reads: [FIXTURES, FONTS] },
   // profile:rows judges every captured and generated output, and writes the native lanes verdict (P6a, T075J) from lanes.json.
   {
     name: 'profile-rows',

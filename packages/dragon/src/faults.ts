@@ -3,6 +3,7 @@
 // FAULT_GROUPS, which is sorted by feature id. A fault name belongs to one feature (test/registry-claims.test.ts).
 import { BLOCKIFY_FAULTS } from './faults/blockify.ts';
 import { CASCADE_VAR_FAULTS } from './faults/cascade-var.ts';
+import { ENV_SAFE_FAULTS } from './faults/env-safe.ts';
 import { FONTS_FAULTS } from './faults/fonts.ts';
 import { INL1A_FAULTS } from './faults/inl1a.ts';
 import { INL2A_FAULTS } from './faults/inl2a.ts';
@@ -16,6 +17,7 @@ import { VALUES_FAULTS } from './faults/values.ts';
 export const FAULT_GROUPS = {
   blockify: BLOCKIFY_FAULTS,
   'cascade-var': CASCADE_VAR_FAULTS,
+  'env-safe': ENV_SAFE_FAULTS,
   fonts: FONTS_FAULTS,
   inl1a: INL1A_FAULTS,
   inl2a: INL2A_FAULTS,

@@ -19,6 +19,7 @@ packages/layout/vectors/dpr-*/** merge=dragon-generated
 packages/parity/emitted/** merge=dragon-generated
 packages/parity/expected-breaks/** merge=dragon-generated
 packages/parity/expected-dpr/** merge=dragon-generated
+packages/parity/expected-env/** merge=dragon-generated
 packages/parity/expected-fonts/** merge=dragon-generated
 packages/parity/expected-frames/** merge=dragon-generated
 packages/parity/expected-glyphs/bottom-scanlines.json merge=dragon-generated

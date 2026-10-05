@@ -2,6 +2,8 @@
 // the tree; the tag table is elements.ts, selector matching match.ts, the cascade cascade.ts and value computation computed.ts,
 // all re-exported here so existing imports keep working.
 import { perturbColor } from '../css/color.ts';
+import { envAsZero } from '../css/env.ts';
+import { ENV_VALUE_TYPE } from '../css/values.ts';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
@@ -164,6 +166,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {
         props.set(p, { ...set, value: { ...set.value, value: perturbColor(set.value.value) } });
+      }
+      if (faults.envResolvedToZero && set.value.kind === 'other' && set.value.type === ENV_VALUE_TYPE) {
+        props.set(p, { ...set, value: { ...set.value, text: envAsZero(set.value.text) } });
       }
     }
     computeLengths(props, parentFontSize, rootFontSize);
