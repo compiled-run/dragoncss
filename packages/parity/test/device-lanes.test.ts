@@ -12,7 +12,7 @@ import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
 import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSamples } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
 import type { NativeCase } from '../src/native-host.ts';
-import { nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
+import { hostSources, IOS_BUILD, iosModules, nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
 import { casePoints, expectedPixelsPath, rasterSize } from '../src/pixel-reference.ts';
 import type { NativeTarget } from '../src/targets.ts';
@@ -158,6 +158,23 @@ describe('build reuse', () => {
   it('the reuse stamp covers the bundled Ahem.ttf besides the source tree', () => {
     const ahem = createHash('sha256').update(readFileSync(repoPath('vendor/fonts/Ahem.ttf'))).digest('hex');
     expect(reuseStamp('abc')).toBe(`abc ahem ${ahem}`);
+  });
+  it('the iOS app splits into DragonCore (engine and support, -O), DragonCases (-Onone) and DragonHost (-O, main and the case tables)', () => {
+    const paths = hostSources('ios', 'x').map((f) => f.path);
+    const m = iosModules(paths);
+    // Every Swift file is in exactly one module.
+    expect([...m.core, ...m.cases, ...m.host].sort()).toEqual(paths.filter((p) => p.endsWith('.swift')).sort());
+    expect(new Set([...m.core, ...m.cases, ...m.host]).size).toBe(m.core.length + m.cases.length + m.host.length);
+    // The engine and the runtime support stay at -O; only generated case code is at -Onone.
+    expect(m.core.every((p) => p.startsWith('DragonLayout/') || p.startsWith('Support/'))).toBe(true);
+    expect(m.core.filter((p) => p.startsWith('DragonLayout/')).length).toBeGreaterThan(0);
+    expect(m.cases.every((p) => /^Cases\/Dragon(Cases|States)\d+\.swift$/.test(p))).toBe(true);
+    expect(m.host).toEqual(expect.arrayContaining(['Host/main.swift', 'Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift']));
+    // A planted host file builds in DragonHost, where swiftc's availability check still sees it.
+    expect(iosModules([...paths, 'Host/DragonPlanted.swift']).host).toContain('Host/DragonPlanted.swift');
+    expect(() => iosModules(paths.filter((p) => p !== 'Cases/DragonCaseTable.swift'))).toThrow(/no Cases\/DragonCaseTable.swift/);
+    expect(() => iosModules(paths.filter((p) => !/^Cases\/DragonCases\d/.test(p) && !/^Cases\/DragonStates\d/.test(p)))).toThrow(/do not split/);
+    expect(IOS_BUILD).toBe('modules DragonCore -O, DragonCases -Onone, DragonHost -O');
   });
 });
 
