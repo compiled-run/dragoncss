@@ -21,12 +21,20 @@ function parse(body: string): { declarations: readonly Declaration[]; diagnostic
   return { declarations: rules[0]?.declarations ?? [], diagnostics };
 }
 
+type Parsed = { declarations: object[]; diagnostics: [string, string][] };
+
 /** What a declaration parses to, without its source positions. */
-function parsed(body: string): unknown {
+function parsed(body: string): Parsed {
   const { declarations, diagnostics } = parse(body);
-  const strip = (d: Declaration) => ({ property: d.property, text: d.text, longhands: d.longhands, important: d.important, pending: d.pending });
+  const strip = (d: Declaration) => ({ property: d.property, text: d.text, longhands: d.longhands, important: d.important, pending: d.pending, alias: d.alias });
   return { declarations: declarations.map(strip), diagnostics: diagnostics.map((d) => [d.code, d.message]) };
 }
+
+/** The standard declaration's parse as its alias gives it: the alias recorded, and each message naming the alias. */
+const asAlias = (p: Parsed, alias: string, property: string): Parsed => ({
+  declarations: p.declarations.map((d) => ({ ...d, alias })),
+  diagnostics: p.diagnostics.map(([code, message]) => [code, `${message} (${alias} is an alias of ${property})`]),
+});
 
 /** Values for each standard property: a typical value, a multi-token value where the grammar has one, and an invalid value. */
 const SAMPLES: { readonly [property: string]: readonly string[] } = {
@@ -92,12 +100,16 @@ describe('legacy aliases parse as their property', () => {
     for (const [alias, property] of ALIASES) {
       const values = SAMPLES[property];
       expect(values, `${alias}: no sample values for ${property}`).toBeDefined();
-      for (const v of [...(values ?? []), ...COMMON]) expect(parsed(`${alias}: ${v}`), `${alias}: ${v}`).toEqual(parsed(`${property}: ${v}`));
+      for (const v of [...(values ?? []), ...COMMON]) expect(parsed(`${alias}: ${v}`), `${alias}: ${v}`).toEqual(asAlias(parsed(`${property}: ${v}`), alias, property));
     }
   });
   it('the name is matched ASCII case-insensitively and through escapes, as every property name is', () => {
-    expect(parsed('-WebKit-Flex-Grow: 2')).toEqual(parsed('flex-grow: 2'));
-    expect(parsed('-webkit-flex-\\67 row: 2')).toEqual(parsed('flex-grow: 2'));
+    expect(parsed('-WebKit-Flex-Grow: 2')).toEqual(asAlias(parsed('flex-grow: 2'), '-webkit-flex-grow', 'flex-grow'));
+    expect(parsed('-webkit-flex-\\67 row: 2')).toEqual(asAlias(parsed('flex-grow: 2'), '-webkit-flex-grow', 'flex-grow'));
+  });
+  it('a diagnostic about an alias declaration names the alias as written', () => {
+    expect(parsed('-webkit-margin-before: foo').diagnostics).toEqual([['DRAGON_CSS_INVALID_VALUE', '"foo" is not a valid value for margin-block-start (@webref/css grammar) (-webkit-margin-before is an alias of margin-block-start)']]);
+    expect(parsed('margin-block-start: foo').diagnostics).toEqual([['DRAGON_CSS_INVALID_VALUE', '"foo" is not a valid value for margin-block-start (@webref/css grammar)']]);
   });
   it('aliases Chrome parses with legacy rules, and non-aliases, stay refused as unknown properties', () => {
     for (const name of ['-webkit-transform', '-webkit-transform-origin', '-webkit-border-radius', '-webkit-writing-mode', '-webkit-user-select', '-webkit-box-orient', '-webkit-box-flex']) {
@@ -115,6 +127,18 @@ describe('legacy aliases parse as their property', () => {
     };
     expect(frames('-webkit-flex-grow: 2; -webkit-margin-before: 3px; -webkit-flex-direction: column')).toEqual(frames('flex-grow: 2; margin-block-start: 3px; flex-direction: column'));
     expect(frames('-webkit-flex-grow: 2').values).toEqual([['flex-grow', { kind: 'number', value: 2 }]]);
+    const messages = (body: string) => {
+      const diagnostics: Diagnostic[] = [];
+      const sources: KeyframesSource[] = [];
+      const text = `@keyframes k { from { ${body} } }`;
+      parseStylesheet(text, { source: SRC, start: 0, end: text.length }, { id: 's', owner: 'o', scope: 'document' }, 0, diagnostics, [], [], sources);
+      parseKeyframesRules(sources, diagnostics);
+      return diagnostics.map((d) => d.message);
+    };
+    expect(messages('-webkit-flex-grow: red; -webkit-order: 1 !important')).toEqual([
+      '"red" is not a valid value for flex-grow, so Chrome ignores it in @keyframes k (-webkit-flex-grow is an alias of flex-grow)',
+      '!important on order in @keyframes k: Chrome ignores it inside @keyframes, so the declaration has no effect (-webkit-order is an alias of order)',
+    ]);
   });
 });
 
@@ -161,6 +185,24 @@ describe('an alias and its property share one cascade', () => {
   });
   it('compiles with no diagnostics', () => {
     expect(compiled.ltr.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+  });
+});
+
+describe('profile diagnostics name the alias as written', () => {
+  const messages = (css: string, direction: 'ltr' | 'rtl', body: (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => ReturnType<typeof div>[]) => {
+    const tree = inputFor(css, body);
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction }).compile(tree);
+    return [...new Set(c.diagnostics.map((d) => `${d.code} ${d.message}`))];
+  };
+  it('an unsupported value says which alias set it', () => {
+    expect(messages('body { margin: 0 } .a { -webkit-box-sizing: inherit }', 'ltr', (r) => [div(r, 'a', ['a'])])).toEqual([
+      'DRAGON_UNSUPPORTED_VALUE box-sizing: inherit (set by -webkit-box-sizing: inherit) is unsupported (support profile m1-s5); in block/ltr use border-box or content-box',
+    ]);
+  });
+  it('an unproven context names the alias shorthand that set the longhand', () => {
+    const [m, ...rest] = messages('body { margin: 0 } .p { display: flex } .a { -webkit-flex: 3 }', 'rtl', (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])]);
+    expect(rest).toEqual([]);
+    expect(m).toMatch(/^DRAGON_UNPROVEN_CONTEXT flex-basis:<percentage> \(set by -webkit-flex: 3\) on .* -webkit-flex sets flex-basis, which is unproven here, so write flex-grow: 3; flex-shrink: 1 instead of -webkit-flex$/);
   });
 });
 

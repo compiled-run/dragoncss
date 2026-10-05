@@ -101,6 +101,7 @@
         { "lines": "2765-2868", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/animations.ts", "symbol": "longhandsNamed", "use": "reference" },
         { "file": "packages/layout/src/rt-animations.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/rt-keyframes.ts", "symbol": "groupFromRule", "use": "port" },
         { "file": "packages/layout/src/rt-keyframes.ts", "symbol": "sampleKeyframeEffect", "use": "port" },

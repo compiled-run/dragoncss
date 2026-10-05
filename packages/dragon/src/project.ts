@@ -316,7 +316,7 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
 const list = (values: readonly string[]): string => (values.length <= 1 ? values.join('') : `${values.slice(0, -1).join(', ')} or ${values[values.length - 1] as string}`);
 
 /** The declaration text a shorthand-filled longhand came from, for messages (T005 rec 2). */
-const setBy = (d: Declaration, property: Longhand): string => (d.property === property ? '' : ` (set by ${d.property}: ${d.text})`);
+const setBy = (d: Declaration, property: Longhand): string => ((d.alias ?? d.property) === property ? '' : ` (set by ${d.alias ?? d.property}: ${d.text})`);
 
 /**
  * Context-free check: every longhand any declaration sets, including shorthand-filled ones, needs a row in some context. The
@@ -352,7 +352,7 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
             origin: authored(d.valueSpan),
             target: t,
             message: `${lh.property}: ${valueToString(lh.value)}${setBy(d, lh.property)} is unsupported (support profile ${profile.revision}); ${alternatives}`,
-            manual: values.length > 0 ? `Use one of: ${values.join(', ')}.` : `Remove ${d.property}; ${t} supports no value of ${lh.property} yet.`,
+            manual: values.length > 0 ? `Use one of: ${values.join(', ')}.` : `Remove ${d.alias ?? d.property}; ${t} supports no value of ${lh.property} yet.`,
             profile: { target: t, profileRevision: profile.revision, feature, context: null, status: 'unsupported' },
           }));
         }
@@ -636,15 +636,15 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
           const siblings = u.declaration.longhands.filter((lh) => lh.property !== u.property && PROPERTY_ROLE[lh.property] === PROPERTY_ROLE[u.property]
             && statusOf(profile, featureOf(lh.property, lh.value, keys), u.context) !== 'unsupported');
           instead = siblings.length > 0
-            ? `; ${u.declaration.property} sets ${u.property}, which is unproven here, so write ${siblings.map((lh) => `${lh.property}: ${valueToString(lh.value)}`).join('; ')} instead of ${u.declaration.property}`
-            : `; ${u.declaration.property} sets ${u.property}, which is unproven here, and none of the other longhands it sets is proven in ${u.context}`;
+            ? `; ${u.declaration.alias ?? u.declaration.property} sets ${u.property}, which is unproven here, so write ${siblings.map((lh) => `${lh.property}: ${valueToString(lh.value)}`).join('; ')} instead of ${u.declaration.alias ?? u.declaration.property}`
+            : `; ${u.declaration.alias ?? u.declaration.property} sets ${u.property}, which is unproven here, and none of the other longhands it sets is proven in ${u.context}`;
         }
         diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', {
           origin: authored(u.declaration.valueSpan),
           target: t,
           message: `${u.feature}${setBy(u.declaration, u.property)} on ${u.address} is used in the ${u.context} context, which is not proven (proven: ${proven.join(', ')}); ${alternatives}${instead}`,
           manual: `Use ${u.feature} only in a proven context (${proven.join(', ')}), or add a passing parity fixture for ${u.context}.`,
-          related: [{ origin: authored(u.declaration.span), message: `declaration ${u.declaration.property}: ${u.declaration.text} applied to ${u.address}` }],
+          related: [{ origin: authored(u.declaration.span), message: `declaration ${u.declaration.alias ?? u.declaration.property}: ${u.declaration.text} applied to ${u.address}` }],
           profile: { target: t, profileRevision: profile.revision, feature: u.feature, context: u.context, status: 'unsupported' },
         }));
       }
