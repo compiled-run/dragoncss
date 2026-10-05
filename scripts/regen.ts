@@ -25,6 +25,9 @@ import { OVFL } from './regen-steps/ovfl.ts';
 import { PNT1 } from './regen-steps/pnt1.ts';
 import { PNT2 } from './regen-steps/pnt2.ts';
 import { ENGINE_SOURCES, FIXTURES, FONTS, type ManualOutput, placeSteps, pnpm, type RegenFeature, type Step } from './regen-steps/step.ts';
+
+// The device evidence stamp (device-evidence.ts EVIDENCE_CODE) digests these as files without importing them: the CI device code.
+const EVIDENCE_READS = ['packages/parity/src/device-ci.ts', 'packages/parity/src/cli/device-ci.ts'];
 import { TDEC } from './regen-steps/tdec.ts';
 import { TXT1A } from './regen-steps/txt1a.ts';
 import { TXT2 } from './regen-steps/txt2.ts';
@@ -61,7 +64,7 @@ const LEGACY_STEPS: readonly Step[] = [
     name: 'profile-rows',
     argv: pnpm('profile:rows'),
     outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'],
-    reads: [FIXTURES, FONTS, 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
+    reads: [FIXTURES, FONTS, ...EVIDENCE_READS, 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
   },
   { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'], reads: [FIXTURES, FONTS] },
   { name: 'hit-capture', argv: pnpm('parity:hit-capture'), outputs: ['packages/parity/expected-hit/*.hit.json'], reads: [FIXTURES, FONTS], lists: ['packages/parity/expected-hit'] },
@@ -91,7 +94,7 @@ const LEGACY_STEPS: readonly Step[] = [
     outputs: ['packages/parity/out/lanes.json'],
     env: ['JAVA_HOME', 'ANDROID_HOME'],
     verdict: lanesVerdict,
-    reads: [FIXTURES, FONTS, ...ENGINE_SOURCES, 'packages/parity/expected-*/**', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus*.json', 'packages/translate/package.json', 'packages/translate/harness/**', 'packages/translate/src/**'],
+    reads: [FIXTURES, FONTS, ...ENGINE_SOURCES, ...EVIDENCE_READS, 'packages/parity/expected-*/**', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus*.json', 'packages/translate/package.json', 'packages/translate/harness/**', 'packages/translate/src/**'],
     imports: ['packages/translate/src/native.ts', 'packages/translate/src/cli/native.ts'],
     packages: ['typescript'],
   },

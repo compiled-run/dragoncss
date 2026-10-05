@@ -69,6 +69,7 @@ import {
   worktreesOf,
 } from './land-lib.ts';
 import {
+  archRebaseline,
   commitRegen,
   deviceRunProblems,
   deviceRunWrote,
@@ -292,7 +293,12 @@ const judgeDevices = (master: string, startedMs: number | null): string[] => {
   if (lanes.error || lanes.signal || (lanes.status !== 0 && lanes.status !== 1) || !/^parity:lanes: /m.test(lanes.stdout)) {
     return [`pnpm -s run parity:lanes did not judge the lanes: ${lanes.error?.message ?? lanes.signal ?? `exit ${lanes.status}`} ${lanes.stderr.slice(0, 300)}`];
   }
-  return deviceRunProblems(before, after, staleLines(lanes.stdout));
+  // An architecture change of a lane is judged as a rebaseline only for the PR LAND_ARCH_REBASELINE names, recorded in its body.
+  const pr = current?.pr ?? 0;
+  const arch = archRebaseline(env['LAND_ARCH_REBASELINE'], pr, pr === 0 ? '' : JSON.parse(gh(['pr', 'view', String(pr), '--repo', REPO, '--json', 'body'])).body ?? '');
+  if (arch.problem !== null) return [arch.problem];
+  if (arch.rebaseline) log(`  LAND_ARCH_REBASELINE: #${pr} may change device lane architectures, with master's states and exact failure sets`);
+  return deviceRunProblems(before, after, staleLines(lanes.stdout), { rebaseline: arch.rebaseline });
 };
 
 // Every floor file on master or the landing commit, judged against master's version (floorRegressions).

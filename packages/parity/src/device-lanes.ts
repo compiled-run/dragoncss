@@ -480,6 +480,9 @@ export function allRunFailures(d: DeviceRun): LaneFailure[] {
   return [...d.sets, ...(d.states ?? []), ...(d.hits ?? [])].flatMap((s) => s.failures);
 }
 
+/** The text of out/device-failures-<target>.json for a target's run. */
+export const deviceFailuresText = (d: DeviceRun): string => `${JSON.stringify(allRunFailures(d), null, 1)}\n`;
+
 // ---------------------------------------------------------------- device-states and device-hit (SELD-R1b)
 
 /** A case script as a layout case for the device checks: the end assignment's case under the script's id. */
