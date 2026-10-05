@@ -221,7 +221,14 @@ export const waitForQuiet = (o: { quiet: () => boolean; request: () => void; rel
 // Before proving a tree other than the one just built, ignored outputs of other trees go (reports, lane outputs, tsbuildinfo);
 // installs, fetched WPT and native build caches stay, since no test reads them as results.
 export const KEEP_IGNORED = ['node_modules/', 'vendor/wpt/', 'build/', '.build/', '.swiftpm/', '.zig-cache/', 'zig-out/', 'Cargo.lock', '.vercel/'];
-export const cleanIgnoredArgs = (): string[] => ['clean', '-q', '-fdX', ...KEEP_IGNORED.flatMap((p) => ['-e', `!${p}`])];
+// Lists every ignored file (NUL-separated). `git clean -X` with `-e !kept/` negations (the first version) un-ignores a kept
+// directory, so git descends into it and deletes the ignored files nested inside: node_modules/.pnpm/*/dist/ (every installed
+// package's code) went, and every later test run failed to start. Pathspec excludes don't help either: git clean removes a
+// whole ignored directory as one unit. So the driver lists the ignored files and removes those outside the kept trees itself.
+export const ignoredFilesArgs = (): string[] => ['ls-files', '-z', '--others', '--ignored', '--exclude-standard'];
+const keptIgnored = (path: string): boolean =>
+  KEEP_IGNORED.some((k) => (k.endsWith('/') ? `/${path}`.includes(`/${k}`) : path === k || path.endsWith(`/${k}`)));
+export const ignoredToRemove = (lsFilesZ: string): string[] => lsFilesZ.split('\0').filter((p) => p !== '' && !keptIgnored(p));
 
 // pr:review's banner when every Macroscope check of the head was skipped for the spending limit.
 export const isUnreviewed = (prReviewOutput: string): boolean => /^!!! UNREVIEWED: Macroscope spending limit/m.test(prReviewOutput);
