@@ -936,19 +936,22 @@ function luFloat(raw: number): number {
   return f32(raw / 64);
 }
 
-/**
- * MinimumValueForLength for a zoomed px length or a percentage of `available` (units.ts percentOf). An edge offset is Blink's
- * SubtractFromOneHundredPercent: a percentage p becomes 100 - p, and px becomes calc(100% - px), evaluated by CalculationValue as
- * pixels + percent / 100 * available in float.
- */
+/** MinimumValueForLength for a zoomed px length or a percentage of `available` (units.ts percentOf), raw LU. */
 function luLength(v: LengthPct, available: number, zoom: number): number {
   if (v.unit === 'percent' || v.unit === 'end-percent') {
-    const pct = v.unit === 'percent' ? f32(v.value) : f32(100 - f32(v.value));
-    const product = f32(luFloat(available) * pct);
+    const product = f32(luFloat(available) * f32(v.value));
     return luFromFloat(f32(product / 100));
   }
-  if (v.unit === 'end-px') return luFromFloat(f32(-f32(v.value * zoom) + luFloat(available)));
   return luFromFloat(f32(v.value * zoom));
+}
+
+/**
+ * background_image_geometry.cc ResolveXPosition / ResolveYPosition less the offset: an edge offset keeps its right or bottom origin
+ * (css_to_style_map.cc MapFillPositionX), so it resolves to available - MinimumValueForLength(offset), subtracted in LayoutUnit.
+ */
+function luPosition(v: LengthPct, available: number, zoom: number): number {
+  const edgeRelative = luLength(v, available, zoom);
+  return v.unit === 'end-percent' || v.unit === 'end-px' ? luSat(available - edgeRelative) : edgeRelative;
 }
 
 /** ToPixelSnappedRect of a raw LU rect, as whole device px [left, top, right, bottom]. */
@@ -962,12 +965,12 @@ function snapLtrb(x: number, y: number, w: number, h: number): readonly number[]
  */
 function placeAxis(repeat: RepeatKeyword, position: LengthPct, tile: number, area: number, snappedArea: number, boxOffset: number, snappedBoxOffset: number, destStart: number, destSize: number, snappedStart: number, snappedSize: number, zoom: number): readonly number[] {
   if (repeat === 'repeat') {
-    const offset = luLength(position, area - tile, zoom);
+    const offset = luPosition(position, area - tile, zoom);
     const phase = tile !== 0 ? tile - luMod(boxOffset + offset, tile) : 0;
     return [phase, destSize, snappedStart, snappedSize];
   }
-  const x = boxOffset + luLength(position, area - tile, zoom);
-  const sx = snappedBoxOffset + luLength(position, snappedArea - tile, zoom);
+  const x = boxOffset + luPosition(position, area - tile, zoom);
+  const sx = snappedBoxOffset + luPosition(position, snappedArea - tile, zoom);
   if (x > 0) return [0, tile, luRound(destStart + x) * 64, tile];
   return [-x, tile + x, snappedStart, tile + sx];
 }

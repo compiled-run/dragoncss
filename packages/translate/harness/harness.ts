@@ -1161,19 +1161,16 @@ function gradientResult(name: string, a: readonly JsonValue[]): string | null {
       return `${out}]]`;
     }
     case 'paint:gradient:backgroundRow': {
-      // A whole row, reduced to its length, sum and position-weighted sum (exact integers) and its first 32 values.
+      // The whole row, every value as two hex digits, so native runs are compared byte for byte.
       const plan = planBackground(gradPaint(item(a, 1, '$'), '$[1]'), gradientFaults('none'));
       const row = backgroundRow(plan, arg(a, 2), gradientFaults('none'));
-      let sum = 0;
-      let weighted = 0;
-      let head = '';
+      let bytes = '';
       for (let i = 0; i < row.length; i++) {
         const x = row[i] as number;
-        sum += x;
-        weighted += (i + 1) * x;
-        if (i < 32) head += `${i > 0 ? ',' : ''}${h(x)}`;
+        if (!(x >= 0 && x <= 255 && Math.floor(x) === x)) return fail(`row value ${i} is not a byte`);
+        bytes += `${x < 16 ? '0' : ''}${x.toString(16)}`;
       }
-      return `["ok",${plan.modelled ? 'true' : 'false'},${h(plan.left)},${h(plan.right)},${h(row.length)},${h(sum)},${h(weighted)},[${head}]]`;
+      return `["ok",${plan.modelled ? 'true' : 'false'},${h(plan.left)},${h(plan.right)},${h(row.length)},${q(bytes)}]`;
     }
     default:
       return null;

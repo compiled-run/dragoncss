@@ -1,7 +1,8 @@
 // BG2 gradient reference (paint-gradient.ts): the exact arithmetic it rests on, pinned against JS's correctly rounded Math.sqrt
 // and exact BigInt products; the SkMatrix port; Blink's linear end points from a given slope (no libm call: the slope is an
 // input, notes/T074-bg2-spec.md R3) and the unmodelled corner direction; Blink's background tile geometry and its plants; and the
-// composited layer origin (R4). Pixel equality with Chrome is bg2-reference.test.ts's.
+// composited layer origin (R4). Nothing here compares pixels with Chrome: the rows are TS-internal pins, and the TS = Swift = Kotlin
+// check is paint-roots.test.ts on the backgroundRow vectors.
 import { describe, expect, it } from 'vitest';
 import { backgroundRow, fma64, fmodF32, gradientDesc, gradientFaults, hypotF32, IDENTITY, layerPlacement, matConcat, matInvert, matType, NO_GRADIENT_FAULTS, planBackground, sqrtF32, sqrtF64 } from '../src/paint-gradient.ts';
 import type { BackgroundBox, BackgroundPaint, GradientImage, LayerGeometry } from '../src/paint-gradient.ts';
@@ -184,12 +185,41 @@ describe('edge offsets (notes/T074-bg2-spec.md R7)', () => {
     const e = at({ unit: 'px', value: 10 }, { unit: 'percent', value: 25 });
     expect([e.p0x, e.p0y]).toEqual([20, 25]);
   });
-  it('places a layer from the right or bottom edge as calc(100% - px) or 100% - p, Blink\'s SubtractFromOneHundredPercent', () => {
+  it('places a layer from the right or bottom edge as ResolveXPosition does: available - the offset, subtracted in LayoutUnit', () => {
     const g = (positionX: LayerGeometry['positionX'], positionY: LayerGeometry['positionY']) => layerPlacement(box({}), geometry({ repeatX: 'no-repeat', repeatY: 'no-repeat', sizeX: { unit: 'px', value: 20 }, sizeY: { unit: 'px', value: 10 }, positionX, positionY }), 2, true, NO_GRADIENT_FAULTS);
     const end = g({ unit: 'end-px', value: 5 }, { unit: 'end-percent', value: 25 });
     const start = g({ unit: 'percent', value: 100 }, { unit: 'percent', value: 75 });
-    // 100% less 5 css px (10 device px, 640 LU) on the x axis; 75% on the y axis, the same as 100% - 25%.
+    // 100% less 5 css px (10 device px, 640 LU) on the x axis; 75% on the y axis, which 100% - 25% matches when no LU is fractional.
     expect(end.destX).toBe(start.destX - 640);
     expect(end.destY).toBe(start.destY);
+  });
+  // Blink's arithmetic, written out: MinimumValueForLength truncates the offset to a LayoutUnit, then ResolveXPosition subtracts it
+  // from the available size (MapFillPositionX keeps the right or bottom origin; calc(100% - x) is only getComputedStyle's string).
+  const edgeOffsetLu = (v: LayerGeometry['positionX'], available: number, zoom: number): number =>
+    v.unit === 'end-percent' ? Math.trunc(Math.fround(Math.fround(Math.fround(Math.fround(available / 64) * Math.fround(v.value)) / 100) * 64)) : Math.trunc(Math.fround(Math.fround(v.value * zoom) * 64));
+  const snappedDest = (available: number, v: LayerGeometry['positionX'], zoom: number): number => Math.floor((available - edgeOffsetLu(v, available, zoom) + 32) / 64) * 64;
+  it('rounds right 10% where trunc(A - x) and A - trunc(x) part: a 20px layer in 6435 LU lands at 4672 LU, not 4608', () => {
+    const at = (width: number, positionX: LayerGeometry['positionX']) => layerPlacement(box({ width }), geometry({ repeatX: 'no-repeat', repeatY: 'no-repeat', sizeX: { unit: 'px', value: 20 }, sizeY: { unit: 'px', value: 10 }, positionX }), 1, true, NO_GRADIENT_FAULTS).destX;
+    // available 6435 - 1280 = 5155 LU; 10% is 515.5 LU, truncated to 515; 5155 - 515 = 4640, which rounds to 73 px.
+    expect(at(6435, { unit: 'end-percent', value: 10 })).toBe(4672);
+    expect([6506, 6577, 6648, 7004].map((w) => at(w, { unit: 'end-percent', value: 10 }))).toEqual([4736, 4800, 4864, 5184]);
+    expect([6442, 6527].map((w) => at(w, { unit: 'end-percent', value: 25 }))).toEqual([3904, 3968]);
+    for (let w = 6400; w <= 8960; w++) {
+      for (const v of [{ unit: 'end-percent', value: 10 }, { unit: 'end-percent', value: 33 }, { unit: 'end-px', value: 0.3 }] as const) expect(at(w, v), `${v.unit} ${v.value} at ${w}`).toBe(snappedDest(w - 1280, v, 1));
+    }
+  });
+  it('places a layer from the bottom edge the same way: bottom 0.3px and bottom 10% at zoom 1 and 2', () => {
+    const at = (height: number, positionY: LayerGeometry['positionY'], zoom: number) => layerPlacement(box({ height }), geometry({ repeatX: 'no-repeat', repeatY: 'no-repeat', sizeX: { unit: 'px', value: 20 }, sizeY: { unit: 'px', value: 10 }, positionY }), zoom, true, NO_GRADIENT_FAULTS).destY;
+    // zoom 1, height 3251: available 3251 - 640 = 2611 LU; 0.3px is 19.2 LU, truncated to 19; 2611 - 19 = 2592 = 40.5 px, rounding to 41.
+    expect(at(3251, { unit: 'end-px', value: 0.3 }, 1)).toBe(2624);
+    // zoom 2, height 3206: available 3206 - 1280 = 1926 LU; 0.6 device px is 38.4 LU, truncated to 38; 1888 = 29.5 px, rounding to 30.
+    expect(at(3206, { unit: 'end-px', value: 0.3 }, 2)).toBe(1920);
+    for (let h = 3200; h <= 6400; h += 7) {
+      for (const zoom of [1, 2]) {
+        for (const v of [{ unit: 'end-px', value: 0.3 }, { unit: 'end-px', value: 10.3 }, { unit: 'end-percent', value: 10 }] as const) {
+          expect(at(h, v, zoom), `${v.unit} ${v.value} at ${h} zoom ${zoom}`).toBe(snappedDest(h - Math.trunc(Math.fround(Math.fround(10 * zoom) * 64)), v, zoom));
+        }
+      }
+    }
   });
 });
