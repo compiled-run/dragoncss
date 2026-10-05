@@ -37,3 +37,11 @@ packages/wpt/snapshots/** merge=dragon-generated
 # extended lists, so two PRs that both raise a floor do not conflict; anything else it leaves as a conflict. Needs `pnpm setup:git`.
 packages/*/test/*-floor.json merge=dragon-floor
 packages/*/test/glyph-clearance-pins.json merge=dragon-floor
+
+# The sorted per-feature registries (one line per feature): a merge (scripts/sorted-merge.ts) interleaves two PRs' added lines by
+# the key their test sorts by; a deletion, a modification or anything else stays a conflict. Needs `pnpm setup:git`.
+packages/dragon/src/css/animation-kinds.ts merge=dragon-sorted
+packages/dragon/src/diagnostics/codes.ts merge=dragon-sorted
+packages/dragon/src/faults.ts merge=dragon-sorted
+packages/parity/src/fixtures.ts merge=dragon-sorted
+scripts/regen.ts merge=dragon-sorted

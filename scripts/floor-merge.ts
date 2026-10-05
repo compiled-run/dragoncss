@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { floorRegressions } from './land-lib.ts';
+import { SORTED_MERGE_DRIVER } from './sorted-merge.ts';
 
 export const FLOOR_MERGE_DRIVER = 'node scripts/floor-merge.ts %O %A %B %P';
 // The merge drivers `pnpm setup:git` registers (land.test.ts keeps package.json's command equal to this), which the landing
@@ -17,6 +18,8 @@ export const MERGE_DRIVERS: readonly (readonly [string, string])[] = [
   ['merge.dragon-generated.driver', 'true'],
   ['merge.dragon-floor.name', 'structural merge of floors and pins (scripts/floor-merge.ts)'],
   ['merge.dragon-floor.driver', FLOOR_MERGE_DRIVER],
+  ['merge.dragon-sorted.name', 'interleave additions to the sorted registries (scripts/sorted-merge.ts)'],
+  ['merge.dragon-sorted.driver', SORTED_MERGE_DRIVER],
 ];
 export type Json = null | boolean | number | string | Json[] | { [k: string]: Json };
 export class Refuse extends Error {}
