@@ -138,7 +138,8 @@ jobs:
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
           sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$sdk" --licenses >/dev/null || true
-          "$sdk" --install emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64' >/dev/null
+          # A download can fail transiently ("unknown archive"); sdkmanager is retried, and the list below proves what is installed.
+          for i in 1 2 3; do "$sdk" --install emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64' >/dev/null && break; echo "sdkmanager failed (attempt $i)"; sleep 15; done
           "$sdk" --list_installed | grep -E 'emulator|system-images|build-tools;36|platforms;android-36'
       - name: kotlinc and the JDK the committed host lane records
         run: |
