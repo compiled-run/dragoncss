@@ -15,7 +15,8 @@ import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Assignment, Origin, Target } from './types.ts';
 
-export * from './index.ts';
+// The public API without createProject, whose committed lanes verdict (create-project.ts) the harness passes itself.
+export * from './api.ts';
 export { createProjectWith, COMPILER_VERSION } from './project.ts';
 export type { InternalOptions } from './project.ts';
 export type { CompilerFaults } from './faults.ts';
