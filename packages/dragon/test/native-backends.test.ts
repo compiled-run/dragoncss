@@ -188,6 +188,11 @@ describe('a calculated line height is built as the engine\'s LineHeightCalc (non
       expect(src, lang).not.toContain(`LengthCalc(${q('calc')}, Px(${q('px')}, 12.0)`);
     }
   });
+  it('refuses a style without its grid fields instead of building it (they are null where unused)', () => {
+    const { grid: _grid, ...rest } = nativeRoot().style;
+    const root = { kind: 'box', id: 'p', boxType: 'element', style: rest, children: [] } as const;
+    for (const lang of ['swift', 'kotlin'] as const) expect(() => inputFunctions(lang, root as never, 't'), lang).toThrow('LayoutStyle.grid is missing');
+  });
 });
 
 // Review of #72 at 42fd630b81: an element whose computed transform differs between two reachable cases (a state change) moves

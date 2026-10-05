@@ -1764,6 +1764,7 @@ function gridSpanValue(lang: Lang, s: GridSpanInput, str: (s: string) => string)
 
 /** The grid and gridItem fields of a LayoutStyle (css-grid-2; input.ts GridContainerStyle and GridItemStyle), or null. */
 function gridValue(lang: Lang, field: 'grid' | 'gridItem', v: unknown, str: (s: string) => string): string {
+  if (v === undefined) throw new Error(`LayoutStyle.${field} is missing; it is null where unused`);
   if (v === null) return lang === 'swift' ? 'nil' : 'null';
   if (field === 'gridItem') {
     const g = v as import('@dragon/layout').GridItemStyle;
