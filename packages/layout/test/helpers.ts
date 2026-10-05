@@ -46,7 +46,7 @@ export const divStyle: LayoutStyle = {
   aspectRatio: { kind: 'auto' },
 };
 
-export function box(id: string, style: Partial<LayoutStyle>, children: (LayoutBox | TextLeaf)[] = []): LayoutBox {
+export function box(id: string, style: Partial<LayoutStyle>, children: LayoutBox['children'][number][] = []): LayoutBox {
   return { kind: 'box', id, boxType: 'element', style: { ...divStyle, ...style }, children };
 }
 
