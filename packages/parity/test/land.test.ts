@@ -14,6 +14,7 @@ import {
   findingsComment,
   floorRegressions,
   isFloorFile,
+  failingTestFiles,
   isQuiet,
   clearStaleQuiet,
   releaseQuiet,
@@ -188,6 +189,24 @@ describe('CI, base, worktree and quiet decisions', () => {
     expect(isQuiet(0, 19.9)).toBe(true);
     expect(isQuiet(1, 2)).toBe(false);
     expect(isQuiet(0, 20)).toBe(false);
+  });
+
+  it('reads the failing test files from a vitest log, and refuses a log with no summary', () => {
+    const log = [
+      ' \x1b[31mFAIL\x1b[39m ',
+      ' FAIL  packages/translate/test/translate.test.ts > differential corpus > is deterministic',
+      'Error: Test timed out in 120000ms.',
+      ' FAIL  packages/parity/test/lanes.test.ts > committed out/lanes.json > every device lane ran',
+      ' FAIL  packages/translate/test/translate.test.ts > subset > accepts',
+      ' FAIL  packages/parity/test/lanes-concurrent.test.ts [ packages/parity/test/lanes-concurrent.test.ts ]',
+      '',
+      ' Test Files  3 failed | 180 passed (183)',
+      '      Tests  4 failed | 4800 passed (4804)',
+    ].join('\n');
+    expect(failingTestFiles(log)).toEqual(['packages/parity/test/lanes-concurrent.test.ts', 'packages/parity/test/lanes.test.ts', 'packages/translate/test/translate.test.ts']);
+    expect(failingTestFiles('\x1b[1m Test Files \x1b[22m 1 passed (1)\n')).toEqual([]);
+    // Killed or crashed before the summary: no list to trust.
+    expect(failingTestFiles(' FAIL  packages/parity/test/lanes.test.ts > x\n')).toBeNull();
   });
 
   it('holds the quiet request while it waits, and drops it when the wait ends unless asked to hold it through the rerun', () => {

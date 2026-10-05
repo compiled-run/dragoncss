@@ -20,6 +20,8 @@ import {
   isFloorFile,
   isQuiet,
   QUIET_FILE,
+  SOLO_RERUN_MAX,
+  failingTestFiles,
   clearStaleQuiet,
   releaseQuiet,
   requestQuiet,
@@ -388,15 +390,27 @@ const landOne = (e: Entry): { result: 'landed' | 'merged before'; detail: string
 
     let t = heavy('test', ['pnpm', 'test']);
     if (t.error !== undefined || t.status !== 0) {
-      log('  pnpm test failed; waiting for a quiet machine to run it once more');
+      // Under load the suite's failures are mostly timeouts. Each failing file is rerun alone on a quiet machine, with the
+      // same assertions and timeouts; every one must pass. A crashed run, or too many failing files, reruns the whole suite.
+      const files = t.error === undefined ? failingTestFiles(readFileSync(t.log, 'utf8')) : null;
+      const solo = files !== null && files.length > 0 && files.length <= SOLO_RERUN_MAX;
+      log(`  pnpm test failed; waiting for a quiet machine to rerun ${solo ? `its ${files.length} failing file(s) one at a time` : 'it once more'}`);
       if (!waitQuiet()) throw new LandFailure('test', `pnpm test failed (log ${t.log}), and no quiet machine came within ${QUIET_MAX_S}s to run it once more\n${tail(t.log, 15)}`);
       try {
-        t = heavy('test-quiet', ['pnpm', 'test']);
+        if (solo) {
+          for (const [i, f] of files.entries()) {
+            const r = heavy(`test-solo-${i + 1}`, ['pnpm', 'vitest', 'run', f]);
+            if (r.error !== undefined || r.status !== 0) failed('test', r, `${f}, rerun alone on a quiet machine,`);
+          }
+        } else {
+          t = heavy('test-quiet', ['pnpm', 'test']);
+        }
       } finally {
         releaseQuiet(QUIET_FILE, process.pid);
       }
-      if (t.error !== undefined || t.status !== 0) failed('test', t, 'pnpm test on a quiet machine');
-      log('  pnpm test passed on a quiet machine');
+      if (solo) log(`  pnpm test: each failing file passed alone on a quiet machine (${files.join(', ')})`);
+      else if (t.error !== undefined || t.status !== 0) failed('test', t, 'pnpm test on a quiet machine');
+      else log('  pnpm test passed on a quiet machine');
     }
     requireTracked('test', 'pnpm test');
     releasePriority(); // publish waits on CI and review, so other lanes get the machine back

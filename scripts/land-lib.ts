@@ -189,6 +189,17 @@ export const clearStaleQuiet = (path: string, alive: (pid: number) => boolean): 
   return true;
 };
 
+// The test files a vitest run reports as failing, from its log; null when the log has no summary (the run crashed or was
+// killed), so the caller reruns the whole suite instead of trusting a partial list.
+export const SOLO_RERUN_MAX = 40;
+export const failingTestFiles = (logText: string): string[] | null => {
+  const plain = logText.replace(/\x1b\[[0-9;]*m/g, '');
+  if (!/^\s*Test Files\s/m.test(plain)) return null;
+  const files = new Set<string>();
+  for (const m of plain.matchAll(/^ FAIL\s+(\S+\.test\.ts)/gm)) files.add(m[1]!);
+  return [...files].sort();
+};
+
 // Waits for a quiet machine with the quiet request held, up to `ceilingMs`; true when quiet, false at the ceiling.
 // With `hold`, a quiet result keeps the request held and the caller releases it after its rerun; a failed wait always releases.
 export const waitForQuiet = (o: { quiet: () => boolean; request: () => void; release: () => void; sleep: (ms: number) => void; now: () => number; ceilingMs: number; pollMs?: number; hold?: boolean }): boolean => {
