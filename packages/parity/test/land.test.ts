@@ -6,6 +6,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   backoffMs,
   baseAction,
+  type BatchOps,
+  bisectPrefixes,
   ciState,
   ciStep,
   claudeReviewGate,
@@ -22,6 +24,7 @@ import {
   isTransient,
   isUnreviewed,
   LandFailure,
+  parseBatchSize,
   parseLandArgs,
   parseQueue,
   parseReview,
@@ -32,6 +35,7 @@ import {
   retargetChildrenThenDelete,
   reviewerEnv,
   reviewVerdict,
+  runBatches,
   runQueue,
   runReviewer,
   splitPatch,
@@ -39,7 +43,7 @@ import {
   withRetry,
   worktreesOf,
 } from '../../../scripts/land-lib.ts';
-import { commitRegen, type Member, memberTip, mergeMember, predictPosition, tipProblem, treeMatches } from '../../../scripts/merge-train-lib.ts';
+import { commitRegen, type Member, memberTip, mergeMember, planPositions, predictPosition, tipProblem, treeMatches } from '../../../scripts/merge-train-lib.ts';
 import { parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
 import { type CheckRun, type Git, ignoreAt, regenOnlyProblems } from '../../../scripts/pr-review-vouch.ts';
 import { parseLanesForStamp, stampProblems } from '../../../scripts/evidence-stamp.ts';
@@ -449,6 +453,252 @@ describe('the queue loop', () => {
     expect(s).toContain('FAILED #2 b2 at claude-review: 1 finding(s)');
     expect(s).toContain('1 PR(s) failed');
     expect(statusText({ queue: 'q', startedAt: 't0', now: 't1', running: e(3), outcomes: [], fatal: null, total: 3, done: false })).toContain('landing now: #3 b3');
+  });
+});
+
+describe('batched landing (runBatches with fakes)', () => {
+  const e = (pr: number): Entry => ({ branch: `b${pr}`, pr, clean: sha('a') });
+  type Pos = { head: string; prev: string; prs: number[] };
+  // A fake driver: master is the list of landed PRs; a position's tree is the PRs merged into it; `broken` PRs fail any proof
+  // of a tree that holds them, `conflicts` fail their build, and `reject`/`publishFail` fail admission or publishing.
+  const harness = (o: { broken?: number[]; conflicts?: number[]; reject?: number[]; publishFail?: number[]; fatalAt?: number; merged?: number[] } = {}) => {
+    const master: number[] = [];
+    const trace: string[] = [];
+    const failures: string[] = [];
+    const mergedBefore = new Set(o.merged ?? []);
+    const name = (prs: number[]): string => (prs.length === 0 ? 'master' : `m+${prs.join('+')}`);
+    const heads = new Map<string, number[]>();
+    const ops: BatchOps<{ pr: number }, Pos> = {
+      admit: (x, earlier) => {
+        trace.push(`admit #${x.pr}${earlier.length ? ` after ${earlier.map((y) => `#${y.pr}`).join(' ')}` : ''}`);
+        if (mergedBefore.has(x.pr)) return { merged: 'merged as x' };
+        if (o.reject?.includes(x.pr)) throw new LandFailure('claude-review-before', `#${x.pr} has a Medium finding at its head`);
+        return { ticket: { pr: x.pr } };
+      },
+      base: () => {
+        const h = name(master);
+        heads.set(h, [...master]);
+        return h;
+      },
+      build: (prev, x, t, k) => {
+        trace.push(`build #${x.pr} at ${k} on ${prev}`);
+        if (t.pr !== x.pr) throw new Error('ticket mixed up');
+        if (o.conflicts?.includes(x.pr)) throw new LandFailure('merge', `merging b${x.pr} failed; conflicts in src/a.ts`);
+        const prs = [...heads.get(prev)!, x.pr];
+        const head = name(prs);
+        heads.set(head, prs);
+        return { head, prev, prs };
+      },
+      verify: (built) => {
+        trace.push(`verify ${built.map((b) => b.position.head).join(' ')}`);
+        built.forEach((b, i) => expect(b.position.prev).toBe(i === 0 ? name(master) : built[i - 1]!.position.head));
+      },
+      prove: (p) => {
+        trace.push(`prove ${p.head}`);
+        const bad = p.prs.filter((n) => o.broken?.includes(n));
+        if (bad.length > 0) throw new LandFailure('test', `pnpm test on ${p.head} failed: 2 files (t${bad.join(',t')}.test.ts)`);
+      },
+      publish: (x, p) => {
+        trace.push(`publish #${x.pr}`);
+        if (o.fatalAt === x.pr) throw new Fatal(`#${x.pr} merged, but master differs`);
+        // The merge gate: master holds exactly the previous position.
+        expect(heads.get(p.prev)).toEqual(master);
+        if (o.publishFail?.includes(x.pr)) throw new LandFailure('ci', `#${x.pr} landing commit CI failed`);
+        master.push(x.pr);
+        return `merged at ${p.head}`;
+      },
+      onFail: (x, f) => failures.push(`#${x.pr} ${f.step}: ${f.message}`),
+      onOutcome: () => {},
+      log: () => {},
+    };
+    return { ops, master, trace, failures };
+  };
+  const results = (r: { outcomes: { entry: Entry; result: string; step?: string }[] }): string[] => r.outcomes.map((x) => `#${x.entry.pr} ${x.result}${x.step ? ` at ${x.step}` : ''}`);
+
+  it('proves a batch once and publishes each PR in order at its own position', () => {
+    const h = harness();
+    const r = runBatches([e(1), e(2), e(3), e(4)], 4, h.ops);
+    expect(results(r)).toEqual(['#1 landed', '#2 landed', '#3 landed', '#4 landed']);
+    expect(h.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+1+2+3+4']);
+    expect(h.trace.filter((t) => t.startsWith('build'))).toEqual(['build #1 at 1 on master', 'build #2 at 2 on m+1', 'build #3 at 3 on m+1+2', 'build #4 at 4 on m+1+2+3']);
+    expect(h.master).toEqual([1, 2, 3, 4]);
+    expect(r).toMatchObject({ fatal: null, exit: 0 });
+  });
+
+  it('splits a long queue into batches of the given size, each built on the master the one before left', () => {
+    const h = harness();
+    const r = runBatches([1, 2, 3, 4, 5].map(e), 2, h.ops);
+    expect(results(r).every((x) => x.endsWith('landed'))).toBe(true);
+    expect(h.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+1+2', 'prove m+1+2+3+4', 'prove m+1+2+3+4+5']);
+    expect(h.trace).toContain('build #3 at 1 on m+1+2');
+  });
+
+  it('bisects a failing batch: finds the culprit in log2(n) more proofs, lands the PRs before it and requeues the rest', () => {
+    const h = harness({ broken: [4] });
+    const r = runBatches([1, 2, 3, 4, 5].map(e), 5, h.ops);
+    // Top (5) fails; then positions 2 and 3 pass and 4 fails: 3 more proofs, ceil(log2 5).
+    expect(h.trace.filter((t) => t.startsWith('prove')).slice(0, 4)).toEqual(['prove m+1+2+3+4+5', 'prove m+1+2', 'prove m+1+2+3', 'prove m+1+2+3+4']);
+    expect(results(r)).toEqual(['#1 landed', '#2 landed', '#3 landed', '#4 failed at test', '#5 landed']);
+    // The culprit gets its own failing run (its position's), not the top's, and the bisect that found it.
+    expect(h.failures).toEqual([expect.stringMatching(/^#4 test: pnpm test on m\+1\+2\+3\+4 failed: 2 files \(t4\.test\.ts\)\n\nFound by bisecting the batch #1 #2 #3 #4 #5 \(4 proofs\): master with #1 #2 #3 passes, adding #4 fails\.$/)]);
+    // #5 is rebuilt on the new master without #4, and proved on its own tree.
+    expect(h.trace.slice(-4)).toEqual(['build #5 at 1 on m+1+2+3', 'verify m+1+2+3+5', 'prove m+1+2+3+5', 'publish #5']);
+    expect(h.master).toEqual([1, 2, 3, 5]);
+    expect(r.exit).toBe(1);
+  });
+
+  it('finds a culprit in the first position, and fails a batch of one with no bisect', () => {
+    const h = harness({ broken: [1] });
+    const r = runBatches([1, 2, 3].map(e), 3, h.ops);
+    expect(results(r)).toEqual(['#1 failed at test', '#2 landed', '#3 landed']);
+    expect(h.failures[0]).toMatch(/master passes, adding #1 fails/);
+    const one = harness({ broken: [7] });
+    expect(results(runBatches([e(7)], 4, one.ops))).toEqual(['#7 failed at test']);
+    expect(one.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+7']);
+    expect(one.failures).toEqual(['#7 test: pnpm test on m+7 failed: 2 files (t7.test.ts)']);
+  });
+
+  it('ejects a PR whose merge conflicts and builds the next one on the position before it', () => {
+    const h = harness({ conflicts: [2] });
+    const r = runBatches([1, 2, 3].map(e), 3, h.ops);
+    expect(results(r)).toEqual(['#2 failed at merge', '#1 landed', '#3 landed']);
+    expect(h.trace).toContain('build #3 at 2 on m+1');
+    expect(h.trace.filter((t) => t.startsWith('prove'))).toEqual(['prove m+1+3']);
+  });
+
+  it('ejects a PR whose review is not clean for its head before any build, and fills the batch from the queue', () => {
+    const h = harness({ reject: [2], merged: [3] });
+    const r = runBatches([1, 2, 3, 4, 5].map(e), 2, h.ops);
+    expect(results(r).slice(0, 2)).toEqual(['#2 failed at claude-review-before', '#3 merged before']);
+    expect(h.trace.some((t) => t.startsWith('build #2'))).toBe(false);
+    expect(h.trace.filter((t) => t.startsWith('verify'))).toEqual(['verify m+1 m+1+4', 'verify m+1+4+5']);
+    // Admission sees the PRs admitted before it in the same batch (a child PR may be based on one of their branches).
+    expect(h.trace.filter((t) => t.startsWith('admit'))).toEqual(['admit #1', 'admit #2 after #1', 'admit #3 after #1', 'admit #4 after #1', 'admit #5']);
+    expect(h.failures).toEqual(['#2 claude-review-before: #2 has a Medium finding at its head']);
+  });
+
+  it('stops a batch at a failed publish and requeues every PR after it, the culprit too (its verdict assumed that prefix)', () => {
+    const h = harness({ publishFail: [2], broken: [4] });
+    const r = runBatches([1, 2, 3, 4].map(e), 4, h.ops);
+    expect(results(r)).toEqual(['#1 landed', '#2 failed at ci', '#3 landed', '#4 failed at test']);
+    // Never published on a master that lacks the previous position (the fake publish checks it), and #3 was rebuilt without #2.
+    expect(h.trace).toContain('build #3 at 1 on m+1');
+    expect(h.master).toEqual([1, 3]);
+  });
+
+  it('stops everything on a fatal error, recording it against the PR being handled', () => {
+    const h = harness({ fatalAt: 2 });
+    const r = runBatches([1, 2, 3].map(e), 3, h.ops);
+    expect(results(r)).toEqual(['#1 landed', '#2 failed at fatal']);
+    expect(r).toMatchObject({ fatal: '#2 merged, but master differs', exit: 1 });
+    expect(h.trace.at(-1)).toBe('publish #2');
+  });
+
+  it('stops on a master it cannot read, rather than building on nothing', () => {
+    const h = harness();
+    const r = runBatches([e(1)], 2, { ...h.ops, base: () => { throw new Error('git fetch: could not resolve host'); } });
+    expect(r.fatal).toMatch(/could not read master: git fetch/);
+  });
+
+  it('treats a chain that is not what it claims as fatal, before any proof', () => {
+    const h = harness();
+    const r = runBatches([1, 2].map(e), 2, { ...h.ops, verify: () => { throw new Error('position 2 is not the merge it was built as'); } });
+    expect(r.fatal).toMatch(/not the chain of positions it claims: position 2/);
+    expect(h.trace.some((t) => t.startsWith('prove') || t.startsWith('publish'))).toBe(false);
+  });
+
+  it('bisects in at most ceil(log2 n) proofs, whatever the culprit', () => {
+    for (let n = 1; n <= 8; n++) {
+      for (let c = 1; c <= n; c++) {
+        const seen: number[] = [];
+        const r = bisectPrefixes(n, new LandFailure('test', 'top'), (k) => {
+          seen.push(k);
+          if (k >= c) throw new LandFailure('test', `at ${k}`);
+        });
+        expect(r.culprit).toBe(c);
+        expect(r.failure.message).toBe(c === n ? 'top' : `at ${c}`);
+        expect(r.proofs).toBe(seen.length);
+        expect(r.proofs).toBeLessThanOrEqual(Math.ceil(Math.log2(n)));
+      }
+    }
+    expect(() => bisectPrefixes(4, new LandFailure('test', 'top'), () => { throw new Fatal('master moved'); })).toThrow(Fatal);
+  });
+
+  it('reads LAND_BATCH strictly', () => {
+    expect(parseBatchSize(undefined)).toBe(4);
+    expect(parseBatchSize('1')).toBe(1);
+    expect(parseBatchSize('8')).toBe(8);
+    for (const bad of ['0', '9', '-1', '2.5', 'four', '']) expect(() => parseBatchSize(bad)).toThrow(/LAND_BATCH/);
+    expect(() => runBatches([e(1)], 0, harness().ops)).toThrow(/batch size/);
+  });
+});
+
+describe('a batch of positions on a scratch repository', () => {
+  const dir = tempDir();
+  const config = ['user.name=t', 'user.email=t@t', 'commit.gpgsign=false', 'core.hooksPath=/dev/null'].flatMap((c) => ['-c', c]);
+  const git: Git = (args, input) => execFileSync('git', [...config, ...args], { cwd: dir, input, stdio: ['pipe', 'pipe', 'pipe'] });
+  const commit = (files: Record<string, string>, m: string): string => {
+    for (const [p, body] of Object.entries(files)) {
+      mkdirSync(dirname(join(dir, p)), { recursive: true });
+      writeFileSync(join(dir, p), body);
+    }
+    git(['add', '-A']);
+    git(['commit', '-q', '--allow-empty', '-m', m]);
+    return git(['rev-parse', 'HEAD']).toString().trim();
+  };
+  const lines = (tag: string): string => Array.from({ length: 12 }, (_, i) => `export const ${tag}${i} = ${i};\n`).join('');
+  git(['init', '-q', '-b', 'master']);
+  const master = commit({ '.macroscope/ignore.md': '---\nignoreTests: false\n---\n**/out/**\ndocs/goals/**\n', 'src/a.ts': lines('a'), 'src/b.ts': lines('b'), 'src/c.ts': lines('c'), 'out/x.json': '0\n' }, 'base');
+  const branch = (name: string, files: Record<string, string>): Member => {
+    git(['checkout', '-q', '-b', name, master]);
+    const clean = commit(files, name);
+    return { branch: name, pr: name.charCodeAt(0), clean };
+  };
+  const a = branch('a', { 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 33') });
+  const b = branch('b', { 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 34') }); // conflicts with a
+  const c = branch('c', { 'src/c.ts': lines('c').replace('c5 = 5', 'c5 = 55') });
+  git(['checkout', '-q', '--detach', master]);
+  // The driver's build loop: each member on the position before it; a conflict ejects the member and the chain stays put.
+  const built: { member: Member; prev: string; merge: string; head: string }[] = [];
+  const ejected: string[] = [];
+  let prev = master;
+  for (const m of [a, b, c]) {
+    try {
+      const merge = mergeMember(git, prev, m, built.length + 1, m.clean, 'Land');
+      writeFileSync(join(dir, 'out/x.json'), `${built.length + 1}\n`);
+      const head = commitRegen(git, built.length + 1, m, ['pnpm regen'], 'Land');
+      built.push({ member: m, prev, merge, head });
+      prev = head;
+    } catch (error) {
+      ejected.push(`${m.branch}: ${(error as Error).message}`);
+    }
+  }
+
+  it('ejects the conflicting member, leaving no merge in progress, and chains the next on the position before it', () => {
+    expect(ejected).toEqual([expect.stringMatching(/^b: .*conflicts in src\/a\.ts/)]);
+    expect(built.map((x) => x.member.branch)).toEqual(['a', 'c']);
+    expect(built[1]!.prev).toBe(built[0]!.head);
+    expect(() => git(['rev-parse', '-q', '--verify', 'MERGE_HEAD'])).toThrow();
+  });
+
+  it('builds positions that are exactly what they claim: the chain checks out, each regen commit is regen-only and vouchable', () => {
+    const plan = planPositions(git, built.map((x) => x.member), built.map((x) => x.head));
+    expect(plan.base).toBe(master);
+    expect(plan.positions.map((p) => [p.prev, p.merge, p.tip])).toEqual(built.map((x) => [x.prev, x.merge, x.member.clean]));
+    for (const x of built) {
+      const ignore = ignoreAt(git, x.head);
+      if ('error' in ignore) throw new Error(ignore.error);
+      expect(regenOnlyProblems(git, x.head, ignore)).toEqual([]);
+      expect(predictPosition(git, x.member, { prev: x.prev, merge: x.merge, head: x.head, tip: x.member.clean }).ok).toBe(true);
+    }
+    // Position 1 holds a and not c: an intermediate master is a's tree only.
+    expect(git(['show', `${built[0]!.head}:src/c.ts`]).toString()).toBe(lines('c'));
+    expect(git(['show', `${built[1]!.head}:src/c.ts`]).toString()).toContain('c5 = 55');
+  });
+
+  it('refuses a chain whose positions are out of order or skip one', () => {
+    expect(() => planPositions(git, [c, a], [built[1]!.head, built[0]!.head])).toThrow();
+    expect(() => planPositions(git, [a, c], [built[0]!.head, built[0]!.head])).toThrow();
   });
 });
 

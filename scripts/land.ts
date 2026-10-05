@@ -1,7 +1,9 @@
-// Continuous landing driver (owner decision 2026-10-03, process review): lands a queue of reviewed PRs one at a time, each on the
-// current origin/master with its own regen, device evidence (the device run is skipped only when the tree's evidence stamp equals
-// master's), typecheck, test, CI, pr:review, a Claude correctness review while Macroscope is at its limit, and a merge pinned
-// with --match-head-commit. A PR that fails a step gets the landing-failed label and a comment, and the queue continues.
+// Continuous landing driver (owner decision 2026-10-03, process review): lands a queue of reviewed PRs in batches (runBatches in
+// land-lib.ts). Each PR gets a position on the one before it, with its own regen and device evidence (the device run is skipped
+// only when the position's evidence stamp equals the previous position's), typecheck, regen-only and floors checks; the batch's
+// top position is proved once by the full test, and its prefixes are bisected when that fails. Then each PR in order is pushed,
+// passes CI, pr:review and a Claude correctness review while Macroscope is at its limit, and merges pinned with
+// --match-head-commit. A PR that fails a step gets the landing-failed label and a comment, and the queue continues.
 // Run with: pnpm land <queue-file> [--dry-run]   (queue: one <branch>:<pr>:<clean-head> per line)
 import { execFileSync, spawnSync } from 'node:child_process';
 import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -33,7 +35,8 @@ import {
   RETRIES,
   backoffMs,
   type ReviewRecord,
-  runQueue,
+  parseBatchSize,
+  runBatches,
   retargetChildrenThenDelete,
   reviewerEnv,
   runReviewer,
@@ -54,6 +57,7 @@ import {
   memberTip,
   parseDeviceEvidence,
   parsePrState,
+  planPositions,
   type PrState,
   predictPosition,
   staleLines,
@@ -82,6 +86,7 @@ const seconds = (name: string, fallback: number): number => {
 let CI_WAIT_S = 0;
 let CI_APPEAR_S = 0;
 let QUIET_MAX_S = 0;
+let BATCH = 1;
 const REGEN = ['pnpm', 'regen'];
 const DEVICES = ['pnpm', 'run', 'parity:devices'];
 
@@ -170,13 +175,13 @@ const releasePriority = (): void => {
 };
 
 // `conflicting` (only before the build) re-reads whether the PR conflicts with master on every poll.
-const waitCi = (step: string, sha: string, what: string, conflicting?: () => boolean): void => {
+const waitCi = (step: string, sha: string, what: string, conflicting?: () => boolean): 'success' | 'skip' => {
   const t0 = Date.now();
   for (;;) {
     const s = ciState(checkRuns(sha));
     const next = ciStep(s, (Date.now() - t0) / 1000, { appearS: CI_APPEAR_S, waitS: CI_WAIT_S }, s.state === 'none' && conflicting !== undefined && conflicting());
-    if (next === 'success') return log(`  CI checks success on ${what} ${sha}`);
-    if (next === 'skip') return log(`  ${what} ${sha} is CONFLICTING with master and has no CI run (GitHub runs none on a conflicting PR); building anyway, CI on the landing commit is still required`);
+    if (next === 'success') return log(`  CI checks success on ${what} ${sha}`), 'success';
+    if (next === 'skip') return log(`  ${what} ${sha} is CONFLICTING with master and has no CI run (GitHub runs none on a conflicting PR); building anyway, CI on the landing commit is still required`), 'skip';
     if (typeof next === 'object') throw new LandFailure(step, `${what} ${sha} ${next.fail}`);
     sleep(30_000);
   }
@@ -289,13 +294,19 @@ const ghMerge = (pr: number, head: string): void => {
   }
 };
 
-// ---- one PR ----------------------------------------------------------------------------------------------------------
-const landOne = (e: Entry): { result: 'landed' | 'merged before'; detail: string } => {
+// ---- one batch -------------------------------------------------------------------------------------------------------
+// What admission found for a PR, used by its build and its publish.
+type Ticket = { member: Member; tip: string; clean: string; prHead: string; t0: number };
+// One position of the batch's chain: merge of [prev, tip], then one regen commit (head).
+type Built = { prev: string; merge: string; head: string; tip: string; device: string };
+
+// Everything checked before a build is spent on the PR: the PR itself, its base, its own CI and its review at the current head.
+const admit = (e: Entry, earlier: readonly Entry[]): { merged: string } | { ticket: Ticket } => {
   current = e;
   const t0 = Date.now();
-  log(`=== #${e.pr} ${e.branch} (clean head ${e.clean})`);
+  log(`=== #${e.pr} ${e.branch} (clean head ${e.clean}): admission`);
   let pr = prView(e.pr);
-  if (pr.state === 'MERGED') return { result: 'merged before', detail: `merged as ${pr.mergeCommit ?? '?'}` };
+  if (pr.state === 'MERGED') return { merged: `merged as ${pr.mergeCommit ?? '?'}` };
   if (pr.state !== 'OPEN') throw new LandFailure('check', `PR #${e.pr} is ${pr.state}`);
   if (pr.head !== e.branch) throw new LandFailure('check', `PR #${e.pr} is from ${pr.head}, not ${e.branch}`);
   if (pr.cross) throw new LandFailure('check', `PR #${e.pr} comes from a fork`);
@@ -314,8 +325,11 @@ const landOne = (e: Entry): { result: 'landed' | 'merged before'; detail: string
     throw new LandFailure('check', msg(error));
   }
 
-  // The base: retarget a review/* copy or a landed parent to master.
-  if (pr.base !== 'master') {
+  // The base: retarget a review/* copy or a landed parent to master. A parent earlier in this batch lands first, and its publish
+  // moves this PR to master (retargetChildrenThenDelete); the merge gate refuses this PR if that did not happen.
+  const parent = earlier.find((x) => x.branch === pr.base);
+  if (parent !== undefined) log(`  #${e.pr} is based on ${pr.base} (#${parent.pr}), which lands before it in this batch`);
+  else if (pr.base !== 'master') {
     const baseHead = remoteHead(pr.base);
     let inMaster: boolean | null = null;
     if (baseHead !== null) {
@@ -331,86 +345,132 @@ const landOne = (e: Entry): { result: 'landed' | 'merged before'; detail: string
   }
 
   // The PR head's own CI must pass before a build is spent on it.
-  waitCi('ci-before', pr.headOid, `#${e.pr} head`, () => parsePrHead(JSON.parse(gh(['pr', 'view', String(e.pr), '--repo', REPO, '--json', 'headRefOid,mergeable']))).mergeable === 'CONFLICTING');
+  const ci = waitCi('ci-before', pr.headOid, `#${e.pr} head`, () => parsePrHead(JSON.parse(gh(['pr', 'view', String(e.pr), '--repo', REPO, '--json', 'headRefOid,mergeable']))).mergeable === 'CONFLICTING');
+  // Its review must be clean at the current head (GitHub runs no review of a conflicting head, so that waits for the landing commit).
+  if (ci === 'success') {
+    const review = run('review-before', ['pnpm', '-s', 'pr:review', String(e.pr), '--wait'], MAIN);
+    if (review.error !== undefined || review.status !== 0) failed('review-before', review, `pnpm -s pr:review ${e.pr} (before the build)`);
+    const out = readFileSync(review.log, 'utf8');
+    if (!out.includes(`PR #${e.pr} at ${pr.headOid}`)) throw new LandFailure('review-before', `pr:review judged another head than ${pr.headOid} (log ${review.log})`);
+    if (isUnreviewed(out)) claudeReview(e, clean, pr.headOid, fetchMaster(), 'claude-review-before');
+  }
+  return { ticket: { member, tip, clean, prHead: pr.headOid, t0 } };
+};
 
-  // Build: merge into master, regen, device evidence, regen, commit, test.
-  const master = fetchMaster();
-  resetWorktree(master);
+// While Macroscope is at its limit: the Claude correctness review of the PR's diff at `head`, keyed to the clean head.
+const claudeReview = (e: Entry, clean: string, head: string, master: string, step: string): string => {
+  log(`  Macroscope is at its spending limit; Claude correctness review of clean head ${clean} (${REVIEW_CMD})`);
+  const ignore = ignoreAt(git, head);
+  if ('error' in ignore) throw new LandFailure(step, ignore.error);
+  mkdirSync(REVIEW_DIR, { recursive: true });
+  const saved = join(REVIEW_DIR, `${e.pr}.json`);
+  const verdict = claudeReviewGate({
+    pr: e.pr,
+    head,
+    patch: prDiff(e.pr, master, head),
+    ignored: (path) => ignore.file.matches(path),
+    command: REVIEW_CMD,
+    review: (input) => runReviewer(REVIEW_CMD, input, WT, REVIEW_TIMEOUT_MS, reviewerEnv(e.pr, clean)),
+    save: (r: ReviewRecord) => writeFileSync(saved, `${JSON.stringify(r, null, 2)}\n`),
+  });
+  if (!verdict.pass) throw new LandFailure(step, `${verdict.reason} (review ${saved})`, verdict.findings.length > 0 ? findingsComment(e.pr, head, verdict.findings) : undefined);
+  log(`  Claude review passed: ${verdict.note} (review ${saved})`);
+  return `${verdict.note} (review ${saved})`;
+};
+
+// Builds position k on `prev`: merge, regen, typecheck, device evidence against `prev`, regen, commit, regen-only and floors.
+const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => {
+  current = e;
+  holdPriority();
+  log(`=== #${e.pr} ${e.branch}: position ${k} on ${prev}`);
+  resetWorktree(prev);
+  let merge: string;
   try {
-    mergeMember(wtGit, master, member, 1, tip, 'Land');
+    merge = mergeMember(wtGit, prev, t.member, k, t.tip, 'Land');
   } catch (error) {
     throw new LandFailure('merge', msg(error));
   }
-  const merge = text(wtGit, ['rev-parse', 'HEAD']);
   must('install', ['pnpm', 'install', '--frozen-lockfile'], WT);
-  seedRegenCache(e, [clean, pr.headOid]);
-  holdPriority();
-  let device = 'skipped: the evidence stamp equals master\'s';
+  // Later positions keep the regen cache of the position below them, which is closer than any lane's.
+  if (k === 1) seedRegenCache(e, [t.clean, t.prHead]);
+  let device = 'skipped: the evidence stamp equals the previous position\'s';
   const commands = [REGEN.join(' ')];
-  try {
-    let r = heavy('regen', REGEN);
-    if (r.error !== undefined || r.status !== 0) failed('regen', r, 'pnpm regen');
-    must('typecheck', ['pnpm', 'typecheck'], WT);
-    r = run('stamp', ['pnpm', '-s', 'evidence:stamp', '--compare', master], WT);
-    if (r.error !== undefined || (r.status !== 0 && r.status !== 1)) failed('stamp', r, 'pnpm evidence:stamp');
-    let runDevices = r.status === 1;
-    if (!runDevices) {
-      // Equal stamps: the regen carried master's device records; they must judge exactly as master's.
-      const problems = judgeDevices(master, null);
-      if (problems.length > 0) {
-        log(`  the stamp equals master's, but the carried device records differ; running the device lanes:\n    ${problems.join('\n    ')}`);
-        runDevices = true;
-      }
+  let r = heavy('regen', REGEN);
+  if (r.error !== undefined || r.status !== 0) failed('regen', r, 'pnpm regen');
+  must('typecheck', ['pnpm', 'typecheck'], WT);
+  r = run('stamp', ['pnpm', '-s', 'evidence:stamp', '--compare', prev], WT);
+  if (r.error !== undefined || (r.status !== 0 && r.status !== 1)) failed('stamp', r, 'pnpm evidence:stamp');
+  let runDevices = r.status === 1;
+  if (!runDevices) {
+    // Equal stamps: the regen carried the previous position's device records; they must judge exactly as its.
+    const problems = judgeDevices(prev, null);
+    if (problems.length > 0) {
+      log(`  the stamp equals the previous position's, but the carried device records differ; running the device lanes:\n    ${problems.join('\n    ')}`);
+      runDevices = true;
     }
-    if (runDevices) {
-      const started = Date.now();
-      const d = run('devices', [DEVICE, ...DEVICES], WT);
-      // master's device-pixels lane fails on purpose, so the exit code says nothing; the judgement against master decides.
-      if (d.error !== undefined || d.signal !== null || (d.status !== 0 && d.status !== 1)) failed('devices', d, DEVICES.join(' '));
-      const problems = judgeDevices(master, started);
-      if (problems.length > 0) throw new LandFailure('judge-devices', `the device run differs from master's device evidence:\n  ${problems.join('\n  ')}`);
-      r = heavy('regen-after-devices', REGEN);
-      if (r.error !== undefined || r.status !== 0) failed('regen-after-devices', r, 'pnpm regen');
-      commands.push(DEVICES.join(' '), REGEN.join(' '));
-      device = 'ran; every lane passes or fails as on master';
-    }
-    log(`  device lanes: ${device}`);
-    const head = commitRegen(wtGit, 1, member, commands, 'Land');
-    const ignore = ignoreAt(wtGit, head);
-    if ('error' in ignore) throw new LandFailure('regen-only', ignore.error);
-    const regenProblems = regenOnlyProblems(wtGit, head, ignore);
-    if (regenProblems.length > 0) throw new LandFailure('regen-only', `the regen commit ${head} is not regen-only:\n  ${regenProblems.join('\n  ')}`);
-    const floors = floorFileProblems(master, head);
-    if (floors.length > 0) throw new LandFailure('floors', `the landing commit lowers a floor below master's:\n  ${floors.join('\n  ')}`);
-    log('  floors: none below master');
-    const prediction = predictPosition(wtGit, member, { prev: master, merge, head, tip });
-    log(`  Macroscope vouch prediction: ${prediction.vouch.ok ? 'an "already reviewed" skip will be vouched for' : `not vouchable (${prediction.vouch.reason}); a full review will run unless at the limit`}`);
-
-    let t = heavy('test', ['pnpm', 'test']);
-    if (t.error !== undefined || t.status !== 0) {
-      log('  pnpm test failed; waiting for a quiet machine to run it once more');
-      if (!waitQuiet()) throw new LandFailure('test', `pnpm test failed (log ${t.log}), and no quiet machine came within ${QUIET_MAX_S}s to run it once more\n${tail(t.log, 15)}`);
-      try {
-        t = heavy('test-quiet', ['pnpm', 'test']);
-      } finally {
-        releaseQuiet(QUIET_FILE, process.pid);
-      }
-      if (t.error !== undefined || t.status !== 0) failed('test', t, 'pnpm test on a quiet machine');
-      log('  pnpm test passed on a quiet machine');
-    }
-    requireTracked('test', 'pnpm test');
-    releasePriority(); // publish waits on CI and review, so other lanes get the machine back
-    return publish(e, member, { master, merge, head, tip, clean, prHead: pr.headOid, device, t0 });
-  } finally {
-    releasePriority();
   }
+  if (runDevices) {
+    const started = Date.now();
+    const d = run('devices', [DEVICE, ...DEVICES], WT);
+    // master's device-pixels lane fails on purpose, so the exit code says nothing; the judgement against the previous position decides.
+    if (d.error !== undefined || d.signal !== null || (d.status !== 0 && d.status !== 1)) failed('devices', d, DEVICES.join(' '));
+    const problems = judgeDevices(prev, started);
+    if (problems.length > 0) throw new LandFailure('judge-devices', `the device run differs from the previous position's device evidence:\n  ${problems.join('\n  ')}`);
+    r = heavy('regen-after-devices', REGEN);
+    if (r.error !== undefined || r.status !== 0) failed('regen-after-devices', r, 'pnpm regen');
+    commands.push(DEVICES.join(' '), REGEN.join(' '));
+    device = 'ran; every lane passes or fails as on the previous position';
+  }
+  log(`  device lanes: ${device}`);
+  const head = commitRegen(wtGit, k, t.member, commands, 'Land');
+  const ignore = ignoreAt(wtGit, head);
+  if ('error' in ignore) throw new LandFailure('regen-only', ignore.error);
+  const regenProblems = regenOnlyProblems(wtGit, head, ignore);
+  if (regenProblems.length > 0) throw new LandFailure('regen-only', `the regen commit ${head} is not regen-only:\n  ${regenProblems.join('\n  ')}`);
+  const floors = floorFileProblems(prev, head);
+  if (floors.length > 0) throw new LandFailure('floors', `the landing commit lowers a floor below the previous position's:\n  ${floors.join('\n  ')}`);
+  log('  floors: none below the previous position');
+  const prediction = predictPosition(wtGit, t.member, { prev, merge, head, tip: t.tip });
+  log(`  Macroscope vouch prediction: ${prediction.vouch.ok ? 'an "already reviewed" skip will be vouched for' : `not vouchable (${prediction.vouch.reason}); a full review will run unless at the limit`}`);
+  return { prev, merge, head, tip: t.tip, device };
 };
 
-const publish = (
-  e: Entry,
-  member: Member,
-  p: { master: string; merge: string; head: string; tip: string; clean: string; prHead: string; device: string; t0: number },
-): { result: 'landed'; detail: string } => {
+// The full test of one position's tree, rerun once on a quiet machine when it fails.
+const proveTree = (p: Built, e: Entry): void => {
+  current = e;
+  holdPriority();
+  log(`  proving ${p.head} (#${e.pr}'s position): pnpm test`);
+  if (text(wtGit, ['rev-parse', 'HEAD']) !== p.head) {
+    resetWorktree(p.head);
+    must('install', ['pnpm', 'install', '--frozen-lockfile'], WT);
+  }
+  let t = heavy('test', ['pnpm', 'test']);
+  if (t.error !== undefined || t.status !== 0) {
+    log('  pnpm test failed; waiting for a quiet machine to run it once more');
+    if (!waitQuiet()) throw new LandFailure('test', `pnpm test failed (log ${t.log}), and no quiet machine came within ${QUIET_MAX_S}s to run it once more\n${tail(t.log, 15)}`);
+    try {
+      t = heavy('test-quiet', ['pnpm', 'test']);
+    } finally {
+      releaseQuiet(QUIET_FILE, process.pid);
+    }
+    if (t.error !== undefined || t.status !== 0) failed('test', t, 'pnpm test on a quiet machine');
+    log('  pnpm test passed on a quiet machine');
+  }
+  requireTracked('test', 'pnpm test');
+};
+
+// Publishes one PR at its position, once the PR before it has merged: push, CI, pr:review, Claude review, merge, tree check.
+const publish = (e: Entry, b: Built, t: Ticket): string => {
+  current = e;
+  log(`=== #${e.pr} ${e.branch}: publishing position ${b.head}`);
+  const member = t.member;
+  const p = { master: b.prev, merge: b.merge, head: b.head, tip: b.tip, clean: t.clean, prHead: t.prHead, device: b.device, t0: t.t0 };
+  releasePriority(); // publish waits on CI and review, so other lanes get the machine back
+  // The reviewer reads the repository at the PR's own position, not at a later one of the batch.
+  resetWorktree(p.head);
+  // Never push a position whose previous position is not in master: the branch would carry another PR's unlanded commits.
+  const masterNow = fetchMaster();
+  if (!isAncestor(git, p.master, masterNow)) throw new LandFailure('push', `the previous position ${p.master} is not in master ${masterNow}; not pushing ${p.head}`);
   // Push (a plain push: git refuses anything but a fast-forward of the PR head), then CI and pr:review on it.
   const before = prView(e.pr);
   if (before.headOid !== p.prHead) throw new LandFailure('push', `PR #${e.pr} moved from ${p.prHead} to ${before.headOid} during the build`);
@@ -428,26 +488,7 @@ const publish = (
   const reviewOut = readFileSync(review.log, 'utf8');
   if (!reviewOut.includes(`PR #${e.pr} at ${p.head}`)) throw new LandFailure('pr-review', `pr:review judged another head than ${p.head} (log ${review.log})`);
 
-  let claude = 'not needed (Macroscope reviewed)';
-  if (isUnreviewed(reviewOut)) {
-    log(`  Macroscope is at its spending limit; Claude correctness review of clean head ${p.clean} (${REVIEW_CMD})`);
-    const ignore = ignoreAt(git, p.head);
-    if ('error' in ignore) throw new LandFailure('claude-review', ignore.error);
-    mkdirSync(REVIEW_DIR, { recursive: true });
-    const verdict = claudeReviewGate({
-      pr: e.pr,
-      head: p.head,
-      patch: prDiff(e.pr, p.master, p.head),
-      ignored: (path) => ignore.file.matches(path),
-      command: REVIEW_CMD,
-      review: (input) => runReviewer(REVIEW_CMD, input, WT, REVIEW_TIMEOUT_MS, reviewerEnv(e.pr, p.clean)),
-      save: (r: ReviewRecord) => writeFileSync(join(REVIEW_DIR, `${e.pr}.json`), `${JSON.stringify(r, null, 2)}\n`),
-    });
-    const saved = join(REVIEW_DIR, `${e.pr}.json`);
-    if (!verdict.pass) throw new LandFailure('claude-review', `${verdict.reason} (review ${saved})`, verdict.findings.length > 0 ? findingsComment(e.pr, p.head, verdict.findings) : undefined);
-    claude = `${verdict.note} (review ${saved})`;
-    log(`  Claude review passed: ${claude}`);
-  }
+  const claude = isUnreviewed(reviewOut) ? claudeReview(e, p.clean, p.head, p.master, 'claude-review') : 'not needed (Macroscope reviewed)';
 
   // Merge, pinned to the reviewed head, after re-reading the PR and master.
   const gate = mergeGate(git, prView(e.pr), member, { prev: p.master, merge: p.merge, head: p.head, tip: p.tip }, fetchMaster());
@@ -498,10 +539,7 @@ const publish = (
     gh(['pr', 'edit', String(e.pr), '--repo', REPO, '--remove-label', LABEL]);
   } catch {}
   const merged = prView(e.pr).mergeCommit ?? '?';
-  return {
-    result: 'landed',
-    detail: `merged as ${merged} (landing commit ${p.head}); device lanes ${p.device}; device-pixels ${devicePixels(p.head)}; Claude review ${claude}; in ${Math.round((Date.now() - p.t0) / 1000)}s${notes.length ? `; ${notes.join('; ')}` : ''}`,
-  };
+  return `merged as ${merged} (landing commit ${p.head}); device lanes ${p.device}; device-pixels ${devicePixels(p.head)}; Claude review ${claude}; in ${Math.round((Date.now() - p.t0) / 1000)}s${notes.length ? `; ${notes.join('; ')}` : ''}`;
 };
 
 // ---- failure report --------------------------------------------------------------------------------------------------
@@ -531,8 +569,8 @@ const dryRun = (entries: Entry[]): void => {
     }
     const ci = ciState(checkRuns(pr.headOid));
     log(`[dry-run] #${e.pr} ${e.branch}: ${pr.state}, base ${pr.base}, head ${pr.headOid}${pr.headOid.startsWith(e.clean) ? ' (the clean head)' : ` (clean head ${e.clean})`}, CI ${ci.state}`);
-    log(`[dry-run]   merge into origin/master, pnpm regen, typecheck, evidence:stamp --compare (device lanes if it differs), test; push; CI; pr:review; Claude review if UNREVIEWED; merge --match-head-commit`);
   }
+  log(`[dry-run] in batches of up to ${BATCH}: admit each PR (CI, pr:review, Claude review if UNREVIEWED); build a position per PR on the one before (merge, pnpm regen, typecheck, evidence:stamp --compare, device lanes if it differs, regen-only, floors); pnpm test on the top position, bisecting the prefixes when it fails; then per PR in order: push, CI, pr:review, Claude review if UNREVIEWED, merge --match-head-commit, tree check`);
 };
 
 // ---- main ------------------------------------------------------------------------------------------------------------
@@ -574,6 +612,7 @@ const main = (): number => {
   CI_WAIT_S = seconds('LAND_CI_WAIT', 5400);
   CI_APPEAR_S = seconds('LAND_CI_APPEAR', 900);
   QUIET_MAX_S = seconds('LAND_QUIET_MAX', 5400);
+  BATCH = parseBatchSize(env['LAND_BATCH']);
   MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
   // The default reviewer is the main checkout's lookup script, never the PR's own copy in the driver worktree.
   REVIEW_CMD = env['LAND_REVIEW_CMD'] ?? `node --conditions=dragon-internal '${join(MAIN, 'scripts/land-review-lookup.ts')}'`;
@@ -608,23 +647,33 @@ const main = (): number => {
   }
   prepareWorktree();
   const startedAt = stamp();
-  log(`=== pnpm land ${args.queue}: ${entries.map((e) => `#${e.pr}`).join(' ')} (pid ${process.pid}, worktree ${WT})`);
+  log(`=== pnpm land ${args.queue}: ${entries.map((e) => `#${e.pr}`).join(' ')} in batches of up to ${BATCH} (pid ${process.pid}, worktree ${WT})`);
   let latest: readonly Outcome[] = [];
-  const write = (done: boolean, fatal: string | null): void =>
-    writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: done ? null : current, outcomes: latest, fatal, total: entries.length, done }));
-  const result = runQueue(
-    entries,
-    (e) => {
-      current = e;
-      write(false, null);
-      return landOne(e);
+  const write = (done: boolean, fatal: string | null, running: Entry | null = current): void =>
+    writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: done ? null : running, outcomes: latest, fatal, total: entries.length, done }));
+  const result = runBatches<Ticket, Built>(entries, BATCH, {
+    admit: (e, earlier) => (write(false, null, e), admit(e, earlier)),
+    base: fetchMaster,
+    build: (prev, e, t, k) => (write(false, null, e), buildPosition(prev, e, t, k)),
+    // Each position is exactly a merge of [previous position, the PR's tip] plus one regen commit, chained on master.
+    verify: (built) => {
+      const plan = planPositions(git, built.map((b) => b.ticket.member), built.map((b) => b.position.head));
+      const base = built[0]!.position.prev;
+      if (plan.base !== base) throw new Error(`the chain starts on ${plan.base}, not ${base}`);
+      plan.positions.forEach((q, i) => {
+        const b = built[i]!.position;
+        if (q.prev !== b.prev || q.merge !== b.merge || q.tip !== b.tip) throw new Error(`position ${i + 1} (#${built[i]!.entry.pr}) is not the merge it was built as`);
+      });
     },
-    reportFailure,
-    (o) => {
+    prove: (p, e) => (write(false, null, e), proveTree(p, e)),
+    publish: (e, p, t) => (write(false, null, e), publish(e, p, t)),
+    onFail: reportFailure,
+    onOutcome: (o) => {
       latest = o;
       write(false, null);
     },
-  );
+    log,
+  });
   current = null;
   write(true, result.fatal);
   try {
