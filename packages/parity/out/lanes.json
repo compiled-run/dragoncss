@@ -107,6 +107,11 @@
               "cases": 2060
             },
             {
+              "corpus": "p1",
+              "suite": "animator",
+              "cases": 18
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 1545
@@ -142,8 +147,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "372cdb4f74ca1afee2fd81d9d260ea93e8e9ca2c56dcefa3a233b7749186487a",
-          "totalCases": 618847,
+          "caseListSha256": "70fdd52e9267157446a0da8bbc9323b6d3eae405e448370b4c1ea70bc2d29054",
+          "totalCases": 618865,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
             "suites": [
@@ -188,6 +193,13 @@
                 "declared": 2060,
                 "total": 2060,
                 "pass": 2060
+              },
+              {
+                "corpus": "p1",
+                "suite": "animator",
+                "declared": 18,
+                "total": 18,
+                "pass": 18
               },
               {
                 "corpus": "extended",
@@ -254,7 +266,7 @@
               }
             ],
             "digests": {
-              "p1": "c6a4ff32a2e021538f256c45081054bd7b1a8d2fd41a09e5f3980309b98bec61",
+              "p1": "b578649fc8a68ee654f4d178990d4d0d1c36447f4430d248c833c22ef5208de3",
               "extended": "681b1c33bc0e2dbd11be9f5baa54679832553d8a990775389918d35ce1ca9c50"
             }
           },
@@ -319,6 +331,11 @@
               "cases": 2060
             },
             {
+              "corpus": "p1",
+              "suite": "animator",
+              "cases": 18
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 1545
@@ -354,8 +371,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "372cdb4f74ca1afee2fd81d9d260ea93e8e9ca2c56dcefa3a233b7749186487a",
-          "totalCases": 618847,
+          "caseListSha256": "70fdd52e9267157446a0da8bbc9323b6d3eae405e448370b4c1ea70bc2d29054",
+          "totalCases": 618865,
           "run": null,
           "device": null,
           "evidence": null
@@ -731,6 +748,11 @@
               "cases": 2060
             },
             {
+              "corpus": "p1",
+              "suite": "animator",
+              "cases": 18
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 1545
@@ -766,8 +788,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "372cdb4f74ca1afee2fd81d9d260ea93e8e9ca2c56dcefa3a233b7749186487a",
-          "totalCases": 618847,
+          "caseListSha256": "70fdd52e9267157446a0da8bbc9323b6d3eae405e448370b4c1ea70bc2d29054",
+          "totalCases": 618865,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
             "suites": [
@@ -812,6 +834,13 @@
                 "declared": 2060,
                 "total": 2060,
                 "pass": 2060
+              },
+              {
+                "corpus": "p1",
+                "suite": "animator",
+                "declared": 18,
+                "total": 18,
+                "pass": 18
               },
               {
                 "corpus": "extended",
@@ -878,7 +907,7 @@
               }
             ],
             "digests": {
-              "p1": "c6a4ff32a2e021538f256c45081054bd7b1a8d2fd41a09e5f3980309b98bec61",
+              "p1": "b578649fc8a68ee654f4d178990d4d0d1c36447f4430d248c833c22ef5208de3",
               "extended": "681b1c33bc0e2dbd11be9f5baa54679832553d8a990775389918d35ce1ca9c50"
             }
           },
@@ -943,6 +972,11 @@
               "cases": 2060
             },
             {
+              "corpus": "p1",
+              "suite": "animator",
+              "cases": 18
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 1545
@@ -978,8 +1012,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "372cdb4f74ca1afee2fd81d9d260ea93e8e9ca2c56dcefa3a233b7749186487a",
-          "totalCases": 618847,
+          "caseListSha256": "70fdd52e9267157446a0da8bbc9323b6d3eae405e448370b4c1ea70bc2d29054",
+          "totalCases": 618865,
           "run": null,
           "device": null,
           "evidence": null
