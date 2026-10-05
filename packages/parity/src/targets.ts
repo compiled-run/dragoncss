@@ -77,6 +77,7 @@ export function deviceDprs(target: NativeTarget): readonly number[] {
 export function corpusSuites(): readonly CorpusSuite[] {
   const p1 = p1Manifest();
   const x = extendedManifest();
+  const hitRefused = readJson<{ readonly refused?: Readonly<Record<string, string>> }>('packages/layout/rt-vectors/hit/facts.json').refused ?? {};
   return [
     { corpus: 'p1', suite: 'units', cases: p1.unitsPerFunction * p1.unitsFunctions.length },
     { corpus: 'p1', suite: 'engine', cases: p1.mutatedVectors + p1.generatedTrees },
@@ -84,8 +85,9 @@ export function corpusSuites(): readonly CorpusSuite[] {
     // ANIM-a2 (notes/T047 section 3.2): one rt case per rt vector record (timing, easing, hold and interpolation); ANIM-b1 (T065)
     // adds the advance, keyframe, transition and animation records.
     { corpus: 'p1', suite: 'rt', cases: ['timing', 'easing', 'hold', 'interp', 'advance', 'keyframes', 'transitions', 'animations'].reduce((n, f) => n + readJson<{ readonly records: readonly unknown[] }>(`packages/layout/rt-vectors/${f}.json`).records.length, 0) },
-    // SELD-R1b (notes/T047 RT-9): one hit case per layout vector, top-level and at every DPR.
-    { corpus: 'p1', suite: 'hit', cases: ['', ...DPRS.map((d) => `/dpr-${d}`)].reduce((n, d) => n + readdirSync(repoPath(`packages/layout/vectors${d}`)).filter((f) => f.endsWith('.json')).length, 0) },
+    // SELD-R1b (notes/T047 RT-9): one hit case per layout vector, top-level and at every DPR, but for the cases the hit lane refuses
+    // by name (rt-vectors/hit/facts.json refused; PNT2 transforms until SELD-R2b T146).
+    { corpus: 'p1', suite: 'hit', cases: ['', ...DPRS.map((d) => `/dpr-${d}`)].reduce((n, d) => n + readdirSync(repoPath(`packages/layout/vectors${d}`)).filter((f) => f.endsWith('.json') && hitRefused[f.slice(0, -'.json'.length)] === undefined).length, 0) },
     // ANIM-b1 3b (T065 R16): one animator case per frame case (packages/layout/rt-vectors/animator/cases.json).
     { corpus: 'p1', suite: 'animator', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/animator/cases.json').cases.length },
     { corpus: 'extended', suite: 'engine-dpr', cases: layoutCaseIds().length * x.dprSets.length },
@@ -109,6 +111,15 @@ export function stateScriptIds(): readonly string[] {
   return scripts;
 }
 
+/**
+ * The case ids device-hit runs, in layout order: every layout case but those the hit lane refuses by name (hit-capture.ts hitCases;
+ * the committed rt-vectors/hit/facts.json lists the refused ones, which hit-report.test checks against hitRefusedCases).
+ */
+export function hitCaseIds(): readonly string[] {
+  const refused = readJson<{ readonly refused?: Readonly<Record<string, string>> }>('packages/layout/rt-vectors/hit/facts.json').refused ?? {};
+  return layoutCaseIds().filter((id) => refused[id] === undefined);
+}
+
 /** The declared lane: vectors lanes hold every top-level and DPR vector plus the corpora; device lanes the cases at the device DPRs. */
 export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
   const ids = layoutCaseIds();
@@ -117,6 +128,7 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
     return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids }, ...DPRS.map((d) => dprSet(d, ids))], corpora: corpusSuites() };
   }
   if (lane === 'device-states') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, stateScriptIds())), corpora: [] };
+  if (lane === 'device-hit') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, hitCaseIds())), corpora: [] };
   return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, ids)), corpora: [] };
 }
 
