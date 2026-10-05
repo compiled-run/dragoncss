@@ -3,6 +3,7 @@
 import { execFileSync } from 'node:child_process';
 import {
   CORRECTNESS,
+  CORRECTNESS_GRACE_MS,
   type CheckRun,
   correctnessSucceeded,
   type Earlier,
@@ -25,6 +26,7 @@ import {
   SPENDING_LIMIT,
   type Vouch,
   vouchForSkip,
+  waivedWithoutCorrectness,
 } from './pr-review-vouch.ts';
 
 // GitHub's API times out now and then; a transient failure must not end a --wait.
@@ -146,11 +148,13 @@ const open = comments.filter((c) => c.in_reply_to_id === undefined && isMacrosco
 console.log(`\nUnanswered Macroscope findings: ${open.length}`);
 for (const c of open) console.log(`\n--- ${c.path}:${c.line ?? '?'} (comment ${c.id})\n${c.html_url}\n${c.body.trim()}`);
 
-const result = outcome(runs, vouches, head);
+const now = Date.now();
+const result = outcome(runs, vouches, head, now);
 const { pending, failed } = result;
 if (result.unreviewed) {
   console.log(`\n!!! UNREVIEWED: Macroscope spending limit. Every Macroscope check of ${sha} was skipped with "${SPENDING_LIMIT}"; the owner's`);
   console.log('!!! standing directive (2026-10-02) lets this commit land without a Macroscope review once CI passes and every finding is answered.');
+  if (waivedWithoutCorrectness(runs, now)) console.log(`!!! Macroscope created no "${CORRECTNESS}" check within ${CORRECTNESS_GRACE_MS / 60_000} minutes of CI passing; treated as the same limit.`);
 }
 if (pending.length > 0) console.log(`\nStill running: ${pending.join(', ')}`);
 if (failed.length > 0) console.log(`\nFailed: ${failed.join(', ')}`);
