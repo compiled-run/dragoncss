@@ -531,6 +531,18 @@
     "replaced-fit-rtl": [["body","auto",true,false],["grid","auto",true,false],["html","auto",false,false],["i0","auto",true,false],["i1","auto",true,false],["i10","auto",true,false],["i11","auto",true,false],["i12","auto",true,false],["i13","auto",true,false],["i14","auto",true,false],["i15","auto",true,false],["i16","auto",true,false],["i17","auto",true,false],["i18","auto",true,false],["i19","auto",true,false],["i2","auto",true,false],["i20","auto",true,false],["i21","auto",true,false],["i22","auto",true,false],["i23","auto",true,false],["i3","auto",true,false],["i4","auto",true,false],["i5","auto",true,false],["i6","auto",true,false],["i7","auto",true,false],["i8","auto",true,false],["i9","auto",true,false]]
   },
   "refused": {
+    "opacity-basic": "stacking context on op-fold, op-pct, op-zero, op-group, op-text, op-border, op-nest, op-nest-kid, op-textonly: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "opacity-basic-rtl": "stacking context on op-fold, op-pct, op-zero, op-group, op-text, op-border, op-nest, op-nest-kid, op-textonly: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "opacity-cascade": "stacking context on op-parent, op-inherit, op-var, op-calc, op-neg: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "opacity-cascade-rtl": "stacking context on op-parent, op-inherit, op-var, op-calc, op-neg: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "stacking-basic": "stacking context on s-i1, s-a, s-b, s-n, s-n2: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "stacking-basic-rtl": "stacking context on s-i1, s-a, s-b, s-n, s-n2: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "stacking-context": "stacking context on x-g, x-z, x-w, x-p0, x-neg: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "stacking-context-rtl": "stacking context on x-g, x-z, x-w, x-p0, x-neg: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "stacking-escape": "stacking context on e-d, e-lb, e-ov1, e-ov2: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "stacking-escape-rtl": "stacking context on e-d, e-lb, e-ov1, e-ov2: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "stacking-transform": "transform on t-t1, t-t2: hit testing through transforms is SELD-R2b (T146)",
+    "stacking-transform-rtl": "transform on t-t1, t-t2: hit testing through transforms is SELD-R2b (T146)",
     "transform-rotate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
     "transform-scale": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
     "transform-translate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",

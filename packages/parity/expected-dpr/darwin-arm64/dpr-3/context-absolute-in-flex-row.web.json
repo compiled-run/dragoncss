@@ -91,6 +91,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "200px 116px",
         "will-change": "auto"
@@ -177,6 +179,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "200px 114px",
         "will-change": "auto"
@@ -263,6 +267,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "106px 56px",
         "will-change": "auto"
@@ -349,6 +355,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "30px 30px",
         "will-change": "auto"
@@ -435,6 +443,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "20.7995px 25px",
         "will-change": "auto"
@@ -521,6 +531,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "46.7995px 20px",
         "will-change": "auto"
@@ -607,6 +619,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "100px 30px",
         "will-change": "auto"
@@ -693,6 +707,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "106px 56px",
         "will-change": "auto"
@@ -779,6 +795,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "30px 30px",
         "will-change": "auto"
@@ -865,6 +883,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "104px 54px",
         "will-change": "auto"
@@ -951,6 +971,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "10.3984px 3px",
         "will-change": "auto"
@@ -1037,6 +1059,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "36.3984px 4px",
         "will-change": "auto"

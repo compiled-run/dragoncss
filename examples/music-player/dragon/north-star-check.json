@@ -133,13 +133,13 @@
   "contextProbe": {
    "rounds": 2,
    "blankedRules": 4,
-   "blankedDeclarations": 43,
+   "blankedDeclarations": 34,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 246,
-  "errors": 241,
+  "diagnostics": 239,
+  "errors": 234,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -153,14 +153,14 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 37,
+   "DRAGON_UNSUPPORTED_PROPERTY": 28,
    "DRAGON_UNSUPPORTED_PROPERTY [web]": 2,
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 4,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 29,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 29,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 30,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 30,
    "DRAGON_UNSUPPORTED_VALUE [web]": 20
   },
   "perTarget": {
@@ -169,7 +169,7 @@
      "DRAGON_UNPROVEN_CONTEXT": 5,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_PROPERTY": 39,
+     "DRAGON_UNSUPPORTED_PROPERTY": 30,
      "DRAGON_UNSUPPORTED_SELECTOR": 4,
      "DRAGON_UNSUPPORTED_VALUE": 23
     },
@@ -185,9 +185,9 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 2,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 37,
+     "DRAGON_UNSUPPORTED_PROPERTY": 28,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 32
+     "DRAGON_UNSUPPORTED_VALUE": 33
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -203,9 +203,9 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 2,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 37,
+     "DRAGON_UNSUPPORTED_PROPERTY": 28,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 32
+     "DRAGON_UNSUPPORTED_VALUE": 33
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -220,11 +220,11 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 199,
-  "supportedWeb": 230,
-  "supportedIos": 199,
-  "supportedAndroid": 199,
-  "supportPercent": 68.9,
+  "supportedBothTargets": 207,
+  "supportedWeb": 239,
+  "supportedIos": 207,
+  "supportedAndroid": 207,
+  "supportPercent": 71.6,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -307,9 +307,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 118,
-   "B-unwrapped": 114,
-   "C-context": 146
+   "A-authored": 109,
+   "B-unwrapped": 105,
+   "C-context": 148
   }
  },
  "features": {
@@ -1065,11 +1065,11 @@
    "atRule": null,
    "property": "z-index",
    "value": "40",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1315,12 +1315,10 @@
    "atRule": null,
    "property": "z-index",
    "value": "20",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 70,
@@ -1717,12 +1715,10 @@
    "atRule": null,
    "property": "opacity",
    "value": "0.9",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 102,
@@ -1769,12 +1765,10 @@
    "atRule": null,
    "property": "opacity",
    "value": "0.46",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 106,
@@ -1905,12 +1899,10 @@
    "atRule": null,
    "property": "opacity",
    "value": "0.5",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 117,
@@ -1931,12 +1923,10 @@
    "atRule": null,
    "property": "opacity",
    "value": "0.28",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 119,
@@ -2974,12 +2964,10 @@
    "atRule": null,
    "property": "opacity",
    "value": "0",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 203,
@@ -3076,12 +3064,10 @@
    "atRule": null,
    "property": "z-index",
    "value": "30",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 211,
@@ -3406,12 +3392,10 @@
    "atRule": null,
    "property": "opacity",
    "value": "1",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 238,
@@ -4552,26 +4536,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@1605-1616|z-index is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1605,
-    "end": 1616,
-    "line": 98,
-    "column": 2,
-    "text": "z-index: 40"
-   },
-   "message": "z-index is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_SELECTOR|android|css@1646-1677|:hover is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
@@ -4714,26 +4678,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2182-2193|z-index is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 2182,
-    "end": 2193,
-    "line": 127,
-    "column": 2,
-    "text": "z-index: 20"
-   },
-   "message": "z-index is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|*|css@2514-2678|background: \"radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)\" has 2 layers, which set background-image (initial none), background-position-x (initial 0%), background-position-y (initial 0%), background-size (initial auto), background-repeat (initial repeat), background-attachment (initial scroll), background-origin (initial padding-box), background-clip (initial border-box) to 2-item lists. Dragon supports one layer, where every longhand except background-color keeps its initial value",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -4834,26 +4778,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3410-3422|opacity is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3410,
-    "end": 3422,
-    "line": 187,
-    "column": 2,
-    "text": "opacity: 0.9"
-   },
-   "message": "opacity is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|*|css@3470-3603|background: \"linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)\" sets background-image (initial none) to a non-initial value. Dragon supports background only when every longhand except background-color keeps its initial value",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -4874,26 +4798,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3617-3630|opacity is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3617,
-    "end": 3630,
-    "line": 200,
-    "column": 2,
-    "text": "opacity: 0.46"
-   },
-   "message": "opacity is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3756-3776|border-radius is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -4907,46 +4811,6 @@
     "text": "border-radius: 999px"
    },
    "message": "border-radius is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3904-3916|opacity is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3904,
-    "end": 3916,
-    "line": 217,
-    "column": 2,
-    "text": "opacity: 0.5"
-   },
-   "message": "opacity is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3986-3999|opacity is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3986,
-    "end": 3999,
-    "line": 222,
-    "column": 2,
-    "text": "opacity: 0.28"
-   },
-   "message": "opacity is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5340,26 +5204,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6433-6443|opacity is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6433,
-    "end": 6443,
-    "line": 367,
-    "column": 2,
-    "text": "opacity: 0"
-   },
-   "message": "opacity is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6456-6460|overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-x values: hidden or visible",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -5540,26 +5384,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6618-6629|z-index is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6618,
-    "end": 6629,
-    "line": 377,
-    "column": 2,
-    "text": "z-index: 30"
-   },
-   "message": "z-index is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6969-6991|border-radius is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -5619,26 +5443,6 @@
     "A-authored",
     "B-unwrapped",
     "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@7380-7390|opacity is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 7380,
-    "end": 7390,
-    "line": 434,
-    "column": 2,
-    "text": "opacity: 1"
-   },
-   "message": "opacity is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
    ]
   },
   {
@@ -6967,6 +6771,44 @@
     "text": "all 0.3s ease"
    },
    "message": "transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1614-1616|page/nav-call/library-button has z-index 40 and paints in a stacking context outside page/app, whose overflow clip applies to it; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1614,
+    "end": 1616,
+    "line": 98,
+    "column": 11,
+    "text": "40"
+   },
+   "message": "page/nav-call/library-button has z-index 40 and paints in a stacking context outside page/app, whose overflow clip applies to it; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1614-1616|page/nav-call/library-button has z-index 40 and paints in a stacking context outside page/app, whose overflow clip applies to it; ios would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 1614,
+    "end": 1616,
+    "line": 98,
+    "column": 11,
+    "text": "40"
+   },
+   "message": "page/nav-call/library-button has z-index 40 and paints in a stacking context outside page/app, whose overflow clip applies to it; ios would need a clip-chain view around it, which PNT1's hosting does not have yet",
    "viaRelated": false,
    "passes": [
     "C-context"

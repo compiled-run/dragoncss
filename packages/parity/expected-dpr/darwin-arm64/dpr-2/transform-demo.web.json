@@ -91,6 +91,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "200px 135px",
         "will-change": "auto"
@@ -177,6 +179,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "200px 125px",
         "will-change": "auto"
@@ -263,6 +267,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "120px 100px",
         "will-change": "auto"
@@ -349,6 +355,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "matrix(0.990268, 0.139173, -0.139173, 0.990268, -21.6, 0)",
         "transform-origin": "60px 60px",
         "will-change": "auto"
@@ -435,6 +443,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "matrix(0.882948, 0.469472, -0.469472, 0.882948, 6.52553, 3.46969)",
         "transform-origin": "0px 4px",
         "will-change": "auto"
@@ -521,6 +531,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "matrix(-0.788011, 0.615661, -0.615661, -0.788011, -5.78548, 4.52011)",
         "transform-origin": "0px 4px",
         "will-change": "auto"
@@ -607,6 +619,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "matrix(1, 0, 0, 1, -6, -6)",
         "transform-origin": "6px 6px",
         "will-change": "auto"
@@ -693,6 +707,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "matrix(1, 0, 0, 1, -43.1992, -25)",
         "transform-origin": "43.1992px 25px",
         "will-change": "auto"
@@ -779,6 +795,8 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "matrix(1.08, 0, 0, 1.08, 0, 0)",
         "transform-origin": "30px 15px",
         "will-change": "auto"
