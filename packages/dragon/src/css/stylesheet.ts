@@ -15,6 +15,8 @@ import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
 import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
+import { markNotApplicable } from './not-applicable.ts';
+import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
 import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
@@ -250,11 +252,15 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     return animation === null ? null : { property, text, span, valueSpan, longhands: [], order, ...important, animation };
   }
   if (!isLonghand(property) && !isShorthand(property)) {
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_PROPERTY', {
+    const refusal = diagnostic('DRAGON_UNSUPPORTED_PROPERTY', {
       origin: authored(span),
       message: `${property} is not supported in milestone 1`,
       edits: [{ span, replacement: '' }],
-    }));
+    });
+    // NA-NATIVE: a listed property is refused on web only; native reports it as not applicable (css/not-applicable.ts).
+    const entry = notApplicableEntry(property);
+    if (entry !== null) markNotApplicable(refusal, entry);
+    diagnostics.push(refusal);
     return null;
   }
   // css-variables-1 §3.1: a value holding var() is valid at parse time; it is parsed against the grammar after substitution.
