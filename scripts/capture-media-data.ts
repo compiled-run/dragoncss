@@ -1,12 +1,13 @@
 // Captures Chrome's matchMedia and mediaText for the media query corpus and for every band condition band() derives,
-// at each viewport derived from the corpus thresholds, on pages whose root font size is 16px and 20px.
+// at each viewport derived from the corpus thresholds, on pages whose root font size is 16px and 20px. The fractional part
+// (MQ-R0, notes/T067 §4) evaluates its rows inside iframes of exact device px and emulated main frames at DPR 1, 2, 2.625 and 3.
 // Writes packages/dragon/test/media/captures/chrome-145.json; --check requires a byte-identical recapture.
 // Run with: node --conditions=dragon-internal scripts/capture-media-data.ts [--check]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { CHROME_VERSION, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
-import { band, contains, featuresOfList, INITIAL_FONT_SIZE, parseMediaQueryList, resolveLength } from '../packages/dragon/src/media/index.ts';
-import type { Interval, MediaQueryList, MediaValue } from '../packages/dragon/src/media/index.ts';
+import { band, bandAt, contains, emulatedMediaViewport, featuresOfList, INITIAL_FONT_SIZE, mediaSize, mediaViewport, parseMediaQueryList, resolveLength } from '../packages/dragon/src/media/index.ts';
+import type { Band, BandPartition, Interval, MediaQueryList, MediaValue } from '../packages/dragon/src/media/index.ts';
 
 type Corpus = {
   readonly roots: readonly number[];
@@ -15,7 +16,18 @@ type Corpus = {
   readonly queries: readonly string[];
   readonly refusedQueries: readonly string[];
   readonly bandSheets: readonly { readonly name: string; readonly queries: readonly string[]; readonly refused?: string }[];
+  readonly fractional: {
+    readonly viewport: Viewport;
+    readonly iframes: readonly (readonly [number, number, number])[];
+    readonly mainFrames: readonly (readonly [number, number, number])[];
+    readonly queries: readonly string[];
+    readonly bandSheets: readonly { readonly name: string; readonly queries: readonly string[] }[];
+  };
 };
+/** A fractional frame: an iframe of whole device px, or an emulated main frame of CSS px, at a DPR. */
+type Frame = { readonly kind: 'iframe' | 'main'; readonly width: number; readonly height: number; readonly dpr: number };
+/** The media viewport Chrome evaluates in a frame (R3). */
+const frameViewport = (f: Frame): Viewport => (f.kind === 'iframe' ? mediaViewport(f, f.dpr) : emulatedMediaViewport(f, f.dpr));
 type Page = Awaited<ReturnType<typeof openPage>>;
 
 // Viewports derived from a list's thresholds: equal and ±1 (the two integers around a fractional one), the midpoint between
@@ -90,13 +102,16 @@ function captureViewports(
   return viewportSet([base, ...lists.flatMap((l) => sampleViewports(l, base)), ...bandSamples], limits);
 }
 
-/** An integer inside a band's intervals: the midpoint of the first bounded one that holds one, else 100 past an unbounded start. */
+/**
+ * An integer inside a band's intervals: the midpoint of the first bounded one that holds one, else 100 past an unbounded start.
+ * The midpoint is taken between the authored thresholds, so the 1/64 px slack of an end does not move the sample.
+ */
 function integerIn(intervals: readonly Interval[], fallback: number): number | null {
   const only = intervals[0];
   if (intervals.length === 1 && only !== undefined && only.lo === 0 && only.loInclusive && only.hi === Infinity) return fallback;
   for (const i of intervals) {
-    if (i.hi === Infinity) return Math.floor(i.lo) + 100;
-    const mid = Math.floor((i.lo + i.hi) / 2);
+    if (i.hi === Infinity) return Math.floor(i.nominalLo) + 100;
+    const mid = Math.floor((i.nominalLo + i.nominalHi) / 2);
     if (contains(i, mid)) return mid;
     for (let v = Math.ceil(i.lo); v <= Math.floor(i.hi); v++) if (contains(i, v)) return v;
   }
@@ -148,6 +163,104 @@ async function sweep(page: Page): Promise<{ mediaText: string[]; bits: string[] 
   return { mediaText, bits };
 }
 
+
+// The fractional part. A band sheet adds, for every band no listed frame lies in, the first whole-px DPR 1 iframe inside it
+// among sizes near its thresholds (zero included, since only a zero-size frame reaches some ratio bands).
+function aroundAll(values: readonly number[]): number[] {
+  return values.filter(Number.isFinite).flatMap((v) => [Math.floor(v) - 1, Math.floor(v), Math.ceil(v), Math.ceil(v) + 1]).filter((v) => v >= 0);
+}
+
+function wholeSampleIn(partition: Extract<BandPartition, { kind: 'bands' }>, b: Band, base: Viewport): [number, number] {
+  const ends = (axis: 'width' | 'height'): number[] => partition.bands.flatMap((x) => x[axis].flatMap((i) => [i.nominalLo, i.nominalHi]));
+  const widths0 = [...new Set([base.width, 0, ...aroundAll(ends('width'))])];
+  const heights0 = [...new Set([base.height, 0, ...aroundAll(ends('height'))])];
+  const ratios = partition.atoms.flatMap((a) => (a.axis !== 'ratio' ? [] : a.feature.base === 'orientation' ? [1] : [a.feature.value, a.feature.left?.value, a.feature.right?.value].flatMap((v) => (v?.kind === 'ratio' && v.den !== 0 && v.num !== 0 ? [v.num / v.den] : []))));
+  const widths = [...new Set([...widths0, ...heights0.flatMap((h) => aroundAll(ratios.map((r) => h * r)))])];
+  const heights = [...new Set([...heights0, ...widths0.flatMap((w) => aroundAll(ratios.map((r) => w / r)))])];
+  for (const width of widths) for (const height of heights) if (bandAt(partition, { width, height })?.index === b.index) return [width, height];
+  throw new Error(`band ${b.index} (${b.condition}) holds no whole-px viewport near its thresholds`);
+}
+
+const fractional = corpus.fractional;
+const listed: Frame[] = [
+  ...fractional.iframes.map(([width, height, dpr]): Frame => ({ kind: 'iframe', width, height, dpr })),
+  ...fractional.mainFrames.map(([width, height, dpr]): Frame => ({ kind: 'main', width, height, dpr })),
+];
+const fracSheets = fractional.bandSheets.map((s) => {
+  const partition = band(s.queries.map((q) => parseMediaQueryList(q)));
+  if (partition.kind !== 'bands') throw new Error(`fractional band sheet ${s.name} is refused: ${partition.detail}`);
+  const reached = (b: Band): boolean => listed.some((f) => bandAt(partition, frameViewport(f))?.index === b.index);
+  const samples = partition.bands.filter((b) => !reached(b)).map((b) => wholeSampleIn(partition, b, corpus.defaultViewport));
+  return { sheet: s.name, texts: partition.bands.map((b) => b.condition), samples };
+});
+const frames: Frame[] = [];
+const addFrame = (f: Frame): void => {
+  if (!frames.some((g) => g.kind === f.kind && g.width === f.width && g.height === f.height && g.dpr === f.dpr)) frames.push(f);
+};
+for (const f of listed.filter((g) => g.kind === 'iframe')) addFrame(f);
+for (const [width, height] of fracSheets.flatMap((s) => s.samples)) addFrame({ kind: 'iframe', width, height, dpr: 1 });
+for (const f of listed.filter((g) => g.kind === 'main')) addFrame(f);
+for (const f of frames) {
+  if (!Number.isInteger(f.width) || !Number.isInteger(f.height) || f.width < 0 || f.height < 0) throw new Error(`frame ${JSON.stringify(f)} is not whole px`);
+  if (!(f.dpr > 0)) throw new Error(`frame ${JSON.stringify(f)} has no positive DPR`);
+}
+const fracTexts = [...fractional.queries, ...fracSheets.flatMap((s) => s.texts)];
+
+/** Strict comparisons are exact (M2), so a media size strictly between the neighbours' proves the iframe has exactly px device px. */
+function exactly(axis: 'width' | 'height', px: number, dpr: number): string {
+  const at = (n: number): number => mediaSize(n, dpr);
+  const hi = `(${axis} < ${(at(px) + at(px + 1)) / 2}px)`;
+  return px === 0 ? hi : `(${axis} > ${(at(px - 1) + at(px)) / 2}px) and ${hi}`;
+}
+
+async function sweepFrames(dpr: number, own: readonly Frame[]): Promise<Map<Frame, string>> {
+  const out = new Map<Frame, string>();
+  const browser = await launchChrome(dpr);
+  try {
+    if (browser.version() !== CHROME_VERSION) throw new Error(`Chrome must be ${CHROME_VERSION}, got ${browser.version()}`);
+    const context = await browser.newContext({ viewport: fractional.viewport, deviceScaleFactor: dpr });
+    try {
+      const page = await context.newPage();
+      for (const f of own) {
+        let bits: string[];
+        if (f.kind === 'iframe') {
+          await page.setViewportSize(fractional.viewport);
+          await page.setContent(`<!DOCTYPE html><html><body style="margin:0"><iframe style="border:0;display:block;width:${f.width / dpr}px;height:${f.height / dpr}px" srcdoc="<!DOCTYPE html><html><body></body></html>"></iframe></body></html>`);
+          const handle = await page.waitForSelector('iframe', { state: 'attached' });
+          const frame = await handle.contentFrame();
+          if (frame === null) throw new Error(`no iframe document for ${JSON.stringify(f)}`);
+          await frame.waitForLoadState('load');
+          bits = await frame.evaluate(
+            async ({ qs, checks }: { qs: string[]; checks: string[] }) => {
+              await new Promise<void>((res) => requestAnimationFrame(() => requestAnimationFrame(() => res())));
+              for (const c of checks) if (!matchMedia(c).matches) throw new Error(`iframe fails ${c}`);
+              return qs.map((q) => (matchMedia(q).matches ? '1' : '0'));
+            },
+            { qs: fracTexts, checks: [exactly('width', f.width, dpr), exactly('height', f.height, dpr)] },
+          );
+        } else {
+          await page.setContent('<!DOCTYPE html><html><body></body></html>');
+          await page.setViewportSize({ width: f.width, height: f.height });
+          bits = await page.evaluate(
+            async ({ qs, width, height }: { qs: string[]; width: number; height: number }) => {
+              await new Promise<void>((res) => requestAnimationFrame(() => requestAnimationFrame(() => res())));
+              if (window.innerWidth !== width || window.innerHeight !== height) throw new Error(`viewport ${window.innerWidth}x${window.innerHeight}, wanted ${width}x${height}`);
+              return qs.map((q) => (matchMedia(q).matches ? '1' : '0'));
+            },
+            { qs: fracTexts, width: f.width, height: f.height },
+          );
+        }
+        out.set(f, bits.join(''));
+      }
+    } finally {
+      await context.close();
+    }
+  } finally {
+    await browser.close();
+  }
+  return out;
+}
+
 const browser = await launchChrome();
 const byRoot = new Map<number, { mediaText: string[]; bits: string[] }>();
 let chrome: string;
@@ -166,6 +279,25 @@ try {
 }
 if (chrome !== CHROME_VERSION) throw new Error(`Chrome must be ${CHROME_VERSION}, got ${chrome}`);
 
+const frameBits = new Map<Frame, string>();
+for (const dpr of [...new Set(frames.map((f) => f.dpr))].sort((a, b) => a - b)) {
+  for (const [f, bits] of await sweepFrames(dpr, frames.filter((g) => g.dpr === dpr))) frameBits.set(f, bits);
+}
+const fracMediaText = await (async () => {
+  const b = await launchChrome();
+  try {
+    const page = await openPage(b, '<!DOCTYPE html><html><head></head><body></body></html>', { viewport: corpus.defaultViewport, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' });
+    return await page.evaluate((qs: string[]) => qs.map((q) => matchMedia(q).media), fracTexts);
+  } finally {
+    await b.close();
+  }
+})();
+/** One row's bit per frame, in frame order. */
+const fracEntry = (k: number): { mediaText: string; matches: string } => ({
+  mediaText: fracMediaText[k] as string,
+  matches: frames.map((f) => (frameBits.get(f) as string)[k]).join(''),
+});
+
 const first = byRoot.get(corpus.roots[0] as number) as { mediaText: string[] };
 for (const [root, r] of byRoot) {
   r.mediaText.forEach((t, k) => {
@@ -183,11 +315,19 @@ const capture = {
   points,
   queries: queries.map((query) => ({ query, ...entry(k++) })),
   bands: sheets.map((s) => ({ sheet: s.sheet, conditions: s.texts.map((text) => ({ text, ...entry(k++) })) })),
+  fractional: (() => {
+    let j = 0;
+    return {
+      frames: frames.map((f) => [f.kind, f.width, f.height, f.dpr]),
+      queries: fractional.queries.map((query) => ({ query, ...fracEntry(j++) })),
+      bands: fracSheets.map((s) => ({ sheet: s.sheet, conditions: s.texts.map((text) => ({ text, ...fracEntry(j++) })) })),
+    };
+  })(),
 };
 
 const out = `${JSON.stringify(capture, null, 1)}\n`;
 const path = repoPath(CAPTURE_PATH);
-const summary = `${capture.queries.length} queries, ${capture.bands.length} band sheets, ${points.length} viewports, roots ${corpus.roots.join(' and ')}px`;
+const summary = `${capture.queries.length} queries, ${capture.bands.length} band sheets, ${points.length} viewports, roots ${corpus.roots.join(' and ')}px; fractional: ${capture.fractional.queries.length} queries, ${capture.fractional.bands.length} band sheets, ${frames.length} frames`;
 if (check) {
   let current = '';
   try {
