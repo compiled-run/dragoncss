@@ -57,6 +57,7 @@
     "native:gallery": "node --conditions=dragon-internal packages/parity/src/cli/gallery.ts",
     "rt:oracle": "node --conditions=dragon-internal scripts/capture-rt-oracle.ts",
     "tw:sweep": "node --conditions=dragon-internal packages/tailwind-sweep/src/cli/sweep.ts",
+    "coverage:rank": "node --conditions=dragon-internal scripts/coverage-rank.ts",
     "parity:hit-capture": "node --conditions=dragon-internal packages/parity/src/cli/hit-capture.ts",
     "parity:hit-report": "node --conditions=dragon-internal packages/parity/src/cli/hit-report.ts",
     "parity:anim-capture": "node --conditions=dragon-internal packages/parity/src/cli/anim-capture.ts",
