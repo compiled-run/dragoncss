@@ -1,0 +1,137 @@
+# One round of regen-on-ci.yml: `pnpm regen <args>` on one runner, starting from the branch commit plus the previous round's
+# outputs and regen cache. Uploads the cumulative patch against the commit, the cache and the step logs as artifact <name>.
+# side chrome (macos-26, where the Chrome captures are byte-identical to the local Mac's): every step except lanes-host.
+# side host (xcode-27, Xcode 27.0 and Swift 6.4 like the local Mac): lanes-host only. The host toolchains must equal the ones
+# the committed lanes.json records, or the round fails before running anything.
+name: regen-on-ci-round
+on:
+  workflow_call:
+    inputs:
+      runner: { type: string, required: true }
+      side: { type: string, required: true }
+      args: { type: string, required: true }
+      sha: { type: string, required: true }
+      prev: { type: string, required: false, default: '' }
+      name: { type: string, required: true }
+    outputs:
+      changed:
+        description: "'true' when this round changed any file"
+        value: ${{ jobs.round.outputs.changed }}
+permissions:
+  contents: read
+jobs:
+  round:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 300
+    outputs:
+      changed: ${{ steps.regen.outputs.changed }}
+    env:
+      # Inputs of the wpt and lanes-host cache keys; the same on every runner so the cache carries between rounds.
+      DRAGON_WPT_DIR: /Users/runner/wpt
+      JAVA_HOME: /opt/homebrew/opt/openjdk@17
+      ANDROID_HOME: /opt/homebrew/share/android-commandlinetools
+      DRAGON_REGEN_JOBS: '2'
+      HOMEBREW_NO_INSTALL_CLEANUP: '1'
+    steps:
+      - name: Check out the branch commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+      - name: Set up pnpm 10.33.2
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - name: Set up Node 24.15.0 (the local Mac's; a regen cache key includes the Node version)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Restore the regen cache (first round)
+        if: inputs.prev == ''
+        uses: actions/cache/restore@v4
+        with:
+          path: .git/dragon-regen/v2
+          key: regen-store-v2-darwin-arm64-node24.15.0-${{ github.run_id }}-${{ inputs.name }}
+          restore-keys: regen-store-v2-darwin-arm64-node24.15.0-
+      - name: Download the previous round
+        if: inputs.prev != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.prev }}
+          path: ${{ runner.temp }}/prev
+      - name: Apply the previous round's outputs and cache
+        if: inputs.prev != ''
+        run: |
+          if [ -s "$RUNNER_TEMP/prev/outputs.patch" ]; then git apply --binary "$RUNNER_TEMP/prev/outputs.patch"; fi
+          mkdir -p .git/dragon-regen
+          tar -xzf "$RUNNER_TEMP/prev/store.tgz" -C .git/dragon-regen
+      - name: Chrome side - Playwright 1.58.2 Chromium and the pinned WPT copy
+        if: inputs.side == 'chrome'
+        run: |
+          test "$(pnpm --filter @dragon/parity exec playwright --version)" = "Version 1.58.2"
+          pnpm --filter @dragon/parity exec playwright install chromium
+      - name: Chrome side - cache the WPT copy
+        if: inputs.side == 'chrome'
+        uses: actions/cache@v4
+        with:
+          path: /Users/runner/wpt
+          key: wpt-${{ hashFiles('packages/wpt/wpt.lock') }}
+      - name: Chrome side - fetch the WPT copy when the cache missed
+        if: inputs.side == 'chrome'
+        run: bash scripts/fetch-wpt.sh
+      - name: Host side - JDK 17 and kotlinc, checked against the toolchains lanes.json records
+        if: inputs.side == 'host'
+        run: |
+          brew install openjdk@17
+          brew upgrade kotlin || brew install kotlin
+          cat > "$RUNNER_TEMP/toolchains.mts" <<'EOF'
+          // The host lanes record their toolchain in lanes.json; a runner with another one would rewrite those rows.
+          import { readFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          const ws = process.env.GITHUB_WORKSPACE!;
+          const { swiftTool, kotlinTool } = await import(join(ws, 'packages/translate/src/native.ts'));
+          const lanes = JSON.parse(readFileSync(join(ws, 'packages/parity/out/lanes.json'), 'utf8'));
+          const want = (target: string): string | null => lanes.targets.find((t: any) => t.target === target)?.lanes.find((l: any) => l.lane === 'layout-vectors-host')?.run?.toolchain ?? null;
+          const have = { ios: swiftTool()?.version ?? null, android: kotlinTool()?.version ?? null };
+          let bad = 0;
+          for (const t of ['ios', 'android'] as const) {
+            console.log(`${t}: runner ${JSON.stringify(have[t])}, lanes.json ${JSON.stringify(want(t))}`);
+            if (have[t] === null || have[t] !== want(t)) bad++;
+          }
+          if (bad > 0) { console.error('the runner toolchains differ from the committed lanes.json; lanes-host would rewrite its rows'); process.exit(1); }
+          EOF
+          node --conditions=dragon-internal "$RUNNER_TEMP/toolchains.mts"
+      - name: pnpm regen ${{ inputs.args }}
+        id: regen
+        run: |
+          git add -A && before=$(git write-tree)
+          start=$(date +%s)
+          pnpm regen ${{ inputs.args }} 2>&1 | tee "$RUNNER_TEMP/regen.log"
+          code=${PIPESTATUS[0]}
+          secs=$(( $(date +%s) - start ))
+          git add -A && after=$(git write-tree)
+          changed=false; [ "$before" != "$after" ] && changed=true
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          mkdir -p "$RUNNER_TEMP/out"
+          git diff --cached --binary "${{ inputs.sha }}" > "$RUNNER_TEMP/out/outputs.patch"
+          git diff --cached --stat "${{ inputs.sha }}" | tail -1
+          tar -czf "$RUNNER_TEMP/out/store.tgz" -C .git/dragon-regen v2
+          cp "$RUNNER_TEMP/regen.log" "$RUNNER_TEMP/out/"
+          cp node_modules/.cache/dragon-regen/*.log node_modules/.cache/dragon-regen/last-run.json "$RUNNER_TEMP/out/" 2>/dev/null || true
+          echo "${{ inputs.name }} (${{ inputs.runner }}): pnpm regen ${{ inputs.args }}: exit $code, ${secs} s, changed files: $changed" | tee "$RUNNER_TEMP/out/timing.txt" >> "$GITHUB_STEP_SUMMARY"
+          exit "$code"
+      - name: Upload this round
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.name }}
+          path: ${{ runner.temp }}/out
+          if-no-files-found: warn
+      - name: Save the regen cache
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: .git/dragon-regen/v2
+          key: regen-store-v2-darwin-arm64-node24.15.0-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.name }}

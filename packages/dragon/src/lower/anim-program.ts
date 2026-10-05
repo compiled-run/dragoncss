@@ -14,6 +14,7 @@ import { ANIM_LIST_PROPERTIES } from '../css/properties/animation.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import type { WebAnimations } from '../emit/web-css.ts';
 import type { Longhand } from '../css/properties.ts';
+import type { AnimTables, EasingCode, EntryCode, ValueCode } from '@dragon/layout';
 
 export const ANIM_PROGRAM_VERSION = 'dragon.anim-program/1';
 
@@ -222,5 +223,65 @@ export function webAnimationsOf(analysis: AnimationAnalysis, valueText: (v: CssV
       return new Set(c === undefined ? [] : [...c.elements.values()].filter((ea) => ea.declarations.length > 0).map((ea) => ea.address));
     },
     keyframes: rules.join('\n'),
+  };
+}
+
+// ---------------------------------------------------------------- the runtime tables (T065 R16, 3b)
+
+const NO_EASING: EasingCode = { kind: 'linear', x1: 0, y1: 0, x2: 0, y2: 0, steps: 1, position: 'end' };
+const NO_VALUE: ValueCode = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false };
+const DIRECTIONS: readonly string[] = ['normal', 'reverse', 'alternate', 'alternate-reverse'];
+const FILLS: readonly string[] = ['none', 'forwards', 'backwards', 'both', 'auto'];
+
+/** A compiled easing as the runtime tables hold it; linear() never reaches the runtime (ANIM-L refuses it). */
+export function easingCode(e: EasingValue): EasingCode {
+  if (e.kind === 'linear') return NO_EASING;
+  if (e.kind === 'cubic-bezier') return { ...NO_EASING, kind: 'cubic-bezier', x1: e.x1, y1: e.y1, x2: e.x2, y2: e.y2 };
+  if (e.kind === 'steps') return { ...NO_EASING, kind: 'steps', steps: e.steps, position: e.position };
+  throw new AnimProgramError(`easing ${e.text} reached the runtime tables`);
+}
+
+/** An endpoint as the runtime tables hold it: transparent is a colour; any other keyword, an env() and an absent node are none. */
+export function valueCode(v: AnimValue | null): ValueCode {
+  if (v === null) return NO_VALUE;
+  if (v.kind === 'color') return { ...NO_VALUE, kind: 'color', r: v.r, g: v.g, b: v.b, alpha: v.alpha };
+  if (v.kind === 'length') return { ...NO_VALUE, kind: 'length', px: v.px, percent: v.percent, calc: v.calc };
+  if (v.kind === 'keyword' && v.value === 'transparent') return { ...NO_VALUE, kind: 'color' };
+  return NO_VALUE;
+}
+
+function trackKind(property: Longhand): { readonly kind: 'length' | 'color'; readonly range: LengthRange } {
+  const k = animationKind(property);
+  if (k.kind === 'length') return { kind: 'length', range: k.range };
+  if (k.kind === 'color') return { kind: 'color', range: 'all' };
+  throw new AnimProgramError(`${property} has no animation writer (${k.kind})`);
+}
+
+function entryCode(e: AnimationEntry): EntryCode {
+  if (!DIRECTIONS.includes(e.direction)) throw new AnimProgramError(`animation-direction ${e.direction}`);
+  if (!FILLS.includes(e.fill)) throw new AnimProgramError(`animation-fill-mode ${e.fill}`);
+  return { name: e.name, hasKeyframes: e.hasKeyframes, paused: e.paused, delay: e.delay, duration: e.duration, iterations: e.iterations, direction: e.direction as EntryCode['direction'], fill: e.fill as EntryCode['fill'], easing: easingCode(e.easing) };
+}
+
+/** The tables the runtime animator (packages/layout/src/rt-animator.ts) runs, from a program's animation tables. */
+export function animTablesOf(ap: AnimProgram): AnimTables {
+  return {
+    assignments: ap.assignments.length,
+    slots: ap.slots.map((s) => ({
+      node: s.node,
+      property: s.property,
+      kind: s.kind,
+      range: s.range,
+      values: s.values.map(valueCode),
+      listings: s.listings.map((l) => (l === null ? { present: false, mode: 'unlisted', delay: 0, duration: 0, easing: NO_EASING } : { present: true, mode: l.mode, delay: l.delay, duration: l.duration, easing: easingCode(l.easing) })),
+    })),
+    animations: ap.animations.map((a) => ({ node: a.node, lists: a.lists.map((l) => (l === null ? [] : l.map(entryCode))) })),
+    keyframes: ap.keyframes.map((k) => ({
+      name: k.name,
+      blocks: k.blocks.map((b) => ({ offsets: b.offsets, hasEasing: b.easing !== null, easing: b.easing === null ? NO_EASING : easingCode(b.easing), values: b.values.map((v) => ({ property: v.property, value: valueCode(v.value) })) })),
+    })),
+    rendered: ap.rendered,
+    bases: ap.bases.map((b) => ({ node: b.node, property: b.property, ...trackKind(b.property), values: b.values.map(valueCode) })),
+    closure: ap.closure,
   };
 }

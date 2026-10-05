@@ -181,7 +181,7 @@ const base64Lit = (s: string): string => {
   return `"${s}"`;
 };
 
-export const IMAGE_EMITTER: PaintEmitter<'replaced-image'> = {
+export const IMAGE_EMITTER: PaintEmitter<'replaced-image', 'image-offset-1'> = {
   name: 'image',
   kinds: ['replaced-image'],
   lines: {

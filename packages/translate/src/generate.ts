@@ -72,7 +72,7 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     }
   }
   // ANIM-b1 (T065): the transition update, keyframe sampling and animation list ports, roots the same way.
-  for (const f of ['rt-keyframes.ts', 'rt-transition.ts', 'rt-animations.ts']) {
+  for (const f of ['rt-keyframes.ts', 'rt-transition.ts', 'rt-animations.ts', 'rt-animator.ts']) {
     const sf = program.getSourceFile(at(f));
     if (sf === undefined) throw new Error(`the root file ${f} is not an engine file`);
     for (const st of sf.statements) {

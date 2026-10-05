@@ -48,6 +48,8 @@ describe.each(['ios', 'android'] as const)('the %s device vectors verdict', (nam
     const hit = declared.find((d) => d.corpus === 'p1' && d.suite === 'hit')?.cases ?? 0;
     const p1Floor = JSON.parse(readFileSync(new URL('../../translate/test/p1-floor.json', import.meta.url), 'utf8')) as { p1: { counts: { hit: number } } };
     expect(hit).toBeGreaterThanOrEqual(p1Floor.p1.counts.hit);
+    // ANIM-b1 3b: the animator suite is declared with one case per frame case.
+    expect(declared.find((d) => d.corpus === 'p1' && d.suite === 'animator')?.cases).toBe(18);
     const shortHit = whole.map((s) => (s.corpus === 'p1' && s.name === 'hit' ? { ...s, pass: s.pass - 1 } : s));
     expect(judgeDeviceVectors(t, shortHit, digests, host)).toMatchObject({ state: 'fail', reason: expect.stringContaining(`p1/hit ${hit - 1}/${hit}, declared ${hit}`) });
     const extra: DeviceSuiteResult = { corpus: 'extended', name: 'undeclared-suite', total: 5, pass: 5, cause: null, mismatches: [] };

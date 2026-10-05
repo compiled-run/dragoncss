@@ -56,6 +56,9 @@ export * as rtInterpolate from './rt-interpolate.ts';
 export * as rtKeyframes from './rt-keyframes.ts';
 export * as rtTransition from './rt-transition.ts';
 export * as rtAnimations from './rt-animations.ts';
+// ANIM-b1 3b (T065 R16): the runtime animator, one implementation for the TypeScript reference and the generated runtimes.
+export * as rtAnimator from './rt-animator.ts';
+export type { AnimTables, EasingCode, EntryCode, ValueCode } from './rt-animator.ts';
 export type { OriginPoint, TransformOrigin } from './paint-transform.ts';
 export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';
 export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';
