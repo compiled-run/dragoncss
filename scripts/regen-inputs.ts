@@ -45,18 +45,38 @@ const BUILTINS = new Set(['assert', 'buffer', 'child_process', 'crypto', 'events
 /** Every string target of a package.json "exports"/"main" value, under every condition. */
 const exportTargets = (v: unknown): string[] => (typeof v === 'string' ? [v] : Array.isArray(v) ? v.flatMap(exportTargets) : typeof v === 'object' && v !== null ? Object.values(v).flatMap(exportTargets) : []);
 
-export type Workspace = ReadonlyMap<string, { readonly dir: string; readonly manifest: string; readonly targets: readonly string[] }>;
+/**
+ * The targets of a package's "." export that Node picks under one set of conditions: the first matching key of each conditions
+ * object, as Node resolves it. null conditions: every target under every condition.
+ */
+export function exportTargetsUnder(v: unknown, conditions: ReadonlySet<string> | null): string[] {
+  if (conditions === null) return exportTargets(v);
+  if (typeof v === 'string') return [v];
+  if (Array.isArray(v)) return v.flatMap((x) => exportTargetsUnder(x, conditions));
+  if (typeof v !== 'object' || v === null) return [];
+  const o = v as Record<string, unknown>;
+  const keys = Object.keys(o);
+  if (keys.some((k) => k.startsWith('.'))) return '.' in o ? exportTargetsUnder(o['.'], conditions) : [];
+  const hit = keys.find((k) => k === 'default' || conditions.has(k));
+  return hit === undefined ? [] : exportTargetsUnder(o[hit], conditions);
+}
+
+/** The conditions Node always applies to an ES module import, besides the --conditions flags of the process. */
+export const NODE_IMPORT_CONDITIONS: readonly string[] = ['node', 'import', 'module-sync', 'node-addons'];
+
+export type Workspace = ReadonlyMap<string, { readonly dir: string; readonly manifest: string; readonly targets: readonly string[]; readonly exports: unknown }>;
 
 /** Workspace packages by name: their directory, package.json path and every file their exports resolve to. */
 export function workspaceOf(tree: Tree, read: ReadText): Workspace {
-  const ws = new Map<string, { dir: string; manifest: string; targets: string[] }>();
+  const ws = new Map<string, { dir: string; manifest: string; targets: string[]; exports: unknown }>();
   for (const p of tree.keys()) {
     if (!/^packages\/[^/]+\/package\.json$/.test(p)) continue;
     const pkg = JSON.parse(read(p)) as { name?: unknown; exports?: unknown; main?: unknown };
     if (typeof pkg.name !== 'string') continue;
     const dir = dirname(p);
-    const targets = exportTargets(pkg.exports ?? pkg.main ?? []).map((t) => posix.join(dir, t));
-    ws.set(pkg.name, { dir, manifest: p, targets });
+    const exports = pkg.exports ?? pkg.main ?? [];
+    const targets = exportTargets(exports).map((t) => posix.join(dir, t));
+    ws.set(pkg.name, { dir, manifest: p, targets, exports });
   }
   return ws;
 }
@@ -71,7 +91,12 @@ export type Closure = {
 };
 
 /** The import closure of the entry files over the tree. A missing entry is unresolved, never silently dropped. */
-export function importClosure(entries: readonly string[], tree: Tree, read: ReadText, ws: Workspace, scan: (path: string) => { specifiers: string[]; urls: string[] } = (p) => scanSource(read(p))): Closure {
+/**
+ * conditions: the condition sets of the step's Node processes (NODE_IMPORT_CONDITIONS plus each one's --conditions flags); a
+ * workspace package's entry is then only the targets Node picks under one of them. Omitted: every target under every condition.
+ * The trace check fails a run whose process loaded an entry the key left out, so a narrower key cannot miss an input.
+ */
+export function importClosure(entries: readonly string[], tree: Tree, read: ReadText, ws: Workspace, scan: (path: string) => { specifiers: string[]; urls: string[] } = (p) => scanSource(read(p)), conditions?: readonly ReadonlySet<string>[]): Closure {
   const files = new Set<string>();
   const externals = new Set<string>();
   const unresolved: string[] = [];
@@ -118,7 +143,8 @@ export function importClosure(entries: readonly string[], tree: Tree, read: Read
       if (w !== undefined) {
         add(w.manifest);
         const sub = spec.slice(name.length);
-        if (sub === '') for (const t of w.targets) tree.has(t) ? add(t) : unresolved.push(`${from}: ${spec} -> ${t}`);
+        const targets = conditions === undefined ? w.targets : [...new Set(conditions.flatMap((c) => exportTargetsUnder(w.exports, c).map((t) => posix.join(w.dir, t))))];
+        if (sub === '') for (const t of targets) tree.has(t) ? add(t) : unresolved.push(`${from}: ${spec} -> ${t}`);
         else for (const p of under(w.dir)) add(p);
         continue;
       }
