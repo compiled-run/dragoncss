@@ -7,6 +7,11 @@ import {
   backoffMs,
   baseAction,
   type BatchOps,
+  type NextRound,
+  parsePrepared,
+  type Prepared,
+  prepareRound,
+  serializePrepared,
   bisectPrefixes,
   ciState,
   ciStep,
@@ -506,9 +511,10 @@ describe('batched landing (runBatches with fakes)', () => {
     const mergedBefore = new Set(o.merged ?? []);
     const name = (prs: number[]): string => (prs.length === 0 ? 'master' : `m+${prs.join('+')}`);
     const heads = new Map<string, number[]>();
+    let tag = ''; // '[next] ' while the fake builder prepares
     const ops: BatchOps<{ pr: number }, Pos> = {
       admit: (x, earlier) => {
-        trace.push(`admit #${x.pr}${earlier.length ? ` after ${earlier.map((y) => `#${y.pr}`).join(' ')}` : ''}`);
+        trace.push(`${tag}admit #${x.pr}${earlier.length ? ` after ${earlier.map((y) => `#${y.pr}`).join(' ')}` : ''}`);
         if (mergedBefore.has(x.pr)) return { merged: 'merged as x' };
         if (o.reject?.includes(x.pr)) throw new LandFailure('claude-review-before', `#${x.pr} has a Medium finding at its head`);
         return { ticket: { pr: x.pr } };
@@ -519,7 +525,7 @@ describe('batched landing (runBatches with fakes)', () => {
         return h;
       },
       build: (prev, x, t, k) => {
-        trace.push(`build #${x.pr} at ${k} on ${prev}`);
+        trace.push(`${tag}build #${x.pr} at ${k} on ${prev}`);
         if (t.pr !== x.pr) throw new Error('ticket mixed up');
         if (o.conflicts?.includes(x.pr)) throw new LandFailure('merge', `merging b${x.pr} failed; conflicts in src/a.ts`);
         const prs = [...heads.get(prev)!, x.pr];
@@ -528,11 +534,12 @@ describe('batched landing (runBatches with fakes)', () => {
         return { head, prev, prs };
       },
       verify: (built) => {
-        trace.push(`verify ${built.map((b) => b.position.head).join(' ')}`);
-        built.forEach((b, i) => expect(b.position.prev).toBe(i === 0 ? name(master) : built[i - 1]!.position.head));
+        trace.push(`${tag}verify ${built.map((b) => b.position.head).join(' ')}`);
+        // The driver's chain starts on master; the builder's on the top it was given (master only once that batch lands).
+        built.forEach((b, i) => (i > 0 || tag === '') && expect(b.position.prev).toBe(i === 0 ? name(master) : built[i - 1]!.position.head));
       },
       prove: (p) => {
-        trace.push(`prove ${p.head}`);
+        trace.push(`${tag}prove ${p.head}`);
         if (o.installFails === p.head) throw new LandFailure('install', 'pnpm install --frozen-lockfile exited 1: ECONNRESET');
         if (o.masterRed) throw new LandFailure('test', `pnpm test on ${p.head} failed: t0.test.ts`);
         const bad = p.prs.filter((n) => o.broken?.includes(n));
@@ -557,7 +564,30 @@ describe('batched landing (runBatches with fakes)', () => {
       onOutcome: () => {},
       log: () => {},
     };
-    return { ops, master, trace, failures };
+    // A fake builder: prepares the round synchronously when started (as the real one would while the batch publishes), on the
+    // batch's top, with the same ops; `crash` makes it end with nothing, `fatal` with a Fatal.
+    const next = (n: { crash?: boolean; fatal?: string } = {}): NextRound<{ pr: number }, Pos> => {
+      let round: Prepared<{ pr: number }, Pos> | null = null;
+      return {
+        start: (base, queue, earlier, size) => {
+          trace.push(`next start on ${base} with ${queue.map((x) => `#${x.pr}`).join(' ')}`);
+          tag = '[next] ';
+          try {
+            round = prepareRound([...queue], size, () => base, ops, { earlier, baseProven: true });
+          } finally {
+            tag = '';
+          }
+        },
+        collect: () => {
+          trace.push('next collect');
+          if (n.fatal) throw new Fatal(n.fatal);
+          if (n.crash) return { base: '', consumed: [], results: [], built: [], good: 0, proven: [], culprit: null };
+          return parsePrepared<{ pr: number }, Pos>(serializePrepared(round!)) as Prepared<{ pr: number }, Pos>;
+        },
+        cancel: () => trace.push('next cancel'),
+      };
+    };
+    return { ops, master, trace, failures, next };
   };
   const results = (r: { outcomes: { entry: Entry; result: string; step?: string }[] }): string[] => r.outcomes.map((x) => `#${x.entry.pr} ${x.result}${x.step ? ` at ${x.step}` : ''}`);
 
@@ -858,6 +888,74 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(clearsUnproved(rec, sha('e'), mastersTree([sha('d')]))).toBe(false); // a passing batch on top of master that has not landed
     expect(clearsUnproved(null, sha('d'), mastersTree([sha('d')]))).toBe(false);
     expect(clearsUnproved({ head: 'unreadable "{"' }, sha('d'), mastersTree([sha('d')]))).toBe(true);
+  });
+
+  it('pipelines: prepares the next batch on the proven top while this one publishes, and uses it once all of this one landed', () => {
+    const h = harness();
+    const r = runBatches([1, 2, 3, 4, 5].map(e), 2, { ...h.ops, next: h.next() });
+    expect(results(r)).toEqual(['#1 landed', '#2 landed', '#3 landed', '#4 landed', '#5 landed']);
+    const t = h.trace;
+    expect(t.indexOf('next start on m+1+2 with #3 #4 #5')).toBeLessThan(t.indexOf('publish #1'));
+    expect(t).toContain('[next] build #3 at 1 on m+1+2');
+    expect(t).toContain('[next] prove m+1+2+3+4');
+    expect(t.some((x) => /^build #3/.test(x))).toBe(false); // the driver never built #3 itself
+    expect(t.indexOf('next collect')).toBeGreaterThan(t.indexOf('publish #2'));
+    expect(t).toContain('verify m+1+2+3 m+1+2+3+4'); // the driver checks the adopted chain itself
+    expect(h.master).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('throws the prepared batch away when this batch did not all land, and reports nothing of it', () => {
+    const h = harness({ publishFail: [2], reject: [3] });
+    const r = runBatches([1, 2, 3, 4].map(e), 2, { ...h.ops, next: h.next() });
+    expect(results(r)).toEqual(['#1 landed', '#2 failed at ci', '#3 failed at claude-review-before', '#4 landed']);
+    expect(h.trace).toContain('next cancel');
+    expect(h.trace).not.toContain('next collect');
+    expect(h.trace).toContain('build #4 at 1 on m+1'); // prepared again on the master that came of it
+    // #3's rejection in the discarded round was not reported; the driver's own admission reported it once.
+    expect(h.failures.filter((f) => f.startsWith('#3'))).toEqual(['#3 claude-review-before: #3 has a Medium finding at its head']);
+  });
+
+  it('prepares nothing ahead of a batch whose top failed, and discards the prepared batch on a stop request', () => {
+    const b = harness({ broken: [2] });
+    runBatches([1, 2, 3].map(e), 2, { ...b.ops, next: b.next() });
+    expect(b.trace.some((x) => x.startsWith('next start'))).toBe(false);
+    const s = harness();
+    const r = runBatches([1, 2, 3, 4].map(e), 2, { ...s.ops, next: s.next(), stopRequested: () => s.trace.includes('publish #2') });
+    expect(results(r)).toEqual(['#1 landed', '#2 landed']);
+    expect(r.stopped.map((x) => x.pr)).toEqual([3, 4]);
+    expect(s.trace).toContain('next cancel');
+  });
+
+  it('stops on a builder\'s fatal error, and prepares the batch itself when the builder ended with nothing', () => {
+    const f = harness();
+    expect(runBatches([1, 2, 3].map(e), 2, { ...f.ops, next: f.next({ fatal: 'while preparing the next batch: master is red' }) }).fatal).toBe('while preparing the next batch: master is red');
+    const c = harness();
+    const r = runBatches([1, 2, 3].map(e), 2, { ...c.ops, next: c.next({ crash: true }) });
+    expect(results(r)).toEqual(['#1 landed', '#2 landed', '#3 landed']);
+    expect(c.trace).toContain('build #3 at 1 on m+1+2');
+  });
+
+  it('carries a prepared round through JSON exactly, and refuses a malformed one', () => {
+    const round: Prepared<{ pr: number }, Pos> = {
+      base: 'b',
+      consumed: [e(3), e(4)],
+      results: [{ entry: e(3), failure: new LandFailure('merge', 'conflict', 'comment') }],
+      built: [{ entry: e(4), ticket: { pr: 4 }, position: { head: 'h4', prev: 'b', prs: [4] } }],
+      good: 0,
+      proven: [],
+      culprit: { index: 0, failure: new LandFailure('test', 't4 failed') },
+    };
+    const back = parsePrepared<{ pr: number }, Pos>(serializePrepared(round));
+    expect(back).toEqual(round);
+    if ('fatal' in back) throw new Error('unexpected');
+    expect(back.results[0]).toMatchObject({ failure: expect.any(LandFailure) });
+    expect(parsePrepared(JSON.stringify({ fatal: 'x' }))).toEqual({ fatal: 'x' });
+    const bad = (patch: object): (() => unknown) => () => parsePrepared(JSON.stringify({ ...JSON.parse(serializePrepared(round)), ...patch }));
+    expect(bad({ good: 2 })).toThrow(/good/);
+    expect(bad({ culprit: null })).toThrow(/without a culprit/);
+    expect(bad({ proven: [5] })).toThrow(/out of range/);
+    expect(bad({ consumed: [{ pr: 3 }] })).toThrow(/malformed/);
+    expect(bad({ results: [{ entry: e(3), failure: { step: 1 } }] })).toThrow(/failure is malformed/);
   });
 
   it('reads LAND_BATCH strictly', () => {

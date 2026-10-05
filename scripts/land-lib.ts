@@ -48,7 +48,8 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   checkout's scripts/land-review-lookup.ts, which prints the review a review agent precomputed in LAND_REVIEW_PRECOMPUTED_DIR,
   default /tmp/land-reviews/precomputed), LAND_REVIEW_DIR (/tmp/land-reviews), LAND_CI_WAIT and LAND_CI_APPEAR (seconds, default 5400 and 900), LAND_QUIET_MAX
   (seconds the test gate waits for a quiet machine before failing the PR, default 5400), LAND_BATCH (PRs proved together by one
-  full test, 1 to 8, default 4; 1 lands one PR per proof)`;
+  full test, 1 to 8, default 4; 1 lands one PR per proof), LAND_PIPELINE (0 turns off preparing the next batch, in
+  LAND_WORKTREE_NEXT, default /tmp/dragon-land-next, while a batch publishes)`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;
@@ -77,6 +78,9 @@ const TRANSIENT = [
   /RPC failed/i,
   /the remote end hung up unexpectedly/i,
   /network is unreachable/i,
+  // Two processes of one run (the driver and its builder) fetching at once contend for a ref lock.
+  /cannot lock ref/i,
+  /Unable to create '.*\.lock'/i,
 ];
 export const errorText = (error: unknown): string => {
   const parts: string[] = [];
@@ -653,10 +657,167 @@ export const bisectPrefixes = (
   return { culprit: hi, failure, proofs, passed };
 };
 
+// One round's preparation: admission of up to `size` PRs from the front of `queue` (which it consumes), the chain of positions
+// on `base`, and the proof of the top with the bisect of its prefixes. It publishes nothing and reports nothing: its results
+// are returned in order, so the same code runs in the driver or, pipelined, in a builder process whose round may be thrown away.
+export type RoundResult = { entry: Entry; merged: string } | { entry: Entry; failure: LandFailure };
+export type Prepared<T, P> = {
+  base: string;
+  consumed: Entry[];
+  results: RoundResult[];
+  built: { entry: Entry; ticket: T; position: P }[];
+  /** Positions 1..good are proven to land (the top passed, or the bisect's passing prefix). */
+  good: number;
+  proven: number[];
+  culprit: { index: number; failure: LandFailure } | null;
+};
+export type PrepareOps<T, P extends { head: string }> = Pick<BatchOps<T, P>, 'admit' | 'build' | 'verify' | 'prove' | 'proveMaster' | 'log'>;
+
+export const prepareRound = <T, P extends { head: string }>(
+  queue: Entry[],
+  size: number,
+  base: () => string,
+  ops: PrepareOps<T, P>,
+  o: { earlier?: readonly Entry[]; baseProven?: boolean; at?: (e: Entry | null) => void; report?: (r: RoundResult) => void } = {},
+): Prepared<T, P> => {
+  const at = o.at ?? (() => {});
+  const consumed: Entry[] = [];
+  const results: RoundResult[] = [];
+  // With `report`, each result is reported as it happens (the driver's own round); without, they are returned (a builder's).
+  const result = (r: RoundResult): void => (o.report ? o.report(r) : void results.push(r));
+  const failure = (e: Entry, error: unknown): void => {
+    if (error instanceof Fatal) throw error;
+    result({ entry: e, failure: asFailure(error) });
+  };
+  const admitted: { entry: Entry; ticket: T }[] = [];
+  while (admitted.length < size && queue.length > 0) {
+    const e = queue.shift()!;
+    consumed.push(e);
+    at(e);
+    try {
+      const a = ops.admit(e, [...(o.earlier ?? []), ...admitted.map((x) => x.entry)]);
+      if ('merged' in a) result({ entry: e, merged: a.merged });
+      else admitted.push({ entry: e, ticket: a.ticket });
+    } catch (error) {
+      failure(e, error);
+    }
+  }
+  const none = (b: string): Prepared<T, P> => ({ base: b, consumed, results, built: [], good: 0, proven: [], culprit: null });
+  if (admitted.length === 0) return none('');
+  let b: string;
+  try {
+    b = base();
+  } catch (error) {
+    throw error instanceof Fatal ? error : new Fatal(`could not read master: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  let prev = b;
+  const built: { entry: Entry; ticket: T; position: P }[] = [];
+  for (const m of admitted) {
+    at(m.entry);
+    try {
+      const position = ops.build(prev, m.entry, m.ticket, built.length + 1);
+      built.push({ ...m, position });
+      prev = position.head;
+    } catch (error) {
+      failure(m.entry, error);
+    }
+  }
+  if (built.length === 0) return none(b);
+  at(built[0]!.entry);
+  try {
+    ops.verify(built);
+  } catch (error) {
+    throw error instanceof Fatal ? error : new Fatal(`the batch ${prs(built.map((x) => x.entry))} is not the chain of positions it claims: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  ops.log(`batch ${prs(built.map((x) => x.entry))}: ${built.length} position(s) built on ${b}; proving the top ${built.at(-1)!.position.head}`);
+
+  // Prove the top; when it fails, bisect the prefixes for the first failing position.
+  let good = built.length;
+  let culprit: { index: number; failure: LandFailure } | null = null;
+  const proven: number[] = [];
+  const proveAt = (k: number): void => {
+    const x = built[k - 1]!;
+    at(x.entry);
+    ops.prove(x.position, x.entry);
+  };
+  const top = proofVerdict(`#${built.at(-1)!.entry.pr}'s position (the batch top)`, () => proveAt(built.length));
+  if (top === true) proven.push(built.length);
+  else {
+    const found = bisectPrefixes(built.length, top, proveAt);
+    proven.push(...found.passed);
+    if (found.culprit === 1 && o.baseProven !== true) {
+      // Before blaming the first PR, master itself must pass: a red master fails every position and blames nobody.
+      at(null);
+      ops.log(`batch: position 1 fails; proving master ${b} before blaming #${built[0]!.entry.pr}`);
+      const m = proofVerdict(`master ${b}`, () => ops.proveMaster(b));
+      if (m !== true) throw new Fatal(`master is red: master ${b} itself fails pnpm test, so no PR of the batch ${prs(built.map((x) => x.entry))} is blamed:\n${m.message}`);
+    }
+    good = found.culprit - 1;
+    const passing = built.slice(0, good).map((x) => x.entry);
+    const note =
+      built.length === 1
+        ? ''
+        : `\n\nFound by bisecting the batch ${prs(built.map((x) => x.entry))} (${found.proofs + 1} proofs): ${passing.length === 0 ? 'master' : `master with ${prs(passing)}`} passes, adding #${built[good]!.entry.pr} fails.`;
+    culprit = { index: good, failure: new LandFailure(found.failure.step, `${found.failure.message}${note}`, found.failure.comment) };
+    ops.log(`batch: the top failed at ${top.step}; culprit #${built[good]!.entry.pr} after ${found.proofs} more proof(s)`);
+  }
+  return { base: b, consumed, results, built, good, proven, culprit };
+};
+
+// Pipelining: while batch K publishes, the next batch is prepared on K's proven top by a builder (another process, in its own
+// worktree). It is used only if all of K landed, so master then has exactly the tree it was built on; otherwise it is thrown
+// away and its PRs are prepared again on the new master. Admission, build and proof results of a discarded round are never
+// reported.
+export type NextRound<T, P> = {
+  /** Starts preparing the next round on `base` (batch K's top) from a snapshot of the queue; K's PRs are `earlier`. */
+  start: (base: string, queue: readonly Entry[], earlier: readonly Entry[], size: number) => void;
+  /** Waits for it and returns it (a Fatal in the builder throws Fatal here). */
+  collect: () => Prepared<T, P>;
+  /** Throws it away (stops the builder). */
+  cancel: () => void;
+};
+
+// A builder's round as JSON, and back. LandFailures keep their step, message and comment; anything malformed is an error.
+export const serializePrepared = <T, P>(p: Prepared<T, P>): string =>
+  JSON.stringify({
+    ...p,
+    results: p.results.map((r) => ('merged' in r ? r : { entry: r.entry, failure: { step: r.failure.step, message: r.failure.message, comment: r.failure.comment ?? null } })),
+    culprit: p.culprit && { index: p.culprit.index, failure: { step: p.culprit.failure.step, message: p.culprit.failure.message, comment: p.culprit.failure.comment ?? null } },
+  });
+const isEntry = (v: unknown): v is Entry => isObject(v) && typeof v.branch === 'string' && typeof v.pr === 'number' && typeof v.clean === 'string';
+const toFailure = (v: unknown): LandFailure => {
+  if (!isObject(v) || typeof v.step !== 'string' || typeof v.message !== 'string' || !(v.comment === null || typeof v.comment === 'string')) return fail(`a prepared failure is malformed: ${JSON.stringify(v)?.slice(0, 200)}`);
+  return new LandFailure(v.step, v.message, v.comment ?? undefined);
+};
+export const parsePrepared = <T, P extends { head: string }>(text: string): Prepared<T, P> | { fatal: string } => {
+  const v: unknown = JSON.parse(text);
+  if (isObject(v) && typeof v.fatal === 'string') return { fatal: v.fatal };
+  if (!isObject(v) || typeof v.base !== 'string' || !Array.isArray(v.consumed) || !v.consumed.every(isEntry) || !Array.isArray(v.results) || !Array.isArray(v.built) || !Array.isArray(v.proven)) {
+    return fail(`a prepared round is malformed: ${text.slice(0, 200)}`);
+  }
+  const results: RoundResult[] = v.results.map((r: unknown) => {
+    if (!isObject(r) || !isEntry(r.entry)) return fail(`a prepared result is malformed: ${JSON.stringify(r)?.slice(0, 200)}`);
+    return typeof r.merged === 'string' ? { entry: r.entry, merged: r.merged } : { entry: r.entry, failure: toFailure(r.failure) };
+  });
+  const built = v.built.map((b: unknown) => {
+    if (!isObject(b) || !isEntry(b.entry) || !isObject(b.ticket) || !isObject(b.position) || typeof b.position.head !== 'string') return fail(`a prepared position is malformed: ${JSON.stringify(b)?.slice(0, 200)}`);
+    return b as { entry: Entry; ticket: T; position: P };
+  });
+  const n = built.length;
+  if (typeof v.good !== 'number' || !Number.isInteger(v.good) || v.good < 0 || v.good > n) return fail(`a prepared round has good ${JSON.stringify(v.good)} of ${n}`);
+  if (!v.proven.every((k: unknown) => typeof k === 'number' && Number.isInteger(k) && k >= 1 && k <= n)) return fail('a prepared round has a proven position out of range');
+  let culprit: Prepared<T, P>['culprit'] = null;
+  if (v.culprit !== null) {
+    if (!isObject(v.culprit) || v.culprit.index !== v.good) return fail(`a prepared round's culprit is not position ${v.good + 1}`);
+    culprit = { index: v.good, failure: toFailure(v.culprit.failure) };
+  } else if (v.good !== n) return fail(`a prepared round proves ${v.good} of ${n} positions without a culprit`);
+  return { base: v.base, consumed: v.consumed, results, built, good: v.good, proven: v.proven as number[], culprit };
+};
+
 export const runBatches = <T, P extends { head: string }>(
   entries: readonly Entry[],
   size: number,
-  ops: BatchOps<T, P>,
+  ops: BatchOps<T, P> & { next?: NextRound<T, P> },
 ): { outcomes: Outcome[]; fatal: string | null; exit: 0 | 1; stopped: Entry[] } => {
   if (!Number.isInteger(size) || size < 1) return fail(`batch size ${size}`);
   const queue = [...entries];
@@ -673,83 +834,64 @@ export const runBatches = <T, P extends { head: string }>(
     ops.onFail(e, f);
     ops.onOutcome(outcomes);
   };
+  const report = (r: RoundResult): void => ('merged' in r ? done({ entry: r.entry, result: 'merged before', detail: r.merged }) : failed(r.entry, r.failure));
+  // A stop request is read once (reading it consumes STOP_FILE) and then holds for the rest of the run.
+  let stopAsked = false;
+  const stopping = (): boolean => (stopAsked ||= ops.stopRequested?.() === true);
   let at: Entry | null = null;
+  // The next round, being prepared on the current batch's top; usable once the whole batch has landed.
+  let pending = false;
+  let usable = false;
+  const cancel = (): void => {
+    if (!pending) return;
+    pending = false;
+    ops.next!.cancel();
+  };
   try {
     while (queue.length > 0) {
       // A graceful stop: the batch before has landed what it could; nothing new starts.
-      if (ops.stopRequested?.() === true) {
+      if (stopping()) {
+        if (pending) ops.log('stop requested: the next batch being prepared is discarded');
+        cancel();
         ops.log(`stop requested: not starting ${prs(queue)}`);
         break;
       }
-      const admitted: { entry: Entry; ticket: T }[] = [];
-      while (admitted.length < size && queue.length > 0) {
-        const e = (at = queue.shift()!);
-        try {
-          const a = ops.admit(e, admitted.map((x) => x.entry));
-          if ('merged' in a) done({ entry: e, result: 'merged before', detail: a.merged });
-          else admitted.push({ entry: e, ticket: a.ticket });
-        } catch (error) {
-          failed(e, error);
+      let round: Prepared<T, P>;
+      if (pending && usable) {
+        pending = false;
+        round = ops.next!.collect();
+        // The builder consumed the front of the queue snapshot; nothing else has touched the queue since.
+        for (const [i, e] of round.consumed.entries()) {
+          if (queue[i]?.pr !== e.pr) throw new Fatal(`the prepared batch consumed #${e.pr}, which is not at the front of the queue`);
         }
-      }
-      if (admitted.length === 0) continue;
-
-      let base: string;
-      try {
-        base = ops.base();
-      } catch (error) {
-        throw error instanceof Fatal ? error : new Fatal(`could not read master: ${error instanceof Error ? error.message : String(error)}`);
-      }
-      let prev = base;
-      const built: { entry: Entry; ticket: T; position: P }[] = [];
-      for (const m of admitted) {
-        at = m.entry;
-        try {
-          const position = ops.build(prev, m.entry, m.ticket, built.length + 1);
-          built.push({ ...m, position });
-          prev = position.head;
-        } catch (error) {
-          failed(m.entry, error);
+        queue.splice(0, round.consumed.length);
+        ops.log(`batch: using the batch prepared on the previous top ${round.base}`);
+        if (round.built.length > 0) {
+          at = round.built[0]!.entry;
+          try {
+            ops.verify(round.built);
+          } catch (error) {
+            throw error instanceof Fatal ? error : new Fatal(`the prepared batch is not the chain of positions it claims: ${error instanceof Error ? error.message : String(error)}`);
+          }
         }
+      } else {
+        if (pending) ops.log('batch: the batch prepared on the previous top is discarded; master did not reach that top');
+        cancel();
+        round = prepareRound(queue, size, ops.base, ops, { at: (e) => (at = e), report });
       }
+      for (const r of round.results) {
+        at = r.entry;
+        report(r);
+      }
+      const { built, good, culprit } = round;
       if (built.length === 0) continue;
-      at = built[0]!.entry;
-      try {
-        ops.verify(built);
-      } catch (error) {
-        throw error instanceof Fatal ? error : new Fatal(`the batch ${prs(built.map((b) => b.entry))} is not the chain of positions it claims: ${error instanceof Error ? error.message : String(error)}`);
-      }
-      ops.log(`batch ${prs(built.map((b) => b.entry))}: ${built.length} position(s) built; proving the top ${built.at(-1)!.position.head}`);
+      const proven = new Set(round.proven);
 
-      // Prove the top; when it fails, bisect the prefixes for the first failing position.
-      let good = built.length;
-      let culprit: { index: number; failure: LandFailure } | null = null;
-      const proven = new Set<number>(); // positions (1-based) whose full test passed
-      const proveAt = (k: number): void => {
-        const b = built[k - 1]!;
-        at = b.entry;
-        ops.prove(b.position, b.entry);
-      };
-      const top = proofVerdict(`#${built.at(-1)!.entry.pr}'s position (the batch top)`, () => proveAt(built.length));
-      if (top === true) proven.add(built.length);
-      else {
-        const found = bisectPrefixes(built.length, top, proveAt);
-        for (const k of found.passed) proven.add(k);
-        if (found.culprit === 1) {
-          // Before blaming the first PR, master itself must pass: a red master fails every position and blames nobody.
-          at = null;
-          ops.log(`batch: position 1 fails; proving master ${base} before blaming #${built[0]!.entry.pr}`);
-          const m = proofVerdict(`master ${base}`, () => ops.proveMaster(base));
-          if (m !== true) throw new Fatal(`master is red: master ${base} itself fails pnpm test, so no PR of the batch ${prs(built.map((b) => b.entry))} is blamed:\n${m.message}`);
-        }
-        good = found.culprit - 1;
-        const passing = built.slice(0, good).map((b) => b.entry);
-        const note =
-          built.length === 1
-            ? ''
-            : `\n\nFound by bisecting the batch ${prs(built.map((b) => b.entry))} (${found.proofs + 1} proofs): ${passing.length === 0 ? 'master' : `master with ${prs(passing)}`} passes, adding #${built[good]!.entry.pr} fails.`;
-        culprit = { index: good, failure: new LandFailure(found.failure.step, `${found.failure.message}${note}`, found.failure.comment) };
-        ops.log(`batch: the top failed at ${top.step}; culprit #${built[good]!.entry.pr} after ${found.proofs} more proof(s)`);
+      // The whole batch is proven and the queue has more: start preparing the next batch on this top while this one publishes.
+      if (ops.next !== undefined && good === built.length && queue.length > 0 && !stopping()) {
+        ops.next.start(built.at(-1)!.position.head, [...queue], built.map((b) => b.entry), size);
+        pending = true;
+        usable = false;
       }
 
       // Publish the proven prefix in order. A failure stops the batch there; the PRs after it go back to the queue.
@@ -784,12 +926,16 @@ export const runBatches = <T, P extends { head: string }>(
       }
       if (requeue.length > 0) ops.log(`batch: ${prs(requeue)} go back to the front of the queue, to be built on the new master`);
       queue.unshift(...requeue);
+      // The prepared next batch stands on this top: usable only when every PR of this batch landed.
+      usable = published === built.length;
     }
   } catch (error) {
     if (!(error instanceof Fatal)) throw error;
     fatal = error.message;
     if (at !== null) outcomes.push({ entry: at, result: 'failed', step: 'fatal', detail: fatal });
     ops.onOutcome(outcomes);
+  } finally {
+    cancel();
   }
   const stopped = fatal === null ? queue : [];
   return { outcomes, fatal, exit: fatal === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1, stopped };
