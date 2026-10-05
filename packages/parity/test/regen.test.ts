@@ -1,11 +1,11 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compilePattern, matchSegments, parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
-import { checkTrace, commandOf, type Context, type Entry, fileStore, type Io, lanesVerdict, MANUAL, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree } from '../../../scripts/regen.ts';
+import { checkTrace, commandOf, type Context, type Entry, fileStore, type Io, lanesVerdict, MANUAL, matcher, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree } from '../../../scripts/regen.ts';
 import { importClosure, lockClosure, parseLock, workspaceOf } from '../../../scripts/regen-inputs.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -39,6 +39,8 @@ class World {
   readonly blobs = new Map<string, string>();
   readonly store = memStore();
   ran: string[] = [];
+  /** Paths a running step has deleted and not yet rewritten: a snapshot that reads one fails, as `git add -A` does. */
+  readonly unstable = new Set<string>();
   live = 0;
   maxLive = 0;
   readonly impls: Record<string, Impl>;
@@ -52,9 +54,12 @@ class World {
   }
   io(): Io {
     this.ran = [];
-    const snapshot = (): Tree => {
+    const snapshot = (exclude: readonly string[] = []): Tree => {
+      const skip = matcher(exclude);
+      for (const p of this.unstable) if (!skip(p)) throw new Error(`fatal: unable to stat '${p}': No such file or directory`);
       const tree = new Map<string, string>();
       for (const [p, c] of [...this.t].sort()) {
+        if (skip(p)) continue;
         const b = blobOf(c);
         this.blobs.set(b, c);
         tree.set(p, b);
@@ -325,6 +330,58 @@ describe('pnpm regen chain', () => {
     expect([...w.store.entries.keys()].map((k) => k.split('\0')[0])).toEqual(['other']);
   });
 
+  it('never snapshots the outputs of a step still running beside the one that finished, and still catches stray writes', async () => {
+    // dpr deletes its output and rewrites it later; hit finishes in between (scripts/regen.ts, pass 2 of MQ-R1's regen).
+    const steps = [node('dpr', 'tools/gen.ts', ['vec/dpr-*/**'], { reads: ['data/a/**'] }), node('hit', 'tools/other.ts', ['rt/hit/**'], { reads: ['data/c'] })];
+    const world = (hit: Impl): { w: World; run: Promise<Awaited<ReturnType<typeof regen>>> } => {
+      let release: () => void = () => {};
+      const gate = new Promise<void>((r) => (release = r));
+      const w: World = new World({ ...SOURCES, 'vec/dpr-2/snap/a.json': 'old' }, {
+        dpr: async (f) => {
+          f.del('vec/dpr-2/snap/a.json');
+          w.unstable.add('vec/dpr-2/snap/a.json');
+          await gate;
+          f.set('vec/dpr-2/snap/a.json', `new(${f.get('data/a/x')})`);
+          w.unstable.delete('vec/dpr-2/snap/a.json');
+        },
+        hit: async (f) => {
+          await hit(f);
+          setTimeout(release, 20);
+        },
+      });
+      return { w, run: regen(steps, { ...opts, jobs: 2 }, w.io()) };
+    };
+    const ok = world((f) => f.set('rt/hit/h.json', `H(${f.get('data/c')})`));
+    const r = await ok.run;
+    expect(r, r.error ?? '').toMatchObject({ ok: true, error: null, changed: ['rt/hit/h.json', 'vec/dpr-2/snap/a.json'] });
+    expect(ok.w.t.get('vec/dpr-2/snap/a.json')).toBe('new(1)');
+    expect([...ok.w.store.entries.values()].map((e) => Object.keys(e.outputs))).toEqual([['rt/hit/h.json'], ['vec/dpr-2/snap/a.json']]);
+    const stray = world((f) => (f.set('rt/hit/h.json', 'H'), f.set('docs/notes.md', 'edited')));
+    expect((await stray.run).error).toBe('hit (or dpr, running beside it) changed files outside its declared outputs: docs/notes.md');
+  });
+
+  it('snapshotTree leaves out, and never reads, the paths matching its exclude globs', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'dragon-regen-snap-'));
+    try {
+      const files = ['a.txt', 'k.json', 'q/k.json', 'v/x.json', 'v/a.json/in', 'v/dpr-1/s/y.json', 'v/dpr-1/z', 'v/dpr-10'];
+      for (const f of files) {
+        mkdirSync(join(dir, f, '..'), { recursive: true });
+        writeFileSync(join(dir, f), f);
+      }
+      execFileSync('git', ['init', '-q', dir]);
+      const exclude = ['v/*.json', 'v/dpr-*/**', 'k.json'];
+      const skip = matcher(exclude);
+      expect([...snapshotTree(dir, exclude).keys()].sort()).toEqual(files.filter((f) => !skip(f)).sort());
+      expect([...snapshotTree(dir, exclude).keys()].sort()).toEqual(['a.txt', 'v/a.json/in', 'v/dpr-10']);
+      // A file git cannot open fails a whole-tree snapshot; excluded, it is never read.
+      chmodSync(join(dir, 'v/dpr-1/z'), 0);
+      expect(() => snapshotTree(dir)).toThrow(/v\/dpr-1\/z/);
+      expect([...snapshotTree(dir, ['v/dpr-*/**']).keys()]).not.toContain('v/dpr-1/z');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('accepts a non-zero exit only when the step judges it a recorded verdict', async () => {
     const judge: Step = { ...CHAIN[0]!, verdict: (code, log) => code === 1 && log === 'all written\n' };
     const impl = (log: string): Impl => (f) => (f.set('out/a', 'A'), { code: 1, log });
@@ -364,6 +421,23 @@ describe('pnpm regen chain', () => {
     expect(v.ran.slice(0, 2)).toEqual(['rows', 'other']);
     expect((await regen(CHAIN, { ...opts, from: 'nope' }, v.io())).error).toBe('unknown step nope; the steps are gen, rows, other');
     expect((await regen([CHAIN[0]!, CHAIN[0]!], opts, v.io())).error).toBe('step gen is named twice');
+  });
+
+  it('--skip leaves a step out of every pass, and a later run without it finishes the split chain', async () => {
+    const w = new World(SOURCES, IMPL);
+    const r1 = await regen(CHAIN, { ...opts, skip: ['rows'] }, w.io());
+    expect(r1).toMatchObject({ ok: true, changed: ['out/a', 'out/c'] });
+    expect(w.t.has('out/b')).toBe(false);
+    w.set({ 'data/a/x': '2' });
+    const r2 = await regen(CHAIN, { ...opts, skip: ['gen', 'other'] }, w.io());
+    expect(r2).toMatchObject({ ok: true, changed: ['out/b'] });
+    expect(w.ran).toEqual(['rows']);
+    expect(w.t.get('out/b')).toBe('B(A(1))');
+    const r3 = await regen(CHAIN, opts, w.io());
+    expect(r3).toMatchObject({ ok: true, changed: ['out/a', 'out/b'] });
+    expect(w.t.get('out/b')).toBe('B(A(2))');
+    expect((await regen(CHAIN, { ...opts, skip: ['nope'] }, w.io())).error).toBe('unknown step nope to skip; the steps are gen, rows, other');
+    expect((await regen(CHAIN, { ...opts, skip: ['gen', 'rows', 'other'] }, w.io())).error).toBe('every step is skipped');
   });
 
   it('fails a step that edits one of its own inputs, recording nothing', async () => {
@@ -602,9 +676,11 @@ describe('merge policy (.gitattributes)', () => {
     expect([...policy].filter((p) => !ignore.matches(p))).toEqual([]);
   });
 
-  it('lists exactly the regen steps\' outputs, one pattern per line, each matching a tracked file (a pattern without "/" only at the root)', () => {
+  it('lists exactly the regen steps\' outputs, sorted, one pattern per line, each matching a tracked file (a pattern without "/" only at the root)', () => {
     const outputs = STEPS.flatMap((s) => s.outputs).filter((o) => !MERGE_BY_HAND.some((h) => h.path === o));
-    expect(lines).toEqual(outputs.map((o) => `${o} merge=dragon-generated`));
+    // Sorted, so two features adding steps add their lines in different places.
+    expect(lines).toEqual([...lines].sort());
+    expect(lines).toEqual(outputs.map((o) => `${o} merge=dragon-generated`).sort());
     for (const l of lines) {
       const m = /^(\S+) merge=dragon-generated$/.exec(l);
       expect(m, l).not.toBeNull();

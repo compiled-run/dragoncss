@@ -612,6 +612,33 @@ export function hitExpected(lines: readonly string[]): string[] {
   });
 }
 
+// ---------------------------------------------------------------- animator suite (ANIM-b1 3b, T065 R16)
+
+/** The frame cases as animator scripts (packages/parity parity:anim-vectors). */
+export const ANIMATOR_VECTORS = join(RT_VECTORS_DIR, 'animator/cases.json');
+
+/**
+ * The animator suite: one library-mode line per frame case: its tables, every assignment's resolved engine input, its initial
+ * assignment and its script. The TypeScript harness's answers are the expected results; Swift and Kotlin must equal them, and
+ * packages/parity anim-report proves the TypeScript animator equals Chrome at every sample.
+ */
+export function animatorCases(): string[] {
+  const v = JSON.parse(readFileSync(ANIMATOR_VECTORS, 'utf8')) as { schema: string; cases: { tables: unknown; inputs: unknown; initial: number; steps: unknown }[] };
+  if (v.schema !== 'dragon-animator-vectors/1') throw new Error(`${ANIMATOR_VECTORS}: schema ${v.schema}; run pnpm run parity:anim-vectors`);
+  const out = v.cases.map((c) => JSON.stringify(['rt-animator', c.tables, c.inputs, c.initial, c.steps]));
+  if (out.length === 0) throw new Error('the animator suite has no cases');
+  return out;
+}
+
+/** The animator suite's expected results; a line the TypeScript reference threw on or refused fails the build, not the natives. */
+export function animatorExpected(lines: readonly string[]): string[] {
+  return lines.map((line, i) => {
+    const r = runLibraryCase(line);
+    if (!r.startsWith('["ok",')) throw new Error(`animator case ${i}: the TypeScript reference answered ${r.slice(0, 200)}, not a result`);
+    return r;
+  });
+}
+
 export function buildCorpus(): Corpus {
   const vectors = vectorCases();
   const vLines = vectors.map((v) => v.line);
@@ -620,6 +647,7 @@ export function buildCorpus(): Corpus {
   const library = libraryCases();
   const rt = rtCases();
   const hit = hitCases();
+  const animator = animatorCases();
   const suites: Suite[] = [
     { name: 'vectors', mode: 'engine', lines: vLines, expected: vLines.map(runEngineCase) },
     { name: 'units', mode: 'units', lines: units, expected: units.map(runUnitsCase) },
@@ -629,6 +657,8 @@ export function buildCorpus(): Corpus {
     { name: 'rt', mode: 'library', lines: rt, expected: rt.map(runLibraryCase) },
     // SELD-R1b: the hit table, grid and answers of every layout vector, after rt.
     { name: 'hit', mode: 'library', lines: hit, expected: hitExpected(hit) },
+    // ANIM-b1 3b: the runtime animator over every frame case's tables and script, after hit.
+    { name: 'animator', mode: 'library', lines: animator, expected: animatorExpected(animator) },
   ];
   const d = digestsOf(suites);
   return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: d.digest, digests: d.digests };

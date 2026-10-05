@@ -196,7 +196,7 @@ fun dragonAppliedTransform(v: DragonBoxView): List<Pair<String, DumpJson>> {
 }
 `;
 
-export const TRANSFORM_EMITTER: PaintEmitter<'transform'> = {
+export const TRANSFORM_EMITTER: PaintEmitter<'transform', 'transform-origin-ignored' | 'translate-percent-of-parent'> = {
   name: 'transform',
   kinds: ['transform'],
   lines: {
