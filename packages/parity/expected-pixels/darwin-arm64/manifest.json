@@ -539,7 +539,20 @@
         {"case":"replaced-demo","width":800,"height":600,"sha256":"e67e8748f85264d7aef440827a48974623cbd8a4dca699f99224bb13b4a3c974"},
         {"case":"replaced-demo-rtl","width":800,"height":600,"sha256":"4a41466a3be5208ec08b5f9f38a33e750c9ea45cdc72c7ca9f6efadb9f4e5ba5"},
         {"case":"replaced-fit","width":800,"height":600,"sha256":"eeb70b84b854953a0a3dabbee6caa7f7e83e8baf716ab3d2648b0b5abc37c3f8"},
-        {"case":"replaced-fit-rtl","width":800,"height":600,"sha256":"c87aae86bf2ca8c84ceab106fb85338fce13013fa99387dd3199a472d5fa84ce"}
+        {"case":"replaced-fit-rtl","width":800,"height":600,"sha256":"c87aae86bf2ca8c84ceab106fb85338fce13013fa99387dd3199a472d5fa84ce"},
+        {"case":"transform-rotate","width":800,"height":600,"sha256":"43f1e34a304ff5ba557511d4b83eff41d715857710c8ac9f87a77d892314ad29"},
+        {"case":"transform-scale","width":800,"height":600,"sha256":"05f557605569c552f89437f31a215a97c85be6e621a2a11a566df912c876478a"},
+        {"case":"transform-translate","width":800,"height":600,"sha256":"c1f83fe66fd6862960fbf9d916cf416cc18d25de15d8a273aaf69b7c309393d8"},
+        {"case":"transform-origin","width":800,"height":600,"sha256":"26bad433e48f5fbc4d94dfbc720f8c23234c751d7e41eea5d31d8a596b3274d6"},
+        {"case":"transform-nested","width":800,"height":600,"sha256":"07642041838d41977e541cb42448ebffd04e93b5cbd9b111402fdb471b2cf85c"},
+        {"case":"transform-text","width":800,"height":600,"sha256":"524e42e770bb857e5b86b2aaaa7c32614c34659dea3213026069203cf2f5b121"},
+        {"case":"transform-matrix","width":800,"height":600,"sha256":"7a2aec779aaf4cbee38ff12d54a62575c12f51f41c79ac09a5572c221b737311"},
+        {"case":"transform-demo","width":800,"height":600,"sha256":"e432a2e855d472e5eaaae5453c377ee58d51b82936e26a0210bb757b7b9754c5"},
+        {"case":"transform-clip","width":800,"height":600,"sha256":"64b5ce89ed4c194827f0fba389b6693d4e6c86de76df0d8e1889822a2ca08bd7"},
+        {"case":"transform-will-change","width":800,"height":600,"sha256":"42c5e40ccf3315451372c68979b800fb39780bf3f87a0161c1f6c3219276e2de"},
+        {"case":"transform-flex","width":800,"height":600,"sha256":"36850ae7010f4971ce37719854dee047cb61f18fed3f5c31e4b20e60d435e187"},
+        {"case":"transform-direction","width":800,"height":600,"sha256":"1df53991baceb2ca4f40b8364a522ce68b1cc569e3f63362ea098c558f0d03d2"},
+        {"case":"transform-direction-rtl","width":800,"height":600,"sha256":"977807069e21dfcdd50a47b7bf8c804dd139922a8c218b8e36913a6b89f88754"}
       ]
     },
     {
@@ -1078,7 +1091,20 @@
         {"case":"replaced-demo","width":1200,"height":900,"sha256":"5a4b2db02d0edd7e79fbc6e13b6fd5a3b1ae797a09403fcbb9cdcd718fd6c201"},
         {"case":"replaced-demo-rtl","width":1200,"height":900,"sha256":"e130c1510901ff846ccdedfff4148c8f3febd5621894ac69f870d5b12abbbf67"},
         {"case":"replaced-fit","width":1200,"height":900,"sha256":"e5b12b983fd0ab3ebfb767f1b6d6c9feadbe009637d7f5a81cb0f36ff862d7f3"},
-        {"case":"replaced-fit-rtl","width":1200,"height":900,"sha256":"b751864b34956305889d6fdebe342dc03432992fdd3c285885b5b8ffa360587c"}
+        {"case":"replaced-fit-rtl","width":1200,"height":900,"sha256":"b751864b34956305889d6fdebe342dc03432992fdd3c285885b5b8ffa360587c"},
+        {"case":"transform-rotate","width":1200,"height":900,"sha256":"b1664092de3231182b4cf83ce15a9735d6a92f31fa7b1b7af05678fca6e47809"},
+        {"case":"transform-scale","width":1200,"height":900,"sha256":"7491abfec118ad031df3e4320acf95d5370611bdfa49e21923c835543699ffae"},
+        {"case":"transform-translate","width":1200,"height":900,"sha256":"6ea8da1fd666836face333da92a7eb5de06279380e20f1c365b2d86156ee6f4b"},
+        {"case":"transform-origin","width":1200,"height":900,"sha256":"ff8fb3e98411d45d4cca30b4b27ed83a6c53daca5493adb24efbac33f264146d"},
+        {"case":"transform-nested","width":1200,"height":900,"sha256":"a9ecb37a9e5fa1d0ba5886c3aa043de355f1ac402e32ac46b19a430a786b9e3e"},
+        {"case":"transform-text","width":1200,"height":900,"sha256":"a122d095a756c281223f0ef99502345a6a842f5497eee87437785d77464373b7"},
+        {"case":"transform-matrix","width":1200,"height":900,"sha256":"1fea37764f12470ded2860cee79842de4db88ffa4262633464c4465b4e77bcd5"},
+        {"case":"transform-demo","width":1200,"height":900,"sha256":"62c10152e8a18cf7849c932ffb061afe07d641b9769ab0b24d129f059391fb23"},
+        {"case":"transform-clip","width":1200,"height":900,"sha256":"6a98ccddfee59cf7531c41cc0dbcd4752e68bd561adcadbca04ca72bd3eaf77f"},
+        {"case":"transform-will-change","width":1200,"height":900,"sha256":"bddbe95912b63d921edc1f695c9b291a269832a702efe7c850e2a3477b784735"},
+        {"case":"transform-flex","width":1200,"height":900,"sha256":"15cb5f253f21b13832fb5c11290217dc5563570da77f5a41f2002f9ed4dd0548"},
+        {"case":"transform-direction","width":1200,"height":900,"sha256":"6e8b57f7c1625aa0bfe945264346be821bc6112256d2319fb93ccf2b0b1bc2ab"},
+        {"case":"transform-direction-rtl","width":1200,"height":900,"sha256":"13da5728a2d80884598e5748a5fb1e2ffa4a1c23bb064276bf7053d691e605f0"}
       ]
     },
     {
@@ -1617,7 +1643,20 @@
         {"case":"replaced-demo","width":1050,"height":788,"sha256":"731eb9711dafd94fab23d52b72c7dc8eed4230ced79094df41484887bfae6d11"},
         {"case":"replaced-demo-rtl","width":1050,"height":788,"sha256":"13a0c6794c33cbf5430cd18f7f1cc5b84fb20423dafed9d05d30e258c3626268"},
         {"case":"replaced-fit","width":1050,"height":788,"sha256":"f299fd2b2725868dc45378a3d4565c39070dde4d2f99de99430f14305a197490"},
-        {"case":"replaced-fit-rtl","width":1050,"height":788,"sha256":"25d1e153d23e67313d0c3339fa3ffb5c0487e733ea7b7659dd146e23d116a9ae"}
+        {"case":"replaced-fit-rtl","width":1050,"height":788,"sha256":"25d1e153d23e67313d0c3339fa3ffb5c0487e733ea7b7659dd146e23d116a9ae"},
+        {"case":"transform-rotate","width":1050,"height":788,"sha256":"e710bda6401ece854f7c94b41768984b4c21e0e9283c31d65fcf4f7e04babfb1"},
+        {"case":"transform-scale","width":1050,"height":788,"sha256":"cf48bc6265adc939f522fccbb47366d40f69634418ebf1794d82d1b282716dfc"},
+        {"case":"transform-translate","width":1050,"height":788,"sha256":"1b6569164d7da9e857241948edca8cea2cfe8d70b81a5db3daf88d07bbd12c1f"},
+        {"case":"transform-origin","width":1050,"height":788,"sha256":"4ab07bffc66c2ca616b586df5f6fc6e1053695e2844a6628f62949e8bcb516c6"},
+        {"case":"transform-nested","width":1050,"height":788,"sha256":"d3156daf8a4bbd68fa80b526ab5abbc166d3db4b70817c9c1bd8063f76f643ff"},
+        {"case":"transform-text","width":1050,"height":788,"sha256":"65301ec44a1b53ec04e9042774f42951c735fca8567356e373f861a192601ff6"},
+        {"case":"transform-matrix","width":1050,"height":788,"sha256":"d5974dc41d9b5381b89c60c311d0d0a76fead5187212336e3a050f5234741b38"},
+        {"case":"transform-demo","width":1050,"height":788,"sha256":"0d38c088915bbba0ac61bc22fbe7cccd3dbfae1b9bffeaedee39337a36c35934"},
+        {"case":"transform-clip","width":1050,"height":788,"sha256":"b0db27ea6c3ffe01a3197796d8ed30b5ddcfa3ee470ebb3e8441a3c54184440a"},
+        {"case":"transform-will-change","width":1050,"height":788,"sha256":"eb5cab765f101b9bc427ceac47308001a0e750a4607f6397c87e15667c0f3684"},
+        {"case":"transform-flex","width":1050,"height":788,"sha256":"fa24277a0e4bb3c8e5d5efed310927f644bf0f99d871d957edae6a08ce7994e9"},
+        {"case":"transform-direction","width":1050,"height":788,"sha256":"2d8e1d5efb042eb227d445eb592315166d9e3584e05efc7ea6a99d030216c2c0"},
+        {"case":"transform-direction-rtl","width":1050,"height":788,"sha256":"9723f27365001714e75f2bab49c7861cf64300206954d5bb8d67bc3afa2bd4da"}
       ]
     }
   ]
