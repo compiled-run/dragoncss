@@ -1,6 +1,6 @@
 // The checked parts of land.ts: queue and argument parsing, retries of network calls, the CI verdict, the Claude review gate and
 // the queue loop that records a failed PR and continues. The git and device judgements come from merge-train-lib.ts.
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { type CheckRun, CI_CHECK } from './pr-review-vouch.ts';
 
@@ -584,6 +584,8 @@ export type BatchOps<T, P extends { head: string }> = {
   verify: (built: readonly { entry: Entry; ticket: T; position: P }[]) => void;
   /** Proves the tree of one position (the full test). Throws LandFailure at step "test" when the test fails. */
   prove: (position: P, e: Entry) => void;
+  /** True when the PM asked for a graceful stop (STOP_FILE or SIGUSR1): no new batch starts. */
+  stopRequested?: () => boolean;
   /** Proves master's own tree, before a bisect blames the first PR of a batch. Throws LandFailure at step "test" when it fails. */
   proveMaster: (master: string) => void;
   /** Pushes, reviews and merges one PR at its position. Throws LandFailure (that PR fails) or Fatal. */
@@ -650,7 +652,7 @@ export const runBatches = <T, P extends { head: string }>(
   entries: readonly Entry[],
   size: number,
   ops: BatchOps<T, P>,
-): { outcomes: Outcome[]; fatal: string | null; exit: 0 | 1 } => {
+): { outcomes: Outcome[]; fatal: string | null; exit: 0 | 1; stopped: Entry[] } => {
   if (!Number.isInteger(size) || size < 1) return fail(`batch size ${size}`);
   const queue = [...entries];
   const outcomes: Outcome[] = [];
@@ -669,6 +671,11 @@ export const runBatches = <T, P extends { head: string }>(
   let at: Entry | null = null;
   try {
     while (queue.length > 0) {
+      // A graceful stop: the batch before has landed what it could; nothing new starts.
+      if (ops.stopRequested?.() === true) {
+        ops.log(`stop requested: not starting ${prs(queue)}`);
+        break;
+      }
       const admitted: { entry: Entry; ticket: T }[] = [];
       while (admitted.length < size && queue.length > 0) {
         const e = (at = queue.shift()!);
@@ -779,11 +786,23 @@ export const runBatches = <T, P extends { head: string }>(
     if (at !== null) outcomes.push({ entry: at, result: 'failed', step: 'fatal', detail: fatal });
     ops.onOutcome(outcomes);
   }
-  return { outcomes, fatal, exit: fatal === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1 };
+  const stopped = fatal === null ? queue : [];
+  return { outcomes, fatal, exit: fatal === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1, stopped };
 };
 
-export const statusText = (o: { queue: string; startedAt: string; now: string; running: Entry | null; outcomes: readonly Outcome[]; fatal: string | null; total: number; done: boolean }): string => {
-  const lines = [`land ${o.done ? (o.fatal ? 'STOPPED' : 'DONE') : 'RUNNING'} ${o.now} (started ${o.startedAt}) queue ${o.queue}: ${o.outcomes.length} of ${o.total} handled`];
+export const statusText = (o: {
+  queue: string;
+  startedAt: string;
+  now: string;
+  running: Entry | null;
+  outcomes: readonly Outcome[];
+  fatal: string | null;
+  total: number;
+  done: boolean;
+  stopped?: readonly Entry[];
+}): string => {
+  const asked = o.done && !o.fatal && (o.stopped?.length ?? 0) > 0;
+  const lines = [`land ${o.done ? (o.fatal ? 'STOPPED' : asked ? 'STOPPED ON REQUEST' : 'DONE') : 'RUNNING'} ${o.now} (started ${o.startedAt}) queue ${o.queue}: ${o.outcomes.length} of ${o.total} handled`];
   if (o.fatal) lines.push(`fatal: ${o.fatal}`);
   if (o.running) lines.push(`landing now: #${o.running.pr} ${o.running.branch}`);
   for (const r of o.outcomes) {
@@ -791,6 +810,289 @@ export const statusText = (o: { queue: string; startedAt: string; now: string; r
     lines.push(r.result === 'failed' ? `  FAILED ${id} at ${r.step}: ${r.detail}` : `  ${r.result === 'landed' ? 'landed' : 'merged before'} ${id}: ${r.detail}`);
   }
   const failed = o.outcomes.filter((r) => r.result === 'failed').length;
-  if (o.done) lines.push(failed === 0 && !o.fatal ? 'every PR landed' : `${failed} PR(s) failed; each has the landing-failed label and a comment naming the step`);
+  if (asked) lines.push(`stop requested: not started ${o.stopped!.map((e) => `#${e.pr}`).join(' ')} (no PR failed for it)`);
+  if (o.done) lines.push(failed === 0 && !o.fatal ? (asked ? 'every PR handled landed' : 'every PR landed') : `${failed} PR(s) failed; each has the landing-failed label and a comment naming the step`);
   return `${lines.join('\n')}\n`;
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Stopping. A synchronous driver cannot run a signal handler while a step runs (spawnSync), so `pnpm land` is a supervisor:
+// it holds the lock (recording its own pid and the driver's) and runs the driver in its own process group with the default
+// action for SIGINT, SIGTERM and SIGHUP. An interrupt to the supervisor kills that whole group (driver and running step), so no
+// step fails into a PR failure; while the driver is inside a merge (from just before gh pr merge to the post-merge tree check
+// and branch cleanup, PUBLISH_MARK) the interrupt waits for it to finish, up to a cap. SIGUSR1 to the supervisor (or touching STOP_FILE) asks for a graceful
+// stop: the driver finishes the batch it is on and starts no other. Whenever the driver dies abnormally the supervisor cleans
+// up after it: its quiet request and priority, the driver worktree, and the status. Devices belong to the device lease's own
+// run and are never touched here.
+
+export const STOP_FILE = '/tmp/dragon-land.stop';
+export const SUPERVISED_ENV = 'LAND_SUPERVISED';
+export const SUPERVISOR_PID_ENV = 'LAND_SUPERVISOR_PID';
+// Files the driver writes in the run directory for its supervisor.
+export const PUBLISH_MARK = 'publish.json'; // { pr, head, merged: <merge sha> | null } while inside a merge
+export const MERGES_LOG = 'merges.log'; // "<pr> <merge sha> <position head>" per merge, appended right after it
+
+const isPid = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v > 1;
+
+export type PublishMark = { pr: number; head: string; merged: string | null };
+export const parsePublishMark = (text: string | null): PublishMark | null => {
+  if (text === null) return null;
+  let v: unknown;
+  try {
+    v = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!isObject(v) || typeof v.pr !== 'number' || typeof v.head !== 'string' || !(v.merged === null || typeof v.merged === 'string')) return null;
+  return { pr: v.pr, head: v.head, merged: v.merged };
+};
+// The record of a merged position no full test has passed: { pr, head }. Unreadable is treated as present (proved again).
+export const parseUnproved = (text: string | null): { pr: number; head: string } | null => {
+  if (text === null) return null;
+  try {
+    const v: unknown = JSON.parse(text);
+    if (isObject(v) && typeof v.pr === 'number' && typeof v.head === 'string' && /^[0-9a-f]{40}$/.test(v.head)) return { pr: v.pr, head: v.head };
+  } catch {}
+  return { pr: 0, head: `unreadable ${JSON.stringify(text.slice(0, 80))}` };
+};
+export type Merge = { pr: number; merge: string; head: string };
+export const parseMerges = (text: string | null): Merge[] =>
+  (text ?? '').split('\n').flatMap((l) => {
+    const m = /^([1-9]\d*) ([0-9a-f]{40}) ([0-9a-f]{40})$/.exec(l.trim());
+    return m ? [{ pr: Number(m[1]), merge: m[2]!, head: m[3]! }] : [];
+  });
+
+// The status after the driver died mid-run: it names what merged in this run, and never calls a merged PR "not failed".
+export const interruptedStatus = (o: { previous: string; how: string; now: string; publishing: PublishMark | null; merges: readonly Merge[]; unproved: { pr: number; head: string } | null }): string => {
+  const lines = o.previous.trimEnd().split('\n').filter((l) => l !== '');
+  const first = lines[0]?.startsWith('land ') ? lines.shift()! : null;
+  const running = lines.find((l) => l.startsWith('landing now: '));
+  const rest = lines.filter((l) => !l.startsWith('landing now: '));
+  const out = [`land INTERRUPTED ${o.now} by ${o.how}${first ? ` (was: ${first})` : ''}`];
+  const merged = new Map(o.merges.map((m) => [m.pr, m]));
+  if (o.publishing !== null) {
+    const m = o.publishing.merged ?? merged.get(o.publishing.pr)?.merge ?? null;
+    out.push(m !== null ? `#${o.publishing.pr} MERGED as ${m} when interrupted; its post-merge tree check and branch cleanup did not run` : `interrupted while merging #${o.publishing.pr} (position ${o.publishing.head}); check whether it merged`);
+  } else out.push(running ? `interrupted while ${running.slice('landing now: '.length)} was landing; it was not failed, and its step's work is discarded` : 'interrupted between PRs');
+  if (o.merges.length > 0) out.push(`merged in this run: ${o.merges.map((m) => `#${m.pr} (${m.merge.slice(0, 12)})`).join(', ')}`);
+  if (o.unproved !== null) out.push(`master rests on #${o.unproved.pr}'s position ${o.unproved.head}, which no full test has proved; the next run proves it before anything else`);
+  return `${[...out, ...rest].join('\n')}\n`;
+};
+
+// The lock records the supervisor and the driver, each as a pid and its start time (`ps -o lstart=`), so a reused pid is never
+// taken for them. It is held while either lives; a live driver whose supervisor is gone is an orphan the next run kills.
+export type LockProc = { pid: number; start: string };
+export type LockState = 'free' | 'held' | 'orphan';
+// A recorded process with no start time (a run that died between writing the pid and the start) counts as live while its pid is:
+// it holds the lock and is never killed.
+export const lockState = (supervisor: LockProc | null, driver: LockProc | null, startOf: (pid: number) => string | null): LockState => {
+  const live = (p: LockProc | null): 'same' | 'unknown' | 'gone' => {
+    if (p === null) return 'gone';
+    const now = startOf(p.pid);
+    if (now === null) return 'gone';
+    return p.start === '' ? 'unknown' : now === p.start ? 'same' : 'gone';
+  };
+  const [sup, drv] = [live(supervisor), live(driver)];
+  if (sup !== 'gone' || drv === 'unknown') return 'held';
+  return drv === 'same' ? 'orphan' : 'free';
+};
+// `ps -o lstart= -p <pid>`: the start time, or null when no such process.
+export const parseLstart = (out: string): string | null => {
+  const t = out.trim();
+  return t === '' || t.includes('\n') ? null : t;
+};
+export const parsePidFile = (text: string | null): number | null => {
+  const t = (text ?? '').trim();
+  return /^[1-9]\d*$/.test(t) && isPid(Number(t)) ? Number(t) : null;
+};
+
+// Everything the supervisor does after the driver died abnormally; each part runs even when another fails.
+export const cleanUpAfterDriver = (o: {
+  how: string;
+  now: string;
+  read: (runFile: string) => string | null;
+  unproved: () => { pr: number; head: string } | null;
+  release: () => void;
+  reset: () => void;
+  status: { read: () => string; write: (text: string) => void };
+  log: (line: string) => void;
+}): string[] => {
+  const problems: string[] = [];
+  const step = (what: string, fn: () => void): void => {
+    try {
+      fn();
+    } catch (error) {
+      problems.push(`${what}: ${errorText(error).split('\n')[0]}`);
+    }
+  };
+  step('releasing the quiet request and priority', o.release);
+  step('resetting the driver worktree', o.reset);
+  step('writing the status', () =>
+    o.status.write(interruptedStatus({ previous: o.status.read(), how: o.how, now: o.now, publishing: parsePublishMark(o.read(PUBLISH_MARK)), merges: parseMerges(o.read(MERGES_LOG)), unproved: o.unproved() })),
+  );
+  for (const p of problems) o.log(`WARNING after the driver died: ${p}`);
+  return problems;
+};
+
+// A run that starts with master on a merged position no full test has passed (an interrupted run) proves master first. The
+// result is logged loudly and never blocks the queue: a batch whose top passes still lands (that is how a fix lands).
+// Returns whether master passed; the record is cleared only by a passing proof that contains it (clearsUnproved).
+export const proveRestingMaster = (unproved: { pr: number; head: string } | null, prove: () => void, clear: () => void, log: (line: string) => void): boolean | null => {
+  if (unproved === null) return null;
+  log(`master rests on #${unproved.pr}'s position ${unproved.head}, merged by an interrupted run without a full test; proving master first`);
+  let v: true | LandFailure;
+  try {
+    v = proofVerdict(`master (left on #${unproved.pr}'s position by an interrupted run)`, prove);
+  } catch (error) {
+    log(`!!! could not prove master: ${error instanceof Error ? error.message : String(error)}; carrying on, the next passing proof that contains it clears the record`);
+    return false;
+  }
+  if (v === true) {
+    clear();
+    log('master passes pnpm test');
+    return true;
+  }
+  log(`!!! MASTER IS RED: it rests on #${unproved.pr}'s position ${unproved.head} and fails pnpm test; carrying on, so a batch whose top passes can land the fix:\n${v.message}`);
+  return false;
+};
+// The record is cleared only once master is on a proven tree: a passing proof of a commit with master's current tree (outside
+// docs/goals/**), whether master got there by a publish or was proved where it rests. A proof of any other tree leaves it.
+export const clearsUnproved = (unproved: { head: string } | null, proved: string, isMastersTree: (commit: string) => boolean): boolean =>
+  unproved !== null && isMastersTree(proved);
+
+export type Supervised = { code: number; interrupted: NodeJS.Signals | null; signal: NodeJS.Signals | null; pid: number };
+export const supervise = (o: {
+  command: string;
+  args: readonly string[];
+  env: NodeJS.ProcessEnv;
+  /** SIGTERM to SIGKILL, for the whole process group (device runs tear down in it). */
+  graceMs: number;
+  /** How long an interrupt waits for a merge in progress (PUBLISH_MARK) before killing it anyway. */
+  deferCapMs: number;
+  /** Whether the driver is inside a merge now. */
+  publishing: () => boolean;
+  onSpawn: (pid: number) => void;
+  /** Called once the supervisor handles signals for the spawned driver (a signal before that was buffered, not lost). */
+  onReady?: (pid: number) => void;
+  onStop: () => void;
+  log: (line: string) => void;
+  pollMs?: number;
+}): Promise<Supervised> =>
+  new Promise((resolve, reject) => {
+    // Signals are taken over before the spawn: one that arrives before the driver's pid is known is buffered, then acted on.
+    const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
+    const early: NodeJS.Signals[] = [];
+    const buffer = (sig: NodeJS.Signals): number => early.push(sig);
+    for (const s of [...signals, 'SIGUSR1'] as const) process.on(s, buffer);
+    const unbuffer = (): void => {
+      for (const s of [...signals, 'SIGUSR1'] as const) process.off(s, buffer);
+    };
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn(o.command, [...o.args], { detached: true, stdio: 'inherit', env: { ...o.env, [SUPERVISED_ENV]: '1', [SUPERVISOR_PID_ENV]: String(process.pid) } });
+    } catch (error) {
+      unbuffer();
+      return reject(error);
+    }
+    const pid = child.pid;
+    if (pid === undefined) {
+      unbuffer();
+      child.once('error', reject);
+      return;
+    }
+    try {
+      o.onSpawn(pid);
+    } catch (error) {
+      o.log(`recording the driver (pid ${pid}) failed: ${errorText(error).split('\n')[0]}; killing it`);
+      try {
+        process.kill(-pid, 'SIGKILL');
+      } catch {}
+      unbuffer();
+      return reject(error);
+    }
+    const poll = o.pollMs ?? 250;
+    let interrupted: NodeJS.Signals | null = null;
+    let exited: { code: number | null; signal: NodeJS.Signals | null } | null = null;
+    let killing = false;
+    const timers: NodeJS.Timeout[] = [];
+    const group = (sig: NodeJS.Signals | 0): boolean => {
+      try {
+        process.kill(-pid, sig);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    // SIGTERM to the group, then SIGKILL once the grace period is over; done when no process of the group is left.
+    const kill = (): void => {
+      if (killing) return;
+      killing = true;
+      group('SIGTERM');
+      const t0 = Date.now();
+      const tick = setInterval(() => {
+        if (!group(0)) {
+          clearInterval(tick);
+          finish();
+        } else if (Date.now() - t0 >= o.graceMs) group('SIGKILL');
+      }, poll);
+      timers.push(tick);
+    };
+    const onSignal = (sig: NodeJS.Signals): void => {
+      if (interrupted !== null) {
+        o.log(`${sig} again: killing the driver group now`);
+        group('SIGKILL');
+        killing = false;
+        return kill();
+      }
+      interrupted = sig;
+      if (!o.publishing()) {
+        o.log(`${sig}: interrupting the driver (pid ${pid}) and its running step`);
+        return kill();
+      }
+      o.log(`${sig}: the driver is merging a PR; interrupting once that merge and its checks end (at most ${Math.round(o.deferCapMs / 1000)}s; send ${sig} again to kill it now)`);
+      const t0 = Date.now();
+      const wait = setInterval(() => {
+        if (exited !== null || killing) return clearInterval(wait);
+        if (!o.publishing()) {
+          clearInterval(wait);
+          o.log('the merge ended; interrupting the driver');
+          kill();
+        } else if (Date.now() - t0 >= o.deferCapMs) {
+          clearInterval(wait);
+          o.log(`!!! the merge did not end within ${Math.round(o.deferCapMs / 1000)}s; killing the driver INSIDE a merge: master and the PR may be half-landed, see the status`);
+          kill();
+        }
+      }, poll);
+      timers.push(wait);
+    };
+    const onUsr1 = (): void => {
+      o.log('SIGUSR1: graceful stop requested; the driver finishes its batch and starts no other');
+      o.onStop();
+    };
+    for (const s of signals) process.on(s, onSignal);
+    process.on('SIGUSR1', onUsr1);
+    unbuffer();
+    o.onReady?.(pid);
+    for (const sig of early) (sig === 'SIGUSR1' ? onUsr1 : onSignal)(sig);
+    let done = false;
+    const finish = (): void => {
+      if (done || exited === null) return;
+      done = true;
+      for (const s of signals) process.off(s, onSignal);
+      process.off('SIGUSR1', onUsr1);
+      for (const t of timers) clearInterval(t);
+      // An interrupt that never had to kill (the driver ended on its own while it waited for a publish) is no interrupt.
+      const killed = killing ? interrupted : null;
+      resolve({ code: killed !== null ? 130 : (exited.code ?? 128), interrupted: killed, signal: killed !== null ? null : exited.signal, pid });
+    };
+    child.once('exit', (code, signal) => {
+      exited = { code, signal };
+      // After an interrupt or a death by signal, whatever of the group outlived the driver gets its grace period, then SIGKILL.
+      if (killing || signal !== null) {
+        if (!group(0)) return finish();
+        if (!killing) kill();
+        return;
+      }
+      finish();
+    });
+  });
