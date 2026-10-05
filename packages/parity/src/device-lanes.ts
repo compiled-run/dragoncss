@@ -14,6 +14,7 @@ import { expectedDigest, expectedDump } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA } from './compare.ts';
 import type { DeviceHandle, DeviceRecord, DeviceSpec } from './device-run.ts';
+import type { EarlyBoots } from './device-jobs.ts';
 import { runDevicesInChildren } from './device-jobs.ts';
 import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, recordProblems, release, runApp, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
 import { deviceEvidence } from './device-evidence.ts';
@@ -41,6 +42,7 @@ export type DeviceCheckLane = (typeof DEVICE_CHECK_LANES)[number];
 export type FailureKind =
   | 'dump-missing' | 'dump-invalid' | 'device-scale' | 'frame-chrome' | 'frame-engine' | 'applied' | 'native-class' | 'expected-digest'
   | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest' | 'case-identity' | 'capture-kind'
+  | 'blank-capture'
   | 'hit-missing' | 'hit-mismatch';
 
 /** SELD-R1b's device lanes: the case scripts' dumps (device-states) and the device hit test's answers (device-hit). */
@@ -160,13 +162,15 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
   let passingSamples: number[] = [];
   const captureKind = target === 'ios' ? 'drawHierarchy' : 'PixelCopy';
   if (dump.pixels !== null && dump.pixels.capture !== captureKind) fail('device-pixels', 'capture-kind', `capture ${dump.pixels.capture}, the ${target} compositor capture is ${captureKind}`);
+  const blank = dump.pixels === null || ref.pixels === null ? null : blankCapture(dump.pixels.samples, ref.pixels);
   if (dump.pixels === null) fail('device-pixels', 'pixel', 'the dump has no pixels');
   else if (ref.pixels === null) fail('device-pixels', 'pixel', 'no committed Chrome PNG (pnpm run parity:pixel-capture)');
+  else if (blank !== null) fail('device-pixels', 'blank-capture', blank, 'capture');
   else {
     const want = rasterSize(n.case.environment.viewport, dpr);
     const c = checkCasePixels(dump.pixels.samples, ref.points, ref.pixels, want, { width: dump.pixels.width, height: dump.pixels.height });
     compared.c += c.compared;
-    for (const p of c.problems) fail('device-pixels', /raster rule/.test(p) ? 'raster-size' : 'pixel', p, /^([a-z]+:\S+?)(?: at |: )/.exec(p)?.[1] ?? null);
+    for (const p of c.problems) fail('device-pixels', /raster rule/.test(p) ? 'raster-size' : 'pixel', p, pixelProblemNode(p));
     const img = ref.pixels;
     passingSamples = dump.pixels.samples.flatMap((s, i) => {
       // A rule no generator emits is already a (c) failure (the points do not match); it is never a passing sample.
@@ -176,6 +180,21 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
     });
   }
   return { failures, compared, passingSamples };
+}
+
+/** The hosts' stage colour (native-host.ts: white on both), which a capture of the window with nothing drawn shows. */
+export const STAGE_RGBA: readonly number[] = [255, 255, 255, 255];
+
+/**
+ * A capture that is the bare stage at every sample where Chrome paints something else at one or more of them: a frame without the
+ * case's paint (a harness fault, or a tree that painted nothing), reported once for the case, not as a pixel mismatch per
+ * sample. Null otherwise.
+ */
+export function blankCapture(samples: readonly { readonly x: number; readonly y: number; readonly rgba: readonly number[] }[], chrome: RgbaImage): string | null {
+  if (samples.length === 0 || !samples.every((s) => s.rgba.length === 4 && s.rgba.every((v, k) => v === STAGE_RGBA[k]))) return null;
+  const painted = samples.filter((s) => Number.isInteger(s.x) && Number.isInteger(s.y) && s.x >= 0 && s.y >= 0 && s.x < chrome.width && s.y < chrome.height && pixelAt(chrome, s.x, s.y).some((v, k) => v !== STAGE_RGBA[k])).length;
+  if (painted === 0) return null;
+  return `blank capture: either a harness fault or nothing painted; the capture is the stage colour [${STAGE_RGBA.join(',')}] at all ${samples.length} samples, where Chrome paints other colours at ${painted}`;
 }
 
 // ---------------------------------------------------------------- a DPR set
@@ -346,6 +365,15 @@ export function plantVerdict(failures: readonly LaneFailure[], hostError: string
   return { caught: hostError === null && inked > 0 && frames === 0 && lines === 0, pixels: pixels.length, inked, frames, lines };
 }
 
+/**
+ * The node a pixel problem names: its rule ("image-flat:a1:0 at 80,40: ...", "edge:a1:right: ...") or glyph position
+ * ("centre:t1:line0:x: ...", native-compare.ts), any lower-case kind with hyphens; null for a case-level problem.
+ */
+const PROBLEM_RULE = /^([a-z]+(?:-[a-z]+)*:\S+?)(?: at |: )/;
+export function pixelProblemNode(problem: string): string | null {
+  return PROBLEM_RULE.exec(problem)?.[1] ?? null;
+}
+
 /** Whether a sample rule string names one of SAMPLE_RULES (ruleKind throws on any other). */
 export function isSampleRule(rule: string): boolean {
   const k = rule.indexOf(':');
@@ -374,6 +402,8 @@ export function failuresByKind(fs: readonly LaneFailure[]): Record<string, numbe
 // ---------------------------------------------------------------- a target's device run
 
 export type RunLog = (line: string) => void;
+/** The host run that judges a target's device vectors lane: known, or still running (parity:lanes overlaps the host lanes). */
+export type HostSource = HostRun | null | Promise<HostRun | null>;
 
 /** What one device of a target's matrix gives the run: its DPR set, capture-trust rows and vectors lane, or why it was blocked. */
 export type DeviceOutcome = {
@@ -395,7 +425,7 @@ export type DeviceOutcome = {
  * so the run is the one a sequential run makes. A device that fails to boot twice, or cannot hold the root, is a tooling fault:
  * its DPR is recorded as not run, never as a pass.
  */
-export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, log: RunLog, opts: { readonly vectors?: boolean; readonly jobs?: number } = {}): Promise<DeviceRun> {
+export async function runTargetOnDevices(t: TargetConfig, host: HostSource, log: RunLog, opts: { readonly vectors?: boolean; readonly jobs?: number; readonly early?: EarlyBoots | null } = {}): Promise<DeviceRun> {
   // Stamped before any device work: the code, reference data and app sources this run is made and judged with.
   const evidence = deviceEvidence(t.target);
   const cases = nativeCases();
@@ -407,10 +437,13 @@ export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, 
   const specs = DEVICE_MATRIX.filter((d) => d.target === t.target);
   const vectors = opts.vectors !== false;
   const jobs = Math.min(opts.jobs ?? 1, specs.length);
+  const early = opts.early ?? null;
+  // Only the vectors device waits for a host run still running; the others are handed what is known now.
+  const hostOf = (spec: DeviceSpec): HostSource => (host instanceof Promise && !(vectors && spec.name === VECTOR_DEVICES[t.target]) ? null : host);
   const outcomes =
     jobs <= 1
-      ? await sequentially(specs, (spec) => runOneDevice(t, spec, host, build.artifact, () => cases, vectors, log))
-      : await runDevicesInChildren(t.target, specs, jobs, (spec) => ({ target: t.target, device: spec.name, artifact: build.artifact, host, vectors }), log);
+      ? await sequentially(specs, (spec) => runOneDevice(t, spec, hostOf(spec), build.artifact, () => cases, vectors, log, { boot: () => early?.take(spec, log) ?? boot(spec), release: (h) => release(h, log) }))
+      : await runDevicesInChildren(t.target, specs, jobs, (spec) => ({ target: t.target, device: spec.name, artifact: build.artifact, host: hostOf(spec), vectors }), log, early);
   return mergeOutcomes(outcomes, evidence);
 }
 
@@ -535,7 +568,7 @@ export function afterRelease(o: DeviceOutcome, problem: string | null): DeviceOu
 }
 
 /** One device of the matrix: boot, the batch launch and its checks, the capture-trust launch and, on the vectors device, the vectors lane. */
-export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostRun | null, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog, source: DeviceSource = { boot: () => boot(spec), release: (h) => release(h, log) }): Promise<DeviceOutcome> {
+export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostSource, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog, source: DeviceSource = { boot: () => boot(spec), release: (h) => release(h, log) }): Promise<DeviceOutcome> {
   const backend = BACKEND_OF[t.target];
   const none = { device: spec.name, set: null, trust: null, vectors: null };
   let h: DeviceHandle;

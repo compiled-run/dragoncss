@@ -44,6 +44,8 @@ describe('EMS: per-kind channel deltas', () => {
     // PIN-DERIVE: the base kinds stay first and in order, shadow and gradient follow them, and a later kind may follow those.
     const base = ['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph'];
     expect(SAMPLE_RULES.slice(0, base.length + 2)).toEqual([...base, 'shadow', 'gradient']);
+    // REPL-a appends image-flat after them (R8), also at GATE_CHANNEL_DELTA.
+    expect(SAMPLE_RULES).toContain('image-flat');
     expect(Object.keys(CHANNEL_DELTA_BY_KIND)).toEqual([...SAMPLE_RULES]);
     for (const k of SAMPLE_RULES) expect(CHANNEL_DELTA_BY_KIND[k], k).toBe(GATE_CHANNEL_DELTA);
     expect(SHADOW_CHANNEL_DELTA).toBe(GATE_CHANNEL_DELTA);

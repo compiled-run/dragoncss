@@ -49,7 +49,7 @@ function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; concl
   };
   return { deps, calls, logs };
 }
-const run = (f: ReturnType<typeof fake>, waitS = 3600, during: () => void = () => void f.calls.push('local vectors')) => runDevicesOnCi({ pr: 42, deps: f.deps, appearS: 300, waitS, pollS: 30, during });
+const run = (f: ReturnType<typeof fake>, waitS = 3600) => runDevicesOnCi({ pr: 42, deps: f.deps, appearS: 300, waitS, pollS: 30 });
 const failure = (f: () => unknown): LandFailure => {
   try {
     f();
@@ -61,22 +61,11 @@ const failure = (f: () => unknown): LandFailure => {
 };
 
 describe('LAND_DEVICES=ci', () => {
-  it('dispatches on master for the landing tree, runs the Mac half meanwhile, waits, hands back the outcomes and deletes the branch', () => {
+  it('dispatches on master for the landing tree, waits, hands back the outcomes and deletes the branch', () => {
     const f = fake({ appearAfter: 1, doneAfter: 2 });
     const r = run(f);
     expect(r).toEqual({ sha: SHA, url: 'https://ci/run/7', outcomesDir: '/tmp/outcomes' });
-    expect(f.calls).toEqual([`push ${tempBranch(42)}`, 'workflow run', 'run list', 'run list', 'local vectors', 'run view', 'run view', 'run view', `download 7 ${OUTCOMES_ARTIFACT}`, `delete ${tempBranch(42)}`]);
-  });
-  it('fails the step when the Mac half fails, without waiting for CI, and still deletes the branch', () => {
-    const f = fake();
-    const e = failure(() =>
-      run(f, 3600, () => {
-        throw new LandFailure('devices-local-vectors', 'the dragon-smoke vectors run failed');
-      }),
-    );
-    expect(e).toMatchObject({ step: 'devices-local-vectors' });
-    expect(f.calls).not.toContain('run view');
-    expect(f.calls.at(-1)).toBe(`delete ${tempBranch(42)}`);
+    expect(f.calls).toEqual([`push ${tempBranch(42)}`, 'workflow run', 'run list', 'run list', 'run view', 'run view', 'run view', `download 7 ${OUTCOMES_ARTIFACT}`, `delete ${tempBranch(42)}`]);
   });
   it('takes only a run of this dispatch, not an older run for the same commit', () => {
     const old: Run = { databaseId: 3, displayTitle: runTitle(SHA), createdAt: new Date(T0 - 3_600_000).toISOString(), headBranch: 'master', status: 'completed', conclusion: 'failure', url: 'https://ci/run/3' };
@@ -100,13 +89,9 @@ describe('LAND_DEVICES=ci', () => {
     const slow = fake({ doneAfter: 1e9 });
     failure(() => run(slow, 600));
     expect(slow.calls.slice(-2)).toEqual(['run cancel', `delete ${tempBranch(42)}`]);
-    const mac = fake();
-    failure(() =>
-      run(mac, 3600, () => {
-        throw new LandFailure('devices-local-vectors', 'failed');
-      }),
-    );
-    expect(mac.calls).toContain('run cancel');
+    const red = fake({ ghBad: false, conclusion: null, doneAfter: 1e9 });
+    failure(() => run(red, 60));
+    expect(red.calls).toContain('run cancel');
     const empty = fake({ files: ['notes.txt'] });
     failure(() => run(empty));
     expect(empty.calls).toContain('remove /tmp/outcomes');

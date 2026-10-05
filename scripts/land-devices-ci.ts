@@ -1,9 +1,7 @@
-// LAND_DEVICES=ci: the landing driver's device step on GitHub runners, in the hybrid the PM ruled (2026-10-04). The landing tree
-// is committed apart (never on the PR branch) and pushed to a temporary branch, device-lanes.yml is dispatched on master for that
-// commit and its run found by its run-name; meanwhile the Mac runs the one lane kept local (android layout-vectors-device, the
-// `during` step); then the run is waited for and its device-outcomes artifact handed back, for the driver to merge with the Mac's
-// record (device-ci.ts merge --local-vectors) and judge against master as a local run is judged. The temporary branch is deleted
-// whatever happens.
+// LAND_DEVICES=ci: the landing driver's device step on GitHub runners. A position's tree is committed apart (never on the PR
+// branch) and force-pushed to the driver's scratch branch, device-lanes.yml is dispatched on master for that commit and its run
+// found by its run-name, waited for, and its device-outcomes artifact handed back, for the driver to merge (device-ci.ts merge)
+// and judge against the previous position as a local run is judged. The scratch branch is deleted whatever happens.
 import { LandFailure } from './land-lib.ts';
 
 export const DEVICE_WORKFLOW = 'device-lanes.yml';
@@ -64,7 +62,7 @@ export function outcomeFiles(files: readonly string[]): string[] {
  * Runs the device lanes of the landing tree on CI and returns its records. Throws a LandFailure('devices') when the run cannot
  * be started or found, does not finish within waitS, or does not succeed; the temporary branch is deleted in every case.
  */
-export function runDevicesOnCi(o: { readonly pr: number; readonly deps: DevicesCiDeps; readonly appearS: number; readonly waitS: number; readonly pollS?: number; readonly during: () => void }): DevicesCiResult {
+export function runDevicesOnCi(o: { readonly pr: number; readonly deps: DevicesCiDeps; readonly appearS: number; readonly waitS: number; readonly pollS?: number }): DevicesCiResult {
   const { deps } = o;
   const poll = (o.pollS ?? 30) * 1000;
   const branch = tempBranch(o.pr);
@@ -87,8 +85,6 @@ export function runDevicesOnCi(o: { readonly pr: number; readonly deps: DevicesC
       deps.sleep(Math.min(poll, 10_000));
     }
     deps.log(`  device lanes on CI: ${run.url}`);
-    // The Mac's half runs while the runners work; its own failure fails the step (and the branch is still deleted).
-    o.during();
     while (run.status !== 'completed') {
       if (deps.now() - t0 > o.waitS * 1000) throw new LandFailure('devices', `the CI device run ${run.url} did not finish within ${o.waitS}s (status ${run.status})`);
       deps.sleep(poll);

@@ -11,7 +11,7 @@ import type { ParityCase } from '../src/cases.ts';
 import { CHROME_VERSION, harnessStyle, launchChrome } from '../src/chrome.ts';
 import { emittedPath, expectedDir, expectedPath } from '../src/committed.ts';
 import { GATE_DEVICE_PX } from '../src/compare.ts';
-import { ENVIRONMENT, environmentsOf, FIXTURE_GROUPS, FIXTURES, RTL_ENVIRONMENT } from '../src/fixtures.ts';
+import { ENVIRONMENT, environmentsOf, FIXTURES, RTL_ENVIRONMENT } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 import type { CaseOutcome, FixtureOutcome } from '../src/pipeline.ts';
 import { caseCountProblems, runFixture, topologyProblems } from '../src/pipeline.ts';
@@ -21,6 +21,7 @@ import { compilerChromeDeviations } from '../src/compiler-deviations.ts';
 import { readTreeExpectation } from '../src/tree-fixture.ts';
 import { ANIMATION_CONTEXT, deriveRows } from '../src/profile-rows.ts';
 import { animFixtures } from '../src/anim-cases.ts';
+import { DETERMINISM_CHUNKS, determinismChunk, shuffled } from './determinism.ts';
 
 // T065: the row checks here are about rows proven by layout cases. Animation rows (context animation) are proven by frame cases
 // against frame captures, and anim-frames.test.ts gives them the same checks: exactly the passing cases that use the key, every
@@ -696,63 +697,20 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     }
   });
 
-  // determinism (S5 (c)): every fixture in both environments gives the same digest, diagnostics, web CSS, layout projection, vectors
-  // and report when compiled twice and with every order-free list shuffled. One shard per fixture, grouped by fixture group, each
-  // with a timeout derived from its environment count, so a slow machine or a new fixture never pushes one test past a fixed limit.
-  // The shards are self-contained: under -t determinism they use the committed captures (which the per-fixture tests assert equal
-  // the live ones byte for byte) and compute the main outcome themselves.
+  // determinism (S5 (c)) runs in parity-determinism-<k>.test.ts (determinism.ts), one chunk of FIXTURES per file, so its Chrome
+  // work spreads over workers and shards; each chunk proves it checked its own fixtures, and this proves the chunks cover them all.
   describe('determinism (S5 (c))', () => {
-    // Order-free lists: snapshot sources, assets and resolutions, tree modules, components and style use definitions. The document's
-    // style order (document.styles) is ordered: the cascade reads it.
-    const shuffle = <T>(xs: readonly T[]): T[] => (xs.length < 2 ? [...xs] : [...xs.slice(1), xs[0] as T].reverse());
-    const shuffled = (input: FrontEndResult): FrontEndResult => ({
-      ...input,
-      snapshot: { ...input.snapshot, sources: shuffle(input.snapshot.sources), assets: shuffle(input.snapshot.assets), resolutions: shuffle(input.snapshot.resolutions) },
-      tree: input.tree === null ? null : { ...input.tree, modules: shuffle(input.tree.modules), components: shuffle(input.tree.components), styles: shuffle(input.tree.styles) },
-    });
-    const canonicalDiagnostics = (o: FixtureOutcome): string[] => o.diagnostics.map((d) => JSON.stringify(d)).sort();
-    const stable = (o: FixtureOutcome): string => JSON.stringify({ ...o, diagnostics: canonicalDiagnostics(o) });
-    // The live capture when the per-fixture test ran in this process, otherwise the committed file it is asserted to equal.
-    const capturedOrCommitted = async (c: ParityCase): Promise<WebCapture> => captures.get(c.id) ?? (JSON.parse(readFileSync(expectedPath(c.id), 'utf8')) as WebCapture);
-    // Budget per environment of one shard: the slowest fixture (tree-switch-two-instances, 32 cases) measured 3.4 s per environment
-    // standalone (the main outcome recomputed) at load average 47; 30 s leaves about 9x headroom for load.
-    const PER_ENVIRONMENT_MS = 30_000;
-    const checked = { fixtures: new Set<string>(), compilePairs: 0, laneComparisons: 0 };
-
-    for (const group of FIXTURE_GROUPS) {
-      describe(group.id, () => {
-        for (const spec of group.fixtures) {
-          const environments = environmentsOf(spec);
-          it(`${spec.id}: compiled twice and shuffled, in ${environments.map((e) => e.direction).join(' and ')}`, { timeout: PER_ENVIRONMENT_MS * environments.length }, async () => {
-            for (const e of environments) {
-              const a = compileFixture(spec, NO_FAULTS, 'enforce', e.direction).compiled;
-              const b = compileFixture(spec, NO_FAULTS, 'enforce', e.direction).compiled;
-              const c = compileFixture(spec, NO_FAULTS, 'enforce', e.direction, shuffled).compiled;
-              for (const x of [b, c]) {
-                expect(x.digest, `${spec.id} ${e.direction}`).toBe(a.digest);
-                expect(JSON.stringify(x.outputs), `${spec.id} ${e.direction}`).toBe(JSON.stringify(a.outputs));
-                expect(x.diagnostics.map((d) => JSON.stringify(d)).sort(), spec.id).toEqual(a.diagnostics.map((d) => JSON.stringify(d)).sort());
-                expect(JSON.stringify(x.dependencies), spec.id).toBe(JSON.stringify(a.dependencies));
-                checked.compilePairs++;
-              }
-            }
-            // Both lanes again on the shuffled input: every case outcome (projection, vector, comparisons, CSS) and the report equal.
-            const run = { authored: capturedOrCommitted, faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' } as const;
-            const again = await runFixture(spec, browser, { ...run, transformInput: shuffled });
-            const main = outcomes.get(spec.id) ?? (await runFixture(spec, browser, run));
-            expect(stable(again), spec.id).toBe(stable(main));
-            expect(JSON.stringify(buildReport([again]).fixtures), spec.id).toBe(JSON.stringify(buildReport([main]).fixtures));
-            checked.laneComparisons++;
-            checked.fixtures.add(spec.id);
-          });
-        }
-      });
-    }
-
-    it('coverage: every fixture was checked, with two compile comparisons per environment and one lane comparison, and the shuffle reorders the tree fixtures', () => {
-      expect([...checked.fixtures].sort()).toEqual(FIXTURES.map((f) => f.id).sort());
-      expect(checked.compilePairs).toBe(2 * FIXTURES.reduce((n, f) => n + environmentsOf(f).length, 0));
-      expect(checked.laneComparisons).toBe(FIXTURES.length);
+    it('coverage: the chunk files together check every fixture exactly once, and the shuffle reorders the tree fixtures', () => {
+      const files = readdirSync(repoPath('packages/parity/test')).filter((f) => /^parity-determinism-.*\.test\.ts$/.test(f)).sort();
+      expect(files).toEqual(Array.from({ length: DETERMINISM_CHUNKS }, (_, i) => `parity-determinism-${i + 1}.test.ts`).sort());
+      for (let k = 1; k <= DETERMINISM_CHUNKS; k++) {
+        const text = readFileSync(repoPath(`packages/parity/test/parity-determinism-${k}.test.ts`), 'utf8');
+        expect(text.match(/determinismSuite\(\d+\)/g), `parity-determinism-${k}.test.ts declares chunk ${k} once`).toEqual([`determinismSuite(${k})`]);
+      }
+      const ids = Array.from({ length: DETERMINISM_CHUNKS }, (_, i) => determinismChunk(i + 1).map((f) => f.id)).flat();
+      expect(ids.slice().sort()).toEqual(FIXTURES.map((f) => f.id).sort());
+      expect(() => determinismChunk(0)).toThrow();
+      expect(() => determinismChunk(DETERMINISM_CHUNKS + 1)).toThrow();
       const permuted = FIXTURES.filter((spec) => JSON.stringify(shuffled(fixtureInput(spec))) !== JSON.stringify(fixtureInput(spec))).length;
       expect(permuted, 'tree fixtures have several sources, modules, components and style uses to reorder').toBeGreaterThanOrEqual(10);
     });
