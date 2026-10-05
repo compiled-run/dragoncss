@@ -8,7 +8,7 @@ import type { Candidate } from '../src/analysis/resolve.ts';
 import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
 import { keyframesAtRule } from '../src/css/at-rules/keyframes.ts';
 import type { AtRuleContext } from '../src/css/at-rules.ts';
-import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
+import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS, SHORTHANDS_MOVED } from '../src/css/properties.ts';
 import type { Longhand } from '../src/css/properties.ts';
 import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import type { Declaration, EnclosedRules } from '../src/css/stylesheet.ts';
@@ -29,12 +29,17 @@ const FAMILY_EXPORTS: Record<string, unknown> = Object.assign({}, ...(await Prom
 const SPREADABLE: Record<string, unknown> = { ...FAMILY_EXPORTS, ...((await import('../src/css/properties.ts')) as Record<string, unknown>) };
 const BLOCKS = ['LONGHANDS = [', 'SHORTHANDS = [', 'INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([', 'PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {', 'CONTAINER_LONGHANDS: readonly Longhand[] = [', 'TEXT_ROLE_LONGHANDS: readonly Longhand[] = ['];
 const SUFFIX: Record<string, string> = { [BLOCKS[0] as string]: 'LONGHANDS', [BLOCKS[1] as string]: 'SHORTHANDS', [BLOCKS[2] as string]: 'INHERITED', [BLOCKS[3] as string]: 'ASPECTS', [BLOCKS[4] as string]: 'CONTAINER', [BLOCKS[5] as string]: 'TEXT_ROLE' };
-/** The lists an aggregate block of properties.ts spreads, in order. */
+/** The lists properties.ts registers for an aggregate block, in table order: the block's column of each family(...) line of FAMILIES. */
 function spreads(block: string): string[] {
-  const start = AGGREGATE.indexOf(block);
-  if (start < 0) throw new Error(`no ${block} block in properties.ts`);
-  const body = AGGREGATE.slice(start, Math.min(...['\n]', '\n}'].map((e) => AGGREGATE.indexOf(e, start)).filter((i) => i > 0)));
-  return [...body.matchAll(/\.\.\.([A-Z_]+),/g)].map((m) => m[1] as string);
+  const column = BLOCKS.indexOf(block);
+  const start = AGGREGATE.indexOf('const FAMILIES = [');
+  if (column < 0 || start < 0) throw new Error(`no ${block} column or no FAMILIES block in properties.ts`);
+  const body = AGGREGATE.slice(start, AGGREGATE.indexOf('\n]', start));
+  const rows = [...body.matchAll(/^ {2}family\('([a-z-]+)', (.+)\),$/gm)].map((m) => ({ id: m[1] as string, args: (m[2] as string).split(', ') }));
+  if (rows.some((r) => r.args.length !== BLOCKS.length)) throw new Error('a family(...) line of properties.ts does not name six lists');
+  const moved = rows.filter((r) => r.id === SHORTHANDS_MOVED.family);
+  const ordered = column === 1 ? rows.filter((r) => r.id !== SHORTHANDS_MOVED.family).flatMap((r) => (r.id === SHORTHANDS_MOVED.after ? [r, ...moved] : [r])) : rows;
+  return ordered.map((r) => r.args[column] as string).filter((a) => a !== '[]');
 }
 /** The families an aggregate block spreads, in order. */
 const spreadOrder = (block: string): string[] => spreads(block).map((id) => id.replace(/_(?:LONGHANDS|SHORTHANDS|INHERITED|ASPECTS|CONTAINER|TEXT_ROLE)$/, ''));

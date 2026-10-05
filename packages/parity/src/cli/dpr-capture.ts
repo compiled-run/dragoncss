@@ -5,6 +5,7 @@
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { captureFixture, captureJson } from '../capture.ts';
 import { launchChrome } from '../chrome.ts';
+import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { atDpr, DPRS, EXTRA_DPRS, expectedDprDir, expectedDprPath, layoutCases, zoomGuard } from '../dpr.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 
@@ -37,15 +38,14 @@ for (const dpr of DPRS) {
   try {
     const guard = await zoomGuard(browser, dpr);
     const t = Date.now();
-    let n = 0;
-    for (const f of all) {
-      for (const c of f.cases) {
+    // Each case in its own context (captureFixture), CHROME_PAGES at a time.
+    const n = (
+      await inOrder(all.flatMap((f) => f.cases), CHROME_PAGES, async (c) => {
         const capture = await captureFixture(browser, c.id, c.authoredHtml, atDpr(c.environment, dpr));
         if (capture.devicePixelRatio !== dpr) throw new Error(`${c.id}: captured at DPR ${capture.devicePixelRatio}, not ${dpr}`);
         writeFileSync(expectedDprPath(c.id, dpr, platform), captureJson(capture));
-        n++;
-      }
-    }
+      })
+    ).length;
     // The guard again after the last case: the launch never fell back to zoom 1.
     await zoomGuard(browser, dpr);
     const written = readdirSync(dir).filter((f) => f.endsWith('.web.json')).length;

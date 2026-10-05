@@ -4,10 +4,11 @@
 // The expected dumps carry each image's destination rect and each web view's frame from the same engine geometry.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { emitAndroidViewsCases, emitUikitCases, expectedDump, WRITE_CSS } from 'dragon';
+import { createProjectWith, emitAndroidViewsCases, emitUikitCases, expectedDump, nativePrograms, NO_FAULTS, WRITE_CSS } from 'dragon';
+import { fixtureToInput, PROJECT_ID } from '../src/fixture-reader.ts';
 import { deviceDprs } from '../src/targets.ts';
 import { REPLACED } from '../src/fixture-groups/replaced.ts';
-import { expectedEngine, hostSources, nativeCases } from '../src/native-host.ts';
+import { expectedEngine, hostSources, NATIVE_CONFIG, nativeCases } from '../src/native-host.ts';
 import { maskedAt } from '../src/paint-samples/foreign-view.ts';
 import { dropsBaseAt, flatAt, imagePointsOf } from '../src/paint-samples/image.ts';
 import type { ReplacedSamplesBox } from '../src/paint-samples/replaced-geometry.ts';
@@ -144,7 +145,7 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
     const kotlin = emitAndroidViewsCases([{ ...one, program: demo.programs['android-views'] }]).map((f) => f.text).join('\n');
     expect(swift).toContain(`.dragonSetImage("${image.data}", width: 32.0, height: 18.0, fit: "cover")`);
     expect(swift).toMatch(/dragonSetForeignView\(v\d+, src: nil\)/);
-    expect(kotlin).toContain(`.dragonSetImage("${image.data}", 32.0, 18.0, "cover")`);
+    expect(kotlin).toContain(`.dragonSetImage("${image.data}", 32.0, 18.0, "cover", true)`);
     expect(kotlin).toMatch(/dragonSetForeignView\(v\d+, null\)/);
   });
 
@@ -213,18 +214,76 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
   });
 
   // #72 landing device run: Android captured image cases before their frame reached the display (white image-flat samples, varying
-  // by device and DPR). The host copies only after a frame holding the drawn tree is committed, and the decoder uploads early.
-  it('the Android host copies the window only after a frame commit, and the image decoder prepares its bitmap', () => {
+  // by device and DPR). The host copies only after a frame of the redrawn tree is committed, and copies again only after another
+  // committed frame, so two equal copies come from two frames; the decoder uploads early.
+  it('the Android host copies the window only after a frame commit, each copy after its own, and the image decoder prepares its bitmap', () => {
     const files = hostSources('android', 'toolchain');
     const host = files.find((f) => f.path === 'kotlin/dev/dragon/host/DragonActivity.kt')?.text ?? '';
-    const commit = host.indexOf('registerFrameCommitCallback { main.post { capture() } }');
-    expect(commit).toBeGreaterThan(-1);
-    // capture() is the only caller of the first copy, and settle() reaches capture() only through the commit callback.
+    expect(host).toContain('fun afterCommittedFrame(block: () -> Unit) {\n      tree.root.viewTreeObserver.registerFrameCommitCallback { main.post { block() } }\n      tree.root.invalidate()\n    }');
+    // capture() is the only caller of the first copy, settle() reaches capture() only through a committed frame, and a copy that
+    // differs from the previous one is retried only through another.
     expect(host.match(/copy\(0\)/g)?.length).toBe(1);
     expect(host.match(/capture\(\)/g)?.length).toBe(2);
+    expect(host.match(/afterCommittedFrame \{ capture\(\) \}/g)?.length).toBe(1);
+    expect(host.match(/copy\(attempt \+ 1\)/g)).toEqual(['copy(attempt + 1)', 'copy(attempt + 1)', 'copy(attempt + 1)']);
+    expect(host).toContain('previous = sha\n              // The next copy is of another committed frame of the same tree, so equal copies show two frames drew it alike.\n              afterCommittedFrame { copy(attempt + 1) }');
+    expect(host.indexOf('fun afterCommittedFrame(')).toBeLessThan(host.indexOf('fun capture() {'));
     expect(host.indexOf('fun capture() {')).toBeLessThan(host.indexOf('copy(0)'));
     expect(host.indexOf('copy(0)')).toBeLessThan(host.indexOf('fun settle('));
     const image = files.find((f) => f.path === 'kotlin/dev/dragon/views/paint/DragonPaintImage.kt')?.text ?? '';
     expect(image).toMatch(/val bitmap = BitmapFactory\.decodeByteArray[^\n]*\n[^\n]*\n  bitmap\.prepareToDraw\(\)\n  return bitmap/);
+  });
+  // #72 landing device run: a filtered bitmap drawn straight into the window's frame moved other boxes' edges by one colour step
+  // on the emulator (hit-order, replaced-fit-rtl, replaced-intrinsic). The stage draws it, still filtered, into a RenderNode with
+  // its own compositing layer on a hardware canvas, and straight in only on a software one.
+  // Review of #72 at 42fd630b81: a transform change on the img or an ancestor does not redraw the img, so a layer chosen at
+  // draw time would go stale under an animated, transitioned or state-dependent transform. The compiler decides: such an img
+  // gets layer false (a direct draw), and an img under only a static transform keeps the layer and the runtime whole-px check.
+  it('an img under a transitioned transform is emitted with the direct draw; one under a static transform, or none, with the layer', () => {
+    const png = /src="(data:image\/png;base64,[^"]+)"/.exec(readFileSync(repoPath('packages/parity/fixtures/replaced-demo.html'), 'utf8'))?.[1];
+    if (png === undefined) throw new Error('no PNG in replaced-demo');
+    const html = `<!DOCTYPE html><html data-dragon-id="html"><head><style>body { margin: 0; font-family: Ahem; font-size: 10px; }
+.t { transition: transform 1s; } .s { transform: translate(2px, 0); } img { display: block; width: 40px; height: 20px; }</style></head>
+<body data-dragon-id="body"><div data-dragon-id="t" class="t"><div data-dragon-id="w"><img data-dragon-id="a" src="${png}"></div></div>
+<div data-dragon-id="s" class="s"><img data-dragon-id="b" src="${png}"></div><img data-dragon-id="c" src="${png}"></body></html>`;
+    const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' });
+    const p = nativePrograms(project.compile(fixtureToInput('img-transition', html)), []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const layers = (b: 'uikit' | 'android-views') => p.programs[b].nodes.flatMap((n) => n.writes.flatMap((w) => (w.kind === 'replaced-image' ? [[n.id, w.layer]] : [])));
+    expect(layers('android-views')).toEqual([['a', false], ['b', true], ['c', true]]);
+    expect(layers('uikit')).toEqual(layers('android-views'));
+    const one = { id: 'img-transition', fixture: 'img-transition', direction: 'ltr' as const, compilerDigest: 'd', viewport: { width: 400, height: 300 }, expectedDigests: [] };
+    const kotlin = emitAndroidViewsCases([{ ...one, program: p.programs['android-views'] }]).map((f) => f.text).join('\n');
+    expect(kotlin.match(/\.dragonSetImage\("[^"]+", \d+\.0, \d+\.0, "fill", (true|false)\)/g)?.map((l) => l.endsWith('true)'))).toEqual([false, true, true]);
+  });
+
+  it('the Android image stage draws the filtered bitmap through its own compositing layer on a hardware canvas', () => {
+    const image = hostSources('android', 'toolchain').find((f) => f.path === 'kotlin/dev/dragon/views/paint/DragonPaintImage.kt')?.text ?? '';
+    const at = image.indexOf('fun dragonPaintImageStage(');
+    const stage = image.slice(at, image.indexOf('\n}\n', at));
+    expect(stage).toContain('val paint = Paint(Paint.FILTER_BITMAP_FLAG)');
+    expect(stage.match(/drawBitmap\(image, null, dest, paint\)/g)?.length).toBe(2);
+    // Review of #72 at db8f8f4542: a layer under a transform is resampled, and one over the texture limit is not made. The direct
+    // draw (as before the layer) covers a software canvas, a layer over the GPU's maximum bitmap size, and a box or ancestor whose
+    // View matrix is more than a whole-device-px translate.
+    const direct = stage.indexOf('if (!canvas.isHardwareAccelerated || !v.dragonImageLayer || r - l > canvas.maximumBitmapWidth || b - t > canvas.maximumBitmapHeight || !dragonWholePxTranslate(v)) {');
+    const layer = stage.indexOf('it.setUseCompositingLayer(true, null)');
+    expect(direct).toBeGreaterThan(-1);
+    expect(layer).toBeGreaterThan(direct);
+    expect(stage.slice(direct, stage.indexOf('return\n', direct))).toContain('canvas.drawBitmap(image, null, dest, paint)');
+    const at2 = image.indexOf('fun dragonWholePxTranslate(v: View): Boolean {');
+    const whole = image.slice(at2, image.indexOf('\n}\n', at2));
+    expect(whole).toContain('at = at.parent as? View');
+    expect(whole).toContain('if (m[0] != 1f || m[1] != 0f || m[3] != 0f || m[4] != 1f || m[6] != 0f || m[7] != 0f || m[8] != 1f || m[2] % 1f != 0f || m[5] % 1f != 0f) return false');
+    // The only draw on the hardware canvas itself is the node; the bitmap goes into the node's recording.
+    const hardware = stage.slice(layer);
+    expect(hardware).toContain('inner.drawBitmap(image, null, dest, paint)');
+    expect(hardware).not.toContain('canvas.drawBitmap');
+    expect(hardware).toContain('canvas.drawRenderNode(node)');
+    expect(hardware).toContain('node.endRecording()');
+    // The layer covers the drawn part in whole device px through the support code's snap (no rounding in a paint emitter).
+    expect(stage).toContain('val px = dragonCoveringPx(c)');
+    const support = hostSources('android', 'toolchain').map((f) => f.text).join('\n');
+    expect(support).toContain('fun dragonCoveringPx(r: DoubleArray): IntArray = intArrayOf(kotlin.math.floor(r[0]).toInt(), kotlin.math.floor(r[1]).toInt(), kotlin.math.ceil(r[0] + r[2]).toInt(), kotlin.math.ceil(r[1] + r[3]).toInt())');
   });
 });

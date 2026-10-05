@@ -15,6 +15,11 @@ export type ImageWrite = {
   readonly width: number;
   readonly height: number;
   readonly fit: ObjectFit;
+  /**
+   * Whether the Android stage may draw through its own layer: false when the img or an ancestor has a transform that moves at
+   * run time, whose change would not redraw the img and would leave a layer resampled under the new matrix.
+   */
+  readonly layer: boolean;
 };
 
 const IMAGE_PAINT = 'the PNG decoded once at build (sRGB, unpremultiplied source); drawn into the engine destination rect snapped to device px, clipped to the snapped content box';
@@ -26,12 +31,12 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite> = {
     'android-views': { 'replaced-image': { key: 'dragonImage', technique: 'dragon-owned-paint', detail: `DragonBoxView Bitmap drawn with Canvas.drawBitmap(src, dst, Paint(FILTER_BITMAP_FLAG)): ${IMAGE_PAINT}; the destination rect in device px` } },
   },
   css: { 'replaced-image': ['object-fit', 'object-position'] },
-  lower: ({ box, el, images }) => {
+  lower: ({ box, el, images, transformMoves }) => {
     if (box.kind !== 'replaced' || el === null || el.element.tag !== 'img') return [];
     if (box.natural.kind !== 'image') throw new ProgramError(`${box.id}: an img leaf without a natural size`);
     const src = el.element.attributes.get('src');
     const bytes = src === undefined ? undefined : images.get(src);
     if (bytes === undefined) throw new ProgramError(`${box.id}: no image bytes for its src`);
-    return [{ kind: 'replaced-image', data: base64Encode(bytes), width: box.natural.width, height: box.natural.height, fit: box.objectFit }];
+    return [{ kind: 'replaced-image', data: base64Encode(bytes), width: box.natural.width, height: box.natural.height, fit: box.objectFit, layer: !transformMoves }];
   },
 };
