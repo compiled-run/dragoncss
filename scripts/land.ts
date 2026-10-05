@@ -6,8 +6,8 @@
 // --match-head-commit. A PR that fails a step gets the landing-failed label and a comment, and the queue continues.
 // Run with: pnpm land <queue-file> [--dry-run]   (queue: one <branch>:<pr>:<clean-head> per line)
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { loadavg } from 'node:os';
+import { closeSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { loadavg, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import {
   baseAction,
@@ -69,6 +69,7 @@ import {
   worktreesOf,
 } from './land-lib.ts';
 import {
+  archRebaseline,
   commitRegen,
   deviceRunProblems,
   deviceRunWrote,
@@ -87,7 +88,9 @@ import {
   staleLines,
   treeMatches,
 } from './merge-train-lib.ts';
+import { MERGE_DRIVERS } from './floor-merge.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
+import { abandonInflight, runDevicesOnCi, scratchRef } from './land-devices-ci.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
 const DEVICE = '/tmp/device-lease.sh';
@@ -111,6 +114,8 @@ const REVIEW_DIR = env['LAND_REVIEW_DIR'] ?? '/tmp/land-reviews';
 const RUN_DIR = env['LAND_RUN_DIR'] ?? '/tmp/dragon-land.run';
 const UNPROVED = env['LAND_UNPROVED'] ?? '/tmp/dragon-land.unproved.json';
 const runFile = (name: string): string => join(RUN_DIR, name);
+/** The CI device run a driver has in flight (land-devices-ci.ts record), for the supervisor to cancel after an interrupt. */
+const ciInflight = (role: 'driver' | 'builder'): string => runFile(`ci-inflight-${role}.json`);
 const readOrNull = (path: string): string | null => {
   try {
     return readFileSync(path, 'utf8');
@@ -138,6 +143,9 @@ const seconds = (name: string, fallback: number): number => {
 let CI_WAIT_S = 0;
 let CI_APPEAR_S = 0;
 let QUIET_MAX_S = 0;
+// LAND_DEVICES=ci runs a position's device lanes on GitHub runners (device-lanes.yml) instead of under the local device lease.
+let DEVICES_ON = 'local';
+let DEVICES_WAIT_S = 0;
 let BATCH = 1;
 const REGEN = ['pnpm', 'regen'];
 const DEVICES = ['pnpm', 'run', 'parity:devices'];
@@ -291,7 +299,12 @@ const judgeDevices = (master: string, startedMs: number | null): string[] => {
   if (lanes.error || lanes.signal || (lanes.status !== 0 && lanes.status !== 1) || !/^parity:lanes: /m.test(lanes.stdout)) {
     return [`pnpm -s run parity:lanes did not judge the lanes: ${lanes.error?.message ?? lanes.signal ?? `exit ${lanes.status}`} ${lanes.stderr.slice(0, 300)}`];
   }
-  return deviceRunProblems(before, after, staleLines(lanes.stdout));
+  // An architecture change of a lane is judged as a rebaseline only for the PR LAND_ARCH_REBASELINE names, recorded in its body.
+  const pr = current?.pr ?? 0;
+  const arch = archRebaseline(env['LAND_ARCH_REBASELINE'], pr, pr === 0 ? '' : JSON.parse(gh(['pr', 'view', String(pr), '--repo', REPO, '--json', 'body'])).body ?? '');
+  if (arch.problem !== null) return [arch.problem];
+  if (arch.rebaseline) log(`  LAND_ARCH_REBASELINE: #${pr} may change device lane architectures, with master's states and exact failure sets`);
+  return deviceRunProblems(before, after, staleLines(lanes.stdout), { rebaseline: arch.rebaseline });
 };
 
 // Every floor file on master or the landing commit, judged against master's version (floorRegressions).
@@ -303,6 +316,79 @@ const floorFileProblems = (master: string, head: string): string[] => {
 };
 
 // `ignored` also removes ignored outputs (test reports, lane outputs), keeping installs and build caches (KEEP_IGNORED).
+// The landing tree as a commit apart from the worktree's HEAD and index (a scratch index), pushed to a temporary branch for CI.
+const ciDeviceDeps = (pr: number) => ({
+  gh: (args: string[]) => gh([...args, '--repo', REPO]),
+  pushTemp: (branch: string): string => {
+    const dir = mkdtempSync(join(tmpdir(), 'land-devices-'));
+    try {
+      const index = join(dir, 'index');
+      copyFileSync(resolve(WT, text(wtGit, ['rev-parse', '--git-path', 'index'])), index);
+      const at = (args: string[]): string => execFileSync('git', ['-C', WT, ...args], { encoding: 'utf8', env: { ...process.env, GIT_INDEX_FILE: index } }).trim();
+      at(['add', '-A']);
+      const tree = at(['write-tree']);
+      const sha = checkSha(at(['commit-tree', tree, '-p', 'HEAD', '-m', `Landing tree of #${pr} for the CI device lanes (temporary; never merged)`]), 'commit-tree');
+      // Forced: the scratch branch is the driver's own (scratchRef refuses any other), and an interrupted run may have left it.
+      net(wtGit, ['push', '--quiet', 'origin', `+${sha}:${scratchRef(branch)}`]);
+      return sha;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+  deleteTemp: (branch: string): void => {
+    net(wtGit, ['push', '--quiet', 'origin', `:${scratchRef(branch)}`]);
+  },
+  download: (runId: number, artifact: string): { dir: string; files: string[] } => {
+    const dir = mkdtempSync(join(tmpdir(), 'land-device-outcomes-'));
+    try {
+      gh(['run', 'download', String(runId), '--repo', REPO, '-n', artifact, '-D', dir]);
+    } catch (error) {
+      rmSync(dir, { recursive: true, force: true });
+      throw error;
+    }
+    return { dir, files: readdirSync(dir) };
+  },
+  remove: (dir: string): void => rmSync(dir, { recursive: true, force: true }),
+  record: (inflight: { readonly branch: string; readonly runId: number | null } | null): void => {
+    if (inflight === null) rmSync(ciInflight(ROLE), { force: true });
+    else writeFileSync(ciInflight(ROLE), JSON.stringify(inflight));
+  },
+  sleep,
+  now: () => Date.now(),
+  log,
+});
+
+// LAND_DEVICES=ci is a no-op (the local device run) until master has the CI device workflow (it is dispatched from master) and
+// the landing tree has its CLI.
+const ciDevicesReady = (): boolean => {
+  let workflow = true;
+  try {
+    git(['cat-file', '-e', `${fetchMaster()}:.github/workflows/device-lanes.yml`]);
+  } catch {
+    workflow = false;
+  }
+  const cli = existsSync(join(WT, 'packages/parity/src/cli/device-ci.ts'));
+  if (!workflow || !cli) log(`  LAND_DEVICES=ci: ${!workflow ? 'master has no .github/workflows/device-lanes.yml' : 'the landing tree has no packages/parity/src/cli/device-ci.ts'} yet; running the device lanes locally`);
+  return workflow && cli;
+};
+
+// Cancels the CI device run a stopped driver or builder recorded in flight, and deletes its scratch branch; never throws.
+const abandonCiRun = (role: 'driver' | 'builder'): void => {
+  try {
+    const raw = readOrNull(ciInflight(role));
+    if (raw === null) return;
+    const repo = REPO !== '' ? REPO : execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'], { encoding: 'utf8' }).trim();
+    abandonInflight(raw, {
+      cancel: (id) => void execFileSync('gh', ['run', 'cancel', String(id), '--repo', repo], { stdio: 'ignore' }),
+      deleteBranch: (b) => void execFileSync('git', ['-C', MAIN, 'push', '--quiet', 'origin', `:${scratchRef(b)}`], { stdio: 'ignore' }),
+      log,
+    });
+    rmSync(ciInflight(role), { force: true });
+  } catch (error) {
+    log(`the ${role}'s CI device run left in flight could not be cleaned up: ${msg(error)}`);
+  }
+};
+
 const resetWorktree = (master: string, ignored = false): void => {
   try {
     wtGit(['rev-parse', '-q', '--verify', 'MERGE_HEAD']);
@@ -420,7 +506,8 @@ const admit = (e: Entry, earlier: readonly Entry[]): { merged: string } | { tick
   const ci = waitCi('ci-before', pr.headOid, `#${e.pr} head`, () => parsePrHead(JSON.parse(gh(['pr', 'view', String(e.pr), '--repo', REPO, '--json', 'headRefOid,mergeable']))).mergeable === 'CONFLICTING');
   // Its review must be clean at the current head (GitHub runs no review of a conflicting head, so that waits for the landing commit).
   if (ci === 'success') {
-    const review = run('review-before', ['pnpm', '-s', 'pr:review', String(e.pr), '--wait'], MAIN);
+    // --conflicts-ok: GitHub's CONFLICTING ignores the merge drivers; the merge train below decides (judgedHead).
+    const review = run('review-before', ['pnpm', '-s', 'pr:review', String(e.pr), '--wait', '--conflicts-ok'], MAIN);
     if (review.error !== undefined || review.status !== 0) failed('review-before', review, `pnpm -s pr:review ${e.pr} (before the build)`);
     const out = readFileSync(review.log, 'utf8');
     if (!out.includes(`PR #${e.pr} at ${pr.headOid}`)) throw new LandFailure('review-before', `pr:review judged another head than ${pr.headOid} (log ${review.log})`);
@@ -486,15 +573,30 @@ const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => {
   }
   if (runDevices) {
     const started = Date.now();
-    const d = run('devices', [DEVICE, ...DEVICES], WT);
-    // master's device-pixels lane fails on purpose, so the exit code says nothing; the judgement against the previous position decides.
-    if (d.error !== undefined || d.signal !== null || (d.status !== 0 && d.status !== 1)) failed('devices', d, DEVICES.join(' '));
+    let ran = DEVICES.join(' ');
+    if (DEVICES_ON === 'ci' && ciDevicesReady()) {
+      const ci = runDevicesOnCi({ pr: e.pr, deps: ciDeviceDeps(e.pr), appearS: CI_APPEAR_S, waitS: DEVICES_WAIT_S });
+      try {
+        // Fails loudly unless every CI device's outcome is there, on this tree's evidence; exit 3 is a refusal with its reasons.
+        const mergeCmd = ['node', '--conditions=dragon-internal', 'packages/parity/src/cli/device-ci.ts', 'merge', ci.outcomesDir];
+        const m = run('devices-merge', mergeCmd, WT);
+        if (m.status === 3) throw new LandFailure('devices-merge', `device-ci.ts merge refused the CI outcomes:\n${tail(m.log, 20)}`);
+        if (m.error !== undefined || m.signal !== null || (m.status !== 0 && m.status !== 1)) failed('devices-merge', m, mergeCmd.join(' '));
+      } finally {
+        rmSync(ci.outcomesDir, { recursive: true, force: true });
+      }
+      ran = `device-lanes.yml on CI for the position's tree ${ci.sha} (${ci.url}), merged with device-ci.ts merge`;
+    } else {
+      const d = run('devices', [DEVICE, ...DEVICES], WT);
+      // master's device-pixels lane fails on purpose, so the exit code says nothing; the judgement against the previous position decides.
+      if (d.error !== undefined || d.signal !== null || (d.status !== 0 && d.status !== 1)) failed('devices', d, DEVICES.join(' '));
+    }
     const problems = judgeDevices(prev, started);
     if (problems.length > 0) throw new LandFailure('judge-devices', `the device run differs from the previous position's device evidence:\n  ${problems.join('\n  ')}`);
     r = heavy('regen-after-devices', REGEN);
     if (r.error !== undefined || r.status !== 0) failed('regen-after-devices', r, 'pnpm regen');
-    commands.push(DEVICES.join(' '), REGEN.join(' '));
-    device = 'ran; every lane passes or fails as on the previous position';
+    commands.push(ran, REGEN.join(' '));
+    device = `ran${ran === DEVICES.join(' ') ? '' : ' on CI'}; every lane passes or fails as on the previous position`;
   }
   log(`  device lanes: ${device}`);
   const head = commitRegen(wtGit, k, t.member, commands, 'Land');
@@ -781,6 +883,18 @@ const unlock = (): void => {
 };
 
 const prepareWorktree = (): void => {
+  // The merge drivers of .gitattributes (pnpm setup:git), in the shared config every worktree of this repository reads, so a
+  // landing merge resolves generated outputs and raised floors the same way a lane's does.
+  for (const [key, value] of MERGE_DRIVERS) {
+    let now = '';
+    try {
+      now = text(git, ['config', '--get', key]);
+    } catch {}
+    if (now !== value) {
+      git(['config', key, value]);
+      log(`set git config ${key} (pnpm setup:git)`);
+    }
+  }
   if (!existsSync(WT)) {
     net(git, ['fetch', '--quiet', 'origin', '+refs/heads/master:refs/remotes/origin/master']);
     git(['worktree', 'add', '-q', '--detach', WT, 'refs/remotes/origin/master']);
@@ -795,6 +909,9 @@ const setUp = (): void => {
   CI_WAIT_S = seconds('LAND_CI_WAIT', 5400);
   CI_APPEAR_S = seconds('LAND_CI_APPEAR', 900);
   QUIET_MAX_S = seconds('LAND_QUIET_MAX', 5400);
+  DEVICES_ON = env['LAND_DEVICES'] ?? 'local';
+  if (DEVICES_ON !== 'local' && DEVICES_ON !== 'ci') throw new Error(`land: LAND_DEVICES must be local or ci, not ${JSON.stringify(DEVICES_ON)}`);
+  DEVICES_WAIT_S = seconds('LAND_DEVICES_WAIT', 7200);
   BATCH = parseBatchSize(env['LAND_BATCH']);
   MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
   // The default reviewer is the main checkout's lookup script, never the PR's own copy in the driver worktree.
@@ -991,6 +1108,7 @@ const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
     cancel: () => {
       if (pid !== null) log('pipelining: stopping the builder; its batch is thrown away');
       stop();
+      abandonCiRun('builder');
     },
   };
 };
@@ -1085,6 +1203,9 @@ const cleanUpAfter = (driverPid: number, how: string): void => {
       log(`WARNING could not stop the builder: ${errorText(error).split('\n')[0]}`);
     }
   }
+  // A CI device run the interrupted driver or its builder had in flight is cancelled and its scratch branch deleted (they died by
+  // signal, past their own cleanup).
+  for (const role of ['builder', 'driver'] as const) abandonCiRun(role);
   cleanUpAfterDriver({
     how,
     now: stamp(),

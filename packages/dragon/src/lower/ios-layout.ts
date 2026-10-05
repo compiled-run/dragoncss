@@ -36,12 +36,12 @@ import type {
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
-import { exactLayoutRatio } from '../css/values.ts';
+import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
-import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath, V1_MATH_FUNCTIONS } from '../css/math.ts';
+import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
 import type { ImageNaturals } from '../images/compile.ts';
@@ -84,7 +84,7 @@ function lengthPercentage(id: string, get: Get, p: Longhand, range: LengthCalc['
   if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value };
   if (v.kind === 'percentage') return { kind: 'percent', value: v.value };
   if (v.kind === 'length' && VIEWPORT_AXIS[v.unit] !== undefined) return { kind: 'calc', expr: { kind: 'viewport', value: v.value, axis: VIEWPORT_AXIS[v.unit] as 'width', size: 'large' }, range };
-  if (v.kind !== 'other' || !V1_MATH_FUNCTIONS.has(v.type.replace('()', ''))) return null;
+  if (v.kind !== 'other' || !MATH_VALUE_FUNCTIONS.has(v.type.replace('()', ''))) return null;
   const context = mathContextFor(p);
   const parsed = 'refused' in context ? null : parseMath(v.text, context);
   if (parsed === null || !parsed.ok) return fail(id, p, v, `a calculation V1 supports${parsed === null ? '' : ` (${parsed.reason})`}`);

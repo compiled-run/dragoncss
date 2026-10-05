@@ -188,10 +188,11 @@ export function parseHitCaptureArgs(argv: readonly string[]): HitCaptureArgs {
 export const IDENTITY_ROOTS: readonly string[] = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts', 'packages/parity/emitted'];
 export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.json';
 /**
- * Files that are new since the identity base: SELD-R1b's fixtures (hit-*, reject-pointer-events-*) and the fixtures of PNT2's
- * transforms group (transform-*, reject-transform-*), which landed after it.
+ * Files that are new since the identity base: SELD-R1b's fixtures (hit-*, reject-pointer-events-*), SELD-R2a's (interaction-*,
+ * reject-interaction-*), the fixtures of PNT2's transforms group (transform-*, reject-transform-*) and CTX-PROOF's (ctx-proof-*),
+ * which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|transform-|reject-transform-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-)[^/]*$/;
 
 /**
  * A committed output with the pointer-events key removed: the "pointer-events" computed value of every captured element, and the
