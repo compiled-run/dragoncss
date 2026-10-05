@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+:root { --inset-top: env(safe-area-inset-top); }
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.a { width: min(50%, calc(env(safe-area-inset-bottom) * 4)); height: calc(1em + env(safe-area-inset-top)); margin-left: clamp(0px, env(safe-area-inset-left), 2px); }
+.b { padding-top: var(--inset-top); height: 10px; border-left: calc(env(safe-area-inset-right) / 7 + 1px) solid #000; border-top: env(safe-area-inset-left) solid #000; }
+.c { width: calc(env(safe-area-inset-right) * 3 + 10% - 2px); height: max(env(safe-area-inset-top), 5px, env(safe-area-inset-bottom)); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="a"></div><div data-dragon-id="b" class="b"></div><div data-dragon-id="c" class="c"></div>
+</body>
+</html>

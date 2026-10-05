@@ -5,7 +5,7 @@ import type { ColorSyntax, Rgba8 } from './color.ts';
 import { parseColorNode } from './color.ts';
 import { asciiLower, decodeName, serializeString } from './escapes.ts';
 import type { Longhand } from './properties.ts';
-import { foldNumber, mathContextFor, parseMath, V1_MATH_FUNCTIONS } from './math.ts';
+import { foldNumber, mathContextFor, mathHasEnv, parseMath, V1_MATH_FUNCTIONS } from './math.ts';
 import { CANONICAL_LENGTH_UNIT, lengthFeatureType, normalizeUnit } from './units.ts';
 import { GENERIC_FAMILY_KEYWORDS } from '../fonts/font-face.ts';
 import type { FontMap } from '../fonts/font-map.ts';
@@ -39,11 +39,20 @@ export const kw = (value: string): CssValue => ({ kind: 'keyword', value });
 /** The shorthands that set a border's width, style and colour together (css-backgrounds-3 §3.1, css-logical-1 §6.3). */
 const BORDER_SHORTHAND = /^border(-(top|right|bottom|left|block|inline|block-start|block-end|inline-start|inline-end))?$/;
 
-/** A math function value (calc(), min(), max(), clamp(), or one V1 refuses), which a border shorthand assigns to the width. */
+/** The functions whose value is a calculation: the math functions and env() (css/env.ts), whose inset is a px length. */
+export const MATH_VALUE_FUNCTIONS: ReadonlySet<string> = new Set([...V1_MATH_FUNCTIONS, 'env']);
+
+/**
+ * The feature type of a calculation that reads a safe-area inset, alone or inside a math function: support for env() is proven by
+ * its own profile rows, never by those of calc().
+ */
+export const ENV_VALUE_TYPE = 'env()';
+
+/** A math function value (calc(), min(), max(), clamp(), env(), or one V1 refuses), which a border shorthand assigns to the width. */
 export function isMathValue(v: CssValue): boolean {
   if (v.kind !== 'other') return false;
   const name = v.type.startsWith(REFUSED_MATH_PREFIX) ? v.type.slice(REFUSED_MATH_PREFIX.length) : v.type;
-  return name.endsWith('()') && V1_MATH_FUNCTIONS.has(name.slice(0, -2));
+  return name.endsWith('()') && MATH_VALUE_FUNCTIONS.has(name.slice(0, -2));
 }
 
 export const COLOR_FIX = 'Use a named colour, a 3, 4, 6 or 8 digit hex colour, rgb(), rgba(), hsl(), hsla(), transparent or currentcolor.';
@@ -59,7 +68,7 @@ function isColorBearing(property: string): boolean {
 export function tokenValue(node: CssNode, property: string): CssValue | string {
   if (!isColorBearing(property)) return toValue(node, property);
   // css-backgrounds-3 §3.1: a calculation in a border shorthand is its <line-width>, typed as the border-*-width longhands are.
-  if (node.type === 'Function' && V1_MATH_FUNCTIONS.has(asciiLower(String(node['name']))) && BORDER_SHORTHAND.test(property)) {
+  if (node.type === 'Function' && MATH_VALUE_FUNCTIONS.has(asciiLower(String(node['name']))) && BORDER_SHORTHAND.test(property)) {
     return mathValue(node, asciiLower(String(node['name'])), 'border-top-width');
   }
   if (node.type === 'Identifier') {
@@ -92,7 +101,7 @@ export function toValue(node: CssNode, property: string): CssValue {
       return { kind: 'other', type: 'color', text: generate(node) };
     case 'Function': {
       const name = asciiLower(String(node['name']));
-      if (V1_MATH_FUNCTIONS.has(name)) return mathValue(node, name, property);
+      if (MATH_VALUE_FUNCTIONS.has(name)) return mathValue(node, name, property);
       return { kind: 'other', type: `${name}()`, text: generate(node) };
     }
     default:
@@ -103,7 +112,8 @@ export function toValue(node: CssNode, property: string): CssValue {
 /**
  * A css-values-4 §10 math function (css/math.ts). A number calculation (flex-grow, flex-shrink, order, or a number in the flex
  * shorthand) is folded to its number now, order unrounded (the engine rounds it, environment.ts); a length calculation keeps its
- * text, with feature key <calc()>, <min()>, <max()> or <clamp()>, and is lowered per element (lower/ios-layout.ts). A calculation V1 refuses keeps its text with the reason as a
+ * text, with feature key <calc()>, <min()>, <max()> or <clamp()>, or <env()> when it reads a safe-area inset (env() alone is
+ * parsed as a calculation of one inset), and is lowered per element (lower/ios-layout.ts). A calculation V1 refuses keeps its text with the reason as a
  * comment and the feature type "refused <name>()", which no profile row supports, so the declaration is refused with the reason.
  */
 export const REFUSED_MATH_PREFIX = 'refused ';
@@ -126,7 +136,7 @@ function mathValue(node: CssNode, name: string, property: string): CssValue {
     const value = property === 'flex-grow' || property === 'flex-shrink' ? nonNegative(folded) : folded;
     return { kind: 'number', value };
   }
-  return { kind: 'other', type: `${name}()`, text };
+  return { kind: 'other', type: mathHasEnv(parsed.node) ? ENV_VALUE_TYPE : `${name}()`, text };
 }
 
 /** The properties whose value may be a two-keyword <baseline-position>. */

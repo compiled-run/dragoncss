@@ -127,7 +127,7 @@ function registryNodes(outcomes: readonly FixtureOutcome[], nodes: readonly { re
 }
 
 /**
- * webOnly: the cases of the web-only fonts fixtures (fonts-run.ts), which run chrome-dual alone; they prove web rows, so a row they
+ * webOnly: the cases of the web-only fonts and env() fixtures (fonts-run.ts, env-run.ts), which run chrome-dual alone; they prove web rows, so a row they
  * prove links to them, and they are counted apart from the two-lane corpus.
  */
 export function buildReport(outcomes: readonly FixtureOutcome[], webOnly: readonly CaseOutcome[] = []): Report {
@@ -324,7 +324,7 @@ export function renderSummary(r: Report): string {
     `| Anonymous boxes | ${s.anonymousBoxes.length} |`,
     `| chrome-dual | boxes ${d.boxesEqual}/${d.boxesCompared}, values ${d.valuesEqual}/${d.valuesCompared}, channels ${d.channelsEqual}/${d.channelsCompared} |`,
     `| unsupportedCodes | ${JSON.stringify(s.unsupportedCodes)} |`,
-    `| Web-only cases (fonts, chrome-dual only) | ${s.webOnly.passed}/${s.webOnly.cases} pass |`,
+    `| Web-only cases (fonts and env(), chrome-dual only) | ${s.webOnly.passed}/${s.webOnly.cases} pass |`,
     `| Profile rows | ${r.profileRows.length} (${exactRows.length} exact; ${r.profileRows.filter((x) => !x.casesPassingInReport).length} with a proof case that is not a passing case of this report) |`,
     '',
     '## Chrome deviations and platform rules',
