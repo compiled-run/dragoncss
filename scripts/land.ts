@@ -69,6 +69,7 @@ import {
   worktreesOf,
 } from './land-lib.ts';
 import {
+  archRebaseline,
   commitRegen,
   deviceRunProblems,
   deviceRunWrote,
@@ -87,6 +88,7 @@ import {
   staleLines,
   treeMatches,
 } from './merge-train-lib.ts';
+import { MERGE_DRIVERS } from './floor-merge.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
@@ -291,7 +293,12 @@ const judgeDevices = (master: string, startedMs: number | null): string[] => {
   if (lanes.error || lanes.signal || (lanes.status !== 0 && lanes.status !== 1) || !/^parity:lanes: /m.test(lanes.stdout)) {
     return [`pnpm -s run parity:lanes did not judge the lanes: ${lanes.error?.message ?? lanes.signal ?? `exit ${lanes.status}`} ${lanes.stderr.slice(0, 300)}`];
   }
-  return deviceRunProblems(before, after, staleLines(lanes.stdout));
+  // An architecture change of a lane is judged as a rebaseline only for the PR LAND_ARCH_REBASELINE names, recorded in its body.
+  const pr = current?.pr ?? 0;
+  const arch = archRebaseline(env['LAND_ARCH_REBASELINE'], pr, pr === 0 ? '' : JSON.parse(gh(['pr', 'view', String(pr), '--repo', REPO, '--json', 'body'])).body ?? '');
+  if (arch.problem !== null) return [arch.problem];
+  if (arch.rebaseline) log(`  LAND_ARCH_REBASELINE: #${pr} may change device lane architectures, with master's states and exact failure sets`);
+  return deviceRunProblems(before, after, staleLines(lanes.stdout), { rebaseline: arch.rebaseline });
 };
 
 // Every floor file on master or the landing commit, judged against master's version (floorRegressions).
@@ -781,6 +788,18 @@ const unlock = (): void => {
 };
 
 const prepareWorktree = (): void => {
+  // The merge drivers of .gitattributes (pnpm setup:git), in the shared config every worktree of this repository reads, so a
+  // landing merge resolves generated outputs and raised floors the same way a lane's does.
+  for (const [key, value] of MERGE_DRIVERS) {
+    let now = '';
+    try {
+      now = text(git, ['config', '--get', key]);
+    } catch {}
+    if (now !== value) {
+      git(['config', key, value]);
+      log(`set git config ${key} (pnpm setup:git)`);
+    }
+  }
   if (!existsSync(WT)) {
     net(git, ['fetch', '--quiet', 'origin', '+refs/heads/master:refs/remotes/origin/master']);
     git(['worktree', 'add', '-q', '--detach', WT, 'refs/remotes/origin/master']);

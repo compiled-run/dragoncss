@@ -11,6 +11,7 @@ import { MILESTONE_1_FAULTS } from './faults/milestone-1.ts';
 import { MQ_R0_FAULTS } from './faults/mq-r0.ts';
 import { OVFL_FAULTS } from './faults/ovfl.ts';
 import { SELD_FAULTS } from './faults/seld.ts';
+import { SELD_R2_FAULTS } from './faults/seld-r2.ts';
 import { SELECTORS_FAULTS } from './faults/selectors.ts';
 import { VALUES_FAULTS } from './faults/values.ts';
 
@@ -25,6 +26,7 @@ export const FAULT_GROUPS = {
   'mq-r0': MQ_R0_FAULTS,
   ovfl: OVFL_FAULTS,
   seld: SELD_FAULTS,
+  'seld-r2': SELD_R2_FAULTS,
   selectors: SELECTORS_FAULTS,
   values: VALUES_FAULTS,
 } as const;

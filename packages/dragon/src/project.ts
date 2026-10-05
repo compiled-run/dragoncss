@@ -18,6 +18,8 @@ import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
 import { checkComputed } from './analysis/computed-checks.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
+import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
@@ -33,7 +35,7 @@ import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
 import { emitNativeSupport, supportDigest } from './emit/native-support.ts';
 import { UIKIT_EMITTER_VERSION } from './emit/uikit.ts';
 import { emitWebCss } from './emit/web-css.ts';
-import type { WebFontContext } from './emit/web-css.ts';
+import type { WebFontContext, WebInteraction } from './emit/web-css.ts';
 import type { AtRuleContext } from './css/at-rules.ts';
 import type { FamilyKeyContext } from './css/values.ts';
 import { familyListText } from './css/values.ts';
@@ -144,7 +146,13 @@ export type InternalCase = {
   readonly webClassOf: ReadonlyMap<string, string> | null;
   /** Profile row keys ("<feature>@<context>") this case uses, per target, sorted. */
   readonly features: ReadonlyMap<Target, readonly string[]>;
+  /** SELD-R2: the case's interaction partition (null when it did not resolve) and each distinct state but none, resolved and lowered. */
+  readonly partition: InteractionPartition | null;
+  readonly interaction: readonly InternalInteraction[];
 };
+
+/** @internal One interaction state of a case: its value, resolution and native lowering; the web classes are the case's. */
+export type InternalInteraction = { readonly value: InteractionValue; readonly resolved: ResolvedElement; readonly nativeLowered: LayoutBox | null };
 
 /**
  * @internal
@@ -164,6 +172,11 @@ export type InternalRecord = {
   readonly fonts: FamilyKeyContext;
   /** T065: the transitions and animations of the native band's cases, null when the analysis did not run. */
   readonly animation: AnimationAnalysis | null;
+  /**
+   * SELD-R2: the native targets on which a compile outside the parity lanes refuses this document's interaction rules
+   * (nativeInteractionRefusals). In a lanes compile those targets lower, but their cases prove no profile row users could use.
+   */
+  readonly laneOnlyNative: readonly ('ios' | 'android')[];
   /** REPL-a: the bytes of every drawable image src, for the native image paint. */
   readonly images: ReadonlyMap<string, Uint8Array>;
 };
@@ -204,6 +217,11 @@ export type InternalOptions = {
   readonly rootFont?: RootFont;
   readonly supportProfiles?: SupportProfiles;
   readonly foldViewport?: Viewport;
+  /**
+   * SELD-R2: the parity lanes compile :hover, :active, :focus and :focus-visible on native, to prove each state's resolution ahead
+   * of the native runtime; every other compile refuses them there (nativeInteractionRefusals).
+   */
+  readonly interactionLanes?: boolean;
 };
 
 type Viewport = { readonly width: number; readonly height: number };
@@ -217,6 +235,7 @@ type Resolved = {
   /** Snapshots (snapshotProfile): the support checks and the digest read these same objects. */
   readonly supportProfiles: Required<SupportProfiles>;
   readonly foldViewport: Viewport | null;
+  readonly interactionLanes: boolean;
   readonly nativeLanes: NativeLanes | null;
 };
 
@@ -597,7 +616,12 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
   walk(root, { weight: 400, style: 'normal' }, false);
 }
 
-type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[] };
+/** One interaction state of a case, resolved and checked like the case (SELD-R2). */
+type InteractionResult = { value: InteractionValue; resolved: ResolvedElement; used: UsedKey[] };
+type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[]; partition: InteractionPartition | null; interaction: InteractionResult[] };
+
+/** A case's used keys with those of every interaction state, for the value checks' context lists. */
+const allUsed = (c: CaseResult): UsedKey[] => [...c.used, ...c.interaction.flatMap((i) => i.used)];
 
 /** What checkCases has reported, shared by every band's pass so a diagnostic is reported once. */
 type Reported = { readonly contextual: Set<string>; readonly refused: Set<string>; readonly fonts: Set<string>; readonly fenced: Set<string> };
@@ -612,15 +636,18 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const { contextual: reported, refused, fonts, fenced } = seen;
   const keys = projectFonts === null ? NO_FONTS : projectFonts.keys;
   const out: CaseResult[] = [];
-  for (const c of linked.cases) {
-    const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua });
+  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua };
+  // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
+  const check = (resolved: ResolvedElement): UsedKey[] => {
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
-    out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used });
-    if (options.profiles === 'derive') continue;
+    if (options.profiles !== 'derive') checkContexts(used);
+    return used;
+  };
+  const checkContexts = (used: readonly UsedKey[]): void => {
     for (const u of used) {
       for (const t of targets) {
         const profile = profileFor(options.supportProfiles, t);
@@ -650,8 +677,83 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
         }));
       }
     }
+  };
+  const interactive = rules.some(ruleIsInteractive);
+  for (const c of linked.cases) {
+    const resolved = resolveTree(c.root, rules, options.faults, env);
+    const used = check(resolved);
+    if (!interactive) {
+      out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, partition: emptyPartition(c.root), interaction: [] });
+      continue;
+    }
+    const built = interactionPartition(c.root, (ix) => resolveTree(c.root, rules, options.faults, env, ix), options.faults);
+    if (built.over !== null) {
+      // R7: refused (package SELD-R2s); the case keeps no interaction state.
+      const refusal = interactionCapRefusal(assignmentLabel(c.assignment), built.over, rules, c.root.node.origin);
+      if (!diagnostics.some((d) => d.code === refusal.code && d.message === refusal.message)) diagnostics.push(refusal);
+      out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, partition: emptyPartition(c.root), interaction: [] });
+      continue;
+    }
+    const partition = built.partition;
+    const interaction = partition.states.map((value, k): InteractionResult => {
+      const r = built.resolved[k] as ResolvedElement;
+      return { value, resolved: r, used: check(r) };
+    });
+    out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, partition, interaction });
   }
   return out;
+}
+
+/** An assignment as the messages name it: state=value, comma-separated, or "(the initial assignment)" when it sets nothing. */
+const assignmentLabel = (a: Assignment): string => (a.length === 0 ? '(the initial assignment)' : a.map((x) => `${x.state.state}=${String(x.value)}`).join(', '));
+
+/**
+ * R13: on native, a pointer-reachable interaction state needs Dragon's hit test, which models only the HIT_MODELLED paint facts.
+ * A case with a reachable state and an unmodelled fact that compiles for the target (no error already refuses its declaration
+ * there) refuses every interaction rule on that target, naming SELD-R2b. Run after the value checks, so a refused value is not
+ * counted as compiled.
+ */
+function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[]): void {
+  // Outside the lanes every interaction rule is already refused on native (nativeInteractionRefusals).
+  if (options.faults.hitUnmodelledNotRefused || !options.interactionLanes) return;
+  const seen = new Set<string>();
+  for (const t of NATIVE_TARGETS.filter((x) => targets.includes(x))) {
+    const refusedAt = new Set(diagnostics.filter((d) => d.severity === 'error' && (d.target === null || d.target === t) && d.origin.kind === 'authored').map((d) => {
+      const span = (d.origin as { span: { source: { uri: string }; start: number } }).span;
+      return `${span.source.uri}|${span.start}`;
+    }));
+    const compiles = (v: ResolvedValue): boolean => v.declaration === null || ![v.declaration.span, v.declaration.valueSpan].some((sp) => refusedAt.has(`${sp.source.uri}|${sp.start}`));
+    for (const c of cases) {
+      const reachable = c.interaction.filter((i) => i.value.kind === 'reachable');
+      if (c.resolved === null || reachable.length === 0) continue;
+      const fact = [c.resolved, ...reachable.map((i) => i.resolved)].map((r) => hitUnmodelledFact(r, options.ua, compiles)).find((f) => f !== null) ?? null;
+      if (fact === null) continue;
+      for (const r of rules) {
+        const pseudo = firstInteractionPseudo(r);
+        if (pseudo === null) continue;
+        const origin = interactionRuleOrigin(r, c.resolved.element.node.origin);
+        const message = `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`;
+        const id = `${t}|${JSON.stringify(origin)}|${message}`;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual: `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.` }));
+      }
+    }
+  }
+}
+
+/** The lowering key of an interaction state of a case. */
+const interactionKey = (caseKey: string, v: InteractionValue): string => `${caseKey}\u0000${v.key}`;
+
+/** The web output's view of a case's interaction states: each state's resolution and the candidates its condition names. */
+function webInteraction(c: CaseResult): WebInteraction | undefined {
+  if (c.partition === null || c.interaction.length === 0) return undefined;
+  const members = stateMembers(c.partition);
+  return { candidates: c.partition.candidates, states: c.interaction.map((i, k) => {
+    const own = members[k];
+    if (own === undefined || own.length === 0) throw new Error(`interaction state ${i.value.key} of ${c.key} stands for no combination`);
+    return { members: own, root: i.resolved };
+  }) };
 }
 
 /** The @media conditions of the sheet: each distinct at-rule once, in source order. */
@@ -782,6 +884,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   // MQ-a: every band's cases, band 0 first (one entry for a sheet without @media), and the band the native output comes from.
   let bandCases: { readonly band: Band | null; readonly cases: CaseResult[] }[] = [];
   let animation: AnimationAnalysis | null = null;
+  let laneOnlyNative: ('ios' | 'android')[] = [];
   let bands: Bands | null = null;
   let nativeBand = 0;
   const valid = configDiagnostics.length === 0 ? validateInput(input, config.projectId, diagnostics) : null;
@@ -808,6 +911,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const keyframesRules = parseKeyframesRules(keyframeSources, diagnostics);
     // NA-NATIVE: a refusal of a listed property or rule blocks only web; native gets an info (css/not-applicable.ts).
     diagnostics.splice(0, diagnostics.length, ...splitNotApplicable(diagnostics, targets));
+    diagnostics.push(...interactionRefusals(rules));
+    const nativeRefusals = nativeInteractionRefusals(rules, NATIVE_TARGETS.filter((t) => targets.includes(t)));
+    if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
+    else diagnostics.push(...nativeRefusals);
     const conditions = conditionsOf(rules);
     const partition = conditions.length === 0 ? null : band(conditions.map((c) => c.list));
     if (partition !== null && partition.kind === 'refused') {
@@ -873,10 +980,11 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
         // A target's messages list the contexts of the bands it is resolved in.
-        const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap((c) => c.used));
+        const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap(allUsed));
         checkValues(rules, targets, profiles, usedOf, values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...values);
       }
+      hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
       // T005 rec 3: the rules inside each unsupported at-rule are analysed with the block unwrapped, in a scratch pass whose
       // diagnostics located inside the at-rule become its related entries. Nothing from this pass is resolved into an output.
       if (enclosed.length > 0) {
@@ -890,7 +998,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         const scratchCases = (bands === null ? [null] : bands.partition.bands).flatMap((b, k) =>
           checkCases(scratchLinked, [...rulesIn(rules, bands, b, options.faults), ...unwrapped], k === nativeBand ? targets : targets.filter((t) => t === 'web'), options, scratch, fonts, scratchSeen),
         );
-        if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap((c) => c.used), scratch, keys);
+        if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap(allUsed), scratch, keys);
         for (const e of enclosed) {
           const found = [...e.diagnostics, ...scratch.filter((d) => inside(d.origin, e))];
           const related = found.map((d) => ({ origin: d.origin, message: `${d.code}${d.target === null ? '' : ` [${d.target}]`}: ${d.message}` }));
@@ -904,7 +1012,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         checkValues(rules, targets, profiles, [], values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...values);
       }
-      cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [] }));
+      cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [], partition: null, interaction: [] }));
       bandCases = [{ band: null, cases }];
     } else if (options.profiles === 'enforce') {
       const values: Diagnostic[] = [];
@@ -942,8 +1050,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   const lowerFor = NATIVE_TARGETS.filter((t) => targets.includes(t) && !diagnostics.some((d) => blocksTarget(d, t)));
   if (lowerFor.length > 0 && cases.length > 0) {
     const reported = new Set<string>();
-    for (const c of cases) {
-      if (c.resolved === null) continue;
+    const lowerings = cases.flatMap((c) => (c.resolved === null ? [] : [{ key: c.key, resolved: c.resolved }, ...c.interaction.map((i) => ({ key: interactionKey(c.key, i.value), resolved: i.resolved }))]));
+    for (const c of lowerings) {
       try {
         lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals));
       } catch (e) {
@@ -969,8 +1077,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const webFonts = fonts === null || !fonts.used ? null : webFontsOf(fonts, options.faults);
       const whole = (b: Band | null): boolean => b === null || (b.width.some(holdsWholePx) && b.height.some(holdsWholePx));
       const webBands = options.faults.mediaFractionalBandDropped ? bandCases.filter((r, k) => k === 0 || whole(r.band)) : bandCases;
-      const [base, ...extra] = webBands.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement })) }));
-      web = emitWebCss((base as { cases: { key: string; root: ResolvedElement }[] }).cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText));
+      const [base, ...extra] = webBands.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement, interaction: webInteraction(c) })) }));
+      const first = base as { condition: string; cases: { key: string; root: ResolvedElement; interaction?: WebInteraction | undefined }[] };
+      web = emitWebCss(first.cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText), first.condition, !options.faults.webHoverUngated);
       outputs[key] = { kind: 'ready', digest, files: web.files, assets: webFonts === null ? [] : webFonts.assets() };
     }
   }
@@ -999,6 +1108,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       linked,
       fonts: fonts === null ? NO_FONTS : fonts.keys,
       animation,
+      laneOnlyNative,
       images: images === null ? new Map() : images.bytes,
       cases: cases.map((c) => ({
         key: c.key,
@@ -1008,6 +1118,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         nativeLowered: nativeChecked ? (lowered.get(c.key) ?? null) : null,
         webClassOf: webClasses === null ? null : (webClasses.get(c.key) ?? null),
         features: new Map(targets.map((t) => [t, [...new Set(c.used.map((u) => u.key))].sort()])),
+        partition: c.partition,
+        interaction: c.interaction.map((i) => ({ value: i.value, resolved: i.resolved, nativeLowered: nativeChecked ? (lowered.get(interactionKey(c.key, i.value)) ?? null) : null })),
       })),
     },
   };
@@ -1126,6 +1238,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     ua: choice.dataset,
     supportProfiles: snapshotProfiles(options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles),
     foldViewport: options.foldViewport === undefined ? null : checkedViewport(options.foldViewport),
+    interactionLanes: options.interactionLanes === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
   };
   const configDiagnostics = validateConfig(config);
