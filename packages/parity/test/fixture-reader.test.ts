@@ -218,9 +218,11 @@ const REMOVED_AFTER_BASE: Readonly<Record<string, string>> = {
 };
 
 // BASE fixtures a later package retargeted on purpose (V1 of the value model supports vw and calc(), so its rejects moved to
-// svw and round(); SELD-R2a compiles :hover, so reject-selector-hover moved to :focus-within), with their BASE text: the reader
+// svw and round(); SELD-R2a compiles :hover, so reject-selector-hover moved to :focus-within; GRID G1a proves display: grid in
+// block flow, so reject-display-grid puts the grid in a column flex container), with their BASE text: the reader
 // is still checked on that text, and each file must now differ from it.
 const RETARGETED_AFTER_BASE: Readonly<Record<string, string>> = {
+  'reject-display-grid': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.grid { display: grid; width: 100px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="grid" class="grid"><div data-dragon-id="cell"></div></div>\n</body>\n</html>\n',
   'reject-selector-hover': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n.a { width: 10px; }\n.a:hover { width: 20px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
   'reject-unit-calc': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.a { width: calc(10px + 2em); height: 10px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
   'reject-unit-vw': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.a { width: 50vw; height: 10px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
