@@ -291,4 +291,13 @@ describe('REPL-a foreign view: a production build loads the iframe src (R9)', ()
     expect(kotlinSet.match(/\.load[A-Za-z]*\(/g)).toEqual(['.loadUrl(']);
     expect(kotlinSet).toContain('web.loadUrl(if (dragonForeignViewLoadsSrc && src != null) src else "about:blank")');
   });
+  // #72 landing device run: every Dragon group draws its children unclipped, and a WebView drawn without a clip cleared the whole
+  // window behind it on the emulator (blank captures of the iframe fixtures). The host group clips the web view to its frame.
+  it('the Android web view host group clips its web view to its frame, which no other Dragon group does', () => {
+    const kotlin = emitNativeSupport('android-views').map((f) => f.text).join('\n');
+    expect(body(kotlin, 'open class DragonGroup(ctx: Context) : ViewGroup(ctx) {')).toContain('\n    clipChildren = false\n');
+    const host = body(kotlin, 'class DragonForeignHost(ctx: Context) : DragonGroup(ctx) {');
+    expect(host).toContain('\n  init {\n    clipChildren = true\n  }\n');
+    expect(kotlin.match(/clipChildren = true/g)).toEqual(['clipChildren = true']);
+  });
 });

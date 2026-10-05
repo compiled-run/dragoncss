@@ -794,6 +794,9 @@ fun dragonCheckedInt(v: Double, what: String): Int {
 
 /** Round half up to whole device px (Blink LayoutUnit::Round), for a live text extent the native text engine measured. */
 fun dragonHalfUp(v: Double): Double = kotlin.math.floor(v + 0.5)
+
+/** The whole device px covering a rect given as x, y, width, height in device px: left, top, right, bottom. */
+fun dragonCoveringPx(r: DoubleArray): IntArray = intArrayOf(kotlin.math.floor(r[0]).toInt(), kotlin.math.floor(r[1]).toInt(), kotlin.math.ceil(r[0] + r[2]).toInt(), kotlin.math.ceil(r[1] + r[3]).toInt())
 `;
 
 const KOTLIN_FONT_TABLES = String.raw`package dev.dragon.views

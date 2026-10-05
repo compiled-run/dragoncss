@@ -59,10 +59,16 @@ const KOTLIN_MEMBERS = String.raw`  /** REPL-a image: the decoded bitmap, its na
     private set
   var dragonImageFit: String = "fill"
     private set
-  fun dragonSetImage(base64: String, width: Double, height: Double, fit: String) {
+  /** Whether the stage may draw through its own layer: false under a transform that moves at run time (lower/paint/image.ts). */
+  var dragonImageLayer: Boolean = false
+    private set
+  /** The image's own compositing layer (dragonPaintImageStage), made on the first hardware draw. */
+  var dragonImageNode: android.graphics.RenderNode? = null
+  fun dragonSetImage(base64: String, width: Double, height: Double, fit: String, layer: Boolean) {
     dragonImage = dragonDecodeImage(base64, dragonId)
     dragonImageNatural = doubleArrayOf(width, height)
     dragonImageFit = fit
+    dragonImageLayer = layer
     invalidate()
   }
 `;
@@ -74,7 +80,9 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.RenderNode
 import android.util.Base64
+import android.view.View
 import dev.dragon.dump.DumpJson
 
 /** Device px added to the drawn destination x; 0 except in the image-offset-1 raster plant build, which proves the pixel lane sees the image. */
@@ -92,16 +100,64 @@ fun dragonDecodeImage(base64: String, id: String): Bitmap {
   return bitmap
 }
 
-/** The image stage: the bitmap into the destination rect, clipped to the drawn part of the content box, in device px. */
+/**
+ * The image stage: the bitmap, filtered, into the destination rect, clipped to the drawn part of the content box, in device px.
+ * On a hardware canvas it is drawn into a RenderNode with its own compositing layer over the drawn part (whole device px), which
+ * the frame composites unscaled: a filtered bitmap drawn straight into the window's frame moved other boxes' edges by one colour
+ * step on the Android emulator's renderer (#72's device run), and a layer keeps the filtered draw out of that render pass.
+ */
 fun dragonPaintImageStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape) {
   val image = v.dragonImage ?: return
   val d = v.dragonReplacedDest ?: return
   val c = v.dragonReplacedDrawn ?: return
-  canvas.save()
-  canvas.clipRect(c[0].toFloat(), c[1].toFloat(), (c[0] + c[2]).toFloat(), (c[1] + c[3]).toFloat())
   val x = d[0] + DRAGON_IMAGE_PLANT_DEVICE_PX
-  canvas.drawBitmap(image, null, RectF(x.toFloat(), d[1].toFloat(), (x + d[2]).toFloat(), (d[1] + d[3]).toFloat()), Paint(Paint.FILTER_BITMAP_FLAG))
-  canvas.restore()
+  val dest = RectF(x.toFloat(), d[1].toFloat(), (x + d[2]).toFloat(), (d[1] + d[3]).toFloat())
+  val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+  val px = dragonCoveringPx(c)
+  val l = px[0]
+  val t = px[1]
+  val r = px[2]
+  val b = px[3]
+  // Direct draw (sampled once through the full matrix) on a software canvas, under a transform that moves at run time (the
+  // compiler's layer flag), under a scale, rotation, skew or fractional translate of the box or an ancestor (a layer would be
+  // resampled), and for a layer over the GPU's texture size limit.
+  if (!canvas.isHardwareAccelerated || !v.dragonImageLayer || r - l > canvas.maximumBitmapWidth || b - t > canvas.maximumBitmapHeight || !dragonWholePxTranslate(v)) {
+    canvas.save()
+    canvas.clipRect(c[0].toFloat(), c[1].toFloat(), (c[0] + c[2]).toFloat(), (c[1] + c[3]).toFloat())
+    canvas.drawBitmap(image, null, dest, paint)
+    canvas.restore()
+    return
+  }
+  if (r <= l || b <= t) return
+  val node = v.dragonImageNode ?: RenderNode("dragonImage").also {
+    it.setUseCompositingLayer(true, null)
+    v.dragonImageNode = it
+  }
+  node.setPosition(l, t, r, b)
+  val inner = node.beginRecording(r - l, b - t)
+  try {
+    inner.translate(-l.toFloat(), -t.toFloat())
+    inner.clipRect(c[0].toFloat(), c[1].toFloat(), (c[0] + c[2]).toFloat(), (c[1] + c[3]).toFloat())
+    inner.drawBitmap(image, null, dest, paint)
+  } finally {
+    node.endRecording()
+  }
+  canvas.drawRenderNode(node)
+}
+
+/** Whether the view and every ancestor map to their parent by at most a whole-device-px translate (each View matrix). */
+fun dragonWholePxTranslate(v: View): Boolean {
+  val m = FloatArray(9)
+  var at: View? = v
+  while (at != null) {
+    val matrix = at.matrix
+    if (!matrix.isIdentity) {
+      matrix.getValues(m)
+      if (m[0] != 1f || m[1] != 0f || m[3] != 0f || m[4] != 1f || m[6] != 0f || m[7] != 0f || m[8] != 1f || m[2] % 1f != 0f || m[5] % 1f != 0f) return false
+    }
+    at = at.parent as? View
+  }
+  return true
 }
 
 /** The readback of the image module: the natural size, the fit and the destination rect in device px relative to the box. */
@@ -125,12 +181,12 @@ const base64Lit = (s: string): string => {
   return `"${s}"`;
 };
 
-export const IMAGE_EMITTER: PaintEmitter<'replaced-image'> = {
+export const IMAGE_EMITTER: PaintEmitter<'replaced-image', 'image-offset-1'> = {
   name: 'image',
   kinds: ['replaced-image'],
   lines: {
     uikit: (v, _n, w) => [`  ${v}.dragonSetImage(${base64Lit(w.data)}, width: ${pxLit(w.width)}, height: ${pxLit(w.height)}, fit: ${keywordLit(w.fit)})`],
-    'android-views': (v, _n, w) => [`  ${v}.dragonSetImage(${base64Lit(w.data)}, ${pxLit(w.width)}, ${pxLit(w.height)}, ${keywordLit(w.fit)})`],
+    'android-views': (v, _n, w) => [`  ${v}.dragonSetImage(${base64Lit(w.data)}, ${pxLit(w.width)}, ${pxLit(w.height)}, ${keywordLit(w.fit)}, ${w.layer ? 'true' : 'false'})`],
   },
   applied: (_e, backend, w, dpr, g) => {
     if (g.replaced === null) throw new Error('an image write on a box that is not replaced');

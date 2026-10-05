@@ -66,8 +66,14 @@ import android.content.Context
 import android.webkit.WebView
 import dev.dragon.dump.DumpJson
 
-/** A Dragon group that holds one platform view and sizes it to its own frame. */
+/**
+ * A Dragon group that holds one platform view, sizes it to its own frame and clips it there, as an iframe's content never paints
+ * outside its content box. Unclipped, a WebView without a content frame clears the whole window behind it.
+ */
 class DragonForeignHost(ctx: Context) : DragonGroup(ctx) {
+  init {
+    clipChildren = true
+  }
   override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
     val w = dragonFrame[2] - dragonFrame[0]
     val h = dragonFrame[3] - dragonFrame[1]
