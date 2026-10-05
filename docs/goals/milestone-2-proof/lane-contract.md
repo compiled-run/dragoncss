@@ -40,6 +40,11 @@ Everything else here is a default you apply without asking.
 - A pinned test your change legitimately moves: retarget it, keep its intent, and list it. Since #125, registry,
   longhand, twin, suite and LGPL pins live in floor files (packages/*/test/*-floor.json, glyph-clearance-pins.json):
   a new entry is appended there (`DRAGON_FLOOR_WRITE=1` / `DRAGON_PIN_WRITE=1`; they never lower), not by editing a test.
+- Floor and pin files merge structurally (#183, merge=dragon-floor; run `pnpm setup:git` once per clone): a catch-up merge takes
+  the larger count and the union of names. A conflict it still leaves means a removed name, disagreeing orders or a pin changed on
+  both sides: resolve it by hand, never lower a floor, and state the reason.
+- Features register in per-feature files (#137/#138): codes/<feature>.ts, faults/<feature>.ts, one sorted GROUPS line,
+  scripts/regen-steps/<feature>.ts. Don't edit the central lists beyond one sorted line.
 - A Chrome/Skia/V8 citation: register it in docs/ports.json. LGPL files are class A
   (reference only, implement from spec, pin by test).
 - A generated output you add: give it a regen step (scripts/regen.ts plus .gitattributes) or a MANUAL entry.
