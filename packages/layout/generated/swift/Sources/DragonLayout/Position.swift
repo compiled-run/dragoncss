@@ -81,14 +81,14 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
 })).map { $0 as! LayoutBox }
   // ts: packages/layout/src/position.ts:38
   do {
-    let _a48 = box.children
-    var _i48 = 0
-    while _i48 < _a48.items.count {
-      let k: any U_LayoutBox_ReplacedLeaf_TextLeaf = _a48.items[_i48]
-      _i48 += 1
+    let _a90 = box.children
+    var _i90 = 0
+    while _i90 < _a90.items.count {
+      let k: any U_LayoutBox_ReplacedLeaf_TextLeaf = _a90.items[_i90]
+      _i90 += 1
       // ts: packages/layout/src/position.ts:39
       if try ((k.kind == S.s_replaced) && position_isOutOfFlow(ctx, (k as! ReplacedLeaf))) {
-        try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s79, jsConcat(S.s99, (k as! ReplacedLeaf).id, S.s22))
+        try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s84, jsConcat(S.s105, (k as! ReplacedLeaf).id, S.s26))
       }
     }
   }
@@ -100,7 +100,7 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
   if try jsSome(box.children, { (k: any U_LayoutBox_ReplacedLeaf_TextLeaf) throws -> Bool in
     return ((k.kind == S.s_text) || (((k as! any U_LayoutBox_ReplacedLeaf).kind == S.s_box) && ((k as! LayoutBox).boxType == S.s_anonymous)))
 }) {
-    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s81, jsConcat(S.s98, jsUnwrap(oof).id, S.s9, box.id, S.s39))
+    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s86, jsConcat(S.s104, jsUnwrap(oof).id, S.s10, box.id, S.s44))
   }
 }
 
@@ -129,9 +129,14 @@ public func position_blockInset(_ box: any U_LayoutBox_ReplacedLeaf, _ v: any U_
   }
   // ts: packages/layout/src/position.ts:57
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s149, S.s292)
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s159, S.s319)
   }
   return try box_resolveLengthOrNull((v as! any U_LengthCalc_Percent_Px), nil, faults)
+}
+
+// ts: packages/layout/src/position.ts:68
+public func position_relativeOffset(_ box: LayoutBox, _ cbInline: Double, _ cbBlock: any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, _ cbDirection: JsString) throws -> RelativeOffset {
+  return try position_relativeOffsetWith(box, cbInline, cbBlock, cbDirection, block_NO_ENGINE_FAULTS)
 }
 
 // ts: packages/layout/src/position.ts:73

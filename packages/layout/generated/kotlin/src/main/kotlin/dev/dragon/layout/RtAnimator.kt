@@ -206,11 +206,11 @@ fun rtAnimator_findStyle(b: LayoutBox, id: String): LayoutStyle? {
   }
   // ts: packages/layout/src/rt-animator.ts:197
   run {
-    val _a60 = b.children
-    var _i60 = 0
-    while (_i60 < _a60.size) {
-      val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a60[_i60]
-      _i60++
+    val _a102 = b.children
+    var _i102 = 0
+    while (_i102 < _a102.size) {
+      val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a102[_i102]
+      _i102++
       // ts: packages/layout/src/rt-animator.ts:198
       if ((jsStrEq(c.kind, "replaced") && jsStrEq((c as ReplacedLeaf).id, id))) {
         return (c as ReplacedLeaf).style
@@ -349,11 +349,11 @@ fun rtAnimator_lengthBase(resolved: LayoutInput, node: String, property: String)
 fun rtAnimator_rendered(t: AnimTables, node: String, i: Double): Boolean {
   // ts: packages/layout/src/rt-animator.ts:253
   run {
-    val _a61 = t.rendered
-    var _i61 = 0
-    while (_i61 < _a61.size) {
-      val r: RenderedTable = _a61[_i61]
-      _i61++
+    val _a103 = t.rendered
+    var _i103 = 0
+    while (_i103 < _a103.size) {
+      val r: RenderedTable = _a103[_i103]
+      _i103++
       // ts: packages/layout/src/rt-animator.ts:254
       if (!jsStrEq(r.node, node)) {
         continue
@@ -410,20 +410,20 @@ fun rtAnimator_rulesFor(t: AnimTables, property: String): JsArray<KeyframesRule>
     val keyframes: JsArray<RuleKeyframe> = jsArrayOf<RuleKeyframe>()
     // ts: packages/layout/src/rt-animator.ts:286
     run {
-      val _a62 = r.blocks
-      var _i62 = 0
-      while (_i62 < _a62.size) {
-        val bl: KeyframeBlock = _a62[_i62]
-        _i62++
+      val _a104 = r.blocks
+      var _i104 = 0
+      while (_i104 < _a104.size) {
+        val bl: KeyframeBlock = _a104[_i104]
+        _i104++
         var sets: Boolean = false
         var value: AnimatedValue = rtAnimator_EMPTY
         // ts: packages/layout/src/rt-animator.ts:289
         run {
-          val _a63 = bl.values
-          var _i63 = 0
-          while (_i63 < _a63.size) {
-            val v: KeyframeValue = _a63[_i63]
-            _i63++
+          val _a105 = bl.values
+          var _i105 = 0
+          while (_i105 < _a105.size) {
+            val v: KeyframeValue = _a105[_i105]
+            _i105++
             // ts: packages/layout/src/rt-animator.ts:290
             if (!jsStrEq(v.property, property)) {
               continue
@@ -435,11 +435,11 @@ fun rtAnimator_rulesFor(t: AnimTables, property: String): JsArray<KeyframesRule>
         }
         // ts: packages/layout/src/rt-animator.ts:295
         run {
-          val _a64 = bl.offsets
-          var _i64 = 0
-          while (_i64 < _a64.size) {
-            val offset: Double = _a64[_i64]
-            _i64++
+          val _a106 = bl.offsets
+          var _i106 = 0
+          while (_i106 < _a106.size) {
+            val offset: Double = _a106[_i106]
+            _i106++
             jsPush(keyframes, RuleKeyframe(offset, bl.hasEasing, (if (bl.hasEasing) rtAnimator_easingOf(bl.easing) else rtEasing_LINEAR), sets, value))
           }
         }
@@ -453,22 +453,22 @@ fun rtAnimator_rulesFor(t: AnimTables, property: String): JsArray<KeyframesRule>
 fun rtAnimator_ruleSetsByName(rules: JsArray<KeyframesRule>, name: String): Boolean {
   // ts: packages/layout/src/rt-animator.ts:303
   run {
-    val _a65 = rules
-    var _i65 = 0
-    while (_i65 < _a65.size) {
-      val r: KeyframesRule = _a65[_i65]
-      _i65++
+    val _a107 = rules
+    var _i107 = 0
+    while (_i107 < _a107.size) {
+      val r: KeyframesRule = _a107[_i107]
+      _i107++
       // ts: packages/layout/src/rt-animator.ts:304
       if (!jsStrEq(r.name, name)) {
         continue
       }
       // ts: packages/layout/src/rt-animator.ts:305
       run {
-        val _a66 = r.keyframes
-        var _i66 = 0
-        while (_i66 < _a66.size) {
-          val k: RuleKeyframe = _a66[_i66]
-          _i66++
+        val _a108 = r.keyframes
+        var _i108 = 0
+        while (_i108 < _a108.size) {
+          val k: RuleKeyframe = _a108[_i108]
+          _i108++
           // ts: packages/layout/src/rt-animator.ts:305
           if (k.sets) {
             return true
@@ -485,11 +485,11 @@ fun rtAnimator_sampleKeys(list: JsArray<RunningAnimation>, faults: RtFaults): Js
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/rt-animator.ts:315
   run {
-    val _a67 = list
-    var _i67 = 0
-    while (_i67 < _a67.size) {
-      val a: RunningAnimation = _a67[_i67]
-      _i67++
+    val _a109 = list
+    var _i109 = 0
+    while (_i109 < _a109.size) {
+      val a: RunningAnimation = _a109[_i109]
+      _i109++
       val c: ComputedTiming = rtTiming_computeSecondsTiming(a.timing, a.held.seconds, faults)
       jsPush(out, (if ((c.currentIteration == null)) (0.0 / 0.0) else jsUnwrap(c.currentIteration)))
       jsPush(out, (if ((c.progress == null)) (0.0 / 0.0) else jsUnwrap(c.progress)))
@@ -666,11 +666,11 @@ fun rtAnimator_animatorAdvance(s: AnimatorState, t: AnimTables, inputs: JsArray<
 fun rtAnimator_animatorBusy(s: AnimatorState): Boolean {
   // ts: packages/layout/src/rt-animator.ts:422
   run {
-    val _a68 = s.transitions
-    var _i68 = 0
-    while (_i68 < _a68.size) {
-      val r: RunningTransition? = _a68[_i68]
-      _i68++
+    val _a110 = s.transitions
+    var _i110 = 0
+    while (_i110 < _a110.size) {
+      val r: RunningTransition? = _a110[_i110]
+      _i110++
       // ts: packages/layout/src/rt-animator.ts:422
       if (((r != null) && (!rtTransition_transitionFinished(jsUnwrap(r))))) {
         return true
@@ -679,18 +679,18 @@ fun rtAnimator_animatorBusy(s: AnimatorState): Boolean {
   }
   // ts: packages/layout/src/rt-animator.ts:423
   run {
-    val _a69 = s.lists
-    var _i69 = 0
-    while (_i69 < _a69.size) {
-      val l: JsArray<RunningAnimation> = _a69[_i69]
-      _i69++
+    val _a111 = s.lists
+    var _i111 = 0
+    while (_i111 < _a111.size) {
+      val l: JsArray<RunningAnimation> = _a111[_i111]
+      _i111++
       // ts: packages/layout/src/rt-animator.ts:423
       run {
-        val _a70 = l
-        var _i70 = 0
-        while (_i70 < _a70.size) {
-          val a: RunningAnimation = _a70[_i70]
-          _i70++
+        val _a112 = l
+        var _i112 = 0
+        while (_i112 < _a112.size) {
+          val a: RunningAnimation = _a112[_i112]
+          _i112++
           // ts: packages/layout/src/rt-animator.ts:423
           if (((!a.paused) && (!rtAnimations_animationFinished(a)))) {
             return true
@@ -737,11 +737,11 @@ fun rtAnimator_animatorFrame(s: AnimatorState, t: AnimTables, faults: RtFaults):
   var k: Double = 0.0
   // ts: packages/layout/src/rt-animator.ts:446
   run {
-    val _a71 = s.transitions
-    var _i71 = 0
-    while (_i71 < _a71.size) {
-      val r: RunningTransition? = _a71[_i71]
-      _i71++
+    val _a113 = s.transitions
+    var _i113 = 0
+    while (_i113 < _a113.size) {
+      val r: RunningTransition? = _a113[_i113]
+      _i113++
       val sl: SlotTable? = jsAt(t.slots, k)
       k += 1.0
       // ts: packages/layout/src/rt-animator.ts:449
@@ -783,11 +783,11 @@ fun rtAnimator_closureFrame(frame: JsArray<FrameEntry>, t: AnimTables, anim: Ani
   }
   // ts: packages/layout/src/rt-animator.ts:469
   run {
-    val _a72 = t.closure
-    var _i72 = 0
-    while (_i72 < _a72.size) {
-      val c: ClosureTable = _a72[_i72]
-      _i72++
+    val _a114 = t.closure
+    var _i114 = 0
+    while (_i114 < _a114.size) {
+      val c: ClosureTable = _a114[_i114]
+      _i114++
       val i: Double = rtAnimator_indexOfEntry(frame, c.source.node, c.source.property)
       val src: FrameEntry? = jsAt(frame, i)
       // ts: packages/layout/src/rt-animator.ts:472
@@ -796,11 +796,11 @@ fun rtAnimator_closureFrame(frame: JsArray<FrameEntry>, t: AnimTables, anim: Ani
       }
       // ts: packages/layout/src/rt-animator.ts:473
       run {
-        val _a73 = c.writes
-        var _i73 = 0
-        while (_i73 < _a73.size) {
-          val w: TrackRef = _a73[_i73]
-          _i73++
+        val _a115 = c.writes
+        var _i115 = 0
+        while (_i115 < _a115.size) {
+          val w: TrackRef = _a115[_i115]
+          _i115++
           // ts: packages/layout/src/rt-animator.ts:473
           if ((rtAnimator_indexOfEntry(out, w.node, w.property) < 0.0)) {
             out = jsConcatArrays(listOf(out, jsArrayOf<FrameEntry>(FrameEntry(w.node, w.property, jsUnwrap(src).value))))
@@ -817,11 +817,11 @@ fun rtAnimator_frameColors(frame: JsArray<FrameEntry>, t: AnimTables, anim: Anim
   val out: JsArray<ColorWrite> = jsArrayOf<ColorWrite>()
   // ts: packages/layout/src/rt-animator.ts:481
   run {
-    val _a74 = rtAnimator_closureFrame(frame, t, anim)
-    var _i74 = 0
-    while (_i74 < _a74.size) {
-      val e: FrameEntry = _a74[_i74]
-      _i74++
+    val _a116 = rtAnimator_closureFrame(frame, t, anim)
+    var _i116 = 0
+    while (_i116 < _a116.size) {
+      val e: FrameEntry = _a116[_i116]
+      _i116++
       // ts: packages/layout/src/rt-animator.ts:481
       if (jsStrEq(e.value.kind, "color")) {
         jsPush(out, ColorWrite(e.node, e.property, rtInterpolate_colorRgba8(e.value.color)))
@@ -935,11 +935,11 @@ fun rtAnimator_withLength(s: LayoutStyle, property: String, l: LengthValue, rang
 fun rtAnimator_rangeOf(t: AnimTables, node: String, property: String): String {
   // ts: packages/layout/src/rt-animator.ts:519
   run {
-    val _a75 = t.slots
-    var _i75 = 0
-    while (_i75 < _a75.size) {
-      val sl: SlotTable = _a75[_i75]
-      _i75++
+    val _a117 = t.slots
+    var _i117 = 0
+    while (_i117 < _a117.size) {
+      val sl: SlotTable = _a117[_i117]
+      _i117++
       // ts: packages/layout/src/rt-animator.ts:519
       if ((jsStrEq(sl.node, node) && jsStrEq(sl.property, property))) {
         return sl.range
@@ -948,11 +948,11 @@ fun rtAnimator_rangeOf(t: AnimTables, node: String, property: String): String {
   }
   // ts: packages/layout/src/rt-animator.ts:520
   run {
-    val _a76 = t.bases
-    var _i76 = 0
-    while (_i76 < _a76.size) {
-      val b: BaseTable = _a76[_i76]
-      _i76++
+    val _a118 = t.bases
+    var _i118 = 0
+    while (_i118 < _a118.size) {
+      val b: BaseTable = _a118[_i118]
+      _i118++
       // ts: packages/layout/src/rt-animator.ts:520
       if ((jsStrEq(b.node, node) && jsStrEq(b.property, property))) {
         return b.range
@@ -967,11 +967,11 @@ fun rtAnimator_patchStyle(id: String, s: LayoutStyle, frame: JsArray<FrameEntry>
   var style: LayoutStyle = s
   // ts: packages/layout/src/rt-animator.ts:526
   run {
-    val _a77 = frame
-    var _i77 = 0
-    while (_i77 < _a77.size) {
-      val e: FrameEntry = _a77[_i77]
-      _i77++
+    val _a119 = frame
+    var _i119 = 0
+    while (_i119 < _a119.size) {
+      val e: FrameEntry = _a119[_i119]
+      _i119++
       // ts: packages/layout/src/rt-animator.ts:526
       if ((jsStrEq(e.node, id) && jsStrEq(e.value.kind, "length"))) {
         style = rtAnimator_withLength(style, e.property, e.value.length, rtAnimator_rangeOf(t, e.node, e.property))
@@ -1012,11 +1012,11 @@ fun rtAnimator_patchInput(input: LayoutInput, frame: JsArray<FrameEntry>, t: Ani
   var any: Boolean = false
   // ts: packages/layout/src/rt-animator.ts:549
   run {
-    val _a78 = frame
-    var _i78 = 0
-    while (_i78 < _a78.size) {
-      val e: FrameEntry = _a78[_i78]
-      _i78++
+    val _a120 = frame
+    var _i120 = 0
+    while (_i120 < _a120.size) {
+      val e: FrameEntry = _a120[_i120]
+      _i120++
       // ts: packages/layout/src/rt-animator.ts:549
       if (jsStrEq(e.value.kind, "length")) {
         any = true

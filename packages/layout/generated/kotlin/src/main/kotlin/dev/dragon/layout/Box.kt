@@ -48,13 +48,13 @@ class Point(
 // ts: packages/layout/src/box.ts:40
 class HeightBasis_indefinite(
   override val kind: String,
-) : U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, U_HeightBasis_flexDependent_HeightBasis_indefinite
+) : U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, U_HeightBasis_definite_HeightBasis_indefinite, U_HeightBasis_flexDependent_HeightBasis_indefinite
 
 // ts: packages/layout/src/box.ts:41
 class HeightBasis_definite(
   override val kind: String,
   val value: Double,
-) : U_HeightBasis_definite_HeightBasis_flexDependent, U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite
+) : U_HeightBasis_definite_HeightBasis_flexDependent, U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, U_HeightBasis_definite_HeightBasis_indefinite
 
 // ts: packages/layout/src/box.ts:42
 class HeightBasis_flexDependent(
@@ -152,6 +152,11 @@ fun box_resolveBorder(style: LayoutStyle, devicePixelRatio: Double): Edges {
   return Edges(units_snapBorderWidth(box_borderWidthPx(style.borderTopWidth), devicePixelRatio), units_snapBorderWidth(box_borderWidthPx(style.borderRightWidth), devicePixelRatio), units_snapBorderWidth(box_borderWidthPx(style.borderBottomWidth), devicePixelRatio), units_snapBorderWidth(box_borderWidthPx(style.borderLeftWidth), devicePixelRatio))
 }
 
+// ts: packages/layout/src/box.ts:120
+fun box_resolveMargin(v: U_Auto_LengthCalc_Percent_Px, cbInline: Double): MarginResolved {
+  return box_resolveMarginWith(v, cbInline, block_NO_ENGINE_FAULTS)
+}
+
 // ts: packages/layout/src/box.ts:125
 fun box_resolveMarginWith(v: U_Auto_LengthCalc_Percent_Px, cbInline: Double, faults: EngineFaults): MarginResolved {
   // ts: packages/layout/src/box.ts:126
@@ -173,6 +178,11 @@ fun box_borderBoxFromSpecified(value: Double, borderPadding: Double, boxSizing: 
     return units_add(units_clampNegativeToZero(value), borderPadding)
   }
   return units_max(value, borderPadding)
+}
+
+// ts: packages/layout/src/box.ts:141
+fun box_resolveInlineLength(v: U_Auto_LengthCalc_Percent_Px, basis: Double): Double? {
+  return box_resolveInlineLengthWith(v, basis, block_NO_ENGINE_FAULTS)
 }
 
 // ts: packages/layout/src/box.ts:146
@@ -197,6 +207,11 @@ fun box_resolveMaxInlineLengthWith(v: U_LengthCalc_NoneValue_Percent_Px, basis: 
 fun box_constrain(value: Double, mm: MinMax): Double {
   val capped: Double = (if ((mm.max == null)) value else units_min(value, jsUnwrap(mm.max)))
   return units_max(mm.min, capped)
+}
+
+// ts: packages/layout/src/box.ts:170
+fun box_inlineMinMax(style: LayoutStyle, cbInline: Double, borderPadding: Double): MinMax {
+  return box_inlineMinMaxWith(style, cbInline, borderPadding, block_NO_ENGINE_FAULTS)
 }
 
 // ts: packages/layout/src/box.ts:175
@@ -238,6 +253,11 @@ fun box_specifiedBlockSizeWith(box: LayoutBox, basis: U_HeightBasis_definite_Hei
 // ts: packages/layout/src/box.ts:218
 fun box_resolveMinLength(v: U_LengthCalc_Percent_Px, basis: Double?, faults: EngineFaults): Double {
   return box_resolveLength(v, (if ((basis == null)) units_ZERO else jsUnwrap(basis)), faults)
+}
+
+// ts: packages/layout/src/box.ts:223
+fun box_blockMinMax(box: LayoutBox, basis: U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, borderPadding: Double): MinMax {
+  return box_blockMinMaxWith(box, basis, borderPadding, block_NO_ENGINE_FAULTS)
 }
 
 // ts: packages/layout/src/box.ts:228

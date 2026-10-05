@@ -91,11 +91,11 @@ val inline_SOLIDUS: Double = 47.0
 fun inline_isRtlSafe(text: String): Boolean {
   // ts: packages/layout/src/inline.ts:64
   run {
-    val _a28 = jsCodePoints(text)
-    var _i28 = 0
-    while (_i28 < _a28.size) {
-      val ch: String = _a28[_i28]
-      _i28++
+    val _a70 = jsCodePoints(text)
+    var _i70 = 0
+    while (_i70 < _a70.size) {
+      val ch: String = _a70[_i70]
+      _i70++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       val letter: Boolean = (((cp >= 65.0) && (cp <= 90.0)) || ((cp >= 97.0) && (cp <= 122.0)))
       // ts: packages/layout/src/inline.ts:67
@@ -111,11 +111,11 @@ fun inline_isRtlSafe(text: String): Boolean {
 fun inline_checkRtlText(box: LayoutBox, leaves: JsArray<TextLeaf>): Unit {
   // ts: packages/layout/src/inline.ts:83
   run {
-    val _a29 = leaves
-    var _i29 = 0
-    while (_i29 < _a29.size) {
-      val t: TextLeaf = _a29[_i29]
-      _i29++
+    val _a71 = leaves
+    var _i71 = 0
+    while (_i71 < _a71.size) {
+      val t: TextLeaf = _a71[_i71]
+      _i71++
       // ts: packages/layout/src/inline.ts:84
       if ((!inline_isRtlSafe(t.text))) {
         unsupported_unsupported("bidi-neutral", t.id, "UAX #9 W1-W7, N1-N2", ("text in the rtl paragraph of " + box.id + " holds a character other than A-Z, a-z, space and U+200B"))
@@ -150,11 +150,11 @@ fun inline_buildRun(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>): Run {
   }
   // ts: packages/layout/src/inline.ts:99
   run {
-    val _a30 = leaves
-    var _i30 = 0
-    while (_i30 < _a30.size) {
-      val t: TextLeaf = _a30[_i30]
-      _i30++
+    val _a72 = leaves
+    var _i72 = 0
+    while (_i72 < _a72.size) {
+      val t: TextLeaf = _a72[_i72]
+      _i72++
       val m: U_MeasureResult_okFalse_MeasureResult_okTrue = ctx.measurer.measure(t.text, inline_leafFont(t))
       // ts: packages/layout/src/inline.ts:101
       if ((!m.ok)) {
@@ -171,11 +171,11 @@ fun inline_buildRun(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>): Run {
     var at: Double = 0.0
     // ts: packages/layout/src/inline.ts:109
     run {
-      val _a31 = jsCodePoints(t.text)
-      var _i31 = 0
-      while (_i31 < _a31.size) {
-        val ch: String = _a31[_i31]
-        _i31++
+      val _a73 = jsCodePoints(t.text)
+      var _i73 = 0
+      while (_i73 < _a73.size) {
+        val ch: String = _a73[_i73]
+        _i73++
         jsPush(chars, Inline_Char(leaf, (at++), ch, jsUnwrap(jsCodePointAt0(ch))))
       }
     }
@@ -221,11 +221,11 @@ fun inline_ahemOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boolean
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/inline.ts:150
   run {
-    val _a32 = cps
-    var _i32 = 0
-    while (_i32 < _a32.size) {
-      val cp: Double = _a32[_i32]
-      _i32++
+    val _a74 = cps
+    var _i74 = 0
+    while (_i74 < _a74.size) {
+      val cp: Double = _a74[_i74]
+      _i74++
       // ts: packages/layout/src/inline.ts:150
       if ((text_coveredIndex(cp) < 0.0)) {
         unsupported_unsupported("line-break", box.id, "css-text-3 \u00a75", ("U+" + jsToUpperCase(jsToStringRadix16(cp)) + " is outside the code points the line breaker decides"))
@@ -239,27 +239,27 @@ fun inline_ahemOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boolean
   // ts: packages/layout/src/inline.ts:152
   run {
     var i: Double = 1.0
-    loop7@ while ((i < jsLength(cps))) {
-      loop7_body@ do {
+    loop8@ while ((i < jsLength(cps))) {
+      loop8_body@ do {
         val cur: Double = jsUnwrap(jsAt(cps, i))
         val last: Double = jsUnwrap(jsAt(cps, (i - 1.0)))
         // ts: packages/layout/src/inline.ts:156
         if ((cur == inline_SPACE)) {
-          break@loop7_body
+          break@loop8_body
         }
         // ts: packages/layout/src/inline.ts:157
         if ((last == inline_SPACE)) {
           jsPush(out, i)
-          break@loop7_body
+          break@loop8_body
         }
         // ts: packages/layout/src/inline.ts:162
         if ((cur == inline_ZWSP)) {
-          break@loop7_body
+          break@loop8_body
         }
         // ts: packages/layout/src/inline.ts:163
         if ((last == inline_ZWSP)) {
           jsPush(out, i)
-          break@loop7_body
+          break@loop8_body
         }
         var breaks: Boolean = false
         // ts: packages/layout/src/inline.ts:169
@@ -332,11 +332,11 @@ fun inline_segments(run: Run): JsArray<Segment> {
   var start: Double = 0.0
   // ts: packages/layout/src/inline.ts:212
   run {
-    val _a33 = run.opportunities
-    var _i33 = 0
-    while (_i33 < _a33.size) {
-      val at: Double = _a33[_i33]
-      _i33++
+    val _a75 = run.opportunities
+    var _i75 = 0
+    while (_i75 < _a75.size) {
+      val at: Double = _a75[_i75]
+      _i75++
       jsPush(out, Segment(start, at))
       start = at
     }
@@ -413,11 +413,11 @@ fun inline_breakLines(ctx: Ctx, run: Run, available: Double): JsArray<Inline_Lin
   var end: Double = -1.0
   // ts: packages/layout/src/inline.ts:273
   run {
-    val _a34 = inline_segments(run)
-    var _i34 = 0
-    while (_i34 < _a34.size) {
-      val seg: Segment = _a34[_i34]
-      _i34++
+    val _a76 = inline_segments(run)
+    var _i76 = 0
+    while (_i76 < _a76.size) {
+      val seg: Segment = _a76[_i76]
+      _i76++
       // ts: packages/layout/src/inline.ts:274
       if ((start < 0.0)) {
         start = seg.start
@@ -502,18 +502,18 @@ fun inline_layoutInline(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>, ava
 })
   // ts: packages/layout/src/inline.ts:351
   run {
-    val _a35 = lines
-    var _i35 = 0
-    while (_i35 < _a35.size) {
-      val line: PlacedLine = _a35[_i35]
-      _i35++
+    val _a77 = lines
+    var _i77 = 0
+    while (_i77 < _a77.size) {
+      val line: PlacedLine = _a77[_i77]
+      _i77++
       // ts: packages/layout/src/inline.ts:352
       run {
-        val _a36 = line.pieces
-        var _i36 = 0
-        while (_i36 < _a36.size) {
-          val p: LinePiece = _a36[_i36]
-          _i36++
+        val _a78 = line.pieces
+        var _i78 = 0
+        while (_i78 < _a78.size) {
+          val p: LinePiece = _a78[_i78]
+          _i78++
           jsPush(jsUnwrap(jsAt(pieces, p.leaf)), Piece(p.x, p.top, p.width, units_add(p.ascent, p.descent)))
         }
       }
@@ -533,11 +533,11 @@ fun inline_layoutInline(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>, ava
     var bottom: Double = units_add(jsUnwrap(firstPiece).y, jsUnwrap(firstPiece).height)
     // ts: packages/layout/src/inline.ts:364
     run {
-      val _a37 = own
-      var _i37 = 0
-      while (_i37 < _a37.size) {
-        val p: Piece = _a37[_i37]
-        _i37++
+      val _a79 = own
+      var _i79 = 0
+      while (_i79 < _a79.size) {
+        val p: Piece = _a79[_i79]
+        _i79++
         left = units_min(left, p.x)
         top = units_min(top, p.y)
         right = units_max(right, units_add(p.x, p.width))
@@ -565,11 +565,11 @@ fun inline_inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLea
   var widest: Double = units_ZERO
   // ts: packages/layout/src/inline.ts:385
   run {
-    val _a38 = inline_segments(run)
-    var _i38 = 0
-    while (_i38 < _a38.size) {
-      val seg: Segment = _a38[_i38]
-      _i38++
+    val _a80 = inline_segments(run)
+    var _i80 = 0
+    while (_i80 < _a80.size) {
+      val seg: Segment = _a80[_i80]
+      _i80++
       widest = units_max(widest, inline_cachedWidth(ctx, run, seg.start, inline_trimEnd(run, seg.start, seg.end)))
     }
   }
