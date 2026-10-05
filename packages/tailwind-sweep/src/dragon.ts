@@ -40,7 +40,7 @@ export type DragonResult = {
   readonly codes: { readonly [T in Target]: readonly string[] };
   /**
    * NA-NATIVE: per native target that compiles while web does not, the text of the not-applicable items when every web refusal is
-   * one of them (or sits in a listed rule); null otherwise, and always null for web.
+   * one of them; null otherwise, and always null for web.
    */
   readonly notApplicable: { readonly [T in Target]: string | null };
   /** The compiled rendering for the Chrome check, when web compiles. */
@@ -111,26 +111,18 @@ export function compileUtility(classes: readonly string[], sweptCss: string, pub
 }
 
 /**
- * The text of target t's DRAGON_NOT_APPLICABLE_NATIVE items when they explain every web refusal: the refusal is at an item's own span,
- * or (for a pseudo-element item) inside the block of the rule its selector opens. Null otherwise.
+ * The text of target t's DRAGON_NOT_APPLICABLE_NATIVE items when they explain every web refusal: each web refusal is at an item's own
+ * span. Null otherwise.
  */
 export function notApplicableOn(input: FrontEndResult, diagnostics: readonly Diagnostic[], t: Target): string | null {
   const items = diagnostics.filter((d) => d.code === 'DRAGON_NOT_APPLICABLE_NATIVE' && d.severity === 'info' && d.target === t && d.origin.kind === 'authored');
   if (items.length === 0) return null;
   const spanOf = (d: Diagnostic) => (d.origin.kind === 'authored' ? d.origin.span : null);
-  const textOf = (uri: string): string | undefined => input.snapshot.sources.find((s) => s.ref.uri === uri)?.text;
   const covered = (d: Diagnostic): boolean => {
     const s = spanOf(d);
-    if (s === null) return false;
-    return items.some((i) => {
+    return s !== null && items.some((i) => {
       const a = spanOf(i);
-      if (a === null || a.source.uri !== s.source.uri) return false;
-      if (a.start === s.start && a.end === s.end) return true;
-      // Only a pseudo-element item (its selector, "::...") opens a block whose refusals it explains; a property item is its own span.
-      const text = textOf(a.source.uri);
-      if (text === undefined || !text.slice(a.start, a.end).startsWith('::')) return false;
-      const close = text.indexOf('}', a.end);
-      return close >= 0 && s.start >= a.start && s.end <= close;
+      return a !== null && a.source.uri === s.source.uri && a.start === s.start && a.end === s.end;
     });
   };
   if (!diagnostics.filter((d) => blocks(d, 'web')).every((d) => d.target === 'web' && covered(d))) return null;

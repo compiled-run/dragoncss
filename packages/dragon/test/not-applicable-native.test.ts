@@ -15,10 +15,6 @@ const NATIVE = { ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
 /** The CSS of each entry, appended to BASE; the reference document blanks it with spaces, so every offset stays the same. */
 const CASES: Record<string, string> = {
   cursor: '.a { cursor: pointer; }',
-  'scrollbar-color': '.a { scrollbar-color: red blue; }',
-  '-webkit-scrollbar': '.a::-webkit-scrollbar { background-color: #eee; }',
-  '-webkit-scrollbar-thumb': '.a::-webkit-scrollbar-thumb { background: rgba(155, 155, 155, 0.5); border-color: red; color: blue; }',
-  '-webkit-scrollbar-track': '.a::-webkit-scrollbar-track { background-color: #333; }',
 };
 
 function compile(css: string, targets: object) {
@@ -47,6 +43,7 @@ describe('the not-applicable list', () => {
   it('has a test document for exactly the listed entries, each with a reason', () => {
     expect(NOT_APPLICABLE_NATIVE.map((e) => e.name).sort()).toEqual(Object.keys(CASES).sort());
     for (const e of NOT_APPLICABLE_NATIVE) expect(e.reason.length, e.name).toBeGreaterThan(20);
+    expect(NOT_APPLICABLE_NATIVE.map((e) => e.name)).toEqual(['cursor']);
   });
 
   for (const [name, extra] of Object.entries(CASES)) {
@@ -107,10 +104,15 @@ describe('off the list, a declaration or rule is still refused on every target',
     'color-scheme (changes the UA colours)': '.a { color-scheme: dark; }',
     '::-webkit-slider-thumb (decides how a range paints)': '.a::-webkit-slider-thumb { width: 16px; }',
     '::-webkit-scrollbar-corner (not listed)': '.a::-webkit-scrollbar-corner { background: red; }',
+    'scrollbar-color (deferred: common forms hide the scrollbar)': '.a { scrollbar-color: red blue; }',
+    'a ::-webkit-scrollbar rule (deferred)': '.a::-webkit-scrollbar { background-color: #eee; }',
+    'a ::-webkit-scrollbar-thumb rule (deferred)': '.a::-webkit-scrollbar-thumb { background-color: red; }',
+    'a ::-webkit-scrollbar-track rule (deferred)': '.a::-webkit-scrollbar-track { background-color: #333; }',
     'a scrollbar rule hiding it with display': '.a::-webkit-scrollbar { display: none; }',
     'a scrollbar rule hiding it with a zero width': '.a::-webkit-scrollbar { width: 0; }',
     'a scrollbar rule hiding it with visibility (a refused declaration)': '.a::-webkit-scrollbar { visibility: hidden; }',
     'a scrollbar rule hiding it with a zero max-width': '.a::-webkit-scrollbar { max-width: 0; }',
+    'a scrollbar rule hiding it with background: none': '.a::-webkit-scrollbar-thumb { background: none; }',
     'a scrollbar rule hiding it with a zero inline-size': '.a::-webkit-scrollbar { inline-size: 0; }',
     'a scrollbar rule hiding it inside a nested @media': '.a::-webkit-scrollbar { @media (min-width: 1px) { display: none; } }',
     'a scrollbar rule setting a size, even a positive one (off the allowlist)': '.a::-webkit-scrollbar { width: 5px; }',
@@ -164,6 +166,9 @@ describe('querySupport', () => {
       expect(querySupport({ kind: 'resolved', result: c, target, node: 'a', instance: 'doc', assignment: [], property: 'cursor' })).toEqual({ kind: 'not-applicable', declaration: 'cursor', reason: expect.stringContaining(`cursor has no effect on ${target}`) });
     }
     expect(querySupport({ kind: 'resolved', result: c, target: 'web', node: 'a', instance: 'doc', assignment: [], property: 'cursor' }).kind).toBe('blocked');
+    // The element is validated first: an unknown node or instance is an invalid query, never not-applicable.
+    expect(querySupport({ kind: 'resolved', result: c, target: 'ios', node: 'nope', instance: 'doc', assignment: [], property: 'cursor' }).kind).toBe('invalid-query');
+    expect(querySupport({ kind: 'resolved', result: c, target: 'ios', node: 'a', instance: 'other', assignment: [], property: 'cursor' }).kind).toBe('invalid-query');
   });
 
   it('answers not-applicable for a listed property on ios and android, never as supported, and keeps refusing it on web', () => {

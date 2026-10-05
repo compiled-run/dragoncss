@@ -216,7 +216,7 @@ describe('not applicable on native', () => {
     expect(() => outcomeOf('ios', rowOf({ ...r, notApplicable: { web: null, ios: null, android: null } }), judged)).toThrow(/ios compiles but web does not/);
   });
 
-  it('the items must explain every web refusal: at an item\'s span, or inside the rule a listed selector opens', () => {
+  it('the items must explain every web refusal, each at an item\'s own span', () => {
     const text = '.a { cursor: pointer; } .b::-webkit-scrollbar { width: 5px; border-radius: 2px; } .c { zoom: 2; }';
     const source = { uri: 'u', revision: 'r', hash: 'h' };
     const input = { snapshot: { sources: [{ ref: source, text, displayPath: 'u' }] } } as unknown as FrontEndResult;
@@ -224,7 +224,9 @@ describe('not applicable on native', () => {
     const d = (code: string, severity: 'error' | 'info', target: string, find: string) => ({ code, severity, target, origin: at(find), message: '', why: '', related: [], fix: null, profile: null }) as unknown as Diagnostic;
     const items = [d('DRAGON_NOT_APPLICABLE_NATIVE', 'info', 'ios', 'cursor: pointer;'), d('DRAGON_NOT_APPLICABLE_NATIVE', 'info', 'ios', '::-webkit-scrollbar')];
     const covered = [d('DRAGON_UNSUPPORTED_PROPERTY', 'error', 'web', 'cursor: pointer;'), d('DRAGON_UNSUPPORTED_SELECTOR', 'error', 'web', '::-webkit-scrollbar'), d('DRAGON_UNSUPPORTED_PROPERTY', 'error', 'web', 'border-radius: 2px;')];
-    expect(notApplicableOn(input, [...items, ...covered], 'ios')).toBe('cursor: pointer;; ::-webkit-scrollbar');
+    // Only a refusal at an item's own span is explained: the scrollbar rule's refusals are not.
+    expect(notApplicableOn(input, [...items, ...covered], 'ios')).toBeNull();
+    expect(notApplicableOn(input, [...items, covered[0] as Diagnostic], 'ios')).toBe('cursor: pointer;; ::-webkit-scrollbar');
     expect(notApplicableOn(input, [...items, ...covered], 'android')).toBeNull();
     expect(notApplicableOn(input, [...items, ...covered, d('DRAGON_UNSUPPORTED_PROPERTY', 'error', 'web', 'zoom: 2;')], 'ios')).toBeNull();
     expect(notApplicableOn(input, [...items, d('DRAGON_UNSUPPORTED_PROPERTY', 'error', null as unknown as string, 'cursor: pointer;')], 'ios')).toBeNull();
