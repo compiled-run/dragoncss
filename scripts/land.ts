@@ -22,7 +22,8 @@ import {
   isFloorFile,
   isQuiet,
   QUIET_FILE,
-  cleanIgnoredArgs,
+  ignoredFilesArgs,
+  ignoredToRemove,
   provedTree,
   SOLO_RERUN_MAX,
   failingTestFiles,
@@ -252,7 +253,7 @@ const resetWorktree = (master: string, ignored = false): void => {
   } catch {}
   wtGit(['checkout', '-q', '-f', '--detach', master]);
   wtGit(['clean', '-q', '-fd']);
-  if (ignored) wtGit(cleanIgnoredArgs());
+  if (ignored) for (const p of ignoredToRemove(wtGit(ignoredFilesArgs()).toString('utf8'))) rmSync(join(WT, p), { force: true });
 };
 
 const seedRegenCache = (e: Entry, shas: string[]): void => {

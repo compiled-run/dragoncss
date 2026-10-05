@@ -18,7 +18,8 @@ import {
   isFloorFile,
   failingTestFiles,
   isQuiet,
-  cleanIgnoredArgs,
+  ignoredFilesArgs,
+  ignoredToRemove,
   clearStaleQuiet,
   releaseQuiet,
   requestQuiet,
@@ -781,7 +782,7 @@ describe('a batch of positions on a scratch repository', () => {
     const g = (args: string[]): string => execFileSync('git', [...config, ...args], { cwd: d, encoding: 'utf8' });
     g(['init', '-q']);
     const files: Record<string, string> = {
-      '.gitignore': 'node_modules/\npackages/parity/out/*\n!packages/parity/out/kept.json\n*.tsbuildinfo\nvendor/wpt/\nbuild/\n',
+      '.gitignore': 'node_modules/\npackages/parity/out/*\n!packages/parity/out/kept.json\n*.tsbuildinfo\nvendor/wpt/\nbuild/\ndist/\n',
       'packages/parity/out/kept.json': '{}\n',
     };
     for (const [path, body] of Object.entries(files)) {
@@ -790,13 +791,22 @@ describe('a batch of positions on a scratch repository', () => {
     }
     g(['add', '-A']);
     g(['commit', '-q', '-m', 'x']);
-    const stale = ['packages/parity/out/report.html', 'packages/x/tsconfig.tsbuildinfo'];
-    const kept = ['node_modules/a/index.js', 'packages/p/node_modules/b/index.js', 'vendor/wpt/css/t.html', 'packages/layout/generated/kotlin/build/x.class'];
+    const stale = ['packages/parity/out/report.html', 'packages/x/tsconfig.tsbuildinfo', 'packages/dragon/dist/index.js'];
+    // Ignored files nested in a kept tree stay too: node_modules/.pnpm/*/dist/ holds every installed package's code (the
+    // first version deleted vitest's dist/ this way and every later test run failed to start).
+    const kept = [
+      'node_modules/a/index.js',
+      'node_modules/.pnpm/vitest@4/node_modules/vitest/dist/cli.js',
+      'packages/p/node_modules/b/index.js',
+      'packages/p/node_modules/b/dist/x.js',
+      'vendor/wpt/css/t.html',
+      'packages/layout/generated/kotlin/build/x.class',
+    ];
     for (const path of [...stale, ...kept]) {
       mkdirSync(dirname(join(d, path)), { recursive: true });
       writeFileSync(join(d, path), 'x');
     }
-    g(cleanIgnoredArgs());
+    for (const p of ignoredToRemove(g(ignoredFilesArgs()))) rmSync(join(d, p), { force: true });
     expect(stale.filter((path) => existsSync(join(d, path)))).toEqual([]);
     expect(kept.filter((path) => existsSync(join(d, path)))).toEqual(kept);
     expect(existsSync(join(d, 'packages/parity/out/kept.json'))).toBe(true);
