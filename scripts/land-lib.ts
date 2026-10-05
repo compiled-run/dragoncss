@@ -165,7 +165,9 @@ export const QUIET_LOAD = 20;
 export const isQuiet = (otherHeavyHolders: number, load1: number): boolean => otherHeavyHolders === 0 && load1 < QUIET_LOAD;
 
 // While the driver waits for quiet it holds /tmp/dragon-train-quiet (its pid), which stops /tmp/heavy-lease.sh from starting
-// new jobs beside the train. The file is removed when the wait ends, quiet or not, and never another process's file.
+// new jobs beside the train. It keeps holding it through the quiet rerun (waitForQuiet's `hold`), so jobs queued behind the
+// request don't start beside the rerun and load the machine again; it is removed when the rerun ends, or when the wait fails,
+// and never another process's file.
 export const QUIET_FILE = '/tmp/dragon-train-quiet';
 export const requestQuiet = (path: string, pid: number): void => writeFileSync(path, String(pid));
 export const releaseQuiet = (path: string, pid: number): void => {
@@ -188,17 +190,19 @@ export const clearStaleQuiet = (path: string, alive: (pid: number) => boolean): 
 };
 
 // Waits for a quiet machine with the quiet request held, up to `ceilingMs`; true when quiet, false at the ceiling.
-export const waitForQuiet = (o: { quiet: () => boolean; request: () => void; release: () => void; sleep: (ms: number) => void; now: () => number; ceilingMs: number; pollMs?: number }): boolean => {
+// With `hold`, a quiet result keeps the request held and the caller releases it after its rerun; a failed wait always releases.
+export const waitForQuiet = (o: { quiet: () => boolean; request: () => void; release: () => void; sleep: (ms: number) => void; now: () => number; ceilingMs: number; pollMs?: number; hold?: boolean }): boolean => {
   o.request();
+  let keep = false;
   try {
     const t0 = o.now();
     for (;;) {
-      if (o.quiet()) return true;
+      if (o.quiet()) return (keep = o.hold === true), true;
       if (o.now() - t0 >= o.ceilingMs) return false;
       o.sleep(o.pollMs ?? 30_000);
     }
   } finally {
-    o.release();
+    if (!keep) o.release();
   }
 };
 
