@@ -10,7 +10,7 @@ import { repoPath } from '../src/paths.ts';
 import { trustCoverageProblems } from '../src/lanes.ts';
 import type { AvdDeviceSpec, DeviceRecord, DeviceSpec, GoldenParts } from '../src/device-run.ts';
 import type { SettleState } from '../src/device-run.ts';
-import { ANDROID_RENDERER, avdDir, dropGolden, emulatorArgs, failedAttemptStep, GOLDEN_SNAPSHOT, goldenEnabled, goldenCurrent, goldenKey, goldenKeyFile } from '../src/device-run.ts';
+import { ANDROID_RENDERER, avdDir, dropGolden, deviceRecord, emulatorArgs, failedAttemptStep, GOLDEN_SNAPSHOT, goldenEnabled, GUEST_TIMEZONE, snapshotLoadFailed, goldenCurrent, goldenKey, goldenKeyFile } from '../src/device-run.ts';
 import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, isGlyphPlant, judgeGlyphPlant, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from 'dragon';
 import { paintPlants } from '../../dragon/src/emit/paint/registry.ts';
@@ -253,8 +253,9 @@ describe('the golden snapshot (Android quickboot)', () => {
   it('a cold boot saves nothing; a quickboot forces the golden snapshot and saves nothing back; both keep the pinned renderer', () => {
     const cold = emulatorArgs(avd, false);
     const quick = emulatorArgs(avd, true);
-    expect(cold).toEqual(['-avd', avd.name, '-port', String(avd.port), '-no-snapshot', '-no-window', '-no-audio', '-no-boot-anim', '-gpu', ANDROID_RENDERER]);
-    expect(quick).toEqual(['-avd', avd.name, '-port', String(avd.port), '-snapshot', GOLDEN_SNAPSHOT, '-force-snapshot-load', '-no-snapshot-save', '-no-window', '-no-audio', '-no-boot-anim', '-gpu', ANDROID_RENDERER]);
+    // Both pin the guest timezone, so neither boot takes the host's.
+    expect(cold).toEqual(['-avd', avd.name, '-port', String(avd.port), '-no-snapshot', '-no-window', '-no-audio', '-no-boot-anim', '-gpu', ANDROID_RENDERER, '-timezone', GUEST_TIMEZONE]);
+    expect(quick).toEqual(['-avd', avd.name, '-port', String(avd.port), '-snapshot', GOLDEN_SNAPSHOT, '-force-snapshot-load', '-no-snapshot-save', '-no-window', '-no-audio', '-no-boot-anim', '-gpu', ANDROID_RENDERER, '-timezone', GUEST_TIMEZONE]);
     expect(ANDROID_RENDERER).toBe('swiftshader_indirect');
   });
 
@@ -290,6 +291,14 @@ describe('the golden snapshot (Android quickboot)', () => {
     }
   });
 
+  it('the device record names how an AVD came up; an iOS profile (and an older record) has no boot field', () => {
+    const app = { platform: 'android' as const, model: 'sdk_gphone / dragon-320', os: 'Android 16', build: 'B', scale: 2, windowPx: [1080, 2400] as const, stagePx: [1080, 2168] as const, rootOriginPx: [0, 136] as const, textScale: '1.0' };
+    const prof = { name: 'dragon-320', target: 'android' as const, os: 'Android 16 (API 36)', build: 'B', profileScale: 2 };
+    expect(deviceRecord({ ...prof, boot: 'snapshot' }, app).boot).toBe('snapshot');
+    expect(deviceRecord({ ...prof, boot: 'cold' }, app).boot).toBe('cold');
+    expect('boot' in deviceRecord(prof, app)).toBe(false);
+  });
+
   it('a CI runner (fresh every job) neither loads nor saves a snapshot; this Mac does', () => {
     expect(goldenEnabled({ CI: 'true' })).toBe(false);
     expect(goldenEnabled({})).toBe(true);
@@ -298,22 +307,31 @@ describe('the golden snapshot (Android quickboot)', () => {
 
   it('a snapshot that fails to boot is dropped and the retry is cold, even when the forced load made the emulator exit', () => {
     // A forced load that fails exits the emulator: the first attempt retries cold, never leaving the snapshot in place.
-    expect(failedAttemptStep(true, false, 1)).toEqual({ dropGolden: true, next: 'retry' });
+    expect(failedAttemptStep(true, false, 1, true)).toEqual({ dropGolden: true, next: 'retry' });
     expect(failedAttemptStep(true, true, 1)).toEqual({ dropGolden: true, next: 'stop-then-retry' });
+    // Any other exit from a snapshot attempt (a taken port, a full disk) keeps the snapshot and leaves the serial alone.
+    expect(failedAttemptStep(true, false, 1, false)).toEqual({ dropGolden: false, next: 'left-alone' });
+    expect(snapshotLoadFailed('ERROR | Failed to load snapshot dragon-golden | exiting')).toBe(true);
+    expect(snapshotLoadFailed('WARNING | Snapshot dragon-golden can not be loaded (incompatible)')).toBe(true);
+    expect(snapshotLoadFailed('ERROR | Port 5580 is already in use')).toBe(false);
+    expect(snapshotLoadFailed('INFO | loading snapshot dragon-golden')).toBe(false);
     // A cold attempt keeps today's rules: an exited emulator is left alone, a live one is stopped and retried once.
     expect(failedAttemptStep(false, false, 1)).toEqual({ dropGolden: false, next: 'left-alone' });
     expect(failedAttemptStep(false, true, 1)).toEqual({ dropGolden: false, next: 'stop-then-retry' });
     expect(failedAttemptStep(false, false, 2)).toEqual({ dropGolden: false, next: 'left-alone' });
     expect(failedAttemptStep(false, true, 2)).toEqual({ dropGolden: false, next: 'stop-then-fail' });
     // The retry after a snapshot is cold, so a second failure ends the boot.
-    expect(failedAttemptStep(true, false, 2).next).toBe('left-alone');
+    expect(failedAttemptStep(true, false, 2, true).next).toBe('left-alone');
   });
 
   it('every emulator boot of the runner goes through emulatorArgs, so none can drop the renderer or save into the snapshot', () => {
     const src = readFileSync(repoPath('packages/parity/src/device-run.ts'), 'utf8');
     expect(src.match(/spawnDetached\(tools\.emulator, /g)).toHaveLength(1);
     expect(src).toContain('spawnDetached(tools.emulator, emulatorArgs(spec, golden), log)');
-    // The snapshot is written only by saveGolden, right after a cold boot and prepareAvd.
+    // The snapshot is written only by saveGolden, right after a cold boot and prepareAvd, and the device settles again after it.
     expect(src.match(/'snapshot', 'save'/g)).toHaveLength(1);
+    expect(src).toMatch(/await saveGolden\(h, key, [^\n]*\n {2}await waitForSettledFocus\(h\);/);
+    expect(src).toContain('if (key !== null && !golden) await saveGoldenAndSettle(');
+    expect(src).toMatch(/provision: \[prepareAvd, waitForSettledFocus, saveGolden, saveGoldenAndSettle,/);
   });
 });
