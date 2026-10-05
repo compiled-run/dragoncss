@@ -116,14 +116,53 @@ function hit(dir: string, artifact: string): boolean {
 }
 
 const DAY_MS = 24 * 3600 * 1000;
+/** The cache's size cap; past it, the least recently used entries go first. */
+export const CACHE_MAX_BYTES = Number(process.env['DRAGON_NATIVE_CACHE_MAX_MB'] || 3072) * 1024 * 1024;
 
-/** Removes the cache entries under root unused for 14 days, and work directories a killed build left over a day ago. */
-export function pruneCache(root: string, now = Date.now()): void {
-  if (!existsSync(root)) return;
-  for (const name of readdirSync(root)) {
-    const at = join(root, name);
-    const st = statSync(at, { throwIfNoEntry: false });
-    if (st !== undefined && now - st.mtimeMs > (name.includes('.build-') ? DAY_MS : 14 * DAY_MS)) rmSync(at, { recursive: true, force: true });
+function sizeOf(path: string): number {
+  const st = statSync(path, { throwIfNoEntry: false });
+  if (st === undefined) return 0;
+  if (!st.isDirectory()) return st.size;
+  return readdirSync(path).reduce((n, c) => n + sizeOf(join(path, c)), 0);
+}
+
+/** Moves an entry out of every reader's way in one rename, then deletes it, so a killed prune never leaves a half-removed entry. */
+function evict(root: string, name: string): void {
+  const trash = join(root, `${name}.trash-${process.pid}`);
+  try {
+    renameSync(join(root, name), trash);
+  } catch {
+    return;
+  }
+  rmSync(trash, { recursive: true, force: true });
+}
+
+/**
+ * Prunes each language directory under cacheRoot: entries unused for 14 days, work directories a killed build left over a day
+ * ago and trash a killed prune left; then, while the cache is over maxBytes, the least recently used entries except keep.
+ */
+export function pruneCache(cacheRoot: string, keep: string | null, now = Date.now(), maxBytes = CACHE_MAX_BYTES): void {
+  const entries: { root: string; name: string; mtimeMs: number; bytes: number }[] = [];
+  for (const lang of ['swift', 'kotlin']) {
+    const root = join(cacheRoot, lang);
+    if (!existsSync(root)) continue;
+    for (const name of readdirSync(root)) {
+      const st = statSync(join(root, name), { throwIfNoEntry: false });
+      if (st === undefined) continue;
+      const age = now - st.mtimeMs;
+      if (name.includes('.trash-')) rmSync(join(root, name), { recursive: true, force: true });
+      else if (name.includes('.build-')) {
+        if (age > DAY_MS) rmSync(join(root, name), { recursive: true, force: true });
+      } else if (age > 14 * DAY_MS) evict(root, name);
+      else entries.push({ root, name, mtimeMs: st.mtimeMs, bytes: sizeOf(join(root, name)) });
+    }
+  }
+  let total = entries.reduce((n, e) => n + e.bytes, 0);
+  for (const e of entries.sort((a, b) => a.mtimeMs - b.mtimeMs)) {
+    if (total <= maxBytes) break;
+    if (join(e.root, e.name) === keep) continue;
+    evict(e.root, e.name);
+    total -= e.bytes;
   }
 }
 
@@ -144,7 +183,8 @@ function failBuild(work: string, message: string): never {
 
 /** Compiles the Swift harness; returns the binary. Cached on sources, flags and compiler version. */
 export function buildSwift(tool: SwiftTool, files: Files): { binary: string; seconds: number; cached: boolean } {
-  const key = filesKey(files, [...SWIFT_FLAGS, tool.version]);
+  // The version line names no target triple, and a binary runs only on the OS and architecture it was built for.
+  const key = filesKey(files, [...SWIFT_FLAGS, tool.version, `${process.platform}-${process.arch}`]);
   const dir = join(BUILD_CACHE, 'swift', key);
   const binary = join(dir, 'harness');
   if (hit(dir, binary)) return { binary, seconds: 0, cached: true };
@@ -162,7 +202,7 @@ export function buildSwift(tool: SwiftTool, files: Files): { binary: string; sec
     if (!r.ok) failBuild(work, `swiftc failed:\n${r.out.slice(0, 4000)}`);
   });
   publish(work, dir);
-  pruneCache(join(BUILD_CACHE, 'swift'));
+  pruneCache(BUILD_CACHE, dir);
   return { binary, seconds: (Date.now() - t) / 1000, cached: false };
 }
 
@@ -181,7 +221,7 @@ export function buildKotlin(tool: KotlinTool, files: Files): { jar: string; seco
   const r = run(tool.kotlinc, [...KOTLIN_FLAGS, ...srcs, '-d', join(work, 'harness.jar')], env);
   if (!r.ok) failBuild(work, `kotlinc failed:\n${r.out.slice(0, 4000)}`);
   publish(work, dir);
-  pruneCache(join(BUILD_CACHE, 'kotlin'));
+  pruneCache(BUILD_CACHE, dir);
   return { jar, seconds: (Date.now() - t) / 1000, cached: false };
 }
 
