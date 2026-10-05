@@ -15,7 +15,7 @@
       "engine": 20258,
       "library": 22000,
       "rt": 55362,
-      "hit": 2132,
+      "hit": 2140,
       "animator": 18
     }
   },
@@ -54,11 +54,11 @@
       "units-calc"
     ],
     "counts": {
-      "vectors-m2": 288,
-      "vectors-dpr": 1638,
-      "engine-dpr": 1638,
+      "vectors-m2": 290,
+      "vectors-dpr": 1644,
+      "engine-dpr": 1644,
       "units-m2": 120000,
-      "snap": 21422,
+      "snap": 21428,
       "snap-values": 216,
       "calc-goldens": 17,
       "engine-calc": 4000,
