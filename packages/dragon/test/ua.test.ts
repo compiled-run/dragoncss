@@ -147,6 +147,9 @@ describe('dependency boundaries', () => {
       const text = readFileSync(f, 'utf8');
       expect(text, f).not.toMatch(/^import (?!type )[^;]*from '@dragon\/layout'/m);
       expect(text, f).not.toMatch(/from '(node:[^']*|fs|path|child_process|url|module|playwright)'/);
+      // No runtime module loading (type-only import() is fine). The one documented exception: digest.ts may feature-detect node:crypto as a fast path with an identical-output fallback.
+      const dynamic = [...text.matchAll(/getBuiltinModule\(([^)]*)\)|\bawait import\(|\brequire\(/g)].map((m) => m[0]);
+      expect(dynamic, f).toEqual(f.endsWith(join('src', 'digest.ts')) ? ["getBuiltinModule('node:crypto')"] : []);
     }
   });
 });
