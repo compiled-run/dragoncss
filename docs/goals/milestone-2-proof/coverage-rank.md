@@ -745,7 +745,7 @@ Properties under 0.1% of page loads are left out of this table (they still count
 | element:iframe | - | no usage source | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | REPL-a |  |
 | element:picture | 12.9% | chromestatus Picture | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | REPL-a |  |
 | element:table | - | no usage source | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | TABLE |  |
-| element:dialog | 12.1% | chromestatus DialogElement | no FIXTURE_MARKUP | no FIXTURE_MARKUP | no FIXTURE_MARKUP | TAIL |  |
+| element:dialog | 12.1% | chromestatus DialogElement | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | TAIL |  |
 | element:details/summary | 5.0% | chromestatus DetailsElement | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | TAIL |  |
 | element:b/strong/em/i | - | no usage source | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | INL1a |  |
 | element:br | - | no usage source | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | no UNSUPPORTED_ELEMENT | INL1a |  |

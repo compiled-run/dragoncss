@@ -408,7 +408,7 @@
     { "id": "element:iframe", "lane": "REPL-a", "usage": null, "probes": [{ "css": ".u{width: 100%; height: 200px}", "html": "<div class=\"p\"><iframe class=\"u\" src=\"https://example.com\"></iframe></div>" }] },
     { "id": "element:picture", "lane": "REPL-a", "usage": { "chromestatus": "Picture" }, "probes": [{ "css": ".u{width: 100px}", "html": "<div class=\"p\"><picture><img class=\"u\" src=\"a.png\"></picture></div>" }] },
     { "id": "element:table", "lane": "TABLE", "usage": null, "probes": [{ "css": ".u{width: 100%}", "html": "<table class=\"u\"><tr><td>Hi</td></tr></table>" }] },
-    { "id": "element:dialog", "lane": "TAIL", "usage": { "chromestatus": "DialogElement" }, "probes": [{ "css": ".u{padding: 0}", "html": "<dialog class=\"u\" open>Hi</dialog>" }] },
+    { "id": "element:dialog", "lane": "TAIL", "usage": { "chromestatus": "DialogElement" }, "probes": [{ "css": ".u{padding: 0}", "html": "<dialog class=\"u\" open=\"\">Hi</dialog>" }] },
     { "id": "element:details/summary", "lane": "TAIL", "usage": { "chromestatus": "DetailsElement" }, "probes": [{ "css": ".u{padding: 0}", "html": "<details class=\"u\"><summary>Hi</summary>x</details>" }] },
     { "id": "element:b/strong/em/i", "lane": "INL1a", "usage": null, "probes": [{ "css": ".u{color: red}", "html": "<p class=\"p\">Hi <strong class=\"u\">there</strong></p>" }, { "css": ".u{color: red}", "html": "<p class=\"p\">Hi <em class=\"u\">there</em></p>" }] },
     { "id": "element:br", "lane": "INL1a", "usage": null, "probes": [{ "css": ".u{color: red}", "html": "<p class=\"u\">Hi<br>there</p>" }] }
