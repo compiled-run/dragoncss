@@ -10,7 +10,7 @@ import type { DeviceOutcome, HostSource, RunLog } from './device-lanes.ts';
 import { afterRelease, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE } from './device-lanes.ts';
 import type { DeviceHandle, DeviceSpec } from './device-run.ts';
 import { spawnChild } from './device-exec.ts';
-import { boot, DEVICE_MATRIX, release } from './device-run.ts';
+import { boot, DEVICE_MATRIX, DeviceLeftRunning, release } from './device-run.ts';
 import type { HostRun } from './lanes.ts';
 import { nativeOut } from './native-host.ts';
 import { repoPath } from './paths.ts';
@@ -276,7 +276,7 @@ export async function pool<T, R>(items: readonly T[], jobs: number, f: (x: T) =>
 /** The devices of a target, jobs at a time, each in its own process; the outcomes in matrix order. A device booted early is taken. */
 export function runDevicesInChildren(target: NativeTarget, specs: readonly DeviceSpec[], jobs: number, jobOf: (spec: DeviceSpec) => DeviceTask, log: RunLog, early: EarlyBoots | null = null): Promise<DeviceOutcome[]> {
   if (specs.some((s) => s.target !== target)) throw new Error(`a device of another target in the ${target} run`);
-  return pool(specs, jobs, (spec) => runDeviceChild(jobOf(spec), spec, log, early?.take(spec) ?? boot(spec)), (spec) => SOLO_DEVICES.includes(spec.name));
+  return pool(specs, jobs, (spec) => runDeviceChild(jobOf(spec), spec, log, early?.take(spec, log) ?? boot(spec)), (spec) => SOLO_DEVICES.includes(spec.name));
 }
 
 /** The devices a run of a target starts first, so the ones worth booting early: the first `jobs` of its matrix, solo devices last. */
@@ -291,7 +291,9 @@ export function earlySpecs(target: NativeTarget, jobs: number): DeviceSpec[] {
  */
 export class EarlyBoots {
   private readonly boots = new Map<string, { readonly spec: DeviceSpec; readonly booting: Promise<DeviceHandle> }>();
+  private readonly bootIt: (spec: DeviceSpec) => Promise<DeviceHandle>;
   constructor(specs: readonly DeviceSpec[], bootIt: (spec: DeviceSpec) => Promise<DeviceHandle> = boot) {
+    this.bootIt = bootIt;
     for (const spec of specs) {
       if (this.boots.has(spec.name)) throw new Error(`${spec.name} is booted early twice`);
       const booting = bootIt(spec);
@@ -299,11 +301,18 @@ export class EarlyBoots {
       this.boots.set(spec.name, { spec, booting });
     }
   }
-  /** The early boot of a device, handed over once (later calls give undefined). */
-  take(spec: DeviceSpec): Promise<DeviceHandle> | undefined {
+  /**
+   * The early boot of a device, handed over once (later calls give undefined). An early boot that failed is tried once more now,
+   * when its run starts (the machine may have been busiest at the start), unless it left the device running.
+   */
+  take(spec: DeviceSpec, log: RunLog = () => undefined): Promise<DeviceHandle> | undefined {
     const b = this.boots.get(spec.name);
     this.boots.delete(spec.name);
-    return b?.booting;
+    return b?.booting.catch((e: unknown) => {
+      if (e instanceof DeviceLeftRunning) throw e;
+      log(`${spec.name}: the early boot failed, so it boots again now: ${message(e)}`);
+      return this.bootIt(spec);
+    });
   }
   /** Stops the early boots not taken (of the devices `which` picks), once each has booted or failed; the stops' problems. */
   async releaseRest(log: RunLog, which: (spec: DeviceSpec) => boolean = () => true, stop: (h: DeviceHandle, log: RunLog) => Promise<string | null> = release): Promise<string[]> {

@@ -12,6 +12,7 @@ import type { DeviceOutcome, DeviceSet } from '../src/device-lanes.ts';
 import { afterRelease, mergeOutcomes } from '../src/device-lanes.ts';
 import type { AvdDeviceSpec, DeviceHandle, IosDeviceSpec } from '../src/device-run.ts';
 import { ExecError, exec, execAsync, execBytes, spawnChild } from '../src/device-exec.ts';
+import { spawnDetached, stopStartedNow } from '../src/device-run.ts';
 import { admitDevice, admits, DEVICE_MATRIX, DEVICE_MEMORY, DeviceLeftRunning, failBoot, heldBytes, isAncestor, leaseHolder, MEMORY_RESERVE, parentPid, parseVmStat, release, releaseDeviceMemory, requireDeviceLease, stopDevice, stopSpawned, withDeviceSlot } from '../src/device-run.ts';
 import type { HostRun, LanesFile } from '../src/lanes.ts';
 import { readLanesFile } from '../src/lanes.ts';
@@ -249,6 +250,42 @@ describe('devices boot while the host lanes run', () => {
     expect(stopped).toEqual(['dragon-320', 'dragon-smoke', 'iPad (A16)']);
     expect(await early.releaseRest(() => undefined, () => true, stop)).toEqual([]);
     expect(stopped).toHaveLength(3);
+  });
+});
+
+describe('early boots and signals (review of #159)', () => {
+  const ios = DEVICE_MATRIX.find((d) => d.target === 'ios') as IosDeviceSpec;
+  const avd = DEVICE_MATRIX.find((d) => d.target === 'android') as AvdDeviceSpec;
+  it('a failed early boot is tried once more when its run takes it; one that left its device running is not', async () => {
+    let calls = 0;
+    const h = { spec: ios, udid: 'U-1', startedHere: true };
+    const early = new EarlyBoots([ios, avd], (s) => {
+      calls++;
+      if (calls === 1) return Promise.reject(new Error('the iPhone 17 simulator failed to boot twice'));
+      if (s.target === 'android') return Promise.reject(new DeviceLeftRunning('emulator-5580 still runs'));
+      return Promise.resolve(h as DeviceHandle);
+    });
+    const lines: string[] = [];
+    await expect(early.take(ios, (l) => lines.push(l))).resolves.toEqual(h);
+    expect(calls).toBe(3);
+    expect(lines).toEqual([`${ios.name}: the early boot failed, so it boots again now: the iPhone 17 simulator failed to boot twice`]);
+    await expect(early.take(avd)).rejects.toThrow(DeviceLeftRunning);
+    expect(calls).toBe(3);
+  });
+  it('a signal stops every detached emulator this process started and has not stopped', async () => {
+    const p = spawnDetached('sleep', ['60']);
+    expect(p.alive()).toBe(true);
+    expect(stopStartedNow()).toEqual(['an emulator process (SIGTERM)']);
+    for (let i = 0; i < 100 && p.alive(); i++) await new Promise((r) => setTimeout(r, 20));
+    expect(p.alive()).toBe(false);
+    // An exited one is forgotten, so a later signal stops nothing twice.
+    expect(stopStartedNow()).toEqual([]);
+  });
+  it('parity:lanes stops the devices it started on SIGTERM and SIGINT, and prints every device failure when the host phase fails', () => {
+    const src = readFileSync(repoPath('packages/parity/src/cli/lanes.ts'), 'utf8');
+    expect(src).toContain("for (const [sig, code] of [['SIGTERM', 143], ['SIGINT', 130]] as const)");
+    expect(src).toContain('for (const d of stopStartedNow())');
+    expect(src).toMatch(/if \(hostFailed !== null\) \{\n\s+for \(const r of settled\) if \(r\.status === 'rejected'\) console\.log/);
   });
 });
 

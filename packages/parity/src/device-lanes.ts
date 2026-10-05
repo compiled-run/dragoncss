@@ -415,7 +415,7 @@ export async function runTargetOnDevices(t: TargetConfig, host: HostSource, log:
   const hostOf = (spec: DeviceSpec): HostSource => (host instanceof Promise && !(vectors && spec.name === VECTOR_DEVICES[t.target]) ? null : host);
   const outcomes =
     jobs <= 1
-      ? await sequentially(specs, (spec) => runOneDevice(t, spec, hostOf(spec), build.artifact, () => cases, vectors, log, { boot: () => early?.take(spec) ?? boot(spec), release: (h) => release(h, log) }))
+      ? await sequentially(specs, (spec) => runOneDevice(t, spec, hostOf(spec), build.artifact, () => cases, vectors, log, { boot: () => early?.take(spec, log) ?? boot(spec), release: (h) => release(h, log) }))
       : await runDevicesInChildren(t.target, specs, jobs, (spec) => ({ target: t.target, device: spec.name, artifact: build.artifact, host: hostOf(spec), vectors }), log, early);
   return mergeOutcomes(outcomes, evidence);
 }

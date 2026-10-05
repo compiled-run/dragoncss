@@ -12,7 +12,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { deviceJobs, EarlyBoots, earlySpecs, lanesArgs, prebuildApps } from '../device-jobs.ts';
 import type { HostSource } from '../device-lanes.ts';
 import { allRunFailures, failuresByKind, runTargetOnDevices } from '../device-lanes.ts';
-import { requireDeviceLease } from '../device-run.ts';
+import { requireDeviceLease, stopStartedNow } from '../device-run.ts';
 import type { DeviceRun, LaneFault, LanesFile } from '../lanes.ts';
 import { checkLaneParity, fileStatusProblems, LANE_FAULTS, LANES_JSON, lanesFile, laneSources, notPassed, plantLaneFault, readLanesFile, referenceProof, runHostLane, staleCovers, staleEvidence, staleLanes, writeLanesFile } from '../lanes.ts';
 import { buildAndroid, buildIos } from '../native-host.ts';
@@ -79,6 +79,16 @@ if (runHost || runDevice) {
     if (early === null) return;
     for (const p of await early.releaseRest((l) => console.log(`parity:lanes --run-device: ${l}`), which === undefined ? undefined : (s) => which(s.target))) console.log(`parity:lanes --run-device: an early boot not taken: ${p}`);
   };
+  // A SIGTERM or SIGINT (the landing driver's stop) skips every finally below, and a detached emulator is outside the process
+  // group the signal reaches, so every device this process started is stopped here before it exits.
+  if (runDevice) {
+    for (const [sig, code] of [['SIGTERM', 143], ['SIGINT', 130]] as const) {
+      process.once(sig, () => {
+        for (const d of stopStartedNow()) console.log(`parity:lanes --run-device: ${sig}: stopped ${d}`);
+        process.exit(code);
+      });
+    }
+  }
   let reference: ReturnType<typeof referenceProof> | null = null;
   const device = new Map<NativeTarget, DeviceRun>();
   try {
@@ -120,8 +130,13 @@ if (runHost || runDevice) {
         for (const tr of d.trust) for (const row of tr.rows) for (const m of row.mismatches) console.log(`  CAPTURE TRUST FAIL ${tr.device} ${row.case}: ${m}`);
       }),
     );
-    // The host phase's own failure is the cause a device waiting on it reports, so it is thrown first.
-    await hostPhase;
+    // The host phase's own failure is the cause a device waiting on it reports, so it is thrown first; every device failure is
+    // printed before it, so one that is not about the host run (a device left running) is never hidden.
+    const hostFailed = await hostPhase.then(() => null, (e: unknown) => ({ error: e }));
+    if (hostFailed !== null) {
+      for (const r of settled) if (r.status === 'rejected') console.log(`parity:lanes --run-device: a device run also failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
+      throw hostFailed.error;
+    }
     for (const r of settled) if (r.status === 'rejected') throw r.reason;
   } finally {
     await stopEarly();
