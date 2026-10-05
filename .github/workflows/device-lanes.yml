@@ -1,11 +1,10 @@
 # CI-OFFLOAD step 3-4: the device lanes of a commit on GitHub-hosted standard runners, one job per matrix device, in parallel.
 # iOS simulators run on xcode-27 (Xcode 27.0, the local Mac's) with the pinned iOS 26.5 (23F77) runtime; Android emulators run
 # on ubuntu-latest with KVM and the x86_64 android-36 image (device-run.ts androidImage). Each job writes its outcome with the
-# evidence stamp and host it ran on (packages/parity/src/cli/device-ci.ts one), uploaded together as device-outcomes.
-# Hybrid (PM ruling 2026-10-04): android layout-vectors-device is never run here; the landing driver runs it on the Mac
-# (device-ci.ts vectors) and merges it with device-outcomes (device-ci.ts merge --local-vectors). The merge job here merges the
-# CI half alone (--ci-half) and lists how every other device lane compares with the records committed at that commit.
-# Nothing is committed or pushed.
+# evidence stamp and host it ran on (packages/parity/src/cli/device-ci.ts one), uploaded together as device-outcomes. Every lane
+# runs here, android layout-vectors-device too (a NaN matches any NaN in the corpus comparison, #147). The merge job writes the
+# lane records (device-records) and fails when a lane judges differently from the records committed at that commit, which the
+# landing driver judges against its base instead. Nothing is committed or pushed.
 # Trigger: workflow_dispatch with a commit sha (the landing driver, LAND_DEVICES=ci), or the `devices` label on a pull request.
 name: device-lanes
 run-name: device lanes of ${{ inputs.sha || github.event.pull_request.head.sha }}
@@ -198,10 +197,10 @@ jobs:
           merge-multiple: true
       - name: Keep the committed records to compare with
         run: mkdir -p "$RUNNER_TEMP/committed" && cp packages/parity/out/lanes.json packages/parity/out/device-failures-*.json "$RUNNER_TEMP/committed/"
-      - name: Merge the CI half into the lane records (android layout-vectors-device stays on the Mac)
+      - name: Merge the device outcomes into the lane records
         run: |
           mkdir -p "$RUNNER_TEMP/merge" && cp "$RUNNER_TEMP"/outcomes/*.json "$RUNNER_TEMP/merge/"
-          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts merge "$RUNNER_TEMP/merge" --ci-half
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts merge "$RUNNER_TEMP/merge"
       - name: Compare every device lane with the committed records
         run: |
           cat > "$RUNNER_TEMP/compare.mts" <<'EOF'
@@ -216,8 +215,7 @@ jobs:
             const lb = read(b, 'lanes.json').targets.find((x: any) => x.target === t);
             const fa = read(a, `device-failures-${t}.json`);
             const fb = read(b, `device-failures-${t}.json`);
-            // The hybrid's Mac lane is not run here; the landing driver merges it.
-            for (const l of la.lanes.filter((x: any) => x.where === 'device' && !(t === 'android' && x.lane === 'layout-vectors-device'))) {
+            for (const l of la.lanes.filter((x: any) => x.where === 'device')) {
               const m = lb.lanes.find((x: any) => x.lane === l.lane);
               const key = (f: any): string => JSON.stringify([f.lane, f.case, f.dpr, f.node, f.kind]);
               const ka = fa.filter((f: any) => f.lane === l.lane).map(key).sort();
@@ -232,14 +230,14 @@ jobs:
               rows.push(`| ${t} | ${l.lane} | ${l.state}${l.reason ? ` (${l.reason})` : ''} | ${m?.state ?? 'missing'}${m?.reason ? ` (${m.reason})` : ''} | ${setSame ? `same (${ka.length})` : `differs: ${onlyA} only committed, ${onlyB} only CI`} | ${detailSame ? 'same' : 'differs'} |`);
             }
           }
-          const out = `${rows.join('\n')}\n\n${same ? 'Every device lane run on CI judges exactly as the committed records (android layout-vectors-device runs on the Mac).' : 'Some device lanes differ from the committed records (see the device-records-ci-half artifact).'}\n`;
+          const out = `${rows.join('\n')}\n\n${same ? 'Every device lane judges exactly as the committed records.' : 'Some device lanes differ from the committed records (see the device-records artifact).'}\n`;
           console.log(out);
           import('node:fs').then((fs) => fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY!, out));
           // A lane that judges differently from the committed records fails the run.
           if (!same) process.exitCode = 1;
           EOF
           node "$RUNNER_TEMP/compare.mts"
-      - name: Upload the device outcomes (the landing driver merges them with the Mac's vectors record)
+      - name: Upload the device outcomes (the landing driver merges them itself)
         uses: actions/upload-artifact@v4
         with:
           name: device-outcomes
@@ -247,7 +245,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: device-records-ci-half
+          name: device-records
           path: |
             packages/parity/out/lanes.json
             packages/parity/out/device-failures-ios.json
