@@ -706,18 +706,25 @@ const recordProc = (path: string, pid: number): void => {
 };
 // Takes the lock; returns the pid of a dead run's driver when one was recorded (its leftovers need cleaning), else null.
 const lock = (): number | null => {
+  let leftover: number | null = null;
   for (;;) {
     try {
       mkdirSync(LOCK);
       recordProc(LOCK_PID, process.pid);
-      return null;
+      return leftover;
     } catch (error) {
       if ((error as { code?: unknown }).code !== 'EEXIST') throw error;
     }
     const sup = lockProc(LOCK_PID);
     const driver = lockProc(LOCK_DRIVER);
     // A lock with no supervisor pid yet is being taken by another run (mkdir, then the pid file), unless it is old.
-    if (sup === null && Date.now() - statSync(LOCK).mtimeMs < 60_000) throw new Error(`land: another run is taking ${LOCK} right now`);
+    let age: number;
+    try {
+      age = Date.now() - statSync(LOCK).mtimeMs;
+    } catch {
+      continue; // gone meanwhile: try again
+    }
+    if (sup === null && age < 60_000) throw new Error(`land: another run is taking ${LOCK} right now`);
     const state = lockState(sup, driver, startOf);
     if (state === 'held') throw new Error(`land: another driver (supervisor pid ${sup?.pid}, driver pid ${driver?.pid ?? 'none'}) holds ${LOCK}`);
     if (state === 'orphan') {
@@ -733,10 +740,24 @@ const lock = (): number | null => {
         } catch {}
       }
     }
-    rmSync(LOCK, { recursive: true, force: true });
-    mkdirSync(LOCK);
-    recordProc(LOCK_PID, process.pid);
-    return driver?.pid ?? null;
+    // The stale lock is moved aside atomically, so of two runs taking it over only one succeeds; it must still be the lock just
+    // judged (another run may have replaced it meanwhile), else it is put back.
+    const stale = `${LOCK}.stale-${process.pid}`;
+    try {
+      renameSync(LOCK, stale);
+    } catch (error) {
+      if ((error as { code?: unknown }).code === 'ENOENT') continue;
+      throw error;
+    }
+    const moved = lockProc(join(stale, 'pid'));
+    if (moved?.pid !== sup?.pid || moved?.start !== sup?.start) {
+      try {
+        renameSync(stale, LOCK);
+      } catch {}
+      throw new Error(`land: another run took ${LOCK} while this one judged it stale`);
+    }
+    rmSync(stale, { recursive: true, force: true });
+    leftover = driver?.pid ?? null;
   }
 };
 const unlock = (): void => {

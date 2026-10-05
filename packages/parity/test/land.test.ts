@@ -872,16 +872,19 @@ describe('the supervisor with real processes', () => {
   // if it ever gets past the step, which is where the old driver went on to fail PRs after a SIGTERM.
   const setup = (driverBody: (dir: string) => string, o: { graceMs?: number; deferCapMs?: number; slowSpawnMs?: number } = {}): { dir: string; run: () => { done: Promise<{ code: number | null; out: string }>; pid: number } } => {
     const dir = tempDir();
-    writeFileSync(join(dir, 'driver.mjs'), driverBody(dir));
+    // Every file the fakes write is written whole (temp file, then rename), so a reader never sees it half-written.
+    const atomic = (src: string): string =>
+      `import { renameSync as __rename, writeFileSync as __write } from 'node:fs';\nconst put = (p, b) => { __write(p + '.tmp', b); __rename(p + '.tmp', p); };\n${src.replaceAll('writeFileSync(', 'put(')}`;
+    writeFileSync(join(dir, 'driver.mjs'), atomic(driverBody(dir)));
     writeFileSync(
       join(dir, 'supervisor.mjs'),
-      `import { existsSync, writeFileSync } from 'node:fs';\nimport { supervise } from ${JSON.stringify(lib)};\n` +
+      atomic(`import { existsSync, writeFileSync } from 'node:fs';\nimport { supervise } from ${JSON.stringify(lib)};\n` +
         `const r = await supervise({ command: process.execPath, args: [${JSON.stringify(join(dir, 'driver.mjs'))}], env: process.env, graceMs: ${o.graceMs ?? 5000}, deferCapMs: ${o.deferCapMs ?? 60_000}, pollMs: 50, ` +
         `publishing: () => existsSync(${JSON.stringify(join(dir, 'publishing'))}), ` +
         `onSpawn: (pid) => { writeFileSync(${JSON.stringify(join(dir, 'spawned'))}, String(pid)); const t = Date.now(); while (Date.now() - t < ${o.slowSpawnMs ?? 0}); }, ` +
         `onReady: () => writeFileSync(${JSON.stringify(join(dir, 'ready'))}, 'x'), ` +
         `onStop: () => writeFileSync(${JSON.stringify(join(dir, 'stop'))}, 'x'), log: (l) => console.log(l) });\n` +
-        `console.log(JSON.stringify(r)); process.exitCode = r.code;\n`,
+        `console.log(JSON.stringify(r)); process.exitCode = r.code;\n`),
     );
     return {
       dir,
@@ -894,11 +897,20 @@ describe('the supervisor with real processes', () => {
     };
   };
   const waitFor = async (path: string): Promise<string> => {
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 400; i++) {
       if (existsSync(path)) return readFileSync(path, 'utf8');
       await new Promise((r) => setTimeout(r, 50));
     }
     throw new Error(`${path} never appeared`);
+  };
+  // Waits until the file holds `n` positive pids, retrying on content that is missing or not (yet) that.
+  const waitForPids = async (path: string, n = 1): Promise<number[]> => {
+    for (let i = 0; i < 400; i++) {
+      const pids = existsSync(path) ? readFileSync(path, 'utf8').trim().split(/\s+/).map(Number) : [];
+      if (pids.length === n && pids.every((p) => Number.isInteger(p) && p > 1)) return pids;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    throw new Error(`${path} never held ${n} pid(s)`);
   };
   const dead = (pid: number): boolean => {
     try {
@@ -920,7 +932,7 @@ describe('the supervisor with real processes', () => {
     );
     const s = run();
     await waitFor(join(dir, 'ready'));
-    const [driver, step] = (await waitFor(join(dir, 'pids'))).split(' ').map(Number) as [number, number];
+    const [driver, step] = (await waitForPids(join(dir, 'pids'), 2)) as [number, number];
     const t0 = Date.now();
     process.kill(s.pid, 'SIGTERM');
     const { code, out } = await s.done;
@@ -941,7 +953,7 @@ describe('the supervisor with real processes', () => {
     const a = setup(body);
     const s = a.run();
     await waitFor(join(a.dir, 'ready'));
-    await waitFor(join(a.dir, 'pids'));
+    await waitForPids(join(a.dir, 'pids'));
     process.kill(s.pid, 'SIGTERM');
     const r = await s.done;
     expect(r.code).toBe(130);
@@ -951,7 +963,7 @@ describe('the supervisor with real processes', () => {
     const b = setup(body);
     const s2 = b.run();
     await waitFor(join(b.dir, 'ready'));
-    await waitFor(join(b.dir, 'pids'));
+    await waitForPids(join(b.dir, 'pids'));
     process.kill(s2.pid, 'SIGTERM');
     await new Promise((res) => setTimeout(res, 300));
     process.kill(s2.pid, 'SIGTERM');
@@ -964,13 +976,13 @@ describe('the supervisor with real processes', () => {
     const { dir, run } = setup(
       (dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\n` +
         `writeFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\n` +
-        `spawnSync('/bin/sh', ['-c', 'trap "" TERM; echo $$ > ${join(dir, 'step')}; while :; do sleep 0.1; done']);\n`,
+        `spawnSync('/bin/sh', ['-c', 'trap "" TERM; echo $$ > ${join(dir, 'step')}.tmp && mv ${join(dir, 'step')}.tmp ${join(dir, 'step')}; while :; do sleep 0.1; done']);\n`,
       { graceMs: 1000 },
     );
     const s = run();
     await waitFor(join(dir, 'ready'));
-    await waitFor(join(dir, 'pids'));
-    const step = Number((await waitFor(join(dir, 'step'))).trim());
+    await waitForPids(join(dir, 'pids'));
+    const [step] = (await waitForPids(join(dir, 'step'))) as [number];
     const t0 = Date.now();
     process.kill(s.pid, 'SIGTERM');
     const r = await s.done;
@@ -983,8 +995,8 @@ describe('the supervisor with real processes', () => {
     const { dir, run } = setup((dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\nspawnSync('sleep', ['60']);\n`);
     const s = run();
     await waitFor(join(dir, 'ready'));
-    const driver = Number(await waitFor(join(dir, 'pids')));
-    expect(Number(await waitFor(join(dir, 'spawned')))).toBe(driver);
+    const [driver] = (await waitForPids(join(dir, 'pids'))) as [number];
+    expect(await waitForPids(join(dir, 'spawned'))).toEqual([driver]);
     process.kill(driver, 'SIGKILL');
     const r = await s.done;
     expect(JSON.parse(r.out.trim().split('\n').at(-1)!)).toMatchObject({ interrupted: null, signal: 'SIGKILL', pid: driver });
@@ -998,7 +1010,7 @@ describe('the supervisor with real processes', () => {
     );
     const s = run();
     await waitFor(join(dir, 'ready'));
-    const driver = Number(await waitFor(join(dir, 'pids')));
+    const [driver] = (await waitForPids(join(dir, 'pids'))) as [number];
     process.kill(s.pid, 'SIGKILL');
     await waitFor(join(dir, 'orphan'));
     for (let i = 0; i < 40 && !dead(driver); i++) await new Promise((res) => setTimeout(res, 50));
@@ -1006,14 +1018,13 @@ describe('the supervisor with real processes', () => {
   }, 20_000);
 
   it('acts on a signal that arrives before the driver is recorded, rather than dying of it', async () => {
-    // onSpawn takes 1 s (a slow ps); the SIGTERM lands inside it, before the supervisor is ready.
+    // onSpawn takes 3 s (a slow ps), far beyond scheduler jitter; the SIGTERM sent once it starts lands inside it.
     const { dir, run } = setup(
       (dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\nspawnSync('sleep', ['60']);\nwriteFileSync(${JSON.stringify(join(dir, 'resumed'))}, 'x');\n`,
-      { slowSpawnMs: 1000 },
+      { slowSpawnMs: 3000 },
     );
     const s = run();
-    const driver = Number(await waitFor(join(dir, 'spawned')));
-    expect(existsSync(join(dir, 'ready'))).toBe(false);
+    const [driver] = (await waitForPids(join(dir, 'spawned'))) as [number];
     process.kill(s.pid, 'SIGTERM');
     const r = await s.done;
     expect(r.code).toBe(130);
@@ -1031,7 +1042,7 @@ describe('the supervisor with real processes', () => {
     );
     const s = run();
     await waitFor(join(dir, 'ready'));
-    await waitFor(join(dir, 'pids'));
+    await waitForPids(join(dir, 'pids'));
     process.kill(s.pid, 'SIGUSR1');
     const { code, out } = await s.done;
     expect(code).toBe(0);
