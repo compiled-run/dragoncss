@@ -311,11 +311,16 @@ describe('interaction states: hit model (R13)', () => {
   });
 
   it('counts an overflow value computed from a refused partner as refused, and leaves R13 to the lanes', () => {
-    // overflow-x: hidden on html is refused on native (it propagates to the viewport); the overflow-y: auto it computes is not a fact.
-    const viewport = `${BODY}html { overflow-x: hidden; } .k:hover { background-color: #0c0; }`;
-    const found = errors(compile({}, viewport, body).diagnostics);
-    expect(found.some((m) => m.includes('propagates to the viewport'))).toBe(true);
+    // overflow-x: clip beside visible is refused (OVFL-c); its refusal stands alone, with no hit-model refusal beside it.
+    const clip = `${BODY}.h { overflow-x: clip; } .k:hover { background-color: #0c0; }`;
+    const found = errors(compile({}, clip, body).diagnostics);
+    expect(found.some((m) => m.includes('OVFL-c'))).toBe(true);
     expect(found.filter((m) => m.includes('needs Dragon hit testing'))).toEqual([]);
+    // OVFL: rt-hit clips every overflow at scroll offset 0 (the hit lane checks it against Chrome), so html's propagated
+    // overflow-x: hidden, the overflow-y: auto it computes, and auto, scroll and clip boxes are modelled facts.
+    for (const extra of ['html { overflow-x: hidden; }', '.h { overflow: auto; }', '.h { overflow: scroll; }', '.h { overflow: clip; }', '.h { overflow-x: hidden; }']) {
+      expect(errors(compile({}, `${BODY}${extra} .k:hover { background-color: #0c0; }`, body).diagnostics), extra).toEqual([]);
+    }
     // Outside the lanes the interaction rules are refused on native already, so R13 adds nothing.
     expect(otherErrors(compile({}, css, body, TARGETS, 'derive', false).diagnostics)).toEqual([
       'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover is not supported on ios yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
