@@ -47,7 +47,8 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   LAND_REVIEW_CMD (the reviewer: reads the prompt on stdin, gets LAND_REVIEW_PR and LAND_REVIEW_HEAD, prints JSON; default the main
   checkout's scripts/land-review-lookup.ts, which prints the review a review agent precomputed in LAND_REVIEW_PRECOMPUTED_DIR,
   default /tmp/land-reviews/precomputed), LAND_REVIEW_DIR (/tmp/land-reviews), LAND_CI_WAIT and LAND_CI_APPEAR (seconds, default 5400 and 900), LAND_QUIET_MAX
-  (seconds the test gate waits for a quiet machine before failing the PR, default 5400)`;
+  (seconds the test gate waits for a quiet machine before failing the PR, default 5400), LAND_BATCH (PRs proved together by one
+  full test, 1 to 8, default 4; 1 lands one PR per proof)`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;
@@ -216,6 +217,11 @@ export const waitForQuiet = (o: { quiet: () => boolean; request: () => void; rel
     if (!keep) o.release();
   }
 };
+
+// Before proving a tree other than the one just built, ignored outputs of other trees go (reports, lane outputs, tsbuildinfo);
+// installs, fetched WPT and native build caches stay, since no test reads them as results.
+export const KEEP_IGNORED = ['node_modules/', 'vendor/wpt/', 'build/', '.build/', '.swiftpm/', '.zig-cache/', 'zig-out/', 'Cargo.lock', '.vercel/'];
+export const cleanIgnoredArgs = (): string[] => ['clean', '-q', '-fdX', ...KEEP_IGNORED.flatMap((p) => ['-e', `!${p}`])];
 
 // pr:review's banner when every Macroscope check of the head was skipped for the spending limit.
 export const isUnreviewed = (prReviewOutput: string): boolean => /^!!! UNREVIEWED: Macroscope spending limit/m.test(prReviewOutput);
@@ -545,6 +551,226 @@ export const runQueue = (
       onFail(e, f);
     }
     onOutcome(outcomes);
+  }
+  return { outcomes, fatal, exit: fatal === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1 };
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Batched landing. Up to `size` admitted PRs are built as a chain of positions on master: position k merges PR k's tip onto
+// position k-1 and adds its own regen commit, with its own device evidence (devices run at a position whose evidence stamp
+// differs from the position before it). The top position is proved once (`prove`: the full test). On success every PR is
+// published in order: its position is pushed to its branch only after the PR before it merged, so a PR branch never carries
+// another PR's unlanded commits, and each merge is pinned to that position (--match-head-commit). When the top fails, the
+// prefixes are bisected: the first failing position is the culprit, found in ceil(log2 n) more proofs; the passing prefix
+// lands, the culprit fails with its own failing run, and the PRs after it go back to the front of the queue. A failure while
+// building a position ejects that PR only, and the chain continues on the position before it.
+
+export type BatchOps<T, P extends { head: string }> = {
+  /** Checks a PR before any build: the PR, its base, its CI and its review at the current head. Throws LandFailure to eject.
+   *  `earlier` are the PRs admitted to this batch before it, which land first (a PR may be based on one of their branches). */
+  admit: (e: Entry, earlier: readonly Entry[]) => { merged: string } | { ticket: T };
+  /** The commit the batch builds on (origin/master). */
+  base: () => string;
+  /** Builds the position of `e` on `prev`. Throws LandFailure to eject `e`; the chain continues on `prev`. */
+  build: (prev: string, e: Entry, ticket: T, k: number) => P;
+  /** Checks the built chain is exactly the positions it claims to be; any error is fatal. */
+  verify: (built: readonly { entry: Entry; ticket: T; position: P }[]) => void;
+  /** Proves the tree of one position (the full test). Throws LandFailure at step "test" when the test fails. */
+  prove: (position: P, e: Entry) => void;
+  /** Proves master's own tree, before a bisect blames the first PR of a batch. Throws LandFailure at step "test" when it fails. */
+  proveMaster: (master: string) => void;
+  /** Pushes, reviews and merges one PR at its position. Throws LandFailure (that PR fails) or Fatal. */
+  publish: (e: Entry, position: P, ticket: T) => string;
+  onFail: (e: Entry, f: LandFailure) => void;
+  onOutcome: (outcomes: readonly Outcome[]) => void;
+  log: (line: string) => void;
+};
+
+export const MAX_BATCH = 8;
+export const parseBatchSize = (v: string | undefined): number => {
+  if (v === undefined) return 4;
+  if (!/^[1-9]\d*$/.test(v) || Number(v) > MAX_BATCH) return fail(`LAND_BATCH must be a whole number from 1 to ${MAX_BATCH}, not ${JSON.stringify(v)}`);
+  return Number(v);
+};
+
+const asFailure = (error: unknown): LandFailure =>
+  error instanceof LandFailure ? error : new LandFailure('error', error instanceof Error ? error.message : String(error));
+const prs = (es: readonly Entry[]): string => es.map((e) => `#${e.pr}`).join(' ');
+
+// The first failing prefix of `n` positions whose top (position n) failed with `top`: positions are 1-based, position 0 is the
+// base (taken to pass). Returns the culprit's position, the culprit's own failure, and how many proofs the search ran.
+// Only a failed test is a verdict on a tree; a failed install, checkout or anything else is the driver's, and stops it.
+export const isTestVerdict = (f: LandFailure): boolean => f.step === 'test';
+// One proof whose result is a verdict on the tree: true when it passes, the failure when its test fails; any other error is Fatal.
+export const proofVerdict = (what: string, prove: () => void): true | LandFailure => {
+  try {
+    prove();
+    return true;
+  } catch (error) {
+    if (error instanceof Fatal) throw error;
+    const f = asFailure(error);
+    if (isTestVerdict(f)) return f;
+    throw new Fatal(`proving ${what} failed outside the test, at ${f.step}, so it says nothing about the tree: ${f.message}`);
+  }
+};
+
+// A commit this run proved whose tree equals master's (outside docs/goals/**, by `same`), newest first; null when none does.
+export const provedTree = (proved: readonly string[], same: (commit: string) => boolean): string | null => [...proved].reverse().find(same) ?? null;
+
+export const bisectPrefixes = (
+  n: number,
+  top: LandFailure,
+  prove: (k: number) => void,
+): { culprit: number; failure: LandFailure; proofs: number; passed: number[] } => {
+  let [lo, hi, failure, proofs] = [0, n, top, 0];
+  const passed: number[] = [];
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    proofs++;
+    const v = proofVerdict(`position ${mid}`, () => prove(mid));
+    if (v === true) {
+      lo = mid;
+      passed.push(mid);
+    } else {
+      hi = mid;
+      failure = v;
+    }
+  }
+  return { culprit: hi, failure, proofs, passed };
+};
+
+export const runBatches = <T, P extends { head: string }>(
+  entries: readonly Entry[],
+  size: number,
+  ops: BatchOps<T, P>,
+): { outcomes: Outcome[]; fatal: string | null; exit: 0 | 1 } => {
+  if (!Number.isInteger(size) || size < 1) return fail(`batch size ${size}`);
+  const queue = [...entries];
+  const outcomes: Outcome[] = [];
+  let fatal: string | null = null;
+  const done = (o: Outcome): void => {
+    outcomes.push(o);
+    ops.onOutcome(outcomes);
+  };
+  const failed = (e: Entry, error: unknown): void => {
+    if (error instanceof Fatal) throw error;
+    const f = asFailure(error);
+    outcomes.push({ entry: e, result: 'failed', step: f.step, detail: f.message });
+    ops.onFail(e, f);
+    ops.onOutcome(outcomes);
+  };
+  let at: Entry | null = null;
+  try {
+    while (queue.length > 0) {
+      const admitted: { entry: Entry; ticket: T }[] = [];
+      while (admitted.length < size && queue.length > 0) {
+        const e = (at = queue.shift()!);
+        try {
+          const a = ops.admit(e, admitted.map((x) => x.entry));
+          if ('merged' in a) done({ entry: e, result: 'merged before', detail: a.merged });
+          else admitted.push({ entry: e, ticket: a.ticket });
+        } catch (error) {
+          failed(e, error);
+        }
+      }
+      if (admitted.length === 0) continue;
+
+      let base: string;
+      try {
+        base = ops.base();
+      } catch (error) {
+        throw error instanceof Fatal ? error : new Fatal(`could not read master: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      let prev = base;
+      const built: { entry: Entry; ticket: T; position: P }[] = [];
+      for (const m of admitted) {
+        at = m.entry;
+        try {
+          const position = ops.build(prev, m.entry, m.ticket, built.length + 1);
+          built.push({ ...m, position });
+          prev = position.head;
+        } catch (error) {
+          failed(m.entry, error);
+        }
+      }
+      if (built.length === 0) continue;
+      at = built[0]!.entry;
+      try {
+        ops.verify(built);
+      } catch (error) {
+        throw error instanceof Fatal ? error : new Fatal(`the batch ${prs(built.map((b) => b.entry))} is not the chain of positions it claims: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      ops.log(`batch ${prs(built.map((b) => b.entry))}: ${built.length} position(s) built; proving the top ${built.at(-1)!.position.head}`);
+
+      // Prove the top; when it fails, bisect the prefixes for the first failing position.
+      let good = built.length;
+      let culprit: { index: number; failure: LandFailure } | null = null;
+      const proven = new Set<number>(); // positions (1-based) whose full test passed
+      const proveAt = (k: number): void => {
+        const b = built[k - 1]!;
+        at = b.entry;
+        ops.prove(b.position, b.entry);
+      };
+      const top = proofVerdict(`#${built.at(-1)!.entry.pr}'s position (the batch top)`, () => proveAt(built.length));
+      if (top === true) proven.add(built.length);
+      else {
+        const found = bisectPrefixes(built.length, top, proveAt);
+        for (const k of found.passed) proven.add(k);
+        if (found.culprit === 1) {
+          // Before blaming the first PR, master itself must pass: a red master fails every position and blames nobody.
+          at = null;
+          ops.log(`batch: position 1 fails; proving master ${base} before blaming #${built[0]!.entry.pr}`);
+          const m = proofVerdict(`master ${base}`, () => ops.proveMaster(base));
+          if (m !== true) throw new Fatal(`master is red: master ${base} itself fails pnpm test, so no PR of the batch ${prs(built.map((b) => b.entry))} is blamed:\n${m.message}`);
+        }
+        good = found.culprit - 1;
+        const passing = built.slice(0, good).map((b) => b.entry);
+        const note =
+          built.length === 1
+            ? ''
+            : `\n\nFound by bisecting the batch ${prs(built.map((b) => b.entry))} (${found.proofs + 1} proofs): ${passing.length === 0 ? 'master' : `master with ${prs(passing)}`} passes, adding #${built[good]!.entry.pr} fails.`;
+        culprit = { index: good, failure: new LandFailure(found.failure.step, `${found.failure.message}${note}`, found.failure.comment) };
+        ops.log(`batch: the top failed at ${top.step}; culprit #${built[good]!.entry.pr} after ${found.proofs} more proof(s)`);
+      }
+
+      // Publish the proven prefix in order. A failure stops the batch there; the PRs after it go back to the queue.
+      let published = 0;
+      for (; published < good; published++) {
+        const b = built[published]!;
+        at = b.entry;
+        try {
+          done({ entry: b.entry, result: 'landed', detail: ops.publish(b.entry, b.position, b.ticket) });
+        } catch (error) {
+          failed(b.entry, error);
+          break;
+        }
+      }
+      // Publishing stopped part-way: master rests on the last landed position, which must pass the full test itself.
+      if (published < good && published > 0 && !proven.has(published)) {
+        const last = built[published - 1]!;
+        at = last.entry;
+        ops.log(`batch: publishing stopped after #${last.entry.pr}; proving master's new tree (its position ${last.position.head})`);
+        const v = proofVerdict(`master's new tree (#${last.entry.pr}'s position)`, () => ops.prove(last.position, last.entry));
+        if (v !== true) {
+          const red = new LandFailure('master-red', `master now rests on #${last.entry.pr}'s position ${last.position.head}, which was not the batch's proven top, and it fails pnpm test. The driver stopped.\n${v.message}`);
+          ops.onFail(last.entry, red);
+          throw new Fatal(red.message);
+        }
+      }
+      let requeue: Entry[];
+      if (published < good) requeue = built.slice(published + 1).map((b) => b.entry); // the culprit's verdict assumed this prefix lands
+      else {
+        if (culprit !== null) failed(built[culprit.index]!.entry, culprit.failure);
+        requeue = built.slice(good + 1).map((b) => b.entry);
+      }
+      if (requeue.length > 0) ops.log(`batch: ${prs(requeue)} go back to the front of the queue, to be built on the new master`);
+      queue.unshift(...requeue);
+    }
+  } catch (error) {
+    if (!(error instanceof Fatal)) throw error;
+    fatal = error.message;
+    if (at !== null) outcomes.push({ entry: at, result: 'failed', step: 'fatal', detail: fatal });
+    ops.onOutcome(outcomes);
   }
   return { outcomes, fatal, exit: fatal === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1 };
 };
