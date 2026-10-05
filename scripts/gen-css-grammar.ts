@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/properties/grid.ts';
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
+import { EFFECTS_LONGHANDS } from '../packages/dragon/src/css/properties/effects.ts';
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 
 type WebrefEntry = {
@@ -47,6 +48,8 @@ const SUBSET = [
   'pointer-events',
   // Transforms (PNT2), after grid, as LONGHANDS registers them.
   ...TRANSFORM_LONGHANDS,
+  // opacity and z-index (PNT1), after transforms.
+  ...EFFECTS_LONGHANDS,
 ] as const;
 
 /**

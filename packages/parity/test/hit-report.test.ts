@@ -22,12 +22,17 @@ describe('the host hit lane', () => {
     }
   });
 
-  it('refuses by name exactly the cases whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), never mis-hitting them', () => {
+  it('refuses by name exactly the cases whose program writes a transform (T064 R13; SELD-R2b T146 lifts it) or holds a stacking context below the root (PNT1), never mis-hitting them', () => {
     const refused = hitRefusedCases();
     const transformed = nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform'))).map((n) => n.case.id);
-    expect(refused.map((r) => r.id)).toEqual(transformed);
+    const layered = nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.parent !== null && (x.facts['stacking'] as { createsContext?: boolean } | undefined)?.createsContext === true)).map((n) => n.case.id);
+    expect(refused.map((r) => r.id)).toEqual(nativeCases().map((n) => n.case.id).filter((id) => transformed.includes(id) || layered.includes(id)));
     expect(transformed.length).toBeGreaterThan(0);
-    for (const r of refused) expect(r.reason, r.id).toMatch(/^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/);
+    expect(layered.filter((id) => !transformed.includes(id)).length).toBeGreaterThan(0);
+    for (const r of refused) {
+      if (transformed.includes(r.id)) expect(r.reason, r.id).toMatch(/^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/);
+      else expect(r.reason, r.id).toMatch(/^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/);
+    }
     const covered = new Set(cases.map((n) => n.case.id));
     for (const r of refused) expect(covered.has(r.id), r.id).toBe(false);
     expect(cases.length + refused.length).toBe(nativeCases().length);

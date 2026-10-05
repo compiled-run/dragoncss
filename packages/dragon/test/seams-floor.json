@@ -72,6 +72,8 @@
     "justify-items",
     "justify-self",
     "pointer-events",
+    "opacity",
+    "z-index",
     "transform",
     "transform-origin",
     "will-change"
@@ -199,6 +201,8 @@
     "border-left-color",
     "color",
     "background-color",
+    "opacity",
+    "z-index",
     "transform",
     "transform-origin",
     "will-change"

@@ -121,11 +121,15 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
 /**
  * Why the hit lane leaves a layout case out, or null when it covers it. The hit test models box geometry, overflow clips, positioned
  * layers and pointer-events (T064 R13); a case whose program writes a transform is refused by name until SELD-R2b (T146) models
- * hit testing through transforms, so it is never silently mis-hit.
+ * hit testing through transforms, and so is a case with a stacking context below the root (an integer z-index or an opacity below 1,
+ * PNT1), whose layers rt-hit.ts orders as z-index auto, so neither is ever silently mis-hit.
  */
 export function hitRefusal(n: NativeCase): string | null {
-  const moved = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
-  return moved.length === 0 ? null : `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
+  const nodes = n.programs.uikit.nodes;
+  const moved = nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
+  if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
+  const contexts = nodes.filter((x) => x.parent !== null && (x.facts['stacking'] as { readonly createsContext?: boolean } | undefined)?.createsContext === true).map((x) => x.id);
+  return contexts.length === 0 ? null : `stacking context on ${contexts.join(', ')}: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)`;
 }
 
 /** Every layout case the hit lane covers: all of them but the refused ones (hitRefusal). */

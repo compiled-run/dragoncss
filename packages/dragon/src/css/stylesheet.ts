@@ -17,6 +17,7 @@ import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
 import { markNotApplicable } from './not-applicable.ts';
 import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
+import { EFFECTS_VALUE_PARSERS } from './properties/effects.ts';
 import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
@@ -396,7 +397,7 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   // css-env-1: env() is checked before the grammar, which is matched with each inset substituted (css/env.ts).
   const env = wide ? null : firstEnv(tokens);
   if (env !== null) {
-    const special = property === 'aspect-ratio' || property === 'object-position' || GRID_VALUE_PROPERTIES.has(property) || TRANSFORM_VALUE_PROPERTIES.has(property);
+    const special = property === 'aspect-ratio' || property === 'object-position' || GRID_VALUE_PROPERTIES.has(property) || TRANSFORM_VALUE_PROPERTIES.has(property) || Object.hasOwn(EFFECTS_VALUE_PARSERS, property);
     const bad = special ? { node: env, reason: `env() in ${property} is not supported` } : checkEnvCalls(tokens);
     if (bad !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(bad.node, base)), message: `${property}: ${generate(bad.node)} is unsupported: ${bad.reason}`, manual: ENV_FIX }) };
@@ -431,6 +432,8 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   }
   // css-transforms-1 (PNT2): multi-token transform, transform-origin and will-change values (properties/transform.ts).
   if (!wide && TRANSFORM_VALUE_PROPERTIES.has(property)) return parseTransformValue(property, tokens, base);
+  // PNT1: opacity and z-index, with Chrome's clamps and whole-number calculations (properties/effects.ts).
+  if (!wide && Object.hasOwn(EFFECTS_VALUE_PARSERS, property)) return EFFECTS_VALUE_PARSERS[property as keyof typeof EFFECTS_VALUE_PARSERS](tokens, base);
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
   const values: CssValue[] = baseline === null ? [] : [baseline];

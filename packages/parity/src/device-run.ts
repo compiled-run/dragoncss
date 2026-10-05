@@ -64,6 +64,10 @@ export const isGlyphPlant = (p: SupportPlant): p is GlyphPlant => p === 'glyph-o
 export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
+  // PNT1: opacity-basic's translucent boxes paint opaque when the writer ignores the alpha; stacking-basic samples the interiors of
+  // overlapping boxes, whose colours swap when the layer items sort beneath the flow.
+  'alpha-ignored': ['opacity-basic'],
+  'order-swap': ['stacking-basic'],
   // PNT2: each transform plant runs on the case its paint moves.
   'transform-origin-ignored': ['transform-origin'],
   'translate-percent-of-parent': ['transform-translate'],
@@ -73,6 +77,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
+  'alpha-ignored': /^interior:/,
+  'order-swap': /^interior:/,
   // A transform moves every pixel of the box, so any colour rule may catch it.
   'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'translate-percent-of-parent': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
