@@ -38,6 +38,11 @@ export type DragonResult = {
   readonly blockers: { readonly [T in Target]: Blocker | null };
   /** Every distinct blocking code per target, sorted. */
   readonly codes: { readonly [T in Target]: readonly string[] };
+  /**
+   * NA-NATIVE: per native target that compiles while web does not, the text of the not-applicable items when every web refusal is
+   * one of them (or sits in a listed rule); null otherwise, and always null for web.
+   */
+  readonly notApplicable: { readonly [T in Target]: string | null };
   /** The compiled rendering for the Chrome check, when web compiles. */
   readonly compiledHtml: string | null;
   readonly authoredHtml: string;
@@ -100,5 +105,32 @@ export function compileUtility(classes: readonly string[], sweptCss: string, pub
     if (css === undefined || !('text' in css) || classOf === null) throw new Error(`${name}: web output has no ${WEB_CSS_PATH} or class map`);
     compiledHtml = compiledFixtureHtml(fixtureHtml(classes, publishedCss), css.text, classOf);
   }
-  return { blockers, codes, compiledHtml, authoredHtml: fixtureHtml(classes, publishedCss) };
+  const notApplicable = {} as { [T in Target]: string | null };
+  for (const t of TARGETS) notApplicable[t] = blockers[t] === null && blockers.web !== null ? notApplicableOn(input, compiled.diagnostics, t) : null;
+  return { blockers, codes, notApplicable, compiledHtml, authoredHtml: fixtureHtml(classes, publishedCss) };
+}
+
+/**
+ * The text of target t's DRAGON_NOT_APPLICABLE_NATIVE items when they explain every web refusal: the refusal is at an item's own span
+ * (a listed property), or inside the block of the rule an item's selector opens (a listed pseudo-element rule). Null otherwise.
+ */
+export function notApplicableOn(input: FrontEndResult, diagnostics: readonly Diagnostic[], t: Target): string | null {
+  const items = diagnostics.filter((d) => d.code === 'DRAGON_NOT_APPLICABLE_NATIVE' && d.severity === 'info' && d.target === t && d.origin.kind === 'authored');
+  if (items.length === 0) return null;
+  const spanOf = (d: Diagnostic) => (d.origin.kind === 'authored' ? d.origin.span : null);
+  const textOf = (uri: string): string | undefined => input.snapshot.sources.find((s) => s.ref.uri === uri)?.text;
+  const covered = (d: Diagnostic): boolean => {
+    const s = spanOf(d);
+    if (s === null) return false;
+    return items.some((i) => {
+      const a = spanOf(i);
+      if (a === null || a.source.uri !== s.source.uri) return false;
+      if (a.start === s.start && a.end === s.end) return true;
+      const text = textOf(a.source.uri);
+      const close = text === undefined ? -1 : text.indexOf('}', a.end);
+      return close >= 0 && s.start >= a.start && s.end <= close;
+    });
+  };
+  if (!diagnostics.filter((d) => blocks(d, 'web')).every((d) => d.target === 'web' && covered(d))) return null;
+  return [...new Set(items.map((i) => (spanText(input, i.origin) ?? '').replace(/\s+/g, ' ').trim()))].join('; ');
 }
