@@ -45,14 +45,11 @@ import type { VariableFontRefusal } from './fonts/variable-fence.ts';
 import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
 import type { FontWireProblem, ProjectedFonts } from './fonts/wire.ts';
 import type { CompilerFaults } from './faults.ts';
-import { NO_FAULTS } from './faults.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
 import { PROGRAM_VERSIONS } from './lower/native-program.ts';
 import type { Band, BandPartition } from './media/index.ts';
 import { band, bandAt, evaluateInBand, featuresOfList } from './media/index.ts';
 import { androidProfile } from './profiles/android.ts';
-import type { NativeLanesVerdict } from './profiles/native-lanes.ts';
-import { NATIVE_LANES } from './profiles/native-lanes.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
 import { provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
@@ -188,8 +185,18 @@ export function internalRecord(compiled: object): InternalRecord | undefined {
  * the native output is resolved for when the stylesheet's @media rules split it into bands (MQ-a); absent in the public entry,
  * where native refuses such a sheet until MQ-R.
  */
+/** One native target's committed lanes verdict (the shape profiles/native-lanes.ts is generated in). */
+export type NativeLanesVerdict = { readonly recorded: boolean; readonly stale: readonly string[]; readonly notPassing: readonly string[] };
+export type NativeLanes = { readonly ios: NativeLanesVerdict; readonly android: NativeLanesVerdict };
+
 export type InternalOptions = {
   readonly faults: CompilerFaults;
+  /**
+   * The committed lanes verdict a native output is judged by (createProject passes profiles/native-lanes.ts). Without it a
+   * checked native output is analysis-only and says the verdict was not given, never ready; the compiler itself does not
+   * import the verdict, so a regen of lanes.json does not invalidate every compiling step.
+   */
+  readonly nativeLanes?: NativeLanes;
   readonly profiles: 'enforce' | 'derive';
   readonly direction: 'ltr' | 'rtl';
   readonly platform?: string;
@@ -209,6 +216,7 @@ type Resolved = {
   /** Snapshots (snapshotProfile): the support checks and the digest read these same objects. */
   readonly supportProfiles: Required<SupportProfiles>;
   readonly foldViewport: Viewport | null;
+  readonly nativeLanes: NativeLanes | null;
 };
 
 function deepFreeze<T>(v: T): T {
@@ -715,9 +723,10 @@ export function nativeDigest(digest: string, t: 'ios' | 'android'): string {
  * pnpm run profile:rows from packages/parity/out/lanes.json) has every lane of that target passing and none stale; otherwise
  * analysis-only, naming why. A ready native output carries the backend's native support files.
  */
-export function nativeOutputState(t: 'ios' | 'android', digest: string, verdict: NativeLanesVerdict): ArtifactState {
+export function nativeOutputState(t: 'ios' | 'android', digest: string, verdict: NativeLanesVerdict | null): ArtifactState {
   const o = NATIVE_OUTPUT[t];
   const d = nativeDigest(digest, t);
+  if (verdict === null) return { kind: 'analysis-only', digest: d, reason: `The ${o.name} output is analysis-only: no committed lanes verdict was given to this compilation, so the generated ${o.language} stays internal to the native lanes.` };
   if (verdict.recorded && verdict.stale.length === 0 && verdict.notPassing.length === 0) return { kind: 'ready', digest: d, files: emitNativeSupport(o.backend), assets: [] };
   const why = !verdict.recorded ? 'no committed lanes record proves it' : verdict.stale.length > 0 ? `its committed lanes are stale (${verdict.stale.join('; ')})` : `these lanes do not pass: ${verdict.notPassing.join('; ')}`;
   return { kind: 'analysis-only', digest: d, reason: `The ${o.name} output is analysis-only: its layout projection feeds the internal lanes, and the generated ${o.language} stays internal to the native lanes until every ${t} lane passes in a current committed lanes record; ${why}.` };
@@ -732,7 +741,8 @@ type Analysis<K extends string> = {
 
 /** Order-free input lists sorted canonically, so the digest does not depend on their order (S5 (c)). */
 function canonicalInput(input: FrontEndResult): unknown {
-  const sorted = (v: unknown): unknown => (Array.isArray(v) ? [...v].sort((a, b) => (canonicalJson(a) < canonicalJson(b) ? -1 : canonicalJson(a) > canonicalJson(b) ? 1 : 0)) : v);
+  // Each entry is serialised once, as its sort key, and enters the digest as that text: assets hold megabytes of font bytes.
+  const sorted = (v: unknown): unknown => (Array.isArray(v) ? v.map((x) => new CanonicalText(canonicalJson(x))).sort((a, b) => (a.json < b.json ? -1 : a.json > b.json ? 1 : 0)) : v);
   const raw = input as unknown as Record<string, unknown>;
   const snap = raw['snapshot'];
   const tree = raw['tree'];
@@ -744,16 +754,16 @@ function canonicalInput(input: FrontEndResult): unknown {
   };
 }
 
-/** Each profile snapshot's canonical JSON, written once: profiles are megabytes, and a snapshot never changes. */
-const profileTexts = new WeakMap<SupportProfile, CanonicalText>();
-function profileText(profile: SupportProfile): CanonicalText {
-  if (!profileSnapshots.has(profile)) throw new Error('profileText reads only profile snapshots');
-  let t = profileTexts.get(profile);
-  if (t === undefined) {
-    t = new CanonicalText(canonicalJson(profile));
-    profileTexts.set(profile, t);
+/** Each profile snapshot's SHA-256 over its canonical JSON, computed once: profiles are megabytes, and a snapshot never changes. */
+const profileDigests = new WeakMap<SupportProfile, string>();
+function profileDigest(profile: SupportProfile): string {
+  if (!profileSnapshots.has(profile)) throw new Error('profileDigest reads only profile snapshots');
+  let d = profileDigests.get(profile);
+  if (d === undefined) {
+    d = `sha256:${sha256Hex(canonicalJson(profile))}`;
+    profileDigests.set(profile, d);
   }
-  return t;
+  return d;
 }
 
 /** A property name css-tree's default lexer knows (the MDN data it bundles): its css-tree.d.ts declares only what the parser uses. */
@@ -908,7 +918,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // The reference platform of the UA dataset and the environment's root font are compilation inputs (docs/api.md §10.1).
     platform: options.ua.platform,
     rootFont: options.rootFont,
-    profiles: targets.map((t) => profileText(profileFor(profiles, t))),
+    profiles: targets.map((t) => profileDigest(profileFor(profiles, t))),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
     direction: options.direction,
@@ -951,7 +961,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const key = t as unknown as K;
     status[key] = blocking.length > 0 || cases.length === 0 ? 'blocked' : 'checked';
     if (status[key] === 'blocked') outputs[key] = { kind: 'blocked', diagnostics: blocking };
-    else if (t === 'ios' || t === 'android') outputs[key] = nativeOutputState(t, digest, NATIVE_LANES[t]);
+    else if (t === 'ios' || t === 'android') outputs[key] = nativeOutputState(t, digest, options.nativeLanes === null ? null : options.nativeLanes[t]);
     else {
       const webFonts = fonts === null || !fonts.used ? null : webFontsOf(fonts, options.faults);
       const [base, ...extra] = bandCases.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement })) }));
@@ -1111,6 +1121,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     ua: choice.dataset,
     supportProfiles: snapshotProfiles(options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles),
     foldViewport: options.foldViewport === undefined ? null : checkedViewport(options.foldViewport),
+    nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
   };
   const configDiagnostics = validateConfig(config);
   const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown; images?: ImageAssetMap };
@@ -1131,9 +1142,6 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
   });
 }
 
-export function createProject<const T extends Targets>(config: ProjectConfig<T>): Project<Configured<T>> {
-  return createProjectWith(config, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' });
-}
 
 /** @internal The origin of one resolved value, with the dataset of the result it came from. */
 export function originOfValue(record: InternalRecord, root: ResolvedElement, address: string, p: Longhand): Origin {

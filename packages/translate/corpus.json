@@ -29,7 +29,8 @@
     "engine": 20258,
     "library": 22000,
     "rt": 55362,
-    "hit": 2076
+    "hit": 2076,
+    "animator": 18
   },
   "engineSplit": {
     "ok": 13992,
@@ -44,7 +45,8 @@
     "engine": "af83e13e5788d7490d4cbd75e303d92d680e5735313f90446ec339b0e9d9476c",
     "library": "52c5b758ed05c0fa96d033bf78fcce8a39604a6711f621ac3ad34f38c8133b5d",
     "rt": "b098611f445b1f770ec88444e7fcbd8a801be09a906550bcd03ad7e390d6c6dc",
-    "hit": "1d72354745a6523c4c2547ab06962a49e9abb56c072fa4f9d57e87a5baea33cc"
+    "hit": "1d72354745a6523c4c2547ab06962a49e9abb56c072fa4f9d57e87a5baea33cc",
+    "animator": "f0c89324bdbd372e56b3425fccbef2e9c50c1cbdad6f7c0c359d9d64917ea614"
   },
-  "digest": "ffa728b372cafd05226307e508e1e1f9b8224e1bd6492d406bbb9a9fc1cff46b"
+  "digest": "7d476fd969dc61867d0edd40050b989bb1c29a9faa6bd7b42d619be316b53511"
 }
