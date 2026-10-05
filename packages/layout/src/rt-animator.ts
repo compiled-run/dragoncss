@@ -6,7 +6,7 @@
 // the caller lays out again (R16). The compiler's tables are plain data (EasingCode, ValueCode), so a device holds them as
 // literals; length endpoints come from the engine input of each assignment, resolved for the environment by the engine's own
 // resolver (R14).
-import type { CalcExpr, GapValue, InsetValue, LayoutBox, LayoutInput, LayoutStyle, LengthCalc, MarginValue, MaxSizeValue, MinSizeValue, PaddingValue, Percent, Px, SizeValue } from './input.ts';
+import type { CalcExpr, ControlBox, GapValue, InsetValue, LayoutBox, LayoutInput, LayoutStyle, LengthCalc, MarginValue, MaxSizeValue, MinSizeValue, PaddingValue, Percent, Px, ReplacedLeaf, SizeValue, TextLeaf } from './input.ts';
 import type { Easing, RtFaults, StepPosition } from './rt-easing.ts';
 import { cubicBezierEasing, froundOf, LINEAR, stepsEasing } from './rt-easing.ts';
 import type { AnimatedValue, LegacyColor, LengthValue, Rgba8Value, ValueRange } from './rt-interpolate.ts';
@@ -191,11 +191,12 @@ function zeroOf(kind: TrackKind): AnimatedValue {
   return { kind: kind, number: 0, length: ZERO_PX, color: TRANSPARENT, ops: [] };
 }
 
-function findBox(b: LayoutBox, id: string): LayoutBox | null {
-  if (b.id === id) return b;
+/** The style of the box or control box with an id; a control's contents are boxes too. */
+function findStyle(b: LayoutBox | ControlBox, id: string): LayoutStyle | null {
+  if (b.id === id) return b.style;
   for (const c of b.children) {
-    if (c.kind !== 'box') continue;
-    const f = findBox(c, id);
+    if (c.kind !== 'box' && c.kind !== 'control') continue;
+    const f = findStyle(c, id);
     if (f !== null) return f;
   }
   return null;
@@ -241,9 +242,9 @@ function lengthOfField(v: LengthField): AnimatedValue | null {
 
 /** A length endpoint of a node in an assignment: its field in that assignment's resolved engine input, or null when absent. */
 export function lengthBase(resolved: LayoutInput, node: string, property: string): AnimatedValue | null {
-  const box = findBox(resolved.root, node);
-  if (box === null) return null;
-  return lengthOfField(styleLength(box.style, property));
+  const style = findStyle(resolved.root, node);
+  if (style === null) return null;
+  return lengthOfField(styleLength(style, property));
 }
 
 /** Whether a node is rendered in an assignment; the tables list every node of every assignment, so a missing one is corrupt tables. */
@@ -519,11 +520,27 @@ function rangeOf(t: AnimTables, node: string, property: string): ValueRange {
   throw new AnimatorError('no table holds ' + node + ' ' + property);
 }
 
+function patchStyle(id: string, s: LayoutStyle, frame: readonly FrameEntry[], t: AnimTables): LayoutStyle {
+  let style = s;
+  for (const e of frame) if (e.node === id && e.value.kind === 'length') style = withLength(style, e.property, e.value.length, rangeOf(t, e.node, e.property));
+  return style;
+}
+
+function patchChild(c: LayoutBox | ControlBox | TextLeaf | ReplacedLeaf, frame: readonly FrameEntry[], t: AnimTables): LayoutBox | ControlBox | TextLeaf | ReplacedLeaf {
+  if (c.kind === 'box') return patchBox(c, frame, t);
+  if (c.kind === 'control') return patchControl(c, frame, t);
+  return c;
+}
+
 function patchBox(b: LayoutBox, frame: readonly FrameEntry[], t: AnimTables): LayoutBox {
-  const children = b.children.map((c) => (c.kind === 'box' ? patchBox(c, frame, t) : c));
-  let style = b.style;
-  for (const e of frame) if (e.node === b.id && e.value.kind === 'length') style = withLength(style, e.property, e.value.length, rangeOf(t, e.node, e.property));
-  return { ...b, style: style, children: children };
+  const children = b.children.map((c) => patchChild(c, frame, t));
+  return { ...b, style: patchStyle(b.id, b.style, frame, t), children: children };
+}
+
+/** A form control's box and its contents animate as boxes do. */
+function patchControl(b: ControlBox, frame: readonly FrameEntry[], t: AnimTables): ControlBox {
+  const children = b.children.map((c) => patchChild(c, frame, t));
+  return { ...b, style: patchStyle(b.id, b.style, frame, t), children: children };
 }
 
 /** R16: the engine input with the frame's lengths written in (its own entries only: a closure carries colours). */

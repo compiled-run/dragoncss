@@ -451,6 +451,14 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     return;
   }
   children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null, inControl || isControl));
+  // Only a block container's flow moves a slider thumb by its value (block.ts layoutBlockFlow); in a flex track it would sit at 0.
+  const parentStyle = value['style'];
+  children.forEach((child: unknown, i: number) => {
+    if (!isRecord(child) || child['kind'] !== 'control' || !isRecord(child['control']) || child['control']['kind'] !== 'slider-thumb') return;
+    if (!isRecord(parentStyle) || parentStyle['display'] !== 'block') {
+      errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a slider thumb is a block-flow child: its parent is a block container' });
+    }
+  });
   checkInlineContent(value, children, path, errors);
   const style = value['style'];
   if (isRecord(style) && style['overflowX'] !== style['overflowY']) {

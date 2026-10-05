@@ -758,21 +758,6 @@
       ]
     },
     {
-      "upstream": "third_party/blink/renderer/core/layout/box_fragment_builder.cc",
-      "licence": "bsd-chromium",
-      "noticeText": "chromium-bsd",
-      "licencePhrase": "Use of this source code is governed by a BSD-style license",
-      "copyright": "Copyright 2016 The Chromium Authors",
-      "fileSha256": "afafce938439bdf772b40da828dd43f52d847309be84687a8130d199982bcc85",
-      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
-      "ranges": [
-        { "lines": "393-461", "symbol": "BoxFragmentBuilder::MoveChildrenInDirection", "source": "located" }
-      ],
-      "dragon": [
-        { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "port" }
-      ]
-    },
-    {
       "upstream": "third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -898,6 +883,21 @@
       "dragon": [
         { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" },
         { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/layout_block_flow_hot.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2022 The Chromium Authors",
+      "fileSha256": "c2cd5483ed7d98c78f1400aa3a49c5fea16ac1ac3c2f401aa8d7be5be45e41bd",
+      "headerSha256": "92d2eeedf6b379a7a4915a6328828c4152ebc772d3b4463657eabf539567fa33",
+      "ranges": [
+        { "lines": "38-45", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "port" }
       ]
     },
     {
