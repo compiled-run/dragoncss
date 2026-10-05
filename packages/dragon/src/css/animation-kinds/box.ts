@@ -20,4 +20,7 @@ export const BOX_ANIMATION: { readonly [P in (typeof BOX_LONGHANDS)[number]]: An
   'padding-right': NON_NEGATIVE,
   'padding-bottom': NON_NEGATIVE,
   'padding-left': NON_NEGATIVE,
+  // REPL-a: object-fit is discrete in Chrome; object-position interpolates, and its writer is not built.
+  'object-fit': DISCRETE,
+  'object-position': UNADMITTED,
 };

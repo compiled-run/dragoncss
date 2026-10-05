@@ -8,7 +8,8 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpat
 import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
 import type { LayoutInput, LayoutRect } from '@dragon/layout';
-import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, resolveBorder, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import type { LU } from '@dragon/layout';
+import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, replacedPaint, resolveBorder, resolvePadding, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
@@ -87,7 +88,7 @@ export function referenceMeasurer() {
 
 /** The TS engine the expected dumps are projected with: the helpers the device runs translated, and the float a platform stores. */
 export function expectedEngine(): ExpectedEngine {
-  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround };
+  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround };
 }
 
 const emitted = new Map<NativeTarget, EmitCase[]>();
@@ -167,6 +168,8 @@ func dragonWrite(_ path: String, _ text: String) {
 /// inside the safe area, and writes one dump per case, the bridge record and the device record into DRAGON_OUT.
 func dragonRun(window: UIWindow, host: UIView) {
   UIView.setAnimationsEnabled(false)
+  // R9: lane and test hosts never load network content; every iframe web view loads about:blank.
+  dragonForeignViewLoadsSrc = false
   let env = ProcessInfo.processInfo.environment
   guard let out = env["DRAGON_OUT"] else { fatalError("dragon host: DRAGON_OUT is not set") }
   // --dragon-cases wins over a run file left in the container by an earlier run.
@@ -308,6 +311,7 @@ import dev.dragon.views.DragonBridge
 import dev.dragon.views.DragonRun
 import dev.dragon.views.DragonStateMount
 import dev.dragon.views.DragonTree
+import dev.dragon.views.dragonForeignViewLoadsSrc
 import dev.dragon.views.dragonReadRun
 import dev.dragon.views.dragonSamples
 import java.io.File
@@ -330,6 +334,8 @@ class DragonActivity : Activity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    // R9: lane and test hosts never load network content; every iframe web view loads about:blank.
+    dragonForeignViewLoadsSrc = false
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     frame.setBackgroundColor(0xffffffff.toInt())
     frame.setOnApplyWindowInsetsListener { v, insets ->
@@ -399,17 +405,17 @@ class DragonActivity : Activity() {
       tree.apply(c.input(scale), bridge.measurer, scale, bridge)
       frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
     }
-    // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, then compositor copies of the window until
-    // two consecutive copies are equal (a copy of a frame before the tree was presented differs from the next one).
-    var drawnAt = -1
-    fun settle(frames: Int) {
-      Choreographer.getInstance().postFrameCallback {
-        if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
-        if (drawnAt < 0 || frames < drawnAt + 2) {
-          if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
-          settle(frames + 1)
-          return@postFrameCallback
-        }
+    // The tree redrawn, then the block once that frame is committed to the display. Only the commit shows the frame holds the
+    // redraw: the UI-thread draw is recorded before RenderThread presents it.
+    fun afterCommittedFrame(block: () -> Unit) {
+      tree.root.viewTreeObserver.registerFrameCommitCallback { main.post { block() } }
+      tree.root.invalidate()
+    }
+    // Settle on explicit signals: the root laid out and drawn, two more frame callbacks, a frame of the redrawn tree committed to
+    // the display, then compositor copies of the window, each after a committed frame of its own, until two consecutive copies
+    // are equal.
+    fun capture() {
+      run {
         val t1 = SystemClock.elapsedRealtimeNanos()
         deviceRecord(tree)
         val at = IntArray(2)
@@ -436,7 +442,8 @@ class DragonActivity : Activity() {
             if (sha != previous) {
               if (attempt >= 6000) throw IllegalStateException("dragon host: " + id + ": no two consecutive copies were equal after " + attempt + " copies")
               previous = sha
-              Choreographer.getInstance().postFrameCallback { copy(attempt + 1) }
+              // The next copy is of another committed frame of the same tree, so equal copies show two frames drew it alike.
+              afterCommittedFrame { copy(attempt + 1) }
               return@OnPixelCopyFinishedListener
             }
             val pixels = DumpPixels("PixelCopy", w.toDouble(), h.toDouble(), sha, dragonSamples(bytes, w, h, run.points[id] ?: emptyList()))
@@ -469,6 +476,18 @@ class DragonActivity : Activity() {
           }
         }
         copy(0)
+      }
+    }
+    var drawnAt = -1
+    fun settle(frames: Int) {
+      Choreographer.getInstance().postFrameCallback {
+        if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
+        if (drawnAt < 0 || frames < drawnAt + 2) {
+          if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
+          settle(frames + 1)
+          return@postFrameCallback
+        }
+        afterCommittedFrame { capture() }
       }
     }
     settle(1)
