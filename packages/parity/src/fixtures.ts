@@ -11,6 +11,7 @@ import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INLINE } from './fixture-groups/inline.ts';
+import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
@@ -88,6 +89,7 @@ export const GROUPS = {
   fonts: FONTS,
   grid: GRID,
   inline: INLINE,
+  interaction: INTERACTION,
   'logical-props': LOGICAL_PROPS,
   media: MEDIA,
   'milestone-1': MILESTONE_1,

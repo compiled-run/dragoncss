@@ -183,7 +183,9 @@ export async function runDeviceVectors(h: DeviceHandle, target: TargetConfig, ho
       return null;
     };
     const rel = adb(['shell', 'getprop', 'ro.build.version.release']).stdout.trim();
-    toolchain = `${t.kotlinTool()?.version ?? 'kotlinc'}; d8 --min-api ${NATIVE_CONFIG.android.minSdk}; ART app_process on ${h.spec.name} (Android ${rel})`;
+    // The ABI the vectors ran on is part of the record: the landing judge binds each lane to its architecture (#132 review).
+    const abi = adb(['shell', 'getprop', 'ro.product.cpu.abi']).stdout.trim();
+    toolchain = `${t.kotlinTool()?.version ?? 'kotlinc'}; d8 --min-api ${NATIVE_CONFIG.android.minSdk}; ART app_process on ${h.spec.name} (Android ${rel}, ${abi})`;
   }
   const tag = `device-${target.target}`;
   const results = [...t.runSuites(p1, exec, `${tag}-p1`).map((r) => ({ ...r, corpus: 'p1' as const })), ...t.runSuites(x, exec, `${tag}-extended`).map((r) => ({ ...r, corpus: 'extended' as const }))];
