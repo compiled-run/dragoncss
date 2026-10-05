@@ -78,15 +78,19 @@ export function outcomeFiles(files: readonly string[]): string[] {
 export class CiUnavailable extends Error {}
 
 /** The jobs of a run (gh run view --json jobs), checked: each with a name and a status. */
-export function parseJobs(text: string): { name: string; status: string }[] {
+export function parseJobs(text: string): { name: string; status: string; conclusion: string | null }[] {
   const v = JSON.parse(text) as { jobs?: unknown };
   if (typeof v !== 'object' || v === null || !Array.isArray(v.jobs)) throw new Error(`unexpected gh run jobs JSON: ${text.slice(0, 200)}`);
   return v.jobs.map((j: unknown) => {
-    const o = j as { name?: unknown; status?: unknown };
-    if (typeof o?.name !== 'string' || typeof o.status !== 'string') throw new Error(`unexpected gh run job: ${JSON.stringify(j).slice(0, 200)}`);
-    return { name: o.name, status: o.status };
+    const o = j as { name?: unknown; status?: unknown; conclusion?: unknown };
+    if (typeof o?.name !== 'string' || typeof o.status !== 'string' || !(o.conclusion === undefined || o.conclusion === null || typeof o.conclusion === 'string')) throw new Error(`unexpected gh run job: ${JSON.stringify(j).slice(0, 200)}`);
+    return { name: o.name, status: o.status, conclusion: (o.conclusion as string | null | undefined) || null };
   });
 }
+
+/** The real jobs (not the resolve job) that ran and concluded failure: the only CI outcome that is a verdict on the tree. */
+export const failedJobs = (jobs: readonly { name: string; status: string; conclusion: string | null }[]): string[] =>
+  jobs.filter((j) => j.name !== 'resolve' && j.status === 'completed' && (j.conclusion === 'failure' || j.conclusion === 'timed_out')).map((j) => j.name);
 
 /** A workflow the driver runs for one commit: dispatched on master with the commit, found by its run-name, waited for. */
 export type CiWorkflow = {
@@ -107,9 +111,11 @@ export type CiWorkflow = {
 export const DEVICES_WORKFLOW: CiWorkflow = { workflow: DEVICE_WORKFLOW, step: 'devices', what: 'device lanes', title: runTitle, inputs: ['judge=false'], artifact: OUTCOMES_ARTIFACT, check: outcomeFiles };
 
 /**
- * Runs a workflow for the commit the driver pushes to its scratch branch and returns the run and its artifact. Throws a
- * LandFailure at the workflow's step when the run cannot be started or found, does not finish within waitS, or does not succeed;
- * a run in flight is cancelled on any failure and the scratch branch is deleted in every case.
+ * Runs a workflow for the commit the driver pushes to its scratch branch and returns the run and its artifact. Only a verdict on
+ * the tree is a LandFailure at the workflow's step: a run some of whose real jobs ran and concluded failure. Everything else
+ * (the push, gh, malformed answers, no run, jobs never started, a wait past waitS with no job failed, a cancelled run, a bad
+ * artifact) judged nothing and is CiUnavailable, for the caller to run the step locally. A run in flight is cancelled on any
+ * failure and the scratch branch is deleted in every case.
  */
 export function runOnCi(w: CiWorkflow, o: { readonly branch: string; readonly deps: DevicesCiDeps; readonly appearS: number; readonly waitS: number; readonly startS?: number; readonly pollS?: number }): DevicesCiResult {
   const startS = o.startS ?? 900;
@@ -118,6 +124,14 @@ export function runOnCi(w: CiWorkflow, o: { readonly branch: string; readonly de
   let pushed = false;
   let run: RunRow | undefined;
   let outcomesDir: string | null = null;
+  const explainOf = (id: number): string => {
+    try {
+      const more = w.explain?.(id) ?? null;
+      return more === null ? '' : `:\n${more}`;
+    } catch {
+      return '';
+    }
+  };
   try {
     deps.record({ branch, runId: null, sha: null, workflow: w.workflow });
     const sha = deps.pushTemp(branch);
@@ -144,22 +158,28 @@ export function runOnCi(w: CiWorkflow, o: { readonly branch: string; readonly de
     // "CI never starts a job": no job of the run started within startS (runners not picking up jobs), or a job is still queued
     // when waitS runs out. Either way nothing was judged. A run some of whose jobs wait for a busy runner pool is waited for.
     let started = false;
+    const jobsOf = (id: number) => parseJobs(deps.gh(['run', 'view', String(id), '--json', 'jobs']));
     while (run.status !== 'completed') {
       const over = deps.now() - t0 > o.waitS * 1000;
       if (over || (!started && deps.now() - t0 > startS * 1000)) {
-        const jobs = parseJobs(deps.gh(['run', 'view', String(run.databaseId), '--json', 'jobs']));
+        const jobs = jobsOf(run.databaseId);
+        // A job that already ran and failed is a verdict, whatever the rest of the run is doing.
+        const failed = failedJobs(jobs);
+        if (failed.length > 0) throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} has failed jobs (${failed.join(', ')})${explainOf(run.databaseId)}`);
         // The resolve job (ubuntu, seconds) does not count: the work is in the jobs after it.
         started ||= jobs.some((j) => j.name !== 'resolve' && (j.status === 'in_progress' || j.status === 'completed'));
         const queued = jobs.filter((j) => j.status === 'queued' || j.status === 'waiting' || j.status === 'pending');
         if (!started || (over && queued.length > 0)) throw new CiUnavailable(`the CI ${w.what} run ${run.url} has jobs that never started (${queued.map((j) => j.name).join(', ') || 'none listed'}) after ${Math.round((deps.now() - t0) / 1000)}s`);
-        if (over) throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} did not finish within ${o.waitS}s (status ${run.status})`);
+        if (over) throw new CiUnavailable(`the CI ${w.what} run ${run.url} did not finish within ${o.waitS}s, and no job of it failed`);
       }
       deps.sleep(poll);
       run = { ...run, ...parseRunRows(deps.gh(['run', 'view', String(run.databaseId), '--json', 'databaseId,status,conclusion,url']))[0]! };
     }
     if (run.conclusion !== 'success') {
-      const more = w.explain?.(run.databaseId) ?? null;
-      throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} concluded ${run.conclusion ?? 'without a conclusion'}${more === null ? '' : `:\n${more}`}`);
+      // Only real jobs that concluded failure judge the tree; a cancelled run, or one whose jobs did not fail, judged nothing.
+      const failed = failedJobs(jobsOf(run.databaseId));
+      if (failed.length === 0) throw new CiUnavailable(`the CI ${w.what} run ${run.url} concluded ${run.conclusion ?? 'without a conclusion'} with no failed job`);
+      throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} concluded ${run.conclusion ?? 'without a conclusion'}; failed jobs: ${failed.join(', ')}${explainOf(run.databaseId)}`);
     }
     if (w.artifact === null) {
       deps.log(`  ${w.what} on CI: passed, ${run.url} in ${Math.round((deps.now() - t0) / 1000)}s`);
@@ -182,18 +202,17 @@ export function runOnCi(w: CiWorkflow, o: { readonly branch: string; readonly de
       }
     }
     if (outcomesDir !== null) deps.remove(outcomesDir);
-    // CI not running the workflow is the caller's to fall back on; every other failure of this step (a refused push, a malformed
-    // gh answer, a bad artifact) fails the PR at the workflow's step.
-    if (e instanceof CiUnavailable) throw e;
-    throw e instanceof LandFailure ? e : new LandFailure(w.step, `the CI ${w.what} failed: ${e instanceof Error ? e.message : String(e)}`);
+    // Only a verdict (a LandFailure from failed jobs) fails the PR; anything else judged nothing, and the caller runs the step locally.
+    if (e instanceof LandFailure || e instanceof CiUnavailable) throw e;
+    throw new CiUnavailable(`the CI ${w.what} could not be run: ${e instanceof Error ? e.message : String(e)}`);
   } finally {
     deps.record(null);
     if (pushed) {
       try {
         deps.deleteTemp(branch);
       } catch (e) {
-        // The next run force-pushes over it, so a branch left behind is only a warning.
-        deps.log(`  ${w.what} on CI: WARNING could not delete ${branch} (the next run replaces it): ${e instanceof Error ? e.message : String(e)}`);
+        // A branch left behind is swept when the next driver starts (staleScratchBranches).
+        deps.log(`  ${w.what} on CI: WARNING could not delete ${branch}; the next driver start sweeps it: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
   }
@@ -204,6 +223,13 @@ export const runDevicesOnCi = (o: { readonly pr: number; readonly deps: DevicesC
   runOnCi(DEVICES_WORKFLOW, { ...o, branch: tempBranch(o.pr) });
 
 export const FULL_TEST_WORKFLOW_FILE = 'full-test.yml';
+/**
+ * The default waits for a CI run: past the longest chain of job timeouts in the workflow (full-test.yml: a Chrome shard, 120 min,
+ * then regen-chrome, 240 min; device-lanes.yml: a device job, 120 min, then the merge), so a run still within its own limits is
+ * never cut short. land-devices-ci.test.ts reads the workflows' timeouts to keep these above them.
+ */
+export const DEFAULT_TEST_WAIT_S = 6 * 3600 + 900;
+export const DEFAULT_DEVICES_WAIT_S = 2 * 3600 + 1800;
 export const fullTestTitle = (sha: string): string => `full test of ${sha}`;
 /** The failing tests listed in full-test.yml's full-test-results, one per line (at most 30), or a note that none are listed. */
 export function failedTestsOf(text: string): string {
@@ -255,7 +281,27 @@ export function abandonInflight(text: string, o: { readonly cancel: (runId: numb
     try {
       o.deleteBranch(r.branch);
     } catch {
-      o.log(`could not delete ${r.branch}; the next CI run replaces it`);
+      o.log(`could not delete ${r.branch}; the next driver start sweeps it`);
     }
   }
+}
+
+/**
+ * The driver's scratch branches in `git ls-remote origin` output: every land-devices/pr-<n> and land-test/c-<sha12>. At the
+ * driver's start none is in flight (it holds the lock), so each is a leftover to delete.
+ */
+export function staleScratchBranches(lsRemote: string): string[] {
+  const out: string[] = [];
+  for (const line of lsRemote.split('\n')) {
+    const ref = line.split('\t')[1]?.trim();
+    if (ref === undefined || !ref.startsWith('refs/heads/')) continue;
+    const branch = ref.slice('refs/heads/'.length);
+    try {
+      scratchRef(branch);
+      out.push(branch);
+    } catch {
+      // Not one of the driver's scratch branches: never touched.
+    }
+  }
+  return out.sort();
 }

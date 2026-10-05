@@ -90,7 +90,7 @@ import {
 } from './merge-train-lib.ts';
 import { MERGE_DRIVERS } from './floor-merge.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
-import { abandonInflight, CiUnavailable, failedTestsOf, fullTestWorkflow, parseRunRows, runDevicesOnCi, runOnCi, scratchRef, testBranch } from './land-devices-ci.ts';
+import { abandonInflight, CiUnavailable, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, staleScratchBranches, failedTestsOf, fullTestWorkflow, parseRunRows, runDevicesOnCi, runOnCi, scratchRef, testBranch } from './land-devices-ci.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
 const DEVICE = '/tmp/device-lease.sh';
@@ -980,10 +980,10 @@ const setUp = (): void => {
   QUIET_MAX_S = seconds('LAND_QUIET_MAX', 5400);
   DEVICES_ON = env['LAND_DEVICES'] ?? 'local';
   if (DEVICES_ON !== 'local' && DEVICES_ON !== 'ci') throw new Error(`land: LAND_DEVICES must be local or ci, not ${JSON.stringify(DEVICES_ON)}`);
-  DEVICES_WAIT_S = seconds('LAND_DEVICES_WAIT', 7200);
+  DEVICES_WAIT_S = seconds('LAND_DEVICES_WAIT', DEFAULT_DEVICES_WAIT_S);
   TEST_ON = env['LAND_TEST'] ?? 'local';
   if (TEST_ON !== 'local' && TEST_ON !== 'ci') throw new Error(`land: LAND_TEST must be local or ci, not ${JSON.stringify(TEST_ON)}`);
-  TEST_WAIT_S = seconds('LAND_TEST_WAIT', 5400);
+  TEST_WAIT_S = seconds('LAND_TEST_WAIT', DEFAULT_TEST_WAIT_S);
   CI_START_S = seconds('LAND_CI_START', 900);
   BATCH = parseBatchSize(env['LAND_BATCH']);
   MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
@@ -1208,6 +1208,19 @@ const main = (): number => {
   process.on('SIGUSR1', () => log(`SIGUSR1 reached the driver, which ignores it; send it to the supervisor (pid ${env[SUPERVISOR_PID_ENV]}, in ${LOCK}/pid)`));
   prepareWorktree();
   if (PIPELINE) checkNextWorktree(WT_NEXT, WT);
+  // Scratch branches a stopped or failed CI step left behind (per commit for the full test) are deleted now: none is in flight.
+  try {
+    for (const b of staleScratchBranches(net(git, ['ls-remote', 'origin', 'refs/heads/land-devices/*', 'refs/heads/land-test/*']))) {
+      try {
+        net(git, ['push', '--quiet', 'origin', `:${scratchRef(b)}`]);
+        log(`deleted the stale scratch branch ${b}`);
+      } catch (error) {
+        log(`WARNING could not delete the stale scratch branch ${b}: ${msg(error)}`);
+      }
+    }
+  } catch (error) {
+    log(`WARNING could not list the scratch branches: ${msg(error)}`);
+  }
   const startedAt = stamp();
   log(`=== pnpm land ${args.queue}: ${entries.map((e) => `#${e.pr}`).join(' ')} in batches of up to ${BATCH} (pid ${process.pid}, worktree ${WT})`);
   let latest: readonly Outcome[] = [];
