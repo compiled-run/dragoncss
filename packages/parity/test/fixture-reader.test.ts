@@ -219,7 +219,7 @@ const REMOVED_AFTER_BASE: Readonly<Record<string, string>> = {
 
 // BASE fixtures a later package retargeted on purpose (V1 of the value model supports vw and calc(), so its rejects moved to
 // svw and round(); SELD-R2a compiles :hover, so reject-selector-hover moved to :focus-within; CTX-PROOF proves margin-top: auto
-// in block flow, so reject-unproven-context moved to margin-right: 6mm), with their BASE text: the reader is still checked on
+// in block flow, so reject-unproven-context moved it to an absolute box in a flex column), with their BASE text: the reader is still checked on
 // that text, and each file must now differ from it.
 const RETARGETED_AFTER_BASE: Readonly<Record<string, string>> = {
   'reject-selector-hover': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n.a { width: 10px; }\n.a:hover { width: 20px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',

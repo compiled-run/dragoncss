@@ -130,7 +130,7 @@ export const MILESTONE_1: readonly FixtureSpec[] = [
   reject('reject-color-lab', 'DRAGON_UNSUPPORTED_VALUE', 'lab(50% 40 59)'),
   // M4: the implicitly filled longhand is named at the start of the message.
   reject('reject-shorthand-filled', 'DRAGON_UNPROVEN_CONTEXT', '3px', 'border-top-style:none'),
-  reject('reject-unproven-context', 'DRAGON_UNPROVEN_CONTEXT', '6mm'),
+  reject('reject-unproven-context', 'DRAGON_UNPROVEN_CONTEXT', 'auto'),
   rejectTree('reject-tree-alias-cycle', 'DRAGON_ALIAS_CYCLE', '<Toggle a checked={doc/b.checked} />'),
   rejectTree('reject-tree-choice-overlap', 'DRAGON_CHOICE_OVERLAP', "{checked ? 'on' : ''} {checked || true ? 'off' : ''}"),
   rejectTree('reject-tree-unknown-state', 'DRAGON_STATE_UNKNOWN', "hovered ? 'on' : ''"),
