@@ -252,4 +252,26 @@ describe('the supervisor with real processes', () => {
     expect(() => process.kill(d, 0)).not.toThrow(); // the driver was never touched
     process.kill(d, 'SIGKILL');
   }, 90_000);
+
+  it('the builder watchdog keeps watching a group whose leader exited, and kills it once the driver is gone', async () => {
+    const dir = tempDir();
+    const lstart = (pid: number): string => execFileSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8' }).trim();
+    const driver = spawn('sleep', ['600'], { stdio: 'ignore' });
+    // The leader exits after 1 s; its child (a long step) lives on in the group.
+    const builder = spawn('/bin/sh', ['-c', 'sleep 600 & sleep 1'], { detached: true, stdio: 'ignore' });
+    const [d, b] = [driver.pid!, builder.pid!];
+    await new Promise((r) => setTimeout(r, 300));
+    const log = join(dir, 'log');
+    const w = spawn(process.execPath, [repoPath('scripts/land-watchdog.ts'), String(d), lstart(d), String(b), lstart(b), join(dir, 'q'), join(dir, 'p'), log], { detached: true, stdio: 'ignore' });
+    const watchdogDone = new Promise((r) => w.on('exit', r));
+    await new Promise((r) => builder.on('exit', r));
+    await new Promise((r) => setTimeout(r, 2500));
+    expect(groupAlive(b)).toBe(true); // the step outlived its leader
+    expect(existsSync(log) ? readFileSync(log, 'utf8') : '').not.toContain('builder ended'); // still watched
+    process.kill(d, 'SIGKILL');
+    await watchdogDone;
+    for (let i = 0; i < 600 && groupAlive(b); i++) await new Promise((r) => setTimeout(r, 50));
+    expect(groupAlive(b)).toBe(false);
+    expect(readFileSync(log, 'utf8')).toContain('stopped the builder');
+  }, 90_000);
 });

@@ -38,6 +38,7 @@ import {
   lockState,
   MERGES_LOG,
   parseBatchSize,
+  builderLiveness,
   runWatchdog,
   unsafeWorktree,
   parseLstart,
@@ -1006,12 +1007,28 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(run({ driver: ['gone'], groupUnknown: true }).did).toEqual(['SIGTERM', 'SIGKILL', 'release']);
   });
 
+  it('watches a builder whose leader exited while its group lives, and lets go of a reused leader pid', () => {
+    const calls: string[] = [];
+    const group = (left: boolean | null) => () => (calls.push('group'), left);
+    expect(builderLiveness('alive', group(false))).toBe('alive');
+    expect(builderLiveness('unknown', group(false))).toBe('unknown');
+    expect(calls).toEqual([]); // a live leader needs no group read
+    expect(builderLiveness('exited', group(true))).toBe('alive'); // members left: still the builder's, still watched
+    expect(builderLiveness('exited', group(false))).toBe('gone');
+    expect(builderLiveness('exited', group(null))).toBe('unknown');
+    expect(builderLiveness('reused', group(true))).toBe('gone'); // that group is another one now
+  });
+
   it('refuses a builder worktree that is, contains or sits inside a protected worktree', () => {
     const id = (p: string): string => p;
-    const protectedPaths = ['/Users/me/dragon', '/tmp/dragon-land', '/tmp/dragon-repla', '/tmp/dragon-land-next'];
-    expect(unsafeWorktree('/tmp/dragon-land-next', protectedPaths, id)).toBeNull(); // itself is listed once added
+    // As the caller passes them: the main checkout, the driver's worktree, and every listed worktree but the candidate's own.
+    const protectedPaths = ['/Users/me/dragon', '/tmp/dragon-land', '/tmp/dragon-repla'];
+    expect(unsafeWorktree('/tmp/dragon-land-next', protectedPaths, id)).toBeNull();
     expect(unsafeWorktree('/tmp/dragon-landx', protectedPaths, id)).toBeNull(); // a sibling sharing a prefix
-    expect(unsafeWorktree('/tmp/dragon-land', protectedPaths.filter((p) => p !== '/tmp/dragon-land-next'), id)).toBeNull();
+    // Equal to the driver's worktree, the main checkout or another worktree: refused, never skipped.
+    expect(unsafeWorktree('/tmp/dragon-land', protectedPaths, id)).toMatch(/is the worktree \/tmp\/dragon-land$/);
+    expect(unsafeWorktree('/Users/me/dragon', protectedPaths, id)).toMatch(/is the worktree \/Users\/me\/dragon$/);
+    expect(unsafeWorktree('/tmp/dragon-repla/', protectedPaths, id)).toMatch(/is the worktree \/tmp\/dragon-repla$/);
     expect(unsafeWorktree('/tmp', protectedPaths, id)).toMatch(/contains the worktree \/Users\/me\/dragon|contains the worktree \/tmp\/dragon-land/);
     expect(unsafeWorktree('/Users/me', protectedPaths, id)).toMatch(/contains the worktree \/Users\/me\/dragon/);
     expect(unsafeWorktree('/Users/me/dragon/next', protectedPaths, id)).toMatch(/inside the worktree \/Users\/me\/dragon/);

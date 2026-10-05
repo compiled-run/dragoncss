@@ -1258,6 +1258,16 @@ export const supervise = (o: {
 // step holding the heavy priority, a quiet request or the device lease. It ends by itself once the builder's group is gone.
 
 export type Liveness = 'alive' | 'gone' | 'unknown';
+// The builder from its leader and its group. A leader that exited (gone or a zombie) leaves the group id reserved while any
+// member lives, so live members are still the builder's and still watched; a leader pid that is another process now means
+// the group was empty and its id freed, so the builder ended.
+export type Leader = 'alive' | 'exited' | 'reused' | 'unknown';
+export const builderLiveness = (leader: Leader, groupLeft: () => boolean | null): Liveness => {
+  if (leader === 'alive' || leader === 'unknown') return leader;
+  if (leader === 'reused') return 'gone';
+  const left = groupLeft();
+  return left === null ? 'unknown' : left ? 'alive' : 'gone';
+};
 export type WatchdogOps = {
   /** The driver: alive (the recorded process), gone (no such pid, or another start time), or unknown (ps or kill failed). */
   driver: () => Liveness;
@@ -1293,7 +1303,8 @@ export const runWatchdog = (o: WatchdogOps): 'builder ended' | 'stopped the buil
 };
 
 // LAND_WORKTREE_NEXT is removed and re-added by the builder's repair, so it may not be, contain or sit inside a protected
-// worktree (the main checkout, the driver's worktree, any other listed worktree). Paths are compared after resolving.
+// worktree (the main checkout, the driver's worktree, any other listed worktree; the caller leaves the candidate's own
+// listing out). Paths are compared after resolving.
 export const unsafeWorktree = (path: string, protectedPaths: readonly string[], resolve: (p: string) => string): string | null => {
   const norm = (p: string): string => resolve(p).replace(/\/+$/, '');
   const me = norm(path);
@@ -1301,7 +1312,8 @@ export const unsafeWorktree = (path: string, protectedPaths: readonly string[], 
   const under = (a: string, b: string): boolean => a === b || a.startsWith(`${b}/`);
   for (const raw of protectedPaths) {
     const p = norm(raw);
-    if (p === '' || p === me) continue;
+    if (p === '') continue;
+    if (p === me) return `${path} is the worktree ${raw}`;
     if (under(p, me)) return `${path} contains the worktree ${raw}`;
     if (under(me, p)) return `${path} is inside the worktree ${raw}`;
   }
