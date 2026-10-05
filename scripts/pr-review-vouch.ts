@@ -11,7 +11,7 @@ export const SPENDING_LIMIT = 'Monthly spending limit reached (workspace setting
 export const CI_WORKFLOW = '.github/workflows/ci.yml';
 export const CI_CHECK = 'checks';
 
-export type CheckRun = { name: string; status: string; conclusion: string | null; html_url: string; output?: { title: string | null } };
+export type CheckRun = { name: string; status: string; conclusion: string | null; html_url: string; output?: { title: string | null }; completed_at?: string | null };
 export type ReviewComment = {
   id: number;
   in_reply_to_id?: number;
@@ -43,6 +43,7 @@ export const parseCheckRun = (v: unknown): CheckRun => {
     conclusion: strOrNull(v, 'conclusion', 'check run'),
     html_url: str(v, 'html_url', 'check run'),
     ...(isObject(output) ? { output: { title: output.title === undefined ? null : strOrNull(output, 'title', 'check run output') } } : {}),
+    ...(v.completed_at === undefined ? {} : { completed_at: strOrNull(v, 'completed_at', 'check run') }),
   };
 };
 
@@ -211,12 +212,28 @@ export const parseBlobBatch = (out: Buffer, shas: string[]): Map<string, Buffer>
 export const isBinaryBlob = (content: Buffer): boolean => content.subarray(0, 8000).includes(0);
 
 // The spending-limit waiver applies only when every Macroscope check of the commit was skipped with exactly that title.
+// At its limit Macroscope sometimes creates only some of its checks (the proof guard, never the correctness check), so a
+// commit whose every Macroscope check is limit-skipped, with no correctness check CORRECTNESS_GRACE_MS after every CI run
+// succeeded, is waived too; the waiver still means unreviewed, so the landing driver's Claude review is still required.
+export const CORRECTNESS_GRACE_MS = 5 * 60_000;
 const isMacroscopeCheck = (run: CheckRun): boolean => run.name.startsWith('Macroscope - ');
 const limitSkipped = (run: CheckRun): boolean => run.status === 'completed' && run.conclusion === 'skipped' && run.output?.title === SPENDING_LIMIT;
-export const spendingLimitWaived = (runs: CheckRun[]): boolean => {
-  const macroscope = runs.filter(isMacroscopeCheck);
-  return macroscope.some((r) => r.name === CORRECTNESS) && macroscope.every(limitSkipped);
+// When every CI run of the commit had completed successfully (ms), or null while any is missing, unfinished or undated.
+const ciDoneAt = (runs: CheckRun[]): number | null => {
+  const ci = runs.filter((r) => r.name === CI_CHECK);
+  if (ci.length === 0 || !ci.every((r) => r.status === 'completed' && r.conclusion === 'success')) return null;
+  const at = ci.map((r) => (typeof r.completed_at === 'string' ? Date.parse(r.completed_at) : Number.NaN));
+  return at.every(Number.isFinite) ? Math.max(...at) : null;
 };
+export const spendingLimitWaived = (runs: CheckRun[], now: number = Date.now()): boolean => {
+  const macroscope = runs.filter(isMacroscopeCheck);
+  if (macroscope.length === 0 || !macroscope.every(limitSkipped)) return false;
+  if (macroscope.some((r) => r.name === CORRECTNESS)) return true;
+  const done = ciDoneAt(runs);
+  return done !== null && now - done >= CORRECTNESS_GRACE_MS;
+};
+// The waiver was granted without a correctness check (Macroscope never created one).
+export const waivedWithoutCorrectness = (runs: CheckRun[], now: number = Date.now()): boolean => spendingLimitWaived(runs, now) && !runs.some((r) => r.name === CORRECTNESS);
 
 // The one verdict every path of pr-review.ts uses. `vouches` maps a vouchable skip's html_url to its vouch; `waived` is
 // spendingLimitWaived over the commit's runs.
@@ -233,12 +250,12 @@ export const verdictOf = (run: CheckRun, vouches: ReadonlyMap<string, Vouch>, wa
 
 // Macroscope's correctness review starts only after CI passes, so a green CI alone is not "done"; a failed check or a
 // conflicting PR ends the wait. A missing CI run is waited for, since GitHub may not have queued it yet.
-export const settled = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>, head: PrHead): boolean => {
-  const waived = spendingLimitWaived(runs);
+export const settled = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>, head: PrHead, now: number = Date.now()): boolean => {
+  const waived = spendingLimitWaived(runs, now);
   return (
     head.mergeable === 'CONFLICTING' ||
     runs.some((r) => verdictOf(r, vouches, waived) === 'failed') ||
-    (runs.every((r) => verdictOf(r, vouches, waived) !== 'pending') && runs.some((r) => r.name === CORRECTNESS) && runs.some((r) => r.name === CI_CHECK))
+    (runs.every((r) => verdictOf(r, vouches, waived) !== 'pending') && (waived || runs.some((r) => r.name === CORRECTNESS)) && runs.some((r) => r.name === CI_CHECK))
   );
 };
 
@@ -247,10 +264,11 @@ export const outcome = (
   runs: CheckRun[],
   vouches: ReadonlyMap<string, Vouch>,
   head: PrHead,
+  now: number = Date.now(),
 ): { pending: string[]; failed: string[]; unreviewed: boolean } => {
-  const waived = spendingLimitWaived(runs);
+  const waived = spendingLimitWaived(runs, now);
   const pending = runs.filter((r) => verdictOf(r, vouches, waived) === 'pending').map((r) => r.name);
-  if (!runs.some((r) => r.name === CORRECTNESS)) pending.push(CORRECTNESS);
+  if (!waived && !runs.some((r) => r.name === CORRECTNESS)) pending.push(CORRECTNESS);
   const failed = runs.filter((r) => verdictOf(r, vouches, waived) === 'failed').map((r) => r.name);
   if (!runs.some((r) => r.name === CI_CHECK)) failed.push(`no CI run on ${head.sha}: the PR may be conflicting with master`);
   if (head.mergeable === 'CONFLICTING') failed.push(`PR head ${head.sha} is CONFLICTING with its base`);

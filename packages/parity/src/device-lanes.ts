@@ -29,7 +29,7 @@ import type { NativeDump } from './native-dump.ts';
 import { validateNativeDump } from './native-dump.ts';
 import type { NativeCase } from './native-host.ts';
 import { BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, nativeCases, nativeOut } from './native-host.ts';
-import { expectedHitRuns } from './hit-capture.ts';
+import { expectedHitRuns, hitCases } from './hit-capture.ts';
 import { deriveScripts, stateEmits, stateGroups, stateProgramOf } from './state-cases.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
@@ -611,7 +611,9 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     // SELD-R1b: device-hit from the hit records the batch launch wrote beside its dumps, then device-states from a launch of the
     // case scripts.
     const h0 = Date.now();
-    const hits = evaluateHits(dpr, outDir, rec, cases, (n) => expectedHitRuns(n, dpr), extra.map((f): LaneFailure => ({ ...f, lane: HIT_LANE })).filter((f, i, all) => all.findIndex((x) => x.detail === f.detail) === i));
+    // The hit cases (hit-capture.ts hitCases): the device writes no hit record for a case hitTableOf refuses, as it has no facts.
+    const hitIds = new Set(hitCases().map((n) => n.case.id));
+    const hits = evaluateHits(dpr, outDir, rec, cases.filter((n) => hitIds.has(n.case.id)), (n) => expectedHitRuns(n, dpr), extra.map((f): LaneFailure => ({ ...f, lane: HIT_LANE })).filter((f, i, all) => all.findIndex((x) => x.detail === f.detail) === i));
     log(`${spec.name}: device-hit ${hits.dumps}/${hits.cases} records, ${hits.compared.b} runs compared in ${((Date.now() - h0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(hits.failures))}`);
     const scripts = scriptCases(t.target);
     const statesDir = join(nativeOut(t.target), 'lanes', `${spec.name}-states`);

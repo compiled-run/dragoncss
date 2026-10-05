@@ -18,6 +18,7 @@ import { PLANT_CASE } from '../src/device-run.ts';
 import { ahemGlyphBoxes, BOTTOM_SCANLINES_PATH, casePoints, caseSamples, checkCasePixels, committedPixels, decodePng, expectedPixelsDir, expectedPixelsPath, glyphLines, PIXEL_MANIFEST, rasterSize, RASTER_RULE, runFileText } from '../src/pixel-reference.ts';
 import { BACKEND_OF } from '../src/native-host.ts';
 import { deviceDprs } from '../src/targets.ts';
+import { withoutTransforms } from '../src/paint-samples/transform.ts';
 import type { SamplePoint } from '../src/samples.ts';
 import { generateGlyphSamples, GLYPH_EDGE_RULE, glyphClearance, ruleKind, SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
 
@@ -155,7 +156,10 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
           if (inked.length > 0) perCase[n.case.id] = [inked.filter((l) => rules.has(`edge:${l.id}:glyph-bottom`)).length, inked.length];
           const unclear = (q: SamplePoint) => glyphs.filter((g) => glyphClearance(q.x, q.y, g) < I).length;
           const scanlines = new Map<string, SamplePoint[]>();
-          for (const q of r.points) {
+          // The glyph boxes are untransformed, so the clearance is judged on the base points; the transform module maps them and keeps
+          // each mapped point clear of the transformed edges (PNT2, pnt2-samples.test.ts).
+          const plain = withoutTransforms(p);
+          for (const q of (plain === p ? r : caseSamples(plain, n.case.environment.viewport, dpr)).points) {
             if (GLYPH_EDGE_RULE.test(q.rule)) scanlines.set(q.rule, [...(scanlines.get(q.rule) ?? []), q]);
             else if (unclear(q) > 0) throw new Error(`${target} ${n.case.id}@${dpr}: ${q.rule} at ${q.x},${q.y} is within ${I} device px of a glyph box edge`);
           }
