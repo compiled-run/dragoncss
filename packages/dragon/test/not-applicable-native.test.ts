@@ -158,7 +158,8 @@ describe('a nested at-rule in a scrollbar rule', () => {
 
 describe('querySupport', () => {
   it('a resolved query of cursor on a native target answers not-applicable, like a possibilities query', () => {
-    const c = compile(`${BASE}\n.a { cursor: pointer; }`, { web: {}, ...NATIVE });
+    const input = inputFor(`${BASE}\n.a { cursor: pointer; }`, (r) => [div(r, 'a', ['a'])]);
+    const c = createProjectWith({ projectId: 'test', targets: { web: {}, ...NATIVE } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' }).compile(input);
     for (const target of ['ios', 'android'] as const) {
       expect(querySupport({ kind: 'resolved', result: c, target, node: 'a', instance: 'doc', assignment: [], property: 'cursor' })).toEqual({ kind: 'not-applicable', declaration: 'cursor', reason: expect.stringContaining(`cursor has no effect on ${target}`) });
     }
