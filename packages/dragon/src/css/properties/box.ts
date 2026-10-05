@@ -1,4 +1,5 @@
-// The box: inline base direction, box sizing, sizes, the preferred aspect ratio, margins and padding (css-writing-modes-4, css-sizing-3 and 4, css-box-4).
+// The box: inline base direction, box sizing, sizes, the preferred aspect ratio, margins and padding (css-writing-modes-4, css-sizing-3 and 4, css-box-4),
+// and how a replaced element's content fills its box (css-images-3 §5.5 object-fit, §5.6 object-position).
 import type { PropertyAspect } from '../properties.ts';
 
 export const BOX_LONGHANDS = [
@@ -6,6 +7,7 @@ export const BOX_LONGHANDS = [
   'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'aspect-ratio',
   'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
   'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+  'object-fit', 'object-position',
 ] as const;
 export const BOX_SHORTHANDS = ['margin', 'padding'] as const;
 export const BOX_INHERITED: readonly (typeof BOX_LONGHANDS)[number][] = ['direction'];
@@ -31,4 +33,6 @@ export const BOX_ASPECTS: { readonly [P in (typeof BOX_LONGHANDS)[number]]: Prop
   'padding-right': { layout: true, paint: false },
   'padding-bottom': { layout: true, paint: false },
   'padding-left': { layout: true, paint: false },
+  'object-fit': { layout: false, paint: true },
+  'object-position': { layout: false, paint: true },
 };

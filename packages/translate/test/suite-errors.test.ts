@@ -1,13 +1,13 @@
 // T132: a fake harness that crashes, is killed, times out or writes a short, missing or long result gives a named cause, never a bare count.
 // Every fake harness runs under spawnSync with a bounded timeout, so none outlives its test; every corpus and result folder a test
 // writes under packages/translate/out is removed after it, pass or fail.
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Corpus, Suite } from '../src/corpus.ts';
 import type { Exec, RunResult } from '../src/native.ts';
-import { allPass, buildKotlin, buildSwift, describe as describeRun, execSuite, OUT, outputCause, publish, runSuites, stderrTail, suiteCause, withToolTmp } from '../src/native.ts';
+import { allPass, BUILD_CACHE, buildKotlin, cacheMaxBytes, swiftExec, buildSwift, describe as describeRun, execSuite, OUT, outputCause, publish, pruneCache, runSuites, stderrTail, suiteCause, withToolTmp } from '../src/native.ts';
 
 /** The longest a fake harness may run unless a test sets its own limit; below the 30 s test timeout. */
 const FAKE_MS = 20_000;
@@ -127,7 +127,7 @@ describe('T132: a harness that does not account for every case is a named error'
 
   it('a failed build removes its work directory and throws the compiler output', () => {
     const files = new Map([['harness/Main.kt', 'fun main() {}'], ['Sources/DragonLayout/A.swift', 'let a = 1']]);
-    const leftovers = (lang: string): string[] => (existsSync(join(OUT, lang)) ? readdirSync(join(OUT, lang)).filter((d) => d.endsWith(`.build-${process.pid}`)) : []);
+    const leftovers = (lang: string): string[] => (existsSync(join(BUILD_CACHE, lang)) ? readdirSync(join(BUILD_CACHE, lang)).filter((d) => d.endsWith(`.build-${process.pid}`)) : []);
     expect(() => buildKotlin({ kotlinc: process.execPath, javaHome: '/nonexistent', version: 't132-failed-build' }, files)).toThrow(/^kotlinc failed:/);
     expect(leftovers('kotlin')).toEqual([]);
     expect(() => buildSwift({ swiftc: process.execPath, version: 't132-failed-build' }, files)).toThrow(/^swiftc -typecheck of the engine module failed:/);
@@ -189,5 +189,82 @@ describe('the harness build cache recovers from a stale entry', () => {
     }
     publish(work, dir);
     expect([readFileSync(join(dir, 'harness.jar'), 'utf8'), existsSync(work)]).toEqual(['winner', false]);
+  }, TEST_MS);
+});
+
+describe('the machine-wide native build cache', () => {
+  const day = 24 * 3600 * 1000;
+  const setup = () => {
+    const root = mkdtempSync(join(tmpdir(), 'dragon-prune-'));
+    made.push(root);
+    const now = Date.now();
+    const make = (lang: string, name: string, ageDays: number, bytes = 10): string => {
+      const at = join(root, lang, name);
+      mkdirSync(join(at, 'src'), { recursive: true });
+      writeFileSync(join(at, 'harness'), 'x'.repeat(bytes));
+      const t = new Date(now - ageDays * day);
+      utimesSync(at, t, t);
+      return at;
+    };
+    return { root, now, make };
+  };
+  const names = (root: string, lang: string): string[] => readdirSync(join(root, lang)).sort();
+
+  it('pruneCache removes entries unused for 14 days, work directories older than a day and trash, and keeps the rest', () => {
+    const { root, now, make } = setup();
+    make('swift', 'old-entry', 15);
+    make('swift', 'used-entry', 13);
+    make('swift', 'key.build-1', 2);
+    make('swift', 'key.build-2', 0.5);
+    make('kotlin', 'old.trash-9', 0);
+    make('kotlin', 'kept', 1);
+    pruneCache(root, null, now);
+    expect(names(root, 'swift')).toEqual(['key.build-2', 'used-entry']);
+    expect(names(root, 'kotlin')).toEqual(['kept']);
+    pruneCache(join(root, 'missing'), null, now);
+  }, TEST_MS);
+
+  it('the size cap never evicts an entry used in the last 2 hours: it is exceeded and logged instead', () => {
+    const { root, now, make } = setup();
+    make('swift', 'a-old', 5, 100);
+    make('swift', 'b-in-use', 0.05, 100);
+    make('kotlin', 'c-in-use', 0.01, 100);
+    const warned: string[] = [];
+    const warn = console.warn;
+    console.warn = (m: string) => warned.push(m);
+    try {
+      pruneCache(root, null, now, 50);
+    } finally {
+      console.warn = warn;
+    }
+    expect([...names(root, 'swift'), ...names(root, 'kotlin')]).toEqual(['b-in-use', 'c-in-use']);
+    expect(warned).toHaveLength(1);
+    expect(warned[0]).toMatch(/over its 0 MB cap; every remaining entry was used in the last 2 hours/);
+  }, TEST_MS);
+
+  it('each suite spawn marks its cache entry used, so a long run is never evicted from under it', () => {
+    const { root, make } = setup();
+    const entry = make('swift', 'running', 3);
+    const old = statSync(entry).mtimeMs;
+    swiftExec(join(entry, 'harness'))('engine', '/nonexistent-in', join(root, 'out.jsonl'));
+    expect(statSync(entry).mtimeMs).toBeGreaterThan(old + 2 * 24 * 3600 * 1000);
+  }, TEST_MS);
+
+  it('DRAGON_NATIVE_CACHE_MAX_MB must be a finite number of MB, 0 or more', () => {
+    expect(cacheMaxBytes(undefined)).toBe(3072 * 1024 * 1024);
+    expect(cacheMaxBytes('')).toBe(3072 * 1024 * 1024);
+    expect(cacheMaxBytes('0')).toBe(0);
+    expect(cacheMaxBytes('1.5')).toBe(1.5 * 1024 * 1024);
+    for (const bad of ['abc', '-1', 'Infinity', 'NaN', ' ', '12mb']) expect(() => cacheMaxBytes(bad), bad).toThrow(/DRAGON_NATIVE_CACHE_MAX_MB must be a finite number of MB, 0 or more/);
+  }, TEST_MS);
+
+  it('over the size cap, the least recently used entries go first, never the one just published', () => {
+    const { root, now, make } = setup();
+    make('swift', 'a-oldest', 5, 100);
+    const keep = make('kotlin', 'b-just-built', 4, 100);
+    make('kotlin', 'c-newer', 3, 100);
+    make('swift', 'd-newest', 1, 100);
+    pruneCache(root, keep, now, 250);
+    expect([...names(root, 'swift'), ...names(root, 'kotlin')]).toEqual(['d-newest', 'b-just-built']);
   }, TEST_MS);
 });
