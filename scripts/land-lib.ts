@@ -1257,13 +1257,14 @@ export const supervise = (o: {
 // group once the driver is gone, however it died (kill -9 of supervisor and driver included), so no builder finishes a long
 // step holding the heavy priority, a quiet request or the device lease. It ends by itself once the builder's group is gone.
 
+export type Liveness = 'alive' | 'gone' | 'unknown';
 export type WatchdogOps = {
-  /** Whether the driver is still the process recorded (pid and start time). */
-  driverAlive: () => boolean;
-  /** Whether any live process of the builder's group is left. */
-  builderAlive: () => boolean;
-  /** Whether the builder's leader, if still there, is the process recorded (not a reused pid). */
-  builderIsOurs: () => boolean;
+  /** The driver: alive (the recorded process), gone (no such pid, or another start time), or unknown (ps or kill failed). */
+  driver: () => Liveness;
+  /** The builder's leader, judged the same way: gone means the builder ended (or its pid is another process now). */
+  builder: () => Liveness;
+  /** Whether any live process is left in the builder's group, or null when that could not be read. */
+  groupLeft: () => boolean | null;
   signal: (sig: 'SIGTERM' | 'SIGKILL') => void;
   /** Releases what the builder held (quiet request, priority), each only if it names the builder. */
   release: () => void;
@@ -1272,21 +1273,37 @@ export type WatchdogOps = {
   pollMs?: number;
   graceMs?: number;
 };
-export const runWatchdog = (o: WatchdogOps): 'builder ended' | 'stopped the builder' | 'not ours' => {
+// Only a definite answer acts: an unknown liveness (a failed ps or kill under load) is asked again, never taken as a death.
+export const runWatchdog = (o: WatchdogOps): 'builder ended' | 'stopped the builder' => {
   const poll = o.pollMs ?? 1000;
   for (;;) {
-    if (!o.builderAlive()) return 'builder ended';
-    if (!o.driverAlive()) break;
+    const b = o.builder();
+    if (b === 'gone') return 'builder ended';
+    const d = b === 'alive' ? o.driver() : 'unknown';
+    if (d === 'gone') break;
+    if (d === 'unknown' || b === 'unknown') o.log(`could not tell whether the ${b === 'unknown' ? 'builder' : 'driver'} lives; asking again`);
     o.sleep(poll);
-  }
-  if (!o.builderIsOurs()) {
-    o.log('the driver is gone, but the builder\'s pid is another process now; nothing to stop');
-    return 'not ours';
   }
   o.log('the driver is gone; stopping the builder\'s process group');
   o.signal('SIGTERM');
-  for (let waited = 0; waited < (o.graceMs ?? 30_000) && o.builderAlive(); waited += poll) o.sleep(poll);
-  if (o.builderAlive()) o.signal('SIGKILL');
+  for (let waited = 0; waited < (o.graceMs ?? 30_000) && o.groupLeft() !== false; waited += poll) o.sleep(poll);
+  if (o.groupLeft() !== false) o.signal('SIGKILL');
   o.release();
   return 'stopped the builder';
+};
+
+// LAND_WORKTREE_NEXT is removed and re-added by the builder's repair, so it may not be, contain or sit inside a protected
+// worktree (the main checkout, the driver's worktree, any other listed worktree). Paths are compared after resolving.
+export const unsafeWorktree = (path: string, protectedPaths: readonly string[], resolve: (p: string) => string): string | null => {
+  const norm = (p: string): string => resolve(p).replace(/\/+$/, '');
+  const me = norm(path);
+  if (me === '' || me === '/') return `${path} is the filesystem root`;
+  const under = (a: string, b: string): boolean => a === b || a.startsWith(`${b}/`);
+  for (const raw of protectedPaths) {
+    const p = norm(raw);
+    if (p === '' || p === me) continue;
+    if (under(p, me)) return `${path} contains the worktree ${raw}`;
+    if (under(me, p)) return `${path} is inside the worktree ${raw}`;
+  }
+  return null;
 };

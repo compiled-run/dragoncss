@@ -1,8 +1,8 @@
 // The landing builder's watchdog (runWatchdog in land-lib.ts), started detached by the driver with each builder.
 // Run as: node scripts/land-watchdog.ts <driver pid> <driver start> <builder pid> <builder start> <quiet file> <priority file> <log>
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { parseLstart, runWatchdog } from './land-lib.ts';
+import { type Liveness, parseLstart, runWatchdog } from './land-lib.ts';
 
 const [driverPid, driverStart, builderPid, builderStart, quiet, priority, logFile] = process.argv.slice(2);
 const pid = (v: string | undefined): number => (v !== undefined && /^[1-9]\d*$/.test(v) ? Number(v) : Number.NaN);
@@ -12,19 +12,31 @@ if (!Number.isFinite(driver) || !Number.isFinite(builder) || !driverStart || !bu
   console.error('usage: land-watchdog <driver pid> <driver start> <builder pid> <builder start> <quiet file> <priority file> <log>');
   process.exit(2);
 }
-const startOf = (p: number): string | null => {
+// A process's liveness against its recorded start time. Only "no such process" (ESRCH, or ps finding none) or another start
+// time is "gone"; any other failure of kill or ps (EAGAIN under fork pressure, a signal) is "unknown" and asked again.
+const liveness = (p: number, start: string): Liveness => {
   try {
-    return parseLstart(execFileSync('ps', ['-o', 'lstart=', '-p', String(p)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
-  } catch {
-    return null;
+    process.kill(p, 0);
+  } catch (error) {
+    const code = (error as { code?: unknown }).code;
+    return code === 'ESRCH' ? 'gone' : code === 'EPERM' ? 'alive' : 'unknown';
   }
+  // A zombie (exited, not yet reaped by its parent) has ended.
+  const r = spawnSync('ps', ['-o', 'stat=,lstart=', '-p', String(p)], { encoding: 'utf8' });
+  if (r.error !== undefined || r.signal !== null) return 'unknown';
+  const m = /^\s*(\S+)\s+(.*\S)\s*$/.exec(r.stdout ?? '');
+  if (r.status === 1 && m === null) return 'gone';
+  if (r.status !== 0 || m === null) return 'unknown';
+  if (m[1]!.startsWith('Z')) return 'gone';
+  return parseLstart(m[2]!) === start ? 'alive' : 'gone';
 };
-const members = (pgid: number): number => {
-  const out = execFileSync('ps', ['-axo', 'pgid=,stat='], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  return out.split('\n').filter((l) => {
+const groupLeft = (pgid: number): boolean | null => {
+  const r = spawnSync('ps', ['-axo', 'pgid=,stat='], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  if (r.error !== undefined || r.signal !== null || r.status !== 0) return null;
+  return r.stdout.split('\n').some((l) => {
     const [g, stat] = l.trim().split(/\s+/);
     return Number(g) === pgid && !/^Z/.test(stat ?? '');
-  }).length;
+  });
 };
 const releaseIfOurs = (path: string): void => {
   try {
@@ -32,12 +44,9 @@ const releaseIfOurs = (path: string): void => {
   } catch {}
 };
 const result = runWatchdog({
-  driverAlive: () => startOf(driver) === driverStart,
-  builderAlive: () => members(builder) > 0,
-  builderIsOurs: () => {
-    const now = startOf(builder);
-    return now === null || now === builderStart;
-  },
+  driver: () => liveness(driver, driverStart),
+  builder: () => liveness(builder, builderStart),
+  groupLeft: () => groupLeft(builder),
   signal: (sig) => {
     try {
       process.kill(-builder, sig);

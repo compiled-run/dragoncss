@@ -39,6 +39,7 @@ import {
   MERGES_LOG,
   parseBatchSize,
   runWatchdog,
+  unsafeWorktree,
   parseLstart,
   parseMerges,
   parsePidFile,
@@ -970,33 +971,53 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(bad({ results: [{ entry: e(3), failure: { step: 1 } }] })).toThrow(/failure is malformed/);
   });
 
-  it('the builder\'s watchdog stops the builder only once the driver is gone, and only when it is still ours', () => {
-    const run = (o: { driverDiesAt?: number; builderEndsAt?: number; builderIgnoresTerm?: boolean; ours?: boolean }) => {
-      let t = 0;
+  it('the builder\'s watchdog stops the builder only once the driver is definitely gone', () => {
+    type L = 'alive' | 'gone' | 'unknown';
+    // `driver` and `builder` give the liveness per poll (the last repeats); `group` says what is left after SIGTERM.
+    const run = (o: { driver: L[]; builder?: L[]; ignoresTerm?: boolean; groupUnknown?: boolean }) => {
+      let poll = 0;
       let termed = false;
       const did: string[] = [];
-      const alive = (): boolean => (o.builderEndsAt === undefined || t < o.builderEndsAt) && !(termed && !o.builderIgnoresTerm) && !did.includes('SIGKILL');
+      const at = (xs: L[], i: number): L => xs[Math.min(i, xs.length - 1)]!;
       const result = runWatchdog({
-        driverAlive: () => o.driverDiesAt === undefined || t < o.driverDiesAt,
-        builderAlive: alive,
-        builderIsOurs: () => o.ours !== false,
+        driver: () => at(o.driver, poll),
+        builder: () => at(o.builder ?? ['alive'], poll),
+        groupLeft: () => (did.includes('SIGKILL') ? false : o.groupUnknown ? null : !termed || o.ignoresTerm === true),
         signal: (sig) => {
           did.push(sig);
           if (sig === 'SIGTERM') termed = true;
         },
         release: () => did.push('release'),
-        sleep: (ms) => void (t += ms),
+        sleep: () => void poll++,
         log: () => {},
         graceMs: 5000,
       });
-      return { result, did, t };
+      return { result, did, poll };
     };
-    expect(run({ builderEndsAt: 3000 })).toEqual({ result: 'builder ended', did: [], t: 3000 });
-    expect(run({ driverDiesAt: 2000 })).toMatchObject({ result: 'stopped the builder', did: ['SIGTERM', 'release'] });
-    const stubborn = run({ driverDiesAt: 2000, builderIgnoresTerm: true });
-    expect(stubborn).toMatchObject({ result: 'stopped the builder', did: ['SIGTERM', 'SIGKILL', 'release'] });
-    expect(stubborn.t).toBeGreaterThanOrEqual(2000 + 5000);
-    expect(run({ driverDiesAt: 2000, ours: false })).toMatchObject({ result: 'not ours', did: [] });
+    // The builder ends first (exits, becomes a zombie, or its pid is another process now): nothing is signalled.
+    expect(run({ driver: ['alive'], builder: ['alive', 'alive', 'gone'] })).toEqual({ result: 'builder ended', did: [], poll: 2 });
+    // The driver is gone: SIGTERM, then release.
+    expect(run({ driver: ['alive', 'alive', 'gone'] })).toMatchObject({ result: 'stopped the builder', did: ['SIGTERM', 'release'], poll: 2 });
+    // Unknown (a failed ps or kill under load) is asked again, never taken as a death, for the driver and for the builder.
+    expect(run({ driver: ['unknown', 'unknown', 'unknown', 'alive', 'gone'] })).toMatchObject({ did: ['SIGTERM', 'release'], poll: 4 });
+    expect(run({ driver: ['gone'], builder: ['unknown', 'unknown', 'gone'] })).toEqual({ result: 'builder ended', did: [], poll: 2 });
+    // A group that ignores SIGTERM, or cannot be read, gets SIGKILL after the grace period.
+    expect(run({ driver: ['gone'], ignoresTerm: true }).did).toEqual(['SIGTERM', 'SIGKILL', 'release']);
+    expect(run({ driver: ['gone'], groupUnknown: true }).did).toEqual(['SIGTERM', 'SIGKILL', 'release']);
+  });
+
+  it('refuses a builder worktree that is, contains or sits inside a protected worktree', () => {
+    const id = (p: string): string => p;
+    const protectedPaths = ['/Users/me/dragon', '/tmp/dragon-land', '/tmp/dragon-repla', '/tmp/dragon-land-next'];
+    expect(unsafeWorktree('/tmp/dragon-land-next', protectedPaths, id)).toBeNull(); // itself is listed once added
+    expect(unsafeWorktree('/tmp/dragon-landx', protectedPaths, id)).toBeNull(); // a sibling sharing a prefix
+    expect(unsafeWorktree('/tmp/dragon-land', protectedPaths.filter((p) => p !== '/tmp/dragon-land-next'), id)).toBeNull();
+    expect(unsafeWorktree('/tmp', protectedPaths, id)).toMatch(/contains the worktree \/Users\/me\/dragon|contains the worktree \/tmp\/dragon-land/);
+    expect(unsafeWorktree('/Users/me', protectedPaths, id)).toMatch(/contains the worktree \/Users\/me\/dragon/);
+    expect(unsafeWorktree('/Users/me/dragon/next', protectedPaths, id)).toMatch(/inside the worktree \/Users\/me\/dragon/);
+    expect(unsafeWorktree('/', protectedPaths, id)).toMatch(/root/);
+    // Compared after resolving (a symlinked /tmp, a trailing slash).
+    expect(unsafeWorktree('/private/tmp/', protectedPaths, (p) => p.replace(/^\/private/, ''))).toMatch(/contains/);
   });
 
   it('reads LAND_BATCH strictly', () => {
