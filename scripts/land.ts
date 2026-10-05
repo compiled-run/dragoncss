@@ -6,7 +6,7 @@
 // --match-head-commit. A PR that fails a step gets the landing-failed label and a comment, and the queue continues.
 // Run with: pnpm land <queue-file> [--dry-run]   (queue: one <branch>:<pr>:<clean-head> per line)
 import { execFileSync, spawnSync } from 'node:child_process';
-import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
@@ -534,9 +534,9 @@ const proveCommit = (head: string, what: string): void => {
   }
   requireTracked('test', 'pnpm test');
   proved.push(head);
-  if (clearsUnproved(readUnproved(), head, (a, b) => isAncestor(git, a, b))) {
+  if (clearsUnproved(readUnproved(), head, (c) => treeMatches(git, fetchMaster(), c).ok)) {
     rmSync(UNPROVED, { force: true });
-    log('  this proof contains the unproved position master was left on; record cleared');
+    log('  master has this proved tree; the unproved record is cleared');
   }
 };
 const proveTree = (p: Built, e: Entry): void => {
@@ -695,9 +695,14 @@ const lockProc = (path: string): { pid: number; start: string } | null => {
   const pid = parsePidFile(readOrNull(path));
   return pid === null ? null : { pid, start: (readOrNull(`${path}-start`) ?? '').trim() };
 };
+// Each file is written whole (temp file, then rename); the start time first, so a pid file never names a stale start time.
+const writeAtomic = (path: string, body: string): void => {
+  writeFileSync(`${path}.tmp-${process.pid}`, body);
+  renameSync(`${path}.tmp-${process.pid}`, path);
+};
 const recordProc = (path: string, pid: number): void => {
-  writeFileSync(path, String(pid));
-  writeFileSync(`${path}-start`, startOf(pid) ?? '');
+  writeAtomic(`${path}-start`, startOf(pid) ?? '');
+  writeAtomic(path, String(pid));
 };
 // Takes the lock; returns the pid of a dead run's driver when one was recorded (its leftovers need cleaning), else null.
 const lock = (): number | null => {
@@ -711,8 +716,10 @@ const lock = (): number | null => {
     }
     const sup = lockProc(LOCK_PID);
     const driver = lockProc(LOCK_DRIVER);
+    // A lock with no supervisor pid yet is being taken by another run (mkdir, then the pid file), unless it is old.
+    if (sup === null && Date.now() - statSync(LOCK).mtimeMs < 60_000) throw new Error(`land: another run is taking ${LOCK} right now`);
     const state = lockState(sup, driver, startOf);
-    if (state === 'held') throw new Error(`land: another driver (supervisor pid ${sup?.pid}) holds ${LOCK}`);
+    if (state === 'held') throw new Error(`land: another driver (supervisor pid ${sup?.pid}, driver pid ${driver?.pid ?? 'none'}) holds ${LOCK}`);
     if (state === 'orphan') {
       // The pid and its start time both match the recorded driver, so this group is that driver's, not a reused pid's.
       log(`a driver (pid ${driver!.pid}, started ${driver!.start}) is still running without its supervisor; killing its process group`);

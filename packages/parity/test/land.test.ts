@@ -783,7 +783,10 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(lockState(sup, drv, procs({}))).toBe('free');
     // The pids live again, but as other processes (started later): nothing is held and no group is killed.
     expect(lockState(sup, drv, procs({ 10: 'Mon 09:00', 11: 'Mon 09:01' }))).toBe('free');
-    expect(lockState(sup, { pid: 11, start: '' }, procs({ 11: '' }))).toBe('free');
+    // No start time recorded (a run died between its two writes): held while that pid lives, and never killed as an orphan.
+    expect(lockState({ pid: 10, start: '' }, drv, procs({ 10: 'whatever' }))).toBe('held');
+    expect(lockState({ pid: 10, start: '' }, drv, procs({}))).toBe('free');
+    expect(lockState(null, { pid: 11, start: '' }, procs({ 11: 'Mon 09:01' }))).toBe('held');
     expect(lockState(null, null, procs({ 1: 'x' }))).toBe('free');
   });
 
@@ -844,14 +847,14 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(logs.at(-1)).toMatch(/^!!! could not prove master: .*install/);
   });
 
-  it('clears the unproved record only on a passing proof that contains the recorded position', () => {
-    const anc = (pairs: [string, string][]) => (a: string, b: string) => pairs.some(([x, y]) => x === a && y === b);
+  it('clears the unproved record only when master is on a proven tree', () => {
+    const mastersTree = (commits: string[]) => (c: string) => commits.includes(c);
     const rec = { head: sha('d') };
-    expect(clearsUnproved(rec, sha('d'), anc([]))).toBe(true);
-    expect(clearsUnproved(rec, sha('e'), anc([[sha('d'), sha('e')]]))).toBe(true); // a batch built on that master passed
-    expect(clearsUnproved(rec, sha('f'), anc([]))).toBe(false); // a tree without it
-    expect(clearsUnproved(null, sha('d'), anc([]))).toBe(false);
-    expect(clearsUnproved({ head: 'unreadable "{"' }, sha('d'), () => true)).toBe(false);
+    expect(clearsUnproved(rec, sha('d'), mastersTree([sha('d')]))).toBe(true); // master proved where it rests
+    expect(clearsUnproved(rec, sha('m'), mastersTree([sha('m')]))).toBe(true); // master moved to this proved tree by a publish
+    expect(clearsUnproved(rec, sha('e'), mastersTree([sha('d')]))).toBe(false); // a passing batch on top of master that has not landed
+    expect(clearsUnproved(null, sha('d'), mastersTree([sha('d')]))).toBe(false);
+    expect(clearsUnproved({ head: 'unreadable "{"' }, sha('d'), mastersTree([sha('d')]))).toBe(true);
   });
 
   it('reads LAND_BATCH strictly', () => {
@@ -867,14 +870,16 @@ describe('the supervisor with real processes', () => {
   const lib = repoPath('scripts/land-lib.ts');
   // A fake driver: records its pid and its step's pid, runs a long step (spawnSync, as the driver does), and records "resumed"
   // if it ever gets past the step, which is where the old driver went on to fail PRs after a SIGTERM.
-  const setup = (driverBody: (dir: string) => string, o: { graceMs?: number; deferCapMs?: number } = {}): { dir: string; run: () => { done: Promise<{ code: number | null; out: string }>; pid: number } } => {
+  const setup = (driverBody: (dir: string) => string, o: { graceMs?: number; deferCapMs?: number; slowSpawnMs?: number } = {}): { dir: string; run: () => { done: Promise<{ code: number | null; out: string }>; pid: number } } => {
     const dir = tempDir();
     writeFileSync(join(dir, 'driver.mjs'), driverBody(dir));
     writeFileSync(
       join(dir, 'supervisor.mjs'),
       `import { existsSync, writeFileSync } from 'node:fs';\nimport { supervise } from ${JSON.stringify(lib)};\n` +
         `const r = await supervise({ command: process.execPath, args: [${JSON.stringify(join(dir, 'driver.mjs'))}], env: process.env, graceMs: ${o.graceMs ?? 5000}, deferCapMs: ${o.deferCapMs ?? 60_000}, pollMs: 50, ` +
-        `publishing: () => existsSync(${JSON.stringify(join(dir, 'publishing'))}), onSpawn: (pid) => writeFileSync(${JSON.stringify(join(dir, 'spawned'))}, String(pid)), ` +
+        `publishing: () => existsSync(${JSON.stringify(join(dir, 'publishing'))}), ` +
+        `onSpawn: (pid) => { writeFileSync(${JSON.stringify(join(dir, 'spawned'))}, String(pid)); const t = Date.now(); while (Date.now() - t < ${o.slowSpawnMs ?? 0}); }, ` +
+        `onReady: () => writeFileSync(${JSON.stringify(join(dir, 'ready'))}, 'x'), ` +
         `onStop: () => writeFileSync(${JSON.stringify(join(dir, 'stop'))}, 'x'), log: (l) => console.log(l) });\n` +
         `console.log(JSON.stringify(r)); process.exitCode = r.code;\n`,
     );
@@ -914,6 +919,7 @@ describe('the supervisor with real processes', () => {
         `writeFileSync(${JSON.stringify(join(dir, 'resumed'))}, 'the step "failed" and the driver went on');\n`,
     );
     const s = run();
+    await waitFor(join(dir, 'ready'));
     const [driver, step] = (await waitFor(join(dir, 'pids'))).split(' ').map(Number) as [number, number];
     const t0 = Date.now();
     process.kill(s.pid, 'SIGTERM');
@@ -934,6 +940,7 @@ describe('the supervisor with real processes', () => {
       `spawnSync('sleep', ['60']);\nwriteFileSync(${JSON.stringify(join(dir, 'resumed'))}, 'x');\n`;
     const a = setup(body);
     const s = a.run();
+    await waitFor(join(a.dir, 'ready'));
     await waitFor(join(a.dir, 'pids'));
     process.kill(s.pid, 'SIGTERM');
     const r = await s.done;
@@ -943,6 +950,7 @@ describe('the supervisor with real processes', () => {
     expect(existsSync(join(a.dir, 'resumed'))).toBe(false); // and nothing after it ran
     const b = setup(body);
     const s2 = b.run();
+    await waitFor(join(b.dir, 'ready'));
     await waitFor(join(b.dir, 'pids'));
     process.kill(s2.pid, 'SIGTERM');
     await new Promise((res) => setTimeout(res, 300));
@@ -960,6 +968,7 @@ describe('the supervisor with real processes', () => {
       { graceMs: 1000 },
     );
     const s = run();
+    await waitFor(join(dir, 'ready'));
     await waitFor(join(dir, 'pids'));
     const step = Number((await waitFor(join(dir, 'step'))).trim());
     const t0 = Date.now();
@@ -973,6 +982,7 @@ describe('the supervisor with real processes', () => {
   it('reports a driver killed from elsewhere as a death by signal, so the supervisor cleans up after it', async () => {
     const { dir, run } = setup((dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\nspawnSync('sleep', ['60']);\n`);
     const s = run();
+    await waitFor(join(dir, 'ready'));
     const driver = Number(await waitFor(join(dir, 'pids')));
     expect(Number(await waitFor(join(dir, 'spawned')))).toBe(driver);
     process.kill(driver, 'SIGKILL');
@@ -987,11 +997,29 @@ describe('the supervisor with real processes', () => {
         `for (let i = 0; i < 200; i++) { if (String(process.ppid) !== process.env.LAND_SUPERVISOR_PID) { writeFileSync(${JSON.stringify(join(dir, 'orphan'))}, 'x'); process.exit(3); } spawnSync('sleep', ['0.1']); }\n`,
     );
     const s = run();
+    await waitFor(join(dir, 'ready'));
     const driver = Number(await waitFor(join(dir, 'pids')));
     process.kill(s.pid, 'SIGKILL');
     await waitFor(join(dir, 'orphan'));
     for (let i = 0; i < 40 && !dead(driver); i++) await new Promise((res) => setTimeout(res, 50));
     expect(dead(driver)).toBe(true);
+  }, 20_000);
+
+  it('acts on a signal that arrives before the driver is recorded, rather than dying of it', async () => {
+    // onSpawn takes 1 s (a slow ps); the SIGTERM lands inside it, before the supervisor is ready.
+    const { dir, run } = setup(
+      (dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\nspawnSync('sleep', ['60']);\nwriteFileSync(${JSON.stringify(join(dir, 'resumed'))}, 'x');\n`,
+      { slowSpawnMs: 1000 },
+    );
+    const s = run();
+    const driver = Number(await waitFor(join(dir, 'spawned')));
+    expect(existsSync(join(dir, 'ready'))).toBe(false);
+    process.kill(s.pid, 'SIGTERM');
+    const r = await s.done;
+    expect(r.code).toBe(130);
+    expect(JSON.parse(r.out.trim().split('\n').at(-1)!)).toMatchObject({ interrupted: 'SIGTERM', pid: driver });
+    expect(dead(driver)).toBe(true);
+    expect(existsSync(join(dir, 'resumed'))).toBe(false);
   }, 20_000);
 
   it('SIGUSR1 asks for a graceful stop: the driver finishes and exits on its own', async () => {
@@ -1002,6 +1030,7 @@ describe('the supervisor with real processes', () => {
         `writeFileSync(${JSON.stringify(join(dir, 'finished'))}, 'x');\n`,
     );
     const s = run();
+    await waitFor(join(dir, 'ready'));
     await waitFor(join(dir, 'pids'));
     process.kill(s.pid, 'SIGUSR1');
     const { code, out } = await s.done;

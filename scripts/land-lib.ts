@@ -876,9 +876,18 @@ export const interruptedStatus = (o: { previous: string; how: string; now: strin
 // taken for them. It is held while either lives; a live driver whose supervisor is gone is an orphan the next run kills.
 export type LockProc = { pid: number; start: string };
 export type LockState = 'free' | 'held' | 'orphan';
+// A recorded process with no start time (a run that died between writing the pid and the start) counts as live while its pid is:
+// it holds the lock and is never killed.
 export const lockState = (supervisor: LockProc | null, driver: LockProc | null, startOf: (pid: number) => string | null): LockState => {
-  const same = (p: LockProc | null): boolean => p !== null && p.start !== '' && startOf(p.pid) === p.start;
-  return same(supervisor) ? 'held' : same(driver) ? 'orphan' : 'free';
+  const live = (p: LockProc | null): 'same' | 'unknown' | 'gone' => {
+    if (p === null) return 'gone';
+    const now = startOf(p.pid);
+    if (now === null) return 'gone';
+    return p.start === '' ? 'unknown' : now === p.start ? 'same' : 'gone';
+  };
+  const [sup, drv] = [live(supervisor), live(driver)];
+  if (sup !== 'gone' || drv === 'unknown') return 'held';
+  return drv === 'same' ? 'orphan' : 'free';
 };
 // `ps -o lstart= -p <pid>`: the start time, or null when no such process.
 export const parseLstart = (out: string): string | null => {
@@ -939,9 +948,10 @@ export const proveRestingMaster = (unproved: { pr: number; head: string } | null
   log(`!!! MASTER IS RED: it rests on #${unproved.pr}'s position ${unproved.head} and fails pnpm test; carrying on, so a batch whose top passes can land the fix:\n${v.message}`);
   return false;
 };
-// A passing proof of `proved` clears the record when it contains the recorded position (the position is its ancestor).
-export const clearsUnproved = (unproved: { head: string } | null, proved: string, isAncestor: (a: string, b: string) => boolean): boolean =>
-  unproved !== null && /^[0-9a-f]{40}$/.test(unproved.head) && (unproved.head === proved || isAncestor(unproved.head, proved));
+// The record is cleared only once master is on a proven tree: a passing proof of a commit with master's current tree (outside
+// docs/goals/**), whether master got there by a publish or was proved where it rests. A proof of any other tree leaves it.
+export const clearsUnproved = (unproved: { head: string } | null, proved: string, isMastersTree: (commit: string) => boolean): boolean =>
+  unproved !== null && isMastersTree(proved);
 
 export type Supervised = { code: number; interrupted: NodeJS.Signals | null; signal: NodeJS.Signals | null; pid: number };
 export const supervise = (o: {
@@ -955,18 +965,44 @@ export const supervise = (o: {
   /** Whether the driver is inside a merge now. */
   publishing: () => boolean;
   onSpawn: (pid: number) => void;
+  /** Called once the supervisor handles signals for the spawned driver (a signal before that was buffered, not lost). */
+  onReady?: (pid: number) => void;
   onStop: () => void;
   log: (line: string) => void;
   pollMs?: number;
 }): Promise<Supervised> =>
   new Promise((resolve, reject) => {
-    const child = spawn(o.command, [...o.args], { detached: true, stdio: 'inherit', env: { ...o.env, [SUPERVISED_ENV]: '1', [SUPERVISOR_PID_ENV]: String(process.pid) } });
+    // Signals are taken over before the spawn: one that arrives before the driver's pid is known is buffered, then acted on.
+    const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
+    const early: NodeJS.Signals[] = [];
+    const buffer = (sig: NodeJS.Signals): number => early.push(sig);
+    for (const s of [...signals, 'SIGUSR1'] as const) process.on(s, buffer);
+    const unbuffer = (): void => {
+      for (const s of [...signals, 'SIGUSR1'] as const) process.off(s, buffer);
+    };
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn(o.command, [...o.args], { detached: true, stdio: 'inherit', env: { ...o.env, [SUPERVISED_ENV]: '1', [SUPERVISOR_PID_ENV]: String(process.pid) } });
+    } catch (error) {
+      unbuffer();
+      return reject(error);
+    }
     const pid = child.pid;
     if (pid === undefined) {
+      unbuffer();
       child.once('error', reject);
       return;
     }
-    o.onSpawn(pid);
+    try {
+      o.onSpawn(pid);
+    } catch (error) {
+      o.log(`recording the driver (pid ${pid}) failed: ${errorText(error).split('\n')[0]}; killing it`);
+      try {
+        process.kill(-pid, 'SIGKILL');
+      } catch {}
+      unbuffer();
+      return reject(error);
+    }
     const poll = o.pollMs ?? 250;
     let interrupted: NodeJS.Signals | null = null;
     let exited: { code: number | null; signal: NodeJS.Signals | null } | null = null;
@@ -1026,9 +1062,11 @@ export const supervise = (o: {
       o.log('SIGUSR1: graceful stop requested; the driver finishes its batch and starts no other');
       o.onStop();
     };
-    const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
     for (const s of signals) process.on(s, onSignal);
     process.on('SIGUSR1', onUsr1);
+    unbuffer();
+    o.onReady?.(pid);
+    for (const sig of early) (sig === 'SIGUSR1' ? onUsr1 : onSignal)(sig);
     let done = false;
     const finish = (): void => {
       if (done || exited === null) return;
