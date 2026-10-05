@@ -16,8 +16,8 @@ import { boxes, modelAt } from './paint-model.ts';
 const RADIUS_FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'radius')?.fixtures ?? []).filter((f) => f.kind === 'layout');
 
 describe('PNT1 radius: the paint model at every sample point equals the committed Chrome pixels', () => {
-  it('covers the five radius fixtures in both directions', () => {
-    expect(RADIUS_FIXTURES.map((f) => f.id)).toEqual(['radius-basic', 'radius-borders', 'radius-clip', 'radius-clamp', 'radius-cascade']);
+  it('covers the six radius fixtures in both directions', () => {
+    expect(RADIUS_FIXTURES.map((f) => f.id)).toEqual(['radius-basic', 'radius-borders', 'radius-clip', 'radius-clamp', 'radius-cascade', 'radius-longhands']);
   });
   for (const spec of RADIUS_FIXTURES) {
     for (const c of casesOf(spec, fixtureInput(spec))) {
