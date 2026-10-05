@@ -87,6 +87,7 @@ import {
   staleLines,
   treeMatches,
 } from './merge-train-lib.ts';
+import { MERGE_DRIVERS } from './floor-merge.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
@@ -781,6 +782,18 @@ const unlock = (): void => {
 };
 
 const prepareWorktree = (): void => {
+  // The merge drivers of .gitattributes (pnpm setup:git), in the shared config every worktree of this repository reads, so a
+  // landing merge resolves generated outputs and raised floors the same way a lane's does.
+  for (const [key, value] of MERGE_DRIVERS) {
+    let now = '';
+    try {
+      now = text(git, ['config', '--get', key]);
+    } catch {}
+    if (now !== value) {
+      git(['config', key, value]);
+      log(`set git config ${key} (pnpm setup:git)`);
+    }
+  }
   if (!existsSync(WT)) {
     net(git, ['fetch', '--quiet', 'origin', '+refs/heads/master:refs/remotes/origin/master']);
     git(['worktree', 'add', '-q', '--detach', WT, 'refs/remotes/origin/master']);
