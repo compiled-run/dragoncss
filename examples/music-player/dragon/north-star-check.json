@@ -1,5 +1,5 @@
 {
- "schema": "dragon-north-star-check/2",
+ "schema": "dragon-north-star-check/3",
  "source": "examples/music-player/tree (the Markless demos/music-player-ssr components as a dragon/tree@0 fixture) + styles.css",
  "compiler": {
   "entry": "createProject (public)",
@@ -133,14 +133,16 @@
   "contextProbe": {
    "rounds": 2,
    "blankedRules": 9,
-   "blankedDeclarations": 45,
+   "blankedDeclarations": 43,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 287,
+  "diagnostics": 291,
   "errors": 286,
   "byCode": {
+   "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
+   "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 19,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 19,
@@ -151,7 +153,8 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 39,
+   "DRAGON_UNSUPPORTED_PROPERTY": 37,
+   "DRAGON_UNSUPPORTED_PROPERTY [web]": 2,
    "DRAGON_UNSUPPORTED_SELECTOR": 9,
    "DRAGON_UNSUPPORTED_VALUE": 3,
    "DRAGON_UNSUPPORTED_VALUE [android]": 29,
@@ -170,7 +173,8 @@
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
-    }
+    },
+    "infos": {}
    },
    "ios": {
     "errors": {
@@ -179,12 +183,15 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 2,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 39,
+     "DRAGON_UNSUPPORTED_PROPERTY": 37,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 32
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
+    },
+    "infos": {
+     "DRAGON_NOT_APPLICABLE_NATIVE": 2
     }
    },
    "android": {
@@ -194,21 +201,28 @@
      "DRAGON_UNSUPPORTED_AT_RULE": 2,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 39,
+     "DRAGON_UNSUPPORTED_PROPERTY": 37,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 32
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
+    },
+    "infos": {
+     "DRAGON_NOT_APPLICABLE_NATIVE": 2
     }
    }
   },
   "declarations": 291,
+  "notApplicableNative": 2,
+  "notApplicableIos": 2,
+  "notApplicableAndroid": 2,
+  "applicableDeclarations": 289,
   "supportedBothTargets": 193,
   "supportedWeb": 213,
   "supportedIos": 193,
   "supportedAndroid": 193,
-  "supportPercent": 66.3,
+  "supportPercent": 66.8,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -291,9 +305,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 111,
-   "B-unwrapped": 107,
-   "C-context": 180
+   "A-authored": 115,
+   "B-unwrapped": 111,
+   "C-context": 186
   }
  },
  "features": {
@@ -720,8 +734,8 @@
    "property": "cursor",
    "value": "pointer",
    "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
+   "ios": "not-applicable",
+   "android": "not-applicable",
    "codes": [
     "DRAGON_UNSUPPORTED_PROPERTY"
    ]
@@ -2308,8 +2322,8 @@
    "property": "cursor",
    "value": "pointer",
    "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
+   "ios": "not-applicable",
+   "android": "not-applicable",
    "codes": [
     "DRAGON_UNSUPPORTED_PROPERTY"
    ]
@@ -4270,10 +4284,52 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@690-705|cursor is not supported in milestone 1",
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|android|css@690-705|cursor has no effect on android: it sets the mouse pointer shape, and a touch screen has no pointer; the android output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 690,
+    "end": 705,
+    "line": 43,
+    "column": 2,
+    "text": "cursor: pointer"
+   },
+   "message": "cursor has no effect on android: it sets the mouse pointer shape, and a touch screen has no pointer; the android output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|ios|css@690-705|cursor has no effect on ios: it sets the mouse pointer shape, and a touch screen has no pointer; the ios output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 690,
+    "end": 705,
+    "line": 43,
+    "column": 2,
+    "text": "cursor: pointer"
+   },
+   "message": "cursor has no effect on ios: it sets the mouse pointer shape, and a touch screen has no pointer; the ios output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_PROPERTY|web|css@690-705|cursor is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
-   "target": null,
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 690,
@@ -4286,7 +4342,8 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -5033,10 +5090,52 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4893-4908|cursor is not supported in milestone 1",
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|android|css@4893-4908|cursor has no effect on android: it sets the mouse pointer shape, and a touch screen has no pointer; the android output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 4893,
+    "end": 4908,
+    "line": 273,
+    "column": 2,
+    "text": "cursor: pointer"
+   },
+   "message": "cursor has no effect on android: it sets the mouse pointer shape, and a touch screen has no pointer; the android output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|ios|css@4893-4908|cursor has no effect on ios: it sets the mouse pointer shape, and a touch screen has no pointer; the ios output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 4893,
+    "end": 4908,
+    "line": 273,
+    "column": 2,
+    "text": "cursor: pointer"
+   },
+   "message": "cursor has no effect on ios: it sets the mouse pointer shape, and a touch screen has no pointer; the ios output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_PROPERTY|web|css@4893-4908|cursor is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
-   "target": null,
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 4893,
@@ -5049,7 +5148,8 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
