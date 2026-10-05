@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { androidProfile, iosProfile, MEDIA_CONTEXT, mediaFeatures, NO_BAND_RUNTIME_FAULTS, nativeBandOfViewport, nativeBands, webProfile } from 'dragon';
 import type { ResizeCapture } from '../src/resize-capture.ts';
-import { committedResize, RESIZE_DPRS, resizeCaptureProblem, resizeCaseReport, resizeCases, resizeReport, scriptPoints, scriptProblem } from '../src/resize-capture.ts';
+import { committedResize, RESIZE_BACKENDS, RESIZE_DPRS, resizeCaptureProblem, resizeCaseReport, resizeCases, resizeReport, scriptPoints, scriptProblem } from '../src/resize-capture.ts';
 import { RESIZE_SCRIPTS, resizeSizeProblem } from '../src/fixture-groups/media-runtime.ts';
 import { deriveMediaRows } from '../src/profile-rows.ts';
 
@@ -39,10 +39,19 @@ describe('the resize host lanes against the committed Chrome traces', () => {
     expect(report.failures).toEqual([]);
     expect(report.passing.map((c) => c.id)).toEqual(cases.map((c) => c.id));
     const points = cases.reduce((n, c) => n + scriptPoints(c).length, 0);
-    expect([report.samples, report.oracle, report.dual]).toEqual([points * RESIZE_DPRS.length, points * RESIZE_DPRS.length, points]);
+    // Each sample and oracle point is judged on both backends' band programs (uikit and android-views).
+    expect([report.samples, report.oracle, report.dual]).toEqual([points * RESIZE_DPRS.length * RESIZE_BACKENDS.length, points * RESIZE_DPRS.length * RESIZE_BACKENDS.length, points]);
     expect(report.boxes).toBeGreaterThan(report.samples);
     expect(report.colors).toBeGreaterThan(report.samples);
   }, 600_000);
+  it('run the android-views band program too: a fault planted in it alone fails the lanes', () => {
+    const c = byId('mqr-width-switch~resize');
+    expect(resizeCaseReport(c, [1]).failures).toEqual([]);
+    expect(RESIZE_BACKENDS).toEqual(['uikit', 'android-views']);
+    const r = resizeCaseReport(c, [1], { ...NO_BAND_RUNTIME_FAULTS, bandDeltaDropped: true });
+    expect(r.failures.some((f) => f.includes(' android-views step '))).toBe(true);
+    expect(r.failures.some((f) => f.includes(' uikit step '))).toBe(true);
+  });
   for (const fault of ['bandBoundaryExclusive', 'bandStale', 'resizeSkipsRelayout', 'bandDeltaDropped'] as const) {
     it(`the planted ${fault} fails them`, () => {
       const r = resizeCaseReport(byId('mqr-width-switch~resize'), [1], { ...NO_BAND_RUNTIME_FAULTS, [fault]: true });

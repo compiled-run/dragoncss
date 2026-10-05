@@ -4,7 +4,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Compiled, FrontEndResult } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
-import { createProjectWith, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, nativePrograms, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, MAX_STATE_TABLE_ASSIGNMENTS, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, nativePrograms, NO_FAULTS } from '../src/internal.ts';
+import { closeThresholds, refuseBandedStateSpace } from '../src/lower/band-program.ts';
+import { band, parseMediaQueryList } from '../src/media/index.ts';
+import { parseStylesheet } from '../src/css/stylesheet.ts';
+import type { Diagnostic } from '../src/index.ts';
 import { div, expectCatalogued, inputFor, spanTextOf } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -72,5 +76,61 @@ describe('R8: transitions a size change would start are refused on native until 
   });
   it('a transition listed only inside a band still counts, once per element and property', () => {
     expect(compile('.a { width: 10px; height: 5px; } @media (max-width: 320px) { .a { width: 20px; transition: width 1s; } }').refusals.map((r) => r[1])).toEqual(['ios', 'android']);
+  });
+});
+
+describe('the native refusals MQ-R1 adds beside R8 (PR #140 review)', () => {
+  const publicCompile = (css: string, targets: Record<string, unknown> = { ...NATIVE, web: {} }) => {
+    const i = input(css);
+    const c = createProject({ projectId: 'test', targets: targets as typeof NATIVE & { web?: object } }).compile(i);
+    return { i, c };
+  };
+  it('an animation or transition declared in a rule that applies only in some bands is refused on ios and android (MQ-Rt), not left to the fold band', () => {
+    const { i, c } = publicCompile('.a { width: 10px; height: 5px; } @keyframes spin { to { background-color: red; } } @media (min-width: 400px) { .a { animation: spin 1s infinite; } }', NATIVE);
+    const r = c.diagnostics.filter((d) => /inside @media is unsupported on (ios|android): transition and animation lists that differ between @media bands are not built yet \(package MQ-Rt\)$/.test(d.message));
+    expect(r.map((d) => [d.code, d.target, spanTextOf(i, d)])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios', 'spin 1s infinite'], ['DRAGON_UNSUPPORTED_VALUE', 'android', 'spin 1s infinite']]);
+    expect([c.outputs.ios.kind, c.outputs.android.kind]).toEqual(['blocked', 'blocked']);
+    const t = publicCompile('.a { width: 10px; height: 5px; } @media (max-width: 300px) { .a { transition: background-color 1s; } }', NATIVE).c;
+    expect(t.diagnostics.filter((d) => d.message.startsWith('transition inside @media is unsupported on')).map((d) => d.target)).toEqual(['ios', 'android']);
+    expectCatalogued([...c.diagnostics, ...t.diagnostics]);
+  });
+  it('the other bands\' animation analyses report too: a keyframe property refused only in a non-fold band blocks the output', () => {
+    const c = derive('.a { width: 10px; height: 5px; } @keyframes k { to { flex-grow: 2; } } @media (max-width: 300px) { .a { animation: k 1s; } }');
+    expect(c.diagnostics.some((d) => d.message.startsWith('flex-grow in @keyframes k cannot be animated yet'))).toBe(true);
+  });
+  it('thresholds within 1/64 px with slack are refused natively until MQ-R0, since the exact partition has no band for what Chrome matches there', () => {
+    const { i, c } = publicCompile('.a { width: 10px; height: 5px; } @media (width <= 400px) { .a { width: 20px; } } @media (width > 400px) { .a { width: 30px; } }');
+    const r = c.diagnostics.filter((d) => d.message.includes('(package MQ-R0)'));
+    expect(r.map((d) => [d.code, d.target, spanTextOf(i, d), d.message])).toEqual(['ios', 'android'].map((t) => ['DRAGON_UNSUPPORTED_AT_RULE', t, '@media (width <= 400px) { .a { width: 20px; } }', `@media (width <= 400px) and (width > 400px) meet within 1/64 px, where Chrome's 1/64 px slack lets a viewport match a combination the ${t} bands do not hold yet (package MQ-R0)`]));
+    expect((c.outputs as Record<string, { kind: string }>)['web']?.kind).toBe('ready');
+    const partition = (q: string[]) => {
+      const p = band(q.map((x) => parseMediaQueryList(x)));
+      if (p.kind !== 'bands') throw new Error(p.detail);
+      return p;
+    };
+    expect(closeThresholds(partition(['(max-width: 400px)', '(min-width: 401px)']))).toBeNull();
+    expect(closeThresholds(partition(['(max-width: 400px)', '(min-width: 400.01px)']))).not.toBeNull();
+    expect(closeThresholds(partition(['(width < 400px)', '(width > 400px)']))).toBeNull();
+    expect(closeThresholds(partition(['(max-width: 400px)', '(max-height: 400px)']))).toBeNull();
+  });
+  it('the (assignment, band) pairs of a native state table are capped at 64, as a diagnostic at the first @media', () => {
+    const text = '@media (max-width: 300px) { .a { width: 1px; } }';
+    const SRC = { uri: 's.css', revision: 'r', hash: 'h' };
+    const rules = parseStylesheet(text, { source: SRC, start: 0, end: text.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, [], []);
+    const conditions = rules.flatMap((r) => r.condition ?? []);
+    const out: Diagnostic[] = [];
+    refuseBandedStateSpace(32, 2, conditions, ['ios', 'android'], out);
+    expect(out).toEqual([]);
+    refuseBandedStateSpace(5, 16, conditions, ['ios', 'android'], out);
+    expect(out.map((d) => [d.code, d.target, d.message])).toEqual(['ios', 'android'].map((t) => ['DRAGON_STATE_SPACE_LIMIT', t, `5 reachable assignments in 16 @media bands are 80 (assignment, band) pairs, above the ${t} state table limit of ${MAX_STATE_TABLE_ASSIGNMENTS}`]));
+    expectCatalogued(out);
+  });
+  it('a document id starting with @ is invalid input: @ is reserved for the environment states (@env#band)', () => {
+    const i = input('.a { width: 10px; }');
+    const tree = i.tree as NonNullable<FrontEndResult['tree']>;
+    const bad = { ...i, tree: { ...tree, documents: tree.documents.map((d) => ({ ...d, id: '@env' })) } } as FrontEndResult;
+    const c = createProject({ projectId: 'test', targets: NATIVE }).compile(bad);
+    expect(c.diagnostics.some((d) => d.message.includes('document id "@env" must not start with "@"'))).toBe(true);
+    expect(c.ok).toBe(false);
   });
 });

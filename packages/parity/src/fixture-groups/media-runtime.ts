@@ -16,6 +16,7 @@ export const MEDIA_RUNTIME: readonly FixtureSpec[] = [
   both('mqr-vw-relayout'),
   both('mqr-nested'),
   both('mqr-music-shape'),
+  both('mqr-forms'),
   reject('reject-mqr-17-bands', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (min-width: 100px) { .a { width: 1px; } }', 'the @media rules of this document split the viewport into 17 bands, more than 16, which is not supported yet (package MQ-R4)'),
   reject('reject-mqr-env-feature', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (prefers-reduced-motion: reduce) { .a { width: 20px; } }', '@media (prefers-reduced-motion: reduce) in the stylesheet is not supported: (prefers-reduced-motion: reduce) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'),
 ];
@@ -42,6 +43,9 @@ export const RESIZE_SCRIPTS: readonly ResizeScript[] = [
   { fixture: 'mqr-nested', start: { width: 400, height: 304 }, steps: [r(384, 304), r(352, 304), r(312, 304), r(304, 400), r(392, 304), r(400, 304)] },
   // The north star's 768 and 640 breakpoints at half scale.
   { fixture: 'mqr-music-shape', start: { width: 400, height: 304 }, steps: [r(384, 304), r(352, 304), r(320, 304), r(304, 400), r(400, 304)] },
+  // The other comparison forms the media rows cover: plain = (with its 1/64 px slack at 352), a strict < range, an em max- (24em is
+  // 384px at the initial 16px) and a <= range on height; every width group in both height groups.
+  { fixture: 'mqr-forms', start: { width: 400, height: 304 }, steps: [r(400, 400), r(384, 400), r(384, 304), r(352, 304), r(352, 400), r(344, 400), r(328, 400), r(328, 304), r(336, 320)] },
 ];
 
 /** The largest root a resize script may ask for, so every portrait stage of the device matrix holds it (R7 (a)). */

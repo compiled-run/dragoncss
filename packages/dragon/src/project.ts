@@ -45,7 +45,7 @@ import { NO_FAULTS } from './faults.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
 import { PROGRAM_VERSIONS } from './lower/native-program.ts';
 import type { BandAnalysis } from './lower/band-program.ts';
-import { bandTableOf, refuseSizeTransitions } from './lower/band-program.ts';
+import { bandTableOf, refuseBandedNativeAnimations, refuseBandedStateSpace, refuseCloseThresholds, refuseSizeTransitions } from './lower/band-program.ts';
 import type { rtBand } from '@dragon/layout';
 import type { Band, BandPartition } from './media/index.ts';
 import { band, bandAt, evaluateInBand, featuresOfList } from './media/index.ts';
@@ -844,6 +844,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       nativeBand = nativeBandIndex(bands, options.foldViewport, options.faults);
       // MQ-R1 (T067 R13): native switches bands at run time where its profile proves each feature; the profile rows decide.
       if (options.profiles === 'enforce') gateMediaFeatures(conditions, targets, profiles, diagnostics);
+      // MQ-R1: thresholds within 1/64 px give Chrome a band the exact partition lacks; a native output that switches bands at run
+      // time (no fold viewport) refuses them until MQ-R0. With a fold viewport it is resolved for that one viewport, and never looks a band up.
+      if (options.foldViewport === null) refuseCloseThresholds(partition, conditions, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics);
     }
     for (const c of valid.components.values()) checkTemplates(c.root, diagnostics);
     // MQ-a, MQ-R1: every band is checked for every target, since native switches bands at run time as web does; a rule-level check
@@ -875,16 +878,27 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
       animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
+      // MQ-R1: native runs every band, so every other band's analysis reports too (each diagnostic once).
+      const bandAnimations: AnimationAnalysis[] = bandCases.map((r, k) => {
+        if (k === nativeBand) return animation as AnimationAnalysis;
+        const own: Diagnostic[] = [];
+        const a = analyzeAnimations({ cases: r.cases, rules: [...(bandRules[k] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, own);
+        const seen = new Set(diagnostics.map((d) => JSON.stringify(d)));
+        for (const d of own) if (!seen.has(JSON.stringify(d))) diagnostics.push(d);
+        return a;
+      });
       if (options.profiles === 'enforce') gateAnimationFeatures(animation, targets, (t) => profileFor(profiles, t as KnownTarget), diagnostics);
-      if ((targets as readonly string[]).includes('web')) refuseBandedAnimations(rules, (r) => bandRules.every((set) => set.has(r)), diagnostics);
+      const inEveryBand = (r: Rule): boolean => bandRules.every((set) => set.has(r));
+      if ((targets as readonly string[]).includes('web')) refuseBandedAnimations(rules, inEveryBand, diagnostics);
+      const nativeTargets = NATIVE_TARGETS.filter((t) => targets.includes(t));
+      // MQ-R1: per-band transition and animation lists are refused on native until MQ-Rt, as on web until ANIM-mq.
+      refuseBandedNativeAnimations(rules, inEveryBand, nativeTargets, diagnostics);
+      // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
+      if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.
       // Like the animation support gate, it is a support fact: derive mode (the lanes that find what passes) does not apply it.
-      const nativeTargets = NATIVE_TARGETS.filter((t) => targets.includes(t));
       if (nativeTargets.length > 0 && options.profiles === 'enforce') {
-        const analyses: BandAnalysis[] = bandCases.map((r, k) => ({
-          cases: r.cases,
-          animation: k === nativeBand ? (animation as AnimationAnalysis) : analyzeAnimations({ cases: r.cases, rules: [...(bandRules[k] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, []),
-        }));
+        const analyses: BandAnalysis[] = bandCases.map((r, k) => ({ cases: r.cases, animation: bandAnimations[k] as AnimationAnalysis }));
         refuseSizeTransitions(analyses, nativeTargets, diagnostics);
       }
       if (options.profiles === 'enforce') {

@@ -3,10 +3,15 @@
 // names. The fixtures' runs against Chrome are media-runtime-resize.test.ts.
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
-import type { rtBand } from '@dragon/layout';
 import type { Assignment, BandCase, NativeProgram, ProgramNode } from 'dragon';
 import { BAND_KEY, bandStateProgram, NO_BAND_RUNTIME_FAULTS } from 'dragon';
 import { MediaRuntime } from '../src/media-runtime.ts';
+import { rtBand } from '@dragon/layout';
+import { bandTableOf, closeThresholds, nativeBandOfViewport, nativeBands } from 'dragon';
+import type { FixtureSpec } from '../src/fixtures.ts';
+import { FIXTURES } from '../src/fixtures.ts';
+import { nativeCompile } from '../src/native-host.ts';
+import { band, parseMediaQueryList } from '../../dragon/src/media/index.ts';
 
 const px = (value: number) => ({ kind: 'px', value });
 const auto = { kind: 'auto' };
@@ -73,5 +78,39 @@ describe('MediaRuntime', () => {
   });
   it('refuses a table whose bands are not the program\'s env#band domain', () => {
     expect(() => new MediaRuntime(sp, { atoms: TABLE.atoms, bands: [[true]] }, 1, { widthPx: 1, heightPx: 1 })).toThrow(/not the 1 bands of the table/);
+  });
+});
+
+describe('the band lookup over whole device px, off the 8 px grid (PR #140 review)', () => {
+  const DPRS = [1, 1.75, 2, 2.625, 3, 3.5];
+  const sheets = FIXTURES.filter((f): f is FixtureSpec & { kind: 'layout' } => f.kind === 'layout' && /^(media|mqr)-/.test(f.id)).map((f) => ({ id: f.id, compiled: nativeCompile(f, 'ltr') }));
+  it('maps every root from 0 to 2048 device px wide or high at DPR 1, 1.75, 2, 2.625, 3 and 3.5 to a band; away from a threshold, the partition\'s', () => {
+    let checked = 0;
+    for (const s of sheets) {
+      const bands = nativeBands(s.compiled);
+      // A sheet with thresholds within 1/64 px (media-range) is refused for run-time switching until MQ-R0 (the next test).
+      if (bands === null || bands.closeThresholds !== null) continue;
+      const thresholds = bands.table.atoms.flatMap((a) => a.comparisons.map((c) => c.value));
+      const near = (v: number): boolean => thresholds.some((t) => Math.abs(v - t) <= 1 / 64);
+      for (const dpr of DPRS) {
+        for (let px = 0; px <= 2048; px++) {
+          for (const [w, h] of [[px, 600], [px, 1400], [600, px], [1400, px]] as const) {
+            const k = rtBand.bandAtPx(bands.table, w, h, dpr, rtBand.NO_BAND_FAULTS);
+            checked++;
+            const mw = rtBand.mediaSize(w, dpr);
+            const mh = rtBand.mediaSize(h, dpr);
+            if (!near(mw) && !near(mh)) expect(k, `${s.id} ${w}x${h} px at ${dpr}`).toBe(nativeBandOfViewport(s.compiled, { width: mw, height: mh }));
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(500_000);
+  }, 600_000);
+  it('the review\'s sheet, refused natively at compile time (MQ-R0), is the one whose exact partition the lookup cannot cover; so is media-range\'s', () => {
+    expect(sheets.filter((s) => nativeBands(s.compiled)?.closeThresholds != null).map((s) => s.id)).toEqual(['media-range']);
+    const p = band(['(width <= 400px)', '(width > 400px)'].map((q) => parseMediaQueryList(q)));
+    if (p.kind !== 'bands') throw new Error(p.detail);
+    expect(closeThresholds(p)).not.toBeNull();
+    expect(() => rtBand.bandAtPx(bandTableOf(p), 1400, 1000, 3.5, rtBand.NO_BAND_FAULTS)).toThrow(/no band has the truth vector 11/);
   });
 });

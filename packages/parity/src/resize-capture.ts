@@ -8,7 +8,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { absoluteRects, layout } from '@dragon/layout';
-import type { Assignment, BandRuntimeFaults, Compiled, NativeProgram, Rgba8, StateProgram } from 'dragon';
+import type { Assignment, BandRuntimeFaults, Compiled, NativeBackend, NativeProgram, Rgba8, StateProgram } from 'dragon';
 import { LONGHANDS, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, NO_BAND_RUNTIME_FAULTS, parseComputedColor, programInput, stateKey, webClassMap } from 'dragon';
 import type { CapturedNode } from './capture.ts';
 import type { ParityCase } from './cases.ts';
@@ -30,7 +30,7 @@ export const RESIZE_DPRS: readonly number[] = [1, 2, 2.625, 3];
 /** The computed values a sample records: every longhand at DPR 1 (chrome-dual compares them), the background colour elsewhere. */
 export const DPR_PROPERTIES: readonly string[] = ['background-color'];
 
-/** One resize case: a script in one direction, with its native compile, band program (uikit) and web rendering. */
+/** One resize case: a script in one direction, with its native compile (both backends' band programs) and web rendering. */
 export type ResizeCase = {
   readonly id: string;
   readonly spec: FixtureSpec;
@@ -45,13 +45,17 @@ export type ResizeCase = {
 
 const bandPrograms = new Map<string, StateProgram>();
 
-/** The band program of a resize case (uikit), derived once per process. */
-export function resizeProgram(c: ResizeCase, faults: BandRuntimeFaults = NO_BAND_RUNTIME_FAULTS): StateProgram {
+/** The native backends whose band programs the resize lanes run: each backend derives its own deltas through env#band. */
+export const RESIZE_BACKENDS: readonly NativeBackend[] = ['uikit', 'android-views'];
+
+/** The band program of a resize case for a backend, derived once per process. */
+export function resizeProgram(c: ResizeCase, faults: BandRuntimeFaults = NO_BAND_RUNTIME_FAULTS, backend: NativeBackend = 'uikit'): StateProgram {
   const plain = faults === NO_BAND_RUNTIME_FAULTS;
-  const cached = plain ? bandPrograms.get(c.id) : undefined;
+  const key = `${c.id} ${backend}`;
+  const cached = plain ? bandPrograms.get(key) : undefined;
   if (cached !== undefined) return cached;
-  const sp = nativeBandProgram(c.compiled, 'uikit', undefined, faults);
-  if (plain) bandPrograms.set(c.id, sp);
+  const sp = nativeBandProgram(c.compiled, backend, undefined, faults);
+  if (plain) bandPrograms.set(key, sp);
   return sp;
 }
 
@@ -296,9 +300,9 @@ const pxOf = (c: ResizeCase, size: Size, dpr: number): { widthPx: number; height
 };
 
 /** Runs a resize case's script on the band runtime reference at one DPR: a dump after the start and after every step. */
-export function runResizeScript(c: ResizeCase, dpr: number, faults: BandRuntimeFaults = NO_BAND_RUNTIME_FAULTS): ResizeDump[] {
+export function runResizeScript(c: ResizeCase, dpr: number, faults: BandRuntimeFaults = NO_BAND_RUNTIME_FAULTS, backend: NativeBackend = 'uikit'): ResizeDump[] {
   const table = nativeBands(c.compiled)?.table ?? { atoms: [], bands: [[]] };
-  const rt = new MediaRuntime(resizeProgram(c, faults), table, dpr, pxOf(c, c.script.start, dpr), faults);
+  const rt = new MediaRuntime(resizeProgram(c, faults, backend), table, dpr, pxOf(c, c.script.start, dpr), faults);
   const dump = (): ResizeDump => ({ band: rt.band, program: rt.program(), viewport: rt.viewport(), layouts: rt.layouts });
   const out = [dump()];
   for (const s of c.script.steps) {
@@ -333,66 +337,68 @@ export function resizeCaseReport(c: ResizeCase, dprs: readonly number[] = RESIZE
   let dual = 0;
   let oracle = 0;
   for (const dpr of dprs) {
-    let dumps: ResizeDump[];
-    try {
-      dumps = runResizeScript(c, dpr, faults);
-    } catch (e) {
-      failures.push(`${c.id} DPR ${dpr}: the runtime failed: ${e instanceof Error ? e.message : String(e)}`);
-      continue;
-    }
-    // R5: after every step, the per-case program of (the app assignment, the partition's band of the size) at that size, one
-    // layout per step.
-    points.forEach((pt, i) => {
-      const d = dumps[i] as ResizeDump;
-      const at = `${c.id} DPR ${dpr} step ${i} (${pt.size.width}x${pt.size.height})`;
-      oracle++;
-      const band = nativeBandOfViewport(c.compiled, pt.size);
-      if (band === null) {
-        failures.push(`${at}: no band of the partition holds the size`);
-        return;
-      }
-      const want = nativeBandPrograms(c.compiled, pt.assignment, band);
-      if (want.kind !== 'ready') failures.push(`${at}: no per-case program: ${want.reason}`);
-      else if (canonicalJsonText(d.program) !== canonicalJsonText(want.programs.uikit)) failures.push(`${at}: the runtime's program (band ${d.band}) is not the per-case program of band ${band}`);
-      if (d.viewport.width !== pt.size.width || d.viewport.height !== pt.size.height) failures.push(`${at}: laid out at ${d.viewport.width}x${d.viewport.height}`);
-      if (d.layouts !== i + 1) failures.push(`${at}: ${d.layouts} layouts after ${i} steps, not ${i + 1} (one per step)`);
-    });
     const cap = captures(c.id, 'authored', dpr);
-    if (cap === null) {
-      failures.push(`${c.id} DPR ${dpr}: no committed resize capture (pnpm run parity:resize-capture)`);
-      continue;
-    }
     const sizes = (xs: readonly { readonly size: Size }[]): string => canonicalJsonText(xs.map((x) => x.size));
-    if (canonicalJsonText(cap.start) !== canonicalJsonText(c.script.start) || canonicalJsonText(cap.steps) !== canonicalJsonText(c.script.steps) || cap.samples.length !== points.length || sizes(cap.samples) !== sizes(points)) {
-      failures.push(`${c.id} DPR ${dpr}: the capture is of another script (${cap.samples.length} samples; the script has ${points.length}) (pnpm run parity:resize-capture)`);
-      continue;
+    const capProblem = cap === null
+      ? `${c.id} DPR ${dpr}: no committed resize capture (pnpm run parity:resize-capture)`
+      : canonicalJsonText(cap.start) !== canonicalJsonText(c.script.start) || canonicalJsonText(cap.steps) !== canonicalJsonText(c.script.steps) || cap.samples.length !== points.length || sizes(cap.samples) !== sizes(points)
+        ? `${c.id} DPR ${dpr}: the capture is of another script (${cap.samples.length} samples; the script has ${points.length}) (pnpm run parity:resize-capture)`
+        : null;
+    if (capProblem !== null) failures.push(capProblem);
+    for (const backend of RESIZE_BACKENDS) {
+      let dumps: ResizeDump[];
+      try {
+        dumps = runResizeScript(c, dpr, faults, backend);
+      } catch (e) {
+        failures.push(`${c.id} DPR ${dpr} ${backend}: the runtime failed: ${e instanceof Error ? e.message : String(e)}`);
+        continue;
+      }
+      // R5: after every step, the per-case program of (the app assignment, the partition's band of the size) at that size, one
+      // layout per step.
+      points.forEach((pt, i) => {
+        const d = dumps[i] as ResizeDump;
+        const at = `${c.id} DPR ${dpr} ${backend} step ${i} (${pt.size.width}x${pt.size.height})`;
+        oracle++;
+        const band = nativeBandOfViewport(c.compiled, pt.size);
+        if (band === null) {
+          failures.push(`${at}: no band of the partition holds the size`);
+          return;
+        }
+        const want = nativeBandPrograms(c.compiled, pt.assignment, band);
+        if (want.kind !== 'ready') failures.push(`${at}: no per-case program: ${want.reason}`);
+        else if (canonicalJsonText(d.program) !== canonicalJsonText(want.programs[backend])) failures.push(`${at}: the runtime's program (band ${d.band}) is not the per-case program of band ${band}`);
+        if (d.viewport.width !== pt.size.width || d.viewport.height !== pt.size.height) failures.push(`${at}: laid out at ${d.viewport.width}x${d.viewport.height}`);
+        if (d.layouts !== i + 1) failures.push(`${at}: ${d.layouts} layouts after ${i} steps, not ${i + 1} (one per step)`);
+      });
+      if (cap === null || capProblem !== null) continue;
+      cap.samples.forEach((s, i) => {
+        const d = dumps[i] as ResizeDump;
+        const at = `${c.id} DPR ${dpr} ${backend} step ${i} (${s.size.width}x${s.size.height})`;
+        samples++;
+        const env = { viewport: s.size, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' as const };
+        const input = programInput(d.program, d.viewport, dpr);
+        const out = layout(input, referenceMeasurer());
+        if (out.kind !== 'ok') {
+          failures.push(`${at}: the engine refused the live program`);
+          return;
+        }
+        const capture = { fixture: c.id, chrome: cap.chrome, browser: '', platform: '', viewport: s.size, devicePixelRatio: dpr, direction: c.direction, nodes: s.nodes };
+        const cmp = compareZoomedLayout(capture, absoluteRects(out.boxes), input, env);
+        boxes += cmp.nodes.length;
+        for (const p of cmp.problems) failures.push(`${at}: ${p}`);
+        for (const n of cmp.nodes) if (n.dragon !== null && !n.exactLu) failures.push(`${at} ${n.id}: not exact in zoomed LU (chrome ${JSON.stringify(n.chrome)}, engine LU ${JSON.stringify(n.dragonLu)})`);
+        for (const n of s.nodes) {
+          if (n.kind !== 'element' || n.computed === null) continue;
+          const want = programBackground(d.program, n.id);
+          const text = n.computed['background-color'];
+          if (want === null || text === undefined) continue;
+          const got = parseComputedColor(text);
+          colors++;
+          if (got === null || !sameColor(got, want)) failures.push(`${at} ${n.id}: background-color chrome ${text}, dragon ${JSON.stringify(want)}`);
+        }
+      });
     }
-    cap.samples.forEach((s, i) => {
-      const d = dumps[i] as ResizeDump;
-      const at = `${c.id} DPR ${dpr} step ${i} (${s.size.width}x${s.size.height})`;
-      samples++;
-      const env = { viewport: s.size, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' as const };
-      const input = programInput(d.program, d.viewport, dpr);
-      const out = layout(input, referenceMeasurer());
-      if (out.kind !== 'ok') {
-        failures.push(`${at}: the engine refused the live program`);
-        return;
-      }
-      const capture = { fixture: c.id, chrome: cap.chrome, browser: '', platform: '', viewport: s.size, devicePixelRatio: dpr, direction: c.direction, nodes: s.nodes };
-      const cmp = compareZoomedLayout(capture, absoluteRects(out.boxes), input, env);
-      boxes += cmp.nodes.length;
-      for (const p of cmp.problems) failures.push(`${at}: ${p}`);
-      for (const n of cmp.nodes) if (n.dragon !== null && !n.exactLu) failures.push(`${at} ${n.id}: not exact in zoomed LU (chrome ${JSON.stringify(n.chrome)}, engine LU ${JSON.stringify(n.dragonLu)})`);
-      for (const n of s.nodes) {
-        if (n.kind !== 'element' || n.computed === null) continue;
-        const want = programBackground(d.program, n.id);
-        const text = n.computed['background-color'];
-        if (want === null || text === undefined) continue;
-        const got = parseComputedColor(text);
-        colors++;
-        if (got === null || !sameColor(got, want)) failures.push(`${at} ${n.id}: background-color chrome ${text}, dragon ${JSON.stringify(want)}`);
-      }
-    });
+    if (cap === null || capProblem !== null) continue;
     if (dpr === 1) {
       const compiled = captures(c.id, 'compiled', 1);
       if (compiled === null) failures.push(`${c.id}: no committed compiled-rendering resize capture (chrome-dual)`);
