@@ -17,6 +17,7 @@ const TITLES: [RegExp, string][] = [
   [/^header-bsd-\d+$/, 'Chromium files with a BSD licence in their own header'],
   [/^adobe-bsd-2$/, 'Adobe Systems: BSD 2-Clause'],
   [/^rapidhash-bsd-2$/, 'rapidhash: BSD 2-Clause'],
+  [/^kinnunen-bsd-2$/, 'Kimmo Kinnunen, Apple and Intel: BSD 2-Clause'],
   [/^fdlibm-sun$/, 'fdlibm (in V8): the Sun Microsystems notice'],
 ];
 

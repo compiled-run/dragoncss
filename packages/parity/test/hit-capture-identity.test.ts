@@ -2,13 +2,14 @@
 // and the emitted CSS only by its own key. Every capture and emitted file of the base (expected-hit/identity-base.json, written by
 // pnpm run parity:hit-capture -- --identity-base <rev>) must still exist and, with that key removed, hash to the base's; every
 // other file under those roots is a case of a registered fixture (fixture groups added since the base capture their cases there).
+// IDENTITY_RULED pins the post-ruling hash of each base file a later ruling moves.
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { IdentityManifest } from '../src/hit-capture.ts';
 import { GROUPS } from '../src/fixtures.ts';
-import { IDENTITY_MANIFEST, IDENTITY_ROOTS, parseHitCaptureArgs, withoutPointerEvents } from '../src/hit-capture.ts';
+import { IDENTITY_MANIFEST, IDENTITY_ROOTS, IDENTITY_RULED, parseHitCaptureArgs, withoutPointerEvents } from '../src/hit-capture.ts';
 import { repoPath } from '../src/paths.ts';
 
 const manifest = JSON.parse(readFileSync(repoPath(IDENTITY_MANIFEST), 'utf8')) as IdentityManifest;
@@ -49,9 +50,12 @@ describe('pointer-events changes the captures and emitted files only by its own 
         differ.push(`${path}: missing`);
         continue;
       }
-      if (createHash('sha256').update(withoutPointerEvents(path, text), 'utf8').digest('hex') !== sha) differ.push(path);
+      const want = IDENTITY_RULED[path]?.sha256 ?? sha;
+      if (createHash('sha256').update(withoutPointerEvents(path, text), 'utf8').digest('hex') !== want) differ.push(path);
     }
     expect(differ).toEqual([]);
+    // A ruled file is a base file whose ruling changed it: its pinned hash is a sha256 and differs from the base's.
+    for (const [path, r] of Object.entries(IDENTITY_RULED)) expect([path, manifest.files[path] !== undefined, /^[0-9a-f]{64}$/.test(r.sha256), r.sha256 !== manifest.files[path]]).toEqual([path, true, true, true]);
   });
 
   it('adds the key to every captured element and emitted rule', () => {

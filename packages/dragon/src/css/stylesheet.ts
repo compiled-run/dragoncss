@@ -6,6 +6,7 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
+import { legacyDisplay } from './display-legacy.ts';
 import type { AtRuleContext, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
 import { PAINT_VALUE_PARSERS } from './paint-parsers.ts';
@@ -419,6 +420,9 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     }
     return { kind: 'ok', longhands: [{ property, value: ratio, explicit: true }] };
   }
+  // Chrome 145's legacy display keywords (display-legacy.ts).
+  const legacy = !wide && property === 'display' ? legacyDisplay(tokens, base) : null;
+  if (legacy !== null) return legacy.kind === 'refused' ? legacy : { kind: 'ok', longhands: [{ property: 'display', value: legacy.value, explicit: true }] };
   // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
   if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);
   // css-images-3 §5.6: object-position is one <position> of up to four tokens (values.ts positionValue).
