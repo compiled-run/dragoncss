@@ -161,7 +161,7 @@ jobs:
           bash scripts/fetch-wpt.sh
           brew install openjdk@17
           brew upgrade kotlin || brew install kotlin
-          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"; ls "${ANDROID_HOME:-/nonexistent}/platforms" 2>&1 | tail -3
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"; find "${ANDROID_HOME:-/nonexistent}/platforms" -maxdepth 1 2>&1 | tail -3
       - name: vitest run (every other file, shard ${{ matrix.shard }}/3)
         run: |
           mkdir -p "$RUNNER_TEMP/report"
@@ -237,7 +237,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: regen --skip needs #124
-        run: grep -q -- "'--skip'" scripts/regen.ts || { echo "::error::scripts/regen.ts has no --skip (regen-on-ci, #124); the split fixed-point check cannot run"; exit 1; }
+        run: |
+          grep -q -- "'--skip'" scripts/regen.ts || { echo "::error::scripts/regen.ts has no --skip (regen-on-ci, PR 124); the split fixed-point check cannot run"; exit 1; }
       - uses: actions/cache/restore@v4
         with:
           path: .git/dragon-regen/v2
@@ -274,7 +275,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: regen --only needs #124
-        run: grep -q -- "'--only'" scripts/regen.ts || { echo "::error::scripts/regen.ts has no --only (regen-on-ci, #124); the split fixed-point check cannot run"; exit 1; }
+        run: |
+          grep -q -- "'--only'" scripts/regen.ts || { echo "::error::scripts/regen.ts has no --only (regen-on-ci, PR 124); the split fixed-point check cannot run"; exit 1; }
       - name: JDK 17 and kotlinc
         run: |
           brew install openjdk@17
