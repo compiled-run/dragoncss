@@ -1,7 +1,9 @@
 # CI-FULLTEST: the full `pnpm test` (vitest run, every packages/*/test file) of one commit on GitHub-hosted standard runners,
 # sharded, plus the `pnpm regen` fixed-point check. Judged exactly as a local run: no tolerance, filter or retry is added; a
 # failing test fails the run. The device-record tests judge the committed lanes.json as they do locally.
-#   platform-free: packages/layout and packages/dragon (as ci.yml) on ubuntu-latest, except the native toolchain file below.
+# The groups and the shards are scripts/test-shards.ts's: files split by their recorded durations (scripts/test-durations.json),
+# longest first onto the least loaded shard, so the shards end together. The summary checks every test file ran exactly once.
+#   platform-free: packages/layout and packages/dragon (as ci.yml) on ubuntu-latest, except the native files.
 #   native (xcode-27, 2 shards): the files that compile with swiftc or kotlinc, on the local Mac's Xcode 27.0 (Swift 6.4).
 #   chrome (macos-26, 3 shards): every other file; macOS 26 is where the Chrome captures are byte-identical to the Mac's
 #     (capture-proof.yml), and kotlinc and the JDK are the versions lanes.json records.
@@ -26,17 +28,6 @@ concurrency:
   group: full-test-${{ inputs.sha || github.event.pull_request.head.sha }}
   cancel-in-progress: false
 env:
-  # The test files that compile the generated engine with swiftc or kotlinc (they run on the native shards only).
-  NATIVE_FILES: >-
-    packages/dragon/test/native-backends.test.ts
-    packages/translate/test/native-swift.test.ts
-    packages/translate/test/native-dpr-swift.test.ts
-    packages/translate/test/native-kotlin.test.ts
-    packages/translate/test/native-dpr-kotlin.test.ts
-    packages/translate/test/planted-swift.test.ts
-    packages/translate/test/planted-kotlin.test.ts
-    packages/translate/test/planted-dpr.test.ts
-    packages/translate/test/calc-probe.test.ts
   JAVA_HOME: /opt/homebrew/opt/openjdk@17
   DRAGON_WPT_DIR: /Users/runner/wpt
 jobs:
@@ -75,7 +66,8 @@ jobs:
       - name: vitest run packages/layout packages/dragon (but the native file)
         run: |
           mkdir -p "$RUNNER_TEMP/report"
-          npx vitest run packages/layout packages/dragon --exclude packages/dragon/test/native-backends.test.ts --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/platform-free.json"
+          files=(); while IFS= read -r f; do files+=("$f"); done < <(node scripts/test-shards.ts plan platform-free 1 1)
+          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/platform-free.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -121,13 +113,28 @@ jobs:
           if (bad > 0) { console.error('the runner toolchains differ from the committed lanes.json host lanes'); process.exit(1); }
           EOF
           node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts"
+      - name: Cache Playwright's Chromium (chromium-1208 for Playwright 1.58.2)
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: playwright-1.58.2-macos-${{ runner.arch }}
+      # The harness builds are content-addressed (sources, flags and compiler version) under packages/translate/out, so restoring
+      # older ones is safe: a build of other inputs is a directory nobody reads.
+      - name: Cache the Swift and Kotlin harness builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            packages/translate/out/swift
+            packages/translate/out/kotlin
+          key: native-builds-xcode27-${{ hashFiles('packages/layout/generated/**', 'packages/translate/harness/**', 'packages/translate/src/**', 'packages/translate/test/**') }}
+          restore-keys: native-builds-xcode27-
       - name: Playwright 1.58.2 Chromium
         run: pnpm --filter @dragon/parity exec playwright install chromium
       - name: vitest run (native files, shard ${{ matrix.shard }}/2)
         run: |
           mkdir -p "$RUNNER_TEMP/report"
-          # shellcheck disable=SC2086
-          npx vitest run $NATIVE_FILES --shard=${{ matrix.shard }}/2 --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/native-${{ matrix.shard }}.json"
+          files=(); while IFS= read -r f; do files+=("$f"); done < <(node scripts/test-shards.ts plan native ${{ matrix.shard }} 2)
+          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/native-${{ matrix.shard }}.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -154,6 +161,15 @@ jobs:
           node-version: '24.15.0'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Cache Playwright's Chromium (chromium-1208 for Playwright 1.58.2)
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: playwright-1.58.2-macos-${{ runner.arch }}
+      - uses: actions/cache@v4
+        with:
+          path: /Users/runner/wpt
+          key: wpt-${{ hashFiles('packages/wpt/wpt.lock') }}
       - name: Playwright 1.58.2 Chromium, the pinned WPT copy, JDK 17 and kotlinc
         run: |
           test "$(pnpm --filter @dragon/parity exec playwright --version)" = "Version 1.58.2"
@@ -165,9 +181,8 @@ jobs:
       - name: vitest run (every other file, shard ${{ matrix.shard }}/3)
         run: |
           mkdir -p "$RUNNER_TEMP/report"
-          excludes=(--exclude 'packages/layout/**' --exclude 'packages/dragon/**')
-          for f in $NATIVE_FILES; do excludes+=(--exclude "$f"); done
-          npx vitest run "${excludes[@]}" --shard=${{ matrix.shard }}/3 --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/chrome-${{ matrix.shard }}.json"
+          files=(); while IFS= read -r f; do files+=("$f"); done < <(node scripts/test-shards.ts plan chrome ${{ matrix.shard }} 3)
+          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/chrome-${{ matrix.shard }}.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -179,6 +194,13 @@ jobs:
     if: always() && needs.resolve.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - run: node scripts/test-shards.ts all > "$RUNNER_TEMP/all-files.tsv"
       - uses: actions/download-artifact@v4
         with:
           pattern: report-*
@@ -204,14 +226,21 @@ jobs:
             }
           }
           rows.sort((a, b) => (a.file + a.test < b.file + b.test ? -1 : 1));
+          // Every test file vitest would run locally ran in exactly one shard: none left out, none twice.
+          const all = readFileSync(`${process.env.RUNNER_TEMP}/all-files.tsv`, 'utf8').split('\n').filter(Boolean).map((l) => l.split('\t')[0]);
+          const shardsOf = new Map();
+          for (const r of rows) shardsOf.set(r.file, new Set([...(shardsOf.get(r.file) ?? []), r.shard]));
+          const notRun = all.filter((f) => !shardsOf.has(f));
+          const twice = [...shardsOf].filter(([, s]) => s.size > 1).map(([f]) => f);
+          const stray = [...shardsOf.keys()].filter((f) => !all.includes(f));
           writeFileSync(`${process.env.RUNNER_TEMP}/full-test-results.json`, `${JSON.stringify(rows.map(({ file, test, state }) => ({ file, test, state })), null, 1)}\n`);
           const count = (s) => rows.filter((r) => r.state === s).length;
           const failed = rows.filter((r) => r.state === 'failed');
           const files = new Set(rows.map((r) => r.file)).size;
-          const out = [`${files} files, ${rows.length} tests: ${count('passed')} passed, ${failed.length} failed, ${count('skipped') + count('pending') + count('todo')} skipped`, ...missing.map((m) => `MISSING report ${m}`), ...failed.map((r) => `FAILED ${r.file} > ${r.test} (${r.shard})`)].join('\n');
+          const out = [`${files} of ${all.length} files, ${rows.length} tests: ${count('passed')} passed, ${failed.length} failed, ${count('skipped') + count('pending') + count('todo')} skipped`, ...missing.map((m) => `MISSING report ${m}`), ...notRun.map((f) => `NOT RUN ${f}`), ...twice.map((f) => `RUN TWICE ${f}`), ...stray.map((f) => `NOT A TEST FILE ${f}`), ...failed.map((r) => `FAILED ${r.file} > ${r.test} (${r.shard})`)].join('\n');
           console.log(out);
           appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${out}\n`);
-          if (missing.length > 0 || failed.length > 0) process.exitCode = 1;
+          if (missing.length > 0 || failed.length > 0 || notRun.length > 0 || twice.length > 0 || stray.length > 0) process.exitCode = 1;
           EOF
           node "$RUNNER_TEMP/summary.mjs"
       - uses: actions/upload-artifact@v4
@@ -248,6 +277,11 @@ jobs:
         with:
           path: /Users/runner/wpt
           key: wpt-${{ hashFiles('packages/wpt/wpt.lock') }}
+      - name: Cache Playwright's Chromium (chromium-1208 for Playwright 1.58.2)
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: playwright-1.58.2-macos-${{ runner.arch }}
       - name: Playwright 1.58.2 Chromium and the WPT copy
         run: |
           pnpm --filter @dragon/parity exec playwright install chromium
