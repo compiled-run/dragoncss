@@ -10,7 +10,7 @@ import { repoPath } from '../src/paths.ts';
 import { trustCoverageProblems } from '../src/lanes.ts';
 import type { AvdDeviceSpec, DeviceRecord, DeviceSpec, GoldenParts } from '../src/device-run.ts';
 import type { SettleState } from '../src/device-run.ts';
-import { ANDROID_RENDERER, avdDir, dropGolden, deviceRecord, emulatorArgs, failedAttemptStep, GOLDEN_SNAPSHOT, goldenEnabled, GUEST_TIMEZONE, snapshotLoadFailed, goldenCurrent, goldenKey, goldenKeyFile } from '../src/device-run.ts';
+import { ANDROID_RENDERER, avdDir, dropGolden, deviceRecord, dropSuspect, emulatorArgs, failedAttemptStep, GOLDEN_SNAPSHOT, goldenEnabled, GUEST_TIMEZONE, snapshotLoadFailed, goldenCurrent, goldenKey, goldenKeyFile } from '../src/device-run.ts';
 import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, isGlyphPlant, judgeGlyphPlant, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from 'dragon';
 import { paintPlants } from '../../dragon/src/emit/paint/registry.ts';
@@ -306,22 +306,37 @@ describe('the golden snapshot (Android quickboot)', () => {
   });
 
   it('a snapshot that fails to boot is dropped and the retry is cold, even when the forced load made the emulator exit', () => {
-    // A forced load that fails exits the emulator: the first attempt retries cold, never leaving the snapshot in place.
-    expect(failedAttemptStep(true, false, 1, true)).toEqual({ dropGolden: true, next: 'retry' });
-    expect(failedAttemptStep(true, true, 1)).toEqual({ dropGolden: true, next: 'stop-then-retry' });
-    // Any other exit from a snapshot attempt (a taken port, a full disk) keeps the snapshot and leaves the serial alone.
-    expect(failedAttemptStep(true, false, 1, false)).toEqual({ dropGolden: false, next: 'left-alone' });
+    // A forced load that fails exits the emulator: the first attempt retries cold, dropping the snapshot at once.
+    expect(failedAttemptStep(true, false, 1, true)).toEqual({ dropGolden: true, suspect: false, next: 'retry' });
+    expect(failedAttemptStep(true, true, 1)).toEqual({ dropGolden: true, suspect: false, next: 'stop-then-retry' });
     expect(snapshotLoadFailed('ERROR | Failed to load snapshot dragon-golden | exiting')).toBe(true);
     expect(snapshotLoadFailed('WARNING | Snapshot dragon-golden can not be loaded (incompatible)')).toBe(true);
     expect(snapshotLoadFailed('ERROR | Port 5580 is already in use')).toBe(false);
     expect(snapshotLoadFailed('INFO | loading snapshot dragon-golden')).toBe(false);
     // A cold attempt keeps today's rules: an exited emulator is left alone, a live one is stopped and retried once.
-    expect(failedAttemptStep(false, false, 1)).toEqual({ dropGolden: false, next: 'left-alone' });
-    expect(failedAttemptStep(false, true, 1)).toEqual({ dropGolden: false, next: 'stop-then-retry' });
-    expect(failedAttemptStep(false, false, 2)).toEqual({ dropGolden: false, next: 'left-alone' });
-    expect(failedAttemptStep(false, true, 2)).toEqual({ dropGolden: false, next: 'stop-then-fail' });
-    // The retry after a snapshot is cold, so a second failure ends the boot.
-    expect(failedAttemptStep(true, false, 2, true).next).toBe('left-alone');
+    expect(failedAttemptStep(false, false, 1)).toEqual({ dropGolden: false, suspect: false, next: 'left-alone' });
+    expect(failedAttemptStep(false, true, 1)).toEqual({ dropGolden: false, suspect: false, next: 'stop-then-retry' });
+    expect(failedAttemptStep(false, false, 2)).toEqual({ dropGolden: false, suspect: false, next: 'left-alone' });
+    expect(failedAttemptStep(false, true, 2)).toEqual({ dropGolden: false, suspect: false, next: 'stop-then-fail' });
+  });
+
+  it('an unexplained exit from the snapshot (a truncated snapshot that crashes) never wedges the AVD: the retry is cold, and the snapshot goes only if that boots', () => {
+    // No load-failure line in the log: the snapshot is a suspect, kept for now, and the retry is cold.
+    const step = failedAttemptStep(true, false, 1, false);
+    expect(step).toEqual({ dropGolden: false, suspect: true, next: 'retry' });
+    // The cold retry booted: the snapshot was the cause, so it is dropped (and retaken).
+    expect(dropSuspect(step.suspect, true)).toBe(true);
+    // The cold retry failed too (a taken port, a full disk): the environment is the cause, so the snapshot is kept.
+    expect(dropSuspect(step.suspect, false)).toBe(false);
+    expect(failedAttemptStep(false, false, 2)).toEqual({ dropGolden: false, suspect: false, next: 'left-alone' });
+    // The loop follows these rules: the retry after any snapshot attempt is cold, and a suspect is dropped only after a boot.
+    const src = readFileSync(repoPath('packages/parity/src/device-run.ts'), 'utf8');
+    expect(src).toContain("if (golden && step.next !== 'left-alone') golden = false;");
+    const booted = src.indexOf("console.log(`${serial}: ${golden ? `booted from the golden snapshot");
+    const dropped = src.indexOf('if (dropSuspect(suspect, true)) {');
+    expect(booted).toBeGreaterThan(0);
+    expect(dropped).toBeGreaterThan(booted);
+    expect(src.slice(src.indexOf('async function bootAvdHeld'), booted)).not.toContain('dropSuspect(');
   });
 
   it('every emulator boot of the runner goes through emulatorArgs, so none can drop the renderer or save into the snapshot', () => {

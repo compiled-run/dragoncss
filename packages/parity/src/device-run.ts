@@ -639,14 +639,19 @@ async function saveGoldenAndSettle(h: { readonly serial: string; readonly spec: 
 export const snapshotLoadFailed = (logTail: string): boolean => /snapshot/i.test(logTail) && /fail|cannot|can't|could not|unable|invalid|incompatible|error/i.test(logTail);
 
 /**
- * What a failed boot attempt does next. An emulator that exited is left alone (its serial may be someone else's), unless its log
- * says the forced snapshot load failed: then the snapshot is dropped and the retry is cold. Any other exit (a taken port, a full
- * disk) keeps the snapshot. A live emulator that failed to boot from the snapshot drops it; a live one is stopped, then retried once.
+ * What a failed boot attempt does next; every retry after a snapshot attempt is cold. An emulator that exited from the snapshot on
+ * a first attempt is retried cold: its snapshot is dropped at once when its log says the load failed, and otherwise it is a suspect
+ * (a truncated snapshot may crash without saying so), dropped only if the cold retry boots; a cold retry that fails too points at
+ * the environment (a taken port), so the snapshot is kept. Any other exited emulator is left alone (its serial may be someone
+ * else's). A live emulator that failed to boot from the snapshot drops it; a live one is stopped, then retried once.
  */
-export function failedAttemptStep(golden: boolean, alive: boolean, attempt: number, loadFailed = false): { readonly dropGolden: boolean; readonly next: 'retry' | 'left-alone' | 'stop-then-retry' | 'stop-then-fail' } {
-  if (!alive) return golden && loadFailed ? { dropGolden: true, next: attempt === 1 ? 'retry' : 'left-alone' } : { dropGolden: false, next: 'left-alone' };
-  return { dropGolden: golden, next: attempt >= 2 ? 'stop-then-fail' : 'stop-then-retry' };
+export function failedAttemptStep(golden: boolean, alive: boolean, attempt: number, loadFailed = false): { readonly dropGolden: boolean; readonly suspect: boolean; readonly next: 'retry' | 'left-alone' | 'stop-then-retry' | 'stop-then-fail' } {
+  if (!alive) return golden && attempt === 1 ? { dropGolden: loadFailed, suspect: !loadFailed, next: 'retry' } : { dropGolden: false, suspect: false, next: 'left-alone' };
+  return { dropGolden: golden, suspect: false, next: attempt >= 2 ? 'stop-then-fail' : 'stop-then-retry' };
 }
+
+/** Whether a suspect snapshot (see failedAttemptStep) is dropped: only once the cold retry after it has booted. */
+export const dropSuspect = (suspect: boolean, coldBooted: boolean): boolean => suspect && coldBooted;
 
 /** Boots an AVD headless on its own console port; provision pins the matrix keys first (the floor probe AVD is not in the matrix). */
 export async function bootAvd(spec: AvdDeviceSpec, provision = true): Promise<DeviceHandle> {
@@ -675,6 +680,7 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
     console.log(`${spec.name}: no golden snapshot key (this boot is cold and saves none): ${e instanceof Error ? e.message : String(e)}`);
   }
   let golden = key !== null && goldenCurrent(spec.name, key);
+  let suspect = false;
   for (let attempt = 1; ; attempt++) {
     const log = emulatorLog(spec.name);
     const p = spawnDetached(tools.emulator, emulatorArgs(spec, golden), log);
@@ -696,8 +702,10 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
       if (step.dropGolden) {
         console.log(`${spec.name}: the golden snapshot did not boot, so it is dropped and the retry is cold: ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
         dropGolden(spec.name);
-        golden = false;
       }
+      if (step.suspect) console.log(`${spec.name}: the emulator exited booting from the golden snapshot; the retry is cold, and the snapshot is dropped only if it boots: ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
+      suspect = step.suspect;
+      if (golden && step.next !== 'left-alone') golden = false;
       if (step.next === 'retry') {
         await sleep(5000);
         continue;
@@ -713,6 +721,10 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
     }
   }
   console.log(`${serial}: ${golden ? `booted from the golden snapshot ${GOLDEN_SNAPSHOT}` : 'booted cold'}`);
+  if (dropSuspect(suspect, true)) {
+    console.log(`${spec.name}: the cold retry booted, so the golden snapshot it replaced is dropped (it is retaken below)`);
+    dropGolden(spec.name);
+  }
   try {
     const live = liveProblems(spec, readLive(h), expectSdk);
     if (live.length > 0) throw new Error(`${serial} booted but is not the matrix device: ${live.join('; ')} (tooling fault)`);
