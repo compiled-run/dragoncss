@@ -296,13 +296,14 @@ const ghMerge = (pr: number, head: string): void => {
 
 // ---- one batch -------------------------------------------------------------------------------------------------------
 // What admission found for a PR, used by its build and its publish.
-type Ticket = { member: Member; tip: string; clean: string; prHead: string; t0: number };
+type Ticket = { member: Member; tip: string; clean: string; prHead: string; t0: number; parent: { pr: number; head: string } | null };
 // One position of the batch's chain: merge of [prev, tip], then one regen commit (head).
 type Built = { prev: string; merge: string; head: string; tip: string; device: string };
 
 // Everything checked before a build is spent on the PR: the PR itself, its base, its own CI and its review at the current head.
 const admit = (e: Entry, earlier: readonly Entry[]): { merged: string } | { ticket: Ticket } => {
   current = e;
+  releasePriority(); // admission waits on CI and review, so other lanes get the machine back
   const t0 = Date.now();
   log(`=== #${e.pr} ${e.branch} (clean head ${e.clean}): admission`);
   let pr = prView(e.pr);
@@ -328,8 +329,13 @@ const admit = (e: Entry, earlier: readonly Entry[]): { merged: string } | { tick
   // The base: retarget a review/* copy or a landed parent to master. A parent earlier in this batch lands first, and its publish
   // moves this PR to master (retargetChildrenThenDelete); the merge gate refuses this PR if that did not happen.
   const parent = earlier.find((x) => x.branch === pr.base);
-  if (parent !== undefined) log(`  #${e.pr} is based on ${pr.base} (#${parent.pr}), which lands before it in this batch`);
-  else if (pr.base !== 'master') {
+  let parentHead: { pr: number; head: string } | null = null;
+  if (parent !== undefined) {
+    const head = remoteHead(pr.base);
+    if (head === null) throw new LandFailure('retarget', `PR targets ${pr.base}, which no longer exists and is not master`);
+    parentHead = { pr: parent.pr, head };
+    log(`  #${e.pr} is based on ${pr.base} (#${parent.pr}), which lands before it in this batch`);
+  } else if (pr.base !== 'master') {
     const baseHead = remoteHead(pr.base);
     let inMaster: boolean | null = null;
     if (baseHead !== null) {
@@ -354,7 +360,7 @@ const admit = (e: Entry, earlier: readonly Entry[]): { merged: string } | { tick
     if (!out.includes(`PR #${e.pr} at ${pr.headOid}`)) throw new LandFailure('review-before', `pr:review judged another head than ${pr.headOid} (log ${review.log})`);
     if (isUnreviewed(out)) claudeReview(e, clean, pr.headOid, fetchMaster(), 'claude-review-before');
   }
-  return { ticket: { member, tip, clean, prHead: pr.headOid, t0 } };
+  return { ticket: { member, tip, clean, prHead: pr.headOid, t0, parent: parentHead } };
 };
 
 // While Macroscope is at its limit: the Claude correctness review of the PR's diff at `head`, keyed to the clean head.
@@ -383,6 +389,8 @@ const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => {
   current = e;
   holdPriority();
   log(`=== #${e.pr} ${e.branch}: position ${k} on ${prev}`);
+  // A child of a PR earlier in the batch lands only on top of its parent's position, never with the parent's commits on their own.
+  if (t.parent !== null && !isAncestor(git, t.parent.head, prev)) throw new LandFailure('retarget', `PR targets the branch of #${t.parent.pr}, which did not build in this batch; land its parent first`);
   resetWorktree(prev);
   let merge: string;
   try {
