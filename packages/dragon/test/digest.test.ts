@@ -2,7 +2,7 @@
 // fresh canonicalJson. The digest bytes must never change: compiled digests are carried in device evidence.
 import { createHash, randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { CanonicalText, canonicalJson, sha256Hex, sha256HexBytes, utf8 } from '../src/digest.ts';
+import { CanonicalText, canonicalJson, sha256Hex, sha256HexBytes, sha256HexCore, utf8 } from '../src/digest.ts';
 import { COMMITTED_PROFILES, createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import type { SupportProfiles } from '../src/internal.ts';
 import { div, inputFor } from './helpers.ts';
@@ -27,9 +27,24 @@ describe('digest.ts', () => {
     for (let n = 0; n <= 200; n++) {
       const b = new Uint8Array(randomBytes(n));
       expect(sha256HexBytes(b), `${n} bytes`).toBe(nodeSha(b));
+      expect(sha256HexCore(b), `${n} bytes, the core's own hash`).toBe(nodeSha(b));
     }
     const big = new Uint8Array(randomBytes(1 << 20));
     expect(sha256HexBytes(big)).toBe(nodeSha(big));
+    expect(sha256HexCore(big)).toBe(nodeSha(big));
+  });
+
+  it('sha256Hex gives the core hash of utf8 on every string, through Node\'s hash or, for a lone surrogate, the core\'s', () => {
+    const strings = ['', 'abc', 'é', '€', '日本語', '😀', 'a😀b', '\ud800', '\udc00', '\ud800\ud800', '\udc00\ud800', 'x\ud83d', '\ud83dx', 'a'.repeat(1000)];
+    for (let k = 0; k < 20; k++) {
+      let s = '';
+      // Half of them well formed (no surrogate units), half with any UTF-16 unit, lone surrogates included.
+      for (let i = 0; i < 300; i++) s += String.fromCharCode(Math.floor(Math.random() * (k % 2 === 0 ? 0xd800 : 0x10000)));
+      strings.push(s);
+    }
+    for (const s of strings) expect(sha256Hex(s), JSON.stringify(s.slice(0, 40))).toBe(sha256HexCore(utf8(s)));
+    const profile = canonicalJson(COMMITTED_PROFILES.android);
+    expect(sha256Hex(profile)).toBe(sha256HexCore(utf8(profile)));
   });
 
   it('utf8 encodes each code point, surrogate pairs as four bytes and lone surrogates as three, like iterating by code point', () => {
