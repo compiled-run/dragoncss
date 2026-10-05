@@ -6,7 +6,7 @@
 // --match-head-commit. A PR that fails a step gets the landing-failed label and a comment, and the queue continues.
 // Run with: pnpm land <queue-file> [--dry-run]   (queue: one <branch>:<pr>:<clean-head> per line)
 import { execFileSync, spawnSync } from 'node:child_process';
-import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
@@ -22,11 +22,25 @@ import {
   isFloorFile,
   isQuiet,
   QUIET_FILE,
-  cleanIgnoredArgs,
+  ignoredFilesArgs,
+  ignoredToRemove,
   provedTree,
   SOLO_RERUN_MAX,
   failingTestFiles,
   clearStaleQuiet,
+  cleanUpAfterDriver,
+  clearsUnproved,
+  lockState,
+  MERGES_LOG,
+  parseLstart,
+  parsePidFile,
+  parseUnproved,
+  proveRestingMaster,
+  PUBLISH_MARK,
+  SUPERVISOR_PID_ENV,
+  STOP_FILE,
+  SUPERVISED_ENV,
+  supervise,
   releaseQuiet,
   requestQuiet,
   waitForQuiet,
@@ -79,6 +93,27 @@ const WT = env['LAND_WORKTREE'] ?? '/tmp/dragon-land';
 const STATUS = env['LAND_STATUS'] ?? '/tmp/land.status';
 const LOG = env['LAND_LOG'] ?? '/tmp/land.log';
 const REVIEW_DIR = env['LAND_REVIEW_DIR'] ?? '/tmp/land-reviews';
+// The run directory (the driver's notes for its supervisor, emptied when a run starts) and the record of a merged position no
+// full test has passed yet, which outlives the run.
+const RUN_DIR = env['LAND_RUN_DIR'] ?? '/tmp/dragon-land.run';
+const UNPROVED = env['LAND_UNPROVED'] ?? '/tmp/dragon-land.unproved.json';
+const runFile = (name: string): string => join(RUN_DIR, name);
+const readOrNull = (path: string): string | null => {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    return null;
+  }
+};
+const readUnproved = (): { pr: number; head: string } | null => parseUnproved(readOrNull(UNPROVED));
+// A process's start time (`ps -o lstart=`), which tells it from a later process that reused its pid; null when it is gone.
+const startOf = (pid: number): string | null => {
+  try {
+    return parseLstart(execFileSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
+  } catch {
+    return null;
+  }
+};
 let REVIEW_CMD = '';
 const REVIEW_TIMEOUT_MS = 40 * 60_000;
 const seconds = (name: string, fallback: number): number => {
@@ -103,8 +138,17 @@ const log = (line: string): void => {
   console.log(out);
   writeFileSync(LOG, `${out}\n`, { flag: 'a' });
 };
+// The driver ends when its supervisor is gone (it was reparented), checked before every step and in every wait.
+const exitIfOrphaned = (): void => {
+  const sup = env[SUPERVISOR_PID_ENV];
+  if (env[SUPERVISED_ENV] !== '1' || sup === undefined || String(process.ppid) === sup) return;
+  log(`the supervisor (pid ${sup}) is gone; the driver stops here`);
+  process.exit(3);
+};
 const sleep = (ms: number): void => {
+  exitIfOrphaned();
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  exitIfOrphaned();
 };
 const msg = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
@@ -154,6 +198,7 @@ const tail = (path: string, n = 30): string => {
 type Run = { status: number | null; signal: string | null; error?: string; log: string };
 // Runs a long step with its output in its own log file.
 const run = (step: string, argv: string[], cwd: string, extraEnv: Record<string, string> = {}): Run => {
+  exitIfOrphaned();
   const path = stepLog(current?.pr ?? 0, step);
   log(`  ${step}: ${argv.join(' ')} (log ${path})`);
   const fd = openSync(path, 'w');
@@ -252,7 +297,7 @@ const resetWorktree = (master: string, ignored = false): void => {
   } catch {}
   wtGit(['checkout', '-q', '-f', '--detach', master]);
   wtGit(['clean', '-q', '-fd']);
-  if (ignored) wtGit(cleanIgnoredArgs());
+  if (ignored) for (const p of ignoredToRemove(wtGit(ignoredFilesArgs()).toString('utf8'))) rmSync(join(WT, p), { force: true });
 };
 
 const seedRegenCache = (e: Entry, shas: string[]): void => {
@@ -490,6 +535,10 @@ const proveCommit = (head: string, what: string): void => {
   }
   requireTracked('test', 'pnpm test');
   proved.push(head);
+  if (clearsUnproved(readUnproved(), head, (c) => treeMatches(git, fetchMaster(), c).ok)) {
+    rmSync(UNPROVED, { force: true });
+    log('  master has this proved tree; the unproved record is cleared');
+  }
 };
 const proveTree = (p: Built, e: Entry): void => {
   current = e;
@@ -503,7 +552,16 @@ const proveMaster = (master: string): void => {
 };
 
 // Publishes one PR at its position, once the PR before it has merged: push, CI, pr:review, Claude review, merge, tree check.
+// From just before gh pr merge to the end of the post-merge cleanup it is a critical section (PUBLISH_MARK): an interrupt waits
+// for it. Before that, an interrupt is safe at any point: at most the PR branch moved by a fast-forward, which admission accepts.
 const publish = (e: Entry, b: Built, t: Ticket): string => {
+  try {
+    return publishInside(e, b, t);
+  } finally {
+    rmSync(runFile(PUBLISH_MARK), { force: true });
+  }
+};
+const publishInside = (e: Entry, b: Built, t: Ticket): string => {
   current = e;
   log(`=== #${e.pr} ${e.branch}: publishing position ${b.head}`);
   const member = t.member;
@@ -543,7 +601,14 @@ const publish = (e: Entry, b: Built, t: Ticket): string => {
       if (text(gitAt(w), ['rev-parse', '--abbrev-ref', 'HEAD']) === e.branch) gitAt(w)(['checkout', '-q', '--detach']);
     } catch {}
   }
+  writeFileSync(runFile(PUBLISH_MARK), JSON.stringify({ pr: e.pr, head: p.head, merged: null }));
   ghMerge(e.pr, p.head);
+  const mergeSha = prView(e.pr).mergeCommit ?? '0'.repeat(40);
+  writeFileSync(runFile(MERGES_LOG), `${e.pr} ${mergeSha} ${p.head}\n`, { flag: 'a' });
+  writeFileSync(runFile(PUBLISH_MARK), JSON.stringify({ pr: e.pr, head: p.head, merged: mergeSha }));
+  // Until a full test passes on this tree, a run that dies here leaves master on an unproved position; the next run proves it.
+  if (proved.includes(p.head)) rmSync(UNPROVED, { force: true });
+  else writeFileSync(UNPROVED, JSON.stringify({ pr: e.pr, head: p.head }));
   const after = fetchMaster();
   if (!isAncestor(git, p.head, after)) throw new Fatal(`#${e.pr} merged, but origin/master ${after} does not contain ${p.head}`);
   const same = treeMatches(git, after, p.head);
@@ -581,8 +646,7 @@ const publish = (e: Entry, b: Built, t: Ticket): string => {
   try {
     gh(['pr', 'edit', String(e.pr), '--repo', REPO, '--remove-label', LABEL]);
   } catch {}
-  const merged = prView(e.pr).mergeCommit ?? '?';
-  return `merged as ${merged} (landing commit ${p.head}); device lanes ${p.device}; device-pixels ${devicePixels(p.head)}; Claude review ${claude}; in ${Math.round((Date.now() - p.t0) / 1000)}s${notes.length ? `; ${notes.join('; ')}` : ''}`;
+  return `merged as ${mergeSha} (landing commit ${p.head}); device lanes ${p.device}; device-pixels ${devicePixels(p.head)}; Claude review ${claude}; in ${Math.round((Date.now() - p.t0) / 1000)}s${notes.length ? `; ${notes.join('; ')}` : ''}`;
 };
 
 // ---- failure report --------------------------------------------------------------------------------------------------
@@ -617,25 +681,89 @@ const dryRun = (entries: Entry[]): void => {
 };
 
 // ---- main ------------------------------------------------------------------------------------------------------------
-const lock = (): void => {
+// The lock holds the supervisor (pid, pid-start) and its driver (driver, driver-start); it is held while either lives (lockState).
+const LOCK_PID = join(LOCK, 'pid');
+const LOCK_DRIVER = join(LOCK, 'driver');
+const groupAlive = (pid: number): boolean => {
   try {
-    mkdirSync(LOCK);
+    process.kill(-pid, 0);
+    return true;
   } catch {
-    const holder = Number(readFileSync(join(LOCK, 'pid'), 'utf8').trim() || '0');
-    let alive = false;
-    try {
-      if (holder > 0) process.kill(holder, 0);
-      alive = holder > 0;
-    } catch {}
-    if (alive) throw new Error(`land: another driver (pid ${holder}) holds ${LOCK}`);
-    rmSync(LOCK, { recursive: true, force: true });
-    mkdirSync(LOCK);
+    return false;
   }
-  writeFileSync(join(LOCK, 'pid'), String(process.pid));
+};
+const lockProc = (path: string): { pid: number; start: string } | null => {
+  const pid = parsePidFile(readOrNull(path));
+  return pid === null ? null : { pid, start: (readOrNull(`${path}-start`) ?? '').trim() };
+};
+// Each file is written whole (temp file, then rename); the start time first, so a pid file never names a stale start time.
+const writeAtomic = (path: string, body: string): void => {
+  writeFileSync(`${path}.tmp-${process.pid}`, body);
+  renameSync(`${path}.tmp-${process.pid}`, path);
+};
+const recordProc = (path: string, pid: number): void => {
+  writeAtomic(`${path}-start`, startOf(pid) ?? '');
+  writeAtomic(path, String(pid));
+};
+// Takes the lock; returns the pid of a dead run's driver when one was recorded (its leftovers need cleaning), else null.
+const lock = (): number | null => {
+  let leftover: number | null = null;
+  for (;;) {
+    try {
+      mkdirSync(LOCK);
+      recordProc(LOCK_PID, process.pid);
+      return leftover;
+    } catch (error) {
+      if ((error as { code?: unknown }).code !== 'EEXIST') throw error;
+    }
+    const sup = lockProc(LOCK_PID);
+    const driver = lockProc(LOCK_DRIVER);
+    // A lock with no supervisor pid yet is being taken by another run (mkdir, then the pid file), unless it is old.
+    let age: number;
+    try {
+      age = Date.now() - statSync(LOCK).mtimeMs;
+    } catch {
+      continue; // gone meanwhile: try again
+    }
+    if (sup === null && age < 60_000) throw new Error(`land: another run is taking ${LOCK} right now`);
+    const state = lockState(sup, driver, startOf);
+    if (state === 'held') throw new Error(`land: another driver (supervisor pid ${sup?.pid}, driver pid ${driver?.pid ?? 'none'}) holds ${LOCK}`);
+    if (state === 'orphan') {
+      // The pid and its start time both match the recorded driver, so this group is that driver's, not a reused pid's.
+      log(`a driver (pid ${driver!.pid}, started ${driver!.start}) is still running without its supervisor; killing its process group`);
+      try {
+        process.kill(-driver!.pid, 'SIGTERM');
+      } catch {}
+      for (let i = 0; i < 80 && groupAlive(driver!.pid); i++) sleep(250);
+      if (startOf(driver!.pid) === driver!.start) {
+        try {
+          process.kill(-driver!.pid, 'SIGKILL');
+        } catch {}
+      }
+    }
+    // The stale lock is moved aside atomically, so of two runs taking it over only one succeeds; it must still be the lock just
+    // judged (another run may have replaced it meanwhile), else it is put back.
+    const stale = `${LOCK}.stale-${process.pid}`;
+    try {
+      renameSync(LOCK, stale);
+    } catch (error) {
+      if ((error as { code?: unknown }).code === 'ENOENT') continue;
+      throw error;
+    }
+    const moved = lockProc(join(stale, 'pid'));
+    if (moved?.pid !== sup?.pid || moved?.start !== sup?.start) {
+      try {
+        renameSync(stale, LOCK);
+      } catch {}
+      throw new Error(`land: another run took ${LOCK} while this one judged it stale`);
+    }
+    rmSync(stale, { recursive: true, force: true });
+    leftover = driver?.pid ?? null;
+  }
 };
 const unlock = (): void => {
   try {
-    if (readFileSync(join(LOCK, 'pid'), 'utf8').trim() === String(process.pid)) rmSync(LOCK, { recursive: true, force: true });
+    if (readFileSync(LOCK_PID, 'utf8').trim() === String(process.pid)) rmSync(LOCK, { recursive: true, force: true });
   } catch {}
 };
 
@@ -666,32 +794,28 @@ const main = (): number => {
     dryRun(entries);
     return 0;
   }
-  lock();
+  // The supervisor (below) holds the lock and handles SIGINT, SIGTERM and SIGHUP by killing this process group; this process
+  // keeps their default action, so a signal ends it at once, mid-step, without reporting the step as a PR failure.
   const cleanup = (): void => {
     releaseQuiet(QUIET_FILE, process.pid);
     releasePriority();
-    unlock();
-  };
-  const alive = (pid: number): boolean => {
-    try {
-      process.kill(pid, 0);
-      return true;
-    } catch {
-      return false;
-    }
   };
   if (clearStaleQuiet(QUIET_FILE, alive)) log(`removed a stale ${QUIET_FILE} left by a driver that is gone`);
   process.on('exit', cleanup);
-  for (const s of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
-    process.on(s, () => {
-      cleanup();
-      process.exit(130);
-    });
-  }
+  // A synchronous driver cannot act on SIGUSR1 in time; it is kept from killing the driver, and the stop goes to the supervisor.
+  process.on('SIGUSR1', () => log(`SIGUSR1 reached the driver, which ignores it; send it to the supervisor (pid ${env[SUPERVISOR_PID_ENV]}, in ${LOCK}/pid)`));
   prepareWorktree();
   const startedAt = stamp();
   log(`=== pnpm land ${args.queue}: ${entries.map((e) => `#${e.pr}`).join(' ')} in batches of up to ${BATCH} (pid ${process.pid}, worktree ${WT})`);
   let latest: readonly Outcome[] = [];
+  // master left on an unproved position by an interrupted run is proved first; the result is logged loudly, never blocking.
+  const resting = readUnproved();
+  if (resting !== null && !/^[0-9a-f]{40}$/.test(resting.head)) {
+    const master = fetchMaster();
+    log(`!!! ${UNPROVED} is unreadable (${resting.head}); recording master ${master} as unproved instead`);
+    writeFileSync(UNPROVED, JSON.stringify({ pr: 0, head: master }));
+  }
+  proveRestingMaster(readUnproved(), () => proveMaster(fetchMaster()), () => rmSync(UNPROVED, { force: true }), log);
   const write = (done: boolean, fatal: string | null, running: Entry | null = current): void =>
     writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: done ? null : running, outcomes: latest, fatal, total: entries.length, done }));
   const result = runBatches<Ticket, Built>(entries, BATCH, {
@@ -712,6 +836,11 @@ const main = (): number => {
     proveMaster: (m) => (write(false, null, null), proveMaster(m)),
     publish: (e, p, t) => (write(false, null, e), publish(e, p, t)),
     onFail: reportFailure,
+    stopRequested: () => {
+      if (!existsSync(STOP_FILE)) return false;
+      rmSync(STOP_FILE, { force: true });
+      return true;
+    },
     onOutcome: (o) => {
       latest = o;
       write(false, null);
@@ -719,7 +848,7 @@ const main = (): number => {
     log,
   });
   current = null;
-  write(true, result.fatal);
+  writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: latest, fatal: result.fatal, total: entries.length, done: true, stopped: result.stopped }));
   try {
     resetWorktree(fetchMaster());
   } catch {}
@@ -727,8 +856,79 @@ const main = (): number => {
   return result.exit;
 };
 
+const alive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+const requestStop = (): void => writeFileSync(STOP_FILE, `${process.pid}\n`);
+
+// The supervisor: checks the arguments, holds the lock, runs the driver (this file, LAND_SUPERVISED=1) in its own process group,
+// and on an interrupt records it and cleans up after the driver (its quiet request and priority, the driver worktree).
+// After a driver died abnormally (interrupted, killed, orphaned): release what it held, reset the driver worktree, write the status.
+const cleanUpAfter = (driverPid: number, how: string): void => {
+  try {
+    MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
+  } catch {}
+  cleanUpAfterDriver({
+    how,
+    now: stamp(),
+    read: (name) => readOrNull(runFile(name)),
+    unproved: readUnproved,
+    release: () => {
+      releaseQuiet(QUIET_FILE, driverPid);
+      if (readOrNull(PRIORITY)?.trim() === String(driverPid)) rmSync(PRIORITY, { force: true });
+    },
+    reset: () => {
+      if (existsSync(WT)) resetWorktree(text(wtGit, ['rev-parse', 'HEAD']));
+    },
+    status: { read: () => readOrNull(STATUS) ?? '', write: (t) => writeFileSync(STATUS, t) },
+    log,
+  });
+  log(readOrNull(STATUS)?.trimEnd() ?? '');
+};
+
+// The supervisor: checks the arguments, holds the lock, runs the driver (this file, LAND_SUPERVISED=1) in its own process group,
+// and cleans up after it whenever it dies abnormally.
+const supervisor = async (): Promise<number> => {
+  const args = parseLandArgs(process.argv.slice(2));
+  const driver = {
+    command: process.execPath,
+    args: [...process.execArgv, process.argv[1]!, ...process.argv.slice(2)],
+    env,
+    graceMs: seconds('LAND_KILL_GRACE', 60) * 1000,
+    deferCapMs: seconds('LAND_INTERRUPT_CAP', 3 * 3600) * 1000,
+    publishing: () => existsSync(runFile(PUBLISH_MARK)),
+    onSpawn: (pid: number) => recordProc(LOCK_DRIVER, pid),
+    onStop: requestStop,
+    log,
+  };
+  if (args.dryRun) return (await supervise({ ...driver, onSpawn: () => {} })).code;
+  const leftover = lock();
+  try {
+    if (leftover !== null) cleanUpAfter(leftover, `the death of an earlier run (driver pid ${leftover})`);
+    rmSync(RUN_DIR, { recursive: true, force: true });
+    mkdirSync(RUN_DIR, { recursive: true });
+    if (existsSync(STOP_FILE)) {
+      rmSync(STOP_FILE, { force: true });
+      log(`removed ${STOP_FILE}, left from before this run`);
+    }
+    log(`land supervisor pid ${process.pid}: kill -TERM ${process.pid} interrupts (after a merge in progress); kill -USR1 ${process.pid} or touch ${STOP_FILE} stops after the current batch`);
+    const r = await supervise(driver);
+    if (r.interrupted !== null) cleanUpAfter(r.pid, r.interrupted);
+    else if (r.signal !== null) cleanUpAfter(r.pid, `the driver's death by ${r.signal}`);
+    else if (r.code === 3) cleanUpAfter(r.pid, 'the driver stopping without its supervisor');
+    return r.code;
+  } finally {
+    unlock();
+  }
+};
+
 try {
-  process.exitCode = main();
+  process.exitCode = env[SUPERVISED_ENV] === '1' ? main() : await supervisor();
 } catch (error) {
   console.error(`\nland stopped: ${msg(error)}`);
   process.exitCode = 2;

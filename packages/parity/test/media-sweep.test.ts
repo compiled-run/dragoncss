@@ -3,7 +3,9 @@
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { NO_ENGINE_FAULTS } from '@dragon/layout';
-import { createProject, NO_FAULTS } from 'dragon';
+import { NO_FAULTS } from 'dragon';
+// createProject is the public entry's own (create-project.ts); the internal entry 'dragon' resolves to leaves it out.
+import { createProject } from '../../dragon/src/index.ts';
 import { band } from '../../dragon/src/media/index.ts';
 import { parseMediaQueryList } from '../../dragon/src/media/index.ts';
 import { CHROME_VERSION, launchChrome } from '../src/chrome.ts';
