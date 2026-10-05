@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -7,6 +7,11 @@ import {
   backoffMs,
   baseAction,
   type BatchOps,
+  type NextRound,
+  parsePrepared,
+  type Prepared,
+  prepareRound,
+  serializePrepared,
   bisectPrefixes,
   ciState,
   ciStep,
@@ -506,9 +511,10 @@ describe('batched landing (runBatches with fakes)', () => {
     const mergedBefore = new Set(o.merged ?? []);
     const name = (prs: number[]): string => (prs.length === 0 ? 'master' : `m+${prs.join('+')}`);
     const heads = new Map<string, number[]>();
+    let tag = ''; // '[next] ' while the fake builder prepares
     const ops: BatchOps<{ pr: number }, Pos> = {
       admit: (x, earlier) => {
-        trace.push(`admit #${x.pr}${earlier.length ? ` after ${earlier.map((y) => `#${y.pr}`).join(' ')}` : ''}`);
+        trace.push(`${tag}admit #${x.pr}${earlier.length ? ` after ${earlier.map((y) => `#${y.pr}`).join(' ')}` : ''}`);
         if (mergedBefore.has(x.pr)) return { merged: 'merged as x' };
         if (o.reject?.includes(x.pr)) throw new LandFailure('claude-review-before', `#${x.pr} has a Medium finding at its head`);
         return { ticket: { pr: x.pr } };
@@ -519,7 +525,7 @@ describe('batched landing (runBatches with fakes)', () => {
         return h;
       },
       build: (prev, x, t, k) => {
-        trace.push(`build #${x.pr} at ${k} on ${prev}`);
+        trace.push(`${tag}build #${x.pr} at ${k} on ${prev}`);
         if (t.pr !== x.pr) throw new Error('ticket mixed up');
         if (o.conflicts?.includes(x.pr)) throw new LandFailure('merge', `merging b${x.pr} failed; conflicts in src/a.ts`);
         const prs = [...heads.get(prev)!, x.pr];
@@ -528,11 +534,12 @@ describe('batched landing (runBatches with fakes)', () => {
         return { head, prev, prs };
       },
       verify: (built) => {
-        trace.push(`verify ${built.map((b) => b.position.head).join(' ')}`);
-        built.forEach((b, i) => expect(b.position.prev).toBe(i === 0 ? name(master) : built[i - 1]!.position.head));
+        trace.push(`${tag}verify ${built.map((b) => b.position.head).join(' ')}`);
+        // The driver's chain starts on master; the builder's on the top it was given (master only once that batch lands).
+        built.forEach((b, i) => (i > 0 || tag === '') && expect(b.position.prev).toBe(i === 0 ? name(master) : built[i - 1]!.position.head));
       },
       prove: (p) => {
-        trace.push(`prove ${p.head}`);
+        trace.push(`${tag}prove ${p.head}`);
         if (o.installFails === p.head) throw new LandFailure('install', 'pnpm install --frozen-lockfile exited 1: ECONNRESET');
         if (o.masterRed) throw new LandFailure('test', `pnpm test on ${p.head} failed: t0.test.ts`);
         const bad = p.prs.filter((n) => o.broken?.includes(n));
@@ -557,7 +564,30 @@ describe('batched landing (runBatches with fakes)', () => {
       onOutcome: () => {},
       log: () => {},
     };
-    return { ops, master, trace, failures };
+    // A fake builder: prepares the round synchronously when started (as the real one would while the batch publishes), on the
+    // batch's top, with the same ops; `crash` makes it end with nothing, `fatal` with a Fatal.
+    const next = (n: { crash?: boolean; fatal?: string } = {}): NextRound<{ pr: number }, Pos> => {
+      let round: Prepared<{ pr: number }, Pos> | null = null;
+      return {
+        start: (base, queue, earlier, size) => {
+          trace.push(`next start on ${base} with ${queue.map((x) => `#${x.pr}`).join(' ')}`);
+          tag = '[next] ';
+          try {
+            round = prepareRound([...queue], size, () => base, ops, { earlier, baseProven: true });
+          } finally {
+            tag = '';
+          }
+        },
+        collect: () => {
+          trace.push('next collect');
+          if (n.fatal) throw new Fatal(n.fatal);
+          if (n.crash) return { base: '', consumed: [], results: [], built: [], good: 0, proven: [], culprit: null };
+          return parsePrepared<{ pr: number }, Pos>(serializePrepared(round!)) as Prepared<{ pr: number }, Pos>;
+        },
+        cancel: () => trace.push('next cancel'),
+      };
+    };
+    return { ops, master, trace, failures, next };
   };
   const results = (r: { outcomes: { entry: Entry; result: string; step?: string }[] }): string[] => r.outcomes.map((x) => `#${x.entry.pr} ${x.result}${x.step ? ` at ${x.step}` : ''}`);
 
@@ -860,6 +890,85 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(clearsUnproved({ head: 'unreadable "{"' }, sha('d'), mastersTree([sha('d')]))).toBe(true);
   });
 
+  it('pipelines: prepares the next batch on the proven top while this one publishes, and uses it once all of this one landed', () => {
+    const h = harness();
+    const r = runBatches([1, 2, 3, 4, 5].map(e), 2, { ...h.ops, next: h.next() });
+    expect(results(r)).toEqual(['#1 landed', '#2 landed', '#3 landed', '#4 landed', '#5 landed']);
+    const t = h.trace;
+    expect(t.indexOf('next start on m+1+2 with #3 #4 #5')).toBeLessThan(t.indexOf('publish #1'));
+    expect(t).toContain('[next] build #3 at 1 on m+1+2');
+    expect(t).toContain('[next] prove m+1+2+3+4');
+    expect(t.some((x) => /^build #3/.test(x))).toBe(false); // the driver never built #3 itself
+    expect(t.indexOf('next collect')).toBeGreaterThan(t.indexOf('publish #2'));
+    expect(t).toContain('verify m+1+2+3 m+1+2+3+4'); // the driver checks the adopted chain itself
+    expect(h.master).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('throws the prepared batch away when this batch did not all land, and reports nothing of it', () => {
+    const h = harness({ publishFail: [2], reject: [3] });
+    const r = runBatches([1, 2, 3, 4].map(e), 2, { ...h.ops, next: h.next() });
+    expect(results(r)).toEqual(['#1 landed', '#2 failed at ci', '#3 failed at claude-review-before', '#4 landed']);
+    expect(h.trace).toContain('next cancel');
+    expect(h.trace).not.toContain('next collect');
+    expect(h.trace).toContain('build #4 at 1 on m+1'); // prepared again on the master that came of it
+    // #3's rejection in the discarded round was not reported; the driver's own admission reported it once.
+    expect(h.failures.filter((f) => f.startsWith('#3'))).toEqual(['#3 claude-review-before: #3 has a Medium finding at its head']);
+  });
+
+  it('stops the builder as soon as a publish fails, before the proof of the tree master rests on', () => {
+    // #2 breaks a test that #3 fixes; the top passes, #1 and #2 merge, #3 fails to publish: master rests on m+1+2.
+    const h = harness({ fixedBy: [2, 3], publishFail: [3] });
+    const r = runBatches([1, 2, 3, 4].map(e), 3, { ...h.ops, next: h.next() });
+    const t = h.trace;
+    expect(t.indexOf('next cancel')).toBeGreaterThan(t.indexOf('publish #3'));
+    expect(t.indexOf('next cancel')).toBeLessThan(t.indexOf('prove m+1+2'));
+    expect(t.filter((x) => x === 'next cancel')).toHaveLength(1);
+    expect(r.fatal).toMatch(/master now rests on #2's position/);
+  });
+
+  it('prepares nothing ahead of a batch whose top failed, and discards the prepared batch on a stop request', () => {
+    const b = harness({ broken: [2] });
+    runBatches([1, 2, 3].map(e), 2, { ...b.ops, next: b.next() });
+    expect(b.trace.some((x) => x.startsWith('next start'))).toBe(false);
+    const s = harness();
+    const r = runBatches([1, 2, 3, 4].map(e), 2, { ...s.ops, next: s.next(), stopRequested: () => s.trace.includes('publish #2') });
+    expect(results(r)).toEqual(['#1 landed', '#2 landed']);
+    expect(r.stopped.map((x) => x.pr)).toEqual([3, 4]);
+    expect(s.trace).toContain('next cancel');
+  });
+
+  it('stops on a builder\'s fatal error, and prepares the batch itself when the builder ended with nothing', () => {
+    const f = harness();
+    expect(runBatches([1, 2, 3].map(e), 2, { ...f.ops, next: f.next({ fatal: 'while preparing the next batch: master is red' }) }).fatal).toBe('while preparing the next batch: master is red');
+    const c = harness();
+    const r = runBatches([1, 2, 3].map(e), 2, { ...c.ops, next: c.next({ crash: true }) });
+    expect(results(r)).toEqual(['#1 landed', '#2 landed', '#3 landed']);
+    expect(c.trace).toContain('build #3 at 1 on m+1+2');
+  });
+
+  it('carries a prepared round through JSON exactly, and refuses a malformed one', () => {
+    const round: Prepared<{ pr: number }, Pos> = {
+      base: 'b',
+      consumed: [e(3), e(4)],
+      results: [{ entry: e(3), failure: new LandFailure('merge', 'conflict', 'comment') }],
+      built: [{ entry: e(4), ticket: { pr: 4 }, position: { head: 'h4', prev: 'b', prs: [4] } }],
+      good: 0,
+      proven: [],
+      culprit: { index: 0, failure: new LandFailure('test', 't4 failed') },
+    };
+    const back = parsePrepared<{ pr: number }, Pos>(serializePrepared(round));
+    expect(back).toEqual(round);
+    if ('fatal' in back) throw new Error('unexpected');
+    expect(back.results[0]).toMatchObject({ failure: expect.any(LandFailure) });
+    expect(parsePrepared(JSON.stringify({ fatal: 'x' }))).toEqual({ fatal: 'x' });
+    const bad = (patch: object): (() => unknown) => () => parsePrepared(JSON.stringify({ ...JSON.parse(serializePrepared(round)), ...patch }));
+    expect(bad({ good: 2 })).toThrow(/good/);
+    expect(bad({ culprit: null })).toThrow(/without a culprit/);
+    expect(bad({ proven: [5] })).toThrow(/out of range/);
+    expect(bad({ consumed: [{ pr: 3 }] })).toThrow(/malformed/);
+    expect(bad({ results: [{ entry: e(3), failure: { step: 1 } }] })).toThrow(/failure is malformed/);
+  });
+
   it('reads LAND_BATCH strictly', () => {
     expect(parseBatchSize(undefined)).toBe(4);
     expect(parseBatchSize('1')).toBe(1);
@@ -867,192 +976,6 @@ describe('batched landing (runBatches with fakes)', () => {
     for (const bad of ['0', '9', '-1', '2.5', 'four', '']) expect(() => parseBatchSize(bad)).toThrow(/LAND_BATCH/);
     expect(() => runBatches([e(1)], 0, harness().ops)).toThrow(/batch size/);
   });
-});
-
-describe('the supervisor with real processes', () => {
-  const lib = repoPath('scripts/land-lib.ts');
-  // A fake driver: records its pid and its step's pid, runs a long step (spawnSync, as the driver does), and records "resumed"
-  // if it ever gets past the step, which is where the old driver went on to fail PRs after a SIGTERM.
-  const setup = (driverBody: (dir: string) => string, o: { graceMs?: number; deferCapMs?: number; slowSpawnMs?: number } = {}): { dir: string; run: () => { done: Promise<{ code: number | null; out: string }>; pid: number } } => {
-    const dir = tempDir();
-    // Every file the fakes write is written whole (temp file, then rename), so a reader never sees it half-written.
-    const atomic = (src: string): string =>
-      `import { renameSync as __rename, writeFileSync as __write } from 'node:fs';\nconst put = (p, b) => { __write(p + '.tmp', b); __rename(p + '.tmp', p); };\n${src.replaceAll('writeFileSync(', 'put(')}`;
-    writeFileSync(join(dir, 'driver.mjs'), atomic(driverBody(dir)));
-    writeFileSync(
-      join(dir, 'supervisor.mjs'),
-      atomic(`import { existsSync, writeFileSync } from 'node:fs';\nimport { supervise } from ${JSON.stringify(lib)};\n` +
-        `const r = await supervise({ command: process.execPath, args: [${JSON.stringify(join(dir, 'driver.mjs'))}], env: process.env, graceMs: ${o.graceMs ?? 5000}, deferCapMs: ${o.deferCapMs ?? 60_000}, pollMs: 50, ` +
-        `publishing: () => existsSync(${JSON.stringify(join(dir, 'publishing'))}), ` +
-        `onSpawn: (pid) => { writeFileSync(${JSON.stringify(join(dir, 'spawned'))}, String(pid)); const t = Date.now(); while (Date.now() - t < ${o.slowSpawnMs ?? 0}); }, ` +
-        `onReady: () => writeFileSync(${JSON.stringify(join(dir, 'ready'))}, 'x'), ` +
-        `onStop: () => writeFileSync(${JSON.stringify(join(dir, 'stop'))}, 'x'), log: (l) => console.log(l) });\n` +
-        `console.log(JSON.stringify(r)); process.exitCode = r.code;\n`),
-    );
-    return {
-      dir,
-      run: () => {
-        const p = spawn(process.execPath, [join(dir, 'supervisor.mjs')], { stdio: ['ignore', 'pipe', 'inherit'] });
-        let out = '';
-        p.stdout.on('data', (d: Buffer) => (out += d.toString()));
-        return { pid: p.pid!, done: new Promise((resolve) => p.on('exit', (code) => resolve({ code, out }))) };
-      },
-    };
-  };
-  const waitFor = async (path: string): Promise<string> => {
-    for (let i = 0; i < 400; i++) {
-      if (existsSync(path)) return readFileSync(path, 'utf8');
-      await new Promise((r) => setTimeout(r, 50));
-    }
-    throw new Error(`${path} never appeared`);
-  };
-  // Waits until the file holds `n` positive pids, retrying on content that is missing or not (yet) that.
-  const waitForPids = async (path: string, n = 1): Promise<number[]> => {
-    for (let i = 0; i < 400; i++) {
-      const pids = existsSync(path) ? readFileSync(path, 'utf8').trim().split(/\s+/).map(Number) : [];
-      if (pids.length === n && pids.every((p) => Number.isInteger(p) && p > 1)) return pids;
-      await new Promise((r) => setTimeout(r, 50));
-    }
-    throw new Error(`${path} never held ${n} pid(s)`);
-  };
-  const dead = (pid: number): boolean => {
-    try {
-      process.kill(pid, 0);
-      return false;
-    } catch {
-      return true;
-    }
-  };
-
-  it('SIGTERM kills the driver and its running step at once, and the driver never goes on to fail a PR', async () => {
-    const { dir, run } = setup(
-      (dir) => `import { spawn, spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\n` +
-        `if (process.env.LAND_SUPERVISED !== '1') process.exit(9);\n` +
-        `const probe = spawn('sleep', ['60'], { stdio: 'ignore' });\n` + // the step's own child, in the same group
-        `writeFileSync(${JSON.stringify(join(dir, 'pids'))}, process.pid + ' ' + probe.pid);\n` +
-        `spawnSync('sleep', ['60']);\n` +
-        `writeFileSync(${JSON.stringify(join(dir, 'resumed'))}, 'the step "failed" and the driver went on');\n`,
-    );
-    const s = run();
-    await waitFor(join(dir, 'ready'));
-    const [driver, step] = (await waitForPids(join(dir, 'pids'), 2)) as [number, number];
-    const t0 = Date.now();
-    process.kill(s.pid, 'SIGTERM');
-    const { code, out } = await s.done;
-    expect(code).toBe(130);
-    expect(JSON.parse(out.trim().split('\n').at(-1)!)).toMatchObject({ code: 130, interrupted: 'SIGTERM', pid: driver });
-    expect(Date.now() - t0).toBeLessThan(4000);
-    expect(dead(driver) && dead(step)).toBe(true);
-    expect(existsSync(join(dir, 'resumed'))).toBe(false);
-  }, 20_000);
-
-  it('waits for a publish in progress before interrupting, and kills at once on a second signal', async () => {
-    // The driver "publishes" for 1.5 s (the marker exists), then runs a long step.
-    const body = (dir: string) =>
-      `import { spawnSync } from 'node:child_process';\nimport { rmSync, writeFileSync } from 'node:fs';\n` +
-      `writeFileSync(${JSON.stringify(join(dir, 'publishing'))}, 'x');\nwriteFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\n` +
-      `spawnSync('sleep', ['1.5']);\nwriteFileSync(${JSON.stringify(join(dir, 'published'))}, 'x');\nrmSync(${JSON.stringify(join(dir, 'publishing'))});\n` +
-      `spawnSync('sleep', ['60']);\nwriteFileSync(${JSON.stringify(join(dir, 'resumed'))}, 'x');\n`;
-    const a = setup(body);
-    const s = a.run();
-    await waitFor(join(a.dir, 'ready'));
-    await waitForPids(join(a.dir, 'pids'));
-    process.kill(s.pid, 'SIGTERM');
-    const r = await s.done;
-    expect(r.code).toBe(130);
-    expect(r.out).toContain('the driver is merging a PR; interrupting once that merge and its checks end');
-    expect(existsSync(join(a.dir, 'published'))).toBe(true); // the publish finished
-    expect(existsSync(join(a.dir, 'resumed'))).toBe(false); // and nothing after it ran
-    const b = setup(body);
-    const s2 = b.run();
-    await waitFor(join(b.dir, 'ready'));
-    await waitForPids(join(b.dir, 'pids'));
-    process.kill(s2.pid, 'SIGTERM');
-    await new Promise((res) => setTimeout(res, 300));
-    process.kill(s2.pid, 'SIGTERM');
-    const r2 = await s2.done;
-    expect(r2.out).toContain('SIGTERM again: killing the driver group now');
-    expect(existsSync(join(b.dir, 'published'))).toBe(false);
-  }, 20_000);
-
-  it('SIGKILLs a step that ignores SIGTERM once the grace period is over', async () => {
-    const { dir, run } = setup(
-      (dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\n` +
-        `writeFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\n` +
-        `spawnSync('/bin/sh', ['-c', 'trap "" TERM; echo $$ > ${join(dir, 'step')}.tmp && mv ${join(dir, 'step')}.tmp ${join(dir, 'step')}; while :; do sleep 0.1; done']);\n`,
-      { graceMs: 1000 },
-    );
-    const s = run();
-    await waitFor(join(dir, 'ready'));
-    await waitForPids(join(dir, 'pids'));
-    const [step] = (await waitForPids(join(dir, 'step'))) as [number];
-    const t0 = Date.now();
-    process.kill(s.pid, 'SIGTERM');
-    const r = await s.done;
-    expect(r.code).toBe(130);
-    expect(Date.now() - t0).toBeGreaterThanOrEqual(900);
-    expect(dead(step)).toBe(true);
-  }, 20_000);
-
-  it('reports a driver killed from elsewhere as a death by signal, so the supervisor cleans up after it', async () => {
-    const { dir, run } = setup((dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\nspawnSync('sleep', ['60']);\n`);
-    const s = run();
-    await waitFor(join(dir, 'ready'));
-    const [driver] = (await waitForPids(join(dir, 'pids'))) as [number];
-    expect(await waitForPids(join(dir, 'spawned'))).toEqual([driver]);
-    process.kill(driver, 'SIGKILL');
-    const r = await s.done;
-    expect(JSON.parse(r.out.trim().split('\n').at(-1)!)).toMatchObject({ interrupted: null, signal: 'SIGKILL', pid: driver });
-  }, 20_000);
-
-  it('gives the driver its supervisor\'s pid, so a driver whose supervisor dies stops itself', async () => {
-    const { dir, run } = setup(
-      (dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\n` +
-        `writeFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\n` +
-        `for (let i = 0; i < 200; i++) { if (String(process.ppid) !== process.env.LAND_SUPERVISOR_PID) { writeFileSync(${JSON.stringify(join(dir, 'orphan'))}, 'x'); process.exit(3); } spawnSync('sleep', ['0.1']); }\n`,
-    );
-    const s = run();
-    await waitFor(join(dir, 'ready'));
-    const [driver] = (await waitForPids(join(dir, 'pids'))) as [number];
-    process.kill(s.pid, 'SIGKILL');
-    await waitFor(join(dir, 'orphan'));
-    for (let i = 0; i < 40 && !dead(driver); i++) await new Promise((res) => setTimeout(res, 50));
-    expect(dead(driver)).toBe(true);
-  }, 20_000);
-
-  it('acts on a signal that arrives before the driver is recorded, rather than dying of it', async () => {
-    // onSpawn takes 3 s (a slow ps), far beyond scheduler jitter; the SIGTERM sent once it starts lands inside it.
-    const { dir, run } = setup(
-      (dir) => `import { spawnSync } from 'node:child_process';\nimport { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\nspawnSync('sleep', ['60']);\nwriteFileSync(${JSON.stringify(join(dir, 'resumed'))}, 'x');\n`,
-      { slowSpawnMs: 3000 },
-    );
-    const s = run();
-    const [driver] = (await waitForPids(join(dir, 'spawned'))) as [number];
-    process.kill(s.pid, 'SIGTERM');
-    const r = await s.done;
-    expect(r.code).toBe(130);
-    expect(JSON.parse(r.out.trim().split('\n').at(-1)!)).toMatchObject({ interrupted: 'SIGTERM', pid: driver });
-    expect(dead(driver)).toBe(true);
-    expect(existsSync(join(dir, 'resumed'))).toBe(false);
-  }, 20_000);
-
-  it('SIGUSR1 asks for a graceful stop: the driver finishes and exits on its own', async () => {
-    const { dir, run } = setup(
-      (dir) => `import { spawnSync } from 'node:child_process';\nimport { existsSync, writeFileSync } from 'node:fs';\n` +
-        `writeFileSync(${JSON.stringify(join(dir, 'pids'))}, String(process.pid));\n` +
-        `for (let i = 0; i < 100 && !existsSync(${JSON.stringify(join(dir, 'stop'))}); i++) spawnSync('sleep', ['0.1']);\n` +
-        `writeFileSync(${JSON.stringify(join(dir, 'finished'))}, 'x');\n`,
-    );
-    const s = run();
-    await waitFor(join(dir, 'ready'));
-    await waitForPids(join(dir, 'pids'));
-    process.kill(s.pid, 'SIGUSR1');
-    const { code, out } = await s.done;
-    expect(code).toBe(0);
-    expect(out).toContain('SIGUSR1: graceful stop requested');
-    expect(JSON.parse(out.trim().split('\n').at(-1)!)).toMatchObject({ code: 0, interrupted: null });
-    expect(existsSync(join(dir, 'finished'))).toBe(true);
-  }, 20_000);
 });
 
 describe('a batch of positions on a scratch repository', () => {

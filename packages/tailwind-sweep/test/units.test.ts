@@ -4,12 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { categoryOf } from '../src/categories.ts';
 import { checkCaptured, compareCaptures } from '../src/chrome.ts';
 import type { Blocker } from '../src/dragon.ts';
+import { compileUtility, notApplicableOn } from '../src/dragon.ts';
 import { flatten } from '../src/flatten.ts';
 import type { DragonRow } from '../src/pool.ts';
 import { utilityRules } from '../src/rules.ts';
+import type { Diagnostic, FrontEndResult } from 'dragon';
 import { deserialize, serialize, summarize } from '../src/snapshot.ts';
 import type { UtilityRecord } from '../src/sweep.ts';
-import { companions, outcomeDiffs, parseCondition, refusalGroup } from '../src/sweep.ts';
+import { companions, outcomeDiffs, outcomeOf, parseCondition, refusalGroup } from '../src/sweep.ts';
 import { escapeClass, publishedCss } from '../src/tailwind.ts';
 
 const swept = async (...classes: string[]): Promise<string> => flatten(await publishedCss(classes)).css;
@@ -152,8 +154,8 @@ describe('the snapshot', () => {
   });
   it('summary counts', () => {
     const s = summarize(records);
-    expect(s.byTarget.web).toEqual({ supported: 1, refused: 1, invalid: 0, mismatch: 1 });
-    expect(s.byTarget.android).toEqual({ supported: 0, refused: 2, invalid: 1, mismatch: 0 });
+    expect(s.byTarget.web).toEqual({ supported: 1, refused: 1, invalid: 0, mismatch: 1, 'na-native': 0 });
+    expect(s.byTarget.android).toEqual({ supported: 0, refused: 2, invalid: 1, mismatch: 0, 'na-native': 0 });
     expect(s.publishedCompiles).toEqual({ web: 1, ios: 1, android: 2 });
     expect(s.refusals).toEqual([
       { group: 'g', utilities: { web: 1, ios: 0, android: 1 }, families: 1 },
@@ -187,5 +189,63 @@ describe('the dual comparison', () => {
 describe('class escaping', () => {
   it.each([['w-1/2', 'w-1\\/2'], ['-m-0.5', '-m-0\\.5'], ['@container', '\\@container'], ['from-10%', 'from-10\\%'], ['2xl', '\\32 xl'], ['-2', '-\\32 '], ['-', '\\-']])('%s', (name, escaped) => {
     expect(escapeClass(name)).toBe(escaped);
+  });
+});
+
+// NA-NATIVE: a native target that compiles only because everything web refuses is not applicable on native gets its own outcome;
+// any other native-compiles-but-web-does-not result still stops the sweep.
+describe('not applicable on native', () => {
+  const judged = { dual: new Map<string, readonly string[]>(), parses: new Map<string, boolean>() };
+  const rowOf = (result: DragonRow['result']): DragonRow => ({ key: 'u', shell: [], sweptCss: '', published: null, result, crashes: [] });
+
+  it('cursor-pointer: na-native on ios and android, still refused on web', async () => {
+    const published = await publishedCss(['cursor-pointer']);
+    const r = compileUtility(['cursor-pointer'], flatten(published).css, published);
+    expect(r.blockers.ios).toBeNull();
+    expect(r.blockers.web?.code).toBe('DRAGON_UNSUPPORTED_PROPERTY');
+    expect(r.notApplicable).toEqual({ web: null, ios: 'cursor: pointer', android: 'cursor: pointer' });
+    const row = rowOf(r);
+    expect(outcomeOf('ios', row, judged)).toEqual({ status: 'na-native', at: 'cursor: pointer' });
+    expect(outcomeOf('android', row, judged)).toEqual({ status: 'na-native', at: 'cursor: pointer' });
+    expect(outcomeOf('web', row, judged)).toMatchObject({ status: 'refused', code: 'DRAGON_UNSUPPORTED_PROPERTY' });
+  });
+
+  it('a native target that compiles while web is refused for any other reason still throws', async () => {
+    const published = await publishedCss(['cursor-pointer']);
+    const r = compileUtility(['cursor-pointer'], flatten(published).css, published);
+    expect(() => outcomeOf('ios', rowOf({ ...r, notApplicable: { web: null, ios: null, android: null } }), judged)).toThrow(/ios compiles but web does not/);
+  });
+
+  it('the items must explain every web refusal, each at an item\'s own span', () => {
+    const text = '.a { cursor: pointer; } .b::-webkit-scrollbar { width: 5px; border-radius: 2px; } .c { zoom: 2; }';
+    const source = { uri: 'u', revision: 'r', hash: 'h' };
+    const input = { snapshot: { sources: [{ ref: source, text, displayPath: 'u' }] } } as unknown as FrontEndResult;
+    const at = (find: string) => ({ kind: 'authored' as const, span: { source, start: text.indexOf(find), end: text.indexOf(find) + find.length } });
+    const d = (code: string, severity: 'error' | 'info', target: string, find: string) => ({ code, severity, target, origin: at(find), message: '', why: '', related: [], fix: null, profile: null }) as unknown as Diagnostic;
+    const items = [d('DRAGON_NOT_APPLICABLE_NATIVE', 'info', 'ios', 'cursor: pointer;'), d('DRAGON_NOT_APPLICABLE_NATIVE', 'info', 'ios', '::-webkit-scrollbar')];
+    const covered = [d('DRAGON_UNSUPPORTED_PROPERTY', 'error', 'web', 'cursor: pointer;'), d('DRAGON_UNSUPPORTED_SELECTOR', 'error', 'web', '::-webkit-scrollbar'), d('DRAGON_UNSUPPORTED_PROPERTY', 'error', 'web', 'border-radius: 2px;')];
+    // Only a refusal at an item's own span is explained: the scrollbar rule's refusals are not.
+    expect(notApplicableOn(input, [...items, ...covered], 'ios')).toBeNull();
+    expect(notApplicableOn(input, [...items, covered[0] as Diagnostic], 'ios')).toBe('cursor: pointer;; ::-webkit-scrollbar');
+    expect(notApplicableOn(input, [...items, ...covered], 'android')).toBeNull();
+    expect(notApplicableOn(input, [...items, ...covered, d('DRAGON_UNSUPPORTED_PROPERTY', 'error', 'web', 'zoom: 2;')], 'ios')).toBeNull();
+    expect(notApplicableOn(input, [...items, d('DRAGON_UNSUPPORTED_PROPERTY', 'error', null as unknown as string, 'cursor: pointer;')], 'ios')).toBeNull();
+    expect(notApplicableOn(input, covered, 'ios')).toBeNull();
+    // A property item explains only its own declaration, not a later refusal in the same rule.
+    const later = '.d { cursor: pointer; transition: x; }';
+    const input2 = { snapshot: { sources: [{ ref: source, text: later, displayPath: 'u' }] } } as unknown as FrontEndResult;
+    const at2 = (find: string) => ({ kind: 'authored' as const, span: { source, start: later.indexOf(find), end: later.indexOf(find) + find.length } });
+    const d2 = (code: string, severity: 'error' | 'info', target: string, find: string) => ({ code, severity, target, origin: at2(find), message: '', why: '', related: [], fix: null, profile: null }) as unknown as Diagnostic;
+    const cursorItems = [d2('DRAGON_NOT_APPLICABLE_NATIVE', 'info', 'ios', 'cursor: pointer;'), d2('DRAGON_UNSUPPORTED_PROPERTY', 'error', 'web', 'cursor: pointer;')];
+    expect(notApplicableOn(input2, cursorItems, 'ios')).toBe('cursor: pointer;');
+    expect(notApplicableOn(input2, [...cursorItems, d2('DRAGON_UNSUPPORTED_VALUE', 'error', 'web', 'transition: x;')], 'ios')).toBeNull();
+  });
+
+  it('the snapshot format round-trips the na-native outcome, and the summary counts it on its own', () => {
+    const rec: UtilityRecord = { utility: 'cursor-pointer', root: 'cursor-pointer', category: 'interactivity', with: null, outcomes: { web: { status: 'refused', code: 'DRAGON_UNSUPPORTED_PROPERTY', group: 'property cursor', at: 'cursor: pointer', fix: 'Remove' }, ios: { status: 'na-native', at: 'cursor: pointer' }, android: { status: 'na-native', at: 'cursor: pointer' } }, published: { web: [], ios: [], android: [] } };
+    expect(deserialize(serialize([rec], { chrome: 'x' })).records).toEqual([rec]);
+    const s = summarize([rec]);
+    expect(s.byTarget.ios).toEqual({ supported: 0, refused: 0, invalid: 0, mismatch: 0, 'na-native': 1 });
+    expect(s.byTarget.web.refused).toBe(1);
   });
 });

@@ -22,13 +22,18 @@ on:
     branches: [master]
 permissions:
   contents: read
+# Master's cache runs share one group and cancel each other: only the newest master matters. A branch's runs have their own
+# group, per branch and per label, so a label event that is not `regen` never takes a queued regen's place.
 concurrency:
-  group: regen-on-ci-${{ inputs.branch || github.head_ref }}
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'push' && 'regen-on-ci-master-warm' || format('regen-on-ci-{0}-{1}', inputs.branch || github.head_ref, github.event.label.name || 'dispatch') }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 jobs:
   resolve:
     if: github.event_name != 'pull_request' || github.event.label.name == 'regen'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     outputs:
       branch: ${{ steps.r.outputs.branch }}
       sha: ${{ steps.r.outputs.sha }}
@@ -46,6 +51,18 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$GITHUB_EVENT_NAME" = push ]; then
+            # Branch regens come first: the macOS runners are few (5 at once), so a master cache run yields to any branch regen
+            # queued or running, and the next master push warms the cache instead.
+            busy=0
+            for st in queued in_progress waiting pending; do
+              n=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" -q '[.workflow_runs[] | select(.event != "push")] | length')
+              busy=$((busy + n))
+            done
+            if [ "$busy" -gt 0 ]; then
+              { echo "branch=master"; echo "sha=$GITHUB_SHA"; echo "mode=skip"; } >> "$GITHUB_OUTPUT"
+              echo "regen-on-ci: $busy branch regen run(s) queued or running; master's cache run yields to them" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
             { echo "branch=master"; echo "sha=$GITHUB_SHA"; echo "mode=warm"; } >> "$GITHUB_OUTPUT"
             echo "regen-on-ci: warming the regen cache on master at $GITHUB_SHA (nothing is pushed)" >> "$GITHUB_STEP_SUMMARY"
             exit 0
@@ -64,6 +81,7 @@ jobs:
           echo "regen-on-ci: $branch at $sha" >> "$GITHUB_STEP_SUMMARY"
   chrome-1:
     needs: resolve
+    if: needs.resolve.outputs.mode != 'skip'
     uses: ./.github/workflows/regen-on-ci-round.yml
     with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', name: chrome-1 }
   host-1:
@@ -87,7 +105,7 @@ jobs:
     with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3 }
   converge:
     needs: [resolve, chrome-1, host-1, chrome-2, host-2, chrome-3]
-    if: always() && needs.resolve.result == 'success' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    if: always() && needs.resolve.result == 'success' && needs.resolve.outputs.mode != 'skip' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     outputs:
       last: ${{ steps.last.outputs.name }}

@@ -30,6 +30,8 @@
   "paintPlants": [
     "border:dash-phase-1",
     "border:dash-gap-unfitted",
+    "transform:transform-origin-ignored",
+    "transform:translate-percent-of-parent",
     "image:image-offset-1"
   ],
   "supportPlants": [
@@ -37,6 +39,8 @@
     "glyph-offset-y-1",
     "dash-phase-1",
     "dash-gap-unfitted",
+    "transform-origin-ignored",
+    "translate-percent-of-parent",
     "image-offset-1"
   ],
   "supportFiles:uikit": [
