@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GridContainerStyle, GridItemStyle, LayoutBox, LayoutInput, TrackSize } from '../src/index.ts';
 import { ahemMeasurer, layout, validateLayoutInput } from '../src/index.ts';
-import { anon, box, neutralEnvironment, text } from './helpers.ts';
+import { anon, box, control, neutralEnvironment, text } from './helpers.ts';
 
 const fr = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'fr', value } });
 const px = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'px', value } });
@@ -82,6 +82,26 @@ describe('the validator\'s grid rules, each with a planted input', () => {
     const replacedGrid = input(box('root', {}, []));
     (replacedGrid.root as unknown as { children: unknown[] }).children = [leaf({ display: 'grid', grid: gridStyle({}) })];
     expect(codes(replacedGrid)).toContain('grid-shape $.root.children[0].style.grid');
+  });
+  it('checks a form control child of a grid container like a box child, outside one too, and keeps a slider thumb out of one', () => {
+    const button = (style: Record<string, unknown>): unknown => JSON.parse(JSON.stringify(control('btn', { kind: 'button-block' }, style)));
+    const withControl = (style: Record<string, unknown>): unknown => mutate((r) => {
+      (r.children[0] as unknown as { children: unknown[] }).children = [button(style)];
+    });
+    expect(codes(withControl({ gridItem: autoItem }))).toEqual([]);
+    expect(codes(withControl({}))).toContain('grid-shape $.root.children[0].children[0].style.gridItem');
+    const placedOutside = input(box('root', {}, []));
+    (placedOutside.root as unknown as { children: unknown[] }).children = [button({ gridItem: autoItem })];
+    expect(codes(placedOutside)).toContain('grid-shape $.root.children[0].style.gridItem');
+    // A control that is a grid container carries its grid style like a box, and its own children their placements.
+    const controlGrid = input(box('root', {}, []));
+    (controlGrid.root as unknown as { children: unknown[] }).children = [button({ display: 'grid', width: { kind: 'px', value: 100 } })];
+    expect(codes(controlGrid)).toContain('grid-shape $.root.children[0].style.grid');
+    // A slider thumb moves only in a block container's flow, so a grid container is not its parent.
+    const thumbIn = mutate((r) => {
+      (r.children[0] as unknown as { children: unknown[] }).children = [JSON.parse(JSON.stringify(control('thumb', { kind: 'slider-thumb', ratio: 0.5 }, { gridItem: autoItem })))];
+    });
+    expect(codes(thumbIn)).toContain('bad-value $.root.children[0].children[0].control');
   });
   it('judges an anonymous item by its values, not by the order of its keys', () => {
     const reordered = input(box('root', {}, [grid(gridStyle({}), [anon('g:anon0', {}, [text('g:text0', 'X')])])]));

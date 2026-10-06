@@ -549,7 +549,8 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
     }
   }
   children.forEach((child: unknown, i: number) => {
-    if (!isRecord(child) || (child['kind'] !== 'box' && child['kind'] !== 'replaced') || !isRecord(child['style'])) return;
+    // A box, a replaced leaf and a form control (FORM-a) are each a grid item of a grid container; text never is (checkInlineContent).
+    if (!isRecord(child) || (child['kind'] !== 'box' && child['kind'] !== 'replaced' && child['kind'] !== 'control') || !isRecord(child['style'])) return;
     const cs = child['style'];
     const item = cs['gridItem'];
     const inFlowItem = isGrid && cs['position'] !== 'absolute';
