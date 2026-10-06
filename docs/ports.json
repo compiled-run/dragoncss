@@ -479,6 +479,23 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/parser/css_parser_impl.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "fba42196ac93233eacc60fdf8d234103f64f23150fbc6c984521e98922df0ce7",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "895-898", "symbol": null, "source": "cited" },
+        { "lines": "1531-1581", "symbol": "CSSParserImpl::ConsumeKeyframesRule", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/at-rules/keyframes.ts", "symbol": "KeyframesRule", "use": "reference" },
+        { "file": "packages/dragon/test/aliases.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -848,6 +865,29 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/grid/grid_line_resolver.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2022 The Chromium Authors",
+      "fileSha256": "bfdfba4acbc27da65ec1fc22a06c778e9f3701a5c60fe031e8c7f9f54f9ed294",
+      "headerSha256": "92d2eeedf6b379a7a4915a6328828c4152ebc772d3b4463657eabf539567fa33",
+      "ranges": [
+        { "lines": "439-463", "symbol": "LookAheadForNamedGridLine", "source": "located" },
+        { "lines": "465-488", "symbol": "LookBackForNamedGridLine", "source": "located" },
+        { "lines": "490-509", "symbol": "DefiniteGridSpanWithNamedSpanAgainstOpposite", "source": "located" },
+        { "lines": "594-632", "symbol": "ResolveNamedGridLinePositionAgainstOppositePosition", "source": "located" },
+        { "lines": "688-712", "symbol": "ResolveGridPositionAgainstOppositePosition", "source": "located" },
+        { "lines": "714-729", "symbol": "SpanSizeFromPositions", "source": "located" },
+        { "lines": "731-755", "symbol": "ResolveNamedGridLinePosition", "source": "located" },
+        { "lines": "757-822", "symbol": "ResolveGridPosition", "source": "located" },
+        { "lines": "824-874", "symbol": "ResolveGridPositionsFromStyle", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/grid-layout.ts", "symbol": null, "use": "port" }
       ]
     },
     {
@@ -1271,6 +1311,22 @@
       "dragon": [
         { "file": "packages/layout/src/units.ts", "symbol": "MAX_FONT_SIZE", "use": "reference" },
         { "file": "packages/layout/src/paint-dash.ts", "symbol": "styleRank", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/style/grid_area.h",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "98d24711cb87a00f969548fd121826a9c785df9e2868a5bb7ce6515958c7e920",
+      "headerSha256": "7fce36fb20afb48e663abb598bae0bc2a92175288d8b927abfb0fb4ba1d369b1",
+      "ranges": [
+        { "lines": "48-48", "symbol": "kGridMaxTracks", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/grid-layout.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/validate.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
