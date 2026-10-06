@@ -1,8 +1,14 @@
 # Pull request checks. Macroscope's correctness review waits for this job (.macroscope/correctness/correctness.md).
+# Every branch push runs it too, so a stacked PR based on its parent branch gets a CI run on its head; pr:review and the
+# landing driver read the "checks" runs of the head commit, whichever event made them. A push made with GITHUB_TOKEN starts no
+# workflow, so regen-on-ci.yml dispatches this one on the branch after pushing its regen commit.
 name: ci
 on:
   pull_request:
     branches: [master, 'review/**']
+  push:
+    branches-ignore: [master]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:

@@ -2,17 +2,23 @@
 // the tree; the tag table is elements.ts, selector matching match.ts, the cascade cascade.ts and value computation computed.ts,
 // all re-exported here so existing imports keep working.
 import { perturbColor } from '../css/color.ts';
+import { envAsZero } from '../css/env.ts';
+import { ENV_VALUE_TYPE } from '../css/values.ts';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
-import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
+import type { UaDataset, UaKey } from '../ua/datasets.ts';
+import { uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { blockifyRoot, computeGridLengths, computeJustifyItems, computeLengths, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
+import { presentationalHints } from './elements/replaced.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
+import type { InteractionState } from './match.ts';
+import { NO_INTERACTION } from './match.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
 
@@ -137,9 +143,10 @@ const displayOf = (el: ResolvedElement): string => {
   return v.kind === 'keyword' ? v.value : '';
 };
 
-// css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand.
+// css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand. interaction:
+// the hovered and focused elements the selectors match against (SELD-R2a); none by default.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
-export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment): ResolvedElement {
+export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState = NO_INTERACTION): ResolvedElement {
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
   const customsOf = new WeakMap<ResolvedElement, CustomProperties>();
@@ -147,7 +154,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   const pendingInline = new Map<ResolvedElement, readonly (ResolvedElement | LinkedText)[]>();
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
     const here = [...chain, el];
-    const { winners, matched, scope } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties));
+    const { winners, matched, scope } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction);
     const props = new Map<Longhand, ResolvedValue>();
     const tag = uaTagOf(el.tag);
     const none = { declaration: null, declared: null, losing: [] } as const;
@@ -162,6 +169,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     };
     // Longhands no author declaration set: their UA value depends on the element's final direction and font size (below).
     const defaulted = new Set<Longhand>();
+    const hints = presentationalHints(el.tag, el.attributes);
     for (const p of LONGHANDS) {
       const raw = winners.get(p);
       const w = raw === undefined ? undefined : substituteVariables(raw, p, el, scope);
@@ -192,6 +200,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       } else if (inherited) {
         props.set(p, parent === null ? (userAgentValue(tag, p, environment.ua) === null ? fromParent(p) : defaultFor(p)) : fromParent(p));
         defaulted.add(p);
+      } else if (w === undefined && hints.has(p as 'width')) {
+        props.set(p, { value: hints.get(p as 'width') as CssValue, origin: 'presentational-hint', span: null, ...none });
       } else {
         props.set(p, defaultFor(p));
         defaulted.add(p);
@@ -204,10 +214,15 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     computeLengths(fontSize, parentFontSize, rootFontSize);
     props.set('font-size', fontSize.get('font-size') as ResolvedValue);
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent);
+    // A replaced key's forced values (iframe overflow: clip) hold whatever the cascade says (ELB-2 userAgentForced).
+    applyForcedUserAgent(tag, props, environment.ua);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {
         props.set(p, { ...set, value: { ...set.value, value: perturbColor(set.value.value) } });
+      }
+      if (faults.envResolvedToZero && set.value.kind === 'other' && set.value.type === ENV_VALUE_TYPE) {
+        props.set(p, { ...set, value: { ...set.value, text: envAsZero(set.value.text) } });
       }
     }
     computeLengths(props, parentFontSize, rootFontSize);
@@ -288,7 +303,7 @@ export function environmentOf(root: ResolvedElement): ResolveEnvironment {
  * css-cascade-5 §6.3: a longhand no author declaration set takes the tag's declared UA value for the element's computed direction
  * and font size (font-size first, since the others are relative to it), or else its inherited or initial value.
  */
-function applyDeclaredUserAgent(tag: CapturedTag, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, parent: ResolvedElement | null, ua: UaDataset, fromParent: (p: Longhand) => ResolvedValue): void {
+function applyDeclaredUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, parent: ResolvedElement | null, ua: UaDataset, fromParent: (p: Longhand) => ResolvedValue): void {
   const none = { span: null, declaration: null, declared: null, losing: [] } as const;
   const dirValue = (props.get('direction') as ResolvedValue).value;
   const direction = dirValue.kind === 'keyword' && dirValue.value === 'rtl' ? 'rtl' : 'ltr';
@@ -299,6 +314,19 @@ function applyDeclaredUserAgent(tag: CapturedTag, props: Map<Longhand, ResolvedV
     const value = declaredUserAgentValue(tag, p, ua, direction, ownFontSize, parentFontSize);
     if (value !== null) props.set(p, { value, origin: 'user-agent', ...none });
     else if ((props.get(p) as ResolvedValue).origin === 'user-agent') props.set(p, INHERITED.has(p) && parent !== null ? fromParent(p) : { value: initialValue(p, ua), origin: 'initial', ...none });
+  }
+}
+
+function applyForcedUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>, ua: UaDataset): void {
+  const dirValue = (props.get('direction') as ResolvedValue).value;
+  const forced = uaRows(ua, tag).forced[dirValue.kind === 'keyword' && dirValue.value === 'rtl' ? 'rtl' : 'ltr'];
+  for (const [p, text] of Object.entries(forced)) {
+    const was = props.get(p as Longhand);
+    if (was === undefined) throw new Error(`forced UA value for ${p}, which is not a longhand`);
+    const value = parseValueText(p as Longhand, text);
+    // The author winner lost to the forced value, not to another declaration; the declarations it beat keep their own reason.
+    if (was.declaration === null) props.set(p as Longhand, { value, origin: 'user-agent', span: null, declaration: null, declared: null, losing: was.losing });
+    else props.set(p as Longhand, { value, origin: 'user-agent', span: null, declaration: null, declared: null, losing: [was.declaration, ...was.losing], forcedOver: was.declaration });
   }
 }
 

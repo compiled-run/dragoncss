@@ -26,7 +26,12 @@ export type PseudoClass =
   | { readonly kind: 'only'; readonly ofType: boolean }
   | { readonly kind: 'is'; readonly where: boolean; readonly selectors: readonly Selector[] }
   | { readonly kind: 'not'; readonly selectors: readonly Selector[] }
-  | { readonly kind: 'has'; readonly selectors: readonly Selector[] };
+  | { readonly kind: 'has'; readonly selectors: readonly Selector[] }
+  | { readonly kind: 'interaction'; readonly pseudo: InteractionPseudo };
+
+/** The interaction pseudo-classes Dragon compiles as interaction states (SELD-R2, analysis/interaction.ts). */
+export type InteractionPseudo = 'hover' | 'active' | 'focus' | 'focus-visible';
+export const INTERACTION_PSEUDOS: readonly InteractionPseudo[] = ['hover', 'active', 'focus', 'focus-visible'];
 
 export type Compound = {
   readonly tag: string | null;
@@ -54,7 +59,7 @@ export type Selector = {
 
 const SELECTOR_FIX =
   'Use type, class, id, attribute and structural pseudo-class selectors (:root, :empty, :first-child, :nth-child(), :is(), :where(), :not(), :has() and the like), joined by descendant, child or sibling combinators.';
-const INTERACTIVE = new Set(['hover', 'focus', 'active', 'focus-visible', 'focus-within', 'target', 'visited', 'link', 'any-link', 'checked', 'disabled', 'enabled']);
+const INTERACTIVE = new Set(['focus-within', 'target', 'visited', 'link', 'any-link', 'checked', 'disabled', 'enabled']);
 const COMBINATORS: ReadonlySet<string> = new Set([' ', '>', '+', '~']);
 const ZERO: Specificity = [0, 0, 0];
 
@@ -151,6 +156,7 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
     chromeInvalid(part, text, ctx, refuse);
     return null;
   }
+  if ((INTERACTION_PSEUDOS as readonly string[]).includes(name) && args === null) return { kind: 'interaction', pseudo: name as InteractionPseudo };
   if (INTERACTIVE.has(name)) {
     refuse(part, `${text} depends on user interaction or document state, which a later package models as runtime state`, 'Model the state as a component state and select it with a class or a [ui-*] attribute.');
     return null;

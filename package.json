@@ -8,7 +8,7 @@
     "typecheck": "tsc -b && tsc -b packages/text-shaper/test",
     "test": "vitest run",
     "regen": "node scripts/regen.ts",
-    "setup:git": "git config merge.dragon-generated.name 'keep this side; pnpm regen rebuilds it' && git config merge.dragon-generated.driver true",
+    "setup:git": "git config merge.dragon-generated.name 'keep this side; pnpm regen rebuilds it' && git config merge.dragon-generated.driver true && git config merge.dragon-floor.name 'structural merge of floors and pins (scripts/floor-merge.ts)' && git config merge.dragon-floor.driver 'node scripts/floor-merge.ts %O %A %B %P' && git config merge.dragon-sorted.name 'interleave additions to the sorted registries (scripts/sorted-merge.ts)' && git config merge.dragon-sorted.driver 'node scripts/sorted-merge.ts %O %A %B %P'",
     "grammar:gen": "node scripts/gen-css-grammar.ts",
     "ua:capture": "node --conditions=dragon-internal scripts/capture-ua-defaults.ts",
     "parity:capture": "node --conditions=dragon-internal packages/parity/src/cli/capture.ts",
@@ -25,6 +25,9 @@
     "build": "node scripts/build-dist.ts",
     "pr:review": "node scripts/pr-review.ts",
     "train": "node scripts/merge-train.ts",
+    "land": "node scripts/land.ts",
+    "land:review-lookup": "node --conditions=dragon-internal scripts/land-review-lookup.ts",
+    "evidence:stamp": "node --conditions=dragon-internal scripts/evidence-stamp.ts",
     "layout:subset": "node packages/translate/src/cli/subset.ts",
     "linebreak:gen": "node scripts/gen-linebreak-data.ts",
     "notices:gen": "node scripts/gen-third-party-notices.ts",
@@ -55,7 +58,11 @@
     "rt:oracle": "node --conditions=dragon-internal scripts/capture-rt-oracle.ts",
     "tw:sweep": "node --conditions=dragon-internal packages/tailwind-sweep/src/cli/sweep.ts",
     "parity:hit-capture": "node --conditions=dragon-internal packages/parity/src/cli/hit-capture.ts",
-    "parity:hit-report": "node --conditions=dragon-internal packages/parity/src/cli/hit-report.ts"
+    "parity:hit-report": "node --conditions=dragon-internal packages/parity/src/cli/hit-report.ts",
+    "parity:anim-capture": "node --conditions=dragon-internal packages/parity/src/cli/anim-capture.ts",
+    "parity:anim-report": "node --conditions=dragon-internal packages/parity/src/cli/anim-report.ts",
+    "parity:anim-vectors": "node --conditions=dragon-internal packages/parity/src/cli/anim-vectors.ts",
+    "parity:quads-capture": "node --conditions=dragon-internal packages/parity/src/cli/quads-capture.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",

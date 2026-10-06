@@ -4,7 +4,7 @@
 // Usage: node packages/text-shaper/scripts/report.ts
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +47,9 @@ const size = (p: string): number => statSync(p).size;
 const kb = (n: number): string => `${(n / 1024).toFixed(0)} KiB`;
 const sha = (p: string): string => createHash('sha256').update(readFileSync(p)).digest('hex');
 
+const wasm = join(out, 'wasm', 'dragon_hb.wasm');
+if (sha(wasm) !== sha(DEFAULT_WASM_PATH)) throw new Error('wasm/dragon_hb.wasm is not the zig-out build; run `pnpm --filter @dragon/text-shaper build:wasm`');
+
 // iOS ships static libraries; the per-ABI cost is what they add to a linked, stripped image.
 const tmp = mkdtempSync(join(tmpdir(), 'dragon-hb-size-'));
 const iosDylib = (slice: string, sdk: string, target: string): number => {
@@ -56,15 +59,19 @@ const iosDylib = (slice: string, sdk: string, target: string): number => {
   return size(dylib);
 };
 
-const wasm = join(out, 'wasm', 'dragon_hb.wasm');
-if (sha(wasm) !== sha(DEFAULT_WASM_PATH)) throw new Error('wasm/dragon_hb.wasm is not the zig-out build; run `pnpm --filter @dragon/text-shaper build:wasm`');
-const sizes = [
-  ['WASM (wasm32-wasi reactor)', 'wasm/dragon_hb.wasm', size(wasm), '-'],
-  ['iOS device arm64', 'DragonHB.xcframework/ios-arm64', size(join(out, 'ios', 'ios-arm64', 'libdragon_hb.a')), kb(iosDylib('ios-arm64', 'iphoneos', 'arm64-apple-ios15.0'))],
-  ['iOS simulator arm64', 'DragonHB.xcframework/ios-arm64-simulator', size(join(out, 'ios', 'ios-arm64-simulator', 'libdragon_hb.a')), kb(iosDylib('ios-arm64-simulator', 'iphonesimulator', 'arm64-apple-ios15.0-simulator'))],
-  ['Android arm64-v8a', 'android/arm64-v8a/libdragon_hb.so', size(join(out, 'android', 'arm64-v8a', 'libdragon_hb.so')), '-'],
-  ['Android x86_64', 'android/x86_64/libdragon_hb.so', size(join(out, 'android', 'x86_64', 'libdragon_hb.so')), '-'],
-] as const;
+const sizes = (() => {
+  try {
+    return [
+      ['WASM (wasm32-wasi reactor)', 'wasm/dragon_hb.wasm', size(wasm), '-'],
+      ['iOS device arm64', 'DragonHB.xcframework/ios-arm64', size(join(out, 'ios', 'ios-arm64', 'libdragon_hb.a')), kb(iosDylib('ios-arm64', 'iphoneos', 'arm64-apple-ios15.0'))],
+      ['iOS simulator arm64', 'DragonHB.xcframework/ios-arm64-simulator', size(join(out, 'ios', 'ios-arm64-simulator', 'libdragon_hb.a')), kb(iosDylib('ios-arm64-simulator', 'iphonesimulator', 'arm64-apple-ios15.0-simulator'))],
+      ['Android arm64-v8a', 'android/arm64-v8a/libdragon_hb.so', size(join(out, 'android', 'arm64-v8a', 'libdragon_hb.so')), '-'],
+      ['Android x86_64', 'android/x86_64/libdragon_hb.so', size(join(out, 'android', 'x86_64', 'libdragon_hb.so')), '-'],
+    ] as const;
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+})();
 
 const md = `# TXT1-0 gate report: HarfBuzz in WASM against Chrome 145
 

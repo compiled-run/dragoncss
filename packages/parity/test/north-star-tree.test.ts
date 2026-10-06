@@ -9,7 +9,8 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { Assignment, ComponentDefinition, Condition, FrontEndResult, Scalar, TreeNode } from 'dragon';
-import { createProject } from 'dragon';
+// createProject is the public entry's own (create-project.ts); the internal entry 'dragon' resolves to leaves it out.
+import { createProject } from '../../dragon/src/index.ts';
 import { parseFixtureHtml } from '../src/fixture-reader.ts';
 import { repoPath } from '../src/paths.ts';
 import { caseCountProblems } from '../src/pipeline.ts';

@@ -44,6 +44,8 @@
         "padding-right": "0px",
         "padding-bottom": "0px",
         "padding-left": "0px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0px",
         "border-right-width": "0px",
         "border-bottom-width": "0px",
@@ -88,7 +90,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "200px 42px",
+        "will-change": "auto"
       }
     },
     {
@@ -125,6 +130,8 @@
         "padding-right": "0px",
         "padding-bottom": "0px",
         "padding-left": "0px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0px",
         "border-right-width": "0px",
         "border-bottom-width": "0px",
@@ -169,7 +176,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "200px 41px",
+        "will-change": "auto"
       }
     },
     {
@@ -206,6 +216,8 @@
         "padding-right": "0px",
         "padding-bottom": "0px",
         "padding-left": "0px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "2.28571px",
         "border-right-width": "2.28571px",
         "border-bottom-width": "2.28571px",
@@ -250,7 +262,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "22.2857px 7.28571px",
+        "will-change": "auto"
       }
     },
     {
@@ -287,6 +302,8 @@
         "padding-right": "0px",
         "padding-bottom": "0px",
         "padding-left": "0px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0.761905px",
         "border-right-width": "2.28571px",
         "border-bottom-width": "2.66667px",
@@ -331,7 +348,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "21.5238px 6.71429px",
+        "will-change": "auto"
       }
     },
     {
@@ -368,6 +388,8 @@
         "padding-right": "0px",
         "padding-bottom": "0px",
         "padding-left": "0px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "3.80952px",
         "border-right-width": "3.80952px",
         "border-bottom-width": "3.80952px",
@@ -412,7 +434,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "23.8095px 8.80952px",
+        "will-change": "auto"
       }
     },
     {
@@ -449,6 +474,8 @@
         "padding-right": "0px",
         "padding-bottom": "0px",
         "padding-left": "0px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "1.90476px",
         "border-right-width": "2.66667px",
         "border-bottom-width": "2.66667px",
@@ -493,7 +520,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "22.4762px 7.28571px",
+        "will-change": "auto"
       }
     },
     {
@@ -530,6 +560,8 @@
         "padding-right": "0px",
         "padding-bottom": "0px",
         "padding-left": "0px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "1.90476px",
         "border-right-width": "1.90476px",
         "border-bottom-width": "1.90476px",
@@ -574,7 +606,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "21.9048px 6.90476px",
+        "will-change": "auto"
       }
     }
   ]

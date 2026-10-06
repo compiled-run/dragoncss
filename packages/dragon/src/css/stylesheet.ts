@@ -6,6 +6,7 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
+import { legacyDisplay } from './display-legacy.ts';
 import type { AtRuleContext, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
 import { asciiLower, canonicalizeEscapes, decodeName, preprocessInput, trimValue } from './escapes.ts';
@@ -15,13 +16,20 @@ import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
 import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
+import { markNotApplicable } from './not-applicable.ts';
+import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
+import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
-import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, ratioValue, tokenValue, toValue } from './values.ts';
+import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
+import { checkEnvCalls, ENV_FIX, envVarRefusal, firstEnv, grammarText } from './env.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
+import type { AnimationDeclValue } from './properties/animation.ts';
+import type { KeyframesSource } from './at-rules/keyframes.ts';
+import { isAnimationProperty, parseAnimationDeclaration } from './properties/animation.ts';
 
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
@@ -50,6 +58,8 @@ export type Declaration = {
   readonly custom?: CustomValue;
   /** A declaration whose value holds var(); its longhands are empty until substitution (css-variables-1 §3.1). */
   readonly pending?: PendingSubstitution;
+  /** T065: a transition or animation declaration; its longhands are empty, and analysis/animations.ts cascades these values. */
+  readonly animation?: AnimationDeclValue;
 };
 
 /** A class selector in this rule matches only class symbols with this owner and sheet (docs/api.md §3.1). */
@@ -71,7 +81,7 @@ export type SheetUse = { readonly id: string; readonly owner: string; readonly s
  */
 export type EnclosedRules = { readonly atRule: Diagnostic; readonly span: Span; readonly rules: readonly Rule[]; readonly diagnostics: readonly Diagnostic[] };
 
-type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[] };
+type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[] };
 
 /**
  * Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block.
@@ -79,8 +89,8 @@ type ParseState = { order: number; readonly base: Span; readonly text: string; r
  */
 type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top'; readonly conditions: readonly RuleCondition[] };
 
-/** fontFaces: collects the accepted @font-face rules, in document order, for the fonts module. */
-export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = []): Rule[] {
+/** fontFaces: collects the accepted @font-face rules, in document order, for the fonts module; keyframes the @keyframes (T065). */
+export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = [], keyframes: KeyframesSource[] = []): Rule[] {
   const text = preprocessInput(authoredText);
   // Chrome 145 reads a literal U+0000 as U+FFFD inside a name but not where it would start a hash or follow a leading "-" (probed),
   // so Dragon reports it rather than guess which reading applies.
@@ -109,7 +119,7 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
   }
   const rules: Rule[] = [];
-  const st: ParseState = { order: orderStart, base, text, use, fontFaces };
+  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes };
   parseTopLevel(list(ast, 'children'), st, { label: 'the stylesheet', selectors: 'top', conditions: [] }, diagnostics, enclosed, rules);
   return rules;
 }
@@ -166,6 +176,10 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
     const outcome = handleAtRule(context);
     if (outcome.kind === 'font-face') {
       st.fontFaces.push(outcome.context);
+      return;
+    }
+    if (outcome.kind === 'keyframes') {
+      st.keyframes.push({ context: outcome.context, base: st.base, text: st.text, use: st.use });
       return;
     }
     const block = node['block'] as CssNode | null | undefined;
@@ -233,13 +247,28 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     return null;
   }
   const important = priority === false ? {} : { important: true as const };
+  // css-env-1: env() is read before var() is substituted, so a var() inside env() is refused on the text as written.
+  const envVar = envVarRefusal(sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start));
+  if (envVar !== null) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `${property}: ${text} is unsupported: ${envVar}`, manual: ENV_FIX }));
+    return null;
+  }
   if (property.startsWith('--')) return parseCustomDeclaration(property, valueNode, span, valueSpan, order, important, diagnostics);
+  if (isAnimationProperty(property)) {
+    const source = sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start);
+    const animation = parseAnimationDeclaration(property, valueNode, { span, valueSpan, text, source, base }, diagnostics);
+    return animation === null ? null : { property, text, span, valueSpan, longhands: [], order, ...important, animation };
+  }
   if (!isLonghand(property) && !isShorthand(property)) {
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_PROPERTY', {
+    const refusal = diagnostic('DRAGON_UNSUPPORTED_PROPERTY', {
       origin: authored(span),
       message: `${property} is not supported in milestone 1`,
       edits: [{ span, replacement: '' }],
-    }));
+    });
+    // NA-NATIVE: a listed property is refused on web only; native reports it as not applicable (css/not-applicable.ts).
+    const entry = notApplicableEntry(property);
+    if (entry !== null) markNotApplicable(refusal, entry);
+    diagnostics.push(refusal);
     return null;
   }
   // css-variables-1 §3.1: a value holding var() is valid at parse time; it is parsed against the grammar after substitution.
@@ -365,8 +394,17 @@ function invalidMath(property: string, tokens: readonly CssNode[], base: Span, s
 /** Grammar validation, token conversion and shorthand expansion of one value; base locates a shorthand refusal in sheetText. */
 export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, tokens: readonly CssNode[], base: Span, sheetText: string): ParsedValue {
   const wide = tokens.length === 1 && tokens[0]?.type === 'Identifier' && CSS_WIDE.has(asciiLower(String(tokens[0]['name'])));
+  // css-env-1: env() is checked before the grammar, which is matched with each inset substituted (css/env.ts).
+  const env = wide ? null : firstEnv(tokens);
+  if (env !== null) {
+    const special = property === 'aspect-ratio' || property === 'object-position' || GRID_VALUE_PROPERTIES.has(property) || TRANSFORM_VALUE_PROPERTIES.has(property);
+    const bad = special ? { node: env, reason: `env() in ${property} is not supported` } : checkEnvCalls(tokens);
+    if (bad !== null) {
+      return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(bad.node, base)), message: `${property}: ${generate(bad.node)} is unsupported: ${bad.reason}`, manual: ENV_FIX }) };
+    }
+  }
   if (!wide) {
-    const match = webrefLexer().matchProperty(property, valueNode);
+    const match = webrefLexer().matchProperty(property, env === null ? valueNode : grammarText(tokens));
     if (match.error !== null) return { kind: 'invalid' };
     // css-tree types a math function loosely; Chrome drops one its math parser rejects (css/math.ts mathInvalidity).
     const mathInvalid = GRID_VALUE_PROPERTIES.has(property) ? null : invalidMath(property, tokens, base, sheetText);
@@ -381,8 +419,22 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     }
     return { kind: 'ok', longhands: [{ property, value: ratio, explicit: true }] };
   }
+  // Chrome 145's legacy display keywords (display-legacy.ts).
+  const legacy = !wide && property === 'display' ? legacyDisplay(tokens, base) : null;
+  if (legacy !== null) return legacy.kind === 'refused' ? legacy : { kind: 'ok', longhands: [{ property: 'display', value: legacy.value, explicit: true }] };
   // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
   if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);
+  // css-images-3 §5.6: object-position is one <position> of up to four tokens (values.ts positionValue).
+  if (!wide && property === 'object-position') {
+    const position = positionValue(tokens);
+    if (position === 'invalid') return { kind: 'invalid' };
+    if ('token' in position) {
+      return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(position.token, base)), message: `${property}: ${generate(position.token)} is unsupported: ${position.reason}`, manual: 'Write object-position with keywords, px or percentages, measured from the left and top edges.' }) };
+    }
+    return { kind: 'ok', longhands: [{ property, value: position, explicit: true }] };
+  }
+  // css-transforms-1 (PNT2): multi-token transform, transform-origin and will-change values (properties/transform.ts).
+  if (!wide && TRANSFORM_VALUE_PROPERTIES.has(property)) return parseTransformValue(property, tokens, base);
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
   const values: CssValue[] = baseline === null ? [] : [baseline];

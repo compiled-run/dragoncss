@@ -1,11 +1,8 @@
 // The paint lowering registry (notes/T046-paint-spec.md §3 item 1): every paint module, registered once in final order. A box's
 // writes are the modules' writes in this order, so the applied map order is fixed by the registry, never by a package.
 import type { Longhand } from '../../css/properties.ts';
-import type { BackgroundWrite } from './background.ts';
 import { BACKGROUND_LOWERING } from './background.ts';
-import type { BorderWrite } from './border.ts';
 import { BORDER_LOWERING } from './border.ts';
-import type { ClipWrite } from './clip.ts';
 import { CLIP_LOWERING } from './clip.ts';
 import { CONTROL_LOWERING } from './control.ts';
 import { EFFECTS_LOWERING } from './effects.ts';
@@ -23,14 +20,8 @@ import { TRANSFORM_LOWERING } from './transform.ts';
 import type { BoxPaintContext, NativeBackend, PaintLowering, VocabularyEntry } from './types.ts';
 import { PAINT_MODULE_NAMES } from './types.ts';
 
-/** Every paint write kind; a module adds its write type here when it gains writes. */
-export type PaintWrite = BackgroundWrite | BorderWrite | ClipWrite;
-export type PaintWriteKind = PaintWrite['kind'];
-
-export type AnyLowering = PaintLowering<PaintWrite> | PaintLowering<BackgroundWrite> | PaintLowering<BorderWrite> | PaintLowering<ClipWrite> | PaintLowering<never>;
-
 /** Registration point (EMS): the paint lowerings in PAINT_MODULE_NAMES order. */
-export const PAINT_LOWERINGS: readonly AnyLowering[] = [
+const LOWERINGS = [
   BACKGROUND_LOWERING,
   BORDER_LOWERING,
   CLIP_LOWERING,
@@ -47,7 +38,17 @@ export const PAINT_LOWERINGS: readonly AnyLowering[] = [
   IMAGE_LOWERING,
   FOREIGN_VIEW_LOWERING,
   CONTROL_LOWERING,
-];
+] as const;
+
+type WriteOf<L> = L extends PaintLowering<infer W> ? W : never;
+
+/** Every paint write: the union of the registered modules' write types, so a module declares its writes only in its own file. */
+export type PaintWrite = WriteOf<(typeof LOWERINGS)[number]>;
+export type PaintWriteKind = PaintWrite['kind'];
+
+export type AnyLowering = PaintLowering<PaintWrite> | (typeof LOWERINGS)[number] | PaintLowering<never>;
+
+export const PAINT_LOWERINGS: readonly AnyLowering[] = LOWERINGS;
 
 /**
  * Checks a lowering registry: the modules in PAINT_MODULE_NAMES order, every write kind declared by one module only, and each

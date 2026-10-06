@@ -28,8 +28,9 @@
     "units": 320000,
     "engine": 20258,
     "library": 22000,
-    "rt": 54588,
-    "hit": 2028
+    "rt": 55362,
+    "hit": 2172,
+    "animator": 18
   },
   "engineSplit": {
     "ok": 13992,
@@ -43,8 +44,9 @@
     "units": "41c7a09c581011303f9896e233dfca4bc1bfc33266b817af269199de755508a7",
     "engine": "4ad3ac58da13ad4233ffb78f95af5ed178a7fba84d1f18373a6640afc31645cf",
     "library": "52c5b758ed05c0fa96d033bf78fcce8a39604a6711f621ac3ad34f38c8133b5d",
-    "rt": "fc1b7deb3ec52f5df665747e8e4c8064486924e64e69cfc1800b1526591fd124",
-    "hit": "5bf69659dbc45f1dfee8efa44a6f50972441636272dc13ffdf7134bab2a7bdd3"
+    "rt": "b098611f445b1f770ec88444e7fcbd8a801be09a906550bcd03ad7e390d6c6dc",
+    "hit": "3a86b2fc9bc3bec9910968d05c9e7518a033e822c3df230e25ef17b10a12098d",
+    "animator": "f1054f51c6f7f9d580f2aa62ccfd7b28f27e64188a873a2f48effc56e313b21c"
   },
-  "digest": "1487183ae67e20d9e8c6726599a47409e03a89f2dc9fe0ef4a2bcca27f21dcca"
+  "digest": "ad998416a7379423a99720b3f9bd81284c710f2bc148fab7cf96f6a9bef7ab0f"
 }

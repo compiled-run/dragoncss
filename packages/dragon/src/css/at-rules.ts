@@ -5,9 +5,10 @@ import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { MediaQueryList } from '../media/index.ts';
-import { mediaAtoms, parseMediaPrelude, parseMediaQueryList, refusalsOf, serialiseMediaQueryList } from '../media/index.ts';
+import { parseMediaPrelude, parseMediaQueryList, refusalsOf, serialiseMediaQueryList } from '../media/index.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { asciiLower } from './escapes.ts';
+import { keyframesAtRule } from './at-rules/keyframes.ts';
 
 /**
  * One at-rule as the driver meets it: its node, its name as written, where it sits ('the stylesheet', 'a rule block',
@@ -27,6 +28,7 @@ export type RuleCondition = { readonly list: MediaQueryList; readonly text: stri
 export type AtRuleOutcome =
   | { readonly kind: 'refuse'; readonly diagnostic: Diagnostic }
   | { readonly kind: 'font-face'; readonly context: AtRuleContext }
+  | { readonly kind: 'keyframes'; readonly context: AtRuleContext }
   | { readonly kind: 'conditional'; readonly condition: RuleCondition };
 
 export type AtRuleHandler = (at: AtRuleContext) => AtRuleOutcome;
@@ -52,8 +54,8 @@ export const acceptFontFace: AtRuleHandler = (at) => {
 };
 
 /**
- * MQ-a: @media whose features are all width and height is conditional. A feature that depends on the device or the user, a
- * value Dragon does not evaluate, and aspect-ratio or orientation (which the band partition does not split) are refused until MQ-R.
+ * MQ-a and MQ-R0: @media whose features are all width, height, orientation and aspect-ratio is conditional. A feature that
+ * depends on the device or the user, and a value Dragon does not evaluate, are refused until MQ-R.
  */
 export const mediaAtRule: AtRuleHandler = (at) => {
   const prelude = at.node['prelude'] as CssNode | null | undefined;
@@ -62,18 +64,13 @@ export const mediaAtRule: AtRuleHandler = (at) => {
   const refused = refusalsOf(list);
   const env = refused.filter((r) => r.reason === 'environment').map((r) => r.feature);
   const values = refused.filter((r) => r.reason === 'value').map((r) => r.feature);
-  const atoms = mediaAtoms([list]);
-  const why = env.length > 0
-    ? `${env.join(', ')} depends on the device or the user`
-    : values.length > 0
-      ? `${values.join(', ')} uses a value Dragon does not evaluate`
-      : Array.isArray(atoms) ? null : `${atoms.detail} is not a width or height feature`;
+  const why = env.length > 0 ? `${env.join(', ')} depends on the device or the user` : values.length > 0 ? `${values.join(', ')} uses a value Dragon does not evaluate` : null;
   if (why === null) return { kind: 'conditional', condition: { list, text, span: at.span } };
   return {
     kind: 'refuse',
     diagnostic: diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
       origin: authored(at.span),
-      message: `@media ${text} in ${at.where} is not supported until MQ-R: ${why}; only width and height media features are supported`,
+      message: `@media ${text} in ${at.where} is not supported until MQ-R: ${why}; only width, height, orientation and aspect-ratio media features are supported`,
     }),
   };
 };
@@ -91,7 +88,7 @@ export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
   'font-feature-values': refuseAtRule,
   'font-palette-values': refuseAtRule,
   import: refuseAtRule,
-  keyframes: refuseAtRule,
+  keyframes: keyframesAtRule,
   layer: refuseAtRule,
   media: mediaAtRule,
   namespace: refuseAtRule,

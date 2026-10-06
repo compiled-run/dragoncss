@@ -11,6 +11,9 @@ Those files are under the licences below, with the copyright lines from their he
 
 - `cc/layers/tile_size_calculator.cc`: Copyright 2019 The Chromium Authors
 - `cc/trees/layer_tree_settings.cc`: Copyright 2011 The Chromium Authors
+- `third_party/blink/renderer/core/animation/animation_time_delta.h`: Copyright 2018 The Chromium Authors
+- `third_party/blink/renderer/core/animation/css/css_keyframe_effect_model.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/animation/interpolation_effect.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/animation/timing_calculations.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/animation/timing.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/css/css_length_resolver.cc`: Copyright 2022 The Chromium Authors
@@ -48,6 +51,8 @@ Those files are under the licences below, with the copyright lines from their he
 - `ui/gfx/animation/keyframe/timing_function.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/cubic_bezier.cc`: Copyright 2014 The Chromium Authors
 - `ui/gfx/geometry/quad_f.cc`: Copyright 2012 The Chromium Authors
+- `ui/gfx/geometry/sin_cos_degrees.h`: Copyright 2023 The Chromium Authors
+- `ui/gfx/geometry/transform.cc`: Copyright 2012 The Chromium Authors
 
 ```
 Copyright 2015 The Chromium Authors
@@ -139,6 +144,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 - `third_party/blink/renderer/core/animation/animation_effect.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/animation/animation.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
+- `third_party/blink/renderer/core/animation/css/css_animations.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
+- `third_party/blink/renderer/core/animation/keyframe_effect_model.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/css_math_expression_node.cc`: Copyright (C) 2011, 2012 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/css_to_length_conversion_data.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/font_face.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
@@ -404,6 +411,33 @@ are met:
    documentation and/or other materials provided with the distribution.
 
 THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+## Kimmo Kinnunen, Apple and Intel: BSD 2-Clause (kinnunen-bsd-2)
+
+- `third_party/blink/renderer/core/css/media_query_evaluator.cc`: Copyright (C) 2006 Kimmo Kinnunen <kimmo.t.kinnunen@nokia.com>.; Copyright (C) 2013 Apple Inc. All rights reserved.; Copyright (C) 2013 Intel Corporation. All rights reserved.
+
+```
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY
 EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR

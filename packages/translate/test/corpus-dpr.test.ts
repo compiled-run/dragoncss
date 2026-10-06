@@ -7,6 +7,7 @@ import { hexBits } from '../harness/host.ts';
 import { buildCorpus, m1CaseIds, M1_MANIFEST, topLevelVectorFiles, VECTORS_DIR } from '../src/corpus.ts';
 import { buildExtendedCorpus, CALC_DIR, CALC_SPEC, DPR_SETS, extendedLockedDigest, SNAP_DPRS, UNITS_CALC_FUNCTIONS, UNITS_M2_FUNCTIONS, VALUES_PREFIX } from '../src/corpus-dpr.ts';
 import { EXTENDED_FAULTS, FAULTS } from '../src/faults.ts';
+import { suiteFloorProblems } from './floor.ts';
 
 type Row = [string, string | null, string, string, string, string];
 const decode = (rows: Row[]) => rows.map(([id, parent, x, y, w, h]) => ({ id, parent, x: hexBits(x), y: hexBits(y), width: hexBits(w), height: hexBits(h) }));
@@ -42,10 +43,12 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
   const n = Object.fromEntries(x.suites.map((s) => [s.name, s.lines.length]));
 
   it('matches the committed digest, is deterministic, and has the suites and sizes of ruling 4', () => {
+    // PIN-DERIVE: p1-floor.json keeps every extended suite in order (a later package appends its own suite without a test edit);
+    // each suite's size is derived below.
+    expect(suiteFloorProblems(new URL('./p1-floor.json', import.meta.url), 'extended', x.suites.map((s) => ({ name: s.name, count: s.lines.length })))).toEqual([]);
     expect(x.digest).toBe(extendedLockedDigest());
     expect(buildExtendedCorpus().digest).toBe(x.digest);
     // V1 appends its own suites; the values group's vectors are appended to the P2b suites after every earlier line.
-    expect(x.suites.map((s) => s.name)).toEqual(['vectors-m2', 'vectors-dpr', 'engine-dpr', 'units-m2', 'snap', 'snap-values', 'calc-goldens', 'engine-calc', 'units-calc', 'engine-inline']);
     const top = topLevelVectorFiles().length;
     expect(top).toBeGreaterThanOrEqual(261);
     const firstValues = x.m2Vectors.findIndex((v) => v.file.startsWith(VALUES_PREFIX));

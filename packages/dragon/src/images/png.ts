@@ -1,5 +1,5 @@
-// PNG chunk parse (PNG 3rd edition) and an RGBA8 decode for bit depths up to 8. The core uses no Node built-ins, so the
-// build-time caller passes the zlib inflate (node:zlib inflateSync).
+// PNG chunk parse (PNG 3rd edition) and an RGBA8 decode for bit depths up to 8. The caller passes the zlib inflate: the
+// compiler's own (images/inflate.ts, no Node built-ins) or node:zlib inflateSync.
 
 export type Inflate = (data: Uint8Array) => Uint8Array;
 
@@ -168,6 +168,20 @@ function unfilter(data: Uint8Array, at: number, rows: number, rowBytes: number, 
 }
 
 export type Rgba8 = { readonly width: number; readonly height: number; readonly data: Uint8Array };
+
+/** The size of the inflated image data IHDR declares: every (Adam7 sub)image's rows, each a filter byte and its samples. */
+export function pngRawSize(f: PngFacts): number {
+  const bitsPerPixel = CHANNELS[f.colourType] * f.bitDepth;
+  let size = 0;
+  for (const [x0, y0, dx, dy] of f.interlaced ? ADAM7 : ([[0, 0, 1, 1]] as const)) {
+    // Exact integer ceilings in doubles: IHDR dimensions are below 2^31, so nothing here passes 2^53.
+    const ceilDiv = (a: number, b: number): number => (a + b - 1 - ((a + b - 1) % b)) / b;
+    const pw = f.width > x0 ? ceilDiv(f.width - x0, dx) : 0;
+    const ph = f.height > y0 ? ceilDiv(f.height - y0, dy) : 0;
+    if (pw > 0 && ph > 0) size += ph * (ceilDiv(pw * bitsPerPixel, 8) + 1);
+  }
+  return size;
+}
 
 /**
  * Decodes to unpremultiplied RGBA8 with no colour conversion, the way libpng hands Chrome an 8-bit sRGB image: samples below
