@@ -47,8 +47,23 @@ function soleToken(text: string): CssNode | null {
   return ts.length === 1 ? (ts[0] as CssNode) : null;
 }
 
-// Chrome serialises a computed number with no trailing zeros (1.50 is 1.5).
-const number = (v: unknown): string => String(Number(v));
+/**
+ * A computed <number>, <length> or <percentage> as Chrome 145 serialises it, and so substitutes it: six significant digits as C's
+ * %g writes them (0.10000049 is 0.1, 123456789 is 1.23457e+08; probed). An <integer> keeps every digit (1234567 stays 1234567).
+ */
+export function chromeNumber(v: number): string {
+  if (v === 0) return '0';
+  const exp = Math.floor(Math.log10(Math.abs(Number(v.toPrecision(6)))));
+  if (exp < -4 || exp >= 6) {
+    const [mantissa, e] = v.toExponential(5).split('e') as [string, string];
+    const m = mantissa.includes('.') ? mantissa.replace(/\.?0+$/, '') : mantissa;
+    const n = Number(e);
+    return `${m}e${n < 0 ? '-' : '+'}${String(Math.abs(n)).padStart(2, '0')}`;
+  }
+  const fixed = v.toFixed(Math.max(0, 5 - exp));
+  return fixed.includes('.') ? fixed.replace(/\.?0+$/, '') : fixed;
+}
+const number = (v: unknown): string => chromeNumber(Number(v));
 
 function lengthOf(t: CssNode): Computed | null {
   if (t.type === 'Number') return Number(t['value']) === 0 ? { kind: 'ok', text: '0px' } : INVALID;
@@ -78,7 +93,7 @@ export function computeRegistered(syntax: RegisteredSyntax, text: string): Compu
     case '<number>':
       return t.type === 'Number' ? { kind: 'ok', text: number(t['value']) } : INVALID;
     case '<integer>':
-      return t.type === 'Number' ? (/^[+-]?\d+$/.test(String(t['value'])) ? { kind: 'ok', text: number(t['value']) } : INVALID) : INVALID;
+      return t.type === 'Number' ? (/^[+-]?\d+$/.test(String(t['value'])) ? { kind: 'ok', text: String(Number(t['value'])) } : INVALID) : INVALID;
     case '<color>': {
       if (t.type !== 'Hash' && t.type !== 'Identifier' && t.type !== 'Function') return INVALID;
       const c = parseColorNode(t);

@@ -1,6 +1,6 @@
 // CASC 2's planted compiler faults through runFixture, with the committed Chrome captures as the authored side.
 // propertyInheritsIgnored lets --w and --d inherit into .inner, and propertyInitialIgnored drops every initial value, so the
-// fallbacks and the root values move casc-property's boxes. Unfaulted, the fixture passes both lanes in both directions.
+// var() fallbacks apply and move casc-property's boxes. Unfaulted, the fixture passes both lanes in both directions.
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { NO_ENGINE_FAULTS } from '@dragon/layout';
@@ -49,13 +49,14 @@ describe.sequential('CASC 2 planted compiler faults', () => {
       expect(c.comparison?.nodes.filter((n) => !n.pass).map((n) => n.id), c.id).toEqual(expect.arrayContaining(['inner', 'bad']));
     }
   });
-  it('propertyInitialIgnored: casc-property is refused in both directions (var(--h), var(--n) and var(--i) lose their initial values)', async () => {
+  it('propertyInitialIgnored: casc-property fails chrome-dual in both directions on the boxes it moves (the fallbacks apply)', async () => {
     const faulty = await run('casc-property', { ...NO_FAULTS, propertyInitialIgnored: true });
     expect(faulty.status).toBe('fail');
     expect(faulty.cases.map((c) => c.direction)).toEqual(['ltr', 'rtl']);
     for (const c of faulty.cases) {
       expect(c.status, c.id).toBe('fail');
-      expect(c.reason, c.id).toContain('height: var(--h) is invalid at computed-value time');
+      expect(c.lanes['chrome-dual'], c.id).toBe('fail');
+      expect(c.comparison?.nodes.filter((n) => !n.pass).map((n) => n.id), c.id).toEqual(expect.arrayContaining(['inner', 'pct', 'lp', 'g1', 'calc', 'round']));
     }
   });
 });

@@ -6,7 +6,7 @@ import type { ResolvedElement } from '../src/analysis/resolve.ts';
 import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
 import { computeCustoms } from '../src/analysis/variables.ts';
 import type { PropertySource, Registration } from '../src/css/at-rules/property.ts';
-import { computeRegistered, parsePropertyRules } from '../src/css/at-rules/property.ts';
+import { chromeNumber, computeRegistered } from '../src/css/at-rules/property.ts';
 import { atRuleHandler } from '../src/css/at-rules.ts';
 import { propertyAtRule } from '../src/css/at-rules/property.ts';
 import type { Longhand } from '../src/css/properties.ts';
@@ -110,6 +110,10 @@ describe('CASC 2: computed values of the registered syntaxes', () => {
       ['<number>', '1.50', { kind: 'ok', text: '1.5' }],
       ['<number>', '1e400', { kind: 'refused', reason: '1e400 is out of range, and Chrome clamps it' }],
       ['<integer>', '3', { kind: 'ok', text: '3' }],
+      ['<integer>', '1234567', { kind: 'ok', text: '1234567' }],
+      ['<number>', '0.10000049', { kind: 'ok', text: '0.1' }],
+      ['<length>', '10.0000049px', { kind: 'ok', text: '10px' }],
+      ['<percentage>', '12.3456789%', { kind: 'ok', text: '12.3457%' }],
       ['<integer>', '1.5', { kind: 'invalid' }],
       ['<color>', 'red', { kind: 'ok', text: 'rgb(255, 0, 0)' }],
       ['<color>', 'transparent', { kind: 'ok', text: 'rgba(0, 0, 0, 0)' }],
@@ -120,6 +124,16 @@ describe('CASC 2: computed values of the registered syntaxes', () => {
       ['*', 'a b  c', { kind: 'ok', text: 'a b  c' }],
     ];
     for (const [syntax, text, want] of cases) expect(computeRegistered(syntax, text), `${syntax} ${text}`).toEqual(want);
+  });
+});
+
+describe('CASC 2: chromeNumber', () => {
+  it('writes six significant digits as C\'s %g does, as Chrome 145 serialises a computed number (probed)', () => {
+    const cases: [number, string][] = [
+      [0, '0'], [1.5, '1.5'], [0.10000049, '0.1'], [12.3456789, '12.3457'], [0.0001, '0.0001'], [0.00001234567, '1.23457e-05'], [-0.0000123456789, '-1.23457e-05'],
+      [100000, '100000'], [999999.5, '1e+06'], [1234567, '1.23457e+06'], [1e7, '1e+07'], [123456789, '1.23457e+08'], [-42, '-42'],
+    ];
+    for (const [v, want] of cases) expect(chromeNumber(v), String(v)).toBe(want);
   });
 });
 
