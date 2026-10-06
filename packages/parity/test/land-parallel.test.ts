@@ -2,7 +2,8 @@
 // assembled in order on the actual chain; an ejected PR or a failed preparation ends the speculation, and the positions above
 // it are built one by one without it. The chain, and every result, equals the one-by-one build's.
 import { describe, expect, it } from 'vitest';
-import { buildPositionsParallel, type Entry, Fatal, LandFailure, type ParallelHooks, prepareRound } from '../../../scripts/land-lib.ts';
+import { buildPositionsParallel, type Entry, Fatal, LandFailure, type ParallelHooks, preparedDifference, preparedFits, prepareRound, stopProcessGroup } from '../../../scripts/land-lib.ts';
+import { matcher, STEPS } from '../../../scripts/regen.ts';
 
 const entry = (pr: number): Entry => ({ branch: `b${pr}`, pr, clean: 'c'.repeat(40) });
 type Pos = { head: string };
@@ -10,7 +11,7 @@ type Item = { entry: Entry; ticket: { pr: number } };
 const items = (...prs: number[]): Item[] => prs.map((pr) => ({ entry: entry(pr), ticket: { pr } }));
 
 /** A fake build: a position's head names its PRs in order ("m+1+2"); `regenFails`/`assembleFails` eject a PR at that stage. */
-function world(o: { regenFails?: number[]; assembleFails?: number[]; speculateFails?: number[] } = {}) {
+function world(o: { regenFails?: number[]; assembleFails?: number[]; speculateFails?: number[]; sequentialFails?: number[] } = {}) {
   const calls: string[] = [];
   const hooks: ParallelHooks<{ pr: number }, Pos, { k: number; prs: number[] }> = {
     speculate: (k, its) => {
@@ -32,7 +33,7 @@ function world(o: { regenFails?: number[]; assembleFails?: number[]; speculateFa
     },
     sequential: (prev, it, k) => {
       calls.push(`sequential ${k} #${it.entry.pr} on ${prev}`);
-      if (o.assembleFails?.includes(it.entry.pr) || o.regenFails?.includes(it.entry.pr)) throw new LandFailure('regen', `#${it.entry.pr} fails`);
+      if (o.assembleFails?.includes(it.entry.pr) || o.sequentialFails?.includes(it.entry.pr)) throw new LandFailure('regen', `#${it.entry.pr} fails`);
       return { head: `${prev}+${it.entry.pr}` };
     },
     abandon: (h) => void calls.push(`abandon ${h.k}`),
@@ -56,10 +57,15 @@ describe('parallel position builds', () => {
     expect(heads(buildPositionsParallel('m', items(1, 2, 3, 4), w.hooks))).toEqual(['m+1', 'ejected: #2 fails its devices', 'm+1+3', 'm+1+3+4']);
     expect(w.calls.slice(6)).toEqual(['await 2', 'assemble 2 #2 on m+1', 'abandon 3', 'abandon 4', 'sequential 2 #3 on m+1', 'sequential 3 #4 on m+1+3']);
   });
-  it('a failed prepared regen ejects that PR, as the one-by-one regen failure does, and the rest build one by one', () => {
-    const w = world({ regenFails: [1] });
-    expect(heads(buildPositionsParallel('m', items(1, 2, 3), w.hooks))).toEqual(['ejected: regen of #1 failed', 'm+2', 'm+2+3']);
-    expect(w.calls.slice(3)).toEqual(['await 1', 'abandon 2', 'abandon 3', 'sequential 1 #2 on m', 'sequential 2 #3 on m+2']);
+  it('a failed prepared regen (the parallel load\'s, perhaps) does not eject: that position is built one by one, and the preparations above still hold', () => {
+    const w = world({ regenFails: [2] });
+    expect(heads(buildPositionsParallel('m', items(1, 2, 3), w.hooks))).toEqual(['m+1', 'm+1+2', 'm+1+2+3']);
+    expect(w.calls.slice(3)).toEqual(['await 1', 'assemble 1 #1 on m', 'await 2', 'sequential 2 #2 on m+1', 'await 3', 'assemble 3 #3 on m+1+2']);
+  });
+  it('only the one-by-one rebuild\'s failure ejects a PR whose prepared regen failed; the positions above are then built without it', () => {
+    const w = world({ regenFails: [1], sequentialFails: [1] });
+    expect(heads(buildPositionsParallel('m', items(1, 2, 3), w.hooks))).toEqual(['ejected: #1 fails', 'm+2', 'm+2+3']);
+    expect(w.calls.slice(3)).toEqual(['await 1', 'sequential 1 #1 on m', 'abandon 2', 'abandon 3', 'sequential 1 #2 on m', 'sequential 2 #3 on m+2']);
   });
   it('a preparation that could not start builds that position and the ones above one by one, on the actual chain', () => {
     const w = world({ speculateFails: [3] });
@@ -87,5 +93,61 @@ describe('parallel position builds', () => {
     expect(built).toEqual(['m+1', 'm+1+3']);
     expect(round.results.map((r) => ('failure' in r ? `#${r.entry.pr} ${r.failure.step}` : ''))).toEqual(['#2 judge-devices']);
     expect(round.good).toBe(2);
+  });
+});
+
+describe('assembling a prepared tree', () => {
+  const isOutput = matcher(STEPS.flatMap((s) => s.outputs));
+  const isRecord = matcher(['packages/parity/out/device-failures-*.json']);
+  it('checks every path that is not a regen step\'s declared output, the hand-written ones the review-ignore list skips included', () => {
+    const handWritten = ['package.json', 'pnpm-lock.yaml', 'packages/dragon/src/css/css-tree.d.ts', 'vendor/harfbuzz/COPYING', 'packages/x/third_party/a.c', 'packages/layout/src/script-data.ts'];
+    expect(preparedDifference(handWritten, isOutput, isRecord)).toEqual({ sources: handWritten, records: [] });
+  });
+  it('lets the prepared regen set the declared outputs, and takes the device records from the merge', () => {
+    const paths = ['packages/parity/expected/darwin-arm64/a.json', 'packages/parity/out/lanes.json', 'packages/dragon/src/css/grammar.generated.ts', 'packages/parity/out/device-failures-ios.json'];
+    expect(preparedDifference(paths, isOutput, isRecord)).toEqual({ sources: [], records: ['packages/parity/out/device-failures-ios.json'] });
+  });
+  it('prepares in parallel only while the disk keeps its floor after the worktrees it adds', () => {
+    expect(preparedFits(60, 4, { floorGb: 40, perGb: 4 })).toBe(true);
+    expect(preparedFits(55, 4, { floorGb: 40, perGb: 4 })).toBe(false);
+    expect(preparedFits(41, 0, { floorGb: 40, perGb: 4 })).toBe(true);
+  });
+});
+
+describe('stopping an abandoned preparation', () => {
+  const group = (lifeMs: number, o: { killable?: boolean; startNow?: string | null } = {}) => {
+    let t = 0;
+    let termAt: number | null = null;
+    let killed = false;
+    const signals: string[] = [];
+    const ops = {
+      startOf: () => (o.startNow === undefined ? 'S' : o.startNow),
+      members: () => (killed || (termAt !== null && t >= termAt + lifeMs) ? [] : [7, 8]),
+      signal: (sig: 'SIGTERM' | 'SIGKILL') => {
+        signals.push(sig);
+        if (sig === 'SIGTERM') termAt = t;
+        if (sig === 'SIGKILL' && o.killable !== false) killed = true;
+      },
+      sleep: (ms: number) => void (t += ms),
+    };
+    return { ops, signals, waited: () => t };
+  };
+  it('waits for the group to exit after SIGTERM before its worktree is reused', () => {
+    const g = group(5000);
+    expect(stopProcessGroup(7, 'S', g.ops)).toBe(true);
+    expect(g.signals).toEqual(['SIGTERM']);
+    expect(g.waited()).toBe(5000);
+  });
+  it('kills a group that outlives SIGTERM, and reports one that outlives SIGKILL as still running', () => {
+    const g = group(Infinity);
+    expect(stopProcessGroup(7, 'S', g.ops)).toBe(true);
+    expect(g.signals).toEqual(['SIGTERM', 'SIGKILL']);
+    const stuck = group(Infinity, { killable: false });
+    expect(stopProcessGroup(7, 'S', stuck.ops)).toBe(false);
+  });
+  it('signals nothing when the pid now belongs to another process', () => {
+    const g = group(0, { startNow: 'T' });
+    expect(stopProcessGroup(7, 'S', g.ops)).toBe(true);
+    expect(g.signals).toEqual([]);
   });
 });

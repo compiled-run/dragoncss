@@ -6,7 +6,7 @@
 // --match-head-commit. A PR that fails a step gets the landing-failed label and a comment, and the queue continues.
 // Run with: pnpm land <queue-file> [--dry-run]   (queue: one <branch>:<pr>:<clean-head> per line)
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { closeSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statfsSync, statSync, writeFileSync } from 'node:fs';
 import { loadavg, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import {
@@ -49,6 +49,9 @@ import {
   LandFailure,
   MAX_BATCH,
   buildPositionsParallel,
+  preparedDifference,
+  preparedFits,
+  stopProcessGroup,
   type Outcome,
   parseLandArgs,
   parseQueue,
@@ -92,6 +95,7 @@ import {
 } from './merge-train-lib.ts';
 import { MERGE_DRIVERS } from './floor-merge.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
+import { matcher, STEPS } from './regen.ts';
 import { abandonInflight, CiUnavailable, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, staleScratchBranches, failedTestsOf, fullTestWorkflow, parseRunRows, runDevicesOnCi, runOnCi, scratchRef, testBranch } from './land-devices-ci.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
@@ -695,6 +699,10 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
   if ('error' in ignore) throw new LandFailure('regen-only', ignore.error);
   const regenProblems = regenOnlyProblems(wtGit, head, ignore);
   if (regenProblems.length > 0) throw new LandFailure('regen-only', `the regen commit ${head} is not regen-only:\n  ${regenProblems.join('\n  ')}`);
+  // Stricter than the review-ignore list (which also covers hand-written package.json, lockfiles, .d.ts, vendor): every path the
+  // regen commit changes is a regen step's declared output or a device record.
+  const stray = pathsBetween(merge, head).filter((p) => !isStepOutput(p) && !isDeviceRecord(p));
+  if (stray.length > 0) throw new LandFailure('regen-only', `the regen commit ${head} changes paths that are not a regen step's declared output:\n  ${stray.slice(0, 40).join('\n  ')}`);
   const floors = floorFileProblems(prev, head);
   if (floors.length > 0) throw new LandFailure('floors', `the landing commit lowers a floor below the previous position's:\n  ${floors.join('\n  ')}`);
   log('  floors: none below the previous position');
@@ -705,9 +713,42 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
   return { prev, merge, head, tip: t.tip, device };
 };
 
+// Regen's declared outputs (every step's), and the device records the device runs write; nothing else is a landing's to change.
+const isStepOutput = matcher(STEPS.flatMap((s) => s.outputs));
+const isDeviceRecord = matcher([failuresJson('*')]);
+const pathsBetween = (a: string, b: string): string[] =>
+  wtGit(['diff', '--name-only', '-z', '--no-renames', '--no-ext-diff', '--no-textconv', '--ignore-submodules=none', '--no-relative', a, b])
+    .toString('utf8')
+    .split('\0')
+    .filter((p) => p !== '');
+
 // ---- parallel position builds (land-lib buildPositionsParallel) --------------------------------------------------------
-type PreparedPosition = { k: number; dir: string; done: string; log: string; pgid: number };
+type PreparedPosition = { k: number; dir: string; done: string; log: string; pgid: number; start: string | null };
 const preparedPids = (): string => runFile(`prepare-${ROLE}.pids`);
+// Disk: each position worktree takes 1.5 to 4 GB. They are reused batch to batch (installs kept); a batch is prepared in parallel
+// only while the disk keeps LAND_PARALLEL_FREE_GB (default 40) free after the worktrees it adds, else they are removed and the
+// batch is built one by one. A run's end removes them.
+const PARALLEL_FREE_GB = Number(env['LAND_PARALLEL_FREE_GB'] ?? '40');
+const POS_GB = 4;
+const freeGb = (dir: string): number => {
+  const s = statfsSync(dir);
+  return (Number(s.bavail) * Number(s.bsize)) / 1024 ** 3;
+};
+const removePositionWorktrees = (): void => {
+  for (let k = 1; k <= MAX_BATCH; k++) {
+    const dir = posDir(k);
+    if (!existsSync(dir)) continue;
+    try {
+      git(['worktree', 'remove', '--force', dir]);
+    } catch {
+      rmSync(dir, { recursive: true, force: true });
+    }
+    log(`  parallel build: removed ${dir}`);
+  }
+  try {
+    git(['worktree', 'prune']);
+  } catch {}
+};
 
 // Prepares position k in its own worktree: master with the batch's first k PRs merged, installed, and `pnpm regen` started under
 // the heavy lease in its own process group (recorded for the supervisor), its exit code written to a file when it ends.
@@ -727,13 +768,15 @@ const preparePosition = (base: string, k: number, items: readonly { entry: Entry
     const child = spawn('/bin/bash', ['-c', `cd "$1" && HEAVY_PRIORITY=1 ${HEAVY} pnpm regen > "$2" 2>&1; echo $? > "$3"`, 'prepare', dir, logFile, done], { detached: true, stdio: 'ignore', env });
     child.unref();
     if (child.pid === undefined) throw new LandFailure('regen', `could not start the regen of position ${k}`);
-    writeFileSync(preparedPids(), `${child.pid}\n`, { flag: 'a' });
+    const start = startOf(child.pid);
+    writeFileSync(preparedPids(), `${child.pid} ${start ?? ''}\n`, { flag: 'a' });
     log(`  parallel build: position ${k}'s regen started (pid ${child.pid}, log ${logFile})`);
-    return { k, dir, done, log: logFile, pgid: child.pid };
+    return { k, dir, done, log: logFile, pgid: child.pid, start };
   });
 };
 
-// Waits for a preparation's regen; its failure ejects the PR, as the one-by-one build's regen failure does.
+// Waits for a preparation's regen. Its failure does not eject the PR: the position is built one by one (buildPositionsParallel),
+// since a run beside the batch's other regens can fail for the load's sake (disk, a capture timing out).
 const awaitPrepared = (h: PreparedPosition): void => {
   while (!existsSync(h.done)) sleep(5000);
   const code = readFileSync(h.done, 'utf8').trim();
@@ -741,21 +784,24 @@ const awaitPrepared = (h: PreparedPosition): void => {
 };
 
 // Stops the regens of a role's parallel preparations (their own process groups), after its process died or was stopped.
-const killPrepared = (role: 'driver' | 'builder'): void => {
-  const pids = (readOrNull(runFile(`prepare-${role}.pids`)) ?? '').split('\n').filter((l) => /^[1-9]\d*$/.test(l.trim()));
-  for (const pid of pids) {
-    try {
-      process.kill(-Number(pid), 'SIGTERM');
-      log(`stopped the ${role}'s position preparation (process group ${pid})`);
-    } catch {}
+// Returns whether every one is gone, so its worktree can be reused.
+const killPrepared = (role: 'driver' | 'builder'): boolean => {
+  let gone = true;
+  for (const line of (readOrNull(runFile(`prepare-${role}.pids`)) ?? '').split('\n')) {
+    const m = /^([1-9]\d*) ?(.*)$/.exec(line.trim());
+    if (m === null) continue;
+    if (!stopGroup(Number(m[1]), m[2] || null)) {
+      gone = false;
+      log(`!!! the ${role}'s position preparation (process group ${m[1]}) did not exit`);
+    }
   }
-  rmSync(runFile(`prepare-${role}.pids`), { force: true });
+  if (gone) rmSync(runFile(`prepare-${role}.pids`), { force: true });
+  return gone;
 };
 
+// Stops a preparation that will not be used and waits for its process group to exit, so nothing still writes in its worktree.
 const abandonPrepared = (h: PreparedPosition): void => {
-  try {
-    if (!existsSync(h.done)) process.kill(-h.pgid, 'SIGTERM');
-  } catch {}
+  if (!stopGroup(h.pgid, h.start)) log(`  !!! parallel build: position ${h.k}'s regen (process group ${h.pgid}) did not exit; ${h.dir} is not reused until it does`);
 };
 
 // Position k on the actual position below it, from its preparation: the one-by-one build's merge, then the prepared tree, whose
@@ -777,11 +823,10 @@ const assemblePosition = (prev: string, it: { entry: Entry; ticket: Ticket }, k:
     } catch (error) {
       throw new LandFailure('merge', msg(error));
     }
-    const probe = checkSha(text(wtGit, ['commit-tree', tree, '-p', merge, '-m', 'prepared tree (probe)']), 'prepared probe');
-    const ignore = ignoreAt(wtGit, probe);
-    const problems = 'error' in ignore ? [ignore.error] : regenOnlyProblems(wtGit, probe, ignore);
-    if (problems.length > 0) {
-      log(`  parallel build: the prepared tree's sources differ from the merge's (${problems.slice(0, 3).join('; ')}); building this position one by one here`);
+    // Every path that is not a regen step's declared output must be the merge's (device records are taken from it below).
+    const { sources, records } = preparedDifference(pathsBetween(merge, tree), isStepOutput, isDeviceRecord);
+    if (sources.length > 0) {
+      log(`  parallel build: the prepared tree's sources differ from the merge's (${sources.slice(0, 5).join(', ')}${sources.length > 5 ? ', ...' : ''}); building this position one by one here`);
       must('install', ['pnpm', 'install', '--frozen-lockfile'], WT);
       const r = heavy('regen', REGEN);
       if (r.error !== undefined || r.status !== 0) failed('regen', r, 'pnpm regen');
@@ -789,14 +834,37 @@ const assemblePosition = (prev: string, it: { entry: Entry; ticket: Ticket }, k:
     }
     wtGit(['read-tree', '-u', '--reset', tree]);
     log(`  parallel build: the prepared tree (${tree}) is the merge's sources regenerated`);
+    if (records.length > 0) {
+      // The merge carries the device records of the position below; the prepared tree has the base's. Take the merge's, and
+      // regenerate to the fixed point on them.
+      for (const p of records) {
+        const blob = wtGit(['ls-tree', '-z', merge, '--', p]).toString('utf8');
+        if (blob === '') rmSync(join(WT, p), { force: true });
+        else writeFileSync(join(WT, p), wtGit(['show', `${merge}:${p}`]));
+      }
+      log(`  parallel build: took the merge's device records (${records.join(', ')}); regenerating on them`);
+      const r = heavy('regen-records', REGEN);
+      if (r.error !== undefined || r.status !== 0) failed('regen', r, 'pnpm regen');
+    }
     return finishPosition(prev, e, t, k, merge, true);
   });
 };
 
 const buildAllPositions = (base: string, items: readonly { entry: Entry; ticket: Ticket }[]): ({ position: Built } | { error: unknown })[] | null => {
   if (!PARALLEL) return null;
+  // The previous batch's preparations (abandoned, or left by a stopped process) must have exited before their worktrees are reused.
+  if (!killPrepared(ROLE)) {
+    log('  parallel build: an earlier preparation\'s regen is still running; building this batch one by one');
+    return null;
+  }
+  const missing = items.filter((_, i) => !existsSync(posDir(i + 1))).length;
+  const free = freeGb('/tmp');
+  if (!preparedFits(free, missing, { floorGb: PARALLEL_FREE_GB, perGb: POS_GB })) {
+    log(`  parallel build: ${Math.round(free)} GB free, under ${PARALLEL_FREE_GB} GB after ${missing} more worktree(s); removing the position worktrees and building this batch one by one`);
+    removePositionWorktrees();
+    return null;
+  }
   const t0 = Date.now();
-  rmSync(preparedPids(), { force: true });
   try {
     return buildPositionsParallel<Ticket, Built, PreparedPosition>(base, items, {
       speculate: (k, its) => preparePosition(base, k, its),
@@ -1221,6 +1289,8 @@ const builderMain = (): number => {
     const round = prepareRound<Ticket, Built>([...input.queue], input.size, () => base, { admit, build: buildPosition, buildAll: buildAllPositions, verify: verifyChain, prove: proveTree, proveMaster, log }, { earlier: input.earlier, baseProven: true });
     put(serializePrepared(round));
     log(`prepared: ${round.built.length} position(s), ${round.good} proven to land`);
+    // Each builder prepares one batch: its position worktrees go with it (the driver proves its chain in its own worktree).
+    if (killPrepared(ROLE)) removePositionWorktrees();
   } catch (error) {
     // A Fatal (a chain that is not what it claims) stops the run; anything else (its worktree, git, a full disk) is the
     // builder's own trouble: it writes nothing, and the driver prepares the batch itself.
@@ -1250,19 +1320,21 @@ const stopBuilder = (pid: number, start: string | null): void => {
   // still leaves its group id reserved while any member lives, so the group signal can only reach the builder's processes.
   // With no recorded start time the group cannot be told from a reused pid's, so nothing is signalled.
   if (start === null || start === '') return log(`  not stopping the builder (pid ${pid}): its start time was not recorded`);
-  const now = startOf(pid);
-  if (now !== null && now !== start) return;
-  const signal = (sig: NodeJS.Signals): void => {
-    try {
-      process.kill(-pid, sig);
-    } catch {}
-  };
-  signal('SIGTERM');
-  for (let i = 0; i < 120 && groupMembers(pid).length > 0; i++) sleep(250);
-  signal('SIGKILL');
+  if (!stopGroup(pid, start)) log(`  !!! the builder's process group ${pid} did not exit`);
   releaseQuiet(QUIET_FILE, pid);
   if (readOrNull(PRIORITY)?.trim() === String(pid)) rmSync(PRIORITY, { force: true });
 };
+const stopGroup = (pid: number, start: string | null): boolean =>
+  stopProcessGroup(pid, start, {
+    startOf,
+    members: groupMembers,
+    signal: (sig) => {
+      try {
+        process.kill(-pid, sig);
+      } catch {}
+    },
+    sleep,
+  });
 // Alive and not a zombie (this synchronous driver never reaps its children).
 const running = (pid: number): boolean => {
   try {
@@ -1424,6 +1496,7 @@ const main = (): number => {
   try {
     resetWorktree(fetchMaster());
   } catch {}
+  if (killPrepared(ROLE)) removePositionWorktrees();
   log(readFileSync(STATUS, 'utf8').trimEnd());
   return result.exit;
 };

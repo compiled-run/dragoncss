@@ -625,7 +625,8 @@ export type BatchOps<T, P extends { head: string }> = {
 export type ParallelHooks<T, P, H> = {
   /** Starts preparing position k (1-based) from the first k items; a throw marks it unprepared. */
   speculate: (k: number, items: readonly { entry: Entry; ticket: T }[]) => H;
-  /** Waits for a preparation; a throw (its regen failed) ejects that PR, as the one-by-one build's regen failure would. */
+  /** Waits for a preparation; a throw (its regen failed) builds that position one by one, and only that build's failure ejects
+   * the PR: the prepared run's failure may be the parallel load's (disk, a capture timing out), not the PR's. */
   await: (handle: H) => void;
   /** Assembles position k on `prev` from its preparation. */
   assemble: (prev: string, item: { entry: Entry; ticket: T }, k: number, handle: H) => P;
@@ -654,14 +655,16 @@ export const buildPositionsParallel = <T, P extends { head: string }, H>(base: s
     try {
       let position: P;
       if (speculating && 'ok' in h) {
+        let prepared = true;
         try {
           hooks.await(h.ok);
         } catch (error) {
           if (error instanceof Fatal) throw error;
-          speculating = false;
-          throw error;
+          hooks.log(`parallel build: #${item.entry.pr}'s prepared regen failed (${error instanceof Error ? error.message.split('\n')[0] : String(error)}); building its position one by one`);
+          prepared = false;
         }
-        position = hooks.assemble(prev, item, k + 1, h.ok);
+        // A one-by-one rebuild leaves the chain the preparations above were made for (the same PRs), so they still hold.
+        position = prepared ? hooks.assemble(prev, item, k + 1, h.ok) : hooks.sequential(prev, item, k + 1);
       } else {
         if (speculating) {
           hooks.log(`parallel build: #${item.entry.pr}'s preparation failed (${'failed' in h ? (h.failed instanceof Error ? h.failed.message : String(h.failed)) : ''}); building it and the positions above it one by one`);
@@ -683,6 +686,39 @@ export const buildPositionsParallel = <T, P extends { head: string }, H>(base: s
     if (!speculating) for (let j = i + 1; j < handles.length; j++) handles[j] = { failed: 'abandoned' };
   }
   return slots;
+};
+
+/** The paths where a prepared tree differs from the merge it is assembled on, split by what may differ there. `outputs` (a regen
+ * step's declared outputs) are the prepared regen's to set; `records` (the device records, written by device runs and carried by
+ * the merge from the position below) are taken from the merge, and the tree regenerated on them; anything else (`sources`: code,
+ * package.json, the lockfile, a .d.ts, vendor) means the preparation was not of this merge's sources. */
+export const preparedDifference = (paths: readonly string[], isOutput: (p: string) => boolean, isRecord: (p: string) => boolean): { sources: string[]; records: string[] } => ({
+  sources: paths.filter((p) => !isOutput(p) && !isRecord(p)),
+  records: paths.filter((p) => isRecord(p)),
+});
+
+/** Whether a prepared position's worktrees fit the disk: `freeGb` must stay at least `floorGb` after `missing` new worktrees of
+ * `perGb` each. */
+export const preparedFits = (freeGb: number, missing: number, o: { floorGb: number; perGb: number }): boolean => freeGb - missing * o.perGb >= o.floorGb;
+
+/** Stops the process group led by `pid` (SIGTERM, then SIGKILL after 30s) and waits for it to exit; returns whether it is gone, so
+ * the worktree it ran in can be reused. A leader that is another process now (its start time differs) means the pid was reused:
+ * that group is not ours, and nothing is signalled. A leader that is gone keeps its group id reserved while any member lives, so
+ * the group signal reaches only ours. */
+export const stopProcessGroup = (
+  pid: number,
+  start: string | null,
+  o: { startOf: (pid: number) => string | null; members: (pgid: number) => readonly number[]; signal: (sig: 'SIGTERM' | 'SIGKILL') => void; sleep: (ms: number) => void },
+): boolean => {
+  const now = o.startOf(pid);
+  if (now !== null && start !== null && now !== start) return true;
+  if (o.members(pid).length === 0) return true;
+  o.signal('SIGTERM');
+  for (let i = 0; i < 120 && o.members(pid).length > 0; i++) o.sleep(250);
+  if (o.members(pid).length === 0) return true;
+  o.signal('SIGKILL');
+  for (let i = 0; i < 40 && o.members(pid).length > 0; i++) o.sleep(250);
+  return o.members(pid).length === 0;
 };
 
 export const MAX_BATCH = 8;
