@@ -53,6 +53,16 @@ const collectNodes = (props: string[]): CapturedNode[] => {
     const m = shape === null ? null : shape.getScreenCTM();
     const svg = box === null || m === null ? {} : { svg: { bbox: [box.x, box.y, box.width, box.height], ctm: [m.a, m.b, m.c, m.d, m.e, m.f] } };
     out.push({ id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed, ...svg });
+    // INL1a: an inline box's fragments, one "<id>:line<j>" per client rect (one per line it is on); a <br> has none. A culled
+    // box (no box fragment of its own) also lists the zero-width piece of a <br> inside it beside that line's rect, and only in
+    // the first layout (INL-P open question 1), so a zero-width <br> piece with another rect on its line is left out.
+    if (cs.display === 'inline' && el.tagName !== 'BR') {
+      const rects = Array.from(el.getClientRects());
+      const brPieces = Array.from(el.querySelectorAll('br')).flatMap((b) => Array.from(b.getClientRects()));
+      const extraBrPiece = (f: DOMRect): boolean =>
+        f.width === 0 && brPieces.some((b) => b.x === f.x && b.y === f.y && b.height === f.height) && rects.some((o) => o !== f && o.y === f.y && o.height === f.height);
+      rects.filter((f) => !extraBrPiece(f)).forEach((f, j) => out.push({ id: `${id}:line${j}`, kind: 'line', hasBox: true, x: f.x, y: f.y, width: f.width, height: f.height, computed: null }));
+    }
     let k = 0;
     let spaces = 0;
     for (const child of Array.from(el.childNodes)) {

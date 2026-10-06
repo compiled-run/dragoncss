@@ -12,7 +12,7 @@ import type { HostRun, KotlinLookup, LaneFault } from '../src/lanes.ts';
 import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
 import { HIT_LANE, scriptCases, STATE_LANE } from '../src/device-lanes.ts';
 import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
-import { SVG_OUT, SVG_REASON } from './hit-refusals-svg.ts';
+import { INLINE_OUT, INLINE_REASON, SVG_OUT, SVG_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
@@ -217,15 +217,17 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
-  it('device-hit runs exactly the hit cases: every layout case but those the hit lane refuses by name, the PNT2 transform cases (T146) and the svg cases (SVG-a2)', () => {
+  it('device-hit runs exactly the hit cases: every layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the INL1a inline cases and the svg cases (SVG-a2)', () => {
     const refusals = hitRefusedCases();
     const refused = refusals.map((r) => r.id);
     expect(refused.length).toBeGreaterThan(0);
-    // Exactly the union: every svg case is refused with its reason, and every other refusal is a transform- case with its reason.
+    // Exactly the union: every INL1a inline case and every svg case is refused with its reason, and every other refusal is a transform- case with its reason.
+    expect(refused.filter((id) => INLINE_OUT.includes(id)).sort()).toEqual([...INLINE_OUT].sort());
     expect(refused.filter((id) => SVG_OUT.includes(id)).sort()).toEqual([...SVG_OUT].sort());
     for (const r of refusals) {
-      if (SVG_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(SVG_REASON);
-      else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^transform-/), expect.stringMatching(/^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/)]);
+      if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
+      else if (SVG_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(SVG_REASON);
+      else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^transform-/), expect.stringMatching(TRANSFORM_REASON)]);
     }
     expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...ids].sort());
     expect(hitCaseCount()).toBe(ids.length - refused.length);

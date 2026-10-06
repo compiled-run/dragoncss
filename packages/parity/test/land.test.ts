@@ -1434,7 +1434,7 @@ describe('floors may only rise (the landing commit against master)', () => {
   });
 
   it('reads every floor file in this tree, and finds none below itself', () => {
-    const files = execFileSync('git', ['ls-files', 'packages'], { cwd: repoPath('.'), encoding: 'utf8' }).split('\n').filter(isFloorFile);
+    const files = execFileSync('git', ['ls-files', '-z', 'packages'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter(isFloorFile);
     expect(files.length).toBeGreaterThanOrEqual(6);
     for (const f of files) {
       const t = readFileSync(repoPath(f), 'utf8');
