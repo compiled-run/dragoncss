@@ -1,0 +1,10 @@
+{
+  "case": "inline-empty-boxes",
+  "dpr": 2,
+  "texts": [
+    {"id":"e1:text0","lines":[[0,2]]},
+    {"id":"e1:text1","lines":[[0,1]]},
+    {"id":"e1:text2","lines":[[0,1]]},
+    {"id":"e2:text0","lines":[[0,1]]}
+  ]
+}

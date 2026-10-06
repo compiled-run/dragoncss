@@ -251,3 +251,4 @@ export function isScrollContainer(style: LayoutStyle): boolean {
   const x = style.overflowX;
   return x === 'hidden' || x === 'auto' || x === 'scroll';
 }
+
