@@ -406,7 +406,7 @@ public func paintGradient_gradientFaults(_ plant: JsString) throws -> GradientFa
   let named: Bool = (((((f.offsetOne || f.unpremultiplied) || f.ditherOff) || f.layerOriginIgnored) || f.singleTileModelSwapped) || f.obscuredBorderIgnored)
   // ts: packages/layout/src/paint-gradient.ts:45
   if ((!named) && (plant != S.s_none)) {
-    throw JsError(message: jsConcat(S.s379, plant))
+    throw JsError(message: jsConcat(S.s388, plant))
   }
   return f
 }
