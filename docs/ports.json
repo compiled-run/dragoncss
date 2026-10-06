@@ -479,6 +479,23 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/parser/css_parser_impl.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "fba42196ac93233eacc60fdf8d234103f64f23150fbc6c984521e98922df0ce7",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "895-898", "symbol": null, "source": "cited" },
+        { "lines": "1531-1581", "symbol": "CSSParserImpl::ConsumeKeyframesRule", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/at-rules/keyframes.ts", "symbol": "KeyframesRule", "use": "reference" },
+        { "file": "packages/dragon/test/aliases.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
