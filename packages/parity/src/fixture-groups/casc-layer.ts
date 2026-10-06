@@ -7,6 +7,6 @@ import { both, reject } from './define.ts';
 export const CASC_LAYER: readonly FixtureSpec[] = [
   both('casc-layer'),
   reject('reject-layer-in-media', 'DRAGON_UNSUPPORTED_AT_RULE', '@layer a { .a { width: 20px; } }', '@layer a in @media first declares a inside a condition'),
-  reject('reject-layer-revert-layer', 'DRAGON_UNSUPPORTED_VALUE', 'revert-layer', 'width: revert-layer inside a cascade layer is unsupported'),
+  reject('reject-layer-revert-layer', 'DRAGON_UNSUPPORTED_VALUE', 'revert-layer', 'width: revert-layer in a document with cascade layers is unsupported'),
   reject('reject-host-in-argument', 'DRAGON_UNSUPPORTED_SELECTOR', ':host', ':host inside a selector argument is not supported'),
 ];

@@ -83,9 +83,12 @@ describe('CASC 3: refusals', () => {
     expect(messages('@layer initial;')).toEqual(['DRAGON_UNSUPPORTED_AT_RULE: @layer initial in the stylesheet is not supported: "initial" is a CSS-wide keyword or default, which Dragon does not accept as a layer name']);
     expect(messages('.x { @layer a { width: 1px; } }').filter((m) => m.includes('@layer'))).toEqual(['DRAGON_UNSUPPORTED_AT_RULE: @layer a in a rule block is not supported: @layer nested in a style rule is not built yet']);
     expect(messages('@layer a { .x { width: revert-layer; --y: revert-layer; } } .z { width: revert-layer; }')).toEqual([
-      'DRAGON_UNSUPPORTED_VALUE: width: revert-layer inside a cascade layer is unsupported: rolling back to the layers below is not built yet',
-      'DRAGON_UNSUPPORTED_VALUE: --y: revert-layer inside a cascade layer is unsupported: rolling back to the layers below is not built yet',
+      'DRAGON_UNSUPPORTED_VALUE: width: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
+      'DRAGON_UNSUPPORTED_VALUE: --y: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
+      'DRAGON_UNSUPPORTED_VALUE: width: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
     ]);
+    // With no layer declared, revert-layer is not this refusal's (it reverts as revert does).
+    expect(messages('.z { width: revert-layer; }')).toEqual([]);
   });
   it(':host matches nothing in a document (css-scoping-1), and is refused inside a selector argument', () => {
     expect(messages(':root, :host { --a: 1px; } :host .x, :host.y { width: 1px; }')).toEqual([]);
