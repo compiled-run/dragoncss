@@ -723,9 +723,13 @@ public final class DragonTree {
       let ifc = try inline_buildIfc(ctx, p)
       guard let b = ifc.boxes.items.firstIndex(where: { $0.id.description == bId }) else { fatalError("dragon: no inline box \(bId) in \(pId)") }
       var offsets: [Double] = []
-      for line in try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items {
+      let placedLines = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
+      for line in placedLines {
         for (k, x) in line.boxes.items.enumerated() where Int(x) == b { offsets.append(line.baseline - line.boxRects.items[k].y) }
       }
+      // A context with no line box gives each inline box one empty fragment at the content start (inline.ts collectFragments),
+      // on no line, so its baseline is its own top.
+      if placedLines.isEmpty { offsets = [0] }
       if offsets.count != idx.count { fatalError("dragon: \(bId): the engine's lines give \(offsets.count) fragments, its layout \(idx.count)") }
       inlineLines[bId] = zip(idx, offsets).map { (i, o) in (edges: [snapped[i].left - be[0], snapped[i].top - be[1], snapped[i].right - be[0], snapped[i].bottom - be[1]], baseline: o / lu) }
     }
@@ -1541,9 +1545,13 @@ class DragonTree(val context: Context) {
       val b = ifc.boxes.indexOfFirst { it.id == bId }
       if (b < 0) throw IllegalStateException("dragon: no inline box " + bId + " in " + pId)
       val offsets = ArrayList<Double>()
-      for (line in inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))) {
+      val placedLines = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
+      for (line in placedLines) {
         for (k in line.boxes.indices) if (line.boxes[k].toInt() == b) offsets.add(line.baseline - line.boxRects[k].y)
       }
+      // A context with no line box gives each inline box one empty fragment at the content start (inline.ts collectFragments),
+      // on no line, so its baseline is its own top.
+      if (placedLines.isEmpty()) offsets.add(0.0)
       if (offsets.size != idx.size) throw IllegalStateException("dragon: " + bId + ": the engine's lines give " + offsets.size + " fragments, its layout " + idx.size)
       inlineLines[bId] = idx.indices.map { j -> val e = snapped[idx[j]]; doubleArrayOf(e.left - be[0], e.top - be[1], e.right - be[0], e.bottom - be[1], offsets[j] / lu) }
     }
