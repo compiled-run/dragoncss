@@ -183,13 +183,15 @@ describe('C4: one display: none rule, the subtree is omitted wherever it occurs 
 describe('the root font size the engine input carries (V2 rootFontSize)', () => {
   const compileRoot = (fontSize: string) => project('ltr').compile(inputFor(`html { font-size: ${fontSize}; } ${FONT}`, (r) => [div(r, 'a', [], [text(r, 't', 'XX')])]));
   it('is the root font size in px when it computes to px', () => {
-    for (const [fontSize, px] of [['2em', 32], ['1rem', 16], ['12px', 12]] as const) {
+    // INL1a: larger computes to the parent's size times 1.2 (css-fonts-4 §2.5, Blink FontDescription::LargerSize), at the root the
+    // initial 16px, so it is px now.
+    for (const [fontSize, px] of [['2em', 32], ['1rem', 16], ['12px', 12], ['larger', 19.2]] as const) {
       const p = iosLayoutProjection(compileRoot(fontSize), { ...ENV, direction: 'ltr' }, []);
       expect(p.kind === 'ready' ? p.input.rootFontSize : p.reason, fontSize).toBe(px);
     }
   });
   it('blocks the ios output with a typed diagnostic, instead of throwing at projection, when it does not compute to px', () => {
-    for (const fontSize of ['medium', 'larger', '120%', 'calc(10px + 1vw)']) {
+    for (const fontSize of ['medium', '120%', 'calc(10px + 1vw)']) {
       const c = compileRoot(fontSize);
       expect(c.outputs.ios.kind, fontSize).toBe('blocked');
       expect(c.diagnostics.map((d) => d.code), fontSize).toEqual(['DRAGON_LOWERING_FAILED']);

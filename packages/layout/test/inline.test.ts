@@ -158,9 +158,9 @@ describe('the validator rejects text the compiler did not prepare', () => {
 });
 
 describe('engine refusals for text', () => {
-  it('different fonts in one formatting context return mixed-inline-font', () => {
-    const r = run(block(30, [text('t0', 'XX'), text('t1', 'YY', { font: ahemFont(12) })]));
-    expect(r.kind === 'unsupported' && r.unsupported.code).toBe('mixed-inline-font');
+  it('different text-wrap-mode in one formatting context returns mixed-text-wrap-mode (mixed fonts are laid out since INL1a)', () => {
+    const r = run(block(30, [text('t0', 'XX'), text('t1', 'YY', { textWrapMode: 'nowrap' })]));
+    expect(r.kind === 'unsupported' && r.unsupported.code).toBe('mixed-text-wrap-mode');
   });
   it('text-align: justify returns text-align until a fixture proves it', () => {
     const r = run(block(30, [text('t', 'XX XX')], { textAlign: 'justify' }));
@@ -175,17 +175,17 @@ describe('engine refusals for text', () => {
 describe('placeLines: the one source of lines (INL1a, notes/T044-inl-spec.md R3)', () => {
   const ctx = { measurer: ahemMeasurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS };
   it('gives each line its top, height and baseline, and each leaf piece its code point range, x, width and content top', () => {
-    const leaves = [text('t0', 'XX X'), text('t1', 'Y YY')];
-    const got = placeLines(ctx, block(30, leaves), leaves, fromCssPx(30));
+    const b = box('a', { width: px(30) }, [text('t0', 'XX X'), text('t1', 'Y YY')]);
+    const got = placeLines(ctx, b, fromCssPx(30));
     expect(got).toEqual([
-      { top: 0, height: G, baseline: 512, pieces: [{ leaf: 0, start: 0, visibleEnd: 2, end: 3, x: 0, width: 2 * G, top: 0, ascent: 512, descent: 128 }] },
-      { top: G, height: G, baseline: G + 512, pieces: [{ leaf: 0, start: 3, visibleEnd: 4, end: 4, x: 0, width: G, top: G, ascent: 512, descent: 128 }, { leaf: 1, start: 0, visibleEnd: 1, end: 2, x: G, width: G, top: G, ascent: 512, descent: 128 }] },
-      { top: 2 * G, height: G, baseline: 2 * G + 512, pieces: [{ leaf: 1, start: 2, visibleEnd: 4, end: 4, x: 0, width: 2 * G, top: 2 * G, ascent: 512, descent: 128 }] },
+      { top: 0, height: G, baseline: 512, pieces: [{ leaf: 0, start: 0, visibleEnd: 2, end: 3, x: 0, width: 2 * G, top: 0, ascent: 512, descent: 128 }], boxes: [], boxRects: [], breaks: [], breakRects: [] },
+      { top: G, height: G, baseline: G + 512, pieces: [{ leaf: 0, start: 3, visibleEnd: 4, end: 4, x: 0, width: G, top: G, ascent: 512, descent: 128 }, { leaf: 1, start: 0, visibleEnd: 1, end: 2, x: G, width: G, top: G, ascent: 512, descent: 128 }], boxes: [], boxRects: [], breaks: [], breakRects: [] },
+      { top: 2 * G, height: G, baseline: 2 * G + 512, pieces: [{ leaf: 1, start: 2, visibleEnd: 4, end: 4, x: 0, width: 2 * G, top: 2 * G, ascent: 512, descent: 128 }], boxes: [], boxRects: [], breaks: [], breakRects: [] },
     ]);
   });
   it('the leaf pieces sit at the baseline minus the ascent: a 13px line-height floors the 1.5px half-leading to 1px', () => {
-    const leaves = [text('t', 'XX XX', { lineHeight: { kind: 'px', value: 13 } })];
-    const got = placeLines(ctx, block(30, leaves), leaves, fromCssPx(30));
+    const b = box('a', { width: px(30) }, [text('t', 'XX XX', { lineHeight: { kind: 'px', value: 13 } })]);
+    const got = placeLines(ctx, b, fromCssPx(30));
     expect(got.map((l) => [l.top, l.height, l.baseline, l.pieces[0]?.top])).toEqual([[0, 832, 64 + 512, 64], [832, 832, 832 + 64 + 512, 832 + 64]]);
   });
 });
@@ -214,7 +214,7 @@ describe('soft wrap opportunities equal Chrome\'s on INL-P family 3 (UAX #14 as 
   };
   const linesOf = (value: string, width: number, dpr: number, faults: EngineFaults, direction: 'ltr' | 'rtl' = 'ltr'): string[] => {
     const leaf = text('t', value, { font: ahemFont(10 * dpr) });
-    const got = placeLines({ measurer: ahemMeasurer, devicePixelRatio: dpr, faults }, block(width, [leaf], { direction }), [leaf], fromCssPx(width * dpr));
+    const got = placeLines({ measurer: ahemMeasurer, devicePixelRatio: dpr, faults }, box('c', { width: px(width), direction }, [leaf]), fromCssPx(width * dpr));
     return got.map((l) => {
       if (l.pieces.length !== 1) throw new Error(`${value}: a line of one leaf has ${l.pieces.length} pieces`);
       const p = l.pieces[0] as (typeof l.pieces)[number];

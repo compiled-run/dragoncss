@@ -226,6 +226,18 @@ const KIND_LABEL = (k: AnimationKind): string => (k.kind === 'length' ? `length 
 // The spec's ANIM-p row: opacity and transform are admitted by ANIM-b2, so their refusals name that package.
 const PACKAGE_OF = (p: string): string => (p === 'opacity' || p === 'transform' ? 'ANIM-b2' : 'ANIM-p');
 
+/**
+ * CSS2 §9.2.2: an element other than the root whose display is inline after blockification is an inline box (INL1a). The runtimes
+ * patch no inline box's style per frame (rt-animator.ts patchChild), so an animation or transition on one is refused until a frame
+ * fixture proves it.
+ */
+function inlineBoxAt(el: ResolvedElement, root: ResolvedElement): boolean {
+  const v = valueAt(el, 'display').value;
+  return el !== root && v.kind === 'keyword' && v.value === 'inline';
+}
+
+const INLINE_ANIM_MANUAL = 'Animate a block-level element instead (display: block or inline-block on a wrapper), or remove the declaration.';
+
 /** Walks a resolved tree by address. */
 function byAddress(root: ResolvedElement): Map<string, ResolvedElement> {
   const out = new Map<string, ResolvedElement>();
@@ -237,10 +249,18 @@ function byAddress(root: ResolvedElement): Map<string, ResolvedElement> {
   return out;
 }
 
+/**
+ * Which of two same-named @keyframes rules applies, as Chrome's ScopedStyleResolver::AddKeyframeStyle decides: an unprefixed rule
+ * beats an @-webkit-keyframes one in either order, and otherwise the later rule wins (Dragon refuses @layer, so all share a layer).
+ */
+export function keyframesOverride(next: KeyframesRule, existing: KeyframesRule | undefined): boolean {
+  return existing === undefined || (next.prefixed === existing.prefixed ? true : existing.prefixed);
+}
+
 /** The analysis of every case, with its refusals and warnings appended to diagnostics. */
 export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic[]): AnimationAnalysis {
   const keyframes = new Map<string, KeyframesRule>();
-  for (const r of input.keyframes) keyframes.set(r.name, r);
+  for (const r of input.keyframes) if (keyframesOverride(r, keyframes.get(r.name))) keyframes.set(r.name, r);
   const cases = input.cases.flatMap((c) => (c.resolved === null ? [] : [caseAnimations(c.key, c.resolved, input.rules, keyframes, input.faults)]));
   const trees = input.cases.flatMap((c) => (c.resolved === null ? [] : [byAddress(c.resolved)]));
   const reported = new Set<string>();
@@ -279,7 +299,7 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
     }
   }
   for (const rule of input.keyframes) {
-    feature('at-rule:@keyframes', rule.preludeSpan);
+    feature(rule.prefixed ? 'at-rule:@-webkit-keyframes' : 'at-rule:@keyframes', rule.preludeSpan);
     for (const b of rule.blocks) {
       for (const o of b.offsets) feature(`keyframe-selector:${o === 0 ? 'from' : o === 1 ? 'to' : '<percentage>'}`, rule.preludeSpan);
       for (const v of b.values) {
@@ -303,6 +323,9 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
         if (!a.hasKeyframes) {
           once(`noname|${a.name}|${ea.address}`, diagnostic('DRAGON_ANIMATION_NO_EFFECT', { origin: authored(spanFor(ea, 'animation-name')), message: `animation-name ${a.name} on ${ea.address} names no @keyframes rule, so it does nothing (as in Chrome)` }));
           continue;
+        }
+        if (inlineBoxAt(el, rootEl)) {
+          once(`inl-anim|${ea.address}|${a.name}`, diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanFor(ea, 'animation-name')), message: `animation ${a.name} on <${el.element.tag}> ${ea.address} animates an inline box, which Dragon does not animate yet: no frame fixture proves it (INL1a)`, manual: INLINE_ANIM_MANUAL }));
         }
         const rule = keyframes.get(a.name) as KeyframesRule;
         for (const b of rule.blocks) {
@@ -346,6 +369,9 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           const span = spanFor(after, 'transition-property');
           animated.add(`${address}|${p}|transition`);
           feature(`animatable:${p}`, span);
+          if (inlineBoxAt(eb, [...tb.values()][0] as ResolvedElement) || inlineBoxAt(ea, [...ta.values()][0] as ResolvedElement)) {
+            once(`inl-tr|${address}|${p}`, diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), message: `a transition of ${p} on <${eb.element.tag}> ${address} animates an inline box, which Dragon does not animate yet: no frame fixture proves it (INL1a)`, manual: INLINE_ANIM_MANUAL }));
+          }
           if (!admitted(kind)) {
             once(`tp|${p}|${span.start}`, refuse(span, `${p} cannot be animated yet: a transition on ${address} would start between two reachable states, and Dragon has no ${KIND_LABEL(kind)} animation writer (package ${PACKAGE_OF(p)})`));
             continue;

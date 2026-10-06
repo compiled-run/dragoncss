@@ -138,8 +138,8 @@
   }
  },
  "summary": {
-  "diagnostics": 242,
-  "errors": 237,
+  "diagnostics": 215,
+  "errors": 210,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -157,9 +157,9 @@
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 4,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 29,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 29,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 20
+   "DRAGON_UNSUPPORTED_VALUE [android]": 20,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 20,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 11
   },
   "perTarget": {
    "web": {
@@ -169,7 +169,7 @@
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_PROPERTY": 39,
      "DRAGON_UNSUPPORTED_SELECTOR": 4,
-     "DRAGON_UNSUPPORTED_VALUE": 23
+     "DRAGON_UNSUPPORTED_VALUE": 14
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -184,7 +184,7 @@
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 37,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 32
+     "DRAGON_UNSUPPORTED_VALUE": 23
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -201,7 +201,7 @@
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 37,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 32
+     "DRAGON_UNSUPPORTED_VALUE": 23
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -216,11 +216,11 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 220,
-  "supportedWeb": 230,
-  "supportedIos": 220,
-  "supportedAndroid": 220,
-  "supportPercent": 76.1,
+  "supportedBothTargets": 225,
+  "supportedWeb": 235,
+  "supportedIos": 225,
+  "supportedAndroid": 225,
+  "supportPercent": 77.9,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -303,9 +303,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 114,
-   "B-unwrapped": 114,
-   "C-context": 146
+   "A-authored": 99,
+   "B-unwrapped": 99,
+   "C-context": 131
   }
  },
  "features": {
@@ -703,12 +703,10 @@
    "atRule": null,
    "property": "min-height",
    "value": "100vh",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 22,
@@ -745,12 +743,10 @@
    "atRule": null,
    "property": "min-height",
    "value": "100vh",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 25,
@@ -825,12 +821,10 @@
    "atRule": null,
    "property": "min-height",
    "value": "100vh",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 31,
@@ -937,12 +931,10 @@
    "atRule": null,
    "property": "min-height",
    "value": "10vh",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 40,
@@ -2199,12 +2191,10 @@
    "atRule": null,
    "property": "min-height",
    "value": "20vh",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 141,
@@ -4137,66 +4127,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 627,
-    "end": 632,
-    "line": 33,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 627,
-    "end": 632,
-    "line": 33,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 627,
-    "end": 632,
-    "line": 33,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@662-675|font is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -4280,69 +4210,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 731,
-    "end": 736,
-    "line": 47,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 731,
-    "end": 736,
-    "line": 47,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 731,
-    "end": 736,
-    "line": 47,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@784-801|letter-spacing is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -4376,126 +4243,6 @@
     "text": "font-weight: 400"
    },
    "message": "font-weight is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 905,
-    "end": 910,
-    "line": 65,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 905,
-    "end": 910,
-    "line": 65,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 905,
-    "end": 910,
-    "line": 65,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 1195,
-    "end": 1199,
-    "line": 80,
-    "column": 14,
-    "text": "10vh"
-   },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 1195,
-    "end": 1199,
-    "line": 80,
-    "column": 14,
-    "text": "10vh"
-   },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 1195,
-    "end": 1199,
-    "line": 80,
-    "column": 14,
-    "text": "10vh"
-   },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4958,66 +4705,6 @@
     "text": "overflow-wrap: break-word"
    },
    "message": "overflow-wrap is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 4652,
-    "end": 4656,
-    "line": 258,
-    "column": 14,
-    "text": "20vh"
-   },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 4652,
-    "end": 4656,
-    "line": 258,
-    "column": 14,
-    "text": "20vh"
-   },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 4652,
-    "end": 4656,
-    "line": 258,
-    "column": 14,
-    "text": "20vh"
-   },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6161,7 +5848,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/youtube-sync-paused|<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/youtube-sync-paused|<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -6170,7 +5857,7 @@
     "id": "App/youtube-sync-paused",
     "tag": "button"
    },
-   "message": "<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "message": "<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6178,7 +5865,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/youtube-sync-playing|<button> youtube-sync-playing is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/youtube-sync-playing|<button> youtube-sync-playing is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -6187,7 +5874,7 @@
     "id": "App/youtube-sync-playing",
     "tag": "button"
    },
-   "message": "<button> youtube-sync-playing is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "message": "<button> youtube-sync-playing is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6195,7 +5882,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@LibrarySong/library-song|<button> library-song is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@LibrarySong/library-song|<button> library-song is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -6204,7 +5891,7 @@
     "id": "LibrarySong/library-song",
     "tag": "button"
    },
-   "message": "<button> library-song is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "message": "<button> library-song is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6212,7 +5899,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Nav/library-button|<button> library-button is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Nav/library-button|<button> library-button is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -6221,7 +5908,7 @@
     "id": "Nav/library-button",
     "tag": "button"
    },
-   "message": "<button> library-button is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "message": "<button> library-button is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6229,7 +5916,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/play|<button> play is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/play|<button> play is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -6238,7 +5925,7 @@
     "id": "Player/play",
     "tag": "button"
    },
-   "message": "<button> play is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "message": "<button> play is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6246,7 +5933,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/progress-input|<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/progress-input|<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -6255,7 +5942,7 @@
     "id": "Player/progress-input",
     "tag": "input"
    },
-   "message": "<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "message": "<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6263,7 +5950,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/skip-back|<button> skip-back is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/skip-back|<button> skip-back is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -6272,7 +5959,7 @@
     "id": "Player/skip-back",
     "tag": "button"
    },
-   "message": "<button> skip-back is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "message": "<button> skip-back is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6280,7 +5967,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/skip-forward|<button> skip-forward is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/skip-forward|<button> skip-forward is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -6289,7 +5976,7 @@
     "id": "Player/skip-forward",
     "tag": "button"
    },
-   "message": "<button> skip-forward is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe)",
+   "message": "<button> skip-forward is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6544,63 +6231,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 627,
-    "end": 632,
-    "line": 33,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 627,
-    "end": 632,
-    "line": 33,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 627,
-    "end": 632,
-    "line": 33,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@884-890|overflow-y computes to auto on page/app (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -6658,63 +6288,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 905,
-    "end": 910,
-    "line": 65,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 905,
-    "end": 910,
-    "line": 65,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 905,
-    "end": 910,
-    "line": 65,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@961-983|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -6747,63 +6320,6 @@
     "text": "margin-right 0.5s ease"
    },
    "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 1195,
-    "end": 1199,
-    "line": 80,
-    "column": 14,
-    "text": "10vh"
-   },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 1195,
-    "end": 1199,
-    "line": 80,
-    "column": 14,
-    "text": "10vh"
-   },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 1195,
-    "end": 1199,
-    "line": 80,
-    "column": 14,
-    "text": "10vh"
-   },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -7013,63 +6529,6 @@
     "text": "running"
    },
    "message": "animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 4652,
-    "end": 4656,
-    "line": 258,
-    "column": 14,
-    "text": "20vh"
-   },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 4652,
-    "end": 4656,
-    "line": 258,
-    "column": 14,
-    "text": "20vh"
-   },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 4652,
-    "end": 4656,
-    "line": 258,
-    "column": 14,
-    "text": "20vh"
-   },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"

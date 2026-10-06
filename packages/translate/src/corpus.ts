@@ -5,7 +5,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { EngineFaults } from '../../layout/src/block.ts';
 import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
-import type { LayoutBox, LayoutInput, LayoutStyle, TextLeaf } from '../../layout/src/input.ts';
+import type { LayoutBox, LayoutInput, LayoutStyle, LineStrut, TextLeaf } from '../../layout/src/input.ts';
 import { validateLayoutInput } from '../../layout/src/validate.ts';
 import { runEngineCase, runLibraryCase, runSnapCase, runUnitsCase } from '../harness/harness.ts';
 import { bitsHex } from '../harness/host.ts';
@@ -154,6 +154,7 @@ const INITIAL: LayoutStyle = {
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
   aspectRatio: { kind: 'auto' },
+  verticalAlign: { kind: 'keyword', value: 'baseline' },
   grid: null, gridItem: null,
 };
 
@@ -274,6 +275,11 @@ function textLeaf(r: Rng, id: string, font: { size: number; lh: TextLeaf['lineHe
   return { kind: 'text', id, text: randomText(r, rtl), font: { family: 'Ahem', size: font.size, specifiedSize: { kind: 'px', value: font.size }, absoluteSize: true }, lineHeight: font.lh, whiteSpaceCollapse: 'collapse', textWrapMode: font.wrap };
 }
 
+/** A text container's strut: its leaves' font and line-height (INL1a; drawn from nothing, so the P1 inputs keep their shape). */
+function strutOf(font: { size: number; lh: TextLeaf['lineHeight'] }): LineStrut {
+  return { font: { family: 'Ahem', size: font.size, specifiedSize: { kind: 'px', value: font.size }, absoluteSize: true }, lineHeight: font.lh };
+}
+
 /** Ids: plain, and sometimes canonically equivalent pairs (U+00E9 and e + U+0301) that JS keeps distinct. */
 function idFor(r: Rng, n: number, canonical: boolean): string {
   if (canonical && n % 2 === 1) return `n\u00e9${n >> 1}`;
@@ -294,19 +300,19 @@ function randomInput(r: Rng): LayoutInput {
     if (made < total && r.chance(0.35) && style.display === 'block') {
       const n = 1 + r.int(2);
       for (let i = 0; i < n; i++) children.push(textLeaf(r, `${id}:t${i}`, font, style.direction === 'rtl'));
-      return { kind: 'box', id, boxType: 'element', style, children };
+      return { kind: 'box', id, boxType: 'element', style, strut: strutOf(font), children };
     }
     while (made < total && r.chance(0.75)) {
       if (r.chance(0.15)) {
         // Text beside boxes, or in a flex container, arrives wrapped in an anonymous box (CSS2 §9.2.1.1, css-flexbox-1 §4).
         const aid = `${id}:anon${children.length}`;
         const astyle: LayoutStyle = { ...INITIAL, direction: style.direction, textAlign: style.textAlign };
-        children.push({ kind: 'box', id: aid, boxType: 'anonymous', style: astyle, children: [textLeaf(r, `${aid}:t0`, font, style.direction === 'rtl')] });
+        children.push({ kind: 'box', id: aid, boxType: 'anonymous', style: astyle, strut: strutOf(font), children: [textLeaf(r, `${aid}:t0`, font, style.direction === 'rtl')] });
         continue;
       }
       children.push(makeBox(depth + 1, style.display === 'flex'));
     }
-    return { kind: 'box', id, boxType: 'element', style, children };
+    return { kind: 'box', id, boxType: 'element', style, strut: null, children };
   };
   const root = makeBox(0, false);
   const dpr = r.pick(DPRS);
