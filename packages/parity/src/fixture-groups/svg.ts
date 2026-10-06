@@ -1,4 +1,5 @@
-// Fixture group svg (SVG-a1, /tmp/specs/svg-a.md): inline <svg> as a block-level replaced box and flex item, drawing <path>,
+// Fixture group svg (SVG-a1, docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): inline <svg> as a block-level replaced box and
+// flex item, drawing <path>,
 // <rect> and <circle> with fill, stroke and stroke-width from CSS and presentation attributes, under every viewBox case of
 // xMidYMid meet, in both directions. Their shapes are proven by the strict outline differential (svg-compare.ts); the rejects
 // name what SVG-a1 refuses.

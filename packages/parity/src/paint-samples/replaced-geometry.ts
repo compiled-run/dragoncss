@@ -28,7 +28,7 @@ export function replacedBoxes(ctx: PaintSampleContext): ReadonlyMap<string, Repl
   const hit = cache.get(ctx);
   if (hit !== undefined) return hit;
   // A case with no image and no foreign view needs no geometry, and runs no layout for it.
-  if (!ctx.program.nodes.some((n) => n.writes.some((w) => w.kind === 'replaced-image' || w.kind === 'foreign-view'))) {
+  if (!ctx.program.nodes.some((n) => n.writes.some((w) => w.kind === 'replaced-image' || w.kind === 'foreign-view' || w.kind === 'svg-shapes'))) {
     const none = new Map<string, ReplacedSamplesBox>();
     cache.set(ctx, none);
     return none;

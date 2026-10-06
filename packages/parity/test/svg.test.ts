@@ -1,4 +1,5 @@
-// SVG-a1 (/tmp/specs/svg-a.md): the strict outline differential (svg-compare.ts). Its viewBox and client-rect arithmetic is pinned
+// SVG-a1 (docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): the strict outline differential (svg-compare.ts). Its viewBox and
+// client-rect arithmetic is pinned
 // against values captured from Chrome 145 at DPR 1, every svg fixture case passes it against its committed capture, and each
 // planted fault fails it.
 import { describe, expect, it } from 'vitest';

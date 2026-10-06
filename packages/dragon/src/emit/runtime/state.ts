@@ -453,7 +453,8 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
         throw new StateEmitError(`${n.id}: a transform in a state program has no state-node write (PNT2 writes transforms on the static program only)`);
       case 'replaced-image':
       case 'foreign-view':
-        // REPL-a draws an image or hosts a web view from its own paint stage; the state runtime does not rebuild either yet.
+      case 'svg-shapes':
+        // REPL-a draws an image or hosts a web view, and SVG-a2 an svg's shapes, from its own paint stage; the state runtime does not rebuild them yet.
         throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.

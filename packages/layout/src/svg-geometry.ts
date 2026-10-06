@@ -1,4 +1,5 @@
-// SVG-a1 (/tmp/specs/svg-a.md): the geometry of an inline <svg>'s shapes as Chrome 145 holds it. The compiler parses the path
+// SVG-a1 (docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): the geometry of an inline <svg>'s shapes as Chrome 145 holds it.
+// The compiler parses the path
 // data into these segments (dragon analysis/elements/svg-path.ts); this module holds what the drawing and its proof read from them.
 // - Bounds are Skia's SkPathPriv::ComputeTightBounds (src/core/SkPathPriv.cpp), with SkFindCubicExtrema, SkFindUnitQuadRoots,
 //   valid_unit_divide and SkCubicCoeff's eval (src/core/SkGeometry.cpp, src/core/SkGeometry.h), ported in float32 with no

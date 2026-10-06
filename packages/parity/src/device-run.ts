@@ -68,6 +68,12 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'transform-origin-ignored': ['transform-origin'],
   'translate-percent-of-parent': ['transform-translate'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
+  // SVG-a2: svg-basic's p2 (a closed curve around a square subpath of the same direction) shows the fill rule; svg-paint's shapes
+  // are filled and stroked in distinct colours with strokes wide enough to sample.
+  'svg-stroke-first': ['svg-paint', 'svg-basic'],
+  'svg-even-odd': ['svg-basic'],
+  'svg-stroke-unscaled': ['svg-paint', 'svg-basic'],
+  'svg-paint-swapped': ['svg-paint', 'svg-basic'],
 };
 /** The sample rules a paint plant's device-pixels failures must name: border bands and edges for the dash plants. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
@@ -77,6 +83,10 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'translate-percent-of-parent': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'image-offset-1': /^(image-flat:|edge:)/,
+  'svg-stroke-first': /^svg:/,
+  'svg-even-odd': /^svg:/,
+  'svg-stroke-unscaled': /^svg:/,
+  'svg-paint-swapped': /^svg:/,
 };
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };

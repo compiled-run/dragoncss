@@ -1,4 +1,5 @@
-// SVG-a1 (/tmp/specs/svg-a.md): the strict outline differential. For every shape of every <svg> in a case, Dragon's geometry must
+// SVG-a1 (docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): the strict outline differential. For every shape of every <svg> in
+// a case, Dragon's geometry must
 // equal Chrome's as doubles, with no allowance: getBBox (the tight bounds of the fill geometry in user units), getScreenCTM (the
 // svg content box's position and the viewBox transform) and getBoundingClientRect (the bounding box mapped through it). The
 // lane runs at the host DPR of 1, where Chrome's CSS px are its layout units.

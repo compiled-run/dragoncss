@@ -1,4 +1,5 @@
-// SVG-a1 (/tmp/specs/svg-a.md): the SVG attribute grammars as Chrome 145 builds them (analysis/elements/svg-path.ts), the shapes'
+// SVG-a1 (docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): the SVG attribute grammars as Chrome 145 builds them
+// (analysis/elements/svg-path.ts), the shapes'
 // bounds (packages/layout/src/svg-geometry.ts) against getBBox values captured from Chrome, and the compiler's svg model: hints,
 // refusals, structure and the native refusal. The fixtures' outlines against live Chrome are the parity svg group's.
 import { describe, expect, it } from 'vitest';
@@ -6,6 +7,7 @@ import { objectBoundingBox } from '@dragon/layout';
 import { parsePathData, parseSvgLength, parseViewBox } from '../src/analysis/elements/svg-path.ts';
 import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints } from '../src/analysis/elements/svg.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { svgShapePath } from '../src/lower/paint/image.ts';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/types.ts';
 import { div, inputFor, staticClass, DOC } from './helpers.ts';
 
@@ -115,12 +117,12 @@ describe('the svg model in a compile', () => {
     createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: lanes }).compile(input);
   const errors = (c: ReturnType<typeof compile>) => c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.target ?? '*'} ${d.message}`);
 
-  it('compiles an svg with its shapes for web, and refuses it on native as SVG-a2 outside the parity lanes', () => {
+  it('compiles an svg with its shapes on every target (SVG-a2 draws them natively), and lowers them to one svg-shapes write', () => {
     const input = svgTree('', (_r, o) => [shape(o, 'p', 'path', [['d', 'M2 2 H20 V20 Z']]), shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '4']])]);
     const user = compile(input, false);
-    expect(errors(user)).toEqual(['DRAGON_UNSUPPORTED_ELEMENT ios <svg> s is not drawn on ios yet: its shapes wait for the native SVG package SVG-a2', 'DRAGON_UNSUPPORTED_ELEMENT android <svg> s is not drawn on android yet: its shapes wait for the native SVG package SVG-a2']);
-    expect(user.targets.web).not.toBe('blocked');
-    expect(errors(compile(input, true))).toEqual([]);
+    expect(errors(user)).toEqual([]);
+    expect([user.targets.ios, user.targets.android, user.targets.web].every((t) => t !== 'blocked')).toBe(true);
+    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1 })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
   });
   it('refuses a group, text, a nested svg and a shape with children (SVG-b)', () => {
     const input = svgTree('', (r, o) => [shape(o, 'g', 'g', []), { kind: 'text', id: 't', text: 'hi', origin: o }, shape(o, 'p', 'path', [['d', 'M0 0']], [shape(o, 'q', 'rect', [])]), shape(o, 'n', 'svg', [])]);

@@ -1,4 +1,5 @@
-// SVG-a1 (/tmp/specs/svg-a.md): an inline <svg> is a replaced box (elements/replaced.ts) whose content is its <path>, <rect> and
+// SVG-a1 (docs/goals/milestone-2-proof/notes/T-svg-a-spec.md): an inline <svg> is a replaced box (elements/replaced.ts) whose
+// content is its <path>, <rect> and
 // <circle> children. This module holds what the compiler reads from their attributes: the geometry attributes, the presentation
 // attributes fill, stroke and stroke-width (and the svg's width and height), the viewBox, and the refusals of everything else.
 import { parse } from 'css-tree';
