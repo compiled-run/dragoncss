@@ -7,6 +7,7 @@ import { generate } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../../types.ts';
 import type { AtRuleContext, AtRuleHandler } from '../at-rules.ts';
+import { resolveAlias } from '../aliases.ts';
 import { list, spanOf } from '../ast.ts';
 import { asciiLower, decodeName } from '../escapes.ts';
 import type { Longhand } from '../properties.ts';
@@ -133,7 +134,10 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
       continue;
     }
     const written = decodeName(String(d['property']));
-    const property = written.startsWith('--') ? written : asciiLower(written);
+    const lowered = written.startsWith('--') ? written : asciiLower(written);
+    const property = resolveAlias(lowered);
+    // A legacy alias is its property (aliases.ts); its diagnostics name the alias as written too.
+    const aliasNote = (message: string): string => (property === lowered ? message : `${message} (${lowered} is an alias of ${property})`);
     const valueNode = d['value'] as CssNode;
     const valueSpan = spanOf(valueNode, src.base);
     const text = generate(valueNode);
@@ -141,7 +145,7 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
     const refuse = (code: 'DRAGON_UNSUPPORTED_PROPERTY' | 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_IMPORTANT' | 'DRAGON_CSS_INVALID_VALUE', message: string, at: Span = span): void => {
       // A property or !important refusal fixes by deleting the declaration (its catalogue fix is an edit).
       const edits = code === 'DRAGON_UNSUPPORTED_PROPERTY' || code === 'DRAGON_UNSUPPORTED_IMPORTANT' ? { edits: [{ span, replacement: '' }] } : {};
-      diagnostics.push(diagnostic(code, { origin: authored(at), message, ...edits }));
+      diagnostics.push(diagnostic(code, { origin: authored(at), message: aliasNote(message), ...edits }));
     };
     if (d['important'] !== false) {
       refuse('DRAGON_UNSUPPORTED_IMPORTANT', `!important on ${property} in @keyframes ${name}: Chrome ignores it inside @keyframes, so the declaration has no effect`);
@@ -188,7 +192,7 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
       for (const lh of parsed.longhands) values.push({ property: lh.property, value: lh.value, span, valueSpan, text });
       continue;
     }
-    if (parsed.kind === 'refused') diagnostics.push(parsed.diagnostic);
+    if (parsed.kind === 'refused') diagnostics.push({ ...parsed.diagnostic, message: aliasNote(parsed.diagnostic.message) });
     else if (parsed.kind === 'token') refuse('DRAGON_UNSUPPORTED_VALUE', `${property}: ${generate(parsed.token)} is unsupported: ${parsed.reason}`, spanOf(parsed.token, src.base));
     else if (parsed.kind === 'multi') refuse('DRAGON_UNSUPPORTED_VALUE', `multi-token value "${text}" for ${property} is not supported in milestone 1`, valueSpan);
     else refuse('DRAGON_CSS_INVALID_VALUE', parsed.reason === undefined ? `"${text}" is not a valid value for ${property}, so Chrome ignores it in @keyframes ${name}` : `"${text}" is not a valid value for ${property}: ${parsed.reason}`, valueSpan);
