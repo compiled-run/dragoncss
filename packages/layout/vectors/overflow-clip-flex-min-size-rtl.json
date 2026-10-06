@@ -771,8 +771,8 @@
           "left": {
            "kind": "auto"
           },
-          "overflowX": "auto",
-          "overflowY": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
           "direction": "rtl",
           "boxSizing": "content-box",
           "width": {
@@ -1386,8 +1386,8 @@
           "left": {
            "kind": "auto"
           },
-          "overflowX": "auto",
-          "overflowY": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
           "direction": "rtl",
           "boxSizing": "content-box",
           "width": {
