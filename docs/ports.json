@@ -535,7 +535,8 @@
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "isInvalidFontFamily", "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "parseFamilyList", "use": "port" },
         { "file": "packages/dragon/src/fonts/font-face.ts", "symbol": null, "use": "port" },
-        { "file": "packages/parity/src/font-reference.ts", "symbol": "PARSER_GENERICS", "use": "port" }
+        { "file": "packages/parity/src/font-reference.ts", "symbol": "PARSER_GENERICS", "use": "port" },
+        { "file": "packages/parity/test/place-computed.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
