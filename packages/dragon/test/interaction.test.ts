@@ -438,6 +438,18 @@ describe('interaction states: web conditions', () => {
     expect(own.kind === 'ready' && own.files[0]?.text.includes(' .' + cls('z') + ' {\n  color: rgb(0, 128, 0);')).toBe(true);
   });
 
+  it('resolve a range part per state and emit its state rule on the input class with the pseudo-element (FORM-a A4)', () => {
+    const css = `${BODY}.r { display: block; appearance: none; width: 100px; } .r::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; background-color: red; } .r:hover::-webkit-slider-thumb { background-color: green; }`;
+    const attr = (name: string, value: string) => ({ name, value: [{ when: { kind: 'true' as const }, value }], origin: { kind: 'unlocated' as const, reason: 'test' } });
+    const body = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [{ ...div(r, 'r', ['r']), tag: 'input', attributes: [attr('type', 'range')] }];
+    const out = compile({}, css, body, { web: {} });
+    if (out.outputs.web.kind !== 'ready') throw new Error(errors(out.diagnostics).join('\n'));
+    const text = (out.outputs.web.files[0] as { text: string }).text;
+    const cls = internalRecord(out)?.cases[0]?.webClassOf?.get('r') as string;
+    expect(text).toContain(`.${cls}::-webkit-slider-thumb {\n`);
+    expect(text).toMatch(new RegExp(`:root:has\\(\\.${cls}:hover\\) \\.${cls}::-webkit-slider-thumb \\{\\n  background-color: rgb\\(0, 128, 0\\);`));
+  });
+
   it('leave a document without interaction rules, or with one that matches nothing, as it was', () => {
     const body = (t: string): string => t.split('\n').slice(1).join('\n');
     const plain = '.a { width: 100px; height: 20px; } .b { width: 50px; height: 10px; }';
