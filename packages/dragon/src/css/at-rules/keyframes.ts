@@ -1,4 +1,4 @@
-// @keyframes (css-animations-1 §3, T065 R10): accepted at the top level of a stylesheet and refused inside a conditional group
+// @keyframes (css-animations-1 §3, T065 R10), and @-webkit-keyframes, which Chrome parses the same way: accepted at the top level of a stylesheet and refused inside a conditional group
 // (MQ-R). Each block's selectors become offsets and its declarations milestone longhands, parsed as in a style rule; Chrome's
 // rules inside keyframes apply: !important is ignored, a property that is not valid for keyframes has no effect, and
 // animation-timing-function is the keyframe's easing. Only types come from at-rules.ts, so the two modules can import each other.
@@ -28,8 +28,11 @@ export type KeyframeDeclaration = { readonly property: Longhand; readonly value:
 /** labels: each selector as written (from, to or a percentage), for the web output. */
 export type KeyframeBlock = { readonly offsets: readonly number[]; readonly labels: readonly string[]; readonly easing: EasingValue | null; readonly values: readonly KeyframeDeclaration[]; readonly span: Span };
 
-/** span: the whole at-rule; preludeSpan: "@keyframes <name>", where the rule's own features are reported. */
-export type KeyframesRule = { readonly name: string; readonly span: Span; readonly preludeSpan: Span; readonly blocks: readonly KeyframeBlock[] };
+/**
+ * span: the whole at-rule; preludeSpan: "@keyframes <name>", where the rule's own features are reported; prefixed: written as
+ * @-webkit-keyframes, which Chrome parses as @keyframes (css_parser_impl.cc ConsumeKeyframesRule) and ranks below it.
+ */
+export type KeyframesRule = { readonly name: string; readonly span: Span; readonly preludeSpan: Span; readonly blocks: readonly KeyframeBlock[]; readonly prefixed: boolean };
 
 /** Chrome 145's properties with valid_for_keyframe: false (css_properties.json5; animation-kinds.test.ts checks the list). */
 export const NOT_VALID_FOR_KEYFRAME: readonly string[] = [
@@ -58,9 +61,9 @@ export function keyframesAtRule(at: AtRuleContext): ReturnType<AtRuleHandler> {
   const block = at.node['block'] as CssNode | null | undefined;
   if (at.where === 'the stylesheet' && block !== null && block !== undefined && nameOf(at.node['prelude'] as CssNode | null | undefined) !== null) return { kind: 'keyframes', context: at };
   const message = at.where.startsWith('@')
-    ? `@keyframes inside ${at.where} is not supported (package MQ-R)`
+    ? `@${at.name} inside ${at.where} is not supported (package MQ-R)`
     : at.where === 'the stylesheet'
-      ? `@keyframes ${at.prelude ?? ''} is not a valid @keyframes rule: the name must be an identifier other than none, or a string, and the rule needs a block`
+      ? `@${at.name} ${at.prelude ?? ''} is not a valid @keyframes rule: the name must be an identifier other than none, or a string, and the rule needs a block`
       : `@${at.name} in ${at.where} is not supported in milestone 1`;
   return { kind: 'refuse', diagnostic: diagnostic('DRAGON_UNSUPPORTED_AT_RULE', { origin: authored(at.span), message }) };
 }
@@ -117,7 +120,7 @@ export function parseKeyframesRules(sources: readonly KeyframesSource[], diagnos
     }
     const prelude = src.context.node['prelude'] as CssNode;
     const preludeSpan = { source: src.context.span.source, start: src.context.span.start, end: spanOf(prelude, src.base).end };
-    out.push({ name, span: src.context.span, preludeSpan, blocks });
+    out.push({ name, span: src.context.span, preludeSpan, blocks, prefixed: asciiLower(src.context.name) === '-webkit-keyframes' });
   }
   return out;
 }

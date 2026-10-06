@@ -2,6 +2,7 @@
 // the standard declaration, in the cascade and in @keyframes too. Chrome parity is proven by fixture-groups/aliases.ts.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { keyframesOverride } from '../src/analysis/animations.ts';
 import { ALIAS_FAMILIES, resolveAlias } from '../src/css/aliases.ts';
 import { parseKeyframesRules } from '../src/css/at-rules/keyframes.ts';
 import type { KeyframesSource } from '../src/css/at-rules/keyframes.ts';
@@ -26,7 +27,7 @@ type Parsed = { declarations: object[]; diagnostics: [string, string][] };
 /** What a declaration parses to, without its source positions. */
 function parsed(body: string): Parsed {
   const { declarations, diagnostics } = parse(body);
-  const strip = (d: Declaration) => ({ property: d.property, text: d.text, longhands: d.longhands, important: d.important, pending: d.pending, alias: d.alias });
+  const strip = (d: Declaration) => ({ property: d.property, text: d.text, longhands: d.longhands, important: d.important, pending: d.pending, alias: d.alias, animation: d.animation });
   return { declarations: declarations.map(strip), diagnostics: diagnostics.map((d) => [d.code, d.message]) };
 }
 
@@ -82,12 +83,26 @@ const SAMPLES: { readonly [property: string]: readonly string[] } = {
   'padding-block-start': ['1px'],
   'padding-inline-end': ['5%'],
   'padding-inline-start': ['8px'],
+  animation: ['k 1s ease-in 0.5s 2 alternate backwards', 'k 1s, j 2s steps(3) infinite reverse paused', 'none', 'k 1s linear(0, 1)', 'k 1s calc(1s)'],
+  'animation-delay': ['0.5s', '-1s, 2s', '1px'],
+  'animation-direction': ['alternate', 'reverse, normal', 'sideways'],
+  'animation-duration': ['1s', 'auto', '-1s'],
+  'animation-fill-mode': ['backwards', 'both, none'],
+  'animation-iteration-count': ['infinite', '2.5', '-1'],
+  'animation-name': ['k', 'none, j', '"q"'],
+  'animation-play-state': ['paused', 'running, paused'],
+  'animation-timing-function': ['ease-in-out', 'step-start', 'cubic-bezier(0.5, -1, 0.5, 2)', 'steps(4, jump-none)', 'linear(0, 1)'],
+  transition: ['width 1s ease-out', 'all 0.3s, color 1s step-end 0.1s', 'none', 'width 1s allow-discrete'],
+  'transition-delay': ['0.1s', '-0.2s, 0s'],
+  'transition-duration': ['0.3s', '1s, 2s', '-1s'],
+  'transition-property': ['width', 'all, color', 'none', '-webkit-margin-start'],
+  'transition-timing-function': ['ease-in', 'step-end', 'cubic-bezier(0, 0, 1, 1)', 'steps(2)'],
 };
 const COMMON = ['inherit', 'initial', 'unset', 'revert', 'var(--x)', 'var(--x, 1px) var(--y)', 'not-a-value', '1px !important'];
 
 describe('legacy aliases parse as their property', () => {
   it('every alias is a lower-case -webkit- name, and resolveAlias maps it and nothing else', () => {
-    expect(ALIASES.length).toBe(44);
+    expect(ALIASES.length).toBe(58);
     for (const [alias, property] of ALIASES) {
       expect(alias, alias).toMatch(/^-webkit-[a-z-]+$/);
       expect(resolveAlias(alias)).toBe(property);
@@ -209,8 +224,44 @@ describe('profile diagnostics name the alias as written', () => {
 });
 
 describe('the alias fixtures cover every alias', () => {
-  it('each alias appears in a fixture of the aliases group', () => {
+  it('each alias appears in a fixture of the aliases group, or the animation ones in the anim-webkit frame fixture', () => {
     const html = ['alias-flex', 'alias-logical'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
-    for (const [alias] of ALIASES) expect(html.includes(`${alias}:`), alias).toBe(true);
+    const frames = readFileSync(new URL('../../parity/fixtures/anim-webkit/view.css', import.meta.url), 'utf8');
+    for (const [alias] of ALIASES) expect((alias.includes('-transition') || alias.includes('-animation') ? frames : html).includes(`${alias}:`), alias).toBe(true);
+    expect(frames).toContain('@-webkit-keyframes');
+  });
+});
+
+describe('@-webkit-keyframes is @keyframes (css_parser_impl.cc ConsumeKeyframesRule)', () => {
+  const rulesOf = (text: string) => {
+    const diagnostics: Diagnostic[] = [];
+    const sources: KeyframesSource[] = [];
+    parseStylesheet(text, { source: SRC, start: 0, end: text.length }, { id: 's', owner: 'o', scope: 'document' }, 0, diagnostics, [], [], sources);
+    return { rules: parseKeyframesRules(sources, diagnostics), diagnostics: diagnostics.map((d) => [d.code, d.message]) };
+  };
+  it('parses as @keyframes, marked prefixed, in any case', () => {
+    const plain = rulesOf('@keyframes k { from { width: 1px } 50% { width: 2px } }');
+    for (const name of ['-webkit-keyframes', '-WebKit-Keyframes']) {
+      const prefixed = rulesOf(`@${name} k { from { width: 1px } 50% { width: 2px } }`);
+      expect(prefixed.diagnostics, name).toEqual([]);
+      expect(prefixed.rules.map((r) => [r.name, r.prefixed, r.blocks.map((b) => [b.offsets, b.values.map((v) => [v.property, v.value])])]), name).toEqual(plain.rules.map((r) => [r.name, true, r.blocks.map((b) => [b.offsets, b.values.map((v) => [v.property, v.value])])]));
+    }
+    expect(plain.rules[0]?.prefixed).toBe(false);
+  });
+  it('is refused where @keyframes is, naming the rule as written', () => {
+    expect(rulesOf('@media (min-width: 1px) { @-webkit-keyframes k { to { width: 1px } } }').diagnostics).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@-webkit-keyframes inside @media is not supported (package MQ-R)']]);
+    expect(rulesOf('@-webkit-keyframes none { to { width: 1px } }').diagnostics.map((d) => d[0])).toEqual(['DRAGON_UNSUPPORTED_AT_RULE']);
+  });
+  it('an unprefixed rule beats a prefixed one of the same name in either order; otherwise the later wins (AddKeyframeStyle)', () => {
+    const winner = (text: string): number | undefined => {
+      const rules = rulesOf(text).rules;
+      let won: (typeof rules)[number] | undefined;
+      for (const r of rules) if (keyframesOverride(r, won)) won = r;
+      return won === undefined ? undefined : rules.indexOf(won);
+    };
+    expect(winner('@keyframes k { to { width: 1px } } @-webkit-keyframes k { to { width: 2px } }')).toBe(0);
+    expect(winner('@-webkit-keyframes k { to { width: 2px } } @keyframes k { to { width: 1px } }')).toBe(1);
+    expect(winner('@-webkit-keyframes k { to { width: 2px } } @-webkit-keyframes k { to { width: 3px } }')).toBe(1);
+    expect(winner('@keyframes k { to { width: 2px } } @keyframes k { to { width: 3px } }')).toBe(1);
   });
 });

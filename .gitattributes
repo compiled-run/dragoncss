@@ -28,6 +28,7 @@ packages/parity/expected-hit/*.hit.json merge=dragon-generated
 packages/parity/expected-media/** merge=dragon-generated
 packages/parity/expected-pixels/** merge=dragon-generated
 packages/parity/expected-quads/** merge=dragon-generated
+packages/parity/expected-resize/** merge=dragon-generated
 packages/parity/expected/darwin-arm64/** merge=dragon-generated
 packages/parity/out/lanes.json merge=dragon-generated
 packages/tailwind-sweep/snapshot/** merge=dragon-generated
