@@ -90,7 +90,7 @@ import {
 } from './merge-train-lib.ts';
 import { MERGE_DRIVERS } from './floor-merge.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
-import { abandonInflight, runDevicesOnCi, scratchRef } from './land-devices-ci.ts';
+import { abandonInflight, CiUnavailable, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, staleScratchBranches, failedTestsOf, fullTestWorkflow, parseRunRows, runDevicesOnCi, runOnCi, scratchRef, testBranch } from './land-devices-ci.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
 const DEVICE = '/tmp/device-lease.sh';
@@ -146,6 +146,11 @@ let QUIET_MAX_S = 0;
 // LAND_DEVICES=ci runs a position's device lanes on GitHub runners (device-lanes.yml) instead of under the local device lease.
 let DEVICES_ON = 'local';
 let DEVICES_WAIT_S = 0;
+// LAND_TEST=ci proves each tree with full-test.yml on GitHub runners instead of pnpm test on this Mac.
+let TEST_ON = 'local';
+let TEST_WAIT_S = 0;
+// How long a CI run may go without starting any job before GitHub Actions counts as not running it (the local run takes over).
+let CI_START_S = 0;
 let BATCH = 1;
 const REGEN = ['pnpm', 'regen'];
 const DEVICES = ['pnpm', 'run', 'parity:devices'];
@@ -293,7 +298,13 @@ const judgeDevices = (master: string, startedMs: number | null): string[] => {
   const show = (path: string): unknown => JSON.parse(git(['show', `${master}:${path}`]).toString('utf8'));
   const local = (path: string): unknown => JSON.parse(readFileSync(join(WT, path), 'utf8'));
   const before = parseDeviceEvidence(show(LANES_JSON), (t) => show(failuresJson(t)), `master ${master}`);
-  const after = parseDeviceEvidence(local(LANES_JSON), (t) => local(failuresJson(t)), 'this tree');
+  // The run's own records that cannot be read are the device step's failure, not the driver's.
+  let after: ReturnType<typeof parseDeviceEvidence>;
+  try {
+    after = parseDeviceEvidence(local(LANES_JSON), (t) => local(failuresJson(t)), 'this tree');
+  } catch (error) {
+    return [`the device run's records cannot be judged: ${msg(error)}`];
+  }
   if (startedMs !== null && !deviceRunWrote(statSync(join(WT, LANES_JSON)).mtimeMs, startedMs)) return [`the device run did not rewrite ${LANES_JSON}`];
   const lanes = spawnSync('pnpm', ['-s', 'run', 'parity:lanes'], { cwd: WT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   if (lanes.error || lanes.signal || (lanes.status !== 0 && lanes.status !== 1) || !/^parity:lanes: /m.test(lanes.stdout)) {
@@ -372,6 +383,30 @@ const ciDevicesReady = (): boolean => {
   return workflow && cli;
 };
 
+// LAND_TEST=ci proves a commit with full-test.yml on GitHub runners, once master has it (it is dispatched from master).
+const ciTestReady = (): boolean => {
+  try {
+    git(['cat-file', '-e', `${fetchMaster()}:.github/workflows/full-test.yml`]);
+    return true;
+  } catch {
+    log('  LAND_TEST=ci: master has no .github/workflows/full-test.yml yet; running pnpm test locally');
+    return false;
+  }
+};
+
+// The failing tests of a full-test run, from its full-test-results artifact (for the failure message); null when unreadable.
+const fullTestFailures = (runId: number): string | null => {
+  const dir = mkdtempSync(join(tmpdir(), 'land-full-test-'));
+  try {
+    gh(['run', 'download', String(runId), '--repo', REPO, '-n', 'full-test-results', '-D', dir]);
+    return failedTestsOf(readFileSync(join(dir, 'full-test-results.json'), 'utf8'));
+  } catch {
+    return null;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+};
+
 // Cancels the CI device run a stopped driver or builder recorded in flight, and deletes its scratch branch; never throws.
 const abandonCiRun = (role: 'driver' | 'builder'): void => {
   try {
@@ -380,6 +415,10 @@ const abandonCiRun = (role: 'driver' | 'builder'): void => {
     const repo = REPO !== '' ? REPO : execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'], { encoding: 'utf8' }).trim();
     abandonInflight(raw, {
       cancel: (id) => void execFileSync('gh', ['run', 'cancel', String(id), '--repo', repo], { stdio: 'ignore' }),
+      findRuns: (workflow, title) =>
+        parseRunRows(execFileSync('gh', ['run', 'list', '--repo', repo, '--workflow', workflow, '--branch', 'master', '--limit', '30', '--json', 'databaseId,displayTitle,headBranch,status,conclusion,url'], { encoding: 'utf8' }))
+          .filter((r) => r.displayTitle === title && r.headBranch === 'master' && r.status !== 'completed')
+          .map((r) => r.databaseId),
       deleteBranch: (b) => void execFileSync('git', ['-C', MAIN, 'push', '--quiet', 'origin', `:${scratchRef(b)}`], { stdio: 'ignore' }),
       log,
     });
@@ -574,8 +613,17 @@ const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => {
   if (runDevices) {
     const started = Date.now();
     let ran = DEVICES.join(' ');
+    // CI that does not run the workflow (no run, or no job started) falls back to the local device run: nothing was judged there.
+    let ci: ReturnType<typeof runDevicesOnCi> | null = null;
     if (DEVICES_ON === 'ci' && ciDevicesReady()) {
-      const ci = runDevicesOnCi({ pr: e.pr, deps: ciDeviceDeps(e.pr), appearS: CI_APPEAR_S, waitS: DEVICES_WAIT_S });
+      try {
+        ci = runDevicesOnCi({ pr: e.pr, deps: ciDeviceDeps(e.pr), appearS: CI_APPEAR_S, waitS: DEVICES_WAIT_S, startS: CI_START_S });
+      } catch (error) {
+        if (!(error instanceof CiUnavailable)) throw error;
+        log(`  !!! LAND_DEVICES=ci: GitHub Actions did not run the device lanes (${error.message}); running them locally`);
+      }
+    }
+    if (ci !== null) {
       try {
         // Fails loudly unless every CI device's outcome is there, on this tree's evidence; exit 3 is a refusal with its reasons.
         const mergeCmd = ['node', '--conditions=dragon-internal', 'packages/parity/src/cli/device-ci.ts', 'merge', ci.outcomesDir];
@@ -618,6 +666,33 @@ const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => {
 // outputs of other trees included.
 const proveCommit = (head: string, what: string): void => {
   holdPriority();
+  let onCi: ReturnType<typeof runOnCi> | null = null;
+  if (TEST_ON === 'ci' && ciTestReady()) {
+    // The commit itself, pushed to its scratch branch: full-test.yml tests exactly this tree, the regen fixed point included.
+    log(`  proving ${head} (${what}): full-test.yml on CI`);
+    try {
+      onCi = runOnCi(fullTestWorkflow(fullTestFailures), {
+        branch: testBranch(head),
+        deps: { ...ciDeviceDeps(current?.pr ?? 0), pushTemp: (branch: string) => (net(wtGit, ['push', '--quiet', 'origin', `+${head}:${scratchRef(branch)}`]), head) },
+        appearS: CI_APPEAR_S,
+        waitS: TEST_WAIT_S,
+        startS: CI_START_S,
+      });
+    } catch (error) {
+      // GitHub Actions not running the workflow judged nothing: the local test proves the tree instead.
+      if (!(error instanceof CiUnavailable)) throw error;
+      log(`  !!! LAND_TEST=ci: GitHub Actions did not run the full test (${error.message}); running pnpm test locally`);
+    }
+  }
+  if (onCi !== null) {
+    log(`  ${head} passed the full test on CI (${onCi.url})`);
+    proved.push(head);
+    if (clearsUnproved(readUnproved(), head, (c) => treeMatches(git, fetchMaster(), c).ok)) {
+      rmSync(UNPROVED, { force: true });
+      log('  master has this proved tree; the unproved record is cleared');
+    }
+    return;
+  }
   log(`  proving ${head} (${what}): pnpm test`);
   if (lastBuilt !== head || text(wtGit, ['rev-parse', 'HEAD']) !== head || text(wtGit, ['status', '--porcelain=v1', '--untracked-files=all']) !== '') {
     lastBuilt = null;
@@ -911,7 +986,11 @@ const setUp = (): void => {
   QUIET_MAX_S = seconds('LAND_QUIET_MAX', 5400);
   DEVICES_ON = env['LAND_DEVICES'] ?? 'local';
   if (DEVICES_ON !== 'local' && DEVICES_ON !== 'ci') throw new Error(`land: LAND_DEVICES must be local or ci, not ${JSON.stringify(DEVICES_ON)}`);
-  DEVICES_WAIT_S = seconds('LAND_DEVICES_WAIT', 7200);
+  DEVICES_WAIT_S = seconds('LAND_DEVICES_WAIT', DEFAULT_DEVICES_WAIT_S);
+  TEST_ON = env['LAND_TEST'] ?? 'local';
+  if (TEST_ON !== 'local' && TEST_ON !== 'ci') throw new Error(`land: LAND_TEST must be local or ci, not ${JSON.stringify(TEST_ON)}`);
+  TEST_WAIT_S = seconds('LAND_TEST_WAIT', DEFAULT_TEST_WAIT_S);
+  CI_START_S = seconds('LAND_CI_START', 900);
   BATCH = parseBatchSize(env['LAND_BATCH']);
   MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
   // The default reviewer is the main checkout's lookup script, never the PR's own copy in the driver worktree.
@@ -1092,6 +1171,8 @@ const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
       const text = readOrNull(outPath);
       if (text === null) {
         log('!!! the builder ended without a prepared batch; preparing it here instead');
+        // A builder that died mid-step left its CI run, if any, in flight.
+        abandonCiRun('builder');
         return empty;
       }
       let round: Prepared<Ticket, Built> | { fatal: string };
@@ -1133,6 +1214,19 @@ const main = (): number => {
   process.on('SIGUSR1', () => log(`SIGUSR1 reached the driver, which ignores it; send it to the supervisor (pid ${env[SUPERVISOR_PID_ENV]}, in ${LOCK}/pid)`));
   prepareWorktree();
   if (PIPELINE) checkNextWorktree(WT_NEXT, WT);
+  // Scratch branches a stopped or failed CI step left behind (per commit for the full test) are deleted now: none is in flight.
+  try {
+    for (const b of staleScratchBranches(net(git, ['ls-remote', 'origin', 'refs/heads/land-devices/*', 'refs/heads/land-test/*']))) {
+      try {
+        net(git, ['push', '--quiet', 'origin', `:${scratchRef(b)}`]);
+        log(`deleted the stale scratch branch ${b}`);
+      } catch (error) {
+        log(`WARNING could not delete the stale scratch branch ${b}: ${msg(error)}`);
+      }
+    }
+  } catch (error) {
+    log(`WARNING could not list the scratch branches: ${msg(error)}`);
+  }
   const startedAt = stamp();
   log(`=== pnpm land ${args.queue}: ${entries.map((e) => `#${e.pr}`).join(' ')} in batches of up to ${BATCH} (pid ${process.pid}, worktree ${WT})`);
   let latest: readonly Outcome[] = [];
