@@ -257,6 +257,38 @@
    "y": 0,
    "width": 23040,
    "height": 3840
+  },
+  {
+   "id": "hp2",
+   "parent": "hp",
+   "x": 0,
+   "y": 3840,
+   "width": 23040,
+   "height": 1920
+  },
+  {
+   "id": "hp3",
+   "parent": "hp",
+   "x": 0,
+   "y": 5760,
+   "width": 23040,
+   "height": 5760
+  },
+  {
+   "id": "hp4",
+   "parent": "hp",
+   "x": 13440,
+   "y": 11520,
+   "width": 9600,
+   "height": 384
+  },
+  {
+   "id": "hp5",
+   "parent": "hp",
+   "x": 0,
+   "y": 11904,
+   "width": 23040,
+   "height": 384
   }
  ],
  "output": [
@@ -547,6 +579,42 @@
    "bottom": 1017,
    "width": 360,
    "height": 60
+  },
+  {
+   "id": "hp2",
+   "left": 840,
+   "top": 1017,
+   "right": 1200,
+   "bottom": 1047,
+   "width": 360,
+   "height": 30
+  },
+  {
+   "id": "hp3",
+   "left": 840,
+   "top": 1047,
+   "right": 1200,
+   "bottom": 1137,
+   "width": 360,
+   "height": 90
+  },
+  {
+   "id": "hp4",
+   "left": 1050,
+   "top": 1137,
+   "right": 1200,
+   "bottom": 1143,
+   "width": 150,
+   "height": 6
+  },
+  {
+   "id": "hp5",
+   "left": 840,
+   "top": 1143,
+   "right": 1200,
+   "bottom": 1149,
+   "width": 360,
+   "height": 6
   }
  ]
 }
