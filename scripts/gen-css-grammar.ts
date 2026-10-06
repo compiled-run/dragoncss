@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/properties/grid.ts';
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
+import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 
 type WebrefEntry = {
   name: string;
@@ -25,7 +26,7 @@ const css = JSON.parse(readFileSync(join(webrefDir, 'css.json'), 'utf8')) as Web
 /** Longhands and shorthands the milestone-1 compiler reads. Support status lives in the profiles, not here. */
 const SUBSET = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflow', 'overflow-x', 'overflow-y', 'direction', 'box-sizing',
-  'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'aspect-ratio',
+  'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'aspect-ratio', 'object-fit', 'object-position',
   'margin', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
   'padding', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
   'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
@@ -44,6 +45,8 @@ const SUBSET = [
 
   // SELD-R1b: pointer-events, after grid.
   'pointer-events',
+  // Transforms (PNT2), after grid, as LONGHANDS registers them.
+  ...TRANSFORM_LONGHANDS,
 ] as const;
 
 /**
@@ -52,6 +55,23 @@ const SUBSET = [
  */
 const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
   'writing-mode': 'lr | lr-tb | rl | rl-tb | tb | tb-rl',
+};
+
+/**
+ * Properties whose whole grammar is Chrome 145's instead of webref's. display: Blink Display::ParseSingleValue and
+ * ParseDisplayMultipleKeywords. Outside is block or inline (no run-in), inside never grid-lanes (CSSGridLanesLayout is off),
+ * ruby-text is the only ruby internal value, and the legacy keywords run from inline-block to -webkit-inline-flex in Blink's
+ * keyword order, so they take -webkit-box, -webkit-inline-box, -webkit-flex and -webkit-inline-flex. Pinned against Chrome by
+ * packages/parity/test/display-parse.test.ts.
+ */
+const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
+  display: [
+    '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
+    '[ block | inline ]? && [ flow | flow-root ]? && list-item',
+    'table-row-group | table-header-group | table-footer-group | table-row | table-cell | table-column-group | table-column | table-caption | ruby-text',
+    'contents | none',
+    'inline-block | inline-table | inline-flex | inline-grid | -webkit-box | -webkit-inline-box | -webkit-flex | -webkit-inline-flex',
+  ].join(' | '),
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));
@@ -73,7 +93,7 @@ while (queue.length > 0) {
     const p = propsByName.get(next.name);
     if (p === undefined || p.syntax === undefined) throw new Error(`webref has no syntax for property ${next.name}`);
     const extension = SYNTAX_EXTENSIONS[next.name];
-    syntax = extension === undefined ? p.syntax : `${p.syntax} | ${extension}`;
+    syntax = SYNTAX_OVERRIDES[next.name] ?? (extension === undefined ? p.syntax : `${p.syntax} | ${extension}`);
     properties.set(next.name, { ...p, syntax });
   } else {
     if (types.has(next.name) || CSS_TREE_GENERICS.has(next.name)) continue;

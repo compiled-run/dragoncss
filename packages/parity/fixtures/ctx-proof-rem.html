@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.row { display: flex; width: 320px; height: 60px; margin-bottom: 4px; background-color: #eee; }
+.col { display: flex; flex-direction: column; width: 360px; height: 120px; margin-bottom: 4px; background-color: #ddd; }
+.btn { position: relative; box-sizing: border-box; min-height: 2.5rem; padding: 0.5rem; border: 2px solid #000; }
+.btn > div { width: 20px; height: 10px; background-color: #00c; }
+.pad3 { padding: 0.25rem 0.75rem 1rem 1.5rem; }
+.start { align-items: flex-start; }
+.pb { position: relative; padding: 0.5rem 0.25rem 1.5rem 0.75rem; }
+.pb > div { width: 20px; height: 10px; background-color: #00c; }
+.btn > .tall { height: 30px; }
+.cb { position: relative; width: 300px; height: 70px; margin-bottom: 4px; background-color: #ccc; }
+.track { position: absolute; box-sizing: border-box; top: 0; left: 0; width: 100%; height: 100%; padding: 1rem; }
+.track > div { height: 12px; background-color: #0c0; }
+.track2 { position: absolute; top: 4px; left: 4px; padding: 0.5rem 1rem 0.25rem 2rem; }
+.track2 > div { width: 30px; height: 8px; background-color: #c00; }
+.w { width: 18rem; max-width: 18rem; height: 12px; background-color: #0c0; }
+.w2 { width: 30rem; max-width: 12.5rem; height: 12px; background-color: #c0c; }
+.ins { left: 1rem; top: 0.75rem; width: 4rem; height: 12px; background-color: #cc0; }
+.min { min-width: 2.5rem; width: 1rem; height: 12px; background-color: #0cc; }
+.min2 { min-width: 6rem; flex: 0 1 auto; width: 300px; height: 12px; background-color: #c60; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="r1" class="row"><div data-dragon-id="b1" class="btn"><div data-dragon-id="b1c"></div></div><div data-dragon-id="b2" class="btn pad3"><div data-dragon-id="b2c"></div></div></div>
+<div data-dragon-id="r3" class="row start"><div data-dragon-id="b3" class="btn"><div data-dragon-id="b3c"></div></div><div data-dragon-id="b4" class="pb"><div data-dragon-id="b4c"></div></div><div data-dragon-id="b5" class="btn pad3"><div data-dragon-id="b5c" class="tall"></div></div></div>
+<div data-dragon-id="c1" class="cb"><div data-dragon-id="t1" class="track"><div data-dragon-id="t1c"></div></div><div data-dragon-id="t2" class="track2"><div data-dragon-id="t2c"></div></div></div>
+<div data-dragon-id="k1" class="col"><div data-dragon-id="k1a" class="w"></div><div data-dragon-id="k1b" class="w2"></div><div data-dragon-id="k1c" class="ins"></div></div>
+<div data-dragon-id="r2" class="row"><div data-dragon-id="m1" class="min"></div><div data-dragon-id="m2" class="min2"></div></div>
+</body>
+</html>

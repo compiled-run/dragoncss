@@ -1,18 +1,20 @@
 // LANE-SPEED: one parity:lanes process runs both targets at once under the device lease; it boots and stops every device itself,
 // admitted by one in-memory budget, while each device's work runs in its own process and the outcomes merge in matrix order.
 import { spawnSync } from 'node:child_process';
+import { PassThrough } from 'node:stream';
 import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { DeviceJob } from '../src/device-jobs.ts';
-import { deviceJobs, lanesArgs, parseDeviceJob, parseHandle, parseOutcome, pool, prebuildApps } from '../src/device-jobs.ts';
+import { deviceJobs, EarlyBoots, earlySpecs, handedOver, handOver, HOST_ON_STDIN, lanesArgs, parseDeviceJob, parseHandle, parseHostLine, parseOutcome, pool, prebuildApps, SOLO_DEVICES } from '../src/device-jobs.ts';
 import type { DeviceOutcome, DeviceSet } from '../src/device-lanes.ts';
 import { afterRelease, mergeOutcomes } from '../src/device-lanes.ts';
 import type { AvdDeviceSpec, DeviceHandle, IosDeviceSpec } from '../src/device-run.ts';
 import { ExecError, exec, execAsync, execBytes, spawnChild } from '../src/device-exec.ts';
+import { noteStartedSim, spawnDetached, stopStartedNow } from '../src/device-run.ts';
 import { admitDevice, admits, DEVICE_MATRIX, DEVICE_MEMORY, DeviceLeftRunning, failBoot, heldBytes, isAncestor, leaseHolder, MEMORY_RESERVE, parentPid, parseVmStat, release, releaseDeviceMemory, requireDeviceLease, stopDevice, stopSpawned, withDeviceSlot } from '../src/device-run.ts';
-import type { LanesFile } from '../src/lanes.ts';
+import type { HostRun, LanesFile } from '../src/lanes.ts';
 import { readLanesFile } from '../src/lanes.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -46,7 +48,7 @@ describe('devices of a target at once', () => {
     const o = outcome('iPhone 17');
     expect(parseOutcome(JSON.stringify(o), 'iPhone 17')).toEqual(o);
     expect(() => parseOutcome('{', 'iPhone 17')).toThrow(/wrote no outcome JSON/);
-    expect(() => parseOutcome(JSON.stringify(o), 'iPad (A16)')).toThrow(/malformed device outcome: device "iPhone 17"; set.device is not this device; trust is not/);
+    expect(() => parseOutcome(JSON.stringify(o), 'iPad (A16)')).toThrow(/malformed device outcome: device "iPhone 17"; set.device is not this device; states.device is not this device; hits.device is not this device; trust is not/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: { ...o.set, failures: 'none' } }), 'iPhone 17')).toThrow(/set.failures is not a failure list/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: null }), 'iPhone 17')).toThrow(/neither a set nor a blocked reason/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: { ...o.set, faults: [{ caught: 1 }] } }), 'iPhone 17')).toThrow(/set.faults is not a fault row list/);
@@ -63,7 +65,11 @@ describe('devices of a target at once', () => {
     expect(parseDeviceJob(JSON.stringify(job))).toEqual(job);
     expect(() => parseDeviceJob(JSON.stringify({ ...job, device: 'iPhone 17' }))).toThrow(/not a matrix device of the target/);
     expect(() => parseDeviceJob(JSON.stringify({ ...job, artifact: '/nonexistent' }))).toThrow(/artifact is not an existing path/);
-    expect(() => parseDeviceJob(JSON.stringify({ ...job, host: 3, vectors: 'yes' }))).toThrow(/host is neither null nor a host run; vectors is not a boolean/);
+    expect(() => parseDeviceJob(JSON.stringify({ ...job, host: 3, vectors: 'yes' }))).toThrow(/host is neither null, stdin nor a host run; vectors is not a boolean/);
+    // A host run still running is handed later, on stdin; any other string, or a run without its suites and digests, is refused.
+    expect(parseDeviceJob(JSON.stringify({ ...job, host: HOST_ON_STDIN })).host).toBe(HOST_ON_STDIN);
+    expect(() => parseDeviceJob(JSON.stringify({ ...job, host: 'later' }))).toThrow(/host is neither null, stdin nor a host run/);
+    expect(() => parseDeviceJob(JSON.stringify({ ...job, host: { state: 'pass' } }))).toThrow(/host is neither null, stdin nor a host run/);
   });
   it('outcomes merge in matrix order, the blocked reasons joined; two vectors runs are refused', () => {
     const run = mergeOutcomes([outcome('a'), { ...outcome('b'), set: null, trust: null, blocked: 'b blocked' }, outcome('c'), { ...outcome('d'), set: null, trust: null, blocked: 'd blocked' }], { laneCode: '1', referenceData: '2', app: '3' });
@@ -129,6 +135,172 @@ describe('devices of a target at once', () => {
     const a = { spec: avd, serial: `emulator-${avd.port}`, startedHere: false, tools: { adb: '/x/adb' } };
     expect(parseHandle(JSON.stringify({ handle: a }), avd)).toEqual(a);
     expect(() => parseHandle(JSON.stringify({ handle: { ...a, serial: 'emulator-1' } }), avd)).toThrow(/malformed device handle/);
+  });
+});
+
+// DEVICE-SPEED (a): the devices boot while the apps build and the host lanes run; only the vectors verdict waits for its host run.
+describe('devices boot while the host lanes run', () => {
+  const ios = DEVICE_MATRIX.find((d) => d.target === 'ios') as IosDeviceSpec;
+  const avd = DEVICE_MATRIX.find((d) => d.target === 'android') as AvdDeviceSpec;
+  const hostRun = (): HostRun => {
+    const l = committed.targets[0]?.lanes.find((x) => x.lane === 'layout-vectors-host');
+    if (l === undefined || l.run === null) throw new Error('no committed host run');
+    return { state: l.state, reason: l.reason, toolchain: l.run.toolchain, suites: l.run.suites, digests: l.run.digests };
+  };
+  const later = <T,>(): { readonly promise: Promise<T>; readonly resolve: (v: T) => void; readonly reject: (e: unknown) => void } => {
+    let resolve!: (v: T) => void;
+    let reject!: (e: unknown) => void;
+    const promise = new Promise<T>((a, b) => {
+      resolve = a;
+      reject = b;
+    });
+    return { promise, resolve, reject };
+  };
+  const text = async (s: PassThrough): Promise<string> => {
+    const chunks: Buffer[] = [];
+    for await (const c of s) chunks.push(c as Buffer);
+    return Buffer.concat(chunks).toString('utf8');
+  };
+
+  it('a host run line is the run, null, or the host lanes\' failure; anything else is refused', () => {
+    const h = hostRun();
+    expect(parseHostLine(JSON.stringify({ host: h }))).toEqual(h);
+    expect(parseHostLine(JSON.stringify({ host: null }))).toBeNull();
+    expect(() => parseHostLine(JSON.stringify({ hostError: 'swiftc crashed' }))).toThrow('the host lanes failed: swiftc crashed');
+    expect(() => parseHostLine('')).toThrow(/handed no host run/);
+    expect(() => parseHostLine(JSON.stringify({}))).toThrow(/malformed host run/);
+    expect(() => parseHostLine(JSON.stringify({ host: { state: 'pass' } }))).toThrow(/malformed host run/);
+  });
+
+  it('the device goes on the first line at once; a host run still running follows on the second, and only then the input ends', async () => {
+    const h = { spec: ios, udid: 'U-1', startedHere: true };
+    const stdin = new PassThrough();
+    const host = later<HostRun | null>();
+    handOver(stdin, Promise.resolve(h), host.promise);
+    const handed = handedOver(stdin, true);
+    // The handle is read while the host run is still running.
+    expect(parseHandle(await handed.handle, ios)).toEqual(h);
+    host.resolve(hostRun());
+    expect(await handed.host).toEqual(hostRun());
+    handed.close();
+  });
+
+  it('without a host run to wait for, the input ends after the device; a failed boot is handed as its reason', async () => {
+    const h = { spec: ios, udid: 'U-1', startedHere: true };
+    const one = new PassThrough();
+    handOver(one, Promise.resolve(h), null);
+    expect(await text(one)).toBe(`${JSON.stringify({ handle: h })}\n`);
+    const blocked = new PassThrough();
+    handOver(blocked, Promise.reject(new Error('the iPhone 17 simulator failed to boot twice')), later<HostRun | null>().promise);
+    const handed = handedOver(blocked, true);
+    await expect(handed.handle.then((l) => parseHandle(l, ios))).rejects.toThrow('failed to boot twice');
+    // The input ended after the reason, so a host run is never read as the device's.
+    await expect(handed.host).rejects.toThrow(/handed no host run/);
+  });
+
+  it('host lanes that fail reach the vectors device as their failure, never as a missing host run', async () => {
+    const stdin = new PassThrough();
+    handOver(stdin, Promise.resolve({ spec: ios, udid: 'U-1', startedHere: true }), Promise.reject(new Error('native:swift could not start')));
+    const handed = handedOver(stdin, true);
+    await handed.handle;
+    await expect(handed.host).rejects.toThrow('the host lanes failed: native:swift could not start');
+  });
+
+  it('a device process that never reads its host run is not killed by it, and the parent survives its closed input', async () => {
+    const stdin = new PassThrough();
+    const host = later<HostRun | null>();
+    handOver(stdin, Promise.resolve({ spec: ios, udid: 'U-1', startedHere: true }), host.promise);
+    const handed = handedOver(stdin, true);
+    await handed.handle;
+    handed.close();
+    stdin.destroy();
+    host.resolve(null);
+    await new Promise((r) => setTimeout(r, 10));
+  });
+
+  it('a target boots early the devices its run starts first: the first jobs of its matrix, solo devices left out', () => {
+    expect(earlySpecs('android', 99).map((d) => d.name)).toEqual(DEVICE_MATRIX.filter((d) => d.target === 'android' && !SOLO_DEVICES.includes(d.name)).map((d) => d.name));
+    expect(earlySpecs('android', 1).map((d) => d.name)).toEqual([avd.name]);
+    expect(earlySpecs('ios', 2).every((d) => d.target === 'ios')).toBe(true);
+  });
+
+  it('each early boot is taken once by its run; the rest are stopped, a failed boot needing no stop, and a failed stop reported', async () => {
+    const booted: string[] = [];
+    const bootIt = (s: AvdDeviceSpec | IosDeviceSpec): Promise<DeviceHandle> => {
+      booted.push(s.name);
+      return s.name === 'dragon-480' ? Promise.reject(new Error('the dragon-480 emulator failed to boot twice')) : Promise.resolve(s.target === 'ios' ? { spec: s, udid: `U-${s.name}`, startedHere: true } : ({ spec: s, serial: `emulator-${s.port}`, startedHere: true, tools: { adb: 'adb' } } as unknown as DeviceHandle));
+    };
+    const specs = [...earlySpecs('ios', 2), ...earlySpecs('android', 3)];
+    const early = new EarlyBoots(specs, bootIt);
+    // Every boot starts at once, before any run takes one.
+    expect(booted).toEqual(specs.map((s) => s.name));
+    expect(() => new EarlyBoots([ios, ios], bootIt)).toThrow(/booted early twice/);
+    const taken = early.take(ios);
+    expect(taken).toBeDefined();
+    expect(early.take(ios)).toBeUndefined();
+    const stopped: string[] = [];
+    const stop = async (h: DeviceHandle): Promise<string | null> => {
+      stopped.push(h.spec.name);
+      return h.spec.name === 'dragon-smoke' ? 'emulator-5582 (dragon-smoke) still runs after adb emu kill' : null;
+    };
+    // Only the android boots (a failed android build): the iOS boot left stays for its run.
+    expect(await early.releaseRest(() => undefined, (s) => s.target === 'android', stop)).toEqual(['emulator-5582 (dragon-smoke) still runs after adb emu kill']);
+    expect(stopped).toEqual(['dragon-320', 'dragon-smoke']);
+    expect(await early.releaseRest(() => undefined, () => true, stop)).toEqual([]);
+    expect(stopped).toEqual(['dragon-320', 'dragon-smoke', 'iPad (A16)']);
+    expect(await early.releaseRest(() => undefined, () => true, stop)).toEqual([]);
+    expect(stopped).toHaveLength(3);
+  });
+});
+
+describe('early boots and signals (review of #159)', () => {
+  const ios = DEVICE_MATRIX.find((d) => d.target === 'ios') as IosDeviceSpec;
+  const avd = DEVICE_MATRIX.find((d) => d.target === 'android') as AvdDeviceSpec;
+  it('a failed early boot is tried once more when its run takes it; one that left its device running is not', async () => {
+    let calls = 0;
+    const h = { spec: ios, udid: 'U-1', startedHere: true };
+    const early = new EarlyBoots([ios, avd], (s) => {
+      calls++;
+      if (calls === 1) return Promise.reject(new Error('the iPhone 17 simulator failed to boot twice'));
+      if (s.target === 'android') return Promise.reject(new DeviceLeftRunning('emulator-5580 still runs'));
+      return Promise.resolve(h as DeviceHandle);
+    });
+    const lines: string[] = [];
+    await expect(early.take(ios, (l) => lines.push(l))).resolves.toEqual(h);
+    expect(calls).toBe(3);
+    expect(lines).toEqual([`${ios.name}: the early boot failed, so it boots again now: the iPhone 17 simulator failed to boot twice`]);
+    await expect(early.take(avd)).rejects.toThrow(DeviceLeftRunning);
+    expect(calls).toBe(3);
+  });
+  it('a signal stops every detached emulator this process started and has not stopped', async () => {
+    const p = spawnDetached('sleep', ['60']);
+    expect(p.alive()).toBe(true);
+    expect(stopStartedNow()).toEqual(['an emulator process (SIGTERM)']);
+    for (let i = 0; i < 100 && p.alive(); i++) await new Promise((r) => setTimeout(r, 20));
+    expect(p.alive()).toBe(false);
+    // An exited one is forgotten, so a later signal stops nothing twice.
+    expect(stopStartedNow()).toEqual([]);
+  });
+  it('one stop that throws on a signal does not leave the other devices up', async () => {
+    const p = spawnDetached('sleep', ['60']);
+    noteStartedSim('U-A', 'iPhone 17');
+    noteStartedSim('U-B', 'iPad (A16)');
+    const tried: string[] = [];
+    const out = stopStartedNow((udid) => {
+      tried.push(udid);
+      if (udid === 'U-A') throw new Error('simctl timed out');
+    });
+    expect(tried).toEqual(['U-A', 'U-B']);
+    expect(out).toEqual(['an emulator process (SIGTERM)', 'the iPhone 17 simulator: the stop FAILED: simctl timed out', 'the iPad (A16) simulator']);
+    for (let i = 0; i < 100 && p.alive(); i++) await new Promise((r) => setTimeout(r, 20));
+    expect(p.alive()).toBe(false);
+    expect(stopStartedNow(() => undefined)).toEqual([]);
+  });
+  it('parity:lanes stops the devices it started on SIGTERM and SIGINT, and prints every device failure when the host phase fails', () => {
+    const src = readFileSync(repoPath('packages/parity/src/cli/lanes.ts'), 'utf8');
+    expect(src).toContain("for (const [sig, code] of [['SIGTERM', 143], ['SIGINT', 130]] as const)");
+    expect(src).toContain('for (const d of stopStartedNow())');
+    expect(src).toMatch(/if \(hostFailed !== null\) \{\n\s+for \(const r of settled\) if \(r\.status === 'rejected'\) console\.log/);
   });
 });
 

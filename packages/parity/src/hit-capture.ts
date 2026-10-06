@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { hitFacts, programInput } from 'dragon';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
-import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRefusal, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
+import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
 import type { NativeCase } from './native-host.ts';
 import { nativeCases, referenceMeasurer } from './native-host.ts';
@@ -118,25 +118,45 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
   return a < 0 ? null : (t.ids[a] as string);
 }
 
-let hitRecords: readonly NativeCase[] | null = null;
-/** Every layout case the hit lane covers: every native case but those hitTableOf refuses (rt-hit.ts hitRefusal: INL1a inline boxes and <br>s). */
-export function hitCases(): readonly NativeCase[] {
-  if (hitRecords === null) hitRecords = nativeCases().filter((n) => hitRefusal(programInput(n.programs.uikit, n.case.environment.viewport, 1)) === null);
-  return hitRecords;
+/**
+ * Why the hit lane leaves a layout case out, or null when it covers it. The hit test models box geometry, overflow clips, positioned
+ * layers and pointer-events (T064 R13); a case whose program writes a transform is refused by name until SELD-R2b (T146) models
+ * hit testing through transforms, so it is never silently mis-hit; one holding an inline box or a <br> (INL1a) is refused as rt-hit.ts
+ * hitRefusal names it, since the hit table does not model them yet.
+ */
+export function hitRefusal(n: NativeCase): string | null {
+  const moved = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
+  if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
+  // INL1a: hitTableOf refuses an inline box or a <br> by name (rt-hit.ts), so such a case is left out with that reason.
+  return inputHitRefusal(programInput(n.programs.uikit, n.case.environment.viewport, 1));
 }
+
+/** Every layout case the hit lane covers: all of them but the refused ones (hitRefusal). */
+export const hitCases = (): readonly NativeCase[] => nativeCases().filter((n) => hitRefusal(n) === null);
+
+/** The layout cases the hit lane refuses, with the reason, in case order. */
+export const hitRefusedCases = (): readonly { readonly id: string; readonly reason: string }[] =>
+  nativeCases().flatMap((n) => {
+    const reason = hitRefusal(n);
+    return reason === null ? [] : [{ id: n.case.id, reason }];
+  });
 
 /** The hit facts of every layout case, which the P1 hit suite pairs with the layout vectors (parity:hit-capture -- --vectors). */
 export const HIT_FACTS_PATH = 'packages/layout/rt-vectors/hit/facts.json';
 
-/** The text of HIT_FACTS_PATH for these cases: each case's facts as [id, pointerEvents, inherited, activation], sorted by id. */
-export function hitFactsJson(cases: readonly NativeCase[]): string {
+/**
+ * The text of HIT_FACTS_PATH for these cases: each case's facts as [id, pointerEvents, inherited, activation], sorted by id, and
+ * the refused cases with their reasons, which the P1 hit suite skips by name.
+ */
+export function hitFactsJson(cases: readonly NativeCase[], refused: readonly { readonly id: string; readonly reason: string }[] = hitRefusedCases()): string {
   const rows = cases.map((n) => {
     const facts = hitFacts(n.compiled, n.case.assignment);
     if (facts === null) throw new Error(`${n.case.id}: no hit facts`);
     const v = [...facts].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([id, f]) => [id, f.pointerEvents, f.inherited, f.activation]);
     return `    ${JSON.stringify(n.case.id)}: ${JSON.stringify(v)}`;
   });
-  return `{\n  "cases": {\n${rows.join(',\n')}\n  }\n}\n`;
+  const no = refused.map((r) => `    ${JSON.stringify(r.id)}: ${JSON.stringify(r.reason)}`);
+  return `{\n  "cases": {\n${rows.join(',\n')}\n  },\n  "refused": {${no.length === 0 ? '' : `\n${no.join(',\n')}\n  `}}\n}\n`;
 }
 
 export type HitCaptureArgs = { readonly mode: 'capture' } | { readonly mode: 'vectors' } | { readonly mode: 'identity-base'; readonly rev: string };
@@ -167,8 +187,17 @@ export function parseHitCaptureArgs(argv: readonly string[]): HitCaptureArgs {
 /** The committed outputs that pointer-events may change only by its own key: the Chrome captures and the emitted CSS. */
 export const IDENTITY_ROOTS: readonly string[] = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts', 'packages/parity/emitted'];
 export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.json';
-/** Files that are new with SELD-R1b's fixtures (hit-*, reject-pointer-events-*), not in the base. */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-)[^/]*$/;
+/**
+ * Files that are new since the identity base: SELD-R1b's fixtures (hit-*, reject-pointer-events-*), SELD-R2a's (interaction-*,
+ * reject-interaction-*), the fixtures of PNT2's transforms group (transform-*, reject-transform-*) and CTX-PROOF's (ctx-proof-*),
+ * which landed after it.
+ */
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-)[^/]*$/;
+/** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
+export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
+  'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
+  'packages/parity/emitted/media-range-rtl.css': { sha256: '281d321b2c05e0d1a2b7d810eafdb11b3f5e3c76baba447b983f23716ae4bd1f', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
+};
 
 /**
  * A committed output with the pointer-events key removed: the "pointer-events" computed value of every captured element, and the

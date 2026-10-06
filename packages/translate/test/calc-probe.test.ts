@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ClassDecl, FuncDecl, UnionDecl } from '../src/ir.ts';
 import { KotlinEmitter } from '../src/emit-kotlin.ts';
 import { stringNames, SwiftEmitter, swiftStringLiteral } from '../src/emit-swift.ts';
@@ -150,6 +150,7 @@ function sh(cmd: string, args: readonly string[], cwd: string): string {
 
 describe('step 0: the recursive CalcExpr union translates (T009, notes/T006-value-model-spec.md §4)', () => {
   const dir = mkdtempSync(join(tmpdir(), 'dragon-calc-probe-'));
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
   const file = join(dir, 'calc-probe.ts');
   writeFileSync(file, PROBE);
   const lowerer = new Lowerer(createProgram([file]), { files: [file], hostFile: null, root: dir, collect: true, roots: null });
@@ -214,6 +215,5 @@ describe('step 0: the recursive CalcExpr union translates (T009, notes/T006-valu
     const run = spawnSync(join((tool as { javaHome: string }).javaHome, 'bin/java'), ['-jar', 'probe.jar'], { cwd: out, encoding: 'utf8', env });
     expect(run.status, run.stderr).toBe(0);
     expect(run.stdout.trim().split('\n')).toEqual(expected);
-    rmSync(dir, { recursive: true, force: true });
   }, 600_000);
 });

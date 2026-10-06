@@ -8,14 +8,16 @@ import type { Rgba8 } from './css/color.ts';
 import type { TextLonghand } from './css/properties.ts';
 import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
-import { colorChannels, lowerNativePrograms, ProgramError, usedColors } from './lower/native-program.ts';
+import { colorChannels, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
 import { rootFontSizeOf } from './lower/ios-layout.ts';
+import type { InteractionPartition } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Assignment, Origin, Target } from './types.ts';
 
-export * from './index.ts';
+// The public API without createProject, whose committed lanes verdict (create-project.ts) the harness passes itself.
+export * from './api.ts';
 export { createProjectWith, COMPILER_VERSION } from './project.ts';
 export type { InternalOptions } from './project.ts';
 export type { CompilerFaults } from './faults.ts';
@@ -58,7 +60,7 @@ export type { TextLonghand } from './css/properties.ts';
 export type { BorderStyleName, NativeBackend, NativeProgram, ProgramNode, ProgramWrite, Technique, WriteKind } from './lower/native-program.ts';
 export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, VOCABULARY, WRITE_CSS } from './lower/native-program.ts';
 export type { ExpectedDump, ExpectedEngine, ExpectedNode, NodeGeometry } from './emit/expected-dump.ts';
-export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, textInstanceSize } from './emit/expected-dump.ts';
+export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, replacedGeometries, textInstanceSize } from './emit/expected-dump.ts';
 export type { EmitCase } from './emit/native-support.ts';
 export { emitNativeSupport, NATIVE_SUPPORT_VERSION, SUPPORT_FILES, SUPPORT_PLANTS } from './emit/native-support.ts';
 export type { SupportPlant } from './emit/native-support.ts';
@@ -82,11 +84,29 @@ export type LayoutProjection =
   | { readonly kind: 'ready'; readonly input: LayoutInput }
   | { readonly kind: 'blocked'; readonly reason: string };
 
-function caseOf(compiled: object, assignment: Assignment): InternalCase | string {
+/**
+ * One case, or one of its interaction states (SELD-R2a) when state names a partition state key: the state's resolution and
+ * lowering replace the case's. null is the case itself (the none state).
+ */
+function caseOf(compiled: object, assignment: Assignment, state: string | null = null): InternalCase | string {
   const record = internalRecord(compiled);
   if (record === undefined) return 'not a compiled result from this package';
   const c = caseByAssignment(record, assignment);
-  return c === undefined ? `no reachable case for the assignment ${JSON.stringify(assignment)}` : c;
+  if (c === undefined) return `no reachable case for the assignment ${JSON.stringify(assignment)}`;
+  if (state === null) return c;
+  const i = c.interaction.find((x) => x.value.key === state);
+  return i === undefined ? `no interaction state ${state} in the case ${JSON.stringify(assignment)}` : { ...c, resolved: i.resolved, nativeLowered: i.nativeLowered };
+}
+
+/** The interaction partition of one case (SELD-R2a): its candidates, its states but none and its per-element state tables. */
+export function interactionPartitionOf(compiled: object, assignment: Assignment): InteractionPartition | null {
+  const c = caseOf(compiled, assignment);
+  return typeof c === 'string' ? null : c.partition;
+}
+
+/** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
+export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
+  return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
 }
 
 /** Dragon's reachable assignments, in its enumeration order, with the initial case marked. */
@@ -99,8 +119,8 @@ export function compiledCases(compiled: object): readonly { readonly assignment:
  * The native layout projection of one case for one environment, shared by every native target (native-strategy.md 3.9 item 13):
  * one lowered tree from the checked native output, so ios and android lay out the same engine input.
  */
-export function nativeLayoutProjection(compiled: object, environment: Environment, assignment: Assignment): LayoutProjection {
-  const c = caseOf(compiled, assignment);
+export function nativeLayoutProjection(compiled: object, environment: Environment, assignment: Assignment, state: string | null = null): LayoutProjection {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
   if (record.direction !== environment.direction) return { kind: 'blocked', reason: `the result was resolved for direction ${record.direction}, not ${environment.direction}` };
@@ -145,8 +165,8 @@ export function webClassMap(compiled: object, assignment: Assignment): ReadonlyM
 export type { ElementColors } from './lower/native-program.ts';
 
 /** Dragon's resolved colour channels per element address in one case; null when the case did not resolve. */
-export function resolvedColors(compiled: object, assignment: Assignment): ReadonlyMap<string, ElementColors> | null {
-  const c = caseOf(compiled, assignment);
+export function resolvedColors(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, ElementColors> | null {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, ElementColors>();
   const walk = (el: ResolvedElement): void => {
@@ -209,8 +229,8 @@ export function textTopology(compiled: object, assignment: Assignment): readonly
 }
 
 /** Dragon's resolved colour channels of every laid-out text node in one case, keyed by text address. */
-export function resolvedTextColors(compiled: object, assignment: Assignment): ReadonlyMap<string, Rgba8> | null {
-  const c = caseOf(compiled, assignment);
+export function resolvedTextColors(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, Rgba8> | null {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, Rgba8>();
   const walk = (el: ResolvedElement): void => {
@@ -235,14 +255,16 @@ export type NativePrograms =
  * Both native backends' lowered programs of one case (docs/research/native-strategy.md 1.1): from the one nativeLowered tree and
  * the case's resolved paint values. Ready only when the result configures and checks both ios and android.
  */
-export function nativePrograms(compiled: object, assignment: Assignment): NativePrograms {
-  const c = caseOf(compiled, assignment);
+export function nativePrograms(compiled: object, assignment: Assignment, state: string | null = null): NativePrograms {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   const targets = (compiled as { targets?: Record<string, string> }).targets ?? {};
   for (const t of ['ios', 'android']) if (targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} target is ${targets[t] === undefined ? 'not configured' : targets[t]}` };
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
   try {
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved) };
+    const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
+    const moving = movingTransforms(record.cases.map((x) => x.resolved), record.animation);
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, moving) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -266,8 +288,8 @@ export const ACTIVATION_TAGS: readonly string[] = ['a', 'button'];
 const activates = (tag: string, attributes: ReadonlyMap<string, string>): boolean => tag === 'button' || (tag === 'a' && attributes.has('href'));
 
 /** Every element's hit facts in one case: computed pointer-events, whether it was inherited, and whether it has a handler. */
-export function hitFacts(compiled: object, assignment: Assignment): ReadonlyMap<string, import('./emit/runtime/hit.ts').HitFact> | null {
-  const c = caseOf(compiled, assignment);
+export function hitFacts(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, import('./emit/runtime/hit.ts').HitFact> | null {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, import('./emit/runtime/hit.ts').HitFact>();
   const walk = (el: ResolvedElement): void => {
@@ -279,3 +301,39 @@ export function hitFacts(compiled: object, assignment: Assignment): ReadonlyMap<
   walk(c.resolved);
   return out;
 }
+
+// T065 ANIM-b1: the animation tables of a compile and the runtime animator's TypeScript reference.
+export type { AnimationAnalysis, AnimValue } from './analysis/animations.ts';
+export type { AnimProgram, SlotListing, TransitionSlot } from './lower/anim-program.ts';
+export { ANIM_PROGRAM_VERSION, animTablesOf } from './lower/anim-program.ts';
+import { lowerAnimProgram } from './lower/anim-program.ts';
+export { lowerAnimProgram };
+// T065: the TypeScript reference animator (packages/parity/src/anim-cases.ts) reads these.
+export type { EasingValue } from './css/properties/animation.ts';
+export { animationKind } from './css/animation-kinds.ts';
+
+/** The animation tables of one state program: its cases' resolved trees in the program's assignment order. */
+export function animProgramOf(compiled: object, assignments: readonly Assignment[]): import('./lower/anim-program.ts').AnimProgram | null {
+  const record = internalRecord(compiled);
+  if (record === undefined || record.animation === null) return null;
+  const cases = assignments.map((a) => {
+    const c = caseOf(compiled, a);
+    if (typeof c === 'string' || c.resolved === null) throw new Error(`no resolved case for the assignment ${JSON.stringify(a)}`);
+    return { key: c.key, resolved: c.resolved };
+  });
+  return lowerAnimProgram(record.animation, cases);
+}
+
+/** The animation features a compile uses (the support gate's keys in the animation context), sorted. */
+export function animationFeatures(compiled: object): readonly string[] {
+  const record = internalRecord(compiled);
+  if (record === undefined || record.animation === null) return [];
+  return [...new Set(record.animation.features.map((f) => f.feature))].sort();
+}
+// SELD-R2 (notes/T064-seld-r2-spec.md): interaction states, their partition and the generated web conditions.
+export type { ChainValue, FocusValue, ForcedPseudo, InteractionElement, InteractionKind, InteractionPartition, InteractionValue, StateMatch } from './analysis/interaction.ts';
+export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledFact, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
+export type { InteractionState } from './analysis/match.ts';
+export { NO_INTERACTION } from './analysis/match.ts';
+export type { InteractionCondition, WebInteraction } from './emit/web-css.ts';
+export { conditionsExclusive, gatedConditions, HOVER_MEDIA, interactionCondition, NO_HOVER_MEDIA } from './emit/web-css.ts';

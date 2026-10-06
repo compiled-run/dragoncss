@@ -4,6 +4,7 @@
 // and the zoom guard. Then the committed break vectors against these: equal on N/N, or every break-mismatch listed (exit 1).
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { CHROME_VERSION, launchChrome, openPage } from '../chrome.ts';
+import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { atDpr, DPRS, zoomGuard } from '../dpr.ts';
 import { chromeBreaksText, captureBreakTexts, compareVectorWithChrome, expectedBreaksDir, expectedBreaksPath, leafTexts, readBreakVector } from '../line-breaks.ts';
 import type { ChromeBreaks } from '../line-breaks.ts';
@@ -23,7 +24,8 @@ for (const dpr of DPRS) {
   try {
     await zoomGuard(browser, dpr);
     const t = Date.now();
-    for (const n of cases) {
+    // Each case in its own context, CHROME_PAGES at a time; captured is keyed, so finishing order changes nothing.
+    await inOrder(cases, CHROME_PAGES, async (n) => {
       const page = await openPage(browser, n.case.authoredHtml, atDpr(n.case.environment, dpr));
       try {
         const b: ChromeBreaks = { case: n.case.id, chrome: CHROME_VERSION, dpr, texts: await captureBreakTexts(page) };
@@ -32,7 +34,7 @@ for (const dpr of DPRS) {
       } finally {
         await page.context().close();
       }
-    }
+    });
     await zoomGuard(browser, dpr);
     const written = readdirSync(dir).filter((f) => f.endsWith('.breaks.json')).length;
     if (written !== cases.length) throw new Error(`DPR ${dpr}: ${written} break captures written, ${cases.length} cases`);

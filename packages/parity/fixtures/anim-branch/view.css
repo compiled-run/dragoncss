@@ -1,0 +1,4 @@
+@keyframes fade { from { background-color: rgb(255, 0, 0); } to { background-color: rgb(0, 0, 255); } }
+.host { width: 120px; }
+.made { width: 10px; height: 10px; transition: width 1s linear; animation: fade 1s linear; }
+.made.on { width: 60px; }

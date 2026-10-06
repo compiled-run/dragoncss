@@ -12,10 +12,15 @@ import { committedAuthored } from '../packages/parity/src/committed.ts';
 import { FIXTURES } from '../packages/parity/src/fixtures.ts';
 import { FONT_FIXTURES } from '../packages/parity/src/fixture-groups/fonts.ts';
 import { committedFontAuthored, runFontFixture } from '../packages/parity/src/fonts-run.ts';
+import { ENV_FIXTURES } from '../packages/parity/src/fixture-groups/env.ts';
+import { committedEnvAuthored, runEnvFixture } from '../packages/parity/src/env-run.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import type { CaseOutcome } from '../packages/parity/src/pipeline.ts';
 import { runFixture } from '../packages/parity/src/pipeline.ts';
-import { committedLanes, deriveRows, nativeLanesSource, profileSource } from '../packages/parity/src/profile-rows.ts';
+import { committedLanes, deriveAnimationRows, deriveRows, nativeLanesSource, profileSource } from '../packages/parity/src/profile-rows.ts';
+import { animCasesOf, animFixtures } from '../packages/parity/src/anim-cases.ts';
+import { animCaseReport } from '../packages/parity/src/frame-capture.ts';
+import { animationFeatures } from '../packages/dragon/src/internal.ts';
 
 const browser = await launchChrome();
 const cases: CaseOutcome[] = [];
@@ -32,12 +37,24 @@ try {
     cases.push(...outcomes);
     for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }
+  // ENV-SAFE: the web-only env() fixtures prove web rows through chrome-dual alone, under their insets; their ios features are empty.
+  for (const f of ENV_FIXTURES) {
+    const outcomes = await runEnvFixture(f, browser, { authored: committedEnvAuthored(f), faults: NO_FAULTS, profiles: 'derive' });
+    cases.push(...outcomes);
+    for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
+  }
 } finally {
   await browser.close();
 }
 
+// T065: the frame cases that pass the host frame lanes against the committed frame captures prove the animation rows.
+const framePassing = animFixtures().flatMap(animCasesOf).flatMap((c) => {
+  const r = animCaseReport(c);
+  for (const f of r.failures.slice(0, 3)) console.log(`not passing, proves nothing: ${f}`);
+  return r.failures.length === 0 ? [{ id: c.id, features: animationFeatures(c.compiled) }] : [];
+});
 for (const target of ['ios', 'android', 'web'] as const) {
-  const rows = deriveRows(target, cases);
+  const rows = [...deriveRows(target, cases), ...deriveAnimationRows(target, framePassing)];
   writeFileSync(repoPath(`packages/dragon/src/profiles/${target}.ts`), profileSource(target, rows));
   console.log(`${target}: ${rows.length} rows from ${cases.length} cases`);
 }

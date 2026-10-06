@@ -1,0 +1,204 @@
+# CI-OFFLOAD step 2: `pnpm regen` for a branch on GitHub-hosted runners, pushed back to the branch as its own commit.
+# Trigger: workflow_dispatch with a branch, or the `regen` label on a pull request from this repository.
+# The chain is split by machine (regen-on-ci-round.yml): the Chrome steps on macos-26, whose captures are byte-identical to the
+# local Mac's (capture-proof.yml), and lanes-host on xcode-27, the image with the local Mac's Xcode 27.0. Rounds alternate until
+# one changes nothing (at most 5). tw-sweep, which no other step reads and which takes about 50 min on a 3-core runner, runs
+# once on the converged tree, and that tree is committed. Never pushes master, a protected branch, the default branch or a fork;
+# never force-pushes (a branch that moved meanwhile makes the push fail).
+# A push made with GITHUB_TOKEN starts no workflow, so the push job dispatches ci.yml on the branch for the new commit's checks.
+# Every push to master runs the same chain without pushing ("warm"): Actions caches made in a pull request are visible only to
+# that pull request, while master's are visible to every branch, so master's run keeps the regen cache warm for all of them.
+name: regen-on-ci
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to regenerate (never master)
+        required: true
+        type: string
+  pull_request:
+    types: [labeled]
+  push:
+    branches: [master]
+permissions:
+  contents: read
+# Master's cache runs share one group and cancel each other: only the newest master matters. A branch's runs have their own
+# group, per branch and per label, so a label event that is not `regen` never takes a queued regen's place.
+concurrency:
+  group: ${{ github.event_name == 'push' && 'regen-on-ci-master-warm' || format('regen-on-ci-{0}-{1}', inputs.branch || github.head_ref, github.event.label.name || 'dispatch') }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+jobs:
+  resolve:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'regen'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      branch: ${{ steps.r.outputs.branch }}
+      sha: ${{ steps.r.outputs.sha }}
+      mode: ${{ steps.r.outputs.mode }}
+    steps:
+      - name: Resolve and refuse unsafe branches
+        id: r
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DISPATCH_BRANCH: ${{ inputs.branch }}
+          PR_BRANCH: ${{ github.head_ref }}
+          PR_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            # Branch regens come first: the macOS runners are few (5 at once), so a master cache run yields to any branch regen
+            # queued or running, and the next master push warms the cache instead.
+            busy=0
+            for st in queued in_progress waiting pending; do
+              n=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" -q '[.workflow_runs[] | select(.event != "push")] | length')
+              busy=$((busy + n))
+            done
+            if [ "$busy" -gt 0 ]; then
+              { echo "branch=master"; echo "sha=$GITHUB_SHA"; echo "mode=skip"; } >> "$GITHUB_OUTPUT"
+              echo "regen-on-ci: $busy branch regen run(s) queued or running; master's cache run yields to them" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            { echo "branch=master"; echo "sha=$GITHUB_SHA"; echo "mode=warm"; } >> "$GITHUB_OUTPUT"
+            echo "regen-on-ci: warming the regen cache on master at $GITHUB_SHA (nothing is pushed)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then branch=$DISPATCH_BRANCH; else branch=$PR_BRANCH
+            [ "$PR_REPO" = "$REPO" ] || { echo "::error::the pull request comes from $PR_REPO, not $REPO; regen-on-ci pushes only to this repository"; exit 1; }
+          fi
+          git check-ref-format --branch "$branch" >/dev/null || { echo "::error::not a branch name: $branch"; exit 1; }
+          default=$(gh api "repos/$REPO" -q .default_branch)
+          [ "$branch" != master ] && [ "$branch" != "$default" ] || { echo "::error::refusing to push to $branch"; exit 1; }
+          info=$(gh api "repos/$REPO/branches/$branch")
+          [ "$(jq -r .protected <<<"$info")" = false ] || { echo "::error::refusing to push to the protected branch $branch"; exit 1; }
+          sha=$(jq -r .commit.sha <<<"$info")
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ "$sha" != "$PR_SHA" ]; then echo "::error::$branch moved from the labelled head $PR_SHA to $sha; label again"; exit 1; fi
+          { echo "branch=$branch"; echo "sha=$sha"; echo "mode=push"; } >> "$GITHUB_OUTPUT"
+          echo "regen-on-ci: $branch at $sha" >> "$GITHUB_STEP_SUMMARY"
+  chrome-1:
+    needs: resolve
+    if: needs.resolve.outputs.mode != 'skip'
+    uses: ./.github/workflows/regen-on-ci-round.yml
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', name: chrome-1 }
+  host-1:
+    needs: [resolve, chrome-1]
+    uses: ./.github/workflows/regen-on-ci-round.yml
+    with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-1, name: host-1 }
+  chrome-2:
+    needs: [resolve, host-1]
+    if: needs.host-1.outputs.changed == 'true'
+    uses: ./.github/workflows/regen-on-ci-round.yml
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: host-1, name: chrome-2 }
+  host-2:
+    needs: [resolve, chrome-2]
+    if: needs.chrome-2.outputs.changed == 'true'
+    uses: ./.github/workflows/regen-on-ci-round.yml
+    with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-2, name: host-2 }
+  chrome-3:
+    needs: [resolve, host-2]
+    if: needs.host-2.outputs.changed == 'true'
+    uses: ./.github/workflows/regen-on-ci-round.yml
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3 }
+  converge:
+    needs: [resolve, chrome-1, host-1, chrome-2, host-2, chrome-3]
+    if: always() && needs.resolve.result == 'success' && needs.resolve.outputs.mode != 'skip' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    outputs:
+      last: ${{ steps.last.outputs.name }}
+    steps:
+      - name: Pick the last round
+        id: last
+        env:
+          C1: ${{ needs.chrome-1.outputs.changed }}
+          H1: ${{ needs.host-1.outputs.changed }}
+          C2: ${{ needs.chrome-2.outputs.changed }}
+          H2: ${{ needs.host-2.outputs.changed }}
+          C3: ${{ needs.chrome-3.outputs.changed }}
+        run: |
+          set -euo pipefail
+          # A round runs only when the one before it changed files; the chain is done when the last round changed nothing.
+          if [ "$C3" = true ]; then echo "::error::no fixed point after 5 rounds: chrome-3 still changed files"; exit 1; fi
+          if [ -n "$C3" ]; then last=chrome-3; elif [ -n "$H2" ]; then last=host-2; elif [ -n "$C2" ]; then last=chrome-2; else last=host-1; fi
+          [ -n "$H1" ] || { echo "::error::host-1 reported nothing"; exit 1; }
+          echo "rounds: chrome-1=$C1 host-1=$H1 chrome-2=${C2:-not run} host-2=${H2:-not run} chrome-3=${C3:-not run}; final tree from $last" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "name=$last" >> "$GITHUB_OUTPUT"
+  # always(): a skipped later round (the usual case) would otherwise skip every job after it.
+  sweep:
+    needs: [resolve, converge]
+    if: always() && needs.converge.result == 'success'
+    uses: ./.github/workflows/regen-on-ci-round.yml
+    with: { runner: macos-26, side: chrome, args: '--only tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: '${{ needs.converge.outputs.last }}', name: sweep }
+  warm-check:
+    needs: [resolve, sweep]
+    if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'warm'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the sweep round
+        uses: actions/download-artifact@v4
+        with:
+          name: sweep
+          path: ${{ runner.temp }}/last
+      - name: Master must already be at a fixed point
+        run: |
+          if [ -s "$RUNNER_TEMP/last/outputs.patch" ]; then
+            echo "::error::master at ${{ needs.resolve.outputs.sha }} is not at a fixed point: regen on CI changed files (artifact sweep)"
+            exit 1
+          fi
+          echo "regen-on-ci: master at ${{ needs.resolve.outputs.sha }} is at a fixed point; the regen cache is warm" >> "$GITHUB_STEP_SUMMARY"
+  push:
+    needs: [resolve, sweep]
+    if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+      pull-requests: write
+    steps:
+      - name: Check out the branch commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - name: Download the sweep round (the converged tree with tw-sweep run)
+        uses: actions/download-artifact@v4
+        with:
+          name: sweep
+          path: ${{ runner.temp }}/last
+      - name: Commit and push the outputs, then start CI on the new commit
+        id: push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ needs.resolve.outputs.branch }}
+          SHA: ${{ needs.resolve.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          [ "$BRANCH" != master ] || exit 1
+          if [ ! -s "$RUNNER_TEMP/last/outputs.patch" ]; then
+            echo "regen-on-ci: $BRANCH at $SHA is already at a fixed point; no commit" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "pushed=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git apply --binary --index "$RUNNER_TEMP/last/outputs.patch"
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -q -F - <<EOF
+          Regenerate on CI: pnpm regen (regen-on-ci)
+
+          Commands: pnpm regen --skip lanes-host --skip tw-sweep (macos-26) and pnpm regen --only lanes-host (xcode-27), alternated
+          to a fixed point, then pnpm regen --only tw-sweep (macos-26).
+          Base: $SHA
+          Run: $RUN_URL
+          EOF
+          git diff --stat HEAD~1 | tail -1 | tee -a "$GITHUB_STEP_SUMMARY"
+          git push origin "HEAD:refs/heads/$BRANCH"
+          new=$(git rev-parse HEAD)
+          echo "regen-on-ci: pushed $new to $BRANCH" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "pushed=$new" >> "$GITHUB_OUTPUT"
+          gh workflow run ci.yml --ref "$BRANCH" -R "$GITHUB_REPOSITORY"
+      - name: Remove the regen label
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr edit ${{ github.event.pull_request.number }} -R "$GITHUB_REPOSITORY" --remove-label regen || true

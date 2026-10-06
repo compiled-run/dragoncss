@@ -7,7 +7,7 @@ import type { DprChromeDeviation, EngineFaults, LayoutInput, LayoutRect } from '
 import { absoluteRects, dprChromeDeviations, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, snapEdges, validateLayoutInput } from '@dragon/layout';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import type { Compiled, Environment } from 'dragon';
-import { iosLayoutProjection, NO_FAULTS } from 'dragon';
+import { iosLayoutProjection } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { casesOf } from './cases.ts';
@@ -19,7 +19,7 @@ import type { FixtureSpec } from './fixtures.ts';
 import { FIXTURES } from './fixtures.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
-import { compileFixture } from './pipeline.ts';
+import { enforcedCompile, fixtureCompileInput } from './pipeline.ts';
 
 /** The pixel ratios both native platforms run at (owner decision, Native lanes, milestone 2). */
 export const SHARED_DPRS: readonly number[] = [2, 3];
@@ -57,15 +57,12 @@ export function atDpr(env: Environment, dpr: number): Environment {
   return { ...env, devicePixelRatio: dpr };
 }
 
-/** Every layout case of the corpus, in fixture order: the same ids at every DPR (the DPR-1 ids). */
-export function layoutCases(): { readonly spec: FixtureSpec; readonly cases: readonly ParityCase[] }[] {
-  const out: { spec: FixtureSpec; cases: ParityCase[] }[] = [];
-  for (const spec of FIXTURES) {
-    if (spec.kind !== 'layout') continue;
-    const { input } = compileFixture(spec);
-    out.push({ spec, cases: casesOf(spec, input) });
-  }
-  return out;
+let corpus: readonly { readonly spec: FixtureSpec; readonly cases: readonly ParityCase[] }[] | null = null;
+
+/** Every layout case of the corpus, in fixture order: the same ids at every DPR (the DPR-1 ids). Read from the fixture inputs once. */
+export function layoutCases(): readonly { readonly spec: FixtureSpec; readonly cases: readonly ParityCase[] }[] {
+  corpus ??= FIXTURES.filter((spec) => spec.kind === 'layout').map((spec) => ({ spec, cases: casesOf(spec, fixtureCompileInput(spec)) }));
+  return corpus;
 }
 
 const GUARD_HTML = '<!doctype html><html><head></head><body><div id="g" style="border-top:0.5px solid black;width:10px;height:10px"></div></body></html>';
@@ -162,20 +159,10 @@ export type DprLaneSummary = {
 
 /** The DPR lane over every layout case at every DPR, against the committed DPR captures. Needs no browser. */
 export function runDprLane(dprs: readonly number[] = DPRS): DprLaneSummary[] {
-  const compiled = new Map<string, Compiled<'ios' | 'web'>>();
-  const compiledFor = (spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'web'> => {
-    const key = `${spec.id} ${direction}`;
-    let c = compiled.get(key);
-    if (c === undefined) {
-      c = compileFixture(spec, NO_FAULTS, 'enforce', direction).compiled;
-      compiled.set(key, c);
-    }
-    return c;
-  };
   const all = layoutCases();
   return dprs.map((dpr) => {
     const outcomes: DprCaseOutcome[] = [];
-    for (const f of all) for (const c of f.cases) outcomes.push(runDprCase(c, compiledFor(f.spec, c.environment.direction), dpr, committedDprCapture(c.id, dpr)));
+    for (const f of all) for (const c of f.cases) outcomes.push(runDprCase(c, enforcedCompile(f.spec, c.environment.direction), dpr, committedDprCapture(c.id, dpr)));
     return {
       dpr,
       role: SHARED_DPRS.includes(dpr) ? 'shared' : 'extra',
@@ -213,7 +200,7 @@ export type DprRegistryRow = {
 function registeredCase(fixture: string): { readonly spec: FixtureSpec; readonly c: ParityCase } {
   const spec = FIXTURES.find((f) => f.id === fixture);
   if (spec === undefined || spec.kind !== 'layout') throw new Error(`DPR registry names ${fixture}, which is not a layout fixture`);
-  const c = casesOf(spec, compileFixture(spec).input).find((x) => x.id === fixture);
+  const c = casesOf(spec, fixtureCompileInput(spec)).find((x) => x.id === fixture);
   if (c === undefined) throw new Error(`DPR registry fixture ${fixture} has no ltr case ${fixture}`);
   return { spec, c };
 }
@@ -227,7 +214,7 @@ export function dprRegistryRows(registry: readonly DprChromeDeviation[] = dprChr
     const hit = runs.get(key);
     if (hit !== undefined) return hit;
     const { spec, c } = registeredCase(fixture);
-    const compiled = compileFixture(spec, NO_FAULTS, 'enforce', c.environment.direction).compiled;
+    const compiled = enforcedCompile(spec, c.environment.direction);
     const capture = committedDprCapture(c.id, dpr);
     const out = { main: runDprCase(c, compiled, dpr, capture), faulty: runDprCase(c, compiled, dpr, capture, { ...NO_ENGINE_FAULTS, [d.fault]: true }) };
     runs.set(key, out);

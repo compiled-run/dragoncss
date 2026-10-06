@@ -23,6 +23,8 @@ export { snapEdges, snapRect } from './snap.ts';
 // Replaced elements (REPL-a): sizing and the object-fit destination rect.
 export type { BorderPadding, InlineAutoBehavior, NaturalSizing, ObjectFit, ObjectPosition, ObjectRect, PixelRect, ReplacedSize, ReplacedSizeMode, ReplacedSpace } from './replaced.ts';
 export { blockFlowSpace, drawnObjectRect, objectFitRect, pixelSnappedRect, replacedAspectRatio, replacedSize } from './replaced.ts';
+export type { ReplacedPaint } from './paint.ts';
+export { replacedPaint } from './paint.ts';
 export type { DprChromeDeviation, DprDeviationControl, DprDeviationFault, DprDeviationNode } from './chrome-deviations-dpr.ts';
 export { dprChromeDeviations } from './chrome-deviations-dpr.ts';
 export type { AhemRuleFaults, FontData } from './text.ts';
@@ -51,3 +53,17 @@ export { AHEM_FACE_ID, AHEM_SHA256 } from './text.ts';
 export { shapedMeasurerFor, shapingFaultsOf } from './platform.ts';
 export type { GlyphShaper, HanKerningFontData, ShapedFace, ShapingFaults } from './shaping.ts';
 export { FEATURE_STRIDE, GLYPH_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_HAN_KERNING, NO_SHAPING_FAULTS } from './shaping.ts';
+// ANIM-b1 (T065): the rt roots the runtime animator's TypeScript reference runs (packages/parity/src/anim-cases.ts), namespaced.
+export * as rtEasing from './rt-easing.ts';
+export * as rtTiming from './rt-timing.ts';
+export * as rtInterpolate from './rt-interpolate.ts';
+export * as rtKeyframes from './rt-keyframes.ts';
+export * as rtTransition from './rt-transition.ts';
+export * as rtAnimations from './rt-animations.ts';
+// ANIM-b1 3b (T065 R16): the runtime animator, one implementation for the TypeScript reference and the generated runtimes.
+export * as rtAnimator from './rt-animator.ts';
+export type { AnimTables, EasingCode, EntryCode, ValueCode } from './rt-animator.ts';
+export type { OriginPoint, TransformOrigin } from './paint-transform.ts';
+export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';
+export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';
+export { serializeTransform } from './rt-interpolate.ts';

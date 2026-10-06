@@ -1,0 +1,46 @@
+{
+ "schema": "dragon-frames/1",
+ "directions": [
+  "ltr",
+  "rtl"
+ ],
+ "viewports": [
+  [
+   393,
+   852
+  ],
+  [
+   412,
+   915
+  ]
+ ],
+ "phases": [
+  {
+   "span": 600,
+   "set": [
+    [
+     "open",
+     true
+    ]
+   ]
+  },
+  {
+   "span": 250,
+   "set": [
+    [
+     "open",
+     false
+    ]
+   ]
+  },
+  {
+   "span": 600,
+   "set": [
+    [
+     "open",
+     true
+    ]
+   ]
+  }
+ ]
+}

@@ -44,6 +44,8 @@
         "padding-right": "0px",
         "padding-bottom": "0px",
         "padding-left": "0px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0px",
         "border-right-width": "0px",
         "border-bottom-width": "0px",
@@ -88,7 +90,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "200px 61.2381px",
+        "will-change": "auto"
       }
     },
     {
@@ -125,6 +130,8 @@
         "padding-right": "0px",
         "padding-bottom": "0px",
         "padding-left": "0px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0px",
         "border-right-width": "0px",
         "border-bottom-width": "0px",
@@ -169,7 +176,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "200px 59.2381px",
+        "will-change": "auto"
       }
     },
     {
@@ -206,6 +216,8 @@
         "padding-right": "3px",
         "padding-bottom": "3px",
         "padding-left": "3px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0.761905px",
         "border-right-width": "0.761905px",
         "border-bottom-width": "0.761905px",
@@ -250,7 +262,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "63.7619px 34.8571px",
+        "will-change": "auto"
       }
     },
     {
@@ -287,6 +302,8 @@
         "padding-right": "5px",
         "padding-bottom": "2px",
         "padding-left": "5px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0.761905px",
         "border-right-width": "0.761905px",
         "border-bottom-width": "0.761905px",
@@ -331,7 +348,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "57px 7.71429px",
+        "will-change": "auto"
       }
     },
     {
@@ -388,6 +408,8 @@
         "padding-right": "5px",
         "padding-bottom": "2px",
         "padding-left": "5px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0.761905px",
         "border-right-width": "0.761905px",
         "border-bottom-width": "0.761905px",
@@ -432,7 +454,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "57px 7.71429px",
+        "will-change": "auto"
       }
     },
     {
@@ -489,6 +514,8 @@
         "padding-right": "5px",
         "padding-bottom": "2px",
         "padding-left": "5px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0.761905px",
         "border-right-width": "0.761905px",
         "border-bottom-width": "0.761905px",
@@ -533,7 +560,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "20.7619px 12.6667px",
+        "will-change": "auto"
       }
     },
     {
@@ -600,6 +630,8 @@
         "padding-right": "3px",
         "padding-bottom": "3px",
         "padding-left": "3px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0.761905px",
         "border-right-width": "0.761905px",
         "border-bottom-width": "0.761905px",
@@ -644,7 +676,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "63.7619px 22.381px",
+        "will-change": "auto"
       }
     },
     {
@@ -681,6 +716,8 @@
         "padding-right": "5px",
         "padding-bottom": "2px",
         "padding-left": "5px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0.761905px",
         "border-right-width": "0.761905px",
         "border-bottom-width": "0.761905px",
@@ -725,7 +762,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "15.7619px 7.71429px",
+        "will-change": "auto"
       }
     },
     {
@@ -782,6 +822,8 @@
         "padding-right": "0px",
         "padding-bottom": "0px",
         "padding-left": "0px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0px",
         "border-right-width": "0px",
         "border-bottom-width": "0px",
@@ -826,7 +868,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "15px 4.95238px",
+        "will-change": "auto"
       }
     },
     {
@@ -883,6 +928,8 @@
         "padding-right": "0px",
         "padding-bottom": "0px",
         "padding-left": "0px",
+        "object-fit": "fill",
+        "object-position": "50% 50%",
         "border-top-width": "0px",
         "border-right-width": "0px",
         "border-bottom-width": "0px",
@@ -927,7 +974,10 @@
         "grid-column-end": "auto",
         "justify-items": "normal",
         "justify-self": "auto",
-        "pointer-events": "auto"
+        "pointer-events": "auto",
+        "transform": "none",
+        "transform-origin": "15px 4.95238px",
+        "will-change": "auto"
       }
     },
     {
