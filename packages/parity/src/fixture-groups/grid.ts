@@ -17,6 +17,11 @@ export const GRID: readonly FixtureSpec[] = [
   both('grid-alignment'),
   both('grid-sizing'),
   both('grid-nested'),
+  // GRID G1c: every self-alignment value in grid containers and items, the place-* shorthands, and the template shorthands with
+  // their none values and spans on end lines.
+  both('grid-self-values'),
+  both('grid-place'),
+  both('grid-template-shorthands'),
   reject('reject-grid-inline-grid', 'DRAGON_UNSUPPORTED_VALUE', 'inline-grid'),
   reject('reject-grid-subgrid', 'DRAGON_UNSUPPORTED_VALUE', 'subgrid', 'grid-template-columns: subgrid is unsupported: subgrid needs the grid engine'),
   reject('reject-grid-masonry', 'DRAGON_CSS_INVALID_VALUE', 'masonry'),
