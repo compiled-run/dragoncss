@@ -6,25 +6,30 @@
 // with UseAliasParsing (css_parsing_utils.cc: -webkit-border-radius, -webkit-transform, -webkit-perspective,
 // -webkit-background-*, -webkit-mask-*, -webkit-appearance) wait for their property's lane, -webkit-writing-mode is a surrogate,
 // not an alias, and grid-gap, grid-row-gap and grid-column-gap are already shorthands of the grid family (properties/grid.ts).
+// The animation family's targets are the transition and animation list properties, which stay out of LONGHANDS (T065 option B).
 import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
+import type { AnimLonghand } from './properties/animation.ts';
+import { isAnimationProperty } from './properties/animation.ts';
+import { ANIMATION_ALIASES } from './aliases/animation.ts';
 import { BOX_ALIASES } from './aliases/box.ts';
 import { FLEX_ALIASES } from './aliases/flex.ts';
 import { LOGICAL_ALIASES } from './aliases/logical.ts';
 
 /** Each family's aliases, one line per family, sorted by family id (test/registry-claims.test.ts). */
-export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: string]: Longhand | Shorthand } } = {
+export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: string]: Longhand | Shorthand | AnimLonghand | 'transition' | 'animation' } } = {
+  animation: ANIMATION_ALIASES,
   box: BOX_ALIASES,
   flex: FLEX_ALIASES,
   logical: LOGICAL_ALIASES,
 };
 
-const ALIASES: ReadonlyMap<string, Longhand | Shorthand> = new Map(Object.values(ALIAS_FAMILIES).flatMap((f) => Object.entries(f)));
+const ALIASES: ReadonlyMap<string, string> = new Map(Object.values(ALIAS_FAMILIES).flatMap((f) => Object.entries(f)));
 
 if (ALIASES.size !== Object.values(ALIAS_FAMILIES).reduce((n, f) => n + Object.keys(f).length, 0)) throw new Error('an alias belongs to two families');
 for (const [alias, property] of ALIASES) {
-  if (isLonghand(alias) || isShorthand(alias)) throw new Error(`${alias} is both an alias and a property`);
-  if (!isLonghand(property) && !isShorthand(property)) throw new Error(`${alias} aliases ${property}, which is not a Dragon property`);
+  if (isLonghand(alias) || isShorthand(alias) || isAnimationProperty(alias)) throw new Error(`${alias} is both an alias and a property`);
+  if (!isLonghand(property) && !isShorthand(property) && !isAnimationProperty(property)) throw new Error(`${alias} aliases ${property}, which is not a Dragon property`);
 }
 
 /** The property a lower-cased property name stands for: its alias target, or the name itself. */

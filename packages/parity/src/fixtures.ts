@@ -28,6 +28,7 @@ import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
+import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
 import { VALUES } from './fixture-groups/values.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
@@ -112,6 +113,7 @@ export const GROUPS = {
   'sizing-ratio': SIZING,
   states: STATES,
   transforms: TRANSFORMS,
+  'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,
   values: VALUES,
   'writing-mode': WRITING_MODE,
