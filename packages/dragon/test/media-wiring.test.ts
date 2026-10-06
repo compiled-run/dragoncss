@@ -251,7 +251,7 @@ describe('MQ-a, MQ-R1: every check blocks the targets of the bands it applies in
     }
   });
   it('a project without web reports a rule that applies only outside the fold\'s band, which native switches to', () => {
-    const input = inputFor(`${FONT} .a { width: 10px; } @media (min-width: 500px) { .a { font-family: NotAFont; display: grid; } }`, (r) => [div(r, 'a', ['a'])]);
+    const input = inputFor(`${FONT} .a { width: 10px; } @media (min-width: 500px) { .a { font-family: NotAFont; display: inline-grid; } }`, (r) => [div(r, 'a', ['a'])]);
     const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', ...FOLD }).compile(input);
     expect(c.diagnostics.map((d) => d.code).sort()).toEqual(['DRAGON_FONT_UNMAPPED_FAMILY', 'DRAGON_UNSUPPORTED_VALUE']);
   });
