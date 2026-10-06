@@ -433,7 +433,7 @@ public func rtAnimator_styleLength(_ s: LayoutStyle, _ property: JsString) throw
   if (property == S.s_column_gap) {
     return (s.columnGap as! any U_Auto_LengthCalc_NoneValue_NormalValue_Percent_Px)
   }
-  throw try AnimatorError(jsConcat(S.s360, property))
+  throw try AnimatorError(jsConcat(S.s366, property))
 }
 
 // ts: packages/layout/src/rt-animator.ts:234
@@ -483,12 +483,12 @@ public func rtAnimator_rendered(_ t: AnimTables, _ node: JsString, _ i: Double) 
       let v: Bool? = jsAt(r.values, i)
       // ts: packages/layout/src/rt-animator.ts:256
       if (v == nil) {
-        throw try AnimatorError(jsConcat(jsConcat(jsConcat(S.s364, node), S.s12), rtInterpolate_intToString(i)))
+        throw try AnimatorError(jsConcat(jsConcat(jsConcat(S.s370, node), S.s12), rtInterpolate_intToString(i)))
       }
       return try jsUnwrap(v)
     }
   }
-  throw try AnimatorError(jsConcat(S.s363, node))
+  throw try AnimatorError(jsConcat(S.s369, node))
 }
 
 // ts: packages/layout/src/rt-animator.ts:262
@@ -498,7 +498,7 @@ public func rtAnimator_baseValue(_ kind: JsString, _ node: JsString, _ property:
     let input: LayoutInput? = jsAt(inputs, i)
     // ts: packages/layout/src/rt-animator.ts:265
     if (input == nil) {
-      throw try AnimatorError(jsConcat(S.s262, rtInterpolate_intToString(i)))
+      throw try AnimatorError(jsConcat(S.s268, rtInterpolate_intToString(i)))
     }
     return try rtAnimator_lengthBase(jsUnwrap(input), node, property)
   }
@@ -742,7 +742,7 @@ public func rtAnimator_slotEvent(_ t: AnimTables, _ sl: SlotTable, _ running: Ru
 public func rtAnimator_animatorEvent(_ s: AnimatorState, _ t: AnimTables, _ inputs: JsArray<LayoutInput>, _ initial: Double, _ to: Double, _ faults: RtFaults, _ anim: AnimatorFaults) throws -> AnimatorState {
   // ts: packages/layout/src/rt-animator.ts:393
   if ((to < 0.0) || (to >= t.assignments)) {
-    throw try AnimatorError(jsConcat(jsConcat(jsConcat(jsConcat(S.s256, rtInterpolate_intToString(to)), S.s2), rtInterpolate_intToString(t.assignments)), S.s7))
+    throw try AnimatorError(jsConcat(jsConcat(jsConcat(jsConcat(S.s262, rtInterpolate_intToString(to)), S.s2), rtInterpolate_intToString(t.assignments)), S.s7))
   }
   let from: Double = s.current
   // ts: packages/layout/src/rt-animator.ts:395
@@ -753,7 +753,7 @@ public func rtAnimator_animatorEvent(_ s: AnimatorState, _ t: AnimTables, _ inpu
     let sl: SlotTable? = jsAt(t.slots, k)
     // ts: packages/layout/src/rt-animator.ts:398
     if (sl == nil) {
-      throw try AnimatorError(jsConcat(S.s263, rtInterpolate_intToString(k)))
+      throw try AnimatorError(jsConcat(S.s269, rtInterpolate_intToString(k)))
     }
     return try rtAnimator_slotEvent(t, jsUnwrap(sl), r, from, to, inputs, faults, anim)
 })
@@ -972,85 +972,85 @@ public func rtAnimator_withLength(_ s: LayoutStyle, _ property: JsString, _ l: L
   let v: any U_LengthCalc_Percent_Px = try rtAnimator_fieldOf(l, range)
   // ts: packages/layout/src/rt-animator.ts:495
   if (property == S.s_top) {
-    return LayoutStyle(s.display, s.position, (v as! any U_Auto_LengthCalc_Percent_Px), s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, (v as! any U_Auto_LengthCalc_Percent_Px), s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:496
   if (property == S.s_right) {
-    return LayoutStyle(s.display, s.position, s.top, (v as! any U_Auto_LengthCalc_Percent_Px), s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, (v as! any U_Auto_LengthCalc_Percent_Px), s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:497
   if (property == S.s_bottom) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, (v as! any U_Auto_LengthCalc_Percent_Px), s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, (v as! any U_Auto_LengthCalc_Percent_Px), s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:498
   if (property == S.s_left) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, (v as! any U_Auto_LengthCalc_Percent_Px), s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, (v as! any U_Auto_LengthCalc_Percent_Px), s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:499
   if (property == S.s_width) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, (v as! any U_Auto_LengthCalc_Percent_Px), s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, (v as! any U_Auto_LengthCalc_Percent_Px), s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:500
   if (property == S.s_height) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, (v as! any U_Auto_LengthCalc_Percent_Px), s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, (v as! any U_Auto_LengthCalc_Percent_Px), s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:501
   if (property == S.s_min_width) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, (v as! any U_Auto_LengthCalc_Percent_Px), s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, (v as! any U_Auto_LengthCalc_Percent_Px), s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:502
   if (property == S.s_min_height) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, (v as! any U_Auto_LengthCalc_Percent_Px), s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, (v as! any U_Auto_LengthCalc_Percent_Px), s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:503
   if (property == S.s_max_width) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, (v as! any U_LengthCalc_NoneValue_Percent_Px), s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, (v as! any U_LengthCalc_NoneValue_Percent_Px), s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:504
   if (property == S.s_max_height) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, (v as! any U_LengthCalc_NoneValue_Percent_Px), s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, (v as! any U_LengthCalc_NoneValue_Percent_Px), s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:505
   if (property == S.s_margin_top) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, (v as! any U_Auto_LengthCalc_Percent_Px), s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, (v as! any U_Auto_LengthCalc_Percent_Px), s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:506
   if (property == S.s_margin_right) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, (v as! any U_Auto_LengthCalc_Percent_Px), s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, (v as! any U_Auto_LengthCalc_Percent_Px), s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:507
   if (property == S.s_margin_bottom) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, (v as! any U_Auto_LengthCalc_Percent_Px), s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, (v as! any U_Auto_LengthCalc_Percent_Px), s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:508
   if (property == S.s_margin_left) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, (v as! any U_Auto_LengthCalc_Percent_Px), s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, (v as! any U_Auto_LengthCalc_Percent_Px), s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:509
   if (property == S.s_padding_top) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, v, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, v, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:510
   if (property == S.s_padding_right) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, v, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, v, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:511
   if (property == S.s_padding_bottom) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, v, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, v, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:512
   if (property == S.s_padding_left) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, v, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, v, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:513
   if (property == S.s_row_gap) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, (v as! any U_LengthCalc_NormalValue_Percent_Px), s.columnGap, s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, (v as! any U_LengthCalc_NormalValue_Percent_Px), s.columnGap, s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:514
   if (property == S.s_column_gap) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, (v as! any U_LengthCalc_NormalValue_Percent_Px), s.textAlign, s.aspectRatio)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, (v as! any U_LengthCalc_NormalValue_Percent_Px), s.textAlign, s.aspectRatio, s.grid, s.gridItem)
   }
-  throw try AnimatorError(jsConcat(S.s360, property))
+  throw try AnimatorError(jsConcat(S.s366, property))
 }
 
 // ts: packages/layout/src/rt-animator.ts:518
@@ -1081,7 +1081,7 @@ public func rtAnimator_rangeOf(_ t: AnimTables, _ node: JsString, _ property: Js
       }
     }
   }
-  throw try AnimatorError(jsConcat(jsConcat(jsConcat(S.s264, node), S.s1), property))
+  throw try AnimatorError(jsConcat(jsConcat(jsConcat(S.s270, node), S.s1), property))
 }
 
 // ts: packages/layout/src/rt-animator.ts:524

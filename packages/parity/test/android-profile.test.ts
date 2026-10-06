@@ -3,17 +3,20 @@
 // compile, an unblocked android output for every proving case, and the Android Views emitter generating every proving case.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from 'dragon';
-import { androidProfile, compiledFeatures, createProjectWith, emitAndroidViewsCases, interactionPartitionOf, iosProfile, nativePrograms, NO_FAULTS } from 'dragon';
+import { androidProfile, compiledFeatures, createProjectWith, emitAndroidViewsCases, interactionPartitionOf, iosProfile, MEDIA_CONTEXT, nativePrograms, NO_FAULTS } from 'dragon';
 import { fixtureInput } from '../src/cases.ts';
 import { PROJECT_ID } from '../src/fixture-reader.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
 import { ENVIRONMENT } from '../src/fixtures.ts';
 import { emitCases, NATIVE_CONFIG, nativeCases } from '../src/native-host.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
+import { resizeCaseReport, resizeCases, resizeProgram } from '../src/resize-capture.ts';
 
 const cases = nativeCases();
 const byId = new Map(cases.map((n) => [n.case.id, n]));
-const promoted = androidProfile.rows.filter((r) => r.status !== 'unsupported');
+// MQ-R1: media rows are proven by resize cases, not layout cases; the last test here checks those on android.
+const promoted = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context !== MEDIA_CONTEXT);
+const promotedMedia = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context === MEDIA_CONTEXT);
 
 /** The lane compile of native-host.ts nativeCompile, with the committed profiles enforced. */
 function enforcedNative(spec: FixtureSpec, direction: 'ltr' | 'rtl') {
@@ -97,4 +100,18 @@ describe('the android profile follows the iOS rule', () => {
     const text = files.map((f) => f.text).join('\n');
     for (const id of unforced) expect(text.includes(`// case ${id}\n`), id).toBe(true);
   });
+
+  it('every resize case proving a media row compiles for android unblocked, enforced, and runs its android-views band program on the resize lanes', () => {
+    const proving = new Set(promotedMedia.flatMap((r) => r.proofs.flatMap((p) => p.cases)));
+    expect(proving.size).toBeGreaterThan(0);
+    for (const id of proving) {
+      const rc = resizeCases().find((x) => x.id === id);
+      if (rc === undefined) throw new Error(`${id} proves an android media row and is not a resize case`);
+      const c = enforcedOf(rc.spec, rc.direction);
+      expect(c.outputs.android.kind, id).not.toBe('blocked');
+      expect(c.diagnostics.filter((x) => x.target === 'android' && x.severity === 'error').map((x) => `${x.code} ${x.message}`), id).toEqual([]);
+      expect(resizeCaseReport(rc, [1]).failures.filter((f) => f.includes(' android-views ')), id).toEqual([]);
+      expect(resizeProgram(rc, undefined, 'android-views').backend, id).toBe('android-views');
+    }
+  }, 600_000);
 });

@@ -17,6 +17,10 @@ import type {
   FlexWrap,
   FontSpec,
   GapValue,
+  GridContainerStyle,
+  GridItemStyle,
+  GridSelfAlign,
+  GridSpan,
   InsetValue,
   JustifyContent,
   LayoutBox,
@@ -43,6 +47,9 @@ import type {
   ViewportLength,
   ViewportSize,
   Viewport,
+  TrackBreadth,
+  TrackRepeater,
+  TrackSize,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
@@ -583,8 +590,90 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'grid', 'gridItem',
 ];
+
+const GRID_SELF_ALIGN: readonly string[] = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'];
+
+function trackBreadth(v: JsonValue, path: string): TrackBreadth {
+  const k = kindOf(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'fr') return { kind: 'fr', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  obj(v, ['kind'], path);
+  if (k === 'auto') return { kind: 'auto' };
+  if (k === 'min-content') return { kind: 'min-content' };
+  if (k === 'max-content') return { kind: 'max-content' };
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function trackSize(v: JsonValue, path: string): TrackSize {
+  const k = kindOf(v, path);
+  if (k === 'breadth') return { kind: 'breadth', breadth: trackBreadth(field(obj(v, ['kind', 'breadth'], path), 'breadth', path), `${path}.breadth`) };
+  if (k === 'minmax') {
+    const o = obj(v, ['kind', 'min', 'max'], path);
+    return { kind: 'minmax', min: trackBreadth(field(o, 'min', path), `${path}.min`), max: trackBreadth(field(o, 'max', path), `${path}.max`) };
+  }
+  if (k === 'fit-content') {
+    const limit = field(obj(v, ['kind', 'limit'], path), 'limit', path);
+    const lk = kindOf(limit, `${path}.limit`);
+    const value = numField(obj(limit, ['kind', 'value'], `${path}.limit`), 'value', `${path}.limit`);
+    if (lk === 'px') return { kind: 'fit-content', limit: { kind: 'px', value } };
+    if (lk === 'percent') return { kind: 'fit-content', limit: { kind: 'percent', value } };
+    return fail(`${path}.limit: unknown kind ${lk}`);
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function trackSizes(v: JsonValue, path: string): TrackSize[] {
+  return arr(v, path).map((t, i) => trackSize(t, `${path}[${i}]`));
+}
+
+function repeaters(v: JsonValue, path: string): TrackRepeater[] {
+  return arr(v, path).map((r, i): TrackRepeater => {
+    const at = `${path}[${i}]`;
+    const o = obj(r, ['count', 'sizes'], at);
+    return { count: numField(o, 'count', at), sizes: trackSizes(field(o, 'sizes', at), `${at}.sizes`) };
+  });
+}
+
+function gridSpan(v: JsonValue, path: string): GridSpan {
+  const k = kindOf(v, path);
+  if (k === 'definite') {
+    const o = obj(v, ['kind', 'start', 'end'], path);
+    return { kind: 'definite', start: numField(o, 'start', path), end: numField(o, 'end', path) };
+  }
+  if (k === 'auto') return { kind: 'auto', span: numField(obj(v, ['kind', 'span'], path), 'span', path) };
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function decodeGrid(v: JsonValue, path: string): GridContainerStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['templateColumns', 'templateRows', 'autoColumns', 'autoRows', 'explicitColumnCount', 'explicitRowCount', 'autoFlow', 'dense', 'justifyItems'], path);
+  const f = (k: string): JsonValue => field(o, k, path);
+  return {
+    templateColumns: repeaters(f('templateColumns'), `${path}.templateColumns`),
+    templateRows: repeaters(f('templateRows'), `${path}.templateRows`),
+    autoColumns: trackSizes(f('autoColumns'), `${path}.autoColumns`),
+    autoRows: trackSizes(f('autoRows'), `${path}.autoRows`),
+    explicitColumnCount: num(f('explicitColumnCount'), `${path}.explicitColumnCount`),
+    explicitRowCount: num(f('explicitRowCount'), `${path}.explicitRowCount`),
+    autoFlow: lit(f('autoFlow'), ['row', 'column'], `${path}.autoFlow`) === 'column' ? 'column' : 'row',
+    dense: bool(f('dense'), `${path}.dense`),
+    justifyItems: lit(f('justifyItems'), GRID_SELF_ALIGN, `${path}.justifyItems`) as GridSelfAlign,
+  };
+}
+
+function decodeGridItem(v: JsonValue, path: string): GridItemStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['column', 'row', 'justifySelf'], path);
+  const self = str(field(o, 'justifySelf', path), `${path}.justifySelf`);
+  return {
+    column: gridSpan(field(o, 'column', path), `${path}.column`),
+    row: gridSpan(field(o, 'row', path), `${path}.row`),
+    justifySelf: self === 'auto' ? 'auto' : (lit(field(o, 'justifySelf', path), GRID_SELF_ALIGN, `${path}.justifySelf`) as GridSelfAlign),
+  };
+}
 
 const ALIGN_ITEMS: readonly string[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
 
@@ -593,7 +682,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const f = (k: string): JsonValue => field(o, k, path);
   const p = (k: string): string => `${path}.${k}`;
   return {
-    display: lit(f('display'), ['block', 'flex'], p('display')) as Display,
+    display: lit(f('display'), ['block', 'flex', 'grid'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
@@ -635,6 +724,8 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     columnGap: gapValue(f('columnGap'), p('columnGap')),
     textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
+    grid: decodeGrid(f('grid'), p('grid')),
+    gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
 }
 
