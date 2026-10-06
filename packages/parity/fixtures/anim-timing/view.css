@@ -1,0 +1,13 @@
+@keyframes grow { from { width: 0px; } to { width: 100px; } }
+.bar { height: 4px; background-color: rgb(0, 0, 0); }
+.t0 { animation: grow 1s linear; }
+.t1 { animation: grow 1s ease; }
+.t2 { animation: grow 1s ease-in; }
+.t3 { animation: grow 1s ease-out; }
+.t4 { animation: grow 1s ease-in-out; }
+.t5 { animation: grow 1s cubic-bezier(0.3, -0.5, 0.7, 1.5); }
+.t6 { animation: grow 1s steps(4, jump-none); }
+.t7 { animation: grow 1s steps(3, jump-both); }
+.t8 { animation: grow 1s step-start; }
+.t9 { animation: grow 1s step-end; }
+.t10 { animation-name: grow; animation-duration: 1s; animation-timing-function: ease-in; }

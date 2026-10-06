@@ -554,7 +554,7 @@ type SupportAnswer =
   | { kind: 'invalid-query'; diagnostics: readonly Diagnostic[] };
 ```
 
-A declaration with any supported row answers `needs-context`, listing its contexts. A declaration with no row answers `unsupported`. On ios or android, a declaration on the not-applicable list (`profiles/not-applicable-native.ts`, today only `cursor`) answers `not-applicable`, and so does a resolved query of that property once its element is found: the native output leaves it out and reports `DRAGON_NOT_APPLICABLE_NATIVE` (info); it is never counted as supported. API change (NA-NATIVE): `not-applicable` is a new `SupportAnswer` member, so a consumer that switches over every kind must handle it. An android possibilities query needs `{ kind: 'android', minSdk }` with an integer from 31 to 36. Today it answers `unsupported` for every declaration, because no android row is proven.
+A declaration with any supported row answers `needs-context`, listing its contexts. A declaration with no row answers `unsupported`. On ios or android, a declaration on the not-applicable list (`profiles/not-applicable-native.ts`, today `cursor` and `scroll-behavior`) answers `not-applicable`, and so does a resolved query of that property once its element is found: the native output leaves it out and reports `DRAGON_NOT_APPLICABLE_NATIVE` (info); it is never counted as supported. API change (NA-NATIVE): `not-applicable` is a new `SupportAnswer` member, so a consumer that switches over every kind must handle it. An android possibilities query needs `{ kind: 'android', minSdk }` with an integer from 31 to 36. Today it answers `unsupported` for every declaration, because no android row is proven.
 
 ```ts
 export function querySupport<K extends string>(query:
