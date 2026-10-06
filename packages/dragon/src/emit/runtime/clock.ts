@@ -34,10 +34,13 @@ public protocol DragonClock: AnyObject {
 /// The virtual driver: time moves only by advance(ms), so two runs of one script give identical dumps.
 public final class DragonVirtualClock: DragonClock {
   public private(set) var now: Double = 0
+  /// Called with each step after now moves (ANIM-b1: the animator of a mounted machine moves with the clock).
+  public var onAdvance: ((Double) -> Void)?
   public init() {}
   public func advance(_ ms: Double) {
     if !ms.isFinite || ms < 0 { fatalError("dragon: advance(\(ms)): a step must be a finite, non-negative number of milliseconds") }
     now += ms
+    onAdvance?(ms)
   }
 }
 `;
@@ -56,9 +59,12 @@ interface DragonClock {
 class DragonVirtualClock : DragonClock {
   override var now: Double = 0.0
     private set
+  /** Called with each step after now moves (ANIM-b1: the animator of a mounted machine moves with the clock). */
+  var onAdvance: ((Double) -> Unit)? = null
   fun advance(ms: Double) {
     if (!ms.isFinite() || ms < 0.0) throw IllegalStateException("dragon: advance(" + ms + "): a step must be a finite, non-negative number of milliseconds")
     now += ms
+    onAdvance?.invoke(ms)
   }
 }
 `;

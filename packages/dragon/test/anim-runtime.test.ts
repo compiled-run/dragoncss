@@ -91,16 +91,18 @@ describe('ANIM-b1: the state machine runs the animator', () => {
     expect(animSupport('android-views', () => '').text).toContain('class DragonAnimator(');
   });
 
-  it('raises one event per setter call, moves the animator by the script clock, starts it at mount and draws the frame', () => {
+  it('keeps state.ts to its hooks: one adapter per mount, its event before each render, the patched input and the frame drawn after layout', () => {
     for (const [lang, t] of [['swift', swift], ['kotlin', kotlin]] as const) {
-      expect(t, lang).toContain('animator?.event(to)');
-      expect(t, lang).toContain('machine.startAnimator(measurer)');
-      // A case script's advance moves the animator, not the bare clock.
-      expect(t, lang).toMatch(lang === 'swift' ? /case \.advance\(let ms\): m\.advance\(ms\)/ : /is DragonScriptStep\.Advance -> m\.advance\(s\.ms\)/);
-      expect(t, lang).not.toMatch(/m\.clock\.advance/);
-      expect(t, lang).toContain('animator?.patch(i)');
-      expect(t, lang).toContain('dragonAnimatedSides(animator, n.id, ');
-      expect(t, lang).toContain('animator?.color(n.id, "background-color")');
+      const state = t.slice(t.indexOf(lang === 'swift' ? 'public final class DragonStateMount' : 'class DragonStateMount('));
+      const mount = state.slice(0, state.indexOf(lang === 'swift' ? '\n}\n' : '\n}\n'));
+      expect(mount.match(/anim\?\.(event\(\)|input\(|draw\(t\))/g), lang).toEqual(['anim?.event()', 'anim?.input(', 'anim?.draw(t)']);
+      expect(mount, lang).toContain(lang === 'swift' ? 'anim = DragonAnimMount(machine, measurer, display: display)' : 'DragonAnimMount.of(machine, measurer, display)');
+      // The machine itself carries nothing of the animation: the tables are attached to it by the per-program sources.
+      const machine = t.slice(t.indexOf(lang === 'swift' ? 'public final class DragonStateMachine' : 'class DragonStateMachine('), t.indexOf(lang === 'swift' ? 'public final class DragonStateMount' : 'class DragonStateMount('));
+      expect(machine, lang).not.toMatch(/anim/i);
+      // The adapter moves with the machine's clock (R2) and writes the background through the background module's writer.
+      expect(t, lang).toContain(lang === 'swift' ? 'machine.clock.onAdvance = { [weak self] ms in self?.advance(ms) }' : 'machine.clock.onAdvance = { ms -> advance(ms) }');
+      expect(t, lang).toMatch(/dragonBackground\((b|v), (c|it)\)/);
     }
   });
 

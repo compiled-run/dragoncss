@@ -7,6 +7,7 @@
 // reads the wall clock (plant laneUsesWallClock). No platform animation API is used.
 import type { AnimTables, EasingCode, ValueCode } from '@dragon/layout';
 import type { GeneratedFile } from '../../types.ts';
+import type { StateEmit } from './state.ts';
 import { doubleLit, stringLit } from '../native-support.ts';
 import type { Lang } from '../native-support.ts';
 
@@ -137,6 +138,28 @@ export function animTablesLit(lang: Lang, t: AnimTables, prefix: string): { read
   return { decls, expr };
 }
 
+/**
+ * The per-program emission hook (state.ts machineSource): the tables as typed constants pushed onto out, and the machine expression
+ * wrapped in dragonAnimAttach with the tables, each assignment's input function (its layout variant's) and the initial assignment.
+ */
+export function animAttach(lang: Lang, e: StateEmit, prefix: string, machine: string, out: string[], variantFns: readonly string[]): string {
+  const t = e.anim;
+  if (t === undefined) throw new AnimEmitError(`${e.id}: no animation tables to attach`);
+  const sp = e.program;
+  if (t.assignments !== sp.assignments.length) throw new AnimEmitError(`${e.id}: the animation tables hold ${t.assignments} assignments, the state program ${sp.assignments.length}`);
+  const lit = animTablesLit(lang, t, prefix);
+  out.push(...lit.decls);
+  out.push(lang === 'swift' ? `private let ${prefix}Tables: AnimTables = ${lit.expr}` : `private val ${prefix}Tables: AnimTables = ${lit.expr}`);
+  const inputs = sp.deltas.map((d, i) => {
+    const fn = variantFns[d.variant];
+    if (fn === undefined) throw new AnimEmitError(`${e.id}: assignment ${i} lays out variant ${d.variant}, which the program does not have`);
+    return fn;
+  });
+  return lang === 'swift'
+    ? `dragonAnimAttach(${machine}, ${prefix}Tables, [${inputs.join(', ')}], ${sp.initial})`
+    : `dragonAnimAttach(${machine}, ${prefix}Tables, listOf(${inputs.join(', ')}), ${sp.initial})`;
+}
+
 function falses(n: number): string {
   return Array.from({ length: n }, () => 'false').join(', ');
 }
@@ -206,6 +229,88 @@ public final class DragonAnimator {
   public func patch(_ input: LayoutInput) -> LayoutInput {
     if entries.items.isEmpty { return input }
     do { return try rtAnimator_patchInput(input, entries, tables) } catch { fatalError("dragon: animator patch: \(error)") }
+  }
+}
+
+/// A state program's animation tables and each assignment's input function, attached to every machine the program makes.
+public final class DragonAnimProgram {
+  let tables: AnimTables
+  let inputs: [(Double) -> LayoutInput]
+  let initial: Int
+  init(_ tables: AnimTables, _ inputs: [(Double) -> LayoutInput], _ initial: Int) { self.tables = tables; self.inputs = inputs; self.initial = initial }
+}
+
+private let dragonAnimPrograms = NSMapTable<DragonStateMachine, DragonAnimProgram>(keyOptions: .weakMemory, valueOptions: .strongMemory)
+
+/// Attaches a program's animation tables to a fresh machine (the per-program sources call it); returns the machine.
+public func dragonAnimAttach(_ m: DragonStateMachine, _ tables: AnimTables, _ inputs: [(Double) -> LayoutInput], _ initial: Int) -> DragonStateMachine {
+  if Double(inputs.count) != tables.assignments { fatalError("dragon: \(inputs.count) assignment inputs for \(tables.assignments) assignments") }
+  dragonAnimPrograms.setObject(DragonAnimProgram(tables, inputs, initial), forKey: m)
+  return m
+}
+
+/// The animation of a mounted machine (the mount's hooks call it): the animator starts at mount (R7), takes one event per committed
+/// setter (R4) and moves with the machine's clock (R2), re-rendering each step; draw writes the frame's colours through the runtime
+/// writers after each render, and input patches the frame's lengths (R16). nil for a machine without animation tables.
+public final class DragonAnimMount {
+  private let machine: DragonStateMachine
+  private let animator: DragonAnimator
+  private let render: () -> Void
+  private var driver: DragonDisplayDriver?
+
+  public init?(_ machine: DragonStateMachine, _ measurer: TextMeasurer, display: Bool, render: @escaping () -> Void) {
+    guard let p = dragonAnimPrograms.object(forKey: machine) else { return nil }
+    let inputs = p.inputs.map { f -> LayoutInput in
+      do { return try environment_resolveEnvironment(f(1), block_NO_ENGINE_FAULTS, measurer) } catch { fatalError("dragon: the animator inputs: \(error)") }
+    }
+    self.machine = machine
+    self.render = render
+    animator = DragonAnimator(tables: p.tables, inputs: inputs, initial: p.initial, current: machine.current)
+    machine.clock.onAdvance = { [weak self] ms in self?.advance(ms) }
+    if display {
+      driver = DragonDisplayDriver(tick: { [weak self] dt in
+        guard let self = self else { return false }
+        self.machine.clock.advance(dt)
+        return self.animator.busy
+      })
+      drive()
+    }
+  }
+
+  /// R4: the style change event of a committed setter.
+  public func event() {
+    animator.event(machine.current)
+    drive()
+  }
+
+  private func advance(_ ms: Double) {
+    animator.advance(ms)
+    render()
+  }
+
+  /// R3: the display driver runs while the animator is busy.
+  private func drive() {
+    if let d = driver, animator.busy { d.start() }
+  }
+
+  /// R16: the engine input with the frame's lengths.
+  public func input(_ i: LayoutInput) -> LayoutInput { return animator.patch(i) }
+
+  /// R16: the frame's colours through the runtime writers: backgrounds, border sides and text runs (R9 closure included).
+  public func draw(_ t: DragonTree) {
+    let sides = ["border-top-color", "border-right-color", "border-bottom-color", "border-left-color"]
+    func visit(_ v: UIView) {
+      if let b = v as? DragonBoxView {
+        if let c = animator.color(b.dragonId, "background-color") { dragonBackground(b, c) }
+        let colors = b.dragonBorderColors.enumerated().map { (i, x) in animator.color(b.dragonId, sides[i]) ?? x }
+        if colors != b.dragonBorderColors { b.dragonBorderColors = colors }
+      } else if let x = v as? DragonTextView, let p = x.dragonParent, let c = animator.color(p, "color") {
+        x.dragonSetText(x.dragonText, family: x.dragonFamily, color: c)
+        x.setNeedsDisplay()
+      }
+      for s in v.subviews { visit(s) }
+    }
+    visit(t.root)
   }
 }
 
@@ -299,6 +404,92 @@ class DragonAnimator(private val tables: AnimTables, inputs: List<LayoutInput>, 
 
   /** The engine input with the frame's lengths patched in (R16); the input itself when nothing animates. */
   fun patch(input: LayoutInput): LayoutInput = if (entries.isEmpty()) input else rtAnimator_patchInput(input, entries, tables)
+}
+
+/** A state program's animation tables and each assignment's input function, attached to every machine the program makes. */
+class DragonAnimProgram(val tables: AnimTables, val inputs: List<(Double) -> LayoutInput>, val initial: Int)
+
+private val dragonAnimPrograms = java.util.WeakHashMap<DragonStateMachine, DragonAnimProgram>()
+
+/** Attaches a program's animation tables to a fresh machine (the per-program sources call it); returns the machine. */
+fun dragonAnimAttach(m: DragonStateMachine, tables: AnimTables, inputs: List<(Double) -> LayoutInput>, initial: Int): DragonStateMachine {
+  if (inputs.size.toDouble() != tables.assignments) throw IllegalStateException("dragon: " + inputs.size + " assignment inputs for " + tables.assignments + " assignments")
+  dragonAnimPrograms[m] = DragonAnimProgram(tables, inputs, initial)
+  return m
+}
+
+/**
+ * The animation of a mounted machine (the mount's hooks call it): the animator starts at mount (R7), takes one event per committed
+ * setter (R4) and moves with the machine's clock (R2), re-rendering each step; draw writes the frame's colours through the runtime
+ * writers after each render, and input patches the frame's lengths (R16). of gives null for a machine without animation tables.
+ */
+class DragonAnimMount private constructor(private val machine: DragonStateMachine, p: DragonAnimProgram, measurer: TextMeasurer, display: Boolean, private val render: () -> Unit) {
+  private val animator = DragonAnimator(p.tables, p.inputs.map { environment_resolveEnvironment(it(1.0), block_NO_ENGINE_FAULTS, measurer) }, p.initial, machine.current)
+  private var driver: DragonDisplayDriver? = null
+
+  init {
+    machine.clock.onAdvance = { ms -> advance(ms) }
+    if (display) {
+      driver = DragonDisplayDriver { dt ->
+        machine.clock.advance(dt)
+        animator.busy
+      }
+      drive()
+    }
+  }
+
+  companion object {
+    fun of(machine: DragonStateMachine, measurer: TextMeasurer, display: Boolean, render: () -> Unit): DragonAnimMount? {
+      val p = dragonAnimPrograms[machine] ?: return null
+      return DragonAnimMount(machine, p, measurer, display, render)
+    }
+  }
+
+  /** R4: the style change event of a committed setter. */
+  fun event() {
+    animator.event(machine.current)
+    drive()
+  }
+
+  private fun advance(ms: Double) {
+    animator.advance(ms)
+    render()
+  }
+
+  /** R3: the display driver runs while the animator is busy. */
+  private fun drive() {
+    val d = driver ?: return
+    if (animator.busy) d.start()
+  }
+
+  /** R16: the engine input with the frame's lengths. */
+  fun input(i: LayoutInput): LayoutInput = animator.patch(i)
+
+  /** R16: the frame's colours through the runtime writers: backgrounds, border sides and text runs (R9 closure included). */
+  fun draw(t: DragonTree) {
+    val sides = arrayOf("border-top-color", "border-right-color", "border-bottom-color", "border-left-color")
+    fun visit(v: android.view.View) {
+      if (v is DragonBoxView) {
+        animator.color(v.dragonId, "background-color")?.let { dragonBackground(v, it) }
+        val c = v.dragonBorderColors
+        var changed = false
+        val colors = Array(c.size) { i -> animator.color(v.dragonId, sides[i])?.also { changed = true } ?: c[i] }
+        if (changed) {
+          v.dragonBorderColors = colors
+          v.invalidate()
+        }
+      } else if (v is DragonTextView) {
+        val p = v.dragonParent
+        val c = if (p == null) null else animator.color(p, "color")
+        if (c != null) {
+          v.dragonSetText(v.dragonText, v.dragonFamily, c)
+          v.invalidate()
+        }
+      }
+      if (v is android.view.ViewGroup) for (k in 0 until v.childCount) visit(v.getChildAt(k))
+    }
+    visit(t.root)
+  }
 }
 
 /** The display driver (R3): Choreographer, Δ from successive frame times. tick gets Δ in ms and returns whether to keep running. */
