@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { ALIAS_FAMILIES } from '../src/css/aliases.ts';
 import { ANIMATION_KINDS } from '../src/css/animation-kinds.ts';
 import { LONGHANDS, PROPERTY_FAMILIES, SHORTHANDS } from '../src/css/properties.ts';
 import { DIAGNOSTIC_FEATURES, LEGACY_FEATURES } from '../src/diagnostics/codes.ts';
@@ -69,6 +70,26 @@ describe('property families (css/properties/<family>.ts)', () => {
   it('each family\'s inherited, container and text-role lists name only its own longhands', () => {
     for (const f of PROPERTY_FAMILIES) {
       for (const p of [...f.inherited, ...f.container, ...f.textRole, ...Object.keys(f.aspects)]) expect(f.longhands, `${f.id}: ${p}`).toContain(p);
+    }
+  });
+});
+
+describe('legacy aliases (css/aliases/<family>.ts)', () => {
+  const ids = Object.keys(ALIAS_FAMILIES);
+  it('one line per family, sorted by id, one file per family, each a property family', () => {
+    expect(ids).toEqual(sorted(ids));
+    expect(sorted(stems('css/aliases'))).toEqual(sorted(ids));
+    for (const id of ids) expect(PROPERTY_FAMILIES.map((f) => f.id), id).toContain(id);
+  });
+  it('no alias is claimed twice or is itself a property, and each family file aliases only its own family\'s properties', () => {
+    expect(doubleClaims(ids.map((id) => [id, Object.keys(ALIAS_FAMILIES[id]!)]))).toEqual([]);
+    for (const id of ids) {
+      const family = PROPERTY_FAMILIES.find((f) => f.id === id)!;
+      const own: readonly string[] = [...family.longhands, ...family.shorthands];
+      for (const [alias, property] of Object.entries(ALIAS_FAMILIES[id]!)) {
+        expect(own, `${id}: ${alias}`).toContain(property);
+        expect([...LONGHANDS, ...SHORTHANDS] as readonly string[], alias).not.toContain(alias);
+      }
     }
   });
 });

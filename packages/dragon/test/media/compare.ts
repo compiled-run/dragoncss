@@ -1,11 +1,24 @@
-// Compares the media module with the Chrome capture: mediaText, matchMedia at every viewport and root, and the band partition.
-import { band, bandAt, evaluateMediaQueryList, parseMediaQueryList, serialiseMediaQueryList } from '../../src/media/index.ts';
+// Compares the media module with the Chrome capture: mediaText, matchMedia at every viewport and root, and the band partition;
+// then the same at every fractional frame (MQ-R0), where each frame's media size is Chrome's float value (R3).
+import { band, bandAt, emulatedMediaViewport, evaluateMediaQueryList, mediaViewport, parseMediaQueryList, serialiseMediaQueryList } from '../../src/media/index.ts';
 import type { MediaFaults } from '../../src/media/index.ts';
 import { chromeNumber } from './chrome-number.ts';
 import { CORPUS } from './corpus.ts';
-import type { Capture } from './corpus.ts';
+import type { Capture, FrameKind } from './corpus.ts';
 
-export type Mismatch = { readonly kind: 'mediaText' | 'matches' | 'band'; readonly subject: string; readonly detail: string };
+type Viewport = { readonly width: number; readonly height: number };
+
+/** The media viewport Chrome evaluates in a captured frame: an iframe of whole device px, or an emulated main frame. */
+export function frameViewport(frame: readonly [FrameKind, number, number, number], faults: MediaFaults): Viewport {
+  const [kind, width, height, dpr] = frame;
+  if (kind === 'iframe') return mediaViewport({ width, height }, dpr, faults);
+  if (kind === 'main') return emulatedMediaViewport({ width, height }, dpr, faults);
+  throw new Error(`unknown frame kind ${String(kind)}`);
+}
+
+const label = (frame: readonly [FrameKind, number, number, number]): string => `${frame[0]} ${frame[1]}x${frame[2]} at DPR ${frame[3]}`;
+
+export type Mismatch = { readonly kind: 'mediaText' | 'matches' | 'band'; readonly subject: string; readonly detail: string; readonly fractional?: true };
 
 export type Comparison = { readonly comparisons: number; readonly mismatches: readonly Mismatch[]; readonly refused: readonly string[] };
 
@@ -73,5 +86,57 @@ export function compareCapture(capture: Capture, faults: MediaFaults): Compariso
       }
     }
   }
+  compareFractional(capture, faults, (ok, m) => expect(ok, { ...m, fractional: true }), refused);
   return { comparisons, mismatches, refused };
+}
+
+function compareFractional(capture: Capture, faults: MediaFaults, expect: (ok: boolean, m: Mismatch) => void, refused: string[]): void {
+  const { frames } = capture.fractional;
+  const viewports = frames.map((f) => frameViewport(f, faults));
+  const bitsOf = (subject: string, matches: string): string => {
+    if (matches.length !== frames.length || /[^01]/.test(matches)) throw new Error(`${subject}: ${matches.length} match bits for ${frames.length} frames`);
+    return matches;
+  };
+  for (const q of capture.fractional.queries) {
+    const list = parseMediaQueryList(q.query, faults);
+    const text = serialiseMediaQueryList(list, chromeNumber);
+    expect(text === q.mediaText, { kind: 'mediaText', subject: q.query, detail: `${JSON.stringify(text)} != Chrome ${JSON.stringify(q.mediaText)}` });
+    const bits = bitsOf(q.query, q.matches);
+    viewports.forEach((v, k) => {
+      const r = evaluateMediaQueryList(list, { ...v, rootFontSize: 16 }, faults);
+      if (r.kind === 'refused') {
+        if (!refused.includes(q.query)) refused.push(q.query);
+        return;
+      }
+      const chrome = bits[k] === '1';
+      expect(r.matches === chrome, { kind: 'matches', subject: q.query, detail: `${label(frames[k] as Capture['fractional']['frames'][number])} (${v.width}x${v.height}): ${r.matches} != Chrome ${chrome}` });
+    });
+  }
+  for (const captured of capture.fractional.bands) {
+    const sheet = CORPUS.fractional.bandSheets.find((s) => s.name === captured.sheet);
+    if (sheet === undefined) throw new Error(`capture has an unknown fractional band sheet ${captured.sheet}`);
+    const partition = band(sheet.queries.map((q) => parseMediaQueryList(q, faults)), faults);
+    if (partition.kind !== 'bands') {
+      expect(false, { kind: 'band', subject: sheet.name, detail: `refused: ${partition.detail}` });
+      continue;
+    }
+    const texts = partition.bands.map((b) => b.condition);
+    expect(JSON.stringify(texts) === JSON.stringify(captured.conditions.map((c) => c.text)), { kind: 'band', subject: sheet.name, detail: `conditions ${JSON.stringify(texts)} != captured` });
+    for (const c of captured.conditions) {
+      const text = serialiseMediaQueryList(parseMediaQueryList(c.text, faults), chromeNumber);
+      expect(text === c.mediaText && c.mediaText !== 'not all', { kind: 'band', subject: `${sheet.name} ${c.text}`, detail: `mediaText ${text} != Chrome ${c.mediaText}` });
+    }
+    const chromeAt = (k: number): number[] => captured.conditions.flatMap((c, i) => (bitsOf(c.text, c.matches)[k] === '1' ? [i] : []));
+    const ours = viewports.map((v) => bandAt(partition, v, faults)?.index ?? null);
+    viewports.forEach((v, k) => {
+      const want = ours[k] === null ? [] : [ours[k]];
+      expect(JSON.stringify(chromeAt(k)) === JSON.stringify(want), { kind: 'band', subject: sheet.name, detail: `${label(frames[k] as Capture['fractional']['frames'][number])} (${v.width}x${v.height}): band ${JSON.stringify(want)} != Chrome ${JSON.stringify(chromeAt(k))}` });
+    });
+    // Every band holds a captured frame, where Chrome matches that band's condition and no other.
+    for (const b of partition.bands) {
+      const inside = ours.flatMap((o, k) => (o === b.index ? [k] : []));
+      const exact = inside.filter((k) => JSON.stringify(chromeAt(k)) === JSON.stringify([b.index]));
+      expect(inside.length > 0 && exact.length === inside.length, { kind: 'band', subject: `${sheet.name} band ${b.index}`, detail: `${inside.length} captured frames inside, ${exact.length} where Chrome matches only this band` });
+    }
+  }
 }

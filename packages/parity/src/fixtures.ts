@@ -1,5 +1,6 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
 import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeResetLonghand } from 'dragon';
+import { ALIASES } from './fixture-groups/aliases.ts';
 import { ANIMATIONS } from './fixture-groups/animations.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
@@ -7,12 +8,15 @@ import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
+import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
+import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { ENV } from './fixture-groups/env.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
+import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
@@ -79,6 +83,7 @@ export type FixtureSpec =
  * import and one line here, each in sorted order (test/registry-claims.test.ts).
  */
 export const GROUPS = {
+  aliases: ALIASES,
   animations: ANIMATIONS,
   attributes: ATTRIBUTES,
   background: BACKGROUND,
@@ -86,6 +91,8 @@ export const GROUPS = {
   'border-paint': BORDER_PAINT,
   'cascade-var': CASCADE_VAR,
   contexts: CONTEXTS,
+  'ctx-proof': CTX_PROOF,
+  'display-legacy': DISPLAY_LEGACY,
   env: ENV,
   fonts: FONTS,
   grid: GRID,
@@ -93,6 +100,7 @@ export const GROUPS = {
   interaction: INTERACTION,
   'logical-props': LOGICAL_PROPS,
   media: MEDIA,
+  'media-runtime': MEDIA_RUNTIME,
   'milestone-1': MILESTONE_1,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
   'rem-contexts': REM_CONTEXTS,

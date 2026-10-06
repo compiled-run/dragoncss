@@ -98,18 +98,18 @@ describe('the LayoutStyle constructor arguments', () => {
     expect(fields.length).toBeGreaterThan(40);
     expect([...STYLE_FIELDS]).toEqual(fields);
   });
-  it('an aspect ratio is its typed constructor on both backends: ratio, auto-ratio, and auto for a box without one', () => {
+  it('an aspect ratio is its typed constructor on both backends: ratio, auto-ratio, and auto for a box without one, before the null grid fields', () => {
     const css = 'body { margin: 0; } .a { width: 64px; aspect-ratio: 16 / 9; } .b { width: 64px; aspect-ratio: auto 2 / 1; }';
     const ratioInput = inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]);
     const p = nativePrograms(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(ratioInput), []);
     if (p.kind !== 'ready') throw new Error(p.reason);
     const swift = emitUikitCases([emitCase(p.programs.uikit)]).map((f) => f.text).join('\n');
     const kotlin = emitAndroidViewsCases([emitCase(p.programs['android-views'])]).map((f) => f.text).join('\n');
-    expect(swift).toContain('AspectRatioValue_ratio(JsString("ratio"), 1024.0, 576.0))');
-    expect(swift).toContain('AspectRatioValue_autoRatio(JsString("auto-ratio"), 128.0, 64.0))');
-    expect(swift).toContain('JsString("start"), Auto(JsString("auto")))');
-    expect(kotlin).toContain('AspectRatioValue_ratio("ratio", 1024.0, 576.0))');
-    expect(kotlin).toContain('AspectRatioValue_autoRatio("auto-ratio", 128.0, 64.0))');
+    expect(swift).toContain('AspectRatioValue_ratio(JsString("ratio"), 1024.0, 576.0), nil, nil)');
+    expect(swift).toContain('AspectRatioValue_autoRatio(JsString("auto-ratio"), 128.0, 64.0), nil, nil)');
+    expect(swift).toContain('JsString("start"), Auto(JsString("auto")), nil, nil)');
+    expect(kotlin).toContain('AspectRatioValue_ratio("ratio", 1024.0, 576.0), null, null)');
+    expect(kotlin).toContain('AspectRatioValue_autoRatio("auto-ratio", 128.0, 64.0), null, null)');
   });
 });
 
@@ -187,6 +187,11 @@ describe('a calculated line height is built as the engine\'s LineHeightCalc (non
       expect(src.split(`LineHeightCalc(${q('calc')}, Px(${q('px')}, 12.0), ${q('non-negative')})`).length - 1, lang).toBe(2);
       expect(src, lang).not.toContain(`LengthCalc(${q('calc')}, Px(${q('px')}, 12.0)`);
     }
+  });
+  it('refuses a style without its grid fields instead of building it (they are null where unused)', () => {
+    const { grid: _grid, ...rest } = nativeRoot().style;
+    const root = { kind: 'box', id: 'p', boxType: 'element', style: rest, children: [] } as const;
+    for (const lang of ['swift', 'kotlin'] as const) expect(() => inputFunctions(lang, root as never, 't'), lang).toThrow('LayoutStyle.grid is missing');
   });
 });
 

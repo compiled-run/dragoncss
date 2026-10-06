@@ -7,6 +7,7 @@
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { KeyframesRule } from '../css/at-rules/keyframes.ts';
 import type { AnimationKind } from '../css/animation-kinds.ts';
+import { resolveAlias } from '../css/aliases.ts';
 import { admitted, animationKind } from '../css/animation-kinds.ts';
 import type { Longhand } from '../css/properties.ts';
 import { isLonghand, isShorthand, LONGHANDS } from '../css/properties.ts';
@@ -117,8 +118,10 @@ const easingOf = (i: AnimItem): EasingValue => (i.kind === 'easing' ? i.easing :
 const keywordOf = (i: AnimItem): string => (i.kind === 'keyword' ? i.value : i.kind === 'name' ? i.value : '');
 
 /** The longhands a transition-property name stands for (R8: shorthands expand, `all` is every Dragon longhand). */
-function longhandsNamed(name: string): readonly Longhand[] | null {
-  if (name === 'all') return LONGHANDS;
+function longhandsNamed(written: string): readonly Longhand[] | null {
+  if (written === 'all') return LONGHANDS;
+  // css_animations.cc CalculateTransitionUpdateForStandardProperty resolves an alias name to its property.
+  const name = resolveAlias(written);
   if (isLonghand(name)) return [name];
   if (isShorthand(name)) return shorthandHandler(name).longhands;
   return null;
