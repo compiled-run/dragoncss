@@ -207,6 +207,13 @@ export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDa
 
 const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
 
+// css-lists-3 §3: a list item without a marker is a block (Blink LayoutListItem is a LayoutBlockFlow); computed-checks.ts refuses the rest.
+function displayOfStyle(id: string, get: Get): Display {
+  const v = get('display');
+  if (v.kind === 'keyword' && v.value === 'list-item') return 'block';
+  return keyword<Display>(id, get, 'display', ['block', 'flex', 'inline']);
+}
+
 // css-align-3 §4.2: first baseline is baseline; last baseline has no layout mapping.
 function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allowed: readonly T[]): T {
   const v = get(p);
@@ -219,7 +226,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
-    display: keyword<Display>(id, get, 'display', ['block', 'flex', 'inline']),
+    display: displayOfStyle(id, get),
     position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute']),
     top: inset(id, get, 'top', l),
     right: inset(id, get, 'right', l),
