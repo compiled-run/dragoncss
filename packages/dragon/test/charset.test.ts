@@ -1,4 +1,4 @@
-// @charset (/tmp/specs/na-native-2.md entry 5, css/at-rules/charset.ts): `@charset "utf-8";` at the very start of a sheet is a no-op
+// @charset (css-syntax-3 §3.2, css/at-rules/charset.ts): `@charset "utf-8";` at the very start of a sheet is a no-op
 // on every target, as Chrome drops it; every other form is refused. The parity group charset proves the no-op against Chrome:
 // each accepted fixture's committed capture equals charset-none's, in both directions.
 import { readFileSync } from 'node:fs';

@@ -1,8 +1,8 @@
-// @charset (css-syntax-3 §3.2, /tmp/specs/na-native-2.md entry 5): it only selects the encoding the stylesheet's bytes are decoded
-// with, and Chrome's parser then drops it, so it never affects rendering on any target. Dragon receives decoded text, so it accepts
-// exactly the UTF-8 form the encoding sniffer reads: `@charset "utf-8";` with the label ASCII case-insensitive, double quotes, and
-// the rule at the very start of the sheet. Any other encoding (the front end may have decoded the bytes differently) and any
-// @charset elsewhere are refused. Only types come from at-rules.ts, so the two modules can import each other.
+// @charset (css-syntax-3 §3.2): it only selects the encoding the stylesheet's bytes are decoded with, and Chrome 145's parser then
+// drops it, so it never affects rendering on any target. Dragon receives decoded text, so it accepts exactly the UTF-8 form the
+// encoding sniffer reads: `@charset "utf-8";` with the label ASCII case-insensitive, double quotes, and the rule at the very start
+// of the sheet. Any other encoding (the front end may have decoded the bytes differently) and any @charset elsewhere are refused.
+// Only types come from at-rules.ts, so the two modules can import each other.
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { AtRuleContext, AtRuleHandler } from '../at-rules.ts';
 import { asciiLower } from '../escapes.ts';

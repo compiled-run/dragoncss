@@ -1,4 +1,4 @@
-// Fixture group charset (/tmp/specs/na-native-2.md entry 5): @charset "utf-8"; at the very start of a sheet is accepted as a no-op,
+// Fixture group charset (css-syntax-3 §3.2): @charset "utf-8"; at the very start of a sheet is accepted as a no-op,
 // as Chrome drops it after decoding. Each accepted fixture must render in Chrome exactly as charset-none, the same sheet without
 // it (packages/dragon/test/charset.test.ts). The rejects name the forms that need Chrome-checked semantics.
 import type { FixtureSpec } from '../fixtures.ts';
