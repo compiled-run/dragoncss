@@ -481,7 +481,12 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
   /** A script's resize step: the media root takes the new size, and its own onSizeChanged hands it to the machine. */
   fun resize(width: Double, height: Double) {
     requested = Pair(width, height)
-    media.layoutParams = ViewGroup.LayoutParams(pxOf(width), pxOf(height))
+    // The stage's own LayoutParams type is kept (a FrameLayout measures its children with MarginLayoutParams; a plain
+    // ViewGroup.LayoutParams set here would fail its next measure pass with a ClassCastException).
+    val lp = media.layoutParams
+    lp.width = pxOf(width)
+    lp.height = pxOf(height)
+    media.layoutParams = lp
     media.layout(media.left, media.top, media.left + pxOf(width), media.top + pxOf(height))
   }
 

@@ -14,7 +14,7 @@ import type { DeviceRecord } from '../src/device-run.ts';
 import { ENV_LANE, evaluateStates, scriptCases, STATE_LANE } from '../src/device-lanes.ts';
 import { referenceDump } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
-import { BACKEND_OF, engineBoxes, expectedEngine, nativeCompile } from '../src/native-host.ts';
+import { BACKEND_OF, engineBoxes, expectedEngine, hostSources, nativeCompile } from '../src/native-host.ts';
 import { resizeEmits, resizePrefixes } from '../src/resize-scripts.ts';
 import { resizeCases } from '../src/resize-capture.ts';
 import { FIXTURES } from '../src/fixtures.ts';
@@ -61,6 +61,14 @@ describe('the resize prefix scripts in the host apps', () => {
     const kotlin = emitStatePrograms('android-views', resizeEmits('android').filter((x) => x.id === 'mqr-state-band~resize')).map((f) => f.text).join('\n');
     expect(kotlin).toContain('DragonScriptStep.Resize(352.0, 304.0)');
     expect(kotlin).toMatch(/DragonBandBinding\(dragonStates0Bands, 1\), 2\)/);
+    // The resize step keeps the stage's LayoutParams type (a FrameLayout's measure pass casts to MarginLayoutParams), and the media
+    // root measures a tree root rendered inside its own layout (a rotation's size change) before laying it out.
+    const host = hostSources('android', 'x');
+    const support = host.find((f) => f.path.endsWith('views/DragonState.kt'))?.text ?? '';
+    expect(support).toContain('val lp = media.layoutParams\n    lp.width = pxOf(width)');
+    expect(support).not.toContain('media.layoutParams = ViewGroup.LayoutParams(');
+    const media = host.find((f) => f.path.endsWith('DragonMedia.kt'))?.text ?? '';
+    expect(media).toMatch(/override fun onLayout[\s\S]*c\.measure\(View\.MeasureSpec\.makeMeasureSpec\(lp\.width, View\.MeasureSpec\.EXACTLY\)[\s\S]*super\.onLayout/);
   });
 });
 

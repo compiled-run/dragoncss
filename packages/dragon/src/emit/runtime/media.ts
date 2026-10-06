@@ -60,6 +60,7 @@ function kotlinText(): string {
   return String.raw`package dev.dragon.views
 
 import android.content.Context
+import android.view.View
 import android.widget.FrameLayout
 import dev.dragon.layout.BandFaults
 import dev.dragon.layout.BandTable
@@ -88,6 +89,20 @@ class DragonMediaRoot(context: Context) : FrameLayout(context) {
     widthPx = w.toDouble()
     heightPx = h.toDouble()
     onSize?.invoke(widthPx, heightPx)
+  }
+  /**
+   * A size change the system lays out (a rotation) reaches onSize inside this view's layout, after the measure pass: the tree root
+   * that onSize renders was never measured and would be laid out 0x0. Every child with a fixed size is measured to it first.
+   */
+  override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+    for (i in 0 until childCount) {
+      val c = getChildAt(i)
+      val lp = c.layoutParams
+      if (lp.width >= 0 && lp.height >= 0 && (c.measuredWidth != lp.width || c.measuredHeight != lp.height)) {
+        c.measure(View.MeasureSpec.makeMeasureSpec(lp.width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(lp.height, View.MeasureSpec.EXACTLY))
+      }
+    }
+    super.onLayout(changed, left, top, right, bottom)
   }
 }
 
