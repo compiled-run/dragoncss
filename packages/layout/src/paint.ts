@@ -39,7 +39,7 @@ export function opacityAlpha8(opacity: number): number {
   return floorOf(froundOf(froundOf(o * 255) + 0.5));
 }
 
-/** Skia's SkMulDiv255Round (include/core/SkMath.h): a * b / 255 rounded, in integers. */
+/** Skia's SkMulDiv255Round: a * b / 255 rounded, in integers (pnt1-effects.test.ts measures it with the blits below). */
 export function mulDiv255Round(a: number, b: number): number {
   const prod = a * b + 128;
   return floorOf((prod + floorOf(prod / 256)) / 256);

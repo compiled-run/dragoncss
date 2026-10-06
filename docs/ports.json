@@ -2034,6 +2034,7 @@
         { "lines": "204-301", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/paint.ts", "symbol": null, "use": "port" },
         { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
       ]
     },
@@ -2080,6 +2081,7 @@
         { "lines": "134-137", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/paint.ts", "symbol": null, "use": "port" },
         { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
       ]
     },
@@ -2298,6 +2300,7 @@
         { "lines": "243-270", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/paint.ts", "symbol": null, "use": "port" },
         { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
       ]
     },
