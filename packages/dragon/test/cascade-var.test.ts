@@ -225,4 +225,3 @@ describe('a substituted value is checked against each target\'s profile', () => 
     expect(run(css).diagnostics.map((d) => [d.code, d.target, /substitutes to revert/.test(d.message)]), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios', true], ['DRAGON_UNSUPPORTED_VALUE', 'web', true]]);
   });
 });
-});
