@@ -93,7 +93,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 175px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -179,7 +182,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "196px 171px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -265,7 +271,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "36px 12px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -351,7 +360,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "51px 12px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -437,7 +449,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "55px 20px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -523,7 +538,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "37px 13px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -609,7 +627,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "85px 27px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -695,7 +716,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "80px 7px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -781,7 +805,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "80px 15px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -867,7 +894,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "89px 65px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -953,7 +983,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "80px 11px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1039,7 +1072,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "80px 30px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1125,7 +1161,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "80px 15px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1211,7 +1250,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "10px 5px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1297,7 +1339,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "20px 5px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     }
   ]

@@ -93,7 +93,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 42.8333px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -179,7 +182,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 41.8333px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -265,7 +271,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "22.3333px 7.33333px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -351,7 +360,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "21.5px 7px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -437,7 +449,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "24px 9px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -523,7 +538,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "22.6667px 7.5px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -609,7 +627,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "22px 7px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     }
   ]

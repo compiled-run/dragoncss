@@ -53,6 +53,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `ui/gfx/animation/keyframe/timing_function.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/cubic_bezier.cc`: Copyright 2014 The Chromium Authors
 - `ui/gfx/geometry/quad_f.cc`: Copyright 2012 The Chromium Authors
+- `ui/gfx/geometry/rect_f.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/sin_cos_degrees.h`: Copyright 2023 The Chromium Authors
 - `ui/gfx/geometry/transform.cc`: Copyright 2012 The Chromium Authors
 
@@ -97,9 +98,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkFont.cpp`: Copyright 2014 Google Inc.
 - `third_party/skia/src/core/SkGaussFilter.cpp`: Copyright 2017 Google Inc.
 - `third_party/skia/src/core/SkGeometry.cpp`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkGeometry.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkMaskBlurFilter.cpp`: Copyright 2017 Google Inc.
 - `third_party/skia/src/core/SkMaskFilterBase.cpp`: Copyright 2025 Google LLC
 - `third_party/skia/src/core/SkMatrix.cpp`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkPathPriv.cpp`: Copyright 2025 Google Inc.
+- `third_party/skia/src/core/SkPathPriv.h`: Copyright 2015 Google Inc.
 - `third_party/skia/src/core/SkPathRawShapes.cpp`: Copyright 2025 Google LLC.
 - `third_party/skia/src/core/SkRRect.cpp`: Copyright 2012 Google Inc.
 - `third_party/skia/src/core/SkScan_AAAPath.cpp`: Copyright 2016 The Android Open Source Project

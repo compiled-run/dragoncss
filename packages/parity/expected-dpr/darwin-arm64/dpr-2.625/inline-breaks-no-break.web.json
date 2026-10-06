@@ -93,7 +93,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 99.0476px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -179,7 +182,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 99.0476px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -265,7 +271,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -371,7 +380,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -477,7 +489,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -583,7 +598,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -689,7 +707,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -795,7 +816,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -901,7 +925,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1007,7 +1034,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1113,7 +1143,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1219,7 +1252,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1325,7 +1361,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1431,7 +1470,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1537,7 +1579,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1643,7 +1688,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1749,7 +1797,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1855,7 +1906,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -1961,7 +2015,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -2067,7 +2124,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -2173,7 +2233,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 9.90476px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
