@@ -28,7 +28,13 @@ body { margin: 0; font-family: Ahem; font-size: 10px; }
 .bp { border-top: 6px double #c00; border-bottom: 3px dashed #0c0; width: 150px; }
 .bp > div { border: 2px solid #000; border-top-style: inherit; border-bottom-style: inherit; border-top-color: inherit; border-bottom-color: inherit; border-top-width: inherit; height: 6px; }
 .hp { width: 200px; height: 20px; min-height: 10px; max-height: 30px; min-width: 50px; max-width: 120px; }
-.hp > div { height: inherit; min-height: inherit; max-height: inherit; min-width: inherit; max-width: inherit; background-color: #6c6; }
+/* Each child lets one inherited constraint decide its frame: height 20, min-height 10 over 5, max-height 30 under 100, min-width 50 over 10, max-width 120 under 300. */
+.hp > div { height: 2px; background-color: #6c6; }
+.hp > .h { height: inherit; }
+.hp > .mnh { height: 5px; min-height: inherit; }
+.hp > .mxh { height: 100px; max-height: inherit; }
+.hp > .mnw { width: 10px; min-width: inherit; }
+.hp > .mxw { width: 300px; max-width: inherit; }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -41,6 +47,6 @@ body { margin: 0; font-family: Ahem; font-size: 10px; }
 <div data-dragon-id="box" class="box"><div data-dragon-id="box1"></div><div data-dragon-id="box2a" class="auto"></div></div>
 <div data-dragon-id="box2" class="box2"><div data-dragon-id="box21"></div></div>
 <div data-dragon-id="bp" class="bp"><div data-dragon-id="bp1"></div></div>
-<div data-dragon-id="hp" class="hp"><div data-dragon-id="hp1"></div></div>
+<div data-dragon-id="hp" class="hp"><div data-dragon-id="hp1" class="h"></div><div data-dragon-id="hp2" class="mnh"></div><div data-dragon-id="hp3" class="mxh"></div><div data-dragon-id="hp4" class="mnw"></div><div data-dragon-id="hp5" class="mxw"></div></div>
 </body>
 </html>
