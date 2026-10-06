@@ -1135,6 +1135,20 @@ export function setAnimatorDurationScale(h: DeviceHandle, value: 0 | 1): void {
   if ('serial' in h) adb(h, ['shell', 'settings', 'put', 'global', 'animator_duration_scale', String(value)]);
 }
 
+/** The iOS simulator's Reduce Motion: the accessibility default UIAccessibility reads, then the notification that tells apps it changed. */
+export const IOS_REDUCE_MOTION = { domain: 'com.apple.Accessibility', key: 'ReduceMotionEnabled', notification: 'com.apple.accessibility.reduce.motion.status' } as const;
+
+/** Turns the OS's reduced-motion setting on or off: Android's animator duration scale (0 is on), iOS's Reduce Motion. A failed call throws. */
+export function setReducedMotion(h: DeviceHandle, on: boolean): void {
+  if ('serial' in h) {
+    setAnimatorDurationScale(h, on ? 0 : 1);
+    return;
+  }
+  const m = IOS_REDUCE_MOTION;
+  exec('xcrun', ['simctl', 'spawn', h.udid, 'defaults', 'write', m.domain, m.key, '-bool', on ? 'YES' : 'NO']);
+  exec('xcrun', ['simctl', 'spawn', h.udid, 'notifyutil', '-p', m.notification]);
+}
+
 /**
  * The app's device record, checked field by field: JSON with the platform of the target, non-empty strings, a positive finite
  * scale, pairs of whole non-negative device px, and nothing else. A record that fails is a tooling fault, never a silent pass.

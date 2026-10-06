@@ -7,8 +7,9 @@
 // (device-states), not here, and the rotation animation is never compared (the dumps are taken once the root has settled).
 // MQ-R2 (R9): every phase also reports the platform's readings, which must be the ones the platform rule gives the inputs it read
 // (Android: Dragon's port of Chromium's TouchDevice rule over every input device's sources; iOS: a touch screen, and an iPad's
-// mice), and on Android two more phases turn the OS's reduced-motion setting on (animator duration scale 0, set by the host through
-// adb while the app holds) and off again: the band must follow it, with the state kept. The band oracle emulates the readings.
+// mice), and two more phases turn the OS's reduced-motion setting on and off again while the app holds (Android's animator duration
+// scale through adb; iOS's Reduce Motion, the simulator's accessibility default and its notification): the band must follow it, with
+// the state kept. The band oracle emulates the readings.
 import { createHash } from 'node:crypto';
 import type { Browser } from 'playwright';
 import { rtBand } from '@dragon/layout';
@@ -122,7 +123,7 @@ export function bandEnvironmentOfReadings(r: Omit<EnvReadings, 'source' | 'input
 }
 
 /**
- * device-env at one DPR: the three phase dumps in dir, each judged as the header says, failures under device-env. browser is a
+ * device-env at one DPR: the phase dumps in dir, each judged as the header says, failures under device-env. browser is a
  * Chrome launched at the device's DPR (chrome.ts launchChrome), for the band oracle.
  */
 export async function evaluateEnv(target: NativeTarget, dpr: number, dir: string, device: DeviceRecord, browser: Browser | null, extra: readonly LaneFailure[] = []): Promise<DeviceSet> {

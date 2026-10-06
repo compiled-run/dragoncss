@@ -153,7 +153,7 @@ describe('MQ-R2: the media-environment scripts', () => {
     expect(evaluateStates('ios', DPR, ok, device, scripts).failures.filter((f) => f.kind !== 'pixel')).toEqual([]);
     const bad = join(dir, 'env-scripts-bad');
     mkdirSync(bad);
-    prefixes.forEach((_, k) => write(bad, k, (r) => (k === 1 ? { ...r, source: 'platform' } : k === 2 ? { ...r, pointer: 'fine' } : r)));
+    prefixes.forEach((_, k) => write(bad, k, (r) => (k === 1 ? { ...r, source: 'platform' } : k === 2 ? { ...r, pointer: r.pointer === 'fine' ? 'coarse' : 'fine' } : r)));
     const wrong = evaluateStates('ios', DPR, bad, device, scripts).failures.filter((f) => f.kind !== 'pixel');
     expect(wrong.map((f) => [f.case, f.kind])).toEqual([[prefixes[1]?.id, 'environment'], [prefixes[2]?.id, 'environment']]);
   });
@@ -177,12 +177,13 @@ describe('device-env (one real rotation per device)', () => {
   };
   const PORTRAIT = { width: 402, height: 778 };
   const LANDSCAPE = { width: 778, height: 402 };
-  const [portrait, landscape, back] = envIds('ios') as [string, string, string];
-  it('declares the lane with the three phases (and Android\'s two reduced-motion phases) and emits the env script on the band program, its setter first', () => {
+  const [portrait, landscape, back, motion, motionBack] = envIds('ios') as [string, string, string, string, string];
+  const REDUCED: Readings = { ...PHONE, reducedMotion: 'reduce' };
+  it('declares the lane with the three rotation phases and the two reduced-motion phases on both platforms, and emits the env script on the band program, its setter first', () => {
     expect(envIds('ios')).toEqual(envCaseIds('ios'));
-    expect(envIds('ios')).toEqual(['mqr-rotate~env~portrait', 'mqr-rotate~env~landscape', 'mqr-rotate~env~back']);
-    expect(envIds('android')).toEqual([...envIds('ios'), 'mqr-rotate~env~motion', 'mqr-rotate~env~motion-back']);
-    expect(envIds('android').map(motionScaleOf)).toEqual([null, null, null, 0, 1]);
+    expect(envIds('ios')).toEqual(['mqr-rotate~env~portrait', 'mqr-rotate~env~landscape', 'mqr-rotate~env~back', 'mqr-rotate~env~motion', 'mqr-rotate~env~motion-back']);
+    expect(envIds('android')).toEqual(envIds('ios'));
+    expect(envIds('ios').map(motionScaleOf)).toEqual([null, null, null, 0, 1]);
     const e = envEmits('ios');
     expect(e.map((x) => [x.id, x.scripts.map((s) => s.id), x.band?.atoms.map((a) => a.feature)])).toEqual([[ENV_SCRIPT, [ENV_SCRIPT], ['orientation', 'width', 'prefers-reduced-motion']]]);
     expect(emitStatePrograms('uikit', e).map((f) => f.text).join('\n')).toContain('expectedDigests: [:], make: dragonStates0Machine, steps: [.set(0, 1), .dump]');
@@ -194,7 +195,14 @@ describe('device-env (one real rotation per device)', () => {
     phase(ok, portrait, PORTRAIT);
     phase(ok, landscape, LANDSCAPE);
     phase(ok, back, PORTRAIT);
+    phase(ok, motion, PORTRAIT, { readings: REDUCED });
+    phase(ok, motionBack, PORTRAIT);
     expect((await evaluateEnv('ios', DPR, ok, device, null)).failures).toEqual([]);
+    // Reduce Motion turned on that the readings miss fails the motion phase alone.
+    const missed = join(dir, 'env-ios-missed');
+    mkdirSync(missed);
+    for (const [id, size] of [[portrait, PORTRAIT], [landscape, LANDSCAPE], [back, PORTRAIT], [motion, PORTRAIT], [motionBack, PORTRAIT]] as const) phase(missed, id, size);
+    expect((await evaluateEnv('ios', DPR, missed, device, null)).failures.map((f) => [f.case, f.kind])).toEqual([[motion, 'environment']]);
     const bad = join(dir, 'env-bad');
     mkdirSync(bad);
     phase(bad, portrait, PORTRAIT, { band: (b) => (b + 1) % bands.table.bands.length });
@@ -208,7 +216,7 @@ describe('device-env (one real rotation per device)', () => {
     expect(f.filter((x) => x.case === back && x.kind !== 'environment').length).toBeGreaterThan(0);
     const none = join(dir, 'env-none');
     mkdirSync(none);
-    expect((await evaluateEnv('ios', DPR, none, device, null)).failures.map((x) => x.kind)).toEqual(['dump-missing', 'dump-missing', 'dump-missing']);
+    expect((await evaluateEnv('ios', DPR, none, device, null)).failures.map((x) => x.kind)).toEqual(['dump-missing', 'dump-missing', 'dump-missing', 'dump-missing', 'dump-missing']);
   });
   it('MQ-R2: holds every phase to the platform rule\'s readings of its recorded inputs; Android\'s motion phases must follow the OS setting', async () => {
     const android = { ...device, platform: 'android' } as unknown as DeviceRecord;

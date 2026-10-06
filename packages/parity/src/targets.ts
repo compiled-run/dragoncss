@@ -110,15 +110,14 @@ export function corpusSuites(): readonly CorpusSuite[] {
 
 /**
  * MQ-R1 device-env (device-env.ts): the rotation's three phases of the fill-the-stage fixture, in the order one launch runs them.
- * MQ-R2 (T067 R9): on Android two more, the OS's reduced-motion setting turned on (animator duration scale 0) and back off; iOS has
- * no automatable switch for it (simctl has none), so its reduced-motion row is a caveat.
+ * MQ-R2 (T067 R9): then two more on both platforms, the OS's reduced-motion setting turned on and back off while the app holds
+ * (Android's animator duration scale over adb; iOS's Reduce Motion, the simulator's com.apple.Accessibility default and its
+ * change notification).
  */
-export function envCaseIds(target: NativeTarget): readonly string[] {
-  const phases = target === 'android' ? ['portrait', 'landscape', 'back', 'motion', 'motion-back'] : ['portrait', 'landscape', 'back'];
-  return phases.map((p) => `mqr-rotate~env~${p}`);
+export function envCaseIds(_target: NativeTarget): readonly string[] {
+  return ['portrait', 'landscape', 'back', 'motion', 'motion-back'].map((p) => `mqr-rotate~env~${p}`);
 }
 
-/** MQ-R1: every resize prefix script id ("<fixture>[-rtl]~resize<k>", resize-scripts.ts), from the scripts and the fixtures' directions alone. */
 export function resizeScriptIds(): readonly string[] {
   // MQ-R2: then the media-environment scripts, whose fixtures run only as scripts.
   return [...RESIZE_SCRIPTS, ...ENV_SCRIPTS].flatMap((s) => {

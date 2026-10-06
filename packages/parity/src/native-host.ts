@@ -283,7 +283,7 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   wait()
 }
 
-/// MQ-R1 device-env: the fill-the-stage mount kept across the portrait, landscape and back phases.
+/// MQ-R1 device-env: the fill-the-stage mount kept across the portrait, landscape, back and (MQ-R2) motion phases.
 var dragonEnvMount: DragonStateMount? = nil
 
 /// One env phase (T067 R7 (c)): portrait builds the mount, its root pinned to the host's safe area so it fills the stage at any
@@ -297,6 +297,26 @@ func dragonEnvCase(_ k: Int, id: String, run: DragonRun, out: String, stage: UIV
   let landscape = phase == "landscape"
   guard let host = stage.superview, let window = host.window, let scene = window.windowScene else { fatalError("dragon host: \(id): no window scene") }
   let t0 = CACurrentMediaTime()
+  if phase == "motion" || phase == "motion-back" {
+    // MQ-R2 (T067 R9): the host turns the OS's Reduce Motion on or off while the app holds; the mount's observer moves the band.
+    guard let mount = dragonEnvMount else { fatalError("dragon host: \(id) without its portrait phase") }
+    let reduce = phase == "motion"
+    dragonWrite(out + "/hold-" + id, "ok")
+    var released = 0
+    func poll() {
+      // Once released, the phase dumps when the readings follow the setting, or after 5 s if they never do (the lane then fails
+      // the readings, as it must for a reading that misses the OS setting).
+      if FileManager.default.fileExists(atPath: out + "/release-" + id) { released += 1 }
+      if released == 0 || (mount.machine.readings.reducedMotion != reduce && released < 100) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { poll() }
+        return
+      }
+      host.layoutIfNeeded()
+      dragonEnvDump(k, id: id, phase: phase, mount: mount, script: script, t0: t0, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
+    }
+    poll()
+    return
+  }
   if phase == "portrait" {
     let mount = DragonStateMount(machine: script.make(), stage: host, measurer: bridge.measurer, scale: scale, bridge: bridge, size: (Double(stage.bounds.width), Double(stage.bounds.height)))
     let m = mount.media
@@ -329,26 +349,31 @@ func dragonEnvCase(_ k: Int, id: String, run: DragonRun, out: String, stage: UIV
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { settle() }
       return
     }
-    let tree = mount.tree
-    tree.root.layoutIfNeeded()
-    CATransaction.flush()
-    let t1 = CACurrentMediaTime()
-    let base = script.dragonCase
-    // The phase's case is its own id at the size the root settled at; its expected dump is judged on the host from that size.
-    let c = DragonCase(id: id, fixture: base.fixture, direction: base.direction, compilerDigest: base.compilerDigest, viewport: (width: mount.machine.viewport.0, height: mount.machine.viewport.1), expectedDigests: [scale: "device-env"], input: base.input, build: base.build)
-    let pixels = dragonCapture(tree.root, scale: scale, points: run.points[id] ?? [])
-    let t2 = CACurrentMediaTime()
-    let environment = dragonEnvironment(mount, scale: scale)
-    let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000), environment: environment)
-    dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
-    if phase == "back" {
-      mount.media.removeFromSuperview()
-      stage.isHidden = false
-      dragonEnvMount = nil
-    }
-    DispatchQueue.main.async { dragonCase(k + 1, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge) }
+    dragonEnvDump(k, id: id, phase: phase, mount: mount, script: script, t0: t0, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
   }
   settle()
+}
+
+/// Dumps an env phase with the environment the root observed, then runs the next case; the last phase (motion-back) unmounts.
+func dragonEnvDump(_ k: Int, id: String, phase: String, mount: DragonStateMount, script: DragonStateScript, t0: CFTimeInterval, run: DragonRun, out: String, stage: UIView, scale: Double, device: DumpDevice, bridge: DragonBridge) {
+  let tree = mount.tree
+  tree.root.layoutIfNeeded()
+  CATransaction.flush()
+  let t1 = CACurrentMediaTime()
+  let base = script.dragonCase
+  // The phase's case is its own id at the size the root settled at; its expected dump is judged on the host from that size.
+  let c = DragonCase(id: id, fixture: base.fixture, direction: base.direction, compilerDigest: base.compilerDigest, viewport: (width: mount.machine.viewport.0, height: mount.machine.viewport.1), expectedDigests: [scale: "device-env"], input: base.input, build: base.build)
+  let pixels = dragonCapture(tree.root, scale: scale, points: run.points[id] ?? [])
+  let t2 = CACurrentMediaTime()
+  let environment = dragonEnvironment(mount, scale: scale)
+  let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000), environment: environment)
+  dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
+  if phase == "motion-back" {
+    mount.media.removeFromSuperview()
+    stage.isHidden = false
+    dragonEnvMount = nil
+  }
+  DispatchQueue.main.async { dragonCase(k + 1, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge) }
 }
 
 _ = UIApplicationMain(CommandLine.argc, CommandLine.unsafeArgv, nil, NSStringFromClass(DragonAppDelegate.self))

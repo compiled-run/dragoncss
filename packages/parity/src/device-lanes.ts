@@ -16,7 +16,7 @@ import { GATE_CHANNEL_DELTA } from './compare.ts';
 import type { AppRun, DeviceHandle, DeviceRecord, DeviceSpec } from './device-run.ts';
 import type { EarlyBoots } from './device-jobs.ts';
 import { runDevicesInChildren } from './device-jobs.ts';
-import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, recordProblems, release, runApp, setAnimatorDurationScale, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
+import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, recordProblems, release, runApp, setReducedMotion, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
 import { deviceEvidence } from './device-evidence.ts';
 import { runDeviceVectors } from './device-vectors.ts';
 import type { DeviceRun, HostRun } from './lanes.ts';
@@ -607,8 +607,8 @@ export function afterRelease(o: DeviceOutcome, problem: string | null): DeviceOu
 
 /** One device of the matrix: boot, the batch launch and its checks, the capture-trust launch and, on the vectors device, the vectors lane. */
 /**
- * The device-env launch: the env phases of the target; MQ-R2's motion phases hold for the host to set the OS's animator duration
- * scale (0, then 1), and the scale is put back to 1 whatever the run does.
+ * The device-env launch: the env phases; MQ-R2's motion phases hold for the host to turn the OS's reduced-motion setting on, then
+ * off (setReducedMotion), and the setting is turned off whatever the run does.
  */
 export async function runEnv(h: DeviceHandle, artifact: string, target: NativeTarget, outDir: string): Promise<AppRun> {
   const ids = envIds(target);
@@ -620,11 +620,11 @@ export async function runEnv(h: DeviceHandle, artifact: string, target: NativeTa
       onHold: (id) => {
         const scale = motionScaleOf(id);
         if (scale === null) throw new Error(`the host held device-env case ${id}, which has no OS setting to change`);
-        setAnimatorDurationScale(h, scale === 0 ? 0 : 1);
+        setReducedMotion(h, scale === 0);
       },
     });
   } finally {
-    setAnimatorDurationScale(h, 1);
+    setReducedMotion(h, false);
   }
 }
 
