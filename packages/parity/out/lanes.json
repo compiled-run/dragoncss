@@ -110,7 +110,7 @@
             {
               "corpus": "p1",
               "suite": "animator",
-              "cases": 18
+              "cases": 26
             },
             {
               "corpus": "extended",
@@ -148,8 +148,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "35ee16dff7493914b4179ce93474b72773b4c5f5ee60bcb3fd3aadaa4c0acdda",
-          "totalCases": 619681,
+          "caseListSha256": "01e2f4edfbdc837f4f765effa0ec8bff7e5eaca7fbed48fbd5564f8a462b26f8",
+          "totalCases": 619689,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
             "suites": [
@@ -198,9 +198,9 @@
               {
                 "corpus": "p1",
                 "suite": "animator",
-                "declared": 18,
-                "total": 18,
-                "pass": 18
+                "declared": 26,
+                "total": 26,
+                "pass": 26
               },
               {
                 "corpus": "extended",
@@ -267,7 +267,7 @@
               }
             ],
             "digests": {
-              "p1": "96f6167fb2b8aefcf8f4716412506482fb593394512ac25543810406e4299d6e",
+              "p1": "ede6b45e0ad91e8eb02fa4c5a423897f11d4555915ea0df7caa1442064a25433",
               "extended": "c05dc8a25f073549386cbd68b75801eef720a63e001dc3ef1b65c06596df0f8b"
             }
           },
@@ -334,7 +334,7 @@
             {
               "corpus": "p1",
               "suite": "animator",
-              "cases": 18
+              "cases": 26
             },
             {
               "corpus": "extended",
@@ -372,8 +372,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "35ee16dff7493914b4179ce93474b72773b4c5f5ee60bcb3fd3aadaa4c0acdda",
-          "totalCases": 619681,
+          "caseListSha256": "01e2f4edfbdc837f4f765effa0ec8bff7e5eaca7fbed48fbd5564f8a462b26f8",
+          "totalCases": 619689,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1); arm64-apple-ios15.0-simulator; simctl spawn on iPhone 17",
             "suites": [
@@ -422,9 +422,9 @@
               {
                 "corpus": "p1",
                 "suite": "animator",
-                "declared": 18,
-                "total": 18,
-                "pass": 18
+                "declared": 26,
+                "total": 26,
+                "pass": 26
               },
               {
                 "corpus": "extended",
@@ -491,7 +491,7 @@
               }
             ],
             "digests": {
-              "p1": "96f6167fb2b8aefcf8f4716412506482fb593394512ac25543810406e4299d6e",
+              "p1": "ede6b45e0ad91e8eb02fa4c5a423897f11d4555915ea0df7caa1442064a25433",
               "extended": "c05dc8a25f073549386cbd68b75801eef720a63e001dc3ef1b65c06596df0f8b"
             }
           },
@@ -1561,7 +1561,7 @@
             {
               "corpus": "p1",
               "suite": "animator",
-              "cases": 18
+              "cases": 26
             },
             {
               "corpus": "extended",
@@ -1599,8 +1599,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "35ee16dff7493914b4179ce93474b72773b4c5f5ee60bcb3fd3aadaa4c0acdda",
-          "totalCases": 619681,
+          "caseListSha256": "01e2f4edfbdc837f4f765effa0ec8bff7e5eaca7fbed48fbd5564f8a462b26f8",
+          "totalCases": 619689,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
             "suites": [
@@ -1649,9 +1649,9 @@
               {
                 "corpus": "p1",
                 "suite": "animator",
-                "declared": 18,
-                "total": 18,
-                "pass": 18
+                "declared": 26,
+                "total": 26,
+                "pass": 26
               },
               {
                 "corpus": "extended",
@@ -1718,7 +1718,7 @@
               }
             ],
             "digests": {
-              "p1": "96f6167fb2b8aefcf8f4716412506482fb593394512ac25543810406e4299d6e",
+              "p1": "ede6b45e0ad91e8eb02fa4c5a423897f11d4555915ea0df7caa1442064a25433",
               "extended": "c05dc8a25f073549386cbd68b75801eef720a63e001dc3ef1b65c06596df0f8b"
             }
           },
@@ -1785,7 +1785,7 @@
             {
               "corpus": "p1",
               "suite": "animator",
-              "cases": 18
+              "cases": 26
             },
             {
               "corpus": "extended",
@@ -1823,8 +1823,8 @@
               "cases": 50000
             }
           ],
-          "caseListSha256": "35ee16dff7493914b4179ce93474b72773b4c5f5ee60bcb3fd3aadaa4c0acdda",
-          "totalCases": 619681,
+          "caseListSha256": "01e2f4edfbdc837f4f765effa0ec8bff7e5eaca7fbed48fbd5564f8a462b26f8",
+          "totalCases": 619689,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18; d8 --min-api 31; ART app_process on dragon-smoke (Android 16, arm64-v8a)",
             "suites": [
@@ -1873,9 +1873,9 @@
               {
                 "corpus": "p1",
                 "suite": "animator",
-                "declared": 18,
-                "total": 18,
-                "pass": 18
+                "declared": 26,
+                "total": 26,
+                "pass": 26
               },
               {
                 "corpus": "extended",
@@ -1942,7 +1942,7 @@
               }
             ],
             "digests": {
-              "p1": "96f6167fb2b8aefcf8f4716412506482fb593394512ac25543810406e4299d6e",
+              "p1": "ede6b45e0ad91e8eb02fa4c5a423897f11d4555915ea0df7caa1442064a25433",
               "extended": "c05dc8a25f073549386cbd68b75801eef720a63e001dc3ef1b65c06596df0f8b"
             }
           },
