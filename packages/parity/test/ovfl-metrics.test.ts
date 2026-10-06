@@ -237,13 +237,15 @@ describe('the capture environment (R2: overlay scrollbars only)', () => {
   });
 
   it('every committed capture records overlay scrollbars, and a capture without them is refused', () => {
-    const capture = { case: 'c', chrome: CHROME_VERSION, platform: REFERENCE_PLATFORM, devicePixelRatio: 2, direction: 'ltr', scrollbars: 'overlay', scrollbarArgs: '-AppleShowScrollBars WhenScrolling', records: [{ id: 'viewport', scrollWidth: 1, scrollHeight: 1, clientWidth: 1, clientHeight: 1 }] };
+    const capture = { case: 'c', chrome: CHROME_VERSION, platform: REFERENCE_PLATFORM, devicePixelRatio: 2, direction: 'ltr', scrollbars: 'overlay', scrollbarArgs: '-AppleShowScrollBars WhenScrolling', records: [{ id: 'viewport', scrollWidth: 1, scrollHeight: 1, clientWidth: 1, clientHeight: 1 }], extents: [] };
     expect(parseScrollCapture(JSON.stringify(capture), 'c', 2, 'x').scrollbars).toBe('overlay');
     expect(() => parseScrollCapture(JSON.stringify({ ...capture, scrollbars: 'classic' }), 'c', 2, 'x')).toThrow('scrollbars is "classic", not overlay');
     const { scrollbars: _s, ...without } = capture;
     expect(() => parseScrollCapture(JSON.stringify(without), 'c', 2, 'x')).toThrow('scrollbars is undefined, not overlay');
     expect(() => parseScrollCapture(JSON.stringify({ ...capture, scrollbarArgs: '' }), 'c', 2, 'x')).toThrow('scrollbarArgs is ""');
     expect(() => parseScrollCapture('[]', 'c', 2, 'x')).toThrow('not a scroll capture object');
+    expect(() => parseScrollCapture(JSON.stringify({ ...capture, extents: [{ id: 'a', minLeft: 0, maxLeft: 1, minTop: 0, maxTop: 0 }] }), 'c', 2, 'x')).toThrow('are not the element scroll containers');
+    expect(() => parseScrollCapture(JSON.stringify({ ...capture, extents: undefined }), 'c', 2, 'x')).toThrow('extents is not a list');
     expect(() => parseScrollCapture(JSON.stringify({ ...capture, platform: 'linux-x64' }), 'c', 2, 'x')).toThrow('platform "linux-x64"');
     expect(() => parseScrollCapture(JSON.stringify({ ...capture, direction: 'up' }), 'c', 2, 'x')).toThrow('direction "up"');
     for (const dpr of SCROLL_DPRS) for (const f of all) for (const c of f.cases) expect(committedScrollCapture(c.id, dpr)).toMatchObject({ scrollbars: 'overlay', scrollbarArgs: SCROLLBAR_ARGS.join(' ') });
