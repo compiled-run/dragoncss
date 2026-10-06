@@ -216,6 +216,9 @@ export function checkShadowBackdrops(root: ResolvedElement, targets: readonly st
     if (el.element.tag === 'html' || el.element.tag === 'body' || isReplacedTag(el.element.tag) || transformsDescendants(el)) return;
     const display = keyword(el, 'display');
     if (display !== 'block' && display !== 'flex') return refuse(el, `its own display: ${display} (inline-level boxes paint among text)`, `Give ${address} display: block or flex.`);
+    // A translucent group (opacity, PNT1-effects) composites the shadow onto the group's own content, not the baked backdrop.
+    const opacity = (el.props.get('opacity' as Longhand) as ResolvedValue | undefined)?.value;
+    if (opacity !== undefined && !(opacity.kind === 'number' && opacity.value === 1)) return refuse(el, 'its own translucent group (opacity)', `Put the opacity on a wrapper element around ${address}, or remove the shadow.`);
     for (const a of [...chain, el]) {
       const pos = keyword(a, 'position');
       if (pos !== 'static') return refuse(el, `the content beneath ${a.element.address}'s position: ${pos} layer`, 'Keep the shadowed box and its ancestors in flow (position: static).');
