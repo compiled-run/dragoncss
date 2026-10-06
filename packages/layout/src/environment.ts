@@ -22,12 +22,14 @@ import type {
   GapValue,
   GridContainerStyle,
   InsetValue,
+  InlineChild,
   LayoutBox,
   LayoutInput,
   LayoutStyle,
   LengthCalc,
   LineHeightCalc,
   LineHeightValue,
+  LineStrut,
   MarginValue,
   MaxSizeValue,
   MinSizeValue,
@@ -42,6 +44,7 @@ import type {
   TrackBreadth,
   TrackRepeater,
   TrackSize,
+  VerticalAlignValue,
   ViewportLength,
 } from './input.ts';
 import type { EngineFaults } from './block.ts';
@@ -150,6 +153,7 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
  */
 function boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): boolean {
   if (styleNeedsEnvironment(b.style)) return true;
+  if (b.strut !== null && fontNeedsEnvironment(b.strut.font, b.strut.lineHeight, faults)) return true;
   if (resolveOrder(b.style.order, faults) !== b.style.order) return true;
   for (const c of b.children) {
     if (c.kind === 'box') {
@@ -163,12 +167,25 @@ function boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): boolean {
       if ((x.kind === 'px' && !inCssLengthRange(x.value)) || (y.kind === 'px' && !inCssLengthRange(y.value))) return true;
       continue;
     }
-    const f = c.font;
-    if (f.specifiedSize.kind !== 'px' || f.specifiedSize.value !== f.size) return true;
-    if (computedFontSize(f.size, f.absoluteSize, 1, faults.minimumFontSizeIgnored) !== f.size) return true;
-    if (c.lineHeight.kind === 'percent' || c.lineHeight.kind === 'calc' || (c.lineHeight.kind === 'px' && !inCssLengthRange(c.lineHeight.value))) return true;
+    if (inlineNeedsEnvironment(c, faults)) return true;
   }
   return false;
+}
+
+/** Whether an inline-level child or its descendants hold a font or line height to resolve, or an inline box a calculation. */
+function inlineNeedsEnvironment(c: InlineChild, faults: EngineFaults): boolean {
+  if (fontNeedsEnvironment(c.font, c.lineHeight, faults)) return true;
+  if (c.kind !== 'inline') return false;
+  if (styleNeedsEnvironment(c.style)) return true;
+  for (const k of c.children) if (inlineNeedsEnvironment(k, faults)) return true;
+  return false;
+}
+
+/** Whether a font's size or a line height is not already its computed px value at DPR 1. */
+function fontNeedsEnvironment(f: FontSpec, lineHeight: LineHeightValue, faults: EngineFaults): boolean {
+  if (f.specifiedSize.kind !== 'px' || f.specifiedSize.value !== f.size) return true;
+  if (computedFontSize(f.size, f.absoluteSize, 1, faults.minimumFontSizeIgnored) !== f.size) return true;
+  return lineHeight.kind === 'percent' || lineHeight.kind === 'calc' || (lineHeight.kind === 'px' && !inCssLengthRange(lineHeight.value));
 }
 
 /** Whether any length of a style is a calculation, or a px length outside the CSS length range (clamped by the pass). */
@@ -177,7 +194,7 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
     s.top.kind, s.right.kind, s.bottom.kind, s.left.kind, s.width.kind, s.height.kind, s.minWidth.kind, s.minHeight.kind, s.maxWidth.kind,
     s.maxHeight.kind, s.marginTop.kind, s.marginRight.kind, s.marginBottom.kind, s.marginLeft.kind, s.paddingTop.kind, s.paddingRight.kind,
     s.paddingBottom.kind, s.paddingLeft.kind, s.borderTopWidth.kind, s.borderRightWidth.kind, s.borderBottomWidth.kind,
-    s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind,
+    s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind, s.verticalAlign.kind,
   ];
   for (const k of kinds) if (k === 'calc') return true;
   const lengths = [
@@ -189,8 +206,23 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
 }
 
 function resolveBox(b: LayoutBox, env: Env): LayoutBox {
-  const children = b.children.map((c): LayoutBox | TextLeaf | ReplacedLeaf => (c.kind === 'box' ? resolveBox(c, env) : c.kind === 'replaced' ? resolveReplaced(c, env) : resolveText(c, env)));
-  return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), children };
+  const children = b.children.map((c): LayoutBox | ReplacedLeaf | InlineChild => (c.kind === 'box' ? resolveBox(c, env) : c.kind === 'replaced' ? resolveReplaced(c, env) : resolveInline(c, env)));
+  return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), strut: b.strut === null ? null : resolveStrut(b.strut, env), children };
+}
+
+function resolveInline(c: InlineChild, env: Env): InlineChild {
+  if (c.kind === 'text') return resolveText(c, env);
+  const size = computedSize(c.font, env);
+  const font: FontSpec = { family: c.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true };
+  const lineHeight = resolveLineHeightValue(c.lineHeight, size, env);
+  if (c.kind === 'br') return { kind: 'br', id: c.id, font, lineHeight };
+  return { kind: 'inline', id: c.id, style: resolveStyle(c.style, env), font, lineHeight, children: c.children.map((k) => resolveInline(k, env)) };
+}
+
+/** A strut at its computed font size, as a text run's (resolveText). */
+function resolveStrut(s: LineStrut, env: Env): LineStrut {
+  const size = computedSize(s.font, env);
+  return { font: { family: s.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true }, lineHeight: resolveLineHeightValue(s.lineHeight, size, env) };
 }
 
 /** A replaced leaf in zoomed px: its style, natural size, default object size (Blink ComputeDefaultNaturalSize scales it by the zoom) and px object-position. */
@@ -250,8 +282,15 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     order: resolveOrder(s.order, env.faults),
     rowGap: resolveGap(s.rowGap, env),
     columnGap: resolveGap(s.columnGap, env),
+    verticalAlign: resolveVerticalAlign(s.verticalAlign, env),
     grid: s.grid === null ? null : zoomGrid(s.grid, env.zoom),
   };
+}
+
+function resolveVerticalAlign(v: VerticalAlignValue, env: Env): VerticalAlignValue {
+  if (v.kind === 'px') return zoomPx(v, env.zoom);
+  if (v.kind === 'calc') return resolveLengthCalc(v, env);
+  return v;
 }
 
 /** Grid track sizes: px breadths and fit-content limits are zoomed; %, fr and the keywords are not. */
@@ -877,14 +916,24 @@ function calcDependencies(e: CalcExpr, out: DependencyFlags): void {
 
 function boxDependencies(b: LayoutBox, out: DependencyFlags): void {
   styleDependencies(b.style, out);
+  if (b.strut !== null) fontDependencies(b.strut.font, b.strut.lineHeight, out);
   for (const c of b.children) {
     if (c.kind === 'box') boxDependencies(c, out);
     else if (c.kind === 'replaced') styleDependencies(c.style, out);
-    else {
-      calcDependencies(c.font.specifiedSize, out);
-      if (c.lineHeight.kind === 'calc') calcDependencies(c.lineHeight.expr, out);
-    }
+    else inlineDependencies(c, out);
   }
+}
+
+function inlineDependencies(c: InlineChild, out: DependencyFlags): void {
+  fontDependencies(c.font, c.lineHeight, out);
+  if (c.kind !== 'inline') return;
+  styleDependencies(c.style, out);
+  for (const k of c.children) inlineDependencies(k, out);
+}
+
+function fontDependencies(f: FontSpec, lineHeight: LineHeightValue, out: DependencyFlags): void {
+  calcDependencies(f.specifiedSize, out);
+  if (lineHeight.kind === 'calc') calcDependencies(lineHeight.expr, out);
 }
 
 /** The environment inputs one style's calculations read. */
@@ -914,6 +963,7 @@ function styleDependencies(s: LayoutStyle, out: DependencyFlags): void {
   if (s.flexBasis.kind === 'calc') calcDependencies(s.flexBasis.expr, out);
   if (s.rowGap.kind === 'calc') calcDependencies(s.rowGap.expr, out);
   if (s.columnGap.kind === 'calc') calcDependencies(s.columnGap.expr, out);
+  if (s.verticalAlign.kind === 'calc') calcDependencies(s.verticalAlign.expr, out);
 }
 
 /** The environment inputs the input's tree reads (translated, so the native hosts ask the engine rather than re-walk the tree). */

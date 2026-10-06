@@ -35,36 +35,39 @@
     "calcToLu"
   ],
   "engineCalc": 4000,
+  "engineInline": 3000,
   "snapGenerated": 20000,
-  "snapVectors": 1521,
+  "snapVectors": 1560,
   "cases": {
-    "vectors-m2": 321,
-    "vectors-dpr": 1737,
-    "engine-dpr": 1737,
+    "vectors-m2": 334,
+    "vectors-dpr": 1776,
+    "engine-dpr": 1776,
     "units-m2": 120000,
-    "snap": 21521,
+    "snap": 21560,
     "snap-values": 216,
     "calc-goldens": 17,
     "engine-calc": 4000,
-    "units-calc": 50000
+    "units-calc": 50000,
+    "engine-inline": 3000
   },
   "engineSplit": {
-    "ok": 1732,
-    "unsupported": 5,
+    "ok": 1770,
+    "unsupported": 6,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "c047cdfe0e0bbda07e6a159fc84eddd08336f9255a5fed3985839cdc7f45b249",
-    "vectors-dpr": "1f6959a2e9ea630e9e23f732c18ae1474ea26002cbdaec6e1b4f17b094cb6e7d",
-    "engine-dpr": "ffad92bf419edfe47230a85d6375323c36f2b5cbf35e42b3571b0fdf86c9c760",
+    "vectors-m2": "44c05133b419bc68b6159281f163c78fe408dd60b95d491d682bca23d5f71d76",
+    "vectors-dpr": "b533832794d7c17d6506736651d71012af2fbf187071bd1de85a01105d416139",
+    "engine-dpr": "e4c871d5738b28da420f86bba00495064da588503c89ba2423e23108323357e1",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "d0e12b2b613ada5c55a33246c7167c7c03771d7e27a9d898da7d349a4b4353d3",
+    "snap": "79392f6cf73831ec6d27f7f12fa2bf3f04e785b00e365bda09df83ce2b00c404",
     "snap-values": "58ce79fe0e7e0ff8be7bab82c5ae62d22131fea58335d95781b900b7edfa8a0a",
-    "calc-goldens": "6c435a40e86b4d24e66ff663e1c031076da0776e8dd8d82eeb5f35153c26554e",
-    "engine-calc": "49dfdbe11d4504087a612651c7b5222f1767dd5b99d65ef70ea03b0897ba4f3a",
-    "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
+    "calc-goldens": "ecf83fe39672db1d4cc4b0ae42cf105405ee7774ee1217e0fe451aa88f6415ad",
+    "engine-calc": "1a618ba818459119554dcb0cab04fcf16adf8e6ea2b48a77ebb5309dba00bf5e",
+    "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50",
+    "engine-inline": "b34ac145ba14e2f398ca16bb9fa5422f259f3a6f11de604a046598a980f9628b"
   },
-  "digest": "59f34181c6e222a5a688ada2e3e053adc9c166ea531873f1e603e4ef487b1c43"
+  "digest": "c4c93229d89f7915571547c3765c48532a3995213adadb8cfbf84b5a4812e08f"
 }

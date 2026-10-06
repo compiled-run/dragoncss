@@ -2,7 +2,7 @@
 import type { Rgba8 } from '../../css/color.ts';
 import type { ColorLonghand, Longhand } from '../../css/properties.ts';
 import { SIDES } from '../../css/properties.ts';
-import type { ResolvedValue } from '../../analysis/resolve.ts';
+import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { usedColors } from './colors.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
@@ -40,20 +40,23 @@ export const BORDER_LOWERING: PaintLowering<BorderWrite> = {
     'border-colors': SIDES.map((s) => `border-${s}-color` as Longhand),
   },
   // An anonymous box has no border and currentcolor borders of its enclosing element's color (CSS2 §9.2.1.1).
-  lower: ({ box, el, parentColor }) => {
-    const colors = el === null ? null : usedColors(el);
-    const style = (side: string): BorderStyleName => {
-      if (el === null) return 'none';
-      const v = (el.props.get(`border-${side}-style` as Longhand) as ResolvedValue).value;
-      const k = v.kind === 'keyword' ? v.value : '';
-      if (!(BORDER_STYLES as readonly string[]).includes(k)) throw new ProgramError(`${box.id}: border-${side}-style ${k} has no native paint technique`);
-      return k as BorderStyleName;
-    };
-    const sideColor = (side: string): Rgba8 => (colors === null ? parentColor : colors[`border-${side}-color` as ColorLonghand]);
-    return [
-      { kind: 'border-widths' },
-      { kind: 'border-styles', styles: SIDES.map(style) as unknown as Sides<BorderStyleName> },
-      { kind: 'border-colors', colors: SIDES.map(sideColor) as unknown as Sides<Rgba8> },
-    ];
-  },
+  lower: ({ box, el, parentColor }) => borderWrites(box.id, el, parentColor),
 };
+
+/** A node's border writes: its side styles and used colours (an anonymous box's are none and its enclosing element's color). */
+export function borderWrites(id: string, el: ResolvedElement | null, parentColor: Rgba8): BorderWrite[] {
+  const colors = el === null ? null : usedColors(el);
+  const style = (side: string): BorderStyleName => {
+    if (el === null) return 'none';
+    const v = (el.props.get(`border-${side}-style` as Longhand) as ResolvedValue).value;
+    const k = v.kind === 'keyword' ? v.value : '';
+    if (!(BORDER_STYLES as readonly string[]).includes(k)) throw new ProgramError(`${id}: border-${side}-style ${k} has no native paint technique`);
+    return k as BorderStyleName;
+  };
+  const sideColor = (side: string): Rgba8 => (colors === null ? parentColor : colors[`border-${side}-color` as ColorLonghand]);
+  return [
+    { kind: 'border-widths' },
+    { kind: 'border-styles', styles: SIDES.map(style) as unknown as Sides<BorderStyleName> },
+    { kind: 'border-colors', colors: SIDES.map(sideColor) as unknown as Sides<Rgba8> },
+  ];
+}

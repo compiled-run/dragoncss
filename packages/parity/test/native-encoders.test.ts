@@ -1,10 +1,14 @@
 // P4 item 5 (notes/T013-p3-review-p4-plan.md section 2): the Swift and Kotlin dump encoders are emitted from NATIVE_DUMP_SCHEMA:
 // adding a field to a copy of the schema changes both emitted encoders; every described key is written in schema order; device
 // lanes are non-nullable where the schema says 'reference-lane'; each planted encoder fault changes the emitted source. The host
-// compile and encode of every reference dump runs in pnpm run native:encoders.
+// compile and encode of every reference dump (pnpm run native:encoders) runs at the end, for both languages.
+import { spawnSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import type { Field, FieldType } from '../src/native-dump.ts';
-import { NATIVE_DUMP_SCHEMA } from '../src/native-dump.ts';
+import { NATIVE_DUMP_SCHEMA, validateNativeDump } from '../src/native-dump.ts';
+import { relabelledReferenceDumps } from '../src/native-host.ts';
+import { repoPath } from '../src/paths.ts';
+import { hostPlatform, requireReferencePlatform } from '../src/platform.ts';
 import { ENCODER_FAULT_CODES, ENCODER_FAULTS, encoderKotlin, encoderSource, encoderSwift, plantEncoderFault, schemaClasses } from '../src/native-encoders.ts';
 
 type Obj = Extract<FieldType, { kind: 'object' }>;
@@ -54,4 +58,23 @@ describe('dump encoders from NATIVE_DUMP_SCHEMA', () => {
       }
     }
   });
+});
+
+// S12 inside pnpm test: the dumps native:encoders feeds the encoders validate on the TS side, and the host compile and encode itself
+// passes for both languages (a failing native:encoders fails here).
+describe('the encoder inputs and the host encode (S12)', () => {
+  it.each([['ios', 3], ['android', 3], ['ios', 2], ['android', 2.625]] as const)('every relabelled reference dump for %s at DPR %s passes validateNativeDump', (target, dpr) => {
+    const bad = relabelledReferenceDumps(target, dpr).flatMap((d) => {
+      const v = validateNativeDump(d);
+      return v.ok ? [] : [`${d.case.id}: ${v.errors.slice(0, 2).map((e) => `${e.path} ${e.code}`).join('; ')}`];
+    });
+    expect(bad).toEqual([]);
+  });
+  it.each(['swift', 'kotlin'] as const)('pnpm run native:encoders -- --target %s passes', (lang) => {
+    requireReferencePlatform(hostPlatform());
+    const r = spawnSync(process.execPath, ['--conditions=dragon-internal', repoPath('packages/parity/src/cli/native-encoders.ts'), '--target', lang], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 1 << 26 });
+    const out = `${r.stdout}${r.stderr}`;
+    expect(r.status, out.slice(-3000)).toBe(0);
+    expect(out).toMatch(new RegExp(`native:encoders ${lang}: status pass: (\\d+)/\\1 valid, \\1/\\1 equal, (\\d+)/\\2 planted faults caught`));
+  }, 600_000);
 });

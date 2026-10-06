@@ -7,8 +7,8 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from 'playwright';
-import type { Ctx, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, fromCssPx, layout, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
+import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextLeaf, TextMeasurer } from '@dragon/layout';
+import { absoluteRects, fromCssPx, layout, inlineLeaves, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
@@ -38,13 +38,26 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
   const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
   const zBoxes = new Map<string, LayoutBox>();
   const zParent = new Map<string, string>();
-  const replaced = new Set<string>();
+  // A text leaf's container is the block container of its inline formatting context, through any inline boxes.
+  const textContainer = new Map<string, string>();
+  // Every other node of the input: boxes, inline boxes and <br>s, which have rects but no lines of their own.
+  const notText = new Set<string>();
+  const walkInline = (c: InlineChild, container: string): void => {
+    if (c.kind === 'text') textContainer.set(c.id, container);
+    else {
+      notText.add(c.id);
+      if (c.kind === 'inline') for (const k of c.children) walkInline(k, container);
+    }
+  };
   const walk = (b: LayoutBox): void => {
+    notText.add(b.id);
     zBoxes.set(b.id, b);
     for (const c of b.children) {
-      zParent.set(c.id, b.id);
-      if (c.kind === 'box') walk(c);
-      else if (c.kind === 'replaced') replaced.add(c.id);
+      if (c.kind === 'box') {
+        zParent.set(c.id, b.id);
+        walk(c);
+      } else if (c.kind === 'replaced') notText.add(c.id);
+      else walkInline(c, b.id);
     }
   };
   walk(zoomed.root);
@@ -68,18 +81,21 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
   const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
   const out: EngineText[] = [];
   for (const r of boxes) {
-    // A replaced leaf has no text: only text leaves have lines to break.
-    if (isLine(r) || zBoxes.has(r.id) || replaced.has(r.id)) continue;
-    const pId = zParent.get(r.id);
+    if (isLine(r)) continue;
+    if (!textContainer.has(r.id)) {
+      if (notText.has(r.id)) continue;
+      throw new Error(`rect ${r.id} is not a node of the layout input`);
+    }
+    const pId = textContainer.get(r.id);
     const p = pId === undefined ? undefined : zBoxes.get(pId);
     if (pId === undefined || p === undefined) throw new Error(`text ${r.id} has no container`);
-    const leaves = p.children.filter((c): c is TextLeaf => c.kind === 'text');
+    const leaves = inlineLeaves(p);
     const li = leaves.findIndex((t) => t.id === r.id);
     if (li < 0) throw new Error(`no leaf ${r.id}`);
     const leaf = leaves[li] as TextLeaf;
     const scalars = [...leaf.text];
     const utf16 = (cp: number): number => scalars.slice(0, cp).reduce((n, s) => n + s.length, 0);
-    const placed: readonly PlacedLine[] = placeLines(ctx, p, leaves, contentWidth(pId));
+    const placed: readonly PlacedLine[] = placeLines(ctx, p, contentWidth(pId));
     const pieces = boxes.filter((b) => isLine(b) && b.parent === r.id);
     const own: EngineLine[] = [];
     for (const line of placed) {
@@ -313,10 +329,14 @@ export function checkDumpBreaks(dump: NativeDump, v: BreakVector): BreakResult {
 /** The text of every leaf of an engine input, by id. */
 export function leafTexts(root: LayoutBox): Map<string, string> {
   const out = new Map<string, string>();
+  const walkInline = (c: InlineChild): void => {
+    if (c.kind === 'text') out.set(c.id, c.text);
+    else if (c.kind === 'inline') for (const k of c.children) walkInline(k);
+  };
   const walk = (b: LayoutBox): void => {
     for (const c of b.children) {
       if (c.kind === 'box') walk(c);
-      else if (c.kind === 'text') out.set(c.id, c.text);
+      else if (c.kind !== 'replaced') walkInline(c);
     }
   };
   walk(root);
@@ -345,12 +365,22 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
   var zBoxes: [String: LayoutBox] = [:]
   var zParent: [String: String] = [:]
   var replaced: Set<String> = []
+  // A text leaf's container is the block container of its inline formatting context, through any inline boxes.
+  // Inline boxes and <br>s: nodes with rects but no lines of their own.
+  var notText = Set<String>()
+  func walkInline(_ c: any U_InlineBox_LineBreak_TextLeaf, _ container: String) {
+    if let t = c as? TextLeaf { zParent[t.id.description] = container }
+    else if let ib = c as? InlineBox { notText.insert(ib.id.description); for k in ib.children.items { walkInline(k, container) } }
+    else if let lb = c as? LineBreak { notText.insert(lb.id.description) }
+  }
   func walk(_ b: LayoutBox) {
     zBoxes[b.id.description] = b
     for c in b.children.items {
       if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
       else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
       else if let rl = c as? ReplacedLeaf { replaced.insert(rl.id.description) }
+      else if let ib = c as? InlineBox { notText.insert(ib.id.description); for k in ib.children.items { walkInline(k, b.id.description) } }
+      else if let lb = c as? LineBreak { notText.insert(lb.id.description) }
     }
   }
   walk(zoomed.root)
@@ -370,13 +400,18 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
   }
   var out: [String] = []
   for id in order where zBoxes[id] == nil && !replaced.contains(id) {
+    if zParent[id] == nil {
+      if notText.contains(id) { continue }
+      fatalError("rect \(id) is not a node of the layout input")
+    }
     guard let pId = zParent[id], let p = zBoxes[pId] else { fatalError("text \(id) has no container") }
-    let leaves = p.children.items.compactMap { $0 as? TextLeaf }
+    let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
+    let ifc = try inline_buildIfc(ctx, p)
+    let leaves = ifc.leaves.items
     guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("no leaf \(id)") }
     let scalars = Array(leaves[li].text.description.unicodeScalars)
     func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
-    let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
-    let placed = try inline_placeLines(ctx, p, JsArray(leaves), try contentWidth(pId)).items
+    let placed = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
     var lines: [String] = []
     for line in placed {
       guard let piece = line.pieces.items.first(where: { Int($0.leaf) == li }) else { continue }
@@ -418,12 +453,22 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
   val zBoxes = HashMap<String, LayoutBox>()
   val zParent = HashMap<String, String>()
   val replaced = HashSet<String>()
+  // A text leaf's container is the block container of its inline formatting context, through any inline boxes.
+  // Inline boxes and <br>s: nodes with rects but no lines of their own.
+  val notText = HashSet<String>()
+  fun walkInline(c: U_InlineBox_LineBreak_TextLeaf, container: String) {
+    if (c is TextLeaf) zParent[c.id] = container
+    else if (c is InlineBox) { notText.add(c.id); for (k in c.children) walkInline(k, container) }
+    else if (c is LineBreak) notText.add(c.id)
+  }
   fun walk(b: LayoutBox) {
     zBoxes[b.id] = b
     for (c in b.children) {
       if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) }
       else if (c is TextLeaf) zParent[c.id] = b.id
       else if (c is ReplacedLeaf) replaced.add(c.id)
+      else if (c is InlineBox) { notText.add(c.id); for (k in c.children) walkInline(k, b.id) }
+      else if (c is LineBreak) notText.add(c.id)
     }
   }
   walk(zoomed.root)
@@ -447,14 +492,20 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
   val out = ArrayList<String>()
   for (id in order) {
     if (zBoxes.containsKey(id) || replaced.contains(id)) continue
+    if (!zParent.containsKey(id)) {
+      if (notText.contains(id)) continue
+      throw IllegalStateException("rect " + id + " is not a node of the layout input")
+    }
     val pId = zParent[id] ?: throw IllegalStateException("text " + id + " has no container")
     val p = zBoxes[pId] ?: throw IllegalStateException("no container " + pId)
-    val leaves = ArrayList(p.children.filterIsInstance<TextLeaf>())
+    val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
+    val ifc = inline_buildIfc(ctx, p)
+    val leaves = ifc.leaves
     val li = leaves.indexOfFirst { it.id == id }
+    if (li < 0) throw IllegalStateException("no leaf " + id)
     val leafText = leaves[li].text
     fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
-    val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
-    val placed = inline_placeLines(ctx, p, leaves, contentWidth(pId))
+    val placed = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
     val lines = ArrayList<String>()
     for (line in placed) {
       val piece = line.pieces.firstOrNull { it.leaf.toInt() == li } ?: continue
