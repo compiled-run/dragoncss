@@ -6,6 +6,7 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
+import { resolveAlias } from './aliases.ts';
 import { legacyDisplay } from './display-legacy.ts';
 import type { AtRuleContext, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
@@ -62,6 +63,8 @@ export type Declaration = {
   readonly pending?: PendingSubstitution;
   /** T065: a transition or animation declaration; its longhands are empty, and analysis/animations.ts cascades these values. */
   readonly animation?: AnimationDeclValue;
+  /** The legacy alias the declaration was written with (aliases.ts); property is the property it stands for. */
+  readonly alias?: string;
 };
 
 /** A class selector in this rule matches only class symbols with this owner and sheet (docs/api.md §3.1). */
@@ -240,7 +243,20 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   // css-syntax-3 §4.3.7: a property name is the identifier's value, so \63 olor is color and --\61 is --a.
   const written = decodeName(String(d['property']));
   // css-variables-1 §2: custom property names are case-sensitive.
-  const property = written.startsWith('--') ? written : asciiLower(written);
+  const name = written.startsWith('--') ? written : asciiLower(written);
+  // A legacy alias is its property (aliases.ts); its diagnostics name the alias as written too.
+  const property = resolveAlias(name);
+  if (property === name) return parseResolved(d, property, base, sheetText, order, diagnostics);
+  const from = diagnostics.length;
+  const declaration = parseResolved(d, property, base, sheetText, order, diagnostics);
+  for (let i = from; i < diagnostics.length; i++) {
+    const x = diagnostics[i] as Diagnostic;
+    diagnostics[i] = { ...x, message: `${x.message} (${name} is an alias of ${property})` };
+  }
+  return declaration === null ? null : { ...declaration, alias: name };
+}
+
+function parseResolved(d: CssNode, property: string, base: Span, sheetText: string, order: number, diagnostics: Diagnostic[]): Declaration | null {
   const span = spanOf(d, base);
   const valueNode = d['value'] as CssNode;
   const valueSpan = spanOf(valueNode, base);
