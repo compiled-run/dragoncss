@@ -158,3 +158,31 @@ describe('OVFL-B: native scroll views for overflow auto and scroll', () => {
     }
   });
 });
+
+describe('OVFL-B: a reversed flex scroll container with a background is refused on native (Chrome paints it in the scrolling contents)', () => {
+  const NATIVE = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } as const;
+  const refusals = (css: string): string[] => {
+    const input = inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])])]);
+    const c = createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+    return c.diagnostics.filter((d) => d.message.includes('reversed flex scroll container')).map((d) => `${d.code} ${d.target} ${spanTextOf(input, d)}`);
+  };
+
+  it('row-reverse, column-reverse and wrap-reverse with auto or scroll and a background are DRAGON_UNPROVEN_CONTEXT on ios and android only, at the background', () => {
+    for (const shape of ['flex-direction: row-reverse', 'flex-direction: column-reverse', 'flex-wrap: wrap-reverse']) {
+      for (const o of ['auto', 'scroll']) {
+        expect(refusals(`.a { display: flex; ${shape}; overflow: ${o}; background-color: #eee; }`), `${shape} ${o}`).toEqual(['DRAGON_UNPROVEN_CONTEXT android #eee', 'DRAGON_UNPROVEN_CONTEXT ios #eee']);
+      }
+    }
+  });
+
+  it('no background, a transparent one, overflow hidden, a forward flex container and a block compile', () => {
+    for (const css of [
+      '.a { display: flex; flex-direction: row-reverse; overflow: auto; }',
+      '.a { display: flex; flex-direction: row-reverse; overflow: auto; background-color: transparent; }',
+      '.a { display: flex; flex-direction: row-reverse; overflow: auto; background-color: rgba(0, 0, 0, 0); }',
+      '.a { display: flex; flex-direction: row-reverse; overflow: hidden; background-color: #eee; }',
+      '.a { display: flex; overflow: auto; background-color: #eee; }',
+      '.a { overflow: auto; background-color: #eee; direction: rtl; }',
+    ]) expect(refusals(css), css).toEqual([]);
+  });
+});

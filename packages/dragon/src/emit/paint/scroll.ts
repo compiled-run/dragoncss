@@ -38,8 +38,20 @@ public final class DragonScrollView: UIScrollView {
     scrollsToTop = false
     showsHorizontalScrollIndicator = scrollsX
     showsVerticalScrollIndicator = scrollsY
+    panGestureRecognizer.addTarget(self, action: #selector(dragonPanned))
   }
   required init?(coder: NSCoder) { fatalError("DragonScrollView is built in code") }
+
+  /// Whether the user has scrolled this view; until then it rests at offset 0, the layout position.
+  private var dragonUserScrolled = false
+  @objc private func dragonPanned() { dragonUserScrolled = true }
+
+  /// UIKit moves a resting scroll view to minus its content inset when it lays out (the start of the content); a Dragon scroll
+  /// view rests at offset 0, so until the user scrolls it is set back there.
+  public override func layoutSubviews() {
+    super.layoutSubviews()
+    if !dragonUserScrolled && contentOffset != .zero { contentOffset = .zero }
+  }
 
   /// Sets the offset range [minX, maxX, minY, maxY] in device px (a locked axis takes [0, 0]) and clamps the current offset into it.
   public func dragonSetRange(_ r: [Double], _ scale: Double) {
