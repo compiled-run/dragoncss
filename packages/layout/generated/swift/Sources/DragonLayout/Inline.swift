@@ -172,7 +172,7 @@ public func inline_checkRtlText(_ box: LayoutBox, _ leaves: JsArray<TextLeaf>) t
       _i29 += 1
       // ts: packages/layout/src/inline.ts:84
       if try (!inline_isRtlSafe(t.text)) {
-        try unsupported_unsupported(S.s_bidi_neutral, t.id, S.s94, jsConcat(S.s346, box.id, S.s19))
+        try unsupported_unsupported(S.s_bidi_neutral, t.id, S.s94, jsConcat(S.s361, box.id, S.s19))
       }
     }
   }
@@ -183,11 +183,11 @@ public func inline_checkRtlText(_ box: LayoutBox, _ leaves: JsArray<TextLeaf>) t
 })
   var k: Double = jsLength(chars)
   // ts: packages/layout/src/inline.ts:90
-  while try ((k > 0.0) && ((jsUnwrap(jsAt(chars, (k - 1.0))).ch == S.s1) || (jsUnwrap(jsAt(chars, (k - 1.0))).ch == S.s374))) {
+  while try ((k > 0.0) && ((jsUnwrap(jsAt(chars, (k - 1.0))).ch == S.s1) || (jsUnwrap(jsAt(chars, (k - 1.0))).ch == S.s392))) {
     k -= 1.0
   }
   let zwsp: LeafChar? = try jsFind(jsSlice(chars, k), { (c: LeafChar) throws -> Bool in
-    return (c.ch == S.s374)
+    return (c.ch == S.s392)
 })
   // ts: packages/layout/src/inline.ts:92
   if (zwsp != nil) {
@@ -212,11 +212,11 @@ public func inline_buildRun(_ ctx: Ctx, _ box: LayoutBox, _ leaves: JsArray<Text
       let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(t.text, inline_leafFont(t))
       // ts: packages/layout/src/inline.ts:101
       if (!m.ok) {
-        try unsupported_unsupported(S.s_text_glyph, t.id, S.s155, (m as! MeasureResult_okFalse).reason)
+        try unsupported_unsupported(S.s_text_glyph, t.id, S.s157, (m as! MeasureResult_okFalse).reason)
       }
       // ts: packages/layout/src/inline.ts:102
       if try ((((t.font.family != first.font.family) || (t.font.size != first.font.size)) || (!inline_sameLineHeight(t, first))) || (t.textWrapMode != first.textWrapMode)) {
-        try unsupported_unsupported(S.s_mixed_inline_font, t.id, S.s85, jsConcat(S.s347, box.id))
+        try unsupported_unsupported(S.s_mixed_inline_font, t.id, S.s85, jsConcat(S.s362, box.id))
       }
     }
   }
@@ -282,7 +282,7 @@ public func inline_ahemOpportunities(_ box: LayoutBox, _ cps: JsArray<Double>, _
       _i32 += 1
       // ts: packages/layout/src/inline.ts:150
       if try (text_coveredIndex(cp) < 0.0) {
-        try unsupported_unsupported(S.s_line_break, box.id, S.s156, jsConcat(S.s91, jsToUpperCase(jsToStringRadix16(cp)), S.s25))
+        try unsupported_unsupported(S.s_line_break, box.id, S.s158, jsConcat(S.s91, jsToUpperCase(jsToStringRadix16(cp)), S.s25))
       }
     }
   }
@@ -293,27 +293,27 @@ public func inline_ahemOpportunities(_ box: LayoutBox, _ cps: JsArray<Double>, _
   // ts: packages/layout/src/inline.ts:152
   do {
     var i: Double = 1.0
-    loop7: while (i < jsLength(cps)) {
-      loop7_body: do {
+    loop10: while (i < jsLength(cps)) {
+      loop10_body: do {
         let cur: Double = try jsUnwrap(jsAt(cps, i))
         let last: Double = try jsUnwrap(jsAt(cps, (i - 1.0)))
         // ts: packages/layout/src/inline.ts:156
         if (cur == inline_SPACE) {
-          break loop7_body
+          break loop10_body
         }
         // ts: packages/layout/src/inline.ts:157
         if (last == inline_SPACE) {
           _ = jsPush(out, i)
-          break loop7_body
+          break loop10_body
         }
         // ts: packages/layout/src/inline.ts:162
         if (cur == inline_ZWSP) {
-          break loop7_body
+          break loop10_body
         }
         // ts: packages/layout/src/inline.ts:163
         if (last == inline_ZWSP) {
           _ = jsPush(out, i)
-          break loop7_body
+          break loop10_body
         }
         var breaks: Bool = false
         // ts: packages/layout/src/inline.ts:169
@@ -427,7 +427,7 @@ public func inline_width(_ ctx: Ctx, _ run: Run, _ start: Double, _ end: Double)
     let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(text, inline_leafFont(jsUnwrap(jsAt(run.leaves, leaf))))
     // ts: packages/layout/src/inline.ts:236
     if (!m.ok) {
-      try unsupported_unsupported(S.s_text_glyph, jsUnwrap(jsAt(run.leaves, leaf)).id, S.s155, (m as! MeasureResult_okFalse).reason)
+      try unsupported_unsupported(S.s_text_glyph, jsUnwrap(jsAt(run.leaves, leaf)).id, S.s157, (m as! MeasureResult_okFalse).reason)
     }
     try total = units_add(total, (m as! MeasureResult_okTrue).measure.width)
   }
@@ -450,7 +450,7 @@ public func inline_cachedWidth(_ ctx: Ctx, _ run: Run, _ start: Double, _ end: D
     let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measureRange(t.text, first.at, (last.at + 1.0), inline_leafFont(t))
     // ts: packages/layout/src/inline.ts:256
     if (!m.ok) {
-      try unsupported_unsupported(S.s_text_glyph, t.id, S.s155, (m as! MeasureResult_okFalse).reason)
+      try unsupported_unsupported(S.s_text_glyph, t.id, S.s157, (m as! MeasureResult_okFalse).reason)
     }
     try total = units_add(total, (m as! MeasureResult_okTrue).measure.width)
   }
@@ -500,7 +500,7 @@ public func inline_alignOffset(_ ctx: Ctx, _ box: LayoutBox, _ free: Double) thr
   let align: JsString = box.style.textAlign
   // ts: packages/layout/src/inline.ts:296
   if (align == S.s_justify) {
-    try unsupported_unsupported(S.s_text_align, box.id, S.s157, S.s349)
+    try unsupported_unsupported(S.s_text_align, box.id, S.s159, S.s364)
   }
   let rtl: Bool = try (block_directionOf(ctx, box) == S.s_rtl)
   // ts: packages/layout/src/inline.ts:298
