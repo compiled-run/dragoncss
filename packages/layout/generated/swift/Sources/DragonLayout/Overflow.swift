@@ -287,7 +287,7 @@ public func overflow_nodeOf(_ ix: Index, _ id: JsString) throws -> Node {
   let n: Node? = ix.nodes.get(id)
   // ts: packages/layout/src/overflow.ts:139
   if (n == nil) {
-    throw JsError(message: jsConcat(S.s269, id))
+    throw JsError(message: jsConcat(S.s275, id))
   }
   return try jsUnwrap(n)
 }
@@ -301,7 +301,7 @@ public func overflow_indexOf(_ ctx: Ctx, _ input: LayoutInput, _ abs: JsStringMa
     let rect: LayoutRect? = abs.get(b.id)
     // ts: packages/layout/src/overflow.ts:148
     if (rect == nil) {
-      throw JsError(message: jsConcat(S.s269, b.id))
+      throw JsError(message: jsConcat(S.s275, b.id))
     }
     let border: Edges = try box_resolveBorder(b.style, ctx.devicePixelRatio)
     let padding: Edges = try box_resolvePaddingWith(b.style, cbInline, ctx.faults)
@@ -648,7 +648,7 @@ public func overflow_inflowBounds(_ ix: Index, _ p: Node, _ k: Node, _ dx: Doubl
     let end: EndStrut? = flow.ends.get(k.box.id)
     // ts: packages/layout/src/overflow.ts:417
     if (end == nil) {
-      throw JsError(message: jsConcat(S.s265, k.box.id))
+      throw JsError(message: jsConcat(S.s271, k.box.id))
     }
     let withOwn: Strut = try overflow_joinMargin(jsUnwrap(end).strut, mb)
     try blockEnd = (jsUnwrap(end).selfCollapsing ? units_sub(overflow_collapsed(withOwn), overflow_collapsed(jsUnwrap(end).strut)) : overflow_collapsed(withOwn))

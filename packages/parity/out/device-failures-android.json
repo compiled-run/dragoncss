@@ -465,14 +465,6 @@
  },
  {
   "lane": "device-pixels",
-  "case": "overflow-flex-reverse",
-  "dpr": 2.625,
-  "node": "edge:a2:right",
-  "kind": "pixel",
-  "detail": "edge:a2:right at 180,221: native [238,238,238,255], Chrome [255,255,255,255] (channel delta limit 0)"
- },
- {
-  "lane": "device-pixels",
   "case": "position-relative-block",
   "dpr": 3,
   "node": "interior:a1",
