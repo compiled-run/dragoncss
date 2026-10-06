@@ -277,7 +277,7 @@ public func box_percentBlockBasis(_ box: LayoutBox, _ basis: any U_HeightBasis_d
   }
   // ts: packages/layout/src/box.ts:190
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s159, jsConcat(prop, S.s39))
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s161, jsConcat(prop, S.s39))
   }
   return nil
 }
