@@ -40,7 +40,7 @@ describe('device-states on fake dumps', () => {
   it('names every case script of the state programs, as targets.ts derives them', () => {
     expect(scriptCases('ios').map((s) => s.script.case.id)).toEqual([...stateScriptIds()]);
     expect(stateEmits('ios').flatMap((e) => e.scripts.map((s) => s.id))).toEqual([...stateScriptIds()]);
-    expect(stateScriptIds().length).toBe(126);
+    expect(stateScriptIds().length).toBe(130);
     expect(scripts.length).toBe(6);
   });
 
@@ -96,7 +96,7 @@ describe('the device-states lane record', () => {
   it('fails on a failure, a short set, or a DPR not run', () => {
     const f: LaneFailure = { lane: STATE_LANE, case: 'x', dpr: 2, node: null, kind: 'applied', detail: 'd' };
     expect(record([set(2, [f]), set(3)])?.state).toBe('fail');
-    expect(record([set(2, [], 125), set(3)])?.reason).toContain('DPR 2: 125/126 dumps');
+    expect(record([set(2, [], 125), set(3)])?.reason).toContain('DPR 2: 125/130 dumps');
     expect(record([set(2)])?.reason).toContain('DPR 3 was not run');
   });
 });

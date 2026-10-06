@@ -32,3 +32,14 @@ jobs:
         run: pnpm typecheck
       - name: Platform-free suites (packages/layout, packages/dragon)
         run: pnpm exec vitest run packages/layout packages/dragon
+      # The registry and provenance checks that need no browser or device, so a PR learns of an unregistered Chrome citation, a
+      # registry claim without its proof, an API floor or a floor-file merge problem here, not at landing (they run in the full
+      # test's shards too, which prove every file).
+      - name: Registry and provenance checks (packages/parity)
+        run: >-
+          pnpm exec vitest run
+          packages/parity/test/chrome-ports.test.ts
+          packages/parity/test/registry-claims.test.ts
+          packages/parity/test/api-floor.test.ts
+          packages/parity/test/floor-merge.test.ts
+          packages/parity/test/macroscope-ignore.test.ts
