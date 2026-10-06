@@ -36,35 +36,35 @@
   ],
   "engineCalc": 4000,
   "snapGenerated": 20000,
-  "snapVectors": 1383,
+  "snapVectors": 1563,
   "cases": {
-    "vectors-m2": 275,
-    "vectors-dpr": 1599,
-    "engine-dpr": 1599,
+    "vectors-m2": 335,
+    "vectors-dpr": 1779,
+    "engine-dpr": 1779,
     "units-m2": 120000,
-    "snap": 21383,
+    "snap": 21563,
     "snap-values": 216,
     "calc-goldens": 17,
     "engine-calc": 4000,
     "units-calc": 50000
   },
   "engineSplit": {
-    "ok": 1598,
-    "unsupported": 1,
+    "ok": 1777,
+    "unsupported": 2,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "8abd651416ddd129e7ffa96bd7f69810f776d2e62604d83bd89a9d44c273af8b",
-    "vectors-dpr": "54079332cbc86fc48d4968e86c4459029057b91873a07da8ceea107ed73e1361",
-    "engine-dpr": "148b857c1db9ed9ddc8d0166f1bf990aeac6f4e2bb69c23380a1299fd5f342ad",
+    "vectors-m2": "f26a66601faf084954e075b79969bf64093e0f1b62cd4a85f2a9ce8e9af2a7dc",
+    "vectors-dpr": "d36354bb9ebd607a2aa2e8cec9ba6f9360a8a7655ec88b86fe212c3b16fb6f8b",
+    "engine-dpr": "7f40bf43fca9647633b797463992644b469100bfa8d0569e8233a106a83b439d",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "8c0ab06577be41c2ffcf5d6fd06b22b32f630a95dd5cfd00d9993bec8ede3502",
+    "snap": "e06159b94ea0f9b2331e3cc7573bdab16ec1b8b4ba910a9ae5b0d505c5f0fab7",
     "snap-values": "58ce79fe0e7e0ff8be7bab82c5ae62d22131fea58335d95781b900b7edfa8a0a",
-    "calc-goldens": "205346ef6117fb858afa58f9a4b7d3e308382c516c6bc8a50f8681cb0813c8d1",
-    "engine-calc": "e123104f8055c0ac0a953ea4968f3479fa169344f8ff3bb1472d73004f6ad47b",
+    "calc-goldens": "6c435a40e86b4d24e66ff663e1c031076da0776e8dd8d82eeb5f35153c26554e",
+    "engine-calc": "81ed853b8417fa44cdbe9dde00cc88ecf623fe597543469d66a59ab9af5a66a6",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50"
   },
-  "digest": "2f16d9c4607c159014e8fb2a3769c30b35cd174fadfdbfb8b141bdb3ca0c470c"
+  "digest": "4622a5c2bfa9744607bd209b6af7057d19356568a95997665f2ee1e2673e1d4f"
 }
