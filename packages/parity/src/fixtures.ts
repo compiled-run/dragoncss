@@ -6,8 +6,8 @@ import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
-import { CHARSET } from './fixture-groups/charset.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
+import { CHARSET } from './fixture-groups/charset.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
@@ -89,8 +89,8 @@ export const GROUPS = {
   background: BACKGROUND,
   'block-elements': BLOCK_ELEMENTS,
   'border-paint': BORDER_PAINT,
-  charset: CHARSET,
   'cascade-var': CASCADE_VAR,
+  charset: CHARSET,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,
   'display-legacy': DISPLAY_LEGACY,
