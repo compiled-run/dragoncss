@@ -203,15 +203,35 @@ type Calc = {
   readonly paddingRect: OverflowRect;
   readonly scrollContainer: boolean;
   readonly leftOverflow: boolean;
+  readonly topOverflow: boolean;
 };
 
-/** AdjustOverflowForScrollOrigin: a scroll container's overflow never extends before its scroll origin (no top overflow in horizontal-tb). */
+/**
+ * LayoutBox::HasLeftOverflow and HasTopOverflow in horizontal-tb: the sides a box's overflow may extend past. A block box overflows
+ * to the left in rtl and never to the top. A flex container overrides both (Blink LayoutFlexibleBox's GetOverflowConverter): its
+ * overflow starts at its main-start and cross-start, so row-reverse moves the inline start, column-reverse the block start, and
+ * wrap-reverse the cross start; the logical sides then map to physical ones by direction.
+ */
+function overflowSides(ix: Index, b: LayoutNode): { readonly left: boolean; readonly top: boolean } {
+  const rtl = directionOf(ix.ctx, b) === 'rtl';
+  if (b.kind === 'replaced' || b.style.display !== 'flex') return { left: rtl, top: false };
+  const s = b.style;
+  const column = s.flexDirection === 'column' || s.flexDirection === 'column-reverse';
+  const reverse = s.flexDirection === 'row-reverse' || s.flexDirection === 'column-reverse';
+  const wrapReverse = s.flexWrap === 'wrap-reverse';
+  // Whether the overflow extends past the inline start and the block start (by default only past the ends).
+  const inlineStart = column ? wrapReverse : reverse;
+  const blockStart = column ? reverse : wrapReverse;
+  return { left: rtl ? !inlineStart : inlineStart, top: blockStart };
+}
+
+/** AdjustOverflowForScrollOrigin: a scroll container's overflow never extends before its scroll origin, on either axis. */
 function adjustForScrollOrigin(c: Calc, r: OverflowRect): OverflowRect {
   const p = c.paddingRect;
   const left = c.leftOverflow ? min(right(p), r.x) : max(p.x, r.x);
   const rr = c.leftOverflow ? min(right(p), right(r)) : max(p.x, right(r));
-  const top = max(p.y, r.y);
-  const bb = max(p.y, bottom(r));
+  const top = c.topOverflow ? min(bottom(p), r.y) : max(p.y, r.y);
+  const bb = c.topOverflow ? min(bottom(p), bottom(r)) : max(p.y, bottom(r));
   return span(left, top, rr, bb);
 }
 
@@ -250,7 +270,8 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
     height: clampNegativeToZero(sub(sub(n.rect.height, add(n.border.top, n.border.bottom)), g)),
   };
   const sc = isScrollContainer(b.style);
-  const c: Calc = { overflow: paddingRect, inflow: null, paddingRect, scrollContainer: sc, leftOverflow: directionOf(ix.ctx, b) === 'rtl' };
+  const sides = overflowSides(ix, b);
+  const c: Calc = { overflow: paddingRect, inflow: null, paddingRect, scrollContainer: sc, leftOverflow: sides.left, topOverflow: sides.top };
   // A replaced leaf (CSS 2.2 §10.3.2) has no children: its scrollable overflow is its own padding box.
   if (b.kind === 'replaced') return resultOf(ix, c, n.padding);
   const leaves = textLeavesOf(b);
@@ -334,9 +355,9 @@ function addLines(ix: Index, n: Node, box: LayoutBox, leaves: readonly TextLeaf[
 
 /**
  * BoxFragmentBuilder::AddChild's inflow bounds of an in-flow child of a scroll container: its border box at its offset without the
- * relative offset, grown by its margins as Blink computes them from style (auto is 0), with the start margins clamped at 0 and
- * the end margins at minus the child's size. In block flow the block-end margin is the child's end margin strut with its own
- * block-end margin appended.
+ * relative offset, grown by its margins as Blink computes them from style (auto is 0). On each axis the margin on the side the
+ * container's overflow extends past (overflowSides: the end by default) is clamped at minus the child's size and the other at 0.
+ * In block flow the block-end margin is the child's end margin strut with its own block-end margin appended.
  */
 function inflowBounds(ix: Index, p: Node, k: Node, dx: LU, dy: LU): OverflowRect {
   const s = k.box.style;
@@ -363,12 +384,11 @@ function inflowBounds(ix: Index, p: Node, k: Node, dx: LU, dy: LU): OverflowRect
   }
   const w = k.rect.width;
   const h = k.rect.height;
-  const rtl = direction === 'rtl';
-  // Physical: in ltr the inline start is the left margin; in rtl the right one.
-  const left = rtl ? max(ml, sub(ZERO, w)) : clampNegativeToZero(ml);
-  const rightM = rtl ? clampNegativeToZero(mr) : max(mr, sub(ZERO, w));
-  const top = clampNegativeToZero(mt);
-  const bottomM = max(blockEnd, sub(ZERO, h));
+  const sides = overflowSides(ix, p.box);
+  const left = sides.left ? max(ml, sub(ZERO, w)) : clampNegativeToZero(ml);
+  const rightM = sides.left ? clampNegativeToZero(mr) : max(mr, sub(ZERO, w));
+  const top = sides.top ? max(mt, sub(ZERO, h)) : clampNegativeToZero(mt);
+  const bottomM = sides.top ? clampNegativeToZero(blockEnd) : max(blockEnd, sub(ZERO, h));
   return span(sub(x, left), sub(y, top), add(add(x, w), rightM), add(add(y, h), bottomM));
 }
 
@@ -502,7 +522,7 @@ function viewportMetrics(ix: Index, input: LayoutInput, direction: Direction): S
   const width = fromCssPx(input.viewport.width);
   const height = fromCssPx(input.viewport.height);
   const paddingRect: OverflowRect = { x: ZERO, y: ZERO, width, height };
-  const c: Calc = { overflow: paddingRect, inflow: null, paddingRect, scrollContainer: true, leftOverflow: direction === 'rtl' };
+  const c: Calc = { overflow: paddingRect, inflow: null, paddingRect, scrollContainer: true, leftOverflow: direction === 'rtl', topOverflow: false };
   const root = nodeOf(ix, input.root.id);
   addOverflow(c, shifted(propagated(ix, root), root.rect.x, root.rect.y));
   const s = root.box.style;

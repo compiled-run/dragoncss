@@ -428,6 +428,11 @@ export function engineOverflowCases(): string[] {
         borderLeftWidth: pxv(r.pick([0, 0, 1, 4])),
         flexShrink: parentFlex && r.chance(0.5) ? 0 : 1,
       };
+      // A reversed flex container overflows past its main-start or cross-start (overflow.ts overflowSides).
+      if (display === 'flex') {
+        style['flexDirection'] = r.pick(['row', 'row', 'row-reverse', 'column', 'column-reverse']);
+        style['flexWrap'] = r.pick(['nowrap', 'nowrap', 'wrap', 'wrap-reverse']);
+      }
       if (position === 'relative') {
         style['left'] = r.chance(0.5) ? pxv(r.pick([5, -7, 20])) : { kind: 'auto' };
         style['top'] = r.chance(0.5) ? pxv(r.pick([6, -9, 30])) : { kind: 'auto' };

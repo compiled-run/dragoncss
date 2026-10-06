@@ -147,3 +147,20 @@ describe('replaced leaves and line-level boxes (pre-landing review of #96)', () 
     expect(() => refuseLineLevelBoxes(atomic)).toThrow('an atomic inline in the inline formatting context of s');
   });
 });
+
+describe('reversed flex scroll containers overflow past their start (Blink LayoutFlexibleBox overflow sides; #194 review)', () => {
+  const flex = (extra: Partial<LayoutStyle>, kid: Partial<LayoutStyle>) => input([box('s', sc('hidden', { display: 'flex', ...extra }), [box('k', { flexShrink: 0, ...kid })])]);
+  const rect = (i: LayoutInput) => (metrics(i).containers[0] as { scrollRect: { x: number; y: number; width: number; height: number } }).scrollRect;
+
+  it('row-reverse: a 300px item in a 100px container scrolls 300 wide, its overflow on the left in ltr and on the right in rtl', () => {
+    expect(rect(flex({ flexDirection: 'row-reverse' }, { width: px(300), height: px(10) }))).toMatchObject({ x: lu(-200), width: lu(300) });
+    expect(rect(flex({ flexDirection: 'row-reverse', direction: 'rtl' }, { width: px(300), height: px(10) }))).toMatchObject({ x: 0, width: lu(300) });
+    expect(rect(flex({ flexDirection: 'row' }, { width: px(300), height: px(10) }))).toMatchObject({ x: 0, width: lu(300) });
+  });
+
+  it('column-reverse and wrap-reverse overflow past the top', () => {
+    expect(rect(flex({ flexDirection: 'column-reverse' }, { width: px(10), height: px(300) }))).toMatchObject({ y: lu(-200), height: lu(300) });
+    expect(rect(flex({ flexWrap: 'wrap-reverse' }, { width: px(10), height: px(300) }))).toMatchObject({ y: lu(-200), height: lu(300) });
+    expect(rect(flex({ flexDirection: 'column', flexWrap: 'wrap-reverse' }, { width: px(300), height: px(10) }))).toMatchObject({ x: lu(-200), width: lu(300) });
+  });
+});
