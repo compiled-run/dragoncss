@@ -23,7 +23,7 @@ function stated(css: string, child: (r: SourceRef) => TreeNode[] = () => []): Fr
   return { ...input, tree: { ...tree, components: [{ ...root, states: [{ id: 'open', domain: [false, true], initial: false, origin: root.origin }] }] } };
 }
 
-function program(css: string, child?: (r: SourceRef) => TreeNode[]) {
+function program(css: string, child?: (r: SourceRef) => TreeNode[], knownProperty: (name: string) => boolean = () => true) {
   const input = stated(css, child);
   const compiled = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
   const cases = (internalRecord(compiled)?.cases ?? []).map((c) => ({ key: c.key, resolved: c.resolved as ResolvedElement }));
@@ -31,7 +31,7 @@ function program(css: string, child?: (r: SourceRef) => TreeNode[]) {
   const sources: KeyframesSource[] = [];
   const source = input.snapshot.sources[0] as { ref: SourceRef };
   const rules = parseStylesheet(css, { source: source.ref, start: 0, end: css.length }, { id: 's', owner: DOC, scope: 'document' }, 0, diagnostics, [], [], sources);
-  const analysis = analyzeAnimations({ cases, rules, allRules: rules, keyframes: parseKeyframesRules(sources, diagnostics), faults: NO_FAULTS, knownProperty: () => true }, diagnostics);
+  const analysis = analyzeAnimations({ cases, rules, allRules: rules, keyframes: parseKeyframesRules(sources, diagnostics), faults: NO_FAULTS, knownProperty }, diagnostics);
   expect(diagnostics).toEqual([]);
   return lowerAnimProgram(analysis, cases);
 }
@@ -42,6 +42,15 @@ describe('lowerAnimProgram', () => {
     expect(p.slots.map((s) => [s.node, s.property, s.kind, s.range, s.values, s.listings.map((l) => [l?.mode, l?.delay, l?.duration, l?.easing.text])])).toEqual([
       ['a', 'width', 'length', 'non-negative', [{ kind: 'length', px: 10, percent: 0, calc: false }, { kind: 'length', px: 20, percent: 0, calc: false }], [['listed', 0.5, 1, 'ease'], ['listed', 0.5, 1, 'ease']]],
     ]);
+  });
+
+  it('a legacy alias in transition-property or the transition shorthand lists its property, as Chrome resolves it', () => {
+    const slots = (css: string) => program(css, undefined, () => false).slots.map((s) => [s.node, s.property, s.listings.map((l) => [l?.mode, l?.duration])]);
+    const width = '.a { width: 10px; margin-left: 1px; } .a.on { width: 20px; margin-left: 4px; }';
+    expect(slots(`${width} .a { transition: -webkit-logical-width 1s; }`)).toEqual(slots(`${width} .a { transition: inline-size 1s; }`));
+    expect(slots(`${width} .a { transition: -webkit-logical-width 1s; }`)).toEqual([['a', 'width', [['listed', 1], ['listed', 1]]]]);
+    expect(slots(`${width} .a { transition-property: -WEBKIT-MARGIN-START, -webkit-logical-width; transition-duration: 2s; }`)).toEqual(slots(`${width} .a { transition-property: margin-inline-start, inline-size; transition-duration: 2s; }`));
+    expect(slots(`${width} .a { transition-property: -webkit-margin-start; transition-duration: 2s; }`)).toEqual([['a', 'margin-left', [['listed', 2], ['listed', 2]]]]);
   });
 
   it('expands all and carries the unlisted and initial modes per assignment', () => {

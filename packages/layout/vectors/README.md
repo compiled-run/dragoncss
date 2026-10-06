@@ -20,7 +20,7 @@ Every field is required and there are no defaults: the compiler writes every val
 - The environment (V2 of the value model): `viewportUnits` `{ small, large, dynamic }`, each a `{ width, height }` in CSS px that viewport units of that kind read (plain `vw` reads `large`); `safeArea` `{ top, right, bottom, left }` in CSS px, the insets `env(safe-area-inset-*)` reads; `rootFontSize`, the root element's specified font size in CSS px, which `rem` reads. The compiler writes the reference environment: every size the viewport, no safe area, and the root's font size at text scale 1; a host writes the device's.
 - `root`: a `LayoutBox` `{ kind: "box", id, boxType: "element" | "anonymous", style: LayoutStyle, strut, children }`. Children are all boxes (and replaced leaves) or all inline-level (text leaves, inline boxes and line breaks). The compiler wraps mixed content in anonymous boxes `<element>:anon<k>`; the engine never creates boxes. `strut` is the box's own `{ font, lineHeight }` when its children are inline-level (CSS2 §10.8.1), and null otherwise; every text leaf has the font and line-height of its parent, the strut or its inline box.
 - An inline box is `{ kind: "inline", id, style, font, lineHeight, children }`: an element with `display: inline`, whose children are inline-level. A line break (`<br>`) is `{ kind: "br", id, font, lineHeight }`. The engine refuses both (`inline-box`) until the inline core lays them out.
-- `style` has all 43 `LayoutStyle` fields. `verticalAlign` is `{ kind: "keyword", value }` for a CSS2 §10.8.1 keyword, a length, a percentage or a calculation; the compiler writes `baseline`. Lengths are tagged `{ kind: "px", value }` (CSS px), `{ kind: "percent", value }` (100 is the whole basis), or keywords such as `{ kind: "auto" }`, `{ kind: "none" }`, `{ kind: "normal" }` and `{ kind: "content" }`, as each field allows. Enumerations are strings; flexGrow, flexShrink and order are numbers.
+- `style` has all 45 `LayoutStyle` fields. `verticalAlign` is `{ kind: "keyword", value }` for a CSS2 §10.8.1 keyword, a length, a percentage or a calculation; the compiler writes `baseline`. Lengths are tagged `{ kind: "px", value }` (CSS px), `{ kind: "percent", value }` (100 is the whole basis), or keywords such as `{ kind: "auto" }`, `{ kind: "none" }`, `{ kind: "normal" }` and `{ kind: "content" }`, as each field allows. Enumerations are strings; flexGrow, flexShrink and order are numbers. An order that is not a whole number (a math function, which the compiler sends unrounded) is rounded half toward +infinity and clamped to the int range by the engine, as Blink's ComputeInteger does. `grid` is the grid container's tracks, placement flow and justify-items (input.ts GridContainerStyle) on a `display: "grid"` box and `null` elsewhere; `gridItem` is the resolved placement and justify-self (GridItemStyle) on each in-flow child of a grid container and `null` elsewhere.
 - `aspectRatio` is `{ kind: "auto" }`, or Blink's layout ratio `{ kind: "ratio" | "auto-ratio", width, height }` in raw LayoutUnit values (positive integers; `auto-ratio` is `auto && <ratio>`, which sizes the content box). A percentage height, min-height or max-height beside a ratio is refused.
 - The four border widths also take `{ kind: "device-px", value }`: an initial line width (no width declared, or a border shorthand that omits it), which Chrome keeps in device px at every pixel ratio (rule R5 below).
 - A text leaf is `{ kind: "text", id: "<element>:text<k>", text, font, lineHeight, whiteSpaceCollapse: "collapse", textWrapMode }`. The text is already collapsed, and the leaf carries every inherited text property itself. `font` is `{ family: "Ahem", size, specifiedSize, absoluteSize }`: `specifiedSize` is the specified font size as a calculation leaf or tree at zoom 1 (below), `absoluteSize` is false for a size derived through `em` or `%` from a keyword size (Chrome's 6px minimum logical font size applies to it), and `size` is the computed size the compiler found at the reference environment, which the environment pass recomputes. `lineHeight` is `normal`, a `number`, `px`, a `percent` of the font size, or a `calc`.
@@ -180,7 +180,9 @@ Input:
    "verticalAlign": {
     "kind": "keyword",
     "value": "baseline"
-   }
+   },
+   "grid": null,
+   "gridItem": null
   },
   "strut": null,
   "children": [
@@ -299,7 +301,9 @@ Input:
      "verticalAlign": {
       "kind": "keyword",
       "value": "baseline"
-     }
+     },
+     "grid": null,
+     "gridItem": null
     },
     "strut": {
      "font": {

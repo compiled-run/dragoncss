@@ -274,7 +274,23 @@ export type DeviceSet = { dpr: number; device: string; model: string | null; cas
  * One target's lane states, its listed device failures (each as "<lane> <case> <dpr> <node> <kind>") and, per lane with a
  * device run record, the DPR sets it ran.
  */
-export type TargetEvidence = { lanes: Map<string, string>; failures: Map<string, Set<string>>; runs: Map<string, DeviceSet[]>; vectorsArch?: Map<string, { device: string; abi: string }> };
+export type TargetEvidence = { lanes: Map<string, string>; failures: Map<string, Set<string>>; runs: Map<string, DeviceSet[]>; vectorsArch?: Map<string, { device: string; abi: string }>; details?: Map<string, string> };
+
+/**
+ * A readable summary of device failures (keys "<lane> <case> <dpr> <node> <kind>"): the count per case and DPR, most first (at
+ * most 8), then the first details.
+ */
+export const failureSummary = (keys: readonly string[], details: ReadonlyMap<string, string> = new Map()): string => {
+  const perCase = new Map<string, number>();
+  for (const k of keys) {
+    const [, c, dpr] = k.split(' ');
+    perCase.set(`${c}@${dpr}`, (perCase.get(`${c}@${dpr}`) ?? 0) + 1);
+  }
+  const cases = [...perCase].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+  const shown = cases.slice(0, 8).map(([c, n]) => `${c} ×${n}`).join(', ');
+  const first = keys.slice(0, 3).map((k) => details.get(k) ?? k);
+  return `${shown}${cases.length > 8 ? `, and ${cases.length - 8} more cases` : ''}; first: ${first.join(' | ')}`;
+};
 
 /** The device and ABI a device vectors run names in its toolchain ("ART app_process on dragon-smoke (Android 16, x86_64)"), if any. */
 export const vectorsArchOf = (toolchain: unknown): { device: string; abi: string } | null => {
@@ -318,16 +334,23 @@ export const parseDeviceEvidence = (lanes: unknown, failures: (target: string) =
     const list = failures(t.target);
     if (!Array.isArray(list)) return bad(`${failuresJson(t.target)} is not a list`);
     const byLane = new Map<string, Set<string>>();
-    for (const f of list) {
-      if (!isObject(f) || typeof f.lane !== 'string' || typeof f.case !== 'string' || typeof f.dpr !== 'number' || typeof f.node !== 'string' || typeof f.kind !== 'string') {
-        return bad(`${failuresJson(t.target)} has an entry that is not { lane, case, dpr, node, kind }`);
+    const details = new Map<string, string>();
+    for (const [i, f] of list.entries()) {
+      // The record device-lanes.ts writes (LaneFailure): node is null for a failure of the whole case (a device record, a missing
+      // dump), and detail says what failed.
+      if (!isObject(f) || typeof f.lane !== 'string' || typeof f.case !== 'string' || typeof f.dpr !== 'number' || !(f.node === null || typeof f.node === 'string') || typeof f.kind !== 'string' || typeof f.detail !== 'string') {
+        return bad(`${failuresJson(t.target)} entry ${i} is not { lane, case, dpr, node (string or null), kind, detail }: ${JSON.stringify(f).slice(0, 200)}`);
       }
+      const extra = Object.keys(f).filter((k) => !['lane', 'case', 'dpr', 'node', 'kind', 'detail'].includes(k));
+      if (extra.length > 0) return bad(`${failuresJson(t.target)} entry ${i} has unknown keys ${extra.join(', ')}`);
       if (!states.has(f.lane)) return bad(`${failuresJson(t.target)} lists a failure of ${f.lane}, which lanes.json does not have`);
       const own = byLane.get(f.lane) ?? new Set<string>();
-      own.add(`${f.lane} ${f.case} ${f.dpr} ${f.node} ${f.kind}`);
+      const key = `${f.lane} ${f.case} ${f.dpr} ${f.node} ${f.kind}`;
+      own.add(key);
+      if (!details.has(key)) details.set(key, f.detail);
       byLane.set(f.lane, own);
     }
-    targets.set(t.target, { lanes: states, failures: byLane, runs, vectorsArch });
+    targets.set(t.target, { lanes: states, failures: byLane, runs, vectorsArch, details });
   }
   return { parityPass: pass, parityProblems: problems as string[], targets };
 };
@@ -392,11 +415,13 @@ export const deviceRunProblems = (base: DeviceEvidence, run: DeviceEvidence, sta
       const now = r.lanes.get(lane);
       if (now === undefined) problems.push(`${target} ${lane}: missing from the run`);
       else if (now === 'pass') continue;
-      else if (now !== 'fail' || was !== 'fail') problems.push(`${target} ${lane}: ${now}, on master ${was}`);
-      else {
+      else if (now !== 'fail' || was !== 'fail') {
+        const listed = [...(r.failures.get(lane) ?? new Set<string>())];
+        problems.push(`${target} ${lane}: ${now}, on master ${was}${listed.length === 0 ? '' : `; ${listed.length} failure(s): ${failureSummary(listed, r.details)}`}`);
+      } else {
         const known = b.failures.get(lane) ?? new Set<string>();
         const added = [...(r.failures.get(lane) ?? new Set<string>())].filter((f) => !known.has(f));
-        if (added.length > 0) problems.push(`${target} ${lane}: ${added.length} failure(s) master does not have, e.g. ${added.slice(0, 3).join(' | ')}`);
+        if (added.length > 0) problems.push(`${target} ${lane}: ${added.length} failure(s) master does not have: ${failureSummary(added, r.details)}`);
       }
     }
     for (const lane of r.lanes.keys()) if (!b.lanes.has(lane)) problems.push(...newLaneProblems(target, lane, b, r));

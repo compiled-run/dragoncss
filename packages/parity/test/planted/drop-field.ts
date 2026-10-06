@@ -46,6 +46,8 @@ const complete = {
   textAlign: 'start',
   verticalAlign: { kind: 'keyword', value: 'baseline' },
   aspectRatio: { kind: 'auto' },
+  grid: null,
+  gridItem: null,
 } as const satisfies LayoutStyle;
 
 const { boxSizing: _dropped, ...withoutBoxSizing } = complete;

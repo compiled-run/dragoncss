@@ -7,6 +7,7 @@ import {
   commitRegen,
   archOf,
   archRebaseline,
+  failureSummary,
   vectorsArchOf,
   deviceRunProblems,
   deviceRunWrote,
@@ -421,9 +422,29 @@ describe('the device run against the base\'s device evidence', () => {
     expect(archRebaseline('x', 132, body).problem).toBe('LAND_ARCH_REBASELINE must be a PR number, not "x"');
   });
 
+  // Real records (#91's landing): device-failures-<target>.json entries as device-lanes.ts writes them, a detail on each, and node
+  // null for a failure of the whole case.
+  const REAL = [{"lane": "device-pixels", "case": "position-relative-block", "dpr": 3, "node": "interior:a1", "kind": "pixel", "detail": "interior:a1 at 108,33: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)"}, {"lane": "device-pixels", "case": "position-relative-block", "dpr": 3, "node": "edge:a1:right", "kind": "pixel", "detail": "edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none"}, {"lane": "device-pixels", "case": "position-relative-block", "dpr": 3, "node": "edge:a1:bottom", "kind": "pixel", "detail": "edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none"}, {"lane": "device-frames", "case": "-", "dpr": 3, "node": null, "kind": "device-record", "detail": "the host did not finish: timed out after 1896 s waiting for the iOS host to finish"}];
+  it('reads the real failure records, node null and detail included, and stays strict about anything else (#91)', () => {
+    const states = { ios: { 'device-frames': 'pass', 'device-pixels': 'fail' } };
+    const parsed = ev(states, { ios: REAL });
+    expect([...parsed.targets.get('ios')!.failures.get('device-frames')!]).toEqual(['device-frames - 3 null device-record']);
+    expect(() => ev(states, { ios: [{ ...REAL[0], detail: 7 }] })).toThrow('entry 0 is not { lane, case, dpr, node (string or null), kind, detail }');
+    expect(() => ev(states, { ios: [{ ...REAL[0], node: 3 }] })).toThrow('is not { lane, case, dpr, node');
+    expect(() => ev(states, { ios: [{ ...REAL[0], severity: 'x' }] })).toThrow('entry 0 has unknown keys severity');
+  });
+  it('reports a device failure as a lane problem with a count per case and the first details, not a driver error (#91)', () => {
+    const base = ev({ ios: { 'device-frames': 'pass', 'device-pixels': 'fail' } }, { ios: [REAL[0]] });
+    const run = ev({ ios: { 'device-frames': 'fail', 'device-pixels': 'fail' } }, { ios: REAL });
+    expect(deviceRunProblems(base, run, [])).toEqual([
+      'ios device-frames: fail, on master pass; 1 failure(s): -@3 ×1; first: the host did not finish: timed out after 1896 s waiting for the iOS host to finish',
+      'ios device-pixels: 2 failure(s) master does not have: position-relative-block@3 ×2; first: edge:a1:right: Chrome shows an edge 3.000 device px along the scanline, the native capture none | edge:a1:bottom: Chrome shows an edge 3.000 device px along the scanline, the native capture none',
+    ]);
+    expect(failureSummary(Array.from({ length: 10 }, (_, i) => `l c${i} 2 n k`))).toContain(', and 2 more cases; first: l c0 2 n k');
+  });
   it('stops on a new failure, a lane that newly fails or did not run, a stale lane, failed lane parity, or a missing target', () => {
     const states = { ios: { 'device-frames': 'pass', 'device-pixels': 'fail' }, android: { 'device-frames': 'pass', 'device-pixels': 'fail' } };
-    expect(deviceRunProblems(master, ev(states, { ios: [px('a'), px('b'), px('c')], android: [px('a')] }), [])).toEqual([expect.stringContaining('ios device-pixels: 1 failure(s) master does not have, e.g. device-pixels c 3 edge:a pixel')]);
+    expect(deviceRunProblems(master, ev(states, { ios: [px('a'), px('b'), px('c')], android: [px('a')] }), [])).toEqual([expect.stringContaining('ios device-pixels: 1 failure(s) master does not have: c@3 ×1; first: x')]);
     expect(deviceRunProblems(master, ev(states, { ios: [px('a'), px('b', 'edge:b')], android: [px('a')] }), [])).toHaveLength(1);
     expect(deviceRunProblems(master, ev({ ...states, ios: { 'device-frames': 'fail', 'device-pixels': 'fail' } }, { ios: [px('a')], android: [px('a')] }), [])).toEqual(['ios device-frames: fail, on master pass']);
     expect(deviceRunProblems(master, ev({ ...states, android: { 'device-frames': 'not run', 'device-pixels': 'fail' } }, { ios: [], android: [] }), [])).toEqual(['android device-frames: not run, on master pass']);
@@ -440,7 +461,7 @@ describe('the device run against the base\'s device evidence', () => {
     const ok = lanes({ ios: { 'device-pixels': 'fail' } });
     expect(() => parseDeviceEvidence({}, () => [], 't')).toThrow(/no parity or targets/);
     expect(() => parseDeviceEvidence(ok, () => ({}), 't')).toThrow(/not a list/);
-    expect(() => parseDeviceEvidence(ok, () => [{ ...px('a'), dpr: '3' }], 't')).toThrow(/not \{ lane, case, dpr, node, kind \}/);
+    expect(() => parseDeviceEvidence(ok, () => [{ ...px('a'), dpr: '3' }], 't')).toThrow(/is not \{ lane, case, dpr, node \(string or null\), kind, detail \}/);
     expect(() => parseDeviceEvidence(ok, () => [{ ...px('a'), lane: 'device-lines' }], 't')).toThrow(/lanes.json does not have/);
     expect(() => parseDeviceEvidence(lanes({ ios: {} }), () => [], 't')).not.toThrow();
     expect(() => parseDeviceEvidence({ ...ok, targets: [...ok.targets, ...ok.targets] }, () => [], 't')).toThrow(/twice/);

@@ -205,7 +205,7 @@ describe('the floor merge driver is registered', () => {
 
   it('marks exactly the floor and pin files the landing driver judges (isFloorFile) merge=dragon-floor', () => {
     const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter((p) => p !== '');
-    const marked = execFileSync('git', ['ls-files', '-z', ':(attr:merge=dragon-floor)'], { cwd: repoPath('.'), encoding: 'utf8' }).split('\0').filter((p) => p !== '');
+    const marked = execFileSync('git', ['ls-files', '-z', ':(attr:merge=dragon-floor)'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter((p) => p !== '');
     expect(marked).toEqual(tracked.filter(isFloorFile));
     expect(marked.length).toBeGreaterThanOrEqual(6);
   });
