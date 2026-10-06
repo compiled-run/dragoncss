@@ -216,10 +216,10 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
-  it('device-hit runs exactly the hit cases: every layout case but those the hit lane refuses by name, the PNT2 transform cases (T146)', () => {
+  it('device-hit runs exactly the hit cases: every layout case but those the hit lane refuses by name, the PNT2 transform cases (T146) and the svg cases (SVG-a2 models no shape hits)', () => {
     const refused = hitRefusedCases().map((r) => r.id);
     expect(refused.length).toBeGreaterThan(0);
-    for (const id of refused) expect(id, id).toMatch(/^transform-/);
+    for (const id of refused) expect(id, id).toMatch(/^(transform-|svg-)/);
     expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...ids].sort());
     expect(hitCaseCount()).toBe(ids.length - refused.length);
     // The declared device-hit sets hold exactly those cases (targets.ts hitCaseIds), in layout order, at every device DPR.
