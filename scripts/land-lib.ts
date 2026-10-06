@@ -596,8 +596,10 @@ export type BatchOps<T, P extends { head: string }> = {
   /**
    * Builds the positions of a batch at once (parallel position builds): the same results, in the same order, as `build` on each
    * in turn, each slot a position or the error that ejects its PR. Absent, or returning null, the positions build one by one.
+   * `failed` is called with each ejection as it happens (its slot index), so the PR is reported then (FAILED, label, comment), as
+   * the one-by-one build reports it, not only once the whole batch has built.
    */
-  buildAll?: (base: string, items: readonly { entry: Entry; ticket: T }[]) => readonly ({ position: P } | { error: unknown })[] | null;
+  buildAll?: (base: string, items: readonly { entry: Entry; ticket: T }[], failed: (index: number, error: unknown) => void) => readonly ({ position: P } | { error: unknown })[] | null;
   /** Checks the built chain is exactly the positions it claims to be; any error is fatal. */
   verify: (built: readonly { entry: Entry; ticket: T; position: P }[]) => void;
   /** Proves the tree of one position (the full test). Throws LandFailure at step "test" when the test fails. */
@@ -637,7 +639,12 @@ export type ParallelHooks<T, P, H> = {
   log: (line: string) => void;
 };
 
-export const buildPositionsParallel = <T, P extends { head: string }, H>(base: string, items: readonly { entry: Entry; ticket: T }[], hooks: ParallelHooks<T, P, H>): ({ position: P } | { error: unknown })[] => {
+export const buildPositionsParallel = <T, P extends { head: string }, H>(
+  base: string,
+  items: readonly { entry: Entry; ticket: T }[],
+  hooks: ParallelHooks<T, P, H>,
+  failed: (index: number, error: unknown) => void = () => {},
+): ({ position: P } | { error: unknown })[] => {
   const handles: ({ ok: H } | { failed: unknown })[] = items.map((_, i) => {
     try {
       return { ok: hooks.speculate(i + 1, items.slice(0, i + 1)) };
@@ -678,6 +685,7 @@ export const buildPositionsParallel = <T, P extends { head: string }, H>(base: s
     } catch (error) {
       if (error instanceof Fatal) throw error;
       slots.push({ error });
+      failed(i, error);
       if (speculating) hooks.log(`parallel build: #${item.entry.pr} is ejected; the positions above it are built one by one without it`);
       speculating = false;
     }
@@ -829,7 +837,16 @@ export const prepareRound = <T, P extends { head: string }>(
   }
   let prev = b;
   const built: { entry: Entry; ticket: T; position: P }[] = [];
-  const all = admitted.length > 1 && ops.buildAll !== undefined ? ops.buildAll(b, admitted) : null;
+  // An ejection in the parallel build is reported as it happens; the slots then skip it.
+  const reported = new Set<number>();
+  const failedNow = (i: number, error: unknown): void => {
+    const m = admitted[i];
+    if (m === undefined || reported.has(i)) return;
+    reported.add(i);
+    at(m.entry);
+    failure(m.entry, error);
+  };
+  const all = admitted.length > 1 && ops.buildAll !== undefined ? ops.buildAll(b, admitted, failedNow) : null;
   if (all !== null) {
     if (all.length !== admitted.length) throw new Fatal(`the parallel build returned ${all.length} slots for ${admitted.length} PRs`);
     for (const [i, m] of admitted.entries()) {
@@ -838,7 +855,7 @@ export const prepareRound = <T, P extends { head: string }>(
       if ('position' in slot) {
         built.push({ ...m, position: slot.position });
         prev = slot.position.head;
-      } else failure(m.entry, slot.error);
+      } else if (!reported.has(i)) failedNow(i, slot.error);
     }
   } else {
     for (const m of admitted) {
