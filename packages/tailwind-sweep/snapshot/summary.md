@@ -4,7 +4,7 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4182 (18.0%) | 19103 (82.0%) | 1 | 0 | 0 |
+| web | 4183 (18.0%) | 19102 (82.0%) | 1 | 0 | 0 |
 | ios | 4157 (17.9%) | 19092 (82.0%) | 1 | 0 | 36 |
 | android | 4157 (17.9%) | 19092 (82.0%) | 1 | 0 | 36 |
 
@@ -28,7 +28,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | transitions-animation | 36 | 19 / 17 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 |
 | transforms | 680 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 |
 | interactivity | 1246 | 4 / 1242 / 0 / 0 / 0 | 4 / 1206 / 0 / 0 / 36 | 4 / 1206 / 0 / 0 / 36 |
-| svg | 6 | 5 / 1 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 |
+| svg | 6 | 6 / 0 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 |
 | accessibility | 4 | 0 / 4 / 0 / 0 / 0 | 0 / 4 / 0 / 0 / 0 | 0 / 4 / 0 / 0 / 0 |
 
 ## Largest refusal groups (first blocking diagnostic)
