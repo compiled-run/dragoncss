@@ -4,9 +4,9 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4184 (18.0%) | 19101 (82.0%) | 1 | 0 | 0 |
-| ios | 4165 (17.9%) | 19082 (81.9%) | 1 | 0 | 38 |
-| android | 4165 (17.9%) | 19082 (81.9%) | 1 | 0 | 38 |
+| web | 4185 (18.0%) | 19100 (82.0%) | 1 | 0 | 0 |
+| ios | 4166 (17.9%) | 19081 (81.9%) | 1 | 0 | 38 |
+| android | 4166 (17.9%) | 19081 (81.9%) | 1 | 0 | 38 |
 
 As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
 
@@ -15,7 +15,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
 | layout | 1551 | 1414 / 137 / 0 / 0 / 0 | 1414 / 137 / 0 / 0 / 0 | 1414 / 137 / 0 / 0 / 0 |
-| flexbox-grid | 513 | 357 / 155 / 1 / 0 / 0 | 357 / 155 / 1 / 0 / 0 | 357 / 155 / 1 / 0 / 0 |
+| flexbox-grid | 513 | 358 / 154 / 1 / 0 / 0 | 358 / 154 / 1 / 0 / 0 | 358 / 154 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 |
 | typography | 261 | 21 / 240 / 0 / 0 / 0 | 21 / 240 / 0 / 0 / 0 | 21 / 240 / 0 / 0 / 0 |
