@@ -433,9 +433,15 @@ describe('PNT1 opacity: fractions are proven on web only', () => {
       }
     }
   });
-  it('cites opacity-web for the web opacity rows and never for a native one', () => {
-    const cites = (rows: typeof webProfile.rows): string[] => rows.filter((r) => r.feature.startsWith('opacity:')).flatMap((r) => r.proofs.flatMap((p) => p.cases));
-    expect(cites(webProfile.rows)).toEqual(expect.arrayContaining(['opacity-web', 'opacity-web-rtl']));
-    for (const profile of [iosProfile, androidProfile]) expect(cites(profile.rows).filter((id) => id.startsWith('opacity-web'))).toEqual([]);
+  it('cites opacity-web for each fractional web opacity row and never for a native one', () => {
+    const casesOf = (r: (typeof webProfile.rows)[number]): string[] => r.proofs.flatMap((p) => p.cases);
+    for (const value of ['<number>', '<percentage>', 'inherit'])
+      for (const [dir, id] of [['ltr', 'opacity-web'], ['rtl', 'opacity-web-rtl']] as const) {
+        const rows = webProfile.rows.filter((r) => r.feature === `opacity:${value}` && r.context === `paint/${dir}`);
+        expect(rows.map((r) => [r.feature, r.context, r.status])).toEqual([[`opacity:${value}`, `paint/${dir}`, 'exact']]);
+        expect(casesOf(rows[0] as (typeof webProfile.rows)[number])).toContain(id);
+      }
+    for (const profile of [iosProfile, androidProfile])
+      expect(profile.rows.flatMap((r) => casesOf(r).filter((id) => id.startsWith('opacity-web')).map((id) => `${r.feature} ${r.context}: ${id}`))).toEqual([]);
   });
 });
