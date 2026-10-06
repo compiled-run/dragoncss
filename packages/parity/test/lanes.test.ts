@@ -222,13 +222,13 @@ describe('committed out/lanes.json', () => {
     const refused = refusals.map((r) => r.id);
     expect(refused.length).toBeGreaterThan(0);
     // Exactly the union: every INL1a inline and PNT1 stacking case is refused with its reason, and every other refusal is a transform-
-    // case with its reason.
+    // case (PNT2) or PNT1's stacking-transform with the transform reason.
     expect(refused.filter((id) => INLINE_OUT.includes(id)).sort()).toEqual([...INLINE_OUT].sort());
     expect(refused.filter((id) => STACKING_OUT.includes(id)).sort()).toEqual([...STACKING_OUT].sort());
     for (const r of refusals) {
       if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
       else if (STACKING_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(STACKING_REASON);
-      else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^transform-/), expect.stringMatching(TRANSFORM_REASON)]);
+      else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^(transform-|stacking-transform)/), expect.stringMatching(TRANSFORM_REASON)]);
     }
     expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...ids].sort());
     expect(hitCaseCount()).toBe(ids.length - refused.length);
