@@ -45,7 +45,8 @@ and ids, and the at-rule refusals as they were before it.
   the per-longhand cascade (below). The cascade orders by importance, specificity and order, and also picks each element's custom property winners.
   `var()` substitution runs through the `substituteVariables` hook in `analysis/computed.ts`; the work is in
   `analysis/variables.ts` (custom property computation with cycle detection, substitution, invalid at computed-value time).
-  `@property` and `@layer` are still refused (`at-rules.ts`).
+  `@property` registers through `at-rules/property.ts` and `analysis/registered.ts`, and `computeCustoms` applies it; `@layer` is
+  still refused (`at-rules.ts`).
 - **A flow-relative property.** It is a shorthand of `properties/logical.ts` with a handler in `shorthands/logical.ts`: in
   horizontal-tb it expands to the physical longhands it maps to, an inline mapping once per direction with that direction on
   the `LonghandValue`. `analysis/logical.ts` computes each element's own direction and narrows every declaration to it

@@ -7,6 +7,7 @@ import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resol
 import type { Candidate } from '../src/analysis/resolve.ts';
 import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
 import { keyframesAtRule } from '../src/css/at-rules/keyframes.ts';
+import { propertyAtRule } from '../src/css/at-rules/property.ts';
 import type { AtRuleContext } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS, SHORTHANDS_MOVED } from '../src/css/properties.ts';
 import type { Longhand } from '../src/css/properties.ts';
@@ -115,11 +116,11 @@ describe('E2 seams: FIXTURES', () => {
   });
 });
 
-describe('E2 seams: every at-rule but @media and @keyframes is still refused', () => {
+describe('E2 seams: every at-rule but @media, @keyframes and @property is still refused', () => {
   // MQ-a made @media conditional and ANIM-b1 accepted a top-level @keyframes (keyframes.test.ts); ANIM-b2 accepted @-webkit-keyframes
-  // as @keyframes (aliases.test.ts).
+  // as @keyframes (aliases.test.ts); CASC 2 registers a top-level @property (casc-property.test.ts).
   const KEYFRAMES = ['keyframes', '-webkit-keyframes'];
-  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
+  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'property' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
   const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@supports (display: flex) { @${n} z { .b { height: 3px; } } }`];
   const run = (text: string): { text: string; diagnostics: Diagnostic[]; enclosed: EnclosedRules[]; rules: number } => {
     const diagnostics: Diagnostic[] = [];
@@ -128,8 +129,8 @@ describe('E2 seams: every at-rule but @media and @keyframes is still refused', (
     return { text, diagnostics, enclosed, rules: rules.length };
   };
   const atRules = (ds: readonly Diagnostic[]): [string, string][] => ds.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.code, d.message]);
-  it('every registered name but font-face and media is refused today', () => {
-    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : refuseAtRule);
+  it('every registered name but font-face, media, keyframes and property is refused today', () => {
+    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : name === 'property' ? propertyAtRule : refuseAtRule);
     expect(atRuleHandler('MEDIA')).toBe(mediaAtRule);
     expect(atRuleHandler('no-such-rule')).toBe(refuseAtRule);
     expect(atRuleHandler('Font-Face')).toBe(acceptFontFace);
@@ -176,8 +177,9 @@ describe('E2 seams: every at-rule but @media and @keyframes is still refused', (
   it('the diagnostics and enclosed rules are byte-identical to 4c1331c', () => {
     // media and MEDIA left the list with MQ-a, and keyframes with ANIM-b1 (T065): with keyframes it gave 0a07dd1a…, and without
     // it the base before ANIM-b1 gives ba217ee5…, so every other at-rule is unchanged. At cb1a4b2d the full list gave 4cfb6ef0….
-    // -webkit-keyframes left with ANIM-b2: without it the base before ANIM-b2 (a36ce22e09) gives a0302641… too.
-    const pinned = ['charset', 'color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'layer', 'namespace', 'page', 'position-try', 'property', 'scope', 'starting-style', 'supports', 'view-transition', 'Font-Face', 'unknown-thing'];
+    // -webkit-keyframes left with ANIM-b2: without it the base before ANIM-b2 (a36ce22e09) gives a0302641… too. property left with
+    // CASC 2: without it the base before CASC 2 (2c484098a7) gives 04178627… too.
+    const pinned = ['charset', 'color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'layer', 'namespace', 'page', 'position-try', 'scope', 'starting-style', 'supports', 'view-transition', 'Font-Face', 'unknown-thing'];
     const runs = pinned.flatMap((n) => sheets(n).map((text) => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
@@ -192,7 +194,7 @@ describe('E2 seams: every at-rule but @media and @keyframes is still refused', (
       }
       return x;
     }));
-    expect(sha(strip(runs))).toBe('a03026419de54b4982a5bd966e8868016a358438fee16c820dd0c7fc1e06d983');
+    expect(sha(strip(runs))).toBe('0417862776abb5b0f28ed459d1dc5aebbfd88e1123c12e75f14922d22868aa0c');
     expect(added.length).toBeGreaterThan(0);
     for (const x of added) expect([[], null, false]).toContainEqual(x);
   });

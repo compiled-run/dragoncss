@@ -9,6 +9,7 @@ import { featuresOfList, parseMediaPrelude, parseMediaQueryList, refusalsOf, ser
 import type { Diagnostic, Span } from '../types.ts';
 import { asciiLower } from './escapes.ts';
 import { keyframesAtRule } from './at-rules/keyframes.ts';
+import { propertyAtRule } from './at-rules/property.ts';
 
 /**
  * One at-rule as the driver meets it: its node, its name as written, where it sits ('the stylesheet', 'a rule block',
@@ -29,6 +30,8 @@ export type AtRuleOutcome =
   | { readonly kind: 'refuse'; readonly diagnostic: Diagnostic }
   | { readonly kind: 'font-face'; readonly context: AtRuleContext }
   | { readonly kind: 'keyframes'; readonly context: AtRuleContext }
+  /** @property at the top level: collected for css/at-rules/property.ts parsePropertyRules (CASC 2). */
+  | { readonly kind: 'property'; readonly context: AtRuleContext }
   | { readonly kind: 'conditional'; readonly condition: RuleCondition };
 
 export type AtRuleHandler = (at: AtRuleContext) => AtRuleOutcome;
@@ -102,7 +105,7 @@ export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
   namespace: refuseAtRule,
   page: refuseAtRule,
   'position-try': refuseAtRule,
-  property: refuseAtRule,
+  property: propertyAtRule,
   scope: refuseAtRule,
   'starting-style': refuseAtRule,
   supports: refuseAtRule,

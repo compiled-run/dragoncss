@@ -496,6 +496,22 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/property_registration.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "1284a16d545b149dbecc27b0c0c9615aa738f92d8ef2e8c3527f476b9492bfdb",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "81-104", "symbol": "ComputationallyIndependent", "source": "located" },
+        { "lines": "130-186", "symbol": "PropertyRegistration::MaybeCreateForDeclaredProperty", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/at-rules/property.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
