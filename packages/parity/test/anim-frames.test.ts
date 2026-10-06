@@ -149,14 +149,18 @@ describe('host frame lanes (R18)', () => {
 describe('animation rows (profile:rows from the frame lanes)', () => {
   const report = animReport();
   const passing = cases.filter((c) => report.passingCases.includes(c.id)).map((c) => ({ id: c.id, features: animationFeatures(c.compiled) }));
-  const rowsOf = (rows: readonly { readonly context: string }[]) => rows.filter((r) => r.context === ANIMATION_CONTEXT);
+  const rowsOf = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context === ANIMATION_CONTEXT);
 
-  it('are exactly what profile:rows derives from the passing frame cases, per target (iOS and Android none until device-anim, 3b)', () => {
+  it('are exactly what profile:rows derives from the passing frame cases, per target: exact on web, caveat on iOS and Android (ANIM-b1 part 2)', () => {
     expect(rowsOf(webProfile.rows)).toEqual(deriveAnimationRows('web', passing));
     expect(rowsOf(iosProfile.rows)).toEqual(deriveAnimationRows('ios', passing));
     expect(rowsOf(androidProfile.rows)).toEqual(deriveAnimationRows('android', passing));
-    expect(rowsOf(iosProfile.rows)).toEqual([]);
-    expect(rowsOf(androidProfile.rows)).toEqual([]);
+    // The same keys and proofs on every target; the native rows are capped at caveat, as every native paint row is.
+    for (const native of [iosProfile.rows, androidProfile.rows]) {
+      expect(rowsOf(native).map((r) => ({ ...r, status: 'exact' }))).toEqual(rowsOf(webProfile.rows));
+      expect(rowsOf(native).every((r) => r.status === 'caveat')).toBe(true);
+    }
+    expect(rowsOf(iosProfile.rows).length).toBeGreaterThan(0);
   }, 600_000);
 
   it('name exactly the passing frame cases that use their key, and every key a passing frame case uses has a row (M1)', () => {

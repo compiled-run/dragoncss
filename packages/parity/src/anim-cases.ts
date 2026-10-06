@@ -238,9 +238,9 @@ export function frameScript(c: AnimCase): FrameStep[] {
 }
 
 /** A frame case's state runtime and animator, mounted at the initial assignment (R7: animations start at first style). */
-export function simulator(c: AnimCase, faults: rtEasing.RtFaults = rtEasing.NO_RT_FAULTS, anim: AnimFaults = NO_ANIM_FAULTS): { readonly rt: StateRuntime; readonly animator: Animator; set: (sets: readonly { readonly state: string; readonly value: Scalar }[]) => void } {
-  const rt = new StateRuntime(c.sp);
-  const animator = new Animator(c.sp, c.ap, c.viewport, referenceMeasurer(), faults, anim);
+export function simulator(c: AnimCase, faults: rtEasing.RtFaults = rtEasing.NO_RT_FAULTS, anim: AnimFaults = NO_ANIM_FAULTS, sp: StateProgram = c.sp): { readonly rt: StateRuntime; readonly animator: Animator; set: (sets: readonly { readonly state: string; readonly value: Scalar }[]) => void } {
+  const rt = new StateRuntime(sp);
+  const animator = new Animator(sp, c.ap, c.viewport, referenceMeasurer(), faults, anim);
   return {
     rt,
     animator,
@@ -255,8 +255,8 @@ export function simulator(c: AnimCase, faults: rtEasing.RtFaults = rtEasing.NO_R
 export type FrameDump = { readonly at: number; readonly settle: boolean; readonly assignment: number; readonly frame: AnimFrame; readonly program: NativeProgram };
 
 /** The dumps of a script on the TypeScript reference: each dump's animated values and the live program with them applied. */
-export function runFrameScript(c: AnimCase, steps: readonly FrameStep[], faults: rtEasing.RtFaults = rtEasing.NO_RT_FAULTS, anim: AnimFaults = NO_ANIM_FAULTS): FrameDump[] {
-  const sim = simulator(c, faults, anim);
+export function runFrameScript(c: AnimCase, steps: readonly FrameStep[], faults: rtEasing.RtFaults = rtEasing.NO_RT_FAULTS, anim: AnimFaults = NO_ANIM_FAULTS, sp: StateProgram = c.sp): FrameDump[] {
+  const sim = simulator(c, faults, anim, sp);
   const out: FrameDump[] = [];
   for (const s of steps) {
     if (s.kind === 'set') sim.set(s.sets);

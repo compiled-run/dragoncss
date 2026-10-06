@@ -12,9 +12,10 @@ import type { LU } from '@dragon/layout';
 import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, replacedPaint, resolveBorder, resolvePadding, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
-import { emitStatePrograms } from 'dragon';
+import { emitFrameScripts, emitStatePrograms } from 'dragon';
 import { stateEmits } from './state-cases.ts';
 import { frameEmits } from './anim-cases.ts';
+import { frameCaseEmits } from './anim-lanes.ts';
 import { deviceHitSource } from './hit-capture.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
@@ -210,11 +211,18 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   // both a layout case and a script fails rather than running one of them.
   let script = dragonStateCaseTable[id]
   let layoutCase = DragonHost.dragonCaseTable[id]
-  if script != nil && layoutCase != nil { fatalError("dragon host: \(id) is both a layout case and a case script") }
-  guard let c = script?.dragonCase ?? layoutCase else { fatalError("dragon host: no case \(id)") }
+  // ANIM-b1: a frame sample runs its frame case's script on a state mount up to its dump.
+  let sample = dragonFrameCaseTable[id]
+  if [script != nil, layoutCase != nil, sample != nil].filter({ $0 }).count > 1 { fatalError("dragon host: \(id) names two kinds of case") }
+  guard let c = script?.dragonCase ?? sample?.dragonCase ?? layoutCase else { fatalError("dragon host: no case \(id)") }
   let t0: CFTimeInterval
   let tree: DragonTree
-  if let script = script {
+  if let sample = sample {
+    t0 = CACurrentMediaTime()
+    let mount = DragonStateMount(machine: sample.script.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge)
+    sample.run(mount.machine)
+    tree = mount.tree
+  } else if let script = script {
     t0 = CACurrentMediaTime()
     let mount = DragonStateMount(machine: script.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge)
     script.run(mount.machine)
@@ -391,11 +399,18 @@ class DragonActivity : Activity() {
     // is both a layout case and a script fails rather than running one of them.
     val script = dev.dragon.cases.dragonStateCaseTable[id]
     val layoutCase = dev.dragon.cases.dragonCaseTable[id]
-    if (script != null && layoutCase != null) throw IllegalStateException("dragon host: " + id + " is both a layout case and a case script")
-    val c = script?.dragonCase ?: layoutCase ?: throw IllegalStateException("dragon host: no case " + id)
+    // ANIM-b1: a frame sample runs its frame case's script on a state mount up to its dump.
+    val sample = dev.dragon.cases.dragonFrameCaseTable[id]
+    if (listOf(script != null, layoutCase != null, sample != null).count { it } > 1) throw IllegalStateException("dragon host: " + id + " names two kinds of case")
+    val c = script?.dragonCase ?: sample?.dragonCase ?: layoutCase ?: throw IllegalStateException("dragon host: no case " + id)
     val t0: Long
     val tree: DragonTree
-    if (script != null) {
+    if (sample != null) {
+      t0 = SystemClock.elapsedRealtimeNanos()
+      val mount = DragonStateMount(sample.script.make(), frame, bridge.measurer, scale, bridge)
+      sample.run(mount.machine)
+      tree = mount.tree
+    } else if (script != null) {
       t0 = SystemClock.elapsedRealtimeNanos()
       val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge)
       script.run(mount.machine)
@@ -545,7 +560,10 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   files.push(...emitNativeSupport(backend, supportPlant));
   files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
   // SELD-R1a: the state programs and their case scripts; ANIM-b1: the frame cases' state programs with their animation tables.
-  files.push(...emitStatePrograms(backend, [...stateEmits(target), ...frameEmits(target)]));
+  const states = stateEmits(target);
+  files.push(...emitStatePrograms(backend, [...states, ...frameEmits(target)]));
+  // ANIM-b1: the frame samples (the device-anim lane), run on the frame cases' machines.
+  files.push(...emitFrameScripts(backend, frameCaseEmits(target, states.length)));
   // SELD-R1b: the device-hit facts and runner.
   files.push(deviceHitSource(target));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);
@@ -681,7 +699,7 @@ function cachedApp(kind: 'ios-app' | 'apk', key: string, artifact: string, compl
 }
 
 /** The case tables stay in DragonHost: main.swift reads DragonHost.dragonCaseTable. */
-const IOS_TABLES = ['Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift'];
+const IOS_TABLES = ['Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift', 'Cases/DragonFrameCaseTable.swift'];
 
 /**
  * The Swift files of each iOS module, by path; every file in exactly one, and none of the three empty (else a thrown error). The

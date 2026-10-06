@@ -274,6 +274,8 @@ export function nativePrograms(compiled: object, assignment: Assignment, state: 
 export type { LayoutChange, LayoutVariant, StateCase, StateDelta, StateFaults, StateProgram, StateVariable } from './lower/state-program.ts';
 export { applyDelta, deriveStateProgram, MAX_STATE_TABLE_ASSIGNMENTS, NO_STATE_FAULTS, programAt, STATE_PROGRAM_VERSION, stateKey, StateProgramError, StateRuntime, StateValueError } from './lower/state-program.ts';
 export type { ScriptCase, ScriptStep, StateEmit, WebClassTable, WebStateProgram } from './emit/runtime/state.ts';
+export type { FrameEmit, FrameScriptStep } from './emit/runtime/anim.ts';
+export { emitFrameScripts } from './emit/runtime/anim.ts';
 export { emitStatePrograms, STATE_RUNTIME_VERSION, StateEmitError, typedSetters, valueKey, webStateModule, webStateProgram } from './emit/runtime/state.ts';
 export { CLOCK_RUNTIME_VERSION, ClockError, VirtualClock } from './emit/runtime/clock.ts';
 export { RUNTIME_MODULES } from './emit/runtime/index.ts';
