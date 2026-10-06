@@ -8,13 +8,23 @@ import type { MediaQueryList } from '../media/index.ts';
 import { parseMediaPrelude, parseMediaQueryList, refusalsOf, serialiseMediaQueryList } from '../media/index.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { asciiLower } from './escapes.ts';
+import { charsetAtRule } from './at-rules/charset.ts';
 import { keyframesAtRule } from './at-rules/keyframes.ts';
 
 /**
  * One at-rule as the driver meets it: its node, its name as written, where it sits ('the stylesheet', 'a rule block',
  * '@media'...), its span, and its prelude as authored ('' when it has none; absent: generated from the node).
  */
-export type AtRuleContext = { readonly node: CssNode; readonly name: string; readonly where: string; readonly span: Span; readonly prelude?: string };
+export type AtRuleContext = {
+  readonly node: CssNode;
+  readonly name: string;
+  readonly where: string;
+  readonly span: Span;
+  readonly prelude?: string;
+  /** The at-rule's source text as written, and whether it starts the sheet's text (@charset reads both). */
+  readonly source?: string;
+  readonly atSheetStart?: boolean;
+};
 
 /** The condition of a conditional at-rule: its parsed media query list, that list serialised, and the at-rule's span. */
 export type RuleCondition = { readonly list: MediaQueryList; readonly text: string; readonly span: Span };
@@ -29,7 +39,9 @@ export type AtRuleOutcome =
   | { readonly kind: 'refuse'; readonly diagnostic: Diagnostic }
   | { readonly kind: 'font-face'; readonly context: AtRuleContext }
   | { readonly kind: 'keyframes'; readonly context: AtRuleContext }
-  | { readonly kind: 'conditional'; readonly condition: RuleCondition };
+  | { readonly kind: 'conditional'; readonly condition: RuleCondition }
+  /** Accepted with no effect on any target, as Chrome drops it (@charset "utf-8";). */
+  | { readonly kind: 'drop' };
 
 export type AtRuleHandler = (at: AtRuleContext) => AtRuleOutcome;
 
@@ -80,7 +92,7 @@ export const mediaAtRule: AtRuleHandler = (at) => {
  * lines. An at-rule not listed here falls back to refuseAtRule too.
  */
 export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
-  charset: refuseAtRule,
+  charset: charsetAtRule,
   'color-profile': refuseAtRule,
   container: refuseAtRule,
   'counter-style': refuseAtRule,
