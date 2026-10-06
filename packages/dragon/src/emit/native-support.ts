@@ -567,6 +567,12 @@ public final class DragonTree {
       }
     }
     walk(zoomed.root)
+    // OVFL-B: each scroll container's offset range in device px, from the translated engine, for the scroll module's hook.
+    var scrollRanges: [String: [Double]] = [:]
+    let sr = try overflow_scrollRanges(input, measurer)
+    if let no = sr as? ScrollRangesResult_refused { fatalError("dragon: the engine refused the scroll ranges at \(no.nodeId): \(no.detail)") }
+    guard let srOk = sr as? ScrollRangesResult_ok else { fatalError("dragon: the engine gave no scroll ranges") }
+    for g in srOk.ranges.items { scrollRanges[g.id.description] = [g.minX, g.maxX, g.minY, g.maxY] }
     let lu = units_LU_PER_PX
     let s = scale
     let cg = CGFloat(scale)
@@ -605,6 +611,7 @@ public final class DragonTree {
         borders[id] = px
         bv.dragonScale = s
         bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px)
+        bv.dragonScrollRange = scrollRanges[id]
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
@@ -983,7 +990,7 @@ class DragonRootView(ctx: Context) : DragonGroup(ctx) {
 }
 
 /** css-overflow-3 §3: the padding box of an overflow: hidden node; its children are clipped to its bounds (clipBounds). */
-class DragonClipView(ctx: Context) : DragonGroup(ctx) {
+open class DragonClipView(ctx: Context) : DragonGroup(ctx) {
   override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
     clipBounds = Rect(0, 0, r - l, b - t)
     super.onLayout(changed, l, t, r, b)
@@ -1222,6 +1229,9 @@ import dev.dragon.layout.inline_placeLines
 import dev.dragon.layout.layout_absoluteRects
 import dev.dragon.layout.layout_layout
 import dev.dragon.layout.layout_zoomInput
+import dev.dragon.layout.overflow_scrollRanges
+import dev.dragon.layout.ScrollRangesResult_ok
+import dev.dragon.layout.ScrollRangesResult_refused
 import dev.dragon.layout.snap_snapEdges
 import dev.dragon.layout.units_LU_PER_PX
 import dev.dragon.layout.units_fromCssPx
@@ -1308,6 +1318,13 @@ class DragonTree(val context: Context) {
       }
     }
     walk(zoomed.root)
+    // OVFL-B: each scroll container's offset range in device px, from the translated engine, for the scroll module's hook.
+    val scrollRanges = HashMap<String, IntArray>()
+    val sr = overflow_scrollRanges(input, measurer)
+    val srNo = sr as? ScrollRangesResult_refused
+    if (srNo != null) throw IllegalStateException("dragon: the engine refused the scroll ranges at " + srNo.nodeId + ": " + srNo.detail)
+    val srOk = sr as? ScrollRangesResult_ok ?: throw IllegalStateException("dragon: the engine gave no scroll ranges")
+    for (g in srOk.ranges) scrollRanges[g.id] = intArrayOf(dragonCheckedInt(g.minX, g.id + " scroll minX"), dragonCheckedInt(g.maxX, g.id + " scroll maxX"), dragonCheckedInt(g.minY, g.id + " scroll minY"), dragonCheckedInt(g.maxY, g.id + " scroll maxY"))
     val lu = units_LU_PER_PX
     setFrame(root.dragonFrame, 0.0, 0.0, kotlin.math.ceil(input.viewport.width * scale), kotlin.math.ceil(input.viewport.height * scale), "root")
     val edges = HashMap<String, DoubleArray>()
@@ -1348,6 +1365,7 @@ class DragonTree(val context: Context) {
         val px = doubleArrayOf(be.top / lu, be.right / lu, be.bottom / lu, be.left / lu)
         borders[id] = px
         v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px)
+        v.dragonScrollRange = scrollRanges[id]
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }

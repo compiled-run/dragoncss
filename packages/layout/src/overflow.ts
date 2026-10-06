@@ -5,7 +5,7 @@
 // core/paint/paint_layer_scrollable_area.cc lines 968-982). The layout itself is unchanged: this reads the input and the layout's boxes.
 import type { Direction, LayoutBox, LayoutInput, LayoutNode, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
-import { add, clampNegativeToZero, fromCssPx, max, min, sub, ZERO } from './units.ts';
+import { add, clampNegativeToZero, fromCssPx, LU_PER_PX, max, min, snapEdge, sub, ZERO } from './units.ts';
 import type { Edges } from './box.ts';
 import { blockMinMaxWith, hasPercent, INDEFINITE, isScrollContainer, resolveBorder, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
 import type { Ctx, EngineFaults, Strut } from './block.ts';
@@ -25,7 +25,7 @@ export type OverflowRect = { readonly x: LU; readonly y: LU; readonly width: LU;
  * scrollRect its scrollable overflow rect united with its client box (Blink overflow_rect_), whose size is scrollWidth and
  * scrollHeight, all in zoomed LU.
  */
-export type ScrollMetrics = { readonly id: string; readonly clientWidth: LU; readonly clientHeight: LU; readonly scrollRect: OverflowRect };
+export type ScrollMetrics = { readonly id: string; readonly clientWidth: LU; readonly clientHeight: LU; readonly scrollRect: OverflowRect; readonly paddingX: LU; readonly paddingY: LU };
 
 /**
  * viewport: the initial containing block's scroll container (Blink LayoutView), id "viewport". containers: every box that is a
@@ -101,6 +101,39 @@ export function scrollMetricsWithFaults(given: LayoutInput, measurer: TextMeasur
   }
 }
 
+/**
+ * One scroll container's scroll offset range in whole device px (OVFL-B), in CSS scroll-offset terms: 0 is the padding box's start
+ * position, the start side is negative where the overflow extends past it (rtl, a reversed flex container), and the user scrolls
+ * between min and max on each axis. Matches Chrome 145's scrollLeft and scrollTop clamps times the DPR (measured: ovfl-metrics).
+ */
+export type ScrollRange = { readonly id: string; readonly minX: number; readonly maxX: number; readonly minY: number; readonly maxY: number };
+
+export type ScrollRangesResult = { readonly kind: 'ok'; readonly ranges: readonly ScrollRange[] } | { readonly kind: 'refused'; readonly nodeId: string; readonly detail: string };
+
+/** The scroll offset range of every element scroll container of a layout, in input preorder, at its device scale. */
+export function scrollRanges(input: LayoutInput, measurer: TextMeasurer): ScrollRangesResult {
+  return scrollRangesWithFaults(input, measurer, NO_ENGINE_FAULTS);
+}
+
+/**
+ * scrollRanges with planted engine faults. The contents and client sizes snap at the padding box origin (whole device px, half
+ * up), and the scroll origin is the overflow before the padding box's start, floored to whole device px; so the range is
+ * [-origin, contents - client - origin] on each axis (measured at DPR 1, 2, 3 and 2.625).
+ */
+export function scrollRangesWithFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): ScrollRangesResult {
+  const r = scrollMetricsWithFaults(given, measurer, 'ltr', faults);
+  if (r.kind === 'refused') return { kind: 'refused', nodeId: r.nodeId, detail: r.detail };
+  const out: ScrollRange[] = [];
+  for (const m of r.containers) {
+    const ox = Math.floor((m.paddingX - m.scrollRect.x) / LU_PER_PX);
+    const oy = Math.floor((m.paddingY - m.scrollRect.y) / LU_PER_PX);
+    const w = snapEdge(m.scrollRect.width) - snapEdge(m.clientWidth);
+    const h = snapEdge(m.scrollRect.height) - snapEdge(m.clientHeight);
+    out.push({ id: m.id, minX: -ox, maxX: w - ox, minY: -oy, maxY: h - oy });
+  }
+  return { kind: 'ok', ranges: out };
+}
+
 function nodeOf(ix: Index, id: string): Node {
   const n = ix.nodes.get(id);
   if (n === undefined) throw new Error(`no laid-out box ${id}`);
@@ -165,7 +198,7 @@ function clientOf(ix: Index, n: Node): OverflowRect {
 /** css-overflow-3 §2.2: the scrollable overflow united with the client size at its offset (the scrollport is part of it); matches Chrome. */
 function metricsOf(id: string, overflow: OverflowRect, client: OverflowRect): ScrollMetrics {
   const withClient = unite(overflow, { x: overflow.x, y: overflow.y, width: client.width, height: client.height });
-  return { id, clientWidth: client.width, clientHeight: client.height, scrollRect: withClient };
+  return { id, clientWidth: client.width, clientHeight: client.height, scrollRect: withClient, paddingX: client.x, paddingY: client.y };
 }
 
 // ---------------------------------------------------------------- rectangles (Blink PhysicalRect)

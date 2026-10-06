@@ -4,7 +4,7 @@
 import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutBox, LayoutInput } from '@dragon/layout';
-import { fromRaw, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
+import { fromRaw, measurerFor, NO_ENGINE_FAULTS, scrollRanges, validateLayoutInput } from '@dragon/layout';
 import type { Compiled } from 'dragon';
 import { iosLayoutProjection, NO_FAULTS } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
@@ -104,6 +104,61 @@ describe('OVFL scroll metrics against Chrome', () => {
     const padding = problemsWith({ ...NO_ENGINE_FAULTS, overflowIgnoresPadding: true });
     expect(padding.has('overflow-end-padding@2')).toBe(true);
     expect(padding.get('overflow-end-padding@1')?.some((p) => p.startsWith('a1 scrollWidth'))).toBe(true);
+  });
+});
+
+describe('OVFL-B: the scroll offset range against Chrome', () => {
+  /** The engine's ranges of every case at a DPR, or the reason it has none. */
+  const rangesOf = (f: (typeof all)[number], c: (typeof all)[number]['cases'][number], dpr: number) => {
+    const p = iosLayoutProjection(compiledFor(f, c.environment.direction), { ...c.environment, devicePixelRatio: dpr }, c.assignment);
+    if (p.kind === 'blocked') throw new Error(`${c.id}: ${p.reason}`);
+    const v = validateLayoutInput(JSON.parse(JSON.stringify(p.input)));
+    if (!v.ok) throw new Error(`${c.id}: invalid input`);
+    const m = measurerFor(REFERENCE_PLATFORM);
+    if (m.kind !== 'ok') throw new Error(m.detail);
+    const r = scrollRanges(v.input, m.measurer);
+    if (r.kind !== 'ok') throw new Error(`${c.id}: ${r.detail}`);
+    return r.ranges;
+  };
+
+  it('every scroll container scrolls between exactly the offsets Chrome clamps scrollLeft and scrollTop to, in whole device px, at 1, 2, 3 and 2.625', () => {
+    const problems: string[] = [];
+    let checked = 0;
+    let startSide = 0;
+    for (const dpr of SCROLL_DPRS) {
+      for (const f of all) {
+        for (const c of f.cases) {
+          const engine = rangesOf(f, c, dpr);
+          const chrome = committedScrollCapture(c.id, dpr).extents;
+          if (engine.map((r) => r.id).join() !== chrome.map((r) => r.id).join()) problems.push(`${c.id}@${dpr}: containers [${engine.map((r) => r.id)}], chrome [${chrome.map((r) => r.id)}]`);
+          for (const e of chrome) {
+            const g = engine.find((r) => r.id === e.id);
+            if (g === undefined) continue;
+            const want = [e.minLeft, e.maxLeft, e.minTop, e.maxTop].map((x) => x * dpr);
+            for (const w of want) if (Math.abs(w - Math.round(w)) > 1e-3) problems.push(`${c.id}@${dpr} ${e.id}: Chrome's ${w} is not a whole device px`);
+            const got = [g.minX, g.maxX, g.minY, g.maxY];
+            if (got.some((x, i) => x !== Math.round(want[i] as number))) problems.push(`${c.id}@${dpr} ${e.id}: engine [${got}], chrome [${want.map(Math.round)}]`);
+            if (g.minX > 0 || g.maxX < 0 || g.minY > 0 || g.maxY < 0) problems.push(`${c.id}@${dpr} ${e.id}: offset 0 is outside [${got}]`);
+            if (g.minX < 0 || g.minY < 0) startSide++;
+            checked++;
+          }
+        }
+      }
+    }
+    expect(problems).toEqual([]);
+    expect(checked).toBeGreaterThan(400);
+    // rtl and the reversed flex containers scroll past their start side.
+    expect(startSide).toBeGreaterThan(80);
+  });
+
+  it('the scroll origin is floored to whole device px: overflow-flex-reverse a1 has 236.53 device px before its start at 2.625, and Chrome scrolls 236 of it', () => {
+    const f = all.find((x) => x.spec.id === 'overflow-flex-reverse');
+    const c = f?.cases.find((x) => x.id === 'overflow-flex-reverse');
+    if (f === undefined || c === undefined) throw new Error('no overflow-flex-reverse case');
+    const g = rangesOf(f, c, 2.625).find((r) => r.id === 'a1');
+    const e = committedScrollCapture('overflow-flex-reverse', 2.625).extents.find((r) => r.id === 'a1');
+    expect(g?.minX).toBe(-236);
+    expect(e === undefined ? null : Math.round(e.minLeft * 2.625)).toBe(-236);
   });
 });
 

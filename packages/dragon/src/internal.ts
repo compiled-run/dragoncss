@@ -26,7 +26,7 @@ export { iosProfile } from './profiles/ios.ts';
 export { webProfile } from './profiles/web.ts';
 export { androidProfile } from './profiles/android.ts';
 export type { Proof, ProofAspect, ProofLane, ProfileRow, SupportProfile } from './profiles/types.ts';
-export { nativeScrollPending, PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
+export { PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
 export type { ProfileNote } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
 export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';
@@ -104,7 +104,7 @@ export function interactionPartitionOf(compiled: object, assignment: Assignment)
   return typeof c === 'string' ? null : c.partition;
 }
 
-/** SELD-R2 and T078 R14: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
+/** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
 export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
   return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
 }

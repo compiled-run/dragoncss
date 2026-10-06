@@ -3,7 +3,7 @@
 // the device scale (border widths, the padding-box clip, the text instance size) come from the TS engine with the same helpers
 // the generated code runs on the device through the translated engine. The digest of an expected dump is embedded in the
 // generated code, keyed by case and DPR. The compiler core imports the engine for types only, so the host passes the TS engine in.
-import type { Edges, EngineFaults, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, ObjectRect, ReplacedLeaf, ReplacedPaint, SnappedRect, TextMeasurer } from '@dragon/layout';
+import type { Edges, EngineFaults, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, ObjectRect, ReplacedLeaf, ReplacedPaint, ScrollRangesResult, SnappedRect, TextMeasurer } from '@dragon/layout';
 import { canonicalJson, sha256Hex } from '../digest.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { NativeBackend, NativeProgram, ProgramNode, ProgramWrite } from '../lower/native-program.ts';
@@ -42,6 +42,8 @@ export type ExpectedEngine = {
   readonly platformFontSize: (px: number) => number;
   readonly zoomFontSize: (px: number, zoom: number) => number;
   readonly float32: (x: number) => number;
+  /** OVFL-B: every element scroll container's offset range in device px (layout overflow.ts). */
+  readonly scrollRanges: (input: LayoutInput, measurer: TextMeasurer) => ScrollRangesResult;
 };
 
 /** A replaced box's paint rects in device px relative to its snapped border box: [x, y, width, height]; drawn null for none. */
@@ -51,7 +53,7 @@ export type ReplacedGeometry = { readonly content: readonly number[]; readonly d
  * The device values of one node at one scale, from the engine: border widths in whole device px, the snapped border box, a text
  * run's computed font size in device px from the resolved input (null for a box), and for a replaced box its paint rects.
  */
-export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly fontSize: number | null; readonly replaced: ReplacedGeometry | null };
+export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly fontSize: number | null; readonly replaced: ReplacedGeometry | null; readonly scroll: readonly [number, number, number, number] | null };
 
 const rgba = (c: { r: number; g: number; b: number; alpha: number }): number[] => [c.r, c.g, c.b, c.alpha];
 
@@ -172,6 +174,9 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
   const borders = borderDevicePx(engine, input);
   const fontSizes = resolvedFontSizes(engine, input);
   const replaced = replacedGeometries(engine, input, out.boxes);
+  const ranges = engine.scrollRanges(input, engine.measurer);
+  if (ranges.kind !== 'ok') throw new Error(`${caseId}@${dpr}: the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
+  const scroll = new Map(ranges.ranges.map((r) => [r.id, [r.minX, r.maxX, r.minY, r.maxY] as const]));
   const byId = new Map(p.nodes.map((n) => [n.id, n]));
   const nodes: ExpectedNode[] = [];
   out.boxes.forEach((r, i) => {
@@ -180,7 +185,7 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
     if (n === undefined) throw new Error(`${caseId}@${dpr}: the engine laid out ${r.id}, which the program does not have`);
     const box = snapped[i] as SnappedRect;
     const rp = replaced.get(r.id);
-    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box, fontSize: fontSizes.get(r.id) ?? null, replaced: rp === undefined ? null : { content: relative(rp.content, box), dest: relative(rp.dest, box), drawn: rp.drawn === null ? null : relative(rp.drawn, box) } };
+    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box, fontSize: fontSizes.get(r.id) ?? null, replaced: rp === undefined ? null : { content: relative(rp.content, box), dest: relative(rp.dest, box), drawn: rp.drawn === null ? null : relative(rp.drawn, box) }, scroll: scroll.get(r.id) ?? null };
     const applied: { [key: string]: JsonValue } = {};
     for (const w of n.writes) applied[w.key] = appliedValue(engine, p.backend, w, dpr, g);
     nodes.push({ id: n.id, kind: n.kind, native: n.native, applied });
