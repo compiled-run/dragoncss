@@ -90,6 +90,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 - `third_party/skia/src/base/SkTSort.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkAnalyticEdge.cpp`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkBlitter_A8.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkBlurMask.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkBlurMaskFilterImpl.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkDraw.cpp`: Copyright 2006 The Android Open Source Project
