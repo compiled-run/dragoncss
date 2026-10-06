@@ -209,6 +209,19 @@ describe('only failed jobs are a verdict (#193 review)', () => {
   });
 });
 
+describe('the driver\'s full test skips the regen check its build already made', () => {
+  it('dispatches full-test.yml with regen=false, an input whose regen jobs run only when it is true', () => {
+    expect(fullTestWorkflow(() => null).inputs).toEqual(['regen=false']);
+    const yml = readFileSync(repoPath('.github/workflows/full-test.yml'), 'utf8');
+    expect(yml).toMatch(/\n {6}regen:\n {8}description: [^\n]+\n {8}required: false\n {8}default: true\n {8}type: boolean\n/);
+    for (const job of ['regen-chrome', 'regen-host']) {
+      const block = yml.slice(yml.indexOf(`\n  ${job}:\n`), yml.indexOf(`\n  ${job}:\n`) + 300);
+      // Beside the shards (needs only resolve), and skipped for a dispatch with regen=false.
+      expect(block, job).toContain(`  ${job}:\n    needs: resolve\n    if: github.event_name != 'workflow_dispatch' || inputs.regen\n`);
+    }
+  });
+});
+
 describe('LAND_TEST=ci (the full test on CI)', () => {
   it('proves a commit on its own scratch branch, and a failed run names its failing tests', () => {
     expect(scratchRef(testBranch(SHA))).toBe(`refs/heads/land-test/c-${SHA.slice(0, 12)}`);
