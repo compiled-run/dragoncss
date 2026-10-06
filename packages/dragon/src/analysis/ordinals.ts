@@ -36,7 +36,7 @@ export function parseHtmlInteger(input: string): number | null {
   const m = /^[\t\n\f\r ]*([-+]?)([0-9]+)/.exec(input);
   if (m === null) return null;
   const magnitude = Number((m[2] as string).replace(/^0+(?=\d)/, ''));
-  const value = m[1] === '-' ? -magnitude : magnitude;
+  const value = m[1] === '-' && magnitude !== 0 ? -magnitude : magnitude; // a C++ int has no -0
   return value < INT_MIN || value > INT_MAX ? null : value;
 }
 

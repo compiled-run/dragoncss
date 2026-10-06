@@ -165,7 +165,8 @@ describe('the ordinal walk beyond the probe (list_item_ordinal.cc)', () => {
     expect(Object.fromEntries(listItemOrdinals(tree))).toEqual({ a: 2147483647, b: 2147483647, c: 2147483647 });
   });
   it('parses integers by the HTML rules', () => {
-    expect([' 12px', '+3', '-0', '007', '', '-', 'x1', '2147483648', '-2147483648'].map(parseHtmlInteger)).toEqual([12, 3, -0, 7, null, null, null, null, -2147483648]);
+    expect([' 12px', '+3', '-0', '007', '', '-', 'x1', '2147483648', '-2147483648'].map(parseHtmlInteger)).toEqual([12, 3, 0, 7, null, null, null, null, -2147483648]);
+    expect(Object.is(parseHtmlInteger('-0'), 0)).toBe(true);
   });
   it('writes the counter styles at their boundaries', () => {
     expect(counterRepresentation('lower-roman', 3999)).toBe('mmmcmxcix');
