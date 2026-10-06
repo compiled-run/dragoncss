@@ -70,8 +70,9 @@ export function bandSizes(table: rtBand.BandTable): Size[] {
             if (a.feature === 'width') for (const h of [base, tall]) add(px, h, dpr);
             else for (const w of [base, tall]) add(w, px, dpr);
           }
-        } else {
-          // A ratio num/den: heights where the width is the ratio's, and one whole px either side, at two scales.
+        } else if (a.feature === 'aspect-ratio') {
+          // A ratio num/den: heights where the width is the ratio's, and one whole px either side, at two scales. (A resolution
+          // comparison's den is 0: its sizes are the scales below, never a ratio's.)
           for (const s of [300, 400]) {
             const h = Math.round(s * dpr);
             const w = Math.round((h * c.num) / c.den);
