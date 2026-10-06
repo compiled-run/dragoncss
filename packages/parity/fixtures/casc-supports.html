@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.t { height: 4px; width: 10px; background-color: #888888; }
+@supports (display: grid) { .a { width: 20px; } }
+@supports not (display: grid) { .a { width: 90px; } }
+@supports (width: foo) { .b { width: 90px; } }
+@supports not (width: foo) { .b { width: 21px; } }
+@supports (display: flex) and (width: 10px) { .c { width: 22px; } }
+@supports (display: flex) and (width: foo) { .c { height: 9px; } }
+@supports (width: foo) or (margin-left: 3px) { .d { width: 23px; margin-left: 3px; } }
+@supports (width: foo) or (color: bogus) { .d { height: 9px; } }
+@supports ((display: block)) { .e { width: 24px; } }
+@supports (not (display: block)) { .e { height: 9px; } }
+@supports (DISPLAY: Flex) { .f { width: 25px; } }
+@SUPPORTS not (Width: 1px) { .f { height: 9px; } }
+@supports (color: red !important) { .g { width: 26px; } }
+@supports (--x: 1) { .h { width: 27px; } }
+@supports (width: var(--w)) { .i { width: 28px; } }
+@supports (margin-inline-start: 4px) { .j { margin-inline-start: 4px; width: 29px; } }
+@supports (grid-template-columns: 1fr) and (not (width: 1px 2px)) { .k { width: 30px; } }
+@supports (display: flex) { .m { width: 31px; background-color: #00ff00; border: 1px solid #ff0000; } .m2 { width: 32px; } }
+@supports (display: nonsense) { .m { height: 9px; } .m2 { height: 9px; } }
+.n { width: 33px; }
+@supports (width: 1px) { .n { width: 34px; } }
+@supports (width: 1px) { .o { width: 35px !important; } }
+.o { width: 36px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="t a"></div>
+<div data-dragon-id="b" class="t b"></div>
+<div data-dragon-id="c" class="t c"></div>
+<div data-dragon-id="d" class="t d"></div>
+<div data-dragon-id="e" class="t e"></div>
+<div data-dragon-id="f" class="t f"></div>
+<div data-dragon-id="g" class="t g"></div>
+<div data-dragon-id="h" class="t h"></div>
+<div data-dragon-id="i" class="t i"></div>
+<div data-dragon-id="j" class="t j"></div>
+<div data-dragon-id="k" class="t k"></div>
+<div data-dragon-id="m" class="t m"></div>
+<div data-dragon-id="m2" class="t m2"></div>
+<div data-dragon-id="n" class="t n"></div>
+<div data-dragon-id="o" class="t o"></div>
+</body>
+</html>

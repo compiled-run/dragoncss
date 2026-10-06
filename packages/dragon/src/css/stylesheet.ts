@@ -29,6 +29,8 @@ import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
 import type { AnimationDeclValue } from './properties/animation.ts';
 import type { KeyframesSource } from './at-rules/keyframes.ts';
+import type { CascFaults } from '../faults/casc.ts';
+import { CASC_FAULTS } from '../faults/casc.ts';
 import { isAnimationProperty, parseAnimationDeclaration } from './properties/animation.ts';
 
 export type { CssValue } from './values.ts';
@@ -81,7 +83,7 @@ export type SheetUse = { readonly id: string; readonly owner: string; readonly s
  */
 export type EnclosedRules = { readonly atRule: Diagnostic; readonly span: Span; readonly rules: readonly Rule[]; readonly diagnostics: readonly Diagnostic[] };
 
-type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[] };
+type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[]; readonly faults: CascFaults };
 
 /**
  * Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block.
@@ -90,7 +92,8 @@ type ParseState = { order: number; readonly base: Span; readonly text: string; r
 type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top'; readonly conditions: readonly RuleCondition[] };
 
 /** fontFaces: collects the accepted @font-face rules, in document order, for the fonts module; keyframes the @keyframes (T065). */
-export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = [], keyframes: KeyframesSource[] = []): Rule[] {
+/** faults: CASC's planted parse faults (faults/casc.ts). */
+export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = [], keyframes: KeyframesSource[] = [], faults: CascFaults = CASC_FAULTS): Rule[] {
   const text = preprocessInput(authoredText);
   // Chrome 145 reads a literal U+0000 as U+FFFD inside a name but not where it would start a hash or follow a leading "-" (probed),
   // so Dragon reports it rather than guess which reading applies.
@@ -105,21 +108,22 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
   if (text.includes('\\')) canonicalizeEscapes(ast);
   // An @media prelude is parsed by media/parse.ts, which Chrome 145 proves (an invalid query is `not all`); css-tree's own
   // prelude grammar rejects valid MQ4 such as `(1px < width < 2px)` and `(not (width))`, so its errors there are not reported.
-  const media: { start: number; end: number }[] = [];
+  // An @supports prelude is parsed by at-rules/supports.ts, which refuses what it cannot decide, so the same holds there.
+  const preludes: { start: number; end: number }[] = [];
   const visit = (node: CssNode): void => {
-    const prelude = node.type === 'Atrule' && asciiLower(String(node['name'])) === 'media' ? (node['prelude'] as CssNode | null | undefined) : null;
-    if (prelude !== null && prelude !== undefined && prelude.loc !== null && prelude.loc !== undefined) media.push({ start: prelude.loc.start.offset, end: prelude.loc.end.offset });
+    const prelude = node.type === 'Atrule' && ['media', 'supports'].includes(asciiLower(String(node['name']))) ? (node['prelude'] as CssNode | null | undefined) : null;
+    if (prelude !== null && prelude !== undefined && prelude.loc !== null && prelude.loc !== undefined) preludes.push({ start: prelude.loc.start.offset, end: prelude.loc.end.offset });
     const block = node['block'] as CssNode | null | undefined;
     for (const c of [...list(node, 'children'), ...(block === null || block === undefined ? [] : [block])]) visit(c);
   };
   visit(ast);
   for (const e of errors) {
-    if (media.some((m) => e.offset >= m.start && e.offset <= m.end)) continue;
+    if (preludes.some((m) => e.offset >= m.start && e.offset <= m.end)) continue;
     const at = { source: base.source, start: base.start + e.offset, end: base.start + e.offset };
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
   }
   const rules: Rule[] = [];
-  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes };
+  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes, faults };
   parseTopLevel(list(ast, 'children'), st, { label: 'the stylesheet', selectors: 'top', conditions: [] }, diagnostics, enclosed, rules);
   return rules;
 }
@@ -183,6 +187,11 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
       return;
     }
     const block = node['block'] as CssNode | null | undefined;
+    // CASC: a true @supports keeps its rules as plain rules (under any enclosing @media); Chrome never applies a false one's.
+    if (outcome.kind === 'supports' && at.selectors === 'top' && block !== null && block !== undefined) {
+      if (outcome.holds || st.faults.supportsConditionIgnored) parseTopLevel(list(block, 'children'), st, { label: '@supports', selectors: 'top', conditions: at.conditions }, diagnostics, enclosed, accepted);
+      return;
+    }
     if (outcome.kind === 'conditional' && at.selectors === 'top' && block !== null && block !== undefined) {
       const inner = { label: `@${String(node['name'])}`, selectors: 'top' as const, conditions: [...at.conditions, outcome.condition] };
       parseTopLevel(list(block, 'children'), st, inner, diagnostics, enclosed, accepted);
@@ -321,6 +330,27 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     case 'ok':
       return { property, text, span, valueSpan, longhands: parsed.longhands, order, ...important };
   }
+}
+
+/**
+ * CASC: how Chrome treats one declaration in a @supports condition, decided by parsing it as in a style rule. valid: kept;
+ * invalid: dropped (DRAGON_CSS_INVALID_VALUE only); refused: Dragon cannot tell (it refuses the property or the value).
+ */
+export function declarationSupport(declarationText: string): 'valid' | 'invalid' | { readonly refused: string } {
+  const text = `x{${declarationText}}`;
+  const errors: string[] = [];
+  const ast = parse(text, { positions: true, parseValue: true, onParseError: (e) => errors.push(e.message) });
+  if (text.includes('\\')) canonicalizeEscapes(ast);
+  const rule = list(ast, 'children')[0];
+  const children = rule === undefined || rule.type !== 'Rule' ? [] : list(rule['block'] as CssNode, 'children');
+  const only = children[0];
+  if (errors.length > 0 || children.length !== 1 || only === undefined || only.type !== 'Declaration') return { refused: 'it is not one declaration' };
+  const diagnostics: Diagnostic[] = [];
+  const parsed = parseDeclaration(only, { source: { uri: '@supports', revision: '', hash: '' }, start: 0, end: text.length }, text, 0, diagnostics);
+  if (parsed !== null && diagnostics.length === 0) return 'valid';
+  if (parsed === null && diagnostics.length > 0 && diagnostics.every((d) => d.code === 'DRAGON_CSS_INVALID_VALUE')) return 'invalid';
+  const first = diagnostics[0];
+  return { refused: first === undefined ? 'Dragon does not decide it' : first.message };
 }
 
 /** css-logical-1 §3: the physical longhands a flow-relative property sets in each direction, or null when it maps the same in both. */

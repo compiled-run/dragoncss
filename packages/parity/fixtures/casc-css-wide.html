@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; color: #123456; }
+.base { width: 60px; height: 6px; margin: 3px 5px 7px 9px; padding: 2px 4px 6px 8px; border: 2px solid #00aa00; color: #654321; background-color: #fedcba; display: flex; }
+.i1 { width: initial; margin: initial; padding: initial; color: initial; background-color: initial; }
+.i2 { height: initial; border-top-width: initial; border-left-width: initial; border-right-color: initial; border-bottom-style: initial; margin-left: initial; padding-right: initial; }
+.i3 { margin-inline-start: initial; padding-inline-end: initial; }
+.row { display: flex; width: 200px; height: 20px; }
+.fi { flex-grow: 2; flex-shrink: 0; flex-basis: 30px; align-self: flex-end; height: 5px; order: 3; }
+.fi0 { flex-grow: initial; flex-shrink: initial; flex-basis: initial; align-self: initial; order: initial; width: 12px; }
+.r1 { display: revert; width: revert; margin: revert; padding: revert; color: revert; background-color: revert; }
+.r2 { margin: revert-layer; display: revert-layer; height: revert; border-top-width: revert; }
+.r3 { margin-inline-start: revert; margin-block-end: revert-layer; }
+.flat { margin: 0; display: flex; height: 6px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="base" class="base"></div>
+<div data-dragon-id="i1" class="base i1"><div data-dragon-id="i1c" class="t"></div></div>
+<div data-dragon-id="i2" class="base i2"></div>
+<div data-dragon-id="i3" class="base i3"></div>
+<div data-dragon-id="row" class="row"><div data-dragon-id="f1" class="fi"></div><div data-dragon-id="f2" class="fi fi0"></div></div>
+<div data-dragon-id="r1" class="base r1"></div>
+<p data-dragon-id="p1" class="flat r1"></p>
+<h1 data-dragon-id="h1" class="flat r2"></h1>
+<h2 data-dragon-id="h2" class="flat r3"></h2>
+<blockquote data-dragon-id="bq" class="flat r3"></blockquote>
+</body>
+</html>

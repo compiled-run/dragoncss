@@ -87,9 +87,9 @@ describe('MQ-a: @media in the parse driver', () => {
     expect(parse('@media (min-width: 1px);').diagnostics.map((d) => d.message)).toEqual(['@media in the stylesheet is not supported in milestone 1']);
   });
   it('an unsupported at-rule inside @media is refused with the @media label, and its rules keep the @media condition', () => {
-    const { rules, diagnostics, enclosed } = parse('@media (min-width: 1px) { @supports (display: flex) { .a { width: 2px; } } }');
+    const { rules, diagnostics, enclosed } = parse('@media (min-width: 1px) { @layer w { .a { width: 2px; } } }');
     expect(rules).toEqual([]);
-    expect(diagnostics.map((d) => d.message)).toEqual(['@supports in @media is not supported in milestone 1']);
+    expect(diagnostics.map((d) => d.message)).toEqual(['@layer in @media is not supported in milestone 1']);
     expect(enclosed[0]?.rules.map((r) => r.condition?.map((c) => c.text))).toEqual([['(min-width: 1px)']]);
   });
   it('@font-face inside @media stays refused (fonts are not resolved per band); a top-level one is still collected', () => {
@@ -185,15 +185,15 @@ describe('MQ-a: the band fold', () => {
     expectCatalogued(c.diagnostics);
   });
   it('the rules inside an unsupported at-rule inside @media are analysed for diagnostics, whatever the band', () => {
-    const { c } = compile('.a { width: 10px; } @media (max-width: 400px) { .a { width: 20px; } } @supports (display: flex) { @media (max-width: 3px) { .a { display: grid; } } }', { foldViewport: { width: 400, height: 300 } });
-    const supports = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
-    expect(supports?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[ios\]: display: grid/), expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[web\]: display: grid/)]);
+    const { c } = compile('.a { width: 10px; } @media (max-width: 400px) { .a { width: 20px; } } @layer w { @media (max-width: 3px) { .a { display: grid; } } }', { foldViewport: { width: 400, height: 300 } });
+    const layer = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
+    expect(layer?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[ios\]: display: grid/), expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[web\]: display: grid/)]);
   });
   it('the rules inside an unsupported at-rule are analysed against every band\'s cascade, web in each band and native in its own', () => {
     // At the 400px fold the body is flex and margin-right: 6mm is proven; above 500px the body is block, where web does not prove it.
-    const { c } = compile('.a { width: 10px; } @media (max-width: 500px) { body { display: flex; } } @supports (display: flex) { .a { margin-right: 6mm; } }', { foldViewport: { width: 400, height: 300 } });
-    const supports = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
-    expect(supports?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNPROVEN_CONTEXT \[web\]: margin-right:<length-mm> on a is used in the block\/ltr context/)]);
+    const { c } = compile('.a { width: 10px; } @media (max-width: 500px) { body { display: flex; } } @layer w { .a { margin-right: 6mm; } }', { foldViewport: { width: 400, height: 300 } });
+    const layer = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
+    expect(layer?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNPROVEN_CONTEXT \[web\]: margin-right:<length-mm> on a is used in the block\/ltr context/)]);
   });
   it('a value unsupported only inside a band outside the fold still blocks web, and not native', () => {
     const { c } = compile('.a { width: 10px; } @media (min-width: 500px) { .a { margin-right: 6mm; } }', { foldViewport: { width: 400, height: 300 } });
