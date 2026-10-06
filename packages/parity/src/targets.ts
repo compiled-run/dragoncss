@@ -48,7 +48,7 @@ export type TargetConfig = {
 };
 
 type P1Manifest = { readonly unitsPerFunction: number; readonly unitsFunctions: readonly string[]; readonly mutatedVectors: number; readonly generatedTrees: number; readonly cases: Readonly<Record<string, number>>; readonly digest: string };
-type ExtendedManifest = { readonly dprSets: readonly number[]; readonly unitsPerFunction: number; readonly unitsFunctions: readonly string[]; readonly calcUnitsPerFunction: number; readonly calcUnitsFunctions: readonly string[]; readonly engineCalc: number; readonly snapGenerated: number; readonly snapVectors: number; readonly cases: Readonly<Record<string, number>>; readonly digest: string };
+type ExtendedManifest = { readonly dprSets: readonly number[]; readonly unitsPerFunction: number; readonly unitsFunctions: readonly string[]; readonly calcUnitsPerFunction: number; readonly calcUnitsFunctions: readonly string[]; readonly engineCalc: number; readonly engineInline: number; readonly snapGenerated: number; readonly snapVectors: number; readonly cases: Readonly<Record<string, number>>; readonly digest: string };
 
 const readJson = <T>(path: string): T => JSON.parse(readFileSync(repoPath(path), 'utf8')) as T;
 export const p1Manifest = (): P1Manifest => readJson<P1Manifest>('packages/translate/corpus.json');
@@ -100,6 +100,8 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'extended', suite: 'calc-goldens', cases: readdirSync(repoPath('packages/layout/vectors/calc')).filter((f) => f.endsWith('.json')).length },
     { corpus: 'extended', suite: 'engine-calc', cases: x.engineCalc },
     { corpus: 'extended', suite: 'units-calc', cases: x.calcUnitsPerFunction * x.calcUnitsFunctions.length },
+    // INL1a: generated inline formatting contexts (corpus-dpr.ts engineInlineCases).
+    { corpus: 'extended', suite: 'engine-inline', cases: x.engineInline },
   ];
 }
 

@@ -869,7 +869,8 @@ export function relabelledReferenceDumps(target: NativeTarget, dpr: number): Nat
         ...x,
         native: e.nodes.find((y) => y.id === x.id)?.native ?? x.native,
         applied: applied.get(x.id) ?? {},
-        lines: x.lines.map((l, j) => ({ ...l, baseline: l.frame.height * 0.8, start: 3 * j, end: 3 * j + 2 })),
+        // A text line's offsets are made up; an element line (an inline box fragment) has no own text, so a device writes 0 and 0.
+        lines: x.lines.map((l, j) => ({ ...l, baseline: l.frame.height * 0.8, start: x.kind === 'text' ? 3 * j : 0, end: x.kind === 'text' ? 3 * j + 2 : 0 })),
       })),
       pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: Math.ceil(viewport.width * dpr), height: Math.ceil(viewport.height * dpr), sha256: sha, samples: [{ x: 1, y: 2, rgba: [255, 255, 255, 255], rule: `interior:${ref.nodes[0]?.id ?? 'root'}` }] },
       timing: { settleMs: 1.25, dumpMs: 0.5 },
