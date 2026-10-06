@@ -80,6 +80,7 @@ export const mediaAtRule: AtRuleHandler = (at) => {
  * lines. An at-rule not listed here falls back to refuseAtRule too.
  */
 export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
+  '-webkit-keyframes': keyframesAtRule,
   charset: refuseAtRule,
   'color-profile': refuseAtRule,
   container: refuseAtRule,
