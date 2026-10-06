@@ -63,7 +63,9 @@
     "parity:anim-capture": "node --conditions=dragon-internal packages/parity/src/cli/anim-capture.ts",
     "parity:anim-report": "node --conditions=dragon-internal packages/parity/src/cli/anim-report.ts",
     "parity:anim-vectors": "node --conditions=dragon-internal packages/parity/src/cli/anim-vectors.ts",
-    "parity:quads-capture": "node --conditions=dragon-internal packages/parity/src/cli/quads-capture.ts"
+    "parity:quads-capture": "node --conditions=dragon-internal packages/parity/src/cli/quads-capture.ts",
+    "parity:resize-capture": "node --conditions=dragon-internal packages/parity/src/cli/resize-capture.ts",
+    "parity:resize-report": "node --conditions=dragon-internal packages/parity/src/cli/resize-report.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",

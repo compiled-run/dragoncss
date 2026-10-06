@@ -1,11 +1,13 @@
-// MQ-a Phase B (notes/T025 §3 B): @media through the at-rule handler and the parse driver, the per-band fold in project.ts,
-// band blocks in the web CSS, and the native refusal until MQ-R. Chrome proves the web output in packages/parity (the media
-// fixture group and the media sweep); these tests pin the compiler's decisions.
+// MQ-a Phase B (notes/T025 §3 B): @media through the at-rule handler and the parse driver, the per-band fold in project.ts and
+// band blocks in the web CSS; MQ-R1 (notes/T067): native is checked in every band and accepts @media where its profile proves the
+// media features. Chrome proves the web output in packages/parity (the media fixture group, the media sweep and the resize traces);
+// these tests pin the compiler's decisions.
 import { describe, expect, it } from 'vitest';
 import type { Compiled, Diagnostic, FrontEndResult } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import type { CompilerFaults, InternalOptions } from '../src/internal.ts';
-import { createProjectWith, NO_FAULTS, WEB_CSS_PATH } from '../src/internal.ts';
+import type { SupportProfile } from '../src/internal.ts';
+import { COMMITTED_PROFILES, createProjectWith, MEDIA_CONTEXT, NO_FAULTS, WEB_CSS_PATH } from '../src/internal.ts';
 import type { AtRuleContext } from '../src/css/at-rules.ts';
 import type { EnclosedRules } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -62,16 +64,18 @@ describe('MQ-a: @media in the parse driver', () => {
     expect(c?.text).toBe('screen and (max-width: 25em)');
     expect(text.slice(c?.span.start, c?.span.end)).toBe(text);
   });
-  it('environment features and values Dragon does not evaluate are refused on every target until MQ-R', () => {
+  it('environment features (until MQ-R2 or MQ-R3) and values Dragon does not evaluate are refused on every target', () => {
     for (const [prelude, why] of [
-      ['(prefers-color-scheme: dark)', '(prefers-color-scheme: dark) depends on the device or the user'],
-      ['(max-width: 400px) and (resolution: 2dppx)', '(resolution: 2dppx) depends on the device or the user'],
-      ['(hover)', '(hover) depends on the device or the user'],
+      ['(prefers-color-scheme: dark)', '(prefers-color-scheme: dark) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
+      ['(max-width: 400px) and (resolution: 2dppx)', '(resolution: 2dppx) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
+      ['(hover)', '(hover) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
+      ['(prefers-contrast: more)', '(prefers-contrast: more) depends on the device or the user, which Dragon does not read yet (package MQ-R3)'],
+      ['(hover) and (color)', '(hover), (color) depends on the device or the user, which Dragon does not read yet (package MQ-R3)'],
       ['(max-width: 10vw)', '(max-width: 10vw) uses a value Dragon does not evaluate'],
     ] as const) {
       const { rules, diagnostics, enclosed } = parse(`@media ${prelude} { .a { width: 2px; } }`);
       expect(rules, prelude).toEqual([]);
-      expect(diagnostics.map((d) => [d.code, d.target, d.message]), prelude).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', null, expect.stringMatching(new RegExp(`^@media .* in the stylesheet is not supported until MQ-R: ${why.replace(/[()/]/g, '\\$&')}; only width, height, orientation and aspect-ratio media features are supported$`))]]);
+      expect(diagnostics.map((d) => [d.code, d.target, d.message]), prelude).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', null, expect.stringMatching(new RegExp(`^@media .* in the stylesheet is not supported: ${why.replace(/[()/]/g, '\\$&')}; only width, height, orientation and aspect-ratio media features are supported$`))]]);
       expect(enclosed.length, prelude).toBe(1);
     }
   });
@@ -179,7 +183,7 @@ describe('MQ-a: the band fold', () => {
     const css = `.a { width: 10px; } ${Array.from({ length: 16 }, (_, k) => `@media (max-width: ${100 + k * 10}px) { .a { width: ${20 + k}px; } }`).join(' ')}`;
     const { input, c } = compile(css, { foldViewport: { width: 400, height: 300 } });
     const refusal = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
-    expect(refusal.map((d) => [d.target, d.message])).toEqual([[null, 'the @media rules of this document split the viewport into 17 bands, more than 16, which is not supported until MQ-R']]);
+    expect(refusal.map((d) => [d.target, d.message])).toEqual([[null, 'the @media rules of this document split the viewport into 17 bands, more than 16, which is not supported yet (package MQ-R4)']]);
     expect(spanTextOf(input, refusal[0] as Diagnostic)).toBe('@media (max-width: 100px) { .a { width: 20px; } }');
     expect([c.outputs.ios.kind, c.outputs.web.kind]).toEqual(['blocked', 'blocked']);
     expectCatalogued(c.diagnostics);
@@ -189,16 +193,16 @@ describe('MQ-a: the band fold', () => {
     const supports = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
     expect(supports?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[ios\]: display: grid/), expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[web\]: display: grid/)]);
   });
-  it('the rules inside an unsupported at-rule are analysed against every band\'s cascade, web in each band and native in its own', () => {
-    // At the 400px fold the body is flex and margin-right: 6mm is proven; above 500px the body is block, where web does not prove it.
+  it('the rules inside an unsupported at-rule are analysed against every band\'s cascade, for every target (MQ-R1)', () => {
+    // At the 400px fold the body is flex and margin-right: 6mm is proven; above 500px the body is block, where neither target proves it.
     const { c } = compile('.a { width: 10px; } @media (max-width: 500px) { body { display: flex; } } @supports (display: flex) { .a { margin-right: 6mm; } }', { foldViewport: { width: 400, height: 300 } });
     const supports = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
-    expect(supports?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNPROVEN_CONTEXT \[web\]: margin-right:<length-mm> on a is used in the block\/ltr context/)]);
+    expect(supports?.related.map((r) => r.message)).toEqual(['ios', 'web'].map((t) => expect.stringMatching(new RegExp(`^DRAGON_UNPROVEN_CONTEXT \\[${t}\\]: margin-right:<length-mm> on a is used in the block\\/ltr context`))));
   });
-  it('a value unsupported only inside a band outside the fold still blocks web, and not native', () => {
+  it('a value unsupported only inside a band outside the fold blocks native too, which switches to that band at run time (MQ-R1)', () => {
     const { c } = compile('.a { width: 10px; } @media (min-width: 500px) { .a { margin-right: 6mm; } }', { foldViewport: { width: 400, height: 300 } });
-    expect(c.diagnostics.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNPROVEN_CONTEXT', 'web']]);
-    expect([c.outputs.ios.kind, c.outputs.web.kind]).toEqual(['analysis-only', 'blocked']);
+    expect(c.diagnostics.map((d) => [d.code, d.target]).sort()).toEqual([['DRAGON_UNPROVEN_CONTEXT', 'ios'], ['DRAGON_UNPROVEN_CONTEXT', 'web']]);
+    expect([c.outputs.ios.kind, c.outputs.web.kind]).toEqual(['blocked', 'blocked']);
   });
   it('a fold viewport that is not a finite, non-negative size is refused', () => {
     for (const v of [{ width: Number.NaN, height: 300 }, { width: -1, height: 300 }, { width: 400, height: Number.POSITIVE_INFINITY }]) {
@@ -207,24 +211,26 @@ describe('MQ-a: the band fold', () => {
   });
 });
 
-describe('MQ-a: every check blocks the targets of the bands it applies in (PR #38 finding 4147910145)', () => {
+describe('MQ-a, MQ-R1: every check blocks the targets of the bands it applies in (PR #38 finding 4147910145); native switches to every band', () => {
   const FOLD = { foldViewport: { width: 400, height: 300 } } as const;
   const codes = (c: Compiled<K>): (string | null)[][] => c.diagnostics.map((d) => [d.code, d.target]);
   const kinds = (c: Compiled<K>): string[] => [c.outputs.ios.kind, c.outputs.web.kind];
-  it('an unmapped family only outside the native band blocks web, not ios; inside it, every target', () => {
+  it('an unmapped family in any band blocks every target; in a rule that applies in no band, none', () => {
     const outside = compile('.a { width: 10px; } @media (min-width: 500px) { .a { font-family: NotAFont; } }', FOLD).c;
-    expect(codes(outside)).toEqual([['DRAGON_FONT_UNMAPPED_FAMILY', 'web']]);
-    expect(kinds(outside)).toEqual(['analysis-only', 'blocked']);
-    expect(width(outside)).toBe('10px');
+    expect(codes(outside)).toEqual([['DRAGON_FONT_UNMAPPED_FAMILY', null]]);
+    expect(kinds(outside)).toEqual(['blocked', 'blocked']);
+    const never = compile('.a { width: 10px; } @media print { .a { font-family: NotAFont; } }', FOLD).c;
+    expect(codes(never)).toEqual([]);
+    expect(width(never)).toBe('10px');
     const inside = compile('.a { width: 10px; } @media (max-width: 500px) { .a { font-family: NotAFont; } }', FOLD).c;
     expect(codes(inside)).toEqual([['DRAGON_FONT_UNMAPPED_FAMILY', null]]);
     expect(kinds(inside)).toEqual(['blocked', 'blocked']);
     expectCatalogued(outside.diagnostics);
   });
-  it('a value no context proves, only outside the native band, is refused for web and not for ios', () => {
+  it('a value no context proves, only outside the fold\'s band, is refused for web and for ios', () => {
     const outside = compile('.a { width: 10px; } @media (min-width: 500px) { .a { display: grid; } }', FOLD).c;
-    expect(codes(outside).filter(([code]) => code === 'DRAGON_UNSUPPORTED_VALUE')).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'web']]);
-    expect(outside.outputs.ios.kind).toBe('analysis-only');
+    expect(codes(outside).filter(([code]) => code === 'DRAGON_UNSUPPORTED_VALUE').map(([, t]) => t)).toEqual(['ios', 'web']);
+    expect(outside.outputs.ios.kind).toBe('blocked');
     const inside = compile('.a { width: 10px; } @media (max-width: 500px) { .a { display: grid; } }', FOLD).c;
     expect(codes(inside).filter(([code]) => code === 'DRAGON_UNSUPPORTED_VALUE').map(([, t]) => t)).toEqual(['ios', 'web']);
   });
@@ -232,34 +238,44 @@ describe('MQ-a: every check blocks the targets of the bands it applies in (PR #3
     const input = inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [text(r, 't', 'AB 12')])]);
     return createProjectWith({ projectId: 'test', targets: TARGETS }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', ...opts }).compile(input);
   };
-  it('a computed-value refusal without a target, raised only in a web band, blocks web and not ios', () => {
+  it('a computed-value refusal without a target, raised only in a band outside the fold, blocks every target', () => {
     const c = rtl('.a { width: 10px; } @media (min-width: 500px) { .a { direction: rtl; } }', FOLD);
-    expect(codes(c)).toEqual([['DRAGON_UNSUPPORTED_BIDI', 'web']]);
-    expect(kinds(c)).toEqual(['analysis-only', 'blocked']);
+    expect(codes(c)).toEqual([['DRAGON_UNSUPPORTED_BIDI', null]]);
+    expect(kinds(c)).toEqual(['blocked', 'blocked']);
   });
-  it('one raised in the native band and in a web band is reported once, for every target, whichever band comes first', () => {
+  it('one raised in two bands is reported once, for every target, whichever band comes first', () => {
     for (const css of ['.a { direction: rtl; } @media (max-width: 300px) { .a { width: 5px; } }', '.a { direction: rtl; } @media (min-width: 500px) { .a { width: 5px; } }']) {
       const c = rtl(css, FOLD);
       expect(codes(c), css).toEqual([['DRAGON_UNSUPPORTED_BIDI', null]]);
       expect(kinds(c), css).toEqual(['blocked', 'blocked']);
     }
   });
-  it('a project without web reports nothing for a rule that applies only outside the native band', () => {
+  it('a project without web reports a rule that applies only outside the fold\'s band, which native switches to', () => {
     const input = inputFor(`${FONT} .a { width: 10px; } @media (min-width: 500px) { .a { font-family: NotAFont; display: grid; } }`, (r) => [div(r, 'a', ['a'])]);
     const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', ...FOLD }).compile(input);
-    expect(c.diagnostics).toEqual([]);
+    expect(c.diagnostics.map((d) => d.code).sort()).toEqual(['DRAGON_FONT_UNMAPPED_FAMILY', 'DRAGON_UNSUPPORTED_VALUE']);
   });
 });
 
-describe('MQ-a: the public entry', () => {
-  it('web is ready; ios and android refuse each width @media until MQ-R, located at the at-rule', () => {
+describe('MQ-a, MQ-R1: the public entry', () => {
+  it('web is ready; ios and android accept a width @media, proven by the committed media rows (no fold viewport: every band)', () => {
     const input = inputFor(`${FONT} ${TWO}`, (r) => [div(r, 'a', ['a'])]);
     const c = createProject({ projectId: 'test', targets: { ...TARGETS, android: { minSdk: 31 } } }).compile(input);
     expect(c.outputs.web.kind).toBe('ready');
+    expect(c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE')).toEqual([]);
+    expect(c.diagnostics.filter((d) => d.target === 'ios')).toEqual([]);
+  });
+  it('without the media rows, ios and android refuse each width @media, naming the rows and located at the at-rule', () => {
+    const input = inputFor(`${FONT} ${TWO}`, (r) => [div(r, 'a', ['a'])]);
+    const strip = (p: SupportProfile): SupportProfile => ({ ...p, rows: p.rows.filter((r) => r.context !== MEDIA_CONTEXT) });
+    const supportProfiles = { web: COMMITTED_PROFILES.web, ios: strip(COMMITTED_PROFILES.ios), android: strip(COMMITTED_PROFILES.android) };
+    const c = createProjectWith({ projectId: 'test', targets: { ...TARGETS, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', supportProfiles }).compile(input);
+    expect(c.outputs.web.kind).toBe('ready');
     expect([c.outputs.ios.kind, c.outputs.android.kind]).toEqual(['blocked', 'blocked']);
-    expect(c.diagnostics.filter((d) => d.target !== 'android' || d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.code, d.target, spanTextOf(input, d), d.message])).toEqual(['ios', 'android'].map((t) => [
-      'DRAGON_UNSUPPORTED_AT_RULE', t, '@media (max-width: 400px) { .a { width: 20px; } }',
-      `@media (max-width: 400px) selects rules by the viewport width or height, which the ${t} output does not support until MQ-R`,
+    expect(c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.target, spanTextOf(input, d), d.message, d.profile?.feature])).toEqual(['ios', 'android'].map((t) => [
+      t, '@media (max-width: 400px) { .a { width: 20px; } }',
+      `@media (max-width: 400px): at-rule:@media, media-feature:width has no passing resize-lane proof on ${t} in the media context (support profile ${COMMITTED_PROFILES.ios.revision})`,
+      'at-rule:@media',
     ]));
     expectCatalogued(c.diagnostics);
   });

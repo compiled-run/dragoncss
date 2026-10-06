@@ -241,7 +241,12 @@ export function failedTestsOf(text: string): string {
 }
 
 /** full-test.yml for one commit: no artifact on success; a failure names its failing tests. */
-export const fullTestWorkflow = (explain: (runId: number) => string | null): CiWorkflow => ({ workflow: FULL_TEST_WORKFLOW_FILE, step: 'test', what: 'full test', title: fullTestTitle, inputs: [], artifact: null, check: (f) => f, explain });
+/**
+ * full-test.yml for one commit: no artifact on success; a failure names its failing tests. regen=false: the driver's build has
+ * already run pnpm regen on the tree (it exits 0 only at a fixed point) and committed the outcome, so the workflow's regen check
+ * would re-prove that.
+ */
+export const fullTestWorkflow = (explain: (runId: number) => string | null): CiWorkflow => ({ workflow: FULL_TEST_WORKFLOW_FILE, step: 'test', what: 'full test', title: fullTestTitle, inputs: ['regen=false'], artifact: null, check: (f) => f, explain });
 
 /** The run-name a workflow gives a dispatch for a commit, to find a run whose id was never recorded. */
 export const titleOf = (workflow: string, sha: string): string | null => (workflow === DEVICE_WORKFLOW ? runTitle(sha) : workflow === FULL_TEST_WORKFLOW_FILE ? fullTestTitle(sha) : null);
