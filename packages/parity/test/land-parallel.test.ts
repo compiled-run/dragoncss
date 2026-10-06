@@ -84,7 +84,7 @@ describe('parallel position builds', () => {
       build: () => {
         throw new Error('the one-by-one build is not used');
       },
-      buildAll: (base, its) => buildPositionsParallel(base, its, w.hooks),
+      buildAll: (base, its, failed) => buildPositionsParallel(base, its, w.hooks, failed),
       verify: (b) => void built.push(...b.map((x) => x.position.head)),
       prove: () => {},
       proveMaster: () => {},
@@ -93,6 +93,40 @@ describe('parallel position builds', () => {
     expect(built).toEqual(['m+1', 'm+1+3']);
     expect(round.results.map((r) => ('failure' in r ? `#${r.entry.pr} ${r.failure.step}` : ''))).toEqual(['#2 judge-devices']);
     expect(round.good).toBe(2);
+  });
+});
+
+describe('ejections in a parallel build are reported as they happen', () => {
+  // Queue 58: #198 failed its merge on position 1 during the parallel build, and nothing was logged, labelled or commented until the
+  // whole batch had built (another PR's half-hour build later); an interrupted driver would never have reported it.
+  const round = (o: Parameters<typeof world>[0], prs: number[]) => {
+    const w = world(o);
+    prepareRound<{ pr: number }, Pos>(prs.map(entry), prs.length, () => 'm', {
+      admit: (e) => ({ ticket: { pr: e.pr } }),
+      build: () => {
+        throw new Error('the one-by-one build is not used');
+      },
+      buildAll: (base, its, failed) => buildPositionsParallel(base, its, w.hooks, failed),
+      verify: () => {},
+      prove: () => {},
+      proveMaster: () => {},
+      log: () => {},
+    }, { report: (r) => void w.calls.push('failure' in r ? `FAILED #${r.entry.pr} at ${r.failure.step}: ${r.failure.message}` : `result #${r.entry.pr}`) });
+    return w.calls;
+  };
+  it('a PR that fails on the actual chain after the speculation ended is reported before the next position builds, once', () => {
+    const calls = round({ speculateFails: [1], sequentialFails: [3] }, [1, 2, 3, 4]);
+    expect(calls.filter((c) => !c.startsWith('speculate') && !c.startsWith('abandon'))).toEqual([
+      'sequential 1 #1 on m',
+      'sequential 2 #2 on m+1',
+      'sequential 3 #3 on m+1+2',
+      'FAILED #3 at regen: #3 fails',
+      'sequential 3 #4 on m+1+2',
+    ]);
+  });
+  it('an ejection while assembling is reported before the positions above are built', () => {
+    const calls = round({ assembleFails: [2] }, [1, 2, 3]);
+    expect(calls.slice(calls.indexOf('assemble 2 #2 on m+1'))).toEqual(['assemble 2 #2 on m+1', 'FAILED #2 at judge-devices: #2 fails its devices', 'abandon 3', 'sequential 2 #3 on m+1']);
   });
 });
 
