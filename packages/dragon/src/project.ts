@@ -12,7 +12,7 @@ import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Longhand } from './css/properties.ts';
 import { PROPERTY_ROLE } from './css/properties.ts';
-import type { Declaration, EnclosedRules, Rule, RuleCondition } from './css/stylesheet.ts';
+import type { Declaration, EnclosedRules, LonghandValue, Rule, RuleCondition } from './css/stylesheet.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import { splitNotApplicable } from './css/not-applicable.ts';
 import type { UsedKey } from './analysis/context.ts';
@@ -692,8 +692,21 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
         const profile = profileFor(options.supportProfiles, t);
         if (statusOf(profile, u.feature, u.context) !== 'unsupported') continue;
         const proven = provenContexts(profile, u.feature);
-        if (proven.length === 0) continue;
         const id = `${t}|${u.key}|${u.declaration.span.start}|${u.declaration.span.source.uri}`;
+        // checkValues reports a CSS value no context proves; an SVG presentation attribute has no rule, so it is reported here.
+        if (proven.length === 0 && u.declaration.presentationHint === true && !reported.has(id)) {
+          reported.add(id);
+          const inCtx = supportedValuesIn(profile, u.property, u.context);
+          const lh = u.declaration.longhands[0] as LonghandValue;
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+            origin: authored(u.declaration.valueSpan),
+            target: t,
+            message: `${u.property}: ${valueToString(lh.value)} (set by the ${u.property}="${u.declaration.text}" attribute) is unsupported (support profile ${profile.revision}); ${inCtx.length > 0 ? `in ${u.context} use ${list(inCtx)}` : `no ${u.property} value is proven in ${u.context}`}`,
+            manual: inCtx.length > 0 ? `Use one of: ${inCtx.join(', ')}.` : `Remove the ${u.property} attribute; ${t} supports no value of ${u.property} yet.`,
+            profile: { target: t, profileRevision: profile.revision, feature: u.feature, context: null, status: 'unsupported' },
+          }));
+        }
+        if (proven.length === 0) continue;
         if (reported.has(id)) continue;
         reported.add(id);
         const inCtx = supportedValuesIn(profile, u.property, u.context);

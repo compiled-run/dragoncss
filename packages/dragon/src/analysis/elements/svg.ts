@@ -8,9 +8,10 @@ import type { SvgShape, ViewBox } from '@dragon/layout';
 import type { Rgba8 } from '../../css/color.ts';
 import { TRANSPARENT } from '../../css/color.ts';
 import type { Longhand } from '../../css/properties.ts';
-import type { CssValue } from '../../css/stylesheet.ts';
+import type { CssValue, Declaration } from '../../css/stylesheet.ts';
 import { parseValue } from '../../css/stylesheet.ts';
 import type { ResolvedValue } from '../computed.ts';
+import type { LinkedElement } from '../link.ts';
 import type { ResolvedElement } from '../resolve.ts';
 
 export const SVG_TAG = 'svg';
@@ -197,4 +198,17 @@ export function svgSceneOf(el: ResolvedElement): SvgScene | null {
     shapes.push({ address: c.element.address, tag: c.element.tag, shape, fill: paintOf(c, 'fill'), stroke: paintOf(c, 'stroke'), strokeWidth });
   }
   return { address: el.element.address, viewBox: viewBoxOf(el.element.attributes), shapes };
+}
+
+/**
+ * The stand-in declaration of an SVG paint presentation attribute (fill, stroke, stroke-width), located at the attribute (its
+ * element's start tag), or null for any other hint. Its value then reaches the profile check (usedKeys) as a CSS declaration's does.
+ */
+export function svgHintDeclaration(el: LinkedElement, property: Longhand, value: CssValue): Declaration | null {
+  if (!(SVG_PAINT_ATTRIBUTES as readonly string[]).includes(property) || !Object.hasOwn(SVG_HANDLED_ATTRIBUTES, el.tag)) return null;
+  const attr = el.node.attributes.find((a) => a.name === property);
+  const text = el.attributes.get(property);
+  if (attr === undefined || text === undefined || attr.origin.kind !== 'authored') return null;
+  const span = attr.origin.span;
+  return { property, text, span, valueSpan: span, longhands: [{ property, value, explicit: true }], order: -1, presentationHint: true };
 }

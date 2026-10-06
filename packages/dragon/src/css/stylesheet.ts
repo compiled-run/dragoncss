@@ -63,6 +63,8 @@ export type Declaration = {
   readonly animation?: AnimationDeclValue;
   /** The legacy alias the declaration was written with (aliases.ts); property is the property it stands for. */
   readonly alias?: string;
+  /** SVG-a1: a presentation attribute's stand-in declaration, at the element's start tag, so its value is profile-checked like CSS. */
+  readonly presentationHint?: true;
 };
 
 /** A class selector in this rule matches only class symbols with this owner and sheet (docs/api.md §3.1). */

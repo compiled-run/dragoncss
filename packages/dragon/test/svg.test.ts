@@ -130,6 +130,21 @@ describe('the svg model in a compile', () => {
     expect(e.some((m) => m.startsWith('DRAGON_UNSUPPORTED_ELEMENT * <rect> q inside an SVG shape is not supported'))).toBe(true);
     expect(e.some((m) => m.startsWith('DRAGON_UNSUPPORTED_ELEMENT * <svg> n inside an <svg> is not supported'))).toBe(true);
   });
+  it('checks a paint attribute against the support profile as the same value in CSS: the same rows decide both', () => {
+    const enforced = (css: string, attrs: [string, string][]) =>
+      createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', interactionLanes: true })
+        .compile(svgTree(css, (_r, o) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4'], ...attrs])]));
+    const blocked = (c: ReturnType<typeof enforced>): string[] => c.diagnostics.filter((d) => d.severity === 'error' && d.target === 'web').map((d) => `${d.code} ${d.profile?.feature ?? ''}`);
+    for (const [p, v] of [['fill', '#ff0000'], ['fill', 'red'], ['fill', 'rgba(255, 0, 0, 0.5)'], ['fill', 'transparent'], ['stroke', '#00f']] as const) {
+      const attr = blocked(enforced('', [[p, v]]));
+      const css = blocked(enforced(`rect { ${p}: ${v}; }`, []));
+      expect(css.length, `${p}: ${v} in CSS`).toBeGreaterThan(0);
+      expect(attr, `${p}="${v}"`).toEqual(css);
+    }
+    // A proven value compiles from either.
+    expect(blocked(enforced('', [['fill', 'rgb(1, 2, 3)'], ['stroke', 'rgb(4, 5, 6)'], ['stroke-width', '2']]))).toEqual([]);
+    expect(blocked(enforced('rect { fill: rgb(1, 2, 3); stroke: rgb(4, 5, 6); stroke-width: 2; }', []))).toEqual([]);
+  });
   it('refuses a viewBox without a size (SVG-ratio), CSS geometry on a shape, a paint server in CSS and a percentage stroke-width', () => {
     const ratio = svgTree('', (_r, o) => [shape(o, 'p', 'path', [['d', 'M0 0 H1']])], [['viewBox', '0 0 24 24']]);
     expect(errors(compile(ratio, true)).filter((m) => m.includes('SVG-ratio')).length).toBe(3);

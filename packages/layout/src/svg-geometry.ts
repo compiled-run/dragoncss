@@ -3,7 +3,7 @@
 // - Bounds are Skia's SkPathPriv::ComputeTightBounds (src/core/SkPathPriv.cpp), with SkFindCubicExtrema, SkFindUnitQuadRoots,
 //   valid_unit_divide and SkCubicCoeff's eval (src/core/SkGeometry.cpp, src/core/SkGeometry.h), ported in float32 with no
 //   fused operations, as Chromium builds them (-ffp-contract=off).
-// - The viewBox transform is SVG 2 §8.2's xMidYMid meet.
+// - The viewBox transform is SVG 2 §8.2's xMidYMid meet, in Chrome's arithmetic.
 import { froundOf } from './rt-easing.ts';
 
 const f32 = froundOf;
@@ -199,12 +199,19 @@ export type ViewBox = { readonly x: number; readonly y: number; readonly width: 
 export type SvgMatrix = { readonly a: number; readonly b: number; readonly c: number; readonly d: number; readonly e: number; readonly f: number };
 
 /**
- * SVG 2 §8.2, xMidYMid meet: the user-to-viewport map of a viewport of width x height px. With no viewBox, the identity.
+ * SVG 2 §8.2, xMidYMid meet (slice: the other axis limits), in Chrome's observed arithmetic (pinned by parity/test/svg.test.ts against
+ * captured CTMs): the axis whose ratio limits the scale is scaled by viewport / viewBox along it, and the other axis is centred by
+ * -min - (extent - viewport x viewBox / viewport of the limiting axis) / 2 in user units, then scaled, all in double. With no
+ * viewBox, the identity.
  */
-export function viewBoxTransform(viewBox: ViewBox | null, width: number, height: number): SvgMatrix {
+export function viewBoxTransform(viewBox: ViewBox | null, width: number, height: number, slice: boolean = false): SvgMatrix {
   if (viewBox === null) return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
-  const s = Math.min(width / viewBox.width, height / viewBox.height);
-  const tx = (width - viewBox.width * s) / 2 - viewBox.x * s;
-  const ty = (height - viewBox.height * s) / 2 - viewBox.y * s;
-  return { a: s, b: 0, c: 0, d: s, e: tx, f: ty };
+  const logicalRatio = viewBox.width / viewBox.height;
+  const physicalRatio = width / height;
+  if (logicalRatio < physicalRatio !== slice) {
+    const s = height / viewBox.height;
+    return { a: s, b: 0, c: 0, d: s, e: s * (-viewBox.x - (viewBox.width - (width * viewBox.height) / height) / 2), f: s * -viewBox.y };
+  }
+  const s = width / viewBox.width;
+  return { a: s, b: 0, c: 0, d: s, e: s * -viewBox.x, f: s * (-viewBox.y - (viewBox.height - (height * viewBox.width) / width) / 2) };
 }

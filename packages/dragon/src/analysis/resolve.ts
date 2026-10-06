@@ -16,6 +16,7 @@ import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { blockifyRoot, computeGridLengths, computeJustifyItems, computeLengths, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
 import { presentationalHints } from './elements/replaced.ts';
+import { svgHintDeclaration } from './elements/svg.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
@@ -141,8 +142,11 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         const r = useInherit ? fromParent(p) : { value: initialValue(p, environment.ua), origin: 'initial' as const, span: null };
         props.set(p, { ...r, span: w.declaration.span, ...author });
       } else if (w === undefined && hints.has(p)) {
-        // A presentational hint is a declaration below author rules (css-cascade-5 §6.1), so it beats inheritance too.
-        props.set(p, { value: hints.get(p) as CssValue, origin: 'presentational-hint', span: null, ...none });
+        // A presentational hint is a declaration below author rules (css-cascade-5 §6.1), so it beats inheritance too. An SVG paint
+        // attribute keeps a stand-in declaration, so its value is profile-checked as the same value in CSS is (elements/svg.ts).
+        const value = hints.get(p) as CssValue;
+        const stand = svgHintDeclaration(el, p, value);
+        props.set(p, stand === null ? { value, origin: 'presentational-hint', span: null, ...none } : { value, origin: 'presentational-hint', span: stand.span, declaration: stand, declared: value, losing: [] });
       } else if (inherited && parent === null && p === 'direction') {
         // docs/api.md §7: the environment direction is the root's base direction; the harness gives both renderings the same one.
         props.set(p, { value: { kind: 'keyword', value: faults.ignoreEnvironmentDirection ? 'ltr' : environment.direction }, origin: 'environment', span: null, ...none });

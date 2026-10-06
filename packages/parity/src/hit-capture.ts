@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
-import { hitFacts, programInput } from 'dragon';
+import { hitFacts, programInput, svgScenes } from 'dragon';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
@@ -121,11 +121,14 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
 /**
  * Why the hit lane leaves a layout case out, or null when it covers it. The hit test models box geometry, overflow clips, positioned
  * layers and pointer-events (T064 R13); a case whose program writes a transform is refused by name until SELD-R2b (T146) models
- * hit testing through transforms, so it is never silently mis-hit.
+ * hit testing through transforms, and a case with an <svg> until SVG-a2 models its shapes, so neither is silently mis-hit.
  */
 export function hitRefusal(n: NativeCase): string | null {
   const moved = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
-  return moved.length === 0 ? null : `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
+  if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
+  // SVG-a1: Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit test models with SVG-a2.
+  const svgs = (svgScenes(n.compiled, n.case.assignment) ?? []).map((s) => s.address);
+  return svgs.length === 0 ? null : `<svg> ${svgs.join(', ')}: hit testing an svg's shapes comes with SVG-a2`;
 }
 
 /** Every layout case the hit lane covers: all of them but the refused ones (hitRefusal). */

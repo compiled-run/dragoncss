@@ -3,13 +3,11 @@
 // svg content box's position and the viewBox transform) and getBoundingClientRect (the bounding box mapped through it). The
 // lane runs at the host DPR of 1, where Chrome's CSS px are its layout units.
 //
-// The viewBox transform follows Chrome's observed arithmetic (pinned by test/svg.test.ts against captured CTMs): the axis
-// whose ratio limits the scale is scaled by viewport / viewBox along it, and the other axis is centred with
-// -min - (extent - viewport x scale') / 2 in user units, scale' the viewBox-over-viewport ratio of the limiting axis; the
-// translation is then scaled, all in double. The client rect maps each corner to the border box in double and rounds it to
-// float32, adds the border box origin in float32, and takes the float32 bounding box.
+// The viewBox transform is the engine's (svg-geometry.ts viewBoxTransform, in Chrome's observed arithmetic). The client rect maps
+// each corner to the border box in double and rounds it to float32, adds the border box origin in float32, and takes the float32
+// bounding box.
 import type { LayoutInput, LayoutRect, LayoutStyle, SvgMatrix, SvgShape as EngineShape } from '@dragon/layout';
-import { fromRaw, LU_PER_PX, objectBoundingBox, resolveBorder, resolvePadding } from '@dragon/layout';
+import { fromRaw, LU_PER_PX, objectBoundingBox, resolveBorder, resolvePadding, viewBoxTransform } from '@dragon/layout';
 import type { SvgPaint, SvgScene } from 'dragon';
 import { serializeColor } from 'dragon';
 import type { WebCapture } from './capture.ts';
@@ -22,17 +20,10 @@ import type { WebCapture } from './capture.ts';
 export type SvgFaults = { readonly controlPointBounds: boolean; readonly viewBoxIgnored: boolean; readonly meetAsSlice: boolean; readonly clientRectOneStep: boolean; readonly paintSwapped: boolean };
 export const NO_SVG_FAULTS: SvgFaults = { controlPointBounds: false, viewBoxIgnored: false, meetAsSlice: false, clientRectOneStep: false, paintSwapped: false };
 
-/** The viewBox transform of a viewport width x height (CSS px), xMidYMid meet, as Chrome computes it. */
+/** The viewBox transform of a viewport width x height (CSS px), as the engine computes it (svg-geometry.ts viewBoxTransform), or a plant's. */
 export function chromeViewBoxTransform(viewBox: SvgScene['viewBox'], width: number, height: number, faults: SvgFaults = NO_SVG_FAULTS): SvgMatrix {
-  if (viewBox === null || faults.viewBoxIgnored) return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
-  const logicalRatio = viewBox.width / viewBox.height;
-  const physicalRatio = width / height;
-  if (logicalRatio < physicalRatio !== faults.meetAsSlice) {
-    const s = height / viewBox.height;
-    return { a: s, b: 0, c: 0, d: s, e: s * (-viewBox.x - (viewBox.width - (width * viewBox.height) / height) / 2), f: s * -viewBox.y };
-  }
-  const s = width / viewBox.width;
-  return { a: s, b: 0, c: 0, d: s, e: s * -viewBox.x, f: s * (-viewBox.y - (viewBox.height - (height * viewBox.width) / width) / 2) };
+  if (faults.viewBoxIgnored) return viewBoxTransform(null, width, height);
+  return viewBoxTransform(viewBox, width, height, faults.meetAsSlice);
 }
 
 /**
