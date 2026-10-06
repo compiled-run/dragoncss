@@ -1,6 +1,7 @@
 // MQ-R1 PR 2 (notes/T067-mq-r-spec.md R5, R6, R7): the runtime's host half. The resize prefix scripts and the device-env rotation
 // are emitted into the host apps on the band programs, the device-states and device-env runners judge fake device dumps the way they
 // judge real ones (the device runs are the landing driver's), and the band oracle answers as Chrome does.
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,7 +9,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { rtBand } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { emitStatePrograms, expectedDigest, expectedDump, nativeBandPrograms, nativeBands, programInput } from 'dragon';
-import { launchChrome } from '../src/chrome.ts';
+import { launchChrome, openPage } from '../src/chrome.ts';
 import { bandOracle, ENV_IDS, ENV_SCRIPT, envEmits, evaluateEnv } from '../src/device-env.ts';
 import type { DeviceRecord } from '../src/device-run.ts';
 import { ENV_LANE, evaluateStates, scriptCases, STATE_LANE } from '../src/device-lanes.ts';
@@ -16,7 +17,7 @@ import { referenceDump } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
 import { BACKEND_OF, engineBoxes, expectedEngine, hostSources, nativeCompile } from '../src/native-host.ts';
 import { resizeEmits, resizePrefixes } from '../src/resize-scripts.ts';
-import { resizeCases } from '../src/resize-capture.ts';
+import { captureResize, rendering as resizeRendering, resizeCases, scriptPoints } from '../src/resize-capture.ts';
 import { FIXTURES } from '../src/fixtures.ts';
 import { ENV_CASE_IDS, resizeScriptIds, stateScriptIds } from '../src/targets.ts';
 
@@ -164,4 +165,34 @@ describe('device-env (one real rotation per device)', () => {
       await browser.close();
     }
   }, 120_000);
+});
+
+describe('the resize pixels Chrome gives (the device-states pixel reference)', () => {
+  it('are the same bytes on every capture, and those of a page opened at the step\'s size', async () => {
+    const c = resizeCases().find((x) => x.id === 'mqr-music-shape~resize');
+    if (c === undefined) throw new Error('no mqr-music-shape resize case');
+    const browser = await launchChrome(2);
+    try {
+      const hash = (png: Buffer): string => createHash('sha256').update(png).digest('hex');
+      const runs: string[][] = [];
+      for (let k = 0; k < 4; k++) {
+        const run: string[] = [];
+        await captureResize(browser, c, 2, 'authored', (_, png) => run.push(hash(png)));
+        runs.push(run);
+      }
+      for (const r of runs) expect(r).toEqual(runs[0]);
+      const at = scriptPoints(c)[1];
+      if (at === undefined) throw new Error('no step 1');
+      const page = await openPage(browser, resizeRendering(c, at.assignment, 'authored'), { viewport: at.size, devicePixelRatio: 2, direction: c.direction, rootFont: 'ahem' });
+      try {
+        const cdp = await page.context().newCDPSession(page);
+        const fresh = Buffer.from(((await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data: string }).data, 'base64');
+        expect(runs[0]?.[1]).toBe(hash(fresh));
+      } finally {
+        await page.context().close();
+      }
+    } finally {
+      await browser.close();
+    }
+  }, 300_000);
 });

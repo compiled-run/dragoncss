@@ -210,7 +210,7 @@ function pageStep(s: PageStep): CapturedNode[] {
 }
 
 /** The HTML of an assignment in the authored or the compiled web rendering. */
-function rendering(c: ResizeCase, a: Assignment, r: 'authored' | 'compiled'): string {
+export function rendering(c: ResizeCase, a: Assignment, r: 'authored' | 'compiled'): string {
   const p = caseOf(c, a);
   if (r === 'authored') return p.authoredHtml;
   const classOf = webClassMap(c.webCompiled, a);
@@ -235,6 +235,22 @@ export async function captureResize(browser: Browser, c: ResizeCase, dpr: number
       if (inner[0] !== size.width || inner[1] !== size.height) throw new Error(`${c.id} DPR ${dpr}: the viewport is ${inner.join('x')}, the script's ${size.width}x${size.height}`);
       samples.push({ size, nodes: await page.evaluate(pageStep, { kind: 'dump', props } as PageStep) });
       if (shot !== null) {
+        // A resize can leave raster tiles Chrome does not repaint (a box edge of the previous size stays in about half the runs of
+        // mqr-music-shape step 1 at DPR 2), so the pixels are taken after one whole-document repaint: the root hidden for a frame and
+        // its style attribute restored exactly. Layout is untouched (visibility), and the samples above are taken before it.
+        await page.evaluate(() => {
+          const e = document.documentElement;
+          (window as unknown as { dragonRootStyle: string | null }).dragonRootStyle = e.getAttribute('style');
+          e.style.setProperty('visibility', 'hidden');
+        });
+        await settle();
+        await page.evaluate(() => {
+          const e = document.documentElement;
+          const was = (window as unknown as { dragonRootStyle: string | null }).dragonRootStyle;
+          if (was === null) e.removeAttribute('style');
+          else e.setAttribute('style', was);
+        });
+        await settle();
         const cdp = await page.context().newCDPSession(page);
         try {
           const png = Buffer.from(((await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data: string }).data, 'base64');
