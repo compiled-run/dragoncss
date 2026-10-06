@@ -1,0 +1,9 @@
+{
+  "case": "list-items-div",
+  "dpr": 2,
+  "texts": [
+    {"id":"text:text0","lines":[[0,6]]},
+    {"id":"sized:text0","lines":[[0,1]]},
+    {"id":"inner:text0","lines":[[0,2]]}
+  ]
+}

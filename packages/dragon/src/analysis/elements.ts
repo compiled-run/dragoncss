@@ -8,14 +8,16 @@ export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside',
   'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd',
   'span', 'a', 'label',
+  'br',
   ...REPLACED_TAGS,
 ]);
 
 /**
  * Tags whose Chrome 145 UA rules set no longhand Dragon models (the elementKey and phrasingKey tables: span, a without href,
- * label, whose only rule is cursor: default). They take dragon-unstyled's captured defaults; test/blockify.test.ts pins the tables.
+ * label, whose only rule is cursor: default, and br, which has none). They take dragon-unstyled's captured defaults;
+ * test/blockify.test.ts pins the tables.
  */
-export const UNSTYLED_TAGS: ReadonlySet<string> = new Set(['span', 'a', 'label']);
+export const UNSTYLED_TAGS: ReadonlySet<string> = new Set(['span', 'a', 'label', 'br']);
 
 /** The UA dataset row an element's tag reads. */
 export function uaTagOf(tag: string): UaKey {

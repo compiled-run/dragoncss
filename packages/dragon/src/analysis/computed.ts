@@ -10,6 +10,7 @@ import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
 import { positionOffsetText, positionValue, ratioValue } from '../css/values.ts';
+import type { GenBFaults } from '../faults/gen-b.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import type { Span } from '../types.ts';
@@ -136,6 +137,20 @@ export type SubstitutionHook = (winner: Candidate, property: Longhand, el: Linke
 
 export const substituteVariables: SubstitutionHook = (winner, property, _el, scope) => substituteWinner(winner, property, scope);
 
+/**
+ * css-content-3 §2: on an element, content: none computes to normal (Blink stores it and treats it as normal, display_style.h
+ * ContentBehavesAsNormal; probe family1 on-element). The list-style shorthand's none sets list-style-type too (css-lists-3 §3.4),
+ * which the planted listStyleNoneSetsImageOnly undoes.
+ */
+export function computeLists(props: Map<Longhand, ResolvedValue>, faults: GenBFaults): void {
+  const content = props.get('content') as ResolvedValue;
+  if (!faults.contentNoneOnElementKept && content.value.kind === 'keyword' && content.value.value === 'none') props.set('content', { ...content, value: { kind: 'keyword', value: 'normal' } });
+  const type = props.get('list-style-type') as ResolvedValue;
+  if (faults.listStyleNoneSetsImageOnly && type.origin === 'author' && type.declaration?.property === 'list-style' && type.value.kind === 'keyword' && type.value.value === 'none') {
+    props.set('list-style-type', { ...type, value: { kind: 'keyword', value: 'disc' } });
+  }
+}
+
 // css-overflow-3 §3.1: when one axis is neither visible nor clip, visible computes to auto and clip to hidden on the other axis.
 export function computeOverflowPair(props: Map<Longhand, ResolvedValue>): void {
   const x = props.get('overflow-x') as ResolvedValue;
@@ -176,6 +191,12 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
     if (px === null) return;
     props.set(p, { ...v, value: { kind: 'length', value: px, unit: CANONICAL_LENGTH_UNIT } });
   };
+  // css-fonts-4 §2.5 <relative-size>, as Blink computes it (FontDescription::SmallerSize and LargerSize): the parent's computed size
+  // divided or multiplied by 1.2, not the next keyword of the table.
+  const fs = props.get('font-size') as ResolvedValue;
+  if (fs.value.kind === 'keyword' && (fs.value.value === 'smaller' || fs.value.value === 'larger') && parentFontSize !== null) {
+    props.set('font-size', { ...fs, value: { kind: 'length', value: fs.value.value === 'smaller' ? parentFontSize / 1.2 : parentFontSize * 1.2, unit: CANONICAL_LENGTH_UNIT } });
+  }
   toPx('font-size', parentFontSize, rootFontSize ?? parentFontSize);
   const own = pxOf((props.get('font-size') as ResolvedValue).value);
   for (const p of props.keys()) if (p !== 'font-size') toPx(p, own, rootFontSize ?? own);

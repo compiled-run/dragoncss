@@ -11,7 +11,7 @@ import { trustCoverageProblems } from '../src/lanes.ts';
 import type { AvdDeviceSpec, DeviceRecord, DeviceSpec, GoldenParts } from '../src/device-run.ts';
 import type { SettleState } from '../src/device-run.ts';
 import { ANDROID_RENDERER, avdDir, dropGolden, deviceRecord, dropSuspect, emulatorArgs, failedAttemptStep, GOLDEN_SNAPSHOT, goldenEnabled, GUEST_TIMEZONE, snapshotLoadFailed, goldenCurrent, goldenKey, goldenKeyFile } from '../src/device-run.ts';
-import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, isGlyphPlant, judgeGlyphPlant, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
+import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, isGlyphPlant, isLinePlant, isPaintPlant, judgeGlyphPlant, judgeLinePlant, LINE_PLANT_CASE, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from 'dragon';
 import { paintPlants } from '../../dragon/src/emit/paint/registry.ts';
 import { GATE_GLYPH_POSITION_DEVICE_PX } from '../src/compare.ts';
@@ -146,9 +146,13 @@ describe('raster plants judged against the clean run (T093 ruling A)', () => {
     expect(paint).toEqual(expect.arrayContaining(['dash-phase-1', 'dash-gap-unfitted']));
     expect(Object.keys(PLANT_CASES)).toEqual(paint);
     expect(Object.keys(PLANT_RULES)).toEqual(paint);
+    // INL1a: the line plant is appended after them; it is neither a glyph plant nor a paint plant.
+    expect(SUPPORT_PLANTS.filter(isLinePlant)).toEqual(['single-run-baseline']);
+    expect(SUPPORT_PLANTS.filter(isPaintPlant)).toEqual(paint);
     // REPL-a: image-offset-1, the image paint module's raster plant, is judged on image-flat and edge rules, never border rules.
     expect(PLANT_RULES['image-offset-1'].test('image-flat:a1:0') && PLANT_RULES['image-offset-1'].test('edge:a1:top') && !PLANT_RULES['image-offset-1'].test('border:a1:top')).toBe(true);
     expect(PLANT_AXIS).toEqual({ 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' });
+    expect(SUPPORT_PLANTS.filter(isGlyphPlant)).toEqual(['glyph-offset-1', 'glyph-offset-y-1']);
   });
   it('each plant changes one line of each backend support: its glyph or image offset constant from 0 to 1', () => {
     for (const backend of ['uikit', 'android-views'] as const) {
@@ -244,6 +248,36 @@ describe('an AVD settles on the home screen before the app starts (T112)', () =>
     const bad = feed(['adb exited 1: error: device offline'], 3).state;
     expect(settleTimeoutMessage('emulator-5582', 300_000, bad, 3)).toBe('emulator-5582 did not settle on the home screen within 300 s (tooling fault): the last dumpsys window output had no single mCurrentFocus and mFocusedApp: "adb exited 1: error: device offline"; 1 samples, 0 focus changes, 1 unparseable');
     expect(settleTimeoutMessage('emulator-5582', 300_000, SETTLE_START)).toMatch(/no sample was read/);
+  });
+});
+
+describe('the single-run-baseline line plant judged against the clean run (INL1a, T058J3 F)', () => {
+  const G = GATE_GLYPH_POSITION_DEVICE_PX;
+  const ok = { hostErrors: [], frames: 0, lines: 0 };
+  const bl = (line: string, baseline: number) => ({ line, baseline });
+  const bottom = (l: string, native: number, chrome: number): GlyphPosition => ({ line: l, axis: 'y', native, chrome });
+  const clean = { failures: 0, baselines: [bl('t:line0', 40), bl('t:line1', 70)], bottoms: [bottom('t:line0', 48, 48), bottom('t:line1', 78, 78.1)] };
+  it('the plant is one constant from 0 to 1 in each backend support, and runs LINE_PLANT_CASE', () => {
+    expect(LINE_PLANT_CASE).toBe('inline-baselines');
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const base = emitNativeSupport(backend).flatMap((f) => f.text.split('\n'));
+      const planted = emitNativeSupport(backend, 'single-run-baseline').flatMap((f) => f.text.split('\n'));
+      const changed = planted.flatMap((l, i) => (l === base[i] ? [] : [[base[i], l]]));
+      expect(changed.length, backend).toBe(1);
+      expect((changed[0] as [string, string])[0]).toMatch(/(dragonSingleRunBaselinePlant: Double|DRAGON_SINGLE_RUN_BASELINE_PLANT) = 0(\.0)?$/);
+    }
+  });
+  it('caught: a later line moved by whole device px, and its glyph bottom edge moved with it past the gate', () => {
+    const v = judgeLinePlant(clean, { baselines: [bl('t:line0', 40), bl('t:line1', 66)], bottoms: [bottom('t:line0', 48, 48), bottom('t:line1', 74, 78.1)] }, G, ok);
+    expect(v).toMatchObject({ caught: true, problems: [] });
+    expect(v.lines.map((l) => l.line)).toEqual(['t:line1']);
+  });
+  it('not caught: nothing moved, a first line moved, pixels did not follow, a dirty run, or different lines', () => {
+    expect(judgeLinePlant(clean, { baselines: clean.baselines, bottoms: clean.bottoms }, G, ok).problems).toEqual(['no line baseline moved by a whole device px']);
+    expect(judgeLinePlant(clean, { baselines: [bl('t:line0', 41), bl('t:line1', 66)], bottoms: [bottom('t:line1', 74, 78.1)] }, G, ok).problems).toEqual(['t:line0: a first line\'s baseline moved 1 device px']);
+    expect(judgeLinePlant(clean, { baselines: [bl('t:line0', 40), bl('t:line1', 66)], bottoms: [bottom('t:line1', 78, 78.1)] }, G, ok).problems).toEqual(['t:line1: the glyph bottom edge moved 0.000 device px, the baseline -4', 't:line1: the position check fails by -0.400 device px beyond the gate, less than 0.2']);
+    expect(judgeLinePlant({ ...clean, failures: 1 }, { baselines: [bl('t:line0', 40), bl('t:line1', 66)], bottoms: [bottom('t:line1', 74, 78.1)] }, G, { ...ok, frames: 1 }).problems).toEqual(['device-frames has 1 failure(s) across the two runs', 'the clean run has 1 device-pixels failure(s)']);
+    expect(judgeLinePlant(clean, { baselines: [bl('t:line0', 40)], bottoms: [] }, G, ok).problems).toEqual(['the planted run dumped 1 text lines, the clean run 2, not the same lines']);
   });
 });
 

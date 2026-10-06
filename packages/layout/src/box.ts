@@ -247,3 +247,4 @@ export function contentBox(borderBox: LU, borderPadding: LU): LU {
 export function isScrollContainer(style: LayoutStyle): boolean {
   return style.overflowX === 'hidden';
 }
+

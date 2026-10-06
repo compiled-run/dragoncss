@@ -15,6 +15,7 @@ import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
+import { LIST_ITEMS } from './fixture-groups/list-items.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
@@ -99,6 +100,7 @@ export const GROUPS = {
   grid: GRID,
   inline: INLINE,
   interaction: INTERACTION,
+  'list-items': LIST_ITEMS,
   'logical-props': LOGICAL_PROPS,
   media: MEDIA,
   'media-runtime': MEDIA_RUNTIME,
