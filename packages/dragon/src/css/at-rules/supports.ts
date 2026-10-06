@@ -1,6 +1,7 @@
 // @supports (css-conditional-3 §6, CASC): evaluated at build time, as Chrome 145 evaluates it, so a true condition's rules are
 // plain rules and a false one's never apply. Dragon decides a <supports-decl> by parsing the declaration as in a style rule
-// (stylesheet.ts declarationSupport): a declaration Chrome keeps is supported and one Chrome drops is not. Anything Dragon cannot
+// (stylesheet.ts declarationSupport): a declaration Chrome keeps is supported and one Chrome drops is not, and a declaration of a
+// property Chrome 145 does not parse at all (measured, property-names.generated.ts) is not supported. Anything Dragon cannot
 // decide (a property or value it refuses, selector(), font-tech(), font-format(), <general-enclosed>) refuses the whole at-rule.
 // Only types come from at-rules.ts, so the two modules can import each other.
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
@@ -8,11 +9,14 @@ import type { ComponentValue } from '../../media/tokens.ts';
 import { componentValues, isWhitespace, tokenize } from '../../media/tokens.ts';
 import type { AtRuleContext, AtRuleOutcome } from '../at-rules.ts';
 import { asciiLower } from '../escapes.ts';
+import { CHROME_UNKNOWN_PROPERTIES } from '../property-names.generated.ts';
 import { declarationSupport } from '../stylesheet.ts';
+
+const CHROME_UNKNOWN: ReadonlySet<string> = new Set(CHROME_UNKNOWN_PROPERTIES);
 
 /** A parsed supports condition; decl holds the declaration text as written inside its parentheses. */
 export type SupportsCondition =
-  | { readonly type: 'decl'; readonly text: string }
+  | { readonly type: 'decl'; readonly text: string; readonly property: string }
   | { readonly type: 'not'; readonly operand: SupportsCondition }
   | { readonly type: 'and' | 'or'; readonly operands: readonly SupportsCondition[] };
 
@@ -71,7 +75,7 @@ function inParens(src: string, cv: ComponentValue): SupportsCondition {
   const second = trim(inner.slice(1))[0];
   // <supports-decl> = ( <declaration> ): a name, then a colon.
   if (first !== undefined && first.kind === 'token' && first.token.type === 'ident' && second !== undefined && second.kind === 'token' && second.token.type === 'colon') {
-    return { type: 'decl', text: src.slice(first.start, (inner[inner.length - 1] as ComponentValue).end) };
+    return { type: 'decl', text: src.slice(first.start, (inner[inner.length - 1] as ComponentValue).end), property: first.token.value.startsWith('--') ? first.token.value : asciiLower(first.token.value) };
   }
   if (identOf(first) === 'not' || (first !== undefined && first.kind === 'block' && first.open === '(')) return condition(src, inner);
   throw new Undecided(`"${src.slice(cv.start, cv.end)}" is <general-enclosed>, which Dragon does not evaluate`);
@@ -91,6 +95,8 @@ export function parseSupportsCondition(prelude: string): SupportsCondition | str
 export function evaluateSupports(c: SupportsCondition): boolean | string {
   switch (c.type) {
     case 'decl': {
+      // A property Chrome 145 does not parse makes the declaration invalid whatever its value (measured: property-names.generated.ts).
+      if (CHROME_UNKNOWN.has(c.property)) return false;
       const s = declarationSupport(c.text);
       return s === 'valid' ? true : s === 'invalid' ? false : `Dragon cannot tell whether Chrome keeps (${c.text}) (${s.refused})`;
     }
@@ -100,11 +106,13 @@ export function evaluateSupports(c: SupportsCondition): boolean | string {
     }
     case 'and':
     case 'or': {
-      // Every operand is decided, so an undecidable one refuses the rule even where the others would settle it.
+      // A false operand settles "and" and a true one settles "or" whatever the undecided operands are, as Chrome's answer for
+      // them can only be true or false; otherwise an undecided operand refuses the rule.
       const vs = c.operands.map(evaluateSupports);
+      const settles = c.type === 'and' ? false : true;
+      if (vs.includes(settles)) return settles;
       const undecided = vs.find((v) => typeof v === 'string');
-      if (undecided !== undefined) return undecided;
-      return c.type === 'and' ? vs.every((v) => v === true) : vs.some((v) => v === true);
+      return undecided ?? !settles;
     }
   }
 }

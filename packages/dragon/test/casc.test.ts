@@ -9,6 +9,9 @@ import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Diagnostic } from '../src/types.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf } from './helpers.ts';
 
+/** Tailwind 4.3.3's @property fallback condition, as packages/tailwind-sweep/src/flatten.ts FALLBACK_CONDITION writes it. */
+const FALLBACK_CONDITION = '((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b))))';
+
 type K = 'ios' | 'android' | 'web';
 const compile = (css: string, opts: { faults?: CompilerFaults; profiles?: 'enforce' | 'derive'; tag?: string } = {}): { input: FrontEndResult; c: Compiled<K> } => {
   const input = inputFor(`body { margin: 0; } ${css}`, (r) => [{ ...div(r, 'a', ['a']), tag: opts.tag ?? 'div' }]);
@@ -60,8 +63,20 @@ describe('@supports conditions', () => {
       expect(decide(`not (${decl})`), decl).toBe(`Dragon cannot tell whether Chrome keeps (${decl}) (Chrome may keep "${keyword}" for ${decl.split(':')[0]}, a keyword the CSS grammar Dragon checks does not list)`);
     }
     expect(decide('(foo: bar)')).toMatch(/^Dragon cannot tell whether Chrome keeps \(foo: bar\) \(foo is not supported/);
-    // An undecidable operand refuses the condition even where the decided one settles it.
-    expect(decide('(width: 1px 2px) and (foo: bar)')).toMatch(/^Dragon cannot tell whether Chrome keeps \(foo: bar\)/);
+    // An undecidable operand refuses the condition unless a decided one settles it (a false operand of "and", a true one of "or").
+    expect(decide('(width: 1px) and (foo: bar)')).toMatch(/^Dragon cannot tell whether Chrome keeps \(foo: bar\)/);
+    expect(decide('(width: 1px 2px) or (foo: bar)')).toMatch(/^Dragon cannot tell whether Chrome keeps \(foo: bar\)/);
+    expect(decide('(width: 1px 2px) and (foo: bar)')).toBe(false);
+    expect(decide('(width: 1px) or (foo: bar)')).toBe(true);
+    expect(decide('not ((width: 1px 2px) and (foo: bar))')).toBe(true);
+  });
+  it('a property Chrome 145 does not parse makes its declaration false whatever the value (property-names.generated.ts)', () => {
+    for (const decl of ['-webkit-hyphens: none', 'margin-trim: inline', '-moz-orient: inline', '-MOZ-ORIENT: inline']) expect(decide(`(${decl})`), decl).toBe(false);
+    // Tailwind 4.3.3's @property fallback condition: false in Chrome 145 (CSS.supports measured), though Dragon cannot decide
+    // (color: rgb(from red r g b)), since a false operand settles each "and".
+    expect(decide(FALLBACK_CONDITION)).toBe(false);
+    // A name the capture did not probe stays undecided.
+    expect(decide('(foo: bar)')).toMatch(/^Dragon cannot tell whether Chrome keeps \(foo: bar\)/);
   });
 });
 

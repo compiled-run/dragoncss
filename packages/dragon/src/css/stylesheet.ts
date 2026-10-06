@@ -178,8 +178,14 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
   if (node.type === 'Raw' && EMPTY_RAW.test(String(node['value']))) return;
   if (node.type === 'Atrule') {
     const prelude = node['prelude'] as CssNode | null | undefined;
+    const atBlock = node['block'] as CssNode | null | undefined;
+    // css-tree's @supports prelude grammar stops early on what it does not parse (rgb(from ...)), so an @supports prelude is the
+    // source text from the at-keyword to its block, as Chrome reads it (at-rules/supports.ts parses it).
+    const supportsPrelude = asciiLower(String(node['name'])) === 'supports' && atBlock !== null && atBlock !== undefined
+      ? text.slice(span.start - base.start + 1 + String(node['name']).length, spanOf(atBlock, base).start - base.start).trim()
+      : null;
     const preludeSpan = prelude === null || prelude === undefined ? null : spanOf(prelude, base);
-    const context = { node, name: String(node['name']), where, span, prelude: preludeSpan === null ? '' : text.slice(preludeSpan.start - base.start, preludeSpan.end - base.start) };
+    const context = { node, name: String(node['name']), where, span, prelude: supportsPrelude ?? (preludeSpan === null ? '' : text.slice(preludeSpan.start - base.start, preludeSpan.end - base.start)) };
     // at-rules.ts decides each at-rule: an accepted @font-face goes to the fonts collector; a conditional one in a rule block is
     // css-nesting-1, and one without a block is invalid, so both are refused.
     const outcome = handleAtRule(context);

@@ -21,6 +21,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { compilePattern, matchSegments } from './macroscope-ignore.ts';
 import { importClosure, lockClosure, NODE_IMPORT_CONDITIONS, parseLock, type ReadText, scanSource, type Tree, type Workspace, workspaceOf } from './regen-inputs.ts';
 import { BG2 } from './regen-steps/bg2.ts';
+import { CASC } from './regen-steps/casc.ts';
 import { ENV_SAFE } from './regen-steps/env-safe.ts';
 import { MQ_R1 } from './regen-steps/mq-r1.ts';
 import { OVFL } from './regen-steps/ovfl.ts';
@@ -108,6 +109,7 @@ const LEGACY_STEPS: readonly Step[] = [
  */
 export const REGEN_FEATURES: { readonly [feature: string]: RegenFeature } = {
   bg2: BG2,
+  casc: CASC,
   'env-safe': ENV_SAFE,
   'mq-r1': MQ_R1,
   ovfl: OVFL,

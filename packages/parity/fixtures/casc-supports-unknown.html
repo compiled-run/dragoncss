@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.box { width: 40px; height: 6px; margin-bottom: 2px; }
+@supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
+  .a { width: 90px; }
+}
+@supports (-webkit-hyphens: none) { .b { width: 91px; } }
+@supports not (margin-trim: inline) { .c { width: 70px; } }
+@supports (-moz-orient: inline) or (display: flex) { .d { width: 60px; } }
+@supports (margin-trim: inline) and (foo: bar) { .e { width: 92px; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="box a"></div>
+<div data-dragon-id="b" class="box b"></div>
+<div data-dragon-id="c" class="box c"></div>
+<div data-dragon-id="d" class="box d"></div>
+<div data-dragon-id="e" class="box e"></div>
+</body>
+</html>
