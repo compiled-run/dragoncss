@@ -38,3 +38,42 @@ export function opacityAlpha8(opacity: number): number {
   const o = froundOf(opacity < 0 ? 0 : opacity > 1 ? 1 : opacity);
   return floorOf(froundOf(froundOf(o * 255) + 0.5));
 }
+
+/** Skia's SkMulDiv255Round (include/core/SkMath.h): a * b / 255 rounded, in integers. */
+export function mulDiv255Round(a: number, b: number): number {
+  const prod = a * b + 128;
+  return floorOf((prod + floorOf(prod / 256)) / 256);
+}
+
+/**
+ * PNT1-opacity-b: Chrome's paint alpha of a colour of alpha byte colorAlpha8 drawn with an opacity folded into it: the paint
+ * holds the colour as a byte (SkColor), cc PlaybackFoldingIterator multiplies its float alpha (byte / 255) by the opacity, and
+ * SkPaint getAlpha rounds the product * 255, every step in float.
+ */
+export function foldedAlpha8(colorAlpha8: number, opacity: number): number {
+  const o = opacity < 0 ? 0 : opacity > 1 ? 1 : opacity;
+  return opacityAlpha8(froundOf(froundOf(colorAlpha8 / 255) * froundOf(o)));
+}
+
+/**
+ * PNT1-opacity-b: one channel of a solid colour's blit (Skia 2ab8add5 src/opts/SkBlitRow_opts.h:243-270 blit_row_color32): the
+ * premultiplied colour channel plus (dst * (256 - srcAlpha8)) >> 8. A colour channel c of alpha A draws as
+ * srcOver8(mulDiv255Round(c, A), A, dst).
+ */
+export function srcOver8(src: number, srcAlpha8: number, dst: number): number {
+  return src + floorOf((dst * (256 - srcAlpha8)) / 256);
+}
+
+/**
+ * PNT1-opacity-b: one channel of how Chrome composites an opacity group's layer (a saveLayer restored with paint alpha alpha8)
+ * onto what is below it (Skia 2ab8add5 src/core/SkBlitRow_D32.cpp:204-301 blit_row_s32a_blend, src/core/SkColorData.h:134-137
+ * SkAlphaMulInv256): src_scale = alpha8 + 1, dst_scale = SkAlphaMulInv256(layerAlpha8, src_scale), and
+ * ((layer * src_scale + dst * dst_scale) & 0xffff) >> 8, each channel a 16-bit lane of the packed blend. `layer` is premultiplied.
+ */
+export function groupBlend8(layer: number, layerAlpha8: number, dst: number, alpha8: number): number {
+  const srcScale = alpha8 + 1;
+  const prod = 65535 - layerAlpha8 * srcScale;
+  const dstScale = floorOf((prod + floorOf(prod / 256)) / 256);
+  const lane = layer * srcScale + dst * dstScale;
+  return floorOf((lane - floorOf(lane / 65536) * 65536) / 256);
+}

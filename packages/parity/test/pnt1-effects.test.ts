@@ -11,7 +11,7 @@
 // paint order, the group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
 // test fits the two blits and the byte against a captured sweep of opacities.
 import { describe, expect, it } from 'vitest';
-import { opacityAlpha8, snapEdges } from '@dragon/layout';
+import { groupBlend8, mulDiv255Round, opacityAlpha8, snapEdges, srcOver8 } from '@dragon/layout';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
 import { androidProfile, borderDevicePx, createProjectWith, iosProfile, laneOnlyNative, nativePrograms, NO_FAULTS, programInput, webProfile } from 'dragon';
@@ -24,27 +24,17 @@ import { ruleKind } from '../src/samples.ts';
 
 type Px = [number, number, number, number];
 
-/** SkMulDiv255Round. */
-const mdr = (a: number, b: number): number => {
-  const p = a * b + 128;
-  return (p + (p >> 8)) >> 8;
-};
-
-/** Skia's SkBlitRow::Color32 (blit_row_color32): a premultiplied solid colour of alpha a over a premultiplied dst. */
+/** Skia's SkBlitRow::Color32 (blit_row_color32): a premultiplied solid colour of alpha a over a premultiplied dst (paint.ts srcOver8). */
 export function color32(dst: Px, c: { r: number; g: number; b: number }, a: number): Px {
   if (a === 0) return dst;
-  const src: Px = [mdr(c.r, a), mdr(c.g, a), mdr(c.b, a), a];
+  const src: Px = [mulDiv255Round(c.r, a), mulDiv255Round(c.g, a), mulDiv255Round(c.b, a), a];
   if (a === 255) return src;
-  const inv = 256 - a;
-  return [0, 1, 2, 3].map((k) => (src[k] as number) + (((dst[k] as number) * inv) >> 8)) as Px;
+  return [0, 1, 2, 3].map((k) => srcOver8(src[k] as number, a, dst[k] as number)) as Px;
 }
 
-/** Skia's blit_row_s32a_blend (NEON and portable give the same bytes for these inputs): a premultiplied layer pixel at alpha a over dst. */
+/** Skia's blit_row_s32a_blend (NEON and portable give the same bytes for these inputs): a premultiplied layer pixel at alpha a over dst (paint.ts groupBlend8). */
 export function s32aBlend(dst: Px, src: Px, a: number): Px {
-  const a256 = a + 1;
-  const prod = 0xffff - (src[3] as number) * a256;
-  const ds = (prod + (prod >> 8)) >> 8;
-  return [0, 1, 2, 3].map((k) => (((src[k] as number) * a256 + (dst[k] as number) * ds) & 0xffff) >> 8) as Px;
+  return [0, 1, 2, 3].map((k) => groupBlend8(src[k] as number, src[3] as number, dst[k] as number, a)) as Px;
 }
 
 describe('Chrome 145 composites opacity with Skia\'s getAlpha byte and the Color32 or s32a blit', () => {

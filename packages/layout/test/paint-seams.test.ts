@@ -25,7 +25,7 @@ describe('EMS: engine paint seams', () => {
     }
     // REPL-a fills the seam with one engine root: the replaced image's paint rects, which the device runs after layout; PNT1 adds
     // Skia's paint alpha byte of an opacity, which the device and the host share.
-    expect([...readFileSync(join(layout, 'src/paint.ts'), 'utf8').matchAll(/export (?:async )?function (\w+)/g)].map((m) => m[1])).toEqual(['replacedPaint', 'opacityAlpha8']);
+    expect([...readFileSync(join(layout, 'src/paint.ts'), 'utf8').matchAll(/export (?:async )?function (\w+)/g)].map((m) => m[1])).toEqual(['replacedPaint', 'opacityAlpha8', 'mulDiv255Round', 'foldedAlpha8', 'srcOver8', 'groupBlend8']);
     const shape: BoxShape = { left: 0, top: 0, right: 10, bottom: 10, borders: [0, 0, 0, 0], radii: [0, 0, 0, 0, 0, 0, 0, 0] };
     expect(shape.radii).toHaveLength(8);
   });
@@ -34,7 +34,7 @@ describe('EMS: engine paint seams', () => {
     // REPL-a adds the replacedPaint root and its result type beside the seam's BoxShape; PNT1 adds opacityAlpha8 to its line.
     expect(lines).toEqual([
       "export type { ReplacedPaint } from './paint.ts';",
-      "export { opacityAlpha8, replacedPaint } from './paint.ts';",
+      "export { foldedAlpha8, groupBlend8, mulDiv255Round, opacityAlpha8, replacedPaint, srcOver8 } from './paint.ts';",
       "export type { BoxShape } from './paint.ts';",
       "export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';",
       "export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';",
