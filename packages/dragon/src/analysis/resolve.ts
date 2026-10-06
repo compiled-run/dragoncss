@@ -140,6 +140,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         const useInherit = kw === 'inherit' || currentColorOnColor || (kw === 'unset' && inherited);
         const r = useInherit ? fromParent(p) : { value: initialValue(p, environment.ua), origin: 'initial' as const, span: null };
         props.set(p, { ...r, span: w.declaration.span, ...author });
+      } else if (w === undefined && hints.has(p)) {
+        // A presentational hint is a declaration below author rules (css-cascade-5 §6.1), so it beats inheritance too.
+        props.set(p, { value: hints.get(p) as CssValue, origin: 'presentational-hint', span: null, ...none });
       } else if (inherited && parent === null && p === 'direction') {
         // docs/api.md §7: the environment direction is the root's base direction; the harness gives both renderings the same one.
         props.set(p, { value: { kind: 'keyword', value: faults.ignoreEnvironmentDirection ? 'ltr' : environment.direction }, origin: 'environment', span: null, ...none });
@@ -149,8 +152,6 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       } else if (inherited) {
         props.set(p, parent === null ? (userAgentValue(tag, p, environment.ua) === null ? fromParent(p) : defaultFor(p)) : fromParent(p));
         defaulted.add(p);
-      } else if (w === undefined && hints.has(p as 'width')) {
-        props.set(p, { value: hints.get(p as 'width') as CssValue, origin: 'presentational-hint', span: null, ...none });
       } else {
         props.set(p, defaultFor(p));
         defaulted.add(p);

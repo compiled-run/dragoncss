@@ -21,6 +21,8 @@ export type CapturedNode = {
   readonly height: number;
   /** getComputedStyle values for every longhand in LONGHANDS order, then the case's extra properties; null for text nodes. */
   readonly computed: { readonly [property: string]: string } | null;
+  /** SVG-a1: an SVG shape's getBBox [x, y, width, height] and getScreenCTM [a, b, c, d, e, f]; absent on every other node. */
+  readonly svg?: { readonly bbox: readonly number[]; readonly ctm: readonly number[] };
 };
 
 export type WebCapture = {
@@ -46,7 +48,11 @@ const collectNodes = (props: string[]): CapturedNode[] => {
     const cs = getComputedStyle(el);
     const computed: Record<string, string> = {};
     for (const p of props) computed[p] = cs.getPropertyValue(p);
-    out.push({ id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed });
+    const shape = el.namespaceURI === 'http://www.w3.org/2000/svg' && el.localName !== 'svg' ? (el as unknown as SVGGraphicsElement) : null;
+    const box = shape === null ? null : shape.getBBox();
+    const m = shape === null ? null : shape.getScreenCTM();
+    const svg = box === null || m === null ? {} : { svg: { bbox: [box.x, box.y, box.width, box.height], ctm: [m.a, m.b, m.c, m.d, m.e, m.f] } };
+    out.push({ id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed, ...svg });
     let k = 0;
     let spaces = 0;
     for (const child of Array.from(el.childNodes)) {

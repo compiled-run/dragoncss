@@ -72,6 +72,8 @@ export function compareLayout(capture: WebCapture, absolute: ReadonlyMap<string,
       if (d !== undefined) problems.push(`${n.id}: Chrome generates no box but Dragon laid one out`);
       continue;
     }
+    // SVG-a1: a shape is its <svg>'s content, not a box; its outline is compared exactly by svg-compare.ts.
+    if (n.svg !== undefined && d === undefined) continue;
     if (d === undefined) {
       problems.push(`${n.id}: Chrome has a box but Dragon has none`);
       nodes.push({ id: n.id, kind: n.kind, chrome: chromeEdges(n), dragon: null, delta: null, pass: false, exactLu: false });
@@ -149,6 +151,8 @@ export function compareZoomedLayout(capture: WebCapture, absolute: ReadonlyMap<s
       if (d !== undefined) problems.push(`${n.id}: Chrome generates no box but Dragon laid one out`);
       continue;
     }
+    // SVG-a1: a shape is its <svg>'s content, not a box; its outline is compared exactly by svg-compare.ts.
+    if (n.svg !== undefined && d === undefined) continue;
     if (d === undefined) {
       problems.push(`${n.id}: Chrome has a box but Dragon has none`);
       nodes.push({ id: n.id, kind: n.kind, chrome: chromeEdges(n), dragon: null, delta: null, pass: false, exactLu: false, dragonLu: null });

@@ -11,7 +11,7 @@ import { repoPath } from './paths.ts';
 
 export const PROJECT_ID = 'dragon-parity';
 
-type RawElement = { tag: string; attrs: Map<string, string>; children: (RawElement | RawText)[]; start: number; openEnd: number; end: number };
+type RawElement = { tag: string; attrs: Map<string, string>; children: (RawElement | RawText)[]; start: number; openEnd: number; end: number; selfClosing: boolean };
 type RawText = { text: string; start: number; end: number };
 
 /** HTML void elements the subset reads: written without an end tag, or with an immediate explicit one (<hr ...></hr>). */
@@ -43,7 +43,9 @@ function decode(s: string): string {
 
 /**
  * Parses the fixture HTML subset: a doctype, double-quoted attributes, raw <style> text, the void elements of VOID_ELEMENTS and no
- * comments. The stylesheet is exactly one <style> or one <link rel="stylesheet" href>.
+ * comments. The stylesheet is exactly one <style> or one <link rel="stylesheet" href>. Inside an <svg> (foreign content, HTML
+ * §13.2.6.5) a start tag may close itself with "/>", and attribute names keep their case (viewBox), as the HTML parser's SVG
+ * attribute adjustment gives them.
  */
 export function parseFixtureHtml(html: string): { root: RawElement; style: { start: number; end: number } | null; links: readonly StylesheetLink[] } {
   const doctype = /^<!DOCTYPE html>\s*/i.exec(html);
@@ -64,20 +66,26 @@ export function parseFixtureHtml(html: string): { root: RawElement; style: { sta
       continue;
     }
     if (html[i] === '<') {
-      const open = /^<([a-z][a-z0-9-]*)((?:\s+[a-z][a-z0-9-]*="[^"]*")*)\s*>/.exec(html.slice(i));
+      const foreign = stack.some((e) => e.tag === 'svg') || html.startsWith('<svg', i);
+      const open = (foreign ? /^<([a-z][a-z0-9-]*)((?:\s+[A-Za-z][A-Za-z0-9-]*="[^"]*")*)\s*(\/?)>/ : /^<([a-z][a-z0-9-]*)((?:\s+[a-z][a-z0-9-]*="[^"]*")*)\s*()>/).exec(html.slice(i));
       if (open === null) throw new Error(`unsupported markup at ${i}: ${html.slice(i, i + 20)}`);
       const attrs = new Map<string, string>();
-      for (const m of (open[2] as string).matchAll(/([a-z][a-z0-9-]*)="([^"]*)"/g)) {
+      for (const m of (open[2] as string).matchAll(/([A-Za-z][A-Za-z0-9-]*)="([^"]*)"/g)) {
         if (attrs.has(m[1] as string)) throw new Error(`duplicate attribute ${m[1]}`);
         attrs.set(m[1] as string, decode(m[2] as string));
       }
-      const el: RawElement = { tag: open[1] as string, attrs, children: [], start: i, openEnd: i + open[0].length, end: -1 };
+      const selfClosing = open[3] === '/';
+      const el: RawElement = { tag: open[1] as string, attrs, children: [], start: i, openEnd: i + open[0].length, end: -1, selfClosing };
       i += open[0].length;
       const parent = stack[stack.length - 1];
       if (parent === undefined) {
         if (root !== null) throw new Error('more than one root element');
         root = el;
       } else parent.children.push(el);
+      if (selfClosing) {
+        el.end = el.openEnd;
+        continue;
+      }
       if (VOID_ELEMENTS.has(el.tag)) {
         const close = new RegExp(`^</${el.tag}\\s*>`).exec(html.slice(i));
         el.end = close === null ? el.openEnd : i + close[0].length;
@@ -133,7 +141,7 @@ export function compiledFixtureHtml(html: string, css: string, classOf: Readonly
       const cls = classOf.get(id);
       if (cls === undefined) throw new Error(`no generated class for ${id}`);
       const attrs = [...el.attrs.entries()].filter(([k]) => k !== 'class').map(([k, v]) => ` ${k}="${escapeAttr(v)}"`).join('');
-      edits.push({ start: el.start, end: el.openEnd, text: `<${el.tag}${attrs} class="${cls}">` });
+      edits.push({ start: el.start, end: el.openEnd, text: `<${el.tag}${attrs} class="${cls}"${el.selfClosing ? '/' : ''}>` });
     }
     for (const c of el.children) if ('tag' in c) visit(c);
   };

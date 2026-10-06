@@ -20,6 +20,7 @@ import { POSITION_ANIMATION } from './animation-kinds/position.ts';
 import { RADIUS_ANIMATION } from './animation-kinds/radius.ts';
 import { SCROLLBAR_ANIMATION } from './animation-kinds/scrollbar.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
+import { SVG_ANIMATION } from './animation-kinds/svg.ts';
 import { TEXT_ANIMATION } from './animation-kinds/text.ts';
 import { TRANSFORM_ANIMATION } from './animation-kinds/transform.ts';
 import { WRITING_MODE_ANIMATION } from './animation-kinds/writing-mode.ts';
@@ -42,6 +43,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...RADIUS_ANIMATION,
   ...SCROLLBAR_ANIMATION,
   ...SHADOW_ANIMATION,
+  ...SVG_ANIMATION,
   ...TEXT_ANIMATION,
   ...TRANSFORM_ANIMATION,
   ...WRITING_MODE_ANIMATION,

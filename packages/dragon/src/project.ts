@@ -3,6 +3,7 @@
 import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
 import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced.ts';
+import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
 import type { CompiledImages } from './images/compile.ts';
 import type { ImageAssetMap } from './images/manifest.ts';
@@ -303,12 +304,45 @@ function blocksTarget(d: Diagnostic, t: Target): boolean {
   return d.severity === 'error' && (d.target === null || d.target === t);
 }
 
-/** Tags and attributes are checked on every template node, including both arms of every branch. */
-function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): void {
+/** SVG-a1: every <svg> template node, refused on each native target until SVG-a2 draws its shapes there. */
+function svgNativeRefusals(nodes: readonly TreeNode[], nativeTargets: readonly Target[]): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  const visit = (ns: readonly TreeNode[]): void => {
+    for (const n of ns) {
+      if (n.kind === 'element') {
+        if (n.tag === 'svg') {
+          for (const t of nativeTargets) out.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, target: t, message: `<svg> ${n.id} is not drawn on ${t} yet: its shapes wait for the native SVG package SVG-a2`, manual: 'Use an image for this graphic on native, or compile for web only.' }));
+        }
+        visit(n.children);
+      } else if (n.kind === 'branch') {
+        visit(n.then);
+        visit(n.else);
+      } else if (n.kind === 'call') {
+        for (const sl of n.slots) visit(sl.children);
+      }
+    }
+  };
+  visit(nodes);
+  return out;
+}
+
+/**
+ * Tags and attributes are checked on every template node, including both arms of every branch. inside: the SVG content model the
+ * nodes sit in (SVG-a1): an <svg> holds only <path>, <rect> and <circle>, a shape holds nothing, and a shape outside an <svg> is
+ * not drawn by Chrome, so each is refused.
+ */
+function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[], inside: 'html' | 'svg' | 'shape' = 'html'): void {
   for (const n of nodes) {
+    if (n.kind === 'text' && inside !== 'html' && n.text.trim() !== '') {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `text inside an <svg> is not supported: SVG text waits for the SVG structure package SVG-b` }));
+    }
     if (n.kind === 'element') {
       if (!SUPPORTED_TAGS.has(n.tag)) {
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} is not supported (supported: ${[...SUPPORTED_TAGS].join(', ')})` }));
+      } else if (inside !== 'html' && !(inside === 'svg' && isSvgShapeTag(n.tag))) {
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} inside ${inside === 'svg' ? 'an <svg>' : 'an SVG shape'} is not supported: an <svg> draws only <path>, <rect> and <circle> children until the SVG structure package SVG-b` }));
+      } else if (inside === 'html' && isSvgShapeTag(n.tag)) {
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} outside an <svg> is not supported: Chrome draws an SVG shape only inside an <svg>` }));
       }
       for (const a of n.attributes) {
         const refusal = attributeRefusal(n.tag, a.name);
@@ -321,14 +355,16 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
           if (dimension !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${dimension}`, manual: 'Give the attribute a width or height in CSS px, or set the size in CSS.' }));
           const src = iframeSrcRefusal(n.tag, a.name, c.value);
           if (src !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${src}`, manual: 'Give the iframe an absolute https URL.' }));
+          const svg = svgAttributeRefusal(n.tag, a.name, c.value);
+          if (svg !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name}="${c.value}" on ${n.id} is not supported: ${svg}`, manual: 'Write the attribute with plain numbers (or px) and the commands M, L, H, V, C, S, Q, T and Z.' }));
         }
       }
-      checkTemplates(n.children, diagnostics);
+      checkTemplates(n.children, diagnostics, n.tag === 'svg' ? (inside === 'html' ? 'svg' : 'shape') : isSvgShapeTag(n.tag) ? 'shape' : inside);
     } else if (n.kind === 'branch') {
-      checkTemplates(n.then, diagnostics);
-      checkTemplates(n.else, diagnostics);
+      checkTemplates(n.then, diagnostics, inside);
+      checkTemplates(n.else, diagnostics, inside);
     } else if (n.kind === 'call') {
-      for (const s of n.slots) checkTemplates(s.children, diagnostics);
+      for (const s of n.slots) checkTemplates(s.children, diagnostics, inside);
     }
   }
 }
@@ -912,7 +948,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // NA-NATIVE: a refusal of a listed property or rule blocks only web; native gets an info (css/not-applicable.ts).
     diagnostics.splice(0, diagnostics.length, ...splitNotApplicable(diagnostics, targets));
     diagnostics.push(...interactionRefusals(rules));
-    const nativeRefusals = nativeInteractionRefusals(rules, NATIVE_TARGETS.filter((t) => targets.includes(t)));
+    const nativeTargets = NATIVE_TARGETS.filter((t) => targets.includes(t));
+    // SVG-a1 draws an <svg>'s shapes on web only; in the parity lanes native lays out its box (SVG-a2 draws the shapes).
+    const nativeRefusals = [...nativeInteractionRefusals(rules, nativeTargets), ...[...valid.components.values()].flatMap((c) => svgNativeRefusals(c.root, nativeTargets))];
     if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
     else diagnostics.push(...nativeRefusals);
     const conditions = conditionsOf(rules);

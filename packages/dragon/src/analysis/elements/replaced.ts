@@ -1,12 +1,17 @@
 // REPL-a: the replaced elements the compiler resolves (CSS 2.2 §10.3.2, HTML §15.4). Each reads its UA defaults from a REPL-0
 // replaced key: an img with a src (img[src]), and an iframe, which Dragon renders as a platform web view in a slot it lays out.
+import type { Longhand } from '../../css/properties.ts';
 import type { CssValue } from '../../css/values.ts';
+import { SVG_HANDLED_ATTRIBUTES, svgPresentationHints } from './svg.ts';
 import type { ReplacedKey } from '../../ua/datasets.ts';
 
-export const REPLACED_TAGS: readonly string[] = ['img', 'iframe'];
+export const REPLACED_TAGS: readonly string[] = ['img', 'iframe', 'svg'];
 
-/** The UA dataset key of a replaced tag. */
-export const REPLACED_UA_KEYS: { readonly [tag: string]: ReplacedKey } = { img: 'img[src]', iframe: 'iframe' };
+/** SVG-a1: the shapes an inline <svg> draws. They are its content, never boxes of their own (analysis/elements/svg.ts). */
+export const SVG_SHAPE_TAGS: readonly string[] = ['path', 'rect', 'circle'];
+
+/** The UA dataset key of a replaced tag or an SVG shape (the shapes ride in the replaced-key tables). */
+export const REPLACED_UA_KEYS: { readonly [tag: string]: ReplacedKey } = { img: 'img[src]', iframe: 'iframe', svg: 'svg', path: 'path', rect: 'rect', circle: 'circle' };
 
 /** CSS 2.2 §10.3.2 and HTML §15.4.1: the default object size in CSS px, which sizes a replaced box with no natural size or ratio. */
 export const DEFAULT_OBJECT_SIZE = { width: 300, height: 150 } as const;
@@ -39,15 +44,18 @@ export function parseDimension(text: string): Dimension | null {
  * Dragon has no Chrome proof of how such a value lays out, so it refuses it instead of dropping the hint silently.
  */
 export function dimensionRefusal(tag: string, name: string, text: string): string | null {
-  if (!isReplacedTag(tag) || (name !== 'width' && name !== 'height')) return null;
+  // An svg's width and height are CSS lengths, not HTML dimensions (elements/svg.ts).
+  if (!isReplacedTag(tag) || tag === 'svg' || (name !== 'width' && name !== 'height')) return null;
   const m = /^([0-9]+)(\.[0-9]*)?/.exec(text.replace(ASCII_WHITESPACE, ''));
   if (m === null || Number.isFinite(Number(`${m[1] as string}${m[2] === undefined || m[2] === '.' ? '' : m[2]}`))) return null;
   return `its value starts with ${(m[1] as string).length} digits, past the range of a length`;
 }
 
 /** HTML §15.4.5 presentational hints of a replaced element, as CSS values; author rules win over them (css-cascade-5 §6.1). */
-export function presentationalHints(tag: string, attributes: ReadonlyMap<string, string>): ReadonlyMap<'width' | 'height' | 'aspect-ratio', CssValue> {
-  const out = new Map<'width' | 'height' | 'aspect-ratio', CssValue>();
+export function presentationalHints(tag: string, attributes: ReadonlyMap<string, string>): ReadonlyMap<Longhand, CssValue> {
+  // SVG-a1: SVG elements map their presentation attributes instead (SVG 2 §6.6).
+  if (Object.hasOwn(SVG_HANDLED_ATTRIBUTES, tag)) return svgPresentationHints(tag, attributes);
+  const out = new Map<Longhand, CssValue>();
   if (!isReplacedTag(tag)) return out;
   const parsed = (name: 'width' | 'height'): Dimension | null => {
     const text = attributes.get(name);

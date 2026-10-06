@@ -46,7 +46,13 @@ const PIXEL_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAA
 const REPLACED_KEY_SPECS = {
   iframe: { tag: 'iframe', attrs: {} },
   'img[src]': { tag: 'img', attrs: { src: PIXEL_PNG } },
-} as const satisfies Record<string, { tag: string; attrs: Record<string, string> }>;
+  // SVG-a1: an inline <svg>, an SVG-namespace element (HTML §13.2.6.5 foreign content). Its shapes ride in these tables too: they
+  // are not replaced, but Chrome's SVG UA sheet gives them values (transform-origin: 0 0) no HTML element has.
+  svg: { tag: 'svg', attrs: {}, ns: 'http://www.w3.org/2000/svg' },
+  path: { tag: 'path', attrs: {}, ns: 'http://www.w3.org/2000/svg' },
+  rect: { tag: 'rect', attrs: {}, ns: 'http://www.w3.org/2000/svg' },
+  circle: { tag: 'circle', attrs: {}, ns: 'http://www.w3.org/2000/svg' },
+} as const satisfies Record<string, { tag: string; attrs: Record<string, string>; ns?: string }>;
 type ReplacedKey = keyof typeof REPLACED_KEY_SPECS;
 const REPLACED_KEYS = Object.keys(REPLACED_KEY_SPECS) as ReplacedKey[];
 /** Phrasing-element keys (INL-U), captured like the element keys into tables of their own so the existing tables stay byte-identical. */
@@ -72,7 +78,7 @@ const FONT_SIZE_PARENTS = ['10px', '16px', '17.5px', '23.3px', 'medium', '2em', 
 const ALL_KEYS: readonly string[] = [...ELEMENT_KEYS, ...REPLACED_KEYS, ...PHRASING_KEYS];
 /** Void elements have no children, so they are never an ancestor context. */
 const ANCESTOR_KEYS = [...ELEMENT_KEYS.filter((k) => !['input', 'img'].includes(KEY_SPECS[k].tag)), ...PHRASING_KEYS.filter((k) => k !== 'br')];
-type Spec = { readonly tag: string; readonly attrs: Readonly<Record<string, string>> };
+type Spec = { readonly tag: string; readonly attrs: Readonly<Record<string, string>>; readonly ns?: string };
 const SPECS: Record<string, Spec> = { ...Object.fromEntries(TAGS.map((t) => [t, { tag: t, attrs: {} }])), ...KEY_SPECS, ...REPLACED_KEY_SPECS, ...PHRASING_KEY_SPECS };
 /** Inherited font properties no milestone longhand models; a UA value for them changes how text is drawn. */
 const TEXT_FONT_PROPERTIES = ['font-weight', 'font-style'] as const;
@@ -150,8 +156,8 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       const out: Record<string, Record<string, string>> = {};
       const initial: Record<string, Record<string, string>> = {};
       for (const key of keys) {
-        const s = specs[key] as { tag: string; attrs: Record<string, string> };
-        const e = document.createElement(s.tag);
+        const s = specs[key] as { tag: string; attrs: Record<string, string>; ns?: string };
+        const e = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
         e.setAttribute('data-key', key);
         for (const [k, v] of Object.entries(s.attrs)) e.setAttribute(k, v);
         document.body.appendChild(e);
@@ -197,8 +203,8 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
     ({ tags, specs, props }) => {
       const hostEl = document.getElementById('host') as HTMLElement;
       const make = (key: string): HTMLElement => {
-        const s = specs[key] as { tag: string; attrs: Record<string, string> };
-        const e = document.createElement(s.tag);
+        const s = specs[key] as { tag: string; attrs: Record<string, string>; ns?: string };
+        const e = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
         for (const [k, v] of Object.entries(s.attrs)) e.setAttribute(k, v);
         return e;
       };
@@ -284,8 +290,8 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
     ({ tags, ancestors, specs, props, minimum, declared }) => {
       const hostEl = document.getElementById('host') as HTMLElement;
       const make = (key: string): HTMLElement => {
-        const s = specs[key] as { tag: string; attrs: Record<string, string> };
-        const e = document.createElement(s.tag);
+        const s = specs[key] as { tag: string; attrs: Record<string, string>; ns?: string };
+        const e = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
         for (const [k, v] of Object.entries(s.attrs)) e.setAttribute(k, v);
         return e;
       };
@@ -364,8 +370,8 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       const hostEl = document.getElementById('host') as HTMLElement;
       return Object.fromEntries(tags.map((tag) => {
         hostEl.replaceChildren();
-        const s = specs[tag] as { tag: string; attrs: Record<string, string> };
-        const el = document.createElement(s.tag);
+        const s = specs[tag] as { tag: string; attrs: Record<string, string>; ns?: string };
+        const el = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
         for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
         hostEl.appendChild(el);
         const row: Record<string, string> = {};
@@ -401,8 +407,8 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
           hostEl.replaceChildren();
           const parent = document.createElement('div');
           parent.setAttribute('style', `direction:${dir}`);
-          const s = specs[tag] as { tag: string; attrs: Record<string, string> };
-          const el = document.createElement(s.tag);
+          const s = specs[tag] as { tag: string; attrs: Record<string, string>; ns?: string };
+          const el = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
           for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
           const bare = document.createElement('dragon-unstyled');
           const given = { ...(declared[tag] as Record<string, Record<string, string>>)[dir], ...textFonts[tag] };
@@ -445,12 +451,12 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
     ({ keys, specs, families, sizes }) => {
       const hostEl = document.getElementById('host') as HTMLElement;
       return Object.fromEntries(keys.map((key) => {
-        const s = specs[key] as { tag: string; attrs: Record<string, string> };
+        const s = specs[key] as { tag: string; attrs: Record<string, string>; ns?: string };
         return [key, Object.fromEntries(families.map((family) => [family, Object.fromEntries(sizes.map((size) => {
           hostEl.replaceChildren();
           const parent = document.createElement('div');
           parent.setAttribute('style', `font-family:${family};font-size:${size}`);
-          const el = document.createElement(s.tag);
+          const el = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
           for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
           parent.appendChild(el);
           hostEl.appendChild(parent);
@@ -491,8 +497,8 @@ async function selfConsistency(browser: Browser, scheme: Scheme, c: Capture): Pr
             hostEl.appendChild(parent);
             return child;
           };
-          const s = specs[tag] as { tag: string; attrs: Record<string, string> };
-          const el = document.createElement(s.tag);
+          const s = specs[tag] as { tag: string; attrs: Record<string, string>; ns?: string };
+          const el = (s.ns === undefined ? document.createElement(s.tag) : (document.createElementNS(s.ns, s.tag) as unknown as HTMLElement));
           for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
           under(el);
           const replica = under(document.createElement('dragon-unstyled'));

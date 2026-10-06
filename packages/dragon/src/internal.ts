@@ -4,6 +4,9 @@ import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
+import type { SvgScene } from './analysis/elements/svg.ts';
+export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
+import { svgSceneOf } from './analysis/elements/svg.ts';
 import type { Rgba8 } from './css/color.ts';
 import type { TextLonghand } from './css/properties.ts';
 import { TEXT_LONGHANDS } from './css/properties.ts';
@@ -171,6 +174,20 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
   const walk = (el: ResolvedElement): void => {
     out.set(el.element.address, usedColors(el));
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+  };
+  walk(c.resolved);
+  return out;
+}
+
+/** SVG-a1: the scene of every <svg> of a case, in document order (analysis/elements/svg.ts). */
+export function svgScenes(compiled: object, assignment: Assignment): readonly SvgScene[] | null {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string' || c.resolved === null) return null;
+  const out: SvgScene[] = [];
+  const walk = (el: ResolvedElement): void => {
+    const scene = svgSceneOf(el);
+    if (scene !== null) out.push(scene);
+    else for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
   return out;

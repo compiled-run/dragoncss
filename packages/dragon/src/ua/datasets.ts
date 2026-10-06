@@ -47,7 +47,7 @@ export type UaRows = {
 const NO_FORCED: DirRows = { ltr: {}, rtl: {} };
 
 function isReplacedKey(key: UaKey): key is ReplacedKey {
-  return key === 'iframe' || key === 'img[src]';
+  return key === 'iframe' || key === 'img[src]' || key === 'svg' || key === 'path' || key === 'rect' || key === 'circle';
 }
 
 /** The UA rows of a key, from the element tables or the replaced-key tables. */

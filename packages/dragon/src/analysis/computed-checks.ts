@@ -14,6 +14,7 @@ import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
+import { isSvgShapeTag, svgPaintRefusal } from './elements/svg.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { environmentOf, valueToString } from './resolve.ts';
 import { checkTransformContexts } from './paint-values/transform.ts';
@@ -276,8 +277,53 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
   }
 }
 
+/**
+ * SVG-a1: an <svg> with a viewBox and an auto width or height is sized from the viewBox ratio and the available width, which the
+ * engine does not do for a replaced box without a natural size yet (package SVG-ratio). A shape's geometry comes from its
+ * attributes only: a CSS width, height or transform on it, which Chrome would apply as a geometry property, is refused, and so is
+ * a percentage stroke-width (relative to the viewport diagonal).
+ */
+function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (what: string, origin: Diagnostic['origin'], message: string, manual: string): void => {
+    for (const t of targets) {
+      const id = `${t}|svg-${what}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const tag = el.element.tag;
+  for (const p of ['fill', 'stroke'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    const why = svgPaintRefusal(p, v.value);
+    if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} a colour or none.`);
+  }
+  const sw = el.props.get('stroke-width') as ResolvedValue;
+  if (sw.value.kind === 'percentage') {
+    refuse('stroke-width', sw.declaration === null ? el.element.node.origin : authored(sw.declaration.valueSpan), `stroke-width: ${valueToString(sw.value)} on <${tag}> ${el.element.address} is unsupported: a percentage stroke-width is relative to the viewport diagonal, which is not built yet (package SVG-units)`, 'Give stroke-width in px or as a number.');
+  }
+  if (tag === 'svg') {
+    const auto = (['width', 'height'] as const).filter((p) => keywordOf(el.props.get(p) as ResolvedValue) === 'auto');
+    if (el.element.attributes.has('viewBox') && auto.length > 0) {
+      refuse('ratio', el.element.node.origin, `<svg> ${el.element.address} has a viewBox and ${auto.join(' and ')} auto: sizing from the viewBox ratio is not built yet (package SVG-ratio)`, `Give <svg> ${el.element.address} a width and a height, as attributes or in CSS.`);
+    }
+    return;
+  }
+  for (const p of ['width', 'height', 'transform'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (v.declaration === null) continue;
+    refuse(p, authored(v.declaration.valueSpan), `${p}: ${v.declaration.text} on <${tag}> ${el.element.address} is not supported: a shape's geometry comes from its attributes until the SVG structure package SVG-b`, `Remove the declaration, or set the ${p === 'transform' ? 'geometry' : p} attribute.`);
+  }
+}
+
 export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext): void {
   const walk = (el: ResolvedElement, hidden: boolean): void => {
+    // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes only the SVG checks.
+    if (isSvgShapeTag(el.element.tag)) {
+      checkSvg(el, targets, diagnostics, reported);
+      return;
+    }
+    if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
