@@ -20,6 +20,10 @@ Everything else here is a default you apply without asking.
 - Develop with targeted `vitest run <files>` and `pnpm typecheck` (no queue needed).
 - At the end of the branch (owner, 2026-10-04: prove once, in the driver): one `pnpm regen` (through the queue),
   commit its outputs, run the targeted tests for what you touched plus `pnpm typecheck`, push, open the PR.
+  Always include the cross-cutting registry tests, which PR CI (ci.yml's platform-free set) does not run:
+  `packages/parity/test/chrome-ports.test.ts` (every Chrome citation is in docs/ports.json), both
+  `registry-claims.test.ts`, and the iOS and Android profile tests if you promote native rows.
+  Chrome-ports failed #197 at landing (2026-10-05).
   Do NOT run the full `pnpm test` locally: the landing driver runs it once on the merged tree, reruns failing
   files alone, and sends the PR back with the exact failing tests if any fail for real. A review round reruns
   only its targeted tests (plus regen if generator inputs changed). Don't rerun a step that passed.
