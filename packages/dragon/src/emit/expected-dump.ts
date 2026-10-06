@@ -3,7 +3,7 @@
 // the device scale (border widths, the padding-box clip, the text instance size) come from the TS engine with the same helpers
 // the generated code runs on the device through the translated engine. The digest of an expected dump is embedded in the
 // generated code, keyed by case and DPR. The compiler core imports the engine for types only, so the host passes the TS engine in.
-import type { Edges, EngineFaults, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, ObjectRect, ReplacedLeaf, ReplacedPaint, SnappedRect, TextMeasurer } from '@dragon/layout';
+import type { Edges, EngineFaults, InlineChild, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, ObjectRect, ReplacedLeaf, ReplacedPaint, SnappedRect, TextMeasurer } from '@dragon/layout';
 import { canonicalJson, sha256Hex } from '../digest.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { NativeBackend, NativeProgram, ProgramNode, ProgramWrite } from '../lower/native-program.ts';
@@ -91,10 +91,14 @@ export function programInput(p: NativeProgram, viewport: { readonly width: numbe
 export function resolvedFontSizes(engine: ExpectedEngine, input: LayoutInput): Map<string, number> {
   const zoomed = engine.zoomInput(input, engine.noFaults);
   const out = new Map<string, number>();
+  const inline = (c: InlineChild): void => {
+    if (c.kind === 'text') out.set(c.id, c.font.size);
+    else if (c.kind === 'inline') for (const k of c.children) inline(k);
+  };
   const walk = (b: LayoutBox): void => {
     for (const c of b.children) {
       if (c.kind === 'box') walk(c);
-      else if (c.kind === 'text') out.set(c.id, c.font.size);
+      else if (c.kind !== 'replaced') inline(c);
     }
   };
   walk(zoomed.root);
