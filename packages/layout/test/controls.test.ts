@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ControlBox, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, TextLeaf, TextMeasurer } from '../src/index.ts';
 import type { LU } from '../src/units.ts';
 import { absoluteRects, ahemMeasurer, buttonContentShift, fromRaw, layout, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, SLIDER_DEFAULT_TRACK_LENGTH, validateLayoutInput } from '../src/index.ts';
-import { anon, box, control, neutralEnvironment, pct, px, text } from './helpers.ts';
+import { anon, box, control, neutralEnvironment, pct, px, span, text } from './helpers.ts';
 
 type Rect = readonly [number, number, number, number];
 type Box = { readonly border: Rect; readonly content: Rect };
@@ -383,6 +383,21 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(codes(range({}, [thumb]))).toEqual(['$.root.children[0].children[0].control a slider thumb is a block-flow child: its parent is a block container']);
     const button = control('b', { kind: 'button-block' }, { display: 'flex' });
     expect(codes({ ...range({}, []), root: { ...box('root', {}), children: [button] } })).toEqual(['$.root.children[0].style.display a block button control is a block container']);
+  });
+
+  it('a control holds inline content with a strut as a box does, and is laid out as a block-flow or flex child (FORM-a with INL1a)', () => {
+    const env = { viewport: { width: 400, height: 300 }, ...neutralEnvironment({ width: 400, height: 300 }), devicePixelRatio: 1 };
+    const button = control('b', { kind: 'button-block' }, { height: px(40) }, [text('b:text0', 'XX '), span('s', [text('s:text0', 'Y')])]);
+    for (const display of ['block', 'flex'] as const) {
+      const input: LayoutInput = { ...env, root: box('root', { display }, [button, box('after', { height: px(5) })]) };
+      expect(codes(input), display).toEqual([]);
+      const r = layout(input, ahemMeasurer);
+      if (r.kind !== 'ok') throw new Error(`${display}: ${JSON.stringify(r)}`);
+      const ids = [...absoluteRects(r.boxes).keys()];
+      expect(ids, display).toEqual(expect.arrayContaining(['b', 's', 'b:text0', 's:text0', 'after']));
+    }
+    // CSS2 §10.8.1: inline content needs its container's strut, in a control too.
+    expect(codes({ ...env, root: box('root', {}, [{ ...button, strut: null }]) })).toContain('$.root.children[0].strut a box with inline content has a strut');
   });
 
   it('the engine throws on a block button control with display flex, which the validator rejects', () => {

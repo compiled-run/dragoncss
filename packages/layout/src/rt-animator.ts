@@ -6,7 +6,7 @@
 // the caller lays out again (R16). The compiler's tables are plain data (EasingCode, ValueCode), so a device holds them as
 // literals; length endpoints come from the engine input of each assignment, resolved for the environment by the engine's own
 // resolver (R14).
-import type { CalcExpr, ControlBox, GapValue, InsetValue, LayoutBox, LayoutInput, LayoutStyle, LengthCalc, MarginValue, MaxSizeValue, MinSizeValue, PaddingValue, Percent, Px, ReplacedLeaf, SizeValue, TextLeaf } from './input.ts';
+import type { CalcExpr, ControlBox, GapValue, InlineChild, InsetValue, LayoutBox, LayoutInput, LayoutStyle, LengthCalc, MarginValue, MaxSizeValue, MinSizeValue, PaddingValue, Percent, Px, ReplacedLeaf, SizeValue } from './input.ts';
 import type { Easing, RtFaults, StepPosition } from './rt-easing.ts';
 import { cubicBezierEasing, froundOf, LINEAR, stepsEasing } from './rt-easing.ts';
 import type { AnimatedValue, LegacyColor, LengthValue, Rgba8Value, ValueRange } from './rt-interpolate.ts';
@@ -528,7 +528,7 @@ function patchStyle(id: string, s: LayoutStyle, frame: readonly FrameEntry[], t:
 }
 
 /** A replaced leaf (img, iframe) is sized by its style as a box is, so its lengths animate too. */
-function patchChild(c: LayoutBox | ControlBox | TextLeaf | ReplacedLeaf, frame: readonly FrameEntry[], t: AnimTables): LayoutBox | ControlBox | TextLeaf | ReplacedLeaf {
+function patchChild(c: LayoutBox | ControlBox | ReplacedLeaf | InlineChild, frame: readonly FrameEntry[], t: AnimTables): LayoutBox | ControlBox | ReplacedLeaf | InlineChild {
   if (c.kind === 'box') return patchBox(c, frame, t);
   if (c.kind === 'control') return patchControl(c, frame, t);
   if (c.kind === 'replaced') return patchReplaced(c, frame, t);

@@ -269,6 +269,8 @@ public struct DragonLineSpec {
 public let dragonGlyphPlantDevicePx: Double = 0
 /// Device px added to every glyph baseline (down); 0 except in the glyph-offset-y-1 raster plant build (T093).
 public let dragonGlyphPlantYDevicePx: Double = 0
+/// 1 in the single-run-baseline plant build (INL1a): every line of a text view takes its first line's baseline offset.
+public let dragonSingleRunBaselinePlant: Double = 0
 
 /// The layer a text view's glyphs are drawn in. A UIView's own backing store holds only its bounds, so ink outside the node
 /// frame (a rounded ascent, overflowing text) would be lost; this layer's frame is the bounds grown to the lines' ink.
@@ -514,7 +516,11 @@ public final class DragonTree {
   private var views: [String: DragonNodeView] = [:]
   private var order: [String] = []
   private var parents: [String: String?] = [:]
-  private var textMetrics: [String: (halfLeading: Double, ascent: Double, descent: Double)] = [:]
+  /// Per text view: each line's half-leading (its content top below the line top, INL1a: it differs by line), and the view's
+  /// one ascent and descent.
+  private var textMetrics: [String: (halfLeadings: [Double], ascent: Double, descent: Double)] = [:]
+  /// Each inline box's fragments (INL1a): edges relative to the box's own snapped edges, and the line's baseline from the fragment top.
+  private var inlineLines: [String: [(edges: [Double], baseline: Double)]] = [:]
   private var hosts: [String: String] = [:]
   private var companions: [String: [UIView]] = [:]
   public init() {}
@@ -557,6 +563,17 @@ public final class DragonTree {
     var zStyles: [String: LayoutStyle] = [:]
     var zLeaves: [(String, ReplacedLeaf)] = []
     var zParent: [String: String] = [:]
+    // A text leaf's, inline box's or <br>'s container is the block container of its inline formatting context, through any
+    // inline boxes.
+    var inlineIds = Set<String>()
+    func walkInline(_ c: any U_InlineBox_LineBreak_TextLeaf, _ container: String) {
+      if let t = c as? TextLeaf { zParent[t.id.description] = container }
+      else if let ib = c as? InlineBox {
+        inlineIds.insert(ib.id.description)
+        zParent[ib.id.description] = container
+        for k in ib.children.items { walkInline(k, container) }
+      } else if let br = c as? LineBreak { inlineIds.insert(br.id.description) }
+    }
     func walk(_ b: LayoutBox) throws {
       zBoxes[b.id.description] = b
       zStyles[b.id.description] = b.style
@@ -565,6 +582,8 @@ public final class DragonTree {
         else if let cc = c as? ControlBox { zParent[cc.id.description] = b.id.description; try walk(try controls_controlAsBox(cc)) }
         else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
         else if let rl = c as? ReplacedLeaf { zParent[rl.id.description] = b.id.description; zStyles[rl.id.description] = rl.style; zLeaves.append((rl.id.description, rl)) }
+        else if let ib = c as? InlineBox { walkInline(ib, b.id.description) }
+        else if let br = c as? LineBreak { walkInline(br, b.id.description) }
       }
     }
     try walk(zoomed.root)
@@ -600,9 +619,13 @@ public final class DragonTree {
       container.addSubview(v)
       v.frame = frame
       if let bv = v as? DragonBoxView {
-        guard let zs = zStyles[id] else { fatalError("dragon: no zoomed box \(id)") }
-        let be = try box_resolveBorder(zs, zoomed.devicePixelRatio)
-        let px = [be.top / lu, be.right / lu, be.bottom / lu, be.left / lu]
+        // An inline box or <br> view is unpainted and has no borders (the compiler refuses inline box borders until INL1b).
+        let px: [Double]
+        if inlineIds.contains(id) { px = [0, 0, 0, 0] } else {
+          guard let zs = zStyles[id] else { fatalError("dragon: no zoomed box \(id)") }
+          let be = try box_resolveBorder(zs, zoomed.devicePixelRatio)
+          px = [be.top / lu, be.right / lu, be.bottom / lu, be.left / lu]
+        }
         borders[id] = px
         bv.dragonScale = s
         bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px)
@@ -640,31 +663,36 @@ public final class DragonTree {
     for id in order {
       guard let tv = views[id] as? DragonTextView else { continue }
       guard let pId = zParent[id], let p = zBoxes[pId], let e = edges[id] else { fatalError("dragon: text \(id) has no container") }
-      let leaves = p.children.items.compactMap { $0 as? TextLeaf }
+      // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
+      // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
+      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      let ifc = try inline_buildIfc(ctx, p)
+      let leaves = ifc.leaves.items
       guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("dragon: no leaf \(id)") }
       let scalars = Array(leaves[li].text.description.unicodeScalars)
       func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
-      // The engine's own lines: inline.ts placeLines, translated, over the zoomed context. Each line gives this leaf's piece.
-      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
-      let placed = try inline_placeLines(ctx, p, JsArray(leaves), try contentWidth(pId)).items
+      let placed = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
       let pieces = boxes.enumerated().filter { DragonTree.isLine($0.element) && $0.element.parent?.description == id }
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       let size = try units_platformFontSize(leaves[li].font.size)
       var specs: [DragonLineSpec] = []
-      var viewMetrics: (halfLeading: Double, ascent: Double, descent: Double)? = nil
+      var viewMetrics: (halfLeadings: [Double], ascent: Double, descent: Double)? = nil
+      var firstBaselineOffset: Double? = nil
       for line in placed {
         guard let piece = line.pieces.items.first(where: { Int($0.leaf) == li }) else { continue }
-        // One font per text view: every line's leading, ascent and descent are the view's (the dump reads them per view).
-        let metrics: (halfLeading: Double, ascent: Double, descent: Double) = ((piece.top - line.top) / lu, piece.ascent / lu, piece.descent / lu)
-        if let m = viewMetrics, m != metrics { fatalError("dragon: \(id): line metrics \(metrics) differ from the text view's \(m)") }
-        viewMetrics = metrics
+        // One font per text view: every line's ascent and descent are the view's; its content top below the line top is the line's.
+        let halfLeading = (piece.top - line.top) / lu
+        if let m = viewMetrics, m.ascent != piece.ascent / lu || m.descent != piece.descent / lu { fatalError("dragon: \(id): line ascent \(piece.ascent / lu) and descent \(piece.descent / lu) differ from the text view's \(m.ascent) and \(m.descent)") }
+        viewMetrics = ((viewMetrics?.halfLeadings ?? []) + [halfLeading], piece.ascent / lu, piece.descent / lu)
         let k = specs.count
         if k >= pieces.count { fatalError("dragon: \(id): the engine's breaks give more lines than its layout (\(pieces.count))") }
         let (i, r) = pieces[k]
         if piece.width != r.width { fatalError("dragon: \(id) line \(k): the engine's break gives width \(piece.width) LU, its layout \(r.width) LU") }
         guard let a = abs.get(r.id) else { fatalError("dragon: no absolute rect for \(r.id)") }
         let top = try units_snapEdge(a.y - (piece.top - line.top))
-        let baseline = snapped[i].top + piece.ascent / lu
+        var baseline = snapped[i].top + piece.ascent / lu
+        // The single-run-baseline plant: every line takes the first line's baseline below its line top.
+        if let f = firstBaselineOffset, dragonSingleRunBaselinePlant != 0 { baseline = top + f } else if firstBaselineOffset == nil { firstBaselineOffset = baseline - top }
         // Dragon places every glyph: the pen starts at the engine's run left and advances by the engine's per-glyph advance
         // (the instance size times the font-unit advance / unitsPerEm, summed in float as textAdvanceAt does).
         let xLU = a.x - e[0] * lu
@@ -684,6 +712,28 @@ public final class DragonTree {
       textMetrics[id] = viewMetrics
       tv.dragonConfigure(font: bridge.font(pointSize: CGFloat(size / s)), lines: specs, scale: s)
     }
+    // Each inline box's fragments, one per line it is on (the engine's "<box>:line<j>"), with that line's baseline.
+    inlineLines = [:]
+    var fragments: [String: [Int]] = [:]
+    for (i, r) in boxes.enumerated() where DragonTree.isLine(r) {
+      if let p = r.parent?.description, inlineIds.contains(p) { fragments[p, default: []].append(i) }
+    }
+    for (bId, idx) in fragments {
+      guard let pId = zParent[bId], let p = zBoxes[pId], let be = edges[bId] else { fatalError("dragon: inline box \(bId) has no container") }
+      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      let ifc = try inline_buildIfc(ctx, p)
+      guard let b = ifc.boxes.items.firstIndex(where: { $0.id.description == bId }) else { fatalError("dragon: no inline box \(bId) in \(pId)") }
+      var offsets: [Double] = []
+      let placedLines = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
+      for line in placedLines {
+        for (k, x) in line.boxes.items.enumerated() where Int(x) == b { offsets.append(line.baseline - line.boxRects.items[k].y) }
+      }
+      // A context with no line box gives each inline box one empty fragment at the content start (inline.ts collectFragments),
+      // on no line, so its baseline is its own top.
+      if placedLines.isEmpty { offsets = [0] }
+      if offsets.count != idx.count { fatalError("dragon: \(bId): the engine's lines give \(offsets.count) fragments, its layout \(idx.count)") }
+      inlineLines[bId] = zip(idx, offsets).map { (i, o) in (edges: [snapped[i].left - be[0], snapped[i].top - be[1], snapped[i].right - be[0], snapped[i].bottom - be[1]], baseline: o / lu) }
+    }
   }
 
   /// The dump read back from the live tree: frames via dragonLayoutRect (transforms ignored), applied values from the live objects.
@@ -701,13 +751,20 @@ public final class DragonTree {
       if let tv = v as? DragonTextView, !tv.specs.isEmpty {
         guard let m = textMetrics[id] else { fatalError("dragon: \(id): a text view with lines has no line metrics") }
         // Each line as Dragon placed it in the live view: the run from the view's live position, snapped with the one snap rule.
-        for x in tv.specs {
-          let top = t + x.top + m.halfLeading
+        if m.halfLeadings.count != tv.specs.count { fatalError("dragon: \(id): \(m.halfLeadings.count) line metrics for \(tv.specs.count) lines") }
+        for (k, x) in tv.specs.enumerated() {
+          let top = t + x.top + m.halfLeadings[k]
           let bottom = top + m.ascent + m.descent
           let left = try! units_snapEdge(l * units_LU_PER_PX + x.xLU)
           let right = try! units_snapEdge(l * units_LU_PER_PX + x.xLU + x.widthLU)
           let baseline = t + x.baseline
           lines.append(DumpNodesLines(frame: DumpNodesLinesFrame(x: left / s, y: top / s, width: (right - left) / s, height: (bottom - top) / s), deviceEdges: DumpNodesLinesDeviceEdges(left: left, top: top, right: right, bottom: bottom), baseline: (baseline - top) / s, start: Double(x.start), end: Double(x.end)))
+        }
+      } else if let frags = inlineLines[id] {
+        // An inline box's lines are its fragments, placed from the box view's live position; it has no text, so offsets 0 to 0.
+        for f in frags {
+          let e = [l + f.edges[0], t + f.edges[1], l + f.edges[2], t + f.edges[3]]
+          lines.append(DumpNodesLines(frame: DumpNodesLinesFrame(x: e[0] / s, y: e[1] / s, width: (e[2] - e[0]) / s, height: (e[3] - e[1]) / s), deviceEdges: DumpNodesLinesDeviceEdges(left: e[0], top: e[1], right: e[2], bottom: e[3]), baseline: f.baseline / s, start: 0, end: 0))
         }
       }
       nodes.append(DumpNodes(id: id, parent: parents[id] ?? nil, kind: v.dragonKind, native: String(describing: type(of: v)), frame: DumpNodesFrame(x: l / s, y: t / s, width: (rr - l) / s, height: (b - t) / s), deviceEdges: DumpNodesDeviceEdges(left: l, top: t, right: rr, bottom: b), applied: v.dragonApplied(), lines: lines))
@@ -1028,6 +1085,8 @@ class DragonLineSpec(val text: String, val glyphs: IntArray, val xs: DoubleArray
 const val DRAGON_GLYPH_PLANT_DEVICE_PX = 0.0
 /** Device px added to every glyph baseline (down); 0 except in the glyph-offset-y-1 raster plant build (T093). */
 const val DRAGON_GLYPH_PLANT_Y_DEVICE_PX = 0.0
+/** 1 in the single-run-baseline plant build (INL1a): every line of a text view takes its first line's baseline offset. */
+const val DRAGON_SINGLE_RUN_BASELINE_PLANT = 0.0
 
 /**
  * A text node: Dragon owns the line breaks and places every glyph at the engine's advances (PM ruling, option ii); the platform only
@@ -1221,7 +1280,11 @@ import dev.dragon.layout.block_NO_ENGINE_FAULTS
 import dev.dragon.layout.box_resolveBorder
 import dev.dragon.layout.box_resolvePadding
 import dev.dragon.layout.controls_controlAsBox
-import dev.dragon.layout.inline_placeLines
+import dev.dragon.layout.InlineBox
+import dev.dragon.layout.LineBreak
+import dev.dragon.layout.U_InlineBox_LineBreak_TextLeaf
+import dev.dragon.layout.inline_buildIfc
+import dev.dragon.layout.inline_placeIfcLines
 import dev.dragon.layout.layout_absoluteRects
 import dev.dragon.layout.layout_layout
 import dev.dragon.layout.layout_zoomInput
@@ -1256,6 +1319,7 @@ class DragonTree(val context: Context) {
   private val views = HashMap<String, DragonNodeView>()
   private val order = ArrayList<String>()
   private val parents = HashMap<String, String?>()
+  /** Per text view: the ascent, the descent, then each line's half-leading (its content top below the line top; INL1a). */
   private val textMetrics = HashMap<String, DoubleArray>()
   private val hosts = HashMap<String, String>()
   private val companions = HashMap<String, ArrayList<android.view.View>>()
@@ -1269,6 +1333,9 @@ class DragonTree(val context: Context) {
   fun companion(id: String, view: android.view.View) { companions.getOrPut(id) { ArrayList() }.add(view) }
   /** A built node's view, for the runtime writers (RT-1, RT-2, RT-11). */
   fun node(id: String): DragonNodeView? = views[id]
+
+  /** Each inline box's fragments (INL1a): left, top, right, bottom relative to the box's snapped edges, and the baseline from the top. */
+  private val inlineLines = HashMap<String, List<DoubleArray>>()
 
   fun boxNode(id: String, parent: String?, kind: String): DragonBoxView {
     val v = DragonBoxView(context, id, kind, parent)
@@ -1302,6 +1369,17 @@ class DragonTree(val context: Context) {
     val zStyles = HashMap<String, LayoutStyle>()
     val zLeaves = ArrayList<ReplacedLeaf>()
     val zParent = HashMap<String, String>()
+    // A text leaf's, inline box's or <br>'s container is the block container of its inline formatting context, through any
+    // inline boxes.
+    val inlineIds = HashSet<String>()
+    fun walkInline(c: U_InlineBox_LineBreak_TextLeaf, container: String) {
+      if (c is TextLeaf) zParent[c.id] = container
+      else if (c is InlineBox) {
+        inlineIds.add(c.id)
+        zParent[c.id] = container
+        for (k in c.children) walkInline(k, container)
+      } else if (c is LineBreak) inlineIds.add(c.id)
+    }
     fun walk(b: LayoutBox) {
       zBoxes[b.id] = b
       zStyles[b.id] = b.style
@@ -1309,6 +1387,8 @@ class DragonTree(val context: Context) {
         if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) } else if (c is TextLeaf) zParent[c.id] = b.id
         else if (c is ControlBox) { zParent[c.id] = b.id; walk(controls_controlAsBox(c)) }
         else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style; zLeaves.add(c) }
+        else if (c is InlineBox) walkInline(c, b.id)
+        else if (c is LineBreak) walkInline(c, b.id)
       }
     }
     walk(zoomed.root)
@@ -1347,9 +1427,12 @@ class DragonTree(val context: Context) {
       container.addView(v as android.view.View)
       setFrame(dragonFrameOf(v), e.left - ox, e.top - oy, e.right - ox, e.bottom - oy, id)
       if (v is DragonBoxView) {
-        val zs = zStyles[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
-        val be = box_resolveBorder(zs, zoomed.devicePixelRatio)
-        val px = doubleArrayOf(be.top / lu, be.right / lu, be.bottom / lu, be.left / lu)
+        // An inline box or <br> view is unpainted and has no borders (the compiler refuses inline box borders until INL1b).
+        val px = if (inlineIds.contains(id)) doubleArrayOf(0.0, 0.0, 0.0, 0.0) else {
+          val zs = zStyles[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
+          val be = box_resolveBorder(zs, zoomed.devicePixelRatio)
+          doubleArrayOf(be.top / lu, be.right / lu, be.bottom / lu, be.left / lu)
+        }
         borders[id] = px
         v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px)
         dragonAfterLayout(v, v.dragonShape, scale)
@@ -1394,26 +1477,28 @@ class DragonTree(val context: Context) {
       val pId = zParent[id] ?: throw IllegalStateException("dragon: text " + id + " has no container")
       val p = zBoxes[pId] ?: throw IllegalStateException("dragon: no container " + pId)
       val e = edges[id] ?: throw IllegalStateException("dragon: text " + id + " is not placed")
-      val leaves = ArrayList(p.children.filterIsInstance<TextLeaf>())
+      // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
+      // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
+      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      val ifc = inline_buildIfc(ctx, p)
+      val leaves = ifc.leaves
       val li = leaves.indexOfFirst { it.id == id }
       if (li < 0) throw IllegalStateException("dragon: no leaf " + id)
       val leafText = leaves[li].text
       fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
-      // The engine's own lines: inline.ts placeLines, translated, over the zoomed context. Each line gives this leaf's piece.
-      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
-      val placed = inline_placeLines(ctx, p, leaves, contentWidth(pId))
+      val placed = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
       val pieces = boxes.indices.filter { isLine(boxes[it]) && boxes[it].parent == id }
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       val size = units_platformFontSize(leaves[li].font.size)
       val specs = ArrayList<DragonLineSpec>()
       var viewMetrics: DoubleArray? = null
+      var firstBaselineOffset: Double? = null
       for (line in placed) {
         val piece = line.pieces.firstOrNull { it.leaf.toInt() == li } ?: continue
-        // One font per text view: every line's leading, ascent and descent are the view's (the dump reads them per view).
-        val metrics = doubleArrayOf((piece.top - line.top) / lu, piece.ascent / lu, piece.descent / lu)
+        // One font per text view: every line's ascent and descent are the view's; its content top below the line top is the line's.
         val known = viewMetrics
-        if (known != null && !known.contentEquals(metrics)) throw IllegalStateException("dragon: " + id + ": line metrics " + metrics.contentToString() + " differ from the text view's " + known.contentToString())
-        viewMetrics = metrics
+        if (known != null && (known[0] != piece.ascent / lu || known[1] != piece.descent / lu)) throw IllegalStateException("dragon: " + id + ": line ascent " + (piece.ascent / lu) + " and descent " + (piece.descent / lu) + " differ from the text view's " + known[0] + " and " + known[1])
+        viewMetrics = (known ?: doubleArrayOf(piece.ascent / lu, piece.descent / lu)) + doubleArrayOf((piece.top - line.top) / lu)
         val k = specs.size
         if (k >= pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give more lines than its layout (" + pieces.size + ")")
         val i = pieces[k]
@@ -1421,7 +1506,10 @@ class DragonTree(val context: Context) {
         if (piece.width != r.width) throw IllegalStateException("dragon: " + id + " line " + k + ": the engine's break gives width " + piece.width + " LU, its layout " + r.width + " LU")
         val a = abs.get(r.id) ?: throw IllegalStateException("dragon: no absolute rect for " + r.id)
         val top = units_snapEdge(a.y - (piece.top - line.top))
-        val baseline = snapped[i].top + piece.ascent / lu
+        var baseline = snapped[i].top + piece.ascent / lu
+        // The single-run-baseline plant: every line takes the first line's baseline below its line top.
+        val f = firstBaselineOffset
+        if (f != null && DRAGON_SINGLE_RUN_BASELINE_PLANT != 0.0) baseline = top + f else if (f == null) firstBaselineOffset = baseline - top
         // Dragon places every glyph: the pen starts at the engine's run left and advances by the engine's per-glyph advance
         // (the instance size times the font-unit advance / unitsPerEm, summed in float as textAdvanceAt does).
         val xLU = a.x - e[0] * lu
@@ -1444,6 +1532,33 @@ class DragonTree(val context: Context) {
       if (vm != null) textMetrics[id] = vm else textMetrics.remove(id)
       tv.dragonConfigure(bridge, size.toFloat(), specs)
     }
+    // Each inline box's fragments, one per line it is on (the engine's "<box>:line<j>"), with that line's baseline.
+    inlineLines.clear()
+    val fragments = LinkedHashMap<String, ArrayList<Int>>()
+    for (i in boxes.indices) {
+      val r = boxes[i]
+      val p = r.parent
+      if (isLine(r) && p != null && inlineIds.contains(p)) fragments.getOrPut(p) { ArrayList() }.add(i)
+    }
+    for ((bId, idx) in fragments) {
+      val pId = zParent[bId] ?: throw IllegalStateException("dragon: inline box " + bId + " has no container")
+      val p = zBoxes[pId] ?: throw IllegalStateException("dragon: no container " + pId)
+      val be = edges[bId] ?: throw IllegalStateException("dragon: inline box " + bId + " is not placed")
+      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      val ifc = inline_buildIfc(ctx, p)
+      val b = ifc.boxes.indexOfFirst { it.id == bId }
+      if (b < 0) throw IllegalStateException("dragon: no inline box " + bId + " in " + pId)
+      val offsets = ArrayList<Double>()
+      val placedLines = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
+      for (line in placedLines) {
+        for (k in line.boxes.indices) if (line.boxes[k].toInt() == b) offsets.add(line.baseline - line.boxRects[k].y)
+      }
+      // A context with no line box gives each inline box one empty fragment at the content start (inline.ts collectFragments),
+      // on no line, so its baseline is its own top.
+      if (placedLines.isEmpty()) offsets.add(0.0)
+      if (offsets.size != idx.size) throw IllegalStateException("dragon: " + bId + ": the engine's lines give " + offsets.size + " fragments, its layout " + idx.size)
+      inlineLines[bId] = idx.indices.map { j -> val e = snapped[idx[j]]; doubleArrayOf(e.left - be[0], e.top - be[1], e.right - be[0], e.bottom - be[1], offsets[j] / lu) }
+    }
   }
 
   /** The dump read back from the live tree: frames from the layout positions up to the root (dragonLayoutOffset), divided by density. */
@@ -1462,13 +1577,20 @@ class DragonTree(val context: Context) {
       if (v is DragonTextView && v.specs.isNotEmpty()) {
         val m = textMetrics[id] ?: throw IllegalStateException("dragon: " + id + ": a text view with lines has no line metrics")
         // Each line as Dragon placed it in the live view: the run from the view's live position, snapped with the one snap rule.
-        for (x in v.specs) {
-          val top = t + x.top + m[0]
-          val bottom = top + m[1] + m[2]
+        if (m.size != 2 + v.specs.size) throw IllegalStateException("dragon: " + id + ": " + (m.size - 2) + " line metrics for " + v.specs.size + " lines")
+        for ((k, x) in v.specs.withIndex()) {
+          val top = t + x.top + m[2 + k]
+          val bottom = top + m[0] + m[1]
           val left = units_snapEdge(l * units_LU_PER_PX + x.xLU)
           val right = units_snapEdge(l * units_LU_PER_PX + x.xLU + x.widthLU)
           val baseline = t + x.baseline
           lines.add(DumpNodesLines(DumpNodesLinesFrame(left / s, top / s, (right - left) / s, (bottom - top) / s), DumpNodesLinesDeviceEdges(left, top, right, bottom), (baseline - top) / s, x.start.toDouble(), x.end.toDouble()))
+        }
+      } else {
+        // An inline box's lines are its fragments, placed from the box view's live position; it has no text, so offsets 0 to 0.
+        for (f in inlineLines[id] ?: emptyList()) {
+          val e = doubleArrayOf(l + f[0], t + f[1], l + f[2], t + f[3])
+          lines.add(DumpNodesLines(DumpNodesLinesFrame(e[0] / s, e[1] / s, (e[2] - e[0]) / s, (e[3] - e[1]) / s), DumpNodesLinesDeviceEdges(e[0], e[1], e[2], e[3]), f[4] / s, 0.0, 0.0))
         }
       }
       nodes.add(DumpNodes(id, parents[id], v.dragonKind, view.javaClass.name, DumpNodesFrame(l / s, t / s, (rr - l) / s, (b - t) / s), DumpNodesDeviceEdges(l, t, rr, b), v.dragonApplied(), lines))
@@ -1545,21 +1667,23 @@ const header = (comment: string, what: string): string => `${comment} GENERATED 
  * Raster plants of the support code: glyph-offset-1 draws every glyph 1 device px right of the engine's position (P5), and
  * glyph-offset-y-1 1 device px below it (T093); the paint modules add theirs.
  */
-export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1' | PaintPlantName;
+export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1' | PaintPlantName | 'single-run-baseline';
 
 type PlantReplacement = { readonly name: SupportPlant; readonly replace: { readonly [B in NativeBackend]: readonly [string, string] } };
 
-/** A glyph plant: its offset constant goes from 0 to 1. */
+/** A glyph plant or the line plant: its constant goes from 0 to 1. */
 const glyphPlant = (name: SupportPlant, uikit: string, android: string): PlantReplacement => ({
   name,
   replace: { uikit: [`${uikit}0\n`, `${uikit}1\n`], 'android-views': [`${android}0.0\n`, `${android}1.0\n`] },
 });
 
-/** Registration point (EMS): every support plant, the glyph plants first, then the paint modules' plants in registry order. */
+/** Registration point (EMS): every support plant, the glyph plants first, then the paint modules' plants in registry order, then
+ * the INL1a line plant (appended): every line of a text view after the first takes its first line's baseline offset. */
 const PLANT_REPLACEMENTS: readonly PlantReplacement[] = [
   glyphPlant('glyph-offset-1', 'public let dragonGlyphPlantDevicePx: Double = ', 'const val DRAGON_GLYPH_PLANT_DEVICE_PX = '),
   glyphPlant('glyph-offset-y-1', 'public let dragonGlyphPlantYDevicePx: Double = ', 'const val DRAGON_GLYPH_PLANT_Y_DEVICE_PX = '),
   ...(paintPlants() as readonly PlantReplacement[]),
+  glyphPlant('single-run-baseline', 'public let dragonSingleRunBaselinePlant: Double = ', 'const val DRAGON_SINGLE_RUN_BASELINE_PLANT = '),
 ];
 
 export const SUPPORT_PLANTS: readonly SupportPlant[] = PLANT_REPLACEMENTS.map((p) => p.name);
@@ -1737,7 +1861,7 @@ export const STYLE_FIELDS = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height', 'minWidth', 'minHeight',
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
-  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'grid', 'gridItem',
+  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'grid', 'gridItem',
 ] as const;
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = {
@@ -1844,10 +1968,11 @@ function engineValue(lang: Lang, v: unknown): string {
     if (typeof r.width !== 'number' || typeof r.height !== 'number') throw new Error(`aspect ratio ${JSON.stringify(v)} lacks its parts`);
     return `${ratio}(${str(r.kind)}, ${doubleLit(r.width)}, ${doubleLit(r.height)})`;
   }
-  const o = v as { kind: string; value?: number };
+  const o = v as { kind: string; value?: number | string };
+  if (o.kind === 'keyword') return `VerticalAlignKeywordValue(${str('keyword')}, ${str(o.value as string)})`;
   const cls = VALUE_CLASSES[o.kind];
   if (cls === undefined) throw new Error(`no engine class for value kind ${o.kind}`);
-  return o.value === undefined ? `${cls}(${str(o.kind)})` : `${cls}(${str(o.kind)}, ${doubleLit(o.value)})`;
+  return o.value === undefined ? `${cls}(${str(o.kind)})` : `${cls}(${str(o.kind)}, ${doubleLit(o.value as number)})`;
 }
 
 /** A line height as a constructor call: a calculated one is the engine's LineHeightCalc, whose range is non-negative. */
@@ -1874,7 +1999,7 @@ export function environmentArgs(viewport: { readonly width: number; readonly hei
 }
 
 /** The translated union of a box's children (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf). */
-const CHILDREN_UNION = 'U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf';
+const CHILDREN_UNION = 'U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf';
 
 /**
  * Functions that build a LayoutInput with the translated engine's typed constructors (no JSON, no CSS): one small function per box,
@@ -1894,6 +2019,12 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
     const natural = c.natural.kind === 'image' ? `NaturalSizeValue_image(${str('image')}, ${doubleLit(c.natural.width)}, ${doubleLit(c.natural.height)})` : `NaturalSizeValue_none(${str('none')})`;
     return `ReplacedLeaf(${str('replaced')}, ${str(c.id)}, ${styleOf(c.style)}, ${natural}, ${doubleLit(c.defaultWidth)}, ${doubleLit(c.defaultHeight)}, ${str(c.objectFit)}, ${engineValue(lang, c.objectPositionX)}, ${engineValue(lang, c.objectPositionY)})`;
   };
+  const list = (union: string, items: readonly string[]): string => (lang === 'swift' ? `JsArray<any ${union}>([${items.join(', ')}])` : `jsArrayOf<${union}>(${items.join(', ')})`);
+  const inline = (c: import('@dragon/layout').InlineChild): string => {
+    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)})`;
+    if (c.kind === 'br') return `LineBreak(${str('br')}, ${str(c.id)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`;
+    return `InlineBox(${str('inline')}, ${str(c.id)}, ${styleOf(c.style)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${list('U_InlineBox_LineBreak_TextLeaf', c.children.map(inline))})`;
+  };
   // A control box's facts (input.ts ControlKind): ControlKind_range, ControlKind_sliderThumb or ControlKind_buttonBlock.
   const controlKind = (c: import('@dragon/layout').ControlKind): string =>
     c.kind === 'range'
@@ -1903,17 +2034,14 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
         : `ControlKind_buttonBlock(${str('button-block')})`;
   const visit = (b: import('@dragon/layout').LayoutBox | import('@dragon/layout').ControlBox): string => {
     const name = `${prefix}Box${n++}`;
-    const kids = b.children.map((c) => (c.kind === 'box' || c.kind === 'control'
-      ? `${visit(c)}()`
-      : c.kind === 'replaced'
-        ? replaced(c)
-        : `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)})`));
+    const kids = b.children.map((c) => (c.kind === 'box' || c.kind === 'control' ? `${visit(c)}()` : c.kind === 'replaced' ? replaced(c) : inline(c)));
+    const strut = b.strut === null ? (lang === 'swift' ? 'nil' : 'null') : `LineStrut(${fontSpecValue(lang, b.strut.font)}, ${lineHeightValue(lang, b.strut.lineHeight)})`;
     const style = styleOf(b.style);
-    const arr = lang === 'swift' ? `JsArray<any ${CHILDREN_UNION}>([${kids.join(', ')}])` : `jsArrayOf<${CHILDREN_UNION}>(${kids.join(', ')})`;
+    const arr = list(CHILDREN_UNION, kids);
     const type = b.kind === 'control' ? 'ControlBox' : 'LayoutBox';
     const body = b.kind === 'control'
-      ? `ControlBox(${str('control')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${controlKind(b.control)}, ${arr})`
-      : `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${arr})`;
+      ? `ControlBox(${str('control')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${controlKind(b.control)}, ${strut}, ${arr})`
+      : `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${strut}, ${arr})`;
     decls.push(lang === 'swift' ? `private func ${name}() -> ${type} {\n  return ${body}\n}` : `private fun ${name}(): ${type} =\n  ${body}`);
     return name;
   };

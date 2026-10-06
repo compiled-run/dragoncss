@@ -17,6 +17,7 @@ import { buttonAppearance, isControlTag } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { environmentOf, valueToString } from './resolve.ts';
+import { usedColors } from '../lower/paint/colors.ts';
 import { checkTransformContexts } from './paint-values/transform.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
@@ -54,15 +55,52 @@ function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnost
   }
 }
 
-// UAX #9 and css-writing-modes-4 §2.4: the text of an rtl block container may hold only strong-L letters, spaces and U+200B, and
-// U+200B may not end its inline formatting context; anything else would be reordered, and it is refused for every target.
-function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>): void {
-  if (keywordOf(el.props.get('direction') as ResolvedValue) !== 'rtl') return;
-  const runs: ResolvedText[][] = [[]];
+const displayKeyword = (el: ResolvedElement): string => keywordOf(el.props.get('display') as ResolvedValue);
+const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline';
+
+/** One item of an inline formatting context in tree order: a text, the open or close of an inline box, or a <br> (CSS2 §9.2.2). */
+type IfcItem = { readonly kind: 'text'; readonly text: ResolvedText } | { readonly kind: 'open' | 'close' | 'br'; readonly el: ResolvedElement };
+
+/**
+ * The inline formatting contexts whose block container is el (el is not itself an inline box): its maximal runs of inline-level
+ * children, flattened through inline boxes. A block-level child ends a run (CSS2 §9.2.1.1); display: none children generate no box.
+ * blockInInline receives each block-level box inside an inline box, which Dragon does not lay out.
+ */
+function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElement, box: ResolvedElement) => void): IfcItem[][] {
+  const runs: IfcItem[][] = [[]];
+  const flatten = (box: ResolvedElement, out: IfcItem[]): void => {
+    for (const c of box.children) {
+      if (c.kind === 'text') out.push({ kind: 'text', text: c });
+      else if (displayKeyword(c) === 'none') continue;
+      else if (!isInlineBox(c)) blockInInline(c, box);
+      else if (c.element.tag === 'br') out.push({ kind: 'br', el: c });
+      else {
+        out.push({ kind: 'open', el: c });
+        flatten(c, out);
+        out.push({ kind: 'close', el: c });
+      }
+    }
+  };
   for (const c of el.children) {
-    if (c.kind === 'text') (runs[runs.length - 1] as ResolvedText[]).push(c);
-    else if (keywordOf(c.props.get('display') as ResolvedValue) !== 'none') runs.push([]);
+    const run = runs[runs.length - 1] as IfcItem[];
+    if (c.kind === 'text') run.push({ kind: 'text', text: c });
+    else if (displayKeyword(c) === 'none') continue;
+    else if (!isInlineBox(c)) runs.push([]);
+    else if (c.element.tag === 'br') run.push({ kind: 'br', el: c });
+    else {
+      run.push({ kind: 'open', el: c });
+      flatten(c, run);
+      run.push({ kind: 'close', el: c });
+    }
   }
+  return runs.filter((r) => r.length > 0);
+}
+
+// UAX #9 and css-writing-modes-4 §2.4: the text of an rtl inline formatting context may hold only strong-L letters, spaces and
+// U+200B, and U+200B may not be in the white space that ends a paragraph (at a <br>, bidi class B, or at the end, L1); anything else
+// would be reordered, and it is refused for every target. The text of an inline box belongs to its block container's context.
+function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (isInlineBox(el) || keywordOf(el.props.get('direction') as ResolvedValue) !== 'rtl') return;
   const report = (t: ResolvedText, message: string): void => {
     const origin = t.node.node.origin;
     const id = `${t.node.address}|${JSON.stringify(origin)}`;
@@ -70,10 +108,82 @@ function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set
     reported.add(id);
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_BIDI', { origin, message }));
   };
+  for (const run of inlineContexts(el, () => {})) {
+    // The texts of each paragraph: the context split at its <br>s.
+    const paragraphs: ResolvedText[][] = [[]];
+    for (const it of run) {
+      if (it.kind === 'br') paragraphs.push([]);
+      else if (it.kind === 'text') (paragraphs[paragraphs.length - 1] as ResolvedText[]).push(it.text);
+    }
+    for (const texts of paragraphs) {
+      for (const t of texts) if (!RTL_SAFE.test(t.text)) report(t, `text ${JSON.stringify(t.text)} of ${t.node.address} holds a character other than A-Z, a-z, space and U+200B in the rtl block ${el.element.address}`);
+      // The white space (spaces and U+200B) that ends the paragraph, walked back across its texts.
+      let zwsp: ResolvedText | null = null;
+      end: for (let i = texts.length - 1; i >= 0; i--) {
+        const t = texts[i] as ResolvedText;
+        for (let k = t.text.length - 1; k >= 0; k--) {
+          const ch = t.text[k] as string;
+          if (ch === '\u200b') zwsp = t;
+          else if (ch !== ' ') break end;
+        }
+      }
+      if (zwsp !== null) report(zwsp, `U+200B ends the rtl inline content of ${el.element.address} (${zwsp.node.address}) and would take the paragraph direction (UAX #9 L1)`);
+    }
+  }
+}
+
+// CSS2 §9.2.1.1, §9.4.2 and css-text-4 §5.1: what the inline formatting core does not lay out, refused for every target at the
+// element: a block-level box inside an inline box (block-in-inline), an inline box on the empty line after a context's last <br>,
+// and runs with different text-wrap-mode in one formatting context.
+function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (isInlineBox(el)) return;
+  const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets, at, what, message, manual);
+  const refuseFor = (on: readonly string[], at: ResolvedElement, what: string, message: string, manual: string): void => {
+    for (const t of on) {
+      const id = `${t}|inline-${what}|${at.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: at.element.node.origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const refuseNative = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets.filter((t) => t === 'ios' || t === 'android'), at, what, message, manual);
+  const runs = inlineContexts(el, (child, box) =>
+    refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`),
+  );
   for (const run of runs) {
-    for (const t of run) if (!RTL_SAFE.test(t.text)) report(t, `text ${JSON.stringify(t.text)} of ${t.node.address} holds a character other than A-Z, a-z, space and U+200B in the rtl block ${el.element.address}`);
-    const last = run[run.length - 1];
-    if (last !== undefined && last.text.endsWith('\u200b')) report(last, `U+200B ends the rtl inline content of ${el.element.address} (${last.node.address}) and would take the paragraph direction (UAX #9 L1)`);
+    const lastBr = run.map((it) => it.kind).lastIndexOf('br');
+    if (lastBr >= 0) {
+      const after = run.slice(lastBr + 1);
+      const open = after.find((it) => it.kind === 'open');
+      if (open !== undefined && open.kind === 'open' && !after.some((it) => it.kind === 'text' && it.text.text.trim() !== '')) {
+        refuse(open.el, 'empty-line', `inline box <${open.el.element.tag}> ${open.el.element.address} starts the empty line after the last <br> of ${el.element.address} (CSS2 §9.4.2), which Dragon does not lay out`, `Remove the empty <${open.el.element.tag}> ${open.el.element.address} after the last <br>, or give it text.`);
+      }
+    }
+    // resolve.ts collapses the white space of a context with inline boxes or <br>s across them (collapseInlineContext), which is
+    // right only for white-space-collapse: collapse (css-text-4 §4.1.1).
+    for (const it of run) {
+      if (it.kind !== 'open' && it.kind !== 'br') continue;
+      // The native runtime places inline box views unpainted (their decorations are INL1b), so a paint an inline box would draw
+      // is refused on native rather than dropped. Of the paint longhands, only background-color paints an inline box without a
+      // border width (which the inline/ltr context refuses); transform, overflow and will-change do not apply to inline boxes.
+      if (it.kind === 'open' && usedColors(it.el)['background-color'].alpha !== 0) {
+        const bg = valueToString((it.el.props.get('background-color') as ResolvedValue).value);
+        refuseNative(it.el, 'background', `background-color: ${bg} on the inline box <${it.el.element.tag}> ${it.el.element.address}: the native runtime does not paint inline boxes until INL1b (inline box decorations), so the background would be dropped`, `Move the background to a block, or remove it from <${it.el.element.tag}> ${it.el.element.address}, until INL1b.`);
+      }
+      const collapse = keywordOf(it.el.props.get('white-space-collapse') as ResolvedValue);
+      if (collapse !== 'collapse') refuse(it.el, 'white-space', `white-space-collapse: ${collapse} on the inline box <${it.el.element.tag}> ${it.el.element.address} (css-text-4 §4.1.1), which Dragon does not lay out`, `Remove the white-space declaration of ${it.el.element.address}, or make ${it.el.element.address} a block.`);
+    }
+    const preserved = run.some((it) => it.kind !== 'text') ? run.find((it) => it.kind === 'text' && keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse') : undefined;
+    if (preserved !== undefined && preserved.kind === 'text') {
+      refuse(el, 'white-space', `white-space-collapse: ${keywordOf(preserved.text.props.get('white-space-collapse') as ResolvedValue)} on ${preserved.text.node.address} in an inline formatting context of ${el.element.address} with inline boxes or <br>s (css-text-4 §4.1.1), which Dragon does not lay out`, `Remove the white-space declaration of ${el.element.address}.`);
+    }
+    const texts = run.flatMap((it) => (it.kind === 'text' ? [it.text] : []));
+    const wrapOf = (t: ResolvedText): string => keywordOf(t.props.get('text-wrap-mode') as ResolvedValue);
+    const first = texts[0];
+    const other = first === undefined ? undefined : texts.find((t) => wrapOf(t) !== wrapOf(first));
+    if (first !== undefined && other !== undefined) {
+      refuse(el, 'mixed-wrap', `text-wrap-mode ${wrapOf(first)} (${first.node.address}) and ${wrapOf(other)} (${other.node.address}) in one inline formatting context of ${el.element.address} (css-text-4 §5.1), which Dragon does not lay out`, `Give all the text of ${el.element.address} the same white-space.`);
+    }
   }
 }
 
@@ -94,7 +204,8 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
     }
   };
   if (isRoot && keywordOf(el.props.get('position') as ResolvedValue) === 'absolute') refuse(el, `position: absolute on the root element ${el.element.address} is not supported in milestone 1`);
-  if (!el.children.some((c) => c.kind === 'text')) return;
+  // Inline content: text, or an inline box (INL1a), beside which the box would take a static position in the formatting context.
+  if (!el.children.some((c) => c.kind === 'text' || (displayKeyword(c) === 'inline'))) return;
   for (const c of el.children) {
     if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
     if (keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute') continue;
@@ -344,8 +455,13 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
-    else if (!here && isControlTag(el.element.tag)) checkButton(el, parentDisplay, targets, diagnostics, reported);
-    else if (!here) checkInlineLevel(el, targets, diagnostics, reported);
+    else if (!here && isControlTag(el.element.tag)) {
+      checkButton(el, parentDisplay, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported);
+    } else if (!here) {
+      checkInlineLevel(el, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported);
+    }
     if (!here && button !== null) checkInsideButton(el, button, targets, diagnostics, reported);
     const inside = button ?? (isControlTag(el.element.tag) ? el : null);
     const own = keywordOf(el.props.get('display') as ResolvedValue);

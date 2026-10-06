@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GridContainerStyle, GridItemStyle, LayoutBox, LayoutInput, TrackSize } from '../src/index.ts';
 import { ahemMeasurer, layout, validateLayoutInput } from '../src/index.ts';
-import { anon, box, control, neutralEnvironment, text } from './helpers.ts';
+import { anon, box, control, neutralEnvironment, span, text } from './helpers.ts';
 
 const fr = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'fr', value } });
 const px = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'px', value } });
@@ -102,6 +102,21 @@ describe('the validator\'s grid rules, each with a planted input', () => {
       (r.children[0] as unknown as { children: unknown[] }).children = [JSON.parse(JSON.stringify(control('thumb', { kind: 'slider-thumb', ratio: 0.5 }, { gridItem: autoItem })))];
     });
     expect(codes(thumbIn)).toContain('bad-value $.root.children[0].children[0].control');
+  });
+  it('takes an inline box only inside an anonymous grid item, never as a grid item or a grid container (INL1a with GRID G1a)', () => {
+    // css-grid-2 §6: inline content in a grid container is wrapped in an anonymous, auto-placed grid item.
+    const wrapped = input(box('root', {}, [grid(gridStyle({}), [anon('g:anon0', { gridItem: autoItem }, [text('g:text0', 'X'), span('s', [text('s:text0', 'Y')])])])]));
+    expect(codes(wrapped)).toEqual([]);
+    const bare = input(box('root', {}, [grid(gridStyle({}), [])]));
+    (bare.root.children[0] as unknown as { children: unknown[] }).children = [span('s', [text('s:text0', 'Y')])];
+    expect(codes(bare)).toContain('text-in-flex $.root.children[0].children');
+    // css-display-3 §2.7: a grid item is blockified, so an inline box never carries a placement or a grid style.
+    for (const over of [{ gridItem: autoItem }, { grid: gridStyle({}) }]) {
+      const placed = input(box('root', {}, [box('p', {}, [span('s', [text('s:text0', 'Y')])])]));
+      const s0 = ((placed.root.children[0] as unknown as { children: { style: Record<string, unknown> }[] }).children[0] as { style: Record<string, unknown> });
+      Object.assign(s0.style, over);
+      expect(codes(placed), JSON.stringify(Object.keys(over))).toContain('grid-shape $.root.children[0].children[0].style.grid');
+    }
   });
   it('judges an anonymous item by its values, not by the order of its keys', () => {
     const reordered = input(box('root', {}, [grid(gridStyle({}), [anon('g:anon0', {}, [text('g:text0', 'X')])])]));

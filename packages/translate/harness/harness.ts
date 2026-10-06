@@ -19,6 +19,8 @@ import type {
   FlexWrap,
   FontSpec,
   GapValue,
+  InlineBox,
+  InlineChild,
   GridContainerStyle,
   GridItemStyle,
   GridSelfAlign,
@@ -30,7 +32,9 @@ import type {
   LayoutStyle,
   LengthCalc,
   LineHeightCalc,
+  LineBreak,
   LineHeightValue,
+  LineStrut,
   MarginValue,
   NaturalSizeValue,
   ObjectFit,
@@ -46,6 +50,8 @@ import type {
   TextAlign,
   TextLeaf,
   TextWrapMode,
+  VerticalAlignKeyword,
+  VerticalAlignValue,
   ViewportLength,
   ViewportSize,
   Viewport,
@@ -592,8 +598,20 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'grid', 'gridItem',
 ];
+
+function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
+  const k = kindOf(v, path);
+  if (k === 'calc') return lengthCalc(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'keyword') {
+    const o = obj(v, ['kind', 'value'], path);
+    return { kind: 'keyword', value: lit(field(o, 'value', path), ['baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom'], `${path}.value`) as VerticalAlignKeyword };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
 
 const GRID_SELF_ALIGN: readonly string[] = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'];
 
@@ -684,7 +702,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const f = (k: string): JsonValue => field(o, k, path);
   const p = (k: string): string => `${path}.${k}`;
   return {
-    display: lit(f('display'), ['block', 'flex', 'grid'], p('display')) as Display,
+    display: lit(f('display'), ['block', 'flex', 'grid', 'inline'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
@@ -726,6 +744,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     columnGap: gapValue(f('columnGap'), p('columnGap')),
     textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
+    verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
@@ -780,12 +799,17 @@ function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
   };
 }
 
-function decodeChildren(o: JsonObj, path: string): (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf)[] {
-  const children: (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf)[] = [];
+function decodeChildren(o: JsonObj, path: string): (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[] {
+  const children: (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
   return children;
+}
+
+function decodeStrutField(o: JsonObj, path: string): LineStrut | null {
+  const strut = field(o, 'strut', path);
+  return strut.kind === 'null' ? null : decodeStrut(strut, `${path}.strut`);
 }
 
 function controlKind(v: JsonValue, path: string): ControlKind {
@@ -800,7 +824,7 @@ function controlKind(v: JsonValue, path: string): ControlKind {
 }
 
 function decodeControl(o: JsonObj, path: string): ControlBox {
-  obj(o, ['kind', 'id', 'boxType', 'style', 'control', 'children'], path);
+  obj(o, ['kind', 'id', 'boxType', 'style', 'control', 'strut', 'children'], path);
   const children = decodeChildren(o, path);
   return {
     kind: 'control',
@@ -808,30 +832,66 @@ function decodeControl(o: JsonObj, path: string): ControlBox {
     boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
     style: decodeStyle(field(o, 'style', path), `${path}.style`),
     control: controlKind(field(o, 'control', path), `${path}.control`),
+    strut: decodeStrutField(o, path),
     children,
   };
 }
 
 function decodeBox(o: JsonObj, path: string): LayoutBox {
-  obj(o, ['kind', 'id', 'boxType', 'style', 'children'], path);
+  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'children'], path);
   const children = decodeChildren(o, path);
   return {
     kind: 'box',
     id: str(field(o, 'id', path), `${path}.id`),
     boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
     style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    strut: decodeStrutField(o, path),
     children,
   };
 }
 
-function decodeNode(v: JsonValue, path: string): LayoutBox | ControlBox | TextLeaf | ReplacedLeaf {
+function decodeStrut(v: JsonValue, path: string): LineStrut {
+  const o = obj(v, ['font', 'lineHeight'], path);
+  return { font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+}
+
+function decodeInline(o: JsonObj, path: string): InlineBox {
+  obj(o, ['kind', 'id', 'style', 'font', 'lineHeight', 'children'], path);
+  const children: InlineChild[] = [];
+  arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
+    children.push(decodeInlineChild(c, `${path}.children[${i}]`));
+  });
+  return {
+    kind: 'inline',
+    id: str(field(o, 'id', path), `${path}.id`),
+    style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    font: fontSpec(field(o, 'font', path), `${path}.font`),
+    lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
+    children,
+  };
+}
+
+function decodeBreak(o: JsonObj, path: string): LineBreak {
+  obj(o, ['kind', 'id', 'font', 'lineHeight'], path);
+  return { kind: 'br', id: str(field(o, 'id', path), `${path}.id`), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+}
+
+function decodeInlineChild(v: JsonValue, path: string): InlineChild {
+  if (v.kind !== 'obj') return fail(`${path}: expected an inline-level node`);
+  const k = kindOf(v, path);
+  if (k === 'text') return decodeText(v, path);
+  if (k === 'inline') return decodeInline(v, path);
+  if (k === 'br') return decodeBreak(v, path);
+  return fail(`${path}: unknown inline-level node kind ${k}`);
+}
+
+function decodeNode(v: JsonValue, path: string): LayoutBox | ControlBox | ReplacedLeaf | InlineChild {
   if (v.kind !== 'obj') return fail(`${path}: expected a node`);
   const k = kindOf(v, path);
   if (k === 'box') return decodeBox(v, path);
   if (k === 'control') return decodeControl(v, path);
-  if (k === 'text') return decodeText(v, path);
   if (k === 'replaced') return decodeReplaced(v, path);
-  return fail(`${path}: unknown node kind ${k}`);
+  return decodeInlineChild(v, path);
 }
 
 function decodeViewport(v: JsonValue, path: string): Viewport {
@@ -865,7 +925,8 @@ const FAULT_KEYS: readonly string[] = [
   'wrapReverseBaselineSpec', 'initialLineWidthZoomed', 'calcPercentPlainOrder', 'calcDoubleEval', 'calcNoNonNegClamp',
   'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled', 'lhUnsnapped',
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
-  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak',
+  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes',
+  'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
   'orderHalfEven', 'orderUnclamped',
 ];
 
@@ -907,6 +968,11 @@ function decodeFaults(v: JsonValue): EngineFaults {
     fitWithoutEpsilon: b('fitWithoutEpsilon'),
     breakAfterSolidus: b('breakAfterSolidus'),
     noHyphenDigitBreak: b('noHyphenDigitBreak'),
+    lineHeightIgnoresInlineBoxes: b('lineHeightIgnoresInlineBoxes'),
+    halfLeadingUnflooredPerBox: b('halfLeadingUnflooredPerBox'),
+    brIgnored: b('brIgnored'),
+    breakAtBoxBoundary: b('breakAtBoxBoundary'),
+    fragmentFromLineTop: b('fragmentFromLineTop'),
     orderHalfEven: b('orderHalfEven'),
     orderUnclamped: b('orderUnclamped'),
   };

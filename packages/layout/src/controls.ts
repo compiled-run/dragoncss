@@ -27,7 +27,7 @@ export function sliderIntrinsicInlineSize(zoom: number): LU {
 
 /** A control box laid out as the plain box it is, without its control facts. */
 export function controlAsBox(c: ControlBox): LayoutBox {
-  return { kind: 'box', id: c.id, boxType: c.boxType, style: c.style, children: c.children };
+  return { kind: 'box', id: c.id, boxType: c.boxType, style: c.style, strut: c.strut, children: c.children };
 }
 
 /** The control facts of a box, or null for a plain box. */
