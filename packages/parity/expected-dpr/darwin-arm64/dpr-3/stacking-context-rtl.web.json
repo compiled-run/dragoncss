@@ -443,11 +443,11 @@
         "justify-items": "normal",
         "justify-self": "auto",
         "pointer-events": "auto",
-        "opacity": "0.5",
+        "opacity": "1",
         "z-index": "auto",
         "transform": "none",
         "transform-origin": "16px 16px",
-        "will-change": "auto"
+        "will-change": "opacity"
       }
     },
     {

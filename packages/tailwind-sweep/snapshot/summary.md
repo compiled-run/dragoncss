@@ -5,8 +5,8 @@
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
 | web | 4204 (18.1%) | 19081 (81.9%) | 1 | 0 | 0 |
-| ios | 4185 (18.0%) | 19064 (81.9%) | 1 | 0 | 36 |
-| android | 4185 (18.0%) | 19064 (81.9%) | 1 | 0 | 36 |
+| ios | 4166 (17.9%) | 19083 (82.0%) | 1 | 0 | 36 |
+| android | 4166 (17.9%) | 19083 (82.0%) | 1 | 0 | 36 |
 
 As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
 
@@ -22,7 +22,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | colours | 14842 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 |
 | backgrounds | 151 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 |
 | borders | 250 | 75 / 175 / 0 / 0 / 0 | 75 / 175 / 0 / 0 / 0 | 75 / 175 / 0 / 0 / 0 |
-| effects | 1178 | 21 / 1157 / 0 / 0 / 0 | 21 / 1157 / 0 / 0 / 0 | 21 / 1157 / 0 / 0 / 0 |
+| effects | 1178 | 21 / 1157 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 |
 | transitions-animation | 36 | 19 / 17 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 |

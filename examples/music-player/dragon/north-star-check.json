@@ -138,8 +138,8 @@
   }
  },
  "summary": {
-  "diagnostics": 239,
-  "errors": 234,
+  "diagnostics": 247,
+  "errors": 242,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -159,8 +159,8 @@
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 4,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 30,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 30,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 34,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 34,
    "DRAGON_UNSUPPORTED_VALUE [web]": 20
   },
   "perTarget": {
@@ -187,7 +187,7 @@
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 28,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 33
+     "DRAGON_UNSUPPORTED_VALUE": 37
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -205,7 +205,7 @@
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 28,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 33
+     "DRAGON_UNSUPPORTED_VALUE": 37
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -220,11 +220,11 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 207,
+  "supportedBothTargets": 203,
   "supportedWeb": 239,
-  "supportedIos": 207,
-  "supportedAndroid": 207,
-  "supportPercent": 71.6,
+  "supportedIos": 203,
+  "supportedAndroid": 203,
+  "supportPercent": 70.2,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -309,7 +309,7 @@
   "rawDiagnosticsPerPass": {
    "A-authored": 109,
    "B-unwrapped": 105,
-   "C-context": 148
+   "C-context": 156
   }
  },
  "features": {
@@ -1716,9 +1716,11 @@
    "property": "opacity",
    "value": "0.9",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 102,
@@ -1766,9 +1768,11 @@
    "property": "opacity",
    "value": "0.46",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 106,
@@ -1900,9 +1904,11 @@
    "property": "opacity",
    "value": "0.5",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 117,
@@ -1924,9 +1930,11 @@
    "property": "opacity",
    "value": "0.28",
    "web": "supported",
-   "ios": "supported",
-   "android": "supported",
-   "codes": []
+   "ios": "blocked",
+   "android": "blocked",
+   "codes": [
+    "DRAGON_UNSUPPORTED_VALUE"
+   ]
   },
   {
    "index": 119,
@@ -6980,6 +6988,158 @@
     "text": "running"
    },
    "message": "animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3419-3422|page/song-call/record-cover has opacity 0.9; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3419,
+    "end": 3422,
+    "line": 187,
+    "column": 11,
+    "text": "0.9"
+   },
+   "message": "page/song-call/record-cover has opacity 0.9; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3419-3422|page/song-call/record-cover has opacity 0.9; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3419,
+    "end": 3422,
+    "line": 187,
+    "column": 11,
+    "text": "0.9"
+   },
+   "message": "page/song-call/record-cover has opacity 0.9; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3626-3630|page/song-call/record-shine has opacity 0.46; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3626,
+    "end": 3630,
+    "line": 200,
+    "column": 11,
+    "text": "0.46"
+   },
+   "message": "page/song-call/record-shine has opacity 0.46; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3626-3630|page/song-call/record-shine has opacity 0.46; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3626,
+    "end": 3630,
+    "line": 200,
+    "column": 11,
+    "text": "0.46"
+   },
+   "message": "page/song-call/record-shine has opacity 0.46; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3913-3916|page/song-call/record-marker-one has opacity 0.5; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3913,
+    "end": 3916,
+    "line": 217,
+    "column": 11,
+    "text": "0.5"
+   },
+   "message": "page/song-call/record-marker-one has opacity 0.5; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3913-3916|page/song-call/record-marker-one has opacity 0.5; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3913,
+    "end": 3916,
+    "line": 217,
+    "column": 11,
+    "text": "0.5"
+   },
+   "message": "page/song-call/record-marker-one has opacity 0.5; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3995-3999|page/song-call/record-marker-two has opacity 0.28; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3995,
+    "end": 3999,
+    "line": 222,
+    "column": 11,
+    "text": "0.28"
+   },
+   "message": "page/song-call/record-marker-two has opacity 0.28; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3995-3999|page/song-call/record-marker-two has opacity 0.28; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3995,
+    "end": 3999,
+    "line": 222,
+    "column": 11,
+    "text": "0.28"
+   },
+   "message": "page/song-call/record-marker-two has opacity 0.28; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
    "viaRelated": false,
    "passes": [
     "C-context"
