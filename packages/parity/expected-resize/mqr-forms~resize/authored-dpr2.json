@@ -1,0 +1,861 @@
+{
+ "schema": "dragon-resize-capture/1",
+ "case": "mqr-forms~resize",
+ "chrome": "145.0.7632.6",
+ "rendering": "authored",
+ "devicePixelRatio": 2,
+ "direction": "ltr",
+ "start": {
+  "width": 400,
+  "height": 304
+ },
+ "steps": [
+  {
+   "kind": "resize",
+   "width": 400,
+   "height": 400
+  },
+  {
+   "kind": "resize",
+   "width": 384,
+   "height": 400
+  },
+  {
+   "kind": "resize",
+   "width": 384,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 352,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 352,
+   "height": 400
+  },
+  {
+   "kind": "resize",
+   "width": 344,
+   "height": 400
+  },
+  {
+   "kind": "resize",
+   "width": 328,
+   "height": 400
+  },
+  {
+   "kind": "resize",
+   "width": 328,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 336,
+   "height": 320
+  }
+ ],
+ "samples": [
+  {
+   "size": {
+    "width": 400,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 19,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 5,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 10,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 15,
+     "width": 60,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 400,
+    "height": 400
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 20,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 19,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 5,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 10,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 15,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 384,
+    "height": 400
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 384,
+     "height": 20,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 384,
+     "height": 19,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 5,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 10,
+     "width": 50,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 15,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 384,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 384,
+     "height": 20,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 384,
+     "height": 19,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 5,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 10,
+     "width": 50,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 15,
+     "width": 60,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 352,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 20,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 19,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 0, 0)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 5,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 10,
+     "width": 50,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 15,
+     "width": 60,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 352,
+    "height": 400
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 20,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 19,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 30,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 0, 0)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 5,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 10,
+     "width": 50,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 15,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 344,
+    "height": 400
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 344,
+     "height": 20,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 344,
+     "height": 19,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 5,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 10,
+     "width": 50,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 15,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 328,
+    "height": 400
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 328,
+     "height": 20,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 328,
+     "height": 19,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 5,
+     "width": 40,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 10,
+     "width": 50,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 15,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 328,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 328,
+     "height": 20,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 328,
+     "height": 19,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 5,
+     "width": 40,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 10,
+     "width": 50,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 15,
+     "width": 60,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 336,
+    "height": 320
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 336,
+     "height": 20,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 336,
+     "height": 19,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 5,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 10,
+     "width": 50,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 15,
+     "width": 60,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  }
+ ]
+}

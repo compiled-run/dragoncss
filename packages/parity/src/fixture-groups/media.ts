@@ -22,6 +22,6 @@ export const MEDIA: readonly FixtureSpec[] = [
   both('media-orientation'),
   both('media-aspect-ratio'),
   both('media-epsilon'),
-  reject('reject-media-prefers-color-scheme', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (prefers-color-scheme: dark) { .a { width: 20px; } }', '@media (prefers-color-scheme: dark) in the stylesheet is not supported until MQ-R'),
-  reject('reject-media-resolution', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (max-width: 500px) and (min-resolution: 2dppx) { .a { width: 20px; } }', '@media (max-width: 500px) and (min-resolution: 2dppx) in the stylesheet is not supported until MQ-R'),
+  reject('reject-media-prefers-color-scheme', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (prefers-color-scheme: dark) { .a { width: 20px; } }', '@media (prefers-color-scheme: dark) in the stylesheet is not supported: (prefers-color-scheme: dark) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'),
+  reject('reject-media-resolution', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (max-width: 500px) and (min-resolution: 2dppx) { .a { width: 20px; } }', '@media (max-width: 500px) and (min-resolution: 2dppx) in the stylesheet is not supported: (min-resolution: 2dppx) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'),
 ];

@@ -15,6 +15,11 @@ on:
         description: Commit to run the device lanes of (it must be reachable from a branch of this repository)
         required: true
         type: string
+      judge:
+        description: Judge the lanes against the commit's own committed records (false only for the landing driver, which judges against its previous position)
+        required: false
+        default: true
+        type: boolean
   pull_request:
     types: [labeled]
 permissions:
@@ -84,7 +89,8 @@ jobs:
           if (have === null || have !== want) { console.error(`the runner's ${target} toolchain differs from the committed lanes.json host lane's`); process.exit(1); }
           EOF
           node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts" ios
-      - name: Run ${{ matrix.device }}
+      # The step name marks the device run as a verdict step for the landing driver (land-devices-ci.ts VERDICT_STEP).
+      - name: Device run ${{ matrix.device }}
         env:
           DEVICE: ${{ matrix.device }}
         run: |
@@ -158,7 +164,8 @@ jobs:
           # This avdmanager writes AVDs under ~/.config/.android whatever ANDROID_AVD_HOME says; one directory serves both.
           mkdir -p "$HOME/.android/avd" "$HOME/.config"
           ln -sfn "$HOME/.android" "$HOME/.config/.android"
-      - name: Run ${{ matrix.device }}
+      # The step name marks the device run as a verdict step for the landing driver (land-devices-ci.ts VERDICT_STEP).
+      - name: Device run ${{ matrix.device }}
         env:
           DEVICE: ${{ matrix.device }}
         run: |
@@ -204,18 +211,18 @@ jobs:
           path: ${{ runner.temp }}/outcomes/*.json
       - name: Keep the committed records to compare with
         run: mkdir -p "$RUNNER_TEMP/committed" && cp packages/parity/out/lanes.json packages/parity/out/device-failures-*.json "$RUNNER_TEMP/committed/"
-      # A run for review (the `devices` label) is judged here against the tested commit's records. A run the landing driver
-      # dispatches is not: its tree's records are the "not run" ones its regen wrote, and the driver judges it against the previous
-      # position, as a local run is judged; so the merge and the comparison only report there.
+      # A run for review (the `devices` label, or a manual dispatch) is judged here against the tested commit's records. A run the
+      # landing driver dispatches (judge=false) is not: its tree's records are the "not run" ones its regen wrote, and the driver
+      # judges it against the previous position, as a local run is judged; so the merge and the comparison only report there.
       - name: Merge the device outcomes into the lane records
-        continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && !inputs.judge }}
         run: |
           mkdir -p "$RUNNER_TEMP/merge" && cp "$RUNNER_TEMP"/outcomes/*.json "$RUNNER_TEMP/merge/"
           node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts merge "$RUNNER_TEMP/merge"
       - name: Compare every device lane with the committed records
-        continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && !inputs.judge }}
         env:
-          JUDGE: ${{ github.event_name == 'pull_request' && '--judge' || '' }}
+          JUDGE: ${{ (github.event_name == 'pull_request' || inputs.judge) && '--judge' || '' }}
         run: |
           # shellcheck disable=SC2086
           node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts compare "$RUNNER_TEMP/committed" $JUDGE

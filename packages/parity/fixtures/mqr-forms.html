@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.t { width: 10px; height: 4px; margin-bottom: 1px; background-color: #ccc; }
+@media (width: 352px) { .a { width: 30px; background-color: #c00; } }
+@media (width < 336px) { .b { width: 40px; } }
+@media (max-width: 24em) { .c { width: 50px; background-color: #00c; } }
+@media (height <= 320px) { .d { width: 60px; background-color: #0c0; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="t a"></div>
+<div data-dragon-id="b" class="t b"></div>
+<div data-dragon-id="c" class="t c"></div>
+<div data-dragon-id="d" class="t d"></div>
+</body>
+</html>
