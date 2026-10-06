@@ -127,7 +127,8 @@ const DATA = /(\.(json|jsonl|png|jpg|jpeg|gif|bmp|webp|ico|svg|wasm|css|html|xht
 const isCode = (f: string) => SCRIPT.test(f) || C_STYLE.test(f) || SHELL.test(f);
 
 function allTrackedFiles(): string[] {
-  const git = (args: string[]) => execFileSync('git', ['-C', ROOT, 'ls-files', '-z', ...args, '--', ...SCAN_TOPS], { encoding: 'utf8' }).split('\0');
+  // The tracked file list is past execFileSync's default 1 MiB output buffer (ENOBUFS), so the buffer is raised.
+  const git = (args: string[]) => execFileSync('git', ['-C', ROOT, 'ls-files', '-z', ...args, '--', ...SCAN_TOPS], { encoding: 'utf8', maxBuffer: 1 << 28 }).split('\0');
   const files = new Set([...git(['--cached']), ...git(['--others', '--exclude-standard'])]);
   return [...files].filter((f) => f !== '' && existsSync(join(ROOT, f))).sort(); // existsSync: a tracked file deleted in the working tree
 }
