@@ -5688,7 +5688,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/progress-input|<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe, button)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/progress-input|<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, button)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -5697,7 +5697,7 @@
     "id": "Player/progress-input",
     "tag": "input"
    },
-   "message": "<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, img, iframe, button)",
+   "message": "<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, button)",
    "viaRelated": false,
    "passes": [
     "A-authored",
