@@ -86,11 +86,12 @@ describe('R5: initial line widths lower to device px', () => {
     expect(isInitialByProvenance({ value: { kind: 'keyword', value: 'medium' }, origin: 'inherited', span: null, declaration: null, declared: null, losing: [] }, 'border-top-width')).toBe(false);
   });
 
-  it('latent finding (not widened): border-width inherit and initial stay refused by the m1-s5 profile', () => {
-    for (const kw of ['inherit', 'initial']) {
-      const c = project().compile(inputFor(`.a { border-style: solid; border-top-width: ${kw}; }`, (r) => [div(r, 'a', ['a'])]));
-      expect(c.ok, kw).toBe(false);
-      expect(c.diagnostics.map((d) => d.code), kw).toContain('DRAGON_UNSUPPORTED_VALUE');
-    }
+  it('latent finding (not widened here): border-top-width initial stays refused by the m1-s5 profile; inherit compiles since ctx-proof-inherit proved it', () => {
+    const initial = project().compile(inputFor('.a { border-style: solid; border-top-width: initial; }', (r) => [div(r, 'a', ['a'])]));
+    expect(initial.ok).toBe(false);
+    expect(initial.diagnostics.map((d) => d.code)).toContain('DRAGON_UNSUPPORTED_VALUE');
+    const inherit = project().compile(inputFor('.a { border-style: solid; border-top-width: inherit; }', (r) => [div(r, 'a', ['a'])]));
+    expect(inherit.ok).toBe(true);
+    expect(inherit.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 });
