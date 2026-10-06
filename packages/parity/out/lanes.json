@@ -25,7 +25,8 @@
     "glyph",
     "shadow",
     "gradient",
-    "image-flat"
+    "image-flat",
+    "svg"
   ],
   "dumpFaults": [
     "edge-plus-2-device-px",

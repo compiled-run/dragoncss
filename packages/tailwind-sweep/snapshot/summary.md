@@ -5,8 +5,8 @@
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
 | web | 4183 (18.0%) | 19102 (82.0%) | 1 | 0 | 0 |
-| ios | 4157 (17.9%) | 19092 (82.0%) | 1 | 0 | 36 |
-| android | 4157 (17.9%) | 19092 (82.0%) | 1 | 0 | 36 |
+| ios | 4164 (17.9%) | 19085 (82.0%) | 1 | 0 | 36 |
+| android | 4164 (17.9%) | 19085 (82.0%) | 1 | 0 | 36 |
 
 As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
 
@@ -19,7 +19,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 899 / 116 / 0 / 0 / 0 | 899 / 116 / 0 / 0 / 0 | 899 / 116 / 0 / 0 / 0 |
 | typography | 261 | 21 / 240 / 0 / 0 / 0 | 21 / 240 / 0 / 0 / 0 | 21 / 240 / 0 / 0 / 0 |
-| colours | 14842 | 71 / 14771 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 |
+| colours | 14842 | 71 / 14771 / 0 / 0 / 0 | 71 / 14771 / 0 / 0 / 0 | 71 / 14771 / 0 / 0 / 0 |
 | backgrounds | 151 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 |
 | borders | 250 | 75 / 175 / 0 / 0 / 0 | 75 / 175 / 0 / 0 / 0 | 75 / 175 / 0 / 0 / 0 |
 | effects | 1178 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 |
@@ -28,7 +28,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | transitions-animation | 36 | 19 / 17 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 |
 | transforms | 680 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 |
 | interactivity | 1246 | 4 / 1242 / 0 / 0 / 0 | 4 / 1206 / 0 / 0 / 36 | 4 / 1206 / 0 / 0 / 36 |
-| svg | 6 | 6 / 0 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 |
+| svg | 6 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 |
 | accessibility | 4 | 0 / 4 / 0 / 0 / 0 | 0 / 4 / 0 / 0 / 0 | 0 / 4 / 0 / 0 / 0 |
 
 ## Largest refusal groups (first blocking diagnostic)
