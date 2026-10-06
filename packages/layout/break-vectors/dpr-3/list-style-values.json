@@ -1,0 +1,13 @@
+{
+  "case": "list-style-values",
+  "dpr": 3,
+  "texts": [
+    {"id":"li1:text0","lines":[[0,2]]},
+    {"id":"li2:text0","lines":[[0,1]]},
+    {"id":"li3:text0","lines":[[0,3]]},
+    {"id":"dec:text0","lines":[[0,2]]},
+    {"id":"str:text0","lines":[[0,2]]},
+    {"id":"pos:text0","lines":[[0,1]]},
+    {"id":"img:text0","lines":[[0,2]]}
+  ]
+}

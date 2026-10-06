@@ -93,7 +93,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 47.0476px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -179,7 +183,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 47.0476px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -265,7 +273,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 4.95238px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -371,7 +383,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "0px 0px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -487,7 +503,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 9.90476px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -593,7 +613,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "0px 0px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -709,7 +733,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "25px 9.90476px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -835,7 +863,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "0px 0px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -951,7 +983,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "15px 9.90476px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1057,7 +1093,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "0px 0px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1173,7 +1213,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "30px 12.381px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1299,7 +1343,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "0px 0px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {

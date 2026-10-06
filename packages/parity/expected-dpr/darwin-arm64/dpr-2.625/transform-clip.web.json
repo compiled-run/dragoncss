@@ -93,7 +93,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 108.81px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -179,7 +183,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 98.8095px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -265,7 +273,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "73.8095px 43.8095px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -351,7 +363,11 @@
         "pointer-events": "auto",
         "transform": "matrix(0.939693, 0.34202, -0.34202, 0.939693, 0, 0)",
         "transform-origin": "75px 15px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -437,7 +453,11 @@
         "pointer-events": "auto",
         "transform": "matrix(0.978148, -0.207912, 0.207912, 0.978148, 0, 0)",
         "transform-origin": "60px 35px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -523,7 +543,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "50px 20px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     }
   ]

@@ -16846,7 +16846,7 @@
     "css/css-flexbox/overflow-area-002.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/overflow-area-003.html": {"interop":["interop-2023-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/overflow-auto-001.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
-    "css/css-flexbox/overflow-auto-002.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNSUPPORTED_PROPERTY:list-style: none","status":"not-runnable"},
+    "css/css-flexbox/overflow-auto-002.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNSUPPORTED_VALUE:overflow-x:auto","status":"not-runnable"},
     "css/css-flexbox/overflow-auto-003.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNSUPPORTED_PROPERTY:visibility: hidden","status":"not-runnable"},
     "css/css-flexbox/overflow-auto-004.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNSUPPORTED_VALUE:overflow-x:auto","status":"not-runnable"},
     "css/css-flexbox/overflow-auto-005.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},

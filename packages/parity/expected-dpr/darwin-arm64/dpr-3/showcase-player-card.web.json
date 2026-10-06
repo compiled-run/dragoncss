@@ -93,7 +93,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 150px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -179,7 +183,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 150px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -265,7 +273,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 150px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -351,7 +363,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "176px 104px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -437,7 +453,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "160px 36px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -523,7 +543,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "36px 36px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -609,7 +633,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "118px 28px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -695,7 +723,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "118px 8px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -801,7 +833,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "118px 6px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -907,7 +943,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "28.5px 8px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1013,7 +1053,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "160px 3px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1099,7 +1143,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "100.198px 3px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1185,7 +1233,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "160px 6px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1271,7 +1323,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "20px 6px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1377,7 +1433,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "20px 6px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1483,7 +1543,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "160px 21px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1569,7 +1633,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "14px 14px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1655,7 +1723,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "21px 21px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1741,7 +1813,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "14px 14px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1827,7 +1903,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "160px 2px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1913,7 +1993,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "52px 2px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -1999,7 +2083,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "52px 2px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -2085,7 +2173,11 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "52px 2px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     }
   ]
