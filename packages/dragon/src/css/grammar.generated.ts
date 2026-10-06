@@ -111,7 +111,7 @@ export const properties: { readonly [name: string]: PropertyGrammar } = {
   "list-style": { syntax: "<'list-style-position'> || <'list-style-image'> || <'list-style-type'>", initial: "see individual properties", inherited: "see individual properties" },
   "list-style-image": { syntax: "<image> | none", initial: "none", inherited: "yes" },
   "list-style-position": { syntax: "inside | outside", initial: "outside", inherited: "yes" },
-  "list-style-type": { syntax: "<counter-style> | <string> | none", initial: "disc", inherited: "yes" },
+  "list-style-type": { syntax: "<counter-style-name> | <string> | none", initial: "disc", inherited: "yes" },
   "margin": { syntax: "<'margin-top'>{1,4}", initial: "0", inherited: "no" },
   "margin-block": { syntax: "<'margin-top'>{1,2}", initial: "see individual properties", inherited: "see individual properties" },
   "margin-block-end": { syntax: "<'margin-top'>", initial: "0", inherited: "no" },

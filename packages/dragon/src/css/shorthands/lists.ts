@@ -13,17 +13,26 @@ import { explicit, implicit } from './shared.ts';
 
 const identOf = (t: CssNode): string | null => (t.type === 'Identifier' ? asciiLower(String(t['name'])) : null);
 
-/** The list-style-type value of a token that is neither a position, none, nor an image. */
+/** The list-style-type value of a token that is neither the position, none, nor an image: a string or a counter-style name. */
 function typeValue(t: CssNode): CssValue {
   if (t.type === 'String') return stringValue(String(t['value']));
   const ident = identOf(t);
-  if (ident !== null) return kw(ident);
-  return { kind: 'other', type: `${asciiLower(String(t['name']))}()`, text: generate(t) };
+  if (ident === null) throw new Error(`list-style: ${generate(t)} passed the grammar as a list-style-type`);
+  return kw(ident);
 }
 
 const listStyle: ShorthandHandler = {
   longhands: ['list-style-position', 'list-style-image', 'list-style-type'],
   refuse: (tokens, base) => {
+    // webref's <image> takes functions Chrome does not parse (element(), image()), which Chrome drops with the declaration.
+    const unparsed = tokens.find((t) => t.type === 'Function' && !isImageToken(t));
+    if (unparsed !== undefined) {
+      return diagnostic('DRAGON_CSS_INVALID_VALUE', {
+        origin: authored(spanOf(unparsed, base)),
+        message: `"${generate(unparsed)}" is not a valid value for list-style: Chrome 145 parses no ${asciiLower(String(unparsed['name']))}() image`,
+        manual: 'Use a value that matches the list-style grammar.',
+      });
+    }
     const image = tokens.find(isImageToken);
     if (image === undefined) return null;
     return diagnostic('DRAGON_UNSUPPORTED_VALUE', {
@@ -38,7 +47,8 @@ const listStyle: ShorthandHandler = {
     let nones = 0;
     for (const t of tokens) {
       const ident = identOf(t);
-      if (ident === 'inside' || ident === 'outside') position = kw(ident);
+      // A second position keyword is a counter-style name (Chrome: list-style: inside outside has type outside).
+      if ((ident === 'inside' || ident === 'outside') && position === null) position = kw(ident);
       else if (ident === 'none') nones++;
       else type = typeValue(t);
     }

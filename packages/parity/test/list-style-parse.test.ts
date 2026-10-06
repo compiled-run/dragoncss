@@ -29,15 +29,16 @@ const MATRIX: { readonly [property: string]: readonly string[] } = {
     'normal', 'none', 'NONE', "'a'", "'a' 'b'", `"a" ''`, "''", `'\\'q\\''`, "'a' / 'alt'", 'counter(x)', "counters(x, '.')", 'attr(data-x)', 'open-quote', 'close-quote',
     'no-open-quote', 'no-close-quote', 'url(x.png)', "'a' url(x.png)", "url(x.png) 'a'", 'linear-gradient(red, blue)', "image-set('x.png' 1x)",
     "'a' counter(x) attr(y)", "'a' / counter(x)", "normal 'a'", 'none none', "'a' / 'b' / 'c'", "url(x.png) / 'alt'", "open-quote / 'x'",
-    "'a' open-quote", 'disc', "'a' 1", 'counter(x, upper-roman)', 'inherit', 'initial',
+    "'a' open-quote", 'disc', "'a' 1", 'counter(x, upper-roman)', 'inherit', 'initial', 'content(text)', 'leader(dotted)', 'string(x)', 'element(#a)',
+    "cross-fade(url(x.png), url(y.png), 50%)", "-webkit-cross-fade(url(x.png), url(y.png), 50%)", 'image(red)', "-webkit-image-set('x.png' 1x)", 'repeating-conic-gradient(red, blue)',
   ],
-  'list-style-type': ['disc', 'circle', 'square', 'decimal', 'none', 'NONE', 'Disc', "'>> '", "''", 'lower-roman', 'disclosure-open', "symbols(cyclic '*')", "'a' 'b'", '0', 'inside', 'inherit'],
+  'list-style-type': ['disc', 'circle', 'square', 'decimal', 'none', 'NONE', 'Disc', "'>> '", "''", 'lower-roman', 'disclosure-open', "symbols(cyclic '*')", "'a' 'b'", '0', 'inside', 'inherit', 'default', 'Foo', 'element(#a)'],
   'list-style-position': ['inside', 'outside', 'INSIDE', 'none', 'inherit'],
-  'list-style-image': ['none', 'url(x.png)', 'linear-gradient(red, blue)', "'x.png'", "image-set('x.png' 1x)", 'inherit'],
+  'list-style-image': ['none', 'url(x.png)', 'linear-gradient(red, blue)', "'x.png'", "image-set('x.png' 1x)", 'inherit', 'element(#a)', 'image(red)', "cross-fade(url(x.png), url(y.png), 50%)"],
   'list-style': [
     'none', 'inside', 'outside', 'disc', "'x'", 'none inside', 'inside none', 'none outside', 'none none', 'none none none', 'url(x.png) none', 'none url(x.png)',
     'disc none', 'none disc', 'square inside url(x.png)', 'url(x.png)', 'url(x.png) url(y.png)', 'inside outside', "'>> ' inside", "none 'x'",
-    'inside none none', 'none inside none', 'decimal inside', 'circle outside', 'NONE', 'inherit', 'initial',
+    'inside none none', 'none inside none', 'decimal inside', 'circle outside', 'NONE', 'inherit', 'initial', 'outside inside', 'inside inside', 'default', 'element(#a)', "symbols(cyclic '*')",
   ],
 };
 

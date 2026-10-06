@@ -36,7 +36,8 @@ export const stringValue = (s: string): CssValue => ({ kind: 'other', type: STRI
 
 /** The package that owns each kind of content Dragon does not generate yet (notes/T151-gen-spec.md R3, R15). */
 const IMAGE_OWNER = 'images in generated content and list-style-image (GEN-d4)';
-const IMAGE_FUNCTIONS: ReadonlySet<string> = new Set(['url', 'image', 'image-set', '-webkit-image-set', 'cross-fade', '-webkit-cross-fade', 'element', '-moz-element', 'paint',
+/** The <image> functions Chrome 145 parses (probed by packages/parity/test/list-style-parse.test.ts); a url token is one too. */
+const IMAGE_FUNCTIONS: ReadonlySet<string> = new Set(['url', 'image-set', '-webkit-image-set', 'cross-fade', '-webkit-cross-fade',
   'linear-gradient', 'radial-gradient', 'conic-gradient', 'repeating-linear-gradient', 'repeating-radial-gradient', 'repeating-conic-gradient',
   '-webkit-linear-gradient', '-webkit-radial-gradient', '-webkit-repeating-linear-gradient', '-webkit-repeating-radial-gradient', '-webkit-gradient']);
 const CONTENT_FUNCTIONS: { readonly [name: string]: string } = {
@@ -46,22 +47,23 @@ const CONTENT_FUNCTIONS: { readonly [name: string]: string } = {
 };
 const QUOTES: ReadonlySet<string> = new Set(['open-quote', 'close-quote', 'no-open-quote', 'no-close-quote']);
 
-/** Whether a token is an <image>: a url token or an image function. */
+/** Whether a token is an <image> Chrome parses: a url token or an image function. */
 export function isImageToken(t: CssNode): boolean {
   return t.type === 'Url' || (t.type === 'Function' && IMAGE_FUNCTIONS.has(asciiLower(String(t['name']))));
 }
 
-/** Why a content token is not generated yet, naming its owner package; null for a <string>. */
-function contentRefusal(t: CssNode): string | null {
+/**
+ * Why a content token is not generated yet, naming its owner package; null for a <string>, and 'invalid' for a token Chrome's
+ * content parser (Blink Content::ParseSingleValue) does not take though webref's grammar does (a bare identifier, content(),
+ * leader(), string(), element()).
+ */
+function contentRefusal(t: CssNode): string | null | 'invalid' {
   if (t.type === 'String') return null;
   if (isImageToken(t)) return `an image in content: ${IMAGE_OWNER}`;
-  if (t.type === 'Operator') return 'alternative text after "/": the accessible name of generated content (GEN-d5)';
+  if (t.type === 'Operator' && String(t['value']) === '/') return 'alternative text after "/": the accessible name of generated content (GEN-d5)';
   if (t.type === 'Identifier' && QUOTES.has(asciiLower(String(t['name'])))) return 'quotes and the quote depth (GEN-d2)';
-  if (t.type === 'Function') {
-    const owner = CONTENT_FUNCTIONS[asciiLower(String(t['name']))];
-    return owner === undefined ? `${asciiLower(String(t['name']))}() in content (GEN-d)` : owner;
-  }
-  return 'this content value (GEN-d)';
+  if (t.type === 'Function') return CONTENT_FUNCTIONS[asciiLower(String(t['name']))] ?? 'invalid';
+  return 'invalid';
 }
 
 const ok = (property: Longhand, value: CssValue): ParsedValue => ({ kind: 'ok', longhands: [{ property, value, explicit: true }] });
@@ -73,26 +75,29 @@ function refuse(property: string, node: CssNode, base: Span, reason: string, man
 /**
  * The value of content, list-style-type or list-style-image after the grammar matched (stylesheet.ts parseValue). content: normal
  * and none are keywords, and a list of strings is one string (css-content-3 §2; Blink joins adjacent strings into one item,
- * longhands_custom.cc Content::ApplyValue); anything else is refused at its first token, naming its owner. list-style-type: a
- * keyword, a string or symbols(). list-style-image: none, or an image, which is refused.
+ * longhands_custom.cc Content::ApplyValue); counters, quotes, attr(), images and alt text are refused at their first token, naming
+ * their owner, and a token Chrome does not parse is invalid. list-style-type: a keyword or a string. list-style-image: none, or an
+ * image, which is refused.
  */
 export function parseListsValue(property: Longhand, tokens: readonly CssNode[], base: Span): ParsedValue {
   const only = tokens.length === 1 ? (tokens[0] as CssNode) : null;
   const keyword = only !== null && only.type === 'Identifier' ? asciiLower(String(only['name'])) : null;
   if (property === 'content') {
     if (keyword === 'normal' || keyword === 'none') return ok(property, kw(keyword));
-    for (const t of tokens) {
-      const reason = contentRefusal(t);
-      if (reason !== null) return refuse(property, t, base, reason, 'Write content as normal, none or strings.');
+    const reasons = tokens.map(contentRefusal);
+    if (reasons.includes('invalid')) return { kind: 'invalid' };
+    for (const [i, reason] of reasons.entries()) {
+      if (reason !== null) return refuse(property, tokens[i] as CssNode, base, reason, 'Write content as normal, none or strings.');
     }
     return ok(property, stringValue(tokens.map((t) => String(t['value'])).join('')));
   }
   if (property === 'list-style-image') {
     if (keyword === 'none') return ok(property, kw('none'));
-    return refuse(property, tokens[0] as CssNode, base, IMAGE_OWNER, 'Set list-style-image: none.');
+    if (only === null || !isImageToken(only)) return { kind: 'invalid' };
+    return refuse(property, only, base, IMAGE_OWNER, 'Set list-style-image: none.');
   }
-  if (only === null) return { kind: 'multi' };
-  if (only.type === 'String') return ok(property, stringValue(String(only['value'])));
+  // list-style-type: the grammar (Chrome's, scripts/gen-css-grammar.ts) admits one keyword or one string.
+  if (only !== null && only.type === 'String') return ok(property, stringValue(String(only['value'])));
   if (keyword !== null) return ok(property, kw(keyword));
-  return ok(property, { kind: 'other', type: `${asciiLower(String(only['name']))}()`, text: generate(only) });
+  return { kind: 'invalid' };
 }
