@@ -593,6 +593,11 @@ export type BatchOps<T, P extends { head: string }> = {
   base: () => string;
   /** Builds the position of `e` on `prev`. Throws LandFailure to eject `e`; the chain continues on `prev`. */
   build: (prev: string, e: Entry, ticket: T, k: number) => P;
+  /**
+   * Builds the positions of a batch at once (parallel position builds): the same results, in the same order, as `build` on each
+   * in turn, each slot a position or the error that ejects its PR. Absent, or returning null, the positions build one by one.
+   */
+  buildAll?: (base: string, items: readonly { entry: Entry; ticket: T }[]) => readonly ({ position: P } | { error: unknown })[] | null;
   /** Checks the built chain is exactly the positions it claims to be; any error is fatal. */
   verify: (built: readonly { entry: Entry; ticket: T; position: P }[]) => void;
   /** Proves the tree of one position (the full test). Throws LandFailure at step "test" when the test fails. */
@@ -606,6 +611,78 @@ export type BatchOps<T, P extends { head: string }> = {
   onFail: (e: Entry, f: LandFailure) => void;
   onOutcome: (outcomes: readonly Outcome[]) => void;
   log: (line: string) => void;
+};
+
+/**
+ * Parallel position builds. Position k's sources are master with the PRs 1..k merged, whatever the builds of the positions below
+ * it do, so each is prepared at once in its own worktree (the merges, the install and a regen to its fixed point, under the heavy
+ * lease's slots): `speculate`. Then, in order, each position is assembled on the actual position below it (`assemble`: the same
+ * merge the one-by-one build makes, its tree the prepared one, then the device step and the checks), so its commit is exactly
+ * the chain's. When a position is ejected, every prepared position above it included that PR, so they are abandoned and built
+ * one by one on the chain without it (`sequential`); so are positions whose preparation failed. The device runs, on the device
+ * lease, take turns in order while the later preparations run.
+ */
+export type ParallelHooks<T, P, H> = {
+  /** Starts preparing position k (1-based) from the first k items; a throw marks it unprepared. */
+  speculate: (k: number, items: readonly { entry: Entry; ticket: T }[]) => H;
+  /** Waits for a preparation; a throw (its regen failed) ejects that PR, as the one-by-one build's regen failure would. */
+  await: (handle: H) => void;
+  /** Assembles position k on `prev` from its preparation. */
+  assemble: (prev: string, item: { entry: Entry; ticket: T }, k: number, handle: H) => P;
+  /** The one-by-one build of position k on `prev`. */
+  sequential: (prev: string, item: { entry: Entry; ticket: T }, k: number) => P;
+  /** Stops a preparation that will not be used. */
+  abandon: (handle: H) => void;
+  log: (line: string) => void;
+};
+
+export const buildPositionsParallel = <T, P extends { head: string }, H>(base: string, items: readonly { entry: Entry; ticket: T }[], hooks: ParallelHooks<T, P, H>): ({ position: P } | { error: unknown })[] => {
+  const handles: ({ ok: H } | { failed: unknown })[] = items.map((_, i) => {
+    try {
+      return { ok: hooks.speculate(i + 1, items.slice(0, i + 1)) };
+    } catch (error) {
+      return { failed: error };
+    }
+  });
+  const slots: ({ position: P } | { error: unknown })[] = [];
+  let prev = base;
+  let k = 0;
+  // Speculation holds while every position below built from its preparation: the prepared sources are the chain's.
+  let speculating = true;
+  for (const [i, item] of items.entries()) {
+    const h = handles[i]!;
+    try {
+      let position: P;
+      if (speculating && 'ok' in h) {
+        try {
+          hooks.await(h.ok);
+        } catch (error) {
+          if (error instanceof Fatal) throw error;
+          speculating = false;
+          throw error;
+        }
+        position = hooks.assemble(prev, item, k + 1, h.ok);
+      } else {
+        if (speculating) {
+          hooks.log(`parallel build: #${item.entry.pr}'s preparation failed (${'failed' in h ? (h.failed instanceof Error ? h.failed.message : String(h.failed)) : ''}); building it and the positions above it one by one`);
+          speculating = false;
+        }
+        position = hooks.sequential(prev, item, k + 1);
+      }
+      slots.push({ position });
+      prev = position.head;
+      k++;
+    } catch (error) {
+      if (error instanceof Fatal) throw error;
+      slots.push({ error });
+      if (speculating) hooks.log(`parallel build: #${item.entry.pr} is ejected; the positions above it are built one by one without it`);
+      speculating = false;
+    }
+    // Once speculation ends, the preparations above are of chains that are not the actual one.
+    if (!speculating) for (const later of handles.slice(i + 1)) if ('ok' in later) hooks.abandon(later.ok);
+    if (!speculating) for (let j = i + 1; j < handles.length; j++) handles[j] = { failed: 'abandoned' };
+  }
+  return slots;
 };
 
 export const MAX_BATCH = 8;
@@ -675,7 +752,7 @@ export type Prepared<T, P> = {
   proven: number[];
   culprit: { index: number; failure: LandFailure } | null;
 };
-export type PrepareOps<T, P extends { head: string }> = Pick<BatchOps<T, P>, 'admit' | 'build' | 'verify' | 'prove' | 'proveMaster' | 'log'>;
+export type PrepareOps<T, P extends { head: string }> = Pick<BatchOps<T, P>, 'admit' | 'build' | 'buildAll' | 'verify' | 'prove' | 'proveMaster' | 'log'>;
 
 export const prepareRound = <T, P extends { head: string }>(
   queue: Entry[],
@@ -716,14 +793,27 @@ export const prepareRound = <T, P extends { head: string }>(
   }
   let prev = b;
   const built: { entry: Entry; ticket: T; position: P }[] = [];
-  for (const m of admitted) {
-    at(m.entry);
-    try {
-      const position = ops.build(prev, m.entry, m.ticket, built.length + 1);
-      built.push({ ...m, position });
-      prev = position.head;
-    } catch (error) {
-      failure(m.entry, error);
+  const all = admitted.length > 1 && ops.buildAll !== undefined ? ops.buildAll(b, admitted) : null;
+  if (all !== null) {
+    if (all.length !== admitted.length) throw new Fatal(`the parallel build returned ${all.length} slots for ${admitted.length} PRs`);
+    for (const [i, m] of admitted.entries()) {
+      at(m.entry);
+      const slot = all[i]!;
+      if ('position' in slot) {
+        built.push({ ...m, position: slot.position });
+        prev = slot.position.head;
+      } else failure(m.entry, slot.error);
+    }
+  } else {
+    for (const m of admitted) {
+      at(m.entry);
+      try {
+        const position = ops.build(prev, m.entry, m.ticket, built.length + 1);
+        built.push({ ...m, position });
+        prev = position.head;
+      } catch (error) {
+        failure(m.entry, error);
+      }
     }
   }
   if (built.length === 0) return none(b);
