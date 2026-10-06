@@ -125,10 +125,10 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
  * hit to the rounded border box), so it is never silently mis-hit.
  */
 export function hitRefusal(n: NativeCase): string | null {
-  const writing = (kind: string): string[] => n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === kind)).map((x) => x.id);
-  const moved = writing('transform');
+  const moved = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
-  const rounded = writing('border-radius');
+  // PNT1-radius: Blink clips a hit to the rounded border box, which the hit test does not model yet.
+  const rounded = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'border-radius')).map((x) => x.id);
   return rounded.length === 0 ? null : `border-radius on ${rounded.join(', ')}: hit testing through rounded corners is not modelled yet (PNT1)`;
 }
 
