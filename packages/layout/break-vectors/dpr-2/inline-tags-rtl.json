@@ -1,0 +1,24 @@
+{
+  "case": "inline-tags-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"s:text0","lines":[[0,2]]},
+    {"id":"t1:text0","lines":[[0,3]]},
+    {"id":"t1a:text0","lines":[[0,3]]},
+    {"id":"t1l:text0","lines":[[0,2]]},
+    {"id":"t1:text1","lines":[[1,3]]},
+    {"id":"t2:text0","lines":[[0,3]]},
+    {"id":"t2s:text0","lines":[[0,3],[3,5]]},
+    {"id":"t2:text1","lines":[[1,3]]},
+    {"id":"t2:text2","lines":[[0,2]]},
+    {"id":"t3:text0","lines":[[0,3]]},
+    {"id":"t3s:text0","lines":[[0,2]]},
+    {"id":"t4f:text0","lines":[[0,3]]},
+    {"id":"t4i:text0","lines":[[0,2]]},
+    {"id":"t4d:text0","lines":[[0,3]]},
+    {"id":"t4a:text0","lines":[[0,2]]},
+    {"id":"t5:text0","lines":[[0,2]]},
+    {"id":"t5s:text0","lines":[[0,2]]},
+    {"id":"t5d:text0","lines":[[0,2]]}
+  ]
+}

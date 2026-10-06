@@ -217,7 +217,7 @@ describe('the stack tree of a layout tree with a replaced leaf (REPL-a)', () => 
     const style = (position: string): LayoutBox['style'] => ({ position, display: 'block', overflowX: 'visible' }) as unknown as LayoutBox['style'];
     const el = (z: number | null, opacity = 1): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: z === null ? { kind: 'keyword', value: 'auto' } : zIndexValue(z) }], ['opacity', { value: { kind: 'number', value: opacity } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
     const img: LayoutNode = { kind: 'replaced', id: 'img', style: style('relative') } as unknown as LayoutNode;
-    const root: LayoutBox = { kind: 'box', id: 'root', boxType: 'element', style: style('static'), children: [img] };
+    const root: LayoutBox = { kind: 'box', id: 'root', boxType: 'element', style: style('static'), strut: null, children: [img] };
     const tree = layoutStackTree(root, new Map([['root', el(null)], ['img', el(3, 0.5)]]));
     expect(tree.children).toEqual([{ id: 'img', position: 'relative', z: 3, opacity: 0.5, transformed: false, clips: false, text: false, children: [] }]);
     expect(() => layoutStackTree(root, new Map([['root', el(null)]]))).toThrow('img: no resolved element for the layout box');
