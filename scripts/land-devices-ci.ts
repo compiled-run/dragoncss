@@ -77,20 +77,58 @@ export function outcomeFiles(files: readonly string[]): string[] {
  */
 export class CiUnavailable extends Error {}
 
-/** The jobs of a run (gh run view --json jobs), checked: each with a name and a status. */
-export function parseJobs(text: string): { name: string; status: string; conclusion: string | null }[] {
+export type CiStep = { name: string; status: string; conclusion: string | null };
+export type CiJob = { name: string; status: string; conclusion: string | null; steps: CiStep[] };
+
+const optStr = (x: unknown): boolean => x === undefined || x === null || typeof x === 'string';
+
+/** The jobs of a run (gh run view --json jobs), checked: each with a name, a status, a conclusion and its steps. */
+export function parseJobs(text: string): CiJob[] {
   const v = JSON.parse(text) as { jobs?: unknown };
   if (typeof v !== 'object' || v === null || !Array.isArray(v.jobs)) throw new Error(`unexpected gh run jobs JSON: ${text.slice(0, 200)}`);
   return v.jobs.map((j: unknown) => {
-    const o = j as { name?: unknown; status?: unknown; conclusion?: unknown };
-    if (typeof o?.name !== 'string' || typeof o.status !== 'string' || !(o.conclusion === undefined || o.conclusion === null || typeof o.conclusion === 'string')) throw new Error(`unexpected gh run job: ${JSON.stringify(j).slice(0, 200)}`);
-    return { name: o.name, status: o.status, conclusion: (o.conclusion as string | null | undefined) || null };
+    const o = j as { name?: unknown; status?: unknown; conclusion?: unknown; steps?: unknown };
+    if (typeof o?.name !== 'string' || typeof o.status !== 'string' || !optStr(o.conclusion) || !(o.steps === undefined || Array.isArray(o.steps))) throw new Error(`unexpected gh run job: ${JSON.stringify(j).slice(0, 200)}`);
+    const steps = ((o.steps as unknown[] | undefined) ?? []).map((st: unknown): CiStep => {
+      const x = st as { name?: unknown; status?: unknown; conclusion?: unknown };
+      if (typeof x?.name !== 'string' || typeof x.status !== 'string' || !optStr(x.conclusion)) throw new Error(`unexpected gh run step: ${JSON.stringify(st).slice(0, 200)}`);
+      return { name: x.name, status: x.status, conclusion: (x.conclusion as string | null | undefined) || null };
+    });
+    return { name: o.name, status: o.status, conclusion: (o.conclusion as string | null | undefined) || null, steps };
   });
 }
 
-/** The real jobs (not the resolve job) that ran and concluded failure: the only CI outcome that is a verdict on the tree. */
-export const failedJobs = (jobs: readonly { name: string; status: string; conclusion: string | null }[]): string[] =>
-  jobs.filter((j) => j.name !== 'resolve' && j.status === 'completed' && (j.conclusion === 'failure' || j.conclusion === 'timed_out')).map((j) => j.name);
+/**
+ * The steps whose failure judges the tree: the tests, the summary, the regen check, the blocked scan (full-test.yml) and a device
+ * run, its merge and comparison (device-lanes.yml). Every other step (checkout, pnpm install, the toolchain and Chromium and WPT
+ * downloads, the runtime and SDK installs, cache and artifact steps) is setup: its failure says nothing about the tree.
+ */
+export const SUMMARY_STEP = "Every test's state";
+export const VERDICT_STEP = /^(vitest run|Every test's state|pnpm regen --check|No native run was blocked|Device run |Merge the device outcomes|Compare every device lane)/;
+
+/**
+ * The real jobs (not the resolve job) that failed, split by the step that failed: a verdict step (a failure of the tree) or a
+ * setup step (CI's own trouble). A job that failed or timed out with no failed step is judged by the step it stopped in.
+ */
+export function failedJobs(jobs: readonly CiJob[]): { verdict: string[]; setup: string[] } {
+  const verdict: string[] = [];
+  const setup: string[] = [];
+  for (const j of jobs) {
+    if (j.name === 'resolve' || j.status !== 'completed' || (j.conclusion !== 'failure' && j.conclusion !== 'timed_out')) continue;
+    const step = j.steps.find((st) => st.conclusion === 'failure') ?? j.steps.find((st) => st.status !== 'completed' || (st.conclusion !== 'success' && st.conclusion !== 'skipped'));
+    if (step !== undefined && VERDICT_STEP.test(step.name)) verdict.push(`${j.name} (${step.name})`);
+    else setup.push(`${j.name} (${step?.name ?? 'no step'})`);
+  }
+  // The summary fails whenever a shard wrote no report, and a shard that died in setup writes none: with a setup failure in the
+  // run, the summary's failure is that shard's, not the tree's (#199 review).
+  if (setup.length > 0) {
+    for (const v of verdict.filter((x) => x.includes(`(${SUMMARY_STEP}`))) {
+      verdict.splice(verdict.indexOf(v), 1);
+      setup.push(v);
+    }
+  }
+  return { verdict, setup };
+}
 
 /** A workflow the driver runs for one commit: dispatched on master with the commit, found by its run-name, waited for. */
 export type CiWorkflow = {
@@ -163,9 +201,11 @@ export function runOnCi(w: CiWorkflow, o: { readonly branch: string; readonly de
       const over = deps.now() - t0 > o.waitS * 1000;
       if (over || (!started && deps.now() - t0 > startS * 1000)) {
         const jobs = jobsOf(run.databaseId);
-        // A job that already ran and failed is a verdict, whatever the rest of the run is doing.
+        // A job that already failed at a verdict step is a verdict, whatever the rest of the run is doing; one that failed at a
+        // setup step judged nothing.
         const failed = failedJobs(jobs);
-        if (failed.length > 0) throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} has failed jobs (${failed.join(', ')})${explainOf(run.databaseId)}`);
+        if (failed.verdict.length > 0) throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} has failed jobs (${failed.verdict.join(', ')})${explainOf(run.databaseId)}`);
+        if (failed.setup.length > 0) throw new CiUnavailable(`the CI ${w.what} run ${run.url} failed in setup (${failed.setup.join(', ')})`);
         // The resolve job (ubuntu, seconds) does not count: the work is in the jobs after it.
         started ||= jobs.some((j) => j.name !== 'resolve' && (j.status === 'in_progress' || j.status === 'completed'));
         const queued = jobs.filter((j) => j.status === 'queued' || j.status === 'waiting' || j.status === 'pending');
@@ -176,10 +216,11 @@ export function runOnCi(w: CiWorkflow, o: { readonly branch: string; readonly de
       run = { ...run, ...parseRunRows(deps.gh(['run', 'view', String(run.databaseId), '--json', 'databaseId,status,conclusion,url']))[0]! };
     }
     if (run.conclusion !== 'success') {
-      // Only real jobs that concluded failure judge the tree; a cancelled run, or one whose jobs did not fail, judged nothing.
+      // Only a real job that failed at a verdict step judges the tree; a cancelled run, or failures only in setup steps (an install,
+      // a download), judged nothing and never blame the PR.
       const failed = failedJobs(jobsOf(run.databaseId));
-      if (failed.length === 0) throw new CiUnavailable(`the CI ${w.what} run ${run.url} concluded ${run.conclusion ?? 'without a conclusion'} with no failed job`);
-      throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} concluded ${run.conclusion ?? 'without a conclusion'}; failed jobs: ${failed.join(', ')}${explainOf(run.databaseId)}`);
+      if (failed.verdict.length === 0) throw new CiUnavailable(`the CI ${w.what} run ${run.url} concluded ${run.conclusion ?? 'without a conclusion'} with no failed test or device step${failed.setup.length === 0 ? '' : ` (failed in setup: ${failed.setup.join(', ')})`}`);
+      throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} concluded ${run.conclusion ?? 'without a conclusion'}; failed jobs: ${failed.verdict.join(', ')}${explainOf(run.databaseId)}`);
     }
     if (w.artifact === null) {
       deps.log(`  ${w.what} on CI: passed, ${run.url} in ${Math.round((deps.now() - t0) / 1000)}s`);
@@ -241,7 +282,12 @@ export function failedTestsOf(text: string): string {
 }
 
 /** full-test.yml for one commit: no artifact on success; a failure names its failing tests. */
-export const fullTestWorkflow = (explain: (runId: number) => string | null): CiWorkflow => ({ workflow: FULL_TEST_WORKFLOW_FILE, step: 'test', what: 'full test', title: fullTestTitle, inputs: [], artifact: null, check: (f) => f, explain });
+/**
+ * full-test.yml for one commit: no artifact on success; a failure names its failing tests. regen=false: the driver's build has
+ * already run pnpm regen on the tree (it exits 0 only at a fixed point) and committed the outcome, so the workflow's regen check
+ * would re-prove that.
+ */
+export const fullTestWorkflow = (explain: (runId: number) => string | null): CiWorkflow => ({ workflow: FULL_TEST_WORKFLOW_FILE, step: 'test', what: 'full test', title: fullTestTitle, inputs: ['regen=false'], artifact: null, check: (f) => f, explain });
 
 /** The run-name a workflow gives a dispatch for a commit, to find a run whose id was never recorded. */
 export const titleOf = (workflow: string, sha: string): string | null => (workflow === DEVICE_WORKFLOW ? runTitle(sha) : workflow === FULL_TEST_WORKFLOW_FILE ? fullTestTitle(sha) : null);

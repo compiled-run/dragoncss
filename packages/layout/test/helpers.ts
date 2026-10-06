@@ -44,6 +44,8 @@ export const divStyle: LayoutStyle = {
   columnGap: { kind: 'normal' },
   textAlign: 'start',
   aspectRatio: { kind: 'auto' },
+  grid: null,
+  gridItem: null,
 };
 
 export function box(id: string, style: Partial<LayoutStyle>, children: (LayoutBox | TextLeaf)[] = []): LayoutBox {

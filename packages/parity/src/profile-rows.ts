@@ -1,7 +1,7 @@
 // Profile rows derived from a parity run (M1): the single definition used by scripts/gen-profile-rows.ts and by the
 // committed profile-proof test in parity.test.ts.
 import type { Longhand, ProfileRow, Proof } from 'dragon';
-import { PROPERTY_ASPECTS } from 'dragon';
+import { MEDIA_CONTEXT, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
 import { DEVICE_CHECK_LANES } from './device-lanes.ts';
@@ -74,6 +74,23 @@ export function deriveAnimationRows(target: ProfileTarget, passing: readonly { r
     const ids = passing.filter((c) => c.features.includes(feature)).map((c) => c.id);
     const valueSubset = feature.slice(feature.indexOf(':') + 1);
     return { feature, context: ANIMATION_CONTEXT, status: 'exact', proofs: [{ aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context: ANIMATION_CONTEXT, cases: ids }] };
+  });
+}
+
+/**
+ * MQ-R1 (notes/T067 R13): the media rows (context `media`) from the resize cases that pass the resize host lanes
+ * (resize-capture.ts resizeReport): native through the band runtime's engine frames and colours against Chrome after every step,
+ * web through chrome-dual after every step. A native target accepts @media only with these rows (project.ts gateMediaFeatures).
+ */
+export function deriveMediaRows(target: ProfileTarget, passing: readonly { readonly id: string; readonly features: readonly string[] }[]): ProfileRow[] {
+  const features = [...new Set(passing.flatMap((c) => c.features))].sort();
+  return features.map((feature) => {
+    const ids = passing.filter((c) => c.features.includes(feature)).map((c) => c.id);
+    const valueSubset = feature.slice(feature.indexOf(':') + 1);
+    const proof: Proof = target === 'web'
+      ? { aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context: MEDIA_CONTEXT, cases: ids }
+      : { aspect: 'layout', lane: 'linux-dragon-layout', valueSubset, context: MEDIA_CONTEXT, cases: ids };
+    return { feature, context: MEDIA_CONTEXT, status: 'exact', proofs: [proof] };
   });
 }
 
