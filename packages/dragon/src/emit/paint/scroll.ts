@@ -49,9 +49,10 @@ public final class DragonScrollView: UIScrollView {
     let minY = scrollsY ? r[2] : 0
     let maxY = scrollsY ? r[3] : 0
     if minX > 0 || maxX < minX || minY > 0 || maxY < minY { fatalError("dragon: scroll range \(r) does not hold offset 0") }
+    // UIKit moves an offset resting at the start when the insets change, so the offset is read first and set back, clamped.
+    let o = contentOffset
     contentInset = UIEdgeInsets(top: CGFloat(-minY) / s, left: CGFloat(-minX) / s, bottom: 0, right: 0)
     contentSize = CGSize(width: bounds.width + CGFloat(maxX) / s, height: bounds.height + CGFloat(maxY) / s)
-    let o = contentOffset
     contentOffset = CGPoint(x: min(max(o.x, CGFloat(minX) / s), CGFloat(maxX) / s), y: min(max(o.y, CGFloat(minY) / s), CGFloat(maxY) / s))
   }
 }

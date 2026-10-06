@@ -138,8 +138,8 @@
   }
  },
  "summary": {
-  "diagnostics": 222,
-  "errors": 217,
+  "diagnostics": 218,
+  "errors": 213,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -148,8 +148,6 @@
    "DRAGON_UNPROVEN_CONTEXT [ios]": 2,
    "DRAGON_UNPROVEN_CONTEXT [web]": 4,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
-   "DRAGON_UNSUPPORTED_AT_RULE [android]": 2,
-   "DRAGON_UNSUPPORTED_AT_RULE [ios]": 2,
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
@@ -182,7 +180,6 @@
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 2,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
-     "DRAGON_UNSUPPORTED_AT_RULE": 2,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 37,
@@ -200,7 +197,6 @@
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 2,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
-     "DRAGON_UNSUPPORTED_AT_RULE": 2,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 37,
@@ -220,11 +216,11 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 202,
+  "supportedBothTargets": 223,
   "supportedWeb": 233,
-  "supportedIos": 202,
-  "supportedAndroid": 202,
-  "supportPercent": 69.9,
+  "supportedIos": 223,
+  "supportedAndroid": 223,
+  "supportPercent": 77.2,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -307,7 +303,7 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 112,
+   "A-authored": 108,
    "B-unwrapped": 108,
    "C-context": 128
   }
@@ -3785,11 +3781,9 @@
    "property": "margin-right",
    "value": "0",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 268,
@@ -3799,11 +3793,9 @@
    "property": "left",
    "value": "0.75rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 269,
@@ -3813,11 +3805,9 @@
    "property": "top",
    "value": "0.75rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 270,
@@ -3827,11 +3817,9 @@
    "property": "width",
    "value": "min(calc(100vw - 1.5rem), 22.5rem)",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 271,
@@ -3841,11 +3829,9 @@
    "property": "width",
    "value": "min(72vw, 18rem)",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 272,
@@ -3855,11 +3841,9 @@
    "property": "width",
    "value": "min(80%, 18rem)",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 273,
@@ -3869,11 +3853,9 @@
    "property": "width",
    "value": "100%",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 274,
@@ -3883,11 +3865,9 @@
    "property": "font-size",
    "value": "1.35rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 275,
@@ -3897,11 +3877,9 @@
    "property": "line-height",
    "value": "1.15",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 276,
@@ -3911,11 +3889,9 @@
    "property": "max-width",
    "value": "20rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 277,
@@ -3928,7 +3904,6 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE",
     "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
@@ -3940,11 +3915,9 @@
    "property": "white-space",
    "value": "normal",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 279,
@@ -3954,11 +3927,9 @@
    "property": "width",
    "value": "20rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 280,
@@ -3968,11 +3939,9 @@
    "property": "max-width",
    "value": "18rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 281,
@@ -3982,11 +3951,9 @@
    "property": "width",
    "value": "18rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 282,
@@ -3996,11 +3963,9 @@
    "property": "min-width",
    "value": "2.5rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 283,
@@ -4010,11 +3975,9 @@
    "property": "text-align",
    "value": "center",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 284,
@@ -4024,11 +3987,9 @@
    "property": "display",
    "value": "block",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 285,
@@ -4038,11 +3999,9 @@
    "property": "max-width",
    "value": "20rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 286,
@@ -4052,11 +4011,9 @@
    "property": "padding-inline",
    "value": "1rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 287,
@@ -4066,11 +4023,9 @@
    "property": "display",
    "value": "block",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 288,
@@ -4083,7 +4038,6 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE",
     "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
@@ -4098,8 +4052,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
-    "DRAGON_UNSUPPORTED_AT_RULE"
+    "DRAGON_UNPROVEN_CONTEXT"
    ]
   },
   {
@@ -4110,11 +4063,9 @@
    "property": "margin",
    "value": "0.55rem 0.35rem 0",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   }
  ],
  "diagnostics": [
@@ -5734,82 +5685,6 @@
    "passes": [
     "A-authored",
     "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_AT_RULE|android|css@8438-8746|@media screen and (max-width: 768px) selects rules by the viewport width or height, which the android output does not support until MQ-R",
-   "code": "DRAGON_UNSUPPORTED_AT_RULE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 8438,
-    "end": 8746,
-    "line": 498,
-    "column": 1,
-    "text": "@media screen and (max-width: 768px) {\n\t.App.library-active {\n\t\tmargin-right: 0;\n\t}\n\n\t.mini-video-shell {\n\t\tleft: 0.75rem;\n\t\ttop: 0.75rem;\n\t\twidth: min(calc(100vw - 1.5rem), 22.5rem);\n\t}\n\n\t.record {\n\t\twidth: min(72vw, 18rem);\n\t}\n\n\t.play-control {\n\t\twidth: min(80%, 18rem);\n\t}\n\n\t.library {\n\t\twidth: 100%;\n\t}\n}"
-   },
-   "message": "@media screen and (max-width: 768px) selects rules by the viewport width or height, which the android output does not support until MQ-R",
-   "viaRelated": false,
-   "passes": [
-    "A-authored"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_AT_RULE|ios|css@8438-8746|@media screen and (max-width: 768px) selects rules by the viewport width or height, which the ios output does not support until MQ-R",
-   "code": "DRAGON_UNSUPPORTED_AT_RULE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 8438,
-    "end": 8746,
-    "line": 498,
-    "column": 1,
-    "text": "@media screen and (max-width: 768px) {\n\t.App.library-active {\n\t\tmargin-right: 0;\n\t}\n\n\t.mini-video-shell {\n\t\tleft: 0.75rem;\n\t\ttop: 0.75rem;\n\t\twidth: min(calc(100vw - 1.5rem), 22.5rem);\n\t}\n\n\t.record {\n\t\twidth: min(72vw, 18rem);\n\t}\n\n\t.play-control {\n\t\twidth: min(80%, 18rem);\n\t}\n\n\t.library {\n\t\twidth: 100%;\n\t}\n}"
-   },
-   "message": "@media screen and (max-width: 768px) selects rules by the viewport width or height, which the ios output does not support until MQ-R",
-   "viaRelated": false,
-   "passes": [
-    "A-authored"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_AT_RULE|android|css@8748-9314|@media screen and (max-width: 640px) selects rules by the viewport width or height, which the android output does not support until MQ-R",
-   "code": "DRAGON_UNSUPPORTED_AT_RULE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 8748,
-    "end": 9314,
-    "line": 522,
-    "column": 1,
-    "text": "@media screen and (max-width: 640px) {\n\t.song-container h2 {\n\t\tfont-size: 1.35rem;\n\t\tline-height: 1.15;\n\t\tmax-width: 20rem;\n\t\toverflow-wrap: anywhere;\n\t\twhite-space: normal;\n\t\twidth: 20rem;\n\t}\n\n\t.time-control {\n\t\tmax-width: 18rem;\n\t\twidth: 18rem;\n\t}\n\n\t.time-control p {\n\t\tmin-width: 2.5rem;\n\t\ttext-align: center;\n\t}\n\n\t.youtube-disclosure {\n\t\tdisplay: block;\n\t\tmax-width: 20rem;\n\t\tpadding-inline: 1rem;\n\t}\n\n\t.youtube-disclosure span {\n\t\tdisplay: block;\n\t\toverflow-wrap: anywhere;\n\t}\n\n\t.youtube-disclosure a {\n\t\tdisplay: inline-block;\n\t\tmargin: 0.55rem 0.35rem 0;\n\t}\n}"
-   },
-   "message": "@media screen and (max-width: 640px) selects rules by the viewport width or height, which the android output does not support until MQ-R",
-   "viaRelated": false,
-   "passes": [
-    "A-authored"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_AT_RULE|ios|css@8748-9314|@media screen and (max-width: 640px) selects rules by the viewport width or height, which the ios output does not support until MQ-R",
-   "code": "DRAGON_UNSUPPORTED_AT_RULE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 8748,
-    "end": 9314,
-    "line": 522,
-    "column": 1,
-    "text": "@media screen and (max-width: 640px) {\n\t.song-container h2 {\n\t\tfont-size: 1.35rem;\n\t\tline-height: 1.15;\n\t\tmax-width: 20rem;\n\t\toverflow-wrap: anywhere;\n\t\twhite-space: normal;\n\t\twidth: 20rem;\n\t}\n\n\t.time-control {\n\t\tmax-width: 18rem;\n\t\twidth: 18rem;\n\t}\n\n\t.time-control p {\n\t\tmin-width: 2.5rem;\n\t\ttext-align: center;\n\t}\n\n\t.youtube-disclosure {\n\t\tdisplay: block;\n\t\tmax-width: 20rem;\n\t\tpadding-inline: 1rem;\n\t}\n\n\t.youtube-disclosure span {\n\t\tdisplay: block;\n\t\toverflow-wrap: anywhere;\n\t}\n\n\t.youtube-disclosure a {\n\t\tdisplay: inline-block;\n\t\tmargin: 0.55rem 0.35rem 0;\n\t}\n}"
-   },
-   "message": "@media screen and (max-width: 640px) selects rules by the viewport width or height, which the ios output does not support until MQ-R",
-   "viaRelated": false,
-   "passes": [
-    "A-authored"
    ]
   },
   {
