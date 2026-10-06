@@ -6,12 +6,14 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { checkedConversionSource, inputFunctions, STYLE_FIELDS } from '../src/emit/native-support.ts';
 import type { EmitCase, NativeProgram } from '../src/internal.ts';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, nativeLayoutProjection, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
+import { movingTransforms } from '../src/lower/native-program.ts';
+import { internalRecord } from '../src/project.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const CSS = 'body { margin: 0; font-family: Ahem; font-size: 10px; color: navy; } .a { width: 50%; padding: 3px; border: 1px dashed red; background-color: #3366ff; } .b { display: flex; gap: 2px; overflow: hidden; border-style: dotted solid double none; } .c { border-top: 2px solid; }';
@@ -145,7 +147,9 @@ function trapRun(lang: 'swift' | 'kotlin', dir: string): { tool: Tool; outcomes:
 describe('the checked int conversion (View.layout ints)', () => {
   for (const lang of ['swift', 'kotlin'] as const) {
     it(`${lang}: traps on 1.5, 2^31 and -2^31 - 1, and passes 7 and -2^31`, async () => {
-      const { tool, outcomes } = trapRun(lang, join(tmpdir(), `dragon-t014-checked-${lang}-${process.pid}`));
+      const dir = join(tmpdir(), `dragon-t014-checked-${lang}-${process.pid}`);
+      onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
+      const { tool, outcomes } = trapRun(lang, dir);
       if (!tool.ok) {
         // Reported as blocked (owner tooling), never as a pass: the lane records it the same way (lanes.ts).
         const native = (await import(pathToFileURL(join(root, 'packages/translate/src/native.ts')).href)) as { swiftTool: () => unknown; kotlinTool: () => unknown };
@@ -189,3 +193,24 @@ describe('a calculated line height is built as the engine\'s LineHeightCalc (non
     }
   });
 });
+
+// Review of #72 at 42fd630b81: an element whose computed transform differs between two reachable cases (a state change) moves
+// its transform at run time, as does one with a listed transform transition; an unchanged transform does not.
+describe('movingTransforms', () => {
+  const resolvedOf = (css: string) => {
+    const c = both2(css);
+    const r = internalRecord(c)?.cases[0]?.resolved;
+    if (r === undefined || r === null) throw new Error('no resolved case');
+    return r;
+  };
+  const both2 = (css: string) => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; font-family: Ahem; font-size: 10px; } ${css}`, (r) => [div(r, 'p', ['p'], [div(r, 'q', ['q'])])]));
+  it('a transform that differs between cases moves; an equal one, and none, do not', () => {
+    const a = resolvedOf('.p { transform: scale(2); } .q { transform: translate(1px, 0); }');
+    const b = resolvedOf('.p { transform: scale(3); } .q { transform: translate(1px, 0); }');
+    const moved = [...movingTransforms([a, b], null)];
+    expect(moved.length).toBe(1);
+    expect(moved[0]).toMatch(/p/);
+    expect([...movingTransforms([a, a, null], null)]).toEqual([]);
+  });
+});
+

@@ -13,6 +13,7 @@ import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
+import { applyTransformTwin } from './transform-capture.ts';
 
 export const BREAK_MISMATCH = 'break-mismatch';
 
@@ -168,6 +169,8 @@ export function readChromeBreaks(caseId: string, dpr: number): ChromeBreaks | nu
  * after U+00AD takes the line of its last rect, since Chrome lists the previous line's hyphen first in that unit's Range.
  */
 export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> {
+  // PNT2: text in a transformed box is read on the transform twin, so each line keeps its untransformed rect.
+  await applyTransformTwin(page, []);
   return page.evaluate(() => {
     const out: { id: string; data: string; lines: number; units: number[]; blank: number[] }[] = [];
     const isBlank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';

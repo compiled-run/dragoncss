@@ -2,6 +2,10 @@
 // Every reachable assignment is resolved, checked and lowered as its own case; nothing is deduplicated (docs/api.md §7).
 import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
+import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced.ts';
+import { compileImages, imageMapProblem } from './images/compile.ts';
+import type { CompiledImages } from './images/compile.ts';
+import type { ImageAssetMap } from './images/manifest.ts';
 import { CanonicalText, canonicalJson, sha256Hex, sha256HexBytes } from './digest.ts';
 import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
@@ -9,19 +13,29 @@ import type { Longhand } from './css/properties.ts';
 import { PROPERTY_ROLE } from './css/properties.ts';
 import type { Declaration, EnclosedRules, Rule, RuleCondition } from './css/stylesheet.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
+import { splitNotApplicable } from './css/not-applicable.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
 import { checkComputed } from './analysis/computed-checks.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
+import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
+import type { AnimationAnalysis } from './analysis/animations.ts';
+import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
+import { webAnimationsOf } from './lower/anim-program.ts';
+import { valueText } from './emit/web-css.ts';
+import * as cssTree from 'css-tree';
+import type { KeyframesSource } from './css/at-rules/keyframes.ts';
+import { parseKeyframesRules } from './css/at-rules/keyframes.ts';
 import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
 import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
 import { emitNativeSupport, supportDigest } from './emit/native-support.ts';
 import { UIKIT_EMITTER_VERSION } from './emit/uikit.ts';
 import { emitWebCss } from './emit/web-css.ts';
-import type { WebFontContext } from './emit/web-css.ts';
+import type { WebFontContext, WebInteraction } from './emit/web-css.ts';
 import type { AtRuleContext } from './css/at-rules.ts';
 import type { FamilyKeyContext } from './css/values.ts';
 import { familyListText } from './css/values.ts';
@@ -40,10 +54,8 @@ import type { EngineFace } from './lower/ios-layout.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
 import { PROGRAM_VERSIONS } from './lower/native-program.ts';
 import type { Band, BandPartition } from './media/index.ts';
-import { band, bandAt, evaluateInBand, featuresOfList } from './media/index.ts';
+import { band, bandAt, evaluateInBand, featuresOfList, holdsWholePx } from './media/index.ts';
 import { androidProfile } from './profiles/android.ts';
-import type { NativeLanesVerdict } from './profiles/native-lanes.ts';
-import { NATIVE_LANES } from './profiles/native-lanes.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
 import { provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
@@ -141,7 +153,13 @@ export type InternalCase = {
   readonly webClassOf: ReadonlyMap<string, string> | null;
   /** Profile row keys ("<feature>@<context>") this case uses, per target, sorted. */
   readonly features: ReadonlyMap<Target, readonly string[]>;
+  /** SELD-R2: the case's interaction partition (null when it did not resolve) and each distinct state but none, resolved and lowered. */
+  readonly partition: InteractionPartition | null;
+  readonly interaction: readonly InternalInteraction[];
 };
+
+/** @internal One interaction state of a case: its value, resolution and native lowering; the web classes are the case's. */
+export type InternalInteraction = { readonly value: InteractionValue; readonly resolved: ResolvedElement; readonly nativeLowered: LayoutBox | null };
 
 /**
  * @internal
@@ -159,6 +177,15 @@ export type InternalRecord = {
   readonly linked: Linked | null;
   /** The font context font-family feature keys were resolved against. */
   readonly fonts: FamilyKeyContext;
+  /** T065: the transitions and animations of the native band's cases, null when the analysis did not run. */
+  readonly animation: AnimationAnalysis | null;
+  /**
+   * SELD-R2: the native targets on which a compile outside the parity lanes refuses this document's interaction rules
+   * (nativeInteractionRefusals). In a lanes compile those targets lower, but their cases prove no profile row users could use.
+   */
+  readonly laneOnlyNative: readonly ('ios' | 'android')[];
+  /** REPL-a: the bytes of every drawable image src, for the native image paint. */
+  readonly images: ReadonlyMap<string, Uint8Array>;
 };
 
 const records = new WeakMap<object, InternalRecord>();
@@ -179,8 +206,18 @@ export function internalRecord(compiled: object): InternalRecord | undefined {
  * the native output is resolved for when the stylesheet's @media rules split it into bands (MQ-a); absent in the public entry,
  * where native refuses such a sheet until MQ-R.
  */
+/** One native target's committed lanes verdict (the shape profiles/native-lanes.ts is generated in). */
+export type NativeLanesVerdict = { readonly recorded: boolean; readonly stale: readonly string[]; readonly notPassing: readonly string[] };
+export type NativeLanes = { readonly ios: NativeLanesVerdict; readonly android: NativeLanesVerdict };
+
 export type InternalOptions = {
   readonly faults: CompilerFaults;
+  /**
+   * The committed lanes verdict a native output is judged by (createProject passes profiles/native-lanes.ts). Without it a
+   * checked native output is analysis-only and says the verdict was not given, never ready; the compiler itself does not
+   * import the verdict, so a regen of lanes.json does not invalidate every compiling step.
+   */
+  readonly nativeLanes?: NativeLanes;
   readonly profiles: 'enforce' | 'derive';
   readonly direction: 'ltr' | 'rtl';
   readonly platform?: string;
@@ -192,6 +229,11 @@ export type InternalOptions = {
    * is not built, and the device runtime measures and draws only the bundled Ahem (emit/native-support.ts DragonBridge.measurer).
    */
   readonly nativeRealFaces?: boolean;
+  /**
+   * SELD-R2: the parity lanes compile :hover, :active, :focus and :focus-visible on native, to prove each state's resolution ahead
+   * of the native runtime; every other compile refuses them there (nativeInteractionRefusals).
+   */
+  readonly interactionLanes?: boolean;
 };
 
 type Viewport = { readonly width: number; readonly height: number };
@@ -206,6 +248,8 @@ type Resolved = {
   readonly supportProfiles: Required<SupportProfiles>;
   readonly foldViewport: Viewport | null;
   readonly nativeRealFaces: boolean;
+  readonly interactionLanes: boolean;
+  readonly nativeLanes: NativeLanes | null;
 };
 
 function deepFreeze<T>(v: T): T {
@@ -230,13 +274,17 @@ function fontMapMessage(e: FontMapError): string {
   }
 }
 
-function validateConfig(config: { projectId: unknown; targets: unknown; fonts?: unknown }): Diagnostic[] {
+function validateConfig(config: { projectId: unknown; targets: unknown; fonts?: unknown; images?: unknown }): Diagnostic[] {
   const out: Diagnostic[] = [];
   const bad = (message: string, manual: string): void => {
     out.push(diagnostic('DRAGON_CONFIG_INVALID', { origin: unlocated('configuration'), message, manual }));
   };
   if (typeof config.projectId !== 'string' || config.projectId.length === 0) bad('projectId must be a non-empty string', 'Set projectId.');
-  for (const k of Object.keys(config)) if (k !== 'projectId' && k !== 'targets' && k !== 'fonts') bad(`unknown configuration key "${k}"`, `Remove ${k}.`);
+  for (const k of Object.keys(config)) if (k !== 'projectId' && k !== 'targets' && k !== 'fonts' && k !== 'images') bad(`unknown configuration key "${k}"`, `Remove ${k}.`);
+  if (config.images !== undefined) {
+    const problem = imageMapProblem(config.images);
+    if (problem !== null) bad(problem, 'Set images to { "<src>": "<snapshot asset id>" }.');
+  }
   if (config.fonts !== undefined) {
     const v = validateFontMap(config.fonts);
     if (!v.ok) for (const e of v.errors) out.push(diagnostic('DRAGON_FONT_MAP_INVALID', { origin: unlocated('configuration fonts'), message: fontMapMessage(e) }));
@@ -279,6 +327,13 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
         const refusal = attributeRefusal(n.tag, a.name);
         if (refusal !== null) {
           diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${refusal}`, manual: 'Remove the attribute, or keep only rendering-neutral attributes (id, data-*, aria-*, role, title, ui-*); select state with a class or an attribute.' }));
+        }
+        for (const c of a.value) {
+          if (c.value === null) continue;
+          const dimension = dimensionRefusal(n.tag, a.name, c.value);
+          if (dimension !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${dimension}`, manual: 'Give the attribute a width or height in CSS px, or set the size in CSS.' }));
+          const src = iframeSrcRefusal(n.tag, a.name, c.value);
+          if (src !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${src}`, manual: 'Give the iframe an absolute https URL.' }));
         }
       }
       checkTemplates(n.children, diagnostics);
@@ -664,7 +719,12 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
   walk(root, { weight: 400, style: 'normal' }, false);
 }
 
-type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[]; realFaces: ReadonlyMap<string, EngineFace> };
+/** One interaction state of a case, resolved and checked like the case (SELD-R2). */
+type InteractionResult = { value: InteractionValue; resolved: ResolvedElement; used: UsedKey[] };
+type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[]; partition: InteractionPartition | null; interaction: InteractionResult[] };
+
+/** A case's used keys with those of every interaction state, for the value checks' context lists. */
+const allUsed = (c: CaseResult): UsedKey[] => [...c.used, ...c.interaction.flatMap((i) => i.used)];
 
 /**
  * TXT1a-2: the faces of a case's nodes that resolve to one real bundled static face, as engine mode resolves them, by address;
@@ -701,8 +761,9 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const { contextual: reported, refused, fonts, fenced, fontDeferrals } = seen;
   const keys = projectFonts === null ? NO_FONTS : projectFonts.keys;
   const out: CaseResult[] = [];
-  for (const c of linked.cases) {
-    const resolved = resolveTree(c.root, rules, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua });
+  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua };
+  // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
+  const check = (resolved: ResolvedElement): UsedKey[] => {
     const computedAt = diagnostics.length;
     const realFaces = realFacesOf(resolved, projectFonts, options.ua);
     // Off by default (InternalOptions.nativeRealFaces): native targets keep refusing real faces, and the engine lane lowers them in
@@ -716,8 +777,10 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkSyntheticStyles(resolved, projectFonts, options.ua, t, diagnostics, fonts);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
-    out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, realFaces });
-    if (options.profiles === 'derive') continue;
+    if (options.profiles !== 'derive') checkContexts(used);
+    return used;
+  };
+  const checkContexts = (used: readonly UsedKey[]): void => {
     for (const u of used) {
       for (const t of targets) {
         const profile = profileFor(options.supportProfiles, t);
@@ -747,8 +810,83 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
         }));
       }
     }
+  };
+  const interactive = rules.some(ruleIsInteractive);
+  for (const c of linked.cases) {
+    const resolved = resolveTree(c.root, rules, options.faults, env);
+    const used = check(resolved);
+    if (!interactive) {
+      out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, partition: emptyPartition(c.root), interaction: [] });
+      continue;
+    }
+    const built = interactionPartition(c.root, (ix) => resolveTree(c.root, rules, options.faults, env, ix), options.faults);
+    if (built.over !== null) {
+      // R7: refused (package SELD-R2s); the case keeps no interaction state.
+      const refusal = interactionCapRefusal(assignmentLabel(c.assignment), built.over, rules, c.root.node.origin);
+      if (!diagnostics.some((d) => d.code === refusal.code && d.message === refusal.message)) diagnostics.push(refusal);
+      out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, partition: emptyPartition(c.root), interaction: [] });
+      continue;
+    }
+    const partition = built.partition;
+    const interaction = partition.states.map((value, k): InteractionResult => {
+      const r = built.resolved[k] as ResolvedElement;
+      return { value, resolved: r, used: check(r) };
+    });
+    out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, partition, interaction });
   }
   return out;
+}
+
+/** An assignment as the messages name it: state=value, comma-separated, or "(the initial assignment)" when it sets nothing. */
+const assignmentLabel = (a: Assignment): string => (a.length === 0 ? '(the initial assignment)' : a.map((x) => `${x.state.state}=${String(x.value)}`).join(', '));
+
+/**
+ * R13: on native, a pointer-reachable interaction state needs Dragon's hit test, which models only the HIT_MODELLED paint facts.
+ * A case with a reachable state and an unmodelled fact that compiles for the target (no error already refuses its declaration
+ * there) refuses every interaction rule on that target, naming SELD-R2b. Run after the value checks, so a refused value is not
+ * counted as compiled.
+ */
+function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[]): void {
+  // Outside the lanes every interaction rule is already refused on native (nativeInteractionRefusals).
+  if (options.faults.hitUnmodelledNotRefused || !options.interactionLanes) return;
+  const seen = new Set<string>();
+  for (const t of NATIVE_TARGETS.filter((x) => targets.includes(x))) {
+    const refusedAt = new Set(diagnostics.filter((d) => d.severity === 'error' && (d.target === null || d.target === t) && d.origin.kind === 'authored').map((d) => {
+      const span = (d.origin as { span: { source: { uri: string }; start: number } }).span;
+      return `${span.source.uri}|${span.start}`;
+    }));
+    const compiles = (v: ResolvedValue): boolean => v.declaration === null || ![v.declaration.span, v.declaration.valueSpan].some((sp) => refusedAt.has(`${sp.source.uri}|${sp.start}`));
+    for (const c of cases) {
+      const reachable = c.interaction.filter((i) => i.value.kind === 'reachable');
+      if (c.resolved === null || reachable.length === 0) continue;
+      const fact = [c.resolved, ...reachable.map((i) => i.resolved)].map((r) => hitUnmodelledFact(r, options.ua, compiles)).find((f) => f !== null) ?? null;
+      if (fact === null) continue;
+      for (const r of rules) {
+        const pseudo = firstInteractionPseudo(r);
+        if (pseudo === null) continue;
+        const origin = interactionRuleOrigin(r, c.resolved.element.node.origin);
+        const message = `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`;
+        const id = `${t}|${JSON.stringify(origin)}|${message}`;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual: `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.` }));
+      }
+    }
+  }
+}
+
+/** The lowering key of an interaction state of a case. */
+const interactionKey = (caseKey: string, v: InteractionValue): string => `${caseKey}\u0000${v.key}`;
+
+/** The web output's view of a case's interaction states: each state's resolution and the candidates its condition names. */
+function webInteraction(c: CaseResult): WebInteraction | undefined {
+  if (c.partition === null || c.interaction.length === 0) return undefined;
+  const members = stateMembers(c.partition);
+  return { candidates: c.partition.candidates, states: c.interaction.map((i, k) => {
+    const own = members[k];
+    if (own === undefined || own.length === 0) throw new Error(`interaction state ${i.value.key} of ${c.key} stands for no combination`);
+    return { members: own, root: i.resolved };
+  }) };
 }
 
 /** The @media conditions of the sheet: each distinct at-rule once, in source order. */
@@ -821,9 +959,10 @@ export function nativeDigest(digest: string, t: 'ios' | 'android'): string {
  * pnpm run profile:rows from packages/parity/out/lanes.json) has every lane of that target passing and none stale; otherwise
  * analysis-only, naming why. A ready native output carries the backend's native support files.
  */
-export function nativeOutputState(t: 'ios' | 'android', digest: string, verdict: NativeLanesVerdict): ArtifactState {
+export function nativeOutputState(t: 'ios' | 'android', digest: string, verdict: NativeLanesVerdict | null): ArtifactState {
   const o = NATIVE_OUTPUT[t];
   const d = nativeDigest(digest, t);
+  if (verdict === null) return { kind: 'analysis-only', digest: d, reason: `The ${o.name} output is analysis-only: no committed lanes verdict was given to this compilation, so the generated ${o.language} stays internal to the native lanes.` };
   if (verdict.recorded && verdict.stale.length === 0 && verdict.notPassing.length === 0) return { kind: 'ready', digest: d, files: emitNativeSupport(o.backend), assets: [] };
   const why = !verdict.recorded ? 'no committed lanes record proves it' : verdict.stale.length > 0 ? `its committed lanes are stale (${verdict.stale.join('; ')})` : `these lanes do not pass: ${verdict.notPassing.join('; ')}`;
   return { kind: 'analysis-only', digest: d, reason: `The ${o.name} output is analysis-only: its layout projection feeds the internal lanes, and the generated ${o.language} stays internal to the native lanes until every ${t} lane passes in a current committed lanes record; ${why}.` };
@@ -838,7 +977,8 @@ type Analysis<K extends string> = {
 
 /** Order-free input lists sorted canonically, so the digest does not depend on their order (S5 (c)). */
 function canonicalInput(input: FrontEndResult): unknown {
-  const sorted = (v: unknown): unknown => (Array.isArray(v) ? [...v].sort((a, b) => (canonicalJson(a) < canonicalJson(b) ? -1 : canonicalJson(a) > canonicalJson(b) ? 1 : 0)) : v);
+  // Each entry is serialised once, as its sort key, and enters the digest as that text: assets hold megabytes of font bytes.
+  const sorted = (v: unknown): unknown => (Array.isArray(v) ? v.map((x) => new CanonicalText(canonicalJson(x))).sort((a, b) => (a.json < b.json ? -1 : a.json > b.json ? 1 : 0)) : v);
   const raw = input as unknown as Record<string, unknown>;
   const snap = raw['snapshot'];
   const tree = raw['tree'];
@@ -850,19 +990,22 @@ function canonicalInput(input: FrontEndResult): unknown {
   };
 }
 
-/** Each profile snapshot's canonical JSON, written once: profiles are megabytes, and a snapshot never changes. */
-const profileTexts = new WeakMap<SupportProfile, CanonicalText>();
-function profileText(profile: SupportProfile): CanonicalText {
-  if (!profileSnapshots.has(profile)) throw new Error('profileText reads only profile snapshots');
-  let t = profileTexts.get(profile);
-  if (t === undefined) {
-    t = new CanonicalText(canonicalJson(profile));
-    profileTexts.set(profile, t);
+/** Each profile snapshot's SHA-256 over its canonical JSON, computed once: profiles are megabytes, and a snapshot never changes. */
+const profileDigests = new WeakMap<SupportProfile, string>();
+function profileDigest(profile: SupportProfile): string {
+  if (!profileSnapshots.has(profile)) throw new Error('profileDigest reads only profile snapshots');
+  let d = profileDigests.get(profile);
+  if (d === undefined) {
+    d = `sha256:${sha256Hex(canonicalJson(profile))}`;
+    profileDigests.set(profile, d);
   }
-  return t;
+  return d;
 }
 
-function analyze<K extends string>(config: { projectId: string; targets: object; fonts?: unknown }, configDiagnostics: readonly Diagnostic[], options: Resolved, input: FrontEndResult): Analysis<K> {
+/** A property name css-tree's default lexer knows (the MDN data it bundles): its css-tree.d.ts declares only what the parser uses. */
+const isKnownProperty = (name: string): boolean => (cssTree as unknown as { readonly lexer: { getProperty(n: string): unknown } }).lexer.getProperty(name) !== null;
+
+function analyze<K extends string>(config: { projectId: string; targets: object; fonts?: unknown; images?: ImageAssetMap }, configDiagnostics: readonly Diagnostic[], options: Resolved, input: FrontEndResult): Analysis<K> {
   const targets = Object.keys(config.targets).filter((k): k is KnownTarget => (KNOWN_TARGETS as readonly string[]).includes(k)).sort();
   const diagnostics: Diagnostic[] = [...configDiagnostics];
   const profiles = options.supportProfiles;
@@ -870,8 +1013,11 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   let linked: Linked | null = null;
   let cases: CaseResult[] = [];
   let fonts: ProjectFonts | null = null;
+  let images: CompiledImages | null = null;
   // MQ-a: every band's cases, band 0 first (one entry for a sheet without @media), and the band the native output comes from.
   let bandCases: { readonly band: Band | null; readonly cases: CaseResult[] }[] = [];
+  let animation: AnimationAnalysis | null = null;
+  let laneOnlyNative: ('ios' | 'android')[] = [];
   let bands: Bands | null = null;
   let nativeBand = 0;
   const fontDeferrals = new Set<string>();
@@ -880,6 +1026,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const rules: Rule[] = [];
     const enclosed: EnclosedRules[] = [];
     const fontFaces: AtRuleContext[] = [];
+    const keyframeSources: KeyframesSource[] = [];
     let order = 0;
     for (const useId of valid.document.styles) {
       const use = valid.styles.get(useId);
@@ -889,11 +1036,19 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       dependencies.push({ kind: 'stylesheet', uri: src.ref.uri, hash: src.ref.hash });
       const sheet = { id: use.id, owner: valid.styleOwner.get(use.id) as string, scope: use.scope.kind };
       const before = enclosed.length;
-      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed, fontFaces);
+      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed, fontFaces, keyframeSources);
       for (const r of [...parsed, ...enclosed.slice(before).flatMap((e) => e.rules)]) for (const d of r.declarations) order = Math.max(order, d.order + 1);
       rules.push(...parsed);
     }
     for (const s of [...valid.sources.values()].sort((a, b) => (a.ref.uri < b.ref.uri ? -1 : a.ref.uri > b.ref.uri ? 1 : 0))) dependencies.push({ kind: 'source', uri: s.ref.uri, hash: s.ref.hash });
+    // T065: the @keyframes blocks parse with the stylesheet, so their refusals come whether or not the analysis runs.
+    const keyframesRules = parseKeyframesRules(keyframeSources, diagnostics);
+    // NA-NATIVE: a refusal of a listed property or rule blocks only web; native gets an info (css/not-applicable.ts).
+    diagnostics.splice(0, diagnostics.length, ...splitNotApplicable(diagnostics, targets));
+    diagnostics.push(...interactionRefusals(rules));
+    const nativeRefusals = nativeInteractionRefusals(rules, NATIVE_TARGETS.filter((t) => targets.includes(t)));
+    if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
+    else diagnostics.push(...nativeRefusals);
     const conditions = conditionsOf(rules);
     const partition = conditions.length === 0 ? null : band(conditions.map((c) => c.list));
     if (partition !== null && partition.kind === 'refused') {
@@ -949,13 +1104,21 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       bandCases = passes.map((p) => p.result);
       diagnostics.push(...mergePasses(passes.map((p) => p.diagnostics)));
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
+      // REPL-a: the images every band's resolved cases reference, read once.
+      const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
+      images = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]))), config.images, assetBytes, diagnostics);
+      // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
+      animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
+      if (options.profiles === 'enforce') gateAnimationFeatures(animation, targets, (t) => profileFor(profiles, t as KnownTarget), diagnostics);
+      if ((targets as readonly string[]).includes('web')) refuseBandedAnimations(rules, (r) => bandRules.every((set) => set.has(r)), diagnostics);
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
         // A target's messages list the contexts of the bands it is resolved in.
-        const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap((c) => c.used));
+        const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap(allUsed));
         checkValues(rules, targets, profiles, usedOf, values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...values);
       }
+      hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
       // T005 rec 3: the rules inside each unsupported at-rule are analysed with the block unwrapped, in a scratch pass whose
       // diagnostics located inside the at-rule become its related entries. Nothing from this pass is resolved into an output.
       if (enclosed.length > 0) {
@@ -969,7 +1132,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         const scratchCases = (bands === null ? [null] : bands.partition.bands).flatMap((b, k) =>
           checkCases(scratchLinked, [...rulesIn(rules, bands, b, options.faults), ...unwrapped], k === nativeBand ? targets : targets.filter((t) => t === 'web'), options, scratch, fonts, scratchSeen),
         );
-        if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap((c) => c.used), scratch, keys);
+        if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap(allUsed), scratch, keys);
         for (const e of enclosed) {
           const found = [...e.diagnostics, ...scratch.filter((d) => inside(d.origin, e))];
           const related = found.map((d) => ({ origin: d.origin, message: `${d.code}${d.target === null ? '' : ` [${d.target}]`}: ${d.message}` }));
@@ -983,7 +1146,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         checkValues(rules, targets, profiles, [], values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...values);
       }
-      cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [], realFaces: new Map() }));
+      cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [], partition: null, interaction: [] }));
       bandCases = [{ band: null, cases }];
     } else if (options.profiles === 'enforce') {
       const values: Diagnostic[] = [];
@@ -1000,7 +1163,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // The reference platform of the UA dataset and the environment's root font are compilation inputs (docs/api.md §10.1).
     platform: options.ua.platform,
     rootFont: options.rootFont,
-    profiles: targets.map((t) => profileText(profileFor(profiles, t))),
+    profiles: targets.map((t) => profileDigest(profileFor(profiles, t))),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
     ...(options.nativeRealFaces ? { nativeRealFaces: true } : {}),
@@ -1008,6 +1171,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     config,
     input: canonicalInput(input),
     ...(fontsDigest === null ? {} : { fonts: fontsDigest }),
+    // The image manifest enters the digest only when the project has images or an image map, as fonts do.
+    ...(images === null || images.digestInput === null ? {} : { images: images.digestInput }),
   };
   // A sheet with one band keeps its digest; with more, the bands and the fold viewport are compilation inputs (MQ-a).
   const multiBand = bands !== null && bands.partition.bands.length > 1;
@@ -1020,11 +1185,11 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   const lowerFor = NATIVE_TARGETS.filter((t) => targets.includes(t) && !diagnostics.some((d) => blocksTarget(d, t)));
   if (lowerFor.length > 0 && cases.length > 0) {
     const reported = new Set<string>();
-    for (const c of cases) {
-      if (c.resolved === null) continue;
+    const lowerings = cases.flatMap((c) => (c.resolved === null ? [] : [{ key: c.key, resolved: c.resolved }, ...c.interaction.map((i) => ({ key: interactionKey(c.key, i.value), resolved: i.resolved }))]));
+    for (const c of lowerings) {
       try {
-        const real = c.realFaces;
-        lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} resolves to no real bundled face` } }));
+        const real = realFacesOf(c.resolved, fonts, options.ua);
+        lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} resolves to no real bundled face` } }));
       } catch (e) {
         if (!(e instanceof LoweringError)) throw e;
         const id = `${e.nodeId}|${e.property}|${e.message}`;
@@ -1048,7 +1213,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (c.resolved === null) continue;
       const faces = engineFacesOf(c.resolved, engineFonts, options.ua);
       try {
-        engineLowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, { kind: 'engine', faceOf: (address) => faces.get(address) ?? { kind: 'refused', reason: `${address} has no resolved font` } }));
+        engineLowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'engine', faceOf: (address) => faces.get(address) ?? { kind: 'refused', reason: `${address} has no resolved font` } }));
       } catch (e) {
         if (!(e instanceof LoweringError)) throw e;
         engineRefusals.set(c.key, `${e.nodeId} ${e.property}: ${e.message}`);
@@ -1063,11 +1228,14 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const key = t as unknown as K;
     status[key] = blocking.length > 0 || cases.length === 0 ? 'blocked' : 'checked';
     if (status[key] === 'blocked') outputs[key] = { kind: 'blocked', diagnostics: blocking };
-    else if (t === 'ios' || t === 'android') outputs[key] = nativeOutputState(t, digest, NATIVE_LANES[t]);
+    else if (t === 'ios' || t === 'android') outputs[key] = nativeOutputState(t, digest, options.nativeLanes === null ? null : options.nativeLanes[t]);
     else {
       const webFonts = fonts === null || !fonts.used ? null : webFontsOf(fonts, options.faults);
-      const [base, ...extra] = bandCases.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement })) }));
-      web = emitWebCss((base as { cases: { key: string; root: ResolvedElement }[] }).cases, digest, webFonts === null ? null : webFonts.context, extra);
+      const whole = (b: Band | null): boolean => b === null || (b.width.some(holdsWholePx) && b.height.some(holdsWholePx));
+      const webBands = options.faults.mediaFractionalBandDropped ? bandCases.filter((r, k) => k === 0 || whole(r.band)) : bandCases;
+      const [base, ...extra] = webBands.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement, interaction: webInteraction(c) })) }));
+      const first = base as { condition: string; cases: { key: string; root: ResolvedElement; interaction?: WebInteraction | undefined }[] };
+      web = emitWebCss(first.cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText), first.condition, !options.faults.webHoverUngated);
       outputs[key] = { kind: 'ready', digest, files: web.files, assets: webFonts === null ? [] : webFonts.assets() };
     }
   }
@@ -1095,6 +1263,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       profiles: { web: profiles.web, ios: profiles.ios, android: profileFor(profiles, 'android') },
       linked,
       fonts: fonts === null ? NO_FONTS : fonts.keys,
+      animation,
+      laneOnlyNative,
+      images: images === null ? new Map() : images.bytes,
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,
@@ -1105,6 +1276,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         engineRefusal: nativeChecked ? null : (engineRefusals.get(c.key) ?? (deferredOnly ? null : 'native is blocked by more than deferred font refusals')),
         webClassOf: webClasses === null ? null : (webClasses.get(c.key) ?? null),
         features: new Map(targets.map((t) => [t, [...new Set(c.used.map((u) => u.key))].sort()])),
+        partition: c.partition,
+        interaction: c.interaction.map((i) => ({ value: i.value, resolved: i.resolved, nativeLowered: nativeChecked ? (lowered.get(interactionKey(c.key, i.value)) ?? null) : null })),
       })),
     },
   };
@@ -1144,6 +1317,10 @@ function valueOrigin(root: ResolvedElement, address: string, p: Longhand, chrome
   if (v.declaration !== null) return authored(v.declaration.span);
   if (v.origin === 'inherited' && hit.parent !== null) return { kind: 'inherited', element: hit.parent.element.address, from: valueOrigin(root, hit.parent.element.address, p, chromeVersion) };
   if (v.origin === 'user-agent') return { kind: 'builtin', dataset: `chrome-${chromeVersion} computed`, entry: `${hit.el.element.tag} ${p}` };
+  if (v.origin === 'presentational-hint') {
+    const attribute = hit.el.element.node.attributes.find((a) => a.name === (p === 'aspect-ratio' ? 'width' : p));
+    return attribute === undefined ? hit.el.element.node.origin : attribute.origin;
+  }
   if (v.origin === 'environment') return { kind: 'builtin', dataset: 'reference environment', entry: `${p} ${valueToString(v.value)}` };
   return { kind: 'builtin', dataset: `@webref/css ${webrefVersion} initial`, entry: p };
 }
@@ -1185,9 +1362,13 @@ function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>, chromeV
       assignment: c.assignment,
       property: q.property,
       value: valueToString(v.value),
-      cascade: v.origin,
+      // A presentational hint is author-level in the cascade (css-cascade-5 §6.1); its origin names the attribute.
+      cascade: v.origin === 'presentational-hint' ? 'author' : v.origin,
       origin: valueOrigin(c.resolved, address, p, chromeVersion),
-      losing: v.losing.map((d) => ({ origin: authored(d.span), reason: 'lower specificity or earlier in the style order' })),
+      losing: v.losing.map((d) => ({
+        origin: authored(d.span),
+        reason: d === v.forcedOver ? `the user agent forces ${q.property} on this element whatever the cascade says` : 'lower specificity or earlier in the style order',
+      })),
       support: used === null || used === undefined ? null : { feature: used.feature, context: used.context, status: statusOf(profile, used.feature, used.context) },
     });
   }
@@ -1216,9 +1397,11 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     supportProfiles: snapshotProfiles(options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles),
     foldViewport: options.foldViewport === undefined ? null : checkedViewport(options.foldViewport),
     nativeRealFaces: options.nativeRealFaces === true,
+    interactionLanes: options.interactionLanes === true,
+    nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
   };
   const configDiagnostics = validateConfig(config);
-  const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown };
+  const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown; images?: ImageAssetMap };
   return deepFreeze({
     compile(input: FrontEndResult): Compiled<K> {
       const a = analyze<K>(snapshotConfig, configDiagnostics, resolved, input);
@@ -1236,9 +1419,6 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
   });
 }
 
-export function createProject<const T extends Targets>(config: ProjectConfig<T>): Project<Configured<T>> {
-  return createProjectWith(config, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' });
-}
 
 /** @internal The origin of one resolved value, with the dataset of the result it came from. */
 export function originOfValue(record: InternalRecord, root: ResolvedElement, address: string, p: Longhand): Origin {

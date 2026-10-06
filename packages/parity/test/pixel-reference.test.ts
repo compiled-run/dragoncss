@@ -2,7 +2,7 @@
 // per device DPR at the raster size rule, the manifest's sha256 and sizes, the glyph rule from engine data and the font's glyph boxes
 // (Ahem only), the run file the apps read, and check (c) against the committed PNGs.
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { NativeProgram } from 'dragon';
@@ -20,6 +20,7 @@ import { ahemGlyphBoxes, BOTTOM_SCANLINES_PATH, casePoints, caseSamples, checkCa
 import { BACKEND_OF } from '../src/native-host.ts';
 import { deviceDprs } from '../src/targets.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
+import { withoutTransforms } from '../src/paint-samples/transform.ts';
 import type { SamplePoint } from '../src/samples.ts';
 import { generateGlyphSamples, GLYPH_EDGE_RULE, glyphClearance, ruleKind, SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
 
@@ -127,42 +128,50 @@ describe('the glyph rule', () => {
 });
 
 describe('the glyph clearance over the corpus (T093 ruling A)', () => {
-  // Per target and device DPR, the rules whose point no along-position keeps clear of the engine's glyph boxes, by rule kind
-  // (edge:glyph is a glyph-edge scanline), and of those the edge and border rules that kept clear pixels as "<rule>:clear" colour
-  // points (addendum F2). A change here changes what the device lanes compare; it needs a written reason. SIZE-ar: only the 10
-  // sizing-ratio cases' rules (edge +8, edge:glyph +4, rescued edge +8 at DPR 2 and 3, +6 at 2.625); with them filtered out the
-  // master pins hold exactly. INL1a: plus the INL1a stack's new cases (inline-breaks-*, the inline fixtures and inline-baselines;
-  // the second term, as on the stack against master 7a363ac7b), every existing case unchanged. SELD-R1b: the eight hit-* cases' own
-  // (the last term): 11 dropped edges, 20 glyph-edge scanlines and 8 glyph points per DPR, all from their overflowing text. TXT1a-2's
-  // shaped cases (text-latin, Ahem fractional, text-calibration) are no device cases until phase R, so they add nothing here.
-  const DROPPED = {
-    ios: {
-      2: { dropped: { edge: 1234 + 262 + 11, 'edge:glyph': 924 + 189 + 20, glyph: 31 + 8, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 + 236 + 11 } },
-      3: { dropped: { edge: 1243 + 254 + 11, 'edge:glyph': 872 + 172 + 20, glyph: 25 + 8, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1215 + 231 + 11, border: 18 } },
-    },
-    android: {
-      2: { dropped: { edge: 1234 + 262 + 11, 'edge:glyph': 924 + 189 + 20, glyph: 31 + 8, clip: 4, border: 16, interior: 5 }, rescued: { edge: 1194 + 236 + 11 } },
-      3: { dropped: { edge: 1243 + 254 + 11, 'edge:glyph': 872 + 172 + 20, glyph: 25 + 8, border: 18, interior: 5, clip: 2 }, rescued: { edge: 1215 + 231 + 11, border: 18 } },
-      2.625: { dropped: { edge: 1207 + 260 + 11, 'edge:glyph': 901 + 189 + 20, glyph: 33 + 8, outside: 6 + 4, clip: 13, border: 16, interior: 5 }, rescued: { edge: 1071 + 194 + 11 } },
-    },
-  } as const;
+  // Per target and device DPR and per case, the rules whose point no along-position keeps clear of the engine's glyph boxes, by
+  // rule kind (edge:glyph is a glyph-edge scanline), and of those the edge and border rules that kept clear pixels as "<rule>:clear"
+  // colour points (addendum F2). A change here changes what the device lanes compare; it needs a written reason. PIN-DERIVE: the
+  // pins are one line per case in glyph-clearance-pins.json, keyed <target>@<dpr> (a case with none has no line), so a new case adds
+  // its own line and leaves every other case's pin alone. Rewrite with DRAGON_PIN_WRITE=1; give a written reason for every changed line.
+  const PINS = new URL('./glyph-clearance-pins.json', import.meta.url);
+  type Tally = { dropped: Record<string, number>; rescued: Record<string, number> };
+  const byCase = JSON.parse(readFileSync(PINS, 'utf8')) as Record<string, Record<string, Tally>>;
+  const isCounts = (v: unknown): boolean => typeof v === 'object' && v !== null && !Array.isArray(v) && Object.values(v).every((n) => Number.isInteger(n) && (n as number) > 0);
+  /** The pins file's shape problems: each case maps <target>@<dpr> to exactly { dropped, rescued } positive counts. */
+  function pinsShape(): string[] {
+    if (typeof byCase !== 'object' || byCase === null || Array.isArray(byCase)) return ['not an object of cases'];
+    return Object.entries(byCase).flatMap(([c, v]) => {
+      if (typeof v !== 'object' || v === null || Array.isArray(v)) return [`${c}: not an object of <target>@<dpr> tallies`];
+      return Object.entries(v as Record<string, unknown>).flatMap(([at, t]) => {
+        const ok = /^(ios|android)@[0-9.]+$/.test(at) && typeof t === 'object' && t !== null && Object.keys(t).sort().join() === 'dropped,rescued' && isCounts((t as Tally).dropped) && isCounts((t as Tally).rescued);
+        return ok ? [] : [`${c} ${at}: not { dropped, rescued } counts`];
+      });
+    });
+  }
+  /** The pins of one <target>@<dpr>, by case. */
+  const pinsAt = (at: string): Record<string, Tally> => Object.fromEntries(Object.entries(byCase).flatMap(([c, v]) => (v[at] === undefined ? [] : [[c, v[at]]])));
+  /** The tallies computed in this run, by <target>@<dpr>: a rewrite takes these and keeps the file's pins only for the rest. */
+  const fresh: Record<string, Record<string, Tally>> = {};
   const bottoms = JSON.parse(readFileSync(BOTTOM_SCANLINES_PATH(), 'utf8')) as BottomScanlines;
   for (const target of ['ios', 'android'] as const) {
     it(`${target}: dropped and rescued rules and per-case glyph-bottom scanlines are pinned; every point is clear of every glyph box edge but a glyph-edge scanline's own`, () => {
-      const got: Record<string, { dropped: Record<string, number>; rescued: Record<string, number> }> = {};
+      expect(pinsShape()).toEqual([]);
+      const got: Record<string, Record<string, Tally>> = {};
       const gotBottoms: Record<string, Record<string, [number, number]>> = {};
       for (const dpr of deviceDprs(target)) {
-        const dropped: Record<string, number> = {};
-        const rescued: Record<string, number> = {};
+        const tallies: Record<string, Tally> = {};
         const perCase: Record<string, [number, number]> = {};
         for (const n of cases) {
           const p = n.programs[BACKEND_OF[target]];
           const r = caseSamples(p, n.case.environment.viewport, dpr);
+          const dropped: Record<string, number> = {};
+          const rescued: Record<string, number> = {};
           for (const d of r.dropped) {
             const k = `${ruleKind(d)}${GLYPH_EDGE_RULE.test(d) ? ':glyph' : ''}`;
             dropped[k] = (dropped[k] ?? 0) + 1;
           }
           for (const d of r.rescued) rescued[ruleKind(d)] = (rescued[ruleKind(d)] ?? 0) + 1;
+          if (r.dropped.length + r.rescued.length > 0) tallies[n.case.id] = { dropped, rescued };
           const lines = glyphLines(p, n.case.environment.viewport, dpr);
           const glyphs = lines.flatMap((l) => l.glyphs);
           const rules = new Set(r.points.map((q) => q.rule));
@@ -170,7 +179,10 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
           if (inked.length > 0) perCase[n.case.id] = [inked.filter((l) => rules.has(`edge:${l.id}:glyph-bottom`)).length, inked.length];
           const unclear = (q: SamplePoint) => glyphs.filter((g) => glyphClearance(q.x, q.y, g) < I).length;
           const scanlines = new Map<string, SamplePoint[]>();
-          for (const q of r.points) {
+          // The glyph boxes are untransformed, so the clearance is judged on the base points; the transform module maps them and keeps
+          // each mapped point clear of the transformed edges (PNT2, pnt2-samples.test.ts).
+          const plain = withoutTransforms(p);
+          for (const q of (plain === p ? r : caseSamples(plain, n.case.environment.viewport, dpr)).points) {
             if (GLYPH_EDGE_RULE.test(q.rule)) scanlines.set(q.rule, [...(scanlines.get(q.rule) ?? []), q]);
             else if (unclear(q) > 0) throw new Error(`${target} ${n.case.id}@${dpr}: ${q.rule} at ${q.x},${q.y} is within ${I} device px of a glyph box edge`);
           }
@@ -179,7 +191,7 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
             if (ends.some((q) => unclear(q) > 0) || line.some((q) => unclear(q) > 1)) throw new Error(`${target} ${n.case.id}@${dpr}: ${rule} is not clear of the other glyph boxes`);
           }
         }
-        got[String(dpr)] = { dropped, rescued };
+        got[`${target}@${dpr}`] = tallies;
         gotBottoms[String(dpr)] = perCase;
         // The plant case has a glyph-bottom scanline and an x centre pair on every line (addendum F1).
         const plant = cases.find((c) => c.case.id === PLANT_CASE);
@@ -189,7 +201,20 @@ describe('the glyph clearance over the corpus (T093 ruling A)', () => {
         expect(plantLines.length).toBeGreaterThan(0);
         for (const l of plantLines) for (const side of ['bottom', 'left', 'right']) expect(plantRules.has(`edge:${l.id}:glyph-${side}`), `${PLANT_CASE}@${dpr} ${l.id} glyph-${side}`).toBe(true);
       }
-      expect(got).toEqual(JSON.parse(JSON.stringify(DROPPED[target])));
+      if (process.env['DRAGON_PIN_WRITE'] === '1') {
+        // Pins this run computed replace the file's at their <target>@<dpr> (a case with no drops there loses its entry); pins of
+        // a target this run did not reach are kept, so the ios and android tests never overwrite each other's.
+        Object.assign(fresh, got);
+        const written: Record<string, Record<string, Tally>> = {};
+        for (const [c, v] of Object.entries(byCase)) for (const [at, t] of Object.entries(v)) if (!(at in fresh)) (written[c] ??= {})[at] = t;
+        for (const [at, tallies] of Object.entries(fresh)) for (const [c, t] of Object.entries(tallies)) (written[c] ??= {})[at] = t;
+        const sorted = <T>(o: Record<string, T>): Record<string, T> => Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : 1)));
+        const lines = Object.keys(written).sort().map((c) => `  ${JSON.stringify(c)}: ${JSON.stringify(sorted(Object.fromEntries(Object.entries(written[c] ?? {}).map(([at, t]) => [at, { dropped: sorted(t.dropped), rescued: sorted(t.rescued) }]))))}`);
+        writeFileSync(PINS, `{\n${lines.join(',\n')}\n}\n`);
+      }
+      for (const at of Object.keys(got)) expect(got[at], at).toEqual(pinsAt(at));
+      // A pin at a DPR this target does not run would never be compared.
+      expect([...new Set(Object.values(byCase).flatMap((v) => Object.keys(v)).filter((at) => at.startsWith(`${target}@`) && !(at in got)))]).toEqual([]);
       // Regenerate with pnpm run parity:glyph-b3 -- --write-bottom-pins, and give a written reason for every change.
       expect(gotBottoms).toEqual(bottoms[target]);
     });

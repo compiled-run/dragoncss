@@ -8,7 +8,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { absoluteRects, layout, measurerFor, validateLayoutInput } from '@dragon/layout';
 import { referenceShapedMeasurer } from '../text-shaper-host.ts';
-import { iosLayoutProjection, resolvedColors, resolvedTextColors, WEB_CSS_PATH, webClassMap } from 'dragon';
+import { nativeLayoutProjection, resolvedColors, resolvedTextColors, WEB_CSS_PATH, webClassMap } from 'dragon';
 import { captureFixture } from '../capture.ts';
 import { casesOf, fixtureInput } from '../cases.ts';
 import { launchChrome } from '../chrome.ts';
@@ -16,7 +16,8 @@ import { compareLayout } from '../compare.ts';
 import { compareDual } from '../dual.ts';
 import { FIXTURES } from '../fixtures.ts';
 import { repoPath } from '../paths.ts';
-import { compileFixture } from '../pipeline.ts';
+import { authoredPrepareOf, compileFixture, forcedCases } from '../pipeline.ts';
+import { prepareOf } from '../forced-pseudo.ts';
 import { checkPlatformCaptures, readCaptures } from '../platform-check.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 
@@ -49,25 +50,26 @@ else {
         refused.push({ fixture: spec.id, reason: `its compiled CSS pins the ${REFERENCE_PLATFORM} UA font; ${platform} has no UA dataset` });
         continue;
       }
-      for (const c of casesOf(spec, fixtureInput(spec))) {
+      for (const c of [...casesOf(spec, fixtureInput(spec)), ...forcedCases(spec)]) {
+        const state = c.interaction ?? null;
         const { compiled } = compileFixture(spec, undefined, 'enforce', c.environment.direction);
         const web = compiled.outputs.web;
         const css = web.kind === 'ready' ? web.files.find((f) => f.path === WEB_CSS_PATH) : undefined;
         const classOf = webClassMap(compiled, c.assignment);
-        const colors = resolvedColors(compiled, c.assignment);
-        const textColors = resolvedTextColors(compiled, c.assignment);
+        const colors = resolvedColors(compiled, c.assignment, state);
+        const textColors = resolvedTextColors(compiled, c.assignment, state);
         if (css === undefined || classOf === null || colors === null || textColors === null) {
           problems.push(`${c.id}: the reference compile gives no web output`);
           continue;
         }
-        const authored = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, c.authoredPrepare ?? undefined);
-        const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(css.text, classOf), c.environment, c.computedExtra);
+        const authored = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, authoredPrepareOf(c));
+        const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(css.text, classOf), c.environment, c.computedExtra, prepareOf(c));
         const d = compareDual(authored, compiledCapture, colors, textColors, c.computedExtra);
         dual.push({ case: c.id, pass: d.pass, problems: d.problems });
         if (!d.pass) problems.push(`${c.id}: chrome-dual: ${d.problems.join('; ')}`);
         // Information only: Dragon under the reference platform's rules against this platform's capture.
         const own = target.get(c.id);
-        const p = iosLayoutProjection(compiled, c.environment, c.assignment);
+        const p = nativeLayoutProjection(compiled, c.environment, c.assignment, state);
         if (own === undefined || p.kind !== 'ready') continue;
         const v = validateLayoutInput(JSON.parse(JSON.stringify(p.input)));
         if (!v.ok) continue;

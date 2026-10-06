@@ -11,20 +11,30 @@ import type { ParityCase } from '../src/cases.ts';
 import { CHROME_VERSION, harnessStyle, launchChrome } from '../src/chrome.ts';
 import { emittedPath, expectedDir, expectedPath } from '../src/committed.ts';
 import { GATE_DEVICE_PX } from '../src/compare.ts';
-import { ENVIRONMENT, environmentsOf, FIXTURE_GROUPS, FIXTURES, RTL_ENVIRONMENT } from '../src/fixtures.ts';
+import { ENVIRONMENT, environmentsOf, FIXTURES, RTL_ENVIRONMENT } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 import type { CaseOutcome, FixtureOutcome } from '../src/pipeline.ts';
-import { caseCountProblems, runFixture, topologyProblems } from '../src/pipeline.ts';
-import { fixtureInput } from '../src/cases.ts';
+import { authoredPrepareOf, caseCountProblems, forcedCases, runFixture, topologyProblems } from '../src/pipeline.ts';
+import { fixtureInput, isForcedCaseId } from '../src/cases.ts';
 import { compileFixture, inlineFontAssets } from '../src/pipeline.ts';
 import { compilerChromeDeviations } from '../src/compiler-deviations.ts';
 import { readTreeExpectation } from '../src/tree-fixture.ts';
-import { deriveRows } from '../src/profile-rows.ts';
+import { prepareOf } from '../src/forced-pseudo.ts';
+import { ANIMATION_CONTEXT, deriveRows } from '../src/profile-rows.ts';
+import { animFixtures } from '../src/anim-cases.ts';
+import { DETERMINISM_CHUNKS, determinismChunk, shuffled } from './determinism.ts';
+
+// T065: the row checks here are about rows proven by layout cases. Animation rows (context animation) are proven by frame cases
+// against frame captures, and anim-frames.test.ts gives them the same checks: exactly the passing cases that use the key, every
+// used key has a row, exactly what profile:rows derives, the context and lane shape, and every proof case a passing frame case.
+const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT);
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
 import { TEXT_LATIN_PROBES } from '../src/fixture-groups/text-latin.ts';
 import { fontEmittedPath, fontExpectedPath, liveFontAuthored, runFontFixture } from '../src/fonts-run.ts';
+import { ENV_FIXTURES } from '../src/fixture-groups/env.ts';
+import { envEmittedPath, envExpectedPath, liveEnvAuthored, runEnvFixture } from '../src/env-run.ts';
 import type { FrontEndResult } from 'dragon';
 
 let browser: Browser;
@@ -53,7 +63,10 @@ function specFor(id: string): (typeof FIXTURES)[number] {
 const fontOutcomes = new Map<string, CaseOutcome[]>();
 const corpusCases = (): CaseOutcome[] => FIXTURES.flatMap((f) => (outcomes.get(f.id)?.cases ?? []));
 const fontCasesRun = (): CaseOutcome[] => FONT_FIXTURES.flatMap((f) => fontOutcomes.get(f.spec.id) ?? []);
-const webOnlyCasesRun = (): CaseOutcome[] => fontCasesRun();
+/** ENV-SAFE: the web-only env() cases (env-run.ts), which prove web rows through chrome-dual alone under their safe-area insets. */
+const envOutcomes = new Map<string, CaseOutcome[]>();
+const envCasesRun = (): CaseOutcome[] => ENV_FIXTURES.flatMap((f) => envOutcomes.get(f.spec.id) ?? []);
+const webOnlyCasesRun = (): CaseOutcome[] => [...fontCasesRun(), ...envCasesRun()];
 const allCases = (): CaseOutcome[] => [...corpusCases(), ...webOnlyCasesRun()];
 const recorded = async (c: ParityCase): Promise<WebCapture> => {
   const hit = captures.get(c.id);
@@ -71,9 +84,13 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('fixture registry (M7): every packages/parity/fixtures entry is registered, and every registered fixture has its file', () => {
     const dir = repoPath('packages/parity/fixtures');
     const entries = readdirSync(dir).sort();
-    const registered = new Set([...[...FIXTURES, ...FONT_FIXTURES.map((f) => f.spec)].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...TEXT_LATIN_PROBES.map((id) => `${id}.html`)]);
-    for (const f of FONT_FIXTURES) expect(statSync(`${dir}/${f.spec.id}.html`).isFile(), f.spec.id).toBe(true);
-    expect(new Set([...FIXTURES.map((f) => f.id), ...FONT_FIXTURES.map((f) => f.spec.id), ...TEXT_LATIN_PROBES]).size).toBe(FIXTURES.length + FONT_FIXTURES.length + TEXT_LATIN_PROBES.length);
+    // Frame fixtures (T065) are registered by their frames.json sidecar (anim-cases.ts animFixtures) and are not layout fixtures.
+    const frames = animFixtures().map((f) => f.id);
+    for (const id of frames) expect(FIXTURES.some((f) => f.id === id), `${id} is both a frame fixture and in FIXTURES`).toBe(false);
+    const webOnly = [...FONT_FIXTURES, ...ENV_FIXTURES].map((f) => f.spec);
+    const registered = new Set([...[...FIXTURES, ...webOnly].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...TEXT_LATIN_PROBES.map((id) => `${id}.html`), ...frames]);
+    for (const f of webOnly) expect(statSync(`${dir}/${f.id}.html`).isFile(), f.id).toBe(true);
+    expect(new Set([...FIXTURES.map((f) => f.id), ...webOnly.map((f) => f.id), ...TEXT_LATIN_PROBES]).size).toBe(FIXTURES.length + webOnly.length + TEXT_LATIN_PROBES.length);
     for (const e of entries) expect(registered.has(e), `${e} is not in FIXTURES`).toBe(true);
     for (const f of FIXTURES) {
       if (f.format === 'html') expect(statSync(`${dir}/${f.id}.html`).isFile(), f.id).toBe(true);
@@ -106,7 +123,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   for (const spec of FIXTURES) {
     it(`${spec.id} (${spec.format} ${spec.kind})`, async () => {
       const live = async (c: ParityCase): Promise<WebCapture> => {
-        const capture = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, c.authoredPrepare ?? undefined);
+        const capture = await captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, authoredPrepareOf(c));
         captures.set(c.id, capture);
         expect(captureJson(capture), `${c.id}: the live capture must equal the committed expected file`).toBe(readFileSync(expectedPath(c.id), 'utf8'));
         return capture;
@@ -122,7 +139,9 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
         expect(d.severity, d.code).toBe(entry.severity);
       }
       if (spec.kind === 'layout') {
-        expect(outcome.cases.length).toBe(outcome.expectedCases);
+        // SELD-R2a forced cases run beside the reachable cases and are not counted among them; each one is a forcedCases entry.
+        expect(outcome.cases.filter((c) => !isForcedCaseId(c.id)).length).toBe(outcome.expectedCases);
+        expect(outcome.cases.filter((c) => isForcedCaseId(c.id)).map((c) => c.id)).toEqual(forcedCases(spec).map((c) => c.id));
         expect(outcome.dragonCases).toBe(outcome.expectedCases);
         for (const e of outcome.environments) expect([e.renderer, e.dragon], `${spec.id} ${e.direction}`).toEqual([e.expected, e.expected]);
         for (const c of outcome.cases) {
@@ -179,6 +198,41 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       }
     }, 240_000);
   }
+
+  for (const f of ENV_FIXTURES) {
+    it(`${f.spec.id} (web-only env() fixture: chrome-dual alone, insets ${JSON.stringify(f.safeArea)})`, async () => {
+      const live = liveEnvAuthored(browser, f);
+      const recordLive = async (c: ParityCase): Promise<WebCapture> => {
+        const capture = await live(c);
+        captures.set(c.id, capture);
+        expect(captureJson(capture), `${c.id}: the live capture must equal the committed expected-env file`).toBe(readFileSync(envExpectedPath(c.id), 'utf8'));
+        return capture;
+      };
+      const cases = await runEnvFixture(f, browser, { authored: recordLive });
+      envOutcomes.set(f.spec.id, cases);
+      expect(cases.map((c) => c.direction)).toEqual(f.spec.kind === 'layout' ? f.spec.environments : []);
+      for (const c of cases) {
+        expect(c.reason, c.id).toBeNull();
+        expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'not-run', 'chrome-dual': 'pass' });
+        expect(c.features.ios, c.id).toEqual([]);
+        expect(c.features.web.some((k) => k.includes(':<env()>@')), c.id).toBe(true);
+      }
+      for (const d of ['ltr', 'rtl'] as const) {
+        const web = compileFixture(f.spec, NO_FAULTS, 'enforce', d).compiled.outputs.web;
+        expect(web.kind === 'ready' ? web.files[0]?.text : null, `${f.spec.id} ${d}: emitted web CSS must equal the committed file`).toBe(readFileSync(envEmittedPath(f.spec.id, d), 'utf8'));
+      }
+    }, 240_000);
+  }
+
+  it('planted fault envResolvedToZero: a compiler that resolves the insets at build time fails chrome-dual under nonzero insets', async () => {
+    const f = ENV_FIXTURES.find((x) => x.spec.id === 'env-safe-area-portrait') as (typeof ENV_FIXTURES)[number];
+    const cases = await runEnvFixture(f, browser, { authored: recorded, faults: { ...NO_FAULTS, envResolvedToZero: true } });
+    expect(cases.length).toBeGreaterThan(0);
+    for (const c of cases) {
+      expect(c.lanes['chrome-dual'], c.id).toBe('fail');
+      expect(c.reason, c.id).toMatch(/chrome-dual: /);
+    }
+  }, 240_000);
 
   it('committed captures are exactly the cases of this run, under the reference platform key only', () => {
     expect(readdirSync(repoPath('packages/parity/expected'))).toEqual([REFERENCE_PLATFORM]);
@@ -373,8 +427,8 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('profile proofs (M1): every row and proof names exactly the cases that passed its lane and use its key; every used key has a row', () => {
     const cases = allCases();
     for (const [target, profile] of [['ios', iosProfile], ['web', webProfile]] as const) {
-      expect(profile.rows.length).toBeGreaterThan(0);
-      for (const row of profile.rows) {
+      expect(layoutRows(profile.rows).length).toBeGreaterThan(0);
+      for (const row of layoutRows(profile.rows)) {
         const key = `${row.feature}@${row.context}`;
         for (const proof of row.proofs) {
           const expected = cases.filter((c) => c.lanes[proof.lane] === 'pass' && c.features[target].includes(key)).map((c) => c.id);
@@ -385,7 +439,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       }
       const keys = new Set(profile.rows.map((r) => `${r.feature}@${r.context}`));
       for (const c of cases) for (const k of c.features[target]) expect(keys.has(k), `${target} ${k} used by ${c.id} has no row`).toBe(true);
-      expect(profile.rows, `${target} rows must be exactly what pnpm run profile:rows derives from this run`).toEqual(deriveRows(target, cases));
+      expect(layoutRows(profile.rows), `${target} rows must be exactly what pnpm run profile:rows derives from this run`).toEqual(deriveRows(target, cases));
     }
   });
 
@@ -426,7 +480,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     const positioned = new RegExp('^(relative-in-' + itemBases + '/(ltr|rtl)|absolute-in-' + itemBases + '/(ltr|rtl)/cb-(ltr|rtl))$');
     const role = (feature: string) => PROPERTY_ROLE[feature.slice(0, feature.indexOf(':')) as Longhand];
     for (const profile of [iosProfile, webProfile]) {
-      for (const row of profile.rows) {
+      for (const row of layoutRows(profile.rows)) {
         expect(row.feature, row.feature).not.toMatch(/<length>/);
         expect(row.context, row.feature).not.toBe('single-line-text');
         const r = role(row.feature);
@@ -447,13 +501,13 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     expect(iosProfile.rows.filter((r) => r.feature.startsWith('font-family:Ahem')).map((r) => r.context).sort()).toEqual([...textContexts].sort());
     expect(iosProfile.rows.some((r) => r.feature === 'width:<length-px>' && r.context === 'block/ltr')).toBe(true);
     expect(iosProfile.rows.some((r) => r.feature === 'width:<length-px>' && r.context === 'block/rtl')).toBe(true);
-    expect(iosProfile.rows.some((r) => r.feature === 'margin-top:auto' && r.context === 'block/ltr')).toBe(false);
+    expect(iosProfile.rows.some((r) => r.feature === 'margin-right:<length-mm>' && r.context === 'block/ltr')).toBe(false);
   });
 
   it('no row of one direction is proven by a case that laid it out in the other: every proving case has an element of the facet direction in its Chrome capture', () => {
     const cases = new Map(allCases().map((c) => [c.id, c]));
     for (const profile of [iosProfile, webProfile]) {
-      for (const row of profile.rows) {
+      for (const row of layoutRows(profile.rows)) {
         // Every direction facet of the context, the containing block's (cb-<dir>) included.
         const facets = row.context.split('/').map((p) => p.replace(/^cb-/, '')).filter((p) => p === 'ltr' || p === 'rtl');
         expect(facets.length, row.context).toBeGreaterThan(0);
@@ -707,63 +761,20 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     }
   });
 
-  // determinism (S5 (c)): every fixture in both environments gives the same digest, diagnostics, web CSS, layout projection, vectors
-  // and report when compiled twice and with every order-free list shuffled. One shard per fixture, grouped by fixture group, each
-  // with a timeout derived from its environment count, so a slow machine or a new fixture never pushes one test past a fixed limit.
-  // The shards are self-contained: under -t determinism they use the committed captures (which the per-fixture tests assert equal
-  // the live ones byte for byte) and compute the main outcome themselves.
+  // determinism (S5 (c)) runs in parity-determinism-<k>.test.ts (determinism.ts), one chunk of FIXTURES per file, so its Chrome
+  // work spreads over workers and shards; each chunk proves it checked its own fixtures, and this proves the chunks cover them all.
   describe('determinism (S5 (c))', () => {
-    // Order-free lists: snapshot sources, assets and resolutions, tree modules, components and style use definitions. The document's
-    // style order (document.styles) is ordered: the cascade reads it.
-    const shuffle = <T>(xs: readonly T[]): T[] => (xs.length < 2 ? [...xs] : [...xs.slice(1), xs[0] as T].reverse());
-    const shuffled = (input: FrontEndResult): FrontEndResult => ({
-      ...input,
-      snapshot: { ...input.snapshot, sources: shuffle(input.snapshot.sources), assets: shuffle(input.snapshot.assets), resolutions: shuffle(input.snapshot.resolutions) },
-      tree: input.tree === null ? null : { ...input.tree, modules: shuffle(input.tree.modules), components: shuffle(input.tree.components), styles: shuffle(input.tree.styles) },
-    });
-    const canonicalDiagnostics = (o: FixtureOutcome): string[] => o.diagnostics.map((d) => JSON.stringify(d)).sort();
-    const stable = (o: FixtureOutcome): string => JSON.stringify({ ...o, diagnostics: canonicalDiagnostics(o) });
-    // The live capture when the per-fixture test ran in this process, otherwise the committed file it is asserted to equal.
-    const capturedOrCommitted = async (c: ParityCase): Promise<WebCapture> => captures.get(c.id) ?? (JSON.parse(readFileSync(expectedPath(c.id), 'utf8')) as WebCapture);
-    // Budget per environment of one shard: the slowest fixture (tree-switch-two-instances, 32 cases) measured 3.4 s per environment
-    // standalone (the main outcome recomputed) at load average 47; 30 s leaves about 9x headroom for load.
-    const PER_ENVIRONMENT_MS = 30_000;
-    const checked = { fixtures: new Set<string>(), compilePairs: 0, laneComparisons: 0 };
-
-    for (const group of FIXTURE_GROUPS) {
-      describe(group.id, () => {
-        for (const spec of group.fixtures) {
-          const environments = environmentsOf(spec);
-          it(`${spec.id}: compiled twice and shuffled, in ${environments.map((e) => e.direction).join(' and ')}`, { timeout: PER_ENVIRONMENT_MS * environments.length }, async () => {
-            for (const e of environments) {
-              const a = compileFixture(spec, NO_FAULTS, 'enforce', e.direction).compiled;
-              const b = compileFixture(spec, NO_FAULTS, 'enforce', e.direction).compiled;
-              const c = compileFixture(spec, NO_FAULTS, 'enforce', e.direction, shuffled).compiled;
-              for (const x of [b, c]) {
-                expect(x.digest, `${spec.id} ${e.direction}`).toBe(a.digest);
-                expect(JSON.stringify(x.outputs), `${spec.id} ${e.direction}`).toBe(JSON.stringify(a.outputs));
-                expect(x.diagnostics.map((d) => JSON.stringify(d)).sort(), spec.id).toEqual(a.diagnostics.map((d) => JSON.stringify(d)).sort());
-                expect(JSON.stringify(x.dependencies), spec.id).toBe(JSON.stringify(a.dependencies));
-                checked.compilePairs++;
-              }
-            }
-            // Both lanes again on the shuffled input: every case outcome (projection, vector, comparisons, CSS) and the report equal.
-            const run = { authored: capturedOrCommitted, faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' } as const;
-            const again = await runFixture(spec, browser, { ...run, transformInput: shuffled });
-            const main = outcomes.get(spec.id) ?? (await runFixture(spec, browser, run));
-            expect(stable(again), spec.id).toBe(stable(main));
-            expect(JSON.stringify(buildReport([again]).fixtures), spec.id).toBe(JSON.stringify(buildReport([main]).fixtures));
-            checked.laneComparisons++;
-            checked.fixtures.add(spec.id);
-          });
-        }
-      });
-    }
-
-    it('coverage: every fixture was checked, with two compile comparisons per environment and one lane comparison, and the shuffle reorders the tree fixtures', () => {
-      expect([...checked.fixtures].sort()).toEqual(FIXTURES.map((f) => f.id).sort());
-      expect(checked.compilePairs).toBe(2 * FIXTURES.reduce((n, f) => n + environmentsOf(f).length, 0));
-      expect(checked.laneComparisons).toBe(FIXTURES.length);
+    it('coverage: the chunk files together check every fixture exactly once, and the shuffle reorders the tree fixtures', () => {
+      const files = readdirSync(repoPath('packages/parity/test')).filter((f) => /^parity-determinism-.*\.test\.ts$/.test(f)).sort();
+      expect(files).toEqual(Array.from({ length: DETERMINISM_CHUNKS }, (_, i) => `parity-determinism-${i + 1}.test.ts`).sort());
+      for (let k = 1; k <= DETERMINISM_CHUNKS; k++) {
+        const text = readFileSync(repoPath(`packages/parity/test/parity-determinism-${k}.test.ts`), 'utf8');
+        expect(text.match(/determinismSuite\(\d+\)/g), `parity-determinism-${k}.test.ts declares chunk ${k} once`).toEqual([`determinismSuite(${k})`]);
+      }
+      const ids = Array.from({ length: DETERMINISM_CHUNKS }, (_, i) => determinismChunk(i + 1).map((f) => f.id)).flat();
+      expect(ids.slice().sort()).toEqual(FIXTURES.map((f) => f.id).sort());
+      expect(() => determinismChunk(0)).toThrow();
+      expect(() => determinismChunk(DETERMINISM_CHUNKS + 1)).toThrow();
       const permuted = FIXTURES.filter((spec) => JSON.stringify(shuffled(fixtureInput(spec))) !== JSON.stringify(fixtureInput(spec))).length;
       expect(permuted, 'tree fixtures have several sources, modules, components and style uses to reorder').toBeGreaterThanOrEqual(10);
     });
@@ -809,7 +820,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     expect(report.summary.casesPassed).toBe(report.summary.cases);
     for (const o of ordered) for (const c of o.cases) expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'pass', 'chrome-dual': 'pass' });
     for (const cc of report.summary.caseCounts) {
-      expect(cc.cases.length, cc.fixture).toBe(cc.expected);
+      expect(cc.cases.filter((id) => !isForcedCaseId(id)).length, cc.fixture).toBe(cc.expected);
       expect(cc.renderer, cc.fixture).toBe(cc.expected);
       expect(cc.dragon, cc.fixture).toBe(cc.expected);
       for (const e of cc.environments) expect([e.renderer, e.dragon], `${cc.fixture} ${e.direction}`).toEqual([e.expected, e.expected]);
@@ -829,9 +840,9 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     expect(report.run.rootFont).toEqual({ default: 'ahem', uaDefault: ['block-ua-divs'] });
     // Every exact profile row links to at least one passing case id that exists in the report, and every case links back.
     const reportCases = new Set([...report.fixtures.flatMap((f) => f.cases.filter((c) => c.status === 'pass').map((c) => c.id)), ...report.webOnlyCases.filter((c) => c.status === 'pass').map((c) => c.case)]);
-    const exact = report.profileRows.filter((r) => r.status === 'exact');
+    const exact = layoutRows(report.profileRows).filter((r) => r.status === 'exact');
     expect(exact.length).toBeGreaterThan(1000);
-    for (const r of report.profileRows) {
+    for (const r of layoutRows(report.profileRows)) {
       expect(r.casesPassingInReport, `${r.target} ${r.feature}@${r.context}`).toBe(true);
       for (const pr of r.proofs) {
         expect(pr.cases.length).toBeGreaterThan(0);
@@ -881,9 +892,11 @@ describe('renderer isolation', () => {
     const src = readdirSync(repoPath('packages/parity/src')).filter((f) => f.endsWith('.ts')).map((f) => [f, readFileSync(repoPath(`packages/parity/src/${f}`), 'utf8')] as const);
     expect(src.filter(([, t]) => t.includes('data-dragon-harness')).map(([f]) => f)).toEqual(['chrome.ts']);
     const pipeline = readFileSync(repoPath('packages/parity/src/pipeline.ts'), 'utf8');
-    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.compiledHtml\(webCss, classOf\), c\.environment, c\.computedExtra\)/);
-    // TXT1a-2: the authored rendering of a fixture with a font map also takes its stated font reference (cases.ts authoredPrepare),
-    // which injects the pinned faces and rewrites pinned generics only; direction and the root font still come from the environment.
-    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.authoredHtml, c\.environment, c\.computedExtra, c\.authoredPrepare \?\? undefined\)/);
+    // A SELD-R2a forced case passes the same prepare hook (CSS.forcePseudoState) to both renderings. TXT1a-2: the authored rendering of
+    // a fixture with a font map also takes its stated font reference (cases.ts authoredPrepare, composed in authoredPrepareOf), which
+    // injects the pinned faces and rewrites pinned generics only; direction and the root font still come from the environment.
+    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.compiledHtml\(webCss, classOf\), c\.environment, c\.computedExtra, prepareOf\(c\)\)/);
+    expect(pipeline).toMatch(/captureFixture\(browser, c\.id, c\.authoredHtml, c\.environment, c\.computedExtra, authoredPrepareOf\(c\)\)/);
+    expect(pipeline).toMatch(/const fonts = c\.authoredPrepare \?\? undefined;\n  const forced = prepareOf\(c\);/);
   });
 });

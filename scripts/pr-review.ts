@@ -1,27 +1,33 @@
 // Prints a PR's check runs and the Macroscope review comments nobody has answered yet; exits 1 while anything is open.
-// Run with: pnpm run pr:review [<pr number>] [--wait]
+// Run with: pnpm run pr:review [<pr number>] [--wait] [--conflicts-ok]
 import { execFileSync } from 'node:child_process';
 import {
   CORRECTNESS,
+  CORRECTNESS_GRACE_MS,
   type CheckRun,
-  checkSha,
   correctnessSucceeded,
   type Earlier,
   type Git,
   type Ignore,
   ignoreAt,
   isVouchableSkip,
+  judgedHead,
   outcome,
+  parsePrHead,
+  type PrHead,
   parseCheckRunPages,
   parseCrossRepository,
   parsePrCommits,
   parseReviewCommentPages,
   type PatchId,
   patchIdOver,
+  reviewExit,
   settled,
   skipScope,
+  SPENDING_LIMIT,
   type Vouch,
   vouchForSkip,
+  waivedWithoutCorrectness,
 } from './pr-review-vouch.ts';
 
 // GitHub's API times out now and then; a transient failure must not end a --wait.
@@ -39,13 +45,18 @@ const isMacroscope = (login: string): boolean => login.toLowerCase().includes('m
 
 const args = process.argv.slice(2);
 const wait = args.includes('--wait');
+const conflictsOk = args.includes('--conflicts-ok');
 const pr = args.find((a) => /^\d+$/.test(a)) ?? gh(['pr', 'view', '--json', 'number', '--jq', '.number']).trim();
 if (!/^\d+$/.test(pr)) throw new Error(`pr-review: not a PR number: ${JSON.stringify(pr)}`);
 const repo = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']).trim();
 // The head is re-read on every poll, so a push during --wait is judged on its own checks, never on the previous commit's.
+let head: PrHead = { sha: '', mergeable: 'UNKNOWN' };
 let sha = '';
 const checkRuns = (): CheckRun[] => {
-  sha = checkSha(gh(['pr', 'view', pr, '--json', 'headRefOid', '--jq', '.headRefOid']).trim(), 'PR head sha');
+  const seen = parsePrHead(JSON.parse(gh(['pr', 'view', pr, '--json', 'headRefOid,mergeable'])));
+  if (conflictsOk && seen.mergeable === 'CONFLICTING' && head.sha !== seen.sha) console.error(`pr-review: GitHub reports ${seen.sha} CONFLICTING; --conflicts-ok leaves that to the merge train's drivers`);
+  head = judgedHead(seen, conflictsOk);
+  sha = head.sha;
   return runsOf(sha);
 };
 const runsOf = (commit: string): CheckRun[] => parseCheckRunPages(ghJson(`repos/${repo}/commits/${commit}/check-runs?per_page=100`));
@@ -103,7 +114,8 @@ const vouchFor = (run: CheckRun, head: string): Vouch => {
 };
 
 // A skipped correctness review (for example over the per-review cost limit) is no review, so it never counts as passed,
-// except a "Diff unchanged" or "already reviewed" skip that vouchForSkip ties to an earlier reviewed commit with the same patch id.
+// except a "Diff unchanged", "already reviewed" or "no code objects reviewed" skip that vouchForSkip ties to an earlier reviewed
+// commit with the same patch id.
 // Vouches are judged on every poll, before settled(), so the wait loop and the final verdict read the same verdictOf.
 const vouches = new Map<string, Vouch>();
 const judge = (rs: CheckRun[]): Map<string, Vouch> => {
@@ -116,7 +128,7 @@ const judge = (rs: CheckRun[]): Map<string, Vouch> => {
 
 let runs = checkRuns();
 const deadline = Date.now() + 45 * 60_000;
-while (wait && !settled(runs, judge(runs)) && Date.now() < deadline) {
+while (wait && !settled(runs, judge(runs), head) && Date.now() < deadline) {
   await new Promise((resolve) => setTimeout(resolve, 30_000));
   runs = checkRuns();
 }
@@ -140,7 +152,14 @@ const open = comments.filter((c) => c.in_reply_to_id === undefined && isMacrosco
 console.log(`\nUnanswered Macroscope findings: ${open.length}`);
 for (const c of open) console.log(`\n--- ${c.path}:${c.line ?? '?'} (comment ${c.id})\n${c.html_url}\n${c.body.trim()}`);
 
-const { pending, failed } = outcome(runs, vouches);
+const now = Date.now();
+const result = outcome(runs, vouches, head, now);
+const { pending, failed } = result;
+if (result.unreviewed) {
+  console.log(`\n!!! UNREVIEWED: Macroscope spending limit. Every Macroscope check of ${sha} was skipped with "${SPENDING_LIMIT}"; the owner's`);
+  console.log('!!! standing directive (2026-10-02) lets this commit land without a Macroscope review once CI passes and every finding is answered.');
+  if (waivedWithoutCorrectness(runs, now)) console.log(`!!! Macroscope created no "${CORRECTNESS}" check within ${CORRECTNESS_GRACE_MS / 60_000} minutes of CI passing; treated as the same limit.`);
+}
 if (pending.length > 0) console.log(`\nStill running: ${pending.join(', ')}`);
 if (failed.length > 0) console.log(`\nFailed: ${failed.join(', ')}`);
-process.exit(pending.length + failed.length + open.length > 0 ? 1 : 0);
+process.exit(reviewExit(result, open.length));

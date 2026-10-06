@@ -6,7 +6,6 @@ import { join } from 'node:path';
 import type { EngineFaults } from '../../layout/src/block.ts';
 import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle, LineStrut, TextLeaf } from '../../layout/src/input.ts';
-import { hitRefusal } from '../../layout/src/rt-hit.ts';
 import { validateLayoutInput } from '../../layout/src/validate.ts';
 import { runEngineCase, runLibraryCase, runSnapCase, runUnitsCase } from '../harness/harness.ts';
 import { bitsHex } from '../harness/host.ts';
@@ -477,13 +476,32 @@ export type Corpus = {
   readonly digests: Readonly<Record<string, string>>;
 };
 
-/** Per-suite digests (inputs and TypeScript results) and the corpus digest over them. */
+const NAN_SIGN_PAYLOAD = /"([0-9a-f]{16})"/g;
+const isNanBits = (hex: string): boolean => {
+  const v = BigInt(`0x${hex}`);
+  return ((v >> 52n) & 0x7ffn) === 0x7ffn && (v & 0xfffffffffffffn) !== 0n;
+};
+
+/**
+ * A corpus line with every NaN's bits written as the one quiet NaN, 7ff8000000000000 (PM ruling, 2026-10-04). JavaScript gives
+ * NaN sign and payload bits no meaning, and hosts differ in them: x86-64 makes 0 * Infinity fff8000000000000, arm64
+ * 7ff8000000000000 (units-m2 #45946 and #46835, zoomFontSize with NaN inputs, failed only on the x86_64 emulator). Every other
+ * value keeps its exact bits: -0 is still 8000000000000000, and a NaN never equals a number.
+ */
+export function canonicalNan(line: string): string {
+  return line.replace(NAN_SIGN_PAYLOAD, (tok, hex: string) => (isNanBits(hex) ? '"7ff8000000000000"' : tok));
+}
+
+/** Whether a native result line equals the TypeScript one: exact, except that any NaN matches any NaN. */
+export const sameResult = (expected: string, got: string): boolean => expected === got || canonicalNan(expected) === canonicalNan(got);
+
+/** Per-suite digests (inputs and TypeScript results, NaNs canonical) and the corpus digest over them. */
 export function digestsOf(suites: readonly Suite[]): { readonly digest: string; readonly digests: Record<string, string> } {
   const digests: Record<string, string> = {};
   const all = createHash('sha256');
   for (const s of suites) {
     const h = createHash('sha256');
-    for (let i = 0; i < s.lines.length; i++) h.update(s.lines[i] as string).update('\n').update(s.expected[i] as string).update('\n');
+    for (let i = 0; i < s.lines.length; i++) h.update(canonicalNan(s.lines[i] as string)).update('\n').update(canonicalNan(s.expected[i] as string)).update('\n');
     digests[s.name] = h.digest('hex');
     all.update(`${s.name} ${digests[s.name]}\n`);
   }
@@ -502,6 +520,13 @@ type RtOpJson = { readonly fn: string; readonly x: RtLengthJson; readonly y: RtL
 type RtValueJson = { readonly kind: string; readonly number: number; readonly length: RtLengthJson; readonly color: { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number }; readonly ops: readonly RtOpJson[] };
 type RtCaseJson = { readonly from: RtValueJson; readonly to: RtValueJson; readonly effectEasing: RtEasingJson; readonly keyframeEasing: RtEasingJson };
 
+type RtSecondsJson = { readonly delay: number; readonly duration: number; readonly iterations: number | 'Infinity'; readonly direction: string; readonly fill: string; readonly easing: RtEasingJson };
+type RtRuleJson = readonly { readonly offset: number; readonly easing: RtEasingJson | null; readonly value: { readonly v: RtValueJson } | null }[];
+type RtStepsJson = readonly (readonly [string, number])[];
+type RtKeyframeCaseJson = { readonly range: string; readonly underlying: { readonly v: RtValueJson }; readonly rule: RtRuleJson; readonly timing: RtSecondsJson };
+type RtTransitionCaseJson = { readonly range: string; readonly states: readonly { readonly value: { readonly v: RtValueJson }; readonly listing: { readonly mode: string; readonly delay: number; readonly duration: number; readonly easing: RtEasingJson } }[]; readonly steps: RtStepsJson };
+type RtAnimationCaseJson = { readonly range: string; readonly rules: readonly { readonly name: string; readonly rule: RtRuleJson }[]; readonly states: readonly { readonly base: { readonly v: RtValueJson }; readonly entries: readonly { readonly name: string; readonly paused: boolean; readonly timing: RtSecondsJson }[] }[]; readonly steps: RtStepsJson };
+
 const rtRead = <T>(name: string): T => JSON.parse(readFileSync(join(RT_VECTORS_DIR, name), 'utf8')) as T;
 /** The input a record's index names; an index outside the file's inputs is a corrupt vector file, never a skipped record. */
 function rtAt<T>(list: readonly T[], i: number, file: string): T {
@@ -518,6 +543,10 @@ const rtValueLine = (v: RtValueJson): unknown[] => [
   v.kind, bitsHex(v.number), rtLengthLine(v.length), [bitsHex(v.color.r), bitsHex(v.color.g), bitsHex(v.color.b), bitsHex(v.color.alpha)],
   v.ops.map((o) => [o.fn, rtLengthLine(o.x), rtLengthLine(o.y), bitsHex(o.angle), bitsHex(o.sx), bitsHex(o.sy)]),
 ];
+
+const rtSecondsLine = (t: RtSecondsJson): unknown[] => [bitsHex(t.delay), bitsHex(t.duration), bitsHex(t.iterations === 'Infinity' ? Number.POSITIVE_INFINITY : t.iterations), t.direction, t.fill, rtEasingLine(t.easing)];
+const rtRuleLine = (r: RtRuleJson): unknown[] => r.map((k) => [bitsHex(k.offset), k.easing === null ? null : rtEasingLine(k.easing), k.value === null ? null : rtValueLine(k.value.v)]);
+const rtStepsLine = (s: RtStepsJson): unknown[] => s.map(([k, n]) => [k, bitsHex(n)]);
 
 /**
  * The rt suite: one library-mode line per rt vector record, in file order: timing.json, easing.json, hold.json, then interp.json.
@@ -537,6 +566,28 @@ export function rtCases(read: <T>(name: string) => T = rtRead): string[] {
     const c = rtAt(interp.cases, i, 'interp.json');
     out.push(JSON.stringify(['rt-interp', rtValueLine(c.from), rtValueLine(c.to), rtEasingLine(c.effectEasing), rtEasingLine(c.keyframeEasing), bitsHex(t), bitsHex(interp.box.width), bitsHex(interp.box.height)]));
   }
+  // ANIM-b (T065): advance.json, keyframes.json, transitions.json, then animations.json; serialisation uses the keyframes box.
+  const advance = read<{ sequences: number[][]; records: [number, unknown][] }>('advance.json');
+  for (const [i] of advance.records) out.push(JSON.stringify(['rt-advance', rtAt(advance.sequences, i, 'advance.json').map(bitsHex)]));
+  const keyframes = read<{ box: { width: number; height: number }; cases: RtKeyframeCaseJson[]; records: [number, number, string | null, string][] }>('keyframes.json');
+  const box = [bitsHex(keyframes.box.width), bitsHex(keyframes.box.height)];
+  for (const [i, t] of keyframes.records) {
+    const c = rtAt(keyframes.cases, i, 'keyframes.json');
+    out.push(JSON.stringify(['rt-keyframes', c.range, rtValueLine(c.underlying.v), rtRuleLine(c.rule), rtSecondsLine(c.timing), bitsHex(t), ...box]));
+  }
+  const transitions = read<{ cases: RtTransitionCaseJson[]; records: [number, unknown][] }>('transitions.json');
+  for (const [i] of transitions.records) {
+    const c = rtAt(transitions.cases, i, 'transitions.json');
+    const states = c.states.map((s) => [rtValueLine(s.value.v), [s.listing.mode, bitsHex(s.listing.delay), bitsHex(s.listing.duration), rtEasingLine(s.listing.easing)]]);
+    out.push(JSON.stringify(['rt-transitions', c.range, states, rtStepsLine(c.steps), ...box]));
+  }
+  const animations = read<{ cases: RtAnimationCaseJson[]; records: [number, unknown][] }>('animations.json');
+  for (const [i] of animations.records) {
+    const c = rtAt(animations.cases, i, 'animations.json');
+    const names = c.rules.map((r) => r.name);
+    const states = c.states.map((s) => [rtValueLine(s.base.v), s.entries.map((e) => [e.name, names.includes(e.name), e.paused, rtSecondsLine(e.timing)])]);
+    out.push(JSON.stringify(['rt-animations', c.range, c.rules.map((r) => [r.name, rtRuleLine(r.rule)]), states, rtStepsLine(c.steps), ...box]));
+  }
   return out;
 }
 
@@ -550,18 +601,26 @@ export const HIT_FACTS = join(RT_VECTORS_DIR, 'hit/facts.json');
  * vector's input and its case's hit facts. The TypeScript harness's answers are the expected results; Swift and Kotlin must equal
  * them, and packages/parity hit-report proves the TypeScript hit test equals Chrome at DPR 1.
  */
+/** Throws unless every refused hit case carries a written reason and has no facts. */
+export function checkHitRefusals(facts: Record<string, unknown>, refused: Record<string, unknown>): void {
+  for (const [id, why] of Object.entries(refused)) if (typeof why !== 'string' || why === '' || facts[id] !== undefined) throw new Error(`hit facts: refused case ${id} needs a reason and no facts`);
+}
+
 export function hitCases(): string[] {
-  const facts = (JSON.parse(readFileSync(HIT_FACTS, 'utf8')) as { cases: Record<string, unknown> }).cases;
+  const file = JSON.parse(readFileSync(HIT_FACTS, 'utf8')) as { cases: Record<string, unknown>; refused?: Record<string, unknown> };
+  const facts = file.cases;
+  // A case the hit lane refuses by name (parity hit-capture.ts hitRefusal) has no hit line; it must carry a written reason.
+  const refused = file.refused ?? {};
+  checkHitRefusals(facts, refused);
   const out: string[] = [];
   for (const dir of ['', 'dpr-2', 'dpr-3', 'dpr-2.625']) {
     const at = dir === '' ? VECTORS_DIR : join(VECTORS_DIR, dir);
     for (const file of readdirSync(at).filter((f) => f.endsWith('.json')).sort()) {
       const id = file.slice(0, -'.json'.length);
-      const v = JSON.parse(readFileSync(join(at, file), 'utf8')) as { platform: string; input: LayoutInput };
-      // An input hitTableOf refuses (INL1a inline boxes and <br>s) has no hit facts and is not a hit case.
-      if (hitRefusal(v.input) !== null) continue;
+      if (refused[id] !== undefined) continue;
       const f = facts[id];
       if (f === undefined) throw new Error(`no hit facts for vector ${dir === '' ? '' : `${dir}/`}${file}; run pnpm run parity:hit-capture -- --vectors`);
+      const v = JSON.parse(readFileSync(join(at, file), 'utf8')) as { platform: string; input: unknown };
       out.push(JSON.stringify(['rt-hit', v.platform, v.input, f]));
     }
   }
@@ -578,6 +637,33 @@ export function hitExpected(lines: readonly string[]): string[] {
   });
 }
 
+// ---------------------------------------------------------------- animator suite (ANIM-b1 3b, T065 R16)
+
+/** The frame cases as animator scripts (packages/parity parity:anim-vectors). */
+export const ANIMATOR_VECTORS = join(RT_VECTORS_DIR, 'animator/cases.json');
+
+/**
+ * The animator suite: one library-mode line per frame case: its tables, every assignment's resolved engine input, its initial
+ * assignment and its script. The TypeScript harness's answers are the expected results; Swift and Kotlin must equal them, and
+ * packages/parity anim-report proves the TypeScript animator equals Chrome at every sample.
+ */
+export function animatorCases(): string[] {
+  const v = JSON.parse(readFileSync(ANIMATOR_VECTORS, 'utf8')) as { schema: string; cases: { tables: unknown; inputs: unknown; initial: number; steps: unknown }[] };
+  if (v.schema !== 'dragon-animator-vectors/1') throw new Error(`${ANIMATOR_VECTORS}: schema ${v.schema}; run pnpm run parity:anim-vectors`);
+  const out = v.cases.map((c) => JSON.stringify(['rt-animator', c.tables, c.inputs, c.initial, c.steps]));
+  if (out.length === 0) throw new Error('the animator suite has no cases');
+  return out;
+}
+
+/** The animator suite's expected results; a line the TypeScript reference threw on or refused fails the build, not the natives. */
+export function animatorExpected(lines: readonly string[]): string[] {
+  return lines.map((line, i) => {
+    const r = runLibraryCase(line);
+    if (!r.startsWith('["ok",')) throw new Error(`animator case ${i}: the TypeScript reference answered ${r.slice(0, 200)}, not a result`);
+    return r;
+  });
+}
+
 export function buildCorpus(): Corpus {
   const vectors = vectorCases();
   const vLines = vectors.map((v) => v.line);
@@ -586,6 +672,7 @@ export function buildCorpus(): Corpus {
   const library = libraryCases();
   const rt = rtCases();
   const hit = hitCases();
+  const animator = animatorCases();
   const suites: Suite[] = [
     { name: 'vectors', mode: 'engine', lines: vLines, expected: vLines.map(runEngineCase) },
     { name: 'units', mode: 'units', lines: units, expected: units.map(runUnitsCase) },
@@ -595,6 +682,8 @@ export function buildCorpus(): Corpus {
     { name: 'rt', mode: 'library', lines: rt, expected: rt.map(runLibraryCase) },
     // SELD-R1b: the hit table, grid and answers of every layout vector, after rt.
     { name: 'hit', mode: 'library', lines: hit, expected: hitExpected(hit) },
+    // ANIM-b1 3b: the runtime animator over every frame case's tables and script, after hit.
+    { name: 'animator', mode: 'library', lines: animator, expected: animatorExpected(animator) },
   ];
   const d = digestsOf(suites);
   return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: d.digest, digests: d.digests };

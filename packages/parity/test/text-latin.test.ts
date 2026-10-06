@@ -144,16 +144,20 @@ const probe = (id: string) => {
 };
 
 describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
-  it('keeps every BASE layout case first and in order, and adds exactly the text-latin, Ahem fractional and calibration cases', () => {
+  const BASE_LAYOUT_CASES = 569;
+  it('keeps every BASE layout case in order, and adds exactly the text-latin, Ahem fractional and calibration cases', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
-    // BASE is INL1a part C2 with seld-lanes-v2 merged in (inl1a-lowering 2d04d5ca5), whose FIXTURES hold 520 layout cases.
-    expect(ids.length).toBe(520 + NEW_IDS.length);
-    expect(createHash('sha256').update(ids.slice(0, 520).join('\n')).digest('hex')).toBe('69e3e4bb4aac1f5ac426a74578b20aaa6c33de611b95734b5000dc85593cf91d');
-    expect(ids.slice(520)).toEqual(NEW_IDS);
+    // BASE is txt1a-1-v2 with #91's queued head merged in (b012c3b19b), whose FIXTURES hold 569 layout cases. Groups added after the
+    // per-feature split run in id order after the legacy ones (fixtures.ts), so the text groups sit among them, not last.
+    const base = ids.filter((id) => !NEW_IDS.includes(id));
+    expect(base.length).toBe(BASE_LAYOUT_CASES);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('3c0c5d0b0b43e575706b4fe27f1782b0cdc313bb0cd1b6d41a353dc8f2467fc9');
+    expect(ids.filter((id) => NEW_IDS.includes(id)).sort()).toEqual([...NEW_IDS].sort());
+    expect(ids.length).toBe(BASE_LAYOUT_CASES + NEW_IDS.length);
   });
 
   it('derives the shaped cases from the compiled input alone: every new case, and no BASE case', () => {
-    expect([...shapedCaseIds()]).toEqual(NEW_IDS);
+    expect([...shapedCaseIds()].sort()).toEqual([...NEW_IDS].sort());
   });
 
   it('compiles each new case with the reference map, captures it under its stated reference, and lists its expected faces', () => {
@@ -223,7 +227,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
       }
     }
     // The 10 real-face cases are native-refused (engine only); every other case, the Ahem fractional one too, lowers natively.
-    expect([compared, engineOnly]).toEqual([(520 + 1) * 4, (NEW_IDS.length - 1) * 4]);
+    expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + 1) * 4, (NEW_IDS.length - 1) * 4]);
   });
 
   it('DRAGON_SYNTHETIC_FONT_STYLE fires on no FIXTURES case', () => {

@@ -1,0 +1,362 @@
+# CI-FULLTEST: the full `pnpm test` (vitest run, every packages/*/test file) of one commit on GitHub-hosted standard runners,
+# sharded, plus the `pnpm regen` fixed-point check. Judged exactly as a local run: no tolerance, filter or retry is added; a
+# failing test fails the run. The device-record tests judge the committed lanes.json as they do locally.
+# The groups and the shards are scripts/test-shards.ts's: files split by their recorded durations (scripts/test-durations.json),
+# longest first onto the least loaded shard, so the shards end together. The summary checks every test file ran exactly once.
+#   platform-free: packages/layout and packages/dragon (as ci.yml) on ubuntu-latest, except the native files.
+#   native (ubuntu-24.04-arm, 4 shards): every file that uses a native toolchain, by name or content (test-shards.ts), with
+#     swift.org Swift 6.4.0 and Kotlin 2.4.20 required, and a run that reports "blocked (owner tooling)" fails.
+#   chrome (macos-26, 3 shards): every other file; macOS 26 is where the Chrome captures are byte-identical to the Mac's
+#     (capture-proof.yml), with kotlinc 2.4.20 pinned and checked.
+# Caches are only restored here, never saved: a dispatched run tests an unreviewed tree at master's cache scope.
+#   regen: `pnpm regen --check` split as regen-on-ci.yml splits it (the Chrome steps on macos-26, lanes-host on xcode-27); on a
+#     tree at its fixed point both halves change nothing.
+# The summary job merges the shards' JSON reports into full-test-results (every test's state) and fails on any failure.
+# Trigger: workflow_dispatch with a commit sha (the landing driver), or the `fulltest` label on a pull request.
+name: full-test
+run-name: full test of ${{ inputs.sha || github.event.pull_request.head.sha }}
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit to test (reachable from a branch of this repository)
+        required: true
+        type: string
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+concurrency:
+  group: full-test-${{ inputs.sha || github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+env:
+  DRAGON_WPT_DIR: /Users/runner/wpt
+jobs:
+  resolve:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'fulltest'
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.r.outputs.sha }}
+    steps:
+      - id: r
+        env:
+          SHA: ${{ inputs.sha || github.event.pull_request.head.sha }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::not a full commit sha: $SHA"; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "full test of $SHA" >> "$GITHUB_STEP_SUMMARY"
+
+  platform-free:
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: vitest run packages/layout packages/dragon (but the native file)
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/report"
+          list=$(node scripts/test-shards.ts plan platform-free 1 1) || { echo "::error::the shard planner failed"; exit 1; }
+          files=(); while IFS= read -r f; do files+=("$f"); done <<< "$list"
+          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/platform-free.json" 2>&1 | tee "$RUNNER_TEMP/shard.log"
+      - name: No native run was blocked (owner tooling)
+        run: |
+          # The run lines native.ts describe() prints (the test titles that mention "blocked" are not run lines).
+          if grep -nE 'status blocked \(owner tooling\)|native:(swift|kotlin): (swiftc not found|no JDK 17\+ or kotlinc)' "$RUNNER_TEMP/shard.log"; then echo "::error::a native run was blocked (owner tooling): its toolchain was missing, so the test proved nothing"; exit 1; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: report-platform-free
+          path: ${{ runner.temp }}/report
+
+  # The native files on arm64 Linux (PM 2026-10-05): swift.org Swift 6.4.0 (the Swift of Xcode 27.0) and Kotlin 2.4.20 on JDK 17,
+  # off the 5-job macOS cap. Proved in run 37257861551: every native test passed on both this and xcode-27, and those tests
+  # compare every corpus result bit for bit (the Swift and Kotlin engines reproduce every suite exactly on both).
+  native:
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    env:
+      DRAGON_WPT_DIR: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Swift 6.4.0 (swift.org) and kotlinc 2.4.20
+        run: |
+          sudo apt-get install -y -q libcurl4-openssl-dev libxml2-dev >/dev/null
+          curl -sSfL https://download.swift.org/swift-6.4.0-release/ubuntu2404-aarch64/swift-6.4.0-RELEASE/swift-6.4.0-RELEASE-ubuntu24.04-aarch64.tar.gz | tar xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/swift-6.4.0-RELEASE-ubuntu24.04-aarch64/usr/bin" >> "$GITHUB_PATH"
+          curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
+      - name: Toolchain versions
+        run: |
+          swiftc --version 2>&1 | tee /dev/stderr | grep -q 'Swift version 6.4 ' || swiftc --version 2>&1 | grep -q 'swift-6.4.0-RELEASE' || { echo "::error::not Swift 6.4.0"; exit 1; }
+          kotlinc -version 2>&1 | tee /dev/stderr | grep -q 'kotlinc-jvm 2.4.20' || { echo "::error::not kotlinc 2.4.20"; exit 1; }
+          java -version
+      - name: The native tests find both toolchains (else they would read as "blocked (owner tooling)" and pass)
+        run: |
+          cat > "$RUNNER_TEMP/tools.mts" <<'EOF'
+          const { swiftTool, kotlinTool } = await import(`${process.env.GITHUB_WORKSPACE}/packages/translate/src/native.ts`);
+          const s = swiftTool(); const k = kotlinTool();
+          console.log(`swift: ${s?.version ?? 'NOT FOUND'}; kotlin: ${k?.version ?? 'NOT FOUND'}`);
+          if (s === null || k === null) { console.error('a native shard must have both toolchains'); process.exit(1); }
+          EOF
+          node --conditions=dragon-internal "$RUNNER_TEMP/tools.mts"
+      - name: vitest run (native files, shard ${{ matrix.shard }}/4)
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/report"
+          list=$(node scripts/test-shards.ts plan native ${{ matrix.shard }} 4) || { echo "::error::the shard planner failed"; exit 1; }
+          files=(); while IFS= read -r f; do files+=("$f"); done <<< "$list"
+          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/native-${{ matrix.shard }}.json" 2>&1 | tee "$RUNNER_TEMP/shard.log"
+      - name: No native run was blocked (owner tooling)
+        run: |
+          # The run lines native.ts describe() prints (the test titles that mention "blocked" are not run lines).
+          if grep -nE 'status blocked \(owner tooling\)|native:(swift|kotlin): (swiftc not found|no JDK 17\+ or kotlinc)' "$RUNNER_TEMP/shard.log"; then echo "::error::a native run was blocked (owner tooling): its toolchain was missing, so the test proved nothing"; exit 1; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: report-native-${{ matrix.shard }}
+          path: ${{ runner.temp }}/report
+
+  chrome:
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    runs-on: macos-26
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Restored only: a dispatched run tests an unreviewed tree at master's cache scope, so it never saves into it.
+      - name: Restore Playwright's Chromium (chromium-1208 for Playwright 1.58.2)
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: playwright-1.58.2-macos-${{ runner.arch }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: /Users/runner/wpt
+          key: wpt-${{ hashFiles('packages/wpt/wpt.lock') }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Playwright 1.58.2 Chromium, the pinned WPT copy and kotlinc 2.4.20
+        run: |
+          test "$(pnpm --filter @dragon/parity exec playwright --version)" = "Version 1.58.2"
+          pnpm --filter @dragon/parity exec playwright install chromium
+          bash scripts/fetch-wpt.sh
+          curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/kotlinc/bin/kotlinc" -version 2>&1 | grep -q 'kotlinc-jvm 2.4.20' || { echo "::error::not kotlinc 2.4.20"; exit 1; }
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"; find "${ANDROID_HOME:-/nonexistent}/platforms" -maxdepth 1 2>&1 | tail -3
+      - name: vitest run (every other file, shard ${{ matrix.shard }}/3)
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/report"
+          list=$(node scripts/test-shards.ts plan chrome ${{ matrix.shard }} 3) || { echo "::error::the shard planner failed"; exit 1; }
+          files=(); while IFS= read -r f; do files+=("$f"); done <<< "$list"
+          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/chrome-${{ matrix.shard }}.json" 2>&1 | tee "$RUNNER_TEMP/shard.log"
+      - name: No native run was blocked (owner tooling)
+        run: |
+          # The run lines native.ts describe() prints (the test titles that mention "blocked" are not run lines).
+          if grep -nE 'status blocked \(owner tooling\)|native:(swift|kotlin): (swiftc not found|no JDK 17\+ or kotlinc)' "$RUNNER_TEMP/shard.log"; then echo "::error::a native run was blocked (owner tooling): its toolchain was missing, so the test proved nothing"; exit 1; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: report-chrome-${{ matrix.shard }}
+          path: ${{ runner.temp }}/report
+
+  summary:
+    needs: [resolve, platform-free, native, chrome]
+    if: always() && needs.resolve.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - run: node scripts/test-shards.ts all > "$RUNNER_TEMP/all-files.tsv"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: report-*
+          path: ${{ runner.temp }}/reports
+          merge-multiple: true
+      - name: Every test's state, and the failures
+        env:
+          EXPECT: platform-free.json native-1.json native-2.json native-3.json native-4.json chrome-1.json chrome-2.json chrome-3.json
+        run: |
+          cat > "$RUNNER_TEMP/summary.mjs" <<'EOF'
+          // Merges the shards' vitest JSON reports. A missing report is a failure: the run proves nothing about its files.
+          import { existsSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs';
+          const dir = `${process.env.RUNNER_TEMP}/reports`;
+          const rows = [];
+          const missing = [];
+          for (const f of process.env.EXPECT.split(' ')) {
+            if (!existsSync(`${dir}/${f}`)) { missing.push(f); continue; }
+            const r = JSON.parse(readFileSync(`${dir}/${f}`, 'utf8'));
+            for (const file of r.testResults) {
+              const rel = file.name.replace(/^.*?\/(packages\/)/, '$1');
+              if (file.assertionResults.length === 0) rows.push({ file: rel, test: '(file)', state: file.status, shard: f });
+              for (const t of file.assertionResults) rows.push({ file: rel, test: t.fullName, state: t.status, shard: f });
+            }
+          }
+          rows.sort((a, b) => (a.file + a.test < b.file + b.test ? -1 : 1));
+          // Every test file vitest would run locally ran in exactly one shard: none left out, none twice.
+          const all = readFileSync(`${process.env.RUNNER_TEMP}/all-files.tsv`, 'utf8').split('\n').filter(Boolean).map((l) => l.split('\t')[0]);
+          const shardsOf = new Map();
+          for (const r of rows) shardsOf.set(r.file, new Set([...(shardsOf.get(r.file) ?? []), r.shard]));
+          const notRun = all.filter((f) => !shardsOf.has(f));
+          const twice = [...shardsOf].filter(([, s]) => s.size > 1).map(([f]) => f);
+          const stray = [...shardsOf.keys()].filter((f) => !all.includes(f));
+          writeFileSync(`${process.env.RUNNER_TEMP}/full-test-results.json`, `${JSON.stringify(rows.map(({ file, test, state }) => ({ file, test, state })), null, 1)}\n`);
+          const count = (s) => rows.filter((r) => r.state === s).length;
+          const failed = rows.filter((r) => r.state === 'failed');
+          const files = new Set(rows.map((r) => r.file)).size;
+          const out = [`${files} of ${all.length} files, ${rows.length} tests: ${count('passed')} passed, ${failed.length} failed, ${count('skipped') + count('pending') + count('todo')} skipped`, ...missing.map((m) => `MISSING report ${m}`), ...notRun.map((f) => `NOT RUN ${f}`), ...twice.map((f) => `RUN TWICE ${f}`), ...stray.map((f) => `NOT A TEST FILE ${f}`), ...failed.map((r) => `FAILED ${r.file} > ${r.test} (${r.shard})`)].join('\n');
+          console.log(out);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${out}\n`);
+          if (missing.length > 0 || failed.length > 0 || notRun.length > 0 || twice.length > 0 || stray.length > 0) process.exitCode = 1;
+          EOF
+          node "$RUNNER_TEMP/summary.mjs"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: full-test-results
+          path: ${{ runner.temp }}/full-test-results.json
+
+  # Both regen halves start after the Chrome shards, so a full test holds at most 3 macOS jobs at once (the free plan runs 5).
+  regen-chrome:
+    needs: [resolve, chrome]
+    if: always() && needs.resolve.result == 'success'
+    runs-on: macos-26
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: regen --skip (since #124)
+        run: |
+          grep -q -- "'--skip'" scripts/regen.ts || { echo "::error::scripts/regen.ts has no --skip (regen-on-ci, PR 124); the split fixed-point check cannot run"; exit 1; }
+      - uses: actions/cache/restore@v4
+        with:
+          path: .git/dragon-regen/v2
+          key: regen-store-v2-darwin-arm64-node24.15.0-full-test-${{ github.run_id }}
+          restore-keys: regen-store-v2-darwin-arm64-node24.15.0-
+      - uses: actions/cache/restore@v4
+        with:
+          path: /Users/runner/wpt
+          key: wpt-${{ hashFiles('packages/wpt/wpt.lock') }}
+      # Restored only: a dispatched run tests an unreviewed tree at master's cache scope, so it never saves into it.
+      - name: Restore Playwright's Chromium (chromium-1208 for Playwright 1.58.2)
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: playwright-1.58.2-macos-${{ runner.arch }}
+      - name: Playwright 1.58.2 Chromium and the WPT copy
+        run: |
+          pnpm --filter @dragon/parity exec playwright install chromium
+          bash scripts/fetch-wpt.sh
+      - name: pnpm regen --check (every step but lanes-host)
+        env:
+          JAVA_HOME: /opt/homebrew/opt/openjdk@17
+          ANDROID_HOME: /opt/homebrew/share/android-commandlinetools
+          DRAGON_REGEN_JOBS: '2'
+        run: pnpm regen --check --skip lanes-host
+
+  regen-host:
+    needs: [resolve, chrome]
+    if: always() && needs.resolve.result == 'success'
+    runs-on: xcode-27
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: regen --only needs #124
+        run: |
+          grep -q -- "'--only'" scripts/regen.ts || { echo "::error::scripts/regen.ts has no --only (regen-on-ci, PR 124); the split fixed-point check cannot run"; exit 1; }
+      - name: JDK 17 and kotlinc, checked against the toolchains lanes.json records (lanes-host writes them)
+        env:
+          JAVA_HOME: /opt/homebrew/opt/openjdk@17
+        run: |
+          brew install openjdk@17
+          brew upgrade kotlin || brew install kotlin
+          cat > "$RUNNER_TEMP/toolchain.mts" <<'EOF'
+          import { readFileSync } from 'node:fs';
+          const { swiftTool, kotlinTool } = await import(`${process.env.GITHUB_WORKSPACE}/packages/translate/src/native.ts`);
+          const lanes = JSON.parse(readFileSync('packages/parity/out/lanes.json', 'utf8'));
+          let bad = 0;
+          for (const target of ['ios', 'android']) {
+            const want = lanes.targets.find((t: any) => t.target === target)?.lanes.find((l: any) => l.lane === 'layout-vectors-host')?.run?.toolchain ?? null;
+            const have = target === 'ios' ? (swiftTool()?.version ?? null) : (kotlinTool()?.version ?? null);
+            console.log(`${target}: runner ${JSON.stringify(have)}, lanes.json ${JSON.stringify(want)}`);
+            if (have === null || have !== want) bad++;
+          }
+          if (bad > 0) { console.error('the runner toolchains differ from the committed lanes.json host lanes'); process.exit(1); }
+          EOF
+          node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts"
+      - name: pnpm regen --check (lanes-host)
+        env:
+          JAVA_HOME: /opt/homebrew/opt/openjdk@17
+          ANDROID_HOME: /opt/homebrew/share/android-commandlinetools
+        run: pnpm regen --check --only lanes-host

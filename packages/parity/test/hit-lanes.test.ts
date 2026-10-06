@@ -56,7 +56,8 @@ describe('device-hit on fake records', () => {
 
 describe('the device-hit lane record', () => {
   const t = nativeTargets().find((x) => x.target === 'android');
-  const set = (dpr: number, failures: readonly LaneFailure[] = []): DeviceSet => ({ dpr, device: { name: `d${dpr}` } as DeviceRecord, cases: vectorCaseIds().length, dumps: vectorCaseIds().length, compared: { a: 0, b: 1, c: 0, d: 0, breaks: 0 }, dumpsSha256: '0', failures, faults: [] });
+  // A device writes a hit record per hit case (runOneDevice evaluates hitCases), not per layout case.
+  const set = (dpr: number, failures: readonly LaneFailure[] = [], n: number = hitCases().length): DeviceSet => ({ dpr, device: { name: `d${dpr}` } as DeviceRecord, cases: n, dumps: n, compared: { a: 0, b: 1, c: 0, d: 0, breaks: 0 }, dumpsSha256: '0', failures, faults: [] });
   const record = (hits: readonly DeviceSet[]) => {
     if (t === undefined) throw new Error('no android target');
     const run: DeviceRun = { vectors: null, sets: [], states: [], hits, trust: [], blocked: null, evidence: { laneCode: 'a', referenceData: 'b', app: 'c' } };
@@ -66,6 +67,12 @@ describe('the device-hit lane record', () => {
     expect(record([set(2), set(3), set(2.625)])?.state).toBe('pass');
     expect(record([set(2), set(3), set(2.625, [{ lane: HIT_LANE, case: 'x', dpr: 2.625, node: null, kind: 'hit-mismatch', detail: 'd' }])])?.state).toBe('fail');
     expect(record([set(2), set(3)])?.reason).toContain('DPR 2.625 was not run');
+  });
+  it('passes on a full run of the hit cases while the hit lane refuses some layout cases (PNT2 transforms), and fails a record short of a hit case', () => {
+    const n = hitCases().length;
+    expect(n).toBeLessThan(vectorCaseIds().length);
+    expect(record([set(2), set(3), set(2.625)])?.reason ?? null).toBeNull();
+    expect(record([set(2), set(3), set(2.625, [], n - 1)])?.reason).toContain(`DPR 2.625: ${n - 1}/${n} dumps`);
   });
 });
 

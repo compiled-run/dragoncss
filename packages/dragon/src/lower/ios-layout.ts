@@ -17,6 +17,9 @@ import type {
   JustifyContent,
   LayoutBox,
   LayoutStyle,
+  ObjectFit,
+  ObjectPositionValue,
+  ReplacedLeaf,
   LengthCalc,
   LineHeightValue,
   LineStrut,
@@ -33,13 +36,15 @@ import type {
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
-import { exactLayoutRatio } from '../css/values.ts';
+import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
-import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath, V1_MATH_FUNCTIONS } from '../css/math.ts';
+import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
+import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
+import type { ImageNaturals } from '../images/compile.ts';
 
 export class LoweringError extends Error {
   readonly nodeId: string;
@@ -79,7 +84,7 @@ function lengthPercentage(id: string, get: Get, p: Longhand, range: LengthCalc['
   if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value };
   if (v.kind === 'percentage') return { kind: 'percent', value: v.value };
   if (v.kind === 'length' && VIEWPORT_AXIS[v.unit] !== undefined) return { kind: 'calc', expr: { kind: 'viewport', value: v.value, axis: VIEWPORT_AXIS[v.unit] as 'width', size: 'large' }, range };
-  if (v.kind !== 'other' || !V1_MATH_FUNCTIONS.has(v.type.replace('()', ''))) return null;
+  if (v.kind !== 'other' || !MATH_VALUE_FUNCTIONS.has(v.type.replace('()', ''))) return null;
   const context = mathContextFor(p);
   const parsed = 'refused' in context ? null : parseMath(v.text, context);
   if (parsed === null || !parsed.ok) return fail(id, p, v, `a calculation V1 supports${parsed === null ? '' : ` (${parsed.reason})`}`);
@@ -351,9 +356,10 @@ export function assertTextCarriesContainer(container: LayoutStyle, containerId: 
 }
 
 /** CSS2 §9.2.2: inline-level content: text, and an element whose box is an inline box (display: inline, <br> included). */
-const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || displayOf(c) === 'inline';
+// A replaced element (REPL-a) is laid out as its own leaf beside the inline content, never inside a line (atomic inlines are INL2).
+const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || (displayOf(c) === 'inline' && !isReplacedTag(c.element.tag));
 
-type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly mode: LowerMode };
+type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode };
 
 /**
  * One piece of inline content (CSS2 §9.2.2): a text leaf, a <br> as a LineBreak, or an inline box with its own font and
@@ -395,10 +401,49 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
  * The layout tree of a document. display: none subtrees generate no boxes (CSS2 §9.2.4), so they are omitted wherever they occur
  * (C4) and a display: none root has no layout tree.
  */
-export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset, mode: LowerMode): LayoutBox {
+export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset, images: ImageNaturals, mode: LowerMode): LayoutBox {
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
+  if (isReplacedTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a replaced element`);
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
-  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), mode });
+  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images, mode });
+}
+
+const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', 'scale-down'];
+
+/**
+ * A replaced element (REPL-a) as a leaf: its box style, natural size, default object size, object-fit and object-position. Its
+ * overflow clip (the UA's img and iframe rule) clips only its own content, so the engine takes it as visible; its children are
+ * fallback content, which a replaced element never renders.
+ */
+function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals): ReplacedLeaf {
+  const id = el.element.address;
+  const raw: Get = (p) => (el.props.get(p) as ResolvedValue).value;
+  const get: Get = (p) => {
+    const v = raw(p);
+    return (p === 'overflow-x' || p === 'overflow-y') && v.kind === 'keyword' && v.value === 'clip' ? { kind: 'keyword', value: 'visible' } : v;
+  };
+  const style = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { em: fontPx(raw('font-size')), rem: rootFontSize });
+  let natural: ReplacedLeaf['natural'] = { kind: 'none' };
+  if (el.element.tag === 'img') {
+    const src = el.element.attributes.get('src');
+    const size = src === undefined ? undefined : images.get(src);
+    if (size === undefined) throw new LoweringError(id, 'src', `<img> ${id} has no image the build read`);
+    natural = { kind: 'image', width: size.width, height: size.height };
+  }
+  const position = raw('object-position');
+  if (position.kind !== 'position') return fail(id, 'object-position', position, '<position>');
+  const axis = (o: { readonly unit: 'px' | '%'; readonly value: number }): ObjectPositionValue => (o.unit === 'px' ? { kind: 'px', value: o.value } : { kind: 'percent', value: o.value });
+  return {
+    kind: 'replaced',
+    id,
+    style,
+    natural,
+    defaultWidth: DEFAULT_OBJECT_SIZE.width,
+    defaultHeight: DEFAULT_OBJECT_SIZE.height,
+    objectFit: keyword<ObjectFit>(id, raw, 'object-fit', OBJECT_FITS),
+    objectPositionX: axis(position.x),
+    objectPositionY: axis(position.y),
+  };
 }
 
 /**
@@ -412,7 +457,7 @@ function lowerBox(el: ResolvedElement, l: Lowerer): LayoutBox {
   const style = lowerStyle(el, l.faults, l.ua, l.rootFontSize);
   const inline = kids.filter(isInlineLevel);
   const wrap = inline.length > 0 && (displayOf(el) === 'flex' || inline.length !== kids.length);
-  const children: (LayoutBox | InlineChild)[] = [];
+  const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
   let run: (ResolvedElement | ResolvedText)[] = [];
   let anon = 0;
   const flush = (): void => {
@@ -422,7 +467,7 @@ function lowerBox(el: ResolvedElement, l: Lowerer): LayoutBox {
   for (const c of kids) {
     if (!isInlineLevel(c)) {
       flush();
-      children.push(lowerBox(c as ResolvedElement, l));
+      children.push(isReplacedTag((c as ResolvedElement).element.tag) ? lowerReplaced(c as ResolvedElement, l.faults, l.ua, l.rootFontSize, l.images) : lowerBox(c as ResolvedElement, l));
     } else if (wrap) {
       if (l.faults.inlineWrapperPerElement && c.kind === 'element') flush();
       run.push(c);
@@ -434,5 +479,6 @@ function lowerBox(el: ResolvedElement, l: Lowerer): LayoutBox {
     }
   }
   flush();
-  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, children.some((c) => c.kind !== 'box'), l.mode), children };
+  // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a).
+  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, children.some((c) => c.kind !== 'box' && c.kind !== 'replaced'), l.mode), children };
 }
