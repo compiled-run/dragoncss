@@ -467,6 +467,11 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['overflow-x', visibleOrHidden],
   ['overflow-y', visibleOrHidden],
   ['transform-origin', all],
+  // SVG-a1: the svg family paints only an <svg>'s shapes, never a box; native refuses svg until SVG-a2, whose shape hit test
+  // (pointer-events: visiblePainted) comes with it.
+  ['fill', all],
+  ['stroke', all],
+  ['stroke-width', all],
 ]);
 
 /** R13: the first paint fact of a resolved tree the hit test does not model and that compiles, in preorder and longhand order, or null. */
