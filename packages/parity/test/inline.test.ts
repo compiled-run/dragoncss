@@ -182,7 +182,7 @@ describe('the program of an inline box or <br> view', () => {
         for (const x of p.nodes) {
           if (!x.native.endsWith('DragonBoxView')) continue;
           checked.add(`${n.case.id} ${backend} ${x.id}`);
-          const kinds = new Set(x.writes.map((w) => w.kind));
+          const kinds = new Set<string>(x.writes.map((w) => w.kind));
           for (const k of ['background-color', 'border-widths', 'border-styles', 'border-colors']) if (!kinds.has(k)) missing.push(`${n.case.id} ${backend} ${x.id} ${k}`);
         }
       }
