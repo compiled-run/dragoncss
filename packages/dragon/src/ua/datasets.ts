@@ -29,6 +29,8 @@ export type UaDataset = {
   readonly replacedKeyContexts: { readonly [K in ReplacedKey]: readonly string[] };
   readonly replacedKeyTextFonts: { readonly [K in ReplacedKey]: { readonly [property: string]: string } };
   readonly replacedKeyForced: { readonly [K in ReplacedKey]: DirRows };
+  /** The longhands Chrome's UA :focus-visible rule sets on a focusable element, with their computed values while it matches. */
+  readonly focusVisibleDeclared: { readonly [property: string]: string };
 };
 
 /** A row key of the UA dataset: a captured tag, or a replaced key (REPL-0). */

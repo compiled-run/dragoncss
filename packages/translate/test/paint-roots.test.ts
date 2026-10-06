@@ -16,8 +16,8 @@ type Vectors = { readonly feature: string; readonly cases: number; readonly line
 const vectors = (f: string): Vectors => JSON.parse(readFileSync(join(ROOT, 'packages/layout/paint-vectors', f, 'vectors.json'), 'utf8')) as Vectors;
 
 describe('paint roots (EMS)', () => {
-  it('names paint.ts and the six paint seam files, each an engine file', () => {
-    expect(PAINT_ROOT_FILES).toEqual(['paint.ts', 'paint-radius.ts', 'paint-shadow.ts', 'paint-gradient.ts', 'paint-transform.ts', 'paint-dash.ts', 'paint-scrollbar.ts']);
+  it('names paint.ts and the seven paint seam files (PNT1 adds paint-outline.ts), each an engine file', () => {
+    expect(PAINT_ROOT_FILES).toEqual(['paint.ts', 'paint-radius.ts', 'paint-shadow.ts', 'paint-gradient.ts', 'paint-transform.ts', 'paint-dash.ts', 'paint-scrollbar.ts', 'paint-outline.ts']);
     const files = engineFiles();
     for (const f of PAINT_ROOT_FILES) expect(files, f).toContain(join(LAYOUT_SRC, f));
   });

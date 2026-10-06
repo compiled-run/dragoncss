@@ -74,6 +74,10 @@
     "pointer-events",
     "opacity",
     "z-index",
+    "outline-color",
+    "outline-style",
+    "outline-width",
+    "outline-offset",
     "transform",
     "transform-origin",
     "will-change"
@@ -154,7 +158,8 @@
     "grid-area",
     "grid-gap",
     "grid-row-gap",
-    "grid-column-gap"
+    "grid-column-gap",
+    "outline"
   ],
   "inherited": [
     "direction",
@@ -203,6 +208,10 @@
     "background-color",
     "opacity",
     "z-index",
+    "outline-color",
+    "outline-style",
+    "outline-width",
+    "outline-offset",
     "transform",
     "transform-origin",
     "will-change"

@@ -1,8 +1,9 @@
 // SELD-R2 (notes/T064-seld-r2-spec.md §4): the interaction fixtures, in both directions. interaction-hover covers hover on a
 // subject (paint), hover on an element affecting its next sibling, hover on an ancestor affecting a descendant (layout),
 // .selected against :hover at equal specificity, and a hover that changes height; interaction-focus covers :focus and
-// :focus-visible, which no supported element can take from a pointer or key yet, so only their forced cases reach them, and a hover
-// chain beside them; interaction-active covers the press chain, :active over :hover at equal specificity and .x:active .y;
+// :focus-visible, which no supported element can take from a pointer or key yet, so only their forced cases reach them (the
+// :focus-visible rule sets outline: none, which beats Chrome's UA focus ring; native refuses the ring itself), and a hover chain
+// beside them; interaction-active covers the press chain, :active over :hover at equal specificity and .x:active .y;
 // interaction-combo covers a hover and a press at once (.a:hover ~ .b:active), :hover:focus and a :focus that changes nothing
 // (collapsed to none). Refused: direction in an interaction rule, :focus-within, and more than 256 interaction states in one
 // assignment (R7). Transformed and z-index hits are SELD-R2b.

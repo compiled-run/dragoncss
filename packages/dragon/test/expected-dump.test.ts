@@ -3,7 +3,7 @@
 // box; both backends cover the same CSS longhands on every node; the digest is the sha256 of the canonical expected dump.
 import { describe, expect, it } from 'vitest';
 import type { LU } from '@dragon/layout';
-import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, opacityAlpha8, platformFontSize, replacedPaint, resolveBorder, resolvePadding, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvePadding, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { ExpectedEngine } from '../src/internal.ts';
 import { appliedKeyMap, createProjectWith, cssCoverage, expectedDigest, expectedDump, nativePrograms, NO_FAULTS } from '../src/internal.ts';
 import { div, inputFor } from './helpers.ts';
@@ -13,7 +13,7 @@ const input = inputFor(CSS, (r) => [div(r, 'long', ['long']), div(r, 'thin', ['t
 const m = measurerFor('darwin-arm64');
 if (m.kind !== 'ok') throw new Error(m.code);
 const VIEW = { width: 400, height: 300 };
-const engine: ExpectedEngine = { layout, measurer: m.measurer, snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, opacityAlpha8, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround };
+const engine: ExpectedEngine = { layout, measurer: m.measurer, snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, opacityAlpha8, outlineRings, outlineWidthPx, outlineOffsetPx, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround };
 
 function programs() {
   const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);

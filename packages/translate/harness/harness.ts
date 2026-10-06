@@ -91,6 +91,7 @@ import type { EasingSpec, RtFaults, StepPosition } from '../../layout/src/rt-eas
 import { cubicBezier, easingFromSpec, LINEAR, solveBezier } from '../../layout/src/rt-easing.ts';
 import type { TransformOrigin } from '../../layout/src/paint-transform.ts';
 import { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from '../../layout/src/paint-transform.ts';
+import { outlineOffsetPx, outlineRings, outlineWidthPx } from '../../layout/src/paint-outline.ts';
 import type { AnimatedValue, LegacyColor, LengthValue, Matrix2D, TransformFn, TransformOp, Trig, ValueRange } from '../../layout/src/rt-interpolate.ts';
 import { interpolateValue, serializeValue } from '../../layout/src/rt-interpolate.ts';
 import type { RuleKeyframe } from '../../layout/src/rt-keyframes.ts';
@@ -952,6 +953,10 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const p = mapPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
     return `["ok",[${h(p.x)},${h(p.y)}]]`;
   }
+  // PNT1: paint-outline.ts.
+  if (name === 'paint:outline:outlineWidthPx') return `["ok",${h(outlineWidthPx(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:outline:outlineOffsetPx') return `["ok",${h(outlineOffsetPx(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:outline:outlineRings') return `["ok",[${commaList(outlineRings(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), flagAt(a, 7)).map(h))}]]`;
   return null;
 }
 

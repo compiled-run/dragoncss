@@ -68,6 +68,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // overlapping boxes, whose colours swap when the layer items sort beneath the flow.
   'alpha-ignored': ['opacity-basic'],
   'order-swap': ['stacking-basic'],
+  // outline-solid's ring points and scanlines (rules border:<id>:outline-* and edge:<id>:outline-*) see a 1 device px shift.
+  'outline-offset-1': ['outline-solid'],
   // PNT2: each transform plant runs on the case its paint moves.
   'transform-origin-ignored': ['transform-origin'],
   'translate-percent-of-parent': ['transform-translate'],
@@ -79,6 +81,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-gap-unfitted': /^(border:|edge:)/,
   'alpha-ignored': /^interior:/,
   'order-swap': /^interior:/,
+  'outline-offset-1': /^(border|edge):[^:]+:outline-/,
   // A transform moves every pixel of the box, so any colour rule may catch it.
   'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'translate-percent-of-parent': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,

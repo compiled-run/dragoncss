@@ -17,6 +17,7 @@ import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
+import { OUTLINE } from './fixture-groups/outline.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
@@ -98,6 +99,7 @@ export const GROUPS = {
   'logical-props': LOGICAL_PROPS,
   media: MEDIA,
   'milestone-1': MILESTONE_1,
+  outline: OUTLINE,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,

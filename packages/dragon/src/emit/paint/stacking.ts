@@ -1,8 +1,8 @@
 // Paint order on the native tree (T046 §1, lower/paint/stacking.ts): the case code writes each layer item's host, bucket and rank
 // through dragonSetPaintOrder, which hosts the view under its layer's view (DragonTree.host, used when the tree places frames) and
 // stores its sort key. After every layout of a box, its host view's children are put in paint order: flow children (bucket 0) keep
-// their tree order and every view that is not a box view (a text view) sorts with them, and the layer items follow by bucket and rank
-// (z < 0 first). Only child order changes: zPosition, translationZ and elevation are never used. The readback is the live host and the view's
+// their tree order and every view that is not a box view (a text view) sorts with them, outline views follow them (in tree order), and
+// the layer items follow by bucket and rank (z < 0 first). Only child order changes: zPosition, translationZ and elevation are never used. The readback is the live host and the view's
 // index among the host's box views.
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
@@ -51,11 +51,17 @@ public func dragonSetPaintOrder(_ t: DragonTree, _ v: DragonBoxView, _ host: Str
 /// then layer items by bucket and rank. Only moves views when the order changes.
 public func dragonSortPaintOrder(_ c: UIView) {
   let subs = c.subviews
-  if !subs.contains(where: { (($0 as? DragonBoxView)?.dragonPaintBucket ?? 0) != 0 }) { return }
+  if !subs.contains(where: { $0 is DragonOutlineView || (($0 as? DragonBoxView)?.dragonPaintBucket ?? 0) != 0 }) { return }
   func key(_ s: UIView, _ i: Int) -> [Int] {
-    guard let b = s as? DragonBoxView, b.dragonPaintBucket != 0 else { return [0, 0, i] }
+    // An outline (PNT1 outline) paints after the flow children, before the layer items, in tree order; one that follows its box sorts
+    // right after it.
+    if let o = s as? DragonOutlineView {
+      if let a = o.after { return [a.dragonPaintBucket, a.dragonPaintRank, 2, i] }
+      return [0, 1, o.rank, i]
+    }
+    guard let b = s as? DragonBoxView, b.dragonPaintBucket != 0 else { return [0, 0, 0, i] }
     let bucket = dragonOrderPlantSwapped ? -3 + b.dragonPaintBucket : b.dragonPaintBucket
-    return [bucket, b.dragonPaintRank, i]
+    return [bucket, b.dragonPaintRank, 1, i]
   }
   let sorted = subs.enumerated().map { (key($0.element, $0.offset), $0.element) }.sorted { $0.0.lexicographicallyPrecedes($1.0) }.map { $0.1 }
   if zip(sorted, subs).allSatisfy({ $0 === $1 }) { return }
@@ -111,16 +117,23 @@ fun dragonSetPaintOrder(t: DragonTree, v: DragonBoxView, host: String, bucket: I
  */
 fun dragonSortPaintOrder(c: ViewGroup) {
   val subs = (0 until c.childCount).map { c.getChildAt(it) }
-  if (subs.none { it is DragonBoxView && it.dragonPaintBucket != 0 }) return
+  if (subs.none { it is DragonOutlineView || (it is DragonBoxView && it.dragonPaintBucket != 0) }) return
   fun key(s: View, i: Int): IntArray {
+    // An outline (PNT1 outline) paints after the flow children, before the layer items, in tree order; one that follows its box sorts
+    // right after it.
+    if (s is DragonOutlineView) {
+      val a = s.after
+      if (a != null) return intArrayOf(a.dragonPaintBucket, a.dragonPaintRank, 2, i)
+      return intArrayOf(0, 1, s.rank, i)
+    }
     val b = s as? DragonBoxView
-    if (b == null || b.dragonPaintBucket == 0) return intArrayOf(0, 0, i)
+    if (b == null || b.dragonPaintBucket == 0) return intArrayOf(0, 0, 0, i)
     val bucket = if (DRAGON_ORDER_PLANT_SWAPPED) -3 + b.dragonPaintBucket else b.dragonPaintBucket
-    return intArrayOf(bucket, b.dragonPaintRank, i)
+    return intArrayOf(bucket, b.dragonPaintRank, 1, i)
   }
   val cmp = Comparator<Pair<IntArray, View>> { x, y ->
     var r = 0
-    for (k in 0 until 3) { r = x.first[k].compareTo(y.first[k]); if (r != 0) break }
+    for (k in 0 until 4) { r = x.first[k].compareTo(y.first[k]); if (r != 0) break }
     r
   }
   val sorted = subs.mapIndexed { i, s -> Pair(key(s, i), s) }.sortedWith(cmp).map { it.second }

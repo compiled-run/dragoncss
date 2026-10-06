@@ -5,7 +5,7 @@ import { perturbColor } from '../css/color.ts';
 import { envAsZero } from '../css/env.ts';
 import { ENV_VALUE_TYPE } from '../css/values.ts';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
-import { INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
+import { INHERITED, isLonghand, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
@@ -165,6 +165,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent);
     // A replaced key's forced values (iframe overflow: clip) hold whatever the cascade says (ELB-2 userAgentForced).
     applyForcedUserAgent(tag, props, environment.ua);
+    // Chrome's UA :focus-visible rule (the focus ring), on an element the interaction state focuses visibly (SELD-R2).
+    if (interaction.focusVisible.has(el.address)) applyFocusVisibleUserAgent(props, environment.ua);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {
@@ -243,6 +245,16 @@ function applyDeclaredUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>,
     const value = declaredUserAgentValue(tag, p, ua, direction, ownFontSize, parentFontSize);
     if (value !== null) props.set(p, { value, origin: 'user-agent', ...none });
     else if ((props.get(p) as ResolvedValue).origin === 'user-agent') props.set(p, INHERITED.has(p) && parent !== null ? fromParent(p) : { value: initialValue(p, ua), origin: 'initial', ...none });
+  }
+}
+
+/** The captured UA :focus-visible values, on every longhand of them no author declaration sets (a UA rule loses to any author one). */
+function applyFocusVisibleUserAgent(props: Map<Longhand, ResolvedValue>, ua: UaDataset): void {
+  for (const [p, text] of Object.entries(ua.focusVisibleDeclared)) {
+    if (!isLonghand(p)) throw new Error(`the UA :focus-visible rule sets ${p}, which is not a Dragon longhand`);
+    const set = props.get(p) as ResolvedValue;
+    if (set.declaration !== null) continue;
+    props.set(p, { value: parseValueText(p, text), origin: 'user-agent', span: null, declaration: null, declared: null, losing: [] });
   }
 }
 

@@ -40,6 +40,10 @@ export type ExpectedEngine = {
   readonly replacedPaint: (leaf: ReplacedLeaf, content: ObjectRect) => ReplacedPaint;
   /** PNT1: Skia's paint alpha byte of an opacity (layout paint.ts), which the device's opacity writer sets. */
   readonly opacityAlpha8: (opacity: number) => number;
+  /** PNT1: an outline's rings and its device width and offset (layout paint-outline.ts), which the device's outline view draws. */
+  readonly outlineRings: (left: number, top: number, right: number, bottom: number, width: number, offset: number, double: boolean) => number[];
+  readonly outlineWidthPx: (width: number, dpr: number) => number;
+  readonly outlineOffsetPx: (offset: number, dpr: number) => number;
   readonly luPerPx: number;
   readonly platformFontSize: (px: number) => number;
   readonly zoomFontSize: (px: number, zoom: number) => number;

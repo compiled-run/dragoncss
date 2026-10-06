@@ -451,7 +451,7 @@ const visibleOrHidden = (v: CssValue): boolean => v.kind === 'keyword' && (v.val
  * R13: the paint longhands Dragon's hit test (packages/layout/src/rt-hit.ts) models, each with the values it models. Box
  * geometry (every layout longhand) and pointer-events are modelled too. Every other paint longhand at any value but its
  * initial one is an unmodelled fact (fail closed): a later paint package is refused here until the hit test reads it (T146).
- * transform-origin only moves a transform, which is itself unmodelled.
+ * transform-origin only moves a transform, which is itself unmodelled; an outline is never hit.
  */
 export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new Map<Longhand, (v: CssValue) => boolean>([
   ['color', all],
@@ -467,6 +467,11 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['overflow-x', visibleOrHidden],
   ['overflow-y', visibleOrHidden],
   ['transform-origin', all],
+  // PNT1: an outline paints outside the border box and is never a hit target (Blink hit-tests the box, not its outline rect).
+  ['outline-color', all],
+  ['outline-style', all],
+  ['outline-width', all],
+  ['outline-offset', all],
 ]);
 
 /** R13: the first paint fact of a resolved tree the hit test does not model and that compiles, in preorder and longhand order, or null. */

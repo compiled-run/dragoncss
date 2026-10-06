@@ -61,5 +61,6 @@ export * as rtAnimator from './rt-animator.ts';
 export type { AnimTables, EasingCode, EntryCode, ValueCode } from './rt-animator.ts';
 export type { OriginPoint, TransformOrigin } from './paint-transform.ts';
 export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';
+export { outlineOffsetPx, outlineRings, outlineWidthPx } from './paint-outline.ts';
 export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';
 export { serializeTransform } from './rt-interpolate.ts';

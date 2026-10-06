@@ -8,6 +8,7 @@ import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/prop
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
 import { EFFECTS_LONGHANDS } from '../packages/dragon/src/css/properties/effects.ts';
+import { OUTLINE_LONGHANDS, OUTLINE_SHORTHANDS } from '../packages/dragon/src/css/properties/outline.ts';
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 
 type WebrefEntry = {
@@ -50,6 +51,8 @@ const SUBSET = [
   ...TRANSFORM_LONGHANDS,
   // opacity and z-index (PNT1), after transforms.
   ...EFFECTS_LONGHANDS,
+  // Outlines (PNT1), after effects.
+  ...OUTLINE_SHORTHANDS, ...OUTLINE_LONGHANDS,
 ] as const;
 
 /**

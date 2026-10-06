@@ -17,6 +17,7 @@ import { isReplacedTag } from './elements/replaced.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { environmentOf, valueToString } from './resolve.ts';
 import { checkOpacity } from './paint-values/effects.ts';
+import { checkOutline } from './paint-values/outline.ts';
 import { checkStackingClips } from './paint-values/stacking.ts';
 import { checkTransformContexts } from './paint-values/transform.ts';
 
@@ -287,6 +288,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here) checkOpacity(el, targets, diagnostics, reported);
+    if (!here) checkOutline(el, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here) checkInlineLevel(el, targets, diagnostics, reported);
     for (const c of el.children) if (c.kind === 'element') walk(c, here);

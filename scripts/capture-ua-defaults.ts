@@ -141,6 +141,8 @@ type Capture = {
   systemColors: Record<string, string | null>;
   /** Phrasing key -> family -> parent font-size -> the key's computed font-size. */
   fontSizes: Record<string, Record<string, Record<string, string>>>;
+  /** The longhands Chrome's UA :focus-visible rule changes on a focusable element, with their computed values while it matches. */
+  focusVisible: Record<string, string>;
 };
 
 async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
@@ -471,7 +473,20 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
   await hidden.context().close();
   await rendered.context().close();
   await host.context().close();
-  return { values, initial, borderKeywords, declared, minimumLogicalFontSize, contexts, textFonts, unmodelled, forced, systemColors, fontSizes };
+  // The UA :focus-visible rule (html.css :focus-visible { outline: auto 1px -webkit-focus-ring-color }): a focusable element focused
+  // with focusVisible, read against the same element unfocused; every longhand that changes is the rule's.
+  const focusPage = await openPage(browser, `<!DOCTYPE html><html><head>${scheme === 'dark' ? `<style>${schemeStyle(scheme)}</style>` : ''}</head><body><div id="f" tabindex="0"></div></body></html>`, ENV);
+  const focusVisible = await focusPage.evaluate((props) => {
+    const el = document.getElementById('f') as HTMLElement;
+    const read = (): Record<string, string> => Object.fromEntries(props.map((p) => [p, getComputedStyle(el).getPropertyValue(p)]));
+    const before = read();
+    el.focus({ focusVisible: true } as FocusOptions);
+    if (!el.matches(':focus-visible')) throw new Error('ua:capture: the focused element does not match :focus-visible');
+    const after = read();
+    return Object.fromEntries(props.filter((p) => before[p] !== after[p]).map((p) => [p, after[p] as string]));
+  }, [...LONGHANDS]);
+  if (Object.keys(focusVisible).length === 0) throw new Error(`ua:capture: ${scheme}: Chrome's :focus-visible rule changed no longhand`);
+  return { values, initial, borderKeywords, declared, minimumLogicalFontSize, contexts, textFonts, unmodelled, forced, systemColors, fontSizes, focusVisible };
 }
 
 /** Each key, in each direction, reproduced by dragon-unstyled given its declared, text-font, unmodelled and forced values; returns the faults. */
@@ -600,6 +615,9 @@ function render(c: Capture, scheme: Scheme): string {
   lines.push('export const borderWidthKeywords: { readonly [keyword: string]: string } = {');
   for (const k of BORDER_KEYWORDS) lines.push(`  ${JSON.stringify(k)}: ${JSON.stringify(borderKeywords[k])},`);
   lines.push('};');
+  lines.push('');
+  lines.push('/** The longhands Chrome\'s UA :focus-visible rule sets on a focusable element, with their computed values while it matches. */');
+  lines.push(`export const focusVisibleDeclared: { readonly [property: string]: string } = ${field(c.focusVisible)};`);
   lines.push('');
   lines.push('/** The color scheme of the root this dataset was captured under. */');
   lines.push(`export const colorScheme = ${JSON.stringify(scheme)};`);

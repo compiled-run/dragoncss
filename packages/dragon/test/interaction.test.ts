@@ -67,7 +67,13 @@ const compile = (faults: Partial<CompilerFaults> = {}, css = CSS, body = tree, t
 /** The body font every small document below sets, so the native targets have a layout font. */
 const BODY = 'body { font-family: Ahem; font-size: 10px; } ';
 const errors = (ds: readonly Diagnostic[]) => ds.filter((d) => d.severity === 'error').map((d) => `${d.code}${d.target === null ? '' : ` [${d.target}]`} ${d.message}`);
-const otherErrors = errors;
+/**
+ * The focus ring refusal (PNT1 outline, ruling A): Chrome's UA :focus-visible rule gives a visibly focused element outline-style auto,
+ * which the native targets refuse by name until the owner's NA-NATIVE-2 review; FOCUS_RING_REFUSED lists exactly those errors.
+ */
+const FOCUS_RING = /^DRAGON_UNSUPPORTED_VALUE \[(ios|android)\] \S+ has outline-style auto, Chrome's focus ring; \1 does not draw it/;
+const otherErrors = (ds: readonly Diagnostic[]): string[] => errors(ds).filter((m) => !FOCUS_RING.test(m));
+const focusRingRefused = (ds: readonly Diagnostic[]): string[] => errors(ds).filter((m) => FOCUS_RING.test(m)).map((m) => m.slice(0, m.indexOf(' has ')));
 
 /**
  * A linked case tree with tabindex on the given elements: every focusable tag and tabindex are refused until FORM-a and SELD-R2's
@@ -147,7 +153,13 @@ function completenessFailures(faults: Partial<CompilerFaults>): string[] {
         ['focus', { hover: none, active: none, focus: one, focusVisible: none }, p.forcedFocusOf],
         ['focus-visible', { hover: none, active: none, focus: none, focusVisible: one }, p.forcedFocusVisibleOf],
       ];
-      for (const [name, ix, table] of forced) if (direct(ix) !== mapped(table[j] as number)) failures.push(`${c.key} forced ${name}(${e.address})`);
+      // A forced :focus-visible state exists only for a candidate (p.states, pinned below): on any other element Chrome's UA
+      // :focus-visible rule (the focus ring, PNT1 outline) would still apply, so the none state it maps to is never a forced state's.
+      const ringOnly = !p.candidates.focusVisible.includes(e.address) && !e.focusable;
+      for (const [name, ix, table] of forced) {
+        if (name === 'focus-visible' && ringOnly) continue;
+        if (direct(ix) !== mapped(table[j] as number)) failures.push(`${c.key} forced ${name}(${e.address})`);
+      }
     });
   }
   return failures;
@@ -157,6 +169,8 @@ describe('interaction states: compile', () => {
   it('compiles every interaction rule on every target, with case keys and counts unchanged', () => {
     const c = compile();
     expect(otherErrors(c.diagnostics)).toEqual([]);
+    // f and g, the two :focus-visible candidates, take Chrome's focus ring in their focus-visible states: refused natively by name.
+    expect(focusRingRefused(c.diagnostics)).toEqual(['DRAGON_UNSUPPORTED_VALUE [android] f', 'DRAGON_UNSUPPORTED_VALUE [ios] f', 'DRAGON_UNSUPPORTED_VALUE [android] g', 'DRAGON_UNSUPPORTED_VALUE [ios] g']);
     const record = internalRecord(c);
     expect(record?.cases.map((x) => x.key)).toEqual(record?.linked?.cases.map((x) => x.key));
     expect(record?.cases.length).toBe(2);
@@ -443,5 +457,28 @@ describe('interaction states: web conditions', () => {
     const plain = '.a { width: 100px; height: 20px; } .b { width: 50px; height: 10px; }';
     expect(body(web(plain))).toEqual(body(web(`${plain} .nothing:hover { width: 1px; } .nothing:active { width: 2px; }`)));
     expect(internalRecord(compile({}, plain))?.cases[0]?.partition?.states).toEqual([]);
+  });
+});
+
+describe('Chrome\'s UA :focus-visible rule in a focus-visible state (PNT1 outline, ruling A)', () => {
+  const find = (el: ReturnType<typeof resolveTree>, address: string): ReturnType<typeof resolveTree> | null => {
+    if (el.element.address === address) return el;
+    for (const c of el.children) if (c.kind === 'element') { const f = find(c, address); if (f !== null) return f; }
+    return null;
+  };
+  const outline = (css: string, focusVisible: readonly string[]): string[] => {
+    const c = partitions({}, `${CSS}\n${css}`)[0] as { root: Parameters<typeof resolveTree>[0]; rules: Parameters<typeof resolveTree>[1] };
+    const r = resolveTree(c.root, c.rules, NO_FAULTS, ENV, { hover: new Set(), active: new Set(), focus: new Set(focusVisible), focusVisible: new Set(focusVisible) });
+    const g = find(r, 'g');
+    if (g === null) throw new Error('no g');
+    return ['outline-style', 'outline-width', 'outline-color'].map((p) => valueToString((g.props.get(p as never) as unknown as { value: never }).value));
+  };
+  it('gives a visibly focused element the captured focus ring, and nothing to one that is not', () => {
+    expect(outline('', ['g'])).toEqual(['auto', '1px', 'rgb(0, 95, 204)']);
+    expect(outline('', [])[0]).toBe('none');
+  });
+  it('loses to every author declaration, of the state or not', () => {
+    expect(outline('.g:focus-visible { outline: none; }', ['g'])[0]).toBe('none');
+    expect(outline('.g { outline-color: red; }', ['g'])).toEqual(['auto', '1px', 'rgb(255, 0, 0)']);
   });
 });

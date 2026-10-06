@@ -42,7 +42,7 @@ export function translatorDigest(): string {
  * The paint seam files (EMS, notes/T046-paint-spec.md §3 item 5): every exported function in them is an engine root. The Skia
  * references (paint-blur.ts, paint-dither.ts, paint-aa.ts) are reached through them once a paint package imports them.
  */
-export const PAINT_ROOT_FILES = ['paint.ts', 'paint-radius.ts', 'paint-shadow.ts', 'paint-gradient.ts', 'paint-transform.ts', 'paint-dash.ts', 'paint-scrollbar.ts'];
+export const PAINT_ROOT_FILES = ['paint.ts', 'paint-radius.ts', 'paint-shadow.ts', 'paint-gradient.ts', 'paint-transform.ts', 'paint-dash.ts', 'paint-scrollbar.ts', 'paint-outline.ts'];
 
 /** The engine roots (native-strategy.md section 1.3): everything they reach is translated. */
 export function engineRoots(files: readonly string[]): { file: string; name: string }[] {
