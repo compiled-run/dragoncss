@@ -1,0 +1,9 @@
+{
+  "case": "inline-baselines",
+  "dpr": 2,
+  "texts": [
+    {"id":"b1:text0","lines":[[0,3]]},
+    {"id":"b1s:text0","lines":[[0,2]]},
+    {"id":"b1:text1","lines":[[0,3],[3,11]]}
+  ]
+}
