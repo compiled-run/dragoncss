@@ -533,6 +533,32 @@
           "run": null,
           "device": null,
           "evidence": null
+        },
+        {
+          "lane": "device-anim",
+          "where": "device",
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 582
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 582
+            }
+          ],
+          "corpora": [],
+          "caseListSha256": "dfa92675cb5c91d0ddfba4721e83b5267f4167216dba200530cf1751b13043d1",
+          "totalCases": 1164,
+          "run": null,
+          "device": null,
+          "evidence": null
         }
       ],
       "referenceProof": [
@@ -1207,6 +1233,38 @@
           "corpora": [],
           "caseListSha256": "c4c3832563bc3502f77faa38009d62346152ca31f1fdf88f28069ebe912440cf",
           "totalCases": 1638,
+          "run": null,
+          "device": null,
+          "evidence": null
+        },
+        {
+          "lane": "device-anim",
+          "where": "device",
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 582
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 582
+            },
+            {
+              "dpr": 2.625,
+              "role": "extra",
+              "extra": "android-extra-420dpi",
+              "cases": 582
+            }
+          ],
+          "corpora": [],
+          "caseListSha256": "69612d092e1acd66b8c5993b7aa125e2a7ba0d43d68796c0cec13a80ef927d4b",
+          "totalCases": 1746,
           "run": null,
           "device": null,
           "evidence": null
