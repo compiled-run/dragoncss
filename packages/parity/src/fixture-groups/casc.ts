@@ -10,5 +10,6 @@ export const CASC: readonly FixtureSpec[] = [
   reject('reject-supports-unknown-property', 'DRAGON_UNSUPPORTED_AT_RULE', '@supports (foo: bar) { .a { width: 20px; } }', '@supports (foo: bar) in the stylesheet is not supported: Dragon cannot tell whether Chrome keeps (foo: bar)'),
   reject('reject-supports-mixed-operators', 'DRAGON_UNSUPPORTED_AT_RULE', '@supports (display: flex) and (width: 1px) or (height: 1px) { .a { width: 20px; } }', '@supports (display: flex) and (width: 1px) or (height: 1px) in the stylesheet is not supported: "and" and "or" mixed without parentheses'),
   reject('reject-supports-legacy-value', 'DRAGON_UNSUPPORTED_AT_RULE', '@supports not (height: -webkit-fill-available) { .a { height: 9px; } }', '@supports not (height: -webkit-fill-available) in the stylesheet is not supported: Dragon cannot tell whether Chrome keeps (height: -webkit-fill-available)'),
+  reject('reject-supports-unproven-value', 'DRAGON_UNSUPPORTED_AT_RULE', '@supports (text-align: match-parent) { .a { height: 9px; } }', '@supports (text-align: match-parent) in the stylesheet is not supported: Dragon cannot tell whether Chrome keeps (text-align: match-parent)'),
   reject('reject-supports-in-rule', 'DRAGON_UNSUPPORTED_AT_RULE', '@supports (display: flex) { width: 20px; }', '@supports in a rule block is not supported'),
 ];

@@ -23,7 +23,7 @@ const decide = (prelude: string): boolean | string => {
 
 describe('@supports conditions', () => {
   it('a declaration Chrome keeps holds and one it drops does not, through not, and, or and nested parentheses', () => {
-    expect(decide('(display: grid)')).toBe(true);
+    expect(decide('(display: flex)')).toBe(true);
     expect(decide('(width: 1px 2px)')).toBe(false);
     expect(decide('not (color: 12px)')).toBe(true);
     expect(decide('(display: flex) and (color: 12px)')).toBe(false);
@@ -48,6 +48,12 @@ describe('@supports conditions', () => {
     expect(decide('not(display: flex)')).toBe('undecided: not() is not evaluated');
     expect(decide('(display: flex) and')).toBe('undecided: "and" not followed by white space');
     expect(decide('')).toBe('undecided: an empty condition');
+    // A kept value is trusted only when a web profile row proves it: the grammar lists values Chrome 145 has not shipped.
+    for (const decl of ['text-align: match-parent', 'text-align: justify-all', 'display: grid', 'transition: opacity 1s']) {
+      expect(decide(`(${decl})`), decl).toMatch(/^Dragon cannot tell whether Chrome keeps .* is not a value Dragon has proven Chrome 145 keeps\)$/);
+    }
+    // A grammar naming a type it does not define is undecided, not a crash.
+    expect(decide('(width: calc-size(auto, size))')).toMatch(/names a type it does not define/);
     // A dropped value is trusted only when the grammar lists every keyword in it: Chrome keeps legacy keywords the grammar lacks.
     for (const decl of ['overflow: overlay', 'height: -webkit-fill-available', 'width: -webkit-fit-content', 'text-align: -webkit-center', 'color: -webkit-link', 'position: -webkit-sticky', 'width: foo']) {
       const keyword = (decl.split(': ')[1] as string);
@@ -61,10 +67,15 @@ describe('@supports conditions', () => {
 
 describe('@supports in a stylesheet', () => {
   it('a true condition keeps its rules as plain rules, and a false one drops them without a diagnostic', () => {
-    const { c } = compile('.a { width: 10px; } @supports (display: grid) { .a { width: 20px; } } @supports (width: 1px 2px) { .a { height: 9px; } }');
+    const { c } = compile('.a { width: 10px; } @supports (display: flex) { .a { width: 20px; } } @supports (width: 1px 2px) { .a { height: 9px; } }');
     expect(c.diagnostics.filter((d) => d.severity !== 'info')).toEqual([]);
     expect(value(c, 'width')).toBe('20px');
     expect(value(c, 'height')).toBe('auto');
+  });
+
+  it('a value whose grammar names a type it does not define is refused in a style rule, not a crash', () => {
+    const { c } = compile('.a { width: calc-size(auto, size); }', { profiles: 'enforce' });
+    expect(c.diagnostics.map((d) => [d.code, /names a type it does not define/.test(d.message)])).toEqual([['DRAGON_UNSUPPORTED_VALUE', true]]);
   });
 
   it('a false condition\'s rules are never analysed: a refused value inside it reports nothing', () => {

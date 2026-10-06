@@ -22,7 +22,9 @@ import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
 import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
-import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
+import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, featureOf, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
+import { webProfile } from '../profiles/web.ts';
+import { provenContexts } from '../profiles/types.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
 import { checkEnvCalls, ENV_FIX, envVarRefusal, firstEnv, grammarText } from './env.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
@@ -363,12 +365,23 @@ export function declarationSupport(declarationText: string): 'valid' | 'invalid'
   if (errors.length > 0 || children.length !== 1 || only === undefined || only.type !== 'Declaration') return { refused: 'it is not one declaration' };
   const diagnostics: Diagnostic[] = [];
   const parsed = parseDeclaration(only, { source: { uri: '@supports', revision: '', hash: '' }, start: 0, end: text.length }, text, 0, diagnostics);
-  if (parsed !== null && diagnostics.length === 0) return 'valid';
+  if (parsed !== null && diagnostics.length === 0) {
+    // css-variables-1 §2, §3.1: Chrome keeps any custom property value and any value holding var() at parse time.
+    if (parsed.custom !== undefined || parsed.pending !== undefined) return 'valid';
+    // The grammar lists values Chrome 145 has not shipped (text-align: match-parent), so a kept value is trusted only when each
+    // longhand it sets is a value a web profile row proves against Chrome.
+    const unproven = parsed.longhands.find((lh) => provenContexts(webProfile, featureOf(lh.property, lh.value)).length === 0);
+    if (parsed.animation === undefined && parsed.longhands.length > 0 && unproven === undefined) return 'valid';
+    const what = unproven === undefined ? `${parsed.property}: ${parsed.text}` : featureOf(unproven.property, unproven.value);
+    return { refused: `${what} is not a value Dragon has proven Chrome 145 keeps` };
+  }
   if (parsed === null && diagnostics.length > 0 && diagnostics.every((d) => d.code === 'DRAGON_CSS_INVALID_VALUE')) {
     // The grammar is not Chrome's parser: Chrome keeps legacy keywords it lacks (overflow: overlay, position: -webkit-sticky), so
     // a dropped value is trusted only when every identifier in it is a keyword the property's grammar lists.
     const property = asciiLower(decodeName(String(only['property'])));
-    const unlisted = identifiersOf(only['value'] as CssNode).find((id) => /^-[a-z]+-/.test(id) || !grammarKeywords(property).has(id));
+    const keywords = grammarKeywords(property);
+    if (keywords === null) return { refused: `the CSS grammar Dragon checks for ${property} names a type it does not define` };
+    const unlisted = identifiersOf(only['value'] as CssNode).find((id) => /^-[a-z]+-/.test(id) || !keywords.has(id));
     return unlisted === undefined ? 'invalid' : { refused: `Chrome may keep "${unlisted}" for ${property}, a keyword the CSS grammar Dragon checks does not list` };
   }
   const first = diagnostics[0];
@@ -386,10 +399,10 @@ function identifiersOf(node: CssNode): string[] {
   return out;
 }
 
-const KEYWORDS = new Map<string, ReadonlySet<string>>();
+const KEYWORDS = new Map<string, ReadonlySet<string> | null>();
 
-/** The keywords a property's webref grammar lists, through every type and property it references. */
-function grammarKeywords(property: string): ReadonlySet<string> {
+/** The keywords a property's webref grammar lists, through every type and property it references; null when a reference is undefined. */
+export function grammarKeywords(property: string): ReadonlySet<string> | null {
   const known = KEYWORDS.get(property);
   if (known !== undefined) return known;
   const lexer = webrefLexer() as unknown as { getProperty(n: string): { syntax: unknown } | null; getType(n: string): { syntax: unknown } | null };
@@ -408,9 +421,15 @@ function grammarKeywords(property: string): ReadonlySet<string> {
     for (const t of n.terms ?? []) walk(t);
     for (const c of n.children ?? []) walk(c);
   };
-  walk(lexer.getProperty(property)?.syntax);
-  KEYWORDS.set(property, out);
-  return out;
+  let result: ReadonlySet<string> | null = out;
+  try {
+    walk(lexer.getProperty(property)?.syntax);
+  } catch {
+    // css-tree throws "Bad syntax reference" for a type the grammar names but does not define (<size-keyword>).
+    result = null;
+  }
+  KEYWORDS.set(property, result);
+  return result;
 }
 
 /** css-logical-1 §3: the physical longhands a flow-relative property sets in each direction, or null when it maps the same in both. */
@@ -460,6 +479,16 @@ function parseCustomDeclaration(name: string, valueNode: CssNode, span: Span, va
   return { property: name, text, span, valueSpan, longhands: [], order, ...important, custom: { name, wide, parts } };
 }
 
+/** The grammar match of a value; css-tree throws "Bad syntax reference" for a type the grammar names but does not define. */
+function grammarMatch(property: string, value: CssNode | string): ReturnType<ReturnType<typeof webrefLexer>['matchProperty']> | 'undefined-reference' {
+  try {
+    return webrefLexer().matchProperty(property, value);
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('Bad syntax reference')) return 'undefined-reference';
+    throw e;
+  }
+}
+
 /** How a value parses for a longhand or shorthand; the parse driver and var() substitution report the failures differently. */
 export type ParsedValue =
   | { readonly kind: 'ok'; readonly longhands: readonly LonghandValue[] }
@@ -494,7 +523,10 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     }
   }
   if (!wide) {
-    const match = webrefLexer().matchProperty(property, env === null ? valueNode : grammarText(tokens));
+    const match = grammarMatch(property, env === null ? valueNode : grammarText(tokens));
+    if (match === 'undefined-reference') {
+      return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(valueNode, base)), message: `${property}: ${generate(valueNode)} is unsupported: the CSS grammar Dragon checks names a type it does not define for it, so Dragon cannot tell whether Chrome keeps it`, manual: `Use a value that matches the ${property} grammar without it.` }) };
+    }
     if (match.error !== null) return { kind: 'invalid' };
     // css-tree types a math function loosely; Chrome drops one its math parser rejects (css/math.ts mathInvalidity).
     const mathInvalid = GRID_VALUE_PROPERTIES.has(property) ? null : invalidMath(property, tokens, base, sheetText);

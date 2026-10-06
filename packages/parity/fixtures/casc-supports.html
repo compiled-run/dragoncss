@@ -4,8 +4,8 @@
 <style>
 body { margin: 0; }
 .t { height: 4px; width: 10px; background-color: #888888; }
-@supports (display: grid) { .a { width: 20px; } }
-@supports not (display: grid) { .a { width: 90px; } }
+@supports (display: flex) { .a { width: 20px; } }
+@supports not (display: flex) { .a { width: 90px; } }
 @supports (width: 1px 2px) { .b { width: 90px; } }
 @supports not (width: 1px 2px) { .b { width: 21px; } }
 @supports (display: flex) and (width: 10px) { .c { width: 22px; } }
@@ -27,9 +27,9 @@ body { margin: 0; }
 @supports (width: 1px) { .n { width: 34px; } }
 @supports (width: 1px) { .o { width: 35px !important; } }
 .o { width: 36px; }
-@supports (position: sticky) and (overflow: clip) and (text-align: center) { .q { width: 37px; } }
-@supports (width: fit-content) and (height: stretch) and (width: min-content) { .r { width: 38px; } }
-@supports not (display: flow-root) { .r { height: 9px; } }
+@supports (position: relative) and (overflow: hidden) and (text-align: center) { .q { width: 37px; } }
+@supports (width: 50%) and (height: auto) and (--x:) { .r { width: 38px; } }
+@supports not (display: none) { .r { height: 9px; } }
 </style>
 </head>
 <body data-dragon-id="body">
