@@ -206,13 +206,16 @@ type Calc = {
   readonly topOverflow: boolean;
 };
 
+/** Whether a box's overflow may extend past its left and its top edge. */
+type OverflowSides = { readonly left: boolean; readonly top: boolean };
+
 /**
  * LayoutBox::HasLeftOverflow and HasTopOverflow in horizontal-tb: the sides a box's overflow may extend past. A block box overflows
  * to the left in rtl and never to the top. A flex container overrides both (Blink LayoutFlexibleBox's GetOverflowConverter): its
  * overflow starts at its main-start and cross-start, so row-reverse moves the inline start, column-reverse the block start, and
  * wrap-reverse the cross start; the logical sides then map to physical ones by direction.
  */
-function overflowSides(ix: Index, b: LayoutNode): { readonly left: boolean; readonly top: boolean } {
+function overflowSides(ix: Index, b: LayoutNode): OverflowSides {
   const rtl = directionOf(ix.ctx, b) === 'rtl';
   if (b.kind === 'replaced' || b.style.display !== 'flex') return { left: rtl, top: false };
   const s = b.style;
