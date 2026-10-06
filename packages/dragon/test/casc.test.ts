@@ -24,10 +24,10 @@ const decide = (prelude: string): boolean | string => {
 describe('@supports conditions', () => {
   it('a declaration Chrome keeps holds and one it drops does not, through not, and, or and nested parentheses', () => {
     expect(decide('(display: grid)')).toBe(true);
-    expect(decide('(width: foo)')).toBe(false);
-    expect(decide('not (width: foo)')).toBe(true);
-    expect(decide('(display: flex) and (width: foo)')).toBe(false);
-    expect(decide('(width: foo) or (margin-left: 3px)')).toBe(true);
+    expect(decide('(width: 1px 2px)')).toBe(false);
+    expect(decide('not (color: 12px)')).toBe(true);
+    expect(decide('(display: flex) and (color: 12px)')).toBe(false);
+    expect(decide('(width: 1px 2px) or (margin-left: 3px)')).toBe(true);
     expect(decide('((display: block))')).toBe(true);
     expect(decide('(not (display: block))')).toBe(false);
     expect(decide('(DISPLAY: Flex)')).toBe(true);
@@ -48,15 +48,20 @@ describe('@supports conditions', () => {
     expect(decide('not(display: flex)')).toBe('undecided: not() is not evaluated');
     expect(decide('(display: flex) and')).toBe('undecided: "and" not followed by white space');
     expect(decide('')).toBe('undecided: an empty condition');
+    // A dropped value is trusted only when the grammar lists every keyword in it: Chrome keeps legacy keywords the grammar lacks.
+    for (const decl of ['overflow: overlay', 'height: -webkit-fill-available', 'width: -webkit-fit-content', 'text-align: -webkit-center', 'color: -webkit-link', 'position: -webkit-sticky', 'width: foo']) {
+      const keyword = (decl.split(': ')[1] as string);
+      expect(decide(`not (${decl})`), decl).toBe(`Dragon cannot tell whether Chrome keeps (${decl}) (Chrome may keep "${keyword}" for ${decl.split(':')[0]}, a keyword the CSS grammar Dragon checks does not list)`);
+    }
     expect(decide('(foo: bar)')).toMatch(/^Dragon cannot tell whether Chrome keeps \(foo: bar\) \(foo is not supported/);
     // An undecidable operand refuses the condition even where the decided one settles it.
-    expect(decide('(width: foo) and (foo: bar)')).toMatch(/^Dragon cannot tell whether Chrome keeps \(foo: bar\)/);
+    expect(decide('(width: 1px 2px) and (foo: bar)')).toMatch(/^Dragon cannot tell whether Chrome keeps \(foo: bar\)/);
   });
 });
 
 describe('@supports in a stylesheet', () => {
   it('a true condition keeps its rules as plain rules, and a false one drops them without a diagnostic', () => {
-    const { c } = compile('.a { width: 10px; } @supports (display: grid) { .a { width: 20px; } } @supports (width: foo) { .a { height: 9px; } }');
+    const { c } = compile('.a { width: 10px; } @supports (display: grid) { .a { width: 20px; } } @supports (width: 1px 2px) { .a { height: 9px; } }');
     expect(c.diagnostics.filter((d) => d.severity !== 'info')).toEqual([]);
     expect(value(c, 'width')).toBe('20px');
     expect(value(c, 'height')).toBe('auto');
@@ -97,7 +102,7 @@ describe('@supports in a stylesheet', () => {
   }
 
   it('planted fault supportsConditionIgnored applies a false condition\'s rules', () => {
-    const css = '.a { width: 10px; } @supports (width: foo) { .a { width: 90px; } }';
+    const css = '.a { width: 10px; } @supports (width: 1px 2px) { .a { width: 90px; } }';
     expect(value(compile(css).c, 'width')).toBe('10px');
     expect(value(compile(css, { faults: { ...NO_FAULTS, supportsConditionIgnored: true } }).c, 'width')).toBe('90px');
   });

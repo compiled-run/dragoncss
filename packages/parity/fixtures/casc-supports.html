@@ -6,12 +6,12 @@ body { margin: 0; }
 .t { height: 4px; width: 10px; background-color: #888888; }
 @supports (display: grid) { .a { width: 20px; } }
 @supports not (display: grid) { .a { width: 90px; } }
-@supports (width: foo) { .b { width: 90px; } }
-@supports not (width: foo) { .b { width: 21px; } }
+@supports (width: 1px 2px) { .b { width: 90px; } }
+@supports not (width: 1px 2px) { .b { width: 21px; } }
 @supports (display: flex) and (width: 10px) { .c { width: 22px; } }
-@supports (display: flex) and (width: foo) { .c { height: 9px; } }
-@supports (width: foo) or (margin-left: 3px) { .d { width: 23px; margin-left: 3px; } }
-@supports (width: foo) or (color: bogus) { .d { height: 9px; } }
+@supports (display: flex) and (color: 12px) { .c { height: 9px; } }
+@supports (width: 1px 2px) or (margin-left: 3px) { .d { width: 23px; margin-left: 3px; } }
+@supports (margin-left: auto auto) or (color: 12px) { .d { height: 9px; } }
 @supports ((display: block)) { .e { width: 24px; } }
 @supports (not (display: block)) { .e { height: 9px; } }
 @supports (DISPLAY: Flex) { .f { width: 25px; } }
@@ -22,11 +22,14 @@ body { margin: 0; }
 @supports (margin-inline-start: 4px) { .j { margin-inline-start: 4px; width: 29px; } }
 @supports (grid-template-columns: 1fr) and (not (width: 1px 2px)) { .k { width: 30px; } }
 @supports (display: flex) { .m { width: 31px; background-color: #00ff00; border: 1px solid #ff0000; } .m2 { width: 32px; } }
-@supports (display: nonsense) { .m { height: 9px; } .m2 { height: 9px; } }
+@supports (display: grid flex) { .m { height: 9px; } .m2 { height: 9px; } }
 .n { width: 33px; }
 @supports (width: 1px) { .n { width: 34px; } }
 @supports (width: 1px) { .o { width: 35px !important; } }
 .o { width: 36px; }
+@supports (position: sticky) and (overflow: clip) and (text-align: center) { .q { width: 37px; } }
+@supports (width: fit-content) and (height: stretch) and (width: min-content) { .r { width: 38px; } }
+@supports not (display: flow-root) { .r { height: 9px; } }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -45,5 +48,7 @@ body { margin: 0; }
 <div data-dragon-id="m2" class="t m2"></div>
 <div data-dragon-id="n" class="t n"></div>
 <div data-dragon-id="o" class="t o"></div>
+<div data-dragon-id="q" class="t q"></div>
+<div data-dragon-id="r" class="t r"></div>
 </body>
 </html>

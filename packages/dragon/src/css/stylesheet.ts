@@ -364,9 +364,53 @@ export function declarationSupport(declarationText: string): 'valid' | 'invalid'
   const diagnostics: Diagnostic[] = [];
   const parsed = parseDeclaration(only, { source: { uri: '@supports', revision: '', hash: '' }, start: 0, end: text.length }, text, 0, diagnostics);
   if (parsed !== null && diagnostics.length === 0) return 'valid';
-  if (parsed === null && diagnostics.length > 0 && diagnostics.every((d) => d.code === 'DRAGON_CSS_INVALID_VALUE')) return 'invalid';
+  if (parsed === null && diagnostics.length > 0 && diagnostics.every((d) => d.code === 'DRAGON_CSS_INVALID_VALUE')) {
+    // The grammar is not Chrome's parser: Chrome keeps legacy keywords it lacks (overflow: overlay, position: -webkit-sticky), so
+    // a dropped value is trusted only when every identifier in it is a keyword the property's grammar lists.
+    const property = asciiLower(decodeName(String(only['property'])));
+    const unlisted = identifiersOf(only['value'] as CssNode).find((id) => /^-[a-z]+-/.test(id) || !grammarKeywords(property).has(id));
+    return unlisted === undefined ? 'invalid' : { refused: `Chrome may keep "${unlisted}" for ${property}, a keyword the CSS grammar Dragon checks does not list` };
+  }
   const first = diagnostics[0];
   return { refused: first === undefined ? 'Dragon does not decide it' : first.message };
+}
+
+/** Every identifier in a value, ASCII lower case; function names are not identifiers. */
+function identifiersOf(node: CssNode): string[] {
+  const out: string[] = [];
+  const walk = (n: CssNode): void => {
+    if (n.type === 'Identifier') out.push(asciiLower(decodeName(String(n['name']))));
+    for (const c of list(n, 'children')) walk(c);
+  };
+  walk(node);
+  return out;
+}
+
+const KEYWORDS = new Map<string, ReadonlySet<string>>();
+
+/** The keywords a property's webref grammar lists, through every type and property it references. */
+function grammarKeywords(property: string): ReadonlySet<string> {
+  const known = KEYWORDS.get(property);
+  if (known !== undefined) return known;
+  const lexer = webrefLexer() as unknown as { getProperty(n: string): { syntax: unknown } | null; getType(n: string): { syntax: unknown } | null };
+  const out = new Set<string>();
+  const seen = new Set<string>();
+  const walk = (node: unknown): void => {
+    if (node === null || typeof node !== 'object') return;
+    const n = node as { type?: string; name?: string; term?: unknown; terms?: unknown[]; children?: unknown[] };
+    if (n.type === 'Keyword' && typeof n.name === 'string') out.add(asciiLower(n.name));
+    if ((n.type === 'Type' || n.type === 'Property') && typeof n.name === 'string' && !seen.has(`${n.type}:${n.name}`)) {
+      seen.add(`${n.type}:${n.name}`);
+      const ref = n.type === 'Type' ? lexer.getType(n.name) : lexer.getProperty(n.name);
+      if (ref !== null && ref !== undefined) walk(ref.syntax);
+    }
+    walk(n.term);
+    for (const t of n.terms ?? []) walk(t);
+    for (const c of n.children ?? []) walk(c);
+  };
+  walk(lexer.getProperty(property)?.syntax);
+  KEYWORDS.set(property, out);
+  return out;
 }
 
 /** css-logical-1 §3: the physical longhands a flow-relative property sets in each direction, or null when it maps the same in both. */
