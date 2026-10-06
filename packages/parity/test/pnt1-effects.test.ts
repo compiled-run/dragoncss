@@ -11,7 +11,7 @@
 // paint order, the group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
 // test fits the two blits and the byte against a captured sweep of opacities.
 import { describe, expect, it } from 'vitest';
-import { groupBlend8, mulDiv255Round, opacityAlpha8, snapEdges, srcOver8 } from '@dragon/layout';
+import { foldedAlpha8, groupBlend8, mulDiv255Round, opacityAlpha8, snapEdges, srcOver8 } from '@dragon/layout';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
 import { androidProfile, borderDevicePx, createProjectWith, iosProfile, laneOnlyNative, nativePrograms, NO_FAULTS, programInput, webProfile } from 'dragon';
@@ -99,7 +99,7 @@ type Stacking = { paintOrder: number; clipChain: readonly string[] };
 type Item =
   | { readonly kind: 'box'; readonly box: Box }
   | { readonly kind: 'text'; readonly node: ProgramNode; readonly glyphs: readonly { left: number; top: number; right: number; bottom: number }[] }
-  | { readonly kind: 'group'; readonly box: Box; readonly alpha8: number; readonly items: readonly Item[] };
+  | { readonly kind: 'group'; readonly box: Box; readonly opacity: number; readonly alpha8: number; readonly items: readonly Item[] };
 
 const stackingOf = (n: ProgramNode): Stacking => {
   const s = n.facts['stacking'] as Stacking | undefined;
@@ -143,7 +143,7 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
       const members = sorted.filter((x) => inside.has(x.id));
       // A stacking context is atomic: its subtree is contiguous in the paint order.
       if (sorted.slice(k, k + members.length).some((x) => !inside.has(x.id))) throw new Error(`${n.id}: its subtree is not contiguous in the paint order`);
-      out.push({ kind: 'group', box: byId.get(n.id) as Box, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), items: [...withText(n), ...build(members.filter((x) => x !== n))] });
+      out.push({ kind: 'group', box: byId.get(n.id) as Box, opacity: faults.alphaIgnored ? 1 : effects.opacity, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), items: [...withText(n), ...build(members.filter((x) => x !== n))] });
       k += members.length - 1;
     }
     return out;
@@ -201,26 +201,25 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
     if (c === undefined || c.kind !== 'text-color') throw new Error(`${it.node.id}: no text colour`);
     return color32(dst, c.color, c.color.alpha);
   }
-  if (it.kind === 'box') return paintBox(dst, it.box, cx, cy, byId, 255);
+  if (it.kind === 'box') return paintBox(dst, it.box, cx, cy, byId, 1);
   if (it.alpha8 === 0) return dst;
   // The group's one drawing in this tile, when it is a background rect, takes the alpha itself (cc folds the layer into it).
   const content = tileItems(it.items, tile);
   const only = content.direct[0];
-  if (content.direct.length === 1 && content.nested === 0 && only !== undefined && only.kind === 'box' && boxOps(only.box).foldable) return paintBox(dst, only.box, cx, cy, byId, it.alpha8);
+  if (content.direct.length === 1 && content.nested === 0 && only !== undefined && only.kind === 'box' && boxOps(only.box).foldable) return paintBox(dst, only.box, cx, cy, byId, it.opacity);
   let layer: Px = [0, 0, 0, 0];
   for (const inner of it.items) layer = paintItem(layer, inner, x, y, tile, byId);
   return s32aBlend(dst, layer, it.alpha8);
 }
 
-/** A box's background and solid border sides at a pixel centre, the background at a folded alpha when alpha is below 255. */
-function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<string, Box>, alpha: number): Px {
+/** A box's background and solid border sides at a pixel centre, the background with a folded opacity when one is below 1. */
+function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<string, Box>, opacity: number): Px {
   if (clippedOut(b.node, byId, cx, cy) || !inside(cx, cy, b.l, b.t, b.r, b.b)) return dst;
   let out = dst;
   const bg = b.node.writes.find((w) => w.kind === 'background-color');
   if (bg !== undefined && bg.kind === 'background-color' && bg.color.alpha > 0) {
-    // A folded translucent colour would take Skia's float alpha product, which the fixtures do not use.
-    if (alpha !== 255 && bg.color.alpha !== 255) throw new Error(`${b.node.id}: the model folds opaque backgrounds only`);
-    out = color32(out, bg.color, alpha === 255 ? bg.color.alpha : alpha);
+    // A folded opacity multiplies the colour's float alpha (byte / 255) in the paint (paint.ts foldedAlpha8, opacity-blend.test.ts).
+    out = color32(out, bg.color, opacity === 1 ? bg.color.alpha : foldedAlpha8(bg.color.alpha, opacity));
   }
   const [bt, br, bb, bl] = b.border as [number, number, number, number];
   if (inside(cx, cy, b.l + bl, b.t + bt, b.r - br, b.b - bb)) return out;
