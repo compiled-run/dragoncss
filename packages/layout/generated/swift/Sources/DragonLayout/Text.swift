@@ -194,11 +194,11 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
     var glyphs: Double = 0.0
     // ts: packages/layout/src/text.ts:117
     do {
-      let _a130 = jsCodePoints(text)
-      var _i130 = 0
-      while _i130 < _a130.items.count {
-        let ch: JsString = _a130.items[_i130]
-        _i130 += 1
+      let _a139 = jsCodePoints(text)
+      var _i139 = 0
+      while _i139 < _a139.items.count {
+        let ch: JsString = _a139.items[_i139]
+        _i139 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:120
@@ -215,11 +215,11 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
     var through: Double = 0.0
     // ts: packages/layout/src/text.ts:130
     do {
-      let _a131 = jsCodePoints(text)
-      var _i131 = 0
-      while _i131 < _a131.items.count {
-        let ch: JsString = _a131.items[_i131]
-        _i131 += 1
+      let _a140 = jsCodePoints(text)
+      var _i140 = 0
+      while _i140 < _a140.items.count {
+        let ch: JsString = _a140.items[_i140]
+        _i140 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:133

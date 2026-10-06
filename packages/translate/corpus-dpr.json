@@ -37,13 +37,13 @@
   "engineCalc": 4000,
   "engineInline": 3000,
   "snapGenerated": 20000,
-  "snapVectors": 1491,
+  "snapVectors": 1554,
   "cases": {
-    "vectors-m2": 311,
-    "vectors-dpr": 1707,
-    "engine-dpr": 1707,
+    "vectors-m2": 332,
+    "vectors-dpr": 1770,
+    "engine-dpr": 1770,
     "units-m2": 120000,
-    "snap": 21491,
+    "snap": 21554,
     "snap-values": 216,
     "calc-goldens": 17,
     "engine-calc": 4000,
@@ -51,23 +51,23 @@
     "engine-inline": 3000
   },
   "engineSplit": {
-    "ok": 1703,
-    "unsupported": 4,
+    "ok": 1767,
+    "unsupported": 3,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "c7daae3c63f8348c4d7371628f0e224729eef8dc3e4b79dbb9df1408cd13c817",
-    "vectors-dpr": "3974c57679af18e55af3c4e9c3154fc0e5cac53ed198b4ed500bb2bf5e625c38",
-    "engine-dpr": "6b0101b3931d2e51dd02eb2a7f0dc1aac80114cfbef13923b440b59f8585e479",
+    "vectors-m2": "a64302c2f9024301c092e0d3ceb7ae1737a97b034d63f5eb26b553b8f9cba10e",
+    "vectors-dpr": "45c97ca7259a336b81c19b636d83ba6a5f1d4b97b6aa9385a70e08fd760624ad",
+    "engine-dpr": "2b12b205526a6b189f6f2e924bd196b0d278e05ee2d05394131978801a754c35",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "09059ddc89a485b5cdfb37f4076a967e7efe098c449a46e4c8ae0daac3b2791d",
+    "snap": "e86c05d7df0192ea8a4c9a40e34b4081e5282c4d8bffddcf862f74bbbb1f8ea7",
     "snap-values": "58ce79fe0e7e0ff8be7bab82c5ae62d22131fea58335d95781b900b7edfa8a0a",
-    "calc-goldens": "3d2e9fef8def09e8693902507fad1f10165b3e4a948c588b878636a39faf3c8f",
-    "engine-calc": "9055b586decdbe256a4f290fabacd7feec7cd4368cab2f659a8adfa4a9e42376",
+    "calc-goldens": "ecf83fe39672db1d4cc4b0ae42cf105405ee7774ee1217e0fe451aa88f6415ad",
+    "engine-calc": "9f1f6388a0751b3d0af31eaae74c6e53b7f28ae2fc46e52eb667eee96a58a071",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50",
-    "engine-inline": "506d8f213e1fe452ea53a13004d591af6e1c6258213ceb8d592b6106e0ed5c09"
+    "engine-inline": "b34ac145ba14e2f398ca16bb9fa5422f259f3a6f11de604a046598a980f9628b"
   },
-  "digest": "a69f025dae47e4bd2aac4dde1f92711b47c75d2d9bb5eda89cf40633b57d0459"
+  "digest": "0c149834859abade47736046a054a38b37aa2f87f6e08533cd7a15bda5fdaba4"
 }
