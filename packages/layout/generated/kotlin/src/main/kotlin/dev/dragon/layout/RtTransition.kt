@@ -233,11 +233,11 @@ fun rtTransition_runTransitionScript(states: JsArray<TransitionState>, range: St
   val out: JsArray<TransitionReading> = jsArrayOf<TransitionReading>()
   // ts: packages/layout/src/rt-transition.ts:184
   run {
-    val _a128 = steps
-    var _i128 = 0
-    while (_i128 < _a128.size) {
-      val step: ScriptStep = _a128[_i128]
-      _i128++
+    val _a140 = steps
+    var _i140 = 0
+    while (_i140 < _a140.size) {
+      val step: ScriptStep = _a140[_i140]
+      _i140++
       // ts: packages/layout/src/rt-transition.ts:185
       if (jsStrEq(step.kind, "state")) {
         val next: TransitionState = rtTransition_stateAt(states, step.state)
