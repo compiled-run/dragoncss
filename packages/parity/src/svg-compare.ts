@@ -3,7 +3,7 @@
 // svg content box's position and the viewBox transform) and getBoundingClientRect (the bounding box mapped through it). The
 // lane runs at the host DPR of 1, where Chrome's CSS px are its layout units.
 //
-// The viewBox transform follows Chrome's observed arithmetic (pinned by test/svg-compare.test.ts against captured CTMs): the axis
+// The viewBox transform follows Chrome's observed arithmetic (pinned by test/svg.test.ts against captured CTMs): the axis
 // whose ratio limits the scale is scaled by viewport / viewBox along it, and the other axis is centred with
 // -min - (extent - viewport x scale') / 2 in user units, scale' the viewBox-over-viewport ratio of the limiting axis; the
 // translation is then scaled, all in double. The client rect maps each corner to the border box in double and rounds it to

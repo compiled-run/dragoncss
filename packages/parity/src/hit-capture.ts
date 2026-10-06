@@ -202,8 +202,10 @@ export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; 
  * compilation digest moves with the compiler input.
  */
 export function withoutPointerEvents(path: string, text: string): string {
-  if (path.endsWith('.json')) return text.replace(/,\n[ ]*"pointer-events": "[a-z-]+"/g, '');
-  if (path.endsWith('.css')) return text.replace(/^[ ]*pointer-events: [a-z-]+;\n/gm, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+  // SVG-a1 added the svg family (fill, stroke, stroke-width) to every capture and emitted rule after the base; its keys are removed
+  // too, so a base file still differs from the base only by keys a package added (svg.test.ts proves the family's own values).
+  if (path.endsWith('.json')) return text.replace(/,\n[ ]*"pointer-events": "[a-z-]+"/g, '').replace(/,\n[ ]*"(fill|stroke|stroke-width)": "[^"]*"/g, '');
+  if (path.endsWith('.css')) return text.replace(/^[ ]*(pointer-events|fill|stroke|stroke-width): [^;\n]+;\n/gm, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }
 

@@ -3,7 +3,7 @@
 // closepath segments in float32 user space, as Chrome hands them to Skia's SkPathBuilder: relative points and the smooth commands'
 // reflected control point (current + (current - previous control)) are float32 sums, and a moveto right after a moveto replaces
 // it. Arcs are refused (package SVG-arc): Chrome builds them with the platform's sinf, cosf and atan2f, which Dragon has no proven
-// port of. Every behaviour here is pinned against Chrome 145 by test/svg-path.test.ts.
+// port of. Every behaviour here is pinned against Chrome 145 by test/svg.test.ts.
 import type { SvgSegment, ViewBox } from '@dragon/layout';
 
 const f32 = Math.fround;
@@ -36,8 +36,8 @@ class Cursor {
   }
   /**
    * An SVG 2 number: sign? (digits ('.' digits)? | '.' digits) exponent?. Chrome builds its value in float32 (observed, pinned by
-   * svg-geometry.test.ts): the integer digits summed from the last with a power of ten that grows by x10, the fraction digits each
-   * times a scale that shrinks by x0.1, both in float32; then the sign, then the exponent.
+   * test/svg.test.ts): the integer digits summed from the last with a power of ten that grows by x10, the fraction digits each
+   * times a scale that shrinks by x0.1, both in float32; then the sign, then the exponent as a float32 power of ten.
    */
   number(): number | null {
     const m = /^([+-]?)([0-9]*)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?/.exec(this.s.slice(this.i));

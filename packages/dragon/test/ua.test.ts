@@ -142,6 +142,8 @@ describe('dependency boundaries', () => {
       if (f.includes(`${join('src', 'forms')}${sep}`)) continue;
       // MQ-R0: media/viewport.ts reproduces Chrome's measured media size (float32 size, device px, int orientation and aspect-ratio read); only that file.
       if (f.endsWith(join('src', 'media', 'viewport.ts'))) continue;
+      // SVG-a1: analysis/elements/svg-path.ts reproduces Chrome's float32 path-number arithmetic (svg.test.ts pins it); only that file.
+      if (f.endsWith(join('src', 'analysis', 'elements', 'svg-path.ts'))) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });

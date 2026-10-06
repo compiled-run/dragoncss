@@ -12,11 +12,13 @@ import { valueToString } from '../../dragon/src/analysis/resolve.ts';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { emittedPath } from '../src/committed.ts';
 import { REPLACED } from '../src/fixture-groups/replaced.ts';
+import { SVG } from '../src/fixture-groups/svg.ts';
 import { environmentsOf, FIXTURES } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 import { compileFixture } from '../src/pipeline.ts';
 
-const replacedIds = new Set(REPLACED.map((f) => f.id));
+// SVG-a1's fixtures postdate REPL-a and hold replaced leaves (svg) on purpose.
+const replacedIds = new Set([...REPLACED, ...SVG.filter((f) => f.kind === 'layout')].map((f) => f.id));
 const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !replacedIds.has(f.id));
 
 /**
@@ -45,7 +47,7 @@ const body = (css: string): string => css.split('\n').slice(1).join('\n');
 describe('REPL-a identity: every case that predates the replaced package is unchanged', () => {
   it('covers every earlier layout fixture in each of its environments', () => {
     expect(earlier.length).toBeGreaterThan(200);
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && replacedIds.has(f.id)).length).toBe(6);
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && REPLACED.some((r) => r.id === f.id)).length).toBe(6);
   });
 
   it('resolves object-fit and object-position to their initial values, from no declaration, on every element', () => {
@@ -105,7 +107,7 @@ describe('REPL-a identity: every case that predates the replaced package is unch
     }
     expect(off).toEqual([]);
     // Every committed vector and emitted file of an earlier fixture was compared: none is left out.
-    const own = (name: string): boolean => !REPLACED.some((f) => name.startsWith(`${f.id}.`) || name.startsWith(`${f.id}-rtl.`));
+    const own = (name: string): boolean => ![...replacedIds].some((id) => name.startsWith(`${id}.`) || name.startsWith(`${id}-rtl.`));
     expect(vectors).toBe(readdirSync(repoPath('packages/layout/vectors')).filter((f) => f.endsWith('.json') && own(f)).length);
     expect(bodies).toBe(readdirSync(repoPath('packages/parity/emitted')).filter((f) => f.endsWith('.css') && own(f)).length);
   });
