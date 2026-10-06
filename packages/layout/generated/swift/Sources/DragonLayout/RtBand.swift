@@ -207,7 +207,7 @@ public func rtBand_bandIndex(_ table: BandTable, _ width: Double, _ height: Doub
       bits += (x ? S.s59 : S.s57)
     }
   }
-  throw try BandError(jsConcat(S.s272, bits, S.s8, jsNumberToString(width), S.s45, jsNumberToString(height), S.s11))
+  throw try BandError(jsConcat(S.s278, bits, S.s8, jsNumberToString(width), S.s45, jsNumberToString(height), S.s11))
 }
 
 // ts: packages/layout/src/rt-band.ts:110
