@@ -19,6 +19,10 @@ import type {
   GapValue,
   InlineBox,
   InlineChild,
+  GridContainerStyle,
+  GridItemStyle,
+  GridSelfAlign,
+  GridSpan,
   InsetValue,
   JustifyContent,
   LayoutBox,
@@ -49,6 +53,9 @@ import type {
   ViewportLength,
   ViewportSize,
   Viewport,
+  TrackBreadth,
+  TrackRepeater,
+  TrackSize,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
@@ -109,6 +116,8 @@ import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
 import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
 import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors } from '../../layout/src/rt-animator.ts';
+import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
+import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
@@ -587,7 +596,7 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -602,6 +611,88 @@ function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+const GRID_SELF_ALIGN: readonly string[] = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'];
+
+function trackBreadth(v: JsonValue, path: string): TrackBreadth {
+  const k = kindOf(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'fr') return { kind: 'fr', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  obj(v, ['kind'], path);
+  if (k === 'auto') return { kind: 'auto' };
+  if (k === 'min-content') return { kind: 'min-content' };
+  if (k === 'max-content') return { kind: 'max-content' };
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function trackSize(v: JsonValue, path: string): TrackSize {
+  const k = kindOf(v, path);
+  if (k === 'breadth') return { kind: 'breadth', breadth: trackBreadth(field(obj(v, ['kind', 'breadth'], path), 'breadth', path), `${path}.breadth`) };
+  if (k === 'minmax') {
+    const o = obj(v, ['kind', 'min', 'max'], path);
+    return { kind: 'minmax', min: trackBreadth(field(o, 'min', path), `${path}.min`), max: trackBreadth(field(o, 'max', path), `${path}.max`) };
+  }
+  if (k === 'fit-content') {
+    const limit = field(obj(v, ['kind', 'limit'], path), 'limit', path);
+    const lk = kindOf(limit, `${path}.limit`);
+    const value = numField(obj(limit, ['kind', 'value'], `${path}.limit`), 'value', `${path}.limit`);
+    if (lk === 'px') return { kind: 'fit-content', limit: { kind: 'px', value } };
+    if (lk === 'percent') return { kind: 'fit-content', limit: { kind: 'percent', value } };
+    return fail(`${path}.limit: unknown kind ${lk}`);
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function trackSizes(v: JsonValue, path: string): TrackSize[] {
+  return arr(v, path).map((t, i) => trackSize(t, `${path}[${i}]`));
+}
+
+function repeaters(v: JsonValue, path: string): TrackRepeater[] {
+  return arr(v, path).map((r, i): TrackRepeater => {
+    const at = `${path}[${i}]`;
+    const o = obj(r, ['count', 'sizes'], at);
+    return { count: numField(o, 'count', at), sizes: trackSizes(field(o, 'sizes', at), `${at}.sizes`) };
+  });
+}
+
+function gridSpan(v: JsonValue, path: string): GridSpan {
+  const k = kindOf(v, path);
+  if (k === 'definite') {
+    const o = obj(v, ['kind', 'start', 'end'], path);
+    return { kind: 'definite', start: numField(o, 'start', path), end: numField(o, 'end', path) };
+  }
+  if (k === 'auto') return { kind: 'auto', span: numField(obj(v, ['kind', 'span'], path), 'span', path) };
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function decodeGrid(v: JsonValue, path: string): GridContainerStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['templateColumns', 'templateRows', 'autoColumns', 'autoRows', 'explicitColumnCount', 'explicitRowCount', 'autoFlow', 'dense', 'justifyItems'], path);
+  const f = (k: string): JsonValue => field(o, k, path);
+  return {
+    templateColumns: repeaters(f('templateColumns'), `${path}.templateColumns`),
+    templateRows: repeaters(f('templateRows'), `${path}.templateRows`),
+    autoColumns: trackSizes(f('autoColumns'), `${path}.autoColumns`),
+    autoRows: trackSizes(f('autoRows'), `${path}.autoRows`),
+    explicitColumnCount: num(f('explicitColumnCount'), `${path}.explicitColumnCount`),
+    explicitRowCount: num(f('explicitRowCount'), `${path}.explicitRowCount`),
+    autoFlow: lit(f('autoFlow'), ['row', 'column'], `${path}.autoFlow`) === 'column' ? 'column' : 'row',
+    dense: bool(f('dense'), `${path}.dense`),
+    justifyItems: lit(f('justifyItems'), GRID_SELF_ALIGN, `${path}.justifyItems`) as GridSelfAlign,
+  };
+}
+
+function decodeGridItem(v: JsonValue, path: string): GridItemStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['column', 'row', 'justifySelf'], path);
+  const self = str(field(o, 'justifySelf', path), `${path}.justifySelf`);
+  return {
+    column: gridSpan(field(o, 'column', path), `${path}.column`),
+    row: gridSpan(field(o, 'row', path), `${path}.row`),
+    justifySelf: self === 'auto' ? 'auto' : (lit(field(o, 'justifySelf', path), GRID_SELF_ALIGN, `${path}.justifySelf`) as GridSelfAlign),
+  };
+}
+
 const ALIGN_ITEMS: readonly string[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
 
 function decodeStyle(v: JsonValue, path: string): LayoutStyle {
@@ -609,7 +700,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const f = (k: string): JsonValue => field(o, k, path);
   const p = (k: string): string => `${path}.${k}`;
   return {
-    display: lit(f('display'), ['block', 'flex', 'inline'], p('display')) as Display,
+    display: lit(f('display'), ['block', 'flex', 'grid', 'inline'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
@@ -652,6 +743,8 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
     verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
+    grid: decodeGrid(f('grid'), p('grid')),
+    gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
 }
 
@@ -1013,6 +1106,8 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const p = mapPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
     return `["ok",[${h(p.x)},${h(p.y)}]]`;
   }
+  const gradient = gradientResult(name, a);
+  if (gradient !== null) return gradient;
   return null;
 }
 
@@ -1095,6 +1190,145 @@ function tableTrig(v: JsonValue, path: string): Trig {
 function matrixJson(m: Matrix2D): string {
   return `[${m.full ? 'true' : 'false'},${h(m.a)},${h(m.b)},${h(m.c)},${h(m.d)},${h(m.e)},${h(m.f)}]`;
 }
+
+// ---------------------------------------------------------------- paint suite: gradient (BG2)
+
+function gradLength(v: JsonValue, path: string): LengthPct {
+  const o = obj(v, ['unit', 'value'], path);
+  return { unit: lit(field(o, 'unit', path), ['percent', 'px', 'end-percent', 'end-px'], `${path}.unit`) as LengthPct['unit'], value: numField(o, 'value', path) };
+}
+
+function gradColor(v: JsonValue, path: string): StopColor {
+  const o = obj(v, ['r', 'g', 'b', 'alpha'], path);
+  return { r: numField(o, 'r', path), g: numField(o, 'g', path), b: numField(o, 'b', path), alpha: numField(o, 'alpha', path) };
+}
+
+function gradStop(v: JsonValue, path: string): CssStop {
+  const o = obj(v, ['color', 'unit', 'value'], path);
+  return { color: gradColor(field(o, 'color', path), `${path}.color`), unit: lit(field(o, 'unit', path), ['auto', 'percent', 'px'], `${path}.unit`) as 'auto' | 'percent' | 'px', value: numField(o, 'value', path) };
+}
+
+const GRADIENT_KEYS: readonly string[] = ['radial', 'repeating', 'direction', 'angleDeg', 'slope', 'sideX', 'sideY', 'circle', 'extent', 'radiusX', 'radiusY', 'centerX', 'centerY', 'stops'];
+
+function gradImage(v: JsonValue, path: string): GradientImage {
+  const o = obj(v, GRADIENT_KEYS, path);
+  const stops: CssStop[] = [];
+  arr(field(o, 'stops', path), `${path}.stops`).forEach((s, i) => {
+    stops.push(gradStop(s, `${path}.stops[${i}]`));
+  });
+  if (stops.length < 2) fail(`${path}.stops: a gradient has at least two stops`);
+  return {
+    radial: bool(field(o, 'radial', path), `${path}.radial`),
+    repeating: bool(field(o, 'repeating', path), `${path}.repeating`),
+    direction: lit(field(o, 'direction', path), ['default', 'angle', 'side'], `${path}.direction`) as 'default' | 'angle' | 'side',
+    angleDeg: numField(o, 'angleDeg', path),
+    slope: numField(o, 'slope', path),
+    sideX: lit(field(o, 'sideX', path), ['none', 'left', 'right'], `${path}.sideX`) as 'none' | 'left' | 'right',
+    sideY: lit(field(o, 'sideY', path), ['none', 'top', 'bottom'], `${path}.sideY`) as 'none' | 'top' | 'bottom',
+    circle: bool(field(o, 'circle', path), `${path}.circle`),
+    extent: lit(field(o, 'extent', path), ['closest-side', 'closest-corner', 'farthest-side', 'farthest-corner', 'explicit'], `${path}.extent`) as 'closest-side' | 'closest-corner' | 'farthest-side' | 'farthest-corner' | 'explicit',
+    radiusX: gradLength(field(o, 'radiusX', path), `${path}.radiusX`),
+    radiusY: gradLength(field(o, 'radiusY', path), `${path}.radiusY`),
+    centerX: gradLength(field(o, 'centerX', path), `${path}.centerX`),
+    centerY: gradLength(field(o, 'centerY', path), `${path}.centerY`),
+    stops,
+  };
+}
+
+function gradSize(v: JsonValue, path: string): SizeComponent {
+  const o = obj(v, ['unit', 'value'], path);
+  return { unit: lit(field(o, 'unit', path), ['auto', 'percent', 'px'], `${path}.unit`) as 'auto' | 'percent' | 'px', value: numField(o, 'value', path) };
+}
+
+const BOXES: readonly string[] = ['border-box', 'padding-box', 'content-box'];
+
+function gradGeometry(v: JsonValue, path: string): LayerGeometry {
+  const o = obj(v, ['sizeKind', 'sizeX', 'sizeY', 'positionX', 'positionY', 'repeatX', 'repeatY', 'origin', 'clip'], path);
+  return {
+    sizeKind: lit(field(o, 'sizeKind', path), ['length', 'cover', 'contain'], `${path}.sizeKind`) as 'length' | 'cover' | 'contain',
+    sizeX: gradSize(field(o, 'sizeX', path), `${path}.sizeX`),
+    sizeY: gradSize(field(o, 'sizeY', path), `${path}.sizeY`),
+    positionX: gradLength(field(o, 'positionX', path), `${path}.positionX`),
+    positionY: gradLength(field(o, 'positionY', path), `${path}.positionY`),
+    repeatX: lit(field(o, 'repeatX', path), ['repeat', 'no-repeat'], `${path}.repeatX`) as RepeatKeyword,
+    repeatY: lit(field(o, 'repeatY', path), ['repeat', 'no-repeat'], `${path}.repeatY`) as RepeatKeyword,
+    origin: lit(field(o, 'origin', path), BOXES, `${path}.origin`) as BoxKeyword,
+    clip: lit(field(o, 'clip', path), BOXES, `${path}.clip`) as BoxKeyword,
+  };
+}
+
+function gradNumbers(v: JsonValue, n: number, path: string): number[] {
+  const out: number[] = [];
+  const items = arr(v, path);
+  if (items.length !== n) fail(`${path}: expected ${n} numbers`);
+  items.forEach((x, i) => {
+    out.push(num(x, `${path}[${i}]`));
+  });
+  return out;
+}
+
+function gradPaint(v: JsonValue, path: string): BackgroundPaint {
+  const o = obj(v, ['box', 'color', 'colorClip', 'layers', 'lastIsBottom', 'zoom', 'tileSize', 'layerX', 'layerY'], path);
+  const b = obj(field(o, 'box', path), ['x', 'y', 'width', 'height', 'borders', 'padding', 'obscures'], `${path}.box`);
+  const obscures: boolean[] = [];
+  arr(field(b, 'obscures', path), `${path}.box.obscures`).forEach((x, i) => {
+    obscures.push(bool(x, `${path}.box.obscures[${i}]`));
+  });
+  if (obscures.length !== 4) fail(`${path}.box.obscures: expected 4 flags`);
+  const layers: BackgroundLayer[] = [];
+  arr(field(o, 'layers', path), `${path}.layers`).forEach((l, i) => {
+    const lo = obj(l, ['geometry', 'image'], `${path}.layers[${i}]`);
+    layers.push({ geometry: gradGeometry(field(lo, 'geometry', path), `${path}.layers[${i}].geometry`), image: gradImage(field(lo, 'image', path), `${path}.layers[${i}].image`) });
+  });
+  return {
+    box: { x: numField(b, 'x', path), y: numField(b, 'y', path), width: numField(b, 'width', path), height: numField(b, 'height', path), borders: gradNumbers(field(b, 'borders', path), 4, `${path}.box.borders`), padding: gradNumbers(field(b, 'padding', path), 4, `${path}.box.padding`), obscures },
+    color: gradColor(field(o, 'color', path), `${path}.color`),
+    colorClip: lit(field(o, 'colorClip', path), BOXES, `${path}.colorClip`) as BoxKeyword,
+    layers,
+    lastIsBottom: bool(field(o, 'lastIsBottom', path), `${path}.lastIsBottom`),
+    zoom: numField(o, 'zoom', path),
+    tileSize: numField(o, 'tileSize', path),
+    layerX: numField(o, 'layerX', path),
+    layerY: numField(o, 'layerY', path),
+  };
+}
+
+/** The gradient suite: the exact arithmetic, Blink's gradient descriptor, and whole background rows; null for other names. */
+function gradientResult(name: string, a: readonly JsonValue[]): string | null {
+  switch (name) {
+    case 'paint:gradient:sqrtF64':
+      return `["ok",${h(sqrtF64(arg(a, 1)))}]`;
+    case 'paint:gradient:hypotF32':
+      return `["ok",${h(hypotF32(arg(a, 1), arg(a, 2)))}]`;
+    case 'paint:gradient:fma64':
+      return `["ok",${h(fma64(arg(a, 1), arg(a, 2), arg(a, 3)))}]`;
+    case 'paint:gradient:gradientDesc': {
+      const d = gradientDesc(gradImage(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3), arg(a, 4));
+      let out = `["ok",${d.modelled ? 'true' : 'false'},${h(d.p0x)},${h(d.p0y)},${h(d.p1x)},${h(d.p1y)},${h(d.r0)},${h(d.r1)},${h(d.aspect)},[`;
+      for (let i = 0; i < d.offsets.length; i++) {
+        const c = d.colors[i];
+        if (c === undefined) return fail('a stop without a colour');
+        out += `${i > 0 ? ',' : ''}[${h(d.offsets[i] as number)},${h(c.r)},${h(c.g)},${h(c.b)},${h(c.a)}]`;
+      }
+      return `${out}]]`;
+    }
+    case 'paint:gradient:backgroundRow': {
+      // The whole row, every value as two hex digits, so native runs are compared byte for byte.
+      const plan = planBackground(gradPaint(item(a, 1, '$'), '$[1]'), gradientFaults('none'));
+      const row = backgroundRow(plan, arg(a, 2), gradientFaults('none'));
+      let bytes = '';
+      for (let i = 0; i < row.length; i++) {
+        const x = row[i] as number;
+        if (!(x >= 0 && x <= 255 && Math.floor(x) === x)) return fail(`row value ${i} is not a byte`);
+        bytes += `${x < 16 ? '0' : ''}${x.toString(16)}`;
+      }
+      return `["ok",${plan.modelled ? 'true' : 'false'},${h(plan.left)},${h(plan.right)},${h(row.length)},${q(bytes)}]`;
+    }
+    default:
+      return null;
+  }
+}
+
 
 /** One units case: ["name", arg bits...] in, the result bits out. */
 export function runUnitsCase(line: string): string {

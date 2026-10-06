@@ -155,6 +155,7 @@ const INITIAL: LayoutStyle = {
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
+  grid: null, gridItem: null,
 };
 
 function len(r: Rng, min: number): number {
