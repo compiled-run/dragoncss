@@ -241,11 +241,14 @@ describe('animation analysis', () => {
   });
 
   it('gates every animation declaration and @keyframes per target in the animation context until a frame lane proves it', () => {
-    const ds = compile('.a { transition: color 1s; } .b { animation: k 1s; } @keyframes k { to { color: rgb(1, 2, 3) } }', 'enforce');
-    expect(ds.every((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.target !== null && d.profile?.context === 'animation')).toBe(true);
-    // The web frame lanes (chrome-dual, PR 3a) prove these features; ios has no device-anim row until 3b.
-    expect([...new Set(ds.map((d) => d.target))].sort()).toEqual(['ios']);
-    expect(ds.map((d) => d.profile?.feature).filter((f, i, a) => a.indexOf(f) === i).sort()).toEqual(['animatable:color', 'animation-name:<custom-ident>', 'at-rule:@keyframes', 'transition-property:<custom-ident>']);
+    // The frame lanes prove these features on web (chrome-dual) and, through the native runtime and device-anim (ANIM-b1 part 2), on
+    // ios as caveat rows; a feature no frame case proves stays refused on every target.
+    expect(compile('.a { transition: color 1s; } .b { animation: k 1s; } @keyframes k { to { color: rgb(1, 2, 3) } }', 'enforce')).toEqual([]);
+    // Whatever the frame lanes do not prove, ios refuses exactly as web does (one set of rows on every target).
+    const ds = compile('.a { transition: color 1s ease-in-out, background-color 2s ease-out; } .b { animation: k 1s 2 alternate backwards; } @keyframes k { to { color: rgb(1, 2, 3) } }', 'enforce').filter((d) => d.profile?.context === 'animation');
+    expect(ds.every((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.target !== null)).toBe(true);
+    const on = (t: string) => ds.filter((d) => d.target === t).map((d) => d.profile?.feature).sort();
+    expect(on('ios')).toEqual(on('web'));
   });
 });
 
