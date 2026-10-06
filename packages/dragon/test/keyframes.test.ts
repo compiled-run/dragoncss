@@ -36,7 +36,10 @@ describe('@keyframes', () => {
     for (const bad of ['@keyframes none { to { width: 1px } }', '@keyframes initial { to { width: 1px } }', '@keyframes k;']) {
       expect(parse(bad).diagnostics.map((d) => d.code), bad).toEqual(['DRAGON_UNSUPPORTED_AT_RULE']);
     }
-    expect(parse('@-webkit-keyframes k { to { width: 1px } }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_AT_RULE']);
+    // ANIM-b2: @-webkit-keyframes is @keyframes (aliases.test.ts), so a valid one is accepted and its refusals are @keyframes'.
+    expect(parse('@-webkit-keyframes k { to { width: 1px } }').diagnostics.map((d) => d.code)).toEqual([]);
+    expect(parse('@-webkit-keyframes none { to { width: 1px } }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_AT_RULE']);
+    expect(parse('@layer x { @-webkit-keyframes k { to { width: 1px } } }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_AT_RULE']);
   });
 
   it('reports keyframe selectors Chrome drops and timeline ranges (ANIM-S), dropping the block', () => {

@@ -57,9 +57,9 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
     // Two values of each paint longhand: two colours, or for the PNT2 longhands two transforms, origins and will-change features.
-    const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'], 'border-top-left-radius': ['4px', '30% 2px'], 'border-top-right-radius': ['4px', '30% 2px'], 'border-bottom-right-radius': ['4px', '30% 2px'], 'border-bottom-left-radius': ['4px', '30% 2px'] };
+    const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'] };
     for (const p of paint) {
-      const [va, vb] = pair[p] ?? ['#102030', 'rgba(200, 100, 50, 0.5)'];
+      const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
       const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: relative; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
       const m = boxes(input);
       const [a, b] = [m.get('a') as LayoutBox, m.get('b') as LayoutBox];
@@ -166,7 +166,8 @@ describe('the web emitter and the inset longhands', () => {
 describe('rec4: the unsupported at-rule fix is manual and never deletes the enclosed rules', () => {
   it('DRAGON_UNSUPPORTED_AT_RULE carries a manual fix; applyFix changes no text', () => {
     expect(CATALOGUE.DRAGON_UNSUPPORTED_AT_RULE.fix.kind).toBe('manual');
-    const css = `${FONT} @media (min-width: 1px) { .a { width: 80px; } }`;
+    // A width @media is native too since MQ-R1, so the at-rule here is one every target refuses.
+    const css = `${FONT} @container (min-width: 1px) { .a { width: 80px; } }`;
     const input = inputFor(css, (r) => [div(r, 'a', ['a'])]);
     const d = project().compile(input).diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_AT_RULE');
     if (d === undefined || d.fix === null) throw new Error('no at-rule diagnostic');

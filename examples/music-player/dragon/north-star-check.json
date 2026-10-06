@@ -138,8 +138,8 @@
   }
  },
  "summary": {
-  "diagnostics": 246,
-  "errors": 241,
+  "diagnostics": 215,
+  "errors": 210,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -148,8 +148,6 @@
    "DRAGON_UNPROVEN_CONTEXT [ios]": 3,
    "DRAGON_UNPROVEN_CONTEXT [web]": 5,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
-   "DRAGON_UNSUPPORTED_AT_RULE [android]": 2,
-   "DRAGON_UNSUPPORTED_AT_RULE [ios]": 2,
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
@@ -159,9 +157,9 @@
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 4,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 33,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 33,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 20
+   "DRAGON_UNSUPPORTED_VALUE [android]": 24,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 24,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 11
   },
   "perTarget": {
    "web": {
@@ -171,7 +169,7 @@
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_PROPERTY": 31,
      "DRAGON_UNSUPPORTED_SELECTOR": 4,
-     "DRAGON_UNSUPPORTED_VALUE": 23
+     "DRAGON_UNSUPPORTED_VALUE": 14
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -182,12 +180,11 @@
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 3,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
-     "DRAGON_UNSUPPORTED_AT_RULE": 2,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 29,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 36
+     "DRAGON_UNSUPPORTED_VALUE": 27
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -200,12 +197,11 @@
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 3,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
-     "DRAGON_UNSUPPORTED_AT_RULE": 2,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 29,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 36
+     "DRAGON_UNSUPPORTED_VALUE": 27
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -220,11 +216,11 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 205,
-  "supportedWeb": 237,
-  "supportedIos": 205,
-  "supportedAndroid": 205,
-  "supportPercent": 70.9,
+  "supportedBothTargets": 231,
+  "supportedWeb": 242,
+  "supportedIos": 231,
+  "supportedAndroid": 231,
+  "supportPercent": 79.9,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -307,9 +303,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 110,
-   "B-unwrapped": 106,
-   "C-context": 154
+   "A-authored": 91,
+   "B-unwrapped": 91,
+   "C-context": 139
   }
  },
  "features": {
@@ -707,12 +703,10 @@
    "atRule": null,
    "property": "min-height",
    "value": "100vh",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 22,
@@ -749,12 +743,10 @@
    "atRule": null,
    "property": "min-height",
    "value": "100vh",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 25,
@@ -829,12 +821,10 @@
    "atRule": null,
    "property": "min-height",
    "value": "100vh",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 31,
@@ -941,12 +931,10 @@
    "atRule": null,
    "property": "min-height",
    "value": "10vh",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 40,
@@ -2193,12 +2181,10 @@
    "atRule": null,
    "property": "min-height",
    "value": "20vh",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 141,
@@ -3779,11 +3765,9 @@
    "property": "margin-right",
    "value": "0",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 268,
@@ -3793,11 +3777,9 @@
    "property": "left",
    "value": "0.75rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 269,
@@ -3807,11 +3789,9 @@
    "property": "top",
    "value": "0.75rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 270,
@@ -3821,11 +3801,9 @@
    "property": "width",
    "value": "min(calc(100vw - 1.5rem), 22.5rem)",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 271,
@@ -3835,11 +3813,9 @@
    "property": "width",
    "value": "min(72vw, 18rem)",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 272,
@@ -3849,11 +3825,9 @@
    "property": "width",
    "value": "min(80%, 18rem)",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 273,
@@ -3863,11 +3837,9 @@
    "property": "width",
    "value": "100%",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 274,
@@ -3877,11 +3849,9 @@
    "property": "font-size",
    "value": "1.35rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 275,
@@ -3891,11 +3861,9 @@
    "property": "line-height",
    "value": "1.15",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 276,
@@ -3905,11 +3873,9 @@
    "property": "max-width",
    "value": "20rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 277,
@@ -3922,7 +3888,6 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE",
     "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
@@ -3934,11 +3899,9 @@
    "property": "white-space",
    "value": "normal",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 279,
@@ -3948,11 +3911,9 @@
    "property": "width",
    "value": "20rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 280,
@@ -3962,11 +3923,9 @@
    "property": "max-width",
    "value": "18rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 281,
@@ -3976,11 +3935,9 @@
    "property": "width",
    "value": "18rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 282,
@@ -3990,11 +3947,9 @@
    "property": "min-width",
    "value": "2.5rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 283,
@@ -4004,11 +3959,9 @@
    "property": "text-align",
    "value": "center",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 284,
@@ -4018,11 +3971,9 @@
    "property": "display",
    "value": "block",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 285,
@@ -4032,11 +3983,9 @@
    "property": "max-width",
    "value": "20rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 286,
@@ -4046,11 +3995,9 @@
    "property": "padding-inline",
    "value": "1rem",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 287,
@@ -4060,11 +4007,9 @@
    "property": "display",
    "value": "block",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 288,
@@ -4077,7 +4022,6 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE",
     "DRAGON_UNSUPPORTED_PROPERTY"
    ]
   },
@@ -4092,8 +4036,7 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
-    "DRAGON_UNSUPPORTED_AT_RULE"
+    "DRAGON_UNPROVEN_CONTEXT"
    ]
   },
   {
@@ -4104,11 +4047,9 @@
    "property": "margin",
    "value": "0.55rem 0.35rem 0",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_AT_RULE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   }
  ],
  "diagnostics": [
@@ -4166,66 +4107,6 @@
     "text": "'Lato', sans-serif"
    },
    "message": "font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 627,
-    "end": 632,
-    "line": 33,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 627,
-    "end": 632,
-    "line": 33,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 627,
-    "end": 632,
-    "line": 33,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4316,69 +4197,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 731,
-    "end": 736,
-    "line": 47,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 731,
-    "end": 736,
-    "line": 47,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@731-736|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 731,
-    "end": 736,
-    "line": 47,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped",
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@784-801|letter-spacing is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -4412,126 +4230,6 @@
     "text": "font-weight: 400"
    },
    "message": "font-weight is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 905,
-    "end": 910,
-    "line": 65,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 905,
-    "end": 910,
-    "line": 65,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 905,
-    "end": 910,
-    "line": 65,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 1195,
-    "end": 1199,
-    "line": 80,
-    "column": 14,
-    "text": "10vh"
-   },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 1195,
-    "end": 1199,
-    "line": 80,
-    "column": 14,
-    "text": "10vh"
-   },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 1195,
-    "end": 1199,
-    "line": 80,
-    "column": 14,
-    "text": "10vh"
-   },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4894,66 +4592,6 @@
     "text": "overflow-wrap: break-word"
    },
    "message": "overflow-wrap is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 4652,
-    "end": 4656,
-    "line": 258,
-    "column": 14,
-    "text": "20vh"
-   },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 4652,
-    "end": 4656,
-    "line": 258,
-    "column": 14,
-    "text": "20vh"
-   },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 4652,
-    "end": 4656,
-    "line": 258,
-    "column": 14,
-    "text": "20vh"
-   },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); supported min-height values: <calc()>, <clamp()>, <length-em>, <length-px>, <length-q>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5691,82 +5329,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_AT_RULE|android|css@8438-8746|@media screen and (max-width: 768px) selects rules by the viewport width or height, which the android output does not support until MQ-R",
-   "code": "DRAGON_UNSUPPORTED_AT_RULE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 8438,
-    "end": 8746,
-    "line": 498,
-    "column": 1,
-    "text": "@media screen and (max-width: 768px) {\n\t.App.library-active {\n\t\tmargin-right: 0;\n\t}\n\n\t.mini-video-shell {\n\t\tleft: 0.75rem;\n\t\ttop: 0.75rem;\n\t\twidth: min(calc(100vw - 1.5rem), 22.5rem);\n\t}\n\n\t.record {\n\t\twidth: min(72vw, 18rem);\n\t}\n\n\t.play-control {\n\t\twidth: min(80%, 18rem);\n\t}\n\n\t.library {\n\t\twidth: 100%;\n\t}\n}"
-   },
-   "message": "@media screen and (max-width: 768px) selects rules by the viewport width or height, which the android output does not support until MQ-R",
-   "viaRelated": false,
-   "passes": [
-    "A-authored"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_AT_RULE|ios|css@8438-8746|@media screen and (max-width: 768px) selects rules by the viewport width or height, which the ios output does not support until MQ-R",
-   "code": "DRAGON_UNSUPPORTED_AT_RULE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 8438,
-    "end": 8746,
-    "line": 498,
-    "column": 1,
-    "text": "@media screen and (max-width: 768px) {\n\t.App.library-active {\n\t\tmargin-right: 0;\n\t}\n\n\t.mini-video-shell {\n\t\tleft: 0.75rem;\n\t\ttop: 0.75rem;\n\t\twidth: min(calc(100vw - 1.5rem), 22.5rem);\n\t}\n\n\t.record {\n\t\twidth: min(72vw, 18rem);\n\t}\n\n\t.play-control {\n\t\twidth: min(80%, 18rem);\n\t}\n\n\t.library {\n\t\twidth: 100%;\n\t}\n}"
-   },
-   "message": "@media screen and (max-width: 768px) selects rules by the viewport width or height, which the ios output does not support until MQ-R",
-   "viaRelated": false,
-   "passes": [
-    "A-authored"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_AT_RULE|android|css@8748-9314|@media screen and (max-width: 640px) selects rules by the viewport width or height, which the android output does not support until MQ-R",
-   "code": "DRAGON_UNSUPPORTED_AT_RULE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 8748,
-    "end": 9314,
-    "line": 522,
-    "column": 1,
-    "text": "@media screen and (max-width: 640px) {\n\t.song-container h2 {\n\t\tfont-size: 1.35rem;\n\t\tline-height: 1.15;\n\t\tmax-width: 20rem;\n\t\toverflow-wrap: anywhere;\n\t\twhite-space: normal;\n\t\twidth: 20rem;\n\t}\n\n\t.time-control {\n\t\tmax-width: 18rem;\n\t\twidth: 18rem;\n\t}\n\n\t.time-control p {\n\t\tmin-width: 2.5rem;\n\t\ttext-align: center;\n\t}\n\n\t.youtube-disclosure {\n\t\tdisplay: block;\n\t\tmax-width: 20rem;\n\t\tpadding-inline: 1rem;\n\t}\n\n\t.youtube-disclosure span {\n\t\tdisplay: block;\n\t\toverflow-wrap: anywhere;\n\t}\n\n\t.youtube-disclosure a {\n\t\tdisplay: inline-block;\n\t\tmargin: 0.55rem 0.35rem 0;\n\t}\n}"
-   },
-   "message": "@media screen and (max-width: 640px) selects rules by the viewport width or height, which the android output does not support until MQ-R",
-   "viaRelated": false,
-   "passes": [
-    "A-authored"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_AT_RULE|ios|css@8748-9314|@media screen and (max-width: 640px) selects rules by the viewport width or height, which the ios output does not support until MQ-R",
-   "code": "DRAGON_UNSUPPORTED_AT_RULE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 8748,
-    "end": 9314,
-    "line": 522,
-    "column": 1,
-    "text": "@media screen and (max-width: 640px) {\n\t.song-container h2 {\n\t\tfont-size: 1.35rem;\n\t\tline-height: 1.15;\n\t\tmax-width: 20rem;\n\t\toverflow-wrap: anywhere;\n\t\twhite-space: normal;\n\t\twidth: 20rem;\n\t}\n\n\t.time-control {\n\t\tmax-width: 18rem;\n\t\twidth: 18rem;\n\t}\n\n\t.time-control p {\n\t\tmin-width: 2.5rem;\n\t\ttext-align: center;\n\t}\n\n\t.youtube-disclosure {\n\t\tdisplay: block;\n\t\tmax-width: 20rem;\n\t\tpadding-inline: 1rem;\n\t}\n\n\t.youtube-disclosure span {\n\t\tdisplay: block;\n\t\toverflow-wrap: anywhere;\n\t}\n\n\t.youtube-disclosure a {\n\t\tdisplay: inline-block;\n\t\tmargin: 0.55rem 0.35rem 0;\n\t}\n}"
-   },
-   "message": "@media screen and (max-width: 640px) selects rules by the viewport width or height, which the ios output does not support until MQ-R",
-   "viaRelated": false,
-   "passes": [
-    "A-authored"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@8874-8897|overflow-wrap is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -6496,63 +6058,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 627,
-    "end": 632,
-    "line": 33,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 627,
-    "end": 632,
-    "line": 33,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@627-632|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 627,
-    "end": 632,
-    "line": 33,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@884-890|overflow-y computes to auto on page/app (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -6610,63 +6115,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 905,
-    "end": 910,
-    "line": 65,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 905,
-    "end": 910,
-    "line": 65,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@905-910|min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 905,
-    "end": 910,
-    "line": 65,
-    "column": 14,
-    "text": "100vh"
-   },
-   "message": "min-height: 100vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@961-983|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -6699,63 +6147,6 @@
     "text": "margin-right 0.5s ease"
    },
    "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 1195,
-    "end": 1199,
-    "line": 80,
-    "column": 14,
-    "text": "10vh"
-   },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 1195,
-    "end": 1199,
-    "line": 80,
-    "column": 14,
-    "text": "10vh"
-   },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@1195-1199|min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 1195,
-    "end": 1199,
-    "line": 80,
-    "column": 14,
-    "text": "10vh"
-   },
-   "message": "min-height: 10vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6965,63 +6356,6 @@
     "text": "running"
    },
    "message": "animation-play-state:running has no passing frame-lane proof in the animation context (support profile m1-s5)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 4652,
-    "end": 4656,
-    "line": 258,
-    "column": 14,
-    "text": "20vh"
-   },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 4652,
-    "end": 4656,
-    "line": 258,
-    "column": 14,
-    "text": "20vh"
-   },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@4652-4656|min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 4652,
-    "end": 4656,
-    "line": 258,
-    "column": 14,
-    "text": "20vh"
-   },
-   "message": "min-height: 20vh is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-em>, <length-px>, <length-rem>, <max()>, <min()>, <percentage> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"

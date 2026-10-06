@@ -52,7 +52,8 @@ describe('Amendment T075J pins', () => {
       for (const row of profile.rows) {
         if (row.status === 'unsupported') continue;
         const proving = [...new Set(row.proofs.flatMap((p) => p.cases))];
-        expect(promotionBlocker(ev, proving, PROPERTY_ASPECTS[row.feature.slice(0, row.feature.indexOf(':')) as Longhand].paint), `${t} ${row.feature}@${row.context}`).toBeNull();
+        // A media row (MQ-R1) keys no property: it has no paint aspect.
+        expect(promotionBlocker(ev, proving, PROPERTY_ASPECTS[row.feature.slice(0, row.feature.indexOf(':')) as Longhand]?.paint ?? false), `${t} ${row.feature}@${row.context}`).toBeNull();
       }
     }
   });

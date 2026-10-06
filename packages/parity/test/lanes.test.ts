@@ -12,6 +12,7 @@ import type { HostRun, KotlinLookup, LaneFault } from '../src/lanes.ts';
 import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
 import { HIT_LANE, scriptCases, STATE_LANE } from '../src/device-lanes.ts';
 import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
+import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
@@ -216,10 +217,16 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
-  it('device-hit runs exactly the hit cases: every layout case but those the hit lane refuses by name, the PNT2 transform cases (T146)', () => {
-    const refused = hitRefusedCases().map((r) => r.id);
+  it('device-hit runs exactly the hit cases: every layout case but those the hit lane refuses by name, the PNT2 transform cases (T146) and the radius cases (PNT1)', () => {
+    const refusals = hitRefusedCases();
+    const refused = refusals.map((r) => r.id);
     expect(refused.length).toBeGreaterThan(0);
-    for (const id of refused) expect(id, id).toMatch(/^transform-/);
+    // Exactly the union: every radius case is refused with its reason, and every other refusal is a transform- case with its reason.
+    expect(refused.filter((id) => RADIUS_OUT.includes(id)).sort()).toEqual([...RADIUS_OUT].sort());
+    for (const r of refusals) {
+      if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
+      else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^transform-/), expect.stringMatching(/^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/)]);
+    }
     expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...ids].sort());
     expect(hitCaseCount()).toBe(ids.length - refused.length);
     // The declared device-hit sets hold exactly those cases (targets.ts hitCaseIds), in layout order, at every device DPR.
