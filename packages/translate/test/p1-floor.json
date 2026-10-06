@@ -55,11 +55,11 @@
       "engine-inline"
     ],
     "counts": {
-      "vectors-m2": 335,
-      "vectors-dpr": 1779,
-      "engine-dpr": 1779,
+      "vectors-m2": 344,
+      "vectors-dpr": 1806,
+      "engine-dpr": 1806,
       "units-m2": 120000,
-      "snap": 21563,
+      "snap": 21590,
       "snap-values": 216,
       "calc-goldens": 17,
       "engine-calc": 4000,
