@@ -45,6 +45,8 @@ import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath } from '../css/
 import type { UaDataset } from '../ua/datasets.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
 import type { ImageNaturals } from '../images/compile.ts';
+import type { GridContainer } from './grid-layout.ts';
+import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem } from './grid-layout.ts';
 
 export class LoweringError extends Error {
   readonly nodeId: string;
@@ -211,7 +213,7 @@ const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '')
 function displayOfStyle(id: string, get: Get): Display {
   const v = get('display');
   if (v.kind === 'keyword' && v.value === 'list-item') return 'block';
-  return keyword<Display>(id, get, 'display', ['block', 'flex', 'inline']);
+  return keyword<Display>(id, get, 'display', ['block', 'flex', 'grid', 'inline']);
 }
 
 // css-align-3 §4.2: first baseline is baseline; last baseline has no layout mapping.
@@ -274,7 +276,19 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     aspectRatio: aspectRatio(id, get),
     // CSS2 §10.8.1: vertical-align is not a Dragon longhand; every box takes its initial value, which only inline boxes read.
     verticalAlign: { kind: 'keyword', value: 'baseline' },
+    grid: null,
+    gridItem: null,
   };
+}
+
+/** Runs a grid lowering step, reporting its refusal as a LoweringError on the element. */
+function gridStep<T>(id: string, step: () => T): T {
+  try {
+    return step();
+  } catch (e) {
+    if (e instanceof GridLoweringError) throw new LoweringError(id, e.property, `${e.message} (on ${id})`);
+    throw e;
+  }
 }
 
 const AHEM_EXPECTED = 'Ahem (the milestone-1 layout font)';
@@ -391,7 +405,7 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
   if (isReplacedTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a replaced element`);
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
-  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images });
+  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images }, null);
 }
 
 const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', 'scale-down'];
@@ -401,14 +415,19 @@ const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', '
  * overflow clip (the UA's img and iframe rule) clips only its own content, so the engine takes it as visible; its children are
  * fallback content, which a replaced element never renders.
  */
-function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals): ReplacedLeaf {
+function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals, gridParent: GridContainer | null): ReplacedLeaf {
   const id = el.element.address;
   const raw: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const get: Get = (p) => {
     const v = raw(p);
     return (p === 'overflow-x' || p === 'overflow-y') && v.kind === 'keyword' && v.value === 'clip' ? { kind: 'keyword', value: 'visible' } : v;
   };
-  const style = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { em: fontPx(raw('font-size')), rem: rootFontSize });
+  const own = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { em: fontPx(raw('font-size')), rem: rootFontSize });
+  // css-grid-2 §5: a replaced element establishes no grid container; display: grid on one is not modelled.
+  if (own.display === 'grid') throw new LoweringError(id, 'display', `display: grid on the replaced element ${id} is not supported`);
+  // css-grid-2 §8: an in-flow replaced child of a grid container is a grid item and carries its placement.
+  const gridItem = gridParent !== null && own.position !== 'absolute' ? gridStep(id, () => lowerGridItem(gridParent, raw)) : null;
+  const style: LayoutStyle = gridItem === null ? own : { ...own, gridItem };
   let natural: ReplacedLeaf['natural'] = { kind: 'none' };
   if (el.element.tag === 'img') {
     const src = el.element.attributes.get('src');
@@ -434,26 +453,36 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
 
 /**
  * The layout tree of one resolved element that generates a box. Inline-level content (text, inline boxes, <br>s) beside block-level
- * boxes, or directly in a flex container, is wrapped in anonymous boxes "<element>:anon<k>", one per maximal run; display: none
- * children are omitted, so they never split a run. The engine never creates boxes.
+ * boxes, or directly in a flex or grid container, is wrapped in anonymous boxes "<element>:anon<k>", one per maximal run; display:
+ * none children are omitted, so they never split a run. The engine never creates boxes. A flex or grid item is blockified
+ * (css-display-3 §2.7), so an inline-level element in one is lowered as a box, never an inline box.
  */
-function lowerBox(el: ResolvedElement, l: Lowerer): LayoutBox {
+function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | null): LayoutBox {
   const id = el.element.address;
   const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
-  const style = lowerStyle(el, l.faults, l.ua, l.rootFontSize);
+  const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
+  const own = lowerStyle(el, l.faults, l.ua, l.rootFontSize);
+  // css-grid-2 §7 and §8: a grid container carries its tracks; each in-flow child of one carries its placement.
+  const grid = own.display === 'grid' ? gridStep(id, () => lowerGridContainer(get)) : null;
+  const gridItem = gridParent !== null && own.position !== 'absolute' ? gridStep(id, () => lowerGridItem(gridParent, get)) : null;
+  const style: LayoutStyle = grid === null && gridItem === null ? own : { ...own, grid: grid === null ? null : grid.style, gridItem };
+  const container = displayOf(el) === 'flex' || displayOf(el) === 'grid';
   const inline = kids.filter(isInlineLevel);
-  const wrap = inline.length > 0 && (displayOf(el) === 'flex' || inline.length !== kids.length);
+  const wrap = inline.length > 0 && (container || inline.length !== kids.length);
   const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
   let run: (ResolvedElement | ResolvedText)[] = [];
   let anon = 0;
   const flush = (): void => {
-    if (run.length > 0) children.push(anonymousBox(el, `${id}:anon${anon++}`, run, l));
+    if (run.length > 0) {
+      const box = anonymousBox(el, `${id}:anon${anon++}`, run, l);
+      children.push(grid === null ? box : { ...box, style: { ...box.style, gridItem: ANONYMOUS_GRID_ITEM } });
+    }
     run = [];
   };
   for (const c of kids) {
     if (!isInlineLevel(c)) {
       flush();
-      children.push(isReplacedTag((c as ResolvedElement).element.tag) ? lowerReplaced(c as ResolvedElement, l.faults, l.ua, l.rootFontSize, l.images) : lowerBox(c as ResolvedElement, l));
+      children.push(isReplacedTag((c as ResolvedElement).element.tag) ? lowerReplaced(c as ResolvedElement, l.faults, l.ua, l.rootFontSize, l.images, grid) : lowerBox(c as ResolvedElement, l, grid));
     } else if (wrap) {
       if (l.faults.inlineWrapperPerElement && c.kind === 'element') flush();
       run.push(c);

@@ -17,7 +17,8 @@ export type UnsupportedCode =
   | 'inline-box-decoration'
   | 'vertical-align'
   | 'inline-box-position'
-  | 'inline-empty-line';
+  | 'inline-empty-line'
+  | 'grid-layout';
 
 export type LayoutUnsupported = {
   readonly code: UnsupportedCode;

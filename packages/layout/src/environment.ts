@@ -20,6 +20,7 @@ import type {
   FlexBasisValue,
   FontSpec,
   GapValue,
+  GridContainerStyle,
   InsetValue,
   InlineChild,
   LayoutBox,
@@ -40,6 +41,9 @@ import type {
   SafeAreaInsets,
   SizeValue,
   TextLeaf,
+  TrackBreadth,
+  TrackRepeater,
+  TrackSize,
   VerticalAlignValue,
   ViewportLength,
 } from './input.ts';
@@ -279,6 +283,7 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     rowGap: resolveGap(s.rowGap, env),
     columnGap: resolveGap(s.columnGap, env),
     verticalAlign: resolveVerticalAlign(s.verticalAlign, env),
+    grid: s.grid === null ? null : zoomGrid(s.grid, env.zoom),
   };
 }
 
@@ -286,6 +291,28 @@ function resolveVerticalAlign(v: VerticalAlignValue, env: Env): VerticalAlignVal
   if (v.kind === 'px') return zoomPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
+}
+
+/** Grid track sizes: px breadths and fit-content limits are zoomed; %, fr and the keywords are not. */
+function zoomGrid(g: GridContainerStyle, z: number): GridContainerStyle {
+  const repeaters = (rs: readonly TrackRepeater[]): TrackRepeater[] => rs.map((r): TrackRepeater => ({ count: r.count, sizes: r.sizes.map((t) => zoomTrack(t, z)) }));
+  return {
+    ...g,
+    templateColumns: repeaters(g.templateColumns),
+    templateRows: repeaters(g.templateRows),
+    autoColumns: g.autoColumns.map((t) => zoomTrack(t, z)),
+    autoRows: g.autoRows.map((t) => zoomTrack(t, z)),
+  };
+}
+
+function zoomTrack(t: TrackSize, z: number): TrackSize {
+  if (t.kind === 'breadth') return { kind: 'breadth', breadth: zoomBreadth(t.breadth, z) };
+  if (t.kind === 'minmax') return { kind: 'minmax', min: zoomBreadth(t.min, z), max: zoomBreadth(t.max, z) };
+  return { kind: 'fit-content', limit: t.limit.kind === 'px' ? zoomPx(t.limit, z) : t.limit };
+}
+
+function zoomBreadth(b: TrackBreadth, z: number): TrackBreadth {
+  return b.kind === 'px' ? zoomPx(b, z) : b;
 }
 
 /** order: a math function's number rounded half toward +infinity and clamped to int; an integer in range is itself. */
