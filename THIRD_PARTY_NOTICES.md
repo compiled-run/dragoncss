@@ -16,11 +16,15 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/animation/interpolation_effect.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/animation/timing_calculations.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/animation/timing.cc`: Copyright 2014 The Chromium Authors
+- `third_party/blink/renderer/core/css/counter_style.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/css/counter_style.h`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/css/css_length_resolver.cc`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/css/css_math_function_value.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/css/parser/css_parser_impl.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/css_parsing_utils.cc`: Copyright 2017 The Chromium Authors
+- `third_party/blink/renderer/core/css/ua_counter_style_map.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/html/list_item_ordinal.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/absolute_utils.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/block_layout_algorithm_utils.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/layout/block_layout_algorithm.cc`: Copyright 2016 The Chromium Authors
@@ -33,6 +37,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/list/list_marker.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/paint/background_image_geometry.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_border_painter.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_fragment_painter.cc`: Copyright 2017 The Chromium Authors
