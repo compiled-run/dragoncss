@@ -185,9 +185,9 @@ describe('MQ-a: the band fold', () => {
     expectCatalogued(c.diagnostics);
   });
   it('the rules inside an unsupported at-rule inside @media are analysed for diagnostics, whatever the band', () => {
-    const { c } = compile('.a { width: 10px; } @media (max-width: 400px) { .a { width: 20px; } } @supports (display: flex) { @media (max-width: 3px) { .a { display: grid; } } }', { foldViewport: { width: 400, height: 300 } });
+    const { c } = compile('.a { width: 10px; } @media (max-width: 400px) { .a { width: 20px; } } @supports (display: flex) { @media (max-width: 3px) { .a { display: inline-grid; } } }', { foldViewport: { width: 400, height: 300 } });
     const supports = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
-    expect(supports?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[ios\]: display: grid/), expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[web\]: display: grid/)]);
+    expect(supports?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[ios\]: display: inline-grid/), expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[web\]: display: inline-grid/)]);
   });
   it('the rules inside an unsupported at-rule are analysed against every band\'s cascade, web in each band and native in its own', () => {
     // At the 400px fold the body is flex and margin-top: auto is proven; above 500px the body is block, where web does not prove it.
@@ -222,10 +222,10 @@ describe('MQ-a: every check blocks the targets of the bands it applies in (PR #3
     expectCatalogued(outside.diagnostics);
   });
   it('a value no context proves, only outside the native band, is refused for web and not for ios', () => {
-    const outside = compile('.a { width: 10px; } @media (min-width: 500px) { .a { display: grid; } }', FOLD).c;
+    const outside = compile('.a { width: 10px; } @media (min-width: 500px) { .a { display: inline-grid; } }', FOLD).c;
     expect(codes(outside).filter(([code]) => code === 'DRAGON_UNSUPPORTED_VALUE')).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'web']]);
     expect(outside.outputs.ios.kind).toBe('analysis-only');
-    const inside = compile('.a { width: 10px; } @media (max-width: 500px) { .a { display: grid; } }', FOLD).c;
+    const inside = compile('.a { width: 10px; } @media (max-width: 500px) { .a { display: inline-grid; } }', FOLD).c;
     expect(codes(inside).filter(([code]) => code === 'DRAGON_UNSUPPORTED_VALUE').map(([, t]) => t)).toEqual(['ios', 'web']);
   });
   const rtl = (css: string, opts: Partial<InternalOptions>): Compiled<K> => {
