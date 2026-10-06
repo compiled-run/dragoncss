@@ -91,7 +91,7 @@ function evalCubic(p0: number, p1: number, p2: number, p3: number, t: number): n
 
 /**
  * SkPath::computeTightBounds of a path built from these segments (null for no segments). A path of lines alone takes its quick
- * bounds, SkPathPriv::TrimmedBounds, which skip a trailing moveto; any curve takes ComputeTightBounds over every verb.
+ * bounds, SkPathPriv::TrimmedBounds (src/core/SkPathPriv.h), which skip a trailing moveto; any curve takes ComputeTightBounds over every verb.
  */
 export function tightBounds(segments: readonly SvgSegment[]): SvgBounds | null {
   const first = segments[0];
