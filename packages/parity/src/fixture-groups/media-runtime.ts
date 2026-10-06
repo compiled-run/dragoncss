@@ -26,8 +26,15 @@ export const MEDIA_RUNTIME: readonly FixtureSpec[] = [
 
 export type Size = { readonly width: number; readonly height: number };
 
-/** One step of a resize script: a root size change in CSS px, or an app setter (a free state's key "<instance>#<state>"). */
-export type ResizeStep = { readonly kind: 'resize'; readonly width: number; readonly height: number } | { readonly kind: 'set'; readonly state: string; readonly value: Scalar };
+/**
+ * One step of a resize script: a root size change in CSS px, an app setter (a free state's key "<instance>#<state>"), or (MQ-R2)
+ * new device readings: the pointer reading of a touch screen or a desktop's mouse, or the reduced-motion setting.
+ */
+export type ResizeStep =
+  | { readonly kind: 'resize'; readonly width: number; readonly height: number }
+  | { readonly kind: 'set'; readonly state: string; readonly value: Scalar }
+  | { readonly kind: 'env'; readonly reading: 'pointer'; readonly value: 'touch' | 'desktop' }
+  | { readonly kind: 'env'; readonly reading: 'motion'; readonly value: 'reduce' | 'no-preference' };
 
 /** A fixture's resize script: the root size it starts at and its steps; a dump follows the start and every step. */
 export type ResizeScript = { readonly fixture: string; readonly start: Size; readonly steps: readonly ResizeStep[] };

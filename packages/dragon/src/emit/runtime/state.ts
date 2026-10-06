@@ -24,6 +24,12 @@ export type ScriptStep =
   | { readonly kind: 'tap'; readonly x: number; readonly y: number }
   /** MQ-R1 (T067 R7 (a)): the media root's new size in CSS px; the mount's root observes it and the machine moves the band. */
   | { readonly kind: 'resize'; readonly width: number; readonly height: number }
+  /**
+   * MQ-R2 (T067 R9): new device readings, injected exactly: a touch screen's or a desktop mouse's pointer and hover readings, or the
+   * reduced-motion setting. Injected readings stay until the script ends; the platform's own changes no longer reach the machine.
+   */
+  | { readonly kind: 'env'; readonly reading: 'pointer'; readonly value: 'touch' | 'desktop' }
+  | { readonly kind: 'env'; readonly reading: 'motion'; readonly value: 'reduce' | 'no-preference' }
   | { readonly kind: 'dump' };
 
 /**
@@ -89,12 +95,14 @@ public struct DragonStateDelta {
   public init(_ removed: [String], _ changed: [DragonStateNode], _ order: [String]?, _ variant: Int) { self.removed = removed; self.changed = changed; self.order = order; self.variant = variant }
 }
 
-/// One case-script step: set state s to its v-th domain value, advance the virtual clock, resize the media root (CSS px), or mark
-/// the dump.
+/// One case-script step: set state s to its v-th domain value, advance the virtual clock, resize the media root (CSS px), inject
+/// device readings (MQ-R2: env(0, v) the pointer, v 0 a desktop mouse and 1 a touch screen; env(1, v) reduced motion, v 1 reduce),
+/// or mark the dump.
 public enum DragonScriptStep {
   case set(Int, Int)
   case advance(Double)
   case resize(Double, Double)
+  case env(Int, Int)
   case dump
 }
 
@@ -113,6 +121,11 @@ public final class DragonStateMachine {
   /// The band of the current assignment, and the viewport (CSS px) the engine lays out at: the media root's size.
   public private(set) var bandIndex: Int
   public private(set) var viewport: (Double, Double)
+  /// MQ-R2: the device readings the band lookup answers the device atoms from, and the media root's size in whole device px and
+  /// its scale, which a readings change looks the band up at.
+  public var readings = DragonReadings.desktop
+  private var sizePx: (Double, Double) = (0, 0)
+  private var scale: Double = 0
   public let clock = DragonVirtualClock()
   public private(set) var current: Int
   public private(set) var laidOut: Int
@@ -196,8 +209,10 @@ public final class DragonStateMachine {
   /// band first, through env#band's delta when it changes (whose setter lays out once), else one layout at the new size.
   public func resize(_ widthPx: Double, _ heightPx: Double, css: (Double, Double), scale: Double) {
     viewport = css
+    sizePx = (widthPx, heightPx)
+    self.scale = scale
     if let b = band {
-      let to = dragonBandAt(b, widthPx, heightPx, scale)
+      let to = dragonBandAt(b, widthPx, heightPx, scale, readings)
       if to != bandIndex {
         bandIndex = to
         set(b.state, to)
@@ -205,6 +220,18 @@ public final class DragonStateMachine {
       }
     }
     onChange?()
+  }
+
+  /// MQ-R2 (T067 R9): new device readings: the band of the root on them, through env#band's delta when it moves (whose setter lays
+  /// out once); the same band needs no layout, as the viewport has not changed.
+  public func setReadings(_ r: DragonReadings) {
+    readings = r
+    guard let b = band, scale > 0 else { return }
+    let to = dragonBandAt(b, sizePx.0, sizePx.1, scale, readings)
+    if to != bandIndex {
+      bandIndex = to
+      set(b.state, to)
+    }
   }
 }
 
@@ -222,9 +249,14 @@ public final class DragonStateMount {
   private let scale: Double
   private let bridge: DragonBridge
 
-  /// size: the media root's size in CSS px; the machine takes the band of it before the first render.
+  /// MQ-R2: the platform readings' observer, and whether a script injected its own (the platform then no longer reaches the machine).
+  private var observer: DragonReadingsObserver?
+  public private(set) var injected = false
+
+  /// size: the media root's size in CSS px; the machine takes the platform's readings and the band of the size before the first render.
   public init(machine: DragonStateMachine, stage: UIView, measurer: TextMeasurer, scale: Double, bridge: DragonBridge, size: (Double, Double)) {
     self.machine = machine; self.stage = stage; self.measurer = measurer; self.scale = scale; self.bridge = bridge
+    machine.readings = DragonReadings.platform()
     media = DragonMediaRoot(scale: scale)
     stage.addSubview(media)
     media.frame = CGRect(x: 0, y: 0, width: CGFloat(size.0), height: CGFloat(size.1))
@@ -236,6 +268,16 @@ public final class DragonStateMount {
       guard let self = self else { return }
       self.machine.resize(w, h, css: (cw, ch), scale: self.scale)
     }
+    observer = DragonReadingsObserver { [weak self] in
+      guard let self = self, !self.injected else { return }
+      self.machine.setReadings(DragonReadings.platform())
+    }
+  }
+
+  /// MQ-R2: a script's env step: the readings it names, exactly, from now on.
+  public func inject(_ r: DragonReadings) {
+    injected = true
+    machine.setReadings(r)
   }
 
   /// A script's resize step: the media root takes the new size, and its own layoutSubviews hands it to the machine.
@@ -274,6 +316,7 @@ public struct DragonStateScript {
       case .set(let a, let b): m.machine.set(a, b)
       case .advance(let ms): m.machine.clock.advance(ms)
       case .resize(let w, let h): m.resize(w, h)
+      case .env(let reading, let v): m.inject(reading == 0 ? m.machine.readings.pointing(touch: v == 1) : m.machine.readings.motion(reduce: v == 1))
       case .dump: break
       }
     }
@@ -321,6 +364,8 @@ sealed class DragonScriptStep {
   class Advance(val ms: Double) : DragonScriptStep()
   /** MQ-R1: the media root's new size in CSS px. */
   class Resize(val width: Double, val height: Double) : DragonScriptStep()
+  /** MQ-R2: inject device readings: reading 0 the pointer (v 0 a desktop mouse, 1 a touch screen), reading 1 reduced motion (v 1 reduce). */
+  class Env(val reading: Int, val v: Int) : DragonScriptStep()
   object Dump : DragonScriptStep()
 }
 
@@ -346,6 +391,13 @@ class DragonStateMachine(
     private set
   var viewport: Pair<Double, Double> = viewport
     private set
+  /**
+   * MQ-R2: the device readings the band lookup answers the device atoms from, and the media root's size in whole device px and its
+   * scale, which a readings change looks the band up at.
+   */
+  var readings: DragonReadings = DragonReadings.DESKTOP
+  private var sizePx: Pair<Double, Double> = Pair(0.0, 0.0)
+  private var scale: Double = 0.0
   var current: Int = initial
     private set
   var laidOut: Int = deltas[initial].variant
@@ -434,9 +486,11 @@ class DragonStateMachine(
    */
   fun resize(widthPx: Double, heightPx: Double, css: Pair<Double, Double>, scale: Double) {
     viewport = css
+    sizePx = Pair(widthPx, heightPx)
+    this.scale = scale
     val b = band
     if (b != null) {
-      val to = dragonBandAt(b, widthPx, heightPx, scale)
+      val to = dragonBandAt(b, widthPx, heightPx, scale, readings)
       if (to != bandIndex) {
         bandIndex = to
         set(b.state, to)
@@ -444,6 +498,21 @@ class DragonStateMachine(
       }
     }
     onChange?.invoke()
+  }
+
+  /**
+   * MQ-R2 (T067 R9): new device readings: the band of the root on them, through env#band's delta when it moves (whose setter lays
+   * out once); the same band needs no layout, as the viewport has not changed.
+   */
+  fun setReadings(r: DragonReadings) {
+    readings = r
+    val b = band ?: return
+    if (scale <= 0.0) return
+    val to = dragonBandAt(b, sizePx.first, sizePx.second, scale, readings)
+    if (to != bandIndex) {
+      bandIndex = to
+      set(b.state, to)
+    }
   }
 }
 
@@ -461,8 +530,13 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
   val media = DragonMediaRoot(stage.context)
   /** The CSS size a script's resize step asked for, read by the next size change; null for a size the system set. */
   private var requested: Pair<Double, Double>? = size
+  /** MQ-R2: the platform readings' observer, and whether a script injected its own (the platform then no longer reaches the machine). */
+  private var observer: DragonReadingsObserver? = null
+  var injected = false
+    private set
 
   init {
+    machine.readings = DragonReadings.platform(stage.context)
     stage.addView(media, ViewGroup.LayoutParams(pxOf(size.first), pxOf(size.second)))
     media.onSize = { w, h ->
       val css = requested ?: Pair(w / scale, h / scale)
@@ -473,6 +547,21 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
     media.layout(0, 0, pxOf(size.first), pxOf(size.second))
     render()
     machine.onChange = { render() }
+    observer = DragonReadingsObserver(stage.context) {
+      if (!injected) machine.setReadings(DragonReadings.platform(stage.context))
+    }
+  }
+
+  /** MQ-R2: a script's env step: the readings it names, exactly, from now on. */
+  fun inject(r: DragonReadings) {
+    injected = true
+    machine.setReadings(r)
+  }
+
+  /** Stops observing the platform readings, when the mount leaves the screen. */
+  fun close() {
+    observer?.close()
+    observer = null
   }
 
   /** CSS px to the whole device px the view takes: ceil, as DragonTree.apply sizes the root. */
@@ -510,6 +599,7 @@ class DragonStateScript(val dragonCase: DragonCase, val make: () -> DragonStateM
         is DragonScriptStep.Set -> m.machine.set(s.s, s.v)
         is DragonScriptStep.Advance -> m.machine.clock.advance(s.ms)
         is DragonScriptStep.Resize -> m.resize(s.width, s.height)
+        is DragonScriptStep.Env -> m.inject(if (s.reading == 0) m.machine.readings.pointing(s.v == 1) else m.machine.readings.motion(s.v == 1))
         is DragonScriptStep.Dump -> {}
       }
     }
@@ -638,6 +728,11 @@ function stepLit(lang: Lang, sp: StateProgram, id: string, step: ScriptStep): st
     case 'resize':
       if (![step.width, step.height].every((v) => Number.isFinite(v) && v > 0)) throw new StateEmitError(`${id}: resize(${step.width}, ${step.height}) is not a positive size`);
       return lang === 'swift' ? `.resize(${doubleLit(step.width)}, ${doubleLit(step.height)})` : `DragonScriptStep.Resize(${doubleLit(step.width)}, ${doubleLit(step.height)})`;
+    case 'env': {
+      const reading = step.reading === 'pointer' ? 0 : 1;
+      const v = step.value === 'touch' || step.value === 'reduce' ? 1 : 0;
+      return lang === 'swift' ? `.env(${reading}, ${v})` : `DragonScriptStep.Env(${reading}, ${v})`;
+    }
     case 'dump':
       return lang === 'swift' ? '.dump' : 'DragonScriptStep.Dump';
     case 'tap':

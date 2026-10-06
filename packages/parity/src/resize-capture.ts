@@ -8,8 +8,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { absoluteRects, layout } from '@dragon/layout';
-import type { Assignment, BandRuntimeFaults, Compiled, NativeBackend, NativeProgram, Rgba8, StateProgram } from 'dragon';
-import { LONGHANDS, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, NO_BAND_RUNTIME_FAULTS, parseComputedColor, programInput, stateKey, webClassMap } from 'dragon';
+import type { Assignment, BandRuntimeFaults, Compiled, MediaDevice, NativeBackend, NativeProgram, Rgba8, StateProgram } from 'dragon';
+import { DESKTOP_DEVICE, LONGHANDS, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, NO_BAND_RUNTIME_FAULTS, parseComputedColor, programInput, stateKey, webClassMap } from 'dragon';
 import type { CapturedNode } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { casesOf } from './cases.ts';
@@ -21,6 +21,7 @@ import type { FixtureSpec } from './fixtures.ts';
 import { directionSuffix, environmentsOf, FIXTURES } from './fixtures.ts';
 import type { ResizeScript, ResizeStep, Size } from './fixture-groups/media-runtime.ts';
 import { RESIZE_SCRIPTS, resizeSizeProblem } from './fixture-groups/media-runtime.ts';
+import { ENV_SCRIPTS, MEDIA_ENVIRONMENT_FIXTURES } from './fixture-groups/media-environment.ts';
 import { nativeCompile, referenceMeasurer } from './native-host.ts';
 import { repoPath } from './paths.ts';
 import { compileFixture, fixtureCompileInput, webCssOf } from './pipeline.ts';
@@ -62,8 +63,14 @@ export function resizeProgram(c: ResizeCase, faults: BandRuntimeFaults = NO_BAND
 }
 
 /** Why a script cannot run, or null: a known layout fixture, sizes on the 8 px grid within the largest stage, sets naming free states. */
+/** The fixture of a script: a layout fixture, or (MQ-R2) a media-environment fixture, which runs only as its script. */
+const scriptFixture = (id: string): FixtureSpec | undefined => [...FIXTURES, ...MEDIA_ENVIRONMENT_FIXTURES].find((f) => f.id === id);
+
+/** Every resize script: the media-runtime ones, then (MQ-R2) the media-environment ones. */
+export const ALL_RESIZE_SCRIPTS: readonly ResizeScript[] = [...RESIZE_SCRIPTS, ...ENV_SCRIPTS];
+
 export function scriptProblem(s: ResizeScript): string | null {
-  const spec = FIXTURES.find((f) => f.id === s.fixture);
+  const spec = scriptFixture(s.fixture);
   if (spec === undefined || spec.kind !== 'layout') return `${s.fixture} is not a layout fixture`;
   for (const size of [s.start, ...s.steps.flatMap((x) => (x.kind === 'resize' ? [{ width: x.width, height: x.height }] : []))]) {
     const p = resizeSizeProblem(size);
@@ -79,10 +86,10 @@ let all: readonly ResizeCase[] | null = null;
 export function resizeCases(): readonly ResizeCase[] {
   if (all !== null) return all;
   const out: ResizeCase[] = [];
-  for (const script of RESIZE_SCRIPTS) {
+  for (const script of ALL_RESIZE_SCRIPTS) {
     const problem = scriptProblem(script);
     if (problem !== null) throw new Error(`resize script: ${problem}`);
-    const spec = FIXTURES.find((f) => f.id === script.fixture) as FixtureSpec;
+    const spec = scriptFixture(script.fixture) as FixtureSpec;
     const parity = casesOf(spec, fixtureCompileInput(spec));
     for (const env of environmentsOf(spec)) {
       const direction = env.direction;
@@ -104,8 +111,24 @@ export function resizeCases(): readonly ResizeCase[] {
   return out;
 }
 
-/** One point of a script: the root size and the app assignment after the start or a step. */
-export type ScriptPoint = { readonly size: Size; readonly assignment: Assignment };
+/**
+ * One point of a script: the root size, the app assignment and (MQ-R2) the device readings after the start or a step. The scale
+ * is not a reading of the script: deviceAt gives the readings at a DPR.
+ */
+export type ScriptPoint = { readonly size: Size; readonly assignment: Assignment; readonly device: MediaDevice };
+
+/** A touch screen alone (hasTouch, M7): coarse, no hover. */
+const TOUCH_READINGS = { pointer: 'coarse', anyPointer: ['coarse'], hover: 'none', anyHover: 'none' } as const;
+const DESKTOP_READINGS = { pointer: 'fine', anyPointer: ['fine'], hover: 'hover', anyHover: 'hover' } as const;
+
+/** The readings after an env step. */
+export function readingsAfter(d: MediaDevice, s: ResizeStep & { kind: 'env' }): MediaDevice {
+  if (s.reading === 'motion') return { ...d, reducedMotion: s.value };
+  return { ...d, ...(s.value === 'touch' ? TOUCH_READINGS : DESKTOP_READINGS) };
+}
+
+/** A point's device at a DPR. */
+export const deviceAt = (pt: ScriptPoint, dpr: number): MediaDevice => ({ ...pt.device, dpr });
 
 const keyOf = (e: Assignment[number]): string => stateKey(e.state.instance, e.state.state);
 
@@ -115,14 +138,17 @@ export function scriptPoints(c: ResizeCase): ScriptPoint[] {
   if (initial === undefined) throw new Error(`${c.id}: no initial case`);
   let assignment: Assignment = initial.assignment;
   let size = c.script.start;
-  const out: ScriptPoint[] = [{ size, assignment }];
+  // Chrome's page starts as a desktop: a mouse, no motion preference.
+  let device: MediaDevice = DESKTOP_DEVICE;
+  const out: ScriptPoint[] = [{ size, assignment, device }];
   for (const s of c.script.steps) {
     if (s.kind === 'resize') size = { width: s.width, height: s.height };
+    else if (s.kind === 'env') device = readingsAfter(device, s);
     else {
       if (!assignment.some((e) => keyOf(e) === s.state)) throw new Error(`${c.id}: set ${s.state}: no such free state`);
       assignment = assignment.map((e) => (keyOf(e) === s.state ? { state: e.state, value: s.value } : e));
     }
-    out.push({ size, assignment });
+    out.push({ size, assignment, device });
   }
   return out;
 }
@@ -263,11 +289,22 @@ export async function captureResize(browser: Browser, c: ResizeCase, dpr: number
         }
       }
     };
+    // MQ-R2: an env step switches touch emulation (pointer and hover, M7) or emulates prefers-reduced-motion, on the live page.
+    const emulate = async (s: ResizeStep & { kind: 'env' }): Promise<void> => {
+      const cdp = await page.context().newCDPSession(page);
+      try {
+        if (s.reading === 'pointer') await cdp.send('Emulation.setTouchEmulationEnabled', s.value === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
+        else await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: s.value }] });
+      } finally {
+        await cdp.detach();
+      }
+    };
     await dump(first.size);
     for (let i = 0; i < c.script.steps.length; i++) {
       const s = c.script.steps[i] as ResizeStep;
       const at = points[i + 1] as ScriptPoint;
       if (s.kind === 'resize') await page.setViewportSize({ width: s.width, height: s.height });
+      else if (s.kind === 'env') await emulate(s);
       else await page.evaluate(pageStep, { kind: 'morph', html: rendering(c, at.assignment, r) } as PageStep);
       await settle();
       await dump(at.size);
@@ -353,6 +390,7 @@ export function runResizeScript(c: ResizeCase, dpr: number, faults: BandRuntimeF
   const out = [dump()];
   for (const s of c.script.steps) {
     if (s.kind === 'resize') rt.resize(pxOf(c, { width: s.width, height: s.height }, dpr));
+    else if (s.kind === 'env') rt.setDevice(readingsAfter(rt.readings, s));
     else rt.set(s.state, s.value);
     out.push(dump());
   }
@@ -405,7 +443,7 @@ export function resizeCaseReport(c: ResizeCase, dprs: readonly number[] = RESIZE
         const d = dumps[i] as ResizeDump;
         const at = `${c.id} DPR ${dpr} ${backend} step ${i} (${pt.size.width}x${pt.size.height})`;
         oracle++;
-        const band = nativeBandOfViewport(c.compiled, pt.size);
+        const band = nativeBandOfViewport(c.compiled, pt.size, deviceAt(pt, dpr));
         if (band === null) {
           failures.push(`${at}: no band of the partition holds the size`);
           return;

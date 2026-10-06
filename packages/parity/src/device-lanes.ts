@@ -9,14 +9,14 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { LayoutRect } from '@dragon/layout';
-import type { ExpectedDump } from 'dragon';
+import type { ExpectedDump, MediaDevice } from 'dragon';
 import { expectedDigest, expectedDump } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA } from './compare.ts';
-import type { DeviceHandle, DeviceRecord, DeviceSpec } from './device-run.ts';
+import type { AppRun, DeviceHandle, DeviceRecord, DeviceSpec } from './device-run.ts';
 import type { EarlyBoots } from './device-jobs.ts';
 import { runDevicesInChildren } from './device-jobs.ts';
-import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, recordProblems, release, runApp, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
+import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, recordProblems, release, runApp, setAnimatorDurationScale, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
 import { deviceEvidence } from './device-evidence.ts';
 import { runDeviceVectors } from './device-vectors.ts';
 import type { DeviceRun, HostRun } from './lanes.ts';
@@ -32,7 +32,7 @@ import { BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, native
 import { expectedHitRuns, hitCases } from './hit-capture.ts';
 import { deriveScripts, stateEmits, stateGroups, stateProgramOf } from './state-cases.ts';
 import { resizeScriptCases } from './resize-scripts.ts';
-import { ENV_IDS, envOracleBrowser, evaluateEnv } from './device-env.ts';
+import { envIds, envOracleBrowser, evaluateEnv, motionScaleOf } from './device-env.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
@@ -82,8 +82,11 @@ export type CaseReference = {
   readonly pixels: RgbaImage | null;
   /** MQ-R1: why a case has no break check (a resize step: no break capture is taken; its line boxes are compared), else absent. */
   readonly breaksNotCompared?: string;
-  /** MQ-R1: the environment record a state mount's dump must carry (a resize step), else absent (the record is null). */
-  readonly environment?: { readonly rootPx: readonly number[]; readonly media: readonly number[]; readonly band: number };
+  /**
+   * MQ-R1: the environment record a state mount's dump must carry (a resize step), else absent (the record is null). MQ-R2: readings,
+   * when the script injected them, are the readings the record must report as injected; null leaves the platform's to device-env.
+   */
+  readonly environment?: { readonly rootPx: readonly number[]; readonly media: readonly number[]; readonly band: number; readonly readings?: MediaDevice | null };
 };
 
 export function caseReference(target: NativeTarget, n: NativeCase, dpr: number): CaseReference {
@@ -160,6 +163,13 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
     const want = ref.environment;
     if (e === null) fail('device-applied', 'environment', 'the dump has no environment record');
     else if (e.dpr !== dpr || e.band !== want.band || e.rootPx.some((v, i) => v !== want.rootPx[i]) || e.media.some((v, i) => v !== want.media[i])) fail('device-applied', 'environment', `environment root ${e.rootPx.join('x')} px, media ${e.media.join('x')}, band ${e.band} at scale ${e.dpr}; expected root ${want.rootPx.join('x')} px, media ${want.media.join('x')}, band ${want.band} at ${dpr}`);
+    else if (want.readings !== undefined && want.readings !== null) {
+      const r = e.readings;
+      const w = want.readings;
+      const got = [r.source, r.pointer, r.hover, r.anyPointer.join('+'), r.anyHover, r.reducedMotion].join(' ');
+      const expected = ['injected', w.pointer, w.hover, w.anyPointer.join('+'), w.anyHover, w.reducedMotion].join(' ');
+      if (got !== expected) fail('device-applied', 'environment', `readings ${got}; the script injected ${expected}`);
+    }
   }
   const digest = expectedDigest(ref.expected);
   if (dump.case.expectedDigest !== digest) fail('device-applied', 'expected-digest', `expectedDigest ${dump.case.expectedDigest}, the expected dump's ${digest}`);
@@ -596,6 +606,28 @@ export function afterRelease(o: DeviceOutcome, problem: string | null): DeviceOu
 }
 
 /** One device of the matrix: boot, the batch launch and its checks, the capture-trust launch and, on the vectors device, the vectors lane. */
+/**
+ * The device-env launch: the env phases of the target; MQ-R2's motion phases hold for the host to set the OS's animator duration
+ * scale (0, then 1), and the scale is put back to 1 whatever the run does.
+ */
+export async function runEnv(h: DeviceHandle, artifact: string, target: NativeTarget, outDir: string): Promise<AppRun> {
+  const ids = envIds(target);
+  try {
+    return await runApp(h, artifact, {
+      runFile: runFileText(ids.map((id) => ({ id, points: [] })), false),
+      caseCount: ids.length,
+      outDir,
+      onHold: (id) => {
+        const scale = motionScaleOf(id);
+        if (scale === null) throw new Error(`the host held device-env case ${id}, which has no OS setting to change`);
+        setAnimatorDurationScale(h, scale === 0 ? 0 : 1);
+      },
+    });
+  } finally {
+    setAnimatorDurationScale(h, 1);
+  }
+}
+
 export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostSource, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog, source: DeviceSource = { boot: () => boot(spec), release: (h) => release(h, log) }): Promise<DeviceOutcome> {
   const backend = BACKEND_OF[t.target];
   const none = { device: spec.name, set: null, trust: null, vectors: null };
@@ -646,14 +678,15 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const scripts = scriptCases(t.target);
     const statesDir = join(nativeOut(t.target), 'lanes', `${spec.name}-states`);
     const s0 = Date.now();
-    const sr = await runApp(h, artifact, { runFile: runFileText(scripts.map((s) => ({ id: s.script.case.id, points: casePoints(s.end.programs[backend], s.end.case.environment.viewport, dpr) })), false), caseCount: scripts.length, outDir: statesDir });
+    // A script with its own reference (a resize step script) samples the points of its program at this DPR (MQ-R2: resolution can move it).
+    const sr = await runApp(h, artifact, { runFile: runFileText(scripts.map((s) => ({ id: s.script.case.id, points: s.reference !== undefined ? s.reference(dpr).points : casePoints(s.end.programs[backend], s.end.case.environment.viewport, dpr) })), false), caseCount: scripts.length, outDir: statesDir });
     const stateExtra: LaneFailure[] = sr.error === null ? [] : [{ lane: STATE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the scripts: ${sr.error}` }];
     const states = evaluateStates(t.target, dpr, statesDir, rec, scripts, stateExtra);
     log(`${spec.name}: device-states ${states.dumps}/${states.cases} dumps in ${((Date.now() - s0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(states.failures))}`);
     // MQ-R1 device-env: one launch runs the rotation's three phases, judged against the engine and Chrome's band oracle.
     const envDir = join(nativeOut(t.target), 'lanes', `${spec.name}-env`);
     const v0 = Date.now();
-    const er = await runApp(h, artifact, { runFile: runFileText(ENV_IDS.map((id) => ({ id, points: [] })), false), caseCount: ENV_IDS.length, outDir: envDir });
+    const er = await runEnv(h, artifact, t.target, envDir);
     const envExtra: LaneFailure[] = er.error === null ? [] : [{ lane: ENV_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the rotation: ${er.error}` }];
     const oracle = await envOracleBrowser(dpr);
     let env: DeviceSet;

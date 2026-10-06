@@ -364,9 +364,10 @@ export function nativeBands(compiled: object): { readonly table: import('@dragon
 
 /** The media profile keys a compile's native output uses (T067 R13): the at-rule and each atom's feature, sorted; none without @media. */
 export function mediaFeatures(compiled: object): readonly string[] {
-  const bands = nativeBands(compiled);
-  if (bands === null || bands.table.atoms.length === 0) return [];
-  return [MEDIA_AT_RULE_FEATURE_KEY, ...[...new Set(bands.table.atoms.map((a) => a.feature))].map(mediaFeatureKeyOf)].sort();
+  const record = internalRecord(compiled);
+  if (record === undefined || record.bands === null || record.bands.partition.atoms.length === 0) return [];
+  // The authored feature names, as the profile gate reads them (-webkit-device-pixel-ratio has its own row, though its atom is resolution's).
+  return [MEDIA_AT_RULE_FEATURE_KEY, ...[...new Set(record.bands.partition.atoms.map((a) => a.feature.base))].map(mediaFeatureKeyOf)].sort();
 }
 
 /**

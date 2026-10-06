@@ -1,16 +1,18 @@
-// dragon.native-dump/2 (native-strategy.md 3.2; MQ-R1 adds the environment record): the one schema description, the types inferred from it, and the validator, which
+// dragon.native-dump/3 (native-strategy.md 3.2; MQ-R1 adds the environment record, MQ-R2 the device readings in it): the one schema description, the types inferred from it, and the validator, which
 // rejects a missing or extra key at every level, a missing node id, non-integer deviceEdges and nulls outside the reference lane.
 import { describe, expect, it } from 'vitest';
 import type { Field, FieldType, NativeDump } from '../src/native-dump.ts';
 import { NATIVE_DUMP_SCHEMA, REFERENCE_LANE, validateNativeDump } from '../src/native-dump.ts';
 
 const edges = { left: 60, top: 60, right: 420, bottom: 180 };
+/** An iPhone's platform readings (MQ-R2): a touch screen, no motion preference. */
+const READINGS = { pointer: 'coarse', hover: 'none', anyPointer: ['coarse'], anyHover: 'none', reducedMotion: 'no-preference', source: 'platform', inputs: [0, 0] } as const;
 const frame = { x: 20, y: 20, width: 120, height: 40 };
 
 /** A device dump with every field present and non-null, as P5 writes it. */
 function deviceDump(): NativeDump {
   return {
-    schema: 'dragon.native-dump/2',
+    schema: 'dragon.native-dump/3',
     lane: 'ios-sim',
     case: { id: 'flex-row-gap', fixture: 'flex-row-gap', dpr: 3, viewport: { width: 400, height: 300 }, direction: 'ltr', compilerDigest: 'c0ffee', expectedDigest: 'beef' },
     device: { platform: 'ios', os: '26.5 (23F77)', model: 'iPhone 17', abi: 'arm64', scale: 3, toolchain: 'Xcode 27.0 (27A266a)', renderer: 'simulator-metal' },
@@ -22,7 +24,7 @@ function deviceDump(): NativeDump {
     ],
     pixels: { capture: 'drawHierarchy', colorSpace: 'sRGB', width: 1200, height: 900, sha256: 'abc', samples: [{ x: 240, y: 120, rgba: [51, 102, 255, 255], rule: 'interior:n3' }] },
     timing: { settleMs: 3, dumpMs: 1 },
-    environment: { rootPx: [1200, 900], dpr: 3, media: [400, 300], band: 1 },
+    environment: { rootPx: [1200, 900], dpr: 3, media: [400, 300], band: 1, readings: READINGS },
   };
 }
 
@@ -62,11 +64,21 @@ describe('the schema description', () => {
   it('MQ-R1 adds only the environment record: a /1 dump with the new schema id and a null environment (a layout case) validates', () => {
     const v1 = clone(deviceDump()) as unknown as Record<string, unknown>;
     delete v1['environment'];
-    expect(validateNativeDump({ ...v1, schema: 'dragon.native-dump/2', environment: null }).ok).toBe(true);
+    expect(validateNativeDump({ ...v1, schema: 'dragon.native-dump/3', environment: null }).ok).toBe(true);
     expect(validateNativeDump({ ...v1, schema: 'dragon.native-dump/1', environment: null }).ok).toBe(false);
     expect(validateNativeDump(v1).ok).toBe(false);
     const env = (e: unknown) => validateNativeDump({ ...v1, environment: e }).ok;
-    expect([env({ rootPx: [1, 2], dpr: 3, media: [1, 2], band: 0 }), env({ rootPx: [1], dpr: 3, media: [1, 2], band: 0 }), env({ rootPx: [1, 2], dpr: 3, media: [1, 2], band: -1 }), env({ rootPx: [1, 2], dpr: 3, media: [1, 2], band: 0.5 })]).toEqual([true, false, false, false]);
+    const r = READINGS;
+    expect([env({ rootPx: [1, 2], dpr: 3, media: [1, 2], band: 0, readings: r }), env({ rootPx: [1], dpr: 3, media: [1, 2], band: 0, readings: r }), env({ rootPx: [1, 2], dpr: 3, media: [1, 2], band: -1, readings: r }), env({ rootPx: [1, 2], dpr: 3, media: [1, 2], band: 0.5, readings: r })]).toEqual([true, false, false, false]);
+  });
+  it('MQ-R2 adds only the readings to the environment record: a /2 record without them fails, and every reading is a CSS keyword', () => {
+    const v = clone(deviceDump()) as unknown as Record<string, unknown>;
+    const env = (e: unknown) => validateNativeDump({ ...v, environment: e }).ok;
+    const base = { rootPx: [1, 2], dpr: 3, media: [1, 2], band: 0 };
+    expect(env(base)).toBe(false);
+    expect(validateNativeDump({ ...v, schema: 'dragon.native-dump/2' }).ok).toBe(false);
+    expect(env({ ...base, readings: { ...READINGS, pointer: 'coarse', anyPointer: ['coarse', 'fine'], anyHover: 'hover', source: 'injected' } })).toBe(true);
+    for (const bad of [{ pointer: 'touch' }, { hover: true }, { anyPointer: ['none'] }, { reducedMotion: 'reduced' }, { source: 'os' }, { inputs: ['4098'] }]) expect(env({ ...base, readings: { ...READINGS, ...bad } }), JSON.stringify(bad)).toBe(false);
   });
   it('a complete device dump validates, and so does a reference dump with its reference-only nulls', () => {
     expect(validateNativeDump(clone(deviceDump()))).toMatchObject({ ok: true });
@@ -131,7 +143,7 @@ describe('the validator', () => {
   });
   it('rejects wrong types, constants, enums, RGBA8 ranges and lengths', () => {
     const cases: [string, (d: Record<string, unknown>) => void, string][] = [
-      ['schema', (d) => (d['schema'] = 'dragon.native-dump/3'), 'bad-const'],
+      ['schema', (d) => (d['schema'] = 'dragon.native-dump/4'), 'bad-const'],
       ['lane', (d) => (d['lane'] = 'robolectric'), 'bad-enum'],
       ['case.dpr', (d) => ((d['case'] as Record<string, unknown>)['dpr'] = '3'), 'wrong-type'],
       ['pixels.samples[0].rgba[0]', (d) => ((((d['pixels'] as Record<string, unknown>)['samples'] as Record<string, unknown>[])[0] as Record<string, unknown>)['rgba'] = [256, 0, 0, 255]), 'out-of-range'],

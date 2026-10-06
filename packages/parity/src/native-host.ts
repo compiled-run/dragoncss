@@ -206,6 +206,15 @@ func dragonRun(window: UIWindow, host: UIView) {
   dragonCase(0, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
 }
 
+/// MQ-R1 (T067 R6) and MQ-R2 (R9): a mount's environment record: its root as the root view observed it, the media size and band
+/// the machine took, and the readings it answers the device features from, with the platform inputs they come from.
+func dragonEnvironment(_ mount: DragonStateMount, scale: Double) -> DumpEnvironment {
+  let px = mount.media.sizePx
+  let r = mount.machine.readings
+  let readings = DumpEnvironmentReadings(pointer: r.pointer, hover: r.hover ? "hover" : "none", anyPointer: (r.anyCoarse ? ["coarse"] : []) + (r.anyFine ? ["fine"] : []), anyHover: r.anyHover ? "hover" : "none", reducedMotion: r.reducedMotion ? "reduce" : "no-preference", source: mount.injected ? "injected" : "platform", inputs: DragonReadings.platformInputs())
+  return DumpEnvironment(rootPx: [px.0, px.1], dpr: scale, media: [try! rtBand_mediaSize(px.0, scale), try! rtBand_mediaSize(px.1, scale)], band: Double(mount.machine.bandIndex), readings: readings)
+}
+
 func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Double, device: DumpDevice, bridge: DragonBridge) {
   if k >= run.ids.count {
     dragonWrite(out + "/done-ios", "ok")
@@ -234,8 +243,7 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
     script.run(mount)
     mountedMedia = mount.media
     // MQ-R1 (T067 R6): the environment record, as the root view observed it and the machine took it.
-    let px = mount.media.sizePx
-    environment = DumpEnvironment(rootPx: [px.0, px.1], dpr: scale, media: [try! rtBand_mediaSize(px.0, scale), try! rtBand_mediaSize(px.1, scale)], band: Double(mount.machine.bandIndex))
+    environment = dragonEnvironment(mount, scale: scale)
     tree = mount.tree
   } else {
     tree = DragonTree()
@@ -330,7 +338,7 @@ func dragonEnvCase(_ k: Int, id: String, run: DragonRun, out: String, stage: UIV
     let c = DragonCase(id: id, fixture: base.fixture, direction: base.direction, compilerDigest: base.compilerDigest, viewport: (width: mount.machine.viewport.0, height: mount.machine.viewport.1), expectedDigests: [scale: "device-env"], input: base.input, build: base.build)
     let pixels = dragonCapture(tree.root, scale: scale, points: run.points[id] ?? [])
     let t2 = CACurrentMediaTime()
-    let environment = DumpEnvironment(rootPx: [px.0, px.1], dpr: scale, media: [try! rtBand_mediaSize(px.0, scale), try! rtBand_mediaSize(px.1, scale)], band: Double(mount.machine.bandIndex))
+    let environment = dragonEnvironment(mount, scale: scale)
     let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000), environment: environment)
     dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
     if phase == "back" {
@@ -396,12 +404,14 @@ import android.widget.FrameLayout
 import dev.dragon.cases.dragonCaseTable
 import dev.dragon.dump.DumpDevice
 import dev.dragon.dump.DumpEnvironment
+import dev.dragon.dump.DumpEnvironmentReadings
 import dev.dragon.dump.DumpJsonWriter
 import dev.dragon.dump.DumpPixels
 import dev.dragon.dump.DumpTiming
 import dev.dragon.dump.dumpJson
 import dev.dragon.views.DragonBridge
 import dev.dragon.views.DragonCase
+import dev.dragon.views.DragonReadings
 import dev.dragon.views.DragonRun
 import dev.dragon.views.DragonStateMount
 import dev.dragon.views.DragonTree
@@ -493,6 +503,29 @@ class DragonActivity : Activity() {
       mount.media.layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
       script.run(mount)
       envMount = mount
+    } else if (phase == "motion" || phase == "motion-back") {
+      // MQ-R2 (T067 R9): the host sets the OS's animator duration scale while the app holds; the mount's observer moves the band.
+      val m = envMount ?: throw IllegalStateException("dragon host: " + id + " without its portrait phase")
+      val reduce = phase == "motion"
+      File(out, "hold-" + id).writeText("ok")
+      val release = File(out, "release-" + id)
+      var released = 0
+      val poll = object : Runnable {
+        override fun run() {
+          // Once released, the phase dumps when the readings follow the setting, or after 5 s if they never do (the lane then fails
+          // the readings, as it must for a reading that misses the OS setting).
+          if (release.exists()) released++
+          val settled = m.machine.readings.reducedMotion == reduce && !m.media.isLayoutRequested && !frame.isLayoutRequested
+          if (released == 0 || (!settled && released < 100)) {
+            main.postDelayed(this, 50)
+            return
+          }
+          envReady = id
+          runCase(k)
+        }
+      }
+      main.postDelayed(poll, 50)
+      return
     } else requestedOrientation = if (landscape) ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     val m = envMount ?: throw IllegalStateException("dragon host: " + id + " without its portrait phase")
     var stable = 0
@@ -514,6 +547,17 @@ class DragonActivity : Activity() {
       }
     }
     main.postDelayed(poll, 100)
+  }
+
+  /**
+   * MQ-R1 (T067 R6) and MQ-R2 (R9): a mount's environment record: its root as the root view observed it, the media size and band the
+   * machine took, and the readings it answers the device features from, with the platform inputs they come from.
+   */
+  private fun dragonEnvironment(mount: DragonStateMount, scale: Double): DumpEnvironment {
+    val m = mount.media
+    val r = mount.machine.readings
+    val readings = DumpEnvironmentReadings(r.pointer, if (r.hover) "hover" else "none", (if (r.anyCoarse) listOf("coarse") else emptyList()) + (if (r.anyFine) listOf("fine") else emptyList()), if (r.anyHover) "hover" else "none", if (r.reducedMotion) "reduce" else "no-preference", if (mount.injected) "injected" else "platform", DragonReadings.platformInputs())
+    return DumpEnvironment(listOf(m.widthPx, m.heightPx), scale, listOf(dev.dragon.layout.rtBand_mediaSize(m.widthPx, scale), dev.dragon.layout.rtBand_mediaSize(m.heightPx, scale)), mount.machine.bandIndex.toDouble(), readings)
   }
 
   private fun runCase(k: Int) {
@@ -540,16 +584,16 @@ class DragonActivity : Activity() {
     val c = if (envPhase != null && envMounted != null) DragonCase(id, base.fixture, base.direction, base.compilerDigest, envMounted.machine.viewport.first, envMounted.machine.viewport.second, mapOf(scale to "device-env"), base.input, base.build) else base
     val t0: Long
     val tree: DragonTree
-    var mountedMedia: android.view.View? = null
+    // A state mount on screen: its media root leaves the frame, and it stops observing the platform readings, after the dump.
+    var mounted: DragonStateMount? = null
     var environment: DumpEnvironment? = null
     if (envPhase != null) {
       val mount = envMounted ?: throw IllegalStateException("dragon host: " + id + " without its portrait phase")
       t0 = SystemClock.elapsedRealtimeNanos()
-      val m = mount.media
-      environment = DumpEnvironment(listOf(m.widthPx, m.heightPx), scale, listOf(dev.dragon.layout.rtBand_mediaSize(m.widthPx, scale), dev.dragon.layout.rtBand_mediaSize(m.heightPx, scale)), mount.machine.bandIndex.toDouble())
+      environment = dragonEnvironment(mount, scale)
       tree = mount.tree
-      if (envPhase == "back") {
-        mountedMedia = m
+      if (envPhase == "motion-back") {
+        mounted = mount
         envMount = null
       }
     } else if (script != null) {
@@ -557,10 +601,9 @@ class DragonActivity : Activity() {
       // MQ-R1: the mount's media root starts at the script's start size; resize steps change it, and it hands each size to the machine.
       val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge, script.start)
       script.run(mount)
-      mountedMedia = mount.media
+      mounted = mount
       // MQ-R1 (T067 R6): the environment record, as the root view observed it and the machine took it.
-      val m = mount.media
-      environment = DumpEnvironment(listOf(m.widthPx, m.heightPx), scale, listOf(dev.dragon.layout.rtBand_mediaSize(m.widthPx, scale), dev.dragon.layout.rtBand_mediaSize(m.heightPx, scale)), mount.machine.bandIndex.toDouble())
+      environment = dragonEnvironment(mount, scale)
       tree = mount.tree
     } else {
       tree = DragonTree(this)
@@ -617,7 +660,10 @@ class DragonActivity : Activity() {
             dragonHitFactsTable[id]?.let { facts -> File(out, id + "@" + DumpJsonWriter.format(scale) + ".hit").writeText(dragonHitRuns(c, facts, scale, bridge.measurer)) }
             val next = Runnable {
               frame.removeView(tree.root)
-              mountedMedia?.let { frame.removeView(it) }
+              mounted?.let {
+                it.close()
+                frame.removeView(it.media)
+              }
               frame.post { runCase(k + 1) }
             }
             if (!run.hold) next.run()

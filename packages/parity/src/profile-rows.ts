@@ -90,9 +90,20 @@ export function deriveMediaRows(target: ProfileTarget, passing: readonly { reado
     const proof: Proof = target === 'web'
       ? { aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context: MEDIA_CONTEXT, cases: ids }
       : { aspect: 'layout', lane: 'linux-dragon-layout', valueSubset, context: MEDIA_CONTEXT, cases: ids };
-    return { feature, context: MEDIA_CONTEXT, status: 'exact', proofs: [proof] };
+    return { feature, context: MEDIA_CONTEXT, status: MEDIA_CAVEATS[target].includes(feature) ? 'caveat' : 'exact', proofs: [proof] };
   });
 }
+
+/**
+ * MQ-R2 (T067 R9): the media rows a target answers with a caveat. iOS reports reduced motion as UIAccessibility's setting, which no
+ * simulator switch can turn on, so no OS-toggle run proves it; and an iPad's pointer and hover readings (a touch screen with a
+ * mouse) have no Chrome on iOS to match. Every other row is exact: Android's readings are Chromium's own rules (vectors and device-env).
+ */
+export const MEDIA_CAVEATS: { readonly [T in ProfileTarget]: readonly string[] } = {
+  web: [],
+  ios: ['media-feature:prefers-reduced-motion', 'media-feature:pointer', 'media-feature:any-pointer', 'media-feature:hover', 'media-feature:any-hover'],
+  android: [],
+};
 
 export function profileSource(target: ProfileTarget, rows: readonly ProfileRow[]): string {
   const name = `${target}Profile`;
