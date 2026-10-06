@@ -1,5 +1,5 @@
 // INL-BF's planted compiler faults through runFixture, with the committed Chrome captures as the authored side. blockifySkipped
-// leaves flex items and absolutely positioned boxes inline, which the compiler then refuses; inlineFlexToBlock lays an inline-flex
+// leaves flex items and absolutely positioned boxes inline, as inline boxes the compiler then refuses on s1; inlineFlexToBlock lays an inline-flex
 // flex item out as a block, which both lanes measure. The unfaulted runs pass.
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -31,15 +31,20 @@ const run = async (id: string, faults: CompilerFaults) => {
 };
 
 describe.sequential('INL-BF planted compiler faults', () => {
-  for (const id of ['phrasing-blockified-flex-row', 'phrasing-blockified-abspos']) {
-    it(`blockifySkipped: ${id} is refused in both directions (display: inline on s1); unfaulted it passes`, async () => {
+  // INL1a: s1 left inline is an inline box, so the compiler refuses what an inline box does not take, on s1 in each direction.
+  const refusedOnS1: Record<string, (dir: 'ltr' | 'rtl') => string> = {
+    'phrasing-blockified-flex-row': (dir) => `DRAGON_UNPROVEN_CONTEXT margin-top:<length-px> (set by margin: 1px 3px) on s1 is used in the inline/${dir} context`,
+    'phrasing-blockified-abspos': () => 'DRAGON_UNSUPPORTED_VALUE position: absolute on s1 beside text in r1',
+  };
+  for (const [id, want] of Object.entries(refusedOnS1)) {
+    it(`blockifySkipped: ${id} is refused on s1 in both directions; unfaulted it passes`, async () => {
       expect((await run(id, NO_FAULTS)).reason).toBeNull();
       const faulty = await run(id, { ...NO_FAULTS, blockifySkipped: true });
       expect(faulty.status).toBe('fail');
       expect(faulty.cases.map((c) => c.direction)).toEqual(['ltr', 'rtl']);
       for (const c of faulty.cases) {
         expect(c.status, c.id).toBe('fail');
-        expect(c.reason, c.id).toContain('DRAGON_UNSUPPORTED_VALUE display: inline on <span> s1 makes it an inline-level box');
+        expect(c.reason, c.id).toContain(want(c.direction));
       }
     });
   }

@@ -89,6 +89,55 @@ export function collapseInlineRun(texts: readonly string[]): string[] {
   return texts.map((_, run) => out.filter((c) => c.run === run).map((c) => c.ch).join(''));
 }
 
+/**
+ * collapseInlineRun over a whole inline formatting context that may hold line breaks (<br>, null in runs): a white space sequence
+ * collapses across run and inline box boundaries, but not across a <br>. The spaces at the start of the context and after a <br>
+ * begin a line, and the spaces at its end end one, so §4.1.2 removes them; a space before a <br> is kept, as Blink keeps it (it
+ * hangs at the end of its line, INL-P f2-after-space). Without a <br> this is collapseInlineRun.
+ */
+export function collapseInlineContext(runs: readonly (string | null)[]): (string | null)[] {
+  type C = { readonly ch: string; readonly run: number } | { readonly br: true };
+  const chars: C[] = [];
+  runs.forEach((t, run) => {
+    if (t === null) chars.push({ br: true });
+    else for (const ch of t) chars.push({ ch, run });
+  });
+  const out: { ch: string; run: number }[] = [];
+  let lineStart = true;
+  let k = 0;
+  while (k < chars.length) {
+    const c = chars[k] as C;
+    if ('br' in c) {
+      lineStart = true;
+      k++;
+      continue;
+    }
+    if (!WHITE_SPACE.test(c.ch)) {
+      out.push(c);
+      lineStart = false;
+      k++;
+      continue;
+    }
+    let e = k;
+    let segmentBreak = false;
+    while (e < chars.length) {
+      const x = chars[e] as C;
+      if ('br' in x || !WHITE_SPACE.test(x.ch)) break;
+      if (x.ch === '\n' || x.ch === '\r') segmentBreak = true;
+      e++;
+    }
+    const before = lineStart ? undefined : out[out.length - 1];
+    const after = chars[e];
+    const nextToZwsp = (before !== undefined && before.ch === ZWSP) || (after !== undefined && !('br' in after) && after.ch === ZWSP);
+    if (before !== undefined && after !== undefined && !(segmentBreak && nextToZwsp)) out.push({ ch: ' ', run: c.run });
+    k = e;
+  }
+  return runs.map((t, run) => (t === null ? null : out.filter((c) => c.run === run).map((c) => c.ch).join('')));
+}
+
+/** CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7). */
+const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline';
+
 const displayOf = (el: ResolvedElement): string => {
   const v = (el.props.get('display') as ResolvedValue).value;
   return v.kind === 'keyword' ? v.value : '';
@@ -101,6 +150,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
   const customsOf = new WeakMap<ResolvedElement, CustomProperties>();
+  // The children of each inline box, waiting for its block container's inline formatting context to collapse their text.
+  const pendingInline = new Map<ResolvedElement, readonly (ResolvedElement | LinkedText)[]>();
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
     const here = [...chain, el];
     const { winners, matched, scope } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction);
@@ -190,28 +241,48 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     if (resolvedRoot === null) resolvedRoot = self;
     customsOf.set(self, scope.customs);
     const kids: (ResolvedElement | LinkedText)[] = el.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
-    // An inline formatting context is a maximal sequence of text; display: none elements generate no box (CSS2 §9.2.4), so
-    // they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
+    // CSS2 §9.2.2: an inline box's content belongs to its block container's inline formatting context, which collapses it.
+    if (parent !== null && isInlineBox(self)) {
+      pendingInline.set(self, kids);
+      return self;
+    }
+    // An inline formatting context is a maximal sequence of text, inline boxes and <br>s; display: none elements generate no box
+    // (CSS2 §9.2.4), so they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
     const collapsed = new Map<LinkedText, string>();
-    let run: LinkedText[] = [];
+    let run: (LinkedText | null)[] = [];
     const flush = (): void => {
-      const texts = collapseInlineRun(run.map((t) => t.text));
-      run.forEach((t, i) => collapsed.set(t, texts[i] as string));
+      const texts = collapseInlineContext(run.map((t) => (t === null ? null : t.text)));
+      run.forEach((t, i) => {
+        if (t !== null) collapsed.set(t, texts[i] as string);
+      });
       run = [];
     };
-    for (const kid of kids) {
-      if (kid.kind === 'text') run.push(kid);
-      else if (displayOf(kid) !== 'none') flush();
-    }
-    flush();
-    for (const kid of kids) {
-      if (kid.kind === 'element') {
-        self.children.push(kid);
-        continue;
+    const gather = (items: readonly (ResolvedElement | LinkedText)[]): void => {
+      for (const kid of items) {
+        if (kid.kind === 'text') run.push(kid);
+        else if (displayOf(kid) === 'none') continue;
+        else if (isInlineBox(kid)) {
+          if (kid.element.tag === 'br') run.push(null);
+          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[]);
+        } else flush();
       }
-      const text = collapsed.get(kid) as string;
-      if (text.length > 0) self.children.push({ kind: 'text', node: kid, text, props: textProps(props, faults, environment.ua) });
-    }
+    };
+    gather(kids);
+    flush();
+    const place = (owner: { children: (ResolvedElement | ResolvedText)[] }, ownerProps: ReadonlyMap<Longhand, ResolvedValue>, items: readonly (ResolvedElement | LinkedText)[]): void => {
+      for (const kid of items) {
+        if (kid.kind === 'element') {
+          owner.children.push(kid);
+          const pending = pendingInline.get(kid);
+          if (pending !== undefined) place(kid as { children: (ResolvedElement | ResolvedText)[] } & ResolvedElement, kid.props, pending);
+          continue;
+        }
+        const text = collapsed.get(kid);
+        if (text === undefined) throw new Error(`${kid.address}: text outside any inline formatting context`);
+        if (text.length > 0) owner.children.push({ kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua) });
+      }
+    };
+    place(self, props, kids);
     return self;
   };
   const resolved = visit(root, [], null);

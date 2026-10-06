@@ -61,17 +61,18 @@ export function blockify(props: Map<Longhand, ResolvedValue>, parent: ReadonlyMa
 }
 
 /**
- * An element whose display no author declaration set and which stayed inline-level (span, a and label in a block container)
- * would be an inline box, which Dragon does not lay out yet (INL1a). A declared display is keyed by its formatting context in the
- * support profile instead. Called for every element outside display: none subtrees.
+ * An element whose display no author declaration set and which stayed inline-level other than display: inline (an atomic inline
+ * or another inline-level display) would need INL2. display: inline makes an inline box (INL1a), laid out in its block
+ * container's inline formatting context. A declared display is keyed by its formatting context in the support profile instead.
+ * Called for every element outside display: none subtrees.
  */
 export function checkInlineLevel(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const display = el.props.get('display') as ResolvedValue;
   if (display.declaration !== null) return;
   const keys = keysOf(display);
-  if (keys === null || !BLOCKIFIED.has(keys)) return;
+  if (keys === null || keys === 'inline' || !BLOCKIFIED.has(keys)) return;
   const tag = el.element.tag;
-  const message = `display: ${valueToString(display.value)} on <${tag}> ${el.element.address} makes it an inline-level box (only the root, flex and grid items, and absolutely positioned boxes are blockified, css-display-3 §2.7); Dragon does not lay out inline formatting contexts yet`;
+  const message = `display: ${valueToString(display.value)} on <${tag}> ${el.element.address} makes it an inline-level box other than an inline box (only the root, flex and grid items, and absolutely positioned boxes are blockified, css-display-3 §2.7); Dragon lays out inline boxes, not atomic inlines`;
   for (const t of targets) {
     const id = `${t}|inline-level|${el.element.address}`;
     if (reported.has(id)) continue;
