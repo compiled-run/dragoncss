@@ -543,6 +543,8 @@
     "opacity-basic-rtl": "stacking context on op-fold, op-zero, op-group, op-border, op-nest-kid, op-textonly: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "opacity-cascade": "stacking context on op-parent, op-inherit, op-var, op-neg: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "opacity-cascade-rtl": "stacking context on op-parent, op-inherit, op-var, op-neg: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "opacity-web": "stacking context on ow-fold, ow-pct, ow-group, ow-parent, ow-inherit, ow-text, ow-border: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "opacity-web-rtl": "stacking context on ow-fold, ow-pct, ow-group, ow-parent, ow-inherit, ow-text, ow-border: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "stacking-basic": "stacking context on s-i1, s-a, s-b, s-n, s-n2: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "stacking-basic-rtl": "stacking context on s-i1, s-a, s-b, s-n, s-n2: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "stacking-context": "stacking context on x-g, x-z, x-w, x-p0, x-neg: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
