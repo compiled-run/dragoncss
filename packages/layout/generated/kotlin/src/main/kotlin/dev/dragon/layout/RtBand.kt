@@ -84,11 +84,11 @@ fun rtBand_atomHolds(atom: BandAtom, width: Double, height: Double, faults: Band
     }
     // ts: packages/layout/src/rt-band.ts:71
     run {
-      val _a79 = atom.comparisons
-      var _i79 = 0
-      while (_i79 < _a79.size) {
-        val c: BandComparison = _a79[_i79]
-        _i79++
+      val _a88 = atom.comparisons
+      var _i88 = 0
+      while (_i88 < _a88.size) {
+        val c: BandComparison = _a88[_i88]
+        _i88++
         // ts: packages/layout/src/rt-band.ts:71
         if ((!rtBand_compareMedia(actual, c.value, c.op, faults))) {
           return false
@@ -113,11 +113,11 @@ fun rtBand_atomHolds(atom: BandAtom, width: Double, height: Double, faults: Band
   }
   // ts: packages/layout/src/rt-band.ts:83
   run {
-    val _a80 = atom.comparisons
-    var _i80 = 0
-    while (_i80 < _a80.size) {
-      val c: BandComparison = _a80[_i80]
-      _i80++
+    val _a89 = atom.comparisons
+    var _i89 = 0
+    while (_i89 < _a89.size) {
+      val c: BandComparison = _a89[_i89]
+      _i89++
       // ts: packages/layout/src/rt-band.ts:83
       if ((!rtBand_compareMedia((w * c.den), (h * c.num), c.op, faults))) {
         return false
@@ -132,11 +132,11 @@ fun rtBand_truthVector(table: BandTable, width: Double, height: Double, faults: 
   val out: JsArray<Boolean> = jsArrayOf<Boolean>()
   // ts: packages/layout/src/rt-band.ts:90
   run {
-    val _a81 = table.atoms
-    var _i81 = 0
-    while (_i81 < _a81.size) {
-      val a: BandAtom = _a81[_i81]
-      _i81++
+    val _a90 = table.atoms
+    var _i90 = 0
+    while (_i90 < _a90.size) {
+      val a: BandAtom = _a90[_i90]
+      _i90++
       jsPush(out, rtBand_atomHolds(a, width, height, faults))
     }
   }
@@ -177,11 +177,11 @@ fun rtBand_bandIndex(table: BandTable, width: Double, height: Double, faults: Ba
   var bits: String = ""
   // ts: packages/layout/src/rt-band.ts:105
   run {
-    val _a82 = v
-    var _i82 = 0
-    while (_i82 < _a82.size) {
-      val x: Boolean = _a82[_i82]
-      _i82++
+    val _a91 = v
+    var _i91 = 0
+    while (_i91 < _a91.size) {
+      val x: Boolean = _a91[_i91]
+      _i91++
       bits += (if (x) "1" else "0")
     }
   }

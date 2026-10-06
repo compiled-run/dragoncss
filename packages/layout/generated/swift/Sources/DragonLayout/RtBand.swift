@@ -106,11 +106,11 @@ public func rtBand_atomHolds(_ atom: BandAtom, _ width: Double, _ height: Double
     }
     // ts: packages/layout/src/rt-band.ts:71
     do {
-      let _a79 = atom.comparisons
-      var _i79 = 0
-      while _i79 < _a79.items.count {
-        let c: BandComparison = _a79.items[_i79]
-        _i79 += 1
+      let _a88 = atom.comparisons
+      var _i88 = 0
+      while _i88 < _a88.items.count {
+        let c: BandComparison = _a88.items[_i88]
+        _i88 += 1
         // ts: packages/layout/src/rt-band.ts:71
         if try (!rtBand_compareMedia(actual, c.value, c.op, faults)) {
           return false
@@ -135,11 +135,11 @@ public func rtBand_atomHolds(_ atom: BandAtom, _ width: Double, _ height: Double
   }
   // ts: packages/layout/src/rt-band.ts:83
   do {
-    let _a80 = atom.comparisons
-    var _i80 = 0
-    while _i80 < _a80.items.count {
-      let c: BandComparison = _a80.items[_i80]
-      _i80 += 1
+    let _a89 = atom.comparisons
+    var _i89 = 0
+    while _i89 < _a89.items.count {
+      let c: BandComparison = _a89.items[_i89]
+      _i89 += 1
       // ts: packages/layout/src/rt-band.ts:83
       if try (!rtBand_compareMedia((w * c.den), (h * c.num), c.op, faults)) {
         return false
@@ -154,11 +154,11 @@ public func rtBand_truthVector(_ table: BandTable, _ width: Double, _ height: Do
   let out: JsArray<Bool> = JsArray<Bool>([])
   // ts: packages/layout/src/rt-band.ts:90
   do {
-    let _a81 = table.atoms
-    var _i81 = 0
-    while _i81 < _a81.items.count {
-      let a: BandAtom = _a81.items[_i81]
-      _i81 += 1
+    let _a90 = table.atoms
+    var _i90 = 0
+    while _i90 < _a90.items.count {
+      let a: BandAtom = _a90.items[_i90]
+      _i90 += 1
       _ = try jsPush(out, rtBand_atomHolds(a, width, height, faults))
     }
   }
@@ -199,15 +199,15 @@ public func rtBand_bandIndex(_ table: BandTable, _ width: Double, _ height: Doub
   var bits: JsString = S.s0
   // ts: packages/layout/src/rt-band.ts:105
   do {
-    let _a82 = v
-    var _i82 = 0
-    while _i82 < _a82.items.count {
-      let x: Bool = _a82.items[_i82]
-      _i82 += 1
+    let _a91 = v
+    var _i91 = 0
+    while _i91 < _a91.items.count {
+      let x: Bool = _a91.items[_i91]
+      _i91 += 1
       bits += (x ? S.s59 : S.s57)
     }
   }
-  throw try BandError(jsConcat(S.s263, bits, S.s8, jsNumberToString(width), S.s45, jsNumberToString(height), S.s11))
+  throw try BandError(jsConcat(S.s272, bits, S.s8, jsNumberToString(width), S.s45, jsNumberToString(height), S.s11))
 }
 
 // ts: packages/layout/src/rt-band.ts:110

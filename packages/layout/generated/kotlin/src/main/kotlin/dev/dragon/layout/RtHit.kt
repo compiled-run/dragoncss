@@ -193,11 +193,11 @@ fun rtHit_foreground(ctx: HitCtx, i: Double): Double {
   val kids: JsArray<Double> = rtHit_reversedChildren(ctx, i)
   // ts: packages/layout/src/rt-hit.ts:147
   run {
-    val _a83 = kids
-    var _i83 = 0
-    while (_i83 < _a83.size) {
-      val c: Double = _a83[_i83]
-      _i83++
+    val _a92 = kids
+    var _i92 = 0
+    while (_i92 < _a92.size) {
+      val c: Double = _a92[_i92]
+      _i92++
       val k: HitNode = rtHit_node(ctx, c)
       // ts: packages/layout/src/rt-hit.ts:149
       if (jsStrEq(k.kind, "box")) {
@@ -239,11 +239,11 @@ fun rtHit_lineHit(ctx: HitCtx, block: HitNode, line: HitNode, at: Double): Doubl
   val texts: JsArray<HitNode> = jsArrayOf<HitNode>()
   // ts: packages/layout/src/rt-hit.ts:176
   run {
-    val _a84 = jsUnwrap(own)
-    var _i84 = 0
-    while (_i84 < _a84.size) {
-      val c: Double = _a84[_i84]
-      _i84++
+    val _a93 = jsUnwrap(own)
+    var _i93 = 0
+    while (_i93 < _a93.size) {
+      val c: Double = _a93[_i93]
+      _i93++
       val t: HitNode = rtHit_node(ctx, c)
       jsPush(texts, t)
       val left: Double = (if ((t.inkLeft < t.x)) t.inkLeft else t.x)
@@ -274,11 +274,11 @@ fun rtHit_lineHit(ctx: HitCtx, block: HitNode, line: HitNode, at: Double): Doubl
   }
   // ts: packages/layout/src/rt-hit.ts:190
   run {
-    val _a85 = texts
-    var _i85 = 0
-    while (_i85 < _a85.size) {
-      val t: HitNode = _a85[_i85]
-      _i85++
+    val _a94 = texts
+    var _i94 = 0
+    while (_i94 < _a94.size) {
+      val t: HitNode = _a94[_i94]
+      _i94++
       // ts: packages/layout/src/rt-hit.ts:191
       if ((rtHit_visible(ctx, t) && rtHit_intersectsSnapped(ctx.px, ctx.py, t.x, t.y, t.width, t.height))) {
         return t.target
@@ -299,11 +299,11 @@ fun rtHit_backgrounds(ctx: HitCtx, i: Double): Double {
   if ((!(n.clips && (!rtHit_insideClip(ctx, n))))) {
     // ts: packages/layout/src/rt-hit.ts:201
     run {
-      val _a86 = rtHit_reversedChildren(ctx, i)
-      var _i86 = 0
-      while (_i86 < _a86.size) {
-        val c: Double = _a86[_i86]
-        _i86++
+      val _a95 = rtHit_reversedChildren(ctx, i)
+      var _i95 = 0
+      while (_i95 < _a95.size) {
+        val c: Double = _a95[_i95]
+        _i95++
         val k: HitNode = rtHit_node(ctx, c)
         // ts: packages/layout/src/rt-hit.ts:203
         if (((!jsStrEq(k.kind, "box") || k.layer) || k.atomic)) {
@@ -338,11 +338,11 @@ fun rtHit_allPhases(ctx: HitCtx, i: Double): Double {
   if ((!(n.clips && (!rtHit_insideClip(ctx, n))))) {
     // ts: packages/layout/src/rt-hit.ts:223
     run {
-      val _a87 = rtHit_reversedChildren(ctx, i)
-      var _i87 = 0
-      while (_i87 < _a87.size) {
-        val c: Double = _a87[_i87]
-        _i87++
+      val _a96 = rtHit_reversedChildren(ctx, i)
+      var _i96 = 0
+      while (_i96 < _a96.size) {
+        val c: Double = _a96[_i96]
+        _i96++
         val k: HitNode = rtHit_node(ctx, c)
         // ts: packages/layout/src/rt-hit.ts:225
         if (((!jsStrEq(k.kind, "box") || k.layer) || k.atomic)) {
@@ -455,11 +455,11 @@ fun rtHit_prepareHit(nodes: JsArray<HitNode>, faults: HitFaults): HitPrepared {
     }
     // ts: packages/layout/src/rt-hit.ts:293
     run {
-      val _a88 = jsUnwrap(own)
-      var _i88 = 0
-      while (_i88 < _a88.size) {
-        val c: Double = _a88[_i88]
-        _i88++
+      val _a97 = jsUnwrap(own)
+      var _i97 = 0
+      while (_i97 < _a97.size) {
+        val c: Double = _a97[_i97]
+        _i97++
         collect(c)
       }
     }
@@ -475,11 +475,11 @@ fun rtHit_prepareHit(nodes: JsArray<HitNode>, faults: HitFaults): HitPrepared {
     val byLine: JsArray<JsArray<Double>> = jsArrayOf<JsArray<Double>>()
     // ts: packages/layout/src/rt-hit.ts:301
     run {
-      val _a89 = own
-      var _i89 = 0
-      while (_i89 < _a89.size) {
-        val c: Double = _a89[_i89]
-        _i89++
+      val _a98 = own
+      var _i98 = 0
+      while (_i98 < _a98.size) {
+        val c: Double = _a98[_i98]
+        _i98++
         val t: HitNode? = jsAt(nodes, c)
         // ts: packages/layout/src/rt-hit.ts:303
         if (((t == null) || !jsStrEq(jsUnwrap(t).kind, "text"))) {
@@ -494,11 +494,11 @@ fun rtHit_prepareHit(nodes: JsArray<HitNode>, faults: HitFaults): HitPrepared {
     }
     // ts: packages/layout/src/rt-hit.ts:307
     run {
-      val _a90 = own
-      var _i90 = 0
-      while (_i90 < _a90.size) {
-        val c: Double = _a90[_i90]
-        _i90++
+      val _a99 = own
+      var _i99 = 0
+      while (_i99 < _a99.size) {
+        val c: Double = _a99[_i99]
+        _i99++
         val l: HitNode? = jsAt(nodes, c)
         // ts: packages/layout/src/rt-hit.ts:309
         if (((l == null) || !jsStrEq(jsUnwrap(l).kind, "line"))) {
@@ -512,11 +512,11 @@ fun rtHit_prepareHit(nodes: JsArray<HitNode>, faults: HitFaults): HitPrepared {
         val dest: JsArray<Double> = jsUnwrap(jsAt(lineTexts, c))
         // ts: packages/layout/src/rt-hit.ts:313
         run {
-          val _a91 = jsUnwrap(texts)
-          var _i91 = 0
-          while (_i91 < _a91.size) {
-            val x: Double = _a91[_i91]
-            _i91++
+          val _a100 = jsUnwrap(texts)
+          var _i100 = 0
+          while (_i100 < _a100.size) {
+            val x: Double = _a100[_i100]
+            _i100++
             jsPush(dest, x)
           }
         }
@@ -531,11 +531,11 @@ fun rtHit_hitAt(prepared: HitPrepared, px: Double, py: Double): Double {
   val ctx: HitCtx = HitCtx(prepared.nodes, prepared.children, prepared.lineTexts, px, py, prepared.faults)
   // ts: packages/layout/src/rt-hit.ts:325
   run {
-    val _a92 = prepared.layers
-    var _i92 = 0
-    while (_i92 < _a92.size) {
-      val l: Double = _a92[_i92]
-      _i92++
+    val _a101 = prepared.layers
+    var _i101 = 0
+    while (_i101 < _a101.size) {
+      val l: Double = _a101[_i101]
+      _i101++
       // ts: packages/layout/src/rt-hit.ts:326
       if ((!rtHit_layerVisible(ctx, l))) {
         continue
@@ -605,11 +605,11 @@ fun rtHit_indexZoomed(m: JsStringMap<LayoutBox>, r: JsStringMap<LayoutStyle>, b:
   m.set(b.id, b)
   // ts: packages/layout/src/rt-hit.ts:394
   run {
-    val _a93 = b.children
-    var _i93 = 0
-    while (_i93 < _a93.size) {
-      val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a93[_i93]
-      _i93++
+    val _a102 = b.children
+    var _i102 = 0
+    while (_i102 < _a102.size) {
+      val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a102[_i102]
+      _i102++
       // ts: packages/layout/src/rt-hit.ts:395
       if (jsStrEq(c.kind, "box")) {
         rtHit_indexZoomed(m, r, (c as LayoutBox))
@@ -628,11 +628,11 @@ fun rtHit_fragmentOrders(s: TableState, container: LayoutBox): JsStringMap<Doubl
   val inFlow: JsStringMap<Boolean> = JsStringMap<Boolean>()
   // ts: packages/layout/src/rt-hit.ts:413
   run {
-    val _a94 = container.children
-    var _i94 = 0
-    while (_i94 < _a94.size) {
-      val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a94[_i94]
-      _i94++
+    val _a103 = container.children
+    var _i103 = 0
+    while (_i103 < _a103.size) {
+      val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a103[_i103]
+      _i103++
       // ts: packages/layout/src/rt-hit.ts:414
       if (((jsStrEq(c.kind, "box") || jsStrEq((c as U_ReplacedLeaf_TextLeaf).kind, "replaced")) && !jsStrEq((c as U_LayoutBox_ReplacedLeaf).style.position, "absolute"))) {
         inFlow.set((c as U_LayoutBox_ReplacedLeaf).id, true)
@@ -645,11 +645,11 @@ fun rtHit_fragmentOrders(s: TableState, container: LayoutBox): JsStringMap<Doubl
   var main: Double = 0.0
   // ts: packages/layout/src/rt-hit.ts:420
   run {
-    val _a95 = s.boxes
-    var _i95 = 0
-    while (_i95 < _a95.size) {
-      val x: LayoutRect = _a95[_i95]
-      _i95++
+    val _a104 = s.boxes
+    var _i104 = 0
+    while (_i104 < _a104.size) {
+      val x: LayoutRect = _a104[_i104]
+      _i104++
       val parent: String? = x.parent
       // ts: packages/layout/src/rt-hit.ts:422
       if ((((parent == null) || !jsStrEq(jsUnwrap(parent), container.id)) || (!inFlow.has(x.id)))) {
@@ -694,18 +694,18 @@ fun rtHit_fragmentOrders(s: TableState, container: LayoutBox): JsStringMap<Doubl
   var k: Double = 0.0
   // ts: packages/layout/src/rt-hit.ts:448
   run {
-    val _a96 = ordered
-    var _i96 = 0
-    while (_i96 < _a96.size) {
-      val line: JsArray<LayoutRect> = _a96[_i96]
-      _i96++
+    val _a105 = ordered
+    var _i105 = 0
+    while (_i105 < _a105.size) {
+      val line: JsArray<LayoutRect> = _a105[_i105]
+      _i105++
       // ts: packages/layout/src/rt-hit.ts:449
       run {
-        val _a97 = line
-        var _i97 = 0
-        while (_i97 < _a97.size) {
-          val r: LayoutRect = _a97[_i97]
-          _i97++
+        val _a106 = line
+        var _i106 = 0
+        while (_i106 < _a106.size) {
+          val r: LayoutRect = _a106[_i106]
+          _i106++
           out.set(r.id, k)
           k += 1.0
         }
@@ -720,11 +720,11 @@ fun rtHit_inkAbove(leaf: TextLeaf): Boolean {
   var full: Boolean = false
   // ts: packages/layout/src/rt-hit.ts:460
   run {
-    val _a98 = jsCodePoints(leaf.text)
-    var _i98 = 0
-    while (_i98 < _a98.size) {
-      val ch: String = _a98[_i98]
-      _i98++
+    val _a107 = jsCodePoints(leaf.text)
+    var _i107 = 0
+    while (_i107 < _a107.size) {
+      val ch: String = _a107[_i107]
+      _i107++
       val cp: Double? = jsCodePointAt0(ch)
       // ts: packages/layout/src/rt-hit.ts:462
       if ((cp == null)) {
@@ -747,11 +747,11 @@ fun rtHit_inkAbove(leaf: TextLeaf): Boolean {
 fun rtHit_hasPartialInk(leaf: TextLeaf): Boolean {
   // ts: packages/layout/src/rt-hit.ts:470
   run {
-    val _a99 = jsCodePoints(leaf.text)
-    var _i99 = 0
-    while (_i99 < _a99.size) {
-      val ch: String = _a99[_i99]
-      _i99++
+    val _a108 = jsCodePoints(leaf.text)
+    var _i108 = 0
+    while (_i108 < _a108.size) {
+      val ch: String = _a108[_i108]
+      _i108++
       val cp: Double? = jsCodePointAt0(ch)
       // ts: packages/layout/src/rt-hit.ts:472
       if (((cp != null) && (jsUnwrap(cp) == 112.0))) {
@@ -775,11 +775,11 @@ fun rtHit_inlineNodes(s: TableState, b: LayoutBox, parent: Double, target: Doubl
   val zLeaves: JsArray<TextLeaf> = jsArrayOf<TextLeaf>()
   // ts: packages/layout/src/rt-hit.ts:495
   run {
-    val _a100 = zb.children
-    var _i100 = 0
-    while (_i100 < _a100.size) {
-      val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a100[_i100]
-      _i100++
+    val _a109 = zb.children
+    var _i109 = 0
+    while (_i109 < _a109.size) {
+      val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a109[_i109]
+      _i109++
       // ts: packages/layout/src/rt-hit.ts:496
       if (jsStrEq(c.kind, "text")) {
         jsPush(zLeaves, (c as TextLeaf))
@@ -798,11 +798,11 @@ fun rtHit_inlineNodes(s: TableState, b: LayoutBox, parent: Double, target: Doubl
   val size: Double = jsUnwrap(first).font.size
   // ts: packages/layout/src/rt-hit.ts:508
   run {
-    val _a101 = zLeaves
-    var _i101 = 0
-    while (_i101 < _a101.size) {
-      val l: TextLeaf = _a101[_i101]
-      _i101++
+    val _a110 = zLeaves
+    var _i110 = 0
+    while (_i110 < _a110.size) {
+      val l: TextLeaf = _a110[_i110]
+      _i110++
       // ts: packages/layout/src/rt-hit.ts:509
       if ((l.font.size != size)) {
         throw HitError((b.id + ": text leaves of two font sizes; one inline formatting context holds one font"))
@@ -812,11 +812,11 @@ fun rtHit_inlineNodes(s: TableState, b: LayoutBox, parent: Double, target: Doubl
   val pieces: JsArray<HitPiece> = jsArrayOf<HitPiece>()
   // ts: packages/layout/src/rt-hit.ts:513
   run {
-    val _a102 = leaves
-    var _i102 = 0
-    while (_i102 < _a102.size) {
-      val leaf: TextLeaf = _a102[_i102]
-      _i102++
+    val _a111 = leaves
+    var _i111 = 0
+    while (_i111 < _a111.size) {
+      val leaf: TextLeaf = _a111[_i111]
+      _i111++
       val full: Boolean = rtHit_inkAbove(leaf)
       var j: Double = 0.0
       // ts: packages/layout/src/rt-hit.ts:516
@@ -871,11 +871,11 @@ fun rtHit_linePieces(s: TableState, b: LayoutBox, parent: Double, target: Double
   var x1: Double = (x0 + jsUnwrap(firstPiece).rect.width)
   // ts: packages/layout/src/rt-hit.ts:549
   run {
-    val _a103 = own
-    var _i103 = 0
-    while (_i103 < _a103.size) {
-      val p: HitPiece = _a103[_i103]
-      _i103++
+    val _a112 = own
+    var _i112 = 0
+    while (_i112 < _a112.size) {
+      val p: HitPiece = _a112[_i112]
+      _i112++
       // ts: packages/layout/src/rt-hit.ts:550
       if ((p.rect.x < x0)) {
         x0 = p.rect.x
@@ -889,11 +889,11 @@ fun rtHit_linePieces(s: TableState, b: LayoutBox, parent: Double, target: Double
   rtHit_pushNode(s, HitNode("line", parent, target, x0, (top - run.halfLeading), (x1 - x0), run.lineHeight, false, 0.0, 0.0, 0.0, 0.0, false, false, false, 0.0, 0.0, k, 0.0, 0.0, 0.0, 0.0, pe), (b.id + ":hitline" + jsNumberToString(k)), false)
   // ts: packages/layout/src/rt-hit.ts:554
   run {
-    val _a104 = own
-    var _i104 = 0
-    while (_i104 < _a104.size) {
-      val p: HitPiece = _a104[_i104]
-      _i104++
+    val _a113 = own
+    var _i113 = 0
+    while (_i113 < _a113.size) {
+      val p: HitPiece = _a113[_i113]
+      _i113++
       val q: LayoutRect = p.rect
       val baseline: Double = (q.y + run.ascent)
       val glyphs: Double = rtEasing_roundOf((q.width / (em * rtHit_LU_PX)))
@@ -932,11 +932,11 @@ fun rtHit_boxNodes(s: TableState, b: LayoutBox, parent: Double, orders: JsString
   var kids: Double = 0.0
   // ts: packages/layout/src/rt-hit.ts:594
   run {
-    val _a105 = b.children
-    var _i105 = 0
-    while (_i105 < _a105.size) {
-      val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a105[_i105]
-      _i105++
+    val _a114 = b.children
+    var _i114 = 0
+    while (_i114 < _a114.size) {
+      val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a114[_i114]
+      _i114++
       // ts: packages/layout/src/rt-hit.ts:595
       if (jsStrEq(c.kind, "text")) {
         jsPush(leaves, (c as TextLeaf))
@@ -956,11 +956,11 @@ fun rtHit_boxNodes(s: TableState, b: LayoutBox, parent: Double, orders: JsString
   val childOrders: JsStringMap<Double>? = (if (jsStrEq(b.style.display, "flex")) rtHit_fragmentOrders(s, b) else null)
   // ts: packages/layout/src/rt-hit.ts:601
   run {
-    val _a106 = b.children
-    var _i106 = 0
-    while (_i106 < _a106.size) {
-      val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a106[_i106]
-      _i106++
+    val _a115 = b.children
+    var _i115 = 0
+    while (_i115 < _a115.size) {
+      val c: U_LayoutBox_ReplacedLeaf_TextLeaf = _a115[_i115]
+      _i115++
       // ts: packages/layout/src/rt-hit.ts:602
       if (jsStrEq(c.kind, "box")) {
         rtHit_boxNodes(s, (c as LayoutBox), i, childOrders, own, pe)
@@ -1011,11 +1011,11 @@ fun rtHit_addAxis(out: JsArray<Double>, a: Double, b: Double): Unit {
   val values: JsArray<Double> = jsArrayOf<Double>(((a - rtHit_LU_PX) - 1.0), (a - rtHit_LU_PX), ((a - rtHit_LU_PX) + 1.0), (a - (rtHit_LU_PX / 2.0)), (a + (rtHit_LU_PX / 2.0)), rtEasing_floorOf(((a + b) / 2.0)), (b - (rtHit_LU_PX / 2.0)), (b - 1.0), b, (b + (rtHit_LU_PX / 2.0)), (b + 1.0))
   // ts: packages/layout/src/rt-hit.ts:651
   run {
-    val _a107 = values
-    var _i107 = 0
-    while (_i107 < _a107.size) {
-      val v: Double = _a107[_i107]
-      _i107++
+    val _a116 = values
+    var _i116 = 0
+    while (_i116 < _a116.size) {
+      val v: Double = _a116[_i116]
+      _i116++
       jsPush(out, v)
     }
   }
@@ -1025,18 +1025,18 @@ fun rtHit_addAxis(out: JsArray<Double>, a: Double, b: Double): Unit {
 fun rtHit_cross(out: JsArray<HitPoint>, xs: JsArray<Double>, ys: JsArray<Double>, width: Double, height: Double): Unit {
   // ts: packages/layout/src/rt-hit.ts:655
   run {
-    val _a108 = xs
-    var _i108 = 0
-    while (_i108 < _a108.size) {
-      val x: Double = _a108[_i108]
-      _i108++
+    val _a117 = xs
+    var _i117 = 0
+    while (_i117 < _a117.size) {
+      val x: Double = _a117[_i117]
+      _i117++
       // ts: packages/layout/src/rt-hit.ts:656
       run {
-        val _a109 = ys
-        var _i109 = 0
-        while (_i109 < _a109.size) {
-          val y: Double = _a109[_i109]
-          _i109++
+        val _a118 = ys
+        var _i118 = 0
+        while (_i118 < _a118.size) {
+          val y: Double = _a118[_i118]
+          _i118++
           // ts: packages/layout/src/rt-hit.ts:658
           if (((((x < 0.0) || (y < 0.0)) || (x >= (width - (rtHit_LU_PX / 2.0)))) || (y >= (height - (rtHit_LU_PX / 2.0))))) {
             continue
@@ -1089,11 +1089,11 @@ fun rtHit_hitGrid(t: HitTable, width: Double, height: Double): JsArray<HitPoint>
   val out: JsArray<HitPoint> = jsArrayOf<HitPoint>()
   // ts: packages/layout/src/rt-hit.ts:698
   run {
-    val _a110 = sorted
-    var _i110 = 0
-    while (_i110 < _a110.size) {
-      val p: HitPoint = _a110[_i110]
-      _i110++
+    val _a119 = sorted
+    var _i119 = 0
+    while (_i119 < _a119.size) {
+      val p: HitPoint = _a119[_i119]
+      _i119++
       val last: HitPoint? = (if ((jsLength(out) > 0.0)) jsAt(out, (jsLength(out) - 1.0)) else null)
       // ts: packages/layout/src/rt-hit.ts:700
       if ((((last != null) && (jsUnwrap(last).x == p.x)) && (jsUnwrap(last).y == p.y))) {
@@ -1113,11 +1113,11 @@ fun rtHit_hitRuns(t: HitTable, grid: JsArray<HitPoint>, faults: HitFaults): Stri
   var count: Double = 0.0
   // ts: packages/layout/src/rt-hit.ts:712
   run {
-    val _a111 = grid
-    var _i111 = 0
-    while (_i111 < _a111.size) {
-      val p: HitPoint = _a111[_i111]
-      _i111++
+    val _a120 = grid
+    var _i120 = 0
+    while (_i120 < _a120.size) {
+      val p: HitPoint = _a120[_i120]
+      _i120++
       val id: String? = jsAt(t.ids, rtHit_hitAt(prepared, p.x, p.y))
       // ts: packages/layout/src/rt-hit.ts:714
       if ((id == null)) {
