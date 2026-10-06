@@ -171,7 +171,8 @@ describe('the generated runtime', () => {
     const swift = emitStatePrograms('uikit', [emit]).map((f) => f.text).join('\n');
     expect(swift).toContain('public func set_doc_open(_ v: Bool) { machine.set(0, v ? 1 : 0) }');
     expect(swift).toContain('public enum DragonStates0_doc_side: Int { case v_start = 0; case v_end = 1 }');
-    expect(swift).toContain('private func dragonStates0Input2(_ dpr: Double) -> LayoutInput');
+    // MQ-R1: a layout variant takes the live viewport (the media root's size), not the case's fixed one.
+    expect(swift).toContain('private func dragonStates0Input2(_ dpr: Double, _ vw: Double, _ vh: Double) -> LayoutInput');
     expect(swift).toContain('steps: [.set(0, 1), .set(1, 1), .advance(16.0), .dump])');
     expect(swift).toContain('skipRelayout: false');
     expect(swift).toContain('public let dragonStateCaseList: [DragonStateScript] = [dragonStates0Script0]');
@@ -238,9 +239,10 @@ describe('the generated state mount (Macroscope 4157246848)', () => {
     const t = support('uikit');
     expect(t).toMatch(/current = to\n {4}onChange\?\(\)\n {2}\}/);
     expect(t).toContain('machine.onChange = { [weak self] in self?.render() }');
-    expect(t).toMatch(/let t = DragonTree\(\)\n {4}machine\.build\(t\)\n {4}stage\.addSubview\(t\.root\)\n {4}do \{\n {6}try t\.apply\(machine\.input\(scale\)/);
+    expect(t).toMatch(/let t = DragonTree\(\)\n {4}machine\.build\(t\)\n {4}media\.addSubview\(t\.root\)\n {4}do \{\n {6}try t\.apply\(machine\.input\(scale\)/);
     expect(t).toMatch(/tree\.root\.removeFromSuperview\(\)\n {4}tree = t\n {4}renders \+= 1/);
-    expect(t).toContain('case .set(let a, let b): m.set(a, b)');
+    // MQ-R1: a script runs on the mount (its resize steps size the mount's media root), its setters on the mount's machine.
+    expect(t).toContain('case .set(let a, let b): m.machine.set(a, b)');
     expect(t).toContain('runs on a state mount, not as a layout case');
   });
 
@@ -248,9 +250,9 @@ describe('the generated state mount (Macroscope 4157246848)', () => {
     const t = support('android-views');
     expect(t).toMatch(/current = to\n {4}onChange\?\.invoke\(\)\n {2}\}/);
     expect(t).toContain('machine.onChange = { render() }');
-    expect(t).toMatch(/val t = DragonTree\(stage\.context\)\n {4}machine\.build\(t\)\n {4}t\.apply\(machine\.input\(scale\), measurer, scale, bridge\)\n {4}stage\.addView\(t\.root/);
-    expect(t).toMatch(/stage\.removeView\(tree\.root\)\n {4}tree = t\n {4}renders\+\+/);
-    expect(t).toContain('is DragonScriptStep.Set -> m.set(s.s, s.v)');
+    expect(t).toMatch(/val t = DragonTree\(stage\.context\)\n {4}machine\.build\(t\)\n {4}t\.apply\(machine\.input\(scale\), measurer, scale, bridge\)\n {4}media\.addView\(t\.root/);
+    expect(t).toMatch(/media\.removeView\(tree\.root\)\n {4}tree = t\n {4}renders\+\+/);
+    expect(t).toContain('is DragonScriptStep.Set -> m.machine.set(s.s, s.v)');
     expect(t).toContain('runs on a state mount, not as a layout case');
   });
 });

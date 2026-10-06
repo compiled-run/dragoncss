@@ -14,7 +14,7 @@ import type { DeviceRun } from '../src/lanes.ts';
 import { lanesFile } from '../src/lanes.ts';
 import { BACKEND_OF, expectedEngine, relabelledReferenceDumps } from '../src/native-host.ts';
 import { stateEmits } from '../src/state-cases.ts';
-import { nativeTargets, stateScriptIds } from '../src/targets.ts';
+import { nativeTargets, resizeScriptIds, stateScriptIds } from '../src/targets.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'dragon-states-'));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
@@ -39,8 +39,11 @@ const sig = (fs: readonly LaneFailure[]): string[] => [...new Set(fs.map((f) => 
 describe('device-states on fake dumps', () => {
   it('names every case script of the state programs, as targets.ts derives them', () => {
     expect(scriptCases('ios').map((s) => s.script.case.id)).toEqual([...stateScriptIds()]);
-    expect(stateEmits('ios').flatMap((e) => e.scripts.map((s) => s.id))).toEqual([...stateScriptIds()]);
-    expect(stateScriptIds().length).toBe(130);
+    // MQ-R1: the state programs' 134 scripts (mqr-rotate added 4), then the 110 resize prefix scripts (resizeScriptIds).
+    const resize = resizeScriptIds();
+    expect(stateEmits('ios').flatMap((e) => e.scripts.map((s) => s.id))).toEqual(stateScriptIds().slice(0, -resize.length));
+    expect(stateScriptIds().slice(-resize.length)).toEqual([...resize]);
+    expect([stateScriptIds().length, resize.length]).toEqual([244, 110]);
     expect(scripts.length).toBe(6);
   });
 
@@ -96,7 +99,7 @@ describe('the device-states lane record', () => {
   it('fails on a failure, a short set, or a DPR not run', () => {
     const f: LaneFailure = { lane: STATE_LANE, case: 'x', dpr: 2, node: null, kind: 'applied', detail: 'd' };
     expect(record([set(2, [f]), set(3)])?.state).toBe('fail');
-    expect(record([set(2, [], 125), set(3)])?.reason).toContain('DPR 2: 125/130 dumps');
+    expect(record([set(2, [], 125), set(3)])?.reason).toContain('DPR 2: 125/244 dumps');
     expect(record([set(2)])?.reason).toContain('DPR 3 was not run');
   });
 });
