@@ -19,7 +19,7 @@ type ProbeText = { readonly owner: string; readonly text: string };
 type ProbeCase = { readonly id: string; readonly css: string; readonly html: string; readonly runs: Record<string, { readonly text: readonly ProbeText[] }> };
 const PROBE = JSON.parse(readFileSync(join(ROOT, 'docs/research/gen-spike/probe/family5-markers.json'), 'utf8')) as { chrome: string; cases: ProbeCase[] };
 
-// The cases whose markers are all Ahem or Inter text Chrome lays out in ltr; rtl reorders "1. " into two boxes (blink-notes.md).
+// The ltr runs: in rtl Chrome reorders "1. " into two text boxes (blink-notes.md), which GEN-c refuses for text markers (R14).
 const LTR_RUNS = (c: ProbeCase): string[] => Object.keys(c.runs).filter((k) => k.endsWith('/ltr'));
 
 /** A probe element: its tag, attributes and children, parsed from the probe's small, well-formed HTML. */
@@ -119,7 +119,8 @@ function chromeMarkers(c: ProbeCase, run: string): Map<string, string> {
   return out;
 }
 
-const MARKER_CASES = PROBE.cases.filter((c) => c.id !== 'inter'); // inter is recorded with no formula assertion (GEN-P)
+// Every family5 case; marker text does not depend on the font, so inter (whose geometry GEN-P records without a formula) is checked too.
+const MARKER_CASES = PROBE.cases;
 
 describe('marker text and ordinals against the GEN-P probe (Chrome 145)', () => {
   it('reads Chrome 145.0.7632.6 and every case this test checks', () => {
@@ -127,7 +128,7 @@ describe('marker text and ordinals against the GEN-P probe (Chrome 145)', () => 
     expect(MARKER_CASES.map((c) => c.id)).toEqual([
       'geometry-disc', 'geometry-circle', 'geometry-square', 'geometry-decimal', 'ordinals', 'list-item-divs',
       'counter-decimal', 'counter-decimal-leading-zero', 'counter-lower-alpha', 'counter-upper-alpha', 'counter-lower-latin',
-      'counter-upper-latin', 'counter-lower-roman', 'counter-upper-roman', 'counter-string', 'none-and-empty', 'flex-ul',
+      'counter-upper-latin', 'counter-lower-roman', 'counter-upper-roman', 'counter-string', 'none-and-empty', 'flex-ul', 'inter',
     ]);
   });
   for (const c of MARKER_CASES) {
