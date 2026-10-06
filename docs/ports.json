@@ -491,7 +491,8 @@
         { "lines": "1531-1581", "symbol": "CSSParserImpl::ConsumeKeyframesRule", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/dragon/src/css/at-rules/keyframes.ts", "symbol": "KeyframesRule", "use": "reference" }
+        { "file": "packages/dragon/src/css/at-rules/keyframes.ts", "symbol": "KeyframesRule", "use": "reference" },
+        { "file": "packages/dragon/test/aliases.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
