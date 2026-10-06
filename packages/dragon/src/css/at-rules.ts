@@ -90,6 +90,7 @@ const MQ_R2_FEATURES: ReadonlySet<string> = new Set(['prefers-color-scheme', 'pr
  * lines. An at-rule not listed here falls back to refuseAtRule too.
  */
 export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
+  '-webkit-keyframes': keyframesAtRule,
   charset: refuseAtRule,
   'color-profile': refuseAtRule,
   container: refuseAtRule,
