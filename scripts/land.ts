@@ -850,7 +850,7 @@ const assemblePosition = (prev: string, it: { entry: Entry; ticket: Ticket }, k:
   });
 };
 
-const buildAllPositions = (base: string, items: readonly { entry: Entry; ticket: Ticket }[]): ({ position: Built } | { error: unknown })[] | null => {
+const buildAllPositions = (base: string, items: readonly { entry: Entry; ticket: Ticket }[], failed: (index: number, error: unknown) => void): ({ position: Built } | { error: unknown })[] | null => {
   if (!PARALLEL) return null;
   // The previous batch's preparations (abandoned, or left by a stopped process) must have exited before their worktrees are reused.
   if (!killPrepared(ROLE)) {
@@ -873,7 +873,7 @@ const buildAllPositions = (base: string, items: readonly { entry: Entry; ticket:
       sequential: (prev, it, k) => withWorktree(WT_HOME, () => buildPosition(prev, it.entry, it.ticket, k)),
       abandon: abandonPrepared,
       log,
-    });
+    }, failed);
   } finally {
     log(`  parallel build: ${items.length} position(s) in ${Math.round((Date.now() - t0) / 1000)}s`);
   }
@@ -1473,7 +1473,7 @@ const main = (): number => {
     admit: (e, earlier) => (write(false, null, e), admit(e, earlier)),
     base: fetchMaster,
     build: (prev, e, t, k) => (write(false, null, e), buildPosition(prev, e, t, k)),
-    buildAll: (base, items) => buildAllPositions(base, items),
+    buildAll: (base, items, failed) => buildAllPositions(base, items, failed),
     verify: verifyChain,
     prove: (p, e) => (write(false, null, e), proveTree(p, e)),
     proveMaster: (m) => (write(false, null, null), proveMaster(m)),
