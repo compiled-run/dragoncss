@@ -267,10 +267,15 @@ const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(
 
 function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: number }> {
   const out = new Map<string, { family: string; size: number }>();
+  // Text leaves sit in their block container or, through any depth of inline boxes, inside it (INL1a).
+  const inline = (c: Exclude<LayoutBox['children'][number], LayoutBox | ControlBox>): void => {
+    if (c.kind === 'text') out.set(c.id, { family: c.font.family, size: c.font.size });
+    else if (c.kind === 'inline') for (const k of c.children) inline(k);
+  };
   const walk = (b: LayoutBox | ControlBox): void => {
     for (const c of b.children) {
       if (c.kind === 'box' || c.kind === 'control') walk(c);
-      else if (c.kind === 'text') out.set(c.id, { family: c.font.family, size: c.font.size });
+      else inline(c);
     }
   };
   walk(root);

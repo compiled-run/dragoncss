@@ -41,7 +41,7 @@ export function checkOutOfFlowSiblings(ctx: Ctx, box: LayoutBox): void {
     if (k.kind === 'control' && isOutOfFlow(ctx, k)) unsupported('control-out-of-flow', k.id, 'CSS2 §10.3.7, §10.6.4', `absolutely positioned form control ${k.id} is not supported`);
   }
   if (oof === undefined) return;
-  if (box.children.some((k) => k.kind === 'text' || (k.kind === 'box' && k.boxType === 'anonymous'))) {
+  if (box.children.some((k) => (k.kind !== 'box' && k.kind !== 'control' && k.kind !== 'replaced') || (k.kind === 'box' && k.boxType === 'anonymous'))) {
     unsupported('abspos-in-inline', oof.id, 'CSS2 §9.2.1.1, §10.3.7', `absolutely positioned ${oof.id} beside text in ${box.id} would take a static position in its inline formatting context`);
   }
 }
