@@ -13,11 +13,6 @@
   {
    "kind": "resize",
    "width": 352,
-   "height": 264
-  },
-  {
-   "kind": "resize",
-   "width": 352,
    "height": 304
   },
   {
@@ -28,6 +23,16 @@
   {
    "kind": "resize",
    "width": 304,
+   "height": 400
+  },
+  {
+   "kind": "resize",
+   "width": 288,
+   "height": 384
+  },
+  {
+   "kind": "resize",
+   "width": 296,
    "height": 400
   },
   {
@@ -97,78 +102,10 @@
      "hasBox": true,
      "x": 0,
      "y": 10,
-     "width": 50,
-     "height": 4,
-     "computed": {
-      "background-color": "rgb(0, 204, 0)"
-     }
-    }
-   ]
-  },
-  {
-   "size": {
-    "width": 352,
-    "height": 264
-   },
-   "nodes": [
-    {
-     "id": "html",
-     "kind": "element",
-     "hasBox": true,
-     "x": 0,
-     "y": 0,
-     "width": 352,
-     "height": 15,
-     "computed": {
-      "background-color": "rgba(0, 0, 0, 0)"
-     }
-    },
-    {
-     "id": "body",
-     "kind": "element",
-     "hasBox": true,
-     "x": 0,
-     "y": 0,
-     "width": 352,
-     "height": 14,
-     "computed": {
-      "background-color": "rgba(0, 0, 0, 0)"
-     }
-    },
-    {
-     "id": "a",
-     "kind": "element",
-     "hasBox": true,
-     "x": 0,
-     "y": 0,
-     "width": 30,
-     "height": 4,
-     "computed": {
-      "background-color": "rgb(204, 0, 0)"
-     }
-    },
-    {
-     "id": "b",
-     "kind": "element",
-     "hasBox": true,
-     "x": 0,
-     "y": 5,
      "width": 10,
      "height": 4,
      "computed": {
       "background-color": "rgb(204, 204, 204)"
-     }
-    },
-    {
-     "id": "c",
-     "kind": "element",
-     "hasBox": true,
-     "x": 0,
-     "y": 10,
-     "width": 50,
-     "height": 4,
-     "computed": {
-      "background-color": "rgb(0, 204, 0)"
      }
     }
    ]
@@ -379,6 +316,142 @@
   },
   {
    "size": {
+    "width": 288,
+    "height": 384
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 288,
+     "height": 15,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 288,
+     "height": 14,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 5,
+     "width": 40,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 10,
+     "width": 50,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 296,
+    "height": 400
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 296,
+     "height": 15,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 296,
+     "height": 14,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 5,
+     "width": 40,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 10,
+     "width": 50,
+     "height": 4,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
     "width": 400,
     "height": 296
    },
@@ -437,10 +510,10 @@
      "hasBox": true,
      "x": 0,
      "y": 10,
-     "width": 50,
+     "width": 10,
      "height": 4,
      "computed": {
-      "background-color": "rgb(0, 204, 0)"
+      "background-color": "rgb(204, 204, 204)"
      }
     }
    ]

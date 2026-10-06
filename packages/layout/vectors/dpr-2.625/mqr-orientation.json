@@ -511,7 +511,7 @@
         "boxSizing": "content-box",
         "width": {
          "kind": "px",
-         "value": 50
+         "value": 10
         },
         "height": {
          "kind": "px",
@@ -645,7 +645,7 @@
    "parent": "body",
    "x": 0,
    "y": 1680,
-   "width": 8400,
+   "width": 1680,
    "height": 672
   }
  ]

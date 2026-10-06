@@ -37,9 +37,9 @@
   {
    "id": "c",
    "parent": "body",
-   "x": 58800,
+   "x": 65520,
    "y": 1680,
-   "width": 8400,
+   "width": 1680,
    "height": 672
   }
  ],
@@ -82,11 +82,11 @@
   },
   {
    "id": "c",
-   "left": 919,
+   "left": 1024,
    "top": 26,
    "right": 1050,
    "bottom": 37,
-   "width": 131,
+   "width": 26,
    "height": 11
   }
  ]

@@ -39,7 +39,7 @@
    "parent": "body",
    "x": 0,
    "y": 1920,
-   "width": 9600,
+   "width": 1920,
    "height": 768
   }
  ],
@@ -84,9 +84,9 @@
    "id": "c",
    "left": 0,
    "top": 30,
-   "right": 150,
+   "right": 30,
    "bottom": 42,
-   "width": 150,
+   "width": 30,
    "height": 12
   }
  ]
