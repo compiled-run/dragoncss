@@ -12,6 +12,8 @@ import { committedAuthored } from '../packages/parity/src/committed.ts';
 import { FIXTURES } from '../packages/parity/src/fixtures.ts';
 import { FONT_FIXTURES } from '../packages/parity/src/fixture-groups/fonts.ts';
 import { committedFontAuthored, runFontFixture } from '../packages/parity/src/fonts-run.ts';
+import { ENV_FIXTURES } from '../packages/parity/src/fixture-groups/env.ts';
+import { committedEnvAuthored, runEnvFixture } from '../packages/parity/src/env-run.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import type { CaseOutcome } from '../packages/parity/src/pipeline.ts';
 import { runFixture } from '../packages/parity/src/pipeline.ts';
@@ -32,6 +34,12 @@ try {
   // TXT1-C: the web-only fonts fixtures prove web rows through chrome-dual alone; their ios features are empty.
   for (const f of FONT_FIXTURES) {
     const outcomes = await runFontFixture(f, browser, { authored: committedFontAuthored, faults: NO_FAULTS, profiles: 'derive' });
+    cases.push(...outcomes);
+    for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
+  }
+  // ENV-SAFE: the web-only env() fixtures prove web rows through chrome-dual alone, under their insets; their ios features are empty.
+  for (const f of ENV_FIXTURES) {
+    const outcomes = await runEnvFixture(f, browser, { authored: committedEnvAuthored(f), faults: NO_FAULTS, profiles: 'derive' });
     cases.push(...outcomes);
     for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }

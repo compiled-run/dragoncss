@@ -5,11 +5,13 @@ import type { Browser } from 'playwright';
 import type { EngineFaults, LayoutInput, LayoutRect, LayoutUnsupported } from '@dragon/layout';
 import { absoluteRects, layoutWithFaults, validateLayoutInput } from '@dragon/layout';
 import type { Assignment, CompilerFaults, Compiled, Diagnostic, Environment, FrontEndResult, Origin, Scalar, TextTopologyEntry } from 'dragon';
-import { compiledCases, compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
+import { compiledCases, compiledFeatures, createProjectWith, interactionPartitionOf, iosLayoutProjection, laneOnlyNative, nativeLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { captureFixture } from './capture.ts';
 import type { ParityCase } from './cases.ts';
-import { casesOf, expectedCaseCount, fixtureInput } from './cases.ts';
+import { casesOf, expectedCaseCount, fixtureInput, forcedCasesOf } from './cases.ts';
+import { INTERACTION_FORCED } from './fixture-groups/interaction.ts';
+import { prepareOf } from './forced-pseudo.ts';
 import type { Comparison } from './compare.ts';
 import { compareLayout } from './compare.ts';
 import type { DualComparison } from './dual.ts';
@@ -131,7 +133,7 @@ export function compileFixture(spec: FixtureSpec, faults: CompilerFaults = NO_FA
   const input = transformInput(fixtureCompileInput(spec));
   const rootFont = spec.kind === 'layout' ? spec.rootFont : 'ahem';
   // MQ-a: the native output is the @media band holding the fixed parity viewport, which is exact for every case here.
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} }, ...(fonts === undefined ? {} : { fonts }) }, { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont, foldViewport: ENVIRONMENT.viewport });
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} }, ...(fonts === undefined ? {} : { fonts }) }, { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont, foldViewport: ENVIRONMENT.viewport, interactionLanes: true });
   return { input, compiled: project.compile(input) };
 }
 
@@ -156,6 +158,24 @@ export function inlineFontAssets(css: string, assets: readonly { readonly path: 
   const unused = assets.filter((a) => !used.has(a.path)).map((a) => a.path);
   if (unused.length > 0) throw new Error(`web output assets that dragon.css never names: ${unused.join(', ')}`);
   return out;
+}
+
+/**
+ * SELD-R2a: the forced cases of a fixture in INTERACTION_FORCED (every other fixture has none), from each direction's compile: one
+ * per interaction state but none of every case, in case order.
+ */
+export function forcedCases(spec: FixtureSpec, compiledOf: (d: Direction) => Compiled<'ios' | 'web'> = (d) => compileFixture(spec, NO_FAULTS, 'enforce', d).compiled): ParityCase[] {
+  if (!INTERACTION_FORCED.has(spec.id) || spec.kind !== 'layout') return [];
+  const byDirection = new Map<Direction, Compiled<'ios' | 'web'>>();
+  return casesOf(spec, fixtureInput(spec)).flatMap((c) => {
+    const d = c.environment.direction;
+    let compiled = byDirection.get(d);
+    if (compiled === undefined) {
+      compiled = compiledOf(d);
+      byDirection.set(d, compiled);
+    }
+    return forcedCasesOf(spec, c, interactionPartitionOf(compiled, c.assignment));
+  });
 }
 
 export async function runFixture(spec: FixtureSpec, browser: Browser, opts: RunOptions): Promise<FixtureOutcome> {
@@ -202,6 +222,12 @@ export async function runFixture(spec: FixtureSpec, browser: Browser, opts: RunO
     if (rendered !== perEnvironment) problems.push(`${e.direction}: ${rendered} cases rendered, but ${perEnvironment} are declared`);
     if (expectedCaseCount(spec, input) !== perEnvironment) problems.push(`${e.direction}: the renderer's domains give ${expectedCaseCount(spec, input)} cases, but ${perEnvironment} are declared`);
     if (dragon !== perEnvironment) problems.push(`${e.direction}: Dragon enumerated ${dragon} cases, but ${perEnvironment} are declared`);
+  }
+  // The forced cases run after the counted ones and are not counted: MF1 counts the reachable assignments only.
+  for (const c of forcedCases(spec, (d) => (compiledBy.get(d) as { compiled: Compiled<'ios' | 'web'> }).compiled)) {
+    const own = compiledBy.get(c.environment.direction) as { compiled: Compiled<'ios' | 'web'> };
+    // A forced case's layout is compared, but it adds no engine vector: the vector corpora cover the counted cases.
+    outcomes.push({ ...(await runCase(c, own.compiled, webCssOf(own.compiled), browser, opts)), vector: null });
   }
   for (const o of outcomes) if (o.status === 'fail') problems.push(`${o.id}: ${o.reason}`);
   const total = (f: (c: EnvironmentCount) => number): number => counts.reduce((n, c) => n + f(c), 0);
@@ -269,12 +295,14 @@ export function topologyProblems(declared: TreeExpectation, input: FrontEndResul
 }
 
 async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss: string | null, browser: Browser, opts: RunOptions): Promise<CaseOutcome> {
-  const features = { ios: compiledFeatures(compiled, 'ios', c.assignment), web: compiledFeatures(compiled, 'web', c.assignment) };
+  // SELD-R2: a case only the lanes compile on native (a user's compile refuses it there) proves no native row; web rows only.
+  const features = { ios: laneOnlyNative(compiled, 'ios') ? [] : compiledFeatures(compiled, 'ios', c.assignment), web: compiledFeatures(compiled, 'web', c.assignment) };
   const topology = textTopology(compiled, c.assignment);
   const base = { id: c.id, fixture: c.fixture, index: c.index, direction: c.environment.direction, assignment: c.assignment, isInitial: c.isInitial, features, unsupported: null, comparison: null, dual: null, vector: null, topology, textLines: [] };
   const notRun = { 'linux-dragon-layout': 'not-run', 'chrome-dual': 'not-run' } as const;
   const fail = (reason: string): CaseOutcome => ({ ...base, lanes: notRun, status: 'fail', reason });
-  const projection = iosLayoutProjection(compiled, c.environment, c.assignment);
+  const state = c.interaction ?? null;
+  const projection = nativeLayoutProjection(compiled, c.environment, c.assignment, state);
   const errors = compiled.diagnostics.map((d) => `${d.code} ${d.message}`).join('; ');
   if (compiled.outputs.ios.kind === 'blocked' || projection.kind === 'blocked') return fail(`ios output blocked: ${projection.kind === 'blocked' ? projection.reason : ''} ${errors}`);
   if (webCss === null) return fail(`web output not ready: ${errors}`);
@@ -300,10 +328,10 @@ async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss:
 
   // Lane chrome-dual.
   const classOf = webClassMap(compiled, c.assignment);
-  const colors = resolvedColors(compiled, c.assignment);
-  const textColors = resolvedTextColors(compiled, c.assignment);
+  const colors = resolvedColors(compiled, c.assignment, state);
+  const textColors = resolvedTextColors(compiled, c.assignment, state);
   if (classOf === null || colors === null || textColors === null) return fail('the compiled result has no web class map or resolved colours for this case');
-  const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(webCss, classOf), c.environment, c.computedExtra);
+  const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(webCss, classOf), c.environment, c.computedExtra, prepareOf(c));
   const dual = compareDual(authored, compiledCapture, colors, textColors, c.computedExtra);
   if (!dual.pass) reasons.push(`chrome-dual: ${dual.problems.join('; ')}`);
 
@@ -328,4 +356,4 @@ async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss:
 }
 
 /** Authored captures taken live in the pinned Chrome, in the case's environment. */
-export const liveAuthored = (browser: Browser) => (c: ParityCase): Promise<WebCapture> => captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra);
+export const liveAuthored = (browser: Browser) => (c: ParityCase): Promise<WebCapture> => captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, prepareOf(c));

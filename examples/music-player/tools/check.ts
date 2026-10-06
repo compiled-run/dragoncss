@@ -18,7 +18,7 @@
 //                  This is the only way Dragon reaches its per-case checks (computed values, fonts, contextual proof) on this
 //                  screen. It is a probe: rules keyed on the projected tags (button, a, img, input, span) no longer match.
 // Output (deterministic, no timestamps): examples/music-player/dragon/north-star-check.json, with per-target counts. Prints the
-// diagnostic count and the support percentage.
+// diagnostic count and the support percentage, which leaves out the declarations not applicable on native (NA-NATIVE).
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Diagnostic, FrontEndResult, Origin, TreeNode } from '../../../packages/dragon/src/index.ts';
@@ -28,6 +28,7 @@ import { attributeRefusal } from '../../../packages/dragon/src/attributes.ts';
 import { authoredModel } from '../../../packages/parity/src/render.ts';
 import type { TreeFixtureFile } from '../../../packages/parity/src/tree-fixture.ts';
 import { readTreeFixtureDir } from '../../../packages/parity/src/tree-fixture.ts';
+import { hitsOf, statusOn, supportNumbers } from '../../../packages/parity/src/north-star-accounting.ts';
 import type { CssDeclaration, Span } from './css-inventory.ts';
 import { inventory } from './css-inventory.ts';
 import { FONTS, pinnedFaceSrcs } from './font-map.ts';
@@ -51,6 +52,17 @@ if ([...FONT_FILES].map(asset).sort().join() !== [...pinnedFaceSrcs(FONTS)].sort
 const FONT_ASSETS = FONT_FILES.map((file) => {
   const bytes = new Uint8Array(readFileSync(new URL(`../../../${asset(file)}`, import.meta.url)));
   return { id: asset(file), hash: `sha256:${createHash('sha256').update(bytes).digest('hex')}`, bytes };
+});
+/**
+ * REPL-a (R1): the four YouTube cover URLs map to the committed PNG stand-ins (covers/*.png, the same files the NS-REF Chrome
+ * route serves), labelled stand-ins like the pinned fonts. They enter the snapshot as assets named by their repository path.
+ */
+const COVER_IDS = ['DwTzcZxyUUg', 'm_qlgFQs7E4', 'UQ0KmrvBPaY', 'JhkqWaiYgA8'] as const;
+const coverAsset = (id: string): string => `examples/music-player/covers/${id}.png`;
+export const IMAGES: { readonly [src: string]: string } = Object.fromEntries(COVER_IDS.map((id) => [`https://i.ytimg.com/vi/${id}/maxresdefault.jpg`, coverAsset(id)]));
+const COVER_ASSETS = COVER_IDS.map((id) => {
+  const bytes = new Uint8Array(readFileSync(new URL(`../../../${coverAsset(id)}`, import.meta.url)));
+  return { id: coverAsset(id), hash: `sha256:${createHash('sha256').update(bytes).digest('hex')}`, bytes };
 });
 type TargetId = (typeof TARGET_IDS)[number];
 
@@ -125,8 +137,8 @@ export function projectTree(spec: TreeFixtureFile): TreeFixtureFile {
 
 function compile(id: string, css: string, projected: boolean): { input: FrontEndResult; diagnostics: readonly Diagnostic[]; targets: Record<string, string> } {
   const read = readTreeFixtureDir(TREE_DIR, id, { text: (file, text) => (file === STYLES_SOURCE ? css : text), ...(projected ? { spec: projectTree } : {}) });
-  const input: FrontEndResult = { ...read, snapshot: { ...read.snapshot, assets: [...read.snapshot.assets, ...FONT_ASSETS] } };
-  const compiled = createProject({ projectId: PROJECT_ID, targets: TARGETS, fonts: FONTS }).compile(input);
+  const input: FrontEndResult = { ...read, snapshot: { ...read.snapshot, assets: [...read.snapshot.assets, ...FONT_ASSETS, ...COVER_ASSETS] } };
+  const compiled = createProject({ projectId: PROJECT_ID, targets: TARGETS, fonts: FONTS, images: IMAGES }).compile(input);
   return { input, diagnostics: compiled.diagnostics, targets: { ...compiled.targets } };
 }
 
@@ -251,23 +263,18 @@ function main(): void {
   const pos = (l: Location): number => (l.kind === 'css' ? l.start : 1e9);
   diagnostics.sort((a, b) => PASS_ORDER.indexOf(a.passes[0] as Pass) - PASS_ORDER.indexOf(b.passes[0] as Pass) || pos(a.location) - pos(b.location) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 
-  // Per declaration: blocked on a target when an error for it (or for every target) lands on the declaration, on its rule's
-  // selector, or is an unsupported-at-rule diagnostic on its enclosing at-rule.
-  const overlaps = (a: Span, l: Location): boolean => l.kind === 'css' && l.start < a.end && l.end > a.start;
+  // Per declaration: blocked, not-applicable (NA-NATIVE) or supported on each target (parity/src/north-star-accounting.ts).
+  const accounted = diagnostics.map((d) => ({ code: d.code, severity: d.severity, target: d.target, css: d.location.kind === 'css' ? d.location : null }));
   const perDeclaration = inv.declarations.map((decl: CssDeclaration) => {
-    const hits = diagnostics.filter((d) => d.severity === 'error' && d.location.kind === 'css' && (
-      overlaps(decl.span, d.location) || overlaps(decl.selectorSpan, d.location)
-      || (d.code === 'DRAGON_UNSUPPORTED_AT_RULE' && decl.atRuleSpan !== null && d.location.start === decl.atRuleSpan.start)));
-    const status = (t: TargetId): string => (hits.some((d) => applies(d.target, t)) ? 'blocked' : 'supported');
+    const hits = hitsOf(decl, accounted);
+    const errors = hits.filter((d) => d.severity === 'error');
     return {
       index: decl.index, line: decl.line, selector: decl.selector.trim(), atRule: decl.atRule, property: decl.property, value: decl.value,
-      web: status('web'), ios: status('ios'), android: status('android'),
-      codes: [...new Set(hits.map((d) => d.code))].sort(),
+      web: statusOn(hits, 'web'), ios: statusOn(hits, 'ios'), android: statusOn(hits, 'android'),
+      codes: [...new Set(errors.map((d) => d.code))].sort(),
     };
   });
-  const total = perDeclaration.length;
-  const supportedBoth = perDeclaration.filter((d) => d.web === 'supported' && d.ios === 'supported').length;
-  const pct = (n: number): number => Math.round((n / total) * 1000) / 10;
+  const numbers = supportNumbers(perDeclaration);
 
   // Elements of the initial case, rendered from the tree.
   const input = readTreeFixtureDir(TREE_DIR, 'north-star');
@@ -291,13 +298,13 @@ function main(): void {
       for (const d of diagnostics) if (d.severity === severity && applies(d.target, t)) out[d.code] = (out[d.code] ?? 0) + 1;
       return sortKeys(out);
     };
-    return [t, { errors: count('error'), warnings: count('warning') }];
+    return [t, { errors: count('error'), warnings: count('warning'), infos: count('info') }];
   }));
 
   const report = {
-    schema: 'dragon-north-star-check/2',
+    schema: 'dragon-north-star-check/3',
     source: 'examples/music-player/tree (the Markless demos/music-player-ssr components as a dragon/tree@0 fixture) + styles.css',
-    compiler: { entry: 'createProject (public)', targets: TARGETS, fonts: { map: FONTS, assets: FONT_ASSETS.map((a) => ({ id: a.id, hash: a.hash })) } },
+    compiler: { entry: 'createProject (public)', targets: TARGETS, fonts: { map: FONTS, assets: FONT_ASSETS.map((a) => ({ id: a.id, hash: a.hash })) }, images: { map: IMAGES, assets: COVER_ASSETS.map((a) => ({ id: a.id, hash: a.hash })) } },
     method: {
       passes: {
         'A-authored': 'the tree and stylesheet as written, all cases in one compile',
@@ -313,12 +320,7 @@ function main(): void {
       errors: diagnostics.filter((d) => d.severity === 'error').length,
       byCode: sortKeys(byCode),
       perTarget,
-      declarations: total,
-      supportedBothTargets: supportedBoth,
-      supportedWeb: perDeclaration.filter((d) => d.web === 'supported').length,
-      supportedIos: perDeclaration.filter((d) => d.ios === 'supported').length,
-      supportedAndroid: perDeclaration.filter((d) => d.android === 'supported').length,
-      supportPercent: pct(supportedBoth),
+      ...numbers,
       elements: elementTags.length,
       supportedElements: elementTags.filter((e) => SUPPORTED_TAGS.has(e.tag)).length,
       tags,
@@ -333,7 +335,7 @@ function main(): void {
   writeFileSync(examplePath(OUTPUT), `${JSON.stringify(report, null, 1)}\n`);
   const s = report.summary;
   console.log(`north-star: ${s.diagnostics} diagnostics (${s.errors} errors) over ${report.method.cases} cases and 3 passes`);
-  console.log(`north-star: ${s.supportedBothTargets}/${s.declarations} declarations supported on web and ios = ${s.supportPercent}% (web ${s.supportedWeb}, ios ${s.supportedIos}, android ${s.supportedAndroid})`);
+  console.log(`north-star: ${s.supportedBothTargets}/${s.applicableDeclarations} applicable declarations supported on web and ios = ${s.supportPercent}% (web ${s.supportedWeb}, ios ${s.supportedIos}, android ${s.supportedAndroid}; ${s.notApplicableNative} of ${s.declarations} not applicable on native)`);
   console.log(`north-star: ${s.supportedElements}/${s.elements} elements supported`);
   for (const t of TARGET_IDS) console.log(`north-star: ${t} errors ${JSON.stringify(perTarget[t]?.errors)}`);
   console.log(`north-star: wrote examples/music-player/${OUTPUT}`);

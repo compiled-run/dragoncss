@@ -1,6 +1,6 @@
 // The checked parts of land.ts: queue and argument parsing, retries of network calls, the CI verdict, the Claude review gate and
 // the queue loop that records a failed PR and continues. The git and device judgements come from merge-train-lib.ts.
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { type CheckRun, CI_CHECK } from './pr-review-vouch.ts';
 
@@ -47,7 +47,13 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   LAND_REVIEW_CMD (the reviewer: reads the prompt on stdin, gets LAND_REVIEW_PR and LAND_REVIEW_HEAD, prints JSON; default the main
   checkout's scripts/land-review-lookup.ts, which prints the review a review agent precomputed in LAND_REVIEW_PRECOMPUTED_DIR,
   default /tmp/land-reviews/precomputed), LAND_REVIEW_DIR (/tmp/land-reviews), LAND_CI_WAIT and LAND_CI_APPEAR (seconds, default 5400 and 900), LAND_QUIET_MAX
-  (seconds the test gate waits for a quiet machine before failing the PR, default 5400)`;
+  (seconds the test gate waits for a quiet machine before failing the PR, default 5400), LAND_BATCH (PRs proved together by one
+  full test, 1 to 8, default 4; 1 lands one PR per proof), LAND_PIPELINE (0 turns off preparing the next batch, in
+  LAND_WORKTREE_NEXT, default /tmp/dragon-land-next, while a batch publishes), LAND_DEVICES (local, the default: the device lanes
+  under /tmp/device-lease.sh; ci: device-lanes.yml on GitHub runners for each position's tree; the local run until master has
+  device-lanes.yml), LAND_DEVICES_WAIT (seconds, 9000), LAND_TEST (local, the default: pnpm test here; ci: full-test.yml on GitHub
+  runners for each proved tree; the local test until master has full-test.yml), LAND_TEST_WAIT (seconds, 22500), LAND_CI_START (seconds a
+  CI run may go without starting a job before the step runs locally instead, default 900)`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;
@@ -76,6 +82,9 @@ const TRANSIENT = [
   /RPC failed/i,
   /the remote end hung up unexpectedly/i,
   /network is unreachable/i,
+  // Two processes of one run (the driver and its builder) fetching at once contend for a ref lock.
+  /cannot lock ref/i,
+  /Unable to create '.*\.lock'/i,
 ];
 export const errorText = (error: unknown): string => {
   const parts: string[] = [];
@@ -162,10 +171,15 @@ export const worktreesOf = (porcelain: string, branch: string, shas: readonly st
 
 // The quiet-machine gate: no heavy slot held by a live process of anyone else, and a 1-minute load under 20.
 export const QUIET_LOAD = 20;
-export const isQuiet = (otherHeavyHolders: number, load1: number): boolean => otherHeavyHolders === 0 && load1 < QUIET_LOAD;
+// A machine this idle is quiet even with a heavy slot held: a holder sitting near-idle (a profiling run, a job waiting on a
+// device) kept the gate shut for over an hour at load ~1. The quiet request still stops new jobs from starting meanwhile.
+export const IDLE_LOAD = 6;
+export const isQuiet = (otherHeavyHolders: number, load1: number): boolean => load1 < IDLE_LOAD || (otherHeavyHolders === 0 && load1 < QUIET_LOAD);
 
 // While the driver waits for quiet it holds /tmp/dragon-train-quiet (its pid), which stops /tmp/heavy-lease.sh from starting
-// new jobs beside the train. The file is removed when the wait ends, quiet or not, and never another process's file.
+// new jobs beside the train. It keeps holding it through the quiet rerun (waitForQuiet's `hold`), so jobs queued behind the
+// request don't start beside the rerun and load the machine again; it is removed when the rerun ends, or when the wait fails,
+// and never another process's file.
 export const QUIET_FILE = '/tmp/dragon-train-quiet';
 export const requestQuiet = (path: string, pid: number): void => writeFileSync(path, String(pid));
 export const releaseQuiet = (path: string, pid: number): void => {
@@ -187,20 +201,47 @@ export const clearStaleQuiet = (path: string, alive: (pid: number) => boolean): 
   return true;
 };
 
+// The test files a vitest run reports as failing, from its log; null when the log has no summary (the run crashed or was
+// killed), so the caller reruns the whole suite instead of trusting a partial list.
+export const SOLO_RERUN_MAX = 40;
+export const failingTestFiles = (logText: string): string[] | null => {
+  const plain = logText.replace(/\x1b\[[0-9;]*m/g, '');
+  if (!/^\s*Test Files\s/m.test(plain)) return null;
+  const files = new Set<string>();
+  for (const m of plain.matchAll(/^ FAIL\s+(\S+\.test\.ts)/gm)) files.add(m[1]!);
+  return [...files].sort();
+};
+
 // Waits for a quiet machine with the quiet request held, up to `ceilingMs`; true when quiet, false at the ceiling.
-export const waitForQuiet = (o: { quiet: () => boolean; request: () => void; release: () => void; sleep: (ms: number) => void; now: () => number; ceilingMs: number; pollMs?: number }): boolean => {
+// With `hold`, a quiet result keeps the request held and the caller releases it after its rerun; a failed wait always releases.
+export const waitForQuiet = (o: { quiet: () => boolean; request: () => void; release: () => void; sleep: (ms: number) => void; now: () => number; ceilingMs: number; pollMs?: number; hold?: boolean }): boolean => {
   o.request();
+  let keep = false;
   try {
     const t0 = o.now();
     for (;;) {
-      if (o.quiet()) return true;
+      if (o.quiet()) return (keep = o.hold === true), true;
       if (o.now() - t0 >= o.ceilingMs) return false;
       o.sleep(o.pollMs ?? 30_000);
     }
   } finally {
-    o.release();
+    if (!keep) o.release();
   }
 };
+
+// Before proving a tree other than the one just built, ignored outputs of other trees go (reports, lane outputs, tsbuildinfo);
+// installs, fetched WPT and native build caches stay, since no test reads them as results.
+// packages/translate/out/{kotlin,swift}/ are content-keyed harness build caches (native.ts buildKotlin/buildSwift): valid for any
+// tree, and removing their files (but not their directories) once left stale entries that blocked every later build (#164).
+export const KEEP_IGNORED = ['node_modules/', 'vendor/wpt/', 'build/', '.build/', '.swiftpm/', '.zig-cache/', 'zig-out/', 'Cargo.lock', '.vercel/', 'packages/translate/out/kotlin/', 'packages/translate/out/swift/'];
+// Lists every ignored file (NUL-separated). `git clean -X` with `-e !kept/` negations (the first version) un-ignores a kept
+// directory, so git descends into it and deletes the ignored files nested inside: node_modules/.pnpm/*/dist/ (every installed
+// package's code) went, and every later test run failed to start. Pathspec excludes don't help either: git clean removes a
+// whole ignored directory as one unit. So the driver lists the ignored files and removes those outside the kept trees itself.
+export const ignoredFilesArgs = (): string[] => ['ls-files', '-z', '--others', '--ignored', '--exclude-standard'];
+const keptIgnored = (path: string): boolean =>
+  KEEP_IGNORED.some((k) => (k.endsWith('/') ? `/${path}`.includes(`/${k}`) : path === k || path.endsWith(`/${k}`)));
+export const ignoredToRemove = (lsFilesZ: string): string[] => lsFilesZ.split('\0').filter((p) => p !== '' && !keptIgnored(p));
 
 // pr:review's banner when every Macroscope check of the head was skipped for the spending limit.
 export const isUnreviewed = (prReviewOutput: string): boolean => /^!!! UNREVIEWED: Macroscope spending limit/m.test(prReviewOutput);
@@ -410,6 +451,88 @@ export const retargetChildrenThenDelete = (o: { repo: string; branch: string; gh
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
+// Floors may only rise (PIN-DERIVE). A floor is a minimum checked against the tree, so a merge resolution that lowers one passes
+// every test and silently stops protecting; the landing commit's floors are therefore compared with origin/master's.
+// Formats, from the helpers that read them:
+// - packages/{dragon,parity}/test/floor.ts: { key: [names] }. Every name stays; an ordered floor keeps its order, and an unordered
+//   one is written sorted, so keeping master's names in master's relative order is required of every list.
+// - packages/translate/test/floor.ts: { key: { order: [suites], counts: { suite: n } } }. Suites stay in order; counts never fall.
+// - css-escapes-floor.json (css-escapes.test.ts): { key: n }. Keys stay; counts never fall.
+// - glyph-clearance-pins.json (pixel-reference.test.ts): { case: { "<target>@<dpr>": { dropped: { kind: n }, rescued: { kind: n } } } },
+//   exact pins of the rules a case's comparison drops and rescues. For a case master pins, no rescued count falls and no dropped
+//   count rises (a missing count is 0), so the comparison never covers less; a new case is free.
+
+export const isFloorFile = (path: string): boolean => /^packages\/[^/]+\/test\/([^/]+-floor|glyph-clearance-pins)\.json$/.test(path);
+
+const isCounts = (v: unknown): v is Record<string, number> => isObject(v) && Object.values(v).every((n) => typeof n === 'number' && Number.isFinite(n));
+const isNames = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
+const isSuiteFloor = (v: unknown): v is { order: string[]; counts: Record<string, number> } => isObject(v) && isNames(v.order) && isCounts(v.counts);
+
+const namesProblems = (key: string, was: string[], now: string[]): string[] => {
+  const gone = was.filter((x) => !now.includes(x));
+  const problems = gone.map((x) => `${key}: ${JSON.stringify(x)} removed`);
+  const kept = was.filter((x) => now.includes(x));
+  const at = kept.map((x) => now.indexOf(x));
+  for (let i = 1; i < at.length; i++) if (at[i]! < at[i - 1]!) problems.push(`${key}: ${JSON.stringify(kept[i])} now comes before ${JSON.stringify(kept[i - 1])}`);
+  return problems;
+};
+const countsProblems = (key: string, was: Record<string, number>, now: Record<string, number>): string[] =>
+  Object.entries(was).flatMap(([k, n]) => (now[k] === undefined ? [`${key}.${k}: removed (was ${n})`] : now[k]! < n ? [`${key}.${k}: lowered ${n} -> ${now[k]}`] : []));
+
+const pinsProblems = (was: Record<string, unknown>, now: Record<string, unknown>): string[] => {
+  const problems: string[] = [];
+  const tally = (v: unknown, side: 'dropped' | 'rescued'): Record<string, number> => (isObject(v) && isCounts(v[side]) ? v[side] : {});
+  for (const [c, wasAt] of Object.entries(was)) {
+    const nowAt = isObject(now[c]) ? now[c] : {};
+    if (!isObject(wasAt)) continue;
+    for (const at of new Set([...Object.keys(wasAt), ...Object.keys(nowAt)])) {
+      const [wr, nr] = [tally(wasAt[at], 'rescued'), tally(nowAt[at], 'rescued')];
+      for (const [k, n] of Object.entries(wr)) if ((nr[k] ?? 0) < n) problems.push(`${c} ${at} rescued.${k}: lowered ${n} -> ${nr[k] ?? 0}`);
+      const [wd, nd] = [tally(wasAt[at], 'dropped'), tally(nowAt[at], 'dropped')];
+      for (const [k, n] of Object.entries(nd)) if (n > (wd[k] ?? 0)) problems.push(`${c} ${at} dropped.${k}: raised ${wd[k] ?? 0} -> ${n}`);
+    }
+  }
+  return problems;
+};
+
+/** Why the landing commit's version of a floor file (`now`, null when absent) is below master's (`was`, null when absent). */
+export const floorRegressions = (path: string, was: string | null, now: string | null): string[] => {
+  if (was === null) return [];
+  if (now === null) return [`${path}: removed (it is on master)`];
+  let w: unknown;
+  let n: unknown;
+  try {
+    w = JSON.parse(was);
+    n = JSON.parse(now);
+  } catch (error) {
+    return [`${path}: not JSON on one side: ${error instanceof Error ? error.message : String(error)}`];
+  }
+  if (!isObject(w) || !isObject(n)) return [`${path}: not a JSON object on one side`];
+  const problems: string[] = [];
+  const out = (p: string): number => problems.push(`${path}: ${p}`);
+  if (/glyph-clearance-pins\.json$/.test(path)) {
+    const shape = (v: Record<string, unknown>): boolean => Object.values(v).every((at) => isObject(at) && Object.values(at).every((t) => isObject(t) && isCounts(t.dropped) && isCounts(t.rescued)));
+    if (!shape(w) || !shape(n)) return [`${path}: not { case: { at: { dropped, rescued } } } on one side`];
+    for (const p of pinsProblems(w, n)) out(p);
+    return problems;
+  }
+  for (const [key, wv] of Object.entries(w)) {
+    const nv = n[key];
+    if (nv === undefined) out(`${key}: removed`);
+    else if (isNames(wv)) isNames(nv) ? namesProblems(key, wv, nv).forEach(out) : out(`${key}: no longer a list of names`);
+    else if (typeof wv === 'number') typeof nv !== 'number' ? out(`${key}: no longer a number`) : nv < wv ? out(`${key}: lowered ${wv} -> ${nv}`) : 0;
+    else if (isSuiteFloor(wv)) {
+      if (!isSuiteFloor(nv)) out(`${key}: no longer { order, counts }`);
+      else {
+        namesProblems(`${key}.order`, wv.order, nv.order).forEach(out);
+        countsProblems(`${key}.counts`, wv.counts, nv.counts).forEach(out);
+      }
+    } else out(`${key}: a floor shape the driver cannot judge`);
+  }
+  return problems;
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
 // The queue loop: a failed PR is recorded and the queue continues; only a Fatal error (master in an unexpected state) stops it.
 
 export class LandFailure extends Error {
@@ -452,8 +575,393 @@ export const runQueue = (
   return { outcomes, fatal, exit: fatal === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1 };
 };
 
-export const statusText = (o: { queue: string; startedAt: string; now: string; running: Entry | null; outcomes: readonly Outcome[]; fatal: string | null; total: number; done: boolean }): string => {
-  const lines = [`land ${o.done ? (o.fatal ? 'STOPPED' : 'DONE') : 'RUNNING'} ${o.now} (started ${o.startedAt}) queue ${o.queue}: ${o.outcomes.length} of ${o.total} handled`];
+// ---------------------------------------------------------------------------------------------------------------------
+// Batched landing. Up to `size` admitted PRs are built as a chain of positions on master: position k merges PR k's tip onto
+// position k-1 and adds its own regen commit, with its own device evidence (devices run at a position whose evidence stamp
+// differs from the position before it). The top position is proved once (`prove`: the full test). On success every PR is
+// published in order: its position is pushed to its branch only after the PR before it merged, so a PR branch never carries
+// another PR's unlanded commits, and each merge is pinned to that position (--match-head-commit). When the top fails, the
+// prefixes are bisected: the first failing position is the culprit, found in ceil(log2 n) more proofs; the passing prefix
+// lands, the culprit fails with its own failing run, and the PRs after it go back to the front of the queue. A failure while
+// building a position ejects that PR only, and the chain continues on the position before it.
+
+export type BatchOps<T, P extends { head: string }> = {
+  /** Checks a PR before any build: the PR, its base, its CI and its review at the current head. Throws LandFailure to eject.
+   *  `earlier` are the PRs admitted to this batch before it, which land first (a PR may be based on one of their branches). */
+  admit: (e: Entry, earlier: readonly Entry[]) => { merged: string } | { ticket: T };
+  /** The commit the batch builds on (origin/master). */
+  base: () => string;
+  /** Builds the position of `e` on `prev`. Throws LandFailure to eject `e`; the chain continues on `prev`. */
+  build: (prev: string, e: Entry, ticket: T, k: number) => P;
+  /** Checks the built chain is exactly the positions it claims to be; any error is fatal. */
+  verify: (built: readonly { entry: Entry; ticket: T; position: P }[]) => void;
+  /** Proves the tree of one position (the full test). Throws LandFailure at step "test" when the test fails. */
+  prove: (position: P, e: Entry) => void;
+  /** True when the PM asked for a graceful stop (STOP_FILE or SIGUSR1): no new batch starts. */
+  stopRequested?: () => boolean;
+  /** Proves master's own tree, before a bisect blames the first PR of a batch. Throws LandFailure at step "test" when it fails. */
+  proveMaster: (master: string) => void;
+  /** Pushes, reviews and merges one PR at its position. Throws LandFailure (that PR fails) or Fatal. */
+  publish: (e: Entry, position: P, ticket: T) => string;
+  onFail: (e: Entry, f: LandFailure) => void;
+  onOutcome: (outcomes: readonly Outcome[]) => void;
+  log: (line: string) => void;
+};
+
+export const MAX_BATCH = 8;
+export const parseBatchSize = (v: string | undefined): number => {
+  if (v === undefined) return 4;
+  if (!/^[1-9]\d*$/.test(v) || Number(v) > MAX_BATCH) return fail(`LAND_BATCH must be a whole number from 1 to ${MAX_BATCH}, not ${JSON.stringify(v)}`);
+  return Number(v);
+};
+
+const asFailure = (error: unknown): LandFailure =>
+  error instanceof LandFailure ? error : new LandFailure('error', error instanceof Error ? error.message : String(error));
+const prs = (es: readonly Entry[]): string => es.map((e) => `#${e.pr}`).join(' ');
+
+// The first failing prefix of `n` positions whose top (position n) failed with `top`: positions are 1-based, position 0 is the
+// base (taken to pass). Returns the culprit's position, the culprit's own failure, and how many proofs the search ran.
+// Only a failed test is a verdict on a tree; a failed install, checkout or anything else is the driver's, and stops it.
+export const isTestVerdict = (f: LandFailure): boolean => f.step === 'test';
+// One proof whose result is a verdict on the tree: true when it passes, the failure when its test fails; any other error is Fatal.
+export const proofVerdict = (what: string, prove: () => void): true | LandFailure => {
+  try {
+    prove();
+    return true;
+  } catch (error) {
+    if (error instanceof Fatal) throw error;
+    const f = asFailure(error);
+    if (isTestVerdict(f)) return f;
+    throw new Fatal(`proving ${what} failed outside the test, at ${f.step}, so it says nothing about the tree: ${f.message}`);
+  }
+};
+
+// A commit this run proved whose tree equals master's (outside docs/goals/**, by `same`), newest first; null when none does.
+export const provedTree = (proved: readonly string[], same: (commit: string) => boolean): string | null => [...proved].reverse().find(same) ?? null;
+
+export const bisectPrefixes = (
+  n: number,
+  top: LandFailure,
+  prove: (k: number) => void,
+): { culprit: number; failure: LandFailure; proofs: number; passed: number[] } => {
+  let [lo, hi, failure, proofs] = [0, n, top, 0];
+  const passed: number[] = [];
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    proofs++;
+    const v = proofVerdict(`position ${mid}`, () => prove(mid));
+    if (v === true) {
+      lo = mid;
+      passed.push(mid);
+    } else {
+      hi = mid;
+      failure = v;
+    }
+  }
+  return { culprit: hi, failure, proofs, passed };
+};
+
+// One round's preparation: admission of up to `size` PRs from the front of `queue` (which it consumes), the chain of positions
+// on `base`, and the proof of the top with the bisect of its prefixes. It publishes nothing and reports nothing: its results
+// are returned in order, so the same code runs in the driver or, pipelined, in a builder process whose round may be thrown away.
+export type RoundResult = { entry: Entry; merged: string } | { entry: Entry; failure: LandFailure };
+export type Prepared<T, P> = {
+  base: string;
+  consumed: Entry[];
+  results: RoundResult[];
+  built: { entry: Entry; ticket: T; position: P }[];
+  /** Positions 1..good are proven to land (the top passed, or the bisect's passing prefix). */
+  good: number;
+  proven: number[];
+  culprit: { index: number; failure: LandFailure } | null;
+};
+export type PrepareOps<T, P extends { head: string }> = Pick<BatchOps<T, P>, 'admit' | 'build' | 'verify' | 'prove' | 'proveMaster' | 'log'>;
+
+export const prepareRound = <T, P extends { head: string }>(
+  queue: Entry[],
+  size: number,
+  base: () => string,
+  ops: PrepareOps<T, P>,
+  o: { earlier?: readonly Entry[]; baseProven?: boolean; at?: (e: Entry | null) => void; report?: (r: RoundResult) => void } = {},
+): Prepared<T, P> => {
+  const at = o.at ?? (() => {});
+  const consumed: Entry[] = [];
+  const results: RoundResult[] = [];
+  // With `report`, each result is reported as it happens (the driver's own round); without, they are returned (a builder's).
+  const result = (r: RoundResult): void => (o.report ? o.report(r) : void results.push(r));
+  const failure = (e: Entry, error: unknown): void => {
+    if (error instanceof Fatal) throw error;
+    result({ entry: e, failure: asFailure(error) });
+  };
+  const admitted: { entry: Entry; ticket: T }[] = [];
+  while (admitted.length < size && queue.length > 0) {
+    const e = queue.shift()!;
+    consumed.push(e);
+    at(e);
+    try {
+      const a = ops.admit(e, [...(o.earlier ?? []), ...admitted.map((x) => x.entry)]);
+      if ('merged' in a) result({ entry: e, merged: a.merged });
+      else admitted.push({ entry: e, ticket: a.ticket });
+    } catch (error) {
+      failure(e, error);
+    }
+  }
+  const none = (b: string): Prepared<T, P> => ({ base: b, consumed, results, built: [], good: 0, proven: [], culprit: null });
+  if (admitted.length === 0) return none('');
+  let b: string;
+  try {
+    b = base();
+  } catch (error) {
+    throw error instanceof Fatal ? error : new Fatal(`could not read master: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  let prev = b;
+  const built: { entry: Entry; ticket: T; position: P }[] = [];
+  for (const m of admitted) {
+    at(m.entry);
+    try {
+      const position = ops.build(prev, m.entry, m.ticket, built.length + 1);
+      built.push({ ...m, position });
+      prev = position.head;
+    } catch (error) {
+      failure(m.entry, error);
+    }
+  }
+  if (built.length === 0) return none(b);
+  at(built[0]!.entry);
+  try {
+    ops.verify(built);
+  } catch (error) {
+    throw error instanceof Fatal ? error : new Fatal(`the batch ${prs(built.map((x) => x.entry))} is not the chain of positions it claims: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  ops.log(`batch ${prs(built.map((x) => x.entry))}: ${built.length} position(s) built on ${b}; proving the top ${built.at(-1)!.position.head}`);
+
+  // Prove the top; when it fails, bisect the prefixes for the first failing position.
+  let good = built.length;
+  let culprit: { index: number; failure: LandFailure } | null = null;
+  const proven: number[] = [];
+  const proveAt = (k: number): void => {
+    const x = built[k - 1]!;
+    at(x.entry);
+    ops.prove(x.position, x.entry);
+  };
+  const top = proofVerdict(`#${built.at(-1)!.entry.pr}'s position (the batch top)`, () => proveAt(built.length));
+  if (top === true) proven.push(built.length);
+  else {
+    const found = bisectPrefixes(built.length, top, proveAt);
+    proven.push(...found.passed);
+    if (found.culprit === 1 && o.baseProven !== true) {
+      // Before blaming the first PR, master itself must pass: a red master fails every position and blames nobody.
+      at(null);
+      ops.log(`batch: position 1 fails; proving master ${b} before blaming #${built[0]!.entry.pr}`);
+      const m = proofVerdict(`master ${b}`, () => ops.proveMaster(b));
+      if (m !== true) throw new Fatal(`master is red: master ${b} itself fails pnpm test, so no PR of the batch ${prs(built.map((x) => x.entry))} is blamed:\n${m.message}`);
+    }
+    good = found.culprit - 1;
+    const passing = built.slice(0, good).map((x) => x.entry);
+    const note =
+      built.length === 1
+        ? ''
+        : `\n\nFound by bisecting the batch ${prs(built.map((x) => x.entry))} (${found.proofs + 1} proofs): ${passing.length === 0 ? 'master' : `master with ${prs(passing)}`} passes, adding #${built[good]!.entry.pr} fails.`;
+    culprit = { index: good, failure: new LandFailure(found.failure.step, `${found.failure.message}${note}`, found.failure.comment) };
+    ops.log(`batch: the top failed at ${top.step}; culprit #${built[good]!.entry.pr} after ${found.proofs} more proof(s)`);
+  }
+  return { base: b, consumed, results, built, good, proven, culprit };
+};
+
+// Pipelining: while batch K publishes, the next batch is prepared on K's proven top by a builder (another process, in its own
+// worktree). It is used only if all of K landed, so master then has exactly the tree it was built on; otherwise it is thrown
+// away and its PRs are prepared again on the new master. Admission, build and proof results of a discarded round are never
+// reported.
+export type NextRound<T, P> = {
+  /** Starts preparing the next round on `base` (batch K's top) from a snapshot of the queue; K's PRs are `earlier`. */
+  start: (base: string, queue: readonly Entry[], earlier: readonly Entry[], size: number) => void;
+  /** Waits for it and returns it (a Fatal in the builder throws Fatal here). */
+  collect: () => Prepared<T, P>;
+  /** Throws it away (stops the builder). */
+  cancel: () => void;
+};
+
+// A builder's round as JSON, and back. LandFailures keep their step, message and comment; anything malformed is an error.
+export const serializePrepared = <T, P>(p: Prepared<T, P>): string =>
+  JSON.stringify({
+    ...p,
+    results: p.results.map((r) => ('merged' in r ? r : { entry: r.entry, failure: { step: r.failure.step, message: r.failure.message, comment: r.failure.comment ?? null } })),
+    culprit: p.culprit && { index: p.culprit.index, failure: { step: p.culprit.failure.step, message: p.culprit.failure.message, comment: p.culprit.failure.comment ?? null } },
+  });
+const isEntry = (v: unknown): v is Entry => isObject(v) && typeof v.branch === 'string' && typeof v.pr === 'number' && typeof v.clean === 'string';
+const toFailure = (v: unknown): LandFailure => {
+  if (!isObject(v) || typeof v.step !== 'string' || typeof v.message !== 'string' || !(v.comment === null || typeof v.comment === 'string')) return fail(`a prepared failure is malformed: ${JSON.stringify(v)?.slice(0, 200)}`);
+  return new LandFailure(v.step, v.message, v.comment ?? undefined);
+};
+export const parsePrepared = <T, P extends { head: string }>(text: string): Prepared<T, P> | { fatal: string } => {
+  const v: unknown = JSON.parse(text);
+  if (isObject(v) && typeof v.fatal === 'string') return { fatal: v.fatal };
+  if (!isObject(v) || typeof v.base !== 'string' || !Array.isArray(v.consumed) || !v.consumed.every(isEntry) || !Array.isArray(v.results) || !Array.isArray(v.built) || !Array.isArray(v.proven)) {
+    return fail(`a prepared round is malformed: ${text.slice(0, 200)}`);
+  }
+  const results: RoundResult[] = v.results.map((r: unknown) => {
+    if (!isObject(r) || !isEntry(r.entry)) return fail(`a prepared result is malformed: ${JSON.stringify(r)?.slice(0, 200)}`);
+    return typeof r.merged === 'string' ? { entry: r.entry, merged: r.merged } : { entry: r.entry, failure: toFailure(r.failure) };
+  });
+  const built = v.built.map((b: unknown) => {
+    if (!isObject(b) || !isEntry(b.entry) || !isObject(b.ticket) || !isObject(b.position) || typeof b.position.head !== 'string') return fail(`a prepared position is malformed: ${JSON.stringify(b)?.slice(0, 200)}`);
+    return b as { entry: Entry; ticket: T; position: P };
+  });
+  const n = built.length;
+  if (typeof v.good !== 'number' || !Number.isInteger(v.good) || v.good < 0 || v.good > n) return fail(`a prepared round has good ${JSON.stringify(v.good)} of ${n}`);
+  if (!v.proven.every((k: unknown) => typeof k === 'number' && Number.isInteger(k) && k >= 1 && k <= n)) return fail('a prepared round has a proven position out of range');
+  let culprit: Prepared<T, P>['culprit'] = null;
+  if (v.culprit !== null) {
+    if (!isObject(v.culprit) || v.culprit.index !== v.good) return fail(`a prepared round's culprit is not position ${v.good + 1}`);
+    culprit = { index: v.good, failure: toFailure(v.culprit.failure) };
+  } else if (v.good !== n) return fail(`a prepared round proves ${v.good} of ${n} positions without a culprit`);
+  return { base: v.base, consumed: v.consumed, results, built, good: v.good, proven: v.proven as number[], culprit };
+};
+
+export const runBatches = <T, P extends { head: string }>(
+  entries: readonly Entry[],
+  size: number,
+  ops: BatchOps<T, P> & { next?: NextRound<T, P> },
+): { outcomes: Outcome[]; fatal: string | null; exit: 0 | 1; stopped: Entry[] } => {
+  if (!Number.isInteger(size) || size < 1) return fail(`batch size ${size}`);
+  const queue = [...entries];
+  const outcomes: Outcome[] = [];
+  let fatal: string | null = null;
+  const done = (o: Outcome): void => {
+    outcomes.push(o);
+    ops.onOutcome(outcomes);
+  };
+  const failed = (e: Entry, error: unknown): void => {
+    if (error instanceof Fatal) throw error;
+    const f = asFailure(error);
+    outcomes.push({ entry: e, result: 'failed', step: f.step, detail: f.message });
+    ops.onFail(e, f);
+    ops.onOutcome(outcomes);
+  };
+  const report = (r: RoundResult): void => ('merged' in r ? done({ entry: r.entry, result: 'merged before', detail: r.merged }) : failed(r.entry, r.failure));
+  // A stop request is read once (reading it consumes STOP_FILE) and then holds for the rest of the run.
+  let stopAsked = false;
+  const stopping = (): boolean => (stopAsked ||= ops.stopRequested?.() === true);
+  let at: Entry | null = null;
+  // The next round, being prepared on the current batch's top; usable once the whole batch has landed.
+  let pending = false;
+  let usable = false;
+  const cancel = (): void => {
+    if (!pending) return;
+    pending = false;
+    ops.next!.cancel();
+  };
+  try {
+    while (queue.length > 0) {
+      // A graceful stop: the batch before has landed what it could; nothing new starts.
+      if (stopping()) {
+        if (pending) ops.log('stop requested: the next batch being prepared is discarded');
+        cancel();
+        ops.log(`stop requested: not starting ${prs(queue)}`);
+        break;
+      }
+      let round: Prepared<T, P>;
+      if (pending && usable) {
+        pending = false;
+        round = ops.next!.collect();
+        // The builder consumed the front of the queue snapshot; nothing else has touched the queue since.
+        for (const [i, e] of round.consumed.entries()) {
+          if (queue[i]?.pr !== e.pr) throw new Fatal(`the prepared batch consumed #${e.pr}, which is not at the front of the queue`);
+        }
+        queue.splice(0, round.consumed.length);
+        ops.log(`batch: using the batch prepared on the previous top ${round.base}`);
+        if (round.built.length > 0) {
+          at = round.built[0]!.entry;
+          try {
+            ops.verify(round.built);
+          } catch (error) {
+            throw error instanceof Fatal ? error : new Fatal(`the prepared batch is not the chain of positions it claims: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+      } else {
+        if (pending) ops.log('batch: the batch prepared on the previous top is discarded; master did not reach that top');
+        cancel();
+        round = prepareRound(queue, size, ops.base, ops, { at: (e) => (at = e), report });
+      }
+      for (const r of round.results) {
+        at = r.entry;
+        report(r);
+      }
+      const { built, good, culprit } = round;
+      if (built.length === 0) continue;
+      const proven = new Set(round.proven);
+
+      // The whole batch is proven and the queue has more: start preparing the next batch on this top while this one publishes.
+      if (ops.next !== undefined && good === built.length && queue.length > 0 && !stopping()) {
+        ops.next.start(built.at(-1)!.position.head, [...queue], built.map((b) => b.entry), size);
+        pending = true;
+        usable = false;
+      }
+
+      // Publish the proven prefix in order. A failure stops the batch there; the PRs after it go back to the queue.
+      let published = 0;
+      for (; published < good; published++) {
+        const b = built[published]!;
+        at = b.entry;
+        try {
+          done({ entry: b.entry, result: 'landed', detail: ops.publish(b.entry, b.position, b.ticket) });
+        } catch (error) {
+          // The next batch stood on this batch's top, which will not land: stop its builder now, before anything else runs,
+          // so its proofs never compete with the resting-tree proof below.
+          if (pending) ops.log('batch: a publish failed; the batch being prepared on its top is thrown away');
+          cancel();
+          failed(b.entry, error);
+          break;
+        }
+      }
+      // Publishing stopped part-way: master rests on the last landed position, which must pass the full test itself.
+      if (published < good && published > 0 && !proven.has(published)) {
+        const last = built[published - 1]!;
+        at = last.entry;
+        ops.log(`batch: publishing stopped after #${last.entry.pr}; proving master's new tree (its position ${last.position.head})`);
+        const v = proofVerdict(`master's new tree (#${last.entry.pr}'s position)`, () => ops.prove(last.position, last.entry));
+        if (v !== true) {
+          const red = new LandFailure('master-red', `master now rests on #${last.entry.pr}'s position ${last.position.head}, which was not the batch's proven top, and it fails pnpm test. The driver stopped.\n${v.message}`);
+          ops.onFail(last.entry, red);
+          throw new Fatal(red.message);
+        }
+      }
+      let requeue: Entry[];
+      if (published < good) requeue = built.slice(published + 1).map((b) => b.entry); // the culprit's verdict assumed this prefix lands
+      else {
+        if (culprit !== null) failed(built[culprit.index]!.entry, culprit.failure);
+        requeue = built.slice(good + 1).map((b) => b.entry);
+      }
+      if (requeue.length > 0) ops.log(`batch: ${prs(requeue)} go back to the front of the queue, to be built on the new master`);
+      queue.unshift(...requeue);
+      // The prepared next batch stands on this top: usable only when every PR of this batch landed.
+      usable = published === built.length;
+    }
+  } catch (error) {
+    if (!(error instanceof Fatal)) throw error;
+    fatal = error.message;
+    if (at !== null) outcomes.push({ entry: at, result: 'failed', step: 'fatal', detail: fatal });
+    ops.onOutcome(outcomes);
+  } finally {
+    cancel();
+  }
+  const stopped = fatal === null ? queue : [];
+  return { outcomes, fatal, exit: fatal === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1, stopped };
+};
+
+export const statusText = (o: {
+  queue: string;
+  startedAt: string;
+  now: string;
+  running: Entry | null;
+  outcomes: readonly Outcome[];
+  fatal: string | null;
+  total: number;
+  done: boolean;
+  stopped?: readonly Entry[];
+}): string => {
+  const asked = o.done && !o.fatal && (o.stopped?.length ?? 0) > 0;
+  const lines = [`land ${o.done ? (o.fatal ? 'STOPPED' : asked ? 'STOPPED ON REQUEST' : 'DONE') : 'RUNNING'} ${o.now} (started ${o.startedAt}) queue ${o.queue}: ${o.outcomes.length} of ${o.total} handled`];
   if (o.fatal) lines.push(`fatal: ${o.fatal}`);
   if (o.running) lines.push(`landing now: #${o.running.pr} ${o.running.branch}`);
   for (const r of o.outcomes) {
@@ -461,6 +969,357 @@ export const statusText = (o: { queue: string; startedAt: string; now: string; r
     lines.push(r.result === 'failed' ? `  FAILED ${id} at ${r.step}: ${r.detail}` : `  ${r.result === 'landed' ? 'landed' : 'merged before'} ${id}: ${r.detail}`);
   }
   const failed = o.outcomes.filter((r) => r.result === 'failed').length;
-  if (o.done) lines.push(failed === 0 && !o.fatal ? 'every PR landed' : `${failed} PR(s) failed; each has the landing-failed label and a comment naming the step`);
+  if (asked) lines.push(`stop requested: not started ${o.stopped!.map((e) => `#${e.pr}`).join(' ')} (no PR failed for it)`);
+  if (o.done) lines.push(failed === 0 && !o.fatal ? (asked ? 'every PR handled landed' : 'every PR landed') : `${failed} PR(s) failed; each has the landing-failed label and a comment naming the step`);
   return `${lines.join('\n')}\n`;
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Stopping. A synchronous driver cannot run a signal handler while a step runs (spawnSync), so `pnpm land` is a supervisor:
+// it holds the lock (recording its own pid and the driver's) and runs the driver in its own process group with the default
+// action for SIGINT, SIGTERM and SIGHUP. An interrupt to the supervisor kills that whole group (driver and running step), so no
+// step fails into a PR failure; while the driver is inside a merge (from just before gh pr merge to the post-merge tree check
+// and branch cleanup, PUBLISH_MARK) the interrupt waits for it to finish, up to a cap. SIGUSR1 to the supervisor (or touching STOP_FILE) asks for a graceful
+// stop: the driver finishes the batch it is on and starts no other. Whenever the driver dies abnormally the supervisor cleans
+// up after it: its quiet request and priority, the driver worktree, and the status. Devices belong to the device lease's own
+// run and are never touched here.
+
+export const STOP_FILE = '/tmp/dragon-land.stop';
+export const SUPERVISED_ENV = 'LAND_SUPERVISED';
+export const SUPERVISOR_PID_ENV = 'LAND_SUPERVISOR_PID';
+// Files the driver writes in the run directory for its supervisor.
+export const PUBLISH_MARK = 'publish.json'; // { pr, head, merged: <merge sha> | null } while inside a merge
+export const MERGES_LOG = 'merges.log'; // "<pr> <merge sha> <position head>" per merge, appended right after it
+
+const isPid = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v > 1;
+
+export type PublishMark = { pr: number; head: string; merged: string | null };
+export const parsePublishMark = (text: string | null): PublishMark | null => {
+  if (text === null) return null;
+  let v: unknown;
+  try {
+    v = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!isObject(v) || typeof v.pr !== 'number' || typeof v.head !== 'string' || !(v.merged === null || typeof v.merged === 'string')) return null;
+  return { pr: v.pr, head: v.head, merged: v.merged };
+};
+// The record of a merged position no full test has passed: { pr, head }. Unreadable is treated as present (proved again).
+export const parseUnproved = (text: string | null): { pr: number; head: string } | null => {
+  if (text === null) return null;
+  try {
+    const v: unknown = JSON.parse(text);
+    if (isObject(v) && typeof v.pr === 'number' && typeof v.head === 'string' && /^[0-9a-f]{40}$/.test(v.head)) return { pr: v.pr, head: v.head };
+  } catch {}
+  return { pr: 0, head: `unreadable ${JSON.stringify(text.slice(0, 80))}` };
+};
+export type Merge = { pr: number; merge: string; head: string };
+export const parseMerges = (text: string | null): Merge[] =>
+  (text ?? '').split('\n').flatMap((l) => {
+    const m = /^([1-9]\d*) ([0-9a-f]{40}) ([0-9a-f]{40})$/.exec(l.trim());
+    return m ? [{ pr: Number(m[1]), merge: m[2]!, head: m[3]! }] : [];
+  });
+
+// The status after the driver died mid-run: it names what merged in this run, and never calls a merged PR "not failed".
+export const interruptedStatus = (o: { previous: string; how: string; now: string; publishing: PublishMark | null; merges: readonly Merge[]; unproved: { pr: number; head: string } | null }): string => {
+  const lines = o.previous.trimEnd().split('\n').filter((l) => l !== '');
+  const first = lines[0]?.startsWith('land ') ? lines.shift()! : null;
+  const running = lines.find((l) => l.startsWith('landing now: '));
+  const rest = lines.filter((l) => !l.startsWith('landing now: '));
+  const out = [`land INTERRUPTED ${o.now} by ${o.how}${first ? ` (was: ${first})` : ''}`];
+  const merged = new Map(o.merges.map((m) => [m.pr, m]));
+  if (o.publishing !== null) {
+    const m = o.publishing.merged ?? merged.get(o.publishing.pr)?.merge ?? null;
+    out.push(m !== null ? `#${o.publishing.pr} MERGED as ${m} when interrupted; its post-merge tree check and branch cleanup did not run` : `interrupted while merging #${o.publishing.pr} (position ${o.publishing.head}); check whether it merged`);
+  } else out.push(running ? `interrupted while ${running.slice('landing now: '.length)} was landing; it was not failed, and its step's work is discarded` : 'interrupted between PRs');
+  if (o.merges.length > 0) out.push(`merged in this run: ${o.merges.map((m) => `#${m.pr} (${m.merge.slice(0, 12)})`).join(', ')}`);
+  if (o.unproved !== null) out.push(`master rests on #${o.unproved.pr}'s position ${o.unproved.head}, which no full test has proved; the next run proves it before anything else`);
+  return `${[...out, ...rest].join('\n')}\n`;
+};
+
+// The lock records the supervisor and the driver, each as a pid and its start time (`ps -o lstart=`), so a reused pid is never
+// taken for them. It is held while either lives; a live driver whose supervisor is gone is an orphan the next run kills.
+export type LockProc = { pid: number; start: string };
+export type LockState = 'free' | 'held' | 'orphan';
+// A recorded process with no start time (a run that died between writing the pid and the start) counts as live while its pid is:
+// it holds the lock and is never killed.
+export const lockState = (supervisor: LockProc | null, driver: LockProc | null, startOf: (pid: number) => string | null): LockState => {
+  const live = (p: LockProc | null): 'same' | 'unknown' | 'gone' => {
+    if (p === null) return 'gone';
+    const now = startOf(p.pid);
+    if (now === null) return 'gone';
+    return p.start === '' ? 'unknown' : now === p.start ? 'same' : 'gone';
+  };
+  const [sup, drv] = [live(supervisor), live(driver)];
+  if (sup !== 'gone' || drv === 'unknown') return 'held';
+  return drv === 'same' ? 'orphan' : 'free';
+};
+// `ps -o lstart= -p <pid>`: the start time, or null when no such process.
+export const parseLstart = (out: string): string | null => {
+  const t = out.trim();
+  return t === '' || t.includes('\n') ? null : t;
+};
+export const parsePidFile = (text: string | null): number | null => {
+  const t = (text ?? '').trim();
+  return /^[1-9]\d*$/.test(t) && isPid(Number(t)) ? Number(t) : null;
+};
+
+// Everything the supervisor does after the driver died abnormally; each part runs even when another fails.
+export const cleanUpAfterDriver = (o: {
+  how: string;
+  now: string;
+  read: (runFile: string) => string | null;
+  unproved: () => { pr: number; head: string } | null;
+  release: () => void;
+  reset: () => void;
+  status: { read: () => string; write: (text: string) => void };
+  log: (line: string) => void;
+}): string[] => {
+  const problems: string[] = [];
+  const step = (what: string, fn: () => void): void => {
+    try {
+      fn();
+    } catch (error) {
+      problems.push(`${what}: ${errorText(error).split('\n')[0]}`);
+    }
+  };
+  step('releasing the quiet request and priority', o.release);
+  step('resetting the driver worktree', o.reset);
+  step('writing the status', () =>
+    o.status.write(interruptedStatus({ previous: o.status.read(), how: o.how, now: o.now, publishing: parsePublishMark(o.read(PUBLISH_MARK)), merges: parseMerges(o.read(MERGES_LOG)), unproved: o.unproved() })),
+  );
+  for (const p of problems) o.log(`WARNING after the driver died: ${p}`);
+  return problems;
+};
+
+// A run that starts with master on a merged position no full test has passed (an interrupted run) proves master first. The
+// result is logged loudly and never blocks the queue: a batch whose top passes still lands (that is how a fix lands).
+// Returns whether master passed; the record is cleared only by a passing proof that contains it (clearsUnproved).
+export const proveRestingMaster = (unproved: { pr: number; head: string } | null, prove: () => void, clear: () => void, log: (line: string) => void): boolean | null => {
+  if (unproved === null) return null;
+  log(`master rests on #${unproved.pr}'s position ${unproved.head}, merged by an interrupted run without a full test; proving master first`);
+  let v: true | LandFailure;
+  try {
+    v = proofVerdict(`master (left on #${unproved.pr}'s position by an interrupted run)`, prove);
+  } catch (error) {
+    log(`!!! could not prove master: ${error instanceof Error ? error.message : String(error)}; carrying on, the next passing proof that contains it clears the record`);
+    return false;
+  }
+  if (v === true) {
+    clear();
+    log('master passes pnpm test');
+    return true;
+  }
+  log(`!!! MASTER IS RED: it rests on #${unproved.pr}'s position ${unproved.head} and fails pnpm test; carrying on, so a batch whose top passes can land the fix:\n${v.message}`);
+  return false;
+};
+// The record is cleared only once master is on a proven tree: a passing proof of a commit with master's current tree (outside
+// docs/goals/**), whether master got there by a publish or was proved where it rests. A proof of any other tree leaves it.
+export const clearsUnproved = (unproved: { head: string } | null, proved: string, isMastersTree: (commit: string) => boolean): boolean =>
+  unproved !== null && isMastersTree(proved);
+
+export type Supervised = { code: number; interrupted: NodeJS.Signals | null; signal: NodeJS.Signals | null; pid: number };
+export const supervise = (o: {
+  command: string;
+  args: readonly string[];
+  env: NodeJS.ProcessEnv;
+  /** SIGTERM to SIGKILL, for the whole process group (device runs tear down in it). */
+  graceMs: number;
+  /** How long an interrupt waits for a merge in progress (PUBLISH_MARK) before killing it anyway. */
+  deferCapMs: number;
+  /** Whether the driver is inside a merge now. */
+  publishing: () => boolean;
+  onSpawn: (pid: number) => void;
+  /** Called once the supervisor handles signals for the spawned driver (a signal before that was buffered, not lost). */
+  onReady?: (pid: number) => void;
+  onStop: () => void;
+  log: (line: string) => void;
+  pollMs?: number;
+}): Promise<Supervised> =>
+  new Promise((resolve, reject) => {
+    // Signals are taken over before the spawn: one that arrives before the driver's pid is known is buffered, then acted on.
+    const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
+    const early: NodeJS.Signals[] = [];
+    const buffer = (sig: NodeJS.Signals): number => early.push(sig);
+    for (const s of [...signals, 'SIGUSR1'] as const) process.on(s, buffer);
+    const unbuffer = (): void => {
+      for (const s of [...signals, 'SIGUSR1'] as const) process.off(s, buffer);
+    };
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn(o.command, [...o.args], { detached: true, stdio: 'inherit', env: { ...o.env, [SUPERVISED_ENV]: '1', [SUPERVISOR_PID_ENV]: String(process.pid) } });
+    } catch (error) {
+      unbuffer();
+      return reject(error);
+    }
+    const pid = child.pid;
+    if (pid === undefined) {
+      unbuffer();
+      child.once('error', reject);
+      return;
+    }
+    try {
+      o.onSpawn(pid);
+    } catch (error) {
+      o.log(`recording the driver (pid ${pid}) failed: ${errorText(error).split('\n')[0]}; killing it`);
+      try {
+        process.kill(-pid, 'SIGKILL');
+      } catch {}
+      unbuffer();
+      return reject(error);
+    }
+    const poll = o.pollMs ?? 250;
+    let interrupted: NodeJS.Signals | null = null;
+    let exited: { code: number | null; signal: NodeJS.Signals | null } | null = null;
+    let killing = false;
+    const timers: NodeJS.Timeout[] = [];
+    const group = (sig: NodeJS.Signals | 0): boolean => {
+      try {
+        process.kill(-pid, sig);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    // SIGTERM to the group, then SIGKILL once the grace period is over; done when no process of the group is left.
+    const kill = (): void => {
+      if (killing) return;
+      killing = true;
+      group('SIGTERM');
+      const t0 = Date.now();
+      const tick = setInterval(() => {
+        if (!group(0)) {
+          clearInterval(tick);
+          finish();
+        } else if (Date.now() - t0 >= o.graceMs) group('SIGKILL');
+      }, poll);
+      timers.push(tick);
+    };
+    const onSignal = (sig: NodeJS.Signals): void => {
+      if (interrupted !== null) {
+        o.log(`${sig} again: killing the driver group now`);
+        group('SIGKILL');
+        killing = false;
+        return kill();
+      }
+      interrupted = sig;
+      if (!o.publishing()) {
+        o.log(`${sig}: interrupting the driver (pid ${pid}) and its running step`);
+        return kill();
+      }
+      o.log(`${sig}: the driver is merging a PR; interrupting once that merge and its checks end (at most ${Math.round(o.deferCapMs / 1000)}s; send ${sig} again to kill it now)`);
+      const t0 = Date.now();
+      const wait = setInterval(() => {
+        if (exited !== null || killing) return clearInterval(wait);
+        if (!o.publishing()) {
+          clearInterval(wait);
+          o.log('the merge ended; interrupting the driver');
+          kill();
+        } else if (Date.now() - t0 >= o.deferCapMs) {
+          clearInterval(wait);
+          o.log(`!!! the merge did not end within ${Math.round(o.deferCapMs / 1000)}s; killing the driver INSIDE a merge: master and the PR may be half-landed, see the status`);
+          kill();
+        }
+      }, poll);
+      timers.push(wait);
+    };
+    const onUsr1 = (): void => {
+      o.log('SIGUSR1: graceful stop requested; the driver finishes its batch and starts no other');
+      o.onStop();
+    };
+    for (const s of signals) process.on(s, onSignal);
+    process.on('SIGUSR1', onUsr1);
+    unbuffer();
+    o.onReady?.(pid);
+    for (const sig of early) (sig === 'SIGUSR1' ? onUsr1 : onSignal)(sig);
+    let done = false;
+    const finish = (): void => {
+      if (done || exited === null) return;
+      done = true;
+      for (const s of signals) process.off(s, onSignal);
+      process.off('SIGUSR1', onUsr1);
+      for (const t of timers) clearInterval(t);
+      // An interrupt that never had to kill (the driver ended on its own while it waited for a publish) is no interrupt.
+      const killed = killing ? interrupted : null;
+      resolve({ code: killed !== null ? 130 : (exited.code ?? 128), interrupted: killed, signal: killed !== null ? null : exited.signal, pid });
+    };
+    child.once('exit', (code, signal) => {
+      exited = { code, signal };
+      // After an interrupt or a death by signal, whatever of the group outlived the driver gets its grace period, then SIGKILL.
+      if (killing || signal !== null) {
+        if (!group(0)) return finish();
+        if (!killing) kill();
+        return;
+      }
+      finish();
+    });
+  });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The builder's watchdog (scripts/land-watchdog.ts): a detached process in its own session that stops the builder's process
+// group once the driver is gone, however it died (kill -9 of supervisor and driver included), so no builder finishes a long
+// step holding the heavy priority, a quiet request or the device lease. It ends by itself once the builder's group is gone.
+
+export type Liveness = 'alive' | 'gone' | 'unknown';
+// The builder from its leader and its group. A leader that exited (gone or a zombie) leaves the group id reserved while any
+// member lives, so live members are still the builder's and still watched; a leader pid that is another process now means
+// the group was empty and its id freed, so the builder ended.
+export type Leader = 'alive' | 'exited' | 'reused' | 'unknown';
+export const builderLiveness = (leader: Leader, groupLeft: () => boolean | null): Liveness => {
+  if (leader === 'alive' || leader === 'unknown') return leader;
+  if (leader === 'reused') return 'gone';
+  const left = groupLeft();
+  return left === null ? 'unknown' : left ? 'alive' : 'gone';
+};
+export type WatchdogOps = {
+  /** The driver: alive (the recorded process), gone (no such pid, or another start time), or unknown (ps or kill failed). */
+  driver: () => Liveness;
+  /** The builder's leader, judged the same way: gone means the builder ended (or its pid is another process now). */
+  builder: () => Liveness;
+  /** Whether any live process is left in the builder's group, or null when that could not be read. */
+  groupLeft: () => boolean | null;
+  signal: (sig: 'SIGTERM' | 'SIGKILL') => void;
+  /** Releases what the builder held (quiet request, priority), each only if it names the builder. */
+  release: () => void;
+  sleep: (ms: number) => void;
+  log: (line: string) => void;
+  pollMs?: number;
+  graceMs?: number;
+};
+// Only a definite answer acts: an unknown liveness (a failed ps or kill under load) is asked again, never taken as a death.
+export const runWatchdog = (o: WatchdogOps): 'builder ended' | 'stopped the builder' => {
+  const poll = o.pollMs ?? 1000;
+  for (;;) {
+    const b = o.builder();
+    if (b === 'gone') return 'builder ended';
+    const d = b === 'alive' ? o.driver() : 'unknown';
+    if (d === 'gone') break;
+    if (d === 'unknown' || b === 'unknown') o.log(`could not tell whether the ${b === 'unknown' ? 'builder' : 'driver'} lives; asking again`);
+    o.sleep(poll);
+  }
+  o.log('the driver is gone; stopping the builder\'s process group');
+  o.signal('SIGTERM');
+  for (let waited = 0; waited < (o.graceMs ?? 30_000) && o.groupLeft() !== false; waited += poll) o.sleep(poll);
+  if (o.groupLeft() !== false) o.signal('SIGKILL');
+  o.release();
+  return 'stopped the builder';
+};
+
+// LAND_WORKTREE_NEXT is removed and re-added by the builder's repair, so it may not be, contain or sit inside a protected
+// worktree (the main checkout, the driver's worktree, any other listed worktree; the caller leaves the candidate's own
+// listing out). Paths are compared after resolving.
+export const unsafeWorktree = (path: string, protectedPaths: readonly string[], resolve: (p: string) => string): string | null => {
+  const norm = (p: string): string => resolve(p).replace(/\/+$/, '');
+  const me = norm(path);
+  if (me === '' || me === '/') return `${path} is the filesystem root`;
+  const under = (a: string, b: string): boolean => a === b || a.startsWith(`${b}/`);
+  for (const raw of protectedPaths) {
+    const p = norm(raw);
+    if (p === '') continue;
+    if (p === me) return `${path} is the worktree ${raw}`;
+    if (under(p, me)) return `${path} contains the worktree ${raw}`;
+    if (under(me, p)) return `${path} is inside the worktree ${raw}`;
+  }
+  return null;
 };

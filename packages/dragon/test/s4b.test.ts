@@ -57,7 +57,7 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
     // Two values of each paint longhand: two colours, or for the PNT2 longhands two transforms, origins and will-change features.
-    const pair: { readonly [p: string]: readonly [string, string] } = { transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'] };
+    const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'] };
     for (const p of paint) {
       const [va, vb] = pair[p] ?? ['#102030', 'rgba(200, 100, 50, 0.5)'];
       const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: relative; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
@@ -74,6 +74,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       if (f.includes(`${join('src', 'fonts')}${sep}`)) continue;
       // The forms port Blink's Decimal and geometry math (LayoutUnit truncation), so src/forms/** is exempt by path.
       if (f.includes(`${join('src', 'forms')}${sep}`)) continue;
+      // MQ-R0: media/viewport.ts reproduces Chrome's measured media size (float32 size, device px, int orientation and aspect-ratio read); only that file.
+      if (f.endsWith(join('src', 'media', 'viewport.ts'))) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });

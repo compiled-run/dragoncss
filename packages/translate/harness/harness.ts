@@ -107,6 +107,8 @@ import type { ScriptStep, TransitionListing, TransitionState } from '../../layou
 import { runTransitionScript } from '../../layout/src/rt-transition.ts';
 import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
+import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
+import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors } from '../../layout/src/rt-animator.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
@@ -1259,6 +1261,9 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
     // hit suite (SELD-R1b, T047 RT-9): the hit table, derived grid and answers of a layout vector's input.
     case 'rt-hit':
       return rtHitResult(a);
+    // animator suite (ANIM-b1 3b, T065 R16): the runtime animator over a frame case's tables and script.
+    case 'rt-animator':
+      return rtAnimatorResult(a);
     default:
       return fail(`unknown operation ${op}`);
   }
@@ -1687,4 +1692,176 @@ function rtHitResult(a: readonly JsonValue[]): string {
   const t = hitTableOf(input, m.measurer, facts, HIT_TABLE_CLEAN);
   const zoom = input.devicePixelRatio * 64;
   return q(hitRuns(t, hitGrid(t, input.viewport.width * zoom, input.viewport.height * zoom), HIT_CLEAN));
+}
+
+// ---------------------------------------------------------------- animator suite (ANIM-b1 3b, T065 R16)
+
+/** The animator runs with no planted fault: the runtime plants are proven against Chrome in packages/parity anim-frames. */
+const AN_NO_FAULTS: AnimatorFaults = { transitionOnFirstStyle: false, displayNoneKeepsTransition: false, inheritedNotPropagated: false, neutralKeyframeStale: false };
+
+function anEasingKind(v: JsonValue, path: string): EasingKind {
+  const k = lit(v, ['linear', 'cubic-bezier', 'steps'], path);
+  if (k === 'cubic-bezier') return 'cubic-bezier';
+  if (k === 'steps') return 'steps';
+  return 'linear';
+}
+
+function anEasing(v: JsonValue, path: string): EasingCode {
+  const o = obj(v, ['kind', 'x1', 'y1', 'x2', 'y2', 'steps', 'position'], path);
+  return { kind: anEasingKind(field(o, 'kind', path), `${path}.kind`), x1: numField(o, 'x1', path), y1: numField(o, 'y1', path), x2: numField(o, 'x2', path), y2: numField(o, 'y2', path), steps: numField(o, 'steps', path), position: rtStepPosition(field(o, 'position', path), `${path}.position`) };
+}
+
+function anValueKind(v: JsonValue, path: string): ValueKind {
+  const k = lit(v, ['color', 'length', 'none'], path);
+  if (k === 'color') return 'color';
+  if (k === 'length') return 'length';
+  return 'none';
+}
+
+function anValue(v: JsonValue, path: string): ValueCode {
+  const o = obj(v, ['kind', 'r', 'g', 'b', 'alpha', 'px', 'percent', 'calc'], path);
+  return { kind: anValueKind(field(o, 'kind', path), `${path}.kind`), r: numField(o, 'r', path), g: numField(o, 'g', path), b: numField(o, 'b', path), alpha: numField(o, 'alpha', path), px: numField(o, 'px', path), percent: numField(o, 'percent', path), calc: bool(field(o, 'calc', path), `${path}.calc`) };
+}
+
+function anMode(v: JsonValue, path: string): ListingMode {
+  const k = lit(v, ['listed', 'unlisted', 'initial'], path);
+  if (k === 'listed') return 'listed';
+  if (k === 'unlisted') return 'unlisted';
+  return 'initial';
+}
+
+function anTrackKind(v: JsonValue, path: string): TrackKind {
+  return lit(v, ['length', 'color'], path) === 'length' ? 'length' : 'color';
+}
+
+function anRange(v: JsonValue, path: string): ValueRange {
+  return lit(v, ['all', 'non-negative'], path) === 'all' ? 'all' : 'non-negative';
+}
+
+function anListing(v: JsonValue, path: string): ListingCode {
+  const o = obj(v, ['present', 'mode', 'delay', 'duration', 'easing'], path);
+  return { present: bool(field(o, 'present', path), `${path}.present`), mode: anMode(field(o, 'mode', path), `${path}.mode`), delay: numField(o, 'delay', path), duration: numField(o, 'duration', path), easing: anEasing(field(o, 'easing', path), `${path}.easing`) };
+}
+
+function anSlot(v: JsonValue, path: string): SlotTable {
+  const o = obj(v, ['node', 'property', 'kind', 'range', 'values', 'listings'], path);
+  return {
+    node: str(field(o, 'node', path), `${path}.node`),
+    property: str(field(o, 'property', path), `${path}.property`),
+    kind: anTrackKind(field(o, 'kind', path), `${path}.kind`),
+    range: anRange(field(o, 'range', path), `${path}.range`),
+    values: arr(field(o, 'values', path), `${path}.values`).map((x, i): ValueCode => anValue(x, `${path}.values[${i}]`)),
+    listings: arr(field(o, 'listings', path), `${path}.listings`).map((x, i): ListingCode => anListing(x, `${path}.listings[${i}]`)),
+  };
+}
+
+function anEntry(v: JsonValue, path: string): EntryCode {
+  const o = obj(v, ['name', 'hasKeyframes', 'paused', 'delay', 'duration', 'iterations', 'direction', 'fill', 'easing'], path);
+  const iterations = field(o, 'iterations', path);
+  return {
+    name: str(field(o, 'name', path), `${path}.name`),
+    hasKeyframes: bool(field(o, 'hasKeyframes', path), `${path}.hasKeyframes`),
+    paused: bool(field(o, 'paused', path), `${path}.paused`),
+    delay: numField(o, 'delay', path),
+    duration: numField(o, 'duration', path),
+    // JSON has no infinity: an infinite iteration count is the string "infinite".
+    iterations: iterations.kind === 'str' ? (lit(iterations, ['infinite'], `${path}.iterations`) === 'infinite' ? 1 / 0 : 0) : num(iterations, `${path}.iterations`),
+    direction: rtDirection(field(o, 'direction', path), `${path}.direction`),
+    fill: rtFill(field(o, 'fill', path), `${path}.fill`),
+    easing: anEasing(field(o, 'easing', path), `${path}.easing`),
+  };
+}
+
+function anAnimation(v: JsonValue, path: string): AnimationTable {
+  const o = obj(v, ['node', 'lists'], path);
+  return { node: str(field(o, 'node', path), `${path}.node`), lists: arr(field(o, 'lists', path), `${path}.lists`).map((l, i): EntryCode[] => arr(l, `${path}.lists[${i}]`).map((e, j): EntryCode => anEntry(e, `${path}.lists[${i}][${j}]`))) };
+}
+
+function anKeyframeValue(v: JsonValue, path: string): KeyframeValue {
+  const o = obj(v, ['property', 'value'], path);
+  return { property: str(field(o, 'property', path), `${path}.property`), value: anValue(field(o, 'value', path), `${path}.value`) };
+}
+
+function anBlock(v: JsonValue, path: string): KeyframeBlock {
+  const o = obj(v, ['offsets', 'hasEasing', 'easing', 'values'], path);
+  return {
+    offsets: arr(field(o, 'offsets', path), `${path}.offsets`).map((x, i): number => num(x, `${path}.offsets[${i}]`)),
+    hasEasing: bool(field(o, 'hasEasing', path), `${path}.hasEasing`),
+    easing: anEasing(field(o, 'easing', path), `${path}.easing`),
+    values: arr(field(o, 'values', path), `${path}.values`).map((x, i): KeyframeValue => anKeyframeValue(x, `${path}.values[${i}]`)),
+  };
+}
+
+function anKeyframes(v: JsonValue, path: string): KeyframesTable {
+  const o = obj(v, ['name', 'blocks'], path);
+  return { name: str(field(o, 'name', path), `${path}.name`), blocks: arr(field(o, 'blocks', path), `${path}.blocks`).map((x, i): KeyframeBlock => anBlock(x, `${path}.blocks[${i}]`)) };
+}
+
+function anRendered(v: JsonValue, path: string): RenderedTable {
+  const o = obj(v, ['node', 'values'], path);
+  return { node: str(field(o, 'node', path), `${path}.node`), values: arr(field(o, 'values', path), `${path}.values`).map((x, i): boolean => bool(x, `${path}.values[${i}]`)) };
+}
+
+function anBase(v: JsonValue, path: string): BaseTable {
+  const o = obj(v, ['node', 'property', 'kind', 'range', 'values'], path);
+  return {
+    node: str(field(o, 'node', path), `${path}.node`),
+    property: str(field(o, 'property', path), `${path}.property`),
+    kind: anTrackKind(field(o, 'kind', path), `${path}.kind`),
+    range: anRange(field(o, 'range', path), `${path}.range`),
+    values: arr(field(o, 'values', path), `${path}.values`).map((x, i): ValueCode => anValue(x, `${path}.values[${i}]`)),
+  };
+}
+
+function anRef(v: JsonValue, path: string): TrackRef {
+  const o = obj(v, ['node', 'property'], path);
+  return { node: str(field(o, 'node', path), `${path}.node`), property: str(field(o, 'property', path), `${path}.property`) };
+}
+
+function anClosure(v: JsonValue, path: string): ClosureTable {
+  const o = obj(v, ['source', 'writes'], path);
+  return { source: anRef(field(o, 'source', path), `${path}.source`), writes: arr(field(o, 'writes', path), `${path}.writes`).map((x, i): TrackRef => anRef(x, `${path}.writes[${i}]`)) };
+}
+
+function anTables(v: JsonValue, path: string): AnimTables {
+  const o = obj(v, ['assignments', 'slots', 'animations', 'keyframes', 'rendered', 'bases', 'closure'], path);
+  return {
+    assignments: numField(o, 'assignments', path),
+    slots: arr(field(o, 'slots', path), `${path}.slots`).map((x, i): SlotTable => anSlot(x, `${path}.slots[${i}]`)),
+    animations: arr(field(o, 'animations', path), `${path}.animations`).map((x, i): AnimationTable => anAnimation(x, `${path}.animations[${i}]`)),
+    keyframes: arr(field(o, 'keyframes', path), `${path}.keyframes`).map((x, i): KeyframesTable => anKeyframes(x, `${path}.keyframes[${i}]`)),
+    rendered: arr(field(o, 'rendered', path), `${path}.rendered`).map((x, i): RenderedTable => anRendered(x, `${path}.rendered[${i}]`)),
+    bases: arr(field(o, 'bases', path), `${path}.bases`).map((x, i): BaseTable => anBase(x, `${path}.bases[${i}]`)),
+    closure: arr(field(o, 'closure', path), `${path}.closure`).map((x, i): ClosureTable => anClosure(x, `${path}.closure[${i}]`)),
+  };
+}
+
+/**
+ * An animator script: [op, tables, inputs, initial, steps]; inputs are every assignment's engine input resolved at DPR 1, steps
+ * ["event", assignment], ["advance", ms] or ["dump"]. Each dump gives the frame (node, property and the serialised value) and the
+ * colour writes with their closure as the device draws them.
+ */
+function rtAnimatorResult(a: readonly JsonValue[]): string {
+  if (a.length !== 5) return fail('rt-animator: expected [op, tables, inputs, initial, steps]');
+  const t = anTables(item(a, 1, '$'), '$[1]');
+  const inputs = arr(item(a, 2, '$'), '$[2]').map((x): LayoutInput => decodeInput(x));
+  const initial = num(item(a, 3, '$'), '$[3]');
+  let s: AnimatorState = animatorStart(t, inputs, initial, RT_NO_FAULTS, AN_NO_FAULTS);
+  let out = '';
+  arr(item(a, 4, '$'), '$[4]').forEach((step, i) => {
+    const path = `$[4][${i.toString(16)}]`;
+    const g = arr(step, path);
+    const op = str(item(g, 0, path), path);
+    if (op === 'event') s = animatorEvent(s, t, inputs, initial, num(item(g, 1, path), path), RT_NO_FAULTS, AN_NO_FAULTS);
+    else if (op === 'advance') s = animatorAdvance(s, t, inputs, initial, num(item(g, 1, path), path), RT_NO_FAULTS, AN_NO_FAULTS);
+    else if (op === 'dump') {
+      const frame = animatorFrame(s, t, RT_NO_FAULTS);
+      let values = '';
+      for (const e of frame) values += `${values === '' ? '' : ','}[${q(e.node)},${q(e.property)},${q(serializeValue(e.value, 0, 0, RT_TRIG))}]`;
+      let colors = '';
+      for (const c of frameColors(frame, t, AN_NO_FAULTS)) colors += `${colors === '' ? '' : ','}[${q(c.node)},${q(c.property)},${h(c.rgba.r)},${h(c.rgba.g)},${h(c.rgba.b)},${h(c.rgba.alpha)}]`;
+      out += `${out === '' ? '' : ','}[[${values}],[${colors}]]`;
+    } else fail(`${path}: unknown step ${op}`);
+  });
+  return `[${out}]`;
 }

@@ -1,12 +1,12 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compilePattern, matchSegments, parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
-import { checkTrace, commandOf, type Context, type Entry, fileStore, type Io, lanesVerdict, MANUAL, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree } from '../../../scripts/regen.ts';
-import { importClosure, lockClosure, parseLock, workspaceOf } from '../../../scripts/regen-inputs.ts';
+import { checkTrace, commandOf, type Context, type Entry, fileStore, type Io, lanesVerdict, MANUAL, matcher, MERGE_BY_HAND, parseEntry, pruneStore, regen, restoreBlobs, shared, snapshotTree, STEPS, type Step, stepInputs, type Store, type Tree, worktreeLock } from '../../../scripts/regen.ts';
+import { exportTargetsUnder, importClosure, lockClosure, NODE_IMPORT_CONDITIONS, parseLock, workspaceOf } from '../../../scripts/regen-inputs.ts';
 import { repoPath } from '../src/paths.ts';
 
 const matches = (glob: string, path: string): boolean => matchSegments(compilePattern(glob), path.split('/'));
@@ -39,6 +39,8 @@ class World {
   readonly blobs = new Map<string, string>();
   readonly store = memStore();
   ran: string[] = [];
+  /** Paths a running step has deleted and not yet rewritten: a snapshot that reads one fails, as `git add -A` does. */
+  readonly unstable = new Set<string>();
   live = 0;
   maxLive = 0;
   readonly impls: Record<string, Impl>;
@@ -52,9 +54,12 @@ class World {
   }
   io(): Io {
     this.ran = [];
-    const snapshot = (): Tree => {
+    const snapshot = (exclude: readonly string[] = []): Tree => {
+      const skip = matcher(exclude);
+      for (const p of this.unstable) if (!skip(p)) throw new Error(`fatal: unable to stat '${p}': No such file or directory`);
       const tree = new Map<string, string>();
       for (const [p, c] of [...this.t].sort()) {
+        if (skip(p)) continue;
         const b = blobOf(c);
         this.blobs.set(b, c);
         tree.set(p, b);
@@ -325,6 +330,58 @@ describe('pnpm regen chain', () => {
     expect([...w.store.entries.keys()].map((k) => k.split('\0')[0])).toEqual(['other']);
   });
 
+  it('never snapshots the outputs of a step still running beside the one that finished, and still catches stray writes', async () => {
+    // dpr deletes its output and rewrites it later; hit finishes in between (scripts/regen.ts, pass 2 of MQ-R1's regen).
+    const steps = [node('dpr', 'tools/gen.ts', ['vec/dpr-*/**'], { reads: ['data/a/**'] }), node('hit', 'tools/other.ts', ['rt/hit/**'], { reads: ['data/c'] })];
+    const world = (hit: Impl): { w: World; run: Promise<Awaited<ReturnType<typeof regen>>> } => {
+      let release: () => void = () => {};
+      const gate = new Promise<void>((r) => (release = r));
+      const w: World = new World({ ...SOURCES, 'vec/dpr-2/snap/a.json': 'old' }, {
+        dpr: async (f) => {
+          f.del('vec/dpr-2/snap/a.json');
+          w.unstable.add('vec/dpr-2/snap/a.json');
+          await gate;
+          f.set('vec/dpr-2/snap/a.json', `new(${f.get('data/a/x')})`);
+          w.unstable.delete('vec/dpr-2/snap/a.json');
+        },
+        hit: async (f) => {
+          await hit(f);
+          setTimeout(release, 20);
+        },
+      });
+      return { w, run: regen(steps, { ...opts, jobs: 2 }, w.io()) };
+    };
+    const ok = world((f) => f.set('rt/hit/h.json', `H(${f.get('data/c')})`));
+    const r = await ok.run;
+    expect(r, r.error ?? '').toMatchObject({ ok: true, error: null, changed: ['rt/hit/h.json', 'vec/dpr-2/snap/a.json'] });
+    expect(ok.w.t.get('vec/dpr-2/snap/a.json')).toBe('new(1)');
+    expect([...ok.w.store.entries.values()].map((e) => Object.keys(e.outputs))).toEqual([['rt/hit/h.json'], ['vec/dpr-2/snap/a.json']]);
+    const stray = world((f) => (f.set('rt/hit/h.json', 'H'), f.set('docs/notes.md', 'edited')));
+    expect((await stray.run).error).toBe('hit (or dpr, running beside it) changed files outside its declared outputs: docs/notes.md');
+  });
+
+  it('snapshotTree leaves out, and never reads, the paths matching its exclude globs', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'dragon-regen-snap-'));
+    try {
+      const files = ['a.txt', 'k.json', 'q/k.json', 'v/x.json', 'v/a.json/in', 'v/dpr-1/s/y.json', 'v/dpr-1/z', 'v/dpr-10'];
+      for (const f of files) {
+        mkdirSync(join(dir, f, '..'), { recursive: true });
+        writeFileSync(join(dir, f), f);
+      }
+      execFileSync('git', ['init', '-q', dir]);
+      const exclude = ['v/*.json', 'v/dpr-*/**', 'k.json'];
+      const skip = matcher(exclude);
+      expect([...snapshotTree(dir, exclude).keys()].sort()).toEqual(files.filter((f) => !skip(f)).sort());
+      expect([...snapshotTree(dir, exclude).keys()].sort()).toEqual(['a.txt', 'v/a.json/in', 'v/dpr-10']);
+      // A file git cannot open fails a whole-tree snapshot; excluded, it is never read.
+      chmodSync(join(dir, 'v/dpr-1/z'), 0);
+      expect(() => snapshotTree(dir)).toThrow(/v\/dpr-1\/z/);
+      expect([...snapshotTree(dir, ['v/dpr-*/**']).keys()]).not.toContain('v/dpr-1/z');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('accepts a non-zero exit only when the step judges it a recorded verdict', async () => {
     const judge: Step = { ...CHAIN[0]!, verdict: (code, log) => code === 1 && log === 'all written\n' };
     const impl = (log: string): Impl => (f) => (f.set('out/a', 'A'), { code: 1, log });
@@ -364,6 +421,23 @@ describe('pnpm regen chain', () => {
     expect(v.ran.slice(0, 2)).toEqual(['rows', 'other']);
     expect((await regen(CHAIN, { ...opts, from: 'nope' }, v.io())).error).toBe('unknown step nope; the steps are gen, rows, other');
     expect((await regen([CHAIN[0]!, CHAIN[0]!], opts, v.io())).error).toBe('step gen is named twice');
+  });
+
+  it('--skip leaves a step out of every pass, and a later run without it finishes the split chain', async () => {
+    const w = new World(SOURCES, IMPL);
+    const r1 = await regen(CHAIN, { ...opts, skip: ['rows'] }, w.io());
+    expect(r1).toMatchObject({ ok: true, changed: ['out/a', 'out/c'] });
+    expect(w.t.has('out/b')).toBe(false);
+    w.set({ 'data/a/x': '2' });
+    const r2 = await regen(CHAIN, { ...opts, skip: ['gen', 'other'] }, w.io());
+    expect(r2).toMatchObject({ ok: true, changed: ['out/b'] });
+    expect(w.ran).toEqual(['rows']);
+    expect(w.t.get('out/b')).toBe('B(A(1))');
+    const r3 = await regen(CHAIN, opts, w.io());
+    expect(r3).toMatchObject({ ok: true, changed: ['out/a', 'out/b'] });
+    expect(w.t.get('out/b')).toBe('B(A(2))');
+    expect((await regen(CHAIN, { ...opts, skip: ['nope'] }, w.io())).error).toBe('unknown step nope to skip; the steps are gen, rows, other');
+    expect((await regen(CHAIN, { ...opts, skip: ['gen', 'rows', 'other'] }, w.io())).error).toBe('every step is skipped');
   });
 
   it('fails a step that edits one of its own inputs, recording nothing', async () => {
@@ -454,6 +528,25 @@ snapshots:
     expect(importClosure(['packages/a/src/cli.ts'], broken.tree, broken.ctx.read, workspaceOf(broken.tree, broken.ctx.read)).unresolved).toEqual(['packages/a/src/lazy.ts: ./gone.ts']);
   });
 
+  it('under a step\'s conditions, follows only the workspace entry Node picks for each of its processes', () => {
+    const { tree: t, ctx } = tree({ ...files, 'packages/b/src/index.ts': "export * from './x.ts';\nexport * from './public-only.ts';", 'packages/b/src/public-only.ts': 'export const p = 1;' });
+    const under = (...sets: string[][]): string[] => [...importClosure(['packages/a/src/cli.ts'], t, ctx.read, workspaceOf(t, ctx.read), undefined, sets.map((c) => new Set([...NODE_IMPORT_CONDITIONS, ...c]))).files].filter((f) => f.startsWith('packages/b/src/')).sort();
+    // internal.ts re-exports index.ts here, so the public file is reached through it: the narrowing follows real imports only.
+    expect(under(['dragon-internal'])).toEqual(['packages/b/src/index.ts', 'packages/b/src/internal.ts', 'packages/b/src/public-only.ts', 'packages/b/src/x.ts', 'packages/b/src/y.ts']);
+    const { tree: t2, ctx: c2 } = tree({ ...files, 'packages/b/src/internal.ts': "export * from './x.ts';\nexport { y } from './y.ts';" });
+    const closure = (sets: string[][] | undefined): string[] => [...importClosure(['packages/a/src/cli.ts'], t2, c2.read, workspaceOf(t2, c2.read), undefined, sets?.map((c) => new Set([...NODE_IMPORT_CONDITIONS, ...c]))).files].filter((f) => f.startsWith('packages/b/src/')).sort();
+    expect(closure([['dragon-internal']])).toEqual(['packages/b/src/internal.ts', 'packages/b/src/x.ts', 'packages/b/src/y.ts']);
+    expect(closure([[]])).toEqual(['packages/b/src/index.ts', 'packages/b/src/x.ts']);
+    // Two processes, one with the condition and one without: both entries.
+    expect(closure([['dragon-internal'], []])).toEqual(['packages/b/src/index.ts', 'packages/b/src/internal.ts', 'packages/b/src/x.ts', 'packages/b/src/y.ts']);
+    // No conditions given: every target under every condition, as before.
+    expect(closure(undefined)).toEqual(['packages/b/src/index.ts', 'packages/b/src/internal.ts', 'packages/b/src/x.ts', 'packages/b/src/y.ts']);
+    expect(exportTargetsUnder({ '.': { 'dragon-internal': './i.ts', default: './d.ts' } }, new Set(['node']))).toEqual(['./d.ts']);
+    expect(exportTargetsUnder({ '.': { node: { import: './n.mjs' }, default: './d.ts' } }, new Set(['node', 'import']))).toEqual(['./n.mjs']);
+    expect(exportTargetsUnder('./main.js', new Set())).toEqual(['./main.js']);
+    expect(exportTargetsUnder({ './sub': './s.ts' }, new Set(['node']))).toEqual([]);
+  });
+
   it('keys on the lockfile entries of the imported packages and their dependencies only', () => {
     const lock = parseLock(LOCK);
     const c = lockClosure(lock, ['packages/a\0css-tree']);
@@ -467,18 +560,25 @@ snapshots:
 
   it('reads a step command through package.json scripts and sh -c, and refuses one it cannot key', () => {
     const scripts = { 'a:gen': 'node --conditions=dragon-internal packages/a/src/cli.ts', 'b:gen': 'node packages/b/src/x.ts --flag' };
-    expect(commandOf(['pnpm', '-s', 'run', 'a:gen', '--x'], scripts)).toEqual({ entries: ['packages/a/src/cli.ts'], scripts: ['a:gen=node --conditions=dragon-internal packages/a/src/cli.ts'] });
+    expect(commandOf(['pnpm', '-s', 'run', 'a:gen', '--x'], scripts)).toEqual({ entries: ['packages/a/src/cli.ts'], scripts: ['a:gen=node --conditions=dragon-internal packages/a/src/cli.ts'], conditions: [['dragon-internal']] });
+    expect(commandOf(['sh', '-c', 'pnpm -s run a:gen && pnpm -s run b:gen --y'], scripts).conditions).toEqual([['dragon-internal'], []]);
+    expect(() => commandOf(['node', '-C', 'dragon-internal', 'x.ts'], scripts)).toThrow(/--conditions=<name>/);
     expect(commandOf(['sh', '-c', 'pnpm -s run a:gen && pnpm -s run b:gen --y'], scripts).entries).toEqual(['packages/a/src/cli.ts', 'packages/b/src/x.ts']);
     expect(() => commandOf(['pnpm', '-s', 'run', 'nope'], scripts)).toThrow('package.json has no script nope');
     expect(() => commandOf(['make', 'all'], scripts)).toThrow(/runs make, which regen cannot key/);
   });
 
   it('changes the key for an import, a data file or a package, and not for an unread file', () => {
-    const step: Step = { name: 'a', argv: ['node', 'packages/a/src/cli.ts'], outputs: ['packages/a/out/**'], reads: ['packages/a/data/**'] };
-    const key = (over: Record<string, string>): string => {
+    // Under dragon-internal, b resolves to internal.ts, which imports y.ts.
+    const step: Step = { name: 'a', argv: ['node', '--conditions=dragon-internal', 'packages/a/src/cli.ts'], outputs: ['packages/a/out/**'], reads: ['packages/a/data/**'] };
+    const keyOf = (s: Step, over: Record<string, string>): string => {
       const { ctx } = tree({ ...files, 'packages/a/data/d.json': '1', ...over });
-      return stepInputs(step, ctx, shared(ctx)).key;
+      return stepInputs(s, ctx, shared(ctx)).key;
     };
+    const key = (over: Record<string, string>): string => keyOf(step, over);
+    // Without the condition b resolves to index.ts alone, and y.ts is no input.
+    const plain: Step = { ...step, argv: ['node', 'packages/a/src/cli.ts'] };
+    expect(keyOf(plain, { 'packages/b/src/y.ts': '2' })).toBe(keyOf(plain, {}));
     const base = key({});
     for (const [p, v] of Object.entries({ 'packages/b/src/y.ts': '2', 'packages/a/fixtures/sub/two.html': '2', 'packages/a/data/d.json': '2', 'packages/a/data/new.json': '1', 'packages/b/package.json': '{"name":"b","exports":"./src/x.ts"}', 'pnpm-lock.yaml': LOCK.replace('sha512-y', 'sha512-Y') })) expect(key({ [p]: v }), p).not.toBe(base);
     for (const [p, v] of Object.entries({ 'packages/b/src/unused.ts': '2', 'packages/a/src/types.ts': '2', 'packages/a/out/x': '1', 'README.md': '1', 'pnpm-lock.yaml': LOCK.replace('sha512-z', 'sha512-Z') })) expect(key({ [p]: v }), p).toBe(base);
@@ -586,7 +686,9 @@ describe('catch-up procedure (AGENTS.md steps 1 and 2)', () => {
 describe('merge policy (.gitattributes)', () => {
   const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter((p) => p !== '');
   const policy = new Set(execFileSync('git', ['ls-files', '-z', ':(attr:merge=dragon-generated)'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter((p) => p !== ''));
-  const lines = readFileSync(repoPath('.gitattributes'), 'utf8').split('\n').filter((l) => l.trim() !== '' && !l.startsWith('#'));
+  // The dragon-generated lines; the dragon-floor lines (floor and pin files, scripts/floor-merge.ts) are checked in
+  // floor-merge.test.ts and the dragon-sorted lines (sorted registries, scripts/sorted-merge.ts) in sorted-merge.test.ts.
+  const lines = readFileSync(repoPath('.gitattributes'), 'utf8').split('\n').filter((l) => l.trim() !== '' && !l.startsWith('#') && !/ merge=dragon-(floor|sorted)$/.test(l));
   const written = (p: string): boolean => STEPS.some((s) => s.outputs.some((g) => matches(g, p)));
   const byHand = (p: string): boolean => MERGE_BY_HAND.some((h) => matches(h.path, p));
 
@@ -602,9 +704,11 @@ describe('merge policy (.gitattributes)', () => {
     expect([...policy].filter((p) => !ignore.matches(p))).toEqual([]);
   });
 
-  it('lists exactly the regen steps\' outputs, one pattern per line, each matching a tracked file (a pattern without "/" only at the root)', () => {
+  it('lists exactly the regen steps\' outputs, sorted, one pattern per line, each matching a tracked file (a pattern without "/" only at the root)', () => {
     const outputs = STEPS.flatMap((s) => s.outputs).filter((o) => !MERGE_BY_HAND.some((h) => h.path === o));
-    expect(lines).toEqual(outputs.map((o) => `${o} merge=dragon-generated`));
+    // Sorted, so two features adding steps add their lines in different places.
+    expect(lines).toEqual([...lines].sort());
+    expect(lines).toEqual(outputs.map((o) => `${o} merge=dragon-generated`).sort());
     for (const l of lines) {
       const m = /^(\S+) merge=dragon-generated$/.exec(l);
       expect(m, l).not.toBeNull();
@@ -655,4 +759,38 @@ describe.runIf(process.env.DRAGON_REGEN_CHECK === '1')('pnpm regen --check on th
     const after = outputs();
     expect([...new Set([...before.keys(), ...after.keys()])].filter((p) => before.get(p) !== after.get(p))).toEqual([]);
   }, 7_200_000);
+});
+
+describe('one regen per worktree', () => {
+  it('refuses a second regen while the first holds the worktree, takes over a dead or half-made lock, and leaves other worktrees free', () => {
+    const base = mkdtempSync(join(tmpdir(), 'regen-lock-'));
+    try {
+      const a = join(base, 'a');
+      const b = join(base, 'b');
+      mkdirSync(a);
+      mkdirSync(b);
+      const live = new Set([100, 200]);
+      const alive = (pid: number): boolean => live.has(pid);
+      const first = worktreeLock(a, 100, alive);
+      expect(readFileSync(join(a, 'dragon-regen.lock', 'pid'), 'utf8')).toBe('100\n');
+      expect(() => worktreeLock(a, 200, alive)).toThrow(/another regen \(pid 100\) is running in this worktree/);
+      // Another worktree has its own git dir and its own lock.
+      worktreeLock(b, 200, alive).release();
+      first.release();
+      expect(existsSync(join(a, 'dragon-regen.lock'))).toBe(false);
+      // The owner died without releasing: the next regen takes the lock over.
+      worktreeLock(a, 300, alive);
+      expect(worktreeLock(a, 200, alive)).toBeDefined();
+      expect(readFileSync(join(a, 'dragon-regen.lock', 'pid'), 'utf8')).toBe('200\n');
+      // A lock without a pid is being made: it blocks for a minute, then counts as abandoned.
+      rmSync(join(a, 'dragon-regen.lock'), { recursive: true });
+      mkdirSync(join(a, 'dragon-regen.lock'));
+      expect(() => worktreeLock(a, 200, alive)).toThrow(/another regen \(pid starting\)/);
+      const old = (Date.now() - 120_000) / 1000;
+      utimesSync(join(a, 'dragon-regen.lock'), old, old);
+      expect(() => worktreeLock(a, 200, alive)).not.toThrow();
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
 });

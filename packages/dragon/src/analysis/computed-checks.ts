@@ -10,10 +10,13 @@ import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
+import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
+import { isReplacedTag } from './elements/replaced.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { environmentOf, valueToString } from './resolve.ts';
+import { usedColors } from '../lower/paint/colors.ts';
 import { checkTransformContexts } from './paint-values/transform.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
@@ -133,14 +136,16 @@ function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set
 // and runs with different text-wrap-mode in one formatting context.
 function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   if (isInlineBox(el)) return;
-  const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => {
-    for (const t of targets) {
+  const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets, at, what, message, manual);
+  const refuseFor = (on: readonly string[], at: ResolvedElement, what: string, message: string, manual: string): void => {
+    for (const t of on) {
       const id = `${t}|inline-${what}|${at.element.address}`;
       if (reported.has(id)) continue;
       reported.add(id);
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: at.element.node.origin, target: t, message, manual, basis: 'computed-value' }));
     }
   };
+  const refuseNative = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets.filter((t) => t === 'ios' || t === 'android'), at, what, message, manual);
   const runs = inlineContexts(el, (child, box) =>
     refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`),
   );
@@ -157,6 +162,13 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     // right only for white-space-collapse: collapse (css-text-4 §4.1.1).
     for (const it of run) {
       if (it.kind !== 'open' && it.kind !== 'br') continue;
+      // The native runtime places inline box views unpainted (their decorations are INL1b), so a paint an inline box would draw
+      // is refused on native rather than dropped. Of the paint longhands, only background-color paints an inline box without a
+      // border width (which the inline/ltr context refuses); transform, overflow and will-change do not apply to inline boxes.
+      if (it.kind === 'open' && usedColors(it.el)['background-color'].alpha !== 0) {
+        const bg = valueToString((it.el.props.get('background-color') as ResolvedValue).value);
+        refuseNative(it.el, 'background', `background-color: ${bg} on the inline box <${it.el.element.tag}> ${it.el.element.address}: the native runtime does not paint inline boxes until INL1b (inline box decorations), so the background would be dropped`, `Move the background to a block, or remove it from <${it.el.element.tag}> ${it.el.element.address}, until INL1b.`);
+      }
       const collapse = keywordOf(it.el.props.get('white-space-collapse') as ResolvedValue);
       if (collapse !== 'collapse') refuse(it.el, 'white-space', `white-space-collapse: ${collapse} on the inline box <${it.el.element.tag}> ${it.el.element.address} (css-text-4 §4.1.1), which Dragon does not lay out`, `Remove the white-space declaration of ${it.el.element.address}, or make ${it.el.element.address} a block.`);
     }
@@ -225,7 +237,8 @@ function checkAspectRatio(el: ResolvedElement, targets: readonly string[], diagn
     refuse(ratio, 'inexact', `aspect-ratio: ${shown} on ${el.element.address} is unsupported: Chrome converts a ratio whose parts are not whole multiples of 1/64 with a float continued fraction that Dragon does not compute at build time`, 'Write the ratio with whole numbers, for example 16 / 9, or parts that are multiples of 1/64.');
     return;
   }
-  if (raw === 'degenerate') return;
+  // A replaced box resolves a percentage block size against its basis itself (packages/layout/src/replaced.ts).
+  if (raw === 'degenerate' || isReplacedTag(el.element.tag)) return;
   for (const p of RATIO_BLOCK_SIZES) {
     const v = el.props.get(p) as ResolvedValue;
     const percent = v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
@@ -255,7 +268,7 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     const size = el.props.get('font-size') as ResolvedValue;
     const absolute = size.origin === 'author' && size.declared !== null && size.declared.kind === 'length' ? true : size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : false;
-    const keyed = ua.userAgentContexts[uaTagOf(tag)];
+    const keyed = uaRows(ua, uaTagOf(tag)).contexts;
     const ancestor = [...ancestors].reverse().find((a) => keyed.includes(a.element.tag));
     if (ancestor !== undefined) {
       once(`ua-context|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', {
@@ -280,9 +293,9 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
         perTarget(el, 'font-size', `font-size: ${valueToString(size.value)} on <${tag}> ${el.element.address} comes from Chrome's user-agent stylesheet and is below Chrome's minimum logical font size (${ua.minimumLogicalFontSize}px), which Chrome clamps depending on the device pixel ratio`, `Set a px font-size on <${tag}> ${el.element.address} or one of its ancestors.`);
       }
     }
-    const fonts = Object.keys(ua.userAgentTextFonts[uaTagOf(tag)]).length > 0 ? el : fontTag;
+    const fonts = Object.keys(uaRows(ua, uaTagOf(tag)).textFonts).length > 0 ? el : fontTag;
     if (!here && fonts !== null) {
-      const row = ua.userAgentTextFonts[uaTagOf(fonts.element.tag)];
+      const row = uaRows(ua, uaTagOf(fonts.element.tag)).textFonts;
       const set = Object.entries(row).map(([p, v]) => `${p}: ${v}`).join('; ');
       for (const c of el.children) {
         if (c.kind !== 'text') continue;
@@ -345,6 +358,35 @@ function checkSubstitution(el: ResolvedElement, targets: readonly string[], diag
 
 /** Walks one resolved case and records the refusals above; reported deduplicates them across cases. Text in a display: none
  * subtree is never laid out (CSS2 §9.2.4), so only the overflow check reaches it. fonts keys a substituted font-family as usedKeys does. */
+/**
+ * REPL-a: a replaced element is laid out as a block-level box in normal flow or as a flex item. An inline-level one waits for
+ * RF-INL (atomic inlines), and an absolutely positioned one for the CSS 2.2 §10.3.8 / §10.6.5 sizing the engine does not run yet.
+ */
+function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const display = el.props.get('display') as ResolvedValue;
+  const position = el.props.get('position') as ResolvedValue;
+  const tag = el.element.tag;
+  const refuse = (v: ResolvedValue, what: string, message: string, manual: string): void => {
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of targets) {
+      const id = `${t}|replaced-${what}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const d = keywordOf(display);
+  if (d === 'inline' || d === 'inline-block') {
+    refuse(display, 'inline', `display: ${d} on <${tag}> ${el.element.address} makes it an inline-level replaced box, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <${tag}> ${el.element.address}, or make it a flex item.`);
+  } else if (d !== 'block') {
+    refuse(display, 'display', `display: ${valueToString(display.value)} on <${tag}> ${el.element.address} is not supported on a replaced element; only block-level replaced boxes and flex items are laid out`, `Set display: block on <${tag}> ${el.element.address}.`);
+  }
+  const pos = keywordOf(position);
+  if (pos !== 'static' && pos !== 'relative') {
+    refuse(position, 'position', `position: ${pos} on <${tag}> ${el.element.address} is not supported on a replaced element yet (CSS 2.2 §10.3.8, §10.6.5)`, `Position a wrapper element and keep <${tag}> ${el.element.address} in its flow.`);
+  }
+}
+
 export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext): void {
   const walk = (el: ResolvedElement, hidden: boolean): void => {
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
@@ -353,8 +395,11 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
-    if (!here) checkInlineLevel(el, targets, diagnostics, reported);
-    if (!here) checkInline(el, targets, diagnostics, reported);
+    if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
+    else if (!here) {
+      checkInlineLevel(el, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported);
+    }
     for (const c of el.children) if (c.kind === 'element') walk(c, here);
   };
   walk(root, false);

@@ -128,7 +128,8 @@ describe('dependency boundaries', () => {
   });
   it('diagnostics are built only from the catalogue: no other source file sets a severity or a why', () => {
     for (const f of files(src)) {
-      if (f.endsWith(join('diagnostics', 'catalogue.ts')) || f.endsWith('types.ts')) continue;
+      // The catalogue is catalogue.ts, its entry helpers (entry.ts) and each feature's entries (diagnostics/codes/<feature>.ts).
+      if (f.endsWith(join('diagnostics', 'catalogue.ts')) || f.endsWith(join('diagnostics', 'entry.ts')) || f.includes(`${join('src', 'diagnostics', 'codes')}${sep}`) || f.endsWith('types.ts')) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/severity: '(error|warning|info)'|\bwhy: '/);
     }
   });
@@ -139,6 +140,8 @@ describe('dependency boundaries', () => {
       if (f.includes(`${join('src', 'fonts')}${sep}`)) continue;
       // The forms port Blink's Decimal and geometry math (LayoutUnit truncation), so src/forms/** is exempt by path.
       if (f.includes(`${join('src', 'forms')}${sep}`)) continue;
+      // MQ-R0: media/viewport.ts reproduces Chrome's measured media size (float32 size, device px, int orientation and aspect-ratio read); only that file.
+      if (f.endsWith(join('src', 'media', 'viewport.ts'))) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });
@@ -147,6 +150,9 @@ describe('dependency boundaries', () => {
       const text = readFileSync(f, 'utf8');
       expect(text, f).not.toMatch(/^import (?!type )[^;]*from '@dragon\/layout'/m);
       expect(text, f).not.toMatch(/from '(node:[^']*|fs|path|child_process|url|module|playwright)'/);
+      // No runtime module loading (type-only import() is fine). The one documented exception: digest.ts may feature-detect node:crypto as a fast path with an identical-output fallback.
+      const dynamic = [...text.matchAll(/getBuiltinModule\(([^)]*)\)|\bawait import\(|\brequire\(/g)].map((m) => m[0]);
+      expect(dynamic, f).toEqual(f.endsWith(join('src', 'digest.ts')) ? ["getBuiltinModule('node:crypto')"] : []);
     }
   });
 });

@@ -1,0 +1,161 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 45360
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 3360,
+   "width": 67200,
+   "height": 42000
+  },
+  {
+   "id": "shell",
+   "parent": "body",
+   "x": 3360,
+   "y": 0,
+   "width": 40320,
+   "height": 33600
+  },
+  {
+   "id": "button",
+   "parent": "body",
+   "x": 3360,
+   "y": 36960,
+   "width": 10080,
+   "height": 5040
+  },
+  {
+   "id": "record",
+   "parent": "shell",
+   "x": 3360,
+   "y": 3360,
+   "width": 20160,
+   "height": 20160
+  },
+  {
+   "id": "video",
+   "parent": "shell",
+   "x": 20160,
+   "y": 16800,
+   "width": 14515,
+   "height": 8400
+  },
+  {
+   "id": "one",
+   "parent": "record",
+   "x": 10080,
+   "y": 10080,
+   "width": 5644,
+   "height": 1344
+  },
+  {
+   "id": "two",
+   "parent": "record",
+   "x": 10080,
+   "y": 10080,
+   "width": 3628,
+   "height": 1344
+  },
+  {
+   "id": "dot",
+   "parent": "record",
+   "x": 10080,
+   "y": 10080,
+   "width": 2016,
+   "height": 2016
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 709,
+   "width": 1050,
+   "height": 709
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 53,
+   "right": 1050,
+   "bottom": 709,
+   "width": 1050,
+   "height": 656
+  },
+  {
+   "id": "shell",
+   "left": 53,
+   "top": 53,
+   "right": 683,
+   "bottom": 578,
+   "width": 630,
+   "height": 525
+  },
+  {
+   "id": "button",
+   "left": 53,
+   "top": 630,
+   "right": 210,
+   "bottom": 709,
+   "width": 157,
+   "height": 79
+  },
+  {
+   "id": "record",
+   "left": 105,
+   "top": 105,
+   "right": 420,
+   "bottom": 420,
+   "width": 315,
+   "height": 315
+  },
+  {
+   "id": "video",
+   "left": 368,
+   "top": 315,
+   "right": 594,
+   "bottom": 446,
+   "width": 226,
+   "height": 131
+  },
+  {
+   "id": "one",
+   "left": 263,
+   "top": 263,
+   "right": 351,
+   "bottom": 284,
+   "width": 88,
+   "height": 21
+  },
+  {
+   "id": "two",
+   "left": 263,
+   "top": 263,
+   "right": 319,
+   "bottom": 284,
+   "width": 56,
+   "height": 21
+  },
+  {
+   "id": "dot",
+   "left": 263,
+   "top": 263,
+   "right": 294,
+   "bottom": 294,
+   "width": 31,
+   "height": 31
+  }
+ ]
+}

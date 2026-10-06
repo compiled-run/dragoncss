@@ -119,8 +119,11 @@ const DEVICE_DIR = '/data/local/tmp/dragon-vectors';
 /** The most bytes of corpus lines one app_process run reads (the harness reads its input file whole). */
 const CHUNK_BYTES = 16 * 1024 * 1024;
 
-/** Runs every suite of both corpora on the device; returns the device lane's run, judged against the host lane's run. */
-export async function runDeviceVectors(h: DeviceHandle, target: TargetConfig, host: HostRun | null): Promise<HostRun & { readonly device: string }> {
+/**
+ * Runs every suite of both corpora on the device; returns the device lane's run, judged against the host lane's run. The host run
+ * may still be running (parity:lanes overlaps the host lanes with the devices): it is awaited only for the verdict.
+ */
+export async function runDeviceVectors(h: DeviceHandle, target: TargetConfig, host: HostRun | null | Promise<HostRun | null>): Promise<HostRun & { readonly device: string }> {
   const t = await translate();
   const p1 = t.buildCorpus();
   const x = t.buildExtendedCorpus();
@@ -180,11 +183,13 @@ export async function runDeviceVectors(h: DeviceHandle, target: TargetConfig, ho
       return null;
     };
     const rel = adb(['shell', 'getprop', 'ro.build.version.release']).stdout.trim();
-    toolchain = `${t.kotlinTool()?.version ?? 'kotlinc'}; d8 --min-api ${NATIVE_CONFIG.android.minSdk}; ART app_process on ${h.spec.name} (Android ${rel})`;
+    // The ABI the vectors ran on is part of the record: the landing judge binds each lane to its architecture (#132 review).
+    const abi = adb(['shell', 'getprop', 'ro.product.cpu.abi']).stdout.trim();
+    toolchain = `${t.kotlinTool()?.version ?? 'kotlinc'}; d8 --min-api ${NATIVE_CONFIG.android.minSdk}; ART app_process on ${h.spec.name} (Android ${rel}, ${abi})`;
   }
   const tag = `device-${target.target}`;
   const results = [...t.runSuites(p1, exec, `${tag}-p1`).map((r) => ({ ...r, corpus: 'p1' as const })), ...t.runSuites(x, exec, `${tag}-extended`).map((r) => ({ ...r, corpus: 'extended' as const }))];
-  return { ...judgeDeviceVectors(target, results, { p1: p1.digest, extended: x.digest }, host), toolchain, device: h.spec.name };
+  return { ...judgeDeviceVectors(target, results, { p1: p1.digest, extended: x.digest }, await host), toolchain, device: h.spec.name };
 }
 
 export type DeviceSuiteResult = { readonly corpus: 'p1' | 'extended'; readonly name: string; readonly total: number; readonly pass: number; readonly cause: string | null; readonly mismatches: readonly { index: number; expected: string; got: string }[] };

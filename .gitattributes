@@ -1,32 +1,48 @@
 # Generated outputs of `pnpm regen` (scripts/regen.ts): a merge keeps this side of each, and `pnpm regen` then rebuilds them
 # from the merged sources. The driver needs `pnpm setup:git` once per clone; without it git merges these files as text.
-# packages/parity/test/regen.test.ts keeps this list equal to the regen steps' outputs.
-packages/dragon/src/css/grammar.generated.ts merge=dragon-generated
+# packages/parity/test/regen.test.ts keeps this list equal to the regen steps' outputs, sorted, so features add lines in different places.
 THIRD_PARTY_NOTICES.md merge=dragon-generated
-packages/dragon/src/ua/*.generated.ts merge=dragon-generated
-packages/parity/expected/darwin-arm64/** merge=dragon-generated
-packages/parity/emitted/** merge=dragon-generated
-packages/parity/expected-fonts/** merge=dragon-generated
-packages/dragon/src/profiles/ios.ts merge=dragon-generated
+examples/music-player/dragon/north-star-check.json merge=dragon-generated
+packages/dragon/src/css/grammar.generated.ts merge=dragon-generated
 packages/dragon/src/profiles/android.ts merge=dragon-generated
-packages/dragon/src/profiles/web.ts merge=dragon-generated
+packages/dragon/src/profiles/ios.ts merge=dragon-generated
 packages/dragon/src/profiles/native-lanes.ts merge=dragon-generated
-packages/parity/expected-dpr/** merge=dragon-generated
-packages/parity/expected-hit/*.hit.json merge=dragon-generated
+packages/dragon/src/profiles/web.ts merge=dragon-generated
+packages/dragon/src/ua/*.generated.ts merge=dragon-generated
+packages/layout/break-vectors/** merge=dragon-generated
+packages/layout/generated/** merge=dragon-generated
+packages/layout/paint-vectors/*/vectors.json merge=dragon-generated
+packages/layout/rt-vectors/animator/** merge=dragon-generated
+packages/layout/rt-vectors/hit/** merge=dragon-generated
 packages/layout/vectors/*.json merge=dragon-generated
 packages/layout/vectors/dpr-*/** merge=dragon-generated
-packages/layout/rt-vectors/hit/** merge=dragon-generated
-packages/layout/break-vectors/** merge=dragon-generated
+packages/parity/emitted/** merge=dragon-generated
 packages/parity/expected-breaks/** merge=dragon-generated
-packages/parity/expected-pixels/** merge=dragon-generated
+packages/parity/expected-dpr/** merge=dragon-generated
+packages/parity/expected-env/** merge=dragon-generated
+packages/parity/expected-fonts/** merge=dragon-generated
 packages/parity/expected-frames/** merge=dragon-generated
-packages/layout/paint-vectors/*/vectors.json merge=dragon-generated
-packages/layout/generated/** merge=dragon-generated
-packages/translate/corpus.json merge=dragon-generated
-packages/translate/corpus-dpr.json merge=dragon-generated
-examples/music-player/dragon/north-star-check.json merge=dragon-generated
-packages/wpt/snapshots/** merge=dragon-generated
-packages/tailwind-sweep/snapshot/** merge=dragon-generated
 packages/parity/expected-glyphs/bottom-scanlines.json merge=dragon-generated
+packages/parity/expected-hit/*.hit.json merge=dragon-generated
 packages/parity/expected-media/** merge=dragon-generated
+packages/parity/expected-pixels/** merge=dragon-generated
+packages/parity/expected-quads/** merge=dragon-generated
+packages/parity/expected/darwin-arm64/** merge=dragon-generated
 packages/parity/out/lanes.json merge=dragon-generated
+packages/tailwind-sweep/snapshot/** merge=dragon-generated
+packages/translate/corpus-dpr.json merge=dragon-generated
+packages/translate/corpus.json merge=dragon-generated
+packages/wpt/snapshots/** merge=dragon-generated
+
+# Floor and pin files: a structural merge (scripts/floor-merge.ts) takes the larger of two raised counts and the union of two
+# extended lists, so two PRs that both raise a floor do not conflict; anything else it leaves as a conflict. Needs `pnpm setup:git`.
+packages/*/test/*-floor.json merge=dragon-floor
+packages/*/test/glyph-clearance-pins.json merge=dragon-floor
+
+# The sorted per-feature registries (one line per feature): a merge (scripts/sorted-merge.ts) interleaves two PRs' added lines by
+# the key their test sorts by; a deletion, a modification or anything else stays a conflict. Needs `pnpm setup:git`.
+packages/dragon/src/css/animation-kinds.ts merge=dragon-sorted
+packages/dragon/src/diagnostics/codes.ts merge=dragon-sorted
+packages/dragon/src/faults.ts merge=dragon-sorted
+packages/parity/src/fixtures.ts merge=dragon-sorted
+scripts/regen.ts merge=dragon-sorted
