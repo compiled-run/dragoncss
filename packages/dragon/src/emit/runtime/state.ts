@@ -713,8 +713,9 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
     const start = sc.start ?? e.viewport;
     const end = sc.viewport ?? e.viewport;
     if (lang === 'swift') {
+      // An empty Swift dictionary literal is [:] (device-env's script has no expected digests).
       const digests = sc.expectedDigests.map((d) => `${doubleLit(d.dpr)}: ${q(d.sha256)}`).join(', ');
-      out.push(`let ${p}Script${j} = dragonStateScriptCase(id: ${q(sc.id)}, fixture: ${q(e.fixture)}, direction: ${q(e.direction)}, compilerDigest: ${q(e.compilerDigest)}, viewport: (width: ${doubleLit(end.width)}, height: ${doubleLit(end.height)}), start: (${doubleLit(start.width)}, ${doubleLit(start.height)}), expectedDigests: [${digests}], make: ${p}Machine, steps: ${steps})`);
+      out.push(`let ${p}Script${j} = dragonStateScriptCase(id: ${q(sc.id)}, fixture: ${q(e.fixture)}, direction: ${q(e.direction)}, compilerDigest: ${q(e.compilerDigest)}, viewport: (width: ${doubleLit(end.width)}, height: ${doubleLit(end.height)}), start: (${doubleLit(start.width)}, ${doubleLit(start.height)}), expectedDigests: [${digests === '' ? ':' : digests}], make: ${p}Machine, steps: ${steps})`);
     } else {
       const digests = sc.expectedDigests.map((d) => `${doubleLit(d.dpr)} to ${q(d.sha256)}`).join(', ');
       out.push(`val ${p}Script${j} = dragonStateScriptCase(${q(sc.id)}, ${q(e.fixture)}, ${q(e.direction)}, ${q(e.compilerDigest)}, ${doubleLit(end.width)}, ${doubleLit(end.height)}, Pair(${doubleLit(start.width)}, ${doubleLit(start.height)}), mapOf(${digests}), ::${p}Machine, ${steps})`);

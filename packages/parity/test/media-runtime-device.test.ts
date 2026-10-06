@@ -120,7 +120,8 @@ describe('device-env (one real rotation per device)', () => {
     expect(ENV_IDS).toEqual(['mqr-rotate~env~portrait', 'mqr-rotate~env~landscape', 'mqr-rotate~env~back']);
     const e = envEmits('ios');
     expect(e.map((x) => [x.id, x.scripts.map((s) => s.id), x.band?.atoms.map((a) => a.feature)])).toEqual([[ENV_SCRIPT, [ENV_SCRIPT], ['orientation', 'width']]]);
-    expect(emitStatePrograms('uikit', e).map((f) => f.text).join('\n')).toContain('steps: [.set(0, 1), .dump]');
+    expect(emitStatePrograms('uikit', e).map((f) => f.text).join('\n')).toContain('expectedDigests: [:], make: dragonStates0Machine, steps: [.set(0, 1), .dump]');
+    expect(emitStatePrograms('android-views', envEmits('android')).map((f) => f.text).join('\n')).toContain('mapOf(), ::dragonStates0Machine');
   });
   it('passes on the engine\'s own dumps at the rotated sizes (no oracle here); a wrong band, orientation, lost state or size fails', async () => {
     const ok = join(dir, 'env-ok');
