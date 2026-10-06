@@ -17,6 +17,10 @@ Everything else here is a default you apply without asking.
 - One worktree, one branch. NO STACKS (owner, 2026-10-04): every new branch starts from origin/master, stays small
   (one theme, ~150 KB reviewed), and is built to land within about a day. If you need unlanded work, wait for it or
   have the PM fold it in; never build on top of an unlanded branch. Existing stacks drain as they are.
+  Exception (PM, 2026-10-05, so lanes don't idle behind the landing queue): once a parent PR is reviewed and in a landing
+  queue, you may prepare the next slice LOCALLY in a worktree based on the parent's queued head. Develop, run targeted
+  tests and even regen there, but never push it or open its PR until the parent has merged. Then merge origin/master in,
+  regen, and open the PR from master. If the parent's head changes, rebase your local prep onto the new head.
 - Develop with targeted `vitest run <files>` and `pnpm typecheck` (no queue needed).
 - At the end of the branch (owner, 2026-10-04: prove once, in the driver): one `pnpm regen` (through the queue),
   commit its outputs, run the targeted tests for what you touched plus `pnpm typecheck`, push, open the PR.
