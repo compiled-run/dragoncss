@@ -1,6 +1,6 @@
 // CASC's planted compiler faults through runFixture, with the committed Chrome captures as the authored side.
 // supportsConditionIgnored applies every @supports block, so the false conditions' rules move casc-supports' boxes; revertAsUnset
-// drops the user-agent roll-back, so the reverted p, h1, h2 and blockquote margins of casc-css-wide fall to 0. Unfaulted, both pass.
+// drops the user-agent roll-back, so casc-css-wide's display: revert falls to inline, which lowering refuses. Unfaulted, both pass.
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { NO_ENGINE_FAULTS } from '@dragon/layout';
@@ -31,23 +31,29 @@ const run = async (id: string, faults: CompilerFaults) => {
 };
 
 describe.sequential('CASC planted compiler faults', () => {
-  const planted = [
-    { fault: 'supportsConditionIgnored', fixture: 'casc-supports', nodes: ['a', 'c', 'd', 'e', 'f', 'm', 'm2'] },
-    { fault: 'revertAsUnset', fixture: 'casc-css-wide', nodes: ['p1', 'h1', 'h2', 'bq'] },
-  ] as const;
-  for (const p of planted) {
-    it(`${p.fault}: ${p.fixture} fails chrome-dual in both directions on ${p.nodes.join(', ')}; unfaulted it passes`, async () => {
-      const clean = await run(p.fixture, NO_FAULTS);
-      expect(clean.reason).toBeNull();
-      expect(clean.status).toBe('pass');
-      const faulty = await run(p.fixture, { ...NO_FAULTS, [p.fault]: true });
-      expect(faulty.status).toBe('fail');
-      expect(faulty.cases.map((c) => c.direction)).toEqual(['ltr', 'rtl']);
-      for (const c of faulty.cases) {
-        expect(c.status, c.id).toBe('fail');
-        expect(c.lanes['chrome-dual'], c.id).toBe('fail');
-        expect(c.comparison?.nodes.filter((n) => !n.pass).map((n) => n.id), c.id).toEqual(expect.arrayContaining([...p.nodes]));
-      }
-    });
-  }
+  it('supportsConditionIgnored: casc-supports fails chrome-dual in both directions on the boxes a false condition moves; unfaulted it passes', async () => {
+    const clean = await run('casc-supports', NO_FAULTS);
+    expect(clean.reason).toBeNull();
+    expect(clean.status).toBe('pass');
+    const faulty = await run('casc-supports', { ...NO_FAULTS, supportsConditionIgnored: true });
+    expect(faulty.status).toBe('fail');
+    expect(faulty.cases.map((c) => c.direction)).toEqual(['ltr', 'rtl']);
+    for (const c of faulty.cases) {
+      expect(c.status, c.id).toBe('fail');
+      expect(c.lanes['chrome-dual'], c.id).toBe('fail');
+      expect(c.comparison?.nodes.filter((n) => !n.pass).map((n) => n.id), c.id).toEqual(expect.arrayContaining(['a', 'c', 'd', 'e', 'f', 'm', 'm2']));
+    }
+  });
+  it('revertAsUnset: casc-css-wide is refused in both directions (display: revert falls to inline on r1); unfaulted it passes', async () => {
+    const clean = await run('casc-css-wide', NO_FAULTS);
+    expect(clean.reason).toBeNull();
+    expect(clean.status).toBe('pass');
+    const faulty = await run('casc-css-wide', { ...NO_FAULTS, revertAsUnset: true });
+    expect(faulty.status).toBe('fail');
+    expect(faulty.cases.map((c) => c.direction)).toEqual(['ltr', 'rtl']);
+    for (const c of faulty.cases) {
+      expect(c.status, c.id).toBe('fail');
+      expect(c.reason, c.id).toContain('display: inline on r1 has no layout mapping');
+    }
+  });
 });
