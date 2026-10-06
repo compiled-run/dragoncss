@@ -154,6 +154,7 @@ const INITIAL: LayoutStyle = {
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
   aspectRatio: { kind: 'auto' },
+  grid: null, gridItem: null,
 };
 
 function len(r: Rng, min: number): number {
