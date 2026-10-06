@@ -315,7 +315,7 @@ export function svgPointsOf(ctx: PaintSampleContext): SamplePoint[] {
     const c = b.paint.content;
     // User units are CSS px: the viewBox maps into the content box in CSS px, and the DPR takes that to device px.
     const dpr = ctx.dpr;
-    const m = viewBoxTransform(w.viewBox === null ? null : { x: w.viewBox[0] as number, y: w.viewBox[1] as number, width: w.viewBox[2] as number, height: w.viewBox[3] as number }, c.width / dpr, c.height / dpr);
+    const m = viewBoxTransform(w.viewBox === null ? null : { x: w.viewBox[0] as number, y: w.viewBox[1] as number, width: w.viewBox[2] as number, height: w.viewBox[3] as number }, c.width / dpr, c.height / dpr, false);
     const map = (x: number, y: number): Pt => ({ x: c.x + dpr * (m.a * x + m.e), y: c.y + dpr * (m.d * y + m.f) });
     const edges: { readonly segments: Segment[]; readonly offset: number }[] = [];
     const corners: { readonly at: Pt; readonly reach: number }[] = [];
