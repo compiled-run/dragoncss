@@ -29,7 +29,7 @@ function unrounded(el: ResolvedElement, t: string): { readonly message: string; 
   if (tag === 'html' || tag === 'body') {
     return { message: `<${tag}> ${el.element.address} rounds its corners, but its background propagates to the canvas, which ${t} does not paint round`, manual: 'Round a wrapper element inside body instead of html or body.' };
   }
-  // Blink clips replaced content to the rounded content box (replaced_painter.cc); the image and web-view stages draw it square.
+  // Blink clips replaced content to the rounded content box; the image and web-view stages draw it square.
   if (isReplacedTag(tag)) {
     return { message: `<${tag}> ${el.element.address} rounds its corners, but ${t} draws replaced content square (rounded replaced content is not supported yet)`, manual: 'Round a wrapper element with overflow: hidden around the image or frame instead.' };
   }
