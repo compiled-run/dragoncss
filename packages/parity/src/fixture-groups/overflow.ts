@@ -11,6 +11,8 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   // clip is no scroll container: margins collapse through it and a flex item keeps its automatic minimum size.
   both('overflow-clip-margin-collapse'),
   both('overflow-clip-flex-min-size'),
+  // The same rows with auto beside clip: auto loses the flex automatic minimum size. Web-proven; native refuses auto until OVFL-B.
+  both('overflow-auto-flex-min-size'),
   both('overflow-end-padding'),
   both('overflow-nested'),
   both('overflow-direction'),

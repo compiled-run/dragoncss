@@ -50,7 +50,7 @@ describe('OVFL scroll metrics against Chrome', () => {
     // Every layout fixture of the overflow group, each in ltr and rtl (its -rtl twin), and the two earlier overflow: hidden
     // fixtures (ltr only) that the overflow- prefix also takes.
     const own = OVERFLOW.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    expect(own.length).toBe(32);
+    expect(own.length).toBe(34);
     expect(ids.filter((id) => !own.includes(id))).toEqual(['overflow-hidden-bfc', 'overflow-hidden-flex-min-size']);
     expect(own.filter((id) => !ids.includes(id))).toEqual([]);
     for (const dpr of SCROLL_DPRS) {
