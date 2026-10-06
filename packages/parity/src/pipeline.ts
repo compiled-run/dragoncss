@@ -5,7 +5,7 @@ import type { Browser } from 'playwright';
 import type { EngineFaults, LayoutInput, LayoutRect, LayoutUnsupported } from '@dragon/layout';
 import { absoluteRects, layoutWithFaults, measurerFor, validateLayoutInput } from '@dragon/layout';
 import type { Assignment, CompilerFaults, Compiled, Diagnostic, Environment, FrontEndResult, Origin, Scalar, TextTopologyEntry } from 'dragon';
-import { compiledCases, compiledFeatures, createProjectWith, interactionPartitionOf, iosLayoutProjection, laneOnlyNative, nativeLayoutProjection, nativeScrollPending, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
+import { compiledCases, compiledFeatures, createProjectWith, interactionPartitionOf, iosLayoutProjection, laneOnlyNative, nativeLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { captureFixture } from './capture.ts';
 import type { ParityCase } from './cases.ts';
@@ -302,11 +302,9 @@ export function topologyProblems(declared: TreeExpectation, input: FrontEndResul
 
 async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss: string | null, browser: Browser, opts: RunOptions): Promise<CaseOutcome> {
   // SELD-R2: a case only the lanes compile on native (a user's compile refuses it there) proves no native row; web rows only.
-  // T078 R14: a user's compile refuses overflow auto and scroll on native until OVFL-B (checkNativeScroll), so a case that uses
-  // them is lane-only on native too and proves no native row, of any feature.
-  const iosKeys = compiledFeatures(compiled, 'ios', c.assignment);
-  const scrolls = iosKeys.some((k) => nativeScrollPending(k.slice(0, k.lastIndexOf('@'))));
-  const features = { ios: laneOnlyNative(compiled, 'ios') || scrolls ? [] : iosKeys, web: compiledFeatures(compiled, 'web', c.assignment) };
+  // SELD-R2 and T078 R14 (overflow auto and scroll until OVFL-B): a case only the lanes compile on native (a user's compile refuses
+  // it there) proves no native row; web rows only.
+  const features = { ios: laneOnlyNative(compiled, 'ios') ? [] : compiledFeatures(compiled, 'ios', c.assignment), web: compiledFeatures(compiled, 'web', c.assignment) };
   const topology = textTopology(compiled, c.assignment);
   const base = { id: c.id, fixture: c.fixture, index: c.index, direction: c.environment.direction, assignment: c.assignment, isInitial: c.isInitial, features, unsupported: null, comparison: null, dual: null, vector: null, topology, textLines: [] };
   const notRun = { 'linux-dragon-layout': 'not-run', 'chrome-dual': 'not-run' } as const;

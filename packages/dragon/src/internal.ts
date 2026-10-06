@@ -104,7 +104,7 @@ export function interactionPartitionOf(compiled: object, assignment: Assignment)
   return typeof c === 'string' ? null : c.partition;
 }
 
-/** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
+/** SELD-R2 and T078 R14: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
 export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
   return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
 }

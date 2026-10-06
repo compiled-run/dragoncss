@@ -989,6 +989,14 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         diagnostics.splice(valuesAt, 0, ...values);
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
+      // T078 R14: the lanes lower overflow auto and scroll on native, but a user's compile refuses them there until OVFL-B, so a
+      // document that uses them is lane-only on native and proves no native row (pipeline.ts).
+      if (options.interactionLanes) {
+        const pending: Diagnostic[] = [];
+        const native = NATIVE_TARGETS.filter((t) => targets.includes(t));
+        for (const c of cases) for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) if (r !== null) checkNativeScroll(r, native, pending, new Set());
+        laneOnlyNative = native.filter((t) => laneOnlyNative.includes(t) || pending.some((d) => d.target === t));
+      }
       // T005 rec 3: the rules inside each unsupported at-rule are analysed with the block unwrapped, in a scratch pass whose
       // diagnostics located inside the at-rule become its related entries. Nothing from this pass is resolved into an output.
       if (enclosed.length > 0) {
