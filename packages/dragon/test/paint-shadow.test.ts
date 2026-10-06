@@ -8,7 +8,7 @@ import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { SHADOW_EMITTER } from '../src/emit/paint/shadow.ts';
 import type { Targets } from '../src/types.ts';
-import { div, expectCatalogued, explainOne, inputFor } from './helpers.ts';
+import { div, expectCatalogued, explainOne, inputFor, spanTextOf } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/shadow.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -74,6 +74,36 @@ describe('box-shadow: refusals', () => {
       expect(diagnostics.map((d) => d.code), v).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
       expect(spanOf(css, diagnostics[0] as Diagnostic)).toBe(span);
       expectCatalogued(diagnostics);
+    }
+  });
+});
+
+describe('box-shadow: native refusals of what the companion-view shadow does not draw as Chrome does', () => {
+  const targets: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
+  const refusedOf = (input: ReturnType<typeof inputFor>) => {
+    const c = createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+    return c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('box-shadow'));
+  };
+  it('html, body, a replaced element and a transformed box are refused for ios and android at the box-shadow value, and not for web', () => {
+    for (const [what, css, tag, says] of [
+      ['html', 'html { box-shadow: 0 0 4px red; }', 'div', 'does not draw on the root or body'],
+      ['body', 'body { box-shadow: 0 0 4px red; }', 'div', 'does not draw on the root or body'],
+      ['img', '.i { width: 20px; height: 20px; box-shadow: 0 0 4px red; }', 'img', 'does not draw on replaced content'],
+      ['transform', '.i { width: 20px; height: 20px; box-shadow: 0 0 4px red; transform: rotate(10deg); }', 'div', 'a box-shadow and a transform'],
+    ] as const) {
+      const input = inputFor(`body { margin: 0; } ${css}`, (r) => [{ ...div(r, 'i', ['i']), tag } as never]);
+      const refused = refusedOf(input);
+      expect(refused.map((d) => d.target).sort(), what).toEqual(['android', 'ios']);
+      for (const d of refused) {
+        expect(spanTextOf(input, d), what).toBe('0 0 4px red');
+        expect(d.message, what).toContain(says);
+      }
+      expectCatalogued(refused);
+    }
+  });
+  it('a plain shadowed box, transform: none and box-shadow: none on the root are not refused', () => {
+    for (const css of ['.i { box-shadow: 0 0 4px red; }', '.i { box-shadow: 0 0 4px red; transform: none; }', 'body { box-shadow: none; }']) {
+      expect(refusedOf(inputFor(`body { margin: 0; } ${css}`, (r) => [div(r, 'i', ['i'])])), css).toEqual([]);
     }
   });
 });
