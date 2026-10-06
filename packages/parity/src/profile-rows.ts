@@ -4,7 +4,7 @@ import type { Longhand, ProfileRow, Proof } from 'dragon';
 import { MEDIA_CONTEXT, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
-import { DEVICE_CHECK_LANES } from './device-lanes.ts';
+import { DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE } from './device-lanes.ts';
 import type { LanesFile } from './lanes.ts';
 import { readLanesFile, staleEvidence, staleLanes } from './lanes.ts';
 import { repoPath } from './paths.ts';
@@ -261,7 +261,8 @@ export function checkedFailures(v: unknown, what: string): LaneFailure[] {
     };
     if (!isObject(f)) bad('not an object');
     const o = f as Record<string, unknown>;
-    if (!(DEVICE_CHECK_LANES as readonly unknown[]).includes(o['lane'])) bad(`lane ${JSON.stringify(o['lane'])} is not a device check lane`);
+    // Every device lane writes its failures to the list (allRunFailures): the check lanes, device-states, device-hit and device-env.
+    if (!([...DEVICE_CHECK_LANES, STATE_LANE, HIT_LANE, ENV_LANE] as readonly unknown[]).includes(o['lane'])) bad(`lane ${JSON.stringify(o['lane'])} is not a device lane`);
     if (typeof o['case'] !== 'string' || o['case'] === '') bad('case is not a non-empty string');
     if (typeof o['dpr'] !== 'number' || !(o['dpr'] > 0)) bad('dpr is not a positive number');
     if (o['node'] !== null && typeof o['node'] !== 'string') bad('node is neither null nor a string');

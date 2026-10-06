@@ -13,7 +13,9 @@ import { RESIZE_SCRIPTS } from './fixture-groups/media-runtime.ts';
 
 export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels',
   // SELD-R1b (notes/T047 §3.3 item 5): the case scripts' dumps, and the device hit test's answers.
-  'device-states', 'device-hit'] as const;
+  'device-states', 'device-hit',
+  // MQ-R1 (notes/T067 R7 (c)): one real rotation per device.
+  'device-env'] as const;
 export type LaneId = (typeof LANES)[number];
 export type NativeTarget = 'ios' | 'android';
 export const NATIVE_TARGETS: readonly NativeTarget[] = ['ios', 'android'];
@@ -105,6 +107,9 @@ export function corpusSuites(): readonly CorpusSuite[] {
   ];
 }
 
+/** MQ-R1 device-env (device-env.ts): the rotation's three phases of the fill-the-stage fixture, in the order one launch runs them. */
+export const ENV_CASE_IDS: readonly string[] = ['portrait', 'landscape', 'back'].map((p) => `mqr-rotate~env~${p}`);
+
 /** MQ-R1: every resize prefix script id ("<fixture>[-rtl]~resize<k>", resize-scripts.ts), from the scripts and the fixtures' directions alone. */
 export function resizeScriptIds(): readonly string[] {
   return RESIZE_SCRIPTS.flatMap((s) => {
@@ -141,6 +146,7 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
   if (lane === 'layout-vectors-host' || lane === 'layout-vectors-device') {
     return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids }, ...DPRS.map((d) => dprSet(d, ids))], corpora: corpusSuites() };
   }
+  if (lane === 'device-env') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, ENV_CASE_IDS)), corpora: [] };
   if (lane === 'device-states') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, stateScriptIds())), corpora: [] };
   if (lane === 'device-hit') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, hitCaseIds())), corpora: [] };
   return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, ids)), corpora: [] };
