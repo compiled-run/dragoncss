@@ -324,7 +324,7 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
           const byId = new Map(boxes(p, c.environment.viewport, dpr).map((b) => [b.node.id, b]));
           return casePoints(p, c.environment.viewport, dpr).some((pt) => effectsModelAt(items, byId, pt.x, pt.y, dpr).join() !== effectsModelAt(planted, byId, pt.x, pt.y, dpr).join());
         });
-        if (spec.id.startsWith('opacity-') || spec.id === 'stacking-context') expect(caught({ alphaIgnored: true, treeOrder: false }), 'alpha-ignored').toBe(true);
+        if (spec.id.startsWith('opacity-')) expect(caught({ alphaIgnored: true, treeOrder: false }), 'alpha-ignored').toBe(true);
         if (spec.id.startsWith('stacking-')) expect(caught({ alphaIgnored: false, treeOrder: true }), 'order-swap').toBe(true);
       });
     }

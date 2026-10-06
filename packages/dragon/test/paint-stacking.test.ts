@@ -163,11 +163,11 @@ describe('stacking: refusals on the native targets', () => {
     expectCatalogued(errs);
   });
   it('refuses both review repros on ios only, at the declaration that makes the box a layer item', () => {
-    const order = compile('.c { overflow: hidden; height: 20px; } .p { opacity: 0.5; height: 30px; } .s { height: 20px; margin-top: -20px; background-color: red; }', (r) => [div(r, 'c', ['c'], [div(r, 'p', ['p'])]), div(r, 's', ['s'])]);
+    const order = compile('.c { overflow: hidden; height: 20px; } .p { position: relative; height: 30px; } .s { height: 20px; margin-top: -20px; background-color: red; }', (r) => [div(r, 'c', ['c'], [div(r, 'p', ['p'])]), div(r, 's', ['s'])]);
     const oe = order.diagnostics.filter((d) => d.severity === 'error');
     expect(oe.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
     expect(oe[0]?.message).toMatch(/^p paints in a stacking context outside c, whose overflow clip applies to it/);
-    const escape = compile('.c { overflow: hidden; height: 20px; } .o { opacity: 0.5; height: 10px; } .i { position: absolute; top: 60px; width: 10px; height: 10px; }', (r) => [div(r, 'c', ['c'], [div(r, 'o', ['o'], [div(r, 'i', ['i'])])])]);
+    const escape = compile('.c { overflow: hidden; height: 20px; } .o { will-change: opacity; height: 10px; } .i { position: absolute; top: 60px; width: 10px; height: 10px; }', (r) => [div(r, 'c', ['c'], [div(r, 'o', ['o'], [div(r, 'i', ['i'])])])]);
     const ee = escape.diagnostics.filter((d) => d.severity === 'error');
     expect(ee.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
     expect(ee[0]?.message).toMatch(/^i is not clipped by c in Chrome \(its containing block is outside it\)/);

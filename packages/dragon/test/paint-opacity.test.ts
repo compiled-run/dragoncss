@@ -22,7 +22,7 @@ function declare(value: string): { declaration: Declaration | null; diagnostics:
 
 const spanOf = (css: string, d: Diagnostic): string => (d.origin.kind === 'authored' ? css.slice(d.origin.span.start, d.origin.span.end) : '<unlocated>');
 
-function compile(css: string, targets: Targets = { ios: { minimum: '15.0' }, web: {} }) {
+function compile(css: string, targets: Targets = { web: {} }) {
   const input = inputFor(`body { margin: 0; } ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])]);
   return createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
 }
@@ -37,16 +37,16 @@ describe('opacity: parse and computed values (Chrome 145 getComputedStyle)', () 
     it(`opacity: ${value} computes to ${want}`, () => {
       const c = compile(`.a { height: 10px; opacity: ${value}; }`);
       expect(c.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-      expect(explainOne(c, 'ios', 'a', 'opacity').value).toBe(want);
+      expect(explainOne(c, 'web', 'a', 'opacity').value).toBe(want);
     });
   }
   it('opacity is not inherited; inherit takes the parent computed value and initial is 1', () => {
     const c = compile('.a { opacity: 25%; } .b { height: 5px; }');
-    expect(explainOne(c, 'ios', 'b', 'opacity').value).toBe('1');
+    expect(explainOne(c, 'web', 'b', 'opacity').value).toBe('1');
     const d = compile('.a { opacity: 25%; } .b { height: 5px; opacity: inherit; }');
-    expect(explainOne(d, 'ios', 'b', 'opacity').value).toBe('0.25');
+    expect(explainOne(d, 'web', 'b', 'opacity').value).toBe('0.25');
     const e = compile('.a { height: 5px; opacity: 0.3; opacity: initial; }');
-    expect(explainOne(e, 'ios', 'a', 'opacity').value).toBe('1');
+    expect(explainOne(e, 'web', 'a', 'opacity').value).toBe('1');
   });
   it('a length, a keyword, two numbers and a colour are invalid, as in Chrome', () => {
     for (const v of ['1px', 'auto', '0.5 0.5', 'red', 'none']) {
@@ -81,6 +81,27 @@ describe('opacity: parse and computed values (Chrome 145 getComputedStyle)', () 
   });
 });
 
+describe('opacity: the native targets draw 0 and 1 only', () => {
+  it('a fractional opacity is refused on ios by name, at the declaration, naming PNT1-opacity-b, and compiles for web', () => {
+    for (const v of ['0.5', '50%', '0.001', 'calc(0.2 * 2)']) {
+      const c = compile(`.a { height: 10px; opacity: ${v}; }`, { ios: { minimum: '15.0' }, web: {} });
+      const errs = c.diagnostics.filter((d) => d.severity === 'error');
+      expect(errs.map((d) => [d.code, d.target]), v).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+      expect(errs[0]?.message, v).toMatch(/^a has opacity [0-9.]+; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest$/);
+      expectCatalogued(errs);
+    }
+    // An inherited fraction is refused where it computes; the declaration is the child's inherit.
+    const c = compile('.a { opacity: 25%; } .b { height: 5px; opacity: inherit; }', { ios: { minimum: '15.0' }, web: {} });
+    expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message.slice(0, 18))).toEqual(['a has opacity 0.25', 'b has opacity 0.25']);
+  });
+  it('opacity 0, 1 and the values that clamp to them compile on ios', () => {
+    for (const v of ['0', '1', '0%', '100%', '1.5', '-2', '500%', 'calc(0.5 * 2)']) {
+      const c = compile(`.a { height: 10px; opacity: ${v}; }`, { ios: { minimum: '15.0' }, web: {} });
+      expect(c.diagnostics.filter((d) => d.severity === 'error'), v).toEqual([]);
+    }
+  });
+});
+
 describe('opacity: lowering and emission', () => {
   const programs = (css: string) => {
     const c = compile(css, { ios: { minimum: '15.0' }, android: { minSdk: 31 } });
@@ -90,20 +111,23 @@ describe('opacity: lowering and emission', () => {
   };
 
   it('a box with opacity below 1 gets one opacity write with the computed opacity and effects facts; opacity 1 gets none', () => {
-    const p = programs('.a { height: 20px; opacity: 45%; } .b { height: 5px; opacity: 1.5; }');
+    const p = programs('.a { height: 20px; opacity: 0%; } .b { height: 5px; opacity: 1.5; }');
     const a = p.uikit.nodes.find((n) => n.id === 'a');
-    expect(a?.writes.filter((w) => w.kind === 'opacity')).toEqual([expect.objectContaining({ kind: 'opacity', key: 'alpha', technique: 'native-property', opacity: 0.45, css: ['opacity'] })]);
-    expect(a?.facts['effects']).toEqual({ opacity: 0.45 });
+    expect(a?.writes.filter((w) => w.kind === 'opacity')).toEqual([expect.objectContaining({ kind: 'opacity', key: 'alpha', technique: 'native-property', opacity: 0, css: ['opacity'] })]);
+    expect(a?.facts['effects']).toEqual({ opacity: 0 });
     const b = p['android-views'].nodes.find((n) => n.id === 'b');
     expect(b?.writes.some((w) => w.kind === 'opacity')).toBe(false);
     expect(b?.facts['effects']).toBeUndefined();
   });
 
   it('emits the runtime writer with the opacity on both backends and expects the float32 of the alpha byte / 255', () => {
-    const p = programs('.a { height: 20px; opacity: 0.3; }');
+    const p = programs('.a { height: 20px; opacity: 0; }');
     const a = p.uikit.nodes.find((n) => n.id === 'a');
-    const w = a?.writes.find((x) => x.kind === 'opacity');
-    if (w === undefined || w.kind !== 'opacity') throw new Error('no opacity write');
+    const w0 = a?.writes.find((x) => x.kind === 'opacity');
+    if (w0 === undefined || w0.kind !== 'opacity') throw new Error('no opacity write');
+    expect(EFFECTS_EMITTER.lines.uikit('v0', a as never, w0)).toEqual(['  dragonSetOpacity(v0, 0.0)']);
+    // The writer takes any opacity in [0, 1) (a runtime write, PNT1-opacity-b); the lowering writes 0 only today.
+    const w = { ...w0, opacity: 0.3 };
     expect(EFFECTS_EMITTER.lines.uikit('v0', a as never, w)).toEqual(['  dragonSetOpacity(v0, 0.3)']);
     expect(EFFECTS_EMITTER.lines['android-views']('v0', a as never, w)).toEqual(['  dragonSetOpacity(v0, 0.3)']);
     const engine = { float32: Math.fround, opacityAlpha8 } as never;
