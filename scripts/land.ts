@@ -298,7 +298,13 @@ const judgeDevices = (master: string, startedMs: number | null): string[] => {
   const show = (path: string): unknown => JSON.parse(git(['show', `${master}:${path}`]).toString('utf8'));
   const local = (path: string): unknown => JSON.parse(readFileSync(join(WT, path), 'utf8'));
   const before = parseDeviceEvidence(show(LANES_JSON), (t) => show(failuresJson(t)), `master ${master}`);
-  const after = parseDeviceEvidence(local(LANES_JSON), (t) => local(failuresJson(t)), 'this tree');
+  // The run's own records that cannot be read are the device step's failure, not the driver's.
+  let after: ReturnType<typeof parseDeviceEvidence>;
+  try {
+    after = parseDeviceEvidence(local(LANES_JSON), (t) => local(failuresJson(t)), 'this tree');
+  } catch (error) {
+    return [`the device run's records cannot be judged: ${msg(error)}`];
+  }
   if (startedMs !== null && !deviceRunWrote(statSync(join(WT, LANES_JSON)).mtimeMs, startedMs)) return [`the device run did not rewrite ${LANES_JSON}`];
   const lanes = spawnSync('pnpm', ['-s', 'run', 'parity:lanes'], { cwd: WT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   if (lanes.error || lanes.signal || (lanes.status !== 0 && lanes.status !== 1) || !/^parity:lanes: /m.test(lanes.stdout)) {
