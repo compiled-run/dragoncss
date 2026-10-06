@@ -8,6 +8,7 @@ import { canonicalJson, sha256Hex } from '../digest.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { NativeBackend, NativeProgram, ProgramNode, ProgramWrite } from '../lower/native-program.ts';
 import { isPaintKind, paintAppliedValue } from './paint/registry.ts';
+import type { PaintEngine } from './paint/types.ts';
 
 export type JsonValue = null | boolean | number | string | readonly JsonValue[] | { readonly [k: string]: JsonValue };
 
@@ -42,16 +43,19 @@ export type ExpectedEngine = {
   readonly platformFontSize: (px: number) => number;
   readonly zoomFontSize: (px: number, zoom: number) => number;
   readonly float32: (x: number) => number;
+  /** The TS paint references (paint-*.ts) whose translations the device runs. */
+  readonly paint: PaintEngine;
 };
 
 /** A replaced box's paint rects in device px relative to its snapped border box: [x, y, width, height]; drawn null for none. */
 export type ReplacedGeometry = { readonly content: readonly number[]; readonly dest: readonly number[]; readonly drawn: readonly number[] | null };
 
 /**
- * The device values of one node at one scale, from the engine: border widths in whole device px, the snapped border box, a text
- * run's computed font size in device px from the resolved input (null for a box), and for a replaced box its paint rects.
+ * The device values of one node at one scale, from the engine: border widths in whole device px, the snapped border box, the
+ * layout border-box size before snapping, a text run's computed font size in device px from the resolved input (null for a box),
+ * and for a replaced box its paint rects.
  */
-export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly fontSize: number | null; readonly replaced: ReplacedGeometry | null };
+export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly size: readonly [number, number]; readonly fontSize: number | null; readonly replaced: ReplacedGeometry | null };
 
 const rgba = (c: { r: number; g: number; b: number; alpha: number }): number[] => [c.r, c.g, c.b, c.alpha];
 
@@ -180,7 +184,7 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
     if (n === undefined) throw new Error(`${caseId}@${dpr}: the engine laid out ${r.id}, which the program does not have`);
     const box = snapped[i] as SnappedRect;
     const rp = replaced.get(r.id);
-    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box, fontSize: fontSizes.get(r.id) ?? null, replaced: rp === undefined ? null : { content: relative(rp.content, box), dest: relative(rp.dest, box), drawn: rp.drawn === null ? null : relative(rp.drawn, box) } };
+    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box, size: [r.width / engine.luPerPx, r.height / engine.luPerPx], fontSize: fontSizes.get(r.id) ?? null, replaced: rp === undefined ? null : { content: relative(rp.content, box), dest: relative(rp.dest, box), drawn: rp.drawn === null ? null : relative(rp.drawn, box) } };
     const applied: { [key: string]: JsonValue } = {};
     for (const w of n.writes) applied[w.key] = appliedValue(engine, p.backend, w, dpr, g);
     nodes.push({ id: n.id, kind: n.kind, native: n.native, applied });

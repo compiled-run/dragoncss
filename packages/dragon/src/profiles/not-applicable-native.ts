@@ -11,6 +11,7 @@ export type NotApplicableEntry = { readonly name: string; readonly reason: strin
 
 export const NOT_APPLICABLE_NATIVE: readonly NotApplicableEntry[] = [
   { name: 'cursor', reason: 'it sets the mouse pointer shape, and a touch screen has no pointer' },
+  { name: 'scroll-behavior', reason: 'it only animates scrolls that script, fragment links or focus start, and the native output starts none' },
 ];
 
 /** The list entry for a property name (ASCII lower case), or null when it is not on the list. */
