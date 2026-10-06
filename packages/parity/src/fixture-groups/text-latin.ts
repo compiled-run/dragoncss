@@ -4,9 +4,13 @@
 // projection (engineLayoutProjection) and chrome-dual (text-latin-run.ts), never a native lane. Each compiles with the reference
 // font map (Dragon Sans, Dragon Mono and Lato pinned) at 400x300; weights and styles come from the UA (h1 to h3 bold, address
 // italic). Fixtures whose text is only letters and spaces also run right-to-left (the inline core's bidi limit).
+import type { FixtureSpec } from '../fixtures.ts';
 import type { FontFixture } from './fonts.ts';
 import { FONT_REFERENCE_MAP } from '../font-reference.ts';
 import { layout } from './define.ts';
+
+/** The group's FIXTURES entries: none, since the registry stays out of FIXTURES until TXT1a-2 moves its cases in. */
+export const TEXT_LATIN: readonly FixtureSpec[] = [];
 
 /** A text-latin fixture: the fonts-fixture shape (its map and the face Chrome must draw each element's text with). */
 export type TextLatinFixture = FontFixture;

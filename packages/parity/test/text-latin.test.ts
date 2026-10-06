@@ -139,11 +139,12 @@ describe('TXT1a-1 phase B: the text-latin registry', () => {
     expect(() => tl.requireAdmitted(f, tl.compileTextLatin(f, 'ltr').compiled, c)).toThrow(/not a text-latin case/);
   });
 
+  const BASE_LAYOUT_CASES = 569;
   it('keeps every FIXTURES layout case (and so every native and device case) as it was at BASE', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
-    // BASE is INL1a part C2 with seld-lanes-v2 merged in (inl1a-lowering 2d04d5ca5), whose FIXTURES hold 520 layout cases.
-    expect(ids.length).toBe(520);
-    expect(createHash('sha256').update(ids.join('\n')).digest('hex')).toBe('69e3e4bb4aac1f5ac426a74578b20aaa6c33de611b95734b5000dc85593cf91d');
+    // BASE is txt1a-1b-v2 with inl1a-lowering at #91's head 0636a60b21 merged in (23bff72e8d), whose FIXTURES hold 569 layout cases.
+    expect(ids.length).toBe(BASE_LAYOUT_CASES);
+    expect(createHash('sha256').update(ids.join('\n')).digest('hex')).toBe('3c0c5d0b0b43e575706b4fe27f1782b0cdc313bb0cd1b6d41a353dc8f2467fc9');
   });
 
   it('gives every FIXTURES case the native projection as its engine projection, at every DPR', () => {
@@ -163,7 +164,7 @@ describe('TXT1a-1 phase B: the text-latin registry', () => {
         }
       }
     }
-    expect(compared).toBe(520 * 4);
+    expect(compared).toBe(BASE_LAYOUT_CASES * 4);
   });
 
   it('keeps native refusing Lato and Inter with the existing message, and DRAGON_SYNTHETIC_FONT_STYLE fires on no FIXTURES case', () => {
