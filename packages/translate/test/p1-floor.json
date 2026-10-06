@@ -54,11 +54,11 @@
       "units-calc"
     ],
     "counts": {
-      "vectors-m2": 290,
-      "vectors-dpr": 1644,
-      "engine-dpr": 1644,
+      "vectors-m2": 321,
+      "vectors-dpr": 1737,
+      "engine-dpr": 1737,
       "units-m2": 120000,
-      "snap": 21428,
+      "snap": 21521,
       "snap-values": 216,
       "calc-goldens": 17,
       "engine-calc": 4000,
