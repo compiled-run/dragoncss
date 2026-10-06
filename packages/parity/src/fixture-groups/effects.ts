@@ -10,7 +10,8 @@
 // escaping an overflow clip that is not its containing block, the music player's z-index 40 button over two later z-index 20 and 30
 // overlays, and transformed and will-change: opacity boxes, which paint in the z-index 0 layer. Sample centres sit in the overlaps,
 // so the device pixels compare the order. The rejects: a percentage calculation in opacity, a z-index calculation that is not a whole
-// number, and a z-index box that would leave the overflow clip of its containing block while a later positioned box paints over it.
+// number. The native-only stacking refusals cannot be reject fixtures (a reject blocks web too); dragon test/paint-stacking.test.ts
+// compiles each of them.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
@@ -23,5 +24,4 @@ export const EFFECTS: readonly FixtureSpec[] = [
   both('stacking-escape'),
   both('stacking-transform'),
   reject('stacking-reject-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(3 / 2)', 'z-index: calc(3/2) is unsupported: the calculation is not a whole number'),
-  reject('stacking-reject-clip', 'DRAGON_UNSUPPORTED_VALUE', '1', 'k has z-index 1 and paints in a stacking context outside c, whose overflow clip applies to it'),
 ];

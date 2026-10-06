@@ -41,9 +41,19 @@ export function resolvedStackTree(root: ResolvedElement): StackNode {
   return node(root, false);
 }
 
-const valueText = (v: ResolvedValue): string => (v.value.kind === 'other' ? v.value.text : v.value.kind === 'keyword' ? v.value.value : '');
+/** Where to report a stacking refusal: the declaration that makes the box a layer item (z-index, position, opacity, transform). */
+function itemOrigin(el: ResolvedElement): ReturnType<typeof authored> | ResolvedElement['element']['node']['origin'] {
+  for (const p of ['z-index', 'position', 'opacity', 'transform', 'will-change'] as const) {
+    const v = el.props.get(p) as ResolvedValue | undefined;
+    if (v === undefined || v.declaration === null) continue;
+    if (p === 'z-index' && zIndexOf(v.value) === null) continue;
+    if (p === 'position' && v.value.kind === 'keyword' && v.value.value === 'static') continue;
+    return authored(v.declaration.valueSpan);
+  }
+  return el.element.node.origin;
+}
 
-/** The refusal above over a case's resolved tree, on the native targets. */
+/** The refusals above over a case's resolved tree, on the native targets. */
 export function checkStackingClips(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const byId = new Map<string, ResolvedElement>();
   const walk = (e: ResolvedElement): void => {
@@ -51,21 +61,23 @@ export function checkStackingClips(el: ResolvedElement, targets: readonly string
     for (const c of e.children) if (c.kind === 'element') walk(c);
   };
   walk(el);
-  for (const { id, clip } of stackingOf(resolvedStackTree(el)).clipped) {
+  for (const { id, clip, kind } of stackingOf(resolvedStackTree(el)).clipped) {
     const at = byId.get(id);
     if (at === undefined) throw new Error(`${id}: a clipped stacking item that is not an element`);
-    const z = at.props.get('z-index') as ResolvedValue;
-    const origin = z.declaration === null ? at.element.node.origin : authored(z.declaration.valueSpan);
     for (const t of targets) {
       if (t === 'web') continue;
-      const key = `${t}|stacking-clip|${id}`;
+      const key = `${t}|stacking-${kind}|${id}`;
       if (reported.has(key)) continue;
       reported.add(key);
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-        origin,
+        origin: itemOrigin(at),
         target: t,
-        message: `${id} has z-index ${valueText(z)} and paints in a stacking context outside ${clip}, whose overflow clip applies to it; ${t} would need a clip-chain view around it, which PNT1's hosting does not have yet`,
-        manual: `Make ${clip} a stacking context (position: relative with a z-index), so the z-index box stacks inside its clip, or move the box out of the clipping element.`,
+        message: kind === 'order'
+          ? `${id} paints in a stacking context outside ${clip}, whose overflow clip applies to it, and Chrome paints it after content ${t} would paint above it under that clip; ${t} would need a clip-chain view around it, which PNT1's hosting does not have yet`
+          : `${id} is not clipped by ${clip} in Chrome (its containing block is outside it), but ${t} hosts it under a stacking context inside ${clip}'s clip view, which would clip it; PNT1's hosting cannot take it out of that clip yet`,
+        manual: kind === 'order'
+          ? `Make ${clip} a stacking context (position: relative with a z-index), so the box stacks inside its clip, or move the box out of the clipping element.`
+          : `Make the stacking context between ${clip} and ${id} its containing block (position: relative), or move ${id} out of ${clip}.`,
         basis: 'computed-value',
       }));
     }

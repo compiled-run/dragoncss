@@ -7,8 +7,9 @@
 // paints: its stacking context for z < 0 and z > 0, else the nearest positioned z-index auto ancestor inside that context (whose
 // positioned descendants follow it in tree order), and it is sorted there after the flow children. A re-hosting that would take a
 // box out of an overflow clip in its containing-block chain stays under the clip instead (EMS has no clip-chain hook), which is
-// Chrome's order everywhere but where the box overlaps content painted after the clipper; a z-index box that needs it, and whose
-// native order then differs from Appendix E's against some node, is refused (analysis/paint-values/stacking.ts). Every layer item
+// Chrome's order everywhere but where the box overlaps content painted after the clipper; a box that needs it, and whose native order
+// then differs from Appendix E's against some node, is refused (analysis/paint-values/stacking.ts), and so is a box a native
+// ancestor's clip view would clip although the clip is not in its containing-block chain. Every layer item
 // gets a write; flow boxes get none.
 import type { LayoutBox, LayoutNode } from '@dragon/layout';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
@@ -64,8 +65,12 @@ export type Stacking = {
   /** Appendix E's order of the node ids, and the native order the placements give (equal unless a node stays under a clip). */
   readonly order: readonly string[];
   readonly native: readonly string[];
-  /** Layer items with an integer z-index that stay under a clip and so paint in another order than Appendix E's, with the clip. */
-  readonly clipped: readonly { readonly id: string; readonly clip: string }[];
+  /**
+   * The nodes the native tree paints wrongly, with the clip at fault: 'order', a layer item kept under a clip of its containing-block
+   * chain, which then paints in another order than Appendix E's against some node; 'clip', a node a native ancestor's clip view
+   * clips although that clip is not in its containing-block chain (a re-hosting under a stacking context inside the clip).
+   */
+  readonly clipped: readonly { readonly id: string; readonly clip: string; readonly kind: 'order' | 'clip' }[];
 };
 
 type Info = {
@@ -163,7 +168,7 @@ export function stackingOf(root: StackNode): Stacking {
   // Placements: every layer item under its layer's view, or under the nearest clip its layer would take it out of.
   const placement = new Map<string, Placement>();
   const underClip = new Set<string>();
-  const clipped: { id: string; clip: string }[] = [];
+  const clipped: { id: string; clip: string; kind: 'order' | 'clip' }[] = [];
   const rankOf = new Map<string, number>();
   for (const s of all) if (s.sc) itemsOf(s).forEach((it, k) => rankOf.set(it.node.id, k));
   for (const i of all) {
@@ -216,23 +221,45 @@ export function stackingOf(root: StackNode): Stacking {
   const native = nativeOrder(placement, indices);
   const writes = new Map([...placement].map(([id, q]) => [id, { ...q, index: indices.get(id) as number }]));
   if (underClip.size === 0 && !same(native, order)) throw new ProgramError(`${root.id}: the placements give the native order ${native.join(' ')}, not Appendix E's ${order.join(' ')}`);
-  // A z-index item kept under a clip is clipped when it (or its subtree) and some other node paint in the other order natively.
+  // An item kept under a clip paints wrongly when it (or its subtree) and some other node paint in the other order natively.
   const inOrder = new Map(order.map((id, k) => [id, k]));
   const inNative = new Map(native.map((id, k) => [id, k]));
   const subtree = (i: Info): string[] => [i.node.id, ...kids(i).flatMap(subtree)];
   for (const i of all) {
-    if (!underClip.has(i.node.id) || i.node.z === null) continue;
+    if (!underClip.has(i.node.id)) continue;
     const mine = new Set(subtree(i));
     const at = (m: ReadonlyMap<string, number>, id: string): number => m.get(id) as number;
     const swapped = order.some((y) => !mine.has(y) && [...mine].some((x) => at(inOrder, x) < at(inOrder, y) !== at(inNative, x) < at(inNative, y)));
-    if (swapped) clipped.push({ id: i.node.id, clip: (placement.get(i.node.id) as Placement).host });
+    if (swapped) clipped.push({ id: i.node.id, clip: (placement.get(i.node.id) as Placement).host, kind: 'order' });
+  }
+
+  const chainOf = (i: Info): string[] => {
+    const out: string[] = [];
+    for (let a = i.parent; a !== null; a = a.parent) if (a.node.clips && inBlockChain(a, i)) out.push(a.node.id);
+    return out;
+  };
+  // The clips the native tree applies to a node are its native ancestors' (each hosts its children in a clip view); they must be its
+  // containing-block chain's. A node is reported where the difference starts: its native parent paints right.
+  const nativeParent = (i: Info): Info | null => (i.parent === null ? null : (infos.get(placement.get(i.node.id)?.host ?? i.parent.node.id) as Info));
+  const wrong = new Map<string, string>();
+  for (const i of all) {
+    const chain = new Set(chainOf(i));
+    const applied: string[] = [];
+    for (let a = nativeParent(i); a !== null; a = nativeParent(a)) if (a.node.clips) applied.push(a.node.id);
+    const extra = applied.find((c) => !chain.has(c));
+    const missing = [...chain].find((c) => !applied.includes(c));
+    if (extra !== undefined || missing !== undefined) wrong.set(i.node.id, (extra ?? missing) as string);
+  }
+  for (const i of all) {
+    const clip = wrong.get(i.node.id);
+    const np = nativeParent(i);
+    if (clip !== undefined && !(np !== null && wrong.has(np.node.id))) clipped.push({ id: i.node.id, clip, kind: 'clip' });
   }
 
   const facts = new Map<string, StackingFacts>();
   const at = new Map(order.map((id, k) => [id, k]));
   for (const i of all) {
-    const clipChain: string[] = [];
-    for (let a = i.parent; a !== null; a = a.parent) if (a.node.clips && inBlockChain(a, i)) clipChain.push(a.node.id);
+    const clipChain = chainOf(i);
     facts.set(i.node.id, {
       paintOrder: at.get(i.node.id) as number,
       context: contextOf(i)?.node.id ?? null,

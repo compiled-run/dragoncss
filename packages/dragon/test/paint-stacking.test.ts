@@ -109,7 +109,7 @@ describe('Appendix E paint order', () => {
     expect(escaping.clipped).toEqual([]);
     const clipped = stackingOf(n('html', {}, n('clip', { clips: true }, n('d', { position: 'relative', z: 3 })), n('l', {})));
     expect(clipped.facts.get('d')).toMatchObject({ host: 'clip', clipChain: ['clip'], underClip: true });
-    expect(clipped.clipped).toEqual([{ id: 'd', clip: 'clip' }]);
+    expect(clipped.clipped).toEqual([{ id: 'd', clip: 'clip', kind: 'order' }]);
     const fixed = stackingOf(n('html', {}, n('clip', { clips: true }, n('d', { position: 'fixed', z: 3 })), n('l', {})));
     expect(fixed.facts.get('d')).toMatchObject({ host: 'html', clipChain: [], underClip: false, createsContext: true });
     expect(fixed.clipped).toEqual([]);
@@ -119,7 +119,32 @@ describe('Appendix E paint order', () => {
     expect(last.clipped).toEqual([]);
     const auto = stackingOf(n('html', {}, n('clip', { clips: true }, n('d', { position: 'relative' })), n('l', {})));
     expect(auto.facts.get('d')).toMatchObject({ host: 'clip', underClip: true });
-    expect(auto.clipped).toEqual([]);
+    // A z-index auto box too: under the clip it paints before l, which Appendix E paints below it (finding 1).
+    expect(auto.clipped).toEqual([{ id: 'd', clip: 'clip', kind: 'order' }]);
+  });
+  it('reports a layer item of any z-index kept under a clip whose native order differs (review of #196, finding 1)', () => {
+    // body > [C (overflow: hidden) > P (opacity 0.5, or relative, or transformed), S]: Appendix E paints C S P; under C, P paints before S.
+    for (const p of [{ opacity: 0.5 }, { position: 'relative' as const }, { transformed: true }]) {
+      const s = stackingOf(n('html', {}, n('body', {}, n('C', { clips: true }, n('P', p)), n('S', {}))));
+      expect(s.order, JSON.stringify(p)).toEqual(['html', 'body', 'C', 'S', 'P']);
+      expect(s.native, JSON.stringify(p)).toEqual(['html', 'body', 'C', 'P', 'S']);
+      expect(s.clipped, JSON.stringify(p)).toEqual([{ id: 'P', clip: 'C', kind: 'order' }]);
+    }
+  });
+  it('reports a box a stacking context inside a clip would take into that clip, which its containing-block chain is not in (finding 2)', () => {
+    // body > C (overflow: hidden) > O (opacity 0.5, will-change: opacity or a flex item with a z-index) > I (absolute): Chrome does
+    // not clip I (its containing block is the root); natively I is hosted under O, inside C's clip view.
+    for (const o of [{ opacity: 0.5 }, { transformed: true }]) {
+      const s = stackingOf(n('html', {}, n('body', {}, n('C', { clips: true }, n('O', o, n('I', { position: 'absolute' }))))));
+      expect(s.facts.get('I'), JSON.stringify(o)).toMatchObject({ host: 'O', clipChain: [] });
+      expect(s.clipped, JSON.stringify(o)).toEqual([{ id: 'I', clip: 'C', kind: 'clip' }]);
+    }
+    const flex = stackingOf(n('html', {}, n('body', {}, n('C', { clips: true }, n('F', {}, n('O', { z: 2 }, n('I', { position: 'absolute' })))))));
+    expect(flex.clipped).toEqual([{ id: 'I', clip: 'C', kind: 'clip' }]);
+    // A positioned O is I's containing block, so C clips I in Chrome too: nothing to report.
+    const positioned = stackingOf(n('html', {}, n('body', {}, n('C', { clips: true }, n('O', { opacity: 0.5, position: 'relative' }, n('I', { position: 'absolute' }))))));
+    expect(positioned.facts.get('I')?.clipChain).toEqual(['C']);
+    expect(positioned.clipped.filter((c) => c.kind === 'clip')).toEqual([]);
   });
 });
 
@@ -130,8 +155,19 @@ describe('stacking: refusals on the native targets', () => {
     const c = compile('.clip { overflow: hidden; height: 20px; } .d { position: relative; z-index: 2; height: 30px; } .after { position: relative; height: 5px; }', (r) => [div(r, 'clip', ['clip'], [div(r, 'd', ['d'])]), div(r, 'after', ['after'])]);
     const errs = c.diagnostics.filter((d) => d.severity === 'error');
     expect(errs.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
-    expect(errs[0]?.message).toMatch(/^d has z-index 2 and paints in a stacking context outside clip/);
+    expect(errs[0]?.message).toMatch(/^d paints in a stacking context outside clip, whose overflow clip applies to it/);
     expectCatalogued(errs);
+  });
+  it('refuses both review repros on ios only, at the declaration that makes the box a layer item', () => {
+    const order = compile('.c { overflow: hidden; height: 20px; } .p { opacity: 0.5; height: 30px; } .s { height: 20px; margin-top: -20px; background-color: red; }', (r) => [div(r, 'c', ['c'], [div(r, 'p', ['p'])]), div(r, 's', ['s'])]);
+    const oe = order.diagnostics.filter((d) => d.severity === 'error');
+    expect(oe.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+    expect(oe[0]?.message).toMatch(/^p paints in a stacking context outside c, whose overflow clip applies to it/);
+    const escape = compile('.c { overflow: hidden; height: 20px; } .o { opacity: 0.5; height: 10px; } .i { position: absolute; top: 60px; width: 10px; height: 10px; }', (r) => [div(r, 'c', ['c'], [div(r, 'o', ['o'], [div(r, 'i', ['i'])])])]);
+    const ee = escape.diagnostics.filter((d) => d.severity === 'error');
+    expect(ee.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+    expect(ee[0]?.message).toMatch(/^i is not clipped by c in Chrome \(its containing block is outside it\)/);
+    expectCatalogued([...oe, ...ee]);
   });
   it('a z-index auto box under such a clip, a z-index box whose clip is not its containing block, and one that nothing paints after compile', () => {
     for (const css of ['.clip { overflow: hidden; height: 20px; } .d { position: relative; height: 30px; }', '.row { position: relative; } .clip { overflow: hidden; height: 20px; } .d { position: absolute; z-index: 2; height: 30px; }', '.clip { overflow: hidden; height: 20px; } .d { position: relative; z-index: 2; height: 30px; }']) {
