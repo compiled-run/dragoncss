@@ -66,6 +66,28 @@ function contentRefusal(t: CssNode): string | null | 'invalid' {
   return 'invalid';
 }
 
+/**
+ * The predefined counter styles (css-counter-styles-3 §6, §7, and disclosure-open / disclosure-closed): Chrome matches these names
+ * ASCII case-insensitively and computes them in lowercase, and keeps any other counter-style name as written (probed: Disc computes
+ * disc, Foo computes Foo; packages/parity/test/list-style-parse.test.ts).
+ */
+const PREDEFINED_COUNTER_STYLES: ReadonlySet<string> = new Set([
+  'decimal', 'decimal-leading-zero', 'arabic-indic', 'armenian', 'upper-armenian', 'lower-armenian', 'bengali', 'cambodian', 'khmer',
+  'cjk-decimal', 'devanagari', 'georgian', 'gujarati', 'gurmukhi', 'hebrew', 'kannada', 'lao', 'malayalam', 'mongolian', 'myanmar',
+  'oriya', 'persian', 'lower-roman', 'upper-roman', 'tamil', 'telugu', 'thai', 'tibetan', 'lower-alpha', 'lower-latin', 'upper-alpha',
+  'upper-latin', 'lower-greek', 'hiragana', 'hiragana-iroha', 'katakana', 'katakana-iroha', 'disc', 'circle', 'square',
+  'disclosure-open', 'disclosure-closed', 'cjk-earthly-branch', 'cjk-heavenly-stem', 'japanese-informal', 'japanese-formal',
+  'korean-hangul-formal', 'korean-hanja-informal', 'korean-hanja-formal', 'simp-chinese-informal', 'simp-chinese-formal',
+  'trad-chinese-informal', 'trad-chinese-formal', 'ethiopic-numeric',
+]);
+
+/** The computed list-style-type of a counter-style name token: a predefined name in lowercase, any other as written. */
+export function counterStyleName(t: CssNode): CssValue {
+  const written = String(t['name']);
+  const lower = asciiLower(written);
+  return kw(PREDEFINED_COUNTER_STYLES.has(lower) || lower === 'none' ? lower : written);
+}
+
 const ok = (property: Longhand, value: CssValue): ParsedValue => ({ kind: 'ok', longhands: [{ property, value, explicit: true }] });
 
 function refuse(property: string, node: CssNode, base: Span, reason: string, manual: string): ParsedValue {
@@ -98,6 +120,6 @@ export function parseListsValue(property: Longhand, tokens: readonly CssNode[], 
   }
   // list-style-type: the grammar (Chrome's, scripts/gen-css-grammar.ts) admits one keyword or one string.
   if (only !== null && only.type === 'String') return ok(property, stringValue(String(only['value'])));
-  if (keyword !== null) return ok(property, kw(keyword));
+  if (only !== null && only.type === 'Identifier') return ok(property, counterStyleName(only));
   return { kind: 'invalid' };
 }

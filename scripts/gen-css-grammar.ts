@@ -57,6 +57,10 @@ const SUBSET = [
  */
 const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
   'writing-mode': 'lr | lr-tb | rl | rl-tb | tb | tb-rl',
+  // Blink's image parser (css_parsing_utils.cc ConsumeImage) also takes the prefixed -webkit-image-set() and -webkit-cross-fade(),
+  // which webref's <image> omits; Chrome 145 parses both in content and list-style-image (packages/parity/test/list-style-parse.test.ts).
+  content: '-webkit-image-set( <image-set-option># ) | -webkit-cross-fade( <image> , <image> , [ <percentage> | <number> ] )',
+  'list-style-image': '-webkit-image-set( <image-set-option># ) | -webkit-cross-fade( <image> , <image> , [ <percentage> | <number> ] )',
 };
 
 /**

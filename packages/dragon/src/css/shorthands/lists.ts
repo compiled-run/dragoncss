@@ -5,7 +5,7 @@ import { generate } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import { spanOf } from '../ast.ts';
 import { asciiLower } from '../escapes.ts';
-import { isImageToken, stringValue } from '../properties/lists.ts';
+import { counterStyleName, isImageToken, stringValue } from '../properties/lists.ts';
 import type { CssValue } from '../values.ts';
 import { kw } from '../values.ts';
 import type { ShorthandHandler } from './shared.ts';
@@ -16,9 +16,8 @@ const identOf = (t: CssNode): string | null => (t.type === 'Identifier' ? asciiL
 /** The list-style-type value of a token that is neither the position, none, nor an image: a string or a counter-style name. */
 function typeValue(t: CssNode): CssValue {
   if (t.type === 'String') return stringValue(String(t['value']));
-  const ident = identOf(t);
-  if (ident === null) throw new Error(`list-style: ${generate(t)} passed the grammar as a list-style-type`);
-  return kw(ident);
+  if (t.type !== 'Identifier') throw new Error(`list-style: ${generate(t)} passed the grammar as a list-style-type`);
+  return counterStyleName(t);
 }
 
 const listStyle: ShorthandHandler = {
