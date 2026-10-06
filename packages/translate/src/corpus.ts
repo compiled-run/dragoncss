@@ -658,6 +658,33 @@ export function animatorExpected(lines: readonly string[]): string[] {
   });
 }
 
+// ---------------------------------------------------------------- band suite (MQ-R1, T067 R4)
+
+/** Every media fixture's band table at root sizes around its thresholds (packages/parity parity:band-vectors). */
+export const BAND_VECTORS = join(RT_VECTORS_DIR, 'band/cases.json');
+
+/**
+ * The band suite: one library-mode line per band table: its atoms and bands, and root sizes in whole device px at a DPR. The
+ * TypeScript harness's answers (media width, height and band) are the expected results; Swift and Kotlin must equal them, and
+ * packages/parity media-runtime.test.ts proves the TypeScript lookup equals MQ-R0's partition, which equals Chrome.
+ */
+export function bandCases(): string[] {
+  const v = JSON.parse(readFileSync(BAND_VECTORS, 'utf8')) as { schema: string; cases: { table: unknown; sizes: unknown }[] };
+  if (v.schema !== 'dragon-band-vectors/1') throw new Error(`${BAND_VECTORS}: schema ${v.schema}; run pnpm run parity:band-vectors`);
+  const out = v.cases.map((c) => JSON.stringify(['rt-band', c.table, c.sizes]));
+  if (out.length === 0) throw new Error('the band suite has no cases');
+  return out;
+}
+
+/** The band suite's expected results; a line the TypeScript reference threw on or refused fails the build, not the natives. */
+export function bandExpected(lines: readonly string[]): string[] {
+  return lines.map((line, i) => {
+    const r = runLibraryCase(line);
+    if (!r.startsWith('["ok",')) throw new Error(`band case ${i}: the TypeScript reference answered ${r.slice(0, 200)}, not a result`);
+    return r;
+  });
+}
+
 export function buildCorpus(): Corpus {
   const vectors = vectorCases();
   const vLines = vectors.map((v) => v.line);
@@ -667,6 +694,7 @@ export function buildCorpus(): Corpus {
   const rt = rtCases();
   const hit = hitCases();
   const animator = animatorCases();
+  const band = bandCases();
   const suites: Suite[] = [
     { name: 'vectors', mode: 'engine', lines: vLines, expected: vLines.map(runEngineCase) },
     { name: 'units', mode: 'units', lines: units, expected: units.map(runUnitsCase) },
@@ -678,6 +706,8 @@ export function buildCorpus(): Corpus {
     { name: 'hit', mode: 'library', lines: hit, expected: hitExpected(hit) },
     // ANIM-b1 3b: the runtime animator over every frame case's tables and script, after hit.
     { name: 'animator', mode: 'library', lines: animator, expected: animatorExpected(animator) },
+    // MQ-R1: the @media band lookup over every media fixture's band table, after animator.
+    { name: 'band', mode: 'library', lines: band, expected: bandExpected(band) },
   ];
   const d = digestsOf(suites);
   return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: d.digest, digests: d.digests };

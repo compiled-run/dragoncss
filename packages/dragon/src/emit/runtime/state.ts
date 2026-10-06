@@ -10,7 +10,10 @@ import { PROGRAM_VERSIONS } from '../../lower/native-program.ts';
 import type { StateDelta, StateFaults, StateProgram } from '../../lower/state-program.ts';
 import { NO_STATE_FAULTS } from '../../lower/state-program.ts';
 import type { GeneratedFile, Scalar } from '../../types.ts';
-import { doubleLit, environmentArgs, inputFunctions, stringLit } from '../native-support.ts';
+import type { rtBand } from '@dragon/layout';
+import { BAND_KEY } from '../../lower/band-program.ts';
+import { doubleLit, inputFunctions, liveEnvironmentArgs, stringLit } from '../native-support.ts';
+import { bandTableLit } from './media.ts';
 
 export const STATE_RUNTIME_VERSION = 'dragon.runtime-state/1';
 
@@ -19,10 +22,21 @@ export type ScriptStep =
   | { readonly kind: 'set'; readonly state: string; readonly value: Scalar }
   | { readonly kind: 'advance'; readonly ms: number }
   | { readonly kind: 'tap'; readonly x: number; readonly y: number }
+  /** MQ-R1 (T067 R7 (a)): the media root's new size in CSS px; the mount's root observes it and the machine moves the band. */
+  | { readonly kind: 'resize'; readonly width: number; readonly height: number }
   | { readonly kind: 'dump' };
 
-/** One case script as a device case: its id, steps and the expected-dump digests of the assignment it ends in. */
-export type ScriptCase = { readonly id: string; readonly steps: readonly ScriptStep[]; readonly expectedDigests: readonly { readonly dpr: number; readonly sha256: string }[] };
+/**
+ * One case script as a device case: its id, steps and the expected-dump digests of the assignment it ends in. MQ-R1: start is the
+ * media root's size when the script starts and viewport the size it ends at (the program's viewport for both when absent).
+ */
+export type ScriptCase = {
+  readonly id: string;
+  readonly steps: readonly ScriptStep[];
+  readonly expectedDigests: readonly { readonly dpr: number; readonly sha256: string }[];
+  readonly start?: { readonly width: number; readonly height: number };
+  readonly viewport?: { readonly width: number; readonly height: number };
+};
 
 /** One state program as the emitter sees it. */
 export type StateEmit = {
@@ -33,6 +47,8 @@ export type StateEmit = {
   readonly viewport: { readonly width: number; readonly height: number };
   readonly program: StateProgram;
   readonly scripts: readonly ScriptCase[];
+  /** MQ-R1: the band table of a band program (one with env#band); absent for a program of one band. */
+  readonly band?: rtBand.BandTable;
 };
 
 export class StateEmitError extends Error {}
@@ -73,10 +89,12 @@ public struct DragonStateDelta {
   public init(_ removed: [String], _ changed: [DragonStateNode], _ order: [String]?, _ variant: Int) { self.removed = removed; self.changed = changed; self.order = order; self.variant = variant }
 }
 
-/// One case-script step: set state s to its v-th domain value, advance the virtual clock, or mark the dump.
+/// One case-script step: set state s to its v-th domain value, advance the virtual clock, resize the media root (CSS px), or mark
+/// the dump.
 public enum DragonScriptStep {
   case set(Int, Int)
   case advance(Double)
+  case resize(Double, Double)
   case dump
 }
 
@@ -88,8 +106,13 @@ public final class DragonStateMachine {
   private var baseById: [String: DragonStateNode] = [:]
   private let deltas: [DragonStateDelta]
   private let next: [[[Int]]]
-  private let variants: [(Double) -> LayoutInput]
+  private let variants: [(Double, Double, Double) -> LayoutInput]
   private let skipRelayout: Bool
+  /// MQ-R1: the band table and env#band state of a band program; nil for a program of one band.
+  public let band: DragonBandBinding?
+  /// The band of the current assignment, and the viewport (CSS px) the engine lays out at: the media root's size.
+  public private(set) var bandIndex: Int
+  public private(set) var viewport: (Double, Double)
   public let clock = DragonVirtualClock()
   public private(set) var current: Int
   public private(set) var laidOut: Int
@@ -98,8 +121,10 @@ public final class DragonStateMachine {
   private var nodes: [String: DragonStateNode] = [:]
   private var order: [String] = []
 
-  public init(states: [String], domains: [[String]], base: [DragonStateNode], deltas: [DragonStateDelta], next: [[[Int]]], initial: Int, variants: [(Double) -> LayoutInput], skipRelayout: Bool) {
+  public init(states: [String], domains: [[String]], base: [DragonStateNode], deltas: [DragonStateDelta], next: [[[Int]]], initial: Int, variants: [(Double, Double, Double) -> LayoutInput], skipRelayout: Bool, viewport: (Double, Double), band: DragonBandBinding?, initialBand: Int) {
     self.states = states; self.domains = domains; self.base = base; self.deltas = deltas; self.next = next; self.variants = variants; self.skipRelayout = skipRelayout
+    self.viewport = viewport; self.band = band; self.bandIndex = initialBand
+    if let b = band, b.table.bands.items.count != domains[b.state].count { fatalError("dragon: the band table has \(b.table.bands.items.count) bands, env#band \(domains[b.state].count) values") }
     current = initial
     laidOut = deltas[initial].variant
     for n in base { baseById[n.id] = n }
@@ -164,8 +189,23 @@ public final class DragonStateMachine {
     }
   }
 
-  /// The engine input last laid out.
-  public func input(_ dpr: Double) -> LayoutInput { return variants[laidOut](dpr) }
+  /// The engine input last laid out, at the current viewport.
+  public func input(_ dpr: Double) -> LayoutInput { return variants[laidOut](dpr, viewport.0, viewport.1) }
+
+  /// MQ-R1 (T067 R5): one size change of the media root: its whole device px pick the band, its CSS px are the viewport. The new
+  /// band first, through env#band's delta when it changes (whose setter lays out once), else one layout at the new size.
+  public func resize(_ widthPx: Double, _ heightPx: Double, css: (Double, Double), scale: Double) {
+    viewport = css
+    if let b = band {
+      let to = dragonBandAt(b, widthPx, heightPx, scale)
+      if to != bandIndex {
+        bandIndex = to
+        set(b.state, to)
+        return
+      }
+    }
+    onChange?()
+  }
 }
 
 /// A state machine on screen: the Dragon views of its live records, laid out with the engine input it last laid out, in a stage.
@@ -175,21 +215,39 @@ public final class DragonStateMount {
   public let machine: DragonStateMachine
   public private(set) var tree = DragonTree()
   public private(set) var renders = 0
+  /// MQ-R1: the Dragon root view the tree is laid out in; its own size is the environment (T067 R6).
+  public let media: DragonMediaRoot
   private let stage: UIView
   private let measurer: TextMeasurer
   private let scale: Double
   private let bridge: DragonBridge
 
-  public init(machine: DragonStateMachine, stage: UIView, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
+  /// size: the media root's size in CSS px; the machine takes the band of it before the first render.
+  public init(machine: DragonStateMachine, stage: UIView, measurer: TextMeasurer, scale: Double, bridge: DragonBridge, size: (Double, Double)) {
     self.machine = machine; self.stage = stage; self.measurer = measurer; self.scale = scale; self.bridge = bridge
+    media = DragonMediaRoot(scale: scale)
+    stage.addSubview(media)
+    media.frame = CGRect(x: 0, y: 0, width: CGFloat(size.0), height: CGFloat(size.1))
+    media.layoutIfNeeded()
+    machine.resize(media.sizePx.0, media.sizePx.1, css: size, scale: scale)
     render()
     machine.onChange = { [weak self] in self?.render() }
+    media.onSize = { [weak self] w, h, cw, ch in
+      guard let self = self else { return }
+      self.machine.resize(w, h, css: (cw, ch), scale: self.scale)
+    }
+  }
+
+  /// A script's resize step: the media root takes the new size, and its own layoutSubviews hands it to the machine.
+  public func resize(_ width: Double, _ height: Double) {
+    media.frame = CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height))
+    media.layoutIfNeeded()
   }
 
   private func render() {
     let t = DragonTree()
     machine.build(t)
-    stage.addSubview(t.root)
+    media.addSubview(t.root)
     do {
       try t.apply(machine.input(scale), measurer: measurer, scale: scale, bridge: bridge)
     } catch {
@@ -201,18 +259,21 @@ public final class DragonStateMount {
   }
 }
 
-/// A case script: its case (identity and expected digests) and its steps, which run on a DragonStateMount through the setters.
+/// A case script: its case (identity and expected digests, the viewport it ends at), its start size and its steps, which run on a
+/// DragonStateMount through the setters and the media root.
 public struct DragonStateScript {
   public let dragonCase: DragonCase
   public let make: () -> DragonStateMachine
+  public let start: (Double, Double)
   public let steps: [DragonScriptStep]
 
-  /// Runs the steps on a mounted machine; each set goes through the setter, so the mount re-renders after it.
-  public func run(_ m: DragonStateMachine) {
+  /// Runs the steps on a mount; each set goes through the setter and each resize through the media root, so the mount re-renders.
+  public func run(_ m: DragonStateMount) {
     for s in steps {
       switch s {
-      case .set(let a, let b): m.set(a, b)
-      case .advance(let ms): m.clock.advance(ms)
+      case .set(let a, let b): m.machine.set(a, b)
+      case .advance(let ms): m.machine.clock.advance(ms)
+      case .resize(let w, let h): m.resize(w, h)
       case .dump: break
       }
     }
@@ -220,13 +281,13 @@ public struct DragonStateScript {
 }
 
 /// A case script as a device case. Its views come only from a DragonStateMount, so its case builds nothing by itself.
-public func dragonStateScriptCase(id: String, fixture: String, direction: String, compilerDigest: String, viewport: (width: Double, height: Double), expectedDigests: [Double: String], make: @escaping () -> DragonStateMachine, steps: [DragonScriptStep]) -> DragonStateScript {
+public func dragonStateScriptCase(id: String, fixture: String, direction: String, compilerDigest: String, viewport: (width: Double, height: Double), start: (Double, Double), expectedDigests: [Double: String], make: @escaping () -> DragonStateMachine, steps: [DragonScriptStep]) -> DragonStateScript {
   let c = DragonCase(id: id, fixture: fixture, direction: direction, compilerDigest: compilerDigest, viewport: viewport, expectedDigests: expectedDigests, input: { _ in
     fatalError("dragon: script \(id) runs on a state mount, not as a layout case")
   }, build: { _ in
     fatalError("dragon: script \(id) runs on a state mount, not as a layout case")
   })
-  return DragonStateScript(dragonCase: c, make: make, steps: steps)
+  return DragonStateScript(dragonCase: c, make: make, start: start, steps: steps)
 }
 `;
 }
@@ -258,6 +319,8 @@ class DragonStateDelta(val removed: List<String>, val changed: List<DragonStateN
 sealed class DragonScriptStep {
   class Set(val s: Int, val v: Int) : DragonScriptStep()
   class Advance(val ms: Double) : DragonScriptStep()
+  /** MQ-R1: the media root's new size in CSS px. */
+  class Resize(val width: Double, val height: Double) : DragonScriptStep()
   object Dump : DragonScriptStep()
 }
 
@@ -269,11 +332,20 @@ class DragonStateMachine(
   private val deltas: List<DragonStateDelta>,
   private val next: List<List<List<Int>>>,
   initial: Int,
-  private val variants: List<(Double) -> LayoutInput>,
+  private val variants: List<(Double, Double, Double) -> LayoutInput>,
   private val skipRelayout: Boolean,
+  viewport: Pair<Double, Double>,
+  /** MQ-R1: the band table and env#band state of a band program; null for a program of one band. */
+  val band: DragonBandBinding?,
+  initialBand: Int,
 ) {
   private val baseById = HashMap<String, DragonStateNode>()
   val clock = DragonVirtualClock()
+  /** The band of the current assignment, and the viewport (CSS px) the engine lays out at: the media root's size. */
+  var bandIndex: Int = initialBand
+    private set
+  var viewport: Pair<Double, Double> = viewport
+    private set
   var current: Int = initial
     private set
   var laidOut: Int = deltas[initial].variant
@@ -284,6 +356,7 @@ class DragonStateMachine(
   private var order: List<String> = emptyList()
 
   init {
+    if (band != null && band.table.bands.size != domains[band.state].size) throw IllegalStateException("dragon: the band table has " + band.table.bands.size + " bands, env#band " + domains[band.state].size + " values")
     for (n in base) baseById[n.id] = n
     val d = deltas[initial]
     val removed = d.removed.toHashSet()
@@ -353,7 +426,25 @@ class DragonStateMachine(
   }
 
   /** The engine input last laid out. */
-  fun input(dpr: Double): LayoutInput = variants[laidOut](dpr)
+  fun input(dpr: Double): LayoutInput = variants[laidOut](dpr, viewport.first, viewport.second)
+
+  /**
+   * MQ-R1 (T067 R5): one size change of the media root: its whole device px pick the band, its CSS px are the viewport. The new band
+   * first, through env#band's delta when it changes (whose setter lays out once), else one layout at the new size.
+   */
+  fun resize(widthPx: Double, heightPx: Double, css: Pair<Double, Double>, scale: Double) {
+    viewport = css
+    val b = band
+    if (b != null) {
+      val to = dragonBandAt(b, widthPx, heightPx, scale)
+      if (to != bandIndex) {
+        bandIndex = to
+        set(b.state, to)
+        return
+      }
+    }
+    onChange?.invoke()
+  }
 }
 
 /**
@@ -361,36 +452,59 @@ class DragonStateMachine(
  * Every committed setter rebuilds the views from the records, lays them out and swaps them in for the previous ones, so a typed
  * setter call changes what is on screen.
  */
-class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewGroup, private val measurer: TextMeasurer, private val scale: Double, private val bridge: DragonBridge) {
+class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewGroup, private val measurer: TextMeasurer, private val scale: Double, private val bridge: DragonBridge, size: Pair<Double, Double>) {
   var tree: DragonTree = DragonTree(stage.context)
     private set
   var renders = 0
     private set
+  /** MQ-R1: the Dragon root view the tree is laid out in; its own size is the environment (T067 R6). */
+  val media = DragonMediaRoot(stage.context)
+  /** The CSS size a script's resize step asked for, read by the next size change; null for a size the system set. */
+  private var requested: Pair<Double, Double>? = size
 
   init {
+    stage.addView(media, ViewGroup.LayoutParams(pxOf(size.first), pxOf(size.second)))
+    media.onSize = { w, h ->
+      val css = requested ?: Pair(w / scale, h / scale)
+      requested = null
+      machine.resize(w, h, css, scale)
+    }
+    // The first size: laid out here, so the machine takes its band before the first render; the setter then renders nothing.
+    media.layout(0, 0, pxOf(size.first), pxOf(size.second))
     render()
     machine.onChange = { render() }
+  }
+
+  /** CSS px to the whole device px the view takes: ceil, as DragonTree.apply sizes the root. */
+  private fun pxOf(css: Double): Int = kotlin.math.ceil(css * scale).toInt()
+
+  /** A script's resize step: the media root takes the new size, and its own onSizeChanged hands it to the machine. */
+  fun resize(width: Double, height: Double) {
+    requested = Pair(width, height)
+    media.layoutParams = ViewGroup.LayoutParams(pxOf(width), pxOf(height))
+    media.layout(media.left, media.top, media.left + pxOf(width), media.top + pxOf(height))
   }
 
   private fun render() {
     val t = DragonTree(stage.context)
     machine.build(t)
     t.apply(machine.input(scale), measurer, scale, bridge)
-    stage.addView(t.root, ViewGroup.LayoutParams(t.root.dragonFrame[2], t.root.dragonFrame[3]))
-    stage.removeView(tree.root)
+    media.addView(t.root, ViewGroup.LayoutParams(t.root.dragonFrame[2], t.root.dragonFrame[3]))
+    media.removeView(tree.root)
     tree = t
     renders++
   }
 }
 
 /** A case script: its case (identity and expected digests) and its steps, which run on a DragonStateMount through the setters. */
-class DragonStateScript(val dragonCase: DragonCase, val make: () -> DragonStateMachine, val steps: List<DragonScriptStep>) {
-  /** Runs the steps on a mounted machine; each set goes through the setter, so the mount re-renders after it. */
-  fun run(m: DragonStateMachine) {
+class DragonStateScript(val dragonCase: DragonCase, val make: () -> DragonStateMachine, val start: Pair<Double, Double>, val steps: List<DragonScriptStep>) {
+  /** Runs the steps on a mount; each set goes through the setter and each resize through the media root, so the mount re-renders. */
+  fun run(m: DragonStateMount) {
     for (s in steps) {
       when (s) {
-        is DragonScriptStep.Set -> m.set(s.s, s.v)
-        is DragonScriptStep.Advance -> m.clock.advance(s.ms)
+        is DragonScriptStep.Set -> m.machine.set(s.s, s.v)
+        is DragonScriptStep.Advance -> m.machine.clock.advance(s.ms)
+        is DragonScriptStep.Resize -> m.resize(s.width, s.height)
         is DragonScriptStep.Dump -> {}
       }
     }
@@ -398,13 +512,13 @@ class DragonStateScript(val dragonCase: DragonCase, val make: () -> DragonStateM
 }
 
 /** A case script as a device case. Its views come only from a DragonStateMount, so its case builds nothing by itself. */
-fun dragonStateScriptCase(id: String, fixture: String, direction: String, compilerDigest: String, width: Double, height: Double, expectedDigests: Map<Double, String>, make: () -> DragonStateMachine, steps: List<DragonScriptStep>): DragonStateScript {
+fun dragonStateScriptCase(id: String, fixture: String, direction: String, compilerDigest: String, width: Double, height: Double, start: Pair<Double, Double>, expectedDigests: Map<Double, String>, make: () -> DragonStateMachine, steps: List<DragonScriptStep>): DragonStateScript {
   val c = DragonCase(id, fixture, direction, compilerDigest, width, height, expectedDigests, { _ ->
     throw IllegalStateException("dragon: script " + id + " runs on a state mount, not as a layout case")
   }, { _ ->
     throw IllegalStateException("dragon: script " + id + " runs on a state mount, not as a layout case")
   })
-  return DragonStateScript(c, make, steps)
+  return DragonStateScript(c, make, start, steps)
 }
 `;
 }
@@ -516,6 +630,9 @@ function stepLit(lang: Lang, sp: StateProgram, id: string, step: ScriptStep): st
     case 'advance':
       if (!Number.isFinite(step.ms) || step.ms < 0) throw new StateEmitError(`${id}: advance(${step.ms}) is not a finite, non-negative step`);
       return lang === 'swift' ? `.advance(${doubleLit(step.ms)})` : `DragonScriptStep.Advance(${doubleLit(step.ms)})`;
+    case 'resize':
+      if (![step.width, step.height].every((v) => Number.isFinite(v) && v > 0)) throw new StateEmitError(`${id}: resize(${step.width}, ${step.height}) is not a positive size`);
+      return lang === 'swift' ? `.resize(${doubleLit(step.width)}, ${doubleLit(step.height)})` : `DragonScriptStep.Resize(${doubleLit(step.width)}, ${doubleLit(step.height)})`;
     case 'dump':
       return lang === 'swift' ? '.dump' : 'DragonScriptStep.Dump';
     case 'tap':
@@ -534,9 +651,10 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
     out.push(...input.decls);
     const fn = `${p}Input${j}`;
     variantFns.push(lang === 'swift' ? fn : `::${fn}`);
+    // MQ-R1: the viewport is the machine's (the media root's CSS size), not a literal.
     out.push(lang === 'swift'
-      ? `private func ${fn}(_ dpr: Double) -> LayoutInput {\n  return LayoutInput(Viewport(${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), dpr, ${environmentArgs(e.viewport, variant.rootFontSize)}, ${input.root})\n}`
-      : `private fun ${fn}(dpr: Double): LayoutInput = LayoutInput(Viewport(${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), dpr, ${environmentArgs(e.viewport, variant.rootFontSize)}, ${input.root})`);
+      ? `private func ${fn}(_ dpr: Double, _ vw: Double, _ vh: Double) -> LayoutInput {\n  return LayoutInput(Viewport(vw, vh), dpr, ${liveEnvironmentArgs('vw', 'vh', variant.rootFontSize)}, ${input.root})\n}`
+      : `private fun ${fn}(dpr: Double, vw: Double, vh: Double): LayoutInput = LayoutInput(Viewport(vw, vh), dpr, ${liveEnvironmentArgs('vw', 'vh', variant.rootFontSize)}, ${input.root})`);
   });
   // Every table is its own typed constant, so no single literal grows past what the type checkers handle quickly.
   const decl = (name: string, type: string, value: string): string => (lang === 'swift' ? `private let ${name}: ${type} = ${value}` : `private val ${name}: ${type} = ${value}`);
@@ -549,12 +667,18 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   out.push(decl(`${p}Deltas`, kt ? 'List<DragonStateDelta>' : '[DragonStateDelta]', list(lang, sp.deltas.map((_, i) => `${p}Delta${i}`))));
   out.push(decl(`${p}Next`, kt ? 'List<List<List<Int>>>' : '[[[Int]]]', list(lang, sp.next.map((a) => list(lang, a.map((st) => list(lang, st.map(String))))))));
   const skip = faults.setterSkipsRelayout ? 'true' : 'false';
+  // MQ-R1: a band program carries its band table and env#band's index; its initial band is the initial assignment's.
+  const bandState = sp.states.findIndex((s) => s.key === BAND_KEY);
+  if ((bandState >= 0) !== (e.band !== undefined)) throw new StateEmitError(`${e.id}: a band program needs its band table, and only a band program has one`);
+  const band = e.band === undefined ? (lang === 'swift' ? 'nil' : 'null') : `DragonBandBinding(${p}Bands, ${bandState})`;
+  const initialBand = bandState < 0 ? 0 : (((sp.assignments[sp.initial] as StateProgram['assignments'][number]).assignment.find((a) => a.state.instance === '@env')?.value as number | undefined) ?? 0);
+  if (e.band !== undefined) out.push(decl(`${p}Bands`, 'BandTable', bandTableLit(lang, e.band)));
   if (lang === 'swift') {
     out.push(`/// A fresh runtime of state program ${commentText(e.id)} at its initial assignment.`);
-    out.push(`public func ${p}Machine() -> DragonStateMachine {\n  return DragonStateMachine(states: ${p}States, domains: ${p}Domains, base: ${p}Base, deltas: ${p}Deltas, next: ${p}Next, initial: ${sp.initial}, variants: ${list(lang, variantFns)}, skipRelayout: ${skip})\n}`);
+    out.push(`public func ${p}Machine() -> DragonStateMachine {\n  return DragonStateMachine(states: ${p}States, domains: ${p}Domains, base: ${p}Base, deltas: ${p}Deltas, next: ${p}Next, initial: ${sp.initial}, variants: ${list(lang, variantFns)}, skipRelayout: ${skip}, viewport: (${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), band: ${band}, initialBand: ${initialBand})\n}`);
   } else {
     out.push(`/** A fresh runtime of state program ${commentText(e.id)} at its initial assignment. */`);
-    out.push(`fun ${p}Machine(): DragonStateMachine =\n  DragonStateMachine(${p}States, ${p}Domains, ${p}Base, ${p}Deltas, ${p}Next, ${sp.initial}, ${list(lang, variantFns)}, ${skip})`);
+    out.push(`fun ${p}Machine(): DragonStateMachine =\n  DragonStateMachine(${p}States, ${p}Domains, ${p}Base, ${p}Deltas, ${p}Next, ${sp.initial}, ${list(lang, variantFns)}, ${skip}, Pair(${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), ${band}, ${initialBand})`);
   }
   // The typed setters (decision 17): booleans for boolean domains, an enum per other domain.
   const setters = typedSetters(sp);
@@ -562,6 +686,8 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   const body: string[] = [];
   setters.forEach((s, i) => {
     const state = sp.states[i] as StateProgram['states'][number];
+    // MQ-R1 (T067 R5): env#band is set by the media root's size, never by the app, so it has no typed setter.
+    if (state.key === BAND_KEY) return;
     if (s.boolean) {
       const t = state.domain.findIndex((v) => v === true);
       const f = state.domain.findIndex((v) => v === false);
@@ -583,12 +709,15 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
     : `/** The typed state API of ${commentText(e.id)}. */\nclass ${cls} {\n  val machine = ${p}Machine()\n${body.join('\n')}\n}`);
   e.scripts.forEach((sc, j) => {
     const steps = list(lang, sc.steps.map((st) => stepLit(lang, sp, sc.id, st)));
+    // MQ-R1: a resize script starts at its own size and ends at another; the case's viewport is the one it ends at.
+    const start = sc.start ?? e.viewport;
+    const end = sc.viewport ?? e.viewport;
     if (lang === 'swift') {
       const digests = sc.expectedDigests.map((d) => `${doubleLit(d.dpr)}: ${q(d.sha256)}`).join(', ');
-      out.push(`let ${p}Script${j} = dragonStateScriptCase(id: ${q(sc.id)}, fixture: ${q(e.fixture)}, direction: ${q(e.direction)}, compilerDigest: ${q(e.compilerDigest)}, viewport: (width: ${doubleLit(e.viewport.width)}, height: ${doubleLit(e.viewport.height)}), expectedDigests: [${digests}], make: ${p}Machine, steps: ${steps})`);
+      out.push(`let ${p}Script${j} = dragonStateScriptCase(id: ${q(sc.id)}, fixture: ${q(e.fixture)}, direction: ${q(e.direction)}, compilerDigest: ${q(e.compilerDigest)}, viewport: (width: ${doubleLit(end.width)}, height: ${doubleLit(end.height)}), start: (${doubleLit(start.width)}, ${doubleLit(start.height)}), expectedDigests: [${digests}], make: ${p}Machine, steps: ${steps})`);
     } else {
       const digests = sc.expectedDigests.map((d) => `${doubleLit(d.dpr)} to ${q(d.sha256)}`).join(', ');
-      out.push(`val ${p}Script${j} = dragonStateScriptCase(${q(sc.id)}, ${q(e.fixture)}, ${q(e.direction)}, ${q(e.compilerDigest)}, ${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}, mapOf(${digests}), ::${p}Machine, ${steps})`);
+      out.push(`val ${p}Script${j} = dragonStateScriptCase(${q(sc.id)}, ${q(e.fixture)}, ${q(e.direction)}, ${q(e.compilerDigest)}, ${doubleLit(end.width)}, ${doubleLit(end.height)}, Pair(${doubleLit(start.width)}, ${doubleLit(start.height)}), mapOf(${digests}), ::${p}Machine, ${steps})`);
     }
   });
   return out.join('\n');

@@ -63,6 +63,7 @@
     "parity:anim-report": "node --conditions=dragon-internal packages/parity/src/cli/anim-report.ts",
     "parity:anim-vectors": "node --conditions=dragon-internal packages/parity/src/cli/anim-vectors.ts",
     "parity:quads-capture": "node --conditions=dragon-internal packages/parity/src/cli/quads-capture.ts",
+    "parity:band-vectors": "node --conditions=dragon-internal packages/parity/src/cli/band-vectors.ts",
     "parity:resize-capture": "node --conditions=dragon-internal packages/parity/src/cli/resize-capture.ts",
     "parity:resize-report": "node --conditions=dragon-internal packages/parity/src/cli/resize-report.ts"
   },

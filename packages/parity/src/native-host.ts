@@ -14,6 +14,7 @@ import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, Na
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
 import { stateEmits } from './state-cases.ts';
+import { resizeEmits } from './resize-scripts.ts';
 import { deviceHitSource } from './hit-capture.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
@@ -213,10 +214,17 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   guard let c = script?.dragonCase ?? layoutCase else { fatalError("dragon host: no case \(id)") }
   let t0: CFTimeInterval
   let tree: DragonTree
+  var mountedMedia: UIView? = nil
+  var environment: DumpEnvironment? = nil
   if let script = script {
     t0 = CACurrentMediaTime()
-    let mount = DragonStateMount(machine: script.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge)
-    script.run(mount.machine)
+    // MQ-R1: the mount's media root starts at the script's start size; resize steps change it, and it hands each size to the machine.
+    let mount = DragonStateMount(machine: script.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge, size: script.start)
+    script.run(mount)
+    mountedMedia = mount.media
+    // MQ-R1 (T067 R6): the environment record, as the root view observed it and the machine took it.
+    let px = mount.media.sizePx
+    environment = DumpEnvironment(rootPx: [px.0, px.1], dpr: scale, media: [try! rtBand_mediaSize(px.0, scale), try! rtBand_mediaSize(px.1, scale)], band: Double(mount.machine.bandIndex))
     tree = mount.tree
   } else {
     tree = DragonTree()
@@ -235,12 +243,13 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   let t1 = CACurrentMediaTime()
   let pixels = dragonCapture(tree.root, scale: scale, points: run.points[id] ?? [])
   let t2 = CACurrentMediaTime()
-  let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000))
+  let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000), environment: environment)
   dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
   // SELD-R1b: the device-hit record, the translated hit test on the case's own input and the device's measurer.
   if let facts = dragonHitFactsTable[id] { dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".hit", dragonHitRuns(c, facts, scale: scale, measurer: bridge.measurer)) }
   let next = {
     tree.root.removeFromSuperview()
+    mountedMedia?.removeFromSuperview()
     dragonCase(k + 1, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
   }
   if !run.hold {
@@ -304,6 +313,7 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import dev.dragon.cases.dragonCaseTable
 import dev.dragon.dump.DumpDevice
+import dev.dragon.dump.DumpEnvironment
 import dev.dragon.dump.DumpJsonWriter
 import dev.dragon.dump.DumpPixels
 import dev.dragon.dump.DumpTiming
@@ -394,10 +404,17 @@ class DragonActivity : Activity() {
     val c = script?.dragonCase ?: layoutCase ?: throw IllegalStateException("dragon host: no case " + id)
     val t0: Long
     val tree: DragonTree
+    var mountedMedia: android.view.View? = null
+    var environment: DumpEnvironment? = null
     if (script != null) {
       t0 = SystemClock.elapsedRealtimeNanos()
-      val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge)
-      script.run(mount.machine)
+      // MQ-R1: the mount's media root starts at the script's start size; resize steps change it, and it hands each size to the machine.
+      val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge, script.start)
+      script.run(mount)
+      mountedMedia = mount.media
+      // MQ-R1 (T067 R6): the environment record, as the root view observed it and the machine took it.
+      val m = mount.media
+      environment = DumpEnvironment(listOf(m.widthPx, m.heightPx), scale, listOf(dev.dragon.layout.rtBand_mediaSize(m.widthPx, scale), dev.dragon.layout.rtBand_mediaSize(m.heightPx, scale)), mount.machine.bandIndex.toDouble())
       tree = mount.tree
     } else {
       tree = DragonTree(this)
@@ -448,12 +465,13 @@ class DragonActivity : Activity() {
               return@OnPixelCopyFinishedListener
             }
             val pixels = DumpPixels("PixelCopy", w.toDouble(), h.toDouble(), sha, dragonSamples(bytes, w, h, run.points[id] ?: emptyList()))
-            val dump = tree.dump(c, scale, device, pixels, DumpTiming((t1 - t0) / 1e6, (SystemClock.elapsedRealtimeNanos() - t2) / 1e6))
+            val dump = tree.dump(c, scale, device, pixels, DumpTiming((t1 - t0) / 1e6, (SystemClock.elapsedRealtimeNanos() - t2) / 1e6), environment)
             File(out, id + "@" + DumpJsonWriter.format(scale) + ".json").writeText(dumpJson(dump))
             // SELD-R1b: the device-hit record, the translated hit test on the case's own input and the device's measurer.
             dragonHitFactsTable[id]?.let { facts -> File(out, id + "@" + DumpJsonWriter.format(scale) + ".hit").writeText(dragonHitRuns(c, facts, scale, bridge.measurer)) }
             val next = Runnable {
               frame.removeView(tree.root)
+              mountedMedia?.let { frame.removeView(it) }
               frame.post { runCase(k + 1) }
             }
             if (!run.hold) next.run()
@@ -544,7 +562,8 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   files.push(...emitNativeSupport(backend, supportPlant));
   files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
   // SELD-R1a: the state programs and their case scripts.
-  files.push(...emitStatePrograms(backend, stateEmits(target)));
+  // MQ-R1: the resize cases' band programs and prefix scripts follow the state groups'.
+  files.push(...emitStatePrograms(backend, [...stateEmits(target), ...resizeEmits(target)]));
   // SELD-R1b: the device-hit facts and runner.
   files.push(deviceHitSource(target));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);

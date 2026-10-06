@@ -103,6 +103,8 @@ import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
 import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
 import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors } from '../../layout/src/rt-animator.ts';
+import type { BandAtom, BandComparison, BandFaults, BandFeature, BandOp, BandTable } from '../../layout/src/rt-band.ts';
+import { bandAtPx, mediaSize } from '../../layout/src/rt-band.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
@@ -1193,6 +1195,9 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
     // animator suite (ANIM-b1 3b, T065 R16): the runtime animator over a frame case's tables and script.
     case 'rt-animator':
       return rtAnimatorResult(a);
+    // band suite (MQ-R1, T067 R4): a stylesheet's band table looked up at root sizes in whole device px.
+    case 'rt-band':
+      return rtBandResult(a);
     default:
       return fail(`unknown operation ${op}`);
   }
@@ -1791,6 +1796,67 @@ function rtAnimatorResult(a: readonly JsonValue[]): string {
       for (const c of frameColors(frame, t, AN_NO_FAULTS)) colors += `${colors === '' ? '' : ','}[${q(c.node)},${q(c.property)},${h(c.rgba.r)},${h(c.rgba.g)},${h(c.rgba.b)},${h(c.rgba.alpha)}]`;
       out += `${out === '' ? '' : ','}[[${values}],[${colors}]]`;
     } else fail(`${path}: unknown step ${op}`);
+  });
+  return `[${out}]`;
+}
+
+// ---------------------------------------------------------------- band suite (MQ-R1, T067 R4)
+
+function bandOp(v: JsonValue, path: string): BandOp {
+  const t = str(v, path);
+  if (t === 'lt' || t === 'le' || t === 'gt' || t === 'ge' || t === 'eq') return t;
+  return fail(`${path}: unknown band operator ${t}`);
+}
+
+function bandFeature(v: JsonValue, path: string): BandFeature {
+  const t = str(v, path);
+  if (t === 'width' || t === 'height' || t === 'orientation' || t === 'aspect-ratio') return t;
+  return fail(`${path}: unknown band feature ${t}`);
+}
+
+/** An atom [feature, keyword, [[op, value, num, den]...]], numbers as bits. */
+function bandAtom(v: JsonValue, path: string): BandAtom {
+  const a = arr(v, path);
+  if (a.length !== 3) return fail(`${path}: expected [feature, keyword, comparisons]`);
+  const k = str(item(a, 1, path), `${path}[1]`);
+  if (k !== 'portrait' && k !== 'landscape' && k !== 'none') return fail(`${path}[1]: unknown keyword ${k}`);
+  const comparisons: BandComparison[] = [];
+  arr(item(a, 2, path), `${path}[2]`).forEach((c, i) => {
+    const p = `${path}[2][${i.toString(16)}]`;
+    const g = arr(c, p);
+    if (g.length !== 4) fail(`${p}: expected [op, value, num, den]`);
+    comparisons.push({ op: bandOp(item(g, 0, p), p), value: arg(g, 1), num: arg(g, 2), den: arg(g, 3) });
+  });
+  return { feature: bandFeature(item(a, 0, path), `${path}[0]`), comparisons, keyword: k };
+}
+
+/**
+ * A band lookup: [op, [atoms, bands], sizes]; a size is [widthPx, heightPx, dpr] as bits, a band a list of truth values. Each size
+ * gives its media width and height and the band index, as bits.
+ */
+function rtBandResult(a: readonly JsonValue[]): string {
+  if (a.length !== 3) return fail('rt-band: expected [op, table, sizes]');
+  const t = arr(item(a, 1, '$'), '$[1]');
+  if (t.length !== 2) return fail('$[1]: expected [atoms, bands]');
+  const atoms: BandAtom[] = [];
+  arr(item(t, 0, '$[1]'), '$[1][0]').forEach((x, i) => atoms.push(bandAtom(x, `$[1][0][${i.toString(16)}]`)));
+  const bands: boolean[][] = [];
+  arr(item(t, 1, '$[1]'), '$[1][1]').forEach((x, i) => {
+    const row: boolean[] = [];
+    arr(x, `$[1][1][${i.toString(16)}]`).forEach((y, j) => row.push(bool(y, `$[1][1][${i.toString(16)}][${j.toString(16)}]`)));
+    bands.push(row);
+  });
+  const table: BandTable = { atoms, bands };
+  const noFaults: BandFaults = { bandBoundaryExclusive: false };
+  let out = '';
+  arr(item(a, 2, '$'), '$[2]').forEach((x, i) => {
+    const p = `$[2][${i.toString(16)}]`;
+    const g = arr(x, p);
+    if (g.length !== 3) fail(`${p}: expected [widthPx, heightPx, dpr]`);
+    const w = arg(g, 0);
+    const hh = arg(g, 1);
+    const dpr = arg(g, 2);
+    out += `${out === '' ? '' : ','}[${h(mediaSize(w, dpr))},${h(mediaSize(hh, dpr))},${h(bandAtPx(table, w, hh, dpr, noFaults))}]`;
   });
   return `[${out}]`;
 }

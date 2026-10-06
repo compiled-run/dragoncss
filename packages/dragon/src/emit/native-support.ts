@@ -686,7 +686,8 @@ public final class DragonTree {
   }
 
   /// The dump read back from the live tree: frames via dragonLayoutRect (transforms ignored), applied values from the live objects.
-  public func dump(_ c: DragonCase, scale: Double, device: DumpDevice, pixels: DumpPixels, timing: DumpTiming) -> Dump {
+  /// environment (MQ-R1): a state mount's Dragon root view environment; nil for a layout case.
+  public func dump(_ c: DragonCase, scale: Double, device: DumpDevice, pixels: DumpPixels, timing: DumpTiming, environment: DumpEnvironment? = nil) -> Dump {
     let s = scale
     var nodes: [DumpNodes] = []
     for id in order {
@@ -711,7 +712,7 @@ public final class DragonTree {
       }
       nodes.append(DumpNodes(id: id, parent: parents[id] ?? nil, kind: v.dragonKind, native: String(describing: type(of: v)), frame: DumpNodesFrame(x: l / s, y: t / s, width: (rr - l) / s, height: (b - t) / s), deviceEdges: DumpNodesDeviceEdges(left: l, top: t, right: rr, bottom: b), applied: v.dragonApplied(), lines: lines))
     }
-    return Dump(lane: "ios-sim", case: DumpCase(id: c.id, fixture: c.fixture, dpr: s, viewport: DumpCaseViewport(width: c.viewport.width, height: c.viewport.height), direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: c.expectedDigest(scale: s)), device: device, nodes: nodes, pixels: pixels, timing: timing)
+    return Dump(lane: "ios-sim", case: DumpCase(id: c.id, fixture: c.fixture, dpr: s, viewport: DumpCaseViewport(width: c.viewport.width, height: c.viewport.height), direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: c.expectedDigest(scale: s)), device: device, nodes: nodes, pixels: pixels, timing: timing, environment: environment)
   }
 }
 
@@ -1194,6 +1195,7 @@ import dev.dragon.dump.Dump
 import dev.dragon.dump.DumpCase
 import dev.dragon.dump.DumpCaseViewport
 import dev.dragon.dump.DumpDevice
+import dev.dragon.dump.DumpEnvironment
 import dev.dragon.dump.DumpNodes
 import dev.dragon.dump.DumpNodesDeviceEdges
 import dev.dragon.dump.DumpNodesFrame
@@ -1443,7 +1445,8 @@ class DragonTree(val context: Context) {
   }
 
   /** The dump read back from the live tree: frames from the layout positions up to the root (dragonLayoutOffset), divided by density. */
-  fun dump(c: DragonCase, scale: Double, device: DumpDevice, pixels: DumpPixels, timing: DumpTiming): Dump {
+  /** environment (MQ-R1): a state mount's Dragon root view environment; null for a layout case. */
+  fun dump(c: DragonCase, scale: Double, device: DumpDevice, pixels: DumpPixels, timing: DumpTiming, environment: DumpEnvironment? = null): Dump {
     val s = scale
     val nodes = ArrayList<DumpNodes>()
     for (id in order) {
@@ -1469,7 +1472,7 @@ class DragonTree(val context: Context) {
       }
       nodes.add(DumpNodes(id, parents[id], v.dragonKind, view.javaClass.name, DumpNodesFrame(l / s, t / s, (rr - l) / s, (b - t) / s), DumpNodesDeviceEdges(l, t, rr, b), v.dragonApplied(), lines))
     }
-    return Dump("android-emu", DumpCase(c.id, c.fixture, s, DumpCaseViewport(c.viewportWidth, c.viewportHeight), c.direction, c.compilerDigest, c.expectedDigest(s)), device, nodes, pixels, timing)
+    return Dump("android-emu", DumpCase(c.id, c.fixture, s, DumpCaseViewport(c.viewportWidth, c.viewportHeight), c.direction, c.compilerDigest, c.expectedDigest(s)), device, nodes, pixels, timing, environment)
   }
 }
 
@@ -1825,6 +1828,15 @@ function fontSpecValue(lang: Lang, f: FontSpec): string {
  */
 export function environmentArgs(viewport: { readonly width: number; readonly height: number }, rootFontSize: number): string {
   const v = `Viewport(${doubleLit(viewport.width)}, ${doubleLit(viewport.height)})`;
+  return `ViewportUnitSizes(${v}, ${v}, ${v}), SafeAreaInsets(0.0, 0.0, 0.0, 0.0), ${doubleLit(rootFontSize)}`;
+}
+
+/**
+ * MQ-R1 (T067 R5, R6): environmentArgs with the viewport the state machine holds (the media root's CSS size, in the generated
+ * variables named), so a size change lays out again with the new viewport units. The small, large and dynamic sizes equal it, as decided.
+ */
+export function liveEnvironmentArgs(width: string, height: string, rootFontSize: number): string {
+  const v = `Viewport(${width}, ${height})`;
   return `ViewportUnitSizes(${v}, ${v}, ${v}), SafeAreaInsets(0.0, 0.0, 0.0, 0.0), ${doubleLit(rootFontSize)}`;
 }
 

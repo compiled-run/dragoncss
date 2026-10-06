@@ -8,6 +8,8 @@ import { DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
 import { DUMP_FAULTS } from './native-compare.ts';
 import { repoPath } from './paths.ts';
 import { SAMPLE_RULES } from './samples.ts';
+import { directionSuffix, environmentsOf, FIXTURES } from './fixtures.ts';
+import { RESIZE_SCRIPTS } from './fixture-groups/media-runtime.ts';
 
 export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels',
   // SELD-R1b (notes/T047 §3.3 item 5): the case scripts' dumps, and the device hit test's answers.
@@ -90,6 +92,8 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'p1', suite: 'hit', cases: ['', ...DPRS.map((d) => `/dpr-${d}`)].reduce((n, d) => n + readdirSync(repoPath(`packages/layout/vectors${d}`)).filter((f) => f.endsWith('.json') && hitRefused[f.slice(0, -'.json'.length)] === undefined).length, 0) },
     // ANIM-b1 3b (T065 R16): one animator case per frame case (packages/layout/rt-vectors/animator/cases.json).
     { corpus: 'p1', suite: 'animator', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/animator/cases.json').cases.length },
+    // MQ-R1 (T067 R4): one band case per media fixture band table (packages/layout/rt-vectors/band/cases.json).
+    { corpus: 'p1', suite: 'band', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/band/cases.json').cases.length },
     { corpus: 'extended', suite: 'engine-dpr', cases: layoutCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },
     { corpus: 'extended', suite: 'snap', cases: x.snapVectors + x.snapGenerated },
@@ -101,13 +105,23 @@ export function corpusSuites(): readonly CorpusSuite[] {
   ];
 }
 
+/** MQ-R1: every resize prefix script id ("<fixture>[-rtl]~resize<k>", resize-scripts.ts), from the scripts and the fixtures' directions alone. */
+export function resizeScriptIds(): readonly string[] {
+  return RESIZE_SCRIPTS.flatMap((s) => {
+    const spec = FIXTURES.find((f) => f.id === s.fixture);
+    if (spec === undefined) throw new Error(`resize script ${s.fixture}: no such fixture`);
+    return environmentsOf(spec).flatMap((env) => Array.from({ length: s.steps.length + 1 }, (_, k) => `${s.fixture}${directionSuffix(env.direction)}~resize${k}`));
+  });
+}
+
 let scripts: readonly string[] | null = null;
 /**
  * Every case script id (state-cases.ts deriveScripts), from the layout cases alone: one per case of a tree fixture with free states,
  * "<fixture>~script<k>" with k the case's assignment index and "-rtl" for right-to-left.
  */
 export function stateScriptIds(): readonly string[] {
-  if (scripts === null) scripts = layoutCases().flatMap((f) => f.cases.filter((c) => f.spec.format === 'tree' && c.assignment.length > 0).map((c) => `${f.spec.id}~script${c.index}${c.environment.direction === 'rtl' ? '-rtl' : ''}`));
+  // MQ-R1: then every resize prefix script (resize-scripts.ts), after the state groups' scripts as the hosts list them.
+  if (scripts === null) scripts = [...layoutCases().flatMap((f) => f.cases.filter((c) => f.spec.format === 'tree' && c.assignment.length > 0).map((c) => `${f.spec.id}~script${c.index}${c.environment.direction === 'rtl' ? '-rtl' : ''}`)), ...resizeScriptIds()];
   return scripts;
 }
 
