@@ -17,6 +17,7 @@ import { splitNotApplicable } from './css/not-applicable.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
 import { checkComputed } from './analysis/computed-checks.ts';
+import { checkTranslucent } from './analysis/paint-values/effects.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
@@ -640,6 +641,8 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys);
+    // PNT1: outside the parity lanes, native refuses a fractional opacity (PNT1-opacity-b); the lanes run it to prove its web rows.
+    if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
@@ -985,6 +988,14 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         diagnostics.splice(valuesAt, 0, ...values);
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
+      // PNT1: the lanes lower a fractional opacity on native, but a user's compile refuses it there until PNT1-opacity-b, so a
+      // document that uses one is lane-only on native and proves no native row (pipeline.ts).
+      if (options.interactionLanes) {
+        const pending: Diagnostic[] = [];
+        const native = NATIVE_TARGETS.filter((t) => targets.includes(t));
+        for (const c of cases) for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) if (r !== null) checkTranslucent(r, native, pending, new Set());
+        laneOnlyNative = native.filter((t) => laneOnlyNative.includes(t) || pending.some((d) => d.target === t));
+      }
       // T005 rec 3: the rules inside each unsupported at-rule are analysed with the block unwrapped, in a scratch pass whose
       // diagnostics located inside the at-rule become its related entries. Nothing from this pass is resolved into an output.
       if (enclosed.length > 0) {

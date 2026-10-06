@@ -31,7 +31,7 @@ import type { NativeCase } from './native-host.ts';
 import { BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, nativeCases, nativeOut } from './native-host.ts';
 import { expectedHitRuns, hitCases } from './hit-capture.ts';
 import { deriveScripts, stateEmits, stateGroups, stateProgramOf } from './state-cases.ts';
-import { casePoints, checkCasePixels, committedPixels, decodePng, rasterSize, runFileText } from './pixel-reference.ts';
+import { casePoints, checkCasePixels, committedPixels, decodePng, devicePoints, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
 import type { LaneId, NativeTarget, TargetConfig } from './targets.ts';
@@ -87,7 +87,7 @@ export function caseReference(target: NativeTarget, n: NativeCase, dpr: number):
     chrome: committedDprCapture(n.case.id, dpr),
     breaks: readBreakVector(n.case.id, dpr),
     chromeBreaks: readChromeBreaks(n.case.id, dpr),
-    points: casePoints(program, viewport, dpr),
+    points: devicePoints(program, viewport, dpr),
     pixels: committedPixels(n.case.id, dpr),
   };
 }
@@ -598,7 +598,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const prof = deviceProfile(h);
     const dpr = prof.profileScale;
     if (!t.dprs.includes(dpr)) throw new Error(`${spec.name}: profile scale ${dpr} is not a ${t.target} device DPR`);
-    const runFile = runFileText(cases.map((n) => ({ id: n.case.id, points: casePoints(n.programs[backend], n.case.environment.viewport, dpr) })), false);
+    const runFile = runFileText(cases.map((n) => ({ id: n.case.id, points: devicePoints(n.programs[backend], n.case.environment.viewport, dpr) })), false);
     const outDir = join(nativeOut(t.target), 'lanes', spec.name);
     const t0 = Date.now();
     const r = await runApp(h, artifact, { runFile, caseCount: cases.length, outDir });
@@ -621,7 +621,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const scripts = scriptCases(t.target);
     const statesDir = join(nativeOut(t.target), 'lanes', `${spec.name}-states`);
     const s0 = Date.now();
-    const sr = await runApp(h, artifact, { runFile: runFileText(scripts.map((s) => ({ id: s.script.case.id, points: casePoints(s.end.programs[backend], s.end.case.environment.viewport, dpr) })), false), caseCount: scripts.length, outDir: statesDir });
+    const sr = await runApp(h, artifact, { runFile: runFileText(scripts.map((s) => ({ id: s.script.case.id, points: devicePoints(s.end.programs[backend], s.end.case.environment.viewport, dpr) })), false), caseCount: scripts.length, outDir: statesDir });
     const stateExtra: LaneFailure[] = sr.error === null ? [] : [{ lane: STATE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the scripts: ${sr.error}` }];
     const states = evaluateStates(t.target, dpr, statesDir, rec, scripts, stateExtra);
     log(`${spec.name}: device-states ${states.dumps}/${states.cases} dumps in ${((Date.now() - s0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(states.failures))}`);

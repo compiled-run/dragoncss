@@ -14,12 +14,12 @@ import { describe, expect, it } from 'vitest';
 import { opacityAlpha8, snapEdges } from '@dragon/layout';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
-import { borderDevicePx, nativePrograms, programInput } from 'dragon';
+import { androidProfile, borderDevicePx, createProjectWith, iosProfile, laneOnlyNative, nativePrograms, NO_FAULTS, programInput, webProfile } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { DPRS } from '../src/dpr.ts';
 import { FIXTURE_GROUPS, FIXTURES as CORPUS } from '../src/fixtures.ts';
 import { expectedEngine, nativeCompile } from '../src/native-host.ts';
-import { casePoints, committedPixels, glyphLines } from '../src/pixel-reference.ts';
+import { casePoints, committedPixels, devicePoints, glyphLines } from '../src/pixel-reference.ts';
 import { ruleKind } from '../src/samples.ts';
 
 type Px = [number, number, number, number];
@@ -282,7 +282,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the opacity and stacking fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -395,4 +395,47 @@ describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'
       expect(compared).toBeGreaterThan(0);
     });
   }
+});
+
+// The fractional opacity cases (opacity-web): native refuses a fraction (PNT1-opacity-b), so the lanes compile the fixture as a
+// lane-only case, which proves web rows only, and the device pixel lanes skip what its translucent groups paint.
+describe('PNT1 opacity: fractions are proven on web only', () => {
+  const spec = FIXTURES.find((f) => f.id === 'opacity-web');
+  it('is lane-only on native, refused by name in a user compile, and its groups are the device lanes\' blind spot alone', () => {
+    if (spec === undefined || spec.kind !== 'layout') throw new Error('no opacity-web fixture');
+    for (const c of casesOf(spec, fixtureInput(spec))) {
+      const lanes = nativeCompile(spec, c.environment.direction);
+      expect(laneOnlyNative(lanes, 'ios'), c.id).toBe(true);
+      expect(laneOnlyNative(lanes, 'android'), c.id).toBe(true);
+      const user = createProjectWith({ projectId: 'opacity-web', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: c.environment.direction }).compile(fixtureInput(spec));
+      const errs = user.diagnostics.filter((d) => d.severity === 'error');
+      expect(errs.length, c.id).toBeGreaterThan(0);
+      for (const d of errs) expect([d.target, d.message], c.id).toEqual(['ios', expect.stringMatching(/^ow-[a-z]+ has opacity [0-9.]+; ios composites a translucent view with its own rounding/)]);
+      const r = nativePrograms(lanes, c.assignment);
+      if (r.kind !== 'ready') throw new Error(r.reason);
+      for (const dpr of DPRS) {
+        const all = casePoints(r.programs.uikit, c.environment.viewport, dpr);
+        const kept = devicePoints(r.programs.uikit, c.environment.viewport, dpr);
+        // Every point named for a group's node goes; the stage, rows and spacers keep theirs.
+        expect(kept.filter((q) => /^[a-z-]+:ow-/.test(q.rule)), `${c.id}@${dpr}`).toEqual([]);
+        expect(kept.some((q) => q.rule.startsWith('interior:stage') || q.rule.startsWith('interior:sp')), `${c.id}@${dpr}`).toBe(true);
+        expect(kept.length, `${c.id}@${dpr}`).toBeLessThan(all.length);
+      }
+    }
+  });
+  it('drops no point of a case without a translucent group', () => {
+    for (const spec of FIXTURES.filter((f) => f.id !== 'opacity-web')) {
+      if (spec.kind !== 'layout') continue;
+      for (const c of casesOf(spec, fixtureInput(spec))) {
+        const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+        if (r.kind !== 'ready') throw new Error(r.reason);
+        for (const dpr of DPRS) expect(devicePoints(r.programs.uikit, c.environment.viewport, dpr), `${c.id}@${dpr}`).toEqual(casePoints(r.programs.uikit, c.environment.viewport, dpr));
+      }
+    }
+  });
+  it('cites opacity-web for the web opacity rows and never for a native one', () => {
+    const cites = (rows: typeof webProfile.rows): string[] => rows.filter((r) => r.feature.startsWith('opacity:')).flatMap((r) => r.proofs.flatMap((p) => p.cases));
+    expect(cites(webProfile.rows)).toEqual(expect.arrayContaining(['opacity-web', 'opacity-web-rtl']));
+    for (const profile of [iosProfile, androidProfile]) expect(cites(profile.rows).filter((id) => id.startsWith('opacity-web'))).toEqual([]);
+  });
 });
