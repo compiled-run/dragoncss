@@ -10,7 +10,7 @@
 //   them removed the file is byte-identical to the base, except the header's compilation digest.
 // - The UA datasets (packages/dragon/src/ua/*.generated.ts), compared as data: every computed row gains the four values (decimal on
 //   ol), list-style-type moves from userAgentUnmodelled to userAgentDeclared and userAgentLonghands on exactly the tags whose UA rule
-//   sets it (ul and ol), and every other table and entry is unchanged.
+//   sets a non-initial value (ol), and every other table and entry is unchanged.
 // - Engine inputs (packages/layout/vectors/**, break-vectors/**) and Chrome's line breaks (expected-breaks/**): unchanged.
 // - The Chrome pixel manifest (expected-pixels/**/manifest.json): every base case entry unchanged; only new fixtures' cases added.
 // `--plant <name>` alters one file in memory before the check, which must then fail (PLANTS below).
@@ -151,8 +151,11 @@ function stripEmitted(after: string, before: string, path: string): Stripped {
   return { text: kept.join('\n'), removed };
 }
 
-/** The tags whose Chrome UA rule sets list-style-type (html.css: ul, menu and dir set disc, ol decimal), among the captured keys. */
-const LIST_STYLE_UA: { readonly [tag: string]: string } = { ul: 'disc', ol: 'decimal' };
+/**
+ * The tags whose captured UA rows record list-style-type: ol's decimal. html.css also sets disc on ul, but that equals the initial
+ * value, so the capture (which records what differs from an unstyled element) has no entry for it.
+ */
+const LIST_STYLE_UA: { readonly [tag: string]: string } = { ol: 'decimal' };
 
 /** One UA dataset module as data: every exported table. */
 type UaModule = { readonly [table: string]: unknown };

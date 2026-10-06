@@ -11,7 +11,7 @@ import type { Diagnostic } from '../src/types.ts';
 import { DOC, explainOne, inputFor, staticClass, text } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/lists.css', revision: 'r1', hash: 'sha256:0' };
-const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ahem' } as const;
+const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
 const FONT = 'body { font-family: Ahem; }';
 
 /** The longhands one declaration sets, as [property, value, explicit], or its diagnostic. */
