@@ -101,6 +101,7 @@
         { "lines": "2765-2868", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/animations.ts", "symbol": "longhandsNamed", "use": "reference" },
         { "file": "packages/layout/src/rt-animations.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/rt-keyframes.ts", "symbol": "groupFromRule", "use": "port" },
         { "file": "packages/layout/src/rt-keyframes.ts", "symbol": "sampleKeyframeEffect", "use": "port" },
@@ -240,10 +241,16 @@
       "fileSha256": "e0c34ef496c8b9b6dc51720898f563888b4e721a55daa403a0b3628d836f642b",
       "headerSha256": "b20999bab6461f66d0a5d95f159f1aea8d7160988be022b49353ef0d67f0a8f5",
       "ranges": [
-        { "lines": "1249-1321", "symbol": "EndPointsFromAngle", "source": "located" }
+        { "lines": "646-827", "symbol": "CSSGradientValue::AddStops", "source": "cited" },
+        { "lines": "1249-1321", "symbol": "EndPointsFromAngle", "source": "located" },
+        { "lines": "1338-1432", "symbol": "CSSLinearGradientValue::CreateGradient", "source": "cited" },
+        { "lines": "1867-1964", "symbol": "CSSRadialGradientValue::CreateGradient", "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/paint-dither.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/paint-dither.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "endPointsFromAngle", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "gradientDesc", "use": "port" }
       ]
     },
     {
@@ -455,6 +462,40 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/media_query_evaluator.cc",
+      "licence": "bsd-other",
+      "noticeText": "kinnunen-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2006 Kimmo Kinnunen <kimmo.t.kinnunen@nokia.com>.; Copyright (C) 2013 Apple Inc. All rights reserved.; Copyright (C) 2013 Intel Corporation. All rights reserved.",
+      "fileSha256": "aab66b5e23c23aafe8306ad4a21779e007e360b8abd6e429c08131f9d42ef867",
+      "headerSha256": "8461f59f0ac9af91a8f4a5d41ee9001b35ed65d5a024b7377d6547dfae0a2262",
+      "ranges": [
+        { "lines": "242-253", "symbol": "HandleNegativeMediaFeatureValue", "source": "located" },
+        { "lines": "276-297", "symbol": "CompareDoubleValue", "source": "located" },
+        { "lines": "456-484", "symbol": "OrientationMediaFeatureEval", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/media/evaluate.ts", "symbol": "compareMedia", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/parser/css_parser_impl.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "fba42196ac93233eacc60fdf8d234103f64f23150fbc6c984521e98922df0ce7",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "895-898", "symbol": null, "source": "cited" },
+        { "lines": "1531-1581", "symbol": "CSSParserImpl::ConsumeKeyframesRule", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/at-rules/keyframes.ts", "symbol": "KeyframesRule", "use": "reference" },
+        { "file": "packages/dragon/test/aliases.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -484,6 +525,7 @@
         { "lines": "6031-6033", "symbol": "ConsumeGenericFamily", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/grid-values.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/css/math.ts", "symbol": "MathGrammar", "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": null, "use": "port" },
@@ -491,6 +533,28 @@
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "parseFamilyList", "use": "port" },
         { "file": "packages/dragon/src/fonts/font-face.ts", "symbol": null, "use": "port" },
         { "file": "packages/parity/src/font-reference.ts", "symbol": "PARSER_GENERICS", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/resolver/css_to_style_map.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "css-backgrounds-3 background-position (an edge keyword with an offset measures from that edge) and Chrome observation; the LayoutUnit arithmetic is BSD background_image_geometry.cc ResolveXPosition",
+        "proof": [
+          "packages/layout/test/paint-gradient.test.ts#ResolveXPosition"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2006, 2007 Nicholas Shanks (webkit@nickshanks.com); Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc.",
+      "fileSha256": "de2d3664f88e4ed96936747f785c61d272384ac082e849cd939049a59500a2ac",
+      "headerSha256": "f118f16944514ddfe94243d4e3152390a34e7ebd5cdc54ce77b5ff70764dfc56",
+      "ranges": [
+        { "lines": "195-213", "symbol": "CSSToStyleMap::MapFillPositionX", "source": "located" },
+        { "lines": "215-233", "symbol": "CSSToStyleMap::MapFillPositionY", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "luPosition", "use": "reference" }
       ]
     },
     {
@@ -537,7 +601,8 @@
         "class": "A",
         "basis": "Chrome observation (measured rule record)",
         "proof": [
-          "packages/layout/test/calc.test.ts"
+          "packages/layout/test/calc.test.ts",
+          "packages/dragon/test/media/media.test.ts"
         ]
       },
       "licencePhrase": "GNU Library General Public License",
@@ -545,10 +610,12 @@
       "fileSha256": "4ef883084a6da5e8224698a83931b583e9c0e53cf97d372ee379a2d48b09af5d",
       "headerSha256": "d6c467745c5d69f594d702db6059b157be0ba5847bbb56a9a156e6154e31ff79",
       "ranges": [
-        { "lines": "893-907", "symbol": null, "source": "cited" }
+        { "lines": "893-907", "symbol": null, "source": "cited" },
+        { "lines": "939-953", "symbol": "ViewportSizeForMediaQueries", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/platform-rules.ts", "symbol": "dprPlatformRules", "use": "reference" }
+        { "file": "packages/layout/src/platform-rules.ts", "symbol": "dprPlatformRules", "use": "reference" },
+        { "file": "packages/dragon/src/media/viewport.ts", "symbol": "mediaSize", "use": "reference" }
       ]
     },
     {
@@ -759,21 +826,6 @@
       ]
     },
     {
-      "upstream": "third_party/blink/renderer/core/layout/box_fragment_builder.cc",
-      "licence": "bsd-chromium",
-      "noticeText": "chromium-bsd",
-      "licencePhrase": "Use of this source code is governed by a BSD-style license",
-      "copyright": "Copyright 2016 The Chromium Authors",
-      "fileSha256": "afafce938439bdf772b40da828dd43f52d847309be84687a8130d199982bcc85",
-      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
-      "ranges": [
-        { "lines": "393-461", "symbol": "BoxFragmentBuilder::MoveChildrenInDirection", "source": "located" }
-      ],
-      "dragon": [
-        { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "port" }
-      ]
-    },
-    {
       "upstream": "third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -828,6 +880,29 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/grid/grid_line_resolver.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2022 The Chromium Authors",
+      "fileSha256": "bfdfba4acbc27da65ec1fc22a06c778e9f3701a5c60fe031e8c7f9f54f9ed294",
+      "headerSha256": "92d2eeedf6b379a7a4915a6328828c4152ebc772d3b4463657eabf539567fa33",
+      "ranges": [
+        { "lines": "439-463", "symbol": "LookAheadForNamedGridLine", "source": "located" },
+        { "lines": "465-488", "symbol": "LookBackForNamedGridLine", "source": "located" },
+        { "lines": "490-509", "symbol": "DefiniteGridSpanWithNamedSpanAgainstOpposite", "source": "located" },
+        { "lines": "594-632", "symbol": "ResolveNamedGridLinePositionAgainstOppositePosition", "source": "located" },
+        { "lines": "688-712", "symbol": "ResolveGridPositionAgainstOppositePosition", "source": "located" },
+        { "lines": "714-729", "symbol": "SpanSizeFromPositions", "source": "located" },
+        { "lines": "731-755", "symbol": "ResolveNamedGridLinePosition", "source": "located" },
+        { "lines": "757-822", "symbol": "ResolveGridPosition", "source": "located" },
+        { "lines": "824-874", "symbol": "ResolveGridPositionsFromStyle", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/grid-layout.ts", "symbol": null, "use": "port" }
       ]
     },
     {
@@ -899,6 +974,21 @@
       "dragon": [
         { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" },
         { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/layout_block_flow_hot.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2022 The Chromium Authors",
+      "fileSha256": "c2cd5483ed7d98c78f1400aa3a49c5fea16ac1ac3c2f401aa8d7be5be45e41bd",
+      "headerSha256": "92d2eeedf6b379a7a4915a6328828c4152ebc772d3b4463657eabf539567fa33",
+      "ranges": [
+        { "lines": "38-45", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "port" }
       ]
     },
     {
@@ -1054,6 +1144,29 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/paint/background_image_geometry.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "ad5f47d531f64f0e8a298e28e46b786933d5a3bdacbc89f64c0c5680f2ed6c1e",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "59-70", "symbol": "ResolveXPosition", "source": "located" },
+        { "lines": "72-83", "symbol": "ResolveYPosition", "source": "located" },
+        { "lines": "97-189", "symbol": "BackgroundImageGeometry::SetNoRepeatX", "source": "located" },
+        { "lines": "205-328", "symbol": "BackgroundImageGeometry::ComputeDestRectAdjustments", "source": "located" },
+        { "lines": "397-701", "symbol": "BackgroundImageGeometry::Calculate", "source": "located" },
+        { "lines": "774-782", "symbol": "BackgroundImageGeometry::ComputePhase", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "layerPlacement", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "luPosition", "use": "port" },
+        { "file": "packages/layout/test/paint-gradient.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/paint/box_border_painter.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -1081,6 +1194,24 @@
       "dragon": [
         { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/box_painter_base.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "bb6718a8cb3885693a35ec51b14cae7c44ab1f26d518e27fab4ca077d3bd9995",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "623-687", "symbol": "OptimizeToSingleTileDraw", "source": "located" },
+        { "lines": "707-779", "symbol": "DrawTiledBackground", "source": "located" },
+        { "lines": "932-1046", "symbol": "PaintFastBottomLayer", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "layerPlacement", "use": "port" }
       ]
     },
     {
@@ -1237,6 +1368,22 @@
       "dragon": [
         { "file": "packages/layout/src/units.ts", "symbol": "MAX_FONT_SIZE", "use": "reference" },
         { "file": "packages/layout/src/paint-dash.ts", "symbol": "styleRank", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/style/grid_area.h",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "98d24711cb87a00f969548fd121826a9c785df9e2868a5bb7ce6515958c7e920",
+      "headerSha256": "7fce36fb20afb48e663abb598bae0bc2a92175288d8b927abfb0fb4ba1d369b1",
+      "ranges": [
+        { "lines": "48-48", "symbol": "kGridMaxTracks", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/grid-layout.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/validate.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -2230,6 +2377,42 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/platform/graphics/gradient_generated_image.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-8",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2008, 2009, 2010, 2012 Apple Inc. All rights reserved.",
+      "fileSha256": "ca65f03ca812321cce26012699947520c9c55eb20c028cfd21cd3b551f32e94c",
+      "headerSha256": "3e9da34b8b4a0461e81596b0b1f06f6353e2f308151027f6f89520e1c8171c25",
+      "ranges": [
+        { "lines": "33-60", "symbol": "GradientGeneratedImage::Draw", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "planBackground", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkMatrix.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "1b16a608613ccc7afd2341804b41fa9047af576c3896cbe10493063bbd0450cc",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "101-160", "symbol": "SkMatrix::computeTypeMask", "source": "located" },
+        { "lines": "285-317", "symbol": "SkMatrix::postTranslate", "source": "located" },
+        { "lines": "406-454", "symbol": "SkMatrix::setSinCos", "source": "located" },
+        { "lines": "559-599", "symbol": "SkMatrix::Rect2Rect", "source": "located" },
+        { "lines": "615-684", "symbol": "SkMatrix::setConcat", "source": "located" },
+        { "lines": "745-881", "symbol": "SkMatrix::invert", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "ui/gfx/geometry/cubic_bezier.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -2388,6 +2571,7 @@
     "header-bsd-7": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n\n1.  Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n2.  Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in the\n    documentation and/or other materials provided with the distribution.\n3.  Neither the name of Apple Computer, Inc. (\"Apple\") nor the names of\n    its contributors may be used to endorse or promote products derived\n    from this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS \"AS IS\" AND ANY\nEXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL APPLE OR ITS CONTRIBUTORS BE LIABLE FOR ANY\nDIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND\nON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF\nTHIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
     "header-bsd-8": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n1. Redistributions of source code must retain the above copyright\n   notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright\n   notice, this list of conditions and the following disclaimer in the\n   documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,\nTHE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\nPURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS\nBE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR\nCONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF\nSUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS\nINTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN\nCONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)\nARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF\nTHE POSSIBILITY OF SUCH DAMAGE.\n",
     "header-bsd-9": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n1. Redistributions of source code must retain the above copyright\n   notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright\n   notice, this list of conditions and the following disclaimer in the\n   documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY\nEXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\nPURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR\nCONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\nEXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\nPROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\nPROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY\nOF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+    "kinnunen-bsd-2": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n1. Redistributions of source code must retain the above copyright\n   notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright\n   notice, this list of conditions and the following disclaimer in the\n   documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY\nEXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\nPURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR\nCONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\nEXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\nPROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\nPROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY\nOF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
     "adobe-bsd-2": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n\n1. Redistributions of source code must retain the above\n   copyright notice, this list of conditions and the following\n   disclaimer.\n2. Redistributions in binary form must reproduce the above\n   copyright notice, this list of conditions and the following\n   disclaimer in the documentation and/or other materials\n   provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS\nFOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE\nCOPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,\nINDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)\nHOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,\nSTRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)\nARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED\nOF THE POSSIBILITY OF SUCH DAMAGE.\n",
     "rapidhash-bsd-2": "rapidhash - Very fast, high quality, platform-independent hashing algorithm.\n\nBased on 'wyhash', by Wang Yi <godspeed_china@yeah.net>\n\nBSD 2-Clause License (https://www.opensource.org/licenses/bsd-license.php)\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n   * Redistributions of source code must retain the above copyright\n     notice, this list of conditions and the following disclaimer.\n   * Redistributions in binary form must reproduce the above\n     copyright notice, this list of conditions and the following disclaimer\n     in the documentation and/or other materials provided with the\n     distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\nYou can contact the author at:\n  - rapidhash source repository: https://github.com/Nicoshev/rapidhash\n",
     "fdlibm-sun": "Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.\n\nDeveloped at SunSoft, a Sun Microsystems, Inc. business.\nPermission to use, copy, modify, and distribute this\nsoftware is freely granted, provided that this notice\nis preserved.\n"

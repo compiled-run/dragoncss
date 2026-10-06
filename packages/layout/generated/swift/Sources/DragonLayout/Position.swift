@@ -81,11 +81,11 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
 })).map { $0 as! LayoutBox }
   // ts: packages/layout/src/position.ts:39
   do {
-    let _a48 = box.children
-    var _i48 = 0
-    while _i48 < _a48.items.count {
-      let k: any U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf = _a48.items[_i48]
-      _i48 += 1
+    let _a57 = box.children
+    var _i57 = 0
+    while _i57 < _a57.items.count {
+      let k: any U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf = _a57.items[_i57]
+      _i57 += 1
       // ts: packages/layout/src/position.ts:40
       if try ((k.kind == S.s_replaced) && position_isOutOfFlow(ctx, (k as! ReplacedLeaf))) {
         try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s81, jsConcat(S.s103, (k as! ReplacedLeaf).id, S.s24))
@@ -121,11 +121,11 @@ public func position_inset(_ v: any U_Auto_LengthCalc_Percent_Px, _ basis: Doubl
 public func position_checkControlSubtree(_ ctx: Ctx, _ box: LayoutBox) throws -> Void {
   // ts: packages/layout/src/position.ts:56
   do {
-    let _a49 = box.children
-    var _i49 = 0
-    while _i49 < _a49.items.count {
-      let k: any U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf = _a49.items[_i49]
-      _i49 += 1
+    let _a58 = box.children
+    var _i58 = 0
+    while _i58 < _a58.items.count {
+      let k: any U_ControlBox_LayoutBox_ReplacedLeaf_TextLeaf = _a58.items[_i58]
+      _i58 += 1
       // ts: packages/layout/src/position.ts:57
       if ((k.kind != S.s_box) && ((k as! any U_ControlBox_ReplacedLeaf_TextLeaf).kind != S.s_control)) {
         continue
@@ -155,7 +155,7 @@ public func position_blockInset(_ box: any U_ControlBox_LayoutBox_ReplacedLeaf, 
   }
   // ts: packages/layout/src/position.ts:68
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s155, S.s293)
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s158, S.s310)
   }
   return try box_resolveLengthOrNull((v as! any U_LengthCalc_Percent_Px), nil, faults)
 }

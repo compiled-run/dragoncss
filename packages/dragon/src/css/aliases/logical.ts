@@ -1,0 +1,36 @@
+// The logical family's legacy aliases (aliases.ts): Chrome 145 css_properties.json5 alias_for. before/after are the block
+// sides, start/end the inline sides, and logical-width/height the inline and block sizes.
+import type { LOGICAL_SHORTHANDS } from '../properties/logical.ts';
+
+export const LOGICAL_ALIASES = {
+  '-webkit-border-after': 'border-block-end',
+  '-webkit-border-after-color': 'border-block-end-color',
+  '-webkit-border-after-style': 'border-block-end-style',
+  '-webkit-border-after-width': 'border-block-end-width',
+  '-webkit-border-before': 'border-block-start',
+  '-webkit-border-before-color': 'border-block-start-color',
+  '-webkit-border-before-style': 'border-block-start-style',
+  '-webkit-border-before-width': 'border-block-start-width',
+  '-webkit-border-end': 'border-inline-end',
+  '-webkit-border-end-color': 'border-inline-end-color',
+  '-webkit-border-end-style': 'border-inline-end-style',
+  '-webkit-border-end-width': 'border-inline-end-width',
+  '-webkit-border-start': 'border-inline-start',
+  '-webkit-border-start-color': 'border-inline-start-color',
+  '-webkit-border-start-style': 'border-inline-start-style',
+  '-webkit-border-start-width': 'border-inline-start-width',
+  '-webkit-logical-height': 'block-size',
+  '-webkit-logical-width': 'inline-size',
+  '-webkit-margin-after': 'margin-block-end',
+  '-webkit-margin-before': 'margin-block-start',
+  '-webkit-margin-end': 'margin-inline-end',
+  '-webkit-margin-start': 'margin-inline-start',
+  '-webkit-max-logical-height': 'max-block-size',
+  '-webkit-max-logical-width': 'max-inline-size',
+  '-webkit-min-logical-height': 'min-block-size',
+  '-webkit-min-logical-width': 'min-inline-size',
+  '-webkit-padding-after': 'padding-block-end',
+  '-webkit-padding-before': 'padding-block-start',
+  '-webkit-padding-end': 'padding-inline-end',
+  '-webkit-padding-start': 'padding-inline-start',
+} as const satisfies { readonly [alias: string]: (typeof LOGICAL_SHORTHANDS)[number] };

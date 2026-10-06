@@ -114,6 +114,11 @@ const twin = (decl: string, plain: string, written: string, plainPart: string): 
 /** One spellings() call of twinCases: the name, its seed, and the escaped and plain spellings it returned. */
 type SpellCall = { readonly name: string; readonly seed: number; readonly spelled: readonly (readonly [string, string])[] };
 
+/** display keywords webref's grammar has and Chrome 145 drops (Dragon's display grammar is Chrome's): their twins must be invalid both ways. */
+const DISPLAY_DROPPED = ['grid-lanes', 'inline-grid-lanes', 'ruby-base', 'ruby-base-container', 'ruby-text-container', 'run-in'];
+/** Chrome 145's legacy display keywords, which reach() skips because they start with a hyphen. */
+const DISPLAY_LEGACY = ['-webkit-box', '-webkit-flex', '-webkit-inline-box', '-webkit-inline-flex'];
+
 function twinCases(calls: SpellCall[] = []): Twin[] {
   const out: Twin[] = [];
   let seed = 0;
@@ -142,6 +147,7 @@ function twinCases(calls: SpellCall[] = []): Twin[] {
     ['grid-template-columns', '1', 'fr'], ['grid-auto-columns', '2.5', 'fr'], ['font-size', '1.5', 'em'], ['line-height', '2', 'px'], ['margin-left', '-3', 'px'],
   ];
   for (const [p, n, u] of units) for (const [e, u0] of spell(u)) out.push(twin(`${p}: ${n}${e}`, `${p}: ${n}${u0}`, `${n}${e}`, `${n}${u0}`));
+  for (const w of [...DISPLAY_DROPPED, ...DISPLAY_LEGACY]) for (const [e, w0] of spell(w)) out.push(twin(`display: ${e}`, `display: ${w0}`, e, w0));
   for (const [e, plain] of [['#\\66 00', '#f00'], ['#\\46 00', '#F00'], ['#a\\62 c', '#abc'], ['#\\31 23', '#123'], ['#\\000031 23456', '#123456'], ['#f0\\30 f', '#f00f']]) {
     out.push(twin(`color: ${e as string}`, `color: ${plain as string}`, e as string, plain as string), twin(`background-color: ${e as string}`, `background-color: ${plain as string}`, e as string, plain as string));
   }
@@ -208,7 +214,7 @@ const SELECTORS: readonly SelectorCase[] = [
   { selector: '\\73 pan:\\6e ot(.\\78\\3a y)' }, { selector: ':\\72oot' }, { selector: 'div:\\66irst-child' }, { selector: ':n\\74h-child(\\6f dd)' },
   { selector: ':n\\74h-child(odd)' }, { selector: ':\\6e th-last-child(2 of .\\61)' }, { selector: ':\\77here(.\\31 a)' }, { selector: '.\\31 a:\\68 as(+ .\\31 a)' },
   { selector: ':\\69s(#\\31 a, .\\2d)' }, { selector: '.a\\', eof: true }, { selector: '#\\31', eof: true }, { selector: '[data-a=\\', eof: true },
-  { selector: '.\\31 a,' }, { selector: 'div:\\68over' }, { selector: '.a\\\n' }, { selector: '#\uD800' }, { selector: '.\uD800' }, { selector: '#\u0000' }, { selector: '.a\u0000' }, { selector: '.\u0000a' },
+  { selector: '.\\31 a,' }, { selector: 'div:\\68over' }, { selector: 'div:\\66 ocus-within' }, { selector: '.a\\\n' }, { selector: '#\uD800' }, { selector: '.\uD800' }, { selector: '#\u0000' }, { selector: '.a\u0000' }, { selector: '.\u0000a' },
 ];
 
 const toLinked = (el: El, children: LinkedElement[] = []): LinkedElement => ({
@@ -342,7 +348,7 @@ const judgeEdges = (items: readonly EdgeItem[], seen: readonly EdgeSeen[]): stri
 type SelectorSeen = { readonly c: SelectorCase; readonly dragon: boolean[] | 'invalid' | string; readonly chrome: boolean[] | 'invalid' };
 /** Selectors Chrome parses that Dragon refuses or reports, each with its reason; none is a wrong match. */
 const SELECTOR_REFUSALS: Record<string, string> = {
-  'div:\\68over': 'interactive state is runtime state, which a later package models',
+  'div:\\66 ocus-within': ':focus-within is runtime state Dragon does not model (SELD-R2 compiles :hover, :active, :focus and :focus-visible)',
   ':n\\74h-child(\\6f dd)': 'css-tree\'s An+B parser does not read escapes, so the argument stays Raw and is refused',
   '[data-a=\\': 'css-tree reports a block left open at the end of the input',
 };
@@ -413,6 +419,10 @@ describe('CSS escapes: the twin set', () => {
     }
     expect(new Set(twins.map((t) => t.decl)).size).toBe(twins.length);
     expect(twinFloorProblems(twins)).toEqual([]);
+    // The dropped display keywords are invalid in Dragon, escaped exactly as plain.
+    const dropped = twins.filter((t) => DISPLAY_DROPPED.includes(t.plainPart.toLowerCase()));
+    expect(dropped.length).toBeGreaterThanOrEqual(DISPLAY_DROPPED.length * 2);
+    for (const t of dropped) for (const d of [t.decl, t.plain]) expect(dragonSheet(sheetOf(d, false)).diagnostics.map((x) => x.code), d).toEqual(['DRAGON_CSS_INVALID_VALUE']);
   });
 });
 
@@ -465,12 +475,14 @@ describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
       await browser.close();
     }
     expect(judgeTwins(twinSeen)).toEqual([]);
+    // Chrome drops the dropped display keywords' twins both ways, as Dragon calls them invalid.
+    expect(twinSeen.filter((s) => DISPLAY_DROPPED.includes(s.twin.plainPart.toLowerCase()) && (JSON.stringify(s.chrome) !== '[]' || JSON.stringify(s.chromePlain) !== '[]')).map((s) => s.twin.decl)).toEqual([]);
     expect(judgeEdges(edges, edgeSeen)).toEqual([]);
     expect(judgeSelectors(selectorSeen)).toEqual([]);
     for (const p of planted) expect(p.problems().length, p.name).toBeGreaterThan(0);
     // PIN-DERIVE: Chrome read every twin both ways (the twin set itself is floored above); the edge and selector lists are this file's.
     expect(twinSeen.length).toBe(expectedTwins(calls));
     expect(twinSeen.filter((s) => s.chrome === undefined || s.chromePlain === undefined).map((s) => s.twin.decl)).toEqual([]);
-    expect({ edges: edges.length, selectors: selectorSeen.length }).toEqual({ edges: 89, selectors: 59 });
+    expect({ edges: edges.length, selectors: selectorSeen.length }).toEqual({ edges: 89, selectors: 60 });
   }, 300_000);
 });

@@ -1,0 +1,785 @@
+{
+ "schema": "dragon-resize-capture/1",
+ "case": "mqr-music-shape-rtl~resize",
+ "chrome": "145.0.7632.6",
+ "rendering": "authored",
+ "devicePixelRatio": 2.625,
+ "direction": "rtl",
+ "start": {
+  "width": 400,
+  "height": 304
+ },
+ "steps": [
+  {
+   "kind": "resize",
+   "width": 384,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 352,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 320,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 304,
+   "height": 400
+  },
+  {
+   "kind": "resize",
+   "width": 400,
+   "height": 304
+  }
+ ],
+ "samples": [
+  {
+   "size": {
+    "width": 400,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 320,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "record",
+     "kind": "element",
+     "hasBox": true,
+     "x": 188,
+     "y": 0,
+     "width": 120,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(51, 51, 51)"
+     }
+    },
+    {
+     "id": "title",
+     "kind": "element",
+     "hasBox": true,
+     "x": 148,
+     "y": 20,
+     "width": 160,
+     "height": 12,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "title:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 218,
+     "y": 20.761905670166016,
+     "width": 90,
+     "height": 9.904762268066406,
+     "computed": null
+    },
+    {
+     "id": "title:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 218,
+     "y": 20.761905670166016,
+     "width": 90,
+     "height": 9.904762268066406,
+     "computed": null
+    },
+    {
+     "id": "play",
+     "kind": "element",
+     "hasBox": true,
+     "x": 84,
+     "y": 32,
+     "width": 224,
+     "height": 12,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 288,
+     "y": 32,
+     "width": 20,
+     "height": 8,
+     "computed": {
+      "background-color": "rgb(204, 0, 0)"
+     }
+    },
+    {
+     "id": "time",
+     "kind": "element",
+     "hasBox": true,
+     "x": 108,
+     "y": 44,
+     "width": 200,
+     "height": 6,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 384,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 384,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 384,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 384,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "record",
+     "kind": "element",
+     "hasBox": true,
+     "x": 228.48214721679688,
+     "y": 0,
+     "width": 144,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(51, 51, 51)"
+     }
+    },
+    {
+     "id": "title",
+     "kind": "element",
+     "hasBox": true,
+     "x": 212.48214721679688,
+     "y": 20,
+     "width": 160,
+     "height": 12,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "title:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 282.4821472167969,
+     "y": 20.761905670166016,
+     "width": 90,
+     "height": 9.904762268066406,
+     "computed": null
+    },
+    {
+     "id": "title:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 282.4821472167969,
+     "y": 20.761905670166016,
+     "width": 90,
+     "height": 9.904762268066406,
+     "computed": null
+    },
+    {
+     "id": "play",
+     "kind": "element",
+     "hasBox": true,
+     "x": 228.48214721679688,
+     "y": 32,
+     "width": 144,
+     "height": 12,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 352.4821472167969,
+     "y": 32,
+     "width": 20,
+     "height": 8,
+     "computed": {
+      "background-color": "rgb(204, 0, 0)"
+     }
+    },
+    {
+     "id": "time",
+     "kind": "element",
+     "hasBox": true,
+     "x": 172.48214721679688,
+     "y": 44,
+     "width": 200,
+     "height": 6,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 352,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "record",
+     "kind": "element",
+     "hasBox": true,
+     "x": 197.4404754638672,
+     "y": 0,
+     "width": 144,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(51, 51, 51)"
+     }
+    },
+    {
+     "id": "title",
+     "kind": "element",
+     "hasBox": true,
+     "x": 181.4404754638672,
+     "y": 20,
+     "width": 160,
+     "height": 12,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "title:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 251.4404754638672,
+     "y": 20.761905670166016,
+     "width": 90.00001525878906,
+     "height": 9.904762268066406,
+     "computed": null
+    },
+    {
+     "id": "title:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 251.4404754638672,
+     "y": 20.761905670166016,
+     "width": 90.00001525878906,
+     "height": 9.904762268066406,
+     "computed": null
+    },
+    {
+     "id": "play",
+     "kind": "element",
+     "hasBox": true,
+     "x": 197.4404754638672,
+     "y": 32,
+     "width": 144,
+     "height": 12,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 321.44049072265625,
+     "y": 32,
+     "width": 20,
+     "height": 8,
+     "computed": {
+      "background-color": "rgb(204, 0, 0)"
+     }
+    },
+    {
+     "id": "time",
+     "kind": "element",
+     "hasBox": true,
+     "x": 141.4404754638672,
+     "y": 44,
+     "width": 200,
+     "height": 6,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 320,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 320,
+     "height": 51.7976188659668,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 320,
+     "height": 51.7976188659668,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 320,
+     "height": 51.7976188659668,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "record",
+     "kind": "element",
+     "hasBox": true,
+     "x": 166.40476989746094,
+     "y": 0,
+     "width": 144,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(51, 51, 51)"
+     }
+    },
+    {
+     "id": "title",
+     "kind": "element",
+     "hasBox": true,
+     "x": 166.40476989746094,
+     "y": 20,
+     "width": 144,
+     "height": 13.797618865966797,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "title:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 202.40476989746094,
+     "y": 20.761905670166016,
+     "width": 107.99998474121094,
+     "height": 11.809524536132812,
+     "computed": null
+    },
+    {
+     "id": "title:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 202.40476989746094,
+     "y": 20.761905670166016,
+     "width": 107.99998474121094,
+     "height": 11.809524536132812,
+     "computed": null
+    },
+    {
+     "id": "play",
+     "kind": "element",
+     "hasBox": true,
+     "x": 166.40476989746094,
+     "y": 33.7976188659668,
+     "width": 144,
+     "height": 12,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 290.4047546386719,
+     "y": 33.7976188659668,
+     "width": 20,
+     "height": 8,
+     "computed": {
+      "background-color": "rgb(204, 0, 0)"
+     }
+    },
+    {
+     "id": "time",
+     "kind": "element",
+     "hasBox": true,
+     "x": 166.40476989746094,
+     "y": 45.7976188659668,
+     "width": 144,
+     "height": 6,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 304,
+    "height": 400
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 304,
+     "height": 51.7976188659668,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 304,
+     "height": 51.7976188659668,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 304,
+     "height": 51.7976188659668,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "record",
+     "kind": "element",
+     "hasBox": true,
+     "x": 150.88095092773438,
+     "y": 0,
+     "width": 144,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(51, 51, 51)"
+     }
+    },
+    {
+     "id": "title",
+     "kind": "element",
+     "hasBox": true,
+     "x": 150.88095092773438,
+     "y": 20,
+     "width": 144,
+     "height": 13.797618865966797,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "title:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 186.88095092773438,
+     "y": 20.761905670166016,
+     "width": 108,
+     "height": 11.809524536132812,
+     "computed": null
+    },
+    {
+     "id": "title:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 186.88095092773438,
+     "y": 20.761905670166016,
+     "width": 108,
+     "height": 11.809524536132812,
+     "computed": null
+    },
+    {
+     "id": "play",
+     "kind": "element",
+     "hasBox": true,
+     "x": 150.88095092773438,
+     "y": 33.7976188659668,
+     "width": 144,
+     "height": 12,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 274.8809509277344,
+     "y": 33.7976188659668,
+     "width": 20,
+     "height": 8,
+     "computed": {
+      "background-color": "rgb(204, 0, 0)"
+     }
+    },
+    {
+     "id": "time",
+     "kind": "element",
+     "hasBox": true,
+     "x": 150.88095092773438,
+     "y": 45.7976188659668,
+     "width": 144,
+     "height": 6,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 400,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "app",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 320,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "record",
+     "kind": "element",
+     "hasBox": true,
+     "x": 188,
+     "y": 0,
+     "width": 120,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(51, 51, 51)"
+     }
+    },
+    {
+     "id": "title",
+     "kind": "element",
+     "hasBox": true,
+     "x": 148,
+     "y": 20,
+     "width": 160,
+     "height": 12,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "title:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 218,
+     "y": 20.761905670166016,
+     "width": 90,
+     "height": 9.904762268066406,
+     "computed": null
+    },
+    {
+     "id": "title:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 218,
+     "y": 20.761905670166016,
+     "width": 90,
+     "height": 9.904762268066406,
+     "computed": null
+    },
+    {
+     "id": "play",
+     "kind": "element",
+     "hasBox": true,
+     "x": 84,
+     "y": 32,
+     "width": 224,
+     "height": 12,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "btn",
+     "kind": "element",
+     "hasBox": true,
+     "x": 288,
+     "y": 32,
+     "width": 20,
+     "height": 8,
+     "computed": {
+      "background-color": "rgb(204, 0, 0)"
+     }
+    },
+    {
+     "id": "time",
+     "kind": "element",
+     "hasBox": true,
+     "x": 108,
+     "y": 44,
+     "width": 200,
+     "height": 6,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    }
+   ]
+  }
+ ]
+}

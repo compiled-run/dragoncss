@@ -41,7 +41,7 @@ const listsAt = async (html: string, width: number): Promise<Record<string, stri
 };
 
 describe('transition and animation lists across @media bands on web (ANIM-mq)', () => {
-  it('refuses on web a transition declared inside @media, whose lists Chrome changes between the bands; ios is not refused for it', async () => {
+  it('refuses on web a transition declared inside @media, whose lists Chrome changes between the bands; since MQ-R1 native switches bands too, so ios refuses it until MQ-Rt', async () => {
     const html = doc('.a { width: 10px; height: 4px; transition: none; }\n@media (min-width: 600px) { .a { width: 20px; transition: width 1s; } }');
     const narrow = await listsAt(html, 400);
     const wide = await listsAt(html, 800);
@@ -51,7 +51,8 @@ describe('transition and animation lists across @media bands on web (ANIM-mq)', 
     const banded = compiled.diagnostics.filter((d) => d.message.includes('(package ANIM-mq)'));
     expect(banded.map((d) => [d.code, d.target, spanText(input, d.origin)])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'web', 'width 1s']]);
     expect(compiled.outputs.web.kind).toBe('blocked');
-    expect(compiled.outputs.ios.kind).not.toBe('blocked');
+    expect(compiled.diagnostics.filter((d) => d.message.includes('(package MQ-Rt)') && d.message.startsWith('transition inside @media')).map((d) => [d.code, d.target, spanText(input, d.origin)])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios', 'width 1s']]);
+    expect(compiled.outputs.ios.kind).toBe('blocked');
   }, 120_000);
 
   it('keeps a transition declared outside @media, with a banded width: the compiled lists equal the authored ones in Chrome at both widths', async () => {

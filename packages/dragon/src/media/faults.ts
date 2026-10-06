@@ -11,6 +11,16 @@ export type MediaFaults = {
   readonly notBindsTighterThanAnd: boolean;
   /** The band partition leaves every threshold point out of every band. */
   readonly bandGapAtBoundary: boolean;
+  /** min-, max- and equality comparisons are exact, without Chrome's 1/64 px of slack. */
+  readonly mediaCompareExact: boolean;
+  /** orientation compares the fractional width and height instead of their whole parts. */
+  readonly orientationUntruncated: boolean;
+  /** aspect-ratio compares the fractional width and height instead of their whole parts. */
+  readonly aspectRatioUntruncated: boolean;
+  /** The media size is device px / DPR in double precision instead of Chrome's float product. */
+  readonly mediaWidthDouble: boolean;
+  /** An emulated frame's device px are rounded to nearest instead of up. */
+  readonly emulatedSizeRounded: boolean;
 };
 
 export const NO_MEDIA_FAULTS: MediaFaults = {
@@ -19,6 +29,11 @@ export const NO_MEDIA_FAULTS: MediaFaults = {
   unknownAsTrue: false,
   notBindsTighterThanAnd: false,
   bandGapAtBoundary: false,
+  mediaCompareExact: false,
+  orientationUntruncated: false,
+  aspectRatioUntruncated: false,
+  mediaWidthDouble: false,
+  emulatedSizeRounded: false,
 };
 
 export const MEDIA_FAULT_NAMES: readonly (keyof MediaFaults)[] = Object.keys(NO_MEDIA_FAULTS) as (keyof MediaFaults)[];
