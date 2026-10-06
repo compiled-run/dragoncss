@@ -289,7 +289,7 @@ public func block_layoutContents(_ ctx: Ctx, _ box: LayoutBox, _ a: ContentsArgs
   }
   // ts: packages/layout/src/block.ts:240
   if (s.display == S.s_grid) {
-    try unsupported_unsupported(S.s_grid_layout, box.id, S.s152, S.s198)
+    try unsupported_unsupported(S.s_grid_layout, box.id, S.s154, S.s206)
   }
   let canCollapseTop: Bool = (((!a.formattingContextRoot) && (bor.top == 0.0)) && (pad.top == 0.0))
   let r: FlowResult = try block_layoutBlockFlow(ctx, box, FlowArgs(contentWidth, a.borderBoxWidth, (a.formattingContextRoot ? units_ZERO : a.bfcLineOffset), Point(units_add(bor.left, pad.left), units_add(bor.top, pad.top)), canCollapseTop, childBasis))
