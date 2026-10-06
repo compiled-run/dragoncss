@@ -29,6 +29,9 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   both('overflow-replaced'),
   // Reversed flex scroll containers overflow past their main-start or cross-start (Blink LayoutFlexibleBox::HasLeftOverflow and
   // HasTopOverflow): row-reverse to the inline start, column-reverse to the top, wrap-reverse to the cross start (#194 review).
+  // Its auto containers have no background: Chrome 145 paints a user-scrollable box's solid background in the scrolling contents
+  // (LayoutBox::ComputeBackgroundPaintLocation), over the scrollable overflow rect offset by the scroll origin's whole device px, so
+  // a reversed container whose start-side overflow is fractional leaves its end edge one device px unpainted (measured at 2.625).
   both('overflow-flex-reverse'),
   // OVFL-p: a percentage relative offset inside a scroll container is refused on native targets (overflow.ts does not decide it).
   reject('reject-overflow-percent-relative', 'DRAGON_UNPROVEN_CONTEXT', '10%', 'position: relative with a percentage top on k inside the scroll container sc'),
