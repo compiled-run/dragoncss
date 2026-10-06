@@ -13,7 +13,7 @@ type Run = { databaseId: number; displayTitle: string; createdAt: string; headBr
 const OUTCOMES = ['android-dragon-320.json', 'android-dragon-480.json', 'android-dragon-smoke.json', 'ios-iPad__A16__.json', 'ios-iPhone_17.json'];
 
 /** A fake GitHub: runs appear after `appearAfter` list calls and complete after `doneAfter` view calls. */
-function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; conclusion?: string | null; files?: string[]; pushFails?: boolean; ghBad?: boolean; deleteFails?: boolean; title?: string; jobsQueued?: boolean; dispatchFails?: boolean; failedEarly?: boolean } = {}) {
+function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; conclusion?: string | null; files?: string[]; pushFails?: boolean; ghBad?: boolean; deleteFails?: boolean; title?: string; jobsQueued?: boolean; dispatchFails?: boolean; failedEarly?: boolean; setupFails?: boolean } = {}) {
   const calls: string[] = [];
   let clock = T0;
   let lists = 0;
@@ -29,7 +29,11 @@ function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; concl
       if (args.includes('jobs')) {
         // The real jobs as the run's state says: queued, running, or done with the run's conclusion (a failure is chrome (1)'s).
         const failed = o.failedEarly === true || (finished && o.conclusion === 'failure');
-        const chrome = o.jobsQueued === true ? { status: 'queued', conclusion: null } : failed ? { status: 'completed', conclusion: 'failure' } : finished ? { status: 'completed', conclusion: o.conclusion === 'cancelled' ? 'cancelled' : 'success' } : { status: 'in_progress', conclusion: null };
+        // A failed job failed at its test step, or (setupFails) at a setup step before it.
+        const steps = failed
+          ? [{ name: 'Set up job', status: 'completed', conclusion: 'success' }, o.setupFails === true ? { name: 'Playwright 1.58.2 Chromium, the pinned WPT copy and kotlinc 2.4.20', status: 'completed', conclusion: 'failure' } : { name: 'Playwright 1.58.2 Chromium, the pinned WPT copy and kotlinc 2.4.20', status: 'completed', conclusion: 'success' }, { name: 'vitest run (every other file, shard 1/3)', status: 'completed', conclusion: o.setupFails === true ? 'skipped' : 'failure' }]
+          : [];
+        const chrome = o.jobsQueued === true ? { status: 'queued', conclusion: null, steps } : failed ? { status: 'completed', conclusion: 'failure', steps } : finished ? { status: 'completed', conclusion: o.conclusion === 'cancelled' ? 'cancelled' : 'success', steps } : { status: 'in_progress', conclusion: null, steps };
         return JSON.stringify({ jobs: [{ name: 'resolve', status: 'completed', conclusion: 'success' }, { name: 'chrome (1)', ...chrome }, ...(o.failedEarly === true ? [{ name: 'chrome (2)', status: 'queued', conclusion: null }] : [])] });
       }
       if (o.ghBad === true) return '{"oops":1}';
@@ -171,19 +175,19 @@ describe('only failed jobs are a verdict (#193 review)', () => {
   };
   it('a run whose real job concluded failure fails the PR at the step, and a downloaded artifact is not read', () => {
     const red = fake({ conclusion: 'failure' });
-    expect(failure(() => run(red))).toMatchObject({ step: 'devices', message: 'the CI device lanes run https://ci/run/7 concluded failure; failed jobs: chrome (1)' });
+    expect(failure(() => run(red))).toMatchObject({ step: 'devices', message: 'the CI device lanes run https://ci/run/7 concluded failure; failed jobs: chrome (1) (vitest run (every other file, shard 1/3))' });
     expect(red.calls).not.toContain(`download 7 ${OUTCOMES_ARTIFACT}`);
   });
   it('a job that already failed when the wait runs out is still a verdict, not a fallback', () => {
     const early = fake({ doneAfter: 1e9, failedEarly: true });
-    expect(failure(() => runDevicesOnCi({ pr: 42, deps: early.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 }))).toMatchObject({ step: 'devices', message: expect.stringContaining('has failed jobs (chrome (1))') });
+    expect(failure(() => runDevicesOnCi({ pr: 42, deps: early.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 }))).toMatchObject({ step: 'devices', message: expect.stringContaining('has failed jobs (chrome (1) (vitest run (every other file, shard 1/3)))') });
     expect(early.calls).toContain('run cancel');
   });
   it('everything that judged nothing is CiUnavailable: a wait past its limit with no failed job, a cancelled run, a refused push, gh outages and malformed answers, a bad artifact', () => {
     const slow = fake({ doneAfter: 1e9 });
     expect(unavailable(() => runDevicesOnCi({ pr: 42, deps: slow.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 })).message).toContain('did not finish within 1200s, and no job of it failed');
     expect(slow.calls.slice(-3)).toEqual(['run cancel', 'record null', `delete ${tempBranch(42)}`]);
-    expect(unavailable(() => run(fake({ conclusion: 'cancelled' }))).message).toContain('concluded cancelled with no failed job');
+    expect(unavailable(() => run(fake({ conclusion: 'cancelled' }))).message).toContain('concluded cancelled with no failed test or device step');
     const refused = fake({ pushFails: true });
     expect(unavailable(() => run(refused)).message).toBe('the CI device lanes could not be run: push refused');
     expect(refused.calls).toEqual([`record ${tempBranch(42)} - -`, `push ${tempBranch(42)}`, 'record null']);
@@ -191,9 +195,43 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     const empty = fake({ files: [] });
     expect(unavailable(() => run(empty)).message).toContain('the device-outcomes artifact holds nothing');
     expect(empty.calls).toContain('remove /tmp/outcomes');
-    expect(parseJobs('{"jobs":[{"name":"a","status":"queued"}]}')).toEqual([{ name: 'a', status: 'queued', conclusion: null }]);
-    expect(failedJobs([{ name: 'resolve', status: 'completed', conclusion: 'failure' }, { name: 'x', status: 'completed', conclusion: 'cancelled' }, { name: 'y', status: 'completed', conclusion: 'timed_out' }])).toEqual(['y']);
+    expect(parseJobs('{"jobs":[{"name":"a","status":"queued"}]}')).toEqual([{ name: 'a', status: 'queued', conclusion: null, steps: [] }]);
     expect(() => parseJobs('{"jobs":[{"name":1}]}')).toThrow('unexpected gh run job');
+  });
+  it('judges a failed job by its failed step: only a test, regen or device step blames the tree; setup falls back (#193 review)', () => {
+    const step = (name: string, conclusion: string, status = 'completed') => ({ name, status, conclusion });
+    const job = (name: string, conclusion: string, steps: ReturnType<typeof step>[]) => ({ name, status: 'completed', conclusion, steps });
+    const jobs = [
+      job('resolve', 'failure', [step('Run echo', 'failure')]),
+      job('chrome (1)', 'failure', [step('Set up job', 'success'), step('Run pnpm install --frozen-lockfile', 'failure'), step('vitest run (every other file, shard 1/3)', 'skipped')]),
+      job('native (2)', 'failure', [step('Swift 6.4.0 (swift.org) and kotlinc 2.4.20', 'failure')]),
+      job('chrome (2)', 'failure', [step('Playwright 1.58.2 Chromium and the WPT copy', 'success'), step('vitest run (every other file, shard 2/3)', 'failure')]),
+      job('regen-chrome', 'failure', [step('pnpm regen --check (every step but lanes-host)', 'failure')]),
+      job('ios (iPhone 17)', 'failure', [step('The pinned iOS 26.5 (23F77) simulator runtime', 'failure')]),
+      job('android (dragon-320)', 'failure', [step('Device run dragon-320', 'failure')]),
+      job('native (3)', 'timed_out', [step('vitest run (native files, shard 3/4)', 'cancelled')]),
+      job('chrome (3)', 'cancelled', [step('vitest run (every other file, shard 3/3)', 'cancelled')]),
+    ];
+    expect(failedJobs(jobs)).toEqual({
+      verdict: ['chrome (2) (vitest run (every other file, shard 2/3))', 'regen-chrome (pnpm regen --check (every step but lanes-host))', 'android (dragon-320) (Device run dragon-320)', 'native (3) (vitest run (native files, shard 3/4))'],
+      setup: ['chrome (1) (Run pnpm install --frozen-lockfile)', 'native (2) (Swift 6.4.0 (swift.org) and kotlinc 2.4.20)', 'ios (iPhone 17) (The pinned iOS 26.5 (23F77) simulator runtime)'],
+    });
+    // A run whose only failure is in setup never blames the PR: the step runs locally instead.
+    const setup = fake({ conclusion: 'failure', setupFails: true });
+    expect(unavailable(() => run(setup)).message).toContain('with no failed test or device step (failed in setup: chrome (1) (Playwright 1.58.2 Chromium, the pinned WPT copy and kotlinc 2.4.20))');
+    const early = fake({ doneAfter: 1e9, failedEarly: true, setupFails: true });
+    expect(unavailable(() => runDevicesOnCi({ pr: 42, deps: early.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 })).message).toContain('failed in setup (chrome (1) (Playwright');
+    expect(() => parseJobs('{"jobs":[{"name":"a","status":"completed","steps":[{"name":1}]}]}')).toThrow('unexpected gh run step');
+  });
+  it('does not blame the tree for a summary that failed because a shard died in setup and wrote no report (#199 review)', () => {
+    const job = (name: string, stepName: string) => ({ name, status: 'completed', conclusion: 'failure', steps: [{ name: stepName, status: 'completed', conclusion: 'failure' }] });
+    const swift = job('native (2)', 'Swift 6.4.0 (swift.org) and kotlinc 2.4.20');
+    const summary = job('summary', "Every test's state, and the failures");
+    expect(failedJobs([swift, summary])).toEqual({ verdict: [], setup: ['native (2) (Swift 6.4.0 (swift.org) and kotlinc 2.4.20)', "summary (Every test's state, and the failures)"] });
+    // With every shard through its setup, a failing summary is the tree's (a failed test, a file not run).
+    expect(failedJobs([summary]).verdict).toEqual(["summary (Every test's state, and the failures)"]);
+    // A shard's own failed tests still blame the tree beside another shard's setup failure.
+    expect(failedJobs([swift, job('chrome (1)', 'vitest run (every other file, shard 1/3)'), summary]).verdict).toEqual(['chrome (1) (vitest run (every other file, shard 1/3))']);
   });
   it('waits at least as long as the longest chain of job timeouts in each workflow', () => {
     const minutes = (f: string): number[] => [...readFileSync(repoPath(`.github/workflows/${f}`), 'utf8').matchAll(/timeout-minutes: (\d+)/g)].map((m) => Number(m[1]));
@@ -231,7 +269,7 @@ describe('LAND_TEST=ci (the full test on CI)', () => {
     expect(runOnCi(w, { branch: testBranch(SHA), deps: ok.deps, appearS: 300, waitS: 3600, pollS: 30 })).toMatchObject({ sha: SHA, url: 'https://ci/run/7' });
     expect(ok.calls).not.toContain(`download 7 ${OUTCOMES_ARTIFACT}`);
     const red = fake({ conclusion: 'failure', title: `full test of ${SHA}` });
-    expect(failure(() => runOnCi(w, { branch: testBranch(SHA), deps: red.deps, appearS: 300, waitS: 3600, pollS: 30 }))).toMatchObject({ step: 'test', message: 'the CI full test run https://ci/run/7 concluded failure; failed jobs: chrome (1):\nFAILED a > b' });
+    expect(failure(() => runOnCi(w, { branch: testBranch(SHA), deps: red.deps, appearS: 300, waitS: 3600, pollS: 30 }))).toMatchObject({ step: 'test', message: 'the CI full test run https://ci/run/7 concluded failure; failed jobs: chrome (1) (vitest run (every other file, shard 1/3)):\nFAILED a > b' });
   });
   it('lists the failing tests of full-test-results, or says none is listed', () => {
     const rows = [{ file: 'packages/x/test/a.test.ts', test: 'a', state: 'passed' }, { file: 'packages/x/test/b.test.ts', test: 'b fails', state: 'failed' }];
