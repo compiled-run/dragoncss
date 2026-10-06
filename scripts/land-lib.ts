@@ -51,7 +51,9 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   full test, 1 to 8, default 4; 1 lands one PR per proof), LAND_PIPELINE (0 turns off preparing the next batch, in
   LAND_WORKTREE_NEXT, default /tmp/dragon-land-next, while a batch publishes), LAND_DEVICES (local, the default: the device lanes
   under /tmp/device-lease.sh; ci: device-lanes.yml on GitHub runners for each position's tree; the local run until master has
-  device-lanes.yml), LAND_DEVICES_WAIT (seconds, 7200)`;
+  device-lanes.yml), LAND_DEVICES_WAIT (seconds, 9000), LAND_TEST (local, the default: pnpm test here; ci: full-test.yml on GitHub
+  runners for each proved tree; the local test until master has full-test.yml), LAND_TEST_WAIT (seconds, 22500), LAND_CI_START (seconds a
+  CI run may go without starting a job before the step runs locally instead, default 900)`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;
@@ -591,6 +593,13 @@ export type BatchOps<T, P extends { head: string }> = {
   base: () => string;
   /** Builds the position of `e` on `prev`. Throws LandFailure to eject `e`; the chain continues on `prev`. */
   build: (prev: string, e: Entry, ticket: T, k: number) => P;
+  /**
+   * Builds the positions of a batch at once (parallel position builds): the same results, in the same order, as `build` on each
+   * in turn, each slot a position or the error that ejects its PR. Absent, or returning null, the positions build one by one.
+   * `failed` is called with each ejection as it happens (its slot index), so the PR is reported then (FAILED, label, comment), as
+   * the one-by-one build reports it, not only once the whole batch has built.
+   */
+  buildAll?: (base: string, items: readonly { entry: Entry; ticket: T }[], failed: (index: number, error: unknown) => void) => readonly ({ position: P } | { error: unknown })[] | null;
   /** Checks the built chain is exactly the positions it claims to be; any error is fatal. */
   verify: (built: readonly { entry: Entry; ticket: T; position: P }[]) => void;
   /** Proves the tree of one position (the full test). Throws LandFailure at step "test" when the test fails. */
@@ -604,6 +613,120 @@ export type BatchOps<T, P extends { head: string }> = {
   onFail: (e: Entry, f: LandFailure) => void;
   onOutcome: (outcomes: readonly Outcome[]) => void;
   log: (line: string) => void;
+};
+
+/**
+ * Parallel position builds. Position k's sources are master with the PRs 1..k merged, whatever the builds of the positions below
+ * it do, so each is prepared at once in its own worktree (the merges, the install and a regen to its fixed point, under the heavy
+ * lease's slots): `speculate`. Then, in order, each position is assembled on the actual position below it (`assemble`: the same
+ * merge the one-by-one build makes, its tree the prepared one, then the device step and the checks), so its commit is exactly
+ * the chain's. When a position is ejected, every prepared position above it included that PR, so they are abandoned and built
+ * one by one on the chain without it (`sequential`); so are positions whose preparation failed. The device runs, on the device
+ * lease, take turns in order while the later preparations run.
+ */
+export type ParallelHooks<T, P, H> = {
+  /** Starts preparing position k (1-based) from the first k items; a throw marks it unprepared. */
+  speculate: (k: number, items: readonly { entry: Entry; ticket: T }[]) => H;
+  /** Waits for a preparation; a throw (its regen failed) builds that position one by one, and only that build's failure ejects
+   * the PR: the prepared run's failure may be the parallel load's (disk, a capture timing out), not the PR's. */
+  await: (handle: H) => void;
+  /** Assembles position k on `prev` from its preparation. */
+  assemble: (prev: string, item: { entry: Entry; ticket: T }, k: number, handle: H) => P;
+  /** The one-by-one build of position k on `prev`. */
+  sequential: (prev: string, item: { entry: Entry; ticket: T }, k: number) => P;
+  /** Stops a preparation that will not be used. */
+  abandon: (handle: H) => void;
+  log: (line: string) => void;
+};
+
+export const buildPositionsParallel = <T, P extends { head: string }, H>(
+  base: string,
+  items: readonly { entry: Entry; ticket: T }[],
+  hooks: ParallelHooks<T, P, H>,
+  failed: (index: number, error: unknown) => void = () => {},
+): ({ position: P } | { error: unknown })[] => {
+  const handles: ({ ok: H } | { failed: unknown })[] = items.map((_, i) => {
+    try {
+      return { ok: hooks.speculate(i + 1, items.slice(0, i + 1)) };
+    } catch (error) {
+      return { failed: error };
+    }
+  });
+  const slots: ({ position: P } | { error: unknown })[] = [];
+  let prev = base;
+  let k = 0;
+  // Speculation holds while every position below built from its preparation: the prepared sources are the chain's.
+  let speculating = true;
+  for (const [i, item] of items.entries()) {
+    const h = handles[i]!;
+    try {
+      let position: P;
+      if (speculating && 'ok' in h) {
+        let prepared = true;
+        try {
+          hooks.await(h.ok);
+        } catch (error) {
+          if (error instanceof Fatal) throw error;
+          hooks.log(`parallel build: #${item.entry.pr}'s prepared regen failed (${error instanceof Error ? error.message.split('\n')[0] : String(error)}); building its position one by one`);
+          prepared = false;
+        }
+        // A one-by-one rebuild leaves the chain the preparations above were made for (the same PRs), so they still hold.
+        position = prepared ? hooks.assemble(prev, item, k + 1, h.ok) : hooks.sequential(prev, item, k + 1);
+      } else {
+        if (speculating) {
+          hooks.log(`parallel build: #${item.entry.pr}'s preparation failed (${'failed' in h ? (h.failed instanceof Error ? h.failed.message : String(h.failed)) : ''}); building it and the positions above it one by one`);
+          speculating = false;
+        }
+        position = hooks.sequential(prev, item, k + 1);
+      }
+      slots.push({ position });
+      prev = position.head;
+      k++;
+    } catch (error) {
+      if (error instanceof Fatal) throw error;
+      slots.push({ error });
+      failed(i, error);
+      if (speculating) hooks.log(`parallel build: #${item.entry.pr} is ejected; the positions above it are built one by one without it`);
+      speculating = false;
+    }
+    // Once speculation ends, the preparations above are of chains that are not the actual one.
+    if (!speculating) for (const later of handles.slice(i + 1)) if ('ok' in later) hooks.abandon(later.ok);
+    if (!speculating) for (let j = i + 1; j < handles.length; j++) handles[j] = { failed: 'abandoned' };
+  }
+  return slots;
+};
+
+/** The paths where a prepared tree differs from the merge it is assembled on, split by what may differ there. `outputs` (a regen
+ * step's declared outputs) are the prepared regen's to set; `records` (the device records, written by device runs and carried by
+ * the merge from the position below) are taken from the merge, and the tree regenerated on them; anything else (`sources`: code,
+ * package.json, the lockfile, a .d.ts, vendor) means the preparation was not of this merge's sources. */
+export const preparedDifference = (paths: readonly string[], isOutput: (p: string) => boolean, isRecord: (p: string) => boolean): { sources: string[]; records: string[] } => ({
+  sources: paths.filter((p) => !isOutput(p) && !isRecord(p)),
+  records: paths.filter((p) => isRecord(p)),
+});
+
+/** Whether a prepared position's worktrees fit the disk: `freeGb` must stay at least `floorGb` after `missing` new worktrees of
+ * `perGb` each. */
+export const preparedFits = (freeGb: number, missing: number, o: { floorGb: number; perGb: number }): boolean => freeGb - missing * o.perGb >= o.floorGb;
+
+/** Stops the process group led by `pid` (SIGTERM, then SIGKILL after 30s) and waits for it to exit; returns whether it is gone, so
+ * the worktree it ran in can be reused. A leader that is another process now (its start time differs) means the pid was reused:
+ * that group is not ours, and nothing is signalled. A leader that is gone keeps its group id reserved while any member lives, so
+ * the group signal reaches only ours. */
+export const stopProcessGroup = (
+  pid: number,
+  start: string | null,
+  o: { startOf: (pid: number) => string | null; members: (pgid: number) => readonly number[]; signal: (sig: 'SIGTERM' | 'SIGKILL') => void; sleep: (ms: number) => void },
+): boolean => {
+  const now = o.startOf(pid);
+  if (now !== null && start !== null && now !== start) return true;
+  if (o.members(pid).length === 0) return true;
+  o.signal('SIGTERM');
+  for (let i = 0; i < 120 && o.members(pid).length > 0; i++) o.sleep(250);
+  if (o.members(pid).length === 0) return true;
+  o.signal('SIGKILL');
+  for (let i = 0; i < 40 && o.members(pid).length > 0; i++) o.sleep(250);
+  return o.members(pid).length === 0;
 };
 
 export const MAX_BATCH = 8;
@@ -673,7 +796,7 @@ export type Prepared<T, P> = {
   proven: number[];
   culprit: { index: number; failure: LandFailure } | null;
 };
-export type PrepareOps<T, P extends { head: string }> = Pick<BatchOps<T, P>, 'admit' | 'build' | 'verify' | 'prove' | 'proveMaster' | 'log'>;
+export type PrepareOps<T, P extends { head: string }> = Pick<BatchOps<T, P>, 'admit' | 'build' | 'buildAll' | 'verify' | 'prove' | 'proveMaster' | 'log'>;
 
 export const prepareRound = <T, P extends { head: string }>(
   queue: Entry[],
@@ -714,14 +837,36 @@ export const prepareRound = <T, P extends { head: string }>(
   }
   let prev = b;
   const built: { entry: Entry; ticket: T; position: P }[] = [];
-  for (const m of admitted) {
+  // An ejection in the parallel build is reported as it happens; the slots then skip it.
+  const reported = new Set<number>();
+  const failedNow = (i: number, error: unknown): void => {
+    const m = admitted[i];
+    if (m === undefined || reported.has(i)) return;
+    reported.add(i);
     at(m.entry);
-    try {
-      const position = ops.build(prev, m.entry, m.ticket, built.length + 1);
-      built.push({ ...m, position });
-      prev = position.head;
-    } catch (error) {
-      failure(m.entry, error);
+    failure(m.entry, error);
+  };
+  const all = admitted.length > 1 && ops.buildAll !== undefined ? ops.buildAll(b, admitted, failedNow) : null;
+  if (all !== null) {
+    if (all.length !== admitted.length) throw new Fatal(`the parallel build returned ${all.length} slots for ${admitted.length} PRs`);
+    for (const [i, m] of admitted.entries()) {
+      at(m.entry);
+      const slot = all[i]!;
+      if ('position' in slot) {
+        built.push({ ...m, position: slot.position });
+        prev = slot.position.head;
+      } else if (!reported.has(i)) failedNow(i, slot.error);
+    }
+  } else {
+    for (const m of admitted) {
+      at(m.entry);
+      try {
+        const position = ops.build(prev, m.entry, m.ticket, built.length + 1);
+        built.push({ ...m, position });
+        prev = position.head;
+      } catch (error) {
+        failure(m.entry, error);
+      }
     }
   }
   if (built.length === 0) return none(b);
