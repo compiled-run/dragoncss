@@ -41,7 +41,8 @@
     "dash-gap-unfitted",
     "transform-origin-ignored",
     "translate-percent-of-parent",
-    "image-offset-1"
+    "image-offset-1",
+    "single-run-baseline"
   ],
   "supportFiles:uikit": [
     "Support/DragonChecked.swift",

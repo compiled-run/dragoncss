@@ -51,7 +51,8 @@
       "snap-values",
       "calc-goldens",
       "engine-calc",
-      "units-calc"
+      "units-calc",
+      "engine-inline"
     ],
     "counts": {
       "vectors-m2": 335,
@@ -62,7 +63,8 @@
       "snap-values": 216,
       "calc-goldens": 17,
       "engine-calc": 4000,
-      "units-calc": 50000
+      "units-calc": 50000,
+      "engine-inline": 3000
     }
   }
 }
