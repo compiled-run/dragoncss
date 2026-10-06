@@ -138,8 +138,8 @@
   }
  },
  "summary": {
-  "diagnostics": 243,
-  "errors": 238,
+  "diagnostics": 239,
+  "errors": 234,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -159,8 +159,8 @@
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 4,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 32,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 32,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 30,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 30,
    "DRAGON_UNSUPPORTED_VALUE [web]": 20
   },
   "perTarget": {
@@ -187,7 +187,7 @@
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 28,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 35
+     "DRAGON_UNSUPPORTED_VALUE": 33
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -205,7 +205,7 @@
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 28,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 35
+     "DRAGON_UNSUPPORTED_VALUE": 33
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -220,11 +220,11 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 205,
+  "supportedBothTargets": 207,
   "supportedWeb": 239,
-  "supportedIos": 205,
-  "supportedAndroid": 205,
-  "supportPercent": 70.9,
+  "supportedIos": 207,
+  "supportedAndroid": 207,
+  "supportPercent": 71.6,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -309,7 +309,7 @@
   "rawDiagnosticsPerPass": {
    "A-authored": 109,
    "B-unwrapped": 105,
-   "C-context": 152
+   "C-context": 148
   }
  },
  "features": {
@@ -1316,11 +1316,9 @@
    "property": "z-index",
    "value": "20",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 70,
@@ -3067,11 +3065,9 @@
    "property": "z-index",
    "value": "30",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 211,
@@ -6876,44 +6872,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2191-2193|page/song-call/mini-video-shell is not clipped by html in Chrome (its containing block is outside it), but android hosts it under a stacking context inside html's clip view, which would clip it; PNT1's hosting cannot take it out of that clip yet",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 2191,
-    "end": 2193,
-    "line": 127,
-    "column": 11,
-    "text": "20"
-   },
-   "message": "page/song-call/mini-video-shell is not clipped by html in Chrome (its containing block is outside it), but android hosts it under a stacking context inside html's clip view, which would clip it; PNT1's hosting cannot take it out of that clip yet",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2191-2193|page/song-call/mini-video-shell is not clipped by html in Chrome (its containing block is outside it), but ios hosts it under a stacking context inside html's clip view, which would clip it; PNT1's hosting cannot take it out of that clip yet",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 2191,
-    "end": 2193,
-    "line": 127,
-    "column": 11,
-    "text": "20"
-   },
-   "message": "page/song-call/mini-video-shell is not clipped by html in Chrome (its containing block is outside it), but ios hosts it under a stacking context inside html's clip view, which would clip it; PNT1's hosting cannot take it out of that clip yet",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2418-2448|animation-name:<custom-ident>, animation-duration:<time>, animation-timing-function:linear, animation-delay:<time>, animation-iteration-count:infinite, animation-direction:normal, animation-fill-mode:none, animation-play-state:running, animation-timeline:auto, animation-range-start:normal, animation-range-end:normal, animation-composition:replace has no passing frame-lane proof in the animation context (support profile m1-s5)",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -7345,44 +7303,6 @@
     "text": "fixed"
    },
    "message": "position: fixed is unsupported (support profile m1-s5); in block/ltr use static",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6627-6629|page/library-call/library is not clipped by html in Chrome (its containing block is outside it), but android hosts it under a stacking context inside html's clip view, which would clip it; PNT1's hosting cannot take it out of that clip yet",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 6627,
-    "end": 6629,
-    "line": 377,
-    "column": 11,
-    "text": "30"
-   },
-   "message": "page/library-call/library is not clipped by html in Chrome (its containing block is outside it), but android hosts it under a stacking context inside html's clip view, which would clip it; PNT1's hosting cannot take it out of that clip yet",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6627-6629|page/library-call/library is not clipped by html in Chrome (its containing block is outside it), but ios hosts it under a stacking context inside html's clip view, which would clip it; PNT1's hosting cannot take it out of that clip yet",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 6627,
-    "end": 6629,
-    "line": 377,
-    "column": 11,
-    "text": "30"
-   },
-   "message": "page/library-call/library is not clipped by html in Chrome (its containing block is outside it), but ios hosts it under a stacking context inside html's clip view, which would clip it; PNT1's hosting cannot take it out of that clip yet",
    "viaRelated": false,
    "passes": [
     "C-context"
