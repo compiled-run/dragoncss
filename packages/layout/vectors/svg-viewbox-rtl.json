@@ -138,7 +138,9 @@
     "textAlign": "start",
     "aspectRatio": {
      "kind": "auto"
-    }
+    },
+    "grid": null,
+    "gridItem": null
    },
    "children": [
     {
@@ -251,7 +253,9 @@
       "textAlign": "start",
       "aspectRatio": {
        "kind": "auto"
-      }
+      },
+      "grid": null,
+      "gridItem": null
      },
      "children": [
       {
@@ -365,7 +369,9 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
-        }
+        },
+        "grid": null,
+        "gridItem": null
        },
        "children": [
         {
@@ -479,7 +485,9 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "none"
@@ -607,7 +615,9 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "none"
@@ -735,7 +745,9 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "none"
@@ -863,7 +875,9 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "none"
@@ -991,7 +1005,9 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "none"
@@ -1117,7 +1133,9 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "none"
