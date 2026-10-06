@@ -1,0 +1,10 @@
+{
+  "case": "inline-baselines-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"b1:text0","data":"aa ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"b1:text1","data":" c dd ee ff","lines":2,"units":[0,0,0,1,1,1,1,1,1,1,1],"blank":[2]},
+    {"id":"b1s:text0","data":"bb","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

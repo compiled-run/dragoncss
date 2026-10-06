@@ -85,7 +85,13 @@ describe('V2 value-model inputs the engine cannot lay out are rejected (validate
   });
   const verdict = (over: Record<string, unknown>): { ok: boolean; codes: string[] } => {
     const r = validateLayoutInput(JSON.parse(JSON.stringify(withLeaf(over))));
-    return { ok: r.ok, codes: r.ok ? [] : r.errors.map((e) => e.code) };
+    if (r.ok) return { ok: true, codes: [] };
+    // INL1a: box() gives p the strut of its first leaf (a leaf's font is its container's), so the same value is checked there too,
+    // by the same rule; the leaf's own errors are the ones these cases pin, and the strut's must match them one for one.
+    const leaf = r.errors.filter((e) => !e.path.startsWith('$.root.children[0].strut'));
+    const strut = r.errors.filter((e) => e.path.startsWith('$.root.children[0].strut'));
+    expect(strut.map((e) => e.code)).toEqual(leaf.map((e) => e.code));
+    return { ok: false, codes: leaf.map((e) => e.code) };
   };
   const font = (specifiedSize: unknown) => ({ family: 'Ahem', size: 10, specifiedSize, absoluteSize: true });
   const lhLeaf = (lineHeight: unknown) => ({ kind: 'calc', range: 'non-negative', expr: { kind: 'lh', value: 1, font: font(px(10)), lineHeight } });
