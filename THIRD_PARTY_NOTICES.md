@@ -27,10 +27,15 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/line_flexer.cc`: Copyright 2024 The Chromium Authors
 - `third_party/blink/renderer/core/layout/geometry/writing_mode_converter.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/layout/grid/grid_layout_algorithm.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_line_resolver.cc`: Copyright 2022 The Chromium Authors
+- `third_party/blink/renderer/core/layout/grid/grid_placement.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/layout/grid/grid_track_collection.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/layout/grid/grid_track_sizing_algorithm.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/fragment_item.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
+- `third_party/blink/renderer/core/layout/layout_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_border_painter.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_fragment_painter.cc`: Copyright 2017 The Chromium Authors
