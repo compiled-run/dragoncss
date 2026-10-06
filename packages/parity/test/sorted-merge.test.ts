@@ -194,7 +194,7 @@ describe('the sorted merge driver is registered on exactly the sorted registries
   });
 
   it('marks exactly SORTED_REGISTRIES merge=dragon-sorted', () => {
-    const marked = execFileSync('git', ['ls-files', '-z', ':(attr:merge=dragon-sorted)'], { cwd: repoPath('.'), encoding: 'utf8' }).split('\0').filter((p) => p !== '');
+    const marked = execFileSync('git', ['ls-files', '-z', ':(attr:merge=dragon-sorted)'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter((p) => p !== '');
     expect(marked).toEqual(Object.keys(SORTED_REGISTRIES).sort());
   });
 

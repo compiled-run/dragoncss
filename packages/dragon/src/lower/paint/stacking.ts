@@ -11,7 +11,7 @@
 // then differs from Appendix E's against some node, is refused (analysis/paint-values/stacking.ts), and so is a box a native
 // ancestor's clip view would clip although the clip is not in its containing-block chain. Every layer item
 // gets a write; flow boxes get none.
-import type { LayoutBox, LayoutNode } from '@dragon/layout';
+import type { InlineBox, LayoutBox, LayoutNode } from '@dragon/layout';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
@@ -298,7 +298,10 @@ export const transformedForStacking = (el: ResolvedElement): boolean => transfor
 /** The stacking tree of a layout tree, with each element's z-index, opacity and transform from its resolved style. */
 export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, ResolvedElement>): StackNode {
   // A replaced leaf (REPL-a) is an element box with no children: it can be positioned, carry z-index and opacity like any box.
-  const node = (b: LayoutNode, parentFlex: boolean): StackNode => {
+  // INL1a: an inline box is an element box like any other (its z-index applies only when positioned, its opacity always); a <br>
+  // paints nothing and joins no layer, so it is a leaf like a text run.
+  const leaf = (id: string): StackNode => ({ id, position: 'static', z: null, opacity: 1, transformed: false, clips: false, text: true, children: [] });
+  const node = (b: LayoutNode | InlineBox, parentFlex: boolean): StackNode => {
     const anonymous = b.kind === 'box' && b.boxType === 'anonymous';
     const el = anonymous ? null : (elements.get(b.id) ?? null);
     if (!anonymous && el === null) throw new ProgramError(`${b.id}: no resolved element for the layout box`);
@@ -317,7 +320,7 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
       transformed: el !== null && transformedForStacking(el),
       clips: b.style.overflowX === 'hidden',
       text: false,
-      children: b.kind === 'replaced' ? [] : b.children.map((c) => (c.kind !== 'text' ? node(c, flex) : { id: c.id, position: 'static', z: null, opacity: 1, transformed: false, clips: false, text: true, children: [] })),
+      children: b.kind === 'replaced' ? [] : b.children.map((c) => (c.kind === 'text' || c.kind === 'br' ? leaf(c.id) : node(c, flex))),
     };
   };
   return node(root, false);
@@ -330,9 +333,9 @@ let current: { readonly nodes: WeakSet<LayoutNode>; readonly stacking: Stacking 
 
 const treeNodes = (root: LayoutBox): WeakSet<LayoutNode> => {
   const out = new WeakSet<LayoutNode>();
-  const walk = (b: LayoutNode): void => {
-    out.add(b);
-    if (b.kind === 'box') for (const c of b.children) if (c.kind !== 'text') walk(c);
+  const walk = (b: LayoutNode | InlineBox): void => {
+    if (b.kind !== 'inline') out.add(b);
+    if (b.kind === 'box' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text' && c.kind !== 'br') walk(c);
   };
   walk(root);
   return out;

@@ -349,7 +349,7 @@ describe('the oracle\'s paint order (which boxes hide a border pixel)', () => {
     expect(textPaintsOver(order, layer, 'b5', 'c4')).toBe(false);
     expect(textPaintsOver(order, layer, 'd3', 'b5')).toBe(false);
     // Flex items paint in order-modified document order; other boxes in tree order.
-    const leaf = (id: string, order = 0, display = 'block', position = 'static'): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { display, position, order } as unknown as LayoutBox['style'], children: [] });
+    const leaf = (id: string, order = 0, display = 'block', position = 'static'): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { display, position, order } as unknown as LayoutBox['style'], strut: null, children: [] });
     const flex: LayoutBox = { ...leaf('f', 0, 'flex'), children: [leaf('x', 2), leaf('a', -9, 'block', 'absolute'), leaf('y', -1), leaf('z', 2, 'block', 'relative'), { ...leaf('w', 1), children: [leaf('w1', -5)] }] };
     // a is out of flow, so its order is ignored and it keeps its slot; z is a relatively positioned flex item and is reordered.
     expect(paintOrder({ ...leaf('r'), children: [flex, leaf('after')] })).toEqual(['r', 'f', 'y', 'a', 'w', 'w1', 'x', 'z', 'after']);
