@@ -553,6 +553,8 @@
     "stacking-escape-rtl": "stacking context on e-d, e-lb, e-ov1, e-ov2: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "stacking-transform": "transform on t-t1, t-t2: hit testing through transforms is SELD-R2b (T146)",
     "stacking-transform-rtl": "transform on t-t1, t-t2: hit testing through transforms is SELD-R2b (T146)",
+    "stacking-clip-chain": "stacking context on c-lb, c-k, c-ov1, c-ov2: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "stacking-clip-chain-rtl": "stacking context on c-lb, c-k, c-ov1, c-ov2: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "transform-rotate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
     "transform-scale": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
     "transform-translate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",

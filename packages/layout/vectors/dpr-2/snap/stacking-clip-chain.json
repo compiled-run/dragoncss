@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 38912
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 38912
+  },
+  {
+   "id": "stage",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 38912
+  },
+  {
+   "id": "app",
+   "parent": "stage",
+   "x": 0,
+   "y": 3072,
+   "width": 51200,
+   "height": 28160
+  },
+  {
+   "id": "nav",
+   "parent": "app",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 5120
+  },
+  {
+   "id": "title",
+   "parent": "nav",
+   "x": 0,
+   "y": 0,
+   "width": 12800,
+   "height": 5120
+  },
+  {
+   "id": "c-lb",
+   "parent": "nav",
+   "x": 12800,
+   "y": -2048,
+   "width": 7680,
+   "height": 7680
+  },
+  {
+   "id": "c-after",
+   "parent": "app",
+   "x": 0,
+   "y": 3840,
+   "width": 25600,
+   "height": 3840
+  },
+  {
+   "id": "row",
+   "parent": "app",
+   "x": 0,
+   "y": 12800,
+   "width": 15360,
+   "height": 5120
+  },
+  {
+   "id": "c-k",
+   "parent": "row",
+   "x": 8192,
+   "y": 0,
+   "width": 10240,
+   "height": 3840
+  },
+  {
+   "id": "c-after2",
+   "parent": "app",
+   "x": 0,
+   "y": 15360,
+   "width": 12800,
+   "height": 3840
+  },
+  {
+   "id": "card",
+   "parent": "app",
+   "x": 0,
+   "y": 20736,
+   "width": 20480,
+   "height": 5120
+  },
+  {
+   "id": "c-badge",
+   "parent": "card",
+   "x": 0,
+   "y": 1024,
+   "width": 7680,
+   "height": 3840
+  },
+  {
+   "id": "footer",
+   "parent": "app",
+   "x": 0,
+   "y": 22784,
+   "width": 25600,
+   "height": 3840
+  },
+  {
+   "id": "c-ov1",
+   "parent": "app",
+   "x": 10240,
+   "y": 1280,
+   "width": 15360,
+   "height": 7680
+  },
+  {
+   "id": "c-ov2",
+   "parent": "app",
+   "x": 11520,
+   "y": 2560,
+   "width": 7680,
+   "height": 12800
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 608,
+   "width": 800,
+   "height": 608
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 608,
+   "width": 800,
+   "height": 608
+  },
+  {
+   "id": "stage",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 608,
+   "width": 800,
+   "height": 608
+  },
+  {
+   "id": "app",
+   "left": 0,
+   "top": 48,
+   "right": 800,
+   "bottom": 488,
+   "width": 800,
+   "height": 440
+  },
+  {
+   "id": "nav",
+   "left": 0,
+   "top": 48,
+   "right": 800,
+   "bottom": 128,
+   "width": 800,
+   "height": 80
+  },
+  {
+   "id": "title",
+   "left": 0,
+   "top": 48,
+   "right": 200,
+   "bottom": 128,
+   "width": 200,
+   "height": 80
+  },
+  {
+   "id": "c-lb",
+   "left": 200,
+   "top": 16,
+   "right": 320,
+   "bottom": 136,
+   "width": 120,
+   "height": 120
+  },
+  {
+   "id": "c-after",
+   "left": 0,
+   "top": 108,
+   "right": 400,
+   "bottom": 168,
+   "width": 400,
+   "height": 60
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 248,
+   "right": 240,
+   "bottom": 328,
+   "width": 240,
+   "height": 80
+  },
+  {
+   "id": "c-k",
+   "left": 128,
+   "top": 248,
+   "right": 288,
+   "bottom": 308,
+   "width": 160,
+   "height": 60
+  },
+  {
+   "id": "c-after2",
+   "left": 0,
+   "top": 288,
+   "right": 200,
+   "bottom": 348,
+   "width": 200,
+   "height": 60
+  },
+  {
+   "id": "card",
+   "left": 0,
+   "top": 372,
+   "right": 320,
+   "bottom": 452,
+   "width": 320,
+   "height": 80
+  },
+  {
+   "id": "c-badge",
+   "left": 0,
+   "top": 388,
+   "right": 120,
+   "bottom": 448,
+   "width": 120,
+   "height": 60
+  },
+  {
+   "id": "footer",
+   "left": 0,
+   "top": 404,
+   "right": 400,
+   "bottom": 464,
+   "width": 400,
+   "height": 60
+  },
+  {
+   "id": "c-ov1",
+   "left": 160,
+   "top": 68,
+   "right": 400,
+   "bottom": 188,
+   "width": 240,
+   "height": 120
+  },
+  {
+   "id": "c-ov2",
+   "left": 180,
+   "top": 88,
+   "right": 300,
+   "bottom": 288,
+   "width": 120,
+   "height": 200
+  }
+ ]
+}

@@ -138,8 +138,8 @@
   }
  },
  "summary": {
-  "diagnostics": 247,
-  "errors": 242,
+  "diagnostics": 245,
+  "errors": 240,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -159,8 +159,8 @@
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 4,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 34,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 34,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 33,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 33,
    "DRAGON_UNSUPPORTED_VALUE [web]": 20
   },
   "perTarget": {
@@ -187,7 +187,7 @@
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 28,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 37
+     "DRAGON_UNSUPPORTED_VALUE": 36
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -205,7 +205,7 @@
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 28,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 37
+     "DRAGON_UNSUPPORTED_VALUE": 36
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -220,11 +220,11 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 203,
+  "supportedBothTargets": 204,
   "supportedWeb": 239,
-  "supportedIos": 203,
-  "supportedAndroid": 203,
-  "supportPercent": 70.2,
+  "supportedIos": 204,
+  "supportedAndroid": 204,
+  "supportPercent": 70.6,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -309,7 +309,7 @@
   "rawDiagnosticsPerPass": {
    "A-authored": 109,
    "B-unwrapped": 105,
-   "C-context": 156
+   "C-context": 154
   }
  },
  "features": {
@@ -1066,11 +1066,9 @@
    "property": "z-index",
    "value": "40",
    "web": "supported",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_VALUE"
-   ]
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 50,
@@ -6779,44 +6777,6 @@
     "text": "all 0.3s ease"
    },
    "message": "transition-property:all, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1614-1616|page/nav-call/library-button paints in a stacking context outside page/app, whose overflow clip applies to it, and Chrome paints it after content android would paint above it under that clip; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 1614,
-    "end": 1616,
-    "line": 98,
-    "column": 11,
-    "text": "40"
-   },
-   "message": "page/nav-call/library-button paints in a stacking context outside page/app, whose overflow clip applies to it, and Chrome paints it after content android would paint above it under that clip; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1614-1616|page/nav-call/library-button paints in a stacking context outside page/app, whose overflow clip applies to it, and Chrome paints it after content ios would paint above it under that clip; ios would need a clip-chain view around it, which PNT1's hosting does not have yet",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 1614,
-    "end": 1616,
-    "line": 98,
-    "column": 11,
-    "text": "40"
-   },
-   "message": "page/nav-call/library-button paints in a stacking context outside page/app, whose overflow clip applies to it, and Chrome paints it after content ios would paint above it under that clip; ios would need a clip-chain view around it, which PNT1's hosting does not have yet",
    "viaRelated": false,
    "passes": [
     "C-context"

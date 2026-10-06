@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 51072
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 51072
+  },
+  {
+   "id": "stage",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 51072
+  },
+  {
+   "id": "app",
+   "parent": "stage",
+   "x": 0,
+   "y": 4032,
+   "width": 67200,
+   "height": 36960
+  },
+  {
+   "id": "nav",
+   "parent": "app",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 6720
+  },
+  {
+   "id": "title",
+   "parent": "nav",
+   "x": 0,
+   "y": 0,
+   "width": 16800,
+   "height": 6720
+  },
+  {
+   "id": "c-lb",
+   "parent": "nav",
+   "x": 16800,
+   "y": -2688,
+   "width": 10080,
+   "height": 10080
+  },
+  {
+   "id": "c-after",
+   "parent": "app",
+   "x": 0,
+   "y": 5040,
+   "width": 33600,
+   "height": 5040
+  },
+  {
+   "id": "row",
+   "parent": "app",
+   "x": 0,
+   "y": 16800,
+   "width": 20160,
+   "height": 6720
+  },
+  {
+   "id": "c-k",
+   "parent": "row",
+   "x": 10752,
+   "y": 0,
+   "width": 13440,
+   "height": 5040
+  },
+  {
+   "id": "c-after2",
+   "parent": "app",
+   "x": 0,
+   "y": 20160,
+   "width": 16800,
+   "height": 5040
+  },
+  {
+   "id": "card",
+   "parent": "app",
+   "x": 0,
+   "y": 27216,
+   "width": 26880,
+   "height": 6720
+  },
+  {
+   "id": "c-badge",
+   "parent": "card",
+   "x": 0,
+   "y": 1344,
+   "width": 10080,
+   "height": 5040
+  },
+  {
+   "id": "footer",
+   "parent": "app",
+   "x": 0,
+   "y": 29904,
+   "width": 33600,
+   "height": 5040
+  },
+  {
+   "id": "c-ov1",
+   "parent": "app",
+   "x": 13440,
+   "y": 1680,
+   "width": 20160,
+   "height": 10080
+  },
+  {
+   "id": "c-ov2",
+   "parent": "app",
+   "x": 15120,
+   "y": 3360,
+   "width": 10080,
+   "height": 16800
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 798,
+   "width": 1050,
+   "height": 798
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 798,
+   "width": 1050,
+   "height": 798
+  },
+  {
+   "id": "stage",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 798,
+   "width": 1050,
+   "height": 798
+  },
+  {
+   "id": "app",
+   "left": 0,
+   "top": 63,
+   "right": 1050,
+   "bottom": 641,
+   "width": 1050,
+   "height": 578
+  },
+  {
+   "id": "nav",
+   "left": 0,
+   "top": 63,
+   "right": 1050,
+   "bottom": 168,
+   "width": 1050,
+   "height": 105
+  },
+  {
+   "id": "title",
+   "left": 0,
+   "top": 63,
+   "right": 263,
+   "bottom": 168,
+   "width": 263,
+   "height": 105
+  },
+  {
+   "id": "c-lb",
+   "left": 263,
+   "top": 21,
+   "right": 420,
+   "bottom": 179,
+   "width": 157,
+   "height": 158
+  },
+  {
+   "id": "c-after",
+   "left": 0,
+   "top": 142,
+   "right": 525,
+   "bottom": 221,
+   "width": 525,
+   "height": 79
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 326,
+   "right": 315,
+   "bottom": 431,
+   "width": 315,
+   "height": 105
+  },
+  {
+   "id": "c-k",
+   "left": 168,
+   "top": 326,
+   "right": 378,
+   "bottom": 404,
+   "width": 210,
+   "height": 78
+  },
+  {
+   "id": "c-after2",
+   "left": 0,
+   "top": 378,
+   "right": 263,
+   "bottom": 457,
+   "width": 263,
+   "height": 79
+  },
+  {
+   "id": "card",
+   "left": 0,
+   "top": 488,
+   "right": 420,
+   "bottom": 593,
+   "width": 420,
+   "height": 105
+  },
+  {
+   "id": "c-badge",
+   "left": 0,
+   "top": 509,
+   "right": 158,
+   "bottom": 588,
+   "width": 158,
+   "height": 79
+  },
+  {
+   "id": "footer",
+   "left": 0,
+   "top": 530,
+   "right": 525,
+   "bottom": 609,
+   "width": 525,
+   "height": 79
+  },
+  {
+   "id": "c-ov1",
+   "left": 210,
+   "top": 89,
+   "right": 525,
+   "bottom": 247,
+   "width": 315,
+   "height": 158
+  },
+  {
+   "id": "c-ov2",
+   "left": 236,
+   "top": 116,
+   "right": 394,
+   "bottom": 378,
+   "width": 158,
+   "height": 262
+  }
+ ]
+}
