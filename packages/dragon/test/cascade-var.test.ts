@@ -216,10 +216,13 @@ describe('a substituted value is checked against each target\'s profile', () => 
     expect(refused({ android: { minSdk: 31 } }, { ...COMMITTED_PROFILES, android: drop(COMMITTED_PROFILES.android) })).toEqual(['android']);
     expect(refused({ ios: { minimum: '15.0' } }, { ios: drop(COMMITTED_PROFILES.ios), web: COMMITTED_PROFILES.web }, 'derive')).toEqual([]);
   });
-  it('revert and revert-layer reached through var() are refused on every target, as written literally', () => {
-    for (const css of ['.a { color: var(--m, revert); }', '.a { --r: 1px; width: var(--m, revert-layer); }']) {
-      const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', supportProfiles: COMMITTED_PROFILES }).compile(inputFor(css, (r) => [div(r, 'a', ['a'])]));
-      expect(c.diagnostics.map((d) => [d.code, d.target, /substitutes to revert/.test(d.message)]), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios', true], ['DRAGON_UNSUPPORTED_VALUE', 'web', true]]);
-    }
+  it('revert and revert-layer reached through var() take the profile rows of the keyword as written literally', () => {
+    const run = (css: string) => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', supportProfiles: COMMITTED_PROFILES }).compile(inputFor(css, (r) => [div(r, 'a', ['a'])]));
+    // CASC proves color: revert in paint/ltr (casc-css-wide), so the substituted keyword compiles as the literal one does.
+    expect(run('.a { color: var(--m, revert); }').diagnostics.map((d) => d.code)).toEqual([]);
+    // width: revert-layer has no row, so it stays refused on every target, naming the substitution.
+    const css = '.a { --r: 1px; width: var(--m, revert-layer); }';
+    expect(run(css).diagnostics.map((d) => [d.code, d.target, /substitutes to revert/.test(d.message)]), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios', true], ['DRAGON_UNSUPPORTED_VALUE', 'web', true]]);
   });
+});
 });
