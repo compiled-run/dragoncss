@@ -65,18 +65,15 @@ function platformOver(l: ShadowLayer, x: number, y: number, under: Rgba): number
   return [0, 1, 2].map((k) => Math.round((l.rgba[i + k] as number) + ((under[k] as number) * (255 - a)) / 255));
 }
 
-/** The backdrop fills the device gathers for a box's shadows: each ancestor's background, outermost first, then its own for inset. */
+/**
+ * The backdrop fills the device gathers for a box's shadows: the background of every box placed before it (its ancestors and every
+ * earlier subtree, in document order), then its own for inset (shadow.ts dragonShadowBackdrop; PM ruling on shadows, option 2).
+ */
 function backdropOf(list: readonly Box[], b: Box, own: boolean): BackdropFill[] {
-  const chain: Box[] = own ? [b] : [];
-  for (let p = b.node.parent; p !== null; ) {
-    const a = list.find((x) => x.node.id === p);
-    if (a === undefined) break;
-    chain.unshift(a);
-    p = a.node.parent;
-  }
+  const chain: Box[] = [...list.slice(0, list.indexOf(b)), ...(own ? [b] : [])];
   return chain.flatMap((a) => {
     const bg = a.node.writes.find((w) => w.kind === 'background-color');
-    if (bg === undefined || bg.kind !== 'background-color') return [];
+    if (bg === undefined || bg.kind !== 'background-color' || bg.color.alpha === 0) return [];
     return [{ left: a.l, top: a.t, right: a.r, bottom: a.b, radii: a.radii === null ? [0, 0, 0, 0, 0, 0, 0, 0] : a.radii.slice(0, 8), r: bg.color.r, g: bg.color.g, b: bg.color.b, a: bg.color.alpha }];
   });
 }
@@ -152,7 +149,7 @@ function measure(caseId: string, list: readonly Box[], p: import('dragon').Nativ
 
 describe('PNT1 shadow: the TS reference against Chrome at every clear shadow pixel (the measured allowance)', () => {
   it('covers the shadow fixtures and the calibration set in both directions', () => {
-    expect(SHADOW_FIXTURES.map((f) => f.id)).toEqual(['shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'calib-shadow-blur', 'calib-shadow-colors']);
+    expect(SHADOW_FIXTURES.map((f) => f.id)).toEqual(['shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'calib-shadow-blur', 'calib-shadow-colors', 'calib-shadow-colors-dark', 'shadow-over-siblings', 'shadow-over-blocks']);
   });
   const all: Measure = { max: 0, pixels: 0, worst: '' };
   const plainAll: Measure = { max: 0, pixels: 0, worst: '' };

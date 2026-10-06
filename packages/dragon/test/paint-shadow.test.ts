@@ -8,7 +8,7 @@ import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { SHADOW_EMITTER } from '../src/emit/paint/shadow.ts';
 import type { Targets } from '../src/types.ts';
-import { div, expectCatalogued, explainOne, inputFor, spanTextOf } from './helpers.ts';
+import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/shadow.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -61,7 +61,8 @@ describe('box-shadow: parse and computed values (Chrome 145 getComputedStyle)', 
   });
 
   it('CSS-wide keywords set box-shadow; inherit takes the parent computed shadows', () => {
-    const c = compile('.a { box-shadow: 1px 2px 3px red; } .b { box-shadow: inherit; }');
+    // .a clips its overflow, so .b's shadow stays off .a's own (PM ruling on shadows, option 2: otherwise refused on native).
+    const c = compile('.a { box-shadow: 1px 2px 3px red; overflow: hidden; } .b { box-shadow: inherit; }');
     expect(explainOne(c, 'ios', 'b', 'box-shadow').value).toBe('rgb(255, 0, 0) 1px 2px 3px 0px');
   });
 });
@@ -105,6 +106,51 @@ describe('box-shadow: native refusals of what the companion-view shadow does not
     for (const css of ['.i { box-shadow: 0 0 4px red; }', '.i { box-shadow: 0 0 4px red; transform: none; }', 'body { box-shadow: none; }']) {
       expect(refusedOf(inputFor(`body { margin: 0; } ${css}`, (r) => [div(r, 'i', ['i'])])), css).toEqual([]);
     }
+  });
+});
+
+describe('box-shadow: native refusals of a backdrop the shadow is not baked against (PM ruling on shadows, option 2)', () => {
+  const targets: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
+  type Node = { id: string; cls: string; kids?: Node[]; text?: string };
+  const build = (r: Parameters<Parameters<typeof inputFor>[1]>[0], n: Node): ReturnType<typeof div> => div(r, n.id, n.cls.split(' '), [...(n.text === undefined ? [] : [text(r, `${n.id}t`, n.text)]), ...(n.kids ?? []).map((k) => build(r, k))]);
+  const refusals = (css: string, nodes: Node[]) => {
+    const c = createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; } ${css}`, (r) => nodes.map((n) => build(r, n))));
+    return c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('does not bake'));
+  };
+  const S = '.s { width: 40px; height: 20px; box-shadow: 0 0 8px rgba(0, 0, 0, 0.5); }';
+  it('accepts a shadow over earlier backgrounds only: ancestors, earlier siblings and their children, rounded or translucent', () => {
+    expect(refusals(`.p { background-color: #eee; } .a { height: 10px; background-color: rgba(0, 0, 255, 0.5); border-radius: 4px; } ${S}`, [{ id: 'p', cls: 'p', kids: [{ id: 'a', cls: 'a', kids: [{ id: 'a1', cls: 'a' }] }, { id: 's', cls: 's' }] }])).toEqual([]);
+  });
+  it('refuses, on ios and android only, a shadow after an earlier border, shadow, transform, positioned box, clip or replaced content', () => {
+    for (const [what, css] of [['a border', '.a { border: 1px solid red; }'], ['a box-shadow', '.a { box-shadow: 0 0 2px red; }'], ['a transform', '.a { transform: rotate(5deg); }'], ['position: relative', '.a { position: relative; }'], ['an overflow clip', '.a { overflow: hidden; }']] as const) {
+      const r = refusals(`${css} ${S}`, [{ id: 'a', cls: 'a' }, { id: 's', cls: 's' }]);
+      expect(r.map((d) => d.target).sort(), what).toEqual(['android', 'ios']);
+      expect(r[0]?.message, what).toContain(`a (${what})`);
+      expectCatalogued(r);
+    }
+  });
+  it('refuses a positioned or transformed ancestor, an inline-level shadowed box and an ancestor border it is not clipped away from', () => {
+    expect(refusals(`.p { position: relative; } ${S}`, [{ id: 'p', cls: 'p', kids: [{ id: 's', cls: 's' }] }])).toHaveLength(2);
+    expect(refusals(`.p { transform: translate(1px); } ${S}`, [{ id: 'p', cls: 'p', kids: [{ id: 's', cls: 's' }] }])).toHaveLength(2);
+    expect(refusals(`.p { border: 2px solid; } ${S}`, [{ id: 'p', cls: 'p', kids: [{ id: 's', cls: 's' }] }])).toHaveLength(2);
+    // An ancestor that clips at its padding box keeps the shadow off its own border and outer shadow.
+    expect(refusals(`.p { border: 2px solid; box-shadow: 0 0 4px red; overflow: hidden; } ${S}`, [{ id: 'p', cls: 'p', kids: [{ id: 's', cls: 's' }] }])).toEqual([]);
+    expect(refusals(`.p { overflow: hidden; box-shadow: inset 0 0 4px red; } ${S}`, [{ id: 'p', cls: 'p', kids: [{ id: 's', cls: 's' }] }])).toHaveLength(2);
+  });
+  it('accepts earlier flex siblings with shadows or borders only when the gap exceeds both reaches, and no item reorders or has a negative margin', () => {
+    // The shadow reaches 8 * 1.5 + 2 = 14 px; the earlier item's 2 * 1.5 + 2 = 5 px.
+    const row = (gap: number, extra = '') => refusals(`.row { display: flex; column-gap: ${gap}px; row-gap: ${gap}px; } .a { width: 10px; height: 10px; box-shadow: 0 0 2px red; } ${S} ${extra}`, [{ id: 'row', cls: 'row', kids: [{ id: 'a', cls: 'a' }, { id: 's', cls: 's' }] }]);
+    expect(row(20)).toEqual([]);
+    expect(row(19)).toHaveLength(2);
+    // order reorders the paint of every item, so both shadows are refused.
+    expect(row(30, '.a { order: 1; }')).toHaveLength(4);
+    expect(row(30, '.a { margin-left: -2px; }')).toHaveLength(2);
+    // A shadow inside a clipping item stays in that item: only the earlier item's reach counts against the gap.
+    expect(refusals(`.row { display: flex; column-gap: 6px; } .a { width: 10px; height: 10px; box-shadow: 0 0 2px red; } .c { overflow: hidden; } ${S}`, [{ id: 'row', cls: 'row', kids: [{ id: 'a', cls: 'a' }, { id: 'c', cls: 'c', kids: [{ id: 's', cls: 's' }] }] }])).toEqual([]);
+  });
+  it('refuses text in an earlier flex item (painted wholly beneath), and accepts text earlier in block flow (painted above)', () => {
+    expect(refusals(`.row { display: flex; column-gap: 40px; } ${S}`, [{ id: 'row', cls: 'row', kids: [{ id: 'a', cls: 'a', text: 'XX' }, { id: 's', cls: 's' }] }])).toHaveLength(2);
+    expect(refusals(S, [{ id: 'a', cls: 'a', text: 'XX' }, { id: 's', cls: 's' }])).toEqual([]);
   });
 });
 

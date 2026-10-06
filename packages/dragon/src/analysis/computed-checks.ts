@@ -17,6 +17,7 @@ import { isReplacedTag } from './elements/replaced.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
 import { environmentOf, valueToString } from './resolve.ts';
+import { checkShadowBackdrops } from './paint-values/shadow.ts';
 import { checkTransformContexts } from './paint-values/transform.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
@@ -295,5 +296,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
+  // PNT1: shadows whose backdrop could hold what the native shadow is not baked over.
+  checkShadowBackdrops(root, targets, diagnostics, reported);
 }
 

@@ -60,6 +60,12 @@ describe("rec1 colour_rows: the 'paint' role", () => {
     const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'], 'border-top-left-radius': ['4px', '30% 2px'], 'border-top-right-radius': ['4px', '30% 2px'], 'border-bottom-right-radius': ['4px', '30% 2px'], 'border-bottom-left-radius': ['4px', '30% 2px'], 'box-shadow': ['2px 3px 4px red', 'inset 0 0 6px 2px rgba(0, 0, 255, 0.5)'] };
     for (const p of paint) {
       const [va, vb] = pair[p] ?? ['#102030', 'rgba(200, 100, 50, 0.5)'];
+      if (p === 'box-shadow') {
+        // A shadow compiles on native only over a backdrop the device bakes (PNT1, option 2), so each value gets its own document.
+        const one = (v: string): LayoutBox => boxes(inputFor(`${FONT} .x { width: 30px; } .a { ${p}: ${v}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')])])).get('a') as LayoutBox;
+        expect(one(va).style, p).toEqual(one(vb).style);
+        continue;
+      }
       const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: relative; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
       const m = boxes(input);
       const [a, b] = [m.get('a') as LayoutBox, m.get('b') as LayoutBox];

@@ -10,7 +10,7 @@ import type { ShadowInput, ShadowLayer } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import type { SampleBox, SamplePoint } from '../samples.ts';
 import { ruleKind, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
-import { boxRadii } from './radius.ts';
+import { boxRadii, nearAnyArc } from './radius.ts';
 import type { PaintSampleContext, PaintSamples } from './types.ts';
 
 const I = SAMPLE_INSET_DEVICE_PX;
@@ -96,14 +96,21 @@ function ancestor(program: NativeProgram, a: string, b: string): boolean {
 }
 
 /**
- * Whether (x, y) is a clear shadow pixel of s: only s's layers paint it, every shadow of s is smooth there, and no other box
- * (s's ancestors aside) comes within SAMPLE_INSET_DEVICE_PX of it.
+ * Whether (x, y) is a clear shadow pixel of s: only s's layers paint it, every shadow of s is smooth there, no later box (s's
+ * descendants and every later subtree) comes within SAMPLE_INSET_DEVICE_PX of it, and every earlier box (painted beneath the shadow:
+ * its ancestors and every earlier subtree, whose backgrounds the device bakes the shadow against) has no edge or rounded arc
+ * within SAMPLE_INSET_DEVICE_PX of it, so the backdrop is one colour there.
  */
 export function clearShadowPixel(ctx: PaintSampleContext, s: BoxShadowLayers, x: number, y: number): boolean {
   const all = shadowLayers(ctx);
   if (all.some((o) => o !== s && (layerAlpha(o.outer, x, y) > 0 || layerAlpha(o.inset, x, y) > 0))) return false;
   if (!coverageSmooth(s, x, y)) return false;
-  return ctx.boxes.every((b) => b.id === s.box.id || ancestor(ctx.program, b.id, s.box.id) || x + 1 <= b.left - I || x >= b.right + I || y + 1 <= b.top - I || y >= b.bottom + I);
+  const at = ctx.boxes.findIndex((b) => b.id === s.box.id);
+  return ctx.boxes.every((b, i) => {
+    if (i === at || ancestor(ctx.program, b.id, s.box.id)) return true;
+    if (i > at) return clearOutsideBox(b, x, y);
+    return (clearOutsideBox(b, x, y) || (x >= b.left + I && x + 1 <= b.right - I && y >= b.top + I && y + 1 <= b.bottom - I)) && !nearAnyArc(ctx, x, y);
+  });
 }
 
 const clearOutsideBox = (b: SampleBox, x: number, y: number): boolean => x + 1 <= b.left - I || x >= b.right + I || y + 1 <= b.top - I || y >= b.bottom + I;

@@ -528,6 +528,8 @@ public final class DragonTree {
   public func companion(_ id: String, _ view: UIView) { companions[id, default: []].append(view) }
   /// A built node's view, for the runtime writers (RT-1, RT-2, RT-11).
   public func node(_ id: String) -> DragonNodeView? { return views[id] }
+  /// The nodes placed before id in this layout pass, in placement (document) order: its ancestors and every earlier subtree.
+  public func placedBefore(_ id: String) -> [String] { return Array(order.prefix(while: { $0 != id })) }
 
   public func boxNode(_ id: String, parent: String?, kind: String) -> DragonBoxView {
     let v = DragonBoxView(dragonId: id, kind: kind, parent: parent)
@@ -1269,6 +1271,8 @@ class DragonTree(val context: Context) {
   fun companion(id: String, view: android.view.View) { companions.getOrPut(id) { ArrayList() }.add(view) }
   /** A built node's view, for the runtime writers (RT-1, RT-2, RT-11). */
   fun node(id: String): DragonNodeView? = views[id]
+  /** The nodes placed before id in this layout pass, in placement (document) order: its ancestors and every earlier subtree. */
+  fun placedBefore(id: String): List<String> = order.takeWhile { it != id }
 
   fun boxNode(id: String, parent: String?, kind: String): DragonBoxView {
     val v = DragonBoxView(context, id, kind, parent)

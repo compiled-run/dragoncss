@@ -14,6 +14,9 @@ export const SHADOW: readonly FixtureSpec[] = [
   both('shadow-cascade'),
   both('calib-shadow-blur'),
   both('calib-shadow-colors'),
+  both('calib-shadow-colors-dark'),
+  both('shadow-over-siblings'),
+  both('shadow-over-blocks'),
   reject('reject-shadow-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px + 1px)', 'box-shadow: calc(1px + 1px) is unsupported: a calculation in a shadow is not supported'),
   reject('reject-shadow-viewport', 'DRAGON_UNSUPPORTED_VALUE', '1vw', 'box-shadow: 1vw is unsupported: a shadow length in a viewport unit'),
 ];

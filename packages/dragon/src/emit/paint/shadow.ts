@@ -24,6 +24,8 @@ const SWIFT_MEMBERS = String.raw`  /// The computed shadows in list order (css p
   /// The inset shadows as a premultiplied bitmap and its rect in the view's points, drawn at the inset-shadow stage.
   public var dragonInsetShadowImage: CGImage? = nil
   public var dragonInsetShadowRect: CGRect = .zero
+  /// The tree the box was placed in, whose placement order is the shadows' paint order (PNT1 option 2).
+  public weak var dragonShadowTree: DragonTree? = nil
 `;
 
 const SWIFT = String.raw`import UIKit
@@ -51,6 +53,7 @@ public final class DragonShadowView: UIView {
 /// first time), then every after-layout hook re-applies the paint.
 public func dragonSetShadows(_ t: DragonTree, _ v: DragonBoxView, _ shadows: [ShadowInput]) {
   v.dragonShadows = shadows
+  v.dragonShadowTree = t
   if v.dragonShadowView == nil && shadows.contains(where: { !$0.inset }) {
     let s = DragonShadowView()
     v.dragonShadowView = s
@@ -60,15 +63,13 @@ public func dragonSetShadows(_ t: DragonTree, _ v: DragonBoxView, _ shadows: [Sh
   v.setNeedsDisplay()
 }
 
-/// The backdrop of a box's shadows: each ancestor box's background over its (rounded) border box, outermost first, then the box's
-/// own when own is set (the inset shadows); the white root is beneath.
+/// The backdrop of a box's shadows: the background of every box placed before it (its ancestors and every earlier subtree, in
+/// document order, which the compiler makes the paint order: analysis/paint-values/shadow.ts checkShadowBackdrops) over its
+/// (rounded) border box, then the box's own when own is set (the inset shadows); the white root is beneath.
 public func dragonShadowBackdrop(_ v: DragonBoxView, own: Bool) -> [BackdropFill] {
-  var chain: [DragonBoxView] = own ? [v] : []
-  var p = v.superview
-  while let s = p {
-    if let b = s as? DragonBoxView { chain.insert(b, at: 0) }
-    p = s.superview
-  }
+  guard let t = v.dragonShadowTree else { fatalError("dragon: \(v.dragonId) has shadows but no tree") }
+  var chain: [DragonBoxView] = t.placedBefore(v.dragonId).compactMap { t.node($0) as? DragonBoxView }
+  if own { chain.append(v) }
   var out: [BackdropFill] = []
   for b in chain {
     let c = b.dragonBackgroundColor
@@ -155,6 +156,8 @@ const KOTLIN_MEMBERS = String.raw`  /** The computed shadows in list order (css 
   var dragonInsetShadowOffset = intArrayOf(0, 0)
   /** The device scale of the last layout. */
   var dragonShadowScale = 1.0
+  /** The tree the box was placed in, whose placement order is the shadows' paint order (PNT1 option 2). */
+  var dragonShadowTree: DragonTree? = null
 `;
 
 const KOTLIN = String.raw`package dev.dragon.views
@@ -192,6 +195,7 @@ class DragonShadowView(ctx: Context) : DragonGroup(ctx) {
  */
 fun dragonSetShadows(t: DragonTree, v: DragonBoxView, shadows: Array<ShadowInput>) {
   v.dragonShadows = shadows
+  v.dragonShadowTree = t
   if (v.dragonShadowView == null && shadows.any { !it.inset }) {
     val s = DragonShadowView(v.context)
     v.dragonShadowView = s
@@ -206,13 +210,13 @@ fun dragonSetShadows(t: DragonTree, v: DragonBoxView, shadows: Array<ShadowInput
  * own when own is set (the inset shadows); the white root is beneath.
  */
 fun dragonShadowBackdrop(v: DragonBoxView, own: Boolean): MutableList<BackdropFill> {
+  val t = v.dragonShadowTree ?: throw IllegalStateException("dragon: " + v.dragonId + " has shadows but no tree")
   val chain = ArrayList<DragonBoxView>()
-  if (own) chain.add(v)
-  var p = v.parent
-  while (p != null) {
-    if (p is DragonBoxView) chain.add(0, p)
-    p = p.parent
+  for (id in t.placedBefore(v.dragonId)) {
+    val b = t.node(id)
+    if (b is DragonBoxView) chain.add(b)
   }
+  if (own) chain.add(v)
   val out = ArrayList<BackdropFill>()
   for (b in chain) {
     val c = b.dragonBackgroundColor
