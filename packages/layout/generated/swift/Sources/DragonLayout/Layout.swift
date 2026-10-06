@@ -124,21 +124,21 @@ public func layout_flatten(_ frag: Frag, _ parent: JsString?, _ x: Double, _ y: 
   _ = out.absolute.set(frag.id, AbsoluteRect(absX, absY, frag.width, frag.height))
   // ts: packages/layout/src/layout.ts:86
   do {
-    let _a83 = frag.outOfFlow
-    var _i83 = 0
-    while _i83 < _a83.items.count {
-      let oof: OutOfFlow = _a83.items[_i83]
-      _i83 += 1
+    let _a95 = frag.outOfFlow
+    var _i95 = 0
+    while _i95 < _a95.items.count {
+      let oof: OutOfFlow = _a95.items[_i95]
+      _i95 += 1
       _ = jsPush(out.pending, Pending(oof, frag.id, absX, absY))
     }
   }
   // ts: packages/layout/src/layout.ts:87
   do {
-    let _a84 = frag.children
-    var _i84 = 0
-    while _i84 < _a84.items.count {
-      let c: Placed = _a84.items[_i84]
-      _i84 += 1
+    let _a96 = frag.children
+    var _i96 = 0
+    while _i96 < _a96.items.count {
+      let c: Placed = _a96.items[_i96]
+      _i96 += 1
       try layout_flatten(c.frag, frag.id, c.x, c.y, absX, absY, out)
     }
   }
@@ -151,11 +151,11 @@ public func layout_parents(_ root: LayoutBox) throws -> JsStringMap<LayoutBox> {
   func walk(_ b: LayoutBox) throws -> Void {
     // ts: packages/layout/src/layout.ts:94
     do {
-      let _a85 = b.children
-      var _i85 = 0
-      while _i85 < _a85.items.count {
-        let c: any U_LayoutBox_ReplacedLeaf_TextLeaf = _a85.items[_i85]
-        _i85 += 1
+      let _a97 = b.children
+      var _i97 = 0
+      while _i97 < _a97.items.count {
+        let c: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a97.items[_i97]
+        _i97 += 1
         // ts: packages/layout/src/layout.ts:95
         if (c.kind != S.s_box) {
           continue
@@ -183,7 +183,7 @@ public func layout_containingBlock(_ ctx: Ctx, _ box: LayoutBox, _ parentOf: JsS
   let r: AbsoluteRect? = try out.absolute.get(jsUnwrap(at).id)
   // ts: packages/layout/src/layout.ts:111
   if (r == nil) {
-    throw try JsError(message: jsConcat(S.s151, jsUnwrap(at).id, S.s37, box.id, S.s25))
+    throw try JsError(message: jsConcat(S.s170, jsUnwrap(at).id, S.s43, box.id, S.s32))
   }
   let bor: Edges = try box_resolveBorder(jsUnwrap(at).style, ctx.devicePixelRatio)
   let s: LayoutStyle = try jsUnwrap(at).style
@@ -226,11 +226,11 @@ public func layout_absoluteRects(_ boxes: JsArray<LayoutRect>) throws -> JsStrin
   let abs: JsStringMap<LayoutRect> = JsStringMap<LayoutRect>()
   // ts: packages/layout/src/layout.ts:153
   do {
-    let _a86 = boxes
-    var _i86 = 0
-    while _i86 < _a86.items.count {
-      let b: LayoutRect = _a86.items[_i86]
-      _i86 += 1
+    let _a98 = boxes
+    var _i98 = 0
+    while _i98 < _a98.items.count {
+      let b: LayoutRect = _a98.items[_i98]
+      _i98 += 1
       let parent: LayoutRect? = try ((b.parent == nil) ? (nil as LayoutRect?) : (abs.get(jsUnwrap(b.parent)) as LayoutRect?))
       let px0: Double = try ((parent == nil) ? 0.0 : jsUnwrap(parent).x)
       let py0: Double = try ((parent == nil) ? 0.0 : jsUnwrap(parent).y)

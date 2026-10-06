@@ -5,7 +5,7 @@ import type { GridContainerStyle, GridItemStyle, LayoutBox, LayoutInput, TrackSi
 import { absoluteRects, ahemMeasurer, layout, validateLayoutInput } from '../src/index.ts';
 import type { LU } from '../src/units.ts';
 import { equalShare, frLeftover, frShareToLu, intDiv, intMod, rawOverFloat, setFlexFactor } from '../src/units.ts';
-import { anon, box, neutralEnvironment, text } from './helpers.ts';
+import { anon, box, neutralEnvironment, span, text } from './helpers.ts';
 
 const fr = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'fr', value } });
 const px = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'px', value } });
@@ -122,6 +122,21 @@ describe('the validator\'s grid rules, each with a planted input', () => {
     (replacedGrid.root as unknown as { children: unknown[] }).children = [leaf({ display: 'grid', grid: gridStyle({}) })];
     expect(codes(replacedGrid)).toContain('grid-shape $.root.children[0].style.grid');
   });
+  it('takes an inline box only inside an anonymous grid item, never as a grid item or a grid container (INL1a with GRID G1a)', () => {
+    // css-grid-2 §6: inline content in a grid container is wrapped in an anonymous, auto-placed grid item.
+    const wrapped = input(box('root', {}, [grid(gridStyle({}), [anon('g:anon0', { gridItem: autoItem }, [text('g:text0', 'X'), span('s', [text('s:text0', 'Y')])])])]));
+    expect(codes(wrapped)).toEqual([]);
+    const bare = input(box('root', {}, [grid(gridStyle({}), [])]));
+    (bare.root.children[0] as unknown as { children: unknown[] }).children = [span('s', [text('s:text0', 'Y')])];
+    expect(codes(bare)).toContain('text-in-flex $.root.children[0].children');
+    // css-display-3 §2.7: a grid item is blockified, so an inline box never carries a placement or a grid style.
+    for (const over of [{ gridItem: autoItem }, { grid: gridStyle({}) }]) {
+      const placed = input(box('root', {}, [box('p', {}, [span('s', [text('s:text0', 'Y')])])]));
+      const s0 = ((placed.root.children[0] as unknown as { children: { style: Record<string, unknown> }[] }).children[0] as { style: Record<string, unknown> });
+      Object.assign(s0.style, over);
+      expect(codes(placed), JSON.stringify(Object.keys(over))).toContain('grid-shape $.root.children[0].children[0].style.grid');
+    }
+  });
   it('judges an anonymous item by its values, not by the order of its keys', () => {
     const reordered = input(box('root', {}, [grid(gridStyle({}), [anon('g:anon0', {}, [text('g:text0', 'X')])])]));
     const a = (reordered.root.children[0] as unknown as { children: { style: Record<string, unknown> }[] }).children[0] as { style: Record<string, unknown> };
@@ -143,8 +158,8 @@ describe('grid engine cases pinned to the Chrome 145 corpus (docs/research/grid-
     expect(['a', 'b', 'c'].map((id) => m.get(id)?.width)).toEqual([2133, 2133, 2134]);
   });
   it('p-dense: dense packing fills the hole before an earlier item', () => {
-    const span = (n: number): GridItemStyle => ({ ...autoItem, column: { kind: 'auto', span: n } });
-    const items = [span(3), span(2), autoItem, autoItem, span(3)].map((gi, k) => box(`i${k}`, { height: { kind: 'px', value: 5 }, gridItem: gi }));
+    const colSpan = (n: number): GridItemStyle => ({ ...autoItem, column: { kind: 'auto', span: n } });
+    const items = [colSpan(3), colSpan(2), autoItem, autoItem, colSpan(3)].map((gi, k) => box(`i${k}`, { height: { kind: 'px', value: 5 }, gridItem: gi }));
     const m = boxesOf(grid(gridStyle({ templateColumns: [{ count: 4, sizes: [px(20)] }], explicitColumnCount: 4, autoRows: [px(10)], dense: true }), items));
     const g = m.get('g');
     if (g === undefined) throw new Error('no grid box');

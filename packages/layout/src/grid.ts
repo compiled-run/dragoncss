@@ -1519,7 +1519,7 @@ function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: 
   if (g === null) throw new Error(`${box.id} is display: grid with no grid style; validateLayoutInput rejects this input`);
   const inFlow: LayoutBox[] = [];
   for (const k of box.children) {
-    if (k.kind === 'text') throw new Error(`${k.id} is text directly in grid container ${box.id}; validateLayoutInput rejects this input`);
+    if (k.kind !== 'box' && k.kind !== 'replaced') throw new Error(`${k.id} is inline content directly in grid container ${box.id}; validateLayoutInput rejects this input`);
     if (k.kind === 'replaced') unsupported('grid-replaced', k.id, 'css-grid-2 §6', 'a replaced grid item (not yet supported)');
     if (k.kind !== 'box') continue;
     if (isOutOfFlow(ctx, k)) unsupported('grid-abspos', k.id, 'css-grid-2 §9', 'an absolutely positioned child of a grid container (not yet supported)');

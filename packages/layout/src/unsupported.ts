@@ -3,7 +3,6 @@
 export type UnsupportedCode =
   | 'percent-height-flex'
   | 'percent-gap'
-  | 'mixed-inline-font'
   | 'text-align'
   | 'text-glyph'
   | 'bidi-neutral'
@@ -16,7 +15,12 @@ export type UnsupportedCode =
   | 'line-break'
   | 'grid-baseline'
   | 'grid-abspos'
-  | 'grid-replaced';
+  | 'grid-replaced'
+  | 'mixed-text-wrap-mode'
+  | 'inline-box-decoration'
+  | 'vertical-align'
+  | 'inline-box-position'
+  | 'inline-empty-line';
 
 export type LayoutUnsupported = {
   readonly code: UnsupportedCode;
