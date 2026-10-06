@@ -1596,10 +1596,12 @@
       "fileSha256": "d9bbdbeef344adb2570a9b4f7c5912e3206e6abda4ac82351f2f7bb7b8071875",
       "headerSha256": "0e15d36c5dc6fe5be91e97a60bc1322478c65295d11b3910862cc6d8b940c656",
       "ranges": [
+        { "lines": "172-187", "symbol": "AdjustedRadiusDimension", "source": "located" },
         { "lines": "276-334", "symbol": "IntersectsQuad", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/paint-shadow.ts", "symbol": "adjustedRadius", "use": "port" }
       ]
     },
     {
@@ -1866,6 +1868,22 @@
       "dragon": [
         { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/paint-aa.ts", "symbol": "INVERSE_TABLE", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkBlitter_A8.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "4a0dd8065eaa98dd44615f82b8311630fa5b11bf36aa06503702821000f44ea4",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "116-116", "symbol": "srcover_p", "source": "located" },
+        { "lines": "126-138", "symbol": "A8_row_aa", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": "blend", "use": "port" }
       ]
     },
     {
