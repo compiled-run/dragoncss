@@ -47,6 +47,42 @@ function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnost
 }
 
 const isScrollKeyword = (k: string): boolean => k === 'hidden' || k === 'auto' || k === 'scroll';
+
+/**
+ * T078 R14: an axis whose used overflow is auto or scroll is a box the user scrolls, and the native outputs have no scroll views
+ * until OVFL-B, so it is refused on each native target (nativeScrollPending), at the axis's own declaration or, for a value
+ * computed from its partner (css-overflow-3 §3.1), at the partner's. The element the viewport takes its overflow from uses
+ * visible (§3.3) and is not refused. The parity lanes skip this check: they prove the layout at scroll offset 0.
+ */
+export function checkNativeScroll(root: ResolvedElement, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (nativeTargets.length === 0) return;
+  const propagated = propagatedFrom(root);
+  const axes: Longhand[] = ['overflow-x', 'overflow-y'];
+  const walk = (el: ResolvedElement): void => {
+    if (keywordOf(el.props.get('display') as ResolvedValue) === 'none') return;
+    if (el !== propagated) {
+      const values = axes.map((p) => el.props.get(p) as ResolvedValue);
+      for (const [i, v] of values.entries()) {
+        const k = keywordOf(v);
+        if (k !== 'auto' && k !== 'scroll') continue;
+        const partner = values[1 - i] as ResolvedValue;
+        const source = v.declaration !== null ? v : partner.declaration !== null ? partner : null;
+        const origin = source === null || source.declaration === null ? el.element.node.origin : authored(source.declaration.valueSpan);
+        const property = axes[i] as Longhand;
+        const how = v.declaration !== null ? `is ${k}` : `computes to ${k} beside ${axes[1 - i] as Longhand}: ${keywordOf(partner)} (css-overflow-3 §3.1)`;
+        for (const t of nativeTargets) {
+          const id = `${t}|ovfl-b|${property}|${JSON.stringify(origin)}`;
+          if (reported.has(id)) continue;
+          reported.add(id);
+          const message = `${property} ${how} on ${el.element.address}, a box the user scrolls; ${t} has no native scroll views until OVFL-B`;
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Use overflow: hidden or clip on both axes for native, or wait for OVFL-B.', basis: 'computed-value' }));
+        }
+      }
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c);
+  };
+  walk(root);
+}
 const hasPercentage = (v: ResolvedValue): boolean => v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
 
 /** css-overflow-3 §3.3: the element whose overflow the viewport takes (html when not visible, else body), which uses visible. */

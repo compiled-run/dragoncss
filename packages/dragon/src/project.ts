@@ -16,7 +16,7 @@ import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import { splitNotApplicable } from './css/not-applicable.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
-import { checkComputed } from './analysis/computed-checks.ts';
+import { checkComputed, checkNativeScroll } from './analysis/computed-checks.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
@@ -55,7 +55,7 @@ import { band, bandAt, evaluateInBand, featuresOfList, holdsWholePx } from './me
 import { androidProfile } from './profiles/android.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
-import { provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
+import { nativeScrollPending, provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
 import { webProfile } from './profiles/web.ts';
 import type { UaDataset } from './ua/datasets.ts';
 import { REFERENCE_PLATFORM, ReferencePlatformUnavailable, uaDatasetFor } from './ua/datasets.ts';
@@ -360,6 +360,8 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
         for (const t of ruleTargets) {
           const profile = profileFor(profiles, t);
           if (provenContexts(profile, feature).length > 0) continue;
+          // checkNativeScroll refuses these on native outside the lanes (naming OVFL-B), and the lanes run them on purpose.
+          if (t !== 'web' && nativeScrollPending(feature)) continue;
           const values = supportedValuesFor(profile, lh.property);
           const contexts = [...new Set((typeof used === 'function' ? used(t) : used).filter((u) => u.declaration === d && u.property === lh.property).map((u) => u.context))].sort();
           const alternatives = contexts.length > 0
@@ -640,6 +642,8 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys);
+    // T078 R14: outside the parity lanes, native refuses overflow auto and scroll until OVFL-B; the lanes prove their layout at rest.
+    if (!options.interactionLanes) checkNativeScroll(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);

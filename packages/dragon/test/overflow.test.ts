@@ -4,18 +4,22 @@
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import type { FrontEndResult } from '../src/index.ts';
-import { createProjectWith, iosLayoutProjection, iosProfile, NO_FAULTS, PROFILE_NOTES, querySupport, webProfile } from '../src/internal.ts';
+import { androidProfile, createProjectWith, iosLayoutProjection, iosProfile, nativeScrollPending, NO_FAULTS, PROFILE_NOTES, querySupport, webProfile } from '../src/internal.ts';
+import type { Diagnostic } from '../src/index.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import { DOC, div, inputFor, spanTextOf, text } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
+const errorsOf = (c: { readonly diagnostics: readonly Diagnostic[] }): string[] => c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.target}: ${d.message}`);
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, rootFont: 'ua-default', direction: 'ltr' } as const;
-const compile = (input: FrontEndResult, faults: CompilerFaults = NO_FAULTS) =>
-  createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults, profiles: 'derive', direction: 'ltr' }).compile(input);
+// lanes: compile as the parity lanes do (interactionLanes), which lower overflow auto and scroll on native to prove their layout at
+// scroll offset 0; a user's compile refuses them there until OVFL-B (T078 R14).
+const compile = (input: FrontEndResult, faults: CompilerFaults = NO_FAULTS, lanes = false) =>
+  createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults, profiles: 'derive', direction: 'ltr', interactionLanes: lanes }).compile(input);
 const one = (css: string): FrontEndResult => inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])])]);
 
 function root(input: FrontEndResult, faults: CompilerFaults = NO_FAULTS): LayoutBox {
-  const c = compile(input, faults);
+  const c = compile(input, faults, true);
   const p = iosLayoutProjection(c, ENV, []);
   if (p.kind !== 'ready') throw new Error(`${p.reason} ${c.diagnostics.map((d) => d.message).join('; ')}`);
   return p.input.root;
@@ -113,7 +117,7 @@ describe('R3: the web overflow claims carry the overlay-scrollbar environment li
   });
 
   it('explain and querySupport state the note on web, and not on ios', () => {
-    const c = compile(one('.a { overflow: auto; height: 5px; }'));
+    const c = compile(one('.a { overflow: auto; height: 5px; }'), NO_FAULTS, true);
     const at = (target: 'web' | 'ios') => {
       const r = c.explain({ target, at: { node: 'a', instance: DOC }, property: 'overflow-y' });
       if (r.kind !== 'found') throw new Error(JSON.stringify(r));
@@ -124,5 +128,48 @@ describe('R3: the web overflow claims carry the overlay-scrollbar environment li
     const q = querySupport({ kind: 'possibilities', target: { kind: 'web' }, css: 'overflow-y: scroll' });
     if (q.kind !== 'needs-context') throw new Error(q.kind);
     for (const cand of q.candidates) expect(cand.note).toBe(PROFILE_NOTES.overlayScrollbars);
+  });
+});
+
+describe('T078 R14: native refuses overflow auto and scroll until OVFL-B (no native scroll views yet)', () => {
+  const NATIVE = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } as const;
+  const run = (css: string, lanes = false) =>
+    createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: lanes }).compile(inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])])]));
+  const ovflB = (css: string, lanes = false) => run(css, lanes).diagnostics.filter((d) => d.message.includes('OVFL-B'));
+
+  it('auto and scroll, declared or computed beside hidden, are DRAGON_UNSUPPORTED_VALUE on ios and android only, located at the declaration', () => {
+    for (const [css, span] of [['.a { overflow: auto; }', 'auto'], ['.a { overflow-y: scroll; }', 'scroll'], ['.a { overflow-x: hidden; }', 'hidden'], ['.a { overflow: hidden auto; }', 'hidden auto']] as const) {
+      const input = inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])])]);
+      const c = createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+      const ds = c.diagnostics.filter((d) => d.message.includes('OVFL-B'));
+      expect(ds.length, css).toBeGreaterThan(0);
+      expect([...new Set(ds.map((d) => d.target))].sort(), css).toEqual(['android', 'ios']);
+      for (const d of ds) {
+        expect(d.code, css).toBe('DRAGON_UNSUPPORTED_VALUE');
+        expect(spanTextOf(input, d), css).toBe(span);
+      }
+      expect([c.outputs.ios.kind, c.outputs.android.kind, c.outputs.web.kind], css).toEqual(['blocked', 'blocked', 'ready']);
+    }
+    expect(ovflB('.a { overflow-x: hidden; }')[0]?.message).toBe('overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on a, a box the user scrolls; ios has no native scroll views until OVFL-B');
+  });
+
+  it('hidden and clip on both axes, the element the viewport took its overflow from, and display: none compile on native', () => {
+    for (const css of ['.a { overflow: hidden; }', '.a { overflow: clip; }', 'html { overflow-x: hidden; }', 'body { overflow: auto; }', 'html { overflow: scroll; }', '.a { display: none; overflow: auto; }']) {
+      expect(ovflB(css), css).toEqual([]);
+      expect(errorsOf(run(css)), css).toEqual([]);
+    }
+  });
+
+  it('the parity lanes lower auto and scroll on native, to prove their layout at scroll offset 0', () => {
+    const c = run('.a { overflow: auto; }', true);
+    expect(errorsOf(c)).toEqual([]);
+    expect(iosLayoutProjection(c, ENV, []).kind).toBe('ready');
+    expect(iosLayoutProjection(run('.a { overflow: auto; }'), ENV, []).kind).toBe('blocked');
+  });
+
+  it('no native profile row claims auto or scroll', () => {
+    for (const r of [...iosProfile.rows, ...androidProfile.rows]) expect(nativeScrollPending(r.feature), `${r.feature}@${r.context}`).toBe(false);
+    expect(iosProfile.rows.some((r) => r.feature === 'overflow-x:clip')).toBe(true);
+    expect(webProfile.rows.some((r) => r.feature === 'overflow-y:auto')).toBe(true);
   });
 });
