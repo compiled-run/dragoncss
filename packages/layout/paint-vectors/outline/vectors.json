@@ -1,0 +1,7 @@
+{
+  "note": "Written by pnpm run layout:paint-vectors from paint-outline.ts through the harness (units mode); native runs must equal expected bit for bit.",
+  "feature": "outline",
+  "cases": 0,
+  "lines": [],
+  "expected": []
+}

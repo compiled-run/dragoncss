@@ -4,9 +4,9 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4204 (18.1%) | 19081 (81.9%) | 1 | 0 | 0 |
-| ios | 4166 (17.9%) | 19083 (82.0%) | 1 | 0 | 36 |
-| android | 4166 (17.9%) | 19083 (82.0%) | 1 | 0 | 36 |
+| web | 4225 (18.1%) | 19060 (81.9%) | 1 | 0 | 0 |
+| ios | 4185 (18.0%) | 19064 (81.9%) | 1 | 0 | 36 |
+| android | 4185 (18.0%) | 19064 (81.9%) | 1 | 0 | 36 |
 
 As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
 
@@ -19,9 +19,9 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | spacing | 1308 | 1302 / 6 / 0 / 0 / 0 | 1302 / 6 / 0 / 0 / 0 | 1302 / 6 / 0 / 0 / 0 |
 | sizing | 1015 | 899 / 116 / 0 / 0 / 0 | 899 / 116 / 0 / 0 / 0 | 899 / 116 / 0 / 0 / 0 |
 | typography | 261 | 21 / 240 / 0 / 0 / 0 | 21 / 240 / 0 / 0 / 0 | 21 / 240 / 0 / 0 / 0 |
-| colours | 14842 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 |
+| colours | 14842 | 75 / 14767 / 0 / 0 / 0 | 75 / 14767 / 0 / 0 / 0 | 75 / 14767 / 0 / 0 / 0 |
 | backgrounds | 151 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 |
-| borders | 250 | 75 / 175 / 0 / 0 / 0 | 75 / 175 / 0 / 0 / 0 | 75 / 175 / 0 / 0 / 0 |
+| borders | 250 | 91 / 159 / 0 / 0 / 0 | 89 / 161 / 0 / 0 / 0 | 89 / 161 / 0 / 0 / 0 |
 | effects | 1178 | 21 / 1157 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 |
@@ -36,7 +36,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | blocked by | web | ios | android | families (web) |
 |---|---:|---:|---:|---:|
 | `property mask-image` | 6280 | 6280 | 6280 | 38 |
-| `value oklch()` | 4004 | 4004 | 4004 | 14 |
+| `value oklch()` | 4290 | 4290 | 4290 | 15 |
 | `property box-shadow` | 1489 | 1489 | 1489 | 8 |
 | `property background-image` | 964 | 964 | 964 | 8 |
 | `property scrollbar-color` | 582 | 582 | 582 | 2 |
@@ -47,7 +47,6 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `property fill` | 292 | 292 | 292 | 2 |
 | `property stroke` | 292 | 292 | 292 | 2 |
 | `property caret-color` | 291 | 291 | 291 | 1 |
-| `property outline-color` | 291 | 291 | 291 | 1 |
 | `property text-decoration-color` | 291 | 291 | 291 | 1 |
 | `selector pseudo-element ::placeholder` | 291 | 291 | 291 | 1 |
 | `property border-spacing` | 105 | 105 | 105 | 6 |
@@ -75,3 +74,4 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `property scroll-padding-block-start` | 35 | 35 | 35 | 2 |
 | `property scroll-padding-bottom` | 35 | 35 | 35 | 2 |
 | `property scroll-padding-inline` | 35 | 35 | 35 | 2 |
+| `property scroll-padding-inline-end` | 35 | 35 | 35 | 2 |
