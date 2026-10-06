@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.k { width: 20px; height: 10px; background-color: #00c; }
+.k2 { width: 40px; height: 15px; background-color: #0c0; }
+.bs { box-sizing: border-box; width: 120px; padding: 1px; }
+.bs > div { box-sizing: inherit; width: 40px; height: 10px; padding: 5px; border: 2px solid #000; }
+.fc { justify-content: flex-end; align-items: flex-end; flex-direction: row-reverse; flex-wrap: wrap; align-content: flex-end; column-gap: 7px; width: 140px; }
+.fc > div { display: flex; justify-content: inherit; align-items: inherit; flex-direction: inherit; flex-wrap: inherit; align-content: inherit; column-gap: inherit; width: 100px; height: 50px; background-color: #eee; }
+.fc2 { justify-content: space-between; align-items: center; flex-direction: column; flex-wrap: nowrap; column-gap: 3px; }
+.fc2 > div { display: flex; justify-content: inherit; align-items: inherit; flex-direction: inherit; flex-wrap: inherit; column-gap: inherit; width: 100px; height: 60px; background-color: #ddd; }
+.fi { flex-grow: 2; flex-shrink: 0; flex-basis: 30px; align-self: flex-end; order: -1; width: 160px; }
+.fi > div { flex-grow: inherit; flex-shrink: inherit; flex-basis: inherit; align-self: inherit; order: inherit; height: 6px; background-color: #c0c; }
+.row { display: flex; width: 200px; height: 30px; background-color: #ccc; flex-grow: 1; flex-shrink: 1; flex-basis: 10px; align-self: center; order: 2; }
+.row > div { flex-grow: inherit; flex-shrink: inherit; flex-basis: inherit; align-self: inherit; order: inherit; height: 8px; background-color: #c60; }
+.row > .last { order: 0; flex-grow: 0; flex-basis: 20px; }
+.row2 { display: flex; width: 100px; height: 12px; background-color: #bbb; flex-shrink: 3; flex-basis: 80px; }
+.row2 > div { flex-shrink: inherit; flex-basis: inherit; height: 6px; background-color: #06c; }
+.row2 > .one { flex-shrink: 1; }
+.box { margin: 3px 5px 7px 9px; padding: 2px 4px 6px 8px; border: 1px solid #000; border-top-width: 4px; border-bottom-width: 5px; width: 180px; }
+.box > div { margin-top: inherit; margin-bottom: inherit; margin-left: inherit; margin-right: inherit; padding-top: inherit; padding-bottom: inherit; padding-left: inherit; padding-right: inherit; border-style: solid; border-top-width: inherit; border-bottom-width: inherit; width: 100px; height: 6px; background-color: #0cc; }
+.box > .auto { width: auto; }
+.box2 { margin-block: 4px 8px; padding-inline: 3px 9px; border: 1px solid #000; width: 150px; }
+.box2 > div { margin-block-start: inherit; margin-block-end: inherit; padding-inline-start: inherit; padding-inline-end: inherit; width: 100px; height: 6px; background-color: #cc0; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="bs" class="bs"><div data-dragon-id="bs1"></div></div>
+<div data-dragon-id="fc" class="fc"><div data-dragon-id="fc1"><div data-dragon-id="fc1a" class="k2"></div><div data-dragon-id="fc1b" class="k"></div><div data-dragon-id="fc1c" class="k2"></div></div></div>
+<div data-dragon-id="fc2" class="fc2"><div data-dragon-id="fc2a"><div data-dragon-id="fc2a1" class="k"></div><div data-dragon-id="fc2a2" class="k2"></div></div></div>
+<div data-dragon-id="fi" class="fi"><div data-dragon-id="fi1"></div></div>
+<div data-dragon-id="row" class="row"><div data-dragon-id="r1"></div><div data-dragon-id="r2"></div><div data-dragon-id="r3" class="last"></div></div>
+<div data-dragon-id="row2" class="row2"><div data-dragon-id="s1"></div><div data-dragon-id="s2" class="one"></div></div>
+<div data-dragon-id="box" class="box"><div data-dragon-id="box1"></div><div data-dragon-id="box2a" class="auto"></div></div>
+<div data-dragon-id="box2" class="box2"><div data-dragon-id="box21"></div></div>
+</body>
+</html>
