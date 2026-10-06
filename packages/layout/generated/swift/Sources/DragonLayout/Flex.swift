@@ -198,7 +198,7 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
   if (mainInner == nil) {
     // ts: packages/layout/src/flex.ts:161
     if (!singleLine) {
-      try unsupported_unsupported(S.s_flex_wrap_indefinite_main, box.id, S.s177, S.s286)
+      try unsupported_unsupported(S.s_flex_wrap_indefinite_main, box.id, S.s178, S.s292)
     }
     let hypo: Double = try units_add(units_sum(jsMap(items, { (i: Item) throws -> Double in
     return try flex_outerHypothetical(i)
@@ -473,7 +473,7 @@ public func flex_gapValue(_ box: LayoutBox, _ v: any U_LengthCalc_NormalValue_Pe
   }
   // ts: packages/layout/src/flex.ts:385
   if try box_hasPercent((v as! any U_LengthCalc_Percent_Px)) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s173, S.s340)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s174, S.s346)
   }
   return try box_resolveLength((v as! any U_LengthCalc_Percent_Px), units_ZERO, faults)
 }
@@ -598,12 +598,12 @@ public func flex_buildItem(_ ctx: Ctx, _ container: LayoutBox, _ box: any U_Layo
   let basis: any U_Auto_ContentValue_LengthCalc_Percent_Px = s.flexBasis
   // ts: packages/layout/src/flex.ts:532
   if (basis.kind == S.s_content) {
-    try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s176, S.s222)
+    try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s177, S.s224)
   } else if ((basis as! any U_Auto_LengthCalc_Percent_Px).kind != S.s_auto) {
     let resolved: Double? = try box_resolveLengthOrNull((basis as! any U_LengthCalc_Percent_Px), mainInner, ctx.faults)
     // ts: packages/layout/src/flex.ts:536
     if (resolved == nil) {
-      try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s176, S.s339)
+      try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s177, S.s345)
     }
     try base = box_contentBox(box_borderBoxFromSpecified(jsUnwrap(resolved), mainBp, s.boxSizing), mainBp)
   } else {
@@ -661,11 +661,11 @@ public func flex_columnIntrinsicBlockSize(_ ctx: Ctx, _ box: LayoutBox, _ cbInli
       let ks: LayoutStyle = (k as! any U_LayoutBox_ReplacedLeaf).style
       // ts: packages/layout/src/flex.ts:607
       if try (((pct((ks.height as! any U_Auto_ContentValue_LengthCalc_NoneValue_Percent_Px)) || pct((ks.minHeight as! any U_Auto_ContentValue_LengthCalc_NoneValue_Percent_Px))) || pct((ks.maxHeight as! any U_Auto_ContentValue_LengthCalc_NoneValue_Percent_Px))) || (columnFlex && pct((ks.flexBasis as! any U_Auto_ContentValue_LengthCalc_NoneValue_Percent_Px)))) {
-        try unsupported_unsupported(S.s_percent_height_flex, (k as! any U_LayoutBox_ReplacedLeaf).id, S.s175, S.s342)
+        try unsupported_unsupported(S.s_percent_height_flex, (k as! any U_LayoutBox_ReplacedLeaf).id, S.s176, S.s348)
       }
     }
   }
-  let autoHeight: LayoutBox = LayoutBox(box.kind, box.id, box.boxType, LayoutStyle(box.style.display, box.style.position, box.style.top, box.style.right, box.style.bottom, box.style.left, box.style.overflowX, box.style.overflowY, box.style.direction, box.style.boxSizing, box.style.width, Auto(S.s_auto), box.style.minWidth, box.style.minHeight, box.style.maxWidth, box.style.maxHeight, box.style.marginTop, box.style.marginRight, box.style.marginBottom, box.style.marginLeft, box.style.paddingTop, box.style.paddingRight, box.style.paddingBottom, box.style.paddingLeft, box.style.borderTopWidth, box.style.borderRightWidth, box.style.borderBottomWidth, box.style.borderLeftWidth, box.style.flexDirection, box.style.flexWrap, box.style.flexGrow, box.style.flexShrink, box.style.flexBasis, box.style.order, box.style.justifyContent, box.style.alignItems, box.style.alignSelf, box.style.alignContent, box.style.rowGap, box.style.columnGap, box.style.textAlign, box.style.aspectRatio), box.children)
+  let autoHeight: LayoutBox = LayoutBox(box.kind, box.id, box.boxType, LayoutStyle(box.style.display, box.style.position, box.style.top, box.style.right, box.style.bottom, box.style.left, box.style.overflowX, box.style.overflowY, box.style.direction, box.style.boxSizing, box.style.width, Auto(S.s_auto), box.style.minWidth, box.style.minHeight, box.style.maxWidth, box.style.maxHeight, box.style.marginTop, box.style.marginRight, box.style.marginBottom, box.style.marginLeft, box.style.paddingTop, box.style.paddingRight, box.style.paddingBottom, box.style.paddingLeft, box.style.borderTopWidth, box.style.borderRightWidth, box.style.borderBottomWidth, box.style.borderLeftWidth, box.style.flexDirection, box.style.flexWrap, box.style.flexGrow, box.style.flexShrink, box.style.flexBasis, box.style.order, box.style.justifyContent, box.style.alignItems, box.style.alignSelf, box.style.alignContent, box.style.rowGap, box.style.columnGap, box.style.textAlign, box.style.aspectRatio, box.style.grid, box.style.gridItem), box.children)
   let r: ContentsResult = try block_layoutContents(ctx, autoHeight, ContentsArgs(cbInline, borderBoxWidth, nil, false, heightBasis, true, units_ZERO))
   return try box_contentBox(r.frag.height, vbp)
 }
@@ -680,7 +680,7 @@ public func flex_percentMainHeight(_ box: any U_LayoutBox_ReplacedLeaf, _ basis:
   if ((basis as! any U_HeightBasis_definite_HeightBasis_flexDependent).kind == S.s_definite) {
     return (basis as! HeightBasis_definite).value
   }
-  try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s178, jsConcat(prop, S.s44))
+  try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s179, jsConcat(prop, S.s44))
 }
 
 // ts: packages/layout/src/flex.ts:631
@@ -961,7 +961,7 @@ public func flex_alignContent(_ box: LayoutBox, _ axes: Axes, _ lines: JsArray<F
   let v: JsString = box.style.alignContent
   // ts: packages/layout/src/flex.ts:836
   if (v == S.s_baseline) {
-    try unsupported_unsupported(S.s_flex_baseline, box.id, S.s174, S.s132)
+    try unsupported_unsupported(S.s_flex_baseline, box.id, S.s175, S.s132)
   }
   let flowLines: JsArray<Flex_Line> = (axes.wrapReverse ? jsReverse(jsCopy(lines)) : lines)
   let n: Double = jsLength(flowLines)
@@ -1059,7 +1059,7 @@ public func flex_ratioFlexMain(_ ctx: Ctx, _ box: LayoutBox, _ isRow: Bool, _ co
     return try RatioMain(box_contentBox(maxC, hbp), box_contentBox(units_max(minC, plainMin), hbp))
   }
   let fromRatio: Double = try ratio_blockFromRatio(s, hbp, vbp, columnCross)
-  let plain: LayoutBox = LayoutBox(S.s_box, box.id, box.boxType, LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, Auto(S.s_auto)), box.children)
+  let plain: LayoutBox = LayoutBox(S.s_box, box.id, box.boxType, LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, Auto(S.s_auto), s.grid, s.gridItem), box.children)
   let r: ContentsResult = try block_layoutContents(ctx, plain, ContentsArgs(cbInline, columnCross, nil, false, HeightBasis_indefinite(S.s_indefinite), true, units_ZERO))
   let inlineMm: MinMax = try MinMax(((s.minWidth.kind == S.s_auto) ? hbp : box_borderBoxFromSpecified(box_resolveLength((s.minWidth as! any U_LengthCalc_Percent_Px), cbInline, ctx.faults), hbp, s.boxSizing)), ((s.maxWidth.kind == S.s_none) ? (nil as Double?) : (box_borderBoxFromSpecified(box_resolveLength((s.maxWidth as! any U_LengthCalc_Percent_Px), cbInline, ctx.faults), hbp, s.boxSizing) as Double?)))
   let content: Double = try box_constrain(r.frag.height, ratio_transferredBlockMinMax(s, inlineMm, hbp, vbp))
