@@ -23,7 +23,7 @@ export const NO_SVG_FAULTS: SvgFaults = { controlPointBounds: false, viewBoxIgno
 
 /** The viewBox transform of a viewport width x height (CSS px), as the engine computes it (svg-geometry.ts viewBoxTransform), or a plant's. */
 export function chromeViewBoxTransform(viewBox: SvgScene['viewBox'], width: number, height: number, faults: SvgFaults = NO_SVG_FAULTS): SvgMatrix {
-  if (faults.viewBoxIgnored) return viewBoxTransform(null, width, height);
+  if (faults.viewBoxIgnored) return viewBoxTransform(null, width, height, false);
   return viewBoxTransform(viewBox, width, height, faults.meetAsSlice);
 }
 
