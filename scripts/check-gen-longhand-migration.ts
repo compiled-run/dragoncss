@@ -12,7 +12,9 @@
 //   ol), list-style-type moves from userAgentUnmodelled to userAgentDeclared and userAgentLonghands on exactly the tags whose UA rule
 //   sets a non-initial value (ol), and every other table and entry is unchanged.
 // - Engine inputs (packages/layout/vectors/**, break-vectors/**) and Chrome's line breaks (expected-breaks/**): unchanged.
-// - The Chrome pixel manifest (expected-pixels/**/manifest.json): every base case entry unchanged; only new fixtures' cases added.
+// - The Chrome pixel manifest (expected-pixels/**/manifest.json) and the glyph pins (expected-glyphs/**): every base entry
+//   unchanged; only the new fixtures' cases added.
+// - Media-sweep band summaries (expected-media/**): valuesCompared counts four more values per element node.
 // `--plant <name>` alters one file in memory before the check, which must then fail (PLANTS below).
 // Run with: node scripts/check-gen-longhand-migration.ts <base-commit> [--plant <name>]
 import { execFileSync } from 'node:child_process';
@@ -43,6 +45,8 @@ type Migration = {
 
 const KEYS = ['content', 'list-style-type', 'list-style-position', 'list-style-image'] as const;
 const NEUTRAL: { readonly [k: string]: string } = { content: 'normal', 'list-style-type': 'disc', 'list-style-position': 'outside', 'list-style-image': 'none' };
+/** How many longhands LONGHANDS held at the base, so how many computed values each element node compared. */
+const BASE_LONGHANDS = 75;
 /** The longhand the four new ones follow in LONGHANDS order. */
 const BEFORE = 'will-change';
 
@@ -83,6 +87,14 @@ function stripCapture(after: string, before: string, path: string): Stripped {
     }
     if (!isRecord(v)) return;
     const own = typeof v['id'] === 'string' ? v['id'] : id;
+    // A media-sweep band summary counts the compared computed values: BASE_LONGHANDS per element node at the base, four more now.
+    if (typeof v['valuesCompared'] === 'number' && typeof v['boxesCompared'] === 'number') {
+      const now = v['valuesCompared'];
+      const was = (now * BASE_LONGHANDS) / (BASE_LONGHANDS + KEYS.length);
+      if (!Number.isInteger(was) || was % BASE_LONGHANDS !== 0) throw new Error(`${path} ${at}: valuesCompared ${now} is not ${BASE_LONGHANDS + KEYS.length} per element`);
+      v['valuesCompared'] = was;
+      removed++;
+    }
     if (isComputed(v)) {
       const keys = Object.keys(v);
       const i = keys.indexOf(BEFORE);
@@ -174,8 +186,10 @@ function stripUaData(now: Record<string, unknown>, was: UaModule, path: string):
     if (!isRecord(t)) throw new Error(`${path}: no table ${name}`);
     return t;
   };
-  // computed: every row gains the four values.
-  for (const [tag, row] of Object.entries(table('computed'))) {
+  // Every computed table (computed, and the element, replaced and phrasing keys' tables): every row gains the four values.
+  const computedTables = Object.keys(now).filter((n) => /^(computed|[a-z]+KeyComputed)$/.test(n));
+  if (!computedTables.includes('computed')) throw new Error(`${path}: no computed table`);
+  for (const [tag, row] of computedTables.flatMap((n) => Object.entries(table(n)))) {
     if (!isRecord(row)) throw new Error(`${path}: computed.${tag} is not a row`);
     for (const k of KEYS) {
       const want = k === 'list-style-type' && tag === 'ol' ? 'decimal' : NEUTRAL[k];
@@ -241,6 +255,24 @@ async function stripUa(after: string, before: string, path: string): Promise<Str
   }
 }
 
+/** The glyph bottom-scanline pins: each set only gains entries keyed by the new fixtures' cases. */
+function stripGlyphPins(after: string, before: string, path: string): Stripped {
+  let removed = 0;
+  const walk = (v: unknown): void => {
+    if (!isRecord(v)) return;
+    for (const k of Object.keys(v)) {
+      if (ofNewFixture(`${k}.`)) {
+        delete v[k];
+        removed++;
+      } else walk(v[k]);
+    }
+  };
+  const json = JSON.parse(after) as unknown;
+  walk(json);
+  if (JSON.stringify(json) !== JSON.stringify(JSON.parse(before))) throw new Error(`${path}: differs from the base beyond the new fixtures' entries`);
+  return { text: before, removed };
+}
+
 /** Engine inputs and break captures: no addition at all. */
 const unchanged = (after: string): Stripped => ({ text: after, removed: 0 });
 
@@ -261,7 +293,7 @@ function stripPixelManifest(after: string, before: string, path: string): Stripp
 
 const PARITY = 'packages/parity';
 /** Every capture directory (expected, expected-dpr, expected-fonts, ...) except those another migration covers. */
-const CAPTURE_ROOTS = readdirSync(join(ROOT, PARITY)).filter((d) => d.startsWith('expected') && !['expected-breaks', 'expected-pixels'].includes(d)).map((d) => `${PARITY}/${d}`);
+const CAPTURE_ROOTS = readdirSync(join(ROOT, PARITY)).filter((d) => d.startsWith('expected') && !['expected-breaks', 'expected-pixels', 'expected-glyphs'].includes(d)).map((d) => `${PARITY}/${d}`);
 const EMITTED_ROOTS = [`${PARITY}/emitted`, ...CAPTURE_ROOTS.filter((r) => existsSync(join(ROOT, r, 'emitted'))).map((r) => `${r}/emitted`)];
 
 const MIGRATIONS: readonly Migration[] = [
@@ -271,6 +303,7 @@ const MIGRATIONS: readonly Migration[] = [
   { name: 'engine inputs, unchanged', roots: ['packages/layout/vectors', 'packages/layout/break-vectors'], extension: '.json', strip: unchanged },
   { name: 'Chrome line breaks, unchanged', roots: [`${PARITY}/expected-breaks`], extension: '.json', strip: unchanged },
   { name: 'Chrome pixel manifest, base cases unchanged', roots: [`${PARITY}/expected-pixels`], extension: 'manifest.json', strip: stripPixelManifest },
+  { name: 'glyph bottom-scanline pins, base entries unchanged', roots: [`${PARITY}/expected-glyphs`], extension: '.json', strip: stripGlyphPins },
 ];
 
 const C = 'darwin-arm64/margin-collapse-body.web.json';
@@ -290,6 +323,9 @@ const PLANTS: { readonly [name: string]: readonly [number, string, (t: string) =
   'ua-declared-elsewhere': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace(/("p": \{\n\s*"ltr": \{\n)/, '$1      "list-style-type": "disc",\n')],
   'vector-output': [3, 'layout/vectors/dpr-2/margin-collapse-body.json', (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
   'stray-file': [0, '', (t) => t],
+  'media-count': [0, 'expected-media/media-logic.json', (t) => t.replace(/"valuesCompared": (\d+)/, (_m, n: string) => `"valuesCompared": ${Number(n) + 79}`)],
+  'ua-phrasing-value': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace(/(export const phrasingKeyComputed[\s\S]*?)"content": "normal"/, '$1"content": "none"')],
+  'glyph-pin': [6, 'bottom-scanlines.json', (t) => t.replace('"interaction-combo": [1,1]', '"interaction-combo": [1,2]')],
   'pixel-manifest': [5, 'darwin-arm64/manifest.json', (t) => t.replace(/"sha256":"[0-9a-f]/, (m) => `${m.slice(0, -1)}${m.endsWith('0') ? '1' : '0'}`)],
 };
 
