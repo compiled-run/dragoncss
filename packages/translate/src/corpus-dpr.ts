@@ -369,7 +369,7 @@ const OVERFLOW_STYLE: Json = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
-  aspectRatio: { kind: 'auto' },
+  aspectRatio: { kind: 'auto' }, grid: null, gridItem: null,
 };
 
 /** engine-overflow: generated scroll containers with scroll metrics, appended after every earlier suite so their inputs do not move. */

@@ -118,7 +118,7 @@ export type AspectRatioValue =
   | { readonly kind: 'auto-ratio'; readonly width: number; readonly height: number };
 
 /** display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. */
-export type Display = 'block' | 'flex';
+export type Display = 'block' | 'flex' | 'grid';
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
 /**
@@ -169,6 +169,68 @@ export type AlignContent =
   | 'end';
 export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
 
+/** css-grid-2 §7.2.1 <flex>: a fraction of the leftover space. */
+export type Fr = { readonly kind: 'fr'; readonly value: number };
+export type MinContent = { readonly kind: 'min-content' };
+export type MaxContent = { readonly kind: 'max-content' };
+/** css-grid-2 §7.2.1 <track-breadth>; a % breadth resolves against the grid container's content box in its axis. */
+export type TrackBreadth = Px | Percent | Fr | Auto | MinContent | MaxContent;
+/**
+ * css-grid-2 §7.2.1 <track-size>, as Blink's GridTrackSize keeps it: a single breadth, minmax(min, max), or fit-content(limit).
+ * A flexible breadth is never a minimum: the compiler writes minmax(auto, <flex>) as the <flex> breadth.
+ */
+export type TrackSize =
+  | { readonly kind: 'breadth'; readonly breadth: TrackBreadth }
+  | { readonly kind: 'minmax'; readonly min: TrackBreadth; readonly max: TrackBreadth }
+  | { readonly kind: 'fit-content'; readonly limit: Px | Percent };
+/**
+ * One repeater of a track list (Blink GridTrackRepeater): a track written on its own is a repeater of count 1 with one size;
+ * repeat(n, sizes) keeps its count unexpanded, since Chrome sizes each size of a repeater as one set of n tracks.
+ */
+export type TrackRepeater = { readonly count: number; readonly sizes: readonly TrackSize[] };
+/**
+ * An item's lines in one axis, resolved by the compiler (Blink GridLineResolver::ResolveGridPositionsFromStyle): definite lines
+ * as 0-based indices from the explicit grid's start line, which are negative before it; or an automatic position of span lines.
+ */
+export type GridSpan =
+  | { readonly kind: 'definite'; readonly start: number; readonly end: number }
+  | { readonly kind: 'auto'; readonly span: number };
+/** css-align-3 §6.1 self positions in a grid container; normal and stretch stretch an auto size. */
+export type GridSelfAlign =
+  | 'normal'
+  | 'stretch'
+  | 'start'
+  | 'end'
+  | 'center'
+  | 'self-start'
+  | 'self-end'
+  | 'flex-start'
+  | 'flex-end'
+  | 'left'
+  | 'right';
+/**
+ * A grid container's own grid properties (css-grid-2 §7). The explicit track counts are the larger of the template's and the
+ * template areas' (css-grid-2 §7.1); tracks beyond the template are sized by the automatic tracks. autoColumns and autoRows
+ * are never empty (the initial value is one auto track). justifyItems is the computed value with legacy already resolved.
+ */
+export type GridContainerStyle = {
+  readonly templateColumns: readonly TrackRepeater[];
+  readonly templateRows: readonly TrackRepeater[];
+  readonly autoColumns: readonly TrackSize[];
+  readonly autoRows: readonly TrackSize[];
+  readonly explicitColumnCount: number;
+  readonly explicitRowCount: number;
+  readonly autoFlow: 'row' | 'column';
+  readonly dense: boolean;
+  readonly justifyItems: GridSelfAlign;
+};
+/** A grid item's placement and justify-self (auto takes the container's justify-items); align-self is LayoutStyle.alignSelf. */
+export type GridItemStyle = {
+  readonly column: GridSpan;
+  readonly row: GridSpan;
+  readonly justifySelf: 'auto' | GridSelfAlign;
+};
+
 export type LayoutStyle = {
   readonly display: Display;
   readonly position: Position;
@@ -212,6 +274,10 @@ export type LayoutStyle = {
   readonly columnGap: GapValue;
   readonly textAlign: TextAlign;
   readonly aspectRatio: AspectRatioValue;
+  /** Written for display: grid only; null otherwise. */
+  readonly grid: GridContainerStyle | null;
+  /** Written for the in-flow children of a grid container only; null otherwise. */
+  readonly gridItem: GridItemStyle | null;
 };
 
 /** The font a measurer reads: the family and the computed font size in zoomed px. */

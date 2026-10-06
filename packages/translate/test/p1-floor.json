@@ -55,11 +55,11 @@
       "engine-overflow"
     ],
     "counts": {
-      "vectors-m2": 314,
-      "vectors-dpr": 1716,
-      "engine-dpr": 1716,
+      "vectors-m2": 353,
+      "vectors-dpr": 1833,
+      "engine-dpr": 1833,
       "units-m2": 120000,
-      "snap": 21500,
+      "snap": 21617,
       "snap-values": 216,
       "calc-goldens": 17,
       "engine-calc": 4000,
