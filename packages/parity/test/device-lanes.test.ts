@@ -271,19 +271,22 @@ describe('the node and line split of (a) and (d)', () => {
 const trustCase = (n: NativeCase, dpr: number): TrustCase => ({ id: n.case.id, points: casePoints(n.programs.uikit, n.case.environment.viewport, dpr), size: rasterSize(n.case.environment.viewport, dpr) });
 
 describe('the paint plant verdict', () => {
-  const f = (lane: DeviceCheckLane, kind: FailureKind, node: string | null) => ({ lane, case: 'radius-basic', dpr: 3, node, kind, detail: 'x' });
+  const f = (lane: DeviceCheckLane, kind: FailureKind, node: string | null) => ({ lane, case: 'calib-shadow-blur', dpr: 3, node, kind, detail: 'x' });
+  const shadow = PLANT_RULES['shadow-offset-1'];
   const radius = PLANT_RULES['radius-square'];
-  const hit = f('device-pixels', 'pixel', 'radius:r1:top-left:0');
+  const hit = f('device-pixels', 'pixel', 'shadow:s1:0');
   it('caught: a pixel failure on a probe rule with frames and lines clean and the host finished', () => {
-    expect(plantVerdict([hit], null, radius)).toMatchObject({ caught: true, pixels: 1, inked: 1 });
+    expect(plantVerdict([hit], null, shadow)).toMatchObject({ caught: true, pixels: 1, inked: 1 });
+    expect(plantVerdict([f('device-pixels', 'pixel', 'radius:r1:top-left:0')], null, radius).caught).toBe(true);
   });
   it('not caught: the host did not finish, only other rules failed, a non-pixel kind, or frames or lines failed too', () => {
-    expect(plantVerdict([hit], 'timed out', radius).caught).toBe(false);
-    expect(plantVerdict([f('device-pixels', 'pixel', 'edge:w1:bottom')], null, radius).caught).toBe(false);
-    expect(plantVerdict([f('device-pixels', 'raster-size', 'radius:r1:top-left:0')], null, radius).caught).toBe(false);
-    expect(plantVerdict([hit, f('device-frames', 'frame-engine', 'w1')], null, radius).caught).toBe(false);
-    expect(plantVerdict([hit, f('device-lines', 'break-mismatch', 'w1:text0')], null, radius).caught).toBe(false);
-    expect(plantVerdict([], null, radius).caught).toBe(false);
+    expect(plantVerdict([hit], 'timed out', shadow).caught).toBe(false);
+    expect(plantVerdict([hit], null, radius).caught).toBe(false);
+    expect(plantVerdict([f('device-pixels', 'pixel', 'edge:w1:bottom')], null, shadow).caught).toBe(false);
+    expect(plantVerdict([f('device-pixels', 'raster-size', 'shadow:s1:0')], null, shadow).caught).toBe(false);
+    expect(plantVerdict([hit, f('device-frames', 'frame-engine', 'w1')], null, shadow).caught).toBe(false);
+    expect(plantVerdict([hit, f('device-lines', 'break-mismatch', 'w1:text0')], null, shadow).caught).toBe(false);
+    expect(plantVerdict([], null, shadow).caught).toBe(false);
   });
 });
 

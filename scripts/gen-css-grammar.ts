@@ -49,6 +49,8 @@ const SUBSET = [
   // Border radii (PNT1), after pointer-events, as LONGHANDS registers them, then their shorthands.
   ...RADIUS_LONGHANDS,
   'border-radius', '-webkit-border-radius',
+  // Box shadow (PNT1), after the radius family.
+  'box-shadow',
   // Transforms (PNT2), after grid, as LONGHANDS registers them.
   ...TRANSFORM_LONGHANDS,
 ] as const;
