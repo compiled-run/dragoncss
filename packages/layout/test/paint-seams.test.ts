@@ -10,10 +10,10 @@ const layout = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FEATURES = ['radius', 'shadow', 'gradient', 'transform', 'dash', 'scrollbar', 'outline'];
 /**
  * The seams a package has filled: dash by P6a (paint-dash.ts, its index.ts line and its vectors), transform by PNT2
- * (paint-transform.ts, its index.ts lines and its suite, packages/layout/test/paint-transform.test.ts), outline by PNT1
- * (paint-outline.ts, its index.ts line and its vectors).
+ * (paint-transform.ts, its index.ts lines and its suite, packages/layout/test/paint-transform.test.ts), gradient by BG2
+ * (paint-gradient.ts, its index.ts lines and its vectors), outline by PNT1 (paint-outline.ts, its index.ts line and its vectors).
  */
-const FILLED = ['dash', 'transform', 'outline'];
+const FILLED = ['dash', 'gradient', 'transform', 'outline'];
 const STUBS = FEATURES.filter((f) => !FILLED.includes(f));
 
 describe('EMS: engine paint seams', () => {
@@ -41,6 +41,8 @@ describe('EMS: engine paint seams', () => {
       "export type { OriginPoint, TransformOrigin } from './paint-transform.ts';",
       "export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';",
       "export { outlineOffsetPx, outlineRings, outlineWidthPx } from './paint-outline.ts';",
+      "export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';",
+      "export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';",
     ]);
   });
   it('every feature no package has filled has an empty paint-vectors suite', () => {

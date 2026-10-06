@@ -1,4 +1,4 @@
-// @keyframes (css-animations-1 §3, T065 R10): accepted at the top level of a stylesheet and refused inside a conditional group
+// @keyframes (css-animations-1 §3, T065 R10), and @-webkit-keyframes, which Chrome parses the same way: accepted at the top level of a stylesheet and refused inside a conditional group
 // (MQ-R). Each block's selectors become offsets and its declarations milestone longhands, parsed as in a style rule; Chrome's
 // rules inside keyframes apply: !important is ignored, a property that is not valid for keyframes has no effect, and
 // animation-timing-function is the keyframe's easing. Only types come from at-rules.ts, so the two modules can import each other.
@@ -7,6 +7,7 @@ import { generate } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../../types.ts';
 import type { AtRuleContext, AtRuleHandler } from '../at-rules.ts';
+import { resolveAlias } from '../aliases.ts';
 import { list, spanOf } from '../ast.ts';
 import { asciiLower, decodeName } from '../escapes.ts';
 import type { Longhand } from '../properties.ts';
@@ -27,8 +28,11 @@ export type KeyframeDeclaration = { readonly property: Longhand; readonly value:
 /** labels: each selector as written (from, to or a percentage), for the web output. */
 export type KeyframeBlock = { readonly offsets: readonly number[]; readonly labels: readonly string[]; readonly easing: EasingValue | null; readonly values: readonly KeyframeDeclaration[]; readonly span: Span };
 
-/** span: the whole at-rule; preludeSpan: "@keyframes <name>", where the rule's own features are reported. */
-export type KeyframesRule = { readonly name: string; readonly span: Span; readonly preludeSpan: Span; readonly blocks: readonly KeyframeBlock[] };
+/**
+ * span: the whole at-rule; preludeSpan: "@keyframes <name>", where the rule's own features are reported; prefixed: written as
+ * @-webkit-keyframes, which Chrome parses as @keyframes (css_parser_impl.cc ConsumeKeyframesRule) and ranks below it.
+ */
+export type KeyframesRule = { readonly name: string; readonly span: Span; readonly preludeSpan: Span; readonly blocks: readonly KeyframeBlock[]; readonly prefixed: boolean };
 
 /** Chrome 145's properties with valid_for_keyframe: false (css_properties.json5; animation-kinds.test.ts checks the list). */
 export const NOT_VALID_FOR_KEYFRAME: readonly string[] = [
@@ -57,9 +61,9 @@ export function keyframesAtRule(at: AtRuleContext): ReturnType<AtRuleHandler> {
   const block = at.node['block'] as CssNode | null | undefined;
   if (at.where === 'the stylesheet' && block !== null && block !== undefined && nameOf(at.node['prelude'] as CssNode | null | undefined) !== null) return { kind: 'keyframes', context: at };
   const message = at.where.startsWith('@')
-    ? `@keyframes inside ${at.where} is not supported (package MQ-R)`
+    ? `@${at.name} inside ${at.where} is not supported (package MQ-R)`
     : at.where === 'the stylesheet'
-      ? `@keyframes ${at.prelude ?? ''} is not a valid @keyframes rule: the name must be an identifier other than none, or a string, and the rule needs a block`
+      ? `@${at.name} ${at.prelude ?? ''} is not a valid @keyframes rule: the name must be an identifier other than none, or a string, and the rule needs a block`
       : `@${at.name} in ${at.where} is not supported in milestone 1`;
   return { kind: 'refuse', diagnostic: diagnostic('DRAGON_UNSUPPORTED_AT_RULE', { origin: authored(at.span), message }) };
 }
@@ -116,7 +120,7 @@ export function parseKeyframesRules(sources: readonly KeyframesSource[], diagnos
     }
     const prelude = src.context.node['prelude'] as CssNode;
     const preludeSpan = { source: src.context.span.source, start: src.context.span.start, end: spanOf(prelude, src.base).end };
-    out.push({ name, span: src.context.span, preludeSpan, blocks });
+    out.push({ name, span: src.context.span, preludeSpan, blocks, prefixed: asciiLower(src.context.name) === '-webkit-keyframes' });
   }
   return out;
 }
@@ -133,7 +137,10 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
       continue;
     }
     const written = decodeName(String(d['property']));
-    const property = written.startsWith('--') ? written : asciiLower(written);
+    const lowered = written.startsWith('--') ? written : asciiLower(written);
+    const property = resolveAlias(lowered);
+    // A legacy alias is its property (aliases.ts); its diagnostics name the alias as written too.
+    const aliasNote = (message: string): string => (property === lowered ? message : `${message} (${lowered} is an alias of ${property})`);
     const valueNode = d['value'] as CssNode;
     const valueSpan = spanOf(valueNode, src.base);
     const text = generate(valueNode);
@@ -141,7 +148,7 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
     const refuse = (code: 'DRAGON_UNSUPPORTED_PROPERTY' | 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_IMPORTANT' | 'DRAGON_CSS_INVALID_VALUE', message: string, at: Span = span): void => {
       // A property or !important refusal fixes by deleting the declaration (its catalogue fix is an edit).
       const edits = code === 'DRAGON_UNSUPPORTED_PROPERTY' || code === 'DRAGON_UNSUPPORTED_IMPORTANT' ? { edits: [{ span, replacement: '' }] } : {};
-      diagnostics.push(diagnostic(code, { origin: authored(at), message, ...edits }));
+      diagnostics.push(diagnostic(code, { origin: authored(at), message: aliasNote(message), ...edits }));
     };
     if (d['important'] !== false) {
       refuse('DRAGON_UNSUPPORTED_IMPORTANT', `!important on ${property} in @keyframes ${name}: Chrome ignores it inside @keyframes, so the declaration has no effect`);
@@ -188,7 +195,7 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
       for (const lh of parsed.longhands) values.push({ property: lh.property, value: lh.value, span, valueSpan, text });
       continue;
     }
-    if (parsed.kind === 'refused') diagnostics.push(parsed.diagnostic);
+    if (parsed.kind === 'refused') diagnostics.push({ ...parsed.diagnostic, message: aliasNote(parsed.diagnostic.message) });
     else if (parsed.kind === 'token') refuse('DRAGON_UNSUPPORTED_VALUE', `${property}: ${generate(parsed.token)} is unsupported: ${parsed.reason}`, spanOf(parsed.token, src.base));
     else if (parsed.kind === 'multi') refuse('DRAGON_UNSUPPORTED_VALUE', `multi-token value "${text}" for ${property} is not supported in milestone 1`, valueSpan);
     else refuse('DRAGON_CSS_INVALID_VALUE', parsed.reason === undefined ? `"${text}" is not a valid value for ${property}, so Chrome ignores it in @keyframes ${name}` : `"${text}" is not a valid value for ${property}: ${parsed.reason}`, valueSpan);
