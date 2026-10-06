@@ -37,13 +37,13 @@
   "engineCalc": 4000,
   "engineInline": 3000,
   "snapGenerated": 20000,
-  "snapVectors": 1449,
+  "snapVectors": 1491,
   "cases": {
-    "vectors-m2": 297,
-    "vectors-dpr": 1665,
-    "engine-dpr": 1665,
+    "vectors-m2": 311,
+    "vectors-dpr": 1707,
+    "engine-dpr": 1707,
     "units-m2": 120000,
-    "snap": 21449,
+    "snap": 21491,
     "snap-values": 216,
     "calc-goldens": 17,
     "engine-calc": 4000,
@@ -51,23 +51,23 @@
     "engine-inline": 3000
   },
   "engineSplit": {
-    "ok": 1663,
-    "unsupported": 2,
+    "ok": 1703,
+    "unsupported": 4,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "b5779f9b0c522619d6ec83c26a907d55145a492e9493dcf475f76b9b7220d578",
-    "vectors-dpr": "23bc0d87cc02a7162a0a7ae8a10e2849a6884329bbfae51cbed057eef78f7c87",
-    "engine-dpr": "59ede79b508f2b00b187f48a883914f479894a916a140e0ea459133d98cf60ba",
+    "vectors-m2": "c7daae3c63f8348c4d7371628f0e224729eef8dc3e4b79dbb9df1408cd13c817",
+    "vectors-dpr": "3974c57679af18e55af3c4e9c3154fc0e5cac53ed198b4ed500bb2bf5e625c38",
+    "engine-dpr": "6b0101b3931d2e51dd02eb2a7f0dc1aac80114cfbef13923b440b59f8585e479",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "8b9f1c7b9776dfc35bfffdfb3636e9c960e012a62c65fddcf82de8332198c4e0",
+    "snap": "09059ddc89a485b5cdfb37f4076a967e7efe098c449a46e4c8ae0daac3b2791d",
     "snap-values": "58ce79fe0e7e0ff8be7bab82c5ae62d22131fea58335d95781b900b7edfa8a0a",
     "calc-goldens": "3d2e9fef8def09e8693902507fad1f10165b3e4a948c588b878636a39faf3c8f",
-    "engine-calc": "f934a120742a8c5ec207e4b06c25b6026e6df0e8aa933c50e6e41906dcc1cf7c",
+    "engine-calc": "9055b586decdbe256a4f290fabacd7feec7cd4368cab2f659a8adfa4a9e42376",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50",
     "engine-inline": "506d8f213e1fe452ea53a13004d591af6e1c6258213ceb8d592b6106e0ed5c09"
   },
-  "digest": "65239b87db06e6021dd5ba4525ca4d774779c23f13a5754016806111b62e2e30"
+  "digest": "a69f025dae47e4bd2aac4dde1f92711b47c75d2d9bb5eda89cf40633b57d0459"
 }
