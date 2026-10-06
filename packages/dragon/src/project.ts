@@ -304,6 +304,9 @@ function blocksTarget(d: Diagnostic, t: Target): boolean {
   return d.severity === 'error' && (d.target === null || d.target === t);
 }
 
+/** The profile features of the svg property family (fill, stroke, stroke-width). */
+const SVG_PROFILE_FEATURE = /^(fill|stroke|stroke-width):/;
+
 /** SVG-a1: every <svg> template node, refused on each native target until SVG-a2 draws its shapes there. */
 function svgNativeRefusals(nodes: readonly TreeNode[], nativeTargets: readonly Target[]): Diagnostic[] {
   const out: Diagnostic[] = [];
@@ -1056,6 +1059,15 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const values: Diagnostic[] = [];
       checkValues(rules, targets, profiles, [], values, keys, scopeOf);
       diagnostics.splice(valuesAt, 0, ...values);
+    }
+  }
+  // SVG-a1: in the parity lanes native lays out an <svg>'s box without its shapes (svgNativeRefusals is lane-only there), so the svg
+  // family's native profile refusals are lane-only too; outside the lanes svgNativeRefusals blocks native on its own.
+  if (options.interactionLanes) {
+    const svgNative = diagnostics.filter((d) => d.target !== null && (NATIVE_TARGETS as readonly string[]).includes(d.target) && d.profile !== undefined && d.profile !== null && SVG_PROFILE_FEATURE.test(d.profile.feature));
+    if (svgNative.length > 0) {
+      diagnostics.splice(0, diagnostics.length, ...diagnostics.filter((d) => !svgNative.includes(d)));
+      laneOnlyNative = NATIVE_TARGETS.filter((t) => laneOnlyNative.includes(t) || svgNative.some((d) => d.target === t));
     }
   }
   // The font manifest enters the digest only when the project has fonts, so a project without them keeps its digest.
