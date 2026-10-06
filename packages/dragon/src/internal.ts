@@ -341,12 +341,16 @@ export function animationFeatures(compiled: object): readonly string[] {
 
 // MQ-R1 (notes/T067-mq-r-spec.md R4, R5): the @media bands of the native output, their per-case programs and the band program.
 export type { BandAnalysis, BandCase, BandRuntimeFaults } from './lower/band-program.ts';
-export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
+export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandEnvironmentOf, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
 export type { InternalBands } from './project.ts';
 export { MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
+// MQ-R2 (T067 R9): the device readings the device features answer from.
+export type { MediaDevice } from './media/index.ts';
+export { DESKTOP_DEVICE, TOUCH_DEVICE } from './media/index.ts';
 import { bandStateProgram as deriveBandProgram } from './lower/band-program.ts';
 import { assignmentKey as keyOfAssignment } from './analysis/link.ts';
-import { bandAt as partitionBandAt } from './media/index.ts';
+import { bandAt as partitionBandAt, DESKTOP_DEVICE as DESKTOP_DEVICE_OF } from './media/index.ts';
+import type { MediaDevice } from './media/index.ts';
 import { MEDIA_AT_RULE_FEATURE as MEDIA_AT_RULE_FEATURE_KEY, mediaFeatureKey as mediaFeatureKeyOf } from './project.ts';
 import type { BandRuntimeFaults } from './lower/band-program.ts';
 import type { StateFaults, StateProgram } from './lower/state-program.ts';
@@ -366,14 +370,15 @@ export function mediaFeatures(compiled: object): readonly string[] {
 }
 
 /**
- * The band that holds a viewport by the compile-time partition (media/band.ts bandAt over CSS px): the independent reference the
+ * The band that holds a viewport on a device (headless Chrome's desktop page at DPR 1 by default) by the compile-time partition
+ * (media/band.ts bandAt over CSS px): the independent reference the
  * runtime's band lookup is checked against; 0 without @media, null when no band holds it (only a planted partition leaves a gap).
  */
-export function nativeBandOfViewport(compiled: object, viewport: { readonly width: number; readonly height: number }): number | null {
+export function nativeBandOfViewport(compiled: object, viewport: { readonly width: number; readonly height: number }, device: MediaDevice = DESKTOP_DEVICE_OF): number | null {
   const record = internalRecord(compiled);
   if (record === undefined) throw new Error('not a compiled result from this package');
   if (record.bands === null) return 0;
-  return partitionBandAt(record.bands.partition, viewport)?.index ?? null;
+  return partitionBandAt(record.bands.partition, viewport, undefined, device)?.index ?? null;
 }
 
 /** Both native backends' programs of one case in one band (nativePrograms for the per-case programs' own band). */

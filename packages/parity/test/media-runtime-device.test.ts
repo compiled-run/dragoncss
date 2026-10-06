@@ -8,7 +8,10 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { rtBand } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
-import { emitStatePrograms, expectedDigest, expectedDump, nativeBandPrograms, nativeBands, programInput } from 'dragon';
+import { bandEnvironmentOf, DESKTOP_DEVICE, emitStatePrograms, expectedDigest, expectedDump, nativeBandPrograms, nativeBands, programInput } from 'dragon';
+
+/** MQ-R2: headless Chrome's desktop readings at a scale. */
+const desk = (dpr: number) => bandEnvironmentOf({ ...DESKTOP_DEVICE, dpr });
 import { launchChrome, openPage } from '../src/chrome.ts';
 import { bandOracle, ENV_IDS, ENV_SCRIPT, envEmits, evaluateEnv } from '../src/device-env.ts';
 import type { DeviceRecord } from '../src/device-run.ts';
@@ -115,7 +118,7 @@ describe('device-env (one real rotation per device)', () => {
   const open = (v: boolean) => [{ state: { instance: 'doc', state: 'open' }, value: v }];
   const phase = (at: string, id: string, size: { width: number; height: number }, opts: { open?: boolean; band?: (b: number) => number; rootPx?: number[] } = {}): void => {
     const px = opts.rootPx ?? [size.width * DPR, size.height * DPR];
-    const band = rtBand.bandAtPx(bands.table, px[0] as number, px[1] as number, DPR, rtBand.NO_BAND_FAULTS);
+    const band = rtBand.bandAtPx(bands.table, px[0] as number, px[1] as number, desk(DPR), rtBand.NO_BAND_FAULTS);
     const p = nativeBandPrograms(compiled, open(opts.open ?? true), band);
     if (p.kind !== 'ready') throw new Error(p.reason);
     const d = fakeDump(id, 'mqr-rotate', compiled.digest, p.programs.uikit, size, { rootPx: px, dpr: DPR, media: px.map((v) => rtBand.mediaSize(v, DPR)), band: (opts.band ?? ((b) => b))(band) });
@@ -158,7 +161,7 @@ describe('device-env (one real rotation per device)', () => {
     const browser = await launchChrome(DPR);
     try {
       for (const px of [[1206, 2334], [2334, 1206], [1500, 1200], [1502, 1503]] as const) {
-        const want = rtBand.bandAtPx(bands.table, px[0], px[1], DPR, rtBand.NO_BAND_FAULTS);
+        const want = rtBand.bandAtPx(bands.table, px[0], px[1], desk(DPR), rtBand.NO_BAND_FAULTS);
         expect(await bandOracle(browser, bands.conditions, px[0], px[1], DPR), px.join('x')).toEqual([want]);
       }
     } finally {

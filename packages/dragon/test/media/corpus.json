@@ -1,5 +1,5 @@
 {
- "about": "Media query corpus for scripts/capture-media-data.ts. queries are evaluated; refusedQueries parse and serialise but Dragon refuses them until MQ-R (environment features, other units, non-finite calc, and a discrete feature in a range context, which Blink 145 accepts and evaluates ignoring the operator). A bandSheet with refused must be refused by band() and is not captured. fractional holds the MQ-R0 rows, captured at fractional media sizes.",
+ "about": "Media query corpus for scripts/capture-media-data.ts. queries are evaluated (the device features MQ-R2 reads, on headless Chrome's desktop page at DPR 1); refusedQueries parse and serialise but Dragon refuses them (environment features MQ-R2 and MQ-R3 do not read yet, other units, non-finite calc, and a discrete feature in a range context, which Blink 145 accepts and evaluates ignoring the operator). A bandSheet with refused must be refused by band() and is not captured. fractional holds the MQ-R0 rows, captured at fractional media sizes. environment holds the MQ-R2 rows: each is captured on every listed device (a DPR, a desktop, touch or mobile page, and a reduced-motion setting, M7).",
  "roots": [
   16,
   20
@@ -198,12 +198,7 @@
   "(aspect-ratio: -1/2)",
   "(max-width: 10s)",
   "()",
-  "(max-height: 5deg)"
- ],
- "refusedQueries": [
-  "(orientation > portrait)",
-  "(orientation <= landscape)",
-  "(prefers-color-scheme: dark)",
+  "(max-height: 5deg)",
   "(prefers-reduced-motion)",
   "(hover)",
   "(hover: hover)",
@@ -212,7 +207,12 @@
   "(resolution: 1dppx)",
   "(min-resolution: 2dppx)",
   "(-webkit-device-pixel-ratio: 1)",
-  "(-webkit-min-device-pixel-ratio: 2)",
+  "(-webkit-min-device-pixel-ratio: 2)"
+ ],
+ "refusedQueries": [
+  "(orientation > portrait)",
+  "(orientation <= landscape)",
+  "(prefers-color-scheme: dark)",
   "(color)",
   "(display-mode: browser)",
   "screen and (max-width: 600px) and (prefers-color-scheme: dark)",
@@ -220,7 +220,8 @@
   "(min-width: 10vw)",
   "(max-width: 30ex)",
   "(max-width: calc(infinity * 1px))",
-  "(device-width: 400px)"
+  "(device-width: 400px)",
+  "(pointer > coarse)"
  ],
  "bandSheets": [
   {
@@ -814,6 +815,328 @@
      "(width < 640.4px)",
      "(min-height: 300.01px)",
      "(width: 640.5px)"
+    ]
+   }
+  ]
+ },
+ "environment": {
+  "viewport": {
+   "width": 400,
+   "height": 300
+  },
+  "devices": [
+   [
+    1,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    1.25,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    1.5,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    1.75,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    2,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    2.25,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    2.5,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    2.625,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    2.75,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    3,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    3.5,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    4,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    1,
+    "touch",
+    "no-preference"
+   ],
+   [
+    1,
+    "touch",
+    "reduce"
+   ],
+   [
+    1,
+    "mobile",
+    "no-preference"
+   ],
+   [
+    1,
+    "mobile",
+    "reduce"
+   ],
+   [
+    2.625,
+    "touch",
+    "no-preference"
+   ],
+   [
+    2.625,
+    "touch",
+    "reduce"
+   ],
+   [
+    2.625,
+    "mobile",
+    "no-preference"
+   ],
+   [
+    2.625,
+    "mobile",
+    "reduce"
+   ],
+   [
+    3,
+    "touch",
+    "no-preference"
+   ],
+   [
+    3,
+    "touch",
+    "reduce"
+   ],
+   [
+    3,
+    "mobile",
+    "no-preference"
+   ],
+   [
+    3,
+    "mobile",
+    "reduce"
+   ],
+   [
+    1,
+    "desktop",
+    "reduce"
+   ],
+   [
+    3,
+    "desktop",
+    "reduce"
+   ]
+  ],
+  "queries": [
+   "(resolution: 1dppx)",
+   "(resolution: 2dppx)",
+   "(resolution: 3dppx)",
+   "(resolution: 2.625dppx)",
+   "(resolution: 2.6250001dppx)",
+   "(resolution: 2.624999dppx)",
+   "(resolution: 2.6249999dppx)",
+   "(resolution: 1.75x)",
+   "(resolution: 2x)",
+   "(resolution: 3x)",
+   "(resolution: 96dpi)",
+   "(resolution: 192dpi)",
+   "(resolution: 252dpi)",
+   "(resolution: 251.99999dpi)",
+   "(resolution: 251.9999dpi)",
+   "(resolution: 288dpi)",
+   "(resolution: 37.8dpcm)",
+   "(resolution: 37.79dpcm)",
+   "(resolution: 37.8dpcm)",
+   "(resolution: 75.59dpcm)",
+   "(resolution: 75.6dpcm)",
+   "(resolution: 99.21dpcm)",
+   "(resolution: 99.22dpcm)",
+   "(resolution: 99.2126dpcm)",
+   "(resolution: 113.39dpcm)",
+   "(resolution: 113.38dpcm)",
+   "(resolution: 0dppx)",
+   "(resolution: 0.5dppx)",
+   "(resolution: 1e0dppx)",
+   "(min-resolution: 2dppx)",
+   "(max-resolution: 2dppx)",
+   "(min-resolution: 2.625dppx)",
+   "(max-resolution: 2.625dppx)",
+   "(min-resolution: 2.6250001dppx)",
+   "(max-resolution: 2.6250001dppx)",
+   "(min-resolution: 3dppx)",
+   "(max-resolution: 3dppx)",
+   "(min-resolution: 99.215dpcm)",
+   "(max-resolution: 99.215dpcm)",
+   "(min-resolution: 99.225dpcm)",
+   "(max-resolution: 99.225dpcm)",
+   "(min-resolution: 1.5x)",
+   "(max-resolution: 1.5x)",
+   "(min-resolution: 168dpi)",
+   "(max-resolution: 168dpi)",
+   "(min-resolution: 0dppx)",
+   "(max-resolution: 0dppx)",
+   "(resolution)",
+   "(resolution < 2.625dppx)",
+   "(resolution <= 2.625dppx)",
+   "(resolution > 2.62dppx)",
+   "(resolution >= 2.625dppx)",
+   "(resolution = 2.625dppx)",
+   "(2dppx < resolution < 3dppx)",
+   "(2dppx <= resolution <= 3dppx)",
+   "(3x > resolution >= 2x)",
+   "(resolution: 2)",
+   "(resolution: -1dppx)",
+   "(not (resolution > -1dppx))",
+   "(not (min-resolution: -1dppx))",
+   "(resolution: 2.625X)",
+   "(resolution: 2.6250DPPX)",
+   "(resolution: infinite)",
+   "(resolution: 1e40dppx)",
+   "(max-resolution: 1e40dppx)",
+   "(not (resolution: 2))",
+   "(min-resolution: 2dpi) and (max-resolution: 2dppx)",
+   "(-webkit-device-pixel-ratio: 1)",
+   "(-webkit-device-pixel-ratio: 2)",
+   "(-webkit-device-pixel-ratio: 3)",
+   "(-webkit-device-pixel-ratio: 2.625)",
+   "(-webkit-device-pixel-ratio: 2.6250001)",
+   "(-webkit-device-pixel-ratio: 2.624999)",
+   "(-webkit-device-pixel-ratio: 1.75)",
+   "(-webkit-device-pixel-ratio: 0)",
+   "(-webkit-device-pixel-ratio: -1)",
+   "(-webkit-device-pixel-ratio: 2.5)",
+   "(-webkit-min-device-pixel-ratio: 2)",
+   "(-webkit-max-device-pixel-ratio: 2)",
+   "(-webkit-min-device-pixel-ratio: 2.625)",
+   "(-webkit-max-device-pixel-ratio: 2.625)",
+   "(-webkit-min-device-pixel-ratio: 2.6)",
+   "(-webkit-max-device-pixel-ratio: 2.6)",
+   "(-webkit-min-device-pixel-ratio: 3)",
+   "(-webkit-max-device-pixel-ratio: 3)",
+   "(-webkit-min-device-pixel-ratio: 1.5)",
+   "(-webkit-max-device-pixel-ratio: 1.5)",
+   "(-webkit-device-pixel-ratio)",
+   "(-webkit-device-pixel-ratio > 2)",
+   "(-webkit-device-pixel-ratio <= 2.625)",
+   "(-webkit-device-pixel-ratio: 2dppx)",
+   "(not (-webkit-device-pixel-ratio: 2dppx))",
+   "(not (-webkit-device-pixel-ratio: -1))",
+   "(min--webkit-device-pixel-ratio: 2)",
+   "(-webkit-device-pixel-ratio: 21/8)",
+   "(min-device-pixel-ratio: 2)",
+   "(hover)",
+   "(not (hover))",
+   "(hover: hover)",
+   "(hover: none)",
+   "(hover: HOVER)",
+   "(hover: fine)",
+   "(hover: 1)",
+   "(any-hover)",
+   "(not (any-hover))",
+   "(any-hover: hover)",
+   "(any-hover: none)",
+   "(pointer)",
+   "(not (pointer))",
+   "(pointer: fine)",
+   "(pointer: coarse)",
+   "(pointer: none)",
+   "(pointer: Fine)",
+   "(pointer: auto)",
+   "(any-pointer)",
+   "(not (any-pointer))",
+   "(any-pointer: fine)",
+   "(any-pointer: coarse)",
+   "(any-pointer: none)",
+   "(prefers-reduced-motion)",
+   "(not (prefers-reduced-motion))",
+   "(prefers-reduced-motion: reduce)",
+   "(prefers-reduced-motion: no-preference)",
+   "(prefers-reduced-motion: REDUCE)",
+   "(prefers-reduced-motion: none)",
+   "(min-hover: hover)",
+   "(not (pointer: auto))",
+   "(hover: hover) and (pointer: fine)",
+   "(hover: none) or (pointer: coarse)",
+   "not all and (any-pointer: coarse)",
+   "(prefers-reduced-motion: reduce) and (max-width: 500px)",
+   "(prefers-reduced-motion: no-preference) and (min-resolution: 2dppx)",
+   "screen and (pointer: coarse) and (hover: none)",
+   "(any-pointer: fine) and (any-hover: none)"
+  ],
+  "bandSheets": [
+   {
+    "name": "pointer-hover",
+    "queries": [
+     "(hover: hover)",
+     "(pointer: coarse)"
+    ],
+    "unreachable": "a band with a touch screen and a mouse, or a fine pointer that cannot hover (a stylus alone), which Chrome cannot emulate (T067 R9: proven by the Android port's vectors)"
+   },
+   {
+    "name": "any-pointer",
+    "queries": [
+     "(any-pointer: fine)",
+     "(any-hover: hover)",
+     "(pointer: fine)"
+    ],
+    "unreachable": "a band with a touch screen and a mouse, which Chrome cannot emulate (T067 R9: proven by the Android port's vectors)"
+   },
+   {
+    "name": "motion",
+    "queries": [
+     "(prefers-reduced-motion: reduce)",
+     "(prefers-reduced-motion)"
+    ]
+   },
+   {
+    "name": "resolution",
+    "queries": [
+     "(min-resolution: 2dppx)",
+     "(min-resolution: 3dppx)",
+     "(max-resolution: 2.625x)"
+    ]
+   },
+   {
+    "name": "resolution-dpcm",
+    "queries": [
+     "(min-resolution: 99.22dpcm)",
+     "(-webkit-max-device-pixel-ratio: 1.5)"
+    ]
+   },
+   {
+    "name": "mixed",
+    "queries": [
+     "(hover: hover) and (-webkit-min-device-pixel-ratio: 2)",
+     "(prefers-reduced-motion)"
     ]
    }
   ]

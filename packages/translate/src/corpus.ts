@@ -671,7 +671,7 @@ export const BAND_VECTORS = join(RT_VECTORS_DIR, 'band/cases.json');
  */
 export function bandCases(): string[] {
   const v = JSON.parse(readFileSync(BAND_VECTORS, 'utf8')) as { schema: string; cases: { table: unknown; sizes: unknown }[] };
-  if (v.schema !== 'dragon-band-vectors/1') throw new Error(`${BAND_VECTORS}: schema ${v.schema}; run pnpm run parity:band-vectors`);
+  if (v.schema !== 'dragon-band-vectors/2') throw new Error(`${BAND_VECTORS}: schema ${v.schema}; run pnpm run parity:band-vectors`);
   const out = v.cases.map((c) => JSON.stringify(['rt-band', c.table, c.sizes]));
   if (out.length === 0) throw new Error('the band suite has no cases');
   return out;
@@ -686,6 +686,24 @@ export function bandExpected(lines: readonly string[]): string[] {
   });
 }
 
+// ---------------------------------------------------------------- pointer suite (MQ-R2, T067 R9)
+
+/** Input devices' sources and the readings Chromium's own Java rule gives them (packages/parity parity:pointer-vectors). */
+export const POINTER_VECTORS = join(RT_VECTORS_DIR, 'pointer/cases.json');
+
+/**
+ * The pointer suite: one library-mode line per set of input devices, each device its InputDevice.getSources(). The TypeScript
+ * harness's answers are the expected results; Swift and Kotlin must equal them, and packages/parity pointer-vectors.test.ts proves
+ * the TypeScript port equals the answers of Chromium's Java rule (TouchDevice.availablePointerAndHoverTypes) recorded beside them.
+ */
+export function pointerCases(): string[] {
+  const v = JSON.parse(readFileSync(POINTER_VECTORS, 'utf8')) as { schema: string; cases: { sources: readonly string[] }[] };
+  if (v.schema !== 'dragon-pointer-vectors/1') throw new Error(`${POINTER_VECTORS}: schema ${v.schema}; run pnpm run parity:pointer-vectors`);
+  const out = v.cases.map((c) => JSON.stringify(['rt-pointer', c.sources]));
+  if (out.length === 0) throw new Error('the pointer suite has no cases');
+  return out;
+}
+
 export function buildCorpus(): Corpus {
   const vectors = vectorCases();
   const vLines = vectors.map((v) => v.line);
@@ -696,6 +714,7 @@ export function buildCorpus(): Corpus {
   const hit = hitCases();
   const animator = animatorCases();
   const band = bandCases();
+  const pointer = pointerCases();
   const suites: Suite[] = [
     { name: 'vectors', mode: 'engine', lines: vLines, expected: vLines.map(runEngineCase) },
     { name: 'units', mode: 'units', lines: units, expected: units.map(runUnitsCase) },
@@ -709,6 +728,8 @@ export function buildCorpus(): Corpus {
     { name: 'animator', mode: 'library', lines: animator, expected: animatorExpected(animator) },
     // MQ-R1: the @media band lookup over every media fixture's band table, after animator.
     { name: 'band', mode: 'library', lines: band, expected: bandExpected(band) },
+    // MQ-R2: the Android pointer and hover readings over every source combination, after band.
+    { name: 'pointer', mode: 'library', lines: pointer, expected: bandExpected(pointer) },
   ];
   const d = digestsOf(suites);
   return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: d.digest, digests: d.digests };

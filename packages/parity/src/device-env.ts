@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
 import type { Browser } from 'playwright';
 import { rtBand } from '@dragon/layout';
 import type { Assignment, Compiled, NativeProgram, StateEmit } from 'dragon';
-import { expectedDump, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, stateKey } from 'dragon';
+import { bandEnvironmentOf, DESKTOP_DEVICE, expectedDump, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, stateKey } from 'dragon';
 import { launchChrome } from './chrome.ts';
 import type { DeviceRecord } from './device-run.ts';
 import type { LaneFailure } from './device-lanes.ts';
@@ -140,7 +140,7 @@ export async function evaluateEnv(target: NativeTarget, dpr: number, dir: string
     const viewport = dump.case.viewport;
     if (Math.abs(viewport.width * dpr - wPx) > 1e-9 || Math.abs(viewport.height * dpr - hPx) > 1e-9) fail('environment', `viewport ${viewport.width}x${viewport.height} css px is not the root's ${wPx}x${hPx} px at ${dpr}`);
     // The band: the device's, the band lookup's, MQ-R0's partition's and Chrome's must be one band.
-    const lookup = rtBand.bandAtPx(bands.table, wPx, hPx, dpr, rtBand.NO_BAND_FAULTS);
+    const lookup = rtBand.bandAtPx(bands.table, wPx, hPx, bandEnvironmentOf({ ...DESKTOP_DEVICE, dpr }), rtBand.NO_BAND_FAULTS);
     const partition = nativeBandOfViewport(c, { width: media[0] as number, height: media[1] as number });
     if (e.band !== lookup || partition !== lookup) fail('environment', `band ${e.band}; the band lookup gives ${lookup}, the partition ${partition}`);
     if (browser !== null) {

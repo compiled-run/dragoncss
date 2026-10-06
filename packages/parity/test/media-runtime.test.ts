@@ -4,7 +4,10 @@
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import type { Assignment, BandCase, NativeProgram, ProgramNode } from 'dragon';
-import { BAND_KEY, bandStateProgram, NO_BAND_RUNTIME_FAULTS } from 'dragon';
+import { bandEnvironmentOf, DESKTOP_DEVICE, BAND_KEY, bandStateProgram, NO_BAND_RUNTIME_FAULTS } from 'dragon';
+
+/** MQ-R2: headless Chrome's desktop readings at a scale. */
+const desk = (dpr: number) => bandEnvironmentOf({ ...DESKTOP_DEVICE, dpr });
 import { MediaRuntime } from '../src/media-runtime.ts';
 import { rtBand } from '@dragon/layout';
 import { readFileSync } from 'node:fs';
@@ -96,7 +99,7 @@ describe('the band lookup over whole device px, off the 8 px grid (PR #140 revie
       for (const dpr of DPRS) {
         for (let px = 0; px <= 2048; px++) {
           for (const [w, h] of [[px, 600], [px, 1400], [600, px], [1400, px]] as const) {
-            const k = rtBand.bandAtPx(bands.table, w, h, dpr, rtBand.NO_BAND_FAULTS);
+            const k = rtBand.bandAtPx(bands.table, w, h, desk(dpr), rtBand.NO_BAND_FAULTS);
             checked++;
             const want = nativeBandOfViewport(s.compiled, { width: rtBand.mediaSize(w, dpr), height: rtBand.mediaSize(h, dpr) });
             if (k !== want) expect(k, `${s.id} ${w}x${h} px at ${dpr}`).toBe(want);
@@ -110,7 +113,7 @@ describe('the band lookup over whole device px, off the 8 px grid (PR #140 revie
   it('the review\'s sheet, (width <= 400px) with (width > 400px), finds the band where both hold at 1400 px and DPR 3.5 (400.0000305 css px)', () => {
     const p = band(['(width <= 400px)', '(width > 400px)'].map((q) => parseMediaQueryList(q)));
     if (p.kind !== 'bands') throw new Error(p.detail);
-    expect(p.bands[rtBand.bandAtPx(bandTableOf(p), 1400, 1000, 3.5, rtBand.NO_BAND_FAULTS)]?.truth).toEqual([true, true]);
+    expect(p.bands[rtBand.bandAtPx(bandTableOf(p), 1400, 1000, desk(3.5), rtBand.NO_BAND_FAULTS)]?.truth).toEqual([true, true]);
   });
 });
 

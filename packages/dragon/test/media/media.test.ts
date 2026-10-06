@@ -46,8 +46,8 @@ describe('media queries against Chrome 145 matchMedia', () => {
   it('refuses exactly the environment features and the values Dragon does not evaluate', () => {
     const r = compareCapture(capture, NO_MEDIA_FAULTS);
     expect(r.refused).toEqual(CORPUS.refusedQueries);
-    const hover = evaluateMediaQueryList(parseMediaQueryList('(max-width: 600px), (hover)'), { width: 400, height: 300 });
-    expect(hover).toEqual({ kind: 'refused', refusals: [{ feature: '(hover)', reason: 'environment' }] });
+    const scheme = evaluateMediaQueryList(parseMediaQueryList('(max-width: 600px), (prefers-color-scheme: dark)'), { width: 400, height: 300 });
+    expect(scheme).toEqual({ kind: 'refused', refusals: [{ feature: '(prefers-color-scheme: dark)', reason: 'environment' }] });
   });
 
   it('treats em and rem in a media query as the initial 16px, whatever the root', () => {

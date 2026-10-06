@@ -53,8 +53,12 @@ export const acceptFontFace: AtRuleHandler = (at) => {
   return at.where === 'the stylesheet' && empty && block !== null && block !== undefined ? { kind: 'font-face', context: at } : refuseAtRule(at);
 };
 
+/** The media features @media may use (MQ-a, MQ-R0, MQ-R2), as the refusal names them. */
+const SUPPORTED_MEDIA_FEATURES = 'width, height, orientation, aspect-ratio, resolution, -webkit-device-pixel-ratio, pointer, any-pointer, hover, any-hover and prefers-reduced-motion';
+
 /**
- * MQ-a and MQ-R0: @media whose features are all width, height, orientation and aspect-ratio is conditional. A feature that
+ * MQ-a, MQ-R0 and MQ-R2: @media whose features are all viewport features (width, height, orientation, aspect-ratio) or the
+ * device features MQ-R2 reads (resolution, pointer, hover, prefers-reduced-motion; T067 R9) is conditional. A feature that
  * depends on the device or the user (until MQ-R2 or MQ-R3, notes/T067 §1) and a value Dragon does not evaluate are refused.
  */
 export const mediaAtRule: AtRuleHandler = (at) => {
@@ -74,7 +78,7 @@ export const mediaAtRule: AtRuleHandler = (at) => {
     kind: 'refuse',
     diagnostic: diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
       origin: authored(at.span),
-      message: `@media ${text} in ${at.where} is not supported: ${why}; only width, height, orientation and aspect-ratio media features are supported`,
+      message: `@media ${text} in ${at.where} is not supported: ${why}; only ${SUPPORTED_MEDIA_FEATURES} media features are supported`,
     }),
   };
 };

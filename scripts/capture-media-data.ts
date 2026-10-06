@@ -1,6 +1,8 @@
 // Captures Chrome's matchMedia and mediaText for the media query corpus and for every band condition band() derives,
 // at each viewport derived from the corpus thresholds, on pages whose root font size is 16px and 20px. The fractional part
 // (MQ-R0, notes/T067 §4) evaluates its rows inside iframes of exact device px and emulated main frames at DPR 1, 2, 2.625 and 3.
+// The environment part (MQ-R2, R9) evaluates its rows on every listed device: a page at a DPR, desktop (a mouse), touch (hasTouch)
+// or mobile (isMobile and hasTouch), with prefers-reduced-motion emulated (M7).
 // Writes packages/dragon/test/media/captures/chrome-145.json; --check requires a byte-identical recapture.
 // Run with: node --conditions=dragon-internal scripts/capture-media-data.ts [--check]
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -20,6 +22,12 @@ type Corpus = {
     readonly viewport: Viewport;
     readonly iframes: readonly (readonly [number, number, number])[];
     readonly mainFrames: readonly (readonly [number, number, number])[];
+    readonly queries: readonly string[];
+    readonly bandSheets: readonly { readonly name: string; readonly queries: readonly string[] }[];
+  };
+  readonly environment: {
+    readonly viewport: Viewport;
+    readonly devices: readonly (readonly [number, 'desktop' | 'touch' | 'mobile', 'no-preference' | 'reduce'])[];
     readonly queries: readonly string[];
     readonly bandSheets: readonly { readonly name: string; readonly queries: readonly string[] }[];
   };
@@ -298,6 +306,42 @@ const fracEntry = (k: number): { mediaText: string; matches: string } => ({
   matches: frames.map((f) => (frameBits.get(f) as string)[k]).join(''),
 });
 
+// The environment part: one page per device, every row and every band condition of its sheets.
+const environment = corpus.environment;
+const envSheets = environment.bandSheets.map((s) => {
+  const partition = band(s.queries.map((q) => parseMediaQueryList(q)));
+  if (partition.kind !== 'bands') throw new Error(`environment band sheet ${s.name} is refused: ${partition.detail}`);
+  return { sheet: s.name, texts: partition.bands.map((b) => b.condition) };
+});
+const envTexts = [...environment.queries, ...envSheets.flatMap((s) => s.texts)];
+const envBits: string[] = envTexts.map(() => '');
+let envMediaText: string[] = [];
+for (const [dpr, kind, reducedMotion] of environment.devices) {
+  const b = await launchChrome(dpr);
+  try {
+    if (b.version() !== CHROME_VERSION) throw new Error(`Chrome must be ${CHROME_VERSION}, got ${b.version()}`);
+    const context = await b.newContext({ viewport: environment.viewport, deviceScaleFactor: dpr, hasTouch: kind !== 'desktop', isMobile: kind === 'mobile', reducedMotion });
+    try {
+      const page = await context.newPage();
+      // width=device-width, so a mobile page's layout viewport is the 400 CSS px its width rows assume.
+      await page.setContent('<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width"></head><body></body></html>');
+      const r = await page.evaluate((qs: string[]) => ({ width: window.innerWidth, dpr: window.devicePixelRatio, media: qs.map((q) => matchMedia(q).media), bits: qs.map((q) => (matchMedia(q).matches ? '1' : '0')) }), envTexts);
+      if (r.dpr !== dpr) throw new Error(`the ${kind} page reports devicePixelRatio ${r.dpr}, not ${dpr}`);
+      if (r.width !== environment.viewport.width) throw new Error(`the ${kind} page at DPR ${dpr} is ${r.width} CSS px wide, not ${environment.viewport.width}`);
+      if (envMediaText.length === 0) envMediaText = r.media;
+      r.media.forEach((t, k) => {
+        if (t !== envMediaText[k]) throw new Error(`mediaText of ${envTexts[k]} differs on the ${kind} page at DPR ${dpr}`);
+      });
+      r.bits.forEach((bit, k) => (envBits[k] += bit));
+    } finally {
+      await context.close();
+    }
+  } finally {
+    await b.close();
+  }
+}
+const envEntry = (k: number): { mediaText: string; matches: string } => ({ mediaText: envMediaText[k] as string, matches: envBits[k] as string });
+
 const first = byRoot.get(corpus.roots[0] as number) as { mediaText: string[] };
 for (const [root, r] of byRoot) {
   r.mediaText.forEach((t, k) => {
@@ -323,11 +367,19 @@ const capture = {
       bands: fracSheets.map((s) => ({ sheet: s.sheet, conditions: s.texts.map((text) => ({ text, ...fracEntry(j++) })) })),
     };
   })(),
+  environment: (() => {
+    let j = 0;
+    return {
+      devices: environment.devices,
+      queries: environment.queries.map((query) => ({ query, ...envEntry(j++) })),
+      bands: envSheets.map((s) => ({ sheet: s.sheet, conditions: s.texts.map((text) => ({ text, ...envEntry(j++) })) })),
+    };
+  })(),
 };
 
 const out = `${JSON.stringify(capture, null, 1)}\n`;
 const path = repoPath(CAPTURE_PATH);
-const summary = `${capture.queries.length} queries, ${capture.bands.length} band sheets, ${points.length} viewports, roots ${corpus.roots.join(' and ')}px; fractional: ${capture.fractional.queries.length} queries, ${capture.fractional.bands.length} band sheets, ${frames.length} frames`;
+const summary = `${capture.queries.length} queries, ${capture.bands.length} band sheets, ${points.length} viewports, roots ${corpus.roots.join(' and ')}px; fractional: ${capture.fractional.queries.length} queries, ${capture.fractional.bands.length} band sheets, ${frames.length} frames; environment: ${capture.environment.queries.length} queries, ${capture.environment.bands.length} band sheets, ${environment.devices.length} devices`;
 if (check) {
   let current = '';
   try {

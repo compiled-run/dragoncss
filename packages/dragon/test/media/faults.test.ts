@@ -4,10 +4,11 @@ import { compareCapture } from './compare.ts';
 import { CAPTURE as capture } from './corpus.ts';
 
 describe('planted media faults', () => {
-  it('plants the five MQ-a faults and the five MQ-R0 faults', () => {
+  it('plants the five MQ-a faults, the five MQ-R0 faults and the MQ-R2 one', () => {
     expect(MEDIA_FAULT_NAMES).toEqual([
       'maxWidthExclusive', 'emFromRoot', 'unknownAsTrue', 'notBindsTighterThanAnd', 'bandGapAtBoundary',
       'mediaCompareExact', 'orientationUntruncated', 'aspectRatioUntruncated', 'mediaWidthDouble', 'emulatedSizeRounded',
+      'resolutionDouble',
     ]);
   });
 
