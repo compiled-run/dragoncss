@@ -61,7 +61,11 @@ export * as rtAnimations from './rt-animations.ts';
 // ANIM-b1 3b (T065 R16): the runtime animator, one implementation for the TypeScript reference and the generated runtimes.
 export * as rtAnimator from './rt-animator.ts';
 export type { AnimTables, EasingCode, EntryCode, ValueCode } from './rt-animator.ts';
+// MQ-R1 (T067 R4): the @media band lookup a native root runs on a size change.
+export * as rtBand from './rt-band.ts';
 export type { OriginPoint, TransformOrigin } from './paint-transform.ts';
 export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';
 export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';
 export { serializeTransform } from './rt-interpolate.ts';
+export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';
+export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';

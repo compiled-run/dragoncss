@@ -3,7 +3,7 @@ import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromeDeviations, NO_ENGINE_FAULTS, platformRules } from '@dragon/layout';
 import type { Assignment, ProfileRow } from 'dragon';
-import { CATALOGUE, iosProfile, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
+import { CATALOGUE, iosProfile, MEDIA_CONTEXT, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
 import type { Longhand } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { captureFixture, captureJson } from '../src/capture.ts';
@@ -27,7 +27,8 @@ import { DETERMINISM_CHUNKS, determinismChunk, shuffled } from './determinism.ts
 // T065: the row checks here are about rows proven by layout cases. Animation rows (context animation) are proven by frame cases
 // against frame captures, and anim-frames.test.ts gives them the same checks: exactly the passing cases that use the key, every
 // used key has a row, exactly what profile:rows derives, the context and lane shape, and every proof case a passing frame case.
-const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT);
+// MQ-R1: media rows (context media) are proven by resize cases against resize captures, and media-runtime-resize.test.ts does the same.
+const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT && r.context !== MEDIA_CONTEXT);
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
@@ -425,7 +426,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
 
   it('paint classification comes from PROPERTY_ASPECTS (M8): no iOS paint row is exact, border-*-style:solid included', () => {
     const aspects = (row: ProfileRow) => PROPERTY_ASPECTS[row.feature.slice(0, row.feature.indexOf(':')) as Longhand];
-    for (const row of iosProfile.rows) {
+    for (const row of layoutRows(iosProfile.rows)) {
       const a = aspects(row);
       expect(a, row.feature).toBeDefined();
       if (a.paint) {
@@ -436,7 +437,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       }
       if (a.layout) expect(row.proofs.some((p) => p.aspect === 'layout' && p.lane === 'linux-dragon-layout'), row.feature).toBe(true);
     }
-    expect(iosProfile.rows.filter((r) => r.status === 'exact' && aspects(r).paint)).toEqual([]);
+    expect(layoutRows(iosProfile.rows).filter((r) => r.status === 'exact' && aspects(r).paint)).toEqual([]);
     // iOS clipping is a paint aspect: overflow rows carry a layout proof and stay caveat.
     const overflow = iosProfile.rows.filter((r) => /^overflow-[xy]:/.test(r.feature));
     expect(overflow.length).toBeGreaterThan(0);
@@ -481,7 +482,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     expect(iosProfile.rows.filter((r) => r.feature.startsWith('font-family:Ahem')).map((r) => r.context).sort()).toEqual([...textContexts].sort());
     expect(iosProfile.rows.some((r) => r.feature === 'width:<length-px>' && r.context === 'block/ltr')).toBe(true);
     expect(iosProfile.rows.some((r) => r.feature === 'width:<length-px>' && r.context === 'block/rtl')).toBe(true);
-    expect(iosProfile.rows.some((r) => r.feature === 'margin-top:auto' && r.context === 'block/ltr')).toBe(false);
+    expect(iosProfile.rows.some((r) => r.feature === 'margin-right:<length-mm>' && r.context === 'block/ltr')).toBe(false);
   });
 
   it('no row of one direction is proven by a case that laid it out in the other: every proving case has an element of the facet direction in its Chrome capture', () => {

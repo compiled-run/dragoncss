@@ -48,7 +48,7 @@ public func platform_measurerFor(_ platform: JsString) throws -> any U_MeasurerC
   let rules: JsArray<PlatformRule>? = platformRules_PLATFORM_RULES.get(platform)
   // ts: packages/layout/src/platform.ts:26
   if ((m == nil) || (rules == nil)) {
-    return MeasurerChoice_refused(S.s_refused, S.s_no_platform_rules, platform, jsConcat(S.s285, platform, S.s80))
+    return MeasurerChoice_refused(S.s_refused, S.s_no_platform_rules, platform, jsConcat(S.s294, platform, S.s80))
   }
   return try MeasurerChoice_ok(S.s_ok, platform, jsUnwrap(m).key, jsUnwrap(m).measurer, jsUnwrap(rules))
 }

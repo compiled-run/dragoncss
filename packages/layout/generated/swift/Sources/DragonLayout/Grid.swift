@@ -797,8 +797,8 @@ public func grid_moveCursorToFitGridSpan(_ list: GridPlacedList, _ c: GridCursor
   }
   // ts: packages/layout/src/grid.ts:450
   do {
-    loop7: while true {
-      loop7_body: do {
+    loop10: while true {
+      loop10_body: do {
         try grid_updateItemsOverlappingMajorLine(list, c)
         nextMinor = c.current.minor
         // ts: packages/layout/src/grid.ts:453
@@ -821,7 +821,7 @@ public func grid_moveCursorToFitGridSpan(_ list: GridPlacedList, _ c: GridCursor
         }
         // ts: packages/layout/src/grid.ts:460
         if try (!fits()) {
-          break loop7_body
+          break loop10_body
         }
         var upcoming: Double = c.next
         // ts: packages/layout/src/grid.ts:462
@@ -2284,7 +2284,7 @@ public func grid_selfAlignOf(_ container: GridContainerStyle, _ box: LayoutBox, 
   let a: JsString = ((box.style.alignSelf == S.s_auto) ? containerStyle.alignItems : box.style.alignSelf)
   // ts: packages/layout/src/grid.ts:1273
   if (a == S.s_baseline) {
-    try unsupported_unsupported(S.s_grid_baseline, box.id, S.s162, S.s126)
+    try unsupported_unsupported(S.s_grid_baseline, box.id, S.s164, S.s126)
   }
   return a
 }
@@ -2443,7 +2443,7 @@ public func grid_contentContribution(_ ctx: Ctx, _ grid: GridState, _ item: Grid
 public func grid_contributionFor(_ ctx: Ctx, _ grid: GridState, _ c: GridCollection, _ type: JsString, _ item: GridItemData) throws -> Double {
   // ts: packages/layout/src/grid.ts:1429
   if (type == S.s_free_space) {
-    throw JsError(message: S.s214)
+    throw JsError(message: S.s222)
   }
   let s: LayoutStyle = item.box.style
   let columns: Bool = (c.axis == S.s_columns)
@@ -2592,7 +2592,7 @@ public func grid_buildGrid(_ ctx: Ctx, _ box: LayoutBox, _ pad: Edges, _ bor: Ed
       }
       // ts: packages/layout/src/grid.ts:1523
       if ((k as! any U_LayoutBox_ReplacedLeaf).kind == S.s_replaced) {
-        try unsupported_unsupported(S.s_grid_replaced, (k as! ReplacedLeaf).id, S.s163, S.s101)
+        try unsupported_unsupported(S.s_grid_replaced, (k as! ReplacedLeaf).id, S.s165, S.s101)
       }
       // ts: packages/layout/src/grid.ts:1524
       if ((k as! LayoutBox).kind != S.s_box) {
@@ -2600,7 +2600,7 @@ public func grid_buildGrid(_ ctx: Ctx, _ box: LayoutBox, _ pad: Edges, _ bor: Ed
       }
       // ts: packages/layout/src/grid.ts:1525
       if try position_isOutOfFlow(ctx, (k as! LayoutBox)) {
-        try unsupported_unsupported(S.s_grid_abspos, (k as! LayoutBox).id, S.s164, S.s114)
+        try unsupported_unsupported(S.s_grid_abspos, (k as! LayoutBox).id, S.s166, S.s114)
       }
       _ = jsPush(inFlow, (k as! LayoutBox))
     }

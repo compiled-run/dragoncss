@@ -57,11 +57,11 @@ fun rtKeyframes_completeKeyframes(group: KeyframeGroup): JsArray<PropertyKeyfram
   }
   // ts: packages/layout/src/rt-keyframes.ts:52
   run {
-    val _a152 = group.keyframes
-    var _i152 = 0
-    while (_i152 < _a152.size) {
-      val k: PropertyKeyframe = _a152[_i152]
-      _i152++
+    val _a161 = group.keyframes
+    var _i161 = 0
+    while (_i161 < _a161.size) {
+      val k: PropertyKeyframe = _a161[_i161]
+      _i161++
       jsPush(out, k)
     }
   }
@@ -74,13 +74,13 @@ fun rtKeyframes_completeKeyframes(group: KeyframeGroup): JsArray<PropertyKeyfram
   // ts: packages/layout/src/rt-keyframes.ts:56
   run {
     var i: Double = 0.0
-    loop2@ while ((i < jsLength(out))) {
-      loop2_body@ do {
+    loop5@ while ((i < jsLength(out))) {
+      loop5_body@ do {
         val offset: Double = rtKeyframes_keyframeAt(out, i).offset
         val interior: Boolean = ((i > 0.0) && (i < (jsLength(out) - 1.0)))
         // ts: packages/layout/src/rt-keyframes.ts:59
         if (((interior && (rtKeyframes_keyframeAt(out, (i - 1.0)).offset == offset)) && (rtKeyframes_keyframeAt(out, (i + 1.0)).offset == offset))) {
-          break@loop2_body
+          break@loop5_body
         }
         jsPush(kept, rtKeyframes_keyframeAt(out, i))
       } while (false)
@@ -139,11 +139,11 @@ fun rtKeyframes_sampleKeyframes(keyframes: JsArray<PropertyKeyframe>, underlying
   var result: InterpolatedValue? = null
   // ts: packages/layout/src/rt-keyframes.ts:99
   run {
-    val _a153 = rtKeyframes_keyframeSegments(keyframes)
-    var _i153 = 0
-    while (_i153 < _a153.size) {
-      val s: KeyframeSegment = _a153[_i153]
-      _i153++
+    val _a162 = rtKeyframes_keyframeSegments(keyframes)
+    var _i162 = 0
+    while (_i162 < _a162.size) {
+      val s: KeyframeSegment = _a162[_i162]
+      _i162++
       // ts: packages/layout/src/rt-keyframes.ts:100
       if ((!((fraction >= s.applyFrom) && (fraction < s.applyTo)))) {
         continue
@@ -181,11 +181,11 @@ fun rtKeyframes_groupFromRule(rule: JsArray<RuleKeyframe>, defaultEasing: Easing
     var next: Double = rtEasing_INFINITY
     // ts: packages/layout/src/rt-keyframes.ts:145
     run {
-      val _a154 = rule
-      var _i154 = 0
-      while (_i154 < _a154.size) {
-        val k: RuleKeyframe = _a154[_i154]
-        _i154++
+      val _a163 = rule
+      var _i163 = 0
+      while (_i163 < _a163.size) {
+        val k: RuleKeyframe = _a163[_i163]
+        _i163++
         // ts: packages/layout/src/rt-keyframes.ts:145
         if (((k.offset > last) && (k.offset < next))) {
           next = k.offset
@@ -194,11 +194,11 @@ fun rtKeyframes_groupFromRule(rule: JsArray<RuleKeyframe>, defaultEasing: Easing
     }
     // ts: packages/layout/src/rt-keyframes.ts:146
     run {
-      val _a155 = rule
-      var _i155 = 0
-      while (_i155 < _a155.size) {
-        val k: RuleKeyframe = _a155[_i155]
-        _i155++
+      val _a164 = rule
+      var _i164 = 0
+      while (_i164 < _a164.size) {
+        val k: RuleKeyframe = _a164[_i164]
+        _i164++
         // ts: packages/layout/src/rt-keyframes.ts:146
         if ((k.offset == next)) {
           jsPush(sorted, k)
@@ -214,11 +214,11 @@ fun rtKeyframes_groupFromRule(rule: JsArray<RuleKeyframe>, defaultEasing: Easing
   val easings: JsArray<Easing> = jsArrayOf<Easing>()
   // ts: packages/layout/src/rt-keyframes.ts:151
   run {
-    val _a156 = sorted
-    var _i156 = 0
-    while (_i156 < _a156.size) {
-      val k: RuleKeyframe = _a156[_i156]
-      _i156++
+    val _a165 = sorted
+    var _i165 = 0
+    while (_i165 < _a165.size) {
+      val k: RuleKeyframe = _a165[_i165]
+      _i165++
       jsPush(easings, (if (k.hasEasing) k.easing else defaultEasing))
     }
   }
@@ -227,13 +227,13 @@ fun rtKeyframes_groupFromRule(rule: JsArray<RuleKeyframe>, defaultEasing: Easing
   // ts: packages/layout/src/rt-keyframes.ts:154
   run {
     var i: Double = 0.0
-    loop3@ while ((i < jsLength(sorted))) {
-      loop3_body@ do {
+    loop6@ while ((i < jsLength(sorted))) {
+      loop6_body@ do {
         val k: RuleKeyframe = rtKeyframes_ruleAt(sorted, i)
         val easing: Easing = rtKeyframes_easingAt(easings, i)
         // ts: packages/layout/src/rt-keyframes.ts:157
         if (rtKeyframes_mergesLater(sorted, easings, i)) {
-          break@loop3_body
+          break@loop6_body
         }
         // ts: packages/layout/src/rt-keyframes.ts:158
         if ((k.offset == 0.0)) {
@@ -242,7 +242,7 @@ fun rtKeyframes_groupFromRule(rule: JsArray<RuleKeyframe>, defaultEasing: Easing
         // ts: packages/layout/src/rt-keyframes.ts:159
         if (k.sets) {
           jsPush(keyframes, PropertyKeyframe(k.offset, k.value, false, easing))
-          break@loop3_body
+          break@loop6_body
         }
         val setter: Double = rtKeyframes_lastSetterAt(sorted, k.offset)
         // ts: packages/layout/src/rt-keyframes.ts:165

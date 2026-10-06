@@ -168,8 +168,12 @@ target. Each diagnostic names the package that lifts it:
   - px and %. em and rem fold to px at compile time, following PNT1's precedent (`analysis/paint-values/radius.ts`
     `computeComponent`; bg2 had refused em).
   - Viewport units and calc() are refused, as PNT1 refuses them.
-  - **Edge offsets** (`right 10px`, `bottom 20%`) are accepted as (100% − x). Chrome computes them to `calc(100% - 10px)`, and
+  - **Edge offsets** (`right 10px`, `bottom 20%`) are accepted. Chrome computes them to the string `calc(100% - 10px)`, and
     chrome-dual proves the string. bg2 refused them.
+    - **PM amendment (2026-10-05, review of #192):** the string is only how getComputedStyle writes the value. For paint, Chrome
+      keeps the right or bottom origin and paints `available − offset` in LayoutUnits, with the offset truncated to a LayoutUnit
+      first (background_image_geometry.cc ResolveXPosition/ResolveYPosition). The engine ports that (paint-gradient.ts
+      `luPosition`), not `100% − x` evaluated in float. The two differ by 1 LU, and that can move a snapped layer by a device px.
   - **content-box** origin and clip on a box with padding are accepted. `DragonBoxShape` gains the padding widths (one named
     hunk at the EMS shape registration point). bg2 refused these because the shape had no padding.
   - Negative stop positions are accepted: Blink normalises them in AddStops, and bg2's port covers that.
