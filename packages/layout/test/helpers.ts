@@ -1,4 +1,4 @@
-import type { FontSpec, LayoutBox, LayoutStyle, SafeAreaInsets, TextLeaf, Viewport, ViewportUnitSizes } from '../src/index.ts';
+import type { FontSpec, InlineBox, InlineChild, LayoutBox, LayoutStyle, LineBreak, LineStrut, ReplacedLeaf, SafeAreaInsets, TextLeaf, Viewport, ViewportUnitSizes } from '../src/index.ts';
 
 /** Test-only: the CSS initial values for a block div, spelled out so each test states what it overrides. */
 export const divStyle: LayoutStyle = {
@@ -44,16 +44,47 @@ export const divStyle: LayoutStyle = {
   columnGap: { kind: 'normal' },
   textAlign: 'start',
   aspectRatio: { kind: 'auto' },
+  verticalAlign: { kind: 'keyword', value: 'baseline' },
   grid: null,
   gridItem: null,
 };
 
-export function box(id: string, style: Partial<LayoutStyle>, children: LayoutBox['children'][number][] = []): LayoutBox {
-  return { kind: 'box', id, boxType: 'element', style: { ...divStyle, ...style }, children };
+type Child = LayoutBox | ReplacedLeaf | InlineChild;
+
+/** The strut the compiler writes for inline content: the container's font and line-height, here its first text leaf's (or 10px Ahem). */
+export function strutFor(children: readonly Child[]): LineStrut | null {
+  if (!children.some((c) => c.kind === 'text' || c.kind === 'inline' || c.kind === 'br')) return null;
+  const first = firstLeaf(children);
+  return first === null ? { font: ahemFont(10), lineHeight: { kind: 'normal' } } : { font: first.font, lineHeight: first.lineHeight };
 }
 
-export function anon(id: string, style: Partial<LayoutStyle>, children: (LayoutBox | TextLeaf)[] = []): LayoutBox {
-  return { kind: 'box', id, boxType: 'anonymous', style: { ...divStyle, ...style }, children };
+function firstLeaf(children: readonly Child[]): TextLeaf | null {
+  for (const c of children) {
+    if (c.kind === 'text') return c;
+    if (c.kind === 'inline') {
+      const t = firstLeaf(c.children);
+      if (t !== null) return t;
+    }
+  }
+  return null;
+}
+
+export function box(id: string, style: Partial<LayoutStyle>, children: Child[] = [], strut: LineStrut | null = strutFor(children)): LayoutBox {
+  return { kind: 'box', id, boxType: 'element', style: { ...divStyle, ...style }, strut, children };
+}
+
+export function anon(id: string, style: Partial<LayoutStyle>, children: Child[] = [], strut: LineStrut | null = strutFor(children)): LayoutBox {
+  return { kind: 'box', id, boxType: 'anonymous', style: { ...divStyle, ...style }, strut, children };
+}
+
+/** An inline box (display inline) with a 10px Ahem font and line-height normal unless given. */
+export function span(id: string, children: InlineChild[], over: Partial<Omit<InlineBox, 'kind' | 'id' | 'children'>> = {}): InlineBox {
+  return { kind: 'inline', id, style: { ...divStyle, display: 'inline' }, font: ahemFont(10), lineHeight: { kind: 'normal' }, children, ...over };
+}
+
+/** A <br> with a 10px Ahem font and line-height normal unless given. */
+export function br(id: string, over: Partial<Omit<LineBreak, 'kind' | 'id'>> = {}): LineBreak {
+  return { kind: 'br', id, font: ahemFont(10), lineHeight: { kind: 'normal' }, ...over };
 }
 
 /** A 10px Ahem text leaf, already collapsed, with the inherited text properties the compiler writes onto it. */

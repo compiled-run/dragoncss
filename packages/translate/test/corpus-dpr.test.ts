@@ -66,6 +66,7 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
     expect(n['calc-goldens']).toBeGreaterThan(0);
     expect(n['engine-calc']).toBe(CALC_SPEC.engineCalc);
     expect(n['units-calc']).toBe(CALC_SPEC.unitsPerFunction * UNITS_CALC_FUNCTIONS.length);
+    expect(n['engine-inline']).toBe(3000);
     expect(n['engine-overflow']).toBe(OVERFLOW_SPEC.engineOverflow);
     expect(x.engineSplit.threw + x.engineSplit.harnessError).toBe(0);
   });
