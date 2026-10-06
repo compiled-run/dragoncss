@@ -407,7 +407,7 @@ describe('PNT1 opacity: fractions are proven on web only', () => {
       const lanes = nativeCompile(spec, c.environment.direction);
       expect(laneOnlyNative(lanes, 'ios'), c.id).toBe(true);
       expect(laneOnlyNative(lanes, 'android'), c.id).toBe(true);
-      const user = createProjectWith({ projectId: 'opacity-web', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: c.environment.direction }).compile(fixtureInput(spec));
+      const user = createProjectWith({ projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: c.environment.direction }).compile(fixtureInput(spec));
       const errs = user.diagnostics.filter((d) => d.severity === 'error');
       expect(errs.length, c.id).toBeGreaterThan(0);
       for (const d of errs) expect([d.target, d.message], c.id).toEqual(['ios', expect.stringMatching(/^ow-[a-z]+ has opacity [0-9.]+; ios composites a translucent view with its own rounding/)]);
