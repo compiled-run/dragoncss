@@ -9,23 +9,19 @@ import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, HIT_
 import { nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
 import { hitCaseIds, nativeTargets } from '../src/targets.ts';
+import { INLINE_OUT, INLINE_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
 
 const cases = hitCases();
 
 describe('the host hit lane', () => {
-  // The hit lane leaves out the union of two refusals, each by name: PNT2's transform-writing cases (until SELD-R2b T146) and
-  // INL1a's inline-box and <br> cases (rt-hit.ts hitRefusal). Taking either alone would bring the other's cases back.
-  const INLINE_OUT = [
-    'inline-mixed-sizes', 'inline-mixed-sizes-rtl', 'inline-empty-boxes', 'inline-empty-boxes-rtl', 'inline-br', 'inline-br-rtl', 'inline-box-boundaries',
-    'inline-box-boundaries-rtl', 'inline-box-hyphen', 'inline-tags', 'inline-tags-rtl', 'inline-baselines', 'inline-baselines-rtl',
-  ];
+  // The hit lane leaves out the union of two refusals (hit-refusals.ts); taking either alone would bring the other's cases back.
   const transformed = (): string[] => nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform'))).map((n) => n.case.id);
   it('leaves out exactly the union of the transform cases and the INL1a inline-box and <br> fixtures, each with a named reason', () => {
     const hit = new Set(cases.map((n) => n.case.id));
     const out = nativeCases().filter((n) => !hit.has(n.case.id));
     const union = new Set([...transformed(), ...INLINE_OUT]);
     expect(out.map((n) => n.case.id)).toEqual(nativeCases().map((n) => n.case.id).filter((id) => union.has(id)));
-    for (const n of out.filter((x) => INLINE_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(/is (an inline box|a <br>), which the hit table does not model yet/);
+    for (const n of out.filter((x) => INLINE_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(INLINE_REASON);
     // The device-hit lane declares exactly the hit cases at every device DPR (targets.ts hitCaseIds), so P5 counts them, not all.
     expect(hitCaseIds()).toEqual(cases.map((n) => n.case.id));
     for (const t of nativeTargets()) for (const s of t.lanes.find((l) => l.lane === 'device-hit')?.sets ?? []) expect(s.ids, `${t.target} ${s.dpr}`).toEqual(hitCaseIds());
@@ -48,8 +44,8 @@ describe('the host hit lane', () => {
     expect(refused.filter((r) => moved.has(r.id)).map((r) => r.id)).toEqual(transformed());
     expect(moved.size).toBeGreaterThan(0);
     for (const r of refused) {
-      if (moved.has(r.id)) expect(r.reason, r.id).toMatch(/^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/);
-      else expect([INLINE_OUT.includes(r.id), r.reason], r.id).toEqual([true, expect.stringMatching(/is (an inline box|a <br>), which the hit table does not model yet/)]);
+      if (moved.has(r.id)) expect(r.reason, r.id).toMatch(TRANSFORM_REASON);
+      else expect([INLINE_OUT.includes(r.id), r.reason], r.id).toEqual([true, expect.stringMatching(INLINE_REASON)]);
     }
     const covered = new Set(cases.map((n) => n.case.id));
     for (const r of refused) expect(covered.has(r.id), r.id).toBe(false);
