@@ -289,15 +289,13 @@ export async function captureResize(browser: Browser, c: ResizeCase, dpr: number
         }
       }
     };
-    // MQ-R2: an env step switches touch emulation (pointer and hover, M7) or emulates prefers-reduced-motion, on the live page.
+    // MQ-R2: an env step switches touch emulation (pointer and hover, M7) or emulates prefers-reduced-motion, on the live page. The
+    // overrides belong to the CDP session that set them (a detached session's are cleared), so one session holds them to the end.
+    let emulation: Awaited<ReturnType<ReturnType<typeof page.context>['newCDPSession']>> | null = null;
     const emulate = async (s: ResizeStep & { kind: 'env' }): Promise<void> => {
-      const cdp = await page.context().newCDPSession(page);
-      try {
-        if (s.reading === 'pointer') await cdp.send('Emulation.setTouchEmulationEnabled', s.value === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
-        else await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: s.value }] });
-      } finally {
-        await cdp.detach();
-      }
+      emulation ??= await page.context().newCDPSession(page);
+      if (s.reading === 'pointer') await emulation.send('Emulation.setTouchEmulationEnabled', s.value === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
+      else await emulation.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: s.value }] });
     };
     await dump(first.size);
     for (let i = 0; i < c.script.steps.length; i++) {
