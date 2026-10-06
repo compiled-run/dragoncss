@@ -13,14 +13,16 @@ import { deviceDprs } from '../src/targets.ts';
 describe('the state programs of every tree fixture with states', () => {
   it('covers the tree fixtures with free states, both directions, within the 64-assignment table', () => {
     const groups = stateGroups();
-    // Derived-count pins: 12 tree fixtures with free states, each in ltr and rtl (MQ-R1 added mqr-state-band).
+    // Derived-count pins: 13 tree fixtures with free states, each in ltr and rtl (MQ-R1 added mqr-state-band, and its runtime slice
+    // mqr-rotate, device-env's fixture: 2 assignments per direction).
     expect(groups.map((g) => g.id)).toEqual([
       'tree-switch-two-instances', 'tree-switch-two-instances-rtl', 'tree-correlated-state', 'tree-correlated-state-rtl', 'tree-controlled-aliases', 'tree-controlled-aliases-rtl',
       'tree-branch-arms', 'tree-branch-arms-rtl', 'tree-slot-projection', 'tree-slot-projection-rtl', 'tree-nested-instances', 'tree-nested-instances-rtl',
       'tree-attribute-equality', 'tree-attribute-equality-rtl', 'tree-projected-text', 'tree-projected-text-rtl', 'tree-position-toggle', 'tree-position-toggle-rtl',
       'tree-selectors-state', 'tree-selectors-state-rtl', 'tree-var-state', 'tree-var-state-rtl', 'mqr-state-band', 'mqr-state-band-rtl',
+      'mqr-rotate', 'mqr-rotate-rtl',
     ]);
-    expect(groups.reduce((n, g) => n + g.cases.length, 0)).toBe(130);
+    expect(groups.reduce((n, g) => n + g.cases.length, 0)).toBe(134);
     for (const g of groups) expect(g.cases.length).toBeLessThanOrEqual(64);
   });
 
@@ -32,9 +34,9 @@ describe('the state programs of every tree fixture with states', () => {
   it('equals every per-case program, and every script ends on its end assignment at every device DPR', () => {
     const r = checkStates();
     expect(r.failures).toEqual([]);
-    expect({ groups: r.groups, assignments: r.assignments, scripts: r.scripts }).toEqual({ groups: 24, assignments: 260, scripts: 260 });
-    // Per backend: 130 delta comparisons, and 130 scripts at ios 2 and 3 or android 2, 2.625 and 3.
-    expect(r.compared).toBe(130 + 130 * deviceDprs('ios').length + 130 + 130 * deviceDprs('android').length);
+    expect({ groups: r.groups, assignments: r.assignments, scripts: r.scripts }).toEqual({ groups: 26, assignments: 268, scripts: 268 });
+    // Per backend: 134 delta comparisons, and 134 scripts at ios 2 and 3 or android 2, 2.625 and 3.
+    expect(r.compared).toBe(134 + 134 * deviceDprs('ios').length + 134 + 134 * deviceDprs('android').length);
   });
 
   it('derives A to B to A scripts with a virtual-clock frame between the legs', () => {
@@ -124,10 +126,12 @@ describe('the host apps carry the case scripts', () => {
       }
       const main = files.find((f) => f.path === (target === 'ios' ? 'Host/main.swift' : 'kotlin/dev/dragon/host/DragonActivity.kt'))?.text ?? '';
       // A script runs on a state mount (every setter re-renders the stage), and an id in both tables fails (Macroscope 4157246848).
-      expect(main).toContain(target === 'ios' ? 'let mount = DragonStateMount(machine: script.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge)\n    script.run(mount.machine)\n    tree = mount.tree' : 'val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge)\n      script.run(mount.machine)\n      tree = mount.tree');
+      // MQ-R1: the mount's media root starts at the script's start size and the script runs on the mount (its resize steps size it).
+      expect(main).toContain(target === 'ios' ? 'let mount = DragonStateMount(machine: script.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge, size: script.start)\n    script.run(mount)\n    mountedMedia = mount.media' : 'val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge, script.start)\n      script.run(mount)\n      mountedMedia = mount.media');
+      expect(main).toContain(target === 'ios' ? '    tree = mount.tree' : '      tree = mount.tree');
       expect(main).toContain('is both a layout case and a case script');
       expect(main).not.toContain('merging(dragonStateCaseTable)');
-      expect(emits.reduce((n, e) => n + e.scripts.length, 0)).toBe(130);
+      expect(emits.reduce((n, e) => n + e.scripts.length, 0)).toBe(134);
     }
   });
 
