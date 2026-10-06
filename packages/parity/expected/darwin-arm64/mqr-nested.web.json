@@ -93,7 +93,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 7.5px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -179,7 +182,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "200px 7px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -265,7 +271,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "10px 2px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -351,7 +360,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "5px 2px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     },
     {
@@ -437,7 +449,10 @@
         "pointer-events": "auto",
         "transform": "none",
         "transform-origin": "20px 2px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "stroke-width": "1px"
       }
     }
   ]
