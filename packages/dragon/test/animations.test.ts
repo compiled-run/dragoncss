@@ -255,9 +255,10 @@ describe('animation analysis', () => {
 describe('animation analysis audit', () => {
   it('gates a declaration in an @media band the native output is not resolved in, for web', () => {
     const ds = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' })
-      .compile(stated('@media (min-width: 9999px) { .a { transition: color 1s ease-in-out; } }')).diagnostics;
-    // ease-in-out has no web frame lane row (the other features of the declaration do, so they pass).
-    expect(ds.filter((d) => d.profile?.context === 'animation').map((d) => [d.target, d.profile?.feature])).toEqual([['web', 'transition-timing-function:ease-in-out']]);
+      .compile(stated('@media (min-width: 9999px) { .a { transition: color 1s; transition-delay: inherit; } }')).diagnostics;
+    // A CSS-wide keyword has no web frame lane row (ANIM-b2 proved ease-in-out, the feature this used before; the other features
+    // of the declarations have rows, so they pass).
+    expect(ds.filter((d) => d.profile?.context === 'animation').map((d) => [d.target, d.profile?.feature])).toEqual([['web', 'transition-delay:inherit']]);
   });
 
   it('refuses a computed font size that is not px instead of assuming 16px', () => {

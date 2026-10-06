@@ -7,12 +7,12 @@ import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CaseReference, DeviceCheckLane, FailureKind, TrustCase } from '../src/device-lanes.ts';
-import { blankCapture, captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, isSampleRule, readDump, splitByLines, STAGE_RGBA, trustFailuresOf } from '../src/device-lanes.ts';
-import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
+import { blankCapture, captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, isSampleRule, plantVerdict, readDump, splitByLines, STAGE_RGBA, trustFailuresOf } from '../src/device-lanes.ts';import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
 import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSamples } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { androidCommands, appCacheKey, casesCodeProblems, expand, hostSources, iosCommands, iosModules, nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
+import { PLANT_RULES } from '../src/device-run.ts';
 import { repoPath } from '../src/paths.ts';
 import { casePoints, expectedPixelsPath, rasterSize } from '../src/pixel-reference.ts';
 import type { NativeTarget } from '../src/targets.ts';
@@ -270,6 +270,23 @@ describe('the node and line split of (a) and (d)', () => {
 });
 
 const trustCase = (n: NativeCase, dpr: number): TrustCase => ({ id: n.case.id, points: casePoints(n.programs.uikit, n.case.environment.viewport, dpr), size: rasterSize(n.case.environment.viewport, dpr) });
+
+describe('the paint plant verdict', () => {
+  const f = (lane: DeviceCheckLane, kind: FailureKind, node: string | null) => ({ lane, case: 'radius-basic', dpr: 3, node, kind, detail: 'x' });
+  const radius = PLANT_RULES['radius-square'];
+  const hit = f('device-pixels', 'pixel', 'radius:r1:top-left:0');
+  it('caught: a pixel failure on a probe rule with frames and lines clean and the host finished', () => {
+    expect(plantVerdict([hit], null, radius)).toMatchObject({ caught: true, pixels: 1, inked: 1 });
+  });
+  it('not caught: the host did not finish, only other rules failed, a non-pixel kind, or frames or lines failed too', () => {
+    expect(plantVerdict([hit], 'timed out', radius).caught).toBe(false);
+    expect(plantVerdict([f('device-pixels', 'pixel', 'edge:w1:bottom')], null, radius).caught).toBe(false);
+    expect(plantVerdict([f('device-pixels', 'raster-size', 'radius:r1:top-left:0')], null, radius).caught).toBe(false);
+    expect(plantVerdict([hit, f('device-frames', 'frame-engine', 'w1')], null, radius).caught).toBe(false);
+    expect(plantVerdict([hit, f('device-lines', 'break-mismatch', 'w1:text0')], null, radius).caught).toBe(false);
+    expect(plantVerdict([], null, radius).caught).toBe(false);
+  });
+});
 
 describe('capture trust', () => {
   it('in-app samples equal the OS screenshot at the root offset; a one-row offset error is caught', () => {

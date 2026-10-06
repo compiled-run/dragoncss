@@ -20,6 +20,7 @@ const NATIVE = { ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
 /** The CSS of each entry, appended to BASE; the reference document blanks it with spaces, so every offset stays the same. */
 const CASES: Record<string, string> = {
   cursor: '.a { cursor: pointer; }',
+  'scroll-behavior': '.a { scroll-behavior: smooth; }',
 };
 
 function compile(css: string, targets: object) {
@@ -48,7 +49,7 @@ describe('the not-applicable list', () => {
   it('has a test document for exactly the listed entries, each with a reason', () => {
     expect(NOT_APPLICABLE_NATIVE.map((e) => e.name).sort()).toEqual(Object.keys(CASES).sort());
     for (const e of NOT_APPLICABLE_NATIVE) expect(e.reason.length, e.name).toBeGreaterThan(20);
-    expect(NOT_APPLICABLE_NATIVE.map((e) => e.name)).toEqual(['cursor']);
+    expect(NOT_APPLICABLE_NATIVE.map((e) => e.name)).toEqual(['cursor', 'scroll-behavior']);
   });
 
   for (const [name, extra] of Object.entries(CASES)) {

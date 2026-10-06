@@ -15,6 +15,7 @@ import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
+import { PAINT_VALUES } from './paint-values/index.ts';
 import { environmentOf, valueToString } from './resolve.ts';
 import { checkTransformContexts } from './paint-values/transform.ts';
 
@@ -286,6 +287,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here) checkInlineLevel(el, targets, diagnostics, reported);
+    // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
+    if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported);
     for (const c of el.children) if (c.kind === 'element') walk(c, here);
   };
   walk(root, false);

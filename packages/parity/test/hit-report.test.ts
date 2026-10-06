@@ -8,6 +8,7 @@ import { NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
 import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, hitRefusedCases, tapTarget } from '../src/hit-capture.ts';
 import { nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
+import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 
 const cases = hitCases();
 
@@ -22,12 +23,12 @@ describe('the host hit lane', () => {
     }
   });
 
-  it('refuses by name exactly the cases whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), never mis-hitting them', () => {
+  it('refuses by name exactly the cases whose program writes a transform (T064 R13; SELD-R2b T146 lifts it) or rounds a corner (PNT1), never mis-hitting them', () => {
     const refused = hitRefusedCases();
     const transformed = nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform'))).map((n) => n.case.id);
-    expect(refused.map((r) => r.id)).toEqual(transformed);
+    expect(refused.map((r) => r.id)).toEqual(nativeCases().map((n) => n.case.id).filter((id) => transformed.includes(id) || RADIUS_OUT.includes(id)));
     expect(transformed.length).toBeGreaterThan(0);
-    for (const r of refused) expect(r.reason, r.id).toMatch(/^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/);
+    for (const r of refused) expect(r.reason, r.id).toMatch(RADIUS_OUT.includes(r.id) ? RADIUS_REASON : /^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/);
     const covered = new Set(cases.map((n) => n.case.id));
     for (const r of refused) expect(covered.has(r.id), r.id).toBe(false);
     expect(cases.length + refused.length).toBe(nativeCases().length);

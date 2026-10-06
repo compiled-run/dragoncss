@@ -158,7 +158,7 @@ public final class DragonStateMachine {
       let v = t.boxNode(n.id, parent: n.parent, kind: n.kind)
       for w in n.writes {
         switch w {
-        case .background(let c): v.backgroundColor = dragonUIColor(c)
+        case .background(let c): dragonBackground(v, c)
         case .borderStyles(let s): v.dragonBorderStyles = s
         case .borderColors(let c): v.dragonBorderColors = c
         case .clip: v.dragonEnableClip()
@@ -470,6 +470,9 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'foreign-view':
         // REPL-a draws an image or hosts a web view from its own paint stage; the state runtime does not rebuild either yet.
         throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
+      case 'border-radius':
+        // The state runtime has no writer for these yet (PNT1 paints them from the program); a case script would drop them.
+        throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;
