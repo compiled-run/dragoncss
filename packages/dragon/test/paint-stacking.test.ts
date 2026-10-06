@@ -141,6 +141,10 @@ describe('Appendix E paint order', () => {
     }
     const flex = stackingOf(n('html', {}, n('body', {}, n('C', { clips: true }, n('F', {}, n('O', { z: 2 }, n('I', { position: 'absolute' })))))));
     expect(flex.clipped).toEqual([{ id: 'I', clip: 'C', kind: 'clip' }]);
+    // The root's clip is the viewport's, which clips every box: a fixed box hosted under it is right, one taken into C is not.
+    const root = stackingOf(n('html', { clips: true }, n('body', {}, n('F', { position: 'fixed', z: 3 }), n('C', { clips: true }, n('O', { opacity: 0.5 }, n('G', { position: 'fixed' }))))));
+    expect(root.facts.get('F')).toMatchObject({ host: 'html', clipChain: ['html'] });
+    expect(root.clipped).toEqual([{ id: 'G', clip: 'C', kind: 'clip' }]);
     // A positioned O is I's containing block, so C clips I in Chrome too: nothing to report.
     const positioned = stackingOf(n('html', {}, n('body', {}, n('C', { clips: true }, n('O', { opacity: 0.5, position: 'relative' }, n('I', { position: 'absolute' }))))));
     expect(positioned.facts.get('I')?.clipChain).toEqual(['C']);

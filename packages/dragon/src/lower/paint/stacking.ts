@@ -91,10 +91,13 @@ function layerOf(i: Info): StackLayer {
 }
 
 /**
- * Whether a is in d's containing-block chain (CSS2 §10.1): a static, relative or sticky box's block is its parent, an absolute one's
- * the nearest positioned ancestor, and a fixed one's the viewport, so no ancestor's clip applies to it.
+ * Whether a's clip applies to d through d's containing-block chain (CSS2 §10.1): a static, relative or sticky box's block is its
+ * parent, an absolute one's the nearest positioned ancestor, and a fixed one's the viewport, so no ancestor's clip but the root's
+ * applies to it.
  */
 function inBlockChain(a: Info, d: Info): boolean {
+  // The root's overflow is the viewport's (css-overflow-3 §3.3), whose clip applies to every box, fixed ones included.
+  if (a.parent === null) return true;
   for (let x: Info | null = d; x !== null && x.parent !== null; ) {
     if (x.node.position === 'fixed') return false;
     let cb: Info | null = x.parent;
