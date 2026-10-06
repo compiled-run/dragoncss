@@ -74,6 +74,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       if (f.includes(`${join('src', 'fonts')}${sep}`)) continue;
       // The forms port Blink's Decimal and geometry math (LayoutUnit truncation), so src/forms/** is exempt by path.
       if (f.includes(`${join('src', 'forms')}${sep}`)) continue;
+      // MQ-R0: media/viewport.ts reproduces Chrome's measured media size (float32 size, device px, int orientation and aspect-ratio read); only that file.
+      if (f.endsWith(join('src', 'media', 'viewport.ts'))) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });
@@ -164,7 +166,8 @@ describe('the web emitter and the inset longhands', () => {
 describe('rec4: the unsupported at-rule fix is manual and never deletes the enclosed rules', () => {
   it('DRAGON_UNSUPPORTED_AT_RULE carries a manual fix; applyFix changes no text', () => {
     expect(CATALOGUE.DRAGON_UNSUPPORTED_AT_RULE.fix.kind).toBe('manual');
-    const css = `${FONT} @media (min-width: 1px) { .a { width: 80px; } }`;
+    // A width @media is native too since MQ-R1, so the at-rule here is one every target refuses.
+    const css = `${FONT} @container (min-width: 1px) { .a { width: 80px; } }`;
     const input = inputFor(css, (r) => [div(r, 'a', ['a'])]);
     const d = project().compile(input).diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_AT_RULE');
     if (d === undefined || d.fix === null) throw new Error('no at-rule diagnostic');

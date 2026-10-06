@@ -10,6 +10,7 @@ import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
 import { colorChannels, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
 import { rootFontSizeOf } from './lower/ios-layout.ts';
+import type { InteractionPartition } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
@@ -82,11 +83,29 @@ export type LayoutProjection =
   | { readonly kind: 'ready'; readonly input: LayoutInput }
   | { readonly kind: 'blocked'; readonly reason: string };
 
-function caseOf(compiled: object, assignment: Assignment): InternalCase | string {
+/**
+ * One case, or one of its interaction states (SELD-R2a) when state names a partition state key: the state's resolution and
+ * lowering replace the case's. null is the case itself (the none state).
+ */
+function caseOf(compiled: object, assignment: Assignment, state: string | null = null): InternalCase | string {
   const record = internalRecord(compiled);
   if (record === undefined) return 'not a compiled result from this package';
   const c = caseByAssignment(record, assignment);
-  return c === undefined ? `no reachable case for the assignment ${JSON.stringify(assignment)}` : c;
+  if (c === undefined) return `no reachable case for the assignment ${JSON.stringify(assignment)}`;
+  if (state === null) return c;
+  const i = c.interaction.find((x) => x.value.key === state);
+  return i === undefined ? `no interaction state ${state} in the case ${JSON.stringify(assignment)}` : { ...c, resolved: i.resolved, nativeLowered: i.nativeLowered };
+}
+
+/** The interaction partition of one case (SELD-R2a): its candidates, its states but none and its per-element state tables. */
+export function interactionPartitionOf(compiled: object, assignment: Assignment): InteractionPartition | null {
+  const c = caseOf(compiled, assignment);
+  return typeof c === 'string' ? null : c.partition;
+}
+
+/** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
+export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
+  return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
 }
 
 /** Dragon's reachable assignments, in its enumeration order, with the initial case marked. */
@@ -99,8 +118,8 @@ export function compiledCases(compiled: object): readonly { readonly assignment:
  * The native layout projection of one case for one environment, shared by every native target (native-strategy.md 3.9 item 13):
  * one lowered tree from the checked native output, so ios and android lay out the same engine input.
  */
-export function nativeLayoutProjection(compiled: object, environment: Environment, assignment: Assignment): LayoutProjection {
-  const c = caseOf(compiled, assignment);
+export function nativeLayoutProjection(compiled: object, environment: Environment, assignment: Assignment, state: string | null = null): LayoutProjection {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
   if (record.direction !== environment.direction) return { kind: 'blocked', reason: `the result was resolved for direction ${record.direction}, not ${environment.direction}` };
@@ -145,8 +164,8 @@ export function webClassMap(compiled: object, assignment: Assignment): ReadonlyM
 export type { ElementColors } from './lower/native-program.ts';
 
 /** Dragon's resolved colour channels per element address in one case; null when the case did not resolve. */
-export function resolvedColors(compiled: object, assignment: Assignment): ReadonlyMap<string, ElementColors> | null {
-  const c = caseOf(compiled, assignment);
+export function resolvedColors(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, ElementColors> | null {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, ElementColors>();
   const walk = (el: ResolvedElement): void => {
@@ -209,8 +228,8 @@ export function textTopology(compiled: object, assignment: Assignment): readonly
 }
 
 /** Dragon's resolved colour channels of every laid-out text node in one case, keyed by text address. */
-export function resolvedTextColors(compiled: object, assignment: Assignment): ReadonlyMap<string, Rgba8> | null {
-  const c = caseOf(compiled, assignment);
+export function resolvedTextColors(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, Rgba8> | null {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, Rgba8>();
   const walk = (el: ResolvedElement): void => {
@@ -232,19 +251,28 @@ export type NativePrograms =
   | { readonly kind: 'blocked'; readonly reason: string };
 
 /**
+ * The elements whose transform changes at run time: between any two reachable assignments, and (MQ-R1) between any two @media
+ * bands, since native switches bands at run time; so an img under one gets the direct draw in every band's program. Transitions and
+ * animations come from the fold band's analysis: native refuses those that differ between bands.
+ */
+function movingOf(record: NonNullable<ReturnType<typeof internalRecord>>): ReadonlySet<string> {
+  const resolved = record.bands === null ? record.cases.map((x) => x.resolved) : record.bands.cases.flat().map((x) => x.resolved);
+  return movingTransforms(resolved, record.animation);
+}
+
+/**
  * Both native backends' lowered programs of one case (docs/research/native-strategy.md 1.1): from the one nativeLowered tree and
  * the case's resolved paint values. Ready only when the result configures and checks both ios and android.
  */
-export function nativePrograms(compiled: object, assignment: Assignment): NativePrograms {
-  const c = caseOf(compiled, assignment);
+export function nativePrograms(compiled: object, assignment: Assignment, state: string | null = null): NativePrograms {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   const targets = (compiled as { targets?: Record<string, string> }).targets ?? {};
   for (const t of ['ios', 'android']) if (targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} target is ${targets[t] === undefined ? 'not configured' : targets[t]}` };
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
   try {
     const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
-    const moving = movingTransforms(record.cases.map((x) => x.resolved), record.animation);
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, moving) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record)) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -268,8 +296,8 @@ export const ACTIVATION_TAGS: readonly string[] = ['a', 'button'];
 const activates = (tag: string, attributes: ReadonlyMap<string, string>): boolean => tag === 'button' || (tag === 'a' && attributes.has('href'));
 
 /** Every element's hit facts in one case: computed pointer-events, whether it was inherited, and whether it has a handler. */
-export function hitFacts(compiled: object, assignment: Assignment): ReadonlyMap<string, import('./emit/runtime/hit.ts').HitFact> | null {
-  const c = caseOf(compiled, assignment);
+export function hitFacts(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, import('./emit/runtime/hit.ts').HitFact> | null {
+  const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, import('./emit/runtime/hit.ts').HitFact>();
   const walk = (el: ResolvedElement): void => {
@@ -310,3 +338,84 @@ export function animationFeatures(compiled: object): readonly string[] {
   if (record === undefined || record.animation === null) return [];
   return [...new Set(record.animation.features.map((f) => f.feature))].sort();
 }
+
+// MQ-R1 (notes/T067-mq-r-spec.md R4, R5): the @media bands of the native output, their per-case programs and the band program.
+export type { BandAnalysis, BandCase, BandRuntimeFaults } from './lower/band-program.ts';
+export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
+export type { InternalBands } from './project.ts';
+export { MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
+import { bandStateProgram as deriveBandProgram } from './lower/band-program.ts';
+import { assignmentKey as keyOfAssignment } from './analysis/link.ts';
+import { bandAt as partitionBandAt } from './media/index.ts';
+import { MEDIA_AT_RULE_FEATURE as MEDIA_AT_RULE_FEATURE_KEY, mediaFeatureKey as mediaFeatureKeyOf } from './project.ts';
+import type { BandRuntimeFaults } from './lower/band-program.ts';
+import type { StateFaults, StateProgram } from './lower/state-program.ts';
+
+/** The @media bands of a compile's native output: the band table, each band's condition and the per-case programs' band; null without @media. */
+export function nativeBands(compiled: object): { readonly table: import('@dragon/layout').rtBand.BandTable; readonly conditions: readonly string[]; readonly initial: number } | null {
+  const record = internalRecord(compiled);
+  if (record === undefined || record.bands === null) return null;
+  return { table: record.bands.table, conditions: record.bands.conditions, initial: record.bands.initial };
+}
+
+/** The media profile keys a compile's native output uses (T067 R13): the at-rule and each atom's feature, sorted; none without @media. */
+export function mediaFeatures(compiled: object): readonly string[] {
+  const bands = nativeBands(compiled);
+  if (bands === null || bands.table.atoms.length === 0) return [];
+  return [MEDIA_AT_RULE_FEATURE_KEY, ...[...new Set(bands.table.atoms.map((a) => a.feature))].map(mediaFeatureKeyOf)].sort();
+}
+
+/**
+ * The band that holds a viewport by the compile-time partition (media/band.ts bandAt over CSS px): the independent reference the
+ * runtime's band lookup is checked against; 0 without @media, null when no band holds it (only a planted partition leaves a gap).
+ */
+export function nativeBandOfViewport(compiled: object, viewport: { readonly width: number; readonly height: number }): number | null {
+  const record = internalRecord(compiled);
+  if (record === undefined) throw new Error('not a compiled result from this package');
+  if (record.bands === null) return 0;
+  return partitionBandAt(record.bands.partition, viewport)?.index ?? null;
+}
+
+/** Both native backends' programs of one case in one band (nativePrograms for the per-case programs' own band). */
+export function nativeBandPrograms(compiled: object, assignment: Assignment, band: number): NativePrograms {
+  const record = internalRecord(compiled);
+  if (record === undefined) return { kind: 'blocked', reason: 'not a compiled result from this package' };
+  if (record.bands === null) return band === 0 ? nativePrograms(compiled, assignment) : { kind: 'blocked', reason: `the compile has no @media bands, so no band ${band}` };
+  const cases = record.bands.cases[band];
+  if (cases === undefined) return { kind: 'blocked', reason: `no band ${band} (the compile has ${record.bands.cases.length})` };
+  const targets = (compiled as { targets?: Record<string, string> }).targets ?? {};
+  for (const t of ['ios', 'android']) if (targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} target is ${targets[t] === undefined ? 'not configured' : targets[t]}` };
+  const key = keyOfAssignment(assignment);
+  const c = cases.find((x) => x.key === key);
+  if (c === undefined) return { kind: 'blocked', reason: `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}` };
+  if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: `the case has no native lowering in band ${band}` };
+  try {
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record)) };
+  } catch (e) {
+    if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
+    throw e;
+  }
+}
+
+/**
+ * The band program of a compile for one backend: every reachable (assignment, band) pair's programs, env#band last, the initial
+ * assignment in the per-case programs' band first. A compile without @media is one band.
+ */
+export function nativeBandProgram(compiled: object, backend: NativeBackend, faults?: StateFaults, bandFaults?: BandRuntimeFaults): StateProgram {
+  const bands = nativeBands(compiled);
+  const count = bands === null ? 1 : bands.table.bands.length;
+  const cases = compiledCases(compiled).flatMap((c) => Array.from({ length: count }, (_, band) => {
+    const p = nativeBandPrograms(compiled, c.assignment, band);
+    if (p.kind !== 'ready') throw new Error(`no native programs for ${JSON.stringify(c.assignment)} in band ${band}: ${p.reason}`);
+    return { assignment: c.assignment, isInitial: c.isInitial, band, program: p.programs[backend] };
+  }));
+  return deriveBandProgram(backend, cases, count, bands === null ? 0 : bands.initial, faults, bandFaults);
+}
+
+// SELD-R2 (notes/T064-seld-r2-spec.md): interaction states, their partition and the generated web conditions.
+export type { ChainValue, FocusValue, ForcedPseudo, InteractionElement, InteractionKind, InteractionPartition, InteractionValue, StateMatch } from './analysis/interaction.ts';
+export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledFact, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
+export type { InteractionState } from './analysis/match.ts';
+export { NO_INTERACTION } from './analysis/match.ts';
+export type { InteractionCondition, WebInteraction } from './emit/web-css.ts';
+export { conditionsExclusive, gatedConditions, HOVER_MEDIA, interactionCondition, NO_HOVER_MEDIA } from './emit/web-css.ts';

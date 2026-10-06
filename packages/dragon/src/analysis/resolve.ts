@@ -2,6 +2,8 @@
 // the tree; the tag table is elements.ts, selector matching match.ts, the cascade cascade.ts and value computation computed.ts,
 // all re-exported here so existing imports keep working.
 import { perturbColor } from '../css/color.ts';
+import { envAsZero } from '../css/env.ts';
+import { ENV_VALUE_TYPE } from '../css/values.ts';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
@@ -18,6 +20,8 @@ import { isRangeType } from './elements/controls.ts';
 import { RANGE_UA_SHADOW } from '../forms/ua-shadow.generated.ts';
 import type { RangePart } from '../css/selectors.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
+import type { InteractionState } from './match.ts';
+import { NO_INTERACTION } from './match.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
 
@@ -93,9 +97,10 @@ const displayOf = (el: ResolvedElement): string => {
   return v.kind === 'keyword' ? v.value : '';
 };
 
-// css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand.
+// css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand. interaction:
+// the hovered and focused elements the selectors match against (SELD-R2a); none by default.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
-export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment): ResolvedElement {
+export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState = NO_INTERACTION): ResolvedElement {
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
   const customsOf = new WeakMap<ResolvedElement, CustomProperties>();
@@ -103,7 +108,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     // A range part cascades its pseudo-element's rules on the input's chain (chain ends with the input); it has no chain of its own.
     const here = part === null ? [...chain, el] : chain;
     const cascadePart = part === null ? null : { name: PART_PSEUDO[part], direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
-    const { winners, matched, scope } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), cascadePart);
+    const { winners, matched, scope } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), cascadePart, interaction);
     const props = new Map<Longhand, ResolvedValue>();
     const tag = uaTagOf(el.tag, el.attributes.get('type'));
     const none = { declaration: null, declared: null, losing: [] } as const;
@@ -170,6 +175,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {
         props.set(p, { ...set, value: { ...set.value, value: perturbColor(set.value.value) } });
+      }
+      if (faults.envResolvedToZero && set.value.kind === 'other' && set.value.type === ENV_VALUE_TYPE) {
+        props.set(p, { ...set, value: { ...set.value, text: envAsZero(set.value.text) } });
       }
     }
     computeLengths(props, parentFontSize, rootFontSize);

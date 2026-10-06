@@ -17,9 +17,17 @@ Everything else here is a default you apply without asking.
 - One worktree, one branch. NO STACKS (owner, 2026-10-04): every new branch starts from origin/master, stays small
   (one theme, ~150 KB reviewed), and is built to land within about a day. If you need unlanded work, wait for it or
   have the PM fold it in; never build on top of an unlanded branch. Existing stacks drain as they are.
+  Exception (PM, 2026-10-05, so lanes don't idle behind the landing queue): once a parent PR is reviewed and in a landing
+  queue, you may prepare the next slice LOCALLY in a worktree based on the parent's queued head. Develop, run targeted
+  tests and even regen there, but never push it or open its PR until the parent has merged. Then merge origin/master in,
+  regen, and open the PR from master. If the parent's head changes, rebase your local prep onto the new head.
 - Develop with targeted `vitest run <files>` and `pnpm typecheck` (no queue needed).
 - At the end of the branch (owner, 2026-10-04: prove once, in the driver): one `pnpm regen` (through the queue),
   commit its outputs, run the targeted tests for what you touched plus `pnpm typecheck`, push, open the PR.
+  Always include the cross-cutting registry tests, which PR CI (ci.yml's platform-free set) does not run:
+  `packages/parity/test/chrome-ports.test.ts` (every Chrome citation is in docs/ports.json), both
+  `registry-claims.test.ts`, and the iOS and Android profile tests if you promote native rows.
+  Chrome-ports failed #197 at landing (2026-10-05).
   Do NOT run the full `pnpm test` locally: the landing driver runs it once on the merged tree, reruns failing
   files alone, and sends the PR back with the exact failing tests if any fail for real. A review round reruns
   only its targeted tests (plus regen if generator inputs changed). Don't rerun a step that passed.
@@ -27,7 +35,8 @@ Everything else here is a default you apply without asking.
   `gh workflow run regen-on-ci.yml -f branch=<branch>`). Wait for the github-actions[bot] commit "Regenerate on CI: pnpm regen
   (regen-on-ci)" or the run summary "already at a fixed point; no commit", then `git pull --ff-only`. Never push to the
   branch while a regen-on-ci run is in progress (its push would be refused; label again). A local regen through the queue
-  stays allowed when the runners are down or slow.
+  stays allowed when the runners are down or slow: if your regen-on-ci run has been queued for 15 minutes or more, run
+  `pnpm regen` locally through /tmp/job.sh instead (the Mac is mostly idle now), commit its outputs and push.
 - Catch up (`git merge origin/master`, then regen) only when GitHub says CONFLICTING, the driver asks,
   or your parent has merged. Never rebuild a branch as -v2: merge its parent forward.
 - Device-record tests that fail only for a missing device run are "device step pending"
@@ -40,6 +49,11 @@ Everything else here is a default you apply without asking.
 - A pinned test your change legitimately moves: retarget it, keep its intent, and list it. Since #125, registry,
   longhand, twin, suite and LGPL pins live in floor files (packages/*/test/*-floor.json, glyph-clearance-pins.json):
   a new entry is appended there (`DRAGON_FLOOR_WRITE=1` / `DRAGON_PIN_WRITE=1`; they never lower), not by editing a test.
+- Floor and pin files merge structurally (#183, merge=dragon-floor; run `pnpm setup:git` once per clone): a catch-up merge takes
+  the larger count and the union of names. A conflict it still leaves means a removed name, disagreeing orders or a pin changed on
+  both sides: resolve it by hand, never lower a floor, and state the reason.
+- Features register in per-feature files (#137/#138): codes/<feature>.ts, faults/<feature>.ts, one sorted GROUPS line,
+  scripts/regen-steps/<feature>.ts. Don't edit the central lists beyond one sorted line.
 - A Chrome/Skia/V8 citation: register it in docs/ports.json. LGPL files are class A
   (reference only, implement from spec, pin by test).
 - A generated output you add: give it a regen step (scripts/regen.ts plus .gitattributes) or a MANUAL entry.

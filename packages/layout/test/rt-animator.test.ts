@@ -1,12 +1,12 @@
 // T065 ANIM-b1 3b: the runtime animator's own rules on hand-built tables. Its equality with Chrome at every sample is the frame
 // lanes' (packages/parity anim-frames.test.ts); its translation is the animator suite's (packages/translate).
 import { describe, expect, it } from 'vitest';
-import type { LayoutInput } from '../src/input.ts';
+import type { ControlBox, LayoutInput } from '../src/input.ts';
 import { NO_RT_FAULTS } from '../src/rt-easing.ts';
 import type { AnimTables, EasingCode, ListingCode, ValueCode } from '../src/rt-animator.ts';
 import { animatorAdvance, animatorBusy, animatorEvent, animatorFrame, animatorStart, colorOf, frameColors, lengthBase, NO_ANIMATOR_FAULTS, patchInput } from '../src/rt-animator.ts';
 import { legacyColor, serializeColor, serializeValue } from '../src/rt-interpolate.ts';
-import { box, neutralEnvironment, pct, px } from './helpers.ts';
+import { box, control, divStyle, neutralEnvironment, pct, px } from './helpers.ts';
 
 const LINEAR: EasingCode = { kind: 'linear', x1: 0, y1: 0, x2: 0, y2: 0, steps: 1, position: 'end' };
 const NONE: ValueCode = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false };
@@ -52,6 +52,22 @@ describe('rt-animator', () => {
     expect(animatorBusy(s)).toBe(false);
   });
 
+  // REPL-a follow-up: an img or iframe is a replaced leaf, not a box; the animator read and patched only boxes, so a length
+  // animation on an img was dropped on native without a word.
+  it('reads and patches the lengths of a replaced leaf (img, iframe) as of a box', () => {
+    const leaf = (width: number) => ({ kind: 'replaced', id: 'i', style: { ...divStyle, width: px(width), marginLeft: pct(10) }, natural: { kind: 'image', width: 10, height: 8 }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: px(0), objectPositionY: px(0) }) as const;
+    const withImg = (width: number): LayoutInput => ({ viewport, devicePixelRatio: 1, ...neutralEnvironment(viewport), root: box('root', {}, [box('p', {}, [leaf(width) as never])]) });
+    expect(show(lengthBase(withImg(40), 'i', 'width') as never)).toBe('40px');
+    expect(show(lengthBase(withImg(40), 'i', 'margin-left') as never)).toBe('10%');
+    const v = { kind: 'length' as const, number: 0, length: { kind: 'px' as const, px: 25, percent: 0 }, color: { r: 0, g: 0, b: 0, alpha: 0 }, ops: [] };
+    const tables: AnimTables = { ...TABLES, slots: [{ ...(TABLES.slots[0] as AnimTables['slots'][number]), node: 'i' }] };
+    const patched = patchInput(withImg(40), [{ node: 'i', property: 'width', value: v }], tables);
+    const img = (patched.root.children[0] as ReturnType<typeof box>).children[0] as ReturnType<typeof leaf>;
+    expect(img.kind).toBe('replaced');
+    expect(img.style.width).toEqual({ kind: 'px', value: 25 });
+    expect(img.style.marginLeft).toEqual({ kind: 'percent', value: 10 });
+  });
+
   it('cancels a transition when its node goes away, and refuses an assignment or a step it does not have', () => {
     let s = animatorStart(TABLES, INPUTS, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
     s = animatorEvent(s, TABLES, INPUTS, 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
@@ -77,6 +93,22 @@ describe('rt-animator', () => {
     expect(a.marginLeft).toEqual({ kind: 'px', value: 7 });
     // A frame without lengths leaves the input as it is.
     expect(patchInput(INPUTS[0] as LayoutInput, [], TABLES)).toBe(INPUTS[0]);
+  });
+
+  it('reads and patches the lengths of a form control and of a box inside one, as of any box (FORM-a)', () => {
+    const inner = box('in', { paddingLeft: px(3) });
+    const button = control('btn', { kind: 'button-block' }, { width: px(40) }, [inner]);
+    const withControl: LayoutInput = { viewport, devicePixelRatio: 1, ...neutralEnvironment(viewport), root: { ...box('root', {}), children: [button] } };
+    expect(show(lengthBase(withControl, 'btn', 'width') as never)).toBe('40px');
+    expect(show(lengthBase(withControl, 'in', 'padding-left') as never)).toBe('3px');
+    const v = (n: number) => ({ kind: 'length' as const, number: 0, length: { kind: 'px' as const, px: n, percent: 0 }, color: { r: 0, g: 0, b: 0, alpha: 0 }, ops: [] });
+    const tables: AnimTables = { ...TABLES, slots: [], bases: [{ node: 'btn', property: 'width', kind: 'length', range: 'non-negative', values: [NONE, NONE, NONE] }, { node: 'in', property: 'padding-left', kind: 'length', range: 'non-negative', values: [NONE, NONE, NONE] }] };
+    const patched = patchInput(withControl, [{ node: 'btn', property: 'width', value: v(55) }, { node: 'in', property: 'padding-left', value: v(9) }], tables);
+    const c = patched.root.children[0] as ControlBox;
+    expect(c.kind).toBe('control');
+    expect(c.control).toEqual({ kind: 'button-block' });
+    expect(c.style.width).toEqual({ kind: 'px', value: 55 });
+    expect((c.children[0] as ReturnType<typeof box>).style.paddingLeft).toEqual({ kind: 'px', value: 9 });
   });
 
   it('draws colours with Chrome serialised channels and 8-bit alpha, and carries an animated colour to its closure', () => {

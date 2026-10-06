@@ -26,6 +26,7 @@ import { checkControlSubtree, checkOutOfFlowSiblings, isOutOfFlow, relativeOffse
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
 import type { TextMeasurer } from './text.ts';
+import { unsupported } from './unsupported.ts';
 
 /** Seeded engine errors, so the parity harness can prove it fails (docs/api.md §7). The product runs with NO_ENGINE_FAULTS. */
 export type EngineFaults = {
@@ -241,6 +242,9 @@ export function layoutContents(ctx: Ctx, node: LayoutBox | ControlBox, a: Conten
     const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
   }
+
+  // The grid engine (grid.ts) lands in the next GRID G1a package; the compiler has no profile row for display: grid until then.
+  if (s.display === 'grid') unsupported('grid-layout', box.id, 'css-grid-2 §12', 'grid layout (the grid engine is not in this build)');
 
   const canCollapseTop = !a.formattingContextRoot && bor.top === 0 && pad.top === 0;
   const r = layoutBlockFlow(ctx, box, {
@@ -470,7 +474,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     let inline: BlockLevelInline;
     let c: ContentsResult;
     // A replaced box is not a block container, so Blink places it as a new formatting context (LayoutBox::CreatesNewFormattingContext);
-    // a block button's content alignment makes it a formatting context root too (box_fragment_builder.cc:395).
+    // a block button too: its UA align-content is not normal (layout_block_flow_hot.cc:38-45, LayoutBlockFlow::CreatesNewFormattingContext).
     const newFormattingContext = kid.kind === 'replaced' || kid.style.display !== 'block' || isScrollContainer(kid.style) || (kid.kind === 'control' && kid.control.kind === 'button-block');
     const container: InlineContainer = { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext };
     if (kid.kind === 'replaced') {

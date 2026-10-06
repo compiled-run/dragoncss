@@ -1,8 +1,9 @@
 // Prints a PR's check runs and the Macroscope review comments nobody has answered yet; exits 1 while anything is open.
-// Run with: pnpm run pr:review [<pr number>] [--wait]
+// Run with: pnpm run pr:review [<pr number>] [--wait] [--conflicts-ok]
 import { execFileSync } from 'node:child_process';
 import {
   CORRECTNESS,
+  CORRECTNESS_GRACE_MS,
   type CheckRun,
   correctnessSucceeded,
   type Earlier,
@@ -10,6 +11,7 @@ import {
   type Ignore,
   ignoreAt,
   isVouchableSkip,
+  judgedHead,
   outcome,
   parsePrHead,
   type PrHead,
@@ -25,6 +27,7 @@ import {
   SPENDING_LIMIT,
   type Vouch,
   vouchForSkip,
+  waivedWithoutCorrectness,
 } from './pr-review-vouch.ts';
 
 // GitHub's API times out now and then; a transient failure must not end a --wait.
@@ -42,6 +45,7 @@ const isMacroscope = (login: string): boolean => login.toLowerCase().includes('m
 
 const args = process.argv.slice(2);
 const wait = args.includes('--wait');
+const conflictsOk = args.includes('--conflicts-ok');
 const pr = args.find((a) => /^\d+$/.test(a)) ?? gh(['pr', 'view', '--json', 'number', '--jq', '.number']).trim();
 if (!/^\d+$/.test(pr)) throw new Error(`pr-review: not a PR number: ${JSON.stringify(pr)}`);
 const repo = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']).trim();
@@ -49,7 +53,9 @@ const repo = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOw
 let head: PrHead = { sha: '', mergeable: 'UNKNOWN' };
 let sha = '';
 const checkRuns = (): CheckRun[] => {
-  head = parsePrHead(JSON.parse(gh(['pr', 'view', pr, '--json', 'headRefOid,mergeable'])));
+  const seen = parsePrHead(JSON.parse(gh(['pr', 'view', pr, '--json', 'headRefOid,mergeable'])));
+  if (conflictsOk && seen.mergeable === 'CONFLICTING' && head.sha !== seen.sha) console.error(`pr-review: GitHub reports ${seen.sha} CONFLICTING; --conflicts-ok leaves that to the merge train's drivers`);
+  head = judgedHead(seen, conflictsOk);
   sha = head.sha;
   return runsOf(sha);
 };
@@ -146,11 +152,13 @@ const open = comments.filter((c) => c.in_reply_to_id === undefined && isMacrosco
 console.log(`\nUnanswered Macroscope findings: ${open.length}`);
 for (const c of open) console.log(`\n--- ${c.path}:${c.line ?? '?'} (comment ${c.id})\n${c.html_url}\n${c.body.trim()}`);
 
-const result = outcome(runs, vouches, head);
+const now = Date.now();
+const result = outcome(runs, vouches, head, now);
 const { pending, failed } = result;
 if (result.unreviewed) {
   console.log(`\n!!! UNREVIEWED: Macroscope spending limit. Every Macroscope check of ${sha} was skipped with "${SPENDING_LIMIT}"; the owner's`);
   console.log('!!! standing directive (2026-10-02) lets this commit land without a Macroscope review once CI passes and every finding is answered.');
+  if (waivedWithoutCorrectness(runs, now)) console.log(`!!! Macroscope created no "${CORRECTNESS}" check within ${CORRECTNESS_GRACE_MS / 60_000} minutes of CI passing; treated as the same limit.`);
 }
 if (pending.length > 0) console.log(`\nStill running: ${pending.join(', ')}`);
 if (failed.length > 0) console.log(`\nFailed: ${failed.join(', ')}`);

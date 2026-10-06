@@ -10,6 +10,7 @@
 import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import { resolveBorder } from './box.ts';
+import { controlAsBox } from './controls.ts';
 import { placeLines } from './inline.ts';
 import { fromRaw } from './units.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
@@ -393,6 +394,7 @@ function indexZoomed(m: Map<string, LayoutBox>, r: Map<string, LayoutStyle>, b: 
   m.set(b.id, b);
   for (const c of b.children) {
     if (c.kind === 'box') indexZoomed(m, r, c);
+    else if (c.kind === 'control') indexZoomed(m, r, controlAsBox(c));
     else if (c.kind === 'replaced') r.set(c.id, c.style);
   }
 }
@@ -411,7 +413,7 @@ function fragmentOrders(s: TableState, container: LayoutBox): Map<string, number
   const flow = row && container.style.direction === 'rtl' ? -1 : 1;
   const inFlow = new Map<string, boolean>();
   for (const c of container.children) {
-    if ((c.kind === 'box' || c.kind === 'replaced') && c.style.position !== 'absolute') inFlow.set(c.id, true);
+    if ((c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced') && c.style.position !== 'absolute') inFlow.set(c.id, true);
   }
   const lines: LayoutRect[][] = [];
   let lo = 0;
@@ -600,6 +602,9 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : null;
   for (const c of b.children) {
     if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe);
+    // A form control is hit as the box it is laid out as, and so are its contents (Blink hit-tests a button's or a range's
+    // children like any block's; an anonymous part targets the control element).
+    else if (c.kind === 'control') boxNodes(s, controlAsBox(c), i, childOrders, own, pe);
     else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders);
   }
 }

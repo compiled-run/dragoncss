@@ -7,6 +7,22 @@ import type { Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 
+/**
+ * The interaction state a match runs in (SELD-R2, analysis/interaction.ts): the element addresses that match :hover, :active,
+ * :focus and :focus-visible. probe, when given, records every address an interaction pseudo-class is tested against.
+ */
+export type InteractionState = {
+  readonly hover: ReadonlySet<string>;
+  readonly active: ReadonlySet<string>;
+  readonly focus: ReadonlySet<string>;
+  readonly focusVisible: ReadonlySet<string>;
+  readonly probe?: InteractionProbe;
+};
+export type InteractionProbe = { readonly hover: Set<string>; readonly active: Set<string>; readonly focus: Set<string>; readonly focusVisible: Set<string> };
+
+/** No element hovered, pressed or focused: every match is the match without interaction states. */
+export const NO_INTERACTION: InteractionState = { hover: new Set(), active: new Set(), focus: new Set(), focusVisible: new Set() };
+
 /** An element with its ancestors: path[0] is the document element, the last entry the element itself. */
 type Path = readonly LinkedElement[];
 
@@ -85,7 +101,7 @@ function isEmpty(el: LinkedElement, faults: CompilerFaults): boolean {
 /** Whether some n >= 0 gives a*n + b = index (1-based). */
 const nthHolds = (a: number, b: number, index: number): boolean => (a === 0 ? index === b : (index - b) % a === 0 && (index - b) / a >= 0);
 
-function pseudoMatches(path: Path, rule: Rule, p: PseudoClass, faults: CompilerFaults): boolean {
+function pseudoMatches(path: Path, rule: Rule, p: PseudoClass, faults: CompilerFaults, ix: InteractionState): boolean {
   const el = last(path);
   switch (p.kind) {
     case 'root':
@@ -97,7 +113,7 @@ function pseudoMatches(path: Path, rule: Rule, p: PseudoClass, faults: CompilerF
       const { list, index } = siblings(path);
       const of = p.kind === 'nth' ? p.of : null;
       const counted = (sib: LinkedElement): boolean =>
-        (!p.ofType || sib.tag === el.tag) && (of === null || of.some((s) => complexMatches(rule, s, withLast(path, sib), faults)));
+        (!p.ofType || sib.tag === el.tag) && (of === null || of.some((s) => complexMatches(rule, s, withLast(path, sib), faults, ix)));
       if (!counted(el)) return false;
       const before = list.slice(0, index).filter(counted).length;
       const after = list.slice(index + 1).filter(counted).length;
@@ -105,46 +121,51 @@ function pseudoMatches(path: Path, rule: Rule, p: PseudoClass, faults: CompilerF
       return nthHolds(p.a, p.b, (p.fromEnd ? after : before) + 1);
     }
     case 'is':
-      return p.selectors.some((s) => complexMatches(rule, s, path, faults));
+      return p.selectors.some((s) => complexMatches(rule, s, path, faults, ix));
     case 'not':
-      return !p.selectors.some((s) => complexMatches(rule, s, path, faults));
+      return !p.selectors.some((s) => complexMatches(rule, s, path, faults, ix));
     case 'has':
-      return p.selectors.some((s) => hasMatches(rule, s, path, faults));
+      return p.selectors.some((s) => hasMatches(rule, s, path, faults, ix));
+    case 'interaction': {
+      const set = p.pseudo === 'focus-visible' ? 'focusVisible' : p.pseudo;
+      ix.probe?.[set].add(el.address);
+      return ix[set].has(el.address);
+    }
   }
 }
 
 // A class selector matches only class symbols of the rule's own owner and sheet (docs/api.md §3.1); #id and [name] test the
 // element's attributes (every element carrying the id matches, as in Chrome).
-function compoundMatches(path: Path, rule: Rule, c: Compound, faults: CompilerFaults): boolean {
+function compoundMatches(path: Path, rule: Rule, c: Compound, faults: CompilerFaults, ix: InteractionState): boolean {
   const el = last(path);
   if (c.tag !== null && c.tag !== el.tag) return false;
   if (!c.ids.every((id) => el.attributes.get('id') === id)) return false;
   const classes = faults.variantCollapse && c.classes.length >= 2 ? c.classes.slice(0, -1) : c.classes;
   if (!classes.every((k) => el.classes.some((s) => s.owner === rule.owner && s.sheet === rule.sheet && s.name === k))) return false;
   if (!c.attributes.every((a) => attributeMatches(el, a, faults))) return false;
-  return c.pseudos.every((p) => pseudoMatches(path, rule, p, faults));
+  return c.pseudos.every((p) => pseudoMatches(path, rule, p, faults, ix));
 }
 
 /**
  * Selectors-4 §3.3: right-to-left matching from sel.parts[part] at path, with backtracking for descendant and subsequent-sibling
  * combinators. accept decides the element matched by the leftmost compound (the anchor test of a relative selector).
  */
-function matchFrom(rule: Rule, sel: Selector, path: Path, part: number, faults: CompilerFaults, accept: (leftmost: Path) => boolean): boolean {
+function matchFrom(rule: Rule, sel: Selector, path: Path, part: number, faults: CompilerFaults, ix: InteractionState, accept: (leftmost: Path) => boolean): boolean {
   const p = sel.parts[part];
-  if (p === undefined || !compoundMatches(path, rule, p.compound, faults)) return false;
+  if (p === undefined || !compoundMatches(path, rule, p.compound, faults, ix)) return false;
   const next = sel.parts[part + 1];
   if (next === undefined) return accept(path);
   switch (next.combinator) {
     case '>':
-      return path.length > 1 && matchFrom(rule, sel, path.slice(0, -1), part + 1, faults, accept);
+      return path.length > 1 && matchFrom(rule, sel, path.slice(0, -1), part + 1, faults, ix, accept);
     case ' ':
-      for (let n = path.length - 1; n >= 1; n--) if (matchFrom(rule, sel, path.slice(0, n), part + 1, faults, accept)) return true;
+      for (let n = path.length - 1; n >= 1; n--) if (matchFrom(rule, sel, path.slice(0, n), part + 1, faults, ix, accept)) return true;
       return false;
     case '+':
     case '~': {
       const { list, index } = siblings(path);
       for (let i = index - 1; i >= 0 && (next.combinator === '~' || i === index - 1); i--) {
-        if (matchFrom(rule, sel, withLast(path, list[i] as LinkedElement), part + 1, faults, accept)) return true;
+        if (matchFrom(rule, sel, withLast(path, list[i] as LinkedElement), part + 1, faults, ix, accept)) return true;
       }
       return false;
     }
@@ -153,8 +174,8 @@ function matchFrom(rule: Rule, sel: Selector, path: Path, part: number, faults: 
   }
 }
 
-function complexMatches(rule: Rule, sel: Selector, path: Path, faults: CompilerFaults): boolean {
-  return matchFrom(rule, sel, path, 0, faults, () => true);
+function complexMatches(rule: Rule, sel: Selector, path: Path, faults: CompilerFaults, ix: InteractionState): boolean {
+  return matchFrom(rule, sel, path, 0, faults, ix, () => true);
 }
 
 /** Every element below path, with its path, in tree order. */
@@ -169,7 +190,7 @@ function descendants(path: Path, out: Path[] = []): Path[] {
 }
 
 /** Selectors-4 §4.5: :has() matches when some element relative to the :has() element matches the relative selector. */
-function hasMatches(rule: Rule, sel: Selector, anchorPath: Path, faults: CompilerFaults): boolean {
+function hasMatches(rule: Rule, sel: Selector, anchorPath: Path, faults: CompilerFaults, ix: InteractionState): boolean {
   const anchor = last(anchorPath);
   const depth = anchorPath.length;
   const { list, index } = siblings(anchorPath);
@@ -191,25 +212,25 @@ function hasMatches(rule: Rule, sel: Selector, anchorPath: Path, faults: Compile
         return leftmost.length > depth && leftmost[depth - 1] === anchor;
     }
   };
-  return candidates.some((c) => matchFrom(rule, sel, c, 0, faults, accept));
+  return candidates.some((c) => matchFrom(rule, sel, c, 0, faults, ix, accept));
 }
 
 /**
  * Matches sel against chain[index] (chain holds the element's logical ancestors first). part must be 0: the subject.
  */
-export function selectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], index: number, part: number, faults: CompilerFaults): boolean {
+export function selectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], index: number, part: number, faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
   if (index < 0 || chain[index] === undefined) return false;
   if (sel.dropped && !faults.invalidSelectorListKept) return false;
   // A range pseudo-element selector styles the part, never the element (cascade.ts runs it per part).
   if (sel.pseudoElement !== null) return false;
-  return matchFrom(rule, sel, chain.slice(0, index + 1), part, faults, () => true);
+  return matchFrom(rule, sel, chain.slice(0, index + 1), part, faults, ix, () => true);
 }
 
 /** Matches a range pseudo-element selector against the range part rangePart of the input chain[chain.length - 1]. */
-export function partSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], rangePart: RangePart, faults: CompilerFaults): boolean {
+export function partSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], rangePart: RangePart, faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
   if (chain.length === 0 || sel.pseudoElement !== rangePart) return false;
   if (sel.dropped && !faults.invalidSelectorListKept) return false;
-  return matchFrom(rule, sel, chain, 0, faults, () => true);
+  return matchFrom(rule, sel, chain, 0, faults, ix, () => true);
 }
 
 /**

@@ -8,7 +8,8 @@ import type { CompilerFaults } from '../faults.ts';
 import type { LinkedElement } from './link.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import { elementDirection, hasDirectionalValues, inDirection } from './logical.ts';
-import { partSelectorMatches, selectorMatches, specificityFor } from './match.ts';
+import type { InteractionState } from './match.ts';
+import { NO_INTERACTION, partSelectorMatches, selectorMatches, specificityFor } from './match.ts';
 import type { CustomProperties, SubstitutedDeclaration, Substitution, VarScope } from './variables.ts';
 import { computeCustoms } from './variables.ts';
 
@@ -67,10 +68,10 @@ const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var(
  * order: custom properties first (over the parent's, inherited), then direction with var() substituted, then every other
  * longhand with each flow-relative declaration mapped to the physical side of that direction.
  */
-export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties, part: CascadePart | null = null): CascadeResult {
+export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties, part: CascadePart | null = null, ix: InteractionState = NO_INTERACTION): CascadeResult {
   // FORM-a A4: a range part (::-webkit-slider-thumb, ::-webkit-slider-runnable-track) cascades only its own pseudo-element
   // selectors, matched on the input's chain; the element's cascade never takes them (match.ts selectorMatches).
-  const matches = (rule: Rule, sel: Selector): boolean => (part === null ? selectorMatches(rule, sel, chain, chain.length - 1, 0, faults) : part.name !== null && partSelectorMatches(rule, sel, chain, part.name, faults));
+  const matches = (rule: Rule, sel: Selector): boolean => (part === null ? selectorMatches(rule, sel, chain, chain.length - 1, 0, faults, ix) : part.name !== null && partSelectorMatches(rule, sel, chain, part.name, faults, ix));
   const customs = new Map<string, { declaration: Declaration; specificity: readonly [number, number, number] }>();
   for (const rule of rules) {
     for (const sel of rule.selectors) {
