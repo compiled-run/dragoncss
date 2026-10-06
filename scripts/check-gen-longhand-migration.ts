@@ -320,7 +320,7 @@ const PLANTS: { readonly [name: string]: readonly [number, string, (t: string) =
   'emitted-extra': [1, 'emitted/margin-collapse-body.css', (t) => t.replace(declaration('content', 'normal'), `${declaration('content', 'normal')}\n${declaration('content', 'normal')}`)],
   'emitted-media': [1, 'emitted/media-max-width.css', (t) => t.replace(/(@media [^\n]*\n\.dg\d+ \{\n)/, `$1${declaration('content', 'normal')}\n`)],
   'ua-value': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace('"list-style-position": "outside"', '"list-style-position": "inside"')],
-  'ua-declared-elsewhere': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace(/("p": \{\n\s*"ltr": \{\n)/, '$1      "list-style-type": "disc",\n')],
+  'ua-declared-elsewhere': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace('  "p": { ltr: { "display": "block",', '  "p": { ltr: { "display": "block", "list-style-type": "disc",')],
   'vector-output': [3, 'layout/vectors/dpr-2/margin-collapse-body.json', (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
   'stray-file': [0, '', (t) => t],
   'media-count': [0, 'expected-media/media-logic.json', (t) => t.replace(/"valuesCompared": (\d+)/, (_m, n: string) => `"valuesCompared": ${Number(n) + 79}`)],
