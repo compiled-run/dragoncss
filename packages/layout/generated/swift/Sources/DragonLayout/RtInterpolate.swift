@@ -559,11 +559,11 @@ public func rtInterpolate_applyTransformOps(_ start: Matrix2D, _ ops: JsArray<Tr
   var m: Matrix2D = start
   // ts: packages/layout/src/rt-interpolate.ts:353
   do {
-    let _a118 = ops
-    var _i118 = 0
-    while _i118 < _a118.items.count {
-      let op: TransformOp = _a118.items[_i118]
-      _i118 += 1
+    let _a127 = ops
+    var _i127 = 0
+    while _i127 < _a127.items.count {
+      let op: TransformOp = _a127.items[_i127]
+      _i127 += 1
       let fam: JsString = try rtInterpolate_family(op.fn)
       // ts: packages/layout/src/rt-interpolate.ts:355
       if (fam == S.s_translate) {
@@ -659,11 +659,11 @@ public func rtInterpolate_multiplySmall(_ digits: JsArray<Double>, _ factor: Dou
   var carry: Double = 0.0
   // ts: packages/layout/src/rt-interpolate.ts:410
   do {
-    let _a119 = digits
-    var _i119 = 0
-    while _i119 < _a119.items.count {
-      let d: Double = _a119.items[_i119]
-      _i119 += 1
+    let _a128 = digits
+    var _i128 = 0
+    while _i128 < _a128.items.count {
+      let d: Double = _a128.items[_i128]
+      _i128 += 1
       let t: Double = ((d * factor) + carry)
       let q: Double = try rtEasing_floorOf((t / 10.0))
       _ = jsPush(out, (t - (q * 10.0)))
@@ -920,7 +920,7 @@ public func rtInterpolate_formatCssNumber(_ v: Double, _ unit: JsString) throws 
   }
   // ts: packages/layout/src/rt-interpolate.ts:560
   if (v == rtEasing_INFINITY) {
-    return ((unit == S.s0) ? S.s_infinity : jsConcat(S.s216, unit))
+    return ((unit == S.s0) ? S.s_infinity : jsConcat(S.s224, unit))
   }
   // ts: packages/layout/src/rt-interpolate.ts:561
   if (v == (-rtEasing_INFINITY)) {
@@ -987,7 +987,7 @@ public func rtInterpolate_colorRgba8(_ c: LegacyColor) throws -> Rgba8Value {
 // ts: packages/layout/src/rt-interpolate.ts:609
 public func rtInterpolate_serializeColor(_ c: LegacyColor) throws -> JsString {
   let opaque: Bool = (c.alpha >= 1.0)
-  let head: JsString = try jsConcat(jsConcat(jsConcat(jsConcat(jsConcat((opaque ? S.s309 : S.s310), rtInterpolate_channel(c.r)), S.s46), rtInterpolate_channel(c.g)), S.s46), rtInterpolate_channel(c.b))
+  let head: JsString = try jsConcat(jsConcat(jsConcat(jsConcat(jsConcat((opaque ? S.s321 : S.s322), rtInterpolate_channel(c.r)), S.s46), rtInterpolate_channel(c.g)), S.s46), rtInterpolate_channel(c.b))
   // ts: packages/layout/src/rt-interpolate.ts:612
   if opaque {
     return jsConcat(head, S.s42)
@@ -1006,7 +1006,7 @@ public func rtInterpolate_serializeColor(_ c: LegacyColor) throws -> JsString {
 
 // ts: packages/layout/src/rt-interpolate.ts:623
 public func rtInterpolate_serializeMatrix(_ m: Matrix2D) throws -> JsString {
-  return try jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(S.s241, rtInterpolate_serializeNumber(m.a)), S.s46), rtInterpolate_serializeNumber(m.b)), S.s46), rtInterpolate_serializeNumber(m.c)), S.s46), rtInterpolate_serializeNumber(m.d)), S.s46), rtInterpolate_serializeNumber(m.e)), S.s46), rtInterpolate_serializeNumber(m.f)), S.s42)
+  return try jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(jsConcat(S.s250, rtInterpolate_serializeNumber(m.a)), S.s46), rtInterpolate_serializeNumber(m.b)), S.s46), rtInterpolate_serializeNumber(m.c)), S.s46), rtInterpolate_serializeNumber(m.d)), S.s46), rtInterpolate_serializeNumber(m.e)), S.s46), rtInterpolate_serializeNumber(m.f)), S.s42)
 }
 
 // ts: packages/layout/src/rt-interpolate.ts:628
