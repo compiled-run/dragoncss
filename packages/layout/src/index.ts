@@ -34,7 +34,7 @@ export type { Edges } from './box.ts';
 export { resolveBorder } from './box.ts';
 export { platformFontSize, snapEdge, zoomFontSize } from './units.ts';
 export type { LinePiece, PlacedLine } from './inline.ts';
-export { placeLines } from './inline.ts';
+export { inlineBoxes, inlineBreaks, inlineLeaves, placeLines } from './inline.ts';
 export type { Ctx } from './block.ts';
 export { resolvePadding } from './box.ts';
 export type { DprPlatformRule, DprPlatformRuleNode } from './platform-rules.ts';

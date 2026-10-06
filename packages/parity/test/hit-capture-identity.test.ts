@@ -76,10 +76,13 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(files).toBeGreaterThan(Object.keys(manifest.files).length);
   });
 
-  it('holds files beyond the base only for cases of registered fixtures', () => {
+  it('holds files beyond the base only for cases of registered fixtures, none of them a base fixture', () => {
     const extra = IDENTITY_ROOTS.flatMap(walk).filter((p) => (p.endsWith('.json') || p.endsWith('.css')) && manifest.files[p] === undefined);
     expect(extra.filter((p) => fixtureOf(p) === null)).toEqual([]);
     expect(extra.length).toBeGreaterThan(0);
+    // INL1a and the stacks merged after the base add fixtures of their own; no file is added to a base fixture.
+    const baseFixtures = new Set(Object.keys(manifest.files).map(fixtureOf));
+    expect(extra.filter((p) => baseFixtures.has(fixtureOf(p)))).toEqual([]);
     // An orphan (a removed or renamed fixture's capture) still fails, as does a suffix on a name no fixture registers.
     expect(fixtureOf('packages/parity/expected/darwin-arm64/no-such-fixture.web.json')).toBeNull();
     expect(fixtureOf('packages/parity/emitted/no-such-fixture~ix0-rtl.css')).toBeNull();

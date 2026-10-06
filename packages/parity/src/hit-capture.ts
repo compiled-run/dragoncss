@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { hitFacts, programInput } from 'dragon';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
-import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
+import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
 import type { NativeCase } from './native-host.ts';
 import { nativeCases, referenceMeasurer } from './native-host.ts';
@@ -122,14 +122,17 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
  * Why the hit lane leaves a layout case out, or null when it covers it. The hit test models box geometry, overflow clips, positioned
  * layers and pointer-events (T064 R13); a case whose program writes a transform is refused by name until SELD-R2b (T146) models
  * hit testing through transforms, and one whose program rounds a corner until the hit test models rounded borders (Blink clips a
- * hit to the rounded border box), so it is never silently mis-hit.
+ * hit to the rounded border box), so it is never silently mis-hit; one holding an inline box or a <br> (INL1a) is refused as rt-hit.ts
+ * hitRefusal names it, since the hit table does not model them yet.
  */
 export function hitRefusal(n: NativeCase): string | null {
   const moved = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
   // PNT1-radius: Blink clips a hit to the rounded border box, which the hit test does not model yet.
   const rounded = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'border-radius')).map((x) => x.id);
-  return rounded.length === 0 ? null : `border-radius on ${rounded.join(', ')}: hit testing through rounded corners is not modelled yet (PNT1)`;
+  if (rounded.length > 0) return `border-radius on ${rounded.join(', ')}: hit testing through rounded corners is not modelled yet (PNT1)`;
+  // INL1a: hitTableOf refuses an inline box or a <br> by name (rt-hit.ts), so such a case is left out with that reason.
+  return inputHitRefusal(programInput(n.programs.uikit, n.case.environment.viewport, 1));
 }
 
 /** Every layout case the hit lane covers: all of them but the refused ones (hitRefusal). */

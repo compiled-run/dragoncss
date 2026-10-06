@@ -1,4 +1,4 @@
-// pnpm run native:build -- --target ios|android [--plant ios-16|api-34|glyph-offset-1|glyph-offset-y-1|image-offset-1]: builds the host app with
+// pnpm run native:build -- --target ios|android [--plant ios-16|api-34|glyph-offset-1|glyph-offset-y-1|image-offset-1|single-run-baseline]: builds the host app with
 // every layout case from the generated sources (notes/T013-p3-review-p4-plan.md section 2 items 6 and 7), prints the case count and
 // the sha256 of the source tree, and proves the API floor: swiftc availability checking at the iOS 15 target; on Android, every
 // android.* reference of classes.dex at or below minSdk 31 (api-versions.xml). A planted floor fault must fail and name the API. The
@@ -28,7 +28,7 @@ if (plant !== null && !BUILD_PLANTS[target].includes(plant)) {
   process.exit(2);
 }
 /** What a raster plant moves, for the build log. */
-const plantEffect = (p: string): string => (p === 'image-offset-1' ? 'every image drawn 1 device px right' : `every glyph drawn 1 device px ${p === 'glyph-offset-y-1' ? 'down' : 'right'}`);
+const plantEffect = (p: string): string => (p === 'single-run-baseline' ? 'every line of a text view at its first line\'s baseline offset' : p === 'image-offset-1' ? 'every image drawn 1 device px right' : `every glyph drawn 1 device px ${p === 'glyph-offset-y-1' ? 'down' : 'right'}`);
 
 /** The floor plants must fail the build; a raster plant must build. */
 const floorPlant = plant !== null && !(SUPPORT_PLANTS as readonly string[]).includes(plant) ? plant : null;
