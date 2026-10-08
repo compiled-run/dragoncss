@@ -17,6 +17,8 @@ import type {
   FlexWrap,
   FontSpec,
   GapValue,
+  InlineBox,
+  InlineChild,
   GridContainerStyle,
   GridItemStyle,
   GridSelfAlign,
@@ -28,7 +30,9 @@ import type {
   LayoutStyle,
   LengthCalc,
   LineHeightCalc,
+  LineBreak,
   LineHeightValue,
+  LineStrut,
   MarginValue,
   NaturalSizeValue,
   ObjectFit,
@@ -44,6 +48,8 @@ import type {
   TextAlign,
   TextLeaf,
   TextWrapMode,
+  VerticalAlignKeyword,
+  VerticalAlignValue,
   ViewportLength,
   ViewportSize,
   Viewport,
@@ -54,6 +60,9 @@ import type {
 import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
 import { measurerFor } from '../../layout/src/platform.ts';
+import type { TextMeasurer } from '../../layout/src/text.ts';
+import type { ScrollMetrics } from '../../layout/src/overflow.ts';
+import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
@@ -590,8 +599,20 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'grid', 'gridItem',
 ];
+
+function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
+  const k = kindOf(v, path);
+  if (k === 'calc') return lengthCalc(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'keyword') {
+    const o = obj(v, ['kind', 'value'], path);
+    return { kind: 'keyword', value: lit(field(o, 'value', path), ['baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom'], `${path}.value`) as VerticalAlignKeyword };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
 
 const GRID_SELF_ALIGN: readonly string[] = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'];
 
@@ -682,14 +703,14 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const f = (k: string): JsonValue => field(o, k, path);
   const p = (k: string): string => `${path}.${k}`;
   return {
-    display: lit(f('display'), ['block', 'flex', 'grid'], p('display')) as Display,
+    display: lit(f('display'), ['block', 'flex', 'grid', 'inline'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
     bottom: sizeValue(f('bottom'), p('bottom')) as InsetValue,
     left: sizeValue(f('left'), p('left')) as InsetValue,
-    overflowX: lit(f('overflowX'), ['visible', 'hidden'], p('overflowX')) as Overflow,
-    overflowY: lit(f('overflowY'), ['visible', 'hidden'], p('overflowY')) as Overflow,
+    overflowX: lit(f('overflowX'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowX')) as Overflow,
+    overflowY: lit(f('overflowY'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowY')) as Overflow,
     direction: lit(f('direction'), ['ltr', 'rtl'], p('direction')) as Direction,
     boxSizing: lit(f('boxSizing'), ['content-box', 'border-box'], p('boxSizing')) as BoxSizing,
     width: sizeValue(f('width'), p('width')),
@@ -724,6 +745,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     columnGap: gapValue(f('columnGap'), p('columnGap')),
     textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
+    verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
@@ -779,27 +801,63 @@ function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
 }
 
 function decodeBox(o: JsonObj, path: string): LayoutBox {
-  obj(o, ['kind', 'id', 'boxType', 'style', 'children'], path);
-  const children: (LayoutBox | TextLeaf | ReplacedLeaf)[] = [];
+  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'children'], path);
+  const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
+  const strut = field(o, 'strut', path);
   return {
     kind: 'box',
     id: str(field(o, 'id', path), `${path}.id`),
     boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
     style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    strut: strut.kind === 'null' ? null : decodeStrut(strut, `${path}.strut`),
     children,
   };
 }
 
-function decodeNode(v: JsonValue, path: string): LayoutBox | TextLeaf | ReplacedLeaf {
+function decodeStrut(v: JsonValue, path: string): LineStrut {
+  const o = obj(v, ['font', 'lineHeight'], path);
+  return { font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+}
+
+function decodeInline(o: JsonObj, path: string): InlineBox {
+  obj(o, ['kind', 'id', 'style', 'font', 'lineHeight', 'children'], path);
+  const children: InlineChild[] = [];
+  arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
+    children.push(decodeInlineChild(c, `${path}.children[${i}]`));
+  });
+  return {
+    kind: 'inline',
+    id: str(field(o, 'id', path), `${path}.id`),
+    style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    font: fontSpec(field(o, 'font', path), `${path}.font`),
+    lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
+    children,
+  };
+}
+
+function decodeBreak(o: JsonObj, path: string): LineBreak {
+  obj(o, ['kind', 'id', 'font', 'lineHeight'], path);
+  return { kind: 'br', id: str(field(o, 'id', path), `${path}.id`), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+}
+
+function decodeInlineChild(v: JsonValue, path: string): InlineChild {
+  if (v.kind !== 'obj') return fail(`${path}: expected an inline-level node`);
+  const k = kindOf(v, path);
+  if (k === 'text') return decodeText(v, path);
+  if (k === 'inline') return decodeInline(v, path);
+  if (k === 'br') return decodeBreak(v, path);
+  return fail(`${path}: unknown inline-level node kind ${k}`);
+}
+
+function decodeNode(v: JsonValue, path: string): LayoutBox | ReplacedLeaf | InlineChild {
   if (v.kind !== 'obj') return fail(`${path}: expected a node`);
   const k = kindOf(v, path);
   if (k === 'box') return decodeBox(v, path);
-  if (k === 'text') return decodeText(v, path);
   if (k === 'replaced') return decodeReplaced(v, path);
-  return fail(`${path}: unknown node kind ${k}`);
+  return decodeInlineChild(v, path);
 }
 
 function decodeViewport(v: JsonValue, path: string): Viewport {
@@ -833,8 +891,9 @@ const FAULT_KEYS: readonly string[] = [
   'wrapReverseBaselineSpec', 'initialLineWidthZoomed', 'calcPercentPlainOrder', 'calcDoubleEval', 'calcNoNonNegClamp',
   'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled', 'lhUnsnapped',
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
-  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak',
-  'orderHalfEven', 'orderUnclamped',
+  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes',
+  'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
+  'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -875,8 +934,15 @@ function decodeFaults(v: JsonValue): EngineFaults {
     fitWithoutEpsilon: b('fitWithoutEpsilon'),
     breakAfterSolidus: b('breakAfterSolidus'),
     noHyphenDigitBreak: b('noHyphenDigitBreak'),
+    lineHeightIgnoresInlineBoxes: b('lineHeightIgnoresInlineBoxes'),
+    halfLeadingUnflooredPerBox: b('halfLeadingUnflooredPerBox'),
+    brIgnored: b('brIgnored'),
+    breakAtBoxBoundary: b('breakAtBoxBoundary'),
+    fragmentFromLineTop: b('fragmentFromLineTop'),
     orderHalfEven: b('orderHalfEven'),
     orderUnclamped: b('orderUnclamped'),
+    gutterReserved: b('gutterReserved'),
+    overflowIgnoresPadding: b('overflowIgnoresPadding'),
   };
 }
 
@@ -900,10 +966,33 @@ function h(x: number): string {
   return `"${bitsHex(x)}"`;
 }
 
+/** A scroll metrics record: the id, the client size and the scroll rect (overflow.ts). */
+function scrollRecord(s: ScrollMetrics): string {
+  return `[${q(s.id)},${h(s.clientWidth)},${h(s.clientHeight)},${h(s.scrollRect.x)},${h(s.scrollRect.y)},${h(s.scrollRect.width)},${h(s.scrollRect.height)}]`;
+}
+
+/**
+ * A line with a viewportDirection key (the engine-overflow suite) also runs scrollMetrics and appends its result; every other line
+ * keeps its output byte for byte.
+ */
+function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: string, faults: EngineFaults): string {
+  const r = scrollMetricsWithFaults(input, measurer, direction === 'rtl' ? 'rtl' : 'ltr', faults);
+  if (r.kind === 'refused') return `,["refused",${q(r.nodeId)},${q(r.detail)}]`;
+  let out = `,["ok",${scrollRecord(r.viewport)},[`;
+  r.containers.forEach((c, i) => {
+    if (i > 0) out += ',';
+    out += scrollRecord(c);
+  });
+  return `${out}]]`;
+}
+
 /** One engine case: {"platform", "faults", "input"} in, the layout result with every LU as bits out. */
 export function runEngineCase(line: string): string {
   try {
-    const o = obj(parseJson(line), ['platform', 'faults', 'input'], '$');
+    const parsed = parseJson(line);
+    const scroll = parsed.kind === 'obj' && parsed.values.has('viewportDirection');
+    const o = obj(parsed, scroll ? ['platform', 'faults', 'input', 'viewportDirection'] : ['platform', 'faults', 'input'], '$');
+    const direction = scroll ? lit(field(o, 'viewportDirection', '$'), ['ltr', 'rtl'], '$.viewportDirection') : 'ltr';
     const platform = str(field(o, 'platform', '$'), '$.platform');
     const faults = decodeFaults(field(o, 'faults', '$'));
     const input = decodeInput(field(o, 'input', '$'));
@@ -926,7 +1015,7 @@ export function runEngineCase(line: string): string {
       first = false;
       out += `[${q(id)},${h(rect.x)},${h(rect.y)},${h(rect.width)},${h(rect.height)}]`;
     }
-    return `${out}]]`;
+    return `${out}]${scroll ? scrollSuffix(input, m.measurer, direction, faults) : ''}]`;
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';

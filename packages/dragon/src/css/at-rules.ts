@@ -1,6 +1,6 @@
-// The at-rule handler registry. @font-face is accepted (fonts/wire.ts) and @media is conditional (MQ-a); every other at-rule is
-// refused: each registered name, and any name not registered, gets the same DRAGON_UNSUPPORTED_AT_RULE diagnostic, and the parse
-// driver (stylesheet.ts) then analyses the rules inside the at-rule's block for diagnostics only (T005 rec 3).
+// The at-rule handler registry. @font-face is accepted (fonts/wire.ts), @media is conditional (MQ-a) and @supports is decided at
+// build time (CASC); every other at-rule is refused: each registered name, and any name not registered, gets the same
+// DRAGON_UNSUPPORTED_AT_RULE diagnostic, and the parse driver (stylesheet.ts) then analyses the rules inside the at-rule's block for diagnostics only (T005 rec 3).
 import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
@@ -9,6 +9,7 @@ import { featuresOfList, parseMediaPrelude, parseMediaQueryList, refusalsOf, ser
 import type { Diagnostic, Span } from '../types.ts';
 import { asciiLower } from './escapes.ts';
 import { keyframesAtRule } from './at-rules/keyframes.ts';
+import { supportsAtRule } from './at-rules/supports.ts';
 
 /**
  * One at-rule as the driver meets it: its node, its name as written, where it sits ('the stylesheet', 'a rule block',
@@ -29,7 +30,9 @@ export type AtRuleOutcome =
   | { readonly kind: 'refuse'; readonly diagnostic: Diagnostic }
   | { readonly kind: 'font-face'; readonly context: AtRuleContext }
   | { readonly kind: 'keyframes'; readonly context: AtRuleContext }
-  | { readonly kind: 'conditional'; readonly condition: RuleCondition };
+  | { readonly kind: 'conditional'; readonly condition: RuleCondition }
+  /** @supports, decided at build time (at-rules/supports.ts): holds true keeps the block's rules as plain rules, false drops them. */
+  | { readonly kind: 'supports'; readonly holds: boolean; readonly text: string };
 
 export type AtRuleHandler = (at: AtRuleContext) => AtRuleOutcome;
 
@@ -105,7 +108,7 @@ export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
   property: refuseAtRule,
   scope: refuseAtRule,
   'starting-style': refuseAtRule,
-  supports: refuseAtRule,
+  supports: supportsAtRule,
   'view-transition': refuseAtRule,
 };
 

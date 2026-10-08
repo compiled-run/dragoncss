@@ -1,0 +1,11 @@
+{
+  "case": "inline-empty-boxes",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"e1:text0","data":"a ","lines":1,"units":[0,0],"blank":[]},
+    {"id":"e1:text1","data":" b","lines":1,"units":[0,0],"blank":[0]},
+    {"id":"e1:text2","data":"c","lines":1,"units":[0],"blank":[]},
+    {"id":"e2:text0","data":"c","lines":1,"units":[0],"blank":[]}
+  ]
+}

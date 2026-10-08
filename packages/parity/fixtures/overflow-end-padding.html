@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.sc { overflow: auto; width: 60px; height: 40px; padding: 5px 7px 9px 3px; border: 2px solid #000; margin-bottom: 4px; }
+.scroll { overflow: scroll; }
+.hidden { overflow: hidden; }
+.big { width: 90px; height: 70px; background-color: #ccc; }
+.m { margin: 6px 11px 13px 4px; }
+.neg { margin-bottom: -20px; margin-right: -30px; }
+.fit { width: 20px; height: 10px; background-color: #ccc; }
+.flex { display: flex; }
+.flex > div { flex: none; width: 30px; height: 20px; margin-right: 8px; margin-bottom: 5px; background-color: #ccc; }
+.rel { position: relative; left: 15px; top: 25px; }
+.pos { position: relative; }
+.abs { position: absolute; left: 70px; top: 60px; width: 10px; height: 10px; background-color: #c00; }
+.txt { width: 30px; }
+.last { margin-bottom: 12px; }
+.inner > div { height: 15px; margin-bottom: 9px; background-color: #999; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a1" class="sc"><div data-dragon-id="a1a" class="big"></div></div>
+<div data-dragon-id="a2" class="sc scroll"><div data-dragon-id="a2a" class="big m"></div></div>
+<div data-dragon-id="a3" class="sc hidden"><div data-dragon-id="a3a" class="big neg"></div></div>
+<div data-dragon-id="a4" class="sc"><div data-dragon-id="a4a" class="fit"></div></div>
+<div data-dragon-id="a5" class="sc flex"><div data-dragon-id="a5a"></div><div data-dragon-id="a5b"></div><div data-dragon-id="a5c"></div></div>
+<div data-dragon-id="a6" class="sc"><div data-dragon-id="a6a" class="fit rel"></div><div data-dragon-id="a6b" class="fit"></div></div>
+<div data-dragon-id="a7" class="sc pos"><div data-dragon-id="a7a" class="fit"></div><div data-dragon-id="a7b" class="abs"></div></div>
+<div data-dragon-id="a8" class="sc">XXXXXXXXX XX XXXX XXXXXX XX XXX XX</div>
+<div data-dragon-id="a9" class="sc"><div data-dragon-id="a9a" class="inner"><div data-dragon-id="a9b"></div><div data-dragon-id="a9c"></div><div data-dragon-id="a9d" class="last"></div></div></div>
+</body>
+</html>
