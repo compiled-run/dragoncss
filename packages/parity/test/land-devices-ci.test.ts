@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { LandFailure } from '../../../scripts/land-lib.ts';
 import { repoPath } from '../src/paths.ts';
-import { abandonInflight, awaitRegenOnCi, CiUnavailable, DEFAULT_REGEN_WAIT_S, dispatchOnCi, PATCH_ARTIFACT, patchFiles, regenBranch, regenTitle, regenWorkflow, titleOf, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, failedJobs, failedTestsOf, parseJobs, staleScratchBranches, fullTestWorkflow, runOnCi, testBranch, type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, scratchRef, tempBranch } from '../../../scripts/land-devices-ci.ts';
+import { abandonInflight, awaitRegenOnCi, CiUnavailable, DEFAULT_QUEUE_WAIT_S, DEFAULT_REGEN_WAIT_S, dispatchOnCi, PATCH_ARTIFACT, patchFiles, regenBranch, regenTitle, regenWorkflow, titleOf, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, failedJobs, failedTestsOf, parseJobs, staleScratchBranches, fullTestWorkflow, runOnCi, testBranch, type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, scratchRef, tempBranch } from '../../../scripts/land-devices-ci.ts';
 
 const SHA = 'a'.repeat(40);
 const T0 = Date.parse('2026-10-04T12:00:00Z');
@@ -13,13 +13,14 @@ type Run = { databaseId: number; displayTitle: string; createdAt: string; headBr
 const OUTCOMES = ['android-dragon-320.json', 'android-dragon-480.json', 'android-dragon-smoke.json', 'ios-iPad__A16__.json', 'ios-iPhone_17.json'];
 
 /** A fake GitHub: runs appear after `appearAfter` list calls and complete after `doneAfter` view calls. */
-function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; conclusion?: string | null; files?: string[]; pushFails?: boolean; ghBad?: boolean; deleteFails?: boolean; title?: string; jobsQueued?: boolean; dispatchFails?: boolean; failedEarly?: boolean; setupFails?: boolean } = {}) {
+function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; conclusion?: string | null; files?: string[]; pushFails?: boolean; ghBad?: boolean; deleteFails?: boolean; title?: string; jobsQueued?: boolean; dispatchFails?: boolean; failedEarly?: boolean; setupFails?: boolean; queuedFor?: number; noneWaiting?: boolean; runPendingNoJobs?: boolean; ubuntu?: 'in_progress' | 'completed' } = {}) {
   const calls: string[] = [];
   const dispatched: string[][] = [];
   let clock = T0;
   let lists = 0;
   let views = 0;
   let finished = false;
+  let jobCalls = 0;
   const mine: Run = { databaseId: 7, displayTitle: o.title ?? runTitle(SHA), createdAt: new Date(T0 + 5_000).toISOString(), headBranch: 'master', status: 'queued', conclusion: null, url: 'https://ci/run/7' };
   const logs: string[] = [];
   const deps: DevicesCiDeps = {
@@ -29,6 +30,13 @@ function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; concl
       if (args[0] === 'workflow' && o.dispatchFails === true) throw new Error('HTTP 503');
       if (args[0] === 'workflow' || args[1] === 'cancel') return '';
       if (args.includes('jobs')) {
+        // queuedFor: the real job waits for a runner for that many looks, then runs (the macOS cap); noneWaiting: the run has no
+        // real job and none waiting; runPendingNoJobs: the run itself waits (a concurrency group), with no job yet.
+        if (o.runPendingNoJobs === true) return JSON.stringify({ jobs: [] });
+        if (o.noneWaiting === true) return JSON.stringify({ jobs: [{ name: 'resolve', status: 'completed', conclusion: 'success' }, ...(o.ubuntu === 'completed' ? [{ name: 'platform-free', status: 'completed', conclusion: 'success' }] : [])] });
+        // ubuntu: an Ubuntu job of the run, running or done, beside the macOS job (it gets a runner at once).
+        const ubuntu = o.ubuntu === undefined ? [] : [{ name: 'platform-free', status: o.ubuntu, conclusion: o.ubuntu === 'completed' ? 'success' : null }];
+        if (o.queuedFor !== undefined && ++jobCalls <= o.queuedFor) return JSON.stringify({ jobs: [{ name: 'resolve', status: 'completed', conclusion: 'success' }, ...ubuntu, { name: 'chrome (1)', status: 'queued', conclusion: null }] });
         // The real jobs as the run's state says: queued, running, or done with the run's conclusion (a failure is chrome (1)'s).
         const failed = o.failedEarly === true || (finished && o.conclusion === 'failure');
         // A failed job failed at its test step, or (setupFails) at a setup step before it.
@@ -36,13 +44,13 @@ function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; concl
           ? [{ name: 'Set up job', status: 'completed', conclusion: 'success' }, o.setupFails === true ? { name: 'Playwright 1.58.2 Chromium, the pinned WPT copy and kotlinc 2.4.20', status: 'completed', conclusion: 'failure' } : { name: 'Playwright 1.58.2 Chromium, the pinned WPT copy and kotlinc 2.4.20', status: 'completed', conclusion: 'success' }, { name: 'vitest run (every other file, shard 1/3)', status: 'completed', conclusion: o.setupFails === true ? 'skipped' : 'failure' }]
           : [];
         const chrome = o.jobsQueued === true ? { status: 'queued', conclusion: null, steps } : failed ? { status: 'completed', conclusion: 'failure', steps } : finished ? { status: 'completed', conclusion: o.conclusion === 'cancelled' ? 'cancelled' : 'success', steps } : { status: 'in_progress', conclusion: null, steps };
-        return JSON.stringify({ jobs: [{ name: 'resolve', status: 'completed', conclusion: 'success' }, { name: 'chrome (1)', ...chrome }, ...(o.failedEarly === true ? [{ name: 'chrome (2)', status: 'queued', conclusion: null }] : [])] });
+        return JSON.stringify({ jobs: [{ name: 'resolve', status: 'completed', conclusion: 'success' }, ...ubuntu, { name: 'chrome (1)', ...chrome }, ...(o.failedEarly === true ? [{ name: 'chrome (2)', status: 'queued', conclusion: null }] : [])] });
       }
       if (o.ghBad === true) return '{"oops":1}';
       if (args[1] === 'list') return JSON.stringify([...(o.runs ?? []), ...(++lists > (o.appearAfter ?? 0) ? [mine] : [])]);
       const done = ++views > (o.doneAfter ?? 1);
       finished = done;
-      return JSON.stringify({ databaseId: 7, url: mine.url, status: done ? 'completed' : 'in_progress', conclusion: done ? (o.conclusion === undefined ? 'success' : o.conclusion) : null });
+      return JSON.stringify({ databaseId: 7, url: mine.url, status: done ? 'completed' : o.runPendingNoJobs === true ? 'pending' : 'in_progress', conclusion: done ? (o.conclusion === undefined ? 'success' : o.conclusion) : null });
     },
     pushTemp: (branch) => {
       calls.push(`push ${branch}`);
@@ -162,6 +170,78 @@ describe('GitHub Actions not running the workflow (runners not picking up jobs)'
     expect(unavailable(() => runDevicesOnCi({ pr: 42, deps: stuck.deps, appearS: 300, waitS: 3600, startS: 600, pollS: 30 })).message).toMatch(/has jobs that never started \(chrome \(1\)\) after \d+s/);
     // The queued run is cancelled and the scratch branch deleted.
     expect(stuck.calls.slice(-3)).toEqual(['run cancel', 'record null', `delete ${tempBranch(42)}`]);
+  });
+});
+
+describe('a run queued for a runner is not a run that never started (LAND_CI_QUEUE_WAIT)', () => {
+  const unavailable = (f: () => unknown): CiUnavailable => {
+    try {
+      f();
+    } catch (e) {
+      if (e instanceof CiUnavailable) return e;
+      throw e;
+    }
+    throw new Error('no CiUnavailable');
+  };
+  const at = (f: ReturnType<typeof fake>, o: { queueS?: number; waitS?: number; doneAfter?: number } = {}) => runDevicesOnCi({ pr: 42, deps: f.deps, appearS: 300, waitS: o.waitS ?? 3600, startS: 600, pollS: 30, ...(o.queueS === undefined ? {} : { queueS: o.queueS }) });
+  it('waits past LAND_CI_START for jobs queued behind busy runners, then judges the run as usual', () => {
+    // Queued for about an hour (120 looks at 30 s), far past the 600 s start limit, then runs and passes.
+    const f = fake({ queuedFor: 120, doneAfter: 200 });
+    const r = at(f);
+    expect(r.url).toBe('https://ci/run/7');
+    expect(f.logs).toContain('  device lanes on CI: queued, waiting for a runner (chrome (1)); each job waits up to 10800s for one');
+    expect(f.logs.filter((l) => l.includes('queued, waiting for a runner'))).toHaveLength(1);
+    expect(f.calls).not.toContain('run cancel');
+    // The run's own wait counts from its first job's start, so the hour queued is not taken from it.
+    // (It starts about 4200 s after the dispatch and ends about 6000 s after it, past a 3000 s wait counted from the dispatch.)
+    const late = fake({ queuedFor: 120, doneAfter: 200 });
+    expect(at(late, { waitS: 3000 }).url).toBe('https://ci/run/7');
+    // A run waiting as a whole (a concurrency group), with no job yet, is queued too.
+    const pending = fake({ runPendingNoJobs: true, doneAfter: 100 });
+    expect(at(pending).url).toBe('https://ci/run/7');
+    expect(pending.logs.some((l) => l.includes('queued, waiting for a runner (none listed)'))).toBe(true);
+  });
+  it('judges each job on its own: macOS jobs queued while the Ubuntu jobs ran or finished are queued, not "never started"', () => {
+    // The Ubuntu job is done at once; the macOS job waits about an hour for a runner, longer than the run's 1200 s wait.
+    const done = fake({ ubuntu: 'completed', queuedFor: 120, doneAfter: 160 });
+    expect(at(done, { waitS: 1200 }).url).toBe('https://ci/run/7');
+    expect(done.calls).not.toContain('run cancel');
+    // The Ubuntu job still running beside it, within its own wait.
+    const busy = fake({ ubuntu: 'in_progress', queuedFor: 60, doneAfter: 100 });
+    expect(at(busy, { waitS: 3600 }).url).toBe('https://ci/run/7');
+    // The macOS job past the queue wait is still not run, however the Ubuntu jobs went.
+    const stuck = fake({ ubuntu: 'completed', queuedFor: 1e9, doneAfter: 1e9 });
+    expect(unavailable(() => at(stuck, { waitS: 1200, queueS: 1800 })).message).toMatch(/has jobs that never started \(chrome \(1\)\) after 18\d\ds, waiting for a runner past the queue wait of 1800s/);
+    // A job running past the wait from its own start is cut off, naming it.
+    const slow = fake({ ubuntu: 'in_progress', queuedFor: 1e9, doneAfter: 1e9 });
+    expect(unavailable(() => at(slow, { waitS: 1200 })).message).toContain('did not finish within 1200s, and no job of it failed (platform-free running past 1200s from its own start)');
+    // Every job done but the run not yet completed (its own end, or the next job not queued yet) is not "never started".
+    const between = fake({ ubuntu: 'completed', noneWaiting: true, doneAfter: 40 });
+    expect(at(between).url).toBe('https://ci/run/7');
+    const hung = fake({ ubuntu: 'completed', noneWaiting: true, doneAfter: 1e9 });
+    expect(unavailable(() => at(hung, { queueS: 1800 })).message).toMatch(/has had no job running or waiting for a runner for 18\d\ds, and is not completed/);
+  });
+  it('counts a run still queued past the queue wait as not run (default 3 h), cancelling it', () => {
+    const f = fake({ queuedFor: 1e9, doneAfter: 1e9 });
+    const e = unavailable(() => at(f, { queueS: 1800 }));
+    expect(e.message).toMatch(/has jobs that never started \(chrome \(1\)\) after (18\d\d)s, waiting for a runner past the queue wait of 1800s \(LAND_CI_QUEUE_WAIT\)/);
+    expect(f.calls.slice(-3)).toEqual(['run cancel', 'record null', `delete ${tempBranch(42)}`]);
+    const d = fake({ queuedFor: 1e9, doneAfter: 1e9 });
+    expect(unavailable(() => at(d)).message).toContain('past the queue wait of 10800s');
+    expect(DEFAULT_QUEUE_WAIT_S).toBe(3 * 3600);
+  });
+  it('still counts a run that was never created, or exists with no job started and none waiting, as not run at LAND_CI_START', () => {
+    expect(unavailable(() => at(fake({ appearAfter: 1e9 }))).message).toContain('no device-lanes.yml run for');
+    const none = fake({ noneWaiting: true, doneAfter: 1e9 });
+    const e = unavailable(() => at(none));
+    expect(e.message).toMatch(/has jobs that never started \(none waiting for a runner; run in_progress\) after (6[0-4]\d)s/);
+    expect(none.calls).toContain('run cancel');
+  });
+  it('covers the CI regen and the full test too: they share the wait', () => {
+    const f = fake({ title: regenTitle(SHA), files: ['outputs.patch'], queuedFor: 120, doneAfter: 200 });
+    const d = dispatchOnCi(regenWorkflow('regen'), { branch: regenBranch(SHA), deps: f.deps });
+    expect(awaitRegenOnCi('regen', d, { deps: f.deps, appearS: 300, waitS: 3600, startS: 600, queueS: 10800, pollS: 30, apply: () => 0 }).url).toBe('https://ci/run/7');
+    expect(f.logs).toContain('  regen on CI: queued, waiting for a runner (chrome (1)); each job waits up to 10800s for one');
   });
 });
 
