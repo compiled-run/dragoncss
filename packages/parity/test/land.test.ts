@@ -1778,19 +1778,25 @@ describe('ci-only: every heavy step on GitHub runners, never here (LAND_CI=only)
   });
 
   describe('R3: the Android records CI makes (x86_64) after the ones this Mac made (arm64)', () => {
-    // master's own device records, and the same records as a CI run would write them: only the Android image ABI differs.
+    // This tree's device records as this Mac's arm64 image writes them, and as a CI run (x86_64) would: only the ABI differs.
     const lanesText = readFileSync(repoPath('packages/parity/out/lanes.json'), 'utf8');
     const failures = (t: string): unknown => JSON.parse(readFileSync(repoPath(failuresJson(t)), 'utf8'));
+    const toArm = (text: string): string => text.replaceAll('built for x86_64 /', 'built for arm64 /').replaceAll('Android 16, x86_64)', 'Android 16, arm64-v8a)');
     const toCi = (text: string): string => text.replaceAll('built for arm64 /', 'built for x86_64 /').replaceAll('Android 16, arm64-v8a)', 'Android 16, x86_64)');
-    const master = parseDeviceEvidence(JSON.parse(lanesText), failures, 'master');
-    const ci = (edit: (lanes: string) => string = (x) => x, fail: (t: string) => unknown = failures) => parseDeviceEvidence(JSON.parse(edit(toCi(lanesText))), fail, 'ci');
-    it('master\'s records are the arm64 image\'s; the CI copy differs in the ABI alone', () => {
+    const master = parseDeviceEvidence(JSON.parse(toArm(lanesText)), failures, 'master');
+    const ci = (edit?: (lanes: string) => string, fail: (t: string) => unknown = failures) => {
+      const text = toCi(lanesText);
+      const edited = edit === undefined ? text : edit(text);
+      if (edit !== undefined && edited === text) throw new Error('the edit changed nothing in the records');
+      return parseDeviceEvidence(JSON.parse(edited), fail, 'ci');
+    };
+    it('the arm64 records and the CI copy differ in the Android ABI alone', () => {
       expect([...androidAbis(master)]).toEqual(['arm64']);
       expect([...androidAbis(ci())]).toEqual(['x86_64']);
       expect(normalAbi('arm64-v8a')).toBe('arm64');
       expect(hostAbi('arm64')).toBe('arm64');
       expect(hostAbi('x64')).toBe('x86_64');
-      expect(toCi(lanesText)).not.toBe(lanesText);
+      expect(toCi(lanesText)).not.toBe(toArm(lanesText));
     });
     it('accepts it as an architecture rebaseline when every lane keeps its state and exact failures', () => {
       const c = archChanges(master, ci());
@@ -1808,10 +1814,10 @@ describe('ci-only: every heavy step on GitHub runners, never here (LAND_CI=only)
       const android = (failures('android') as { lane: string }[]);
       expect(android.length).toBeGreaterThan(0);
       const extra = [...android, { ...(android[0] as object), case: 'a-case-master-does-not-fail' }];
-      const more = ci((x) => x, (t) => (t === 'android' ? extra : failures(t)));
+      const more = ci(undefined, (t) => (t === 'android' ? extra : failures(t)));
       expect(ciArchRebaseline(master, more).rebaseline).toBe(true);
       expect(deviceRunProblems(master, more, [], { rebaseline: true }).length).toBeGreaterThan(0);
-      const fewer = ci((x) => x, (t) => (t === 'android' ? android.slice(1) : failures(t)));
+      const fewer = ci(undefined, (t) => (t === 'android' ? android.slice(1) : failures(t)));
       expect(deviceRunProblems(master, fewer, [], { rebaseline: true }).some((p) => p.includes('an architecture rebaseline needs master\'s state and exactly master\'s failures'))).toBe(true);
     });
     it('is never automatic for any other model change: an iOS model, another device, or a model that differs beyond its ABI', () => {
