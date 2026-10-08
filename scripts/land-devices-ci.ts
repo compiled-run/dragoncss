@@ -4,7 +4,7 @@
 // and judge against the previous position as a local run is judged. The scratch branch is deleted whatever happens.
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { Fatal, LandFailure } from './land-lib.ts';
+import { CiOutage, type CiMode, LandFailure } from './land-lib.ts';
 
 export const DEVICE_WORKFLOW = 'device-lanes.yml';
 export const OUTCOMES_ARTIFACT = 'device-outcomes';
@@ -77,7 +77,8 @@ export function outcomeFiles(files: readonly string[]): string[] {
 
 /**
  * GitHub Actions did not run the workflow: the dispatch was refused, no run appeared, or a job of the run never started (runners
- * not picking up jobs). Nothing was judged, so the caller falls back to the local run instead of failing the PR.
+ * not picking up jobs, or still waiting for one past the queue wait). Nothing was judged, so the caller falls back to the local
+ * run (ci) or stops the driver (ci-only, CiOutage) instead of failing the PR.
  */
 export class CiUnavailable extends Error {}
 
@@ -154,7 +155,9 @@ export const DEVICES_WORKFLOW: CiWorkflow = { workflow: DEVICE_WORKFLOW, step: '
 
 /** A workflow dispatched for a commit pushed to its scratch branch, not yet waited for (awaitOnCi). */
 export type Dispatched = { readonly branch: string; readonly sha: string; readonly t0: number };
-type CiOptions = { readonly deps: DevicesCiDeps; readonly appearS: number; readonly waitS: number; readonly startS?: number; readonly pollS?: number };
+/** How long a run whose jobs wait for a runner (the free plan runs 5 macOS jobs at once) is waited for before it counts as not run. */
+export const DEFAULT_QUEUE_WAIT_S = 3 * 3600;
+type CiOptions = { readonly deps: DevicesCiDeps; readonly appearS: number; readonly waitS: number; readonly startS?: number; readonly queueS?: number; readonly pollS?: number };
 
 /**
  * Pushes the commit to the scratch branch and dispatches the workflow on master for it. Any failure judged nothing: the branch is
@@ -237,24 +240,40 @@ export function awaitOnCi(w: CiWorkflow, d: Dispatched, o: CiOptions): DevicesCi
     }
     deps.log(`  ${w.what} on CI: ${run.url}`);
     deps.record({ branch, runId: run.databaseId, sha, workflow: w.workflow });
-    // "CI never starts a job": no job of the run started within startS (runners not picking up jobs), or a job is still queued
-    // when waitS runs out. Either way nothing was judged. A run some of whose jobs wait for a busy runner pool is waited for.
-    let started = false;
+    // "CI never starts a job": past startS no job of the run has started and none is waiting for a runner (the run errored or
+    // runners are not picking up jobs), or jobs still wait for a runner past queueS, or a job is still queued when waitS (counted
+    // from the first job's start, so time queued before it is not taken from the run) runs out. Either way nothing was judged.
+    // A run queued behind busy runners (the macOS concurrency cap) is waited for, up to queueS.
+    const queueS = o.queueS ?? DEFAULT_QUEUE_WAIT_S;
+    let startedAt: number | null = null;
+    let queuedSaid = false;
+    const waiting = (status: string): boolean => status === 'queued' || status === 'waiting' || status === 'pending' || status === 'requested';
     const jobsOf = (id: number) => parseJobs(deps.gh(['run', 'view', String(id), '--json', 'jobs']));
     while (run.status !== 'completed') {
-      const over = deps.now() - t0 > o.waitS * 1000;
-      if (over || (!started && deps.now() - t0 > startS * 1000)) {
+      const elapsed = deps.now() - t0;
+      const over = startedAt !== null && deps.now() - startedAt > o.waitS * 1000;
+      if (over || (startedAt === null && elapsed > startS * 1000)) {
         const jobs = jobsOf(run.databaseId);
         // A job that already failed at a verdict step is a verdict, whatever the rest of the run is doing; one that failed at a
         // setup step judged nothing.
         const failed = failedJobs(jobs);
         if (failed.verdict.length > 0) throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} has failed jobs (${failed.verdict.join(', ')})${explainOf(run.databaseId)}`);
         if (failed.setup.length > 0) throw new CiUnavailable(`the CI ${w.what} run ${run.url} failed in setup (${failed.setup.join(', ')})`);
+        // A resolve job still running is the run still starting, as a queued job is.
+        const queued = jobs.filter((j) => waiting(j.status) || (j.name === 'resolve' && j.status === 'in_progress'));
+        const names = queued.map((j) => j.name).join(', ') || 'none listed';
         // The resolve job (ubuntu, seconds) does not count: the work is in the jobs after it.
-        started ||= jobs.some((j) => j.name !== 'resolve' && (j.status === 'in_progress' || j.status === 'completed'));
-        const queued = jobs.filter((j) => j.status === 'queued' || j.status === 'waiting' || j.status === 'pending');
-        if (!started || (over && queued.length > 0)) throw new CiUnavailable(`the CI ${w.what} run ${run.url} has jobs that never started (${queued.map((j) => j.name).join(', ') || 'none listed'}) after ${Math.round((deps.now() - t0) / 1000)}s`);
-        if (over) throw new CiUnavailable(`the CI ${w.what} run ${run.url} did not finish within ${o.waitS}s, and no job of it failed`);
+        if (startedAt === null && jobs.some((j) => j.name !== 'resolve' && (j.status === 'in_progress' || j.status === 'completed'))) startedAt = deps.now();
+        if (startedAt === null) {
+          // Queued: the run exists and waits for runners (its jobs queued, or the run itself before it has any job).
+          if (queued.length === 0 && !(jobs.length === 0 && waiting(run.status))) throw new CiUnavailable(`the CI ${w.what} run ${run.url} has jobs that never started (none waiting for a runner; run ${run.status}) after ${Math.round(elapsed / 1000)}s`);
+          if (elapsed > queueS * 1000) throw new CiUnavailable(`the CI ${w.what} run ${run.url} has jobs that never started (${names}) after ${Math.round(elapsed / 1000)}s, waiting for a runner past the queue wait of ${queueS}s (LAND_CI_QUEUE_WAIT)`);
+          if (!queuedSaid) deps.log(`  ${w.what} on CI: queued, waiting for a runner (${names}); waiting up to ${queueS}s for it to start`);
+          queuedSaid = true;
+        } else if (over) {
+          if (queued.length > 0) throw new CiUnavailable(`the CI ${w.what} run ${run.url} has jobs that never started (${names}) after ${Math.round(elapsed / 1000)}s`);
+          throw new CiUnavailable(`the CI ${w.what} run ${run.url} did not finish within ${o.waitS}s, and no job of it failed (counted from its first job's start)`);
+        }
       }
       deps.sleep(poll);
       run = { ...run, ...parseRunRows(deps.gh(['run', 'view', String(run.databaseId), '--json', 'databaseId,status,conclusion,url']))[0]! };
@@ -296,7 +315,7 @@ export function awaitOnCi(w: CiWorkflow, d: Dispatched, o: CiOptions): DevicesCi
 }
 
 /** The device lanes of a landing position on CI (device-lanes.yml); judged by the driver, so the workflow does not judge. */
-export const runDevicesOnCi = (o: { readonly pr: number; readonly deps: DevicesCiDeps; readonly appearS: number; readonly waitS: number; readonly startS?: number; readonly pollS?: number }): DevicesCiResult =>
+export const runDevicesOnCi = (o: CiOptions & { readonly pr: number }): DevicesCiResult =>
   runOnCi(DEVICES_WORKFLOW, { ...o, branch: tempBranch(o.pr) });
 
 export const FULL_TEST_WORKFLOW_FILE = 'full-test.yml';
@@ -345,13 +364,7 @@ export function patchFiles(files: readonly string[]): string[] {
 /** regen-on-ci.yml in patch mode for one commit; a failed regen round (or no fixed point) fails the PR at the call site's step. */
 export const regenWorkflow = (step: string): CiWorkflow => ({ workflow: REGEN_WORKFLOW_FILE, step, what: 'regen', title: regenTitle, inputs: [], artifact: PATCH_ARTIFACT, check: patchFiles });
 
-export type CiMode = 'local' | 'ci';
-/** LAND_DEVICES, LAND_TEST and LAND_REGEN: unset is local. */
-export function parseCiMode(name: string, value: string | undefined): CiMode {
-  if (value === undefined) return 'local';
-  if (value !== 'local' && value !== 'ci') throw new Error(`land: ${name} must be local or ci, not ${JSON.stringify(value)}`);
-  return value;
-}
+export type { CiMode };
 
 /**
  * Applies the CI regen's patch to the landing tree it was made from. The worktree is staged whole, so its index is the tree of
@@ -390,11 +403,11 @@ export function awaitRegenOnCi(step: string, d: Dispatched, o: CiOptions & { rea
 }
 
 /**
- * One regen of the landing tree under LAND_REGEN. With ci it runs on CI; when GitHub Actions does not run it (CiUnavailable, or
- * master's regen-on-ci.yml has no patch mode yet) the outcome depends on the host, as with LAND_DEVICES=ci:
- * - on a Mac, the local regen instead: this Mac's regen is the one the CI regen reproduces byte for byte, so it judges the same;
- * - anywhere else, Fatal: no local regen there writes the same outputs (the captures are keyed by platform, lanes-host needs
- *   Xcode), so the driver stops and no PR is blamed.
+ * One regen of the landing tree under LAND_REGEN. With ci or ci-only it runs on CI; when GitHub Actions does not run it
+ * (CiUnavailable, or master's regen-on-ci.yml has no patch mode yet) the outcome depends on the mode and host:
+ * - ci on a Mac: the local regen instead: this Mac's regen is the one the CI regen reproduces byte for byte, so it judges the same;
+ * - ci-only, or ci anywhere else: CiOutage: no local regen may stand in (off a Mac none writes the same outputs: the captures are
+ *   keyed by platform, lanes-host needs Xcode), so the driver stops and no PR is blamed.
  * A LandFailure (the regen itself failed on CI) is the PR's, as a failed local regen is. Returns where the regen ran.
  */
 export function landRegen(o: { readonly mode: CiMode; readonly mac: boolean; readonly ready: () => boolean; readonly ci: () => void; readonly local: () => void; readonly log: (line: string) => void }): CiMode {
@@ -412,7 +425,8 @@ export function landRegen(o: { readonly mode: CiMode; readonly mac: boolean; rea
       why = `GitHub Actions did not run the regen (${e.message})`;
     }
   } else why = `master's ${REGEN_WORKFLOW_FILE} has no patch mode yet`;
-  if (!o.mac) throw new Fatal(`LAND_REGEN=ci: ${why}; this host is not a Mac, so no local regen can stand in for it. The driver stops; no PR is blamed`);
+  if (o.mode === 'ci-only') throw new CiOutage(`LAND_REGEN=ci-only: ${why}. The driver stops; no PR is blamed`);
+  if (!o.mac) throw new CiOutage(`LAND_REGEN=ci: ${why}; this host is not a Mac, so no local regen can stand in for it. The driver stops; no PR is blamed`);
   o.log(`  !!! LAND_REGEN=ci: ${why}; running pnpm regen locally`);
   o.local();
   return 'local';

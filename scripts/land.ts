@@ -49,6 +49,14 @@ import {
   LandFailure,
   MAX_BATCH,
   buildPositionsParallel,
+  ciArchRebaseline,
+  CiOutage,
+  type CiMode,
+  androidAbis,
+  hostAbi,
+  parseLandModes,
+  parseMaxInflight,
+  serializeFatal,
   preparedDifference,
   preparedFits,
   stopProcessGroup,
@@ -97,7 +105,7 @@ import { MERGE_DRIVERS } from './floor-merge.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
 import { matcher, STEPS } from './regen.ts';
 import { abandonInflight, CiUnavailable, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, staleScratchBranches, failedTestsOf, fullTestWorkflow, parseRunRows, runDevicesOnCi, runOnCi, scratchRef, testBranch } from './land-devices-ci.ts';
-import { applyRegenPatch, awaitRegenOnCi, type CiMode, DEFAULT_REGEN_WAIT_S, type Dispatched, dispatchOnCi, landRegen, parseCiMode, regenBranch, regenWorkflow } from './land-devices-ci.ts';
+import { applyRegenPatch, awaitRegenOnCi, DEFAULT_QUEUE_WAIT_S, DEFAULT_REGEN_WAIT_S, type Dispatched, dispatchOnCi, landRegen, regenBranch, regenWorkflow } from './land-devices-ci.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
 const DEVICE = '/tmp/device-lease.sh';
@@ -157,18 +165,27 @@ let CI_WAIT_S = 0;
 let CI_APPEAR_S = 0;
 let QUIET_MAX_S = 0;
 // LAND_DEVICES=ci runs a position's device lanes on GitHub runners (device-lanes.yml) instead of under the local device lease.
-let DEVICES_ON = 'local';
+let DEVICES_ON: CiMode = 'local';
 let DEVICES_WAIT_S = 0;
 // LAND_TEST=ci proves each tree with full-test.yml on GitHub runners instead of pnpm test on this Mac.
-let TEST_ON = 'local';
+let TEST_ON: CiMode = 'local';
 let TEST_WAIT_S = 0;
 // LAND_REGEN=ci runs every regen of a landing tree on GitHub runners (regen-on-ci.yml in patch mode) and applies its patch. When
 // GitHub Actions does not run it, a Mac runs pnpm regen locally (as LAND_DEVICES=ci falls back) and any other host stops the
 // driver without blaming a PR (landRegen in land-devices-ci.ts says why).
 let REGEN_ON: CiMode = 'local';
 let REGEN_WAIT_S = 0;
-// How long a CI run may go without starting any job before GitHub Actions counts as not running it (the local run takes over).
+// ci-only (each of the three, or all three with LAND_CI=only; parseLandModes): the step never runs here, and GitHub Actions not
+// running it stops the driver as a CI outage (CiOutage): no PR failed, the rest of the queue still queued. With all three
+// ci-only (CI_ONLY) nothing heavy runs here, so the shared-Mac coordination (priority and quiet files) is skipped too.
+let CI_ONLY = false;
+// How long a CI run may go without starting any job, with none waiting for a runner, before GitHub Actions counts as not running
+// it; and how long a run whose jobs wait for a runner (LAND_CI_QUEUE_WAIT) is waited for.
 let CI_START_S = 0;
+let CI_QUEUE_S = 0;
+// How many positions of a batch have their CI regen dispatched at once (LAND_CI_MAX_INFLIGHT, default 2): a regen takes several
+// macOS jobs and the free plan runs 5 at once, so the positions above it are built one by one, each regen dispatched in turn.
+let CI_MAX_INFLIGHT = 2;
 let BATCH = 1;
 const REGEN = ['pnpm', 'regen'];
 const DEVICES = ['pnpm', 'run', 'parity:devices'];
@@ -274,8 +291,11 @@ const must = (step: string, argv: string[], cwd: string, extraEnv: Record<string
 };
 const heavy = (step: string, argv: string[]): Run => run(step, [HEAVY, ...argv], WT, { HEAVY_PRIORITY: '1' });
 
-const holdPriority = (): void => writeFileSync(PRIORITY, String(process.pid));
+const holdPriority = (): void => {
+  if (!CI_ONLY) writeFileSync(PRIORITY, String(process.pid));
+};
 const releasePriority = (): void => {
+  if (CI_ONLY) return;
   try {
     if (readFileSync(PRIORITY, 'utf8').trim() === String(process.pid)) rmSync(PRIORITY, { force: true });
   } catch {}
@@ -323,29 +343,42 @@ const requireTracked = (step: string, what: string): void => {
   if (dirty !== '') throw new LandFailure(step, `${what} changed tracked files:\n${dirty}`);
 };
 
+// A commit's committed device evidence.
+const evidenceAt = (commit: string): ReturnType<typeof parseDeviceEvidence> => {
+  const show = (path: string): unknown => JSON.parse(git(['show', `${commit}:${path}`]).toString('utf8'));
+  return parseDeviceEvidence(show(LANES_JSON), (t) => show(failuresJson(t)), `master ${commit}`);
+};
 // The device run is judged on what it recorded, against master's committed device evidence, as merge-train judges a position.
-const judgeDevices = (master: string, startedMs: number | null): string[] => {
-  const show = (path: string): unknown => JSON.parse(git(['show', `${master}:${path}`]).toString('utf8'));
+// `onCi`: the run was device-lanes.yml's, so an Android image ABI change alone is an architecture rebaseline (ciArchRebaseline),
+// whose note is returned for the landing's record.
+const judgeDevices = (master: string, startedMs: number | null, onCi = false): { problems: string[]; rebaseline: string | null } => {
   const local = (path: string): unknown => JSON.parse(readFileSync(join(WT, path), 'utf8'));
-  const before = parseDeviceEvidence(show(LANES_JSON), (t) => show(failuresJson(t)), `master ${master}`);
+  const before = evidenceAt(master);
   // The run's own records that cannot be read are the device step's failure, not the driver's.
   let after: ReturnType<typeof parseDeviceEvidence>;
   try {
     after = parseDeviceEvidence(local(LANES_JSON), (t) => local(failuresJson(t)), 'this tree');
   } catch (error) {
-    return [`the device run's records cannot be judged: ${msg(error)}`];
+    return { problems: [`the device run's records cannot be judged: ${msg(error)}`], rebaseline: null };
   }
-  if (startedMs !== null && !deviceRunWrote(statSync(join(WT, LANES_JSON)).mtimeMs, startedMs)) return [`the device run did not rewrite ${LANES_JSON}`];
+  if (startedMs !== null && !deviceRunWrote(statSync(join(WT, LANES_JSON)).mtimeMs, startedMs)) return { problems: [`the device run did not rewrite ${LANES_JSON}`], rebaseline: null };
   const lanes = spawnSync('pnpm', ['-s', 'run', 'parity:lanes'], { cwd: WT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   if (lanes.error || lanes.signal || (lanes.status !== 0 && lanes.status !== 1) || !/^parity:lanes: /m.test(lanes.stdout)) {
-    return [`pnpm -s run parity:lanes did not judge the lanes: ${lanes.error?.message ?? lanes.signal ?? `exit ${lanes.status}`} ${lanes.stderr.slice(0, 300)}`];
+    return { problems: [`pnpm -s run parity:lanes did not judge the lanes: ${lanes.error?.message ?? lanes.signal ?? `exit ${lanes.status}`} ${lanes.stderr.slice(0, 300)}`], rebaseline: null };
   }
-  // An architecture change of a lane is judged as a rebaseline only for the PR LAND_ARCH_REBASELINE names, recorded in its body.
+  // An architecture change of a lane is judged as a rebaseline only for the PR LAND_ARCH_REBASELINE names, recorded in its body,
+  // or (a CI device run) when every change is of the Android image ABI. Either way each changed lane must keep the previous
+  // position's state and exactly its failures (deviceRunProblems); a verdict difference is never accepted.
   const pr = current?.pr ?? 0;
   const arch = archRebaseline(env['LAND_ARCH_REBASELINE'], pr, pr === 0 ? '' : JSON.parse(gh(['pr', 'view', String(pr), '--repo', REPO, '--json', 'body'])).body ?? '');
-  if (arch.problem !== null) return [arch.problem];
+  if (arch.problem !== null) return { problems: [arch.problem], rebaseline: null };
   if (arch.rebaseline) log(`  LAND_ARCH_REBASELINE: #${pr} may change device lane architectures, with master's states and exact failure sets`);
-  return deviceRunProblems(before, after, staleLines(lanes.stdout), { rebaseline: arch.rebaseline });
+  const auto = !arch.rebaseline && onCi ? ciArchRebaseline(before, after) : { rebaseline: false, changes: [] };
+  const problems = deviceRunProblems(before, after, staleLines(lanes.stdout), { rebaseline: arch.rebaseline || auto.rebaseline });
+  if (!auto.rebaseline) return { problems, rebaseline: arch.rebaseline ? `LAND_ARCH_REBASELINE=${pr}` : null };
+  const note = `Android ABI rebaseline on CI (${[...androidAbis(before)].join(', ')} -> ${[...androidAbis(after)].join(', ')}) for ${auto.changes.length} device set(s)`;
+  log(`  !!! ARCHITECTURE REBASELINE (LAND_DEVICES=${DEVICES_ON}): the CI device run's Android records are of another image ABI than the previous position's; ${problems.length === 0 ? 'every lane keeps its state and exact failures, so they replace them' : 'refused, a verdict differs'}:\n    ${auto.changes.join('\n    ')}`);
+  return { problems, rebaseline: problems.length === 0 ? note : null };
 };
 
 // Every floor file on master or the landing commit, judged against master's version (floorRegressions).
@@ -413,8 +446,11 @@ const ciDevicesReady = (): boolean => {
     workflow = false;
   }
   const cli = existsSync(join(WT, 'packages/parity/src/cli/device-ci.ts'));
-  if (!workflow || !cli) log(`  LAND_DEVICES=ci: ${!workflow ? 'master has no .github/workflows/device-lanes.yml' : 'the landing tree has no packages/parity/src/cli/device-ci.ts'} yet; running the device lanes locally`);
-  return workflow && cli;
+  if (workflow && cli) return true;
+  const why = !workflow ? 'master has no .github/workflows/device-lanes.yml' : 'the landing tree has no packages/parity/src/cli/device-ci.ts';
+  if (DEVICES_ON === 'ci-only') throw new CiOutage(`LAND_DEVICES=ci-only: ${why} yet, and no local device run may stand in. The driver stops; no PR is blamed`);
+  log(`  LAND_DEVICES=ci: ${why} yet; running the device lanes locally`);
+  return false;
 };
 
 // LAND_TEST=ci proves a commit with full-test.yml on GitHub runners, once master has it (it is dispatched from master).
@@ -423,6 +459,7 @@ const ciTestReady = (): boolean => {
     git(['cat-file', '-e', `${fetchMaster()}:.github/workflows/full-test.yml`]);
     return true;
   } catch {
+    if (TEST_ON === 'ci-only') throw new CiOutage('LAND_TEST=ci-only: master has no .github/workflows/full-test.yml yet, and no local test may stand in. The driver stops; no PR is blamed');
     log('  LAND_TEST=ci: master has no .github/workflows/full-test.yml yet; running pnpm test locally');
     return false;
   }
@@ -452,7 +489,7 @@ const dispatchRegen = (record: string): Dispatched => {
 };
 // Waits for a dispatched CI regen and applies its patch to WT (whose tree must still be the dispatched commit's).
 const finishRegen = (step: string, d: Dispatched, record: string): void => {
-  awaitRegenOnCi(step, d, { deps: regenCiDeps(d.sha, record), appearS: CI_APPEAR_S, waitS: REGEN_WAIT_S, startS: CI_START_S, apply: (patch) => applyRegenPatch((args) => text(wtGit, args), d.sha, patch) });
+  awaitRegenOnCi(step, d, { deps: regenCiDeps(d.sha, record), appearS: CI_APPEAR_S, waitS: REGEN_WAIT_S, startS: CI_START_S, queueS: CI_QUEUE_S, apply: (patch) => applyRegenPatch((args) => text(wtGit, args), d.sha, patch) });
 };
 // One `pnpm regen` of WT, locally under the heavy lease or (LAND_REGEN=ci) on CI; a failure fails the PR at failStep.
 const regenTree = (step: string, failStep: string): void => {
@@ -714,7 +751,7 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
   }
   if (!runDevices) {
     // Equal stamps: the regen carried the previous position's device records; they must judge exactly as its.
-    const problems = judgeDevices(prev, null);
+    const { problems } = judgeDevices(prev, null);
     if (problems.length > 0) {
       log(`  the stamp equals the previous position's, but the carried device records differ; running the device lanes:\n    ${problems.join('\n    ')}`);
       runDevices = true;
@@ -725,12 +762,18 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
     let ran = DEVICES.join(' ');
     // CI that does not run the workflow (no run, or no job started) falls back to the local device run: nothing was judged there.
     let ci: ReturnType<typeof runDevicesOnCi> | null = null;
-    if (DEVICES_ON === 'ci' && ciDevicesReady()) {
+    if (DEVICES_ON !== 'local' && ciDevicesReady()) {
       try {
-        ci = runDevicesOnCi({ pr: e.pr, deps: ciDeviceDeps(e.pr), appearS: CI_APPEAR_S, waitS: DEVICES_WAIT_S, startS: CI_START_S });
+        ci = runDevicesOnCi({ pr: e.pr, deps: ciDeviceDeps(e.pr), appearS: CI_APPEAR_S, waitS: DEVICES_WAIT_S, startS: CI_START_S, queueS: CI_QUEUE_S });
       } catch (error) {
         if (!(error instanceof CiUnavailable)) throw error;
-        log(`  !!! LAND_DEVICES=ci: GitHub Actions did not run the device lanes (${error.message}); running them locally`);
+        const why = `GitHub Actions did not run the device lanes (${error.message})`;
+        if (DEVICES_ON === 'ci-only') throw new CiOutage(`LAND_DEVICES=ci-only: ${why}. The driver stops; no PR is blamed`);
+        // The local run is this host's Android ABI: against records of another ABI (a CI run's) it could only differ in
+        // architecture, failing the PR for the host, so the driver stops instead.
+        const abis = [...androidAbis(evidenceAt(prev))].filter((a) => a !== hostAbi(process.arch));
+        if (abis.length > 0) throw new CiOutage(`LAND_DEVICES=ci: ${why}, and the previous position's Android records are of ${abis.join(', ')}, not this host's ${hostAbi(process.arch)}, so no local run may stand in. The driver stops; no PR is blamed`);
+        log(`  !!! LAND_DEVICES=ci: ${why}; running them locally`);
       }
     }
     if (ci !== null) {
@@ -749,11 +792,11 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
       // master's device-pixels lane fails on purpose, so the exit code says nothing; the judgement against the previous position decides.
       if (d.error !== undefined || d.signal !== null || (d.status !== 0 && d.status !== 1)) failed('devices', d, DEVICES.join(' '));
     }
-    const problems = judgeDevices(prev, started);
-    if (problems.length > 0) throw new LandFailure('judge-devices', `the device run differs from the previous position's device evidence:\n  ${problems.join('\n  ')}`);
+    const judged = judgeDevices(prev, started, ci !== null);
+    if (judged.problems.length > 0) throw new LandFailure('judge-devices', `the device run differs from the previous position's device evidence:\n  ${judged.problems.join('\n  ')}`);
     regenTree('regen-after-devices', 'regen-after-devices');
     commands.push(ran, REGEN.join(' '));
-    device = `ran${ran === DEVICES.join(' ') ? '' : ' on CI'}; every lane passes or fails as on the previous position`;
+    device = `ran${ran === DEVICES.join(' ') ? '' : ' on CI'}; every lane passes or fails as on the previous position${judged.rebaseline === null ? '' : `; ${judged.rebaseline}`}`;
   }
   log(`  device lanes: ${device}`);
   const head = commitRegen(wtGit, k, t.member, commands, 'Land');
@@ -818,6 +861,7 @@ const removePositionWorktrees = (): void => {
 const preparePosition = (base: string, k: number, items: readonly { entry: Entry; ticket: Ticket }[]): PreparedPosition => {
   const dir = posDir(k);
   current = items[k - 1]!.entry;
+  if (REGEN_ON !== 'local' && k > CI_MAX_INFLIGHT) throw new Error(`LAND_CI_MAX_INFLIGHT is ${CI_MAX_INFLIGHT}: no more CI regens are dispatched at once`);
   log(`  parallel build: preparing position ${k} (#${current.pr}) in ${dir}`);
   if (!existsSync(join(dir, '.git'))) git(['worktree', 'add', '-q', '--detach', dir, base]);
   return withWorktree(dir, () => {
@@ -825,7 +869,7 @@ const preparePosition = (base: string, k: number, items: readonly { entry: Entry
     let cur = base;
     for (const [j, it] of items.entries()) cur = mergeMember(wtGit, cur, it.ticket.member, j + 1, it.ticket.tip, 'Prepare');
     must(`prepare-${k}-install`, ['pnpm', 'install', '--frozen-lockfile'], dir);
-    if (REGEN_ON === 'ci') {
+    if (REGEN_ON !== 'local') {
       // Dispatched now and waited for in awaitPrepared, so the batch's regens run on CI side by side. When GitHub Actions does not
       // take it (or master has no patch mode yet), this preparation fails and the position builds one by one (regenTree decides).
       if (!ciRegenReady()) throw new Error(`master's regen-on-ci.yml has no patch mode yet`);
@@ -851,7 +895,14 @@ const preparePosition = (base: string, k: number, items: readonly { entry: Entry
 // since a run beside the batch's other regens can fail for the load's sake (disk, a capture timing out).
 const awaitPrepared = (h: PreparedPosition): void => {
   const ci = h.ci;
-  if (ci !== undefined) return withWorktree(h.dir, () => finishRegen('regen', ci.d, ci.record));
+  if (ci !== undefined) {
+    try {
+      return withWorktree(h.dir, () => finishRegen('regen', ci.d, ci.record));
+    } catch (error) {
+      if (REGEN_ON === 'ci-only' && error instanceof CiUnavailable) throw new CiOutage(`LAND_REGEN=ci-only: GitHub Actions did not run the regen (${error.message}). The driver stops; no PR is blamed`);
+      throw error;
+    }
+  }
   while (!existsSync(h.done)) sleep(5000);
   const code = readFileSync(h.done, 'utf8').trim();
   if (code !== '0') throw new LandFailure('regen', `pnpm regen exited ${code} (log ${h.log})\n${tail(h.log, 15)}`);
@@ -960,7 +1011,7 @@ const buildAllPositions = (base: string, items: readonly { entry: Entry; ticket:
 const proveCommit = (head: string, what: string): void => {
   holdPriority();
   let onCi: ReturnType<typeof runOnCi> | null = null;
-  if (TEST_ON === 'ci' && ciTestReady()) {
+  if (TEST_ON !== 'local' && ciTestReady()) {
     // The commit itself, pushed to its scratch branch: full-test.yml tests exactly this tree, the regen fixed point included.
     log(`  proving ${head} (${what}): full-test.yml on CI`);
     try {
@@ -970,10 +1021,13 @@ const proveCommit = (head: string, what: string): void => {
         appearS: CI_APPEAR_S,
         waitS: TEST_WAIT_S,
         startS: CI_START_S,
+        queueS: CI_QUEUE_S,
       });
     } catch (error) {
-      // GitHub Actions not running the workflow judged nothing: the local test proves the tree instead.
+      // GitHub Actions not running the workflow judged nothing: the local test proves the tree instead (ci), or nothing does
+      // and the driver stops (ci-only).
       if (!(error instanceof CiUnavailable)) throw error;
+      if (TEST_ON === 'ci-only') throw new CiOutage(`LAND_TEST=ci-only: GitHub Actions did not run the full test (${error.message}). The driver stops; no PR is blamed`);
       log(`  !!! LAND_TEST=ci: GitHub Actions did not run the full test (${error.message}); running pnpm test locally`);
     }
   }
@@ -1282,15 +1336,13 @@ const setUp = (): void => {
   CI_WAIT_S = seconds('LAND_CI_WAIT', 5400);
   CI_APPEAR_S = seconds('LAND_CI_APPEAR', 900);
   QUIET_MAX_S = seconds('LAND_QUIET_MAX', 5400);
-  DEVICES_ON = env['LAND_DEVICES'] ?? 'local';
-  if (DEVICES_ON !== 'local' && DEVICES_ON !== 'ci') throw new Error(`land: LAND_DEVICES must be local or ci, not ${JSON.stringify(DEVICES_ON)}`);
+  ({ devices: DEVICES_ON, test: TEST_ON, regen: REGEN_ON, ciOnly: CI_ONLY } = parseLandModes(env));
   DEVICES_WAIT_S = seconds('LAND_DEVICES_WAIT', DEFAULT_DEVICES_WAIT_S);
-  TEST_ON = env['LAND_TEST'] ?? 'local';
-  if (TEST_ON !== 'local' && TEST_ON !== 'ci') throw new Error(`land: LAND_TEST must be local or ci, not ${JSON.stringify(TEST_ON)}`);
   TEST_WAIT_S = seconds('LAND_TEST_WAIT', DEFAULT_TEST_WAIT_S);
-  REGEN_ON = parseCiMode('LAND_REGEN', env['LAND_REGEN']);
   REGEN_WAIT_S = seconds('LAND_REGEN_WAIT', DEFAULT_REGEN_WAIT_S);
   CI_START_S = seconds('LAND_CI_START', 900);
+  CI_QUEUE_S = seconds('LAND_CI_QUEUE_WAIT', DEFAULT_QUEUE_WAIT_S);
+  CI_MAX_INFLIGHT = parseMaxInflight(env['LAND_CI_MAX_INFLIGHT']);
   BATCH = parseBatchSize(env['LAND_BATCH']);
   MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
   // The default reviewer is the main checkout's lookup script, never the PR's own copy in the driver worktree.
@@ -1336,7 +1388,7 @@ const builderMain = (): number => {
   const inPath = env['LAND_BUILDER_INPUT']!;
   const outPath = env['LAND_BUILDER_OUTPUT']!;
   process.on('exit', () => {
-    releaseQuiet(QUIET_FILE, process.pid);
+    if (!CI_ONLY) releaseQuiet(QUIET_FILE, process.pid);
     releasePriority();
   });
   const put = (body: string): void => {
@@ -1371,7 +1423,7 @@ const builderMain = (): number => {
   } catch (error) {
     // A Fatal (a chain that is not what it claims) stops the run; anything else (its worktree, git, a full disk) is the
     // builder's own trouble: it writes nothing, and the driver prepares the batch itself.
-    if (error instanceof Fatal) put(JSON.stringify({ fatal: error.message }));
+    if (error instanceof Fatal) put(serializeFatal(error));
     else {
       log(`!!! the builder could not prepare the batch (${msg(error)}); the driver prepares it itself`);
       return 1;
@@ -1480,14 +1532,14 @@ const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
         killPrepared('builder');
         return empty;
       }
-      let round: Prepared<Ticket, Built> | { fatal: string };
+      let round: Prepared<Ticket, Built> | { fatal: string; outage: boolean };
       try {
         round = parsePrepared<Ticket, Built>(text);
       } catch (error) {
         log(`!!! the prepared batch is unreadable (${msg(error)}); preparing it here instead`);
         return empty;
       }
-      if ('fatal' in round) throw new Fatal(`while preparing the next batch: ${round.fatal}`);
+      if ('fatal' in round) throw round.outage ? new CiOutage(`while preparing the next batch: ${round.fatal}`) : new Fatal(`while preparing the next batch: ${round.fatal}`);
       for (const k of round.proven) proved.push(round.built[k - 1]!.position.head);
       return round;
     },
@@ -1511,10 +1563,10 @@ const main = (): number => {
   // The supervisor (below) holds the lock and handles SIGINT, SIGTERM and SIGHUP by killing this process group; this process
   // keeps their default action, so a signal ends it at once, mid-step, without reporting the step as a PR failure.
   const cleanup = (): void => {
-    releaseQuiet(QUIET_FILE, process.pid);
+    if (!CI_ONLY) releaseQuiet(QUIET_FILE, process.pid);
     releasePriority();
   };
-  if (clearStaleQuiet(QUIET_FILE, alive)) log(`removed a stale ${QUIET_FILE} left by a driver that is gone`);
+  if (!CI_ONLY && clearStaleQuiet(QUIET_FILE, alive)) log(`removed a stale ${QUIET_FILE} left by a driver that is gone`);
   process.on('exit', cleanup);
   // A synchronous driver cannot act on SIGUSR1 in time; it is kept from killing the driver, and the stop goes to the supervisor.
   process.on('SIGUSR1', () => log(`SIGUSR1 reached the driver, which ignores it; send it to the supervisor (pid ${env[SUPERVISOR_PID_ENV]}, in ${LOCK}/pid)`));
@@ -1534,7 +1586,7 @@ const main = (): number => {
     log(`WARNING could not list the scratch branches: ${msg(error)}`);
   }
   const startedAt = stamp();
-  log(`=== pnpm land ${args.queue}: ${entries.map((e) => `#${e.pr}`).join(' ')} in batches of up to ${BATCH} (pid ${process.pid}, worktree ${WT})`);
+  log(`=== pnpm land ${args.queue}: ${entries.map((e) => `#${e.pr}`).join(' ')} in batches of up to ${BATCH} (pid ${process.pid}, worktree ${WT}; devices ${DEVICES_ON}, test ${TEST_ON}, regen ${REGEN_ON}${CI_ONLY ? ', LAND_CI=only' : ''})`);
   let latest: readonly Outcome[] = [];
   // master left on an unproved position by an interrupted run is proved first; the result is logged loudly, never blocking.
   const resting = readUnproved();
@@ -1543,9 +1595,20 @@ const main = (): number => {
     log(`!!! ${UNPROVED} is unreadable (${resting.head}); recording master ${master} as unproved instead`);
     writeFileSync(UNPROVED, JSON.stringify({ pr: 0, head: master }));
   }
-  proveRestingMaster(readUnproved(), () => proveMaster(fetchMaster()), () => rmSync(UNPROVED, { force: true }), log);
   const write = (done: boolean, fatal: string | null, running: Entry | null = current): void =>
     writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: done ? null : running, outcomes: latest, fatal, total: entries.length, done }));
+  try {
+    proveRestingMaster(readUnproved(), () => proveMaster(fetchMaster()), () => rmSync(UNPROVED, { force: true }), log);
+  } catch (error) {
+    if (!(error instanceof CiOutage)) throw error;
+    // No batch started: the whole queue stays queued.
+    writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: [], fatal: null, outage: error.message, total: entries.length, done: true, stopped: entries }));
+    try {
+      resetWorktree(fetchMaster());
+    } catch {}
+    log(readFileSync(STATUS, 'utf8').trimEnd());
+    return 1;
+  }
   const result = runBatches<Ticket, Built>(entries, BATCH, {
     admit: (e, earlier) => (write(false, null, e), admit(e, earlier)),
     base: fetchMaster,
@@ -1569,7 +1632,7 @@ const main = (): number => {
     ...(PIPELINE ? { next: nextRound(args.queue) } : {}),
   });
   current = null;
-  writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: latest, fatal: result.fatal, total: entries.length, done: true, stopped: result.stopped }));
+  writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: latest, fatal: result.fatal, outage: result.outage, total: entries.length, done: true, stopped: result.stopped }));
   try {
     resetWorktree(fetchMaster());
   } catch {}
