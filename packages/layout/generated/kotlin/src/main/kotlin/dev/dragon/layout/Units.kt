@@ -152,11 +152,11 @@ fun units_sum(values: JsArray<Double>): Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/units.ts:117
   run {
-    val _a139 = values
-    var _i139 = 0
-    while (_i139 < _a139.size) {
-      val v: Double = _a139[_i139]
-      _i139++
+    val _a152 = values
+    var _i152 = 0
+    while (_i152 < _a152.size) {
+      val v: Double = _a152[_i152]
+      _i152++
       total = units_add(total, v)
     }
   }
