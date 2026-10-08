@@ -73,6 +73,10 @@ the PM to do it. Never work around a refusal. Start a lane session on its PR's b
   "already at a fixed point; no commit"; then `git pull --ff-only`. Never push while the run is in progress (its push would
   be refused). If it fails, read `gh run view <id> --log-failed`, fix the cause, push, then remove the label (the workflow
   removes it only after a success) and add it again. If the runners are down, wait and say so in your receipt.
+  A label added while GitHub calls the PR conflicting (`mergeable_state` `dirty`) starts no run: GitHub skips pull_request
+  workflows on a PR that can't merge. A master regen that rewrites a generated file the PR also changes (usually
+  `packages/parity/out/lanes.json`) causes this. Then merge origin/master (the repo's merge drivers settle generated files),
+  push, wait until `mergeable_state` is no longer `dirty`, and remove and re-add the label.
 - At the end of the branch (owner, 2026-10-04: prove once, in the driver): audit and push, open the PR (Landing, below),
   add the `regen` label, pull its commit, then run `pnpm typecheck` and the targeted tests for what you touched on the
   regenerated head, and update the PR body with exactly what passed. Always include the cross-cutting registry tests:
