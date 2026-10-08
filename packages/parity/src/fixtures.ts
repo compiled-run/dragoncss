@@ -7,6 +7,7 @@ import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
 import { CASC_PROPERTY } from './fixture-groups/casc-property.ts';
+import { CASC } from './fixture-groups/casc.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
@@ -20,6 +21,7 @@ import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
+import { OVERFLOW } from './fixture-groups/overflow.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
@@ -91,6 +93,7 @@ export const GROUPS = {
   background: BACKGROUND,
   'block-elements': BLOCK_ELEMENTS,
   'border-paint': BORDER_PAINT,
+  casc: CASC,
   'casc-property': CASC_PROPERTY,
   'cascade-var': CASCADE_VAR,
   contexts: CONTEXTS,
@@ -105,6 +108,7 @@ export const GROUPS = {
   media: MEDIA,
   'media-runtime': MEDIA_RUNTIME,
   'milestone-1': MILESTONE_1,
+  overflow: OVERFLOW,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,

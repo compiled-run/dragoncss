@@ -2,6 +2,7 @@
 // Each feature owns faults/<feature>.ts: its fault type (one documented field per fault) and its all-off defaults, and one line in
 // FAULT_GROUPS, which is sorted by feature id. A fault name belongs to one feature (test/registry-claims.test.ts).
 import { BLOCKIFY_FAULTS } from './faults/blockify.ts';
+import { CASC_FAULTS } from './faults/casc.ts';
 import { CASC_PROPERTY_FAULTS } from './faults/casc-property.ts';
 import { CASCADE_VAR_FAULTS } from './faults/cascade-var.ts';
 import { ENV_SAFE_FAULTS } from './faults/env-safe.ts';
@@ -19,6 +20,7 @@ import { VALUES_FAULTS } from './faults/values.ts';
 
 export const FAULT_GROUPS = {
   blockify: BLOCKIFY_FAULTS,
+  casc: CASC_FAULTS,
   'casc-property': CASC_PROPERTY_FAULTS,
   'cascade-var': CASCADE_VAR_FAULTS,
   'env-safe': ENV_SAFE_FAULTS,
