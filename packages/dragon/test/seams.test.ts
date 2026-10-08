@@ -7,6 +7,7 @@ import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resol
 import type { Candidate } from '../src/analysis/resolve.ts';
 import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
 import { keyframesAtRule } from '../src/css/at-rules/keyframes.ts';
+import { supportsAtRule } from '../src/css/at-rules/supports.ts';
 import type { AtRuleContext } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS, SHORTHANDS_MOVED } from '../src/css/properties.ts';
 import type { Longhand } from '../src/css/properties.ts';
@@ -115,12 +116,13 @@ describe('E2 seams: FIXTURES', () => {
   });
 });
 
-describe('E2 seams: every at-rule but @media and @keyframes is still refused', () => {
-  // MQ-a made @media conditional and ANIM-b1 accepted a top-level @keyframes (keyframes.test.ts); ANIM-b2 accepted @-webkit-keyframes
-  // as @keyframes (aliases.test.ts).
+describe('E2 seams: every at-rule but @media, @keyframes and @supports is still refused', () => {
+  // MQ-a made @media conditional, ANIM-b1 accepted a top-level @keyframes (keyframes.test.ts), ANIM-b2 accepted @-webkit-keyframes
+  // as @keyframes (aliases.test.ts) and CASC decides @supports (casc.test.ts). The enclosing at-rule of the fourth sheet is @layer,
+  // which stays refused.
   const KEYFRAMES = ['keyframes', '-webkit-keyframes'];
-  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
-  const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@supports (display: flex) { @${n} z { .b { height: 3px; } } }`];
+  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'supports' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
+  const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@layer w { @${n} z { .b { height: 3px; } } }`];
   const run = (text: string): { text: string; diagnostics: Diagnostic[]; enclosed: EnclosedRules[]; rules: number } => {
     const diagnostics: Diagnostic[] = [];
     const enclosed: EnclosedRules[] = [];
@@ -128,8 +130,8 @@ describe('E2 seams: every at-rule but @media and @keyframes is still refused', (
     return { text, diagnostics, enclosed, rules: rules.length };
   };
   const atRules = (ds: readonly Diagnostic[]): [string, string][] => ds.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.code, d.message]);
-  it('every registered name but font-face and media is refused today', () => {
-    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : refuseAtRule);
+  it('every registered name but font-face, media, keyframes and supports is refused today', () => {
+    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : name === 'supports' ? supportsAtRule : refuseAtRule);
     expect(atRuleHandler('MEDIA')).toBe(mediaAtRule);
     expect(atRuleHandler('no-such-rule')).toBe(refuseAtRule);
     expect(atRuleHandler('Font-Face')).toBe(acceptFontFace);
@@ -156,8 +158,8 @@ describe('E2 seams: every at-rule but @media and @keyframes is still refused', (
       expect([top.rules, top.diagnostics, top.enclosed], n).toEqual([1, [], []]);
       expect(atRules(statement.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
       expect(atRules(nested.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in a rule block is not supported in milestone 1`]]);
-      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@supports in the stylesheet is not supported in milestone 1']]);
-      // The @media inside the refused @supports is parsed into the enclosed rules, with its condition, for analysis only.
+      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@layer in the stylesheet is not supported in milestone 1']]);
+      // The @media inside the refused @layer is parsed into the enclosed rules, with its condition, for analysis only.
       expect(inner.enclosed.length, n).toBe(1);
       expect(inner.enclosed[0]?.rules.map((r) => r.condition?.map((c) => c.text)), n).toEqual([['z']]);
     }
@@ -169,15 +171,17 @@ describe('E2 seams: every at-rule but @media and @keyframes is still refused', (
       expect(atRules(top.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
       expect(atRules(statement.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
       expect(atRules(nested.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in a rule block is not supported in milestone 1`]]);
-      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@supports in the stylesheet is not supported in milestone 1']]);
+      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@layer in the stylesheet is not supported in milestone 1']]);
       expect(inner.enclosed.length, n).toBe(2);
     }
   });
   it('the diagnostics and enclosed rules are byte-identical to 4c1331c', () => {
     // media and MEDIA left the list with MQ-a, and keyframes with ANIM-b1 (T065): with keyframes it gave 0a07dd1a…, and without
     // it the base before ANIM-b1 gives ba217ee5…, so every other at-rule is unchanged. At cb1a4b2d the full list gave 4cfb6ef0….
-    // -webkit-keyframes left with ANIM-b2: without it the base before ANIM-b2 (a36ce22e09) gives a0302641… too.
-    const pinned = ['charset', 'color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'layer', 'namespace', 'page', 'position-try', 'property', 'scope', 'starting-style', 'supports', 'view-transition', 'Font-Face', 'unknown-thing'];
+    // CASC decides @supports, so supports left the list and the enclosing at-rule became @layer: c80b0487dc (before CASC) gives
+    // fca72903… for these runs too. -webkit-keyframes left with ANIM-b2 (a36ce22e09 gave a0302641… without it); casc-supports
+    // before taking ANIM-b2 (1b8eacfdf9) gives 48d27023… for this list too, so every other at-rule is still unchanged.
+    const pinned = ['charset', 'color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'layer', 'namespace', 'page', 'position-try', 'property', 'scope', 'starting-style', 'view-transition', 'Font-Face', 'unknown-thing'];
     const runs = pinned.flatMap((n) => sheets(n).map((text) => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
@@ -192,7 +196,7 @@ describe('E2 seams: every at-rule but @media and @keyframes is still refused', (
       }
       return x;
     }));
-    expect(sha(strip(runs))).toBe('a03026419de54b4982a5bd966e8868016a358438fee16c820dd0c7fc1e06d983');
+    expect(sha(strip(runs))).toBe('48d27023773ab0860472c6b51526f7f1c275d0dafde1e040cc88e8f846534afb');
     expect(added.length).toBeGreaterThan(0);
     for (const x of added) expect([[], null, false]).toContainEqual(x);
   });

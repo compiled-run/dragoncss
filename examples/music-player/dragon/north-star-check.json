@@ -6573,7 +6573,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@6185-6196|display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@6185-6196|display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex, none, revert or revert-layer",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -6585,14 +6585,14 @@
     "column": 11,
     "text": "inline-flex"
    },
-   "message": "display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "message": "display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex, none, revert or revert-layer",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@6185-6196|display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@6185-6196|display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex, none, revert or revert-layer",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -6604,14 +6604,14 @@
     "column": 11,
     "text": "inline-flex"
    },
-   "message": "display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "message": "display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex, none, revert or revert-layer",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@6185-6196|display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@6185-6196|display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex, none, revert or revert-layer",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -6623,7 +6623,7 @@
     "column": 11,
     "text": "inline-flex"
    },
-   "message": "display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "message": "display:inline-flex on page/player-call/play-icon is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex, none, revert or revert-layer",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6839,7 +6839,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@9267-9279|display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@9267-9279|display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex, none, revert or revert-layer",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -6851,14 +6851,14 @@
     "column": 12,
     "text": "inline-block"
    },
-   "message": "display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "message": "display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex, none, revert or revert-layer",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@9267-9279|display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@9267-9279|display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex, none, revert or revert-layer",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -6870,14 +6870,14 @@
     "column": 12,
     "text": "inline-block"
    },
-   "message": "display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "message": "display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex, none, revert or revert-layer",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@9267-9279|display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@9267-9279|display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex, none, revert or revert-layer",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -6889,7 +6889,7 @@
     "column": 12,
     "text": "inline-block"
    },
-   "message": "display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex or none",
+   "message": "display:inline-block on page/terms-link is used in the block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, flex-row/ltr, flex-row/rtl); display values proven in block/ltr: block, flex, none, revert or revert-layer",
    "viaRelated": false,
    "passes": [
     "C-context"
