@@ -789,20 +789,36 @@ public func dragonLayoutRect(_ v: UIView, in root: UIView) -> CGRect {
 }
 
 /// The compositor capture: drawHierarchy(afterScreenUpdates: true) of the fixture root into a declared sRGB RGBA8 CGContext
-/// (layer.render is banned); the sha256 of the buffer and the pixels at the host-supplied points.
+/// (layer.render is banned), repeated until two in a row are identical (a CI virtual Mac's first capture of transformed layers
+/// can precede their final frame); the sha256 of the settled buffer and the pixels at the host-supplied points.
+public let dragonCaptureTries = 8
 public func dragonCapture(_ view: UIView, scale: Double, points: [(x: Int, y: Int, rule: String)]) -> DumpPixels {
   let w = dragonCheckedInt(dragonWholeDevicePx(Double(view.bounds.width) * scale, "capture width"), "capture width")
   let h = dragonCheckedInt(dragonWholeDevicePx(Double(view.bounds.height) * scale, "capture height"), "capture height")
-  var buf = [UInt8](repeating: 0, count: w * h * 4)
   guard let space = CGColorSpace(name: CGColorSpace.sRGB) else { fatalError("dragon: no sRGB colour space") }
-  buf.withUnsafeMutableBytes { raw in
-    guard let ctx = CGContext(data: raw.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { fatalError("dragon: no RGBA8 context") }
-    ctx.translateBy(x: 0, y: CGFloat(h))
-    ctx.scaleBy(x: CGFloat(scale), y: -CGFloat(scale))
-    UIGraphicsPushContext(ctx)
-    if !view.drawHierarchy(in: view.bounds, afterScreenUpdates: true) { fatalError("dragon: drawHierarchy failed") }
-    UIGraphicsPopContext()
+  let draw = { () -> [UInt8] in
+    var b = [UInt8](repeating: 0, count: w * h * 4)
+    b.withUnsafeMutableBytes { raw in
+      guard let ctx = CGContext(data: raw.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { fatalError("dragon: no RGBA8 context") }
+      ctx.translateBy(x: 0, y: CGFloat(h))
+      ctx.scaleBy(x: CGFloat(scale), y: -CGFloat(scale))
+      UIGraphicsPushContext(ctx)
+      if !view.drawHierarchy(in: view.bounds, afterScreenUpdates: true) { fatalError("dragon: drawHierarchy failed") }
+      UIGraphicsPopContext()
+    }
+    return b
   }
+  var buf = draw()
+  var settled = false
+  for _ in 1..<dragonCaptureTries {
+    let next = draw()
+    if next == buf {
+      settled = true
+      break
+    }
+    buf = next
+  }
+  if !settled { fatalError("dragon: the capture did not settle: no two of \(dragonCaptureTries) captures in a row were identical") }
   let sha = SHA256.hash(data: Data(buf)).map { String(format: "%02x", $0) }.joined()
   let samples = points.map { p -> DumpPixelsSamples in
     if p.x < 0 || p.y < 0 || p.x >= w || p.y >= h { fatalError("dragon: sample point \(p.x),\(p.y) (\(p.rule)) is outside the \(w)x\(h) capture") }
