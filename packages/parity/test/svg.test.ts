@@ -85,6 +85,16 @@ describe('the svg fixtures against their committed Chrome captures', () => {
     expect(runs.length).toBe(8);
     expect(await problems(NO_SVG_FAULTS)).toEqual([]);
   });
+  it('no SVG shape records inline line fragments: its computed display is inline, but SVG lays it out (capture.ts)', async () => {
+    let shapes = 0;
+    for (const { c } of runs) {
+      const nodes = (await committedAuthored(c)).nodes;
+      const shapeIds = new Set(nodes.filter((n) => n.svg !== undefined).map((n) => n.id));
+      shapes += shapeIds.size;
+      expect(nodes.filter((n) => n.kind === 'line' && shapeIds.has(n.id.replace(/:line\d+$/, ''))).map((n) => n.id), c.id).toEqual([]);
+    }
+    expect(shapes).toBeGreaterThan(0);
+  });
   it('each planted fault fails the differential', async () => {
     for (const k of Object.keys(NO_SVG_FAULTS) as (keyof SvgFaults)[]) {
       expect((await problems({ ...NO_SVG_FAULTS, [k]: true })).length, k).toBeGreaterThan(0);
