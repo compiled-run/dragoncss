@@ -1,0 +1,18 @@
+{
+  "case": "overflow-scroll-basic-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 56,
+  "gridSha256": "646ddc185fa8dfa119e0ea0799c485c19cec963b14adb8ecb066ccc0c4665f41",
+  "ids": [
+    "a",
+    "body",
+    "html"
+  ],
+  "runs": [[1,4],[0,4],[1,4],[0,4],[1,4],[0,4],[1,4],[0,4],[2,24]]
+}
