@@ -1,0 +1,18 @@
+{
+  "case": "inline-box-boundaries-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"k1:text0","lines":[[0,3]]},
+    {"id":"k1s:text0","lines":[[0,3]]},
+    {"id":"k2:text0","lines":[[0,3]]},
+    {"id":"k2s:text0","lines":[[1,4]]},
+    {"id":"k3:text0","lines":[[0,2]]},
+    {"id":"k3s:text0","lines":[[0,3]]},
+    {"id":"k3:text1","lines":[[0,2]]},
+    {"id":"k4s:text0","lines":[[0,4]]},
+    {"id":"k4:text0","lines":[[0,3]]},
+    {"id":"k5:text0","lines":[[0,3]]},
+    {"id":"k5s:text0","lines":[[0,2]]},
+    {"id":"k5:text1","lines":[[1,3]]}
+  ]
+}

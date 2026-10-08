@@ -1,0 +1,178 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 52441
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 52441
+  },
+  {
+   "id": "mh",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 6720,
+   "height": 25216
+  },
+  {
+   "id": "xh",
+   "parent": "body",
+   "x": 0,
+   "y": 25216,
+   "width": 6720,
+   "height": 10086
+  },
+  {
+   "id": "mw",
+   "parent": "body",
+   "x": 0,
+   "y": 35302,
+   "width": 33600,
+   "height": 1008
+  },
+  {
+   "id": "xw",
+   "parent": "body",
+   "x": 0,
+   "y": 36310,
+   "width": 16800,
+   "height": 1008
+  },
+  {
+   "id": "mh2",
+   "parent": "body",
+   "x": 0,
+   "y": 37318,
+   "width": 20160,
+   "height": 5043
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 42361,
+   "width": 63840,
+   "height": 10080
+  },
+  {
+   "id": "ra",
+   "parent": "row",
+   "x": 0,
+   "y": 0,
+   "width": 13440,
+   "height": 7564
+  },
+  {
+   "id": "rb",
+   "parent": "row",
+   "x": 13440,
+   "y": 0,
+   "width": 6720,
+   "height": 2521
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 819,
+   "width": 1050,
+   "height": 819
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 819,
+   "width": 1050,
+   "height": 819
+  },
+  {
+   "id": "mh",
+   "left": 0,
+   "top": 0,
+   "right": 105,
+   "bottom": 394,
+   "width": 105,
+   "height": 394
+  },
+  {
+   "id": "xh",
+   "left": 0,
+   "top": 394,
+   "right": 105,
+   "bottom": 552,
+   "width": 105,
+   "height": 158
+  },
+  {
+   "id": "mw",
+   "left": 0,
+   "top": 552,
+   "right": 525,
+   "bottom": 567,
+   "width": 525,
+   "height": 15
+  },
+  {
+   "id": "xw",
+   "left": 0,
+   "top": 567,
+   "right": 263,
+   "bottom": 583,
+   "width": 263,
+   "height": 16
+  },
+  {
+   "id": "mh2",
+   "left": 0,
+   "top": 583,
+   "right": 315,
+   "bottom": 662,
+   "width": 315,
+   "height": 79
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 662,
+   "right": 998,
+   "bottom": 819,
+   "width": 998,
+   "height": 157
+  },
+  {
+   "id": "ra",
+   "left": 0,
+   "top": 662,
+   "right": 210,
+   "bottom": 780,
+   "width": 210,
+   "height": 118
+  },
+  {
+   "id": "rb",
+   "left": 210,
+   "top": 662,
+   "right": 315,
+   "bottom": 701,
+   "width": 105,
+   "height": 39
+  }
+ ]
+}

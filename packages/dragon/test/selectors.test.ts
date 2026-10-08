@@ -58,10 +58,10 @@ describe('precise refusals', () => {
   it.each([
     ['.a::before', 'pseudo-element ::before'],
     ['.a::after', 'pseudo-element ::after'],
-    ['.a:hover', ':hover depends on user interaction'],
-    ['.a:focus', ':focus depends on user interaction'],
-    ['.a:active', ':active depends on user interaction'],
-    [':is(.a:hover)', ':hover depends on user interaction'],
+    ['.a:focus-within', ':focus-within depends on user interaction'],
+    ['.a:visited', ':visited depends on user interaction'],
+    ['.a:checked', ':checked depends on user interaction'],
+    [':is(.a:focus-within)', ':focus-within depends on user interaction'],
     ['.a:has(:has(.b))', ':has(.b) is invalid inside :has()'],
     ['.a:has(:is(:has(.b)))', ':has(.b) is invalid inside :has()'],
     ['[ui-x="a" s]', 'is invalid in Chrome 145, which does not implement the s flag'],
@@ -282,7 +282,14 @@ describe('TREE: ids, every attribute name, HTML case-insensitive attribute value
 
   it('Chrome-valid pseudo-elements stay refused and name their owner package; inside :is() an invalid one is refused', () => {
     const msg = (css: string): string[] => parse(css).diagnostics.map((d) => `${d.code} ${d.message}`);
-    expect(msg('.a::-webkit-slider-thumb { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*FORM-a/)]);
+    // FORM-a A4 handles the range's thumb and track pseudo-elements at the end of a top-level selector; elsewhere they stay refused.
+    expect(msg('.a::-webkit-slider-thumb { width: 1px; }')).toEqual([]);
+    expect(msg('.a::-webkit-slider-runnable-track { width: 1px; }')).toEqual([]);
+    expect(parse('input.a::-webkit-slider-thumb { width: 1px; }').selectors.map((x) => [x.pseudoElement, x.specificity])).toEqual([['thumb', [0, 1, 2]]]);
+    expect(parse('.a::-webkit-slider-runnable-track, .a { width: 1px; }').selectors.map((x) => x.pseudoElement)).toEqual(['track', null]);
+    expect(msg(':not(.a::-webkit-slider-thumb) { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*inside a selector argument/)]);
+    expect(msg('.a::-webkit-slider-thumb .b { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*range pseudo-element is not supported/)]);
+    expect(msg('.a::-webkit-slider-container { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR /)]);
     expect(msg('.a::-webkit-scrollbar-thumb { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*OVFL-s/)]);
     expect(msg(':is(.a::-moz-range-thumb) { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*forgiving/)]);
     expect(parse('[ns|x] { width: 1px; }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_SELECTOR']);

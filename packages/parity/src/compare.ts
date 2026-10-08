@@ -1,7 +1,7 @@
 // Numeric comparison of Dragon's layout with Chrome: 1 device pixel on every absolute edge (owner decision 13).
 // Every Chrome node is compared: elements, text nodes and their per-line fragments. A node only Dragon has passes only if it is
 // an anonymous box the compiler generated (Chrome exposes no node for it), and every text line inside it is a compared node.
-import type { LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
+import type { ControlBox, LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
 import { LU_PER_PX } from '@dragon/layout';
 import type { Environment } from 'dragon';
 import type { CapturedNode, WebCapture } from './capture.ts';
@@ -50,9 +50,10 @@ function dragonEdges(r: LayoutRect): { px: Edges; raw: Edges } {
 
 function anonymousBoxes(input: LayoutInput): Map<string, readonly string[]> {
   const out = new Map<string, readonly string[]>();
-  const walk = (b: LayoutBox): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
     if (b.boxType === 'anonymous') out.set(b.id, b.children.filter((c) => c.kind === 'text').map((c) => c.id));
-    for (const c of b.children) if (c.kind === 'box') walk(c);
+    // A form control's contents hold anonymous boxes too (a button's text wrapper).
+    for (const c of b.children) if (c.kind === 'box' || c.kind === 'control') walk(c);
   };
   walk(input.root);
   return out;

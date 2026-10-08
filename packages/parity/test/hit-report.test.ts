@@ -5,12 +5,29 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
-import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, tapTarget } from '../src/hit-capture.ts';
+import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, hitRefusedCases, tapTarget } from '../src/hit-capture.ts';
+import { nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
+import { hitCaseIds, nativeTargets } from '../src/targets.ts';
+import { INLINE_OUT, INLINE_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
 
 const cases = hitCases();
 
 describe('the host hit lane', () => {
+  // The hit lane leaves out the union of two refusals (hit-refusals.ts); taking either alone would bring the other's cases back.
+  const transformed = (): string[] => nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform'))).map((n) => n.case.id);
+  it('leaves out exactly the union of the transform cases and the INL1a inline-box and <br> fixtures, each with a named reason', () => {
+    const hit = new Set(cases.map((n) => n.case.id));
+    const out = nativeCases().filter((n) => !hit.has(n.case.id));
+    const union = new Set([...transformed(), ...INLINE_OUT]);
+    expect(out.map((n) => n.case.id)).toEqual(nativeCases().map((n) => n.case.id).filter((id) => union.has(id)));
+    for (const n of out.filter((x) => INLINE_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(INLINE_REASON);
+    // The device-hit lane declares exactly the hit cases at every device DPR (targets.ts hitCaseIds), so P5 counts them, not all.
+    expect(hitCaseIds()).toEqual(cases.map((n) => n.case.id));
+    for (const t of nativeTargets()) for (const s of t.lanes.find((l) => l.lane === 'device-hit')?.sets ?? []) expect(s.ids, `${t.target} ${s.dpr}`).toEqual(hitCaseIds());
+    for (const t of nativeTargets()) for (const s of t.lanes.find((l) => l.lane === 'device-frames')?.sets ?? []) expect(s.ids.length, `${t.target} ${s.dpr}`).toBe(nativeCases().length);
+  });
+
   it('has a capture of every layout case, on the grid its hit table derives', () => {
     // Derived-count pin: every layout case, including the 8 hit-* cases.
     expect(cases.filter((n) => n.case.id.startsWith('hit-')).map((n) => n.case.id)).toEqual(['hit-line-strip-a', 'hit-line-strip-a-rtl', 'hit-line-strip-b', 'hit-line-strip-b-rtl', 'hit-order', 'hit-order-rtl', 'hit-pointer-events', 'hit-pointer-events-rtl']);
@@ -19,6 +36,20 @@ describe('the host hit lane', () => {
       const grid = hitGrid(caseHitTable(n), n.case.environment.viewport);
       expect([n.case.id, c.points, c.gridSha256]).toEqual([n.case.id, grid.length, gridSha256(grid)]);
     }
+  });
+
+  it('refuses by name every case whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), and the INL1a inline cases with their own reason', () => {
+    const refused = hitRefusedCases();
+    const moved = new Set(transformed());
+    expect(refused.filter((r) => moved.has(r.id)).map((r) => r.id)).toEqual(transformed());
+    expect(moved.size).toBeGreaterThan(0);
+    for (const r of refused) {
+      if (moved.has(r.id)) expect(r.reason, r.id).toMatch(TRANSFORM_REASON);
+      else expect([INLINE_OUT.includes(r.id), r.reason], r.id).toEqual([true, expect.stringMatching(INLINE_REASON)]);
+    }
+    const covered = new Set(cases.map((n) => n.case.id));
+    for (const r of refused) expect(covered.has(r.id), r.id).toBe(false);
+    expect(cases.length + refused.length).toBe(nativeCases().length);
   });
 
   it('pairs the layout vectors with the hit facts every case compiles to now', () => {

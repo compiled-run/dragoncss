@@ -1,0 +1,236 @@
+# CI-OFFLOAD step 3-4: the device lanes of a commit on GitHub-hosted standard runners, one job per matrix device, in parallel.
+# iOS simulators run on xcode-27 (Xcode 27.0, the local Mac's) with the pinned iOS 26.5 (23F77) runtime; Android emulators run
+# on ubuntu-latest with KVM and the x86_64 android-36 image (device-run.ts androidImage). Each job writes its outcome with the
+# evidence stamp and host it ran on (packages/parity/src/cli/device-ci.ts one), uploaded together as device-outcomes. Every lane
+# runs here, android layout-vectors-device too (a NaN matches any NaN in the corpus comparison, #147). The merge job writes the
+# lane records (device-records) and fails when a lane judges differently from the records committed at that commit, which the
+# landing driver judges against its base instead. Nothing is committed or pushed.
+# Trigger: workflow_dispatch with a commit sha (the landing driver, LAND_DEVICES=ci), or the `devices` label on a pull request.
+name: device-lanes
+run-name: device lanes of ${{ inputs.sha || github.event.pull_request.head.sha }}
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit to run the device lanes of (it must be reachable from a branch of this repository)
+        required: true
+        type: string
+      judge:
+        description: Judge the lanes against the commit's own committed records (false only for the landing driver, which judges against its previous position)
+        required: false
+        default: true
+        type: boolean
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+concurrency:
+  group: device-lanes-${{ inputs.sha || github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+env:
+  # One device per runner: no other work shares its memory (device-run.ts memoryReserve).
+  DRAGON_DEVICE_RESERVE_GIB: '0'
+jobs:
+  resolve:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'devices'
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.r.outputs.sha }}
+    steps:
+      - id: r
+        env:
+          SHA: ${{ inputs.sha || github.event.pull_request.head.sha }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::not a full commit sha: $SHA"; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "device lanes of $SHA" >> "$GITHUB_STEP_SUMMARY"
+  ios:
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ['iPhone 17', 'iPad (A16)']
+    runs-on: xcode-27
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: The pinned iOS 26.5 (23F77) simulator runtime
+        run: |
+          have() { xcrun simctl list runtimes -j | jq -e '.runtimes[] | select(.buildversion == "23F77" and .isAvailable)' >/dev/null; }
+          start=$(date +%s)
+          # "-buildVersion 26.5" fetches the 26.5 release candidate (23F73); the release the evidence was recorded on is 23F77.
+          have || xcodebuild -downloadPlatform iOS -buildVersion 23F77
+          have || { xcrun simctl list runtimes; echo "::error::iOS 26.5 (23F77) is not installed"; exit 1; }
+          echo "runtime ready in $(( $(date +%s) - start )) s"
+          sw_vers
+      - name: Xcode 27.0 (27A266a) and the Swift the committed host lane records
+        run: |
+          xcodebuild -version
+          xcodebuild -version | grep -qx 'Build version 27A266a' || { echo "::error::Xcode is not 27.0 (27A266a), the Mac's"; exit 1; }
+          cat > "$RUNNER_TEMP/toolchain.mts" <<'EOF'
+          // The host toolchains the committed lanes.json records (layout-vectors-host): the CI apps must be built by the same ones.
+          import { readFileSync } from 'node:fs';
+          const target = process.argv[2] as 'ios' | 'android';
+          const { swiftTool, kotlinTool } = await import(`${process.env.GITHUB_WORKSPACE}/packages/translate/src/native.ts`);
+          const lanes = JSON.parse(readFileSync('packages/parity/out/lanes.json', 'utf8'));
+          const want = lanes.targets.find((t: any) => t.target === target)?.lanes.find((l: any) => l.lane === 'layout-vectors-host')?.run?.toolchain ?? null;
+          const have = target === 'ios' ? (swiftTool()?.version ?? null) : (kotlinTool()?.version ?? null);
+          console.log(`${target}: runner ${JSON.stringify(have)}, lanes.json ${JSON.stringify(want)}`);
+          if (have === null || have !== want) { console.error(`the runner's ${target} toolchain differs from the committed lanes.json host lane's`); process.exit(1); }
+          EOF
+          node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts" ios
+      # The step name marks the device run as a verdict step for the landing driver (land-devices-ci.ts VERDICT_STEP).
+      - name: Device run ${{ matrix.device }}
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/out" /tmp/dragon-device.lock
+          echo $$ > /tmp/dragon-device.lock/pid
+          slug=$(echo "$DEVICE" | tr -c 'A-Za-z0-9-' '_')
+          start=$(date +%s)
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts one ios "$DEVICE" "$RUNNER_TEMP/out/ios-$slug.json" 2>&1 | tee "$RUNNER_TEMP/out/ios-$slug.log"
+          code=${PIPESTATUS[0]}
+          echo "ios $DEVICE: exit $code in $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$code"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: outcome-ios-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/out
+  android:
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [dragon-320, dragon-smoke, dragon-480]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # device-run.ts reads and pins each AVD's config.ini under ~/.android/avd; newer avdmanager defaults elsewhere.
+      ANDROID_AVD_HOME: /home/runner/.android/avd
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+      - name: JDK 17, kotlinc and the Android SDK packages (the local Mac's versions, from Homebrew)
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew install openjdk@17 kotlin
+          echo "JAVA_HOME=$(brew --prefix openjdk@17)" >> "$GITHUB_ENV"
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdk" --licenses >/dev/null || true
+          # A download can fail transiently ("unknown archive"); sdkmanager is retried, and the list below proves what is installed.
+          for i in 1 2 3; do "$sdk" --install emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64' >/dev/null && break; echo "sdkmanager failed (attempt $i)"; sleep 15; done
+          "$sdk" --list_installed | grep -E 'emulator|system-images|build-tools;36|platforms;android-36'
+      - name: kotlinc and the JDK the committed host lane records
+        run: |
+          cat > "$RUNNER_TEMP/toolchain.mts" <<'EOF'
+          // The host toolchains the committed lanes.json records (layout-vectors-host): the CI apps must be built by the same ones.
+          import { readFileSync } from 'node:fs';
+          const target = process.argv[2] as 'ios' | 'android';
+          const { swiftTool, kotlinTool } = await import(`${process.env.GITHUB_WORKSPACE}/packages/translate/src/native.ts`);
+          const lanes = JSON.parse(readFileSync('packages/parity/out/lanes.json', 'utf8'));
+          const want = lanes.targets.find((t: any) => t.target === target)?.lanes.find((l: any) => l.lane === 'layout-vectors-host')?.run?.toolchain ?? null;
+          const have = target === 'ios' ? (swiftTool()?.version ?? null) : (kotlinTool()?.version ?? null);
+          console.log(`${target}: runner ${JSON.stringify(have)}, lanes.json ${JSON.stringify(want)}`);
+          if (have === null || have !== want) { console.error(`the runner's ${target} toolchain differs from the committed lanes.json host lane's`); process.exit(1); }
+          EOF
+          node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts" android
+          # This avdmanager writes AVDs under ~/.config/.android whatever ANDROID_AVD_HOME says; one directory serves both.
+          mkdir -p "$HOME/.android/avd" "$HOME/.config"
+          ln -sfn "$HOME/.android" "$HOME/.config/.android"
+      # The step name marks the device run as a verdict step for the landing driver (land-devices-ci.ts VERDICT_STEP).
+      - name: Device run ${{ matrix.device }}
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          "$JAVA_HOME/bin/java" -version
+          kotlinc -version
+          mkdir -p "$RUNNER_TEMP/out" /tmp/dragon-device.lock
+          echo $$ > /tmp/dragon-device.lock/pid
+          start=$(date +%s)
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts one android "$DEVICE" "$RUNNER_TEMP/out/android-$DEVICE.json" 2>&1 | tee "$RUNNER_TEMP/out/android-$DEVICE.log"
+          code=${PIPESTATUS[0]}
+          echo "android $DEVICE: exit $code in $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$code"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: outcome-android-${{ matrix.device }}
+          path: ${{ runner.temp }}/out
+  merge:
+    needs: [resolve, ios, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: outcome-*
+          path: ${{ runner.temp }}/outcomes
+          merge-multiple: true
+      # The outcomes are uploaded first, whatever the merge and the comparison say: the landing driver merges and judges them itself.
+      - name: Upload the device outcomes (the landing driver merges them itself)
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-outcomes
+          path: ${{ runner.temp }}/outcomes/*.json
+      - name: Keep the committed records to compare with
+        run: mkdir -p "$RUNNER_TEMP/committed" && cp packages/parity/out/lanes.json packages/parity/out/device-failures-*.json "$RUNNER_TEMP/committed/"
+      # A run for review (the `devices` label, or a manual dispatch) is judged here against the tested commit's records. A run the
+      # landing driver dispatches (judge=false) is not: its tree's records are the "not run" ones its regen wrote, and the driver
+      # judges it against the previous position, as a local run is judged; so the merge and the comparison only report there.
+      - name: Merge the device outcomes into the lane records
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && !inputs.judge }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/merge" && cp "$RUNNER_TEMP"/outcomes/*.json "$RUNNER_TEMP/merge/"
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts merge "$RUNNER_TEMP/merge"
+      - name: Compare every device lane with the committed records
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && !inputs.judge }}
+        env:
+          JUDGE: ${{ (github.event_name == 'pull_request' || inputs.judge) && '--judge' || '' }}
+        run: |
+          # shellcheck disable=SC2086
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts compare "$RUNNER_TEMP/committed" $JUDGE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: device-records
+          path: |
+            packages/parity/out/lanes.json
+            packages/parity/out/device-failures-ios.json
+            packages/parity/out/device-failures-android.json

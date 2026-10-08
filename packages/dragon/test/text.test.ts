@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LayoutBox, TextLeaf } from '@dragon/layout';
+import type { InlineChild, LayoutBox } from '@dragon/layout';
 import type { Diagnostic, FrontEndResult, TreeNode } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS, textTopology } from '../src/internal.ts';
@@ -20,7 +20,7 @@ function lowered(input: FrontEndResult, faults = NO_FAULTS): LayoutBox {
   return p.input.root;
 }
 
-function find(b: LayoutBox, id: string): LayoutBox | TextLeaf | undefined {
+function find(b: LayoutBox, id: string): LayoutBox | InlineChild | undefined {
   if (b.id === id) return b;
   for (const c of b.children) {
     if (c.id === id && c.kind !== 'replaced' && c.kind !== 'control') return c;
@@ -32,8 +32,8 @@ function find(b: LayoutBox, id: string): LayoutBox | TextLeaf | undefined {
   return undefined;
 }
 
-const summary = (b: LayoutBox | TextLeaf | undefined): unknown =>
-  b === undefined ? undefined : b.kind === 'text' ? `${b.id}=${JSON.stringify(b.text)}` : `${b.id}(${b.boxType})[${b.children.map((c) => (c.kind === 'text' ? `${c.id}=${JSON.stringify(c.text)}` : c.id)).join(' ')}]`;
+const summary = (b: LayoutBox | InlineChild | undefined): unknown =>
+  b === undefined ? undefined : b.kind === 'text' ? `${b.id}=${JSON.stringify(b.text)}` : b.kind !== 'box' ? b.id : `${b.id}(${b.boxType})[${b.children.map((c) => (c.kind === 'text' ? `${c.id}=${JSON.stringify(c.text)}` : c.id)).join(' ')}]`;
 
 describe('white-space phase I over one inline formatting context (css-text-3 §4.1.1)', () => {
   it('collapses each white space sequence to one space kept by the run where it starts, across run boundaries', () => {

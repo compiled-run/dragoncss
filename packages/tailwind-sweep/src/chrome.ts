@@ -52,8 +52,23 @@ export function fromPageJson(text: unknown): unknown {
   });
 }
 
+/** How long a capture waits for the page's fonts before it fails. */
+export const FONT_WAIT_MS = 10_000;
+
 async function capture(page: Page, html: string): Promise<Captured[]> {
   await page.setContent(injected(html));
+  // As parity's openPage: Ahem loaded and two frames drawn, so a font-relative value (ch, ex) is never read off a fallback font.
+  // A font that never settles must fail the capture after FONT_WAIT_MS, not hang the sweep.
+  const fonts = await page.evaluate(`Promise.race([
+    (async () => {
+      await document.fonts.load('10px Ahem');
+      await document.fonts.ready;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+      return document.fonts.status;
+    })(),
+    new Promise((r) => setTimeout(() => r('still loading after ${FONT_WAIT_MS} ms'), ${FONT_WAIT_MS})),
+  ])`);
+  if (fonts !== 'loaded') throw new Error(`the page's fonts are ${JSON.stringify(fonts)}, not loaded, so a capture would measure a fallback font`);
   return checkCaptured(fromPageJson(await page.evaluate(`JSON.stringify(Array.from(document.querySelectorAll('[data-dragon-id]')).map((el) => {
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);

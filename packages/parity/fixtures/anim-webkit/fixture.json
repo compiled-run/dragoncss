@@ -1,0 +1,227 @@
+{
+ "sources": [
+  "view.dg",
+  "doc.css",
+  "view.css"
+ ],
+ "modules": [
+  {
+   "id": "view",
+   "source": "view.dg"
+  }
+ ],
+ "styles": [
+  {
+   "id": "doc",
+   "file": "doc.css",
+   "scope": "document"
+  },
+  {
+   "id": "view",
+   "file": "view.css",
+   "scope": "App"
+  }
+ ],
+ "document": {
+  "root": "App",
+  "documentElement": "html",
+  "styles": [
+   "doc",
+   "view"
+  ]
+ },
+ "components": [
+  {
+   "id": "App",
+   "module": "view",
+   "at": "component App",
+   "states": [
+    {
+     "id": "on",
+     "domain": [
+      false,
+      true
+     ],
+     "initial": false,
+     "at": "on: [false, true] = false"
+    }
+   ],
+   "root": [
+    {
+     "el": "html",
+     "id": "html",
+     "at": "<html>",
+     "children": [
+      {
+       "el": "body",
+       "id": "body",
+       "at": "<body>",
+       "children": [
+        {
+         "el": "div",
+         "id": "w0",
+         "at": "<div w0",
+         "class": [
+          "view.w0",
+          "view.bar",
+          "view.tr",
+          {
+           "choice": [
+            {
+             "when": [
+              "on",
+              true
+             ],
+             "class": "view.on"
+            },
+            {
+             "when": {
+              "not": [
+               "on",
+               true
+              ]
+             },
+             "class": null
+            }
+           ],
+           "at": "{on === true ? 'on' : ''}"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "w1",
+         "at": "<div w1",
+         "class": [
+          "view.w1",
+          "view.bar",
+          "view.tr",
+          {
+           "choice": [
+            {
+             "when": [
+              "on",
+              true
+             ],
+             "class": "view.on"
+            },
+            {
+             "when": {
+              "not": [
+               "on",
+               true
+              ]
+             },
+             "class": null
+            }
+           ],
+           "at": "{on === true ? 'on' : ''}"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "w2",
+         "at": "<div w2",
+         "class": [
+          "view.w2",
+          "view.bar",
+          "view.tr",
+          {
+           "choice": [
+            {
+             "when": [
+              "on",
+              true
+             ],
+             "class": "view.on"
+            },
+            {
+             "when": {
+              "not": [
+               "on",
+               true
+              ]
+             },
+             "class": null
+            }
+           ],
+           "at": "{on === true ? 'on' : ''}"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "w3",
+         "at": "<div w3",
+         "class": [
+          "view.w3",
+          "view.bar",
+          "view.tr",
+          {
+           "choice": [
+            {
+             "when": [
+              "on",
+              true
+             ],
+             "class": "view.on"
+            },
+            {
+             "when": {
+              "not": [
+               "on",
+               true
+              ]
+             },
+             "class": null
+            }
+           ],
+           "at": "{on === true ? 'on' : ''}"
+          }
+         ]
+        },
+        {
+         "el": "div",
+         "id": "a0",
+         "at": "<div a0",
+         "class": [
+          "view.a0",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "a1",
+         "at": "<div a1",
+         "class": [
+          "view.a1",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "a2",
+         "at": "<div a2",
+         "class": [
+          "view.a2",
+          "view.bar"
+         ]
+        },
+        {
+         "el": "div",
+         "id": "a3",
+         "at": "<div a3",
+         "class": [
+          "view.a3",
+          "view.bar"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

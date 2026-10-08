@@ -98,18 +98,21 @@ describe('the LayoutStyle constructor arguments', () => {
     expect(fields.length).toBeGreaterThan(40);
     expect([...STYLE_FIELDS]).toEqual(fields);
   });
-  it('an aspect ratio is its typed constructor on both backends: ratio, auto-ratio, and auto for a box without one', () => {
+  it('an aspect ratio is its typed constructor on both backends: ratio, auto-ratio, and auto for a box without one, before the null grid fields', () => {
     const css = 'body { margin: 0; } .a { width: 64px; aspect-ratio: 16 / 9; } .b { width: 64px; aspect-ratio: auto 2 / 1; }';
     const ratioInput = inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]);
     const p = nativePrograms(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(ratioInput), []);
     if (p.kind !== 'ready') throw new Error(p.reason);
     const swift = emitUikitCases([emitCase(p.programs.uikit)]).map((f) => f.text).join('\n');
     const kotlin = emitAndroidViewsCases([emitCase(p.programs['android-views'])]).map((f) => f.text).join('\n');
-    expect(swift).toContain('AspectRatioValue_ratio(JsString("ratio"), 1024.0, 576.0))');
-    expect(swift).toContain('AspectRatioValue_autoRatio(JsString("auto-ratio"), 128.0, 64.0))');
-    expect(swift).toContain('JsString("start"), Auto(JsString("auto")))');
-    expect(kotlin).toContain('AspectRatioValue_ratio("ratio", 1024.0, 576.0))');
-    expect(kotlin).toContain('AspectRatioValue_autoRatio("auto-ratio", 128.0, 64.0))');
+    // INL1a: verticalAlign follows aspectRatio (input.ts order), always baseline from the compiler; then GRID's grid and gridItem, nil off a grid.
+    const swiftAlign = ', VerticalAlignKeywordValue(JsString("keyword"), JsString("baseline")), nil, nil)';
+    const kotlinAlign = ', VerticalAlignKeywordValue("keyword", "baseline"), null, null)';
+    expect(swift).toContain(`AspectRatioValue_ratio(JsString("ratio"), 1024.0, 576.0)${swiftAlign}`);
+    expect(swift).toContain(`AspectRatioValue_autoRatio(JsString("auto-ratio"), 128.0, 64.0)${swiftAlign}`);
+    expect(swift).toContain(`JsString("start"), Auto(JsString("auto"))${swiftAlign}`);
+    expect(kotlin).toContain(`AspectRatioValue_ratio("ratio", 1024.0, 576.0)${kotlinAlign}`);
+    expect(kotlin).toContain(`AspectRatioValue_autoRatio("auto-ratio", 128.0, 64.0)${kotlinAlign}`);
   });
 });
 
@@ -180,13 +183,19 @@ describe('a calculated line height is built as the engine\'s LineHeightCalc (non
   it('on a text leaf and inside an lh leaf, in Swift and Kotlin', () => {
     const leaf = { kind: 'text', id: 'p:t', text: 'XX', font, lineHeight: lhCalc, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' } as const;
     const width = { kind: 'calc', range: 'non-negative', expr: { kind: 'lh', value: 2, font, lineHeight: lhCalc } } as const;
-    const root = { kind: 'box', id: 'p', boxType: 'element', style: style(width), children: [leaf] } as const;
+    // INL1a: the container's strut has the leaf's font and line-height (validate.ts leaf-font), so it is a third LineHeightCalc.
+    const root = { kind: 'box', id: 'p', boxType: 'element', style: style(width), strut: { font, lineHeight: lhCalc }, children: [leaf] } as const;
     for (const lang of ['swift', 'kotlin'] as const) {
       const src = inputFunctions(lang, root as never, 't').decls.join('\n');
       const q = lang === 'swift' ? (s: string) => `JsString("${s}")` : (s: string) => `"${s}"`;
-      expect(src.split(`LineHeightCalc(${q('calc')}, Px(${q('px')}, 12.0), ${q('non-negative')})`).length - 1, lang).toBe(2);
+      expect(src.split(`LineHeightCalc(${q('calc')}, Px(${q('px')}, 12.0), ${q('non-negative')})`).length - 1, lang).toBe(3);
       expect(src, lang).not.toContain(`LengthCalc(${q('calc')}, Px(${q('px')}, 12.0)`);
     }
+  });
+  it('refuses a style without its grid fields instead of building it (they are null where unused)', () => {
+    const { grid: _grid, ...rest } = nativeRoot().style;
+    const root = { kind: 'box', id: 'p', boxType: 'element', style: rest, strut: null, children: [] } as const;
+    for (const lang of ['swift', 'kotlin'] as const) expect(() => inputFunctions(lang, root as never, 't'), lang).toThrow('LayoutStyle.grid is missing');
   });
 });
 

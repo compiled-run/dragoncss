@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ControlBox, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, TextLeaf, TextMeasurer } from '../src/index.ts';
 import type { LU } from '../src/units.ts';
 import { absoluteRects, ahemMeasurer, buttonContentShift, fromRaw, layout, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, SLIDER_DEFAULT_TRACK_LENGTH, validateLayoutInput } from '../src/index.ts';
-import { anon, box, control, neutralEnvironment, pct, px, text } from './helpers.ts';
+import { anon, box, control, neutralEnvironment, pct, px, span, text } from './helpers.ts';
 
 type Rect = readonly [number, number, number, number];
 type Box = { readonly border: Rect; readonly content: Rect };
@@ -268,6 +268,95 @@ describe('FORM-a button: the content model laid out by the engine', () => {
   });
 });
 
+type ContextCase = {
+  readonly id: string;
+  readonly direction: 'ltr' | 'rtl';
+  readonly wrapper: string;
+  readonly before: string | null;
+  readonly css: string;
+  readonly children: 'text' | 'element';
+  readonly childCss: string;
+  readonly computed: { readonly boxSizing: string; readonly padding: readonly number[]; readonly border: readonly number[] };
+  readonly rects: { readonly wrapper: Rect; readonly before: Rect | null; readonly button: Rect; readonly text: Rect | null; readonly element: Rect | null };
+};
+const CONTEXTS = (JSON.parse(readFileSync(new URL('button-contexts.json', DATA), 'utf8')) as { cases: ContextCase[] }).cases;
+
+/** The declarations the context cases use, as engine style (margins take auto; padding and border come from the computed values). */
+function contextStyle(css: string): Partial<LayoutStyle> {
+  const s: { -readonly [K in keyof LayoutStyle]?: LayoutStyle[K] } = {};
+  const margin = (v: string): LayoutStyle['marginTop'] => (v === 'auto' ? { kind: 'auto' } : px(pxOf(v)));
+  for (const [k, v] of declarations(css)) {
+    if (k === 'width') s.width = px(pxOf(v));
+    else if (k === 'height') s.height = px(pxOf(v));
+    else if (k === 'min-height') s.minHeight = px(pxOf(v));
+    else if (k === 'flex-shrink') s.flexShrink = Number(v);
+    else if (k === 'display') s.display = v === 'flex' ? 'flex' : 'block';
+    else if (k === 'flex-direction') s.flexDirection = v === 'column' ? 'column' : 'row';
+    else if (k === 'align-items') s.alignItems = v as LayoutStyle['alignItems'];
+    else if (k === 'margin') {
+      const [t, r = t] = v.split(' ') as [string, string?];
+      Object.assign(s, { marginTop: margin(t), marginBottom: margin(t), marginLeft: margin(r as string), marginRight: margin(r as string) });
+    } else if (k === 'margin-top') s.marginTop = margin(v);
+    else if (k === 'margin-bottom') s.marginBottom = margin(v);
+    else if (k === 'margin-left') s.marginLeft = margin(v);
+    else if (k === 'margin-right') s.marginRight = margin(v);
+    else if (k !== 'padding' && k !== 'border') throw new Error(`declaration ${k} is outside the context cases`);
+  }
+  return s;
+}
+
+/** A context case as the compiler will write it: the bordered wrapper, an optional sibling before the button, the block button. */
+function contextTree(c: ContextCase): LayoutBox {
+  const dir = { direction: c.direction };
+  const edge = (v: readonly number[], side: 'padding' | 'border'): Partial<LayoutStyle> => {
+    const [t, r, b, l] = v.map((x) => px(x / 64)) as [ReturnType<typeof px>, ReturnType<typeof px>, ReturnType<typeof px>, ReturnType<typeof px>];
+    return side === 'padding' ? { paddingTop: t, paddingRight: r, paddingBottom: b, paddingLeft: l } : { borderTopWidth: t, borderRightWidth: r, borderBottomWidth: b, borderLeftWidth: l };
+  };
+  const kid = c.children === 'text' ? text('text', 'XXX') : box('element', { ...dir, width: px(20), height: px(8), ...contextStyle(c.childCss) });
+  const button = control('button', { kind: 'button-block' }, {
+    ...dir,
+    boxSizing: c.computed.boxSizing === 'border-box' ? 'border-box' : 'content-box',
+    textAlign: 'center',
+    ...edge(c.computed.padding, 'padding'),
+    ...edge(c.computed.border, 'border'),
+    ...contextStyle(c.css),
+  }, [kid]);
+  const before = c.before === null ? [] : [box('before', { ...dir, ...contextStyle(c.before) })];
+  const wrapper: LayoutBox = { ...box('w', { ...dir, marginBottom: px(4), ...edge([64, 64, 64, 64], 'border'), ...contextStyle(c.wrapper) }), children: [...before, button] };
+  return box('root', { ...dir, width: px(400) }, [wrapper]);
+}
+
+describe('FORM-a button contexts: a block button in block flow and in a short column flex container, against Chrome', () => {
+  it('layout() gives the wrapper height and the sibling, button, text and element boxes Chrome gives, ltr and rtl', () => {
+    const misses: string[] = [];
+    let compared = 0;
+    for (const c of CONTEXTS) {
+      const abs = layoutRects(contextTree(c));
+      const w = abs.get('w') as LayoutRect;
+      compared++;
+      if (w.height !== c.rects.wrapper[3]) misses.push(`${c.id} ${c.direction} wrapper height ${w.height / 64} != Chrome ${c.rects.wrapper[3] / 64}`);
+      for (const k of ['before', 'button', 'text', 'element'] as const) {
+        const want = c.rects[k];
+        if (want === null) continue;
+        compared++;
+        const ours = relative(abs, 'w', k);
+        const r = relativeTo(want, c.rects.wrapper);
+        if (ours.join() !== r.join()) misses.push(`${c.id} ${c.direction} ${k}: engine [${ours.map((v) => v / 64).join(', ')}] != Chrome [${r.map((v) => v / 64).join(', ')}] (${c.wrapper} | ${c.css} | ${c.childCss})`);
+      }
+    }
+    expect(misses).toEqual([]);
+    expect(CONTEXTS.length).toBe(28);
+    expect(compared).toBe(CONTEXTS.reduce((n, c) => n + 2 + (c.before === null ? 0 : 1) + (c.rects.text === null ? 0 : 1) + (c.rects.element === null ? 0 : 1), 0));
+  });
+
+  it('a short column flex container shrinks a button to its content size, not its specified height (css-flexbox-1 §4.5)', () => {
+    const c = CONTEXTS.find((k) => k.css.includes('padding:4px') && k.direction === 'ltr') as ContextCase;
+    expect(c.rects.button[3]).toBeLessThan(50 * 64);
+    expect(c.rects.button[3]).toBeGreaterThan(20 * 64);
+    expect((layoutRects(contextTree(c)).get('button') as LayoutRect).height).toBe(c.rects.button[3]);
+  });
+});
+
 describe('FORM-a control boxes: what the engine and the validator refuse', () => {
   const thumb = control('thumb', { kind: 'slider-thumb', ratio: 0.5 }, { width: px(10), height: px(10) });
   const range = (style: Partial<LayoutStyle>, kids: (LayoutBox | ControlBox)[]): LayoutInput => ({
@@ -289,8 +378,26 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(codes(range({ position: 'absolute' }, [track(thumb)]))).toEqual(['$.root.children[0].style.position an absolutely positioned form control is not supported']);
     expect(codes(range({ aspectRatio: { kind: 'ratio', width: 64, height: 64 } }, [track(thumb)]))).toEqual(['$.root.children[0].style.aspectRatio a form control takes no aspect-ratio']);
     expect(codes(range({}, [track({ ...thumb, style: { ...thumb.style, position: 'absolute' } })]))).toContain('$.root.children[0].children[0].children[0].style.position an absolutely positioned box inside a form control is not supported');
+    // A thumb moves only in block flow: a thumb in a flex track, or directly in the range's flex box, is refused.
+    expect(codes(range({}, [{ ...box('track', { display: 'flex' }), children: [thumb] }]))).toEqual(['$.root.children[0].children[0].children[0].control a slider thumb is a block-flow child: its parent is a block container']);
+    expect(codes(range({}, [thumb]))).toEqual(['$.root.children[0].children[0].control a slider thumb is a block-flow child: its parent is a block container']);
     const button = control('b', { kind: 'button-block' }, { display: 'flex' });
     expect(codes({ ...range({}, []), root: { ...box('root', {}), children: [button] } })).toEqual(['$.root.children[0].style.display a block button control is a block container']);
+  });
+
+  it('a control holds inline content with a strut as a box does, and is laid out as a block-flow or flex child (FORM-a with INL1a)', () => {
+    const env = { viewport: { width: 400, height: 300 }, ...neutralEnvironment({ width: 400, height: 300 }), devicePixelRatio: 1 };
+    const button = control('b', { kind: 'button-block' }, { height: px(40) }, [text('b:text0', 'XX '), span('s', [text('s:text0', 'Y')])]);
+    for (const display of ['block', 'flex'] as const) {
+      const input: LayoutInput = { ...env, root: box('root', { display }, [button, box('after', { height: px(5) })]) };
+      expect(codes(input), display).toEqual([]);
+      const r = layout(input, ahemMeasurer);
+      if (r.kind !== 'ok') throw new Error(`${display}: ${JSON.stringify(r)}`);
+      const ids = [...absoluteRects(r.boxes).keys()];
+      expect(ids, display).toEqual(expect.arrayContaining(['b', 's', 'b:text0', 's:text0', 'after']));
+    }
+    // CSS2 §10.8.1: inline content needs its container's strut, in a control too.
+    expect(codes({ ...env, root: box('root', {}, [{ ...button, strut: null }]) })).toContain('$.root.children[0].strut a box with inline content has a strut');
   });
 
   it('the engine throws on a block button control with display flex, which the validator rejects', () => {

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: #111; }
+input { appearance: none; margin: 0; background-color: transparent; }
+input::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; background-color: #c00; }
+input::-webkit-slider-runnable-track { height: 4px; background-color: #036; }
+.row { display: flex; align-items: center; width: 360px; margin-bottom: 4px; background-color: #eee; }
+.col { display: flex; flex-direction: column; width: 200px; margin-bottom: 4px; background-color: #eee; }
+.g { flex: 1 1 auto; }
+.w { width: 120px; }
+.s { align-self: flex-start; }
+.time-control { align-items: center; display: flex; gap: 1rem; width: 320px; }
+.time-control p { margin: 0; padding: 1rem 0; }
+.track { background-color: #2f4f66; flex: 1 1 auto; height: 1rem; min-width: 0; overflow: hidden; position: relative; }
+.track input { display: block; width: 100%; }
+.animate-track { background-color: #a57c5b; height: 100%; left: 0; position: absolute; top: 0; width: 40%; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="r" class="row"><input data-dragon-id="a1" type="range" value="25"><input data-dragon-id="a2" type="range" class="g" min="0" max="10" value="7"><input data-dragon-id="a3" type="range" class="w s" value="90"></div>
+<div data-dragon-id="c" class="col"><input data-dragon-id="b1" type="range" value="60"><input data-dragon-id="b2" type="range" class="s" value="10"></div>
+<div data-dragon-id="time-control" class="time-control"><p data-dragon-id="time-current">XX</p><div data-dragon-id="track" class="track"><input data-dragon-id="progress-input" type="range" min="0" max="200" value="80"><div data-dragon-id="animate-track" class="animate-track"></div></div><p data-dragon-id="time-total">XX</p></div>
+</body>
+</html>

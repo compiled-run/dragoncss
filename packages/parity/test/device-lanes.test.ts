@@ -11,8 +11,9 @@ import { blankCapture, captureTrust, caseReference, dumpFile, evaluateCase, eval
 import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
 import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSamples } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
+import { REFERENCE_LANE, validateNativeDump } from '../src/native-dump.ts';
 import type { NativeCase } from '../src/native-host.ts';
-import { hostSources, IOS_BUILD, iosModules, nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
+import { androidCommands, appCacheKey, casesCodeProblems, expand, hostSources, iosCommands, iosModules, nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
 import { casePoints, expectedPixelsPath, rasterSize } from '../src/pixel-reference.ts';
 import type { NativeTarget } from '../src/targets.ts';
@@ -29,7 +30,8 @@ function perfectDump(target: NativeTarget, dpr: number, n: NativeCase, ref: Case
   return {
     ...d,
     device: { ...d.device, platform: target },
-    nodes: d.nodes.map((x) => ({ ...x, lines: x.lines.map((l, j) => ({ ...l, start: lines.get(x.id)?.[j]?.[0] ?? null, end: lines.get(x.id)?.[j]?.[1] ?? null })) })),
+    // An element's lines (an inline box's fragments) have no own text: a device writes 0 and 0 (T058J3 E).
+    nodes: d.nodes.map((x) => ({ ...x, lines: x.lines.map((l, j) => (x.kind === 'text' ? { ...l, start: lines.get(x.id)?.[j]?.[0] ?? null, end: lines.get(x.id)?.[j]?.[1] ?? null } : { ...l, start: 0, end: 0 })) })),
     pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: size.width, height: size.height, sha256: 'a'.repeat(64), samples: readSamples(ref.pixels, ref.points) },
   };
 }
@@ -200,7 +202,52 @@ describe('build reuse', () => {
     expect(iosModules([...paths, 'Host/DragonPlanted.swift']).host).toContain('Host/DragonPlanted.swift');
     expect(() => iosModules(paths.filter((p) => p !== 'Cases/DragonCaseTable.swift'))).toThrow(/no Cases\/DragonCaseTable.swift/);
     expect(() => iosModules(paths.filter((p) => !/^Cases\/DragonCases\d/.test(p) && !/^Cases\/DragonStates\d/.test(p)))).toThrow(/do not split/);
-    expect(IOS_BUILD).toBe('modules DragonCore -O, DragonCases -Onone, DragonHost -O');
+  });
+  it('the app cache key hashes every command argument and the module assignment, not a label', () => {
+    const paths = hostSources('ios', 'x').map((f) => f.path);
+    const cmds = iosCommands(paths);
+    const key = appCacheKey('abc', cmds, { sdk: '26.5' });
+    expect(appCacheKey('abc', iosCommands(paths), { sdk: '26.5' })).toBe(key);
+    // Each module's optimisation level and file list is in its command, so moving a file or changing a flag changes the key.
+    const flip = cmds.map((c) => c.map((a) => (a === '-Onone' ? '-O' : a)));
+    expect(appCacheKey('abc', flip, { sdk: '26.5' })).not.toBe(key);
+    const caseFile = iosModules(paths).cases[0] as string;
+    const moved = cmds.map((c, i) => (i === 0 ? [...c, `$W/src/${caseFile}`] : i === 1 ? c.filter((a) => a !== `$W/src/${caseFile}`) : c));
+    expect(appCacheKey('abc', moved, { sdk: '26.5' })).not.toBe(key);
+    expect(appCacheKey('abd', cmds, { sdk: '26.5' })).not.toBe(key);
+    expect(appCacheKey('abc', cmds, { sdk: '26.6' })).not.toBe(key);
+    // The commands name the modules' levels and files exactly.
+    const [core, cases, host] = cmds as [string[], string[], string[]];
+    expect(core).toContain('-O');
+    expect(cases).toEqual(expect.arrayContaining(['-Onone', '-enable-testing']));
+    expect(host).toContain('-O');
+    expect(cases.filter((a) => a.startsWith('$W/src/'))).toEqual(iosModules(paths).cases.map((p) => `$W/src/${p}`));
+    const kt = hostSources('android', 'x').filter((f) => f.path.endsWith('.kt')).map((f) => f.path);
+    const a = androidCommands(kt);
+    expect(appCacheKey('abc', a, { keystore: 'k1' })).not.toBe(appCacheKey('abc', a, { keystore: 'k2' }));
+    expect(appCacheKey('abc', a.map((c) => c.map((x) => (x === '-J-Xmx8g' ? '-J-Xmx4g' : x))), {})).not.toBe(appCacheKey('abc', a, {}));
+  });
+  it('commands run with their tokens expanded; an unknown token is an error, never a literal path', () => {
+    expect(expand(['cp', '$W/src/Info.plist', '$W/DragonHost.app/Info.plist'], { W: '/w' })).toEqual(['cp', '/w/src/Info.plist', '/w/DragonHost.app/Info.plist']);
+    expect(() => expand(['$BT/d8'], { W: '/w' })).toThrow(/no value for \$BT/);
+    // Every token the commands use has a value where they run.
+    const tokens = (cs: readonly (readonly string[])[]): string[] => [...new Set(cs.flatMap((c) => c.flatMap((x) => [...x.matchAll(/\$([A-Z_]+)/g)].map((m) => m[1] as string))))].sort();
+    expect(tokens(iosCommands(hostSources('ios', 'x').map((f) => f.path)))).toEqual(['AHEM', 'CORES', 'W']);
+    expect(tokens(androidCommands(['a.kt']))).toEqual(['AHEM', 'ANDROID_JAR', 'BT', 'KEYSTORE', 'KOTLINC', 'KOTLIN_STDLIB', 'W']);
+  });
+  it('the code built at -Onone is construction code only: no control flow, ternary, assert or precondition', () => {
+    const files = hostSources('ios', 'x');
+    const cases = new Set(iosModules(files.map((f) => f.path)).cases);
+    expect(files.filter((f) => cases.has(f.path)).flatMap((f) => casesCodeProblems(f.path, f.text))).toEqual([]);
+    for (const bad of ['if x { y() }', 'guard x else { return }', 'for i in a {}', 'switch v { default: break }', 'assert(x)', 'precondition(x)', 'fatalError()', 'let y = x > 0 ? a : b']) expect(casesCodeProblems('C.swift', bad), bad).not.toEqual([]);
+    // Words inside string literals and comments, an enum's cases and the setters' Bool encoding are not code.
+    for (const ok of ['JsString("if for while")', '// for every case', 'public enum E: Int { case v_0 = 0; case v_1 = 1 }', 'machine.set(0, v ? 1 : 0)', 'JsString("a \\" ? b : c")']) expect(casesCodeProblems('C.swift', ok), ok).toEqual([]);
+    // The setter's numbers follow the fixture's value order: a fixture whose first case sets a boolean true emits `v ? 0 : 1`,
+    // or any other pair of value indices. Each is the setter's Bool encoding, not control flow.
+    for (const [t, f] of [[0, 1], [1, 0], [3, 2], [12, 7]]) expect(casesCodeProblems('C.swift', `  /// doc/t#checked\n  public func set_doc_t_checked(_ v: Bool) { machine.set(${t}, v ? ${t} : ${f}) }`)).toEqual([]);
+    // The exemption is the emitter's exact shape (state.ts); any other ternary is still caught.
+    expect(readFileSync(repoPath('packages/dragon/src/emit/runtime/state.ts'), 'utf8')).toContain('(_ v: Bool) { machine.set(${i}, v ? ${t} : ${f}) }');
+    for (const bad of ['machine.set(0, v ? a : 1)', 'machine.set(0, w ? 1 : 0)', 'machine.set(0, v ? 1.5 : 0)']) expect(casesCodeProblems('C.swift', bad), bad).not.toEqual([]);
   });
 });
 
@@ -264,6 +311,52 @@ describe('capture trust', () => {
     writeFileSync(dumpFile(dir, n.case.id, 3), JSON.stringify({ ...d, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), width: 1199 } }));
     expect(captureTrust(dir, [tc], 3, [0, 0])[0]?.mismatches).toEqual(['the in-app capture is 1199x900, the raster rule 1200x900']);
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('device dump element lines (T058J3 E): an inline box fragment has no own text, so start and end are 0', () => {
+  const n = cases.find((c) => c.case.id === 'inline-tags') as NativeCase;
+  const ref = caseReference('ios', n, 3);
+  const d = perfectDump('ios', 3, n, ref, relabelledReferenceDumps('ios', 3));
+  const box = d.nodes.findIndex((x) => x.id === 't2s');
+  const withLine = (dump: NativeDump, i: number, line: Partial<NativeDump['nodes'][number]['lines'][number]>): unknown =>
+    JSON.parse(JSON.stringify({ ...dump, nodes: dump.nodes.map((x, k) => (k === i ? { ...x, lines: x.lines.map((l, j) => (j === 0 ? { ...l, ...line } : l)) } : x)) }));
+  it('the perfect dump validates, and its inline box t2s has two element lines with 0 and 0', () => {
+    expect(validateNativeDump(d).ok).toBe(true);
+    expect(d.nodes[box]?.kind).toBe('element');
+    expect(d.nodes[box]?.lines.map((l) => [l.start, l.end])).toEqual([[0, 0], [0, 0]]);
+  });
+  it('a null start fails a device dump, and a non-zero start or end fails it as out-of-range', () => {
+    const nul = validateNativeDump(withLine(d, box, { start: null }));
+    expect(nul.ok || nul.errors.map((e) => `${e.path} ${e.code}`)).toEqual([`nodes[${box}].lines[0].start null-not-allowed`]);
+    for (const bad of [{ start: 1 }, { end: 2 }]) {
+      const v = validateNativeDump(withLine(d, box, bad));
+      expect(v.ok || v.errors.map((e) => `${e.path} ${e.code} ${e.detail}`), JSON.stringify(bad)).toEqual([`nodes[${box}].lines[0] out-of-range t2s:line0 has no own text; start and end are 0`]);
+    }
+  });
+  it('a reference dump with null element line offsets passes', () => {
+    const r = relabelledReferenceDumps('ios', 3).find((x) => x.case.id === 'inline-tags') as NativeDump;
+    const reference = withLine({ ...r, lane: REFERENCE_LANE, case: { ...r.case, expectedDigest: null } }, box, { start: null, end: null });
+    const v = validateNativeDump(reference);
+    expect(v.ok || v.errors).toBe(true);
+    expect(v.ok && v.dump.nodes[box]?.lines[0]).toMatchObject({ start: null, end: null });
+  });
+  it('break-shifted on a text leaf inside an inline box (t2s:text0) is still caught by the break check', () => {
+    const inner = d.nodes.findIndex((x) => x.id === 't2s:text0');
+    expect(d.nodes[inner]?.lines.length).toBeGreaterThanOrEqual(2);
+    // Only t2s:text0 keeps two lines, so the plant must pick it.
+    const only: NativeDump = { ...d, nodes: d.nodes.map((x, i) => (i === inner || x.kind !== 'text' ? x : { ...x, lines: x.lines.slice(0, 1) })) };
+    const planted = plantDumpFault('break-shifted', only, { engine: ref.engine, passingSamples: [] });
+    expect(planted?.nodes[inner]?.lines[0]?.end).toBe((only.nodes[inner]?.lines[0]?.end as number) - 1);
+    const got = evaluateCase('ios', n, 3, planted, ref).failures;
+    expect(got.some((f) => f.lane === 'device-lines' && f.kind === 'break-mismatch' && f.detail.startsWith('t2s:text0: device lines')), JSON.stringify(got.slice(0, 3))).toBe(true);
+  });
+  it.each([['ios', 3], ['ios', 2], ['android', 2], ['android', 3], ['android', 2.625]] as const)('every existing case\'s perfect %s dump at DPR %s validates', (target, dpr) => {
+    const all = relabelledReferenceDumps(target, dpr);
+    for (const c of cases) {
+      const v = validateNativeDump(perfectDump(target, dpr, c, caseReference(target, c, dpr), all));
+      expect(v.ok || v.errors.slice(0, 3), c.case.id).toBe(true);
+    }
   });
 });
 

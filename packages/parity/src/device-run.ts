@@ -20,7 +20,16 @@ export type IosDeviceSpec = { readonly target: 'ios'; readonly name: string };
 export type AvdDeviceSpec = { readonly target: 'android'; readonly name: string; readonly density: number; readonly width: number; readonly height: number; readonly port: number };
 export type DeviceSpec = IosDeviceSpec | AvdDeviceSpec;
 
-export const ANDROID_IMAGE = 'system-images;android-36;default;arm64-v8a';
+/**
+ * The android-36 system image of the host's architecture: arm64-v8a on Apple Silicon, x86_64 on an x86-64 Linux host with KVM (CI),
+ * where an arm64 image cannot be accelerated. Both are the same Android build line; the device record names the build that ran.
+ */
+export function androidImage(arch: string): string {
+  const abi = arch === 'arm64' ? 'arm64-v8a' : arch === 'x64' ? 'x86_64' : null;
+  if (abi === null) throw new Error(`no android-36 system image for the host architecture ${arch} (arm64 and x64 only)`);
+  return `system-images;android-36;default;${abi}`;
+}
+export const ANDROID_IMAGE = androidImage(process.arch);
 export const ANDROID_RENDERER = 'swiftshader_indirect';
 /** The pinned text size: iOS content size large and Android font scale 1.0 (section 3.5). */
 export const TEXT_SCALE = { ios: 'UICTContentSizeCategoryL', android: '1.0' } as const;
@@ -48,25 +57,37 @@ export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-
 export const PLANT_CASE = 'tree-projected-text#1';
 /** The glyph plants (T093), judged against the clean run on PLANT_CASE; every other support plant is a paint plant. */
 export type GlyphPlant = 'glyph-offset-1' | 'glyph-offset-y-1';
-/** The paint plants: every support plant that is not a glyph plant. */
-export type PaintPlant = Exclude<SupportPlant, GlyphPlant>;
+/** The INL1a line plant, judged against the clean run on LINE_PLANT_CASE (judgeLinePlant). */
+export type LinePlant = 'single-run-baseline';
+/** The paint plants: every support plant that is neither a glyph plant nor the line plant. */
+export type PaintPlant = Exclude<SupportPlant, GlyphPlant | LinePlant>;
 export const isGlyphPlant = (p: SupportPlant): p is GlyphPlant => p === 'glyph-offset-1' || p === 'glyph-offset-y-1';
+export const isLinePlant = (p: SupportPlant): p is LinePlant => p === 'single-run-baseline';
+export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(p) && !isLinePlant(p);
 /** The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures, the image plant (REPL-a) on the replaced fixtures whose images are drawn. */
 export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
+  // PNT2: each transform plant runs on the case its paint moves.
+  'transform-origin-ignored': ['transform-origin'],
+  'translate-percent-of-parent': ['transform-translate'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
 };
 /** The sample rules a paint plant's device-pixels failures must name: border bands and edges for the dash plants. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
+  // A transform moves every pixel of the box, so any colour rule may catch it.
+  'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
+  'translate-percent-of-parent': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'image-offset-1': /^(image-flat:|edge:)/,
 };
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
 /** The axis each raster plant moves every glyph along, by PLANT_SHIFT_DEVICE_PX. */
 export const PLANT_AXIS: { readonly [P in GlyphPlant]: 'x' | 'y' } = { 'glyph-offset-1': 'x', 'glyph-offset-y-1': 'y' };
+/** The case of the single-run-baseline line plant: b1 holds a text node on two lines whose baselines sit differently below their line tops. */
+export const LINE_PLANT_CASE = 'inline-baselines';
 /** T093 ruling A: a plant's glyph positions (x centre, or bottom edge), against the clean run on the same device, move by this much... */
 export const PLANT_SHIFT_DEVICE_PX = 1;
 /** ...within this... */
@@ -107,6 +128,51 @@ export function judgeGlyphPlant(plant: GlyphPlant, clean: { readonly failures: n
   return { caught: problems.length === 0, lines, problems };
 }
 
+/** One text line's absolute baseline in device px, read from a dump. */
+export type DumpBaseline = { readonly line: string; readonly baseline: number };
+
+/**
+ * The single-run-baseline line plant judged against the clean run (INL1a): both hosts finished; device-frames and device-lines have
+ * no failure in either run (the plant moves glyphs, not line boxes); the clean run has no device-pixels failure; both runs dumped the
+ * same text lines; every text node's first line keeps its baseline; at least one line's baseline moved by a whole device px or more;
+ * and on every moved line the glyph bottom edge moved by the same amount within PLANT_SHIFT_SPREAD_DEVICE_PX and fails the position
+ * check with at least PLANT_MARGIN_DEVICE_PX to spare.
+ */
+export function judgeLinePlant(clean: { readonly failures: number; readonly baselines: readonly DumpBaseline[]; readonly bottoms: readonly GlyphPosition[] }, planted: { readonly baselines: readonly DumpBaseline[]; readonly bottoms: readonly GlyphPosition[] }, gate: number, runs: { readonly hostErrors: readonly string[]; readonly frames: number; readonly lines: number }): PlantVerdict {
+  const problems: string[] = [...runs.hostErrors];
+  if (runs.frames > 0) problems.push(`device-frames has ${runs.frames} failure(s) across the two runs`);
+  if (runs.lines > 0) problems.push(`device-lines has ${runs.lines} failure(s) across the two runs`);
+  if (clean.failures > 0) problems.push(`the clean run has ${clean.failures} device-pixels failure(s)`);
+  const cleanAt = new Map(clean.baselines.map((b) => [b.line, b.baseline]));
+  if (planted.baselines.length !== cleanAt.size || planted.baselines.some((b) => !cleanAt.has(b.line))) problems.push(`the planted run dumped ${planted.baselines.length} text lines, the clean run ${cleanAt.size}, not the same lines`);
+  const cleanBottom = new Map(clean.bottoms.filter((c) => c.axis === 'y').map((c) => [c.line, c]));
+  const plantedBottom = new Map(planted.bottoms.filter((c) => c.axis === 'y').map((c) => [c.line, c]));
+  const lines: PlantLine[] = [];
+  for (const b of planted.baselines) {
+    const base = cleanAt.get(b.line);
+    if (base === undefined) continue;
+    const shift = b.baseline - base;
+    if (/:line0$/.test(b.line)) {
+      if (shift !== 0) problems.push(`${b.line}: a first line's baseline moved ${shift} device px`);
+      continue;
+    }
+    if (Math.abs(shift) < PLANT_SHIFT_DEVICE_PX) continue;
+    const c = cleanBottom.get(b.line);
+    const p = plantedBottom.get(b.line);
+    if (c === undefined || p === undefined) {
+      problems.push(`${b.line}: its baseline moved ${shift} device px, and no glyph bottom edge was measured on it`);
+      continue;
+    }
+    lines.push({ line: b.line, chrome: p.chrome, clean: c.native, planted: p.native });
+    const moved = p.native - c.native;
+    const margin = Math.abs(p.native - p.chrome) - gate;
+    if (Math.abs(moved - shift) > PLANT_SHIFT_SPREAD_DEVICE_PX) problems.push(`${b.line}: the glyph bottom edge moved ${moved.toFixed(3)} device px, the baseline ${shift}`);
+    if (!(margin >= PLANT_MARGIN_DEVICE_PX)) problems.push(`${b.line}: the position check fails by ${margin.toFixed(3)} device px beyond the gate, less than ${PLANT_MARGIN_DEVICE_PX}`);
+  }
+  if (lines.length === 0 && problems.length === 0) problems.push('no line baseline moved by a whole device px');
+  return { caught: problems.length === 0, lines, problems };
+}
+
 export const avdScale = (d: AvdDeviceSpec): number => d.density / 160;
 
 /**
@@ -144,13 +210,26 @@ function simctlJson<T>(args: readonly string[]): T {
   return JSON.parse(exec('xcrun', ['simctl', 'list', ...args, '-j']).stdout) as T;
 }
 
-/** The newest iOS runtime: its identifier, version and build. */
+/**
+ * The pinned iOS simulator runtime: the one the device evidence was recorded on, so a host with a newer runtime (CI's xcode-27
+ * image ships iOS 27) runs the same one (install it with xcodebuild -downloadPlatform iOS -buildVersion <version>).
+ */
+export const IOS_RUNTIME = { version: '26.5', build: '23F77' } as const;
+
+export type SimRuntime = { readonly identifier: string; readonly version: string; readonly buildversion: string; readonly isAvailable: boolean; readonly name: string };
+
+/** The available iOS runtime with the pinned build, or an error naming the available ones. */
+export function pickIosRuntime(rts: readonly SimRuntime[], pin: { readonly version: string; readonly build: string } = IOS_RUNTIME): { readonly identifier: string; readonly version: string; readonly build: string } {
+  const ios = rts.filter((r) => r.isAvailable && r.name.startsWith('iOS'));
+  const hit = ios.find((r) => r.buildversion === pin.build);
+  if (hit === undefined) throw new Error(`the pinned iOS ${pin.version} (${pin.build}) simulator runtime is not installed; available: ${ios.map((r) => `${r.version} (${r.buildversion})`).join(', ') || 'none'} (tooling fault)`);
+  if (hit.version !== pin.version) throw new Error(`the iOS runtime with build ${pin.build} reports version ${hit.version}, not the pinned ${pin.version} (tooling fault)`);
+  return { identifier: hit.identifier, version: hit.version, build: hit.buildversion };
+}
+
+/** The pinned iOS runtime on this host: its identifier, version and build. */
 export function iosRuntime(): { readonly identifier: string; readonly version: string; readonly build: string } {
-  const rts = simctlJson<{ runtimes: { identifier: string; version: string; buildversion: string; isAvailable: boolean; platform?: string; name: string }[] }>(['runtimes']).runtimes;
-  const ios = rts.filter((r) => r.isAvailable && r.name.startsWith('iOS')).sort((a, b) => a.version.localeCompare(b.version, undefined, { numeric: true }));
-  const last = ios[ios.length - 1];
-  if (last === undefined) throw new Error('no available iOS simulator runtime (tooling fault)');
-  return { identifier: last.identifier, version: last.version, build: last.buildversion };
+  return pickIosRuntime(simctlJson<{ runtimes: SimRuntime[] }>(['runtimes']).runtimes);
 }
 
 /** The device type profile scale (capabilities.plist ArtworkDeviceScaleFactor), independent of the app. */
@@ -164,7 +243,7 @@ export function iosProfileScale(name: string): number {
   return scale;
 }
 
-/** The simulator named name on the newest runtime, created with simctl when none exists. */
+/** The simulator named name on the pinned runtime, created with simctl when none exists. */
 export function provisionIos(name: string): { readonly udid: string; readonly created: boolean } {
   const rt = iosRuntime();
   const list = simctlJson<{ devices: Record<string, SimDevice[]> }>(['devices', 'available']);
@@ -296,6 +375,17 @@ const GIB = 1024 ** 3;
 export const DEVICE_MEMORY: { readonly [T in NativeTarget]: number } = { ios: 3 * GIB, android: 4 * GIB };
 /** Memory left to the rest of the machine (the host lanes, the checks, other agents) when devices are started. */
 export const MEMORY_RESERVE = 8 * GIB;
+
+/**
+ * The reserve of this run: MEMORY_RESERVE, or DRAGON_DEVICE_RESERVE_GIB (a whole number of GiB, 0 to 64) on a machine that runs
+ * nothing else, such as a CI runner booting its one device (a 7 GiB macOS runner could never admit a device under 8 GiB).
+ */
+export function memoryReserve(env: Readonly<Record<string, string | undefined>> = process.env): number {
+  const v = env['DRAGON_DEVICE_RESERVE_GIB'];
+  if (v === undefined) return MEMORY_RESERVE;
+  if (!/^\d{1,2}$/.test(v) || Number(v) > 64) throw new Error(`DRAGON_DEVICE_RESERVE_GIB must be a whole number of GiB from 0 to 64, not ${JSON.stringify(v)}`);
+  return Number(v) * GIB;
+}
 export const ADMIT_WAIT_MS = 1_800_000;
 
 /** Memory free for new processes: free, inactive and speculative pages on macOS (vm_stat; a failed or unreadable read throws), else os.freemem(). */
@@ -342,20 +432,21 @@ export async function admitDevice(spec: { readonly target: NativeTarget; readonl
   // A device left running by this run (not started here, or its stop failed) still holds its reservation.
   if (reserved.has(spec.name)) return;
   const need = DEVICE_MEMORY[spec.target];
+  const reserve = memoryReserve();
   const log = opts.log ?? ((l: string) => console.log(l));
   const t0 = Date.now();
   let waited = false;
   for (;;) {
     const mem = (opts.memory ?? (() => ({ total: totalmem(), available: availableMemory() })))();
     const held = heldBytes();
-    const budget = Math.min(mem.total, mem.available) - MEMORY_RESERVE;
+    const budget = Math.min(mem.total, mem.available) - reserve;
     const holders = [...reserved.keys()].join(', ');
-    if (admits(held, need, mem)) {
+    if (admits(held, need, mem, reserve)) {
       reserved.set(spec.name, need);
       if (waited) log(`${spec.name}: device memory admitted after ${((Date.now() - t0) / 1000).toFixed(0)} s (${gib(held + need)} held of a ${gib(budget)} budget)`);
       return;
     }
-    const state = `needs ${gib(need)}; ${gib(mem.available)} free of ${gib(mem.total)} read, less the ${gib(MEMORY_RESERVE)} reserve, is a ${gib(budget)} budget; ${held === 0 ? 'no device held' : `${gib(held)} held by ${holders}`}`;
+    const state = `needs ${gib(need)}; ${gib(mem.available)} free of ${gib(mem.total)} read, less the ${gib(reserve)} reserve, is a ${gib(budget)} budget; ${held === 0 ? 'no device held' : `${gib(held)} held by ${holders}`}`;
     if (!waited) log(`${spec.name}: waiting for device memory: ${state}`);
     waited = true;
     const waitMs = opts.waitMs ?? ADMIT_WAIT_MS;

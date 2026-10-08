@@ -144,6 +144,40 @@ describe('hitTableOf hit-tests a replaced element as a childless box', () => {
   });
 });
 
+// FORM-a: a form control is hit as the box it is laid out as, with its contents: a point on a button's text targets the button,
+// one on an element inside it targets that element, and activation resolves to the button. In a flex container it is an item.
+describe('hitTableOf hit-tests a form control and its contents', () => {
+  const setup = async (display: 'block' | 'flex') => {
+    const { hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { box, control, neutralEnvironment, px, text } = await import('./helpers.ts');
+    const button = control('btn', { kind: 'button-block' }, { width: px(60), paddingTop: px(4), paddingBottom: px(4) }, [box('label', {}, [text('t', 'XX')]), box('icon', { width: px(10), height: px(10) })]);
+    const parent = { ...box('p', { display, width: px(100) }), children: [button, box('after', { width: px(20), height: px(10) })] };
+    const root = { ...box('html', { width: px(100) }), children: [parent] };
+    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
+    const fact = (activation: boolean) => ({ pointerEvents: 'auto', inherited: true, activation }) as const;
+    const facts = new Map([['html', fact(false)], ['p', fact(false)], ['btn', fact(true)], ['label', fact(false)], ['icon', fact(false)], ['after', fact(false)]]);
+    return hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+  };
+
+  it('lists the control and its contents, answers points inside them, and activates the button from its contents', async () => {
+    for (const display of ['block', 'flex'] as const) {
+      const t = await setup(display);
+      expect(t.ids.filter((id) => !id.includes(':')), display).toEqual(['html', 'p', 'btn', 'label', 'icon', 'after']);
+      const node = (id: string): HitNode => t.nodes[t.ids.indexOf(id)] as HitNode;
+      const hit = (n: HitNode, dx: number, dy: number): number => hitTest(t.nodes, n.x + dx * PX, n.y + dy * PX, NO_HIT_FAULTS);
+      const btn = node('btn');
+      expect([btn.kind, btn.width / PX, btn.atomic], display).toEqual(['box', 60, display === 'flex']);
+      // The padding is the button's own; the label's text targets the label's element, the icon itself.
+      expect(t.ids[hit(btn, 1, 1)], display).toBe('btn');
+      const label = node('label');
+      expect(t.ids[t.nodes[hit(label, 1, 1)]?.target as number], display).toBe('label');
+      expect(t.ids[hit(node('icon'), 5, 5)], display).toBe('icon');
+      expect(t.ids[activationTarget(t.nodes, t.activation, hit(node('icon'), 5, 5))], display).toBe('btn');
+    }
+  });
+});
+
 // PR #75 round 1 (Macroscope 4170551537, 4170551540, 4170551550): flex line grouping under wrap-reverse, and the work per point and
 // per table, counted by reads so the bound is exact rather than a timing.
 describe('hitTableOf and prepareHit scale with the table', () => {

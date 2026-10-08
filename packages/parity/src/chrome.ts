@@ -59,6 +59,13 @@ export function harnessStyle(env: PageEnvironment): string {
   return `${ahemFontFace()}${env.rootFont === 'ahem' ? ':where(html){font-family:Ahem}' : ''}${env.direction === 'rtl' ? ':where(html){direction:rtl}' : ''}`;
 }
 
+/** The fixture HTML with the harness style injected first in its head: the one place the harness environment reaches a page. */
+export function injectHarness(html: string, env: PageEnvironment): string {
+  const injected = html.replace(/<head>/i, `<head><style data-dragon-harness>${harnessStyle(env)}</style>`);
+  if (injected === html) throw new Error('fixture HTML has no <head>');
+  return injected;
+}
+
 /** Opens a page in the case environment, loads the HTML with the harness style injected, and waits for fonts and two frames. */
 export async function openPage(browser: Browser, html: string, env: PageEnvironment): Promise<Page> {
   const context = await browser.newContext({
@@ -66,8 +73,7 @@ export async function openPage(browser: Browser, html: string, env: PageEnvironm
     deviceScaleFactor: env.devicePixelRatio,
   });
   const page = await context.newPage();
-  const injected = html.replace(/<head>/i, `<head><style data-dragon-harness>${harnessStyle(env)}</style>`);
-  if (injected === html) throw new Error('fixture HTML has no <head>');
+  const injected = injectHarness(html, env);
   await page.setContent(injected);
   await page.evaluate(async () => {
     await document.fonts.load('10px Ahem');
@@ -93,8 +99,7 @@ export async function openFrozenPage(browser: Browser, html: string, env: PageEn
   const cdp = await context.newCDPSession(page);
   await cdp.send('Animation.enable');
   await cdp.send('Animation.setPlaybackRate', { playbackRate: 0 });
-  const injected = html.replace(/<head>/i, `<head><style data-dragon-harness>${harnessStyle(env)}</style>`);
-  if (injected === html) throw new Error('fixture HTML has no <head>');
+  const injected = injectHarness(html, env);
   await page.route(FROZEN_URL, (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: injected }));
   await page.goto(FROZEN_URL);
   await page.evaluate(async () => {

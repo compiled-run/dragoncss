@@ -311,9 +311,12 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
 
 const withStyle = (ok: (s: string) => boolean): NativeCase[] =>
   nativeCases().filter((nc) => nc.programs.uikit.nodes.some((n) => (n.writes.find((w) => w.kind === 'border-styles') as { styles?: readonly string[] } | undefined)?.styles?.some(ok)));
-const dashed = withStyle((s) => s === 'dashed' || s === 'dotted');
+// PNT2: the reference draws untransformed boxes, so a case with a transform write is left to the transform lanes (pnt2-quads and
+// pnt2-samples on the host, device-pixels on the devices); the test below pins exactly which cases that leaves out.
+const transformed = (nc: NativeCase): boolean => nc.programs.uikit.nodes.some((n) => n.writes.some((w) => w.kind === 'transform'));
+const dashed = withStyle((s) => s === 'dashed' || s === 'dotted').filter((nc) => !transformed(nc));
 // T116: boxes whose visible sides are all solid are drawn by the same reference; every case with a solid side is compared.
-const solid = withStyle((s) => s === 'solid').filter((nc) => !dashed.includes(nc));
+const solid = withStyle((s) => s === 'solid').filter((nc) => !dashed.includes(nc) && !transformed(nc));
 
 describe('the oracle\'s paint order (which boxes hide a border pixel)', () => {
   it('puts positioned boxes and their descendants over in-flow ones, orders each phase by tree order, and puts in-flow text over every in-flow border', () => {
@@ -337,7 +340,7 @@ describe('the oracle\'s paint order (which boxes hide a border pixel)', () => {
     expect(textPaintsOver(order, layer, 'b5', 'c4')).toBe(false);
     expect(textPaintsOver(order, layer, 'd3', 'b5')).toBe(false);
     // Flex items paint in order-modified document order; other boxes in tree order.
-    const leaf = (id: string, order = 0, display = 'block', position = 'static'): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { display, position, order } as unknown as LayoutBox['style'], children: [] });
+    const leaf = (id: string, order = 0, display = 'block', position = 'static'): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { display, position, order } as unknown as LayoutBox['style'], strut: null, children: [] });
     const flex: LayoutBox = { ...leaf('f', 0, 'flex'), children: [leaf('x', 2), leaf('a', -9, 'block', 'absolute'), leaf('y', -1), leaf('z', 2, 'block', 'relative'), { ...leaf('w', 1), children: [leaf('w1', -5)] }] };
     // a is out of flow, so its order is ignored and it keeps its slot; z is a relatively positioned flex item and is reordered.
     expect(paintOrder({ ...leaf('r'), children: [flex, leaf('after')] })).toEqual(['r', 'f', 'y', 'a', 'w', 'w1', 'x', 'z', 'after']);
@@ -378,6 +381,11 @@ describe('planted dash faults fail the Chrome comparison', () => {
 });
 
 describe('the solid border reference against Chrome 145 (T116: same-colour sides join with no miter)', () => {
+  it('leaves out only cases of the transforms group, each with a transform write', () => {
+    const out = withStyle((x) => x === 'solid' || x === 'dashed' || x === 'dotted').filter(transformed).map((nc) => nc.case.id);
+    expect(out.length).toBeGreaterThan(0);
+    for (const id of out) expect(id, id).toMatch(/^transform-/);
+  });
   it('covers the border-join fixture and the earlier solid-border cases', () => {
     expect(solid.map((nc) => nc.case.id)).toEqual(expect.arrayContaining(['border-join', 'tree-projected-text#3']));
   });

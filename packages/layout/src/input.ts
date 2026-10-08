@@ -117,8 +117,11 @@ export type AspectRatioValue =
   | { readonly kind: 'ratio'; readonly width: number; readonly height: number }
   | { readonly kind: 'auto-ratio'; readonly width: number; readonly height: number };
 
-/** display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. */
-export type Display = 'block' | 'flex';
+/**
+ * display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. inline is the display of an
+ * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid.
+ */
+export type Display = 'block' | 'flex' | 'grid' | 'inline';
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
 /** css-overflow-3 §3: hidden makes a scroll container; the validator requires both axes to be equal (the §3.1 computed pair). */
@@ -165,6 +168,74 @@ export type AlignContent =
   | 'start'
   | 'end';
 export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
+/** CSS2 §10.8.1 vertical-align keywords. */
+export type VerticalAlignKeyword = 'baseline' | 'sub' | 'super' | 'text-top' | 'text-bottom' | 'middle' | 'top' | 'bottom';
+/** A vertical-align keyword value. */
+export type VerticalAlignKeywordValue = { readonly kind: 'keyword'; readonly value: VerticalAlignKeyword };
+/** CSS2 §10.8.1 vertical-align: a keyword, a length, or a percentage of the element's own line-height. The compiler writes baseline. */
+export type VerticalAlignValue = VerticalAlignKeywordValue | Px | Percent | LengthCalc;
+
+/** css-grid-2 §7.2.1 <flex>: a fraction of the leftover space. */
+export type Fr = { readonly kind: 'fr'; readonly value: number };
+export type MinContent = { readonly kind: 'min-content' };
+export type MaxContent = { readonly kind: 'max-content' };
+/** css-grid-2 §7.2.1 <track-breadth>; a % breadth resolves against the grid container's content box in its axis. */
+export type TrackBreadth = Px | Percent | Fr | Auto | MinContent | MaxContent;
+/**
+ * css-grid-2 §7.2.1 <track-size>, as Blink's GridTrackSize keeps it: a single breadth, minmax(min, max), or fit-content(limit).
+ * A flexible breadth is never a minimum: the compiler writes minmax(auto, <flex>) as the <flex> breadth.
+ */
+export type TrackSize =
+  | { readonly kind: 'breadth'; readonly breadth: TrackBreadth }
+  | { readonly kind: 'minmax'; readonly min: TrackBreadth; readonly max: TrackBreadth }
+  | { readonly kind: 'fit-content'; readonly limit: Px | Percent };
+/**
+ * One repeater of a track list (Blink GridTrackRepeater): a track written on its own is a repeater of count 1 with one size;
+ * repeat(n, sizes) keeps its count unexpanded, since Chrome sizes each size of a repeater as one set of n tracks.
+ */
+export type TrackRepeater = { readonly count: number; readonly sizes: readonly TrackSize[] };
+/**
+ * An item's lines in one axis, resolved by the compiler (Blink GridLineResolver::ResolveGridPositionsFromStyle): definite lines
+ * as 0-based indices from the explicit grid's start line, which are negative before it; or an automatic position of span lines.
+ */
+export type GridSpan =
+  | { readonly kind: 'definite'; readonly start: number; readonly end: number }
+  | { readonly kind: 'auto'; readonly span: number };
+/** css-align-3 §6.1 self positions in a grid container; normal and stretch stretch an auto size. */
+export type GridSelfAlign =
+  | 'normal'
+  | 'stretch'
+  | 'start'
+  | 'end'
+  | 'center'
+  | 'self-start'
+  | 'self-end'
+  | 'flex-start'
+  | 'flex-end'
+  | 'left'
+  | 'right';
+/**
+ * A grid container's own grid properties (css-grid-2 §7). The explicit track counts are the larger of the template's and the
+ * template areas' (css-grid-2 §7.1); tracks beyond the template are sized by the automatic tracks. autoColumns and autoRows
+ * are never empty (the initial value is one auto track). justifyItems is the computed value with legacy already resolved.
+ */
+export type GridContainerStyle = {
+  readonly templateColumns: readonly TrackRepeater[];
+  readonly templateRows: readonly TrackRepeater[];
+  readonly autoColumns: readonly TrackSize[];
+  readonly autoRows: readonly TrackSize[];
+  readonly explicitColumnCount: number;
+  readonly explicitRowCount: number;
+  readonly autoFlow: 'row' | 'column';
+  readonly dense: boolean;
+  readonly justifyItems: GridSelfAlign;
+};
+/** A grid item's placement and justify-self (auto takes the container's justify-items); align-self is LayoutStyle.alignSelf. */
+export type GridItemStyle = {
+  readonly column: GridSpan;
+  readonly row: GridSpan;
+  readonly justifySelf: 'auto' | GridSelfAlign;
+};
 
 export type LayoutStyle = {
   readonly display: Display;
@@ -209,6 +280,11 @@ export type LayoutStyle = {
   readonly columnGap: GapValue;
   readonly textAlign: TextAlign;
   readonly aspectRatio: AspectRatioValue;
+  readonly verticalAlign: VerticalAlignValue;
+  /** Written for display: grid only; null otherwise. */
+  readonly grid: GridContainerStyle | null;
+  /** Written for the in-flow children of a grid container only; null otherwise. */
+  readonly gridItem: GridItemStyle | null;
 };
 
 /** The font a measurer reads: the family and the computed font size in zoomed px. */
@@ -287,19 +363,47 @@ export type ControlBox = {
   readonly boxType: BoxType;
   readonly style: LayoutStyle;
   readonly control: ControlKind;
-  readonly children: readonly (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf)[];
+  readonly strut: LineStrut | null;
+  readonly children: readonly (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[];
 };
 
 /** A box-level child: an element or anonymous box, a form control's box, or a replaced leaf. */
 export type LayoutNode = LayoutBox | ControlBox | ReplacedLeaf;
 
-/** Children are either all boxes, control boxes and replaced leaves or all text leaves: the compiler wraps mixed text in anonymous boxes. */
+/**
+ * An inline box (CSS2 §9.2.2): an element with display inline inside an inline formatting context. Its font and line-height are
+ * the element's own, which its box contributes to every line it is on (CSS2 §10.8.1); its style's display is inline.
+ */
+export type InlineBox = {
+  readonly kind: 'inline';
+  readonly id: string;
+  readonly style: LayoutStyle;
+  readonly font: FontSpec;
+  readonly lineHeight: LineHeightValue;
+  readonly children: readonly InlineChild[];
+};
+
+/** A <br> element: a forced line break (UAX #14 class BK). Its font and line-height are its own; Blink ignores them (INL-P). */
+export type LineBreak = { readonly kind: 'br'; readonly id: string; readonly font: FontSpec; readonly lineHeight: LineHeightValue };
+
+/** The inline-level content of an inline formatting context. */
+export type InlineChild = TextLeaf | InlineBox | LineBreak;
+
+/** The strut of a block container with inline content (CSS2 §10.8.1): the container's own font and line-height. */
+export type LineStrut = { readonly font: FontSpec; readonly lineHeight: LineHeightValue };
+
+/**
+ * Children are either all boxes, control boxes and replaced leaves or all inline-level (text leaves, inline boxes and line breaks):
+ * the compiler wraps mixed content in anonymous boxes. strut is the box's font and line-height when its children are inline-level,
+ * else null.
+ */
 export type LayoutBox = {
   readonly kind: 'box';
   readonly id: string;
   readonly boxType: BoxType;
   readonly style: LayoutStyle;
-  readonly children: readonly (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf)[];
+  readonly strut: LineStrut | null;
+  readonly children: readonly (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[];
 };
 
 /** The initial containing block in CSS px. */

@@ -10,6 +10,7 @@
 import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import { resolveBorder } from './box.ts';
+import { controlAsBox } from './controls.ts';
 import { placeLines } from './inline.ts';
 import { fromRaw } from './units.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
@@ -393,6 +394,7 @@ function indexZoomed(m: Map<string, LayoutBox>, r: Map<string, LayoutStyle>, b: 
   m.set(b.id, b);
   for (const c of b.children) {
     if (c.kind === 'box') indexZoomed(m, r, c);
+    else if (c.kind === 'control') indexZoomed(m, r, controlAsBox(c));
     else if (c.kind === 'replaced') r.set(c.id, c.style);
   }
 }
@@ -411,7 +413,7 @@ function fragmentOrders(s: TableState, container: LayoutBox): Map<string, number
   const flow = row && container.style.direction === 'rtl' ? -1 : 1;
   const inFlow = new Map<string, boolean>();
   for (const c of container.children) {
-    if ((c.kind === 'box' || c.kind === 'replaced') && c.style.position !== 'absolute') inFlow.set(c.id, true);
+    if ((c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced') && c.style.position !== 'absolute') inFlow.set(c.id, true);
   }
   const lines: LayoutRect[][] = [];
   let lo = 0;
@@ -496,7 +498,7 @@ function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number
     if (c.kind === 'text') zLeaves.push(c);
   }
   // The run's line metrics, read from the engine's own first line box (one font per formatting context, checked below).
-  const placed = placeLines(s.ctx, zb, zLeaves, LINE_PROBE_WIDTH);
+  const placed = placeLines(s.ctx, zb, LINE_PROBE_WIDTH);
   const firstLine = placed[0];
   const firstPlaced = firstLine === undefined ? undefined : firstLine.pieces[0];
   const run: LineMetrics = firstLine === undefined || firstPlaced === undefined
@@ -593,6 +595,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   let kids = 0;
   for (const c of b.children) {
     if (c.kind === 'text') leaves.push(c);
+    else if (c.kind === 'inline' || c.kind === 'br') throw new HitError(inlineRefusal(c.id, c.kind));
     else kids++;
   }
   if (leaves.length > 0 && kids > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
@@ -600,6 +603,9 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : null;
   for (const c of b.children) {
     if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe);
+    // A form control is hit as the box it is laid out as, and so are its contents (Blink hit-tests a button's or a range's
+    // children like any block's; an anonymous part targets the control element).
+    else if (c.kind === 'control') boxNodes(s, controlAsBox(c), i, childOrders, own, pe);
     else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders);
   }
 }
@@ -625,6 +631,26 @@ function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Ma
     layerOrder: orders !== null && c.style.position !== 'absolute' ? c.style.order : 0, line: -1,
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe,
   }, c.id, f.activation);
+}
+
+function inlineRefusal(id: string, kind: 'inline' | 'br'): string {
+  return `${id} is ${kind === 'br' ? 'a <br>' : 'an inline box'}, which the hit table does not model yet (INL1a; no Chrome hit capture)`;
+}
+
+function boxHitRefusal(b: LayoutBox): string | null {
+  for (const c of b.children) {
+    if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
+    if (c.kind === 'box' || c.kind === 'control') {
+      const r = boxHitRefusal(c.kind === 'control' ? controlAsBox(c) : c);
+      if (r !== null) return r;
+    }
+  }
+  return null;
+}
+
+/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a) has no hit model yet. */
+export function hitRefusal(input: LayoutInput): string | null {
+  return boxHitRefusal(input.root);
 }
 
 /** The hit table of an engine input at its device scale, from the engine's own layout of it and the compiler's hit facts. */

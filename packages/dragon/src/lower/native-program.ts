@@ -3,7 +3,7 @@
 // resolved paint values. A program holds generated node ids, kinds and parents, the typed engine input, every property write in
 // backend vocabulary with its technique and the CSS longhands it realises, and the text runs. The emitters and the expected-dump
 // projection read only the program; nothing downstream re-resolves CSS.
-import type { FontSpec, LayoutBox, LayoutNode, TextLeaf } from '@dragon/layout';
+import type { FontSpec, InlineChild, LayoutBox, LayoutNode, TextLeaf } from '@dragon/layout';
 import { rootFontSizeOf } from './ios-layout.ts';
 import type { AnimationAnalysis } from '../analysis/animations.ts';
 import type { ResolvedElement, ResolvedText } from '../analysis/resolve.ts';
@@ -12,6 +12,7 @@ import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
 import type { Longhand } from '../css/properties.ts';
 import { colorChannels, usedColors } from './paint/colors.ts';
+import { borderWrites } from './paint/border.ts';
 import { clipsChildren } from './paint/clip.ts';
 import type { PaintWrite } from './paint/registry.ts';
 import { lowerBoxPaint, paintVocabulary, paintWriteCss } from './paint/registry.ts';
@@ -144,12 +145,28 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;
     for (const c of b.children) {
-      if (c.kind !== 'text') {
+      if (c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced') {
         visit(c, b.id, own, transformMoves);
         continue;
       }
-      out.push(textPaint(c, b.id, texts));
+      inline(c, b.id);
     }
+  };
+  // T044 R3: the text views, inline box views and <br> views of an inline formatting context are all flat children of its block
+  // container's view, in tree order. Inline boxes are unpainted (their decorations are INL1b) and a <br> draws nothing.
+  const inline = (c: InlineChild, container: string): void => {
+    if (c.kind === 'text') {
+      out.push(textPaint(c, container, texts));
+      return;
+    }
+    // The dump schema (native-dump.ts) knows element, text and anonymous nodes: an inline box and a <br> are element nodes. Its view
+    // is a box view, which reads back its background and borders, so it gets their writes: transparent and zero wide, as the
+    // compiler refuses a painted inline box on native (computed-checks.ts checkInline) and the engine a bordered one (inline.ts).
+    const el = elements.get(c.id);
+    if (el === undefined) throw new ProgramError(`${c.id}: no resolved element for the inline box`);
+    const writes: PaintWrite[] = [{ kind: 'background-color', color: usedColors(el)['background-color'] }, ...borderWrites(c.id, el, TRANSPARENT)];
+    out.push({ id: c.id, parent: container, kind: 'element', clips: false, text: null, writes, facts: {} });
+    if (c.kind === 'inline') for (const k of c.children) inline(k, container);
   };
   visit(root, null, TRANSPARENT, false);
   return out;
