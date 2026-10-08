@@ -332,7 +332,7 @@ async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss:
   } else {
     comparison = compareLayout(authored, absoluteRects(result.boxes), validated.input, c.environment);
     // SVG-a1: the shapes' outline differential (svg-compare.ts) belongs to the layout lane.
-    const scenes = svgScenes(compiled, c.assignment) ?? [];
+    const scenes = svgScenes(compiled, c.assignment);
     const svgProblems = compareSvg(authored, scenes, absoluteRects(result.boxes), validated.input);
     if (svgProblems.length > 0) comparison = { ...comparison, pass: false, problems: [...comparison.problems, ...svgProblems] };
     layoutStatus = comparison.pass ? 'pass' : 'fail';
