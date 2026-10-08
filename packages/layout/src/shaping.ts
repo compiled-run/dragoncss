@@ -6,7 +6,7 @@
 import type { TextFont } from './input.ts';
 import { isEastAsian } from './linebreak.ts';
 import {
-  bracketIndex, BRACKET_OPEN, BRACKET_PAIRS, isClosePunctuation, isExtendedPictographic, isMark, isOpenPunctuation, SCRIPT_TAGS, scriptCode, scriptExtensions,
+  bracketIndex, BRACKET_OPEN, BRACKET_PAIRS, isClosePunctuation, isExtendedPictographic, isLatinText, isMark, isOpenPunctuation, SCRIPT_TAGS, scriptCode, scriptExtensions,
   USCRIPT_BOPOMOFO, USCRIPT_COMMON, USCRIPT_HAN, USCRIPT_HIRAGANA, USCRIPT_INHERITED, USCRIPT_KATAKANA, USCRIPT_LATIN,
 } from './script-data.ts';
 import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from './text.ts';
@@ -867,13 +867,13 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     // ShapeResult::SnappedWidth of the whole item: FromFloatCeil of its float width.
     measure(text: string, font: TextFont): MeasureResult {
       const s = itemFor(text, font);
-      if (!s.ok) return { ok: false, reason: s.reason };
+      if (!s.ok) return { ok: false, code: 'text-glyph', reason: s.reason };
       return { ok: true, measure: { width: snapWidth(s.result.width, faults) } };
     },
     // ShapeResult::CachedWidth: the difference of the item's cached positions at code points start and end.
     measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
       const s = itemFor(text, font);
-      if (!s.ok) return { ok: false, reason: s.reason };
+      if (!s.ok) return { ok: false, code: 'text-glyph', reason: s.reason };
       const a = cachedPositionForOffset(s.result, offsetOf(s.item.units, start));
       const b = cachedPositionForOffset(s.result, offsetOf(s.item.units, end));
       return { ok: true, measure: { width: sub(fromRaw(b), fromRaw(a)) } };
@@ -891,4 +891,41 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
 /** R2: the measurer over bundled faces and the host's HarfBuzz. */
 export function shapedMeasurer(faces: ReadonlyMap<string, ShapedFace>, shaper: GlyphShaper, faults: ShapingFaults, language: string): TextMeasurer {
   return shapedText(faces, shaper, faults, language).measurer;
+}
+
+/**
+ * R4 (notes/T056-txt1a-spec.md): the engine's measurer accepts only text whose code points are all Latin, Common or Inherited,
+ * and refuses anything else with text-script; TXT1c and TXT2 own other scripts. The shaping core itself stays script-agnostic,
+ * since the TXT1-S gate shapes every script. latinCheckSkipped plants the missing check.
+ */
+export function latinScopedMeasurer(measurer: TextMeasurer, latinCheckSkipped: boolean): TextMeasurer {
+  if (latinCheckSkipped) return measurer;
+  return {
+    metrics(font: TextFont): FontMetrics {
+      return measurer.metrics(font);
+    },
+    measure(text: string, font: TextFont): MeasureResult {
+      const outside = firstOutsideLatin(text);
+      if (outside >= 0) return outsideLatinRefusal(outside);
+      return measurer.measure(text, font);
+    },
+    measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
+      const outside = firstOutsideLatin(text);
+      if (outside >= 0) return outsideLatinRefusal(outside);
+      return measurer.measureRange(text, start, end, font);
+    },
+    lengths(font: TextFont): FontLengths {
+      return measurer.lengths(font);
+    },
+  };
+}
+
+/** The first code point of text outside Latin, Common and Inherited, or -1. */
+function firstOutsideLatin(text: string): number {
+  for (const ch of text) if (!isLatinText(ch)) return ch.codePointAt(0) as number;
+  return -1;
+}
+
+function outsideLatinRefusal(cp: number): MeasureResult {
+  return { ok: false, code: 'text-script', reason: `U+${cp.toString(16).toUpperCase()} is outside Latin, Common and Inherited (R4)` };
 }
