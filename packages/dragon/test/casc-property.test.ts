@@ -7,7 +7,7 @@ import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
 import { computeCustoms } from '../src/analysis/variables.ts';
 import type { PropertySource, Registration } from '../src/css/at-rules/property.ts';
 import { computeRegistered } from '../src/css/at-rules/property.ts';
-import { chromeNumber } from '../src/css/color.ts';
+import { chromeNumber } from '../src/css/chrome-number.ts';
 import { atRuleHandler } from '../src/css/at-rules.ts';
 import { propertyAtRule } from '../src/css/at-rules/property.ts';
 import type { Longhand } from '../src/css/properties.ts';

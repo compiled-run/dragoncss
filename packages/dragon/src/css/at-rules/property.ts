@@ -10,7 +10,8 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../../types.ts';
 import type { AtRuleContext, AtRuleHandler } from '../at-rules.ts';
 import { list, spanOf } from '../ast.ts';
-import { chromeNumber, parseColorNode, serializeColor } from '../color.ts';
+import { chromeNumber } from '../chrome-number.ts';
+import { parseColorNode, serializeColor } from '../color.ts';
 import { asciiLower, decodeName } from '../escapes.ts';
 import { CSS_WIDE } from '../values.ts';
 

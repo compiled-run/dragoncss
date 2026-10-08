@@ -1,5 +1,4 @@
-// Colour resolution for the milestone subset (css-color-4). This is the only file in the core that converts or rounds colours, and
-// it also holds chromeNumber, the one number rounding outside the ports (registered @property values, CASC 2).
+// Colour resolution for the milestone subset (css-color-4). This is the only file in the core that converts or rounds colours.
 // Chrome 145 keeps legacy sRGB colours (named, hex, rgb(), hsl()) as 8-bit channels; each rule below was measured against it.
 import type { CssNode, List } from 'css-tree';
 import { asciiLower } from './escapes.ts';
@@ -236,21 +235,4 @@ export function parseComputedColor(text: string): Rgba8 | null {
 /** The colour-only planted fault: moves every red channel by one step without touching anything else. */
 export function perturbColor(c: Rgba8): Rgba8 {
   return { r: c.r === 255 ? 254 : c.r + 1, g: c.g, b: c.b, alpha: c.alpha };
-}
-
-/**
- * A computed <number>, <length> or <percentage> as Chrome 145 serialises it, and so substitutes it: six significant digits as C's
- * %g writes them (0.10000049 is 0.1, 123456789 is 1.23457e+08; probed). An <integer> keeps every digit (1234567 stays 1234567).
- */
-export function chromeNumber(v: number): string {
-  if (v === 0) return '0';
-  const exp = Math.floor(Math.log10(Math.abs(Number(v.toPrecision(6)))));
-  if (exp < -4 || exp >= 6) {
-    const [mantissa, e] = v.toExponential(5).split('e') as [string, string];
-    const m = mantissa.includes('.') ? mantissa.replace(/\.?0+$/, '') : mantissa;
-    const n = Number(e);
-    return `${m}e${n < 0 ? '-' : '+'}${String(Math.abs(n)).padStart(2, '0')}`;
-  }
-  const fixed = v.toFixed(Math.max(0, 5 - exp));
-  return fixed.includes('.') ? fixed.replace(/\.?0+$/, '') : fixed;
 }
