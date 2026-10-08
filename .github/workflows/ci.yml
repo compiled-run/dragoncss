@@ -26,6 +26,9 @@ jobs:
         with:
           node-version: '24'
           cache: pnpm
+      # land.yml merges every PR; actionlint (with shellcheck) checks its expressions and shell steps.
+      - name: Lint the landing workflow (actionlint 1.7.12)
+        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.12 -color .github/workflows/land.yml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Typecheck

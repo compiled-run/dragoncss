@@ -102,6 +102,7 @@ import {
   treeMatches,
 } from './merge-train-lib.ts';
 import { MERGE_DRIVERS } from './floor-merge.ts';
+import { parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
 import { matcher, STEPS } from './regen.ts';
 import { abandonInflight, CiUnavailable, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, staleScratchBranches, failedTestsOf, fullTestWorkflow, parseRunRows, runDevicesOnCi, runOnCi, scratchRef, testBranch } from './land-devices-ci.ts';
@@ -127,14 +128,25 @@ const PARALLEL = env['LAND_PARALLEL'] !== '0';
 const posDir = (k: number): string => `${WT_HOME}-pos${k}`;
 // Worktrees the driver and its builder own, never a member's.
 const OWN = (): string[] => [MAIN, WT_HOME, WT_MAIN, WT_NEXT, ...Array.from({ length: MAX_BATCH }, (_, i) => posDir(i + 1)), ...Array.from({ length: MAX_BATCH }, (_, i) => `${WT_NEXT}-pos${i + 1}`)];
-const STATUS = env['LAND_STATUS'] ?? '/tmp/land.status';
-const LOG = env['LAND_LOG'] ?? '/tmp/land.log';
-const REVIEW_DIR = env['LAND_REVIEW_DIR'] ?? '/tmp/land-reviews';
+// LAND_LOG_DIR (land.yml, uploaded as an artifact): the status, logs, reviews and run directory go there instead of /tmp.
+const LOG_DIR = env['LAND_LOG_DIR'] || null;
+if (LOG_DIR !== null) mkdirSync(LOG_DIR, { recursive: true });
+const logPath = (name: string, tmp: string): string => (LOG_DIR === null ? tmp : join(LOG_DIR, name));
+const STATUS = env['LAND_STATUS'] ?? logPath('land.status', '/tmp/land.status');
+const LOG = env['LAND_LOG'] ?? logPath('land.log', '/tmp/land.log');
+const REVIEW_DIR = env['LAND_REVIEW_DIR'] ?? logPath('reviews', '/tmp/land-reviews');
 // The run directory (the driver's notes for its supervisor, emptied when a run starts) and the record of a merged position no
-// full test has passed yet, which outlives the run.
-const RUN_DIR = env['LAND_RUN_DIR'] ?? '/tmp/dragon-land.run';
+// full test has passed yet, which outlives the run (and is kept on GitHub too, as master's land/proof status).
+const RUN_DIR = env['LAND_RUN_DIR'] ?? logPath('run', '/tmp/dragon-land.run');
 const UNPROVED = env['LAND_UNPROVED'] ?? '/tmp/dragon-land.unproved.json';
+// In GitHub Actions the status is the job summary too.
+const SUMMARY = env['GITHUB_ACTIONS'] === 'true' && env['GITHUB_STEP_SUMMARY'] ? env['GITHUB_STEP_SUMMARY'] : null;
+const putStatus = (text: string): void => {
+  writeFileSync(STATUS, text);
+  if (SUMMARY !== null) writeFileSync(SUMMARY, statusSummary(text));
+};
 const runFile = (name: string): string => join(RUN_DIR, name);
+const NEXT_LOG = logPath('land-next.log', '/tmp/land-next.log');
 /** The CI device run a driver has in flight (land-devices-ci.ts record), for the supervisor to cancel after an interrupt. */
 const ciInflight = (role: 'driver' | 'builder'): string => runFile(`ci-inflight-${role}.json`);
 const readOrNull = (path: string): string | null => {
@@ -144,7 +156,10 @@ const readOrNull = (path: string): string | null => {
     return null;
   }
 };
-const readUnproved = (): { pr: number; head: string } | null => parseUnproved(readOrNull(UNPROVED));
+// The land/proof record read from GitHub when the run started (loadProof), kept current by markUnproved and markProved; the
+// file, written alongside, speaks first (a run on this host wrote it).
+let githubUnproved: Unproved | null = null;
+const readUnproved = (): Unproved | null => parseUnproved(readOrNull(UNPROVED)) ?? githubUnproved;
 // A process's start time (`ps -o lstart=`), which tells it from a later process that reused its pid; null when it is gone.
 const startOf = (pid: number): string | null => {
   try {
@@ -187,6 +202,11 @@ let CI_QUEUE_S = 0;
 // macOS jobs and the free plan runs 5 at once, so the positions above it are built one by one, each regen dispatched in turn.
 let CI_MAX_INFLIGHT = 2;
 let BATCH = 1;
+// LAND_MAX_BATCHES (land.yml: 1, for the 6-hour job limit): the batches this run lands; the rest goes to LAND_HANDOFF.
+let MAX_BATCHES: number | undefined;
+// LAND_STOP_ISSUE: a tracking issue whose land-stop label asks for the same graceful stop as STOP_FILE.
+let STOP_ISSUE: number | null = null;
+const HANDOFF = env['LAND_HANDOFF'] || null;
 const REGEN = ['pnpm', 'regen'];
 const DEVICES = ['pnpm', 'run', 'parity:devices'];
 
@@ -246,6 +266,39 @@ const fetchMaster = (): string => {
   net(git, ['fetch', '--quiet', 'origin', '+refs/heads/master:refs/remotes/origin/master']);
   return checkSha(text(git, ['rev-parse', '--verify', 'refs/remotes/origin/master^{commit}']), 'origin/master');
 };
+// ---- the land/proof status (land-state.ts) ---------------------------------------------------------------------------
+const RUN_URL = env['GITHUB_ACTIONS'] === 'true' && env['GITHUB_RUN_ID'] ? `${env['GITHUB_SERVER_URL'] ?? 'https://github.com'}/${env['GITHUB_REPOSITORY']}/actions/runs/${env['GITHUB_RUN_ID']}` : null;
+// Commits whose land/proof record can speak for master: its last 20 first parents and the positions they merged.
+const loadProof = (master: string): void => {
+  const commits = proofCommits(parseFirstParents(text(git, ['log', '--first-parent', '--max-count=20', '--format=%H %P', master])));
+  const r = readProof(gh, REPO, commits);
+  githubUnproved = r === null || r.proved ? null : r.unproved;
+  log(`land/proof on GitHub: ${r === null ? 'no record on master or the 20 commits it rests on' : r.proved ? 'master is proved' : `master is unproved (#${r.unproved.pr}'s position ${r.unproved.head})`}`);
+};
+// A status that cannot be written is fatal where the file does not outlive the run (GitHub Actions); elsewhere the file holds it.
+const putProof = (shas: readonly string[], u: Unproved | null): void => {
+  for (const sha of new Set(shas)) {
+    try {
+      writeProof(gh, REPO, sha, u, RUN_URL);
+    } catch (error) {
+      const why = `could not write the land/proof status (${u === null ? 'proved' : 'unproved'}) on ${sha}: ${errorText(error).split('\n')[0]}`;
+      if (env['GITHUB_ACTIONS'] === 'true') throw new Fatal(`${why}; the next run could not tell whether master is proved`);
+      log(`  !!! ${why}; ${UNPROVED} keeps the record on this host`);
+    }
+  }
+};
+const markUnproved = (u: Unproved, shas: readonly string[]): void => {
+  writeFileSync(UNPROVED, JSON.stringify(u));
+  githubUnproved = u;
+  putProof(shas, u);
+};
+// master (or the given merge commit) is on a proved tree: the record goes, and the position it named is marked proved too.
+const markProved = (shas: readonly string[] = [fetchMaster()]): void => {
+  const was = readUnproved();
+  rmSync(UNPROVED, { force: true });
+  githubUnproved = null;
+  putProof([...shas, ...(was !== null && /^[0-9a-f]{40}$/.test(was.head) ? [was.head] : [])], null);
+};
 const remoteHead = (branch: string): string | null => {
   const out = net(git, ['ls-remote', 'origin', `refs/heads/${branch}`]).trim();
   if (out === '') return null;
@@ -260,7 +313,7 @@ let lastBuilt: string | null = null;
 // The worktree the last build left its position in (the driver's, or a parallel position's).
 let lastBuiltDir = WT_HOME;
 const proved: string[] = []; // every commit whose full test passed in this run // the position the last build left in the worktree, untouched since
-const stepLog = (pr: number, step: string): string => `/tmp/land-${pr}-${step}.log`;
+const stepLog = (pr: number, step: string): string => logPath(`land-${pr}-${step}.log`, `/tmp/land-${pr}-${step}.log`);
 const tail = (path: string, n = 30): string => {
   try {
     return readFileSync(path, 'utf8').trimEnd().split('\n').slice(-n).join('\n');
@@ -705,7 +758,7 @@ const claudeReview = (e: Entry, clean: string, head: string, master: string, ste
     patch: prDiff(e.pr, master, head),
     ignored: (path) => ignore.file.matches(path),
     command: REVIEW_CMD,
-    review: (input) => runReviewer(REVIEW_CMD, input, WT, REVIEW_TIMEOUT_MS, reviewerEnv(e.pr, clean)),
+    review: (input) => runReviewer(REVIEW_CMD, input, WT, REVIEW_TIMEOUT_MS, { ...reviewerEnv(e.pr, clean), LAND_REVIEW_REPO: REPO }),
     save: (r: ReviewRecord) => writeFileSync(saved, `${JSON.stringify(r, null, 2)}\n`),
   });
   if (!verdict.pass) throw new LandFailure(step, `${verdict.reason} (review ${saved})`, verdict.findings.length > 0 ? findingsComment(e.pr, head, verdict.findings) : undefined);
@@ -897,7 +950,7 @@ const preparePosition = (base: string, k: number, items: readonly { entry: Entry
       return { k, dir, done: '', log: '', pgid: 0, start: null, ci: { d, record } };
     }
     const done = runFile(`prepare-${ROLE}-${k}.done`);
-    const logFile = `/tmp/land-prepare-${ROLE}-${k}.log`;
+    const logFile = logPath(`land-prepare-${ROLE}-${k}.log`, `/tmp/land-prepare-${ROLE}-${k}.log`);
     rmSync(done, { force: true });
     const child = spawn('/bin/bash', ['-c', `cd "$1" && HEAVY_PRIORITY=1 ${HEAVY} pnpm regen > "$2" 2>&1; echo $? > "$3"`, 'prepare', dir, logFile, done], { detached: true, stdio: 'ignore', env });
     child.unref();
@@ -1054,7 +1107,7 @@ const proveCommit = (head: string, what: string): void => {
     log(`  ${head} passed the full test on CI (${onCi.url})`);
     proved.push(head);
     if (clearsUnproved(readUnproved(), head, (c) => treeMatches(git, fetchMaster(), c).ok)) {
-      rmSync(UNPROVED, { force: true });
+      markProved();
       log('  master has this proved tree; the unproved record is cleared');
     }
     return;
@@ -1065,7 +1118,7 @@ const proveCommit = (head: string, what: string): void => {
   withWorktree(where, () => proveIn(head));
   proved.push(head);
   if (clearsUnproved(readUnproved(), head, (c) => treeMatches(git, fetchMaster(), c).ok)) {
-    rmSync(UNPROVED, { force: true });
+    markProved();
     log('  master has this proved tree; the unproved record is cleared');
   }
 };
@@ -1163,13 +1216,18 @@ const publishInside = (e: Entry, b: Built, t: Ticket): string => {
     } catch {}
   }
   writeFileSync(runFile(PUBLISH_MARK), JSON.stringify({ pr: e.pr, head: p.head, merged: null }));
+  // Recorded on the position before the merge too: a run killed mid-merge (a cancelled land.yml job) leaves master's merge
+  // commit, whose second parent is this position, with the record the next run reads (proofCommits).
+  const unproved = proved.includes(p.head) ? null : { pr: e.pr, head: p.head };
+  if (unproved !== null) markUnproved(unproved, [p.head]);
   ghMerge(e.pr, p.head);
   const mergeSha = prView(e.pr).mergeCommit ?? '0'.repeat(40);
   writeFileSync(runFile(MERGES_LOG), `${e.pr} ${mergeSha} ${p.head}\n`, { flag: 'a' });
   writeFileSync(runFile(PUBLISH_MARK), JSON.stringify({ pr: e.pr, head: p.head, merged: mergeSha }));
   // Until a full test passes on this tree, a run that dies here leaves master on an unproved position; the next run proves it.
-  if (proved.includes(p.head)) rmSync(UNPROVED, { force: true });
-  else writeFileSync(UNPROVED, JSON.stringify({ pr: e.pr, head: p.head }));
+  const mergedAt = /^0{40}$/.test(mergeSha) ? fetchMaster() : mergeSha;
+  if (unproved === null) markProved([mergedAt]);
+  else markUnproved(unproved, [mergedAt]);
   const after = fetchMaster();
   if (!isAncestor(git, p.head, after)) throw new Fatal(`#${e.pr} merged, but origin/master ${after} does not contain ${p.head}`);
   const same = treeMatches(git, after, p.head);
@@ -1363,6 +1421,8 @@ const setUp = (): void => {
   CI_QUEUE_S = seconds('LAND_CI_QUEUE_WAIT', DEFAULT_QUEUE_WAIT_S);
   CI_MAX_INFLIGHT = parseMaxInflight(env['LAND_CI_MAX_INFLIGHT']);
   BATCH = parseBatchSize(env['LAND_BATCH']);
+  MAX_BATCHES = parseMaxBatches(env['LAND_MAX_BATCHES']);
+  STOP_ISSUE = parseStopIssue(env['LAND_STOP_ISSUE']);
   MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
   // The default reviewer is the main checkout's lookup script, never the PR's own copy in the driver worktree.
   REVIEW_CMD = env['LAND_REVIEW_CMD'] ?? `node --conditions=dragon-internal '${join(MAIN, 'scripts/land-review-lookup.ts')}'`;
@@ -1519,7 +1579,7 @@ const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
       stop();
       rmSync(outPath, { force: true });
       writeFileSync(inPath, JSON.stringify({ base, queue, earlier, size }));
-      const fd = openSync('/tmp/land-next.log', 'a');
+      const fd = openSync(NEXT_LOG, 'a');
       try {
         const child = spawn(process.execPath, [...process.execArgv, process.argv[1]!, queueFile], {
           detached: true,
@@ -1535,7 +1595,7 @@ const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
         writeFileSync(runFile(BUILDER_FILE), `${pid} ${start ?? ''}`);
         startWatchdog(pid, start);
       }
-      log(`pipelining: preparing the next batch on ${base} (builder pid ${pid}, log /tmp/land-next.log)`);
+      log(`pipelining: preparing the next batch on ${base} (builder pid ${pid}, log ${NEXT_LOG})`);
     },
     collect: () => {
       const empty: Prepared<Ticket, Built> = { base: '', consumed: [], results: [], built: [], good: 0, proven: [], culprit: null };
@@ -1571,12 +1631,33 @@ const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
   };
 };
 
+// A stop asked for by STOP_FILE (consumed) or by the land-stop label on LAND_STOP_ISSUE (left for the PM to clear). A label that
+// cannot be read counts as set: the driver stops rather than run on unasked.
+const stopAsked = (): boolean => {
+  if (existsSync(STOP_FILE)) {
+    rmSync(STOP_FILE, { force: true });
+    return true;
+  }
+  if (STOP_ISSUE === null) return false;
+  try {
+    if (!stopLabelSet(gh, REPO, STOP_ISSUE)) return false;
+    log(`the ${REPO}#${STOP_ISSUE} issue has the land-stop label`);
+  } catch (error) {
+    log(`!!! could not read the labels of ${REPO}#${STOP_ISSUE} (${errorText(error).split('\n')[0]}); stopping as if land-stop were set`);
+  }
+  return true;
+};
+const writeHandoff = (h: Parameters<typeof serializeHandoff>[0]): void => {
+  if (HANDOFF !== null) writeFileSync(HANDOFF, serializeHandoff(h));
+};
+
 const main = (): number => {
   const args = parseLandArgs(process.argv.slice(2));
   setUp();
-  const entries = parseQueue(readFileSync(args.queue, 'utf8'));
+  if (HANDOFF !== null) rmSync(HANDOFF, { force: true });
+  const queued = parseQueue(readFileSync(args.queue, 'utf8'), { allowEmpty: env['LAND_QUEUE_EMPTY_OK'] === '1' });
   if (args.dryRun) {
-    dryRun(entries);
+    dryRun(queued);
     return 0;
   }
   // The supervisor (below) holds the lock and handles SIGINT, SIGTERM and SIGHUP by killing this process group; this process
@@ -1591,6 +1672,25 @@ const main = (): number => {
   process.on('SIGUSR1', () => log(`SIGUSR1 reached the driver, which ignores it; send it to the supervisor (pid ${env[SUPERVISOR_PID_ENV]}, in ${LOCK}/pid)`));
   prepareWorktree();
   if (PIPELINE) checkNextWorktree(WT_NEXT, WT);
+  const startedAt = stamp();
+  // Reconciled from GitHub first, for a host with no state from the run before (a land.yml job, maybe after a cancelled one):
+  // master's land/proof record, and the queued PRs that are already merged, which are skipped.
+  loadProof(fetchMaster());
+  const reconciled = reconcileQueue(queued, (pr) => {
+    const v = prView(pr);
+    return { state: v.state, mergeCommit: v.mergeCommit };
+  });
+  const entries = reconciled.queue;
+  const skipped: Outcome[] = reconciled.merged.map((m) => ({ entry: m.entry, result: 'merged before', detail: m.detail }));
+  for (const m of reconciled.merged) log(`#${m.entry.pr} ${m.entry.branch}: ${m.detail}`);
+  if (entries.length === 0) {
+    const r = readUnproved();
+    const why = `nothing to land: the queue ${queued.length === 0 ? 'is empty' : 'has only merged PRs'}${r === null ? '' : `; master is unproved (#${r.pr}'s position ${r.head}), so the next run with a queue proves it first`}`;
+    putStatus(`${statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: skipped, fatal: null, total: queued.length, done: true })}${why}\n`);
+    writeHandoff({ remainder: [], stopAsked: false, outage: null, fatal: null });
+    log(readFileSync(STATUS, 'utf8').trimEnd());
+    return 0;
+  }
   // Scratch branches a stopped or failed CI step left behind (per commit for the full test) are deleted now: none is in flight.
   try {
     for (const b of staleScratchBranches(net(git, ['ls-remote', 'origin', 'refs/heads/land-devices/*', 'refs/heads/land-test/*', 'refs/heads/land-regen/*']))) {
@@ -1604,9 +1704,8 @@ const main = (): number => {
   } catch (error) {
     log(`WARNING could not list the scratch branches: ${msg(error)}`);
   }
-  const startedAt = stamp();
-  log(`=== pnpm land ${args.queue}: ${entries.map((e) => `#${e.pr}`).join(' ')} in batches of up to ${BATCH} (pid ${process.pid}, worktree ${WT}; devices ${DEVICES_ON}, test ${TEST_ON}, regen ${REGEN_ON}${CI_ONLY ? ', LAND_CI=only' : ''})`);
-  let latest: readonly Outcome[] = [];
+  log(`=== pnpm land ${args.queue}: ${entries.map((e) => `#${e.pr}`).join(' ')} in batches of up to ${BATCH}${MAX_BATCHES === undefined ? '' : `, at most ${MAX_BATCHES} batch(es) this run`} (pid ${process.pid}, worktree ${WT}; devices ${DEVICES_ON}, test ${TEST_ON}, regen ${REGEN_ON}${CI_ONLY ? ', LAND_CI=only' : ''})`);
+  let latest: readonly Outcome[] = skipped;
   // master left on an unproved position by an interrupted run is proved first; the result is logged loudly, never blocking.
   const resting = readUnproved();
   if (resting !== null && !/^[0-9a-f]{40}$/.test(resting.head)) {
@@ -1615,13 +1714,14 @@ const main = (): number => {
     writeFileSync(UNPROVED, JSON.stringify({ pr: 0, head: master }));
   }
   const write = (done: boolean, fatal: string | null, running: Entry | null = current): void =>
-    writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: done ? null : running, outcomes: latest, fatal, total: entries.length, done }));
+    putStatus(statusText({ queue: args.queue, startedAt, now: stamp(), running: done ? null : running, outcomes: latest, fatal, total: queued.length, done }));
   try {
-    proveRestingMaster(readUnproved(), () => proveMaster(fetchMaster()), () => rmSync(UNPROVED, { force: true }), log);
+    proveRestingMaster(readUnproved(), () => proveMaster(fetchMaster()), () => markProved(), log);
   } catch (error) {
     if (!(error instanceof CiOutage)) throw error;
     // No batch started: the whole queue stays queued.
-    writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: [], fatal: null, outage: error.message, total: entries.length, done: true, stopped: entries }));
+    putStatus(statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: skipped, fatal: null, outage: error.message, total: queued.length, done: true, stopped: entries }));
+    writeHandoff({ remainder: entries, stopAsked: false, outage: error.message, fatal: null });
     try {
       resetWorktree(fetchMaster());
     } catch {}
@@ -1638,20 +1738,18 @@ const main = (): number => {
     proveMaster: (m) => (write(false, null, null), proveMaster(m)),
     publish: (e, p, t) => (write(false, null, e), publish(e, p, t)),
     onFail: reportFailure,
-    stopRequested: () => {
-      if (!existsSync(STOP_FILE)) return false;
-      rmSync(STOP_FILE, { force: true });
-      return true;
-    },
+    stopRequested: stopAsked,
+    ...(MAX_BATCHES === undefined ? {} : { maxBatches: MAX_BATCHES }),
     onOutcome: (o) => {
-      latest = o;
+      latest = [...skipped, ...o];
       write(false, null);
     },
     log,
     ...(PIPELINE ? { next: nextRound(args.queue) } : {}),
   });
   current = null;
-  writeFileSync(STATUS, statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: latest, fatal: result.fatal, outage: result.outage, total: entries.length, done: true, stopped: result.stopped }));
+  putStatus(statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: latest, fatal: result.fatal, outage: result.outage, total: queued.length, done: true, stopped: result.stopped, limited: result.limited }));
+  writeHandoff({ remainder: result.stopped, stopAsked: result.stopAsked, outage: result.outage, fatal: result.fatal });
   try {
     resetWorktree(fetchMaster());
   } catch {}
@@ -1705,7 +1803,7 @@ const cleanUpAfter = (driverPid: number, how: string): void => {
     reset: () => {
       if (existsSync(WT)) resetWorktree(text(wtGit, ['rev-parse', 'HEAD']));
     },
-    status: { read: () => readOrNull(STATUS) ?? '', write: (t) => writeFileSync(STATUS, t) },
+    status: { read: () => readOrNull(STATUS) ?? '', write: putStatus },
     log,
   });
   log(readOrNull(STATUS)?.trimEnd() ?? '');
