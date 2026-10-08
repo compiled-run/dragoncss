@@ -6,7 +6,7 @@ import { buildCorpus } from '../corpus.ts';
 import { buildExtendedCorpus } from '../corpus-dpr.ts';
 import { EXTENDED_FAULTS } from '../faults.ts';
 import { lowerAll } from '../generate.ts';
-import { failures } from '../native.ts';
+import { failures, isBlocked, missingToolchain } from '../native.ts';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const i = args.indexOf('--target');
@@ -22,8 +22,8 @@ for (const f of EXTENDED_FAULTS) {
   const per: string[] = [];
   for (const [k, c] of corpora.entries()) {
     const r = runTarget(target, c, files, `planted-${target}-${f.id}${k === 0 ? '' : '-extended'}`);
-    if (r.status === 'blocked (owner tooling)') {
-      console.log(`native:planted ${target}: blocked (owner tooling): ${r.reason ?? ''}`);
+    if (isBlocked(r)) {
+      console.log(missingToolchain(`native:planted ${target}`, r.reason ?? ''));
       blocked = true;
       break;
     }
