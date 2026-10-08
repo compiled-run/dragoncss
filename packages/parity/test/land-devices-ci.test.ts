@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { LandFailure } from '../../../scripts/land-lib.ts';
 import { repoPath } from '../src/paths.ts';
-import { abandonInflight, CiUnavailable, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, failedJobs, failedTestsOf, parseJobs, staleScratchBranches, fullTestWorkflow, runOnCi, testBranch, type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, scratchRef, tempBranch } from '../../../scripts/land-devices-ci.ts';
+import { abandonInflight, awaitRegenOnCi, CiUnavailable, DEFAULT_REGEN_WAIT_S, dispatchOnCi, PATCH_ARTIFACT, patchFiles, regenBranch, regenTitle, regenWorkflow, titleOf, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, failedJobs, failedTestsOf, parseJobs, staleScratchBranches, fullTestWorkflow, runOnCi, testBranch, type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, scratchRef, tempBranch } from '../../../scripts/land-devices-ci.ts';
 
 const SHA = 'a'.repeat(40);
 const T0 = Date.parse('2026-10-04T12:00:00Z');
@@ -15,6 +15,7 @@ const OUTCOMES = ['android-dragon-320.json', 'android-dragon-480.json', 'android
 /** A fake GitHub: runs appear after `appearAfter` list calls and complete after `doneAfter` view calls. */
 function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; conclusion?: string | null; files?: string[]; pushFails?: boolean; ghBad?: boolean; deleteFails?: boolean; title?: string; jobsQueued?: boolean; dispatchFails?: boolean; failedEarly?: boolean; setupFails?: boolean } = {}) {
   const calls: string[] = [];
+  const dispatched: string[][] = [];
   let clock = T0;
   let lists = 0;
   let views = 0;
@@ -24,6 +25,7 @@ function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; concl
   const deps: DevicesCiDeps = {
     gh: (args) => {
       calls.push(args.slice(0, 2).join(' '));
+      if (args[0] === 'workflow') dispatched.push(args);
       if (args[0] === 'workflow' && o.dispatchFails === true) throw new Error('HTTP 503');
       if (args[0] === 'workflow' || args[1] === 'cancel') return '';
       if (args.includes('jobs')) {
@@ -63,7 +65,7 @@ function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; concl
     now: () => clock,
     log: (l) => void logs.push(l),
   };
-  return { deps, calls, logs };
+  return { deps, calls, logs, dispatched };
 }
 const run = (f: ReturnType<typeof fake>, waitS = 3600) => runDevicesOnCi({ pr: 42, deps: f.deps, appearS: 300, waitS, pollS: 30 });
 const failure = (f: () => unknown): LandFailure => {
@@ -94,7 +96,7 @@ describe('LAND_DEVICES=ci', () => {
   });
   it('force-pushes only the scratch branch, so one an interrupted run left behind never blocks the next (#135 review)', () => {
     expect(scratchRef(tempBranch(42))).toBe('refs/heads/land-devices/pr-42');
-    for (const bad of ['master', 'land-devices/pr-0', 'land-devices/pr-42/x', 'feature', 'land-devices/pr-']) expect(() => scratchRef(bad)).toThrow('is not a land-devices/pr-<n> or land-test/c-<sha> scratch branch');
+    for (const bad of ['master', 'land-devices/pr-0', 'land-devices/pr-42/x', 'feature', 'land-devices/pr-']) expect(() => scratchRef(bad)).toThrow('is not a land-devices/pr-<n>, land-test/c-<sha> or land-regen/c-<sha> scratch branch');
   });
   it('treats a failed delete of the scratch branch as a warning the next driver start sweeps (#193 review)', () => {
     const f = fake({ deleteFails: true });
@@ -242,8 +244,8 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     expect(DEFAULT_DEVICES_WAIT_S).toBeGreaterThanOrEqual(Math.max(...minutes('device-lanes.yml')) * 60 + 15 * 60);
   });
   it('sweeps only the driver\'s scratch branches left on the remote', () => {
-    const ls = [`${SHA}\trefs/heads/land-devices/pr-42`, `${SHA}\trefs/heads/land-test/c-${SHA.slice(0, 12)}`, `${SHA}\trefs/heads/land-test/other`, `${SHA}\trefs/heads/master`, `${SHA}\trefs/heads/land-devices/pr-42/x`].join('\n');
-    expect(staleScratchBranches(ls)).toEqual(['land-devices/pr-42', `land-test/c-${SHA.slice(0, 12)}`]);
+    const ls = [`${SHA}\trefs/heads/land-devices/pr-42`, `${SHA}\trefs/heads/land-test/c-${SHA.slice(0, 12)}`, `${SHA}\trefs/heads/land-regen/c-${SHA.slice(0, 12)}`, `${SHA}\trefs/heads/land-regen/other`, `${SHA}\trefs/heads/land-test/other`, `${SHA}\trefs/heads/master`, `${SHA}\trefs/heads/land-devices/pr-42/x`].join('\n');
+    expect(staleScratchBranches(ls)).toEqual(['land-devices/pr-42', `land-regen/c-${SHA.slice(0, 12)}`, `land-test/c-${SHA.slice(0, 12)}`]);
   });
 });
 
@@ -276,5 +278,102 @@ describe('LAND_TEST=ci (the full test on CI)', () => {
     expect(failedTestsOf(JSON.stringify(rows))).toBe('FAILED packages/x/test/b.test.ts > b fails');
     expect(failedTestsOf('[]')).toContain('no failing test is listed');
     expect(() => failedTestsOf('{}')).toThrow('not a list');
+  });
+});
+
+describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () => {
+  const yml = readFileSync(repoPath('.github/workflows/regen-on-ci.yml'), 'utf8');
+  const round = readFileSync(repoPath('.github/workflows/regen-on-ci-round.yml'), 'utf8');
+  const regen = (f: ReturnType<typeof fake>, step = 'regen', apply: (patch: string) => number = () => 0) => {
+    const d = dispatchOnCi(regenWorkflow(step), { branch: regenBranch(SHA), deps: f.deps });
+    return awaitRegenOnCi(step, d, { deps: f.deps, appearS: 300, waitS: 3600, pollS: 30, apply });
+  };
+  it('names its scratch branch land-regen/c-<sha12>, the only other ref the driver may push or delete', () => {
+    expect(regenBranch(SHA)).toBe(`land-regen/c-${SHA.slice(0, 12)}`);
+    expect(scratchRef(regenBranch(SHA))).toBe(`refs/heads/land-regen/c-${SHA.slice(0, 12)}`);
+    for (const bad of ['land-regen/c-xyz', `land-regen/c-${SHA}`, 'land-regen/pr-42', 'land-regen/c-', `land-regen/c-${SHA.slice(0, 12)}/x`]) expect(() => scratchRef(bad), bad).toThrow('scratch branch');
+  });
+  it('dispatches regen-on-ci.yml on master with the commit alone, finds its run by "regen of <sha>", applies its patch and logs the run URL', () => {
+    const f = fake({ title: regenTitle(SHA), files: ['outputs.patch'] });
+    const applied: string[] = [];
+    const r = regen(f, 'regen', (p) => (applied.push(p), 1234));
+    expect(r).toEqual({ url: 'https://ci/run/7', bytes: 1234 });
+    expect(f.dispatched).toEqual([['workflow', 'run', 'regen-on-ci.yml', '--ref', 'master', '-f', `sha=${SHA}`]]);
+    expect(applied).toEqual(['/tmp/outcomes/outputs.patch']);
+    expect(f.calls).toContain(`download 7 ${PATCH_ARTIFACT}`);
+    // The patch is applied before the artifact is removed and the scratch branch deleted.
+    expect(f.calls.slice(-3)).toEqual(['record null', `delete ${regenBranch(SHA)}`, 'remove /tmp/outcomes']);
+    expect(f.logs).toContain('  regen on CI: https://ci/run/7');
+    expect(f.logs.at(-1)).toBe('  regen on CI: applied the 1234-byte outputs.patch of https://ci/run/7');
+    const fixed = fake({ title: regenTitle(SHA), files: ['outputs.patch'] });
+    expect(regen(fixed).bytes).toBe(0);
+    expect(fixed.logs.at(-1)).toBe(`  regen on CI: ${SHA} is at its fixed point; nothing to apply (https://ci/run/7)`);
+  });
+  it('takes exactly outputs.patch from the regen-patch artifact', () => {
+    expect(patchFiles(['outputs.patch'])).toEqual(['outputs.patch']);
+    for (const bad of [[], ['store.tgz'], ['outputs.patch', 'store.tgz']]) expect(() => patchFiles(bad), bad.join()).toThrow('not exactly outputs.patch');
+  });
+  it('blames the PR at the call site\'s step only when a regen round failed on CI; a patch that does not apply, a bad artifact or no run judged nothing', () => {
+    expect(failure(() => regen(fake({ title: regenTitle(SHA), conclusion: 'failure' }), 'regen-after-devices'))).toMatchObject({ step: 'regen-after-devices', message: expect.stringContaining('the CI regen run https://ci/run/7 concluded failure') });
+    const step = (name: string) => [{ name: 'chrome-1 / round', status: 'completed', conclusion: 'failure', steps: [{ name, status: 'completed', conclusion: 'failure' }] }];
+    expect(failedJobs(step('pnpm regen --skip lanes-host --skip tw-sweep')).verdict).toHaveLength(1);
+    expect(failedJobs(step('pnpm regen --only lanes-host')).verdict).toHaveLength(1);
+    expect(failedJobs([{ name: 'converge', status: 'completed', conclusion: 'failure', steps: [{ name: 'Pick the last round', status: 'completed', conclusion: 'failure' }] }]).verdict).toHaveLength(1);
+    expect(failedJobs(step('Host side - JDK 17 and kotlinc, checked against the toolchains lanes.json records')).setup).toHaveLength(1);
+    expect(failedJobs(step('Chrome side - fetch the WPT copy when the cache missed')).setup).toHaveLength(1);
+    const unavailable = (f: () => unknown): CiUnavailable => {
+      try {
+        f();
+      } catch (e) {
+        if (e instanceof CiUnavailable) return e;
+        throw e;
+      }
+      throw new Error('no CiUnavailable');
+    };
+    const bad = fake({ title: regenTitle(SHA), files: ['outputs.patch'] });
+    expect(unavailable(() => regen(bad, 'regen', () => { throw new Error('patch does not apply'); })).message).toBe('the patch of the CI regen https://ci/run/7 could not be applied: patch does not apply');
+    expect(bad.calls.at(-1)).toBe('remove /tmp/outcomes');
+    expect(unavailable(() => regen(fake({ title: regenTitle(SHA), files: ['outputs.patch', 'store.tgz'] }))).message).toContain('not exactly outputs.patch');
+    const none = fake({ title: regenTitle(SHA), appearAfter: 1e9 });
+    expect(unavailable(() => regen(none)).message).toContain('no regen-on-ci.yml run for');
+    expect(none.calls.slice(-2)).toEqual(['record null', `delete ${regenBranch(SHA)}`]);
+    const refused = fake({ dispatchFails: true });
+    expect(unavailable(() => dispatchOnCi(regenWorkflow('regen'), { branch: regenBranch(SHA), deps: refused.deps })).message).toContain('the dispatch of regen-on-ci.yml failed');
+    expect(refused.calls.slice(-2)).toEqual(['record null', `delete ${regenBranch(SHA)}`]);
+  });
+  it('an interrupted driver\'s CI regen is found by its run-name and cancelled', () => {
+    expect(titleOf('regen-on-ci.yml', SHA)).toBe(`regen of ${SHA}`);
+    const calls: string[] = [];
+    abandonInflight(JSON.stringify({ branch: regenBranch(SHA), runId: null, sha: SHA, workflow: 'regen-on-ci.yml' }), { cancel: (id) => void calls.push(`cancel ${id}`), findRuns: (w, t) => (calls.push(`find ${w} ${t}`), [9]), deleteBranch: (b) => void calls.push(`delete ${b}`), log: () => {} });
+    expect(calls).toEqual([`find regen-on-ci.yml regen of ${SHA}`, 'cancel 9', `delete ${regenBranch(SHA)}`]);
+  });
+  it('waits at least as long as one regen round may run', () => {
+    const minutes = [...round.matchAll(/timeout-minutes: (\d+)/g)].map((m) => Number(m[1]));
+    expect(minutes.length).toBeGreaterThan(0);
+    expect(DEFAULT_REGEN_WAIT_S).toBeGreaterThanOrEqual(Math.max(...minutes) * 60);
+  });
+  it('the workflow\'s patch mode: run-name "regen of <sha>", no push, the patch as an artifact, caches restored only; branch mode unchanged', () => {
+    expect(yml).toContain("run-name: ${{ inputs.sha && format('regen of {0}', inputs.sha) ||");
+    expect(yml).toMatch(/\n {6}sha:\n {8}description: [^\n]+\n {8}required: false\n {8}type: string\n/);
+    expect(yml).toContain('echo "mode=patch"');
+    // Each round is told not to save in patch mode, and the round saves only when told to.
+    const calls = [...yml.matchAll(/uses: \.\/\.github\/workflows\/regen-on-ci-round\.yml\n {4}with: \{([^\n]*)\}/g)].map((m) => m[1]!);
+    expect(calls).toHaveLength(6);
+    for (const c of calls) expect(c).toContain(`save_cache: "\${{ needs.resolve.outputs.mode != 'patch' }}"`);
+    expect(round).toContain('save_cache: { type: boolean, required: false, default: true }');
+    expect(round).toMatch(/- name: Save the regen cache\n {8}if: success\(\) && inputs\.save_cache\n {8}uses: actions\/cache\/save@v4/);
+    // Every cache step that saves (actions/cache or actions/cache/save) is gated on save_cache.
+    const steps = round.split(/\n {6}- /).filter((st) => /uses: actions\/cache(\/save)?@/.test(st));
+    expect(steps.length).toBe(2);
+    for (const st of steps) expect(st, st.split('\n')[0]).toMatch(/if: [^\n]*inputs\.save_cache/);
+    // The push job runs only in branch mode; the patch job only in patch mode, and uploads the combined patch.
+    expect(yml).toContain("if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'push'");
+    expect(yml).toContain("if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'patch'");
+    const from = yml.indexOf('\n  patch:\n');
+    const patch = yml.slice(from, yml.indexOf('\n  push:\n', from));
+    expect(from).toBeGreaterThan(yml.indexOf('\njobs:\n'));
+    expect(patch).toContain(`name: ${PATCH_ARTIFACT}`);
+    expect(patch).toContain('path: ${{ runner.temp }}/patch/outputs.patch');
+    expect(patch).not.toMatch(/git push|contents: write/);
   });
 });

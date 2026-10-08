@@ -3,6 +3,7 @@
 # side chrome (macos-26, where the Chrome captures are byte-identical to the local Mac's): every step except lanes-host.
 # side host (xcode-27, Xcode 27.0 and Swift 6.4 like the local Mac): lanes-host only. The host toolchains must equal the ones
 # the committed lanes.json records, or the round fails before running anything.
+# save_cache false (regen-on-ci.yml's patch mode): caches are restored only, never saved, as in full-test.yml.
 name: regen-on-ci-round
 on:
   workflow_call:
@@ -13,6 +14,7 @@ on:
       sha: { type: string, required: true }
       prev: { type: string, required: false, default: '' }
       name: { type: string, required: true }
+      save_cache: { type: boolean, required: false, default: true }
     outputs:
       changed:
         description: "'true' when this round changed any file"
@@ -73,8 +75,15 @@ jobs:
           test "$(pnpm --filter @dragon/parity exec playwright --version)" = "Version 1.58.2"
           pnpm --filter @dragon/parity exec playwright install chromium
       - name: Chrome side - cache the WPT copy
-        if: inputs.side == 'chrome'
+        if: inputs.side == 'chrome' && inputs.save_cache
         uses: actions/cache@v4
+        with:
+          path: /Users/runner/wpt
+          key: wpt-${{ hashFiles('packages/wpt/wpt.lock') }}
+      # Restored only: a patch-mode run regenerates an unreviewed tree at master's cache scope, so it never saves into it.
+      - name: Chrome side - restore the WPT copy (patch mode)
+        if: inputs.side == 'chrome' && !inputs.save_cache
+        uses: actions/cache/restore@v4
         with:
           path: /Users/runner/wpt
           key: wpt-${{ hashFiles('packages/wpt/wpt.lock') }}
@@ -130,7 +139,7 @@ jobs:
           path: ${{ runner.temp }}/out
           if-no-files-found: warn
       - name: Save the regen cache
-        if: success()
+        if: success() && inputs.save_cache
         uses: actions/cache/save@v4
         with:
           path: .git/dragon-regen/v2

@@ -97,6 +97,7 @@ import { MERGE_DRIVERS } from './floor-merge.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
 import { matcher, STEPS } from './regen.ts';
 import { abandonInflight, CiUnavailable, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, staleScratchBranches, failedTestsOf, fullTestWorkflow, parseRunRows, runDevicesOnCi, runOnCi, scratchRef, testBranch } from './land-devices-ci.ts';
+import { applyRegenPatch, awaitRegenOnCi, type CiMode, DEFAULT_REGEN_WAIT_S, type Dispatched, dispatchOnCi, landRegen, parseCiMode, regenBranch, regenWorkflow } from './land-devices-ci.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
 const DEVICE = '/tmp/device-lease.sh';
@@ -161,6 +162,11 @@ let DEVICES_WAIT_S = 0;
 // LAND_TEST=ci proves each tree with full-test.yml on GitHub runners instead of pnpm test on this Mac.
 let TEST_ON = 'local';
 let TEST_WAIT_S = 0;
+// LAND_REGEN=ci runs every regen of a landing tree on GitHub runners (regen-on-ci.yml in patch mode) and applies its patch. When
+// GitHub Actions does not run it, a Mac runs pnpm regen locally (as LAND_DEVICES=ci falls back) and any other host stops the
+// driver without blaming a PR (landRegen in land-devices-ci.ts says why).
+let REGEN_ON: CiMode = 'local';
+let REGEN_WAIT_S = 0;
 // How long a CI run may go without starting any job before GitHub Actions counts as not running it (the local run takes over).
 let CI_START_S = 0;
 let BATCH = 1;
@@ -351,24 +357,28 @@ const floorFileProblems = (master: string, head: string): string[] => {
 };
 
 // `ignored` also removes ignored outputs (test reports, lane outputs), keeping installs and build caches (KEEP_IGNORED).
-// The landing tree as a commit apart from the worktree's HEAD and index (a scratch index), pushed to a temporary branch for CI.
+// The landing tree as a commit apart from the worktree's HEAD and index (a scratch index).
+const commitApart = (message: string): string => {
+  const dir = mkdtempSync(join(tmpdir(), 'land-devices-'));
+  try {
+    const index = join(dir, 'index');
+    copyFileSync(resolve(WT, text(wtGit, ['rev-parse', '--git-path', 'index'])), index);
+    const at = (args: string[]): string => execFileSync('git', ['-C', WT, ...args], { encoding: 'utf8', env: { ...process.env, GIT_INDEX_FILE: index } }).trim();
+    at(['add', '-A']);
+    const tree = at(['write-tree']);
+    return checkSha(at(['commit-tree', tree, '-p', 'HEAD', '-m', message]), 'commit-tree');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+};
+// The landing tree as a commit apart, pushed to a temporary branch for CI.
 const ciDeviceDeps = (pr: number) => ({
   gh: (args: string[]) => gh([...args, '--repo', REPO]),
   pushTemp: (branch: string): string => {
-    const dir = mkdtempSync(join(tmpdir(), 'land-devices-'));
-    try {
-      const index = join(dir, 'index');
-      copyFileSync(resolve(WT, text(wtGit, ['rev-parse', '--git-path', 'index'])), index);
-      const at = (args: string[]): string => execFileSync('git', ['-C', WT, ...args], { encoding: 'utf8', env: { ...process.env, GIT_INDEX_FILE: index } }).trim();
-      at(['add', '-A']);
-      const tree = at(['write-tree']);
-      const sha = checkSha(at(['commit-tree', tree, '-p', 'HEAD', '-m', `Landing tree of #${pr} for the CI device lanes (temporary; never merged)`]), 'commit-tree');
-      // Forced: the scratch branch is the driver's own (scratchRef refuses any other), and an interrupted run may have left it.
-      net(wtGit, ['push', '--quiet', 'origin', `+${sha}:${scratchRef(branch)}`]);
-      return sha;
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+    const sha = commitApart(`Landing tree of #${pr} for the CI device lanes (temporary; never merged)`);
+    // Forced: the scratch branch is the driver's own (scratchRef refuses any other), and an interrupted run may have left it.
+    net(wtGit, ['push', '--quiet', 'origin', `+${sha}:${scratchRef(branch)}`]);
+    return sha;
   },
   deleteTemp: (branch: string): void => {
     net(wtGit, ['push', '--quiet', 'origin', `:${scratchRef(branch)}`]);
@@ -418,6 +428,59 @@ const ciTestReady = (): boolean => {
   }
 };
 
+// LAND_REGEN=ci needs master's regen-on-ci.yml to have the patch mode (it is dispatched from master).
+const ciRegenReady = (): boolean => {
+  try {
+    return git(['show', `${fetchMaster()}:.github/workflows/regen-on-ci.yml`]).toString('utf8').includes("format('regen of {0}', inputs.sha)");
+  } catch {
+    return false;
+  }
+};
+// The CI regen's deps: the tree's commit (made by dispatchRegen) pushed to its scratch branch, the run in flight recorded in `record`.
+const regenCiDeps = (sha: string, record: string) => ({
+  ...ciDeviceDeps(current?.pr ?? 0),
+  pushTemp: (branch: string): string => (net(wtGit, ['push', '--quiet', 'origin', `+${sha}:${scratchRef(branch)}`]), sha),
+  record: (inflight: { readonly branch: string; readonly runId: number | null } | null): void => {
+    if (inflight === null) rmSync(record, { force: true });
+    else writeFileSync(record, JSON.stringify(inflight));
+  },
+});
+// Commits WT's tree apart and dispatches its CI regen; throws CiUnavailable when GitHub Actions does not take it.
+const dispatchRegen = (record: string): Dispatched => {
+  const sha = commitApart('Landing tree for the CI regen (temporary; never merged)');
+  return dispatchOnCi(regenWorkflow('regen'), { branch: regenBranch(sha), deps: regenCiDeps(sha, record) });
+};
+// Waits for a dispatched CI regen and applies its patch to WT (whose tree must still be the dispatched commit's).
+const finishRegen = (step: string, d: Dispatched, record: string): void => {
+  awaitRegenOnCi(step, d, { deps: regenCiDeps(d.sha, record), appearS: CI_APPEAR_S, waitS: REGEN_WAIT_S, startS: CI_START_S, apply: (patch) => applyRegenPatch((args) => text(wtGit, args), d.sha, patch) });
+};
+// One `pnpm regen` of WT, locally under the heavy lease or (LAND_REGEN=ci) on CI; a failure fails the PR at failStep.
+const regenTree = (step: string, failStep: string): void => {
+  landRegen({
+    mode: REGEN_ON,
+    mac: process.platform === 'darwin',
+    ready: ciRegenReady,
+    log,
+    ci: () => {
+      log(`  ${step}: pnpm regen on CI (regen-on-ci.yml, patch mode)`);
+      finishRegen(failStep, dispatchRegen(ciInflight(ROLE)), ciInflight(ROLE));
+    },
+    local: () => {
+      const r = heavy(step, REGEN);
+      if (r.error !== undefined || r.status !== 0) failed(failStep, r, 'pnpm regen');
+    },
+  });
+};
+
+// The CI regens of a role's prepared positions still recorded in flight: cancelled, their scratch branches deleted.
+const abandonPreparedCi = (role: 'driver' | 'builder'): void => {
+  let names: string[] = [];
+  try {
+    names = readdirSync(RUN_DIR).filter((x) => x.startsWith(`ci-inflight-${role}-pos`));
+  } catch {}
+  for (const n of names) abandonCiRun(role, runFile(n));
+};
+
 // The failing tests of a full-test run, from its full-test-results artifact (for the failure message); null when unreadable.
 const fullTestFailures = (runId: number): string | null => {
   const dir = mkdtempSync(join(tmpdir(), 'land-full-test-'));
@@ -431,10 +494,12 @@ const fullTestFailures = (runId: number): string | null => {
   }
 };
 
-// Cancels the CI device run a stopped driver or builder recorded in flight, and deletes its scratch branch; never throws.
-const abandonCiRun = (role: 'driver' | 'builder'): void => {
+// Cancels the CI device run a stopped driver or builder recorded in flight, and deletes its scratch branch; never throws. With no
+// path, also the CI regens its prepared positions recorded (LAND_REGEN=ci).
+const abandonCiRun = (role: 'driver' | 'builder', path = ciInflight(role)): void => {
+  if (path === ciInflight(role)) abandonPreparedCi(role);
   try {
-    const raw = readOrNull(ciInflight(role));
+    const raw = readOrNull(path);
     if (raw === null) return;
     const repo = REPO !== '' ? REPO : execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'], { encoding: 'utf8' }).trim();
     abandonInflight(raw, {
@@ -446,7 +511,7 @@ const abandonCiRun = (role: 'driver' | 'builder'): void => {
       deleteBranch: (b) => void execFileSync('git', ['-C', MAIN, 'push', '--quiet', 'origin', `:${scratchRef(b)}`], { stdio: 'ignore' }),
       log,
     });
-    rmSync(ciInflight(role), { force: true });
+    rmSync(path, { force: true });
   } catch (error) {
     log(`the ${role}'s CI device run left in flight could not be cleaned up: ${msg(error)}`);
   }
@@ -618,8 +683,7 @@ const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => {
   must('install', ['pnpm', 'install', '--frozen-lockfile'], WT);
   // Later positions keep the regen cache of the position below them, which is closer than any lane's.
   if (k === 1) seedRegenCache(e, [t.clean, t.prHead]);
-  const r = heavy('regen', REGEN);
-  if (r.error !== undefined || r.status !== 0) failed('regen', r, 'pnpm regen');
+  regenTree('regen', 'regen');
   return finishPosition(prev, e, t, k, merge, false);
 };
 
@@ -645,8 +709,7 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
     if (differ.length > 0) {
       for (const p of outs) writeFileSync(join(WT, p), git(['show', `${prev}:${p}`]));
       log(`  carried the previous position's device records (${differ.join(', ')}); regenerating on them`);
-      r = heavy('regen-carried', REGEN);
-      if (r.error !== undefined || r.status !== 0) failed('regen', r, 'pnpm regen');
+      regenTree('regen-carried', 'regen');
     }
   }
   if (!runDevices) {
@@ -688,8 +751,7 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
     }
     const problems = judgeDevices(prev, started);
     if (problems.length > 0) throw new LandFailure('judge-devices', `the device run differs from the previous position's device evidence:\n  ${problems.join('\n  ')}`);
-    r = heavy('regen-after-devices', REGEN);
-    if (r.error !== undefined || r.status !== 0) failed('regen-after-devices', r, 'pnpm regen');
+    regenTree('regen-after-devices', 'regen-after-devices');
     commands.push(ran, REGEN.join(' '));
     device = `ran${ran === DEVICES.join(' ') ? '' : ' on CI'}; every lane passes or fails as on the previous position`;
   }
@@ -723,7 +785,8 @@ const pathsBetween = (a: string, b: string): string[] =>
     .filter((p) => p !== '');
 
 // ---- parallel position builds (land-lib buildPositionsParallel) --------------------------------------------------------
-type PreparedPosition = { k: number; dir: string; done: string; log: string; pgid: number; start: string | null };
+// A local preparation runs pnpm regen in its own process group; a CI one (LAND_REGEN=ci) has a regen dispatched (`ci`) instead.
+type PreparedPosition = { k: number; dir: string; done: string; log: string; pgid: number; start: string | null; ci?: { d: Dispatched; record: string } };
 const preparedPids = (): string => runFile(`prepare-${ROLE}.pids`);
 // Disk: each position worktree takes 1.5 to 4 GB. They are reused batch to batch (installs kept); a batch is prepared in parallel
 // only while the disk keeps LAND_PARALLEL_FREE_GB (default 40) free after the worktrees it adds, else they are removed and the
@@ -762,6 +825,15 @@ const preparePosition = (base: string, k: number, items: readonly { entry: Entry
     let cur = base;
     for (const [j, it] of items.entries()) cur = mergeMember(wtGit, cur, it.ticket.member, j + 1, it.ticket.tip, 'Prepare');
     must(`prepare-${k}-install`, ['pnpm', 'install', '--frozen-lockfile'], dir);
+    if (REGEN_ON === 'ci') {
+      // Dispatched now and waited for in awaitPrepared, so the batch's regens run on CI side by side. When GitHub Actions does not
+      // take it (or master has no patch mode yet), this preparation fails and the position builds one by one (regenTree decides).
+      if (!ciRegenReady()) throw new Error(`master's regen-on-ci.yml has no patch mode yet`);
+      const record = runFile(`ci-inflight-${ROLE}-pos${k}.json`);
+      const d = dispatchRegen(record);
+      log(`  parallel build: position ${k}'s regen dispatched on CI for ${d.sha}`);
+      return { k, dir, done: '', log: '', pgid: 0, start: null, ci: { d, record } };
+    }
     const done = runFile(`prepare-${ROLE}-${k}.done`);
     const logFile = `/tmp/land-prepare-${ROLE}-${k}.log`;
     rmSync(done, { force: true });
@@ -778,6 +850,8 @@ const preparePosition = (base: string, k: number, items: readonly { entry: Entry
 // Waits for a preparation's regen. Its failure does not eject the PR: the position is built one by one (buildPositionsParallel),
 // since a run beside the batch's other regens can fail for the load's sake (disk, a capture timing out).
 const awaitPrepared = (h: PreparedPosition): void => {
+  const ci = h.ci;
+  if (ci !== undefined) return withWorktree(h.dir, () => finishRegen('regen', ci.d, ci.record));
   while (!existsSync(h.done)) sleep(5000);
   const code = readFileSync(h.done, 'utf8').trim();
   if (code !== '0') throw new LandFailure('regen', `pnpm regen exited ${code} (log ${h.log})\n${tail(h.log, 15)}`);
@@ -801,6 +875,7 @@ const killPrepared = (role: 'driver' | 'builder'): boolean => {
 
 // Stops a preparation that will not be used and waits for its process group to exit, so nothing still writes in its worktree.
 const abandonPrepared = (h: PreparedPosition): void => {
+  if (h.ci !== undefined) return abandonCiRun(ROLE, h.ci.record);
   if (!stopGroup(h.pgid, h.start)) log(`  !!! parallel build: position ${h.k}'s regen (process group ${h.pgid}) did not exit; ${h.dir} is not reused until it does`);
 };
 
@@ -828,8 +903,7 @@ const assemblePosition = (prev: string, it: { entry: Entry; ticket: Ticket }, k:
     if (sources.length > 0) {
       log(`  parallel build: the prepared tree's sources differ from the merge's (${sources.slice(0, 5).join(', ')}${sources.length > 5 ? ', ...' : ''}); building this position one by one here`);
       must('install', ['pnpm', 'install', '--frozen-lockfile'], WT);
-      const r = heavy('regen', REGEN);
-      if (r.error !== undefined || r.status !== 0) failed('regen', r, 'pnpm regen');
+      regenTree('regen', 'regen');
       return finishPosition(prev, e, t, k, merge, false);
     }
     wtGit(['read-tree', '-u', '--reset', tree]);
@@ -843,8 +917,7 @@ const assemblePosition = (prev: string, it: { entry: Entry; ticket: Ticket }, k:
         else writeFileSync(join(WT, p), wtGit(['show', `${merge}:${p}`]));
       }
       log(`  parallel build: took the merge's device records (${records.join(', ')}); regenerating on them`);
-      const r = heavy('regen-records', REGEN);
-      if (r.error !== undefined || r.status !== 0) failed('regen', r, 'pnpm regen');
+      regenTree('regen-records', 'regen');
     }
     return finishPosition(prev, e, t, k, merge, true);
   });
@@ -875,6 +948,8 @@ const buildAllPositions = (base: string, items: readonly { entry: Entry; ticket:
       log,
     }, failed);
   } finally {
+    // A CI regen a preparation dispatched that was neither awaited nor abandoned (a Fatal stopped the batch) is cancelled.
+    abandonPreparedCi(ROLE);
     log(`  parallel build: ${items.length} position(s) in ${Math.round((Date.now() - t0) / 1000)}s`);
   }
 };
@@ -1213,6 +1288,8 @@ const setUp = (): void => {
   TEST_ON = env['LAND_TEST'] ?? 'local';
   if (TEST_ON !== 'local' && TEST_ON !== 'ci') throw new Error(`land: LAND_TEST must be local or ci, not ${JSON.stringify(TEST_ON)}`);
   TEST_WAIT_S = seconds('LAND_TEST_WAIT', DEFAULT_TEST_WAIT_S);
+  REGEN_ON = parseCiMode('LAND_REGEN', env['LAND_REGEN']);
+  REGEN_WAIT_S = seconds('LAND_REGEN_WAIT', DEFAULT_REGEN_WAIT_S);
   CI_START_S = seconds('LAND_CI_START', 900);
   BATCH = parseBatchSize(env['LAND_BATCH']);
   MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
@@ -1445,7 +1522,7 @@ const main = (): number => {
   if (PIPELINE) checkNextWorktree(WT_NEXT, WT);
   // Scratch branches a stopped or failed CI step left behind (per commit for the full test) are deleted now: none is in flight.
   try {
-    for (const b of staleScratchBranches(net(git, ['ls-remote', 'origin', 'refs/heads/land-devices/*', 'refs/heads/land-test/*']))) {
+    for (const b of staleScratchBranches(net(git, ['ls-remote', 'origin', 'refs/heads/land-devices/*', 'refs/heads/land-test/*', 'refs/heads/land-regen/*']))) {
       try {
         net(git, ['push', '--quiet', 'origin', `:${scratchRef(b)}`]);
         log(`deleted the stale scratch branch ${b}`);
