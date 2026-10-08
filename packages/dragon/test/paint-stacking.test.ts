@@ -13,8 +13,9 @@ import { layoutStackTree, STACKING_LOWERING, stackingOf } from '../src/lower/pai
 import { zIndexValue } from '../src/css/properties/effects.ts';
 import type { LayoutBox, LayoutNode } from '@dragon/layout';
 import type { ResolvedElement } from '../src/analysis/resolve.ts';
+import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import type { Targets } from '../src/types.ts';
-import { div, expectCatalogued, explainOne, inputFor } from './helpers.ts';
+import { DOC, div, expectCatalogued, explainOne, inputFor, staticClass, text } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/z.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -221,5 +222,48 @@ describe('the stack tree of a layout tree with a replaced leaf (REPL-a)', () => 
     const tree = layoutStackTree(root, new Map([['root', el(null)], ['img', el(3, 0.5)]]));
     expect(tree.children).toEqual([{ id: 'img', position: 'relative', z: 3, opacity: 0.5, transformed: false, clips: false, text: false, children: [] }]);
     expect(() => layoutStackTree(root, new Map([['root', el(null)]]))).toThrow('img: no resolved element for the layout box');
+  });
+});
+
+describe('the stack tree of inline content (INL1a, as the native tree places it)', () => {
+  const el = (ref: SourceRef, id: string, tag: string, classes: string[] = [], children: TreeNode[] = []): ElementNode => {
+    const origin: Origin = { kind: 'authored', span: { source: ref, start: 0, end: 0 } };
+    return { kind: 'element', id, tag, classes: classes.map((name) => staticClass({ owner: DOC, sheet: 's', name }, origin)), attributes: [], children, origin };
+  };
+  const CSS = 'body { margin: 0; font-family: Ahem; font-size: 10px; } .f20 { font-size: 20px; } .z { position: relative; z-index: 1; height: 10px; }';
+  const para = (r: SourceRef) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 'o', 'span', ['f20'], [text(r, 't1', 'b '), el(r, 'i', 'span', [], [text(r, 't2', 'c')])]), el(r, 'b', 'br'), text(r, 't3', 'd')]), el(r, 'z', 'div', ['z'])];
+  const compile = (css: string, body: (r: SourceRef) => TreeNode[]) =>
+    createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`${CSS} ${css}`, body));
+  it('publishes stacking facts on every inline box and <br>, hosted by the block container their views are flat children of', () => {
+    const p = nativePrograms(compile('', para), []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const program of [p.programs.uikit, p.programs['android-views']]) {
+      for (const id of ['o', 'i', 'b']) {
+        const x = program.nodes.find((n) => n.id === id);
+        expect(x?.parent, id).toBe('p');
+        expect(x?.facts['stacking'], id).toMatchObject({ context: 'html', createsContext: false, layer: 'flow', host: 'p', clipChain: [], underClip: false });
+      }
+      const order = (id: string): number => (program.nodes.find((n) => n.id === id)?.facts['stacking'] as { paintOrder: number }).paintOrder;
+      // Tree order inside the paragraph, and the z-index sibling after all of it.
+      expect(['p', 'o', 'i', 'b', 'z'].map(order)).toEqual([...['p', 'o', 'i', 'b', 'z'].map(order)].sort((a, b) => a - b));
+    }
+  });
+  it('refuses on the native targets only an inline box that would be a stacking context: opacity below 1 or will-change: opacity', () => {
+    for (const css of ['.f20 { opacity: 0; }', '.f20 { will-change: opacity; }']) {
+      const errs = compile(css, para).diagnostics.filter((d) => d.severity === 'error');
+      expect(errs.map((d) => [d.code, d.target]).sort(), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+      expect(errs[0]?.message, css).toMatch(/on the inline box <span> o makes it a stacking context: the native runtime places an inline box's content beside its view/);
+      expectCatalogued(errs);
+    }
+    expect(compile('.f20 { opacity: 1; }', para).diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+  });
+  it('an inline box is a childless node followed by its content, and never clips (css-overflow-3 §3)', () => {
+    const style = (o: Record<string, string>): LayoutBox['style'] => ({ position: 'static', display: 'block', overflowX: 'visible', ...o }) as unknown as LayoutBox['style'];
+    const el1 = (): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: { kind: 'keyword', value: 'auto' } }], ['opacity', { value: { kind: 'number', value: 1 } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
+    const inner = { kind: 'inline', id: 'i', style: style({ display: 'inline', overflowX: 'hidden' }), children: [{ kind: 'text', id: 'i:t' }] };
+    const outer = { kind: 'inline', id: 'o', style: style({ display: 'inline' }), children: [inner, { kind: 'br', id: 'b' }] };
+    const root = { kind: 'box', id: 'root', boxType: 'element', style: style({}), strut: null, children: [outer] } as unknown as LayoutBox;
+    const tree = layoutStackTree(root, new Map([['root', el1()], ['o', el1()], ['i', el1()]]));
+    expect(tree.children.map((c) => [c.id, c.text, c.clips, c.children.length])).toEqual([['o', false, false, 0], ['i', false, false, 0], ['i:t', true, false, 0], ['b', true, false, 0]]);
   });
 });

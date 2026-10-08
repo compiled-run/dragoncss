@@ -11,7 +11,7 @@
 // then differs from Appendix E's against some node, is refused (analysis/paint-values/stacking.ts), and so is a box a native
 // ancestor's clip view would clip although the clip is not in its containing-block chain. Every layer item
 // gets a write; flow boxes get none.
-import type { InlineBox, LayoutBox, LayoutNode } from '@dragon/layout';
+import type { InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak } from '@dragon/layout';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
@@ -284,30 +284,41 @@ export const transformedForStacking = (el: ResolvedElement): boolean => transfor
 /** The stacking tree of a layout tree, with each element's z-index, opacity and transform from its resolved style. */
 export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, ResolvedElement>): StackNode {
   // A replaced leaf (REPL-a) is an element box with no children: it can be positioned, carry z-index and opacity like any box.
-  // INL1a: an inline box is an element box like any other (its z-index applies only when positioned, its opacity always); a <br>
-  // paints nothing and joins no layer, so it is a leaf like a text run.
+  // INL1a: inline content is flat, as the native tree places it (native-program.ts, T044 R3): an inline box is a childless element
+  // node followed by its content, and a <br> is a leaf like a text run. The engine refuses a positioned inline box and the native
+  // targets an inline stacking context (computed-checks.ts checkInline), so an inline box is never a layer item there.
   const leaf = (id: string): StackNode => ({ id, position: 'static', z: null, opacity: 1, transformed: false, clips: false, text: true, children: [] });
-  const node = (b: LayoutNode | InlineBox, parentFlex: boolean): StackNode => {
+  const elementOf = (b: LayoutNode | InlineBox): ResolvedElement | null => {
     const anonymous = b.kind === 'box' && b.boxType === 'anonymous';
     const el = anonymous ? null : (elements.get(b.id) ?? null);
     if (!anonymous && el === null) throw new ProgramError(`${b.id}: no resolved element for the layout box`);
+    return el;
+  };
+  const own = (b: LayoutNode | InlineBox, el: ResolvedElement | null, parentFlex: boolean, children: readonly StackNode[]): StackNode => {
     const get = (p: 'z-index' | 'opacity'): ResolvedValue | null => (el === null ? null : (el.props.get(p) ?? null));
     const zv = get('z-index');
     const ov = get('opacity');
     const z = zv === null ? null : zIndexOf(zv.value);
     const opacity = ov === null ? 1 : opacityOf(ov.value);
     if (opacity === null) throw new ProgramError(`${b.id}: opacity did not compute to a number`);
-    const flex = b.style.display === 'flex';
     return {
       id: b.id,
       position: b.style.position,
       z: b.style.position !== 'static' || parentFlex ? z : null,
       opacity,
       transformed: el !== null && transformedForStacking(el),
-      clips: b.style.overflowX === 'hidden',
+      // css-overflow-3 §3: overflow applies to block containers, never to an inline box.
+      clips: b.kind !== 'inline' && b.style.overflowX === 'hidden',
       text: false,
-      children: b.kind === 'replaced' ? [] : b.children.map((c) => (c.kind === 'text' || c.kind === 'br' ? leaf(c.id) : node(c, flex))),
+      children,
     };
+  };
+  const content = (c: InlineChild): StackNode[] => (c.kind === 'inline' ? [own(c, elementOf(c), false, []), ...c.children.flatMap(content)] : [leaf(c.id)]);
+  const node = (b: LayoutNode, parentFlex: boolean): StackNode => {
+    const el = elementOf(b);
+    const flex = b.style.display === 'flex';
+    const children = b.kind === 'replaced' ? [] : b.children.flatMap((c) => (c.kind === 'box' || c.kind === 'replaced' ? [node(c, flex)] : content(c)));
+    return own(b, el, parentFlex, children);
   };
   return node(root, false);
 }
@@ -315,17 +326,26 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
 export type StackingWrite = { readonly kind: 'paint-order'; readonly host: string; readonly bucket: number; readonly rank: number; readonly index: number };
 
 /** The stacking of the case being lowered: computed at its root box, which the lowering visits first, with that tree's nodes. */
-let current: { readonly nodes: WeakSet<LayoutNode>; readonly stacking: Stacking } | null = null;
+let current: { readonly nodes: WeakSet<LayoutNode | InlineBox | LineBreak>; readonly stacking: Stacking } | null = null;
 
-const treeNodes = (root: LayoutBox): WeakSet<LayoutNode> => {
-  const out = new WeakSet<LayoutNode>();
-  const walk = (b: LayoutNode | InlineBox): void => {
-    if (b.kind !== 'inline') out.add(b);
-    if (b.kind === 'box' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text' && c.kind !== 'br') walk(c);
+const treeNodes = (root: LayoutBox): WeakSet<LayoutNode | InlineBox | LineBreak> => {
+  const out = new WeakSet<LayoutNode | InlineBox | LineBreak>();
+  const walk = (b: LayoutNode | InlineBox | LineBreak): void => {
+    out.add(b);
+    if (b.kind === 'box' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text') walk(c);
   };
   walk(root);
   return out;
 };
+
+/** The stacking facts of an inline box or <br> of the case being lowered (native-program.ts places them unpainted). */
+export function inlineStackingFacts(c: InlineBox | LineBreak): StackingFacts {
+  const facts = current !== null && current.nodes.has(c) ? current.stacking.facts.get(c.id) : undefined;
+  if (current === null || facts === undefined) throw new ProgramError(`${c.id}: the stacking lowering did not see this inline box's root first`);
+  // A layer item's write has nowhere to go on an inline view; checkInline refuses an inline stacking context on native.
+  if (current.stacking.writes.has(c.id)) throw new ProgramError(`${c.id}: an inline box is a stacking layer item, which the native targets do not place`);
+  return facts;
+}
 
 function caseStacking(box: LayoutNode, el: ResolvedElement | null): Stacking {
   if (el !== null && el.element.tag === 'html') {
