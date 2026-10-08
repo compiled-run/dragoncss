@@ -445,14 +445,22 @@ const regenCiDeps = (sha: string, record: string) => ({
     else writeFileSync(record, JSON.stringify(inflight));
   },
 });
-// Commits WT's tree apart and dispatches its CI regen; throws CiUnavailable when GitHub Actions does not take it.
+// Commits WT's tree apart and dispatches its CI regen; throws CiUnavailable when that fails (as the device path's push does).
 const dispatchRegen = (record: string): Dispatched => {
-  const sha = commitApart('Landing tree for the CI regen (temporary; never merged)');
+  let sha: string;
+  try {
+    sha = commitApart('Landing tree for the CI regen (temporary; never merged)');
+  } catch (error) {
+    throw new CiUnavailable(`the CI regen could not be run: ${msg(error)}`);
+  }
   return dispatchOnCi(regenWorkflow('regen'), { branch: regenBranch(sha), deps: regenCiDeps(sha, record) });
 };
+// How the latest regen of WT ran, for the regen commit's message: pnpm regen, or the CI run that ran it.
+let regenRan = REGEN.join(' ');
 // Waits for a dispatched CI regen and applies its patch to WT (whose tree must still be the dispatched commit's).
 const finishRegen = (step: string, d: Dispatched, record: string): void => {
-  awaitRegenOnCi(step, d, { deps: regenCiDeps(d.sha, record), appearS: CI_APPEAR_S, waitS: REGEN_WAIT_S, startS: CI_START_S, apply: (patch) => applyRegenPatch((args) => text(wtGit, args), d.sha, patch) });
+  const { url } = awaitRegenOnCi(step, d, { deps: regenCiDeps(d.sha, record), appearS: CI_APPEAR_S, waitS: REGEN_WAIT_S, startS: CI_START_S, apply: (patch) => applyRegenPatch((args) => text(wtGit, args), d.sha, patch) });
+  regenRan = `${REGEN.join(' ')} on CI (regen-on-ci.yml ${url})`;
 };
 // One `pnpm regen` of WT, locally under the heavy lease or (LAND_REGEN=ci) on CI; a failure fails the PR at failStep.
 const regenTree = (step: string, failStep: string): void => {
@@ -466,6 +474,7 @@ const regenTree = (step: string, failStep: string): void => {
       finishRegen(failStep, dispatchRegen(ciInflight(ROLE)), ciInflight(ROLE));
     },
     local: () => {
+      regenRan = REGEN.join(' ');
       const r = heavy(step, REGEN);
       if (r.error !== undefined || r.status !== 0) failed(failStep, r, 'pnpm regen');
     },
@@ -494,7 +503,7 @@ const fullTestFailures = (runId: number): string | null => {
   }
 };
 
-// Cancels the CI device run a stopped driver or builder recorded in flight, and deletes its scratch branch; never throws. With no
+// Cancels the CI run a stopped driver or builder recorded in flight, and deletes its scratch branch; never throws. With no
 // path, also the CI regens its prepared positions recorded (LAND_REGEN=ci).
 const abandonCiRun = (role: 'driver' | 'builder', path = ciInflight(role)): void => {
   if (path === ciInflight(role)) abandonPreparedCi(role);
@@ -513,7 +522,7 @@ const abandonCiRun = (role: 'driver' | 'builder', path = ciInflight(role)): void
     });
     rmSync(path, { force: true });
   } catch (error) {
-    log(`the ${role}'s CI device run left in flight could not be cleaned up: ${msg(error)}`);
+    log(`the ${role}'s CI run left in flight could not be cleaned up: ${msg(error)}`);
   }
 };
 
@@ -695,7 +704,7 @@ const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => {
  */
 const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: string, prepared: boolean): Built => {
   let device = 'skipped: the evidence stamp equals the previous position\'s';
-  const commands = [REGEN.join(' ')];
+  const commands = [regenRan];
   let r: Run;
   must('typecheck', ['pnpm', 'typecheck'], WT);
   r = run('stamp', ['pnpm', '-s', 'evidence:stamp', '--compare', prev], WT);
@@ -710,6 +719,7 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
       for (const p of outs) writeFileSync(join(WT, p), git(['show', `${prev}:${p}`]));
       log(`  carried the previous position's device records (${differ.join(', ')}); regenerating on them`);
       regenTree('regen-carried', 'regen');
+      commands.push(regenRan);
     }
   }
   if (!runDevices) {
@@ -752,7 +762,7 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
     const problems = judgeDevices(prev, started);
     if (problems.length > 0) throw new LandFailure('judge-devices', `the device run differs from the previous position's device evidence:\n  ${problems.join('\n  ')}`);
     regenTree('regen-after-devices', 'regen-after-devices');
-    commands.push(ran, REGEN.join(' '));
+    commands.push(ran, regenRan);
     device = `ran${ran === DEVICES.join(' ') ? '' : ' on CI'}; every lane passes or fails as on the previous position`;
   }
   log(`  device lanes: ${device}`);
@@ -852,6 +862,7 @@ const preparePosition = (base: string, k: number, items: readonly { entry: Entry
 const awaitPrepared = (h: PreparedPosition): void => {
   const ci = h.ci;
   if (ci !== undefined) return withWorktree(h.dir, () => finishRegen('regen', ci.d, ci.record));
+  regenRan = REGEN.join(' ');
   while (!existsSync(h.done)) sleep(5000);
   const code = readFileSync(h.done, 'utf8').trim();
   if (code !== '0') throw new LandFailure('regen', `pnpm regen exited ${code} (log ${h.log})\n${tail(h.log, 15)}`);

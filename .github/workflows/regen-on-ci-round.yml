@@ -3,7 +3,8 @@
 # side chrome (macos-26, where the Chrome captures are byte-identical to the local Mac's): every step except lanes-host.
 # side host (xcode-27, Xcode 27.0 and Swift 6.4 like the local Mac): lanes-host only. The host toolchains must equal the ones
 # the committed lanes.json records, or the round fails before running anything.
-# save_cache false (regen-on-ci.yml's patch mode): caches are restored only, never saved, as in full-test.yml.
+# save_cache false (regen-on-ci.yml's patch mode): nothing is saved, as in full-test.yml; the regen and WPT caches are restored
+# only and the pnpm store is not cached (setup-node's cache always saves).
 name: regen-on-ci-round
 on:
   workflow_call:
@@ -47,7 +48,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24.15.0'
-          cache: pnpm
+          # setup-node's pnpm cache saves in a post step, so a round that must not save (patch mode) does not use it.
+          cache: ${{ inputs.save_cache && 'pnpm' || '' }}
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Restore the regen cache (first round)
