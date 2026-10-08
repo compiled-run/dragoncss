@@ -26,7 +26,8 @@ export const parseEntry = (line: string): Entry => {
   return { branch, pr: Number(pr), clean };
 };
 
-export const parseQueue = (text: string): Entry[] => {
+// `allowEmpty` (land.yml, LAND_QUEUE_EMPTY_OK=1): an empty queue is nothing to land rather than a mistake.
+export const parseQueue = (text: string, o: { allowEmpty?: boolean } = {}): Entry[] => {
   const entries: Entry[] = [];
   for (const raw of text.split('\n')) {
     const line = raw.replace(/#.*/, '').trim();
@@ -34,7 +35,7 @@ export const parseQueue = (text: string): Entry[] => {
     if (/^train\b/.test(line)) return fail(`"${line}": trains are gone; the queue is a plain list of <branch>:<pr>:<clean-head> lines`);
     entries.push(parseEntry(line));
   }
-  if (entries.length === 0) return fail('the queue has no entries');
+  if (entries.length === 0 && o.allowEmpty !== true) return fail('the queue has no entries');
   for (const key of ['branch', 'pr'] as const) {
     if (new Set(entries.map((e) => e[key])).size !== entries.length) fail(`two queue entries share a ${key}`);
   }
@@ -61,7 +62,13 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   a CI run may go without starting a job, with none waiting for a runner, before GitHub Actions counts as not running it, default
   900), LAND_CI_QUEUE_WAIT (seconds a run whose jobs wait for a runner, as behind the macOS concurrency cap, is waited for before
   that counts as not running it, default 10800), LAND_CI_MAX_INFLIGHT (positions of a batch whose CI regens are dispatched at once,
-  1 to 8, default 2; the positions above are built one by one)`;
+  1 to 8, default 2; the positions above are built one by one). For a host with no state of its own (land.yml): LAND_REVIEW_SOURCE=comment
+  (the default reviewer reads the review from a PR comment, pnpm land:post-review), LAND_STOP_ISSUE
+  (an issue whose land-stop label stops the driver after its batch, as the stop file does), LAND_MAX_BATCHES (batches this run
+  lands; the rest goes to LAND_HANDOFF for the next run), LAND_LOG_DIR (the status, logs, reviews and run directory, instead of /tmp),
+  LAND_QUEUE_EMPTY_OK=1 (an empty queue is nothing to land). Reviewers are matched by user id (LAND_REVIEWER_IDS, or LAND_REVIEWERS
+  ids or logins), and the token's own identity (GET user, or LAND_TOKEN_USER_ID for an App token) may not be one. Every run reads and
+  writes master's land/proof commit status, trusting only statuses by that identity or LAND_PROOF_WRITERS ids.`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;
@@ -404,6 +411,15 @@ export const findingsComment = (pr: number, head: string, findings: readonly Fin
   return lines.join('\n');
 };
 
+/** The marker line of a precomputed review comment (land-review-lookup.ts reads it, pnpm land:post-review writes it). */
+export const REVIEW_MARKER = '<!-- dragon-land-review v1 -->';
+/**
+ * A comment body the driver posts, made unreadable as a review: no HTML comment can open (so no marker line), and no code fence
+ * is a json block. The driver posts log tails and finding texts a PR controls, under an identity a reviewer allowlist must not hold.
+ */
+export const defangReview = (body: string): string =>
+  body.replaceAll('<!--', '&lt;!--').replace(/^([ \t]*)(`{3,}|~{3,})([ \t]*)json\b/gim, '$1$2$3text');
+
 // ---------------------------------------------------------------------------------------------------------------------
 // After a merge: GitHub closes, rather than retargets, an open PR whose base branch is deleted. So every open PR based on the
 // merged branch is moved to master first, the list is read again, and the branch is deleted last, only when none is left.
@@ -721,8 +737,10 @@ export type BatchOps<T, P extends { head: string }> = {
   verify: (built: readonly { entry: Entry; ticket: T; position: P }[]) => void;
   /** Proves the tree of one position (the full test). Throws LandFailure at step "test" when the test fails. */
   prove: (position: P, e: Entry) => void;
-  /** True when the PM asked for a graceful stop (STOP_FILE or SIGUSR1): no new batch starts. */
+  /** True when the PM asked for a graceful stop (STOP_FILE, SIGUSR1 or the land-stop label): no new batch starts. */
   stopRequested?: () => boolean;
+  /** At most this many batches that built a position (LAND_MAX_BATCHES; land.yml runs one per job): the rest stays queued. */
+  maxBatches?: number;
   /** Proves master's own tree, before a bisect blames the first PR of a batch. Throws LandFailure at step "test" when it fails. */
   proveMaster: (master: string) => void;
   /** Pushes, reviews and merges one PR at its position. Throws LandFailure (that PR fails) or Fatal. */
@@ -1087,8 +1105,12 @@ export const runBatches = <T, P extends { head: string }>(
   entries: readonly Entry[],
   size: number,
   ops: BatchOps<T, P> & { next?: NextRound<T, P> },
-): { outcomes: Outcome[]; fatal: string | null; outage: string | null; exit: 0 | 1; stopped: Entry[] } => {
+): { outcomes: Outcome[]; fatal: string | null; outage: string | null; exit: 0 | 1; stopped: Entry[]; stopAsked: boolean; limited: boolean } => {
   if (!Number.isInteger(size) || size < 1) return fail(`batch size ${size}`);
+  const max = ops.maxBatches ?? Infinity;
+  if (max !== Infinity && (!Number.isInteger(max) || max < 1)) return fail(`batch limit ${max}`);
+  let batches = 0;
+  let limited = false;
   const queue = [...entries];
   const outcomes: Outcome[] = [];
   let fatal: string | null = null;
@@ -1126,6 +1148,11 @@ export const runBatches = <T, P extends { head: string }>(
         ops.log(`stop requested: not starting ${prs(queue)}`);
         break;
       }
+      if (batches >= max) {
+        limited = true;
+        ops.log(`batch limit (${max}) reached: ${prs(queue)} stay queued for the next run`);
+        break;
+      }
       let round: Prepared<T, P>;
       if (pending && usable) {
         pending = false;
@@ -1155,10 +1182,11 @@ export const runBatches = <T, P extends { head: string }>(
       }
       const { built, good, culprit } = round;
       if (built.length === 0) continue;
+      batches++;
       const proven = new Set(round.proven);
 
       // The whole batch is proven and the queue has more: start preparing the next batch on this top while this one publishes.
-      if (ops.next !== undefined && good === built.length && queue.length > 0 && !stopping()) {
+      if (ops.next !== undefined && good === built.length && queue.length > 0 && batches < max && !stopping()) {
         ops.next.start(built.at(-1)!.position.head, [...queue], built.map((b) => b.entry), size);
         pending = true;
         usable = false;
@@ -1216,7 +1244,7 @@ export const runBatches = <T, P extends { head: string }>(
   }
   // After an outage every PR with no outcome stays queued (those of the batch it hit included), in queue order.
   const stopped = outage !== null ? entries.filter((e) => !outcomes.some((o) => o.entry.pr === e.pr)) : fatal === null ? queue : [];
-  return { outcomes, fatal, outage, exit: fatal === null && outage === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1, stopped };
+  return { outcomes, fatal, outage, exit: fatal === null && outage === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1, stopped, stopAsked, limited };
 };
 
 export const statusText = (o: {
@@ -1230,10 +1258,14 @@ export const statusText = (o: {
   total: number;
   done: boolean;
   stopped?: readonly Entry[];
+  /** The run ended at its batch limit (LAND_MAX_BATCHES), not on a stop request: `stopped` goes to the next run. */
+  limited?: boolean;
 }): string => {
   const outage = o.done && !o.fatal && typeof o.outage === 'string';
-  const asked = o.done && !o.fatal && !outage && (o.stopped?.length ?? 0) > 0;
-  const lines = [`land ${o.done ? (o.fatal ? 'STOPPED' : outage ? 'STOPPED BY A CI OUTAGE' : asked ? 'STOPPED ON REQUEST' : 'DONE') : 'RUNNING'} ${o.now} (started ${o.startedAt}) queue ${o.queue}: ${o.outcomes.length} of ${o.total} handled`];
+  const rest = o.done && !o.fatal && !outage && (o.stopped?.length ?? 0) > 0;
+  const handOff = rest && o.limited === true;
+  const asked = rest && !handOff;
+  const lines = [`land ${o.done ? (o.fatal ? 'STOPPED' : outage ? 'STOPPED BY A CI OUTAGE' : asked ? 'STOPPED ON REQUEST' : handOff ? 'BATCH DONE' : 'DONE') : 'RUNNING'} ${o.now} (started ${o.startedAt}) queue ${o.queue}: ${o.outcomes.length} of ${o.total} handled`];
   if (o.fatal) lines.push(`fatal: ${o.fatal}`);
   if (outage) lines.push(`CI outage: ${o.outage}`, `no PR was failed for it; still queued, not landed: ${(o.stopped ?? []).map((e) => `#${e.pr}`).join(' ') || 'none'}`);
   if (o.running) lines.push(`landing now: #${o.running.pr} ${o.running.branch}`);
@@ -1243,7 +1275,8 @@ export const statusText = (o: {
   }
   const failed = o.outcomes.filter((r) => r.result === 'failed').length;
   if (asked) lines.push(`stop requested: not started ${o.stopped!.map((e) => `#${e.pr}`).join(' ')} (no PR failed for it)`);
-  if (o.done) lines.push(failed === 0 && !o.fatal ? (asked || outage ? 'every PR handled landed' : 'every PR landed') : `${failed} PR(s) failed; each has the landing-failed label and a comment naming the step`);
+  if (handOff) lines.push(`batch limit reached: the next run gets ${o.stopped!.map((e) => `#${e.pr}`).join(' ')} (no PR failed for it)`);
+  if (o.done) lines.push(failed === 0 && !o.fatal ? (rest || outage ? 'every PR handled landed' : 'every PR landed') : `${failed} PR(s) failed; each has the landing-failed label and a comment naming the step`);
   return `${lines.join('\n')}\n`;
 };
 
