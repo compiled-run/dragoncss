@@ -368,7 +368,8 @@ export const dispatchLand = (queue: string, d: DispatchDeps): number => {
 // as the commit status land/outage on the PR's head, each status naming its run ("[run <id> <kind>] ..."):
 //   in       the PR was admitted to the run (pending);
 //   outage   a CI outage in a step that ran the PR's tree: its build, a prepared regen, or a full test of a tree holding it (error);
-//   verdict  a verdict about the PR: it failed, a full test passed on a tree holding it, or it merged (success);
+//   verdict  a verdict about the PR: it failed or it merged (success). A passed full test is not one: the PR still has to pass CI
+//            on its landing commit, and an outage there must count;
 //   left     the run ended normally without either, as a PR requeued behind a culprit does (success, neutral).
 // A run counts 1 for the PR when it has no verdict and has an outage, or has only `in` (the run was killed, maybe by the tree).
 // A run with a verdict ends the streak; a neutral run neither counts nor ends it. Phases that pass write nothing, so a tree that
@@ -387,7 +388,7 @@ export const parseOutageEject = (v: string | undefined): number => {
  * The driver runs since the last verdict about the PR that count as outages, newest first, from the trusted land/outage statuses
  * of its head (GET commits/<sha>/statuses pages, flattened). A status with no run tag is a run of its own, judged by its state.
  */
-export const outageStreak = (statuses: unknown, sha: string, trusted: ReadonlySet<number>): { count: number; runs: string[] } => {
+export const outageStreak = (statuses: unknown, sha: string, trusted: ReadonlySet<number>, exceptRun?: string): { count: number; runs: string[] } => {
   if (!Array.isArray(statuses)) throw new Error(`land-state: the statuses of ${sha} are not a list`);
   const ours = statuses.flatMap((s) => {
     if (!isObject(s) || typeof s.context !== 'string') throw new Error(`land-state: a status of ${sha} has no context`);
@@ -403,7 +404,9 @@ export const outageStreak = (statuses: unknown, sha: string, trusted: ReadonlySe
   const runs = new Map<string, typeof ours>();
   for (const s of ours) runs.set(s.run, [...(runs.get(s.run) ?? []), s]);
   const counted: string[] = [];
-  for (const [, ss] of runs) {
+  for (const [run, ss] of runs) {
+    // The run asking (a PR requeued and admitted again in it) is still going: it is not an outage, nor a verdict, yet.
+    if (run === exceptRun) continue;
     const kinds = new Set(ss.map((x) => x.kind));
     if (kinds.has('verdict')) break;
     const outage = ss.find((x) => x.kind === 'outage');
@@ -412,9 +415,9 @@ export const outageStreak = (statuses: unknown, sha: string, trusted: ReadonlySe
   }
   return { count: counted.length, runs: counted };
 };
-export const readOutageStreak = (gh: Gh, repo: string, sha: string, trusted: ReadonlySet<number>): { count: number; runs: string[] } => {
+export const readOutageStreak = (gh: Gh, repo: string, sha: string, trusted: ReadonlySet<number>, exceptRun?: string): { count: number; runs: string[] } => {
   if (!SHA.test(sha)) throw new Error(`land-state: ${JSON.stringify(sha)} is not a full sha`);
-  return outageStreak((JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${checkRepo(repo)}/commits/${sha}/statuses?per_page=100`])) as unknown[]).flat(), sha, trusted);
+  return outageStreak((JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${checkRepo(repo)}/commits/${sha}/statuses?per_page=100`])) as unknown[]).flat(), sha, trusted, exceptRun);
 };
 export const writeOutage = (gh: Gh, repo: string, sha: string, run: string, kind: OutageKind, description: string, targetUrl: string | null): void => {
   if (!SHA.test(sha)) throw new Error(`land-state: ${JSON.stringify(sha)} is not a full sha`);
@@ -449,6 +452,13 @@ export const outageLedger = (o: { run: string; write: (sha: string, kind: Outage
   };
 };
 export type OutageLedger = ReturnType<typeof outageLedger>;
+/** Records a run's outage against the PRs it names (CiOutage.prs), each at the head it was admitted at; the one place outages are recorded. */
+export const recordOutage = (ledger: OutageLedger, heads: ReadonlyMap<number, string>, prs: readonly number[], why: string): void => {
+  for (const pr of new Set(prs)) {
+    const head = heads.get(pr);
+    if (head !== undefined) ledger.outage(pr, head, why);
+  }
+};
 /** Ends a PR's land/outage streak at its current head (pnpm land:clear-outage), as the identity gh acts as; returns who and where. */
 export const clearOutage = (gh: Gh, repo: string, pr: string): { context: string; head: string; login: string; id: number } => {
   if (!/^[1-9]\d{0,8}$/.test(pr)) throw new Error(`land: ${JSON.stringify(pr)} is not a PR number`);

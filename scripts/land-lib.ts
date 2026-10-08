@@ -659,7 +659,62 @@ export class Fatal extends Error {}
  * failures): nothing was judged and nothing may run locally instead, so the driver stops. No PR is failed for it, and every PR
  * not landed yet stays queued (runBatches' `stopped`).
  */
-export class CiOutage extends Fatal {}
+export class CiOutage extends Fatal {
+  /**
+   * `prs`: every PR whose code the step ran (attribute), so the outage counts against them (land-state.ts outageLedger); an
+   * empty list for a step that ran no PR's code (master's own proof, a workflow missing from master). Required, so no CI step
+   * can stop the driver without saying whose tree it ran.
+   */
+  readonly prs: readonly number[];
+  constructor(message: string, prs: readonly number[]) {
+    super(message);
+    this.prs = prs;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The CI stages of a landing run: each dispatches or waits on a CI run that runs PR code, and an outage there counts against the
+// PRs `attribute` names. Every call site in land.ts takes its PRs from attribute (land-trusted.test.ts checks every site, and
+// injects an outage at each stage through runBatches).
+export const CI_STAGES = ['admission-ci', 'prepared-regen', 'regen', 'tree-checks', 'devices', 'full-test', 'publish-ci'] as const;
+export type CiStage = (typeof CI_STAGES)[number];
+/** The PRs merged into each position's tree, by the position's head (master and anything not built: none). */
+export class Trees {
+  readonly #of = new Map<string, readonly number[]>();
+  of(head: string): readonly number[] {
+    return this.#of.get(head) ?? [];
+  }
+  /** Position `head`, built on `prev` with `pr` merged. */
+  add(head: string, prev: string, pr: number): void {
+    this.#of.set(head, [...this.of(prev), pr]);
+  }
+}
+/**
+ * The PRs whose code a CI stage runs:
+ * - admission-ci: the PR head's own ci.yml run: that PR;
+ * - regen, tree-checks, devices: the tree of the position being built, `prev` with `pr` merged: prev's PRs and that PR;
+ * - prepared-regen: a prepared position k, master with the batch's first k PRs merged: those PRs;
+ * - full-test (the batch top, a bisect prefix, master) and publish-ci (ci.yml on the landing commit): the PRs in that tree.
+ */
+export const attribute = (stage: CiStage, c: { trees: Trees; pr?: number; prev?: string; head?: string; batch?: readonly number[]; k?: number }): number[] => {
+  const need = <V>(v: V | undefined, what: string): V => {
+    if (v === undefined) throw new Error(`attribute ${stage}: no ${what}`);
+    return v;
+  };
+  switch (stage) {
+    case 'admission-ci':
+      return [need(c.pr, 'pr')];
+    case 'regen':
+    case 'tree-checks':
+    case 'devices':
+      return [...c.trees.of(need(c.prev, 'prev')), need(c.pr, 'pr')];
+    case 'prepared-regen':
+      return need(c.batch, 'batch').slice(0, need(c.k, 'k'));
+    case 'full-test':
+    case 'publish-ci':
+      return [...c.trees.of(need(c.head, 'head'))];
+  }
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Where each heavy step runs: LAND_DEVICES, LAND_TEST and LAND_REGEN, each local (here), ci (on GitHub runners, falling back to a
@@ -1158,7 +1213,7 @@ export type NextRound<T, P> = {
 };
 
 /** A builder's Fatal as JSON (parsePrepared reads it back): a CiOutage stays one. */
-export const serializeFatal = (error: Fatal): string => JSON.stringify({ fatal: error.message, outage: error instanceof CiOutage });
+export const serializeFatal = (error: Fatal): string => JSON.stringify({ fatal: error.message, outage: error instanceof CiOutage, ...(error instanceof CiOutage ? { prs: error.prs } : {}) });
 // A builder's round as JSON, and back. LandFailures keep their step, message and comment; anything malformed is an error.
 export const serializePrepared = <T, P>(p: Prepared<T, P>): string =>
   JSON.stringify({
@@ -1171,11 +1226,13 @@ const toFailure = (v: unknown): LandFailure => {
   if (!isObject(v) || typeof v.step !== 'string' || typeof v.message !== 'string' || !(v.comment === null || typeof v.comment === 'string')) return fail(`a prepared failure is malformed: ${JSON.stringify(v)?.slice(0, 200)}`);
   return new LandFailure(v.step, v.message, v.comment ?? undefined);
 };
-export const parsePrepared = <T, P extends { head: string }>(text: string): Prepared<T, P> | { fatal: string; outage: boolean } => {
+export const parsePrepared = <T, P extends { head: string }>(text: string): Prepared<T, P> | { fatal: string; outage: boolean; prs: number[] } => {
   const v: unknown = JSON.parse(text);
   if (isObject(v) && typeof v.fatal === 'string') {
     if (v.outage !== undefined && typeof v.outage !== 'boolean') return fail(`a prepared round's outage is not a boolean: ${text.slice(0, 200)}`);
-    return { fatal: v.fatal, outage: v.outage === true };
+    const prs = v.prs ?? [];
+    if (!Array.isArray(prs) || !prs.every((x) => Number.isSafeInteger(x) && (x as number) > 0)) return fail(`a prepared round's outage PRs are malformed: ${text.slice(0, 200)}`);
+    return { fatal: v.fatal, outage: v.outage === true, prs: prs as number[] };
   }
   if (!isObject(v) || typeof v.base !== 'string' || !Array.isArray(v.consumed) || !v.consumed.every(isEntry) || !Array.isArray(v.results) || !Array.isArray(v.built) || !Array.isArray(v.proven)) {
     return fail(`a prepared round is malformed: ${text.slice(0, 200)}`);
@@ -1203,7 +1260,7 @@ export const runBatches = <T, P extends { head: string }>(
   entries: readonly Entry[],
   size: number,
   ops: BatchOps<T, P> & { next?: NextRound<T, P> },
-): { outcomes: Outcome[]; fatal: string | null; outage: string | null; exit: 0 | 1; stopped: Entry[]; stopAsked: boolean; limited: boolean } => {
+): { outcomes: Outcome[]; fatal: string | null; outage: string | null; outagePrs: readonly number[]; exit: 0 | 1; stopped: Entry[]; stopAsked: boolean; limited: boolean } => {
   if (!Number.isInteger(size) || size < 1) return fail(`batch size ${size}`);
   const max = ops.maxBatches ?? Infinity;
   if (max !== Infinity && (!Number.isInteger(max) || max < 1)) return fail(`batch limit ${max}`);
@@ -1213,6 +1270,7 @@ export const runBatches = <T, P extends { head: string }>(
   const outcomes: Outcome[] = [];
   let fatal: string | null = null;
   let outage: string | null = null;
+  let outagePrs: readonly number[] = [];
   const done = (o: Outcome): void => {
     outcomes.push(o);
     ops.onOutcome(outcomes);
@@ -1331,7 +1389,7 @@ export const runBatches = <T, P extends { head: string }>(
     }
   } catch (error) {
     if (!(error instanceof Fatal)) throw error;
-    if (error instanceof CiOutage) outage = error.message;
+    if (error instanceof CiOutage) [outage, outagePrs] = [error.message, error.prs];
     else {
       fatal = error.message;
       if (at !== null) outcomes.push({ entry: at, result: 'failed', step: 'fatal', detail: fatal });
@@ -1342,7 +1400,7 @@ export const runBatches = <T, P extends { head: string }>(
   }
   // After an outage every PR with no outcome stays queued (those of the batch it hit included), in queue order.
   const stopped = outage !== null ? entries.filter((e) => !outcomes.some((o) => o.entry.pr === e.pr)) : fatal === null ? queue : [];
-  return { outcomes, fatal, outage, exit: fatal === null && outage === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1, stopped, stopAsked, limited };
+  return { outcomes, fatal, outage, outagePrs, exit: fatal === null && outage === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1, stopped, stopAsked, limited };
 };
 
 export const statusText = (o: {

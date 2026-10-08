@@ -474,7 +474,7 @@ export function awaitRegenOnCi(step: string, d: Dispatched, o: CiOptions & { rea
  *   keyed by platform, lanes-host needs Xcode), so the driver stops and no PR is blamed.
  * A LandFailure (the regen itself failed on CI) is the PR's, as a failed local regen is. Returns where the regen ran.
  */
-export function landRegen(o: { readonly mode: CiMode; readonly mac: boolean; readonly ready: () => boolean; readonly ci: () => void; readonly local: () => void; readonly log: (line: string) => void }): CiMode {
+export function landRegen(o: { readonly prs: readonly number[]; readonly mode: CiMode; readonly mac: boolean; readonly ready: () => boolean; readonly ci: () => void; readonly local: () => void; readonly log: (line: string) => void }): CiMode {
   if (o.mode === 'local') {
     o.local();
     return 'local';
@@ -489,8 +489,8 @@ export function landRegen(o: { readonly mode: CiMode; readonly mac: boolean; rea
       why = `GitHub Actions did not run the regen (${e.message})`;
     }
   } else why = `master's ${REGEN_WORKFLOW_FILE} has no patch mode yet`;
-  if (o.mode === 'ci-only') throw new CiOutage(`LAND_REGEN=ci-only: ${why}. The driver stops; no PR is blamed`);
-  if (!o.mac) throw new CiOutage(`LAND_REGEN=ci: ${why}; this host is not a Mac, so no local regen can stand in for it. The driver stops; no PR is blamed`);
+  if (o.mode === 'ci-only') throw new CiOutage(`LAND_REGEN=ci-only: ${why}. The driver stops; no PR is blamed`, o.prs);
+  if (!o.mac) throw new CiOutage(`LAND_REGEN=ci: ${why}; this host is not a Mac, so no local regen can stand in for it. The driver stops; no PR is blamed`, o.prs);
   o.log(`  !!! LAND_REGEN=ci: ${why}; running pnpm regen locally`);
   o.local();
   return 'local';

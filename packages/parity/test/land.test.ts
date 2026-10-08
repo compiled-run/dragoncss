@@ -733,7 +733,7 @@ describe('batched landing (runBatches with fakes)', () => {
   });
 
   it('stops on a CI outage (ci-only) blaming no PR: the batch it hit and the rest of the queue stay queued', () => {
-    const outage = (where: string) => new CiOutage(`LAND_TEST=ci-only: GitHub Actions did not run the full test (${where})`);
+    const outage = (where: string) => new CiOutage(`LAND_TEST=ci-only: GitHub Actions did not run the full test (${where})`, []);
     // While proving the second batch's top: the first batch landed, nothing of the second is failed or labelled.
     const h = harness();
     const r = runBatches([1, 2, 3, 4, 5].map(e), 2, {
@@ -771,17 +771,19 @@ describe('batched landing (runBatches with fakes)', () => {
   });
 
   it('carries a builder\'s CI outage to the driver as an outage, and a plain Fatal as a Fatal', () => {
-    expect(parsePrepared(serializeFatal(new CiOutage('LAND_REGEN=ci-only: no run')))).toEqual({ fatal: 'LAND_REGEN=ci-only: no run', outage: true });
-    expect(parsePrepared(serializeFatal(new Fatal('master is red')))).toEqual({ fatal: 'master is red', outage: false });
-    expect(parsePrepared(JSON.stringify({ fatal: 'old builder' }))).toEqual({ fatal: 'old builder', outage: false });
+    // The PRs the outage is attributed to travel with it from the builder.
+    expect(parsePrepared(serializeFatal(new CiOutage('LAND_REGEN=ci-only: no run', [4, 5])))).toEqual({ fatal: 'LAND_REGEN=ci-only: no run', outage: true, prs: [4, 5] });
+    expect(() => parsePrepared(JSON.stringify({ fatal: 'x', outage: true, prs: ['4'] }))).toThrow(/outage PRs are malformed/);
+    expect(parsePrepared(serializeFatal(new Fatal('master is red')))).toEqual({ fatal: 'master is red', outage: false, prs: [] });
+    expect(parsePrepared(JSON.stringify({ fatal: 'old builder' }))).toEqual({ fatal: 'old builder', outage: false, prs: [] });
     expect(() => parsePrepared(JSON.stringify({ fatal: 'x', outage: 'yes' }))).toThrow('outage is not a boolean');
     const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
     expect(src).toContain('if (error instanceof Fatal) put(serializeFatal(error));');
-    expect(src).toContain("throw round.outage ? new CiOutage(`while preparing the next batch: ${round.fatal}`) : new Fatal(");
+    expect(src).toContain("throw round.outage ? new CiOutage(`while preparing the next batch: ${round.fatal}`, round.prs) : new Fatal(");
     const h = harness();
-    const r = runBatches([1, 2, 3].map(e), 2, { ...h.ops, next: { ...h.next(), collect: () => { throw new CiOutage('while preparing the next batch: LAND_DEVICES=ci-only: no run'); } } });
+    const r = runBatches([1, 2, 3].map(e), 2, { ...h.ops, next: { ...h.next(), collect: () => { throw new CiOutage('while preparing the next batch: LAND_DEVICES=ci-only: no run', [3]); } } });
     expect(results(r)).toEqual(['#1 landed', '#2 landed']);
-    expect(r).toMatchObject({ outage: 'while preparing the next batch: LAND_DEVICES=ci-only: no run', fatal: null });
+    expect(r).toMatchObject({ outage: 'while preparing the next batch: LAND_DEVICES=ci-only: no run', outagePrs: [3], fatal: null });
     expect(r.stopped.map((x) => x.pr)).toEqual([3]);
   });
 
@@ -992,7 +994,7 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(proveRestingMaster({ pr: 7, head: sha('d') }, prove(new LandFailure('install', 'ECONNRESET')), clear, (l) => logs.push(l))).toBe(false);
     expect(logs.at(-1)).toMatch(/^!!! could not prove master: .*install/);
     // A CI outage (ci-only) stops the driver before any batch rather than carrying on into the same outage.
-    expect(() => proveRestingMaster({ pr: 7, head: sha('d') }, prove(new CiOutage('LAND_TEST=ci-only: no run')), clear, (l) => logs.push(l))).toThrow(CiOutage);
+    expect(() => proveRestingMaster({ pr: 7, head: sha('d') }, prove(new CiOutage('LAND_TEST=ci-only: no run', [])), clear, (l) => logs.push(l))).toThrow(CiOutage);
   });
 
   it('clears the unproved record only when master is on a proven tree', () => {
@@ -1075,7 +1077,7 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(back).toEqual(round);
     if ('fatal' in back) throw new Error('unexpected');
     expect(back.results[0]).toMatchObject({ failure: expect.any(LandFailure) });
-    expect(parsePrepared(JSON.stringify({ fatal: 'x' }))).toEqual({ fatal: 'x', outage: false });
+    expect(parsePrepared(JSON.stringify({ fatal: 'x' }))).toEqual({ fatal: 'x', outage: false, prs: [] });
     const bad = (patch: object): (() => unknown) => () => parsePrepared(JSON.stringify({ ...JSON.parse(serializePrepared(round)), ...patch }));
     expect(bad({ good: 2 })).toThrow(/good/);
     expect(bad({ culprit: null })).toThrow(/without a culprit/);
@@ -1568,7 +1570,8 @@ describe('LAND_REGEN (every regen of a landing tree on CI)', () => {
     const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
     // The only heavy pnpm regen is regenTree's local branch; the four call sites (and the one-by-one fallback) use regenTree.
     expect([...src.matchAll(/heavy\([^)]*REGEN\)/g)].length).toBe(1);
-    for (const site of ["regenTree('regen', 'regen')", "regenTree('regen-carried', 'regen')", "regenTree('regen-after-devices', 'regen-after-devices')", "regenTree('regen-records', 'regen')"]) expect(src, site).toContain(site);
+    // Each passes the PRs of the tree it regenerates (attribute), whom an outage of it counts against.
+    for (const site of ["regenTree('regen', 'regen', attribute('regen',", "regenTree('regen-carried', 'regen', attribute('regen',", "regenTree('regen-after-devices', 'regen-after-devices', attribute('regen',", "regenTree('regen-records', 'regen', attribute('regen',"]) expect(src, site).toContain(site);
     const prepare = src.slice(src.indexOf('const preparePosition'), src.indexOf('const awaitPrepared'));
     expect(prepare.indexOf("if (REGEN_ON !== 'local')")).toBeGreaterThan(-1);
     expect(prepare.indexOf("if (REGEN_ON !== 'local')")).toBeLessThan(prepare.indexOf('spawn('));
@@ -1587,6 +1590,7 @@ describe('LAND_REGEN (every regen of a landing tree on CI)', () => {
       const calls: string[] = [];
       const go = () =>
         landRegen({
+          prs: [],
           mode: o.mode ?? 'ci',
           mac: o.mac,
           ready: () => (calls.push('ready'), o.ready ?? true),
@@ -1799,7 +1803,7 @@ describe('ci-only: every heavy step on GitHub runners, never here (LAND_CI=only)
     const go = (o: { mode: 'ci' | 'ci-only'; mac: boolean; ready?: boolean; fail?: Error }) => {
       const calls: string[] = [];
       const f = () =>
-        landRegen({ mode: o.mode, mac: o.mac, ready: () => o.ready ?? true, ci: () => { calls.push('ci'); if (o.fail) throw o.fail; }, local: () => void calls.push('local'), log: (l) => void calls.push(l) });
+        landRegen({ prs: [], mode: o.mode, mac: o.mac, ready: () => o.ready ?? true, ci: () => { calls.push('ci'); if (o.fail) throw o.fail; }, local: () => void calls.push('local'), log: (l) => void calls.push(l) });
       return { calls, f };
     };
     it('stops the driver as a CI outage under ci-only, even on a Mac, with no local regen', () => {

@@ -6,9 +6,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { SETUP_GIT_CONFIG } from '../../../scripts/floor-merge.ts';
-import { type BatchOps, type Entry, runBatches, patchHasSymlink, readInTree, removeInTree, symlinkEntries, treeCodeRefusal, trustedGitConfig, writeInTree } from '../../../scripts/land-lib.ts';
+import { attribute, CI_STAGES, type CiStage, CiOutage, Fatal, LandFailure, Trees, type BatchOps, type Entry, runBatches, patchHasSymlink, readInTree, removeInTree, symlinkEntries, treeCodeRefusal, trustedGitConfig, writeInTree } from '../../../scripts/land-lib.ts';
 import { applyRegenPatch, VERDICT_STEP, checksBranch, checksFiles, checksTitle, checksWorkflow, parseChecksResult, runIdOf, scratchRef, staleScratchBranches, titleOf } from '../../../scripts/land-devices-ci.ts';
 import {
+  recordOutage,
   clearOutage,
   outageLedger,
   outageStreak,
@@ -150,6 +151,16 @@ describe('land.yml: the job that holds LAND_TOKEN runs no tree code', () => {
     expect(redispatch).toMatch(/needs: land/);
     expect(redispatch).toMatch(/!cancelled\(\)/);
     expect(stepsOf(redispatch).map(runOf).filter((r) => r !== null)).toEqual(['node scripts/land-actions.ts redispatch "$RUNNER_TEMP/land-logs/handoff.json"']);
+  });
+
+  it('ci.yml\'s checks job ends within its limit, well before the driver stops waiting for it (a hang is a failed check)', () => {
+    const ci = readFileSync(repoPath('.github/workflows/ci.yml'), 'utf8');
+    const job = jobsOf(ci).get('checks')!;
+    const limit = Number(/\n {4}timeout-minutes: (\d+)\n/.exec(job)?.[1]);
+    const wait = Number(/seconds\('LAND_CI_WAIT', (\d+)\)/.exec(readFileSync(repoPath('scripts/land.ts'), 'utf8'))?.[1]);
+    expect(limit).toBeGreaterThanOrEqual(15);
+    // Room past the limit for the run's queueing and the driver's 30 s polls.
+    expect(limit * 60 * 2).toBeLessThanOrEqual(wait);
   });
 
   it('land-checks.yml has no secret and reads only', () => {
@@ -594,7 +605,7 @@ describe('a PR whose own CI runs keep ending without a verdict is ejected (LAND_
       return '{}';
     };
     const ledger = (run: string) => outageLedger({ run, write: (sha, kind, why) => writeOutage(gh, 'o/r', sha, run, kind, why, `https://github.com/o/r/actions/runs/${run}`) });
-    return { ledger, streak: (pr: number) => outageStreak([...(statuses.get(shaOf(pr)) ?? [])].reverse(), shaOf(pr), trusted) };
+    return { ledger, streak: (pr: number, exceptRun?: string) => outageStreak([...(statuses.get(shaOf(pr)) ?? [])].reverse(), shaOf(pr), trusted, exceptRun) };
   };
   const EJECT = parseOutageEject(undefined);
 
@@ -638,149 +649,239 @@ describe('a PR whose own CI runs keep ending without a verdict is ejected (LAND_
     return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
   };
   type Result = 'pass' | 'fail' | 'outage' | 'killed';
-  type Phase = 'prepared regen' | 'build' | 'land-checks' | 'devices' | 'full test' | 'bisect prefix';
+  class Killed extends Fatal {}
   /**
-   * The driver's land/outage handling, run by run, through the real ledger, writers and streak: admission (ejecting at the limit,
-   * solo for a PR with a streak), each member's phases, the full test of the top and the bisect prefixes, publish. `result`
-   * decides each phase's outcome for the PRs whose tree it runs. Alongside, the expected count by the rule: +1 for a run with an
-   * outage touching the PR or killed with it in, no verdict; 0 on a verdict; else unchanged.
+   * Landing runs through the real runBatches (admission with the solo rule, positions, the full test and its bisect, publish),
+   * whose CI stages are the driver's (CI_STAGES), each attributed with the driver's own `attribute` over a real `Trees`; an
+   * outage is a CiOutage carrying those PRs, recorded at the run's end with the driver's `recordOutage`, then the ledger's `end`.
+   * `result` decides each CI stage for the PRs it runs; `killed` ends the run with no end at all (a runner killed mid-run).
+   * Alongside, the expected count by the rule: +1 for a run with an outage naming the PR, or killed with it admitted, and no
+   * verdict; 0 on a verdict; else unchanged.
    */
-  const simulate = (o: { prs: number[]; runs: number; size: number; result: (phase: Phase, tree: number[], run: number) => Result }) => {
+  const simulate = (o: { prs: number[]; runs: number; size: number; result: (stage: CiStage, prs: readonly number[], run: number) => Result; onStage?: (stage: CiStage, prs: readonly number[]) => void }) => {
     const s = stores();
     const want = new Map<number, number>(o.prs.map((p) => [p, 0]));
     const ejected: number[] = [];
     const merged: number[] = [];
     const failed: number[] = [];
-    let queue = [...o.prs];
     const problems: string[] = [];
-    for (let run = 1; run <= o.runs && queue.length > 0; run++) {
+    const e = (pr: number): Entry => ({ branch: `b${pr}`, pr, clean: shaOf(pr) });
+    for (let run = 1; run <= o.runs; run++) {
+      const queue = o.prs.filter((p) => !merged.includes(p) && !failed.includes(p) && !ejected.includes(p));
+      if (queue.length === 0) break;
       const ledger = s.ledger(`r${run}.1`);
-      const touched = new Set<number>();
-      const settled = new Set<number>();
-      const verdict = new Set<number>();
-      let killed = false;
-      let stopped = false;
-      const outage = (tree: number[], phase: Phase): void => {
-        for (const p of tree) (ledger.outage(p, shaOf(p), `${phase}: outage`), settled.add(p));
-        stopped = true;
+      const trees = new Trees();
+      const heads = new Map<number, string>();
+      const verdicts = new Set<number>();
+      const stage = (st: CiStage, prs: number[]): 'pass' | 'fail' => {
+        o.onStage?.(st, prs);
+        const r = o.result(st, prs, run);
+        if (r === 'killed') throw new Killed('killed');
+        if (r === 'outage') throw new CiOutage(`${st}: outage`, prs);
+        return r;
       };
-      const pass = (tree: number[], why: string): void => {
-        for (const p of tree) (ledger.verdict(p, shaOf(p), why), settled.add(p), verdict.add(p));
+      const verdict = (pr: number, why: string): void => {
+        if (!heads.has(pr)) return;
+        ledger.verdict(pr, heads.get(pr)!, why);
+        verdicts.add(pr);
       };
-      // Admission, as runBatches's prepareRound does it with the driver's solo and its eject.
-      const batch: number[] = [];
-      while (batch.length < o.size && queue.length > 0) {
-        const p = queue[0]!;
-        const count = s.streak(p).count;
-        if (count !== want.get(p)) problems.push(`run ${run}: #${p} counts ${count}, the rule says ${want.get(p)}`);
-        if (count >= EJECT) {
-          queue.shift();
-          ejected.push(p);
-          continue;
-        }
-        if (count > 0 && batch.length > 0) break;
-        queue.shift();
-        batch.push(p);
-        ledger.admitted(p, shaOf(p));
-        touched.add(p);
-        if (count > 0) break;
+      const ops: BatchOps<{ pr: number }, { head: string }> = {
+        // As the driver does: the run asking is left out (a PR requeued in it is admitted again).
+        admit: (x) => {
+          const count = s.streak(x.pr, `r${run}.1`).count;
+          if (count !== want.get(x.pr)) problems.push(`run ${run}: #${x.pr} counts ${count}, the rule says ${want.get(x.pr)}`);
+          if (count >= EJECT) throw new LandFailure('ci-outage', 'ejected');
+          heads.set(x.pr, shaOf(x.pr));
+          ledger.admitted(x.pr, shaOf(x.pr));
+          if (stage('admission-ci', attribute('admission-ci', { trees, pr: x.pr })) === 'fail') throw new LandFailure('ci-before', 'CI failed');
+          return { ticket: { pr: x.pr } };
+        },
+        solo: (x) => s.streak(x.pr, `r${run}.1`).count > 0,
+        base: () => 'm',
+        buildAll: (_b, items) => {
+          for (let k = 1; k <= items.length; k++) stage('prepared-regen', attribute('prepared-regen', { trees, batch: items.map((it) => it.entry.pr), k }));
+          return null;
+        },
+        build: (prev, x) => {
+          for (const st of ['regen', 'tree-checks', 'devices'] as const) if (stage(st, attribute(st, { trees, prev, pr: x.pr })) === 'fail') throw new LandFailure(st, `${st} failed`);
+          const head = `${prev}+${x.pr}`;
+          trees.add(head, prev, x.pr);
+          return { head };
+        },
+        verify: () => {},
+        prove: (p) => {
+          const prs = attribute('full-test', { trees, head: p.head });
+          if (stage('full-test', prs) === 'fail') throw new LandFailure('test', 'a test failed');
+        },
+        proveMaster: () => {},
+        publish: (x, p) => {
+          if (stage('publish-ci', attribute('publish-ci', { trees, head: p.head })) === 'fail') throw new LandFailure('ci', 'CI failed');
+          verdict(x.pr, 'merged');
+          merged.push(x.pr);
+          return 'merged';
+        },
+        onFail: (x, f) => {
+          if (f.step === 'ci-outage') return void ejected.push(x.pr);
+          verdict(x.pr, `failed at ${f.step}`);
+          failed.push(x.pr);
+        },
+        onOutcome: () => {},
+        log: () => {},
+      };
+      const r = runBatches(queue.map(e), o.size, ops);
+      const killed = r.fatal === 'killed';
+      if (r.fatal !== null && !killed) problems.push(`run ${run}: fatal ${r.fatal}`);
+      if (!killed) {
+        recordOutage(ledger, heads, r.outage === null ? [] : r.outagePrs, r.outage ?? '');
+        ledger.end();
       }
-      // Each member's phases on the chain; a failure ejects it (a verdict), and the chain goes on without it.
-      const chain: number[] = [];
-      for (const p of batch) {
-        if (stopped || killed) break;
-        let ok = true;
-        for (const phase of ['prepared regen', 'build', 'land-checks', 'devices'] as Phase[]) {
-          const r = o.result(phase, [p], run);
-          if (r === 'killed') killed = true;
-          else if (r === 'outage') outage([p], phase);
-          else if (r === 'fail') {
-            ledger.verdict(p, shaOf(p), `failed at ${phase}`);
-            settled.add(p);
-            verdict.add(p);
-            failed.push(p);
-            ok = false;
-          }
-          if (killed || stopped || !ok) break;
-        }
-        if (ok && !killed && !stopped) chain.push(p);
+      for (const p of heads.keys()) {
+        if (verdicts.has(p)) want.set(p, 0);
+        else if (killed || (r.outage !== null && r.outagePrs.includes(p))) want.set(p, want.get(p)! + 1);
       }
-      // The full test of the top; on a failure, the bisect: prefixes until the first that fails, whose last PR is the culprit.
-      let landed: number[] = [];
-      if (!killed && !stopped && chain.length > 0) {
-        const top = o.result('full test', chain, run);
-        if (top === 'killed') killed = true;
-        else if (top === 'outage') outage(chain, 'full test');
-        else if (top === 'pass') (pass(chain, 'full test passed'), (landed = chain));
-        else {
-          for (let k = 1; k <= chain.length; k++) {
-            const prefix = chain.slice(0, k);
-            const r = k === chain.length ? 'fail' : o.result('bisect prefix', prefix, run);
-            if (r === 'killed') {
-              killed = true;
-              break;
-            }
-            if (r === 'outage') {
-              outage(prefix, 'bisect prefix');
-              break;
-            }
-            if (r === 'fail') {
-              pass(prefix.slice(0, -1), 'full test passed');
-              landed = prefix.slice(0, -1);
-              const culprit = prefix.at(-1)!;
-              ledger.verdict(culprit, shaOf(culprit), 'failed at test');
-              settled.add(culprit);
-              verdict.add(culprit);
-              failed.push(culprit);
-              // The PRs after the culprit go back to the queue, with no verdict.
-              queue = [...chain.slice(k), ...queue];
-              break;
-            }
-          }
-        }
-      }
-      for (const p of landed) (ledger.verdict(p, shaOf(p), 'merged'), merged.push(p));
-      if (!killed) ledger.end();
-      // The rule, applied to the expected counts; a PR not finished goes back to the queue's front.
-      for (const p of touched) {
-        if (verdict.has(p)) want.set(p, 0);
-        else if (killed || settled.has(p)) want.set(p, want.get(p)! + 1);
-      }
-      const done = new Set([...merged, ...failed]);
-      const back = batch.filter((p) => !done.has(p) && !queue.includes(p));
-      queue = [...back, ...queue.filter((p) => !done.has(p))];
     }
     for (const p of o.prs) if (s.streak(p).count !== want.get(p)) problems.push(`at the end: #${p} counts ${s.streak(p).count}, the rule says ${want.get(p)}`);
-    return { problems, ejected, merged, failed };
+    return { problems, ejected, merged, failed, s };
   };
 
-  it('property: random runs of random phases count exactly by the rule, reset on verdicts and eject at the limit (seeded)', () => {
+  it('attributes an outage at every CI stage to exactly the PRs whose code it ran, through runBatches and recordOutage', () => {
+    // A batch of #1 #2 #3; the outage hits the stage for #2 (or the batch top for the full test). Expected by hand.
+    const expected: Record<CiStage, number[]> = { 'admission-ci': [2], 'prepared-regen': [1, 2], regen: [1, 2], 'tree-checks': [1, 2], devices: [1, 2], 'full-test': [1, 2, 3], 'publish-ci': [1, 2] };
+    expect(Object.keys(expected).sort()).toEqual([...CI_STAGES].sort());
+    for (const where of CI_STAGES) {
+      // The call for #2 (the stage's second call in the run; the full test's first, at the batch top), found by order, not by
+      // the PRs it is given, so a wrong attribution cannot dodge the injection.
+      let calls = 0;
+      let injected = false;
+      const out = simulate({
+        prs: [1, 2, 3],
+        runs: 1,
+        size: 3,
+        result: (st) => {
+          if (st !== where) return 'pass';
+          calls++;
+          if (calls !== (where === 'full-test' ? 1 : 2)) return 'pass';
+          injected = true;
+          return 'outage';
+        },
+      });
+      expect(injected, where).toBe(true);
+      expect(out.problems, where).toEqual([]);
+      const counted = [1, 2, 3].filter((p) => out.s.streak(p).count === 1);
+      // A PR merged before the outage got its verdict in this run, which the outage does not undo.
+      expect(counted, where).toEqual(expected[where].filter((p) => !out.merged.includes(p)));
+      expect(counted.length, where).toBeGreaterThan(0);
+      expect([1, 2, 3].every((p) => out.s.streak(p).count <= 1), where).toBe(true);
+    }
+  });
+
+  it('property: random runs with random CI stage results count exactly by the rule, reset on verdicts and eject at the limit (seeded)', () => {
     for (let seed = 1; seed <= 3000; seed++) {
       const r = rng(seed);
       const pick = <T>(xs: readonly T[]): T => xs[Math.floor(r() * xs.length)]!;
       const prs = Array.from({ length: 1 + Math.floor(r() * 5) }, (_, i) => i + 1);
-      const weights: Result[] = ['pass', 'pass', 'pass', 'pass', 'fail', 'outage', 'outage', 'killed'];
+      const weights: Result[] = ['pass', 'pass', 'pass', 'pass', 'pass', 'pass', 'fail', 'outage', 'outage', 'killed'];
       const out = simulate({ prs, runs: 12, size: 1 + Math.floor(r() * 4), result: () => pick(weights) });
       expect(out.problems, `seed ${seed}`).toEqual([]);
     }
   });
 
-  it('property: a PR that kills its runner in one phase is ejected within a bounded number of runs; every other PR lands (seeded)', () => {
-    const phases: Phase[] = ['prepared regen', 'build', 'land-checks', 'devices', 'full test', 'bisect prefix'];
+  it('property: a PR that stops one CI stage is ejected (or lands where it does no harm); every other PR lands (seeded)', () => {
     for (let seed = 1; seed <= 2000; seed++) {
       const r = rng(seed);
       const prs = Array.from({ length: 2 + Math.floor(r() * 4) }, (_, i) => i + 1);
       const culprit = prs[Math.floor(r() * prs.length)]!;
-      // It stops only one phase, the one a fixed phase count cannot see; either as an outage or by killing the run.
-      const where = phases[Math.floor(r() * phases.length)]!;
+      const where = CI_STAGES[Math.floor(r() * CI_STAGES.length)]!;
       const how: Result = r() < 0.5 ? 'outage' : 'killed';
-      const size = 1 + Math.floor(r() * 4);
-      const out = simulate({ prs, runs: 4 * prs.length + 6, size, result: (phase, tree) => (tree.includes(culprit) && (phase === where || (where === 'bisect prefix' && phase === 'full test')) ? how : 'pass') });
-      expect(out.problems, `seed ${seed}`).toEqual([]);
-      // (c, e) the culprit, and only it, is ejected; (d) every other PR gets its verdict and lands.
-      expect(out.ejected, `seed ${seed}: ${where} ${how}, culprit #${culprit}`).toEqual([culprit]);
-      expect(out.merged.sort(), `seed ${seed}`).toEqual(prs.filter((p) => p !== culprit));
+      const out = simulate({ prs, runs: 4 * prs.length + 6, size: 1 + Math.floor(r() * 4), result: (st, ran) => (st === where && ran.includes(culprit) ? how : 'pass') });
+      const why = `seed ${seed}: #${culprit} stops ${where} by ${how}`;
+      expect(out.problems, why).toEqual([]);
+      // (d) every other PR gets its verdict and lands; (c, e) the culprit is ejected, unless its stage never runs once it is
+      // alone (a prepared regen runs only in a batch of two or more), where it lands without stalling the queue.
+      expect(out.merged.filter((p) => p !== culprit).sort(), why).toEqual(prs.filter((p) => p !== culprit));
+      expect(out.ejected.filter((p) => p !== culprit), why).toEqual([]);
+      if (where === 'prepared-regen') expect(out.ejected.length + out.merged.filter((p) => p === culprit).length, why).toBe(1);
+      else expect(out.ejected, why).toEqual([culprit]);
     }
+  });
+
+  it('every CI dispatch, wait and outage in land.ts is attributed through `attribute` to a stage the injection test covers', async () => {
+    const ts = (await import('typescript')).default;
+    const parse = (f: string) => ts.createSourceFile(f, readFileSync(repoPath(`scripts/${f}`), 'utf8'), ts.ScriptTarget.Latest, true);
+    const lib = parse('land-devices-ci.ts');
+    const land = parse('land.ts');
+    const walk = (n: import('typescript').Node, f: (n: import('typescript').Node) => void): void => {
+      f(n);
+      n.forEachChild((c) => walk(c, f));
+    };
+    // The CI primitives: every function of land-devices-ci.ts that dispatches or waits on a run (directly or through another),
+    // and land.ts's own check-runs read.
+    const bodies = new Map<string, string>();
+    walk(lib, (n) => {
+      if (ts.isFunctionDeclaration(n) && n.name) bodies.set(n.name.text, n.getText());
+      if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer && ts.isArrowFunction(n.initializer)) bodies.set(n.name.text, n.getText());
+    });
+    const prims = new Set(['dispatchOnCi', 'awaitOnCi']);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const [name, body] of bodies) {
+        // The body after its signature: a call to a primitive there makes this one a primitive too.
+        const inner = body.slice(body.indexOf('{'));
+        if (!prims.has(name) && [...prims].some((p) => new RegExp(`\\b${p}\\(`).test(inner))) {
+          prims.add(name);
+          grew = true;
+        }
+      }
+    }
+    prims.add('checkRuns');
+    expect([...prims].sort()).toEqual(['awaitOnCi', 'awaitRegenOnCi', 'checkRuns', 'dispatchOnCi', 'runDevicesOnCi', 'runOnCi']);
+    expect(land.getText().match(/check-runs/g)).toHaveLength(1); // only inside checkRuns
+    // land.ts's top-level functions, their parameters, and the consts each declares from attribute().
+    type Fn = { name: string; params: string[]; attributed: Set<string>; node: import('typescript').Node };
+    const fns: Fn[] = [];
+    walk(land, (n) => {
+      if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer && ts.isArrowFunction(n.initializer) && n.parent.parent.parent === land) {
+        const attributed = new Set<string>();
+        walk(n.initializer, (c) => {
+          if (ts.isVariableDeclaration(c) && ts.isIdentifier(c.name) && c.initializer && /^attribute\('/.test(c.initializer.getText())) attributed.add(c.name.text);
+        });
+        fns.push({ name: n.name.text, params: n.initializer.parameters.map((p) => p.name.getText()), attributed, node: n.initializer });
+      }
+    });
+    const fnOf = (n: import('typescript').Node): Fn | undefined => fns.find((f) => n.pos >= f.node.pos && n.end <= f.node.end);
+    const withPrs = new Map(fns.filter((f) => f.params.includes('prs')).map((f) => [f.name, f.params.indexOf('prs')]));
+    const problems: string[] = [];
+    const stages = new Set<string>();
+    // An attribution argument: attribute('<stage>', ...), the enclosing function's own prs, a const from attribute(), or a
+    // builder's attributed outage passed on.
+    const attributed = (arg: import('typescript').Node | undefined, at: import('typescript').Node): boolean => {
+      const text = arg?.getText() ?? '';
+      const m = /^attribute\('([\w-]+)'/.exec(text);
+      if (m) return stages.add(m[1]!), true;
+      const f = fnOf(at);
+      return text === 'round.prs' || text === 'o.prs' || (f !== undefined && ((text === 'prs' && f.params.includes('prs')) || f.attributed.has(text)));
+    };
+    // The functions that only dispatch or wait, whose CiUnavailable every caller turns into an attributed outage.
+    const relays = new Set(['dispatchRegen', 'finishRegen', 'checkRuns', 'dryRun']);
+    walk(land, (n) => {
+      if (ts.isNewExpression(n) && n.expression.getText() === 'CiOutage' && !attributed(n.arguments?.[1], n)) problems.push(`new CiOutage in ${fnOf(n)?.name}: ${n.arguments?.[1]?.getText()}`);
+      if (!ts.isCallExpression(n) || !ts.isIdentifier(n.expression)) return;
+      const callee = n.expression.text;
+      const f = fnOf(n);
+      if (prims.has(callee) && f !== undefined && !withPrs.has(f.name) && f.attributed.size === 0 && !relays.has(f.name)) problems.push(`${callee} in ${f.name}, which takes no prs`);
+      if (withPrs.has(callee) && !attributed(n.arguments[withPrs.get(callee)!], n)) problems.push(`${callee}(...) in ${f?.name} passes ${n.arguments[withPrs.get(callee)!]?.getText()}`);
+      if ((callee === 'dispatchRegen' || callee === 'finishRegen') && f !== undefined && !withPrs.has(f.name) && !['preparePosition', 'regenTree'].includes(f.name)) problems.push(`${callee} in ${f.name}`);
+    });
+    // A relay's callers: regenTree and awaitPrepared take prs; preparePosition only dispatches (the outage comes at awaitPrepared).
+    expect(withPrs.has('regenTree') && withPrs.has('awaitPrepared') && withPrs.has('waitCi') && withPrs.has('proveCommit') && withPrs.has('treeChecks')).toBe(true);
+    expect(problems).toEqual([]);
+    // Every stage the code attributes is one the injection test runs, and every one of those is used.
+    for (const m of land.getText().matchAll(/\battribute\('([\w-]+)'/g)) stages.add(m[1]!);
+    expect([...stages].sort()).toEqual([...CI_STAGES].sort());
+    // Outages are recorded in one place: the run's end.
+    const src = land.getText();
+    expect(src.match(/ledger\.outage\(/g)).toBeNull();
+    expect(src.match(/recordOutage\(/g)).toHaveLength(1);
   });
 
   it('writes the mark on the PR head as a commit status, its run and kind first', () => {
@@ -846,28 +947,25 @@ describe('a PR whose own CI runs keep ending without a verdict is ejected (LAND_
     expect(trace.filter((t) => t.startsWith('batch'))).toEqual(['batch #1', 'batch #2']);
   });
 
-  it('is wired into the driver: admission, outages where a PR\'s tree runs, verdicts, and the run\'s end', () => {
+  it('is wired into the driver: admission, verdicts, the one place outages are recorded, and the run\'s end', () => {
     const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
-    expect(src).toContain('const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => tracked(e, t, () => buildPositionHere(prev, e, t, k));');
-    expect(src).toContain('=> tracked(it.entry, it.ticket, () => assemblePositionHere(prev, it, k, h));');
-    expect(src).toMatch(/if \(error instanceof CiOutage\) ledger\.outage\(e\.pr, t\.prHead,/);
-    expect(src).toMatch(/if \(error instanceof CiOutage\) ledger\.outage\(it\.entry\.pr, it\.ticket\.prHead, `the prepared regen/);
-    expect(src).toMatch(/if \(error instanceof CiOutage\) for \(const m of members\) ledger\.outage\(m\.pr, m\.prHead,/);
-    // Verdicts: a pass of the full test of a tree holding it, a failure (but an outage ejection), a merge.
-    expect(src).toMatch(/for \(const m of members\) ledger\.verdict\(m\.pr, m\.prHead, `the full test of the tree of \$\{prs\} passed`\);/);
+    // A passed full test is not a verdict: the landing commit's CI wait can still hit an outage that must count.
+    expect(src).not.toMatch(/full test of the tree of[^\n]*passed/);
     expect(src).toMatch(/if \(head !== undefined && f\.step !== 'ci-outage'\) ledger\.verdict\(e\.pr, head,/);
     expect(src).toMatch(/ledger\.verdict\(e\.pr, t\.prHead, 'merged'\);/);
     expect(src).toMatch(/ledger\.admitted\(e\.pr, pr\.headOid\);/);
-    expect(src).toMatch(/\n {2}ledger\.end\(\);\n/);
-    // No phase's success writes anything; nothing else writes the context.
-    expect(src.match(/ledger\.(verdict|outage|admitted|end)\(/g)!.length).toBe(8);
+    expect(src).toMatch(/recordOutage\(ledger, admittedHead, result\.outage === null \? \[\] : result\.outagePrs, result\.outage \?\? ''\);\n {2}ledger\.end\(\);\n/);
     expect(src.match(/writeOutage\(/g)).toHaveLength(1);
-    // The Mac's run id holds the process start time, so a reused pid is another run.
     expect(src).toMatch(/\$\{process\.pid\}\.\$\{Math\.round\(Date\.now\(\) \/ 1000 - process\.uptime\(\)\)\}/);
     expect(src).toMatch(/if \(streak\.count >= OUTAGE_EJECT\) throw new LandFailure\('ci-outage'/);
-    expect(src).toMatch(/throw new LandFailure\('checks', `the results of the tree checks \$\{r\.url\} do not read/);
-    expect(src).toMatch(/if \(error instanceof PatchRefused\) throw new LandFailure\('checks'/);
-    expect(src).toMatch(/chain = built\.map\(/);
-    expect(src).toMatch(/return readOutageStreak\(gh, REPO, pr\.headOid, PROOF_WRITERS\)\.count > 0;/);
+    expect(src).toMatch(/TREES\.add\(head, prev, e\.pr\);/);
+    // The run asking is left out of the count (a PR requeued in it is admitted again), at admission and for solo.
+    expect(src).toMatch(/return readOutageStreak\(gh, REPO, pr\.headOid, PROOF_WRITERS, RUN_TAG\)\.count > 0;/);
+    expect(src).toMatch(/const streak = readOutageStreak\(gh, REPO, pr\.headOid, PROOF_WRITERS, RUN_TAG\);/);
+    const st = stores();
+    const r1 = st.ledger('r1.1');
+    r1.admitted(7, shaOf(7));
+    expect(st.streak(7).count).toBe(1);
+    expect(st.streak(7, 'r1.1').count).toBe(0);
   });
 });

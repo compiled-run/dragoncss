@@ -15,6 +15,10 @@ jobs:
   checks:
     # ubuntu-24.04 x86_64, the image of Claude Code cloud sessions, so the cloud-setup steps below prove their bootstrap.
     runs-on: ubuntu-24.04
+    # A run takes 3 to 5 minutes (install, typecheck, the platform-free and registry suites). 30 minutes leaves six times that,
+    # and stays well under the landing driver's CI wait (LAND_CI_WAIT, 90 min), so a run that hangs ends as a failed check, a
+    # verdict on the tree, rather than a wait the driver gives up on as a CI outage.
+    timeout-minutes: 30
     steps:
       - name: Check out
         uses: actions/checkout@v4

@@ -15,6 +15,8 @@ import {
   ciStep,
   claudeReviewGate,
   defangReview,
+  attribute,
+  Trees,
   readInTree,
   removeInTree,
   symlinkEntries,
@@ -110,7 +112,7 @@ import {
 } from './merge-train-lib.ts';
 import { SETUP_GIT_CONFIG } from './floor-merge.ts';
 import { reviewerIds } from './land-review-lookup.ts';
-import { OUTAGE_CONTEXT, type OutageLedger, outageLedger, parseOutageEject, readOutageStreak, writeOutage, checkLockFree, lockHolder, releaseLock, takeLock, checkNotReviewer, missingProof, parseIds, parseSelf, parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
+import { recordOutage, OUTAGE_CONTEXT, type OutageLedger, outageLedger, parseOutageEject, readOutageStreak, writeOutage, checkLockFree, lockHolder, releaseLock, takeLock, checkNotReviewer, missingProof, parseIds, parseSelf, parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
 import { matcher, STEPS } from './regen.ts';
 import { abandonInflight, CiUnavailable, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, staleScratchBranches, failedTestsOf, fullTestWorkflow, parseRunRows, runDevicesOnCi, runOnCi, scratchRef, testBranch } from './land-devices-ci.ts';
@@ -390,7 +392,8 @@ const releasePriority = (): void => {
 };
 
 // `conflicting` (only before the build) re-reads whether the PR conflicts with master on every poll.
-const waitCi = (step: string, sha: string, what: string, conflicting?: () => boolean): 'success' | 'skip' => {
+// `prs`: the PRs whose code the checked commit holds (attribute), whom an outage of its CI counts against.
+const waitCi = (step: string, sha: string, what: string, prs: readonly number[], conflicting?: () => boolean): 'success' | 'skip' => {
   const t0 = Date.now();
   for (;;) {
     const s = ciState(checkRuns(sha));
@@ -398,7 +401,7 @@ const waitCi = (step: string, sha: string, what: string, conflicting?: () => boo
     if (next === 'success') return log(`  CI checks success on ${what} ${sha}`), 'success';
     if (next === 'skip') return log(`  ${what} ${sha} is CONFLICTING with master and has no CI run (GitHub runs none on a conflicting PR); building anyway, CI on the landing commit is still required`), 'skip';
     // With every step ci-only, CI that never ran or never finished is an outage, as for the driver's own CI steps.
-    if (typeof next === 'object' && next.outage === true && CI_ONLY) throw new CiOutage(`LAND_CI=only: GitHub Actions did not run the CI checks of ${what} ${sha}: it ${next.fail}. The driver stops; no PR is blamed`);
+    if (typeof next === 'object' && next.outage === true && CI_ONLY) throw new CiOutage(`LAND_CI=only: GitHub Actions did not run the CI checks of ${what} ${sha}: it ${next.fail}. The driver stops; no PR is blamed`, prs);
     if (typeof next === 'object') throw new LandFailure(step, `${what} ${sha} ${next.fail}`);
     sleep(30_000);
   }
@@ -531,7 +534,7 @@ const ciDeviceDeps = (pr: number) => ({
 
 // LAND_DEVICES=ci is a no-op (the local device run) until master has the CI device workflow (it is dispatched from master) and
 // the landing tree has its CLI.
-const ciDevicesReady = (): boolean => {
+const ciDevicesReady = (prs: readonly number[]): boolean => {
   let workflow = true;
   try {
     git(['cat-file', '-e', `${fetchMaster()}:.github/workflows/device-lanes.yml`]);
@@ -541,18 +544,18 @@ const ciDevicesReady = (): boolean => {
   const cli = existsSync(join(WT, 'packages/parity/src/cli/device-ci.ts'));
   if (workflow && cli) return true;
   const why = !workflow ? 'master has no .github/workflows/device-lanes.yml' : 'the landing tree has no packages/parity/src/cli/device-ci.ts';
-  if (DEVICES_ON === 'ci-only') throw new CiOutage(`LAND_DEVICES=ci-only: ${why} yet, and no local device run may stand in. The driver stops; no PR is blamed`);
+  if (DEVICES_ON === 'ci-only') throw new CiOutage(`LAND_DEVICES=ci-only: ${why} yet, and no local device run may stand in. The driver stops; no PR is blamed`, prs);
   log(`  LAND_DEVICES=ci: ${why} yet; running the device lanes locally`);
   return false;
 };
 
 // LAND_TEST=ci proves a commit with full-test.yml on GitHub runners, once master has it (it is dispatched from master).
-const ciTestReady = (): boolean => {
+const ciTestReady = (prs: readonly number[]): boolean => {
   try {
     git(['cat-file', '-e', `${fetchMaster()}:.github/workflows/full-test.yml`]);
     return true;
   } catch {
-    if (TEST_ON === 'ci-only') throw new CiOutage('LAND_TEST=ci-only: master has no .github/workflows/full-test.yml yet, and no local test may stand in. The driver stops; no PR is blamed');
+    if (TEST_ON === 'ci-only') throw new CiOutage('LAND_TEST=ci-only: master has no .github/workflows/full-test.yml yet, and no local test may stand in. The driver stops; no PR is blamed', prs);
     log('  LAND_TEST=ci: master has no .github/workflows/full-test.yml yet; running pnpm test locally');
     return false;
   }
@@ -593,8 +596,9 @@ const finishRegen = (step: string, d: Dispatched, record: string): void => {
   regenRan = `${REGEN.join(' ')} on CI (regen-on-ci.yml ${url})`;
 };
 // One `pnpm regen` of WT, locally under the heavy lease or (LAND_REGEN=ci) on CI; a failure fails the PR at failStep.
-const regenTree = (step: string, failStep: string): void => {
+const regenTree = (step: string, failStep: string, prs: readonly number[]): void => {
   landRegen({
+    prs,
     mode: REGEN_ON,
     mac: process.platform === 'darwin',
     ready: ciRegenReady,
@@ -740,7 +744,7 @@ const admit = (e: Entry, earlier: readonly Entry[]): { merged: string } | { tick
   if (pr.cross) throw new LandFailure('check', `PR #${e.pr} comes from a fork`);
   // A PR whose own CI runs ended without a verdict LAND_OUTAGE_EJECT times in a row is ejected, so it cannot stall the queue.
   if (CI_ONLY) {
-    const streak = readOutageStreak(gh, REPO, pr.headOid, PROOF_WRITERS);
+    const streak = readOutageStreak(gh, REPO, pr.headOid, PROOF_WRITERS, RUN_TAG);
     if (streak.count >= OUTAGE_EJECT) throw new LandFailure('ci-outage', `${streak.count} landing runs in a row ended without a verdict about #${e.pr} at ${pr.headOid} (LAND_OUTAGE_EJECT is ${OUTAGE_EJECT}): a CI outage in a step that ran its tree, or a run killed or past its limit:\n  ${streak.runs.join('\n  ')}\nEjected so the queue goes on. If CI was at fault, push a new head (it starts a new count) and queue it again.`);
     if (streak.count > 0) log(`  #${e.pr}: ${streak.count} run(s) ended without a verdict about it so far (ejected at ${OUTAGE_EJECT})`);
     admittedHead.set(e.pr, pr.headOid);
@@ -786,7 +790,7 @@ const admit = (e: Entry, earlier: readonly Entry[]): { merged: string } | { tick
   }
 
   // The PR head's own CI must pass before a build is spent on it.
-  const ci = waitCi('ci-before', pr.headOid, `#${e.pr} head`, () => parsePrHead(JSON.parse(gh(['pr', 'view', String(e.pr), '--repo', REPO, '--json', 'headRefOid,mergeable']))).mergeable === 'CONFLICTING');
+  const ci = waitCi('ci-before', pr.headOid, `#${e.pr} head`, attribute('admission-ci', { trees: TREES, pr: e.pr }), () => parsePrHead(JSON.parse(gh(['pr', 'view', String(e.pr), '--repo', REPO, '--json', 'headRefOid,mergeable']))).mergeable === 'CONFLICTING');
   // Its review must be clean at the current head (GitHub runs no review of a conflicting head, so that waits for the landing commit).
   if (ci === 'success') {
     // --conflicts-ok: GitHub's CONFLICTING ignores the merge drivers; the merge train below decides (judgedHead).
@@ -823,15 +827,15 @@ const claudeReview = (e: Entry, clean: string, head: string, master: string, ste
 // Builds position k on `prev`: merge, regen, typecheck, device evidence against `prev`, regen, commit, regen-only and floors.
 // ---- outages at a PR's own CI runs (land-state.ts, LAND_OUTAGE_EJECT) -----------------------------------------------------
 let OUTAGE_EJECT = 2;
-// The positions of the batch being proved: each PR, its head and its position.
-let chain: { pr: number; prHead: string; head: string }[] = [];
+// The PRs merged into each position this run built (attribute: whose code a CI step ran).
+const TREES = new Trees();
 // A PR one of whose builds or proofs ended without a verdict since its last verdict is built and proved alone (runBatches solo).
 const solo = (e: Entry): boolean => {
   if (!CI_ONLY) return false;
   try {
     const pr = prView(e.pr);
     if (pr.state !== 'OPEN') return false;
-    return readOutageStreak(gh, REPO, pr.headOid, PROOF_WRITERS).count > 0;
+    return readOutageStreak(gh, REPO, pr.headOid, PROOF_WRITERS, RUN_TAG).count > 0;
   } catch (error) {
     log(`  could not read #${e.pr}'s ${OUTAGE_CONTEXT} record (${errorText(error).split('\n')[0]}); admission decides`);
     return false;
@@ -855,17 +859,7 @@ const ledger: OutageLedger = outageLedger({
 });
 // The head each admitted PR was admitted at, for its verdicts.
 const admittedHead = new Map<number, string>();
-// An outage while building a PR's position (its regen, tree checks or devices on CI) is that PR's.
-const tracked = <R>(e: Entry, t: Ticket, fn: () => R): R => {
-  try {
-    return fn();
-  } catch (error) {
-    if (error instanceof CiOutage) ledger.outage(e.pr, t.prHead, `building #${e.pr}'s position: ${msg(error)}`);
-    throw error;
-  }
-};
-const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => tracked(e, t, () => buildPositionHere(prev, e, t, k));
-const buildPositionHere = (prev: string, e: Entry, t: Ticket, k: number): Built => {
+const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => {
   current = e;
   holdPriority();
   log(`=== #${e.pr} ${e.branch}: position ${k} on ${prev}`);
@@ -882,7 +876,7 @@ const buildPositionHere = (prev: string, e: Entry, t: Ticket, k: number): Built 
   install('install', WT);
   // Later positions keep the regen cache of the position below them, which is closer than any lane's.
   if (k === 1) seedRegenCache(e, [t.clean, t.prHead]);
-  regenTree('regen', 'regen');
+  regenTree('regen', 'regen', attribute('regen', { trees: TREES, prev, pr: e.pr }));
   return finishPosition(prev, e, t, k, merge, false);
 };
 
@@ -894,12 +888,12 @@ const asLanes = (c: CheckRun): LanesRun => ({ status: c.status, signal: null, st
  * the merged records' patch applied to WT. An install that failed is the PR's failure at install, as a local install's is. GitHub
  * Actions not running it, or results that do not read, judged nothing: the driver stops (CiOutage), no PR blamed.
  */
-const treeChecks = (prev: string, checks: TreeCheck[], devicesRun: number | null): { result: ChecksResult; url: string } => {
+const treeChecks = (prev: string, checks: TreeCheck[], devicesRun: number | null, prs: readonly number[]): { result: ChecksResult; url: string } => {
   let sha: string;
   try {
     sha = commitApart('Landing tree for the land checks (temporary; never merged)');
   } catch (error) {
-    throw new CiOutage(`LAND_TRUSTED: the tree checks could not be run: ${msg(error)}. The driver stops; no PR is blamed`);
+    throw new CiOutage(`LAND_TRUSTED: the tree checks could not be run: ${msg(error)}. The driver stops; no PR is blamed`, prs);
   }
   log(`  tree checks on CI (land-checks.yml): ${[...(devicesRun === null ? [] : [`merge of device run ${devicesRun}`]), ...checks].join(', ')} for ${sha}`);
   const w = checksWorkflow({ prev, checks, devicesRun });
@@ -908,7 +902,7 @@ const treeChecks = (prev: string, checks: TreeCheck[], devicesRun: number | null
   try {
     r = awaitOnCi(w, dispatchOnCi(w, { branch: checksBranch(sha), deps }), { deps, appearS: CI_APPEAR_S, waitS: CHECKS_WAIT_S, startS: CI_START_S, queueS: CI_QUEUE_S });
   } catch (error) {
-    if (error instanceof CiUnavailable) throw new CiOutage(`LAND_TRUSTED: GitHub Actions did not run the tree checks (${error.message}). The driver stops; no PR is blamed`);
+    if (error instanceof CiUnavailable) throw new CiOutage(`LAND_TRUSTED: GitHub Actions did not run the tree checks (${error.message}). The driver stops; no PR is blamed`, prs);
     throw error;
   }
   try {
@@ -930,7 +924,7 @@ const treeChecks = (prev: string, checks: TreeCheck[], devicesRun: number | null
         log(`  tree checks: applied the ${bytes}-byte patch of the merged device records`);
       } catch (error) {
         if (error instanceof PatchRefused) throw new LandFailure('checks', `the merged device records of the tree checks ${r.url} are refused: ${error.message}`);
-        throw new CiOutage(`LAND_TRUSTED: the patch of the tree checks ${r.url} could not be applied (${msg(error)}). The driver stops; no PR is blamed`);
+        throw new CiOutage(`LAND_TRUSTED: the patch of the tree checks ${r.url} could not be applied (${msg(error)}). The driver stops; no PR is blamed`, prs);
       }
     }
     if (result.install.status !== 0) throw new LandFailure('install', `pnpm install --frozen-lockfile exited ${result.install.status} (${r.url})\n${checkTail(result.install)}`);
@@ -954,7 +948,7 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
   let lanesRan: LanesRun | null = null;
   let stamp: number | null;
   if (TRUSTED) {
-    const c = treeChecks(prev, ['typecheck', 'stamp', 'lanes'], null);
+    const c = treeChecks(prev, ['typecheck', 'stamp', 'lanes'], null, attribute('tree-checks', { trees: TREES, prev, pr: e.pr }));
     if (c.result.typecheck!.status !== 0) throw new LandFailure('typecheck', `pnpm typecheck exited ${c.result.typecheck!.status} (${c.url})\n${checkTail(c.result.typecheck!)}`);
     stamp = c.result.stamp!.status;
     if (stamp !== 0 && stamp !== 1) throw new LandFailure('stamp', `pnpm evidence:stamp exited ${stamp} (${c.url})\n${checkTail(c.result.stamp!)}`);
@@ -975,9 +969,9 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
     if (differ.length > 0) {
       for (const p of outs) writeInTree(WT, p, git(['show', `${prev}:${p}`]));
       log(`  carried the previous position's device records (${differ.join(', ')}); regenerating on them`);
-      regenTree('regen-carried', 'regen');
+      regenTree('regen-carried', 'regen', attribute('regen', { trees: TREES, prev, pr: e.pr }));
       commands.push(regenRan);
-      if (TRUSTED) lanesRan = asLanes(treeChecks(prev, ['lanes'], null).result.lanes!);
+      if (TRUSTED) lanesRan = asLanes(treeChecks(prev, ['lanes'], null, attribute('tree-checks', { trees: TREES, prev, pr: e.pr })).result.lanes!);
     }
   }
   if (!runDevices) {
@@ -993,13 +987,14 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
     let ran = DEVICES.join(' ');
     // CI that does not run the workflow (no run, or no job started) falls back to the local device run: nothing was judged there.
     let ci: ReturnType<typeof runDevicesOnCi> | null = null;
-    if (DEVICES_ON !== 'local' && ciDevicesReady()) {
+    const devicePrs = attribute('devices', { trees: TREES, prev, pr: e.pr });
+    if (DEVICES_ON !== 'local' && ciDevicesReady(devicePrs)) {
       try {
         ci = runDevicesOnCi({ pr: e.pr, deps: ciDeviceDeps(e.pr), appearS: CI_APPEAR_S, waitS: DEVICES_WAIT_S, startS: CI_START_S, queueS: CI_QUEUE_S });
       } catch (error) {
         if (!(error instanceof CiUnavailable)) throw error;
         const why = `GitHub Actions did not run the device lanes (${error.message})`;
-        if (DEVICES_ON === 'ci-only') throw new CiOutage(`LAND_DEVICES=ci-only: ${why}. The driver stops; no PR is blamed`);
+        if (DEVICES_ON === 'ci-only') throw new CiOutage(`LAND_DEVICES=ci-only: ${why}. The driver stops; no PR is blamed`, devicePrs);
         // The local run is this host's Android ABI: against records of another ABI (a CI run's) it could only differ in
         // architecture, failing the PR for the host, so the driver stops instead.
         let prevAbis: Set<string>;
@@ -1009,7 +1004,7 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
           throw new Fatal(`LAND_DEVICES=ci: ${why}, and the previous position ${prev}'s device records cannot be read to tell whether a local run may stand in (${msg(cause)}); the driver stops, no PR is blamed`);
         }
         const abis = [...prevAbis].filter((a) => a !== hostAbi(process.arch));
-        if (abis.length > 0) throw new CiOutage(`LAND_DEVICES=ci: ${why}, and the previous position's Android records are of ${abis.join(', ')}, not this host's ${hostAbi(process.arch)}, so no local run may stand in. The driver stops; no PR is blamed`);
+        if (abis.length > 0) throw new CiOutage(`LAND_DEVICES=ci: ${why}, and the previous position's Android records are of ${abis.join(', ')}, not this host's ${hostAbi(process.arch)}, so no local run may stand in. The driver stops; no PR is blamed`, devicePrs);
         log(`  !!! LAND_DEVICES=ci: ${why}; running them locally`);
       }
     }
@@ -1017,7 +1012,7 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
       // The outcomes are merged into this tree's records in land-checks.yml (device-ci.ts is the tree's code), and come back
       // as a patch of the records, applied here; exit 3 is a refusal with its reasons.
       rmSync(ci.outcomesDir, { recursive: true, force: true });
-      const m = treeChecks(prev, ['lanes'], runIdOf(ci.url));
+      const m = treeChecks(prev, ['lanes'], runIdOf(ci.url), attribute('tree-checks', { trees: TREES, prev, pr: e.pr }));
       const merged = m.result.merge!;
       if (merged.status === 3) throw new LandFailure('devices-merge', `device-ci.ts merge refused the CI outcomes (${m.url}):\n${checkTail(merged)}`);
       if (merged.status !== 0 && merged.status !== 1) throw new LandFailure('devices-merge', `device-ci.ts merge exited ${merged.status} (${m.url})\n${checkTail(merged)}`);
@@ -1042,7 +1037,7 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
     // Under LAND_TRUSTED the records came as land-checks.yml's patch, so their file times say nothing; its merge's exit did.
     const judged = judgeDevices(prev, TRUSTED ? null : started, ci !== null, lanesRan);
     if (judged.problems.length > 0) throw new LandFailure('judge-devices', `the device run differs from the previous position's device evidence:\n  ${judged.problems.join('\n  ')}`);
-    regenTree('regen-after-devices', 'regen-after-devices');
+    regenTree('regen-after-devices', 'regen-after-devices', attribute('regen', { trees: TREES, prev, pr: e.pr }));
     commands.push(ran, regenRan);
     device = `ran${ran === DEVICES.join(' ') ? '' : ' on CI'}; every lane passes or fails as on the previous position${judged.rebaseline === null ? '' : `; ${judged.rebaseline}`}`;
   }
@@ -1063,6 +1058,7 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
   log(`  Macroscope vouch prediction: ${prediction.vouch.ok ? 'an "already reviewed" skip will be vouched for' : `not vouchable (${prediction.vouch.reason}); a full review will run unless at the limit`}`);
   lastBuilt = head;
   lastBuiltDir = WT;
+  TREES.add(head, prev, e.pr);
   return { prev, merge, head, tip: t.tip, device };
 };
 
@@ -1141,13 +1137,13 @@ const preparePosition = (base: string, k: number, items: readonly { entry: Entry
 
 // Waits for a preparation's regen. Its failure does not eject the PR: the position is built one by one (buildPositionsParallel),
 // since a run beside the batch's other regens can fail for the load's sake (disk, a capture timing out).
-const awaitPrepared = (h: PreparedPosition): void => {
+const awaitPrepared = (h: PreparedPosition, prs: readonly number[]): void => {
   const ci = h.ci;
   if (ci !== undefined) {
     try {
       return withWorktree(h.dir, () => finishRegen('regen', ci.d, ci.record));
     } catch (error) {
-      if (REGEN_ON === 'ci-only' && error instanceof CiUnavailable) throw new CiOutage(`LAND_REGEN=ci-only: GitHub Actions did not run the regen (${error.message}). The driver stops; no PR is blamed`);
+      if (REGEN_ON === 'ci-only' && error instanceof CiUnavailable) throw new CiOutage(`LAND_REGEN=ci-only: GitHub Actions did not run the regen (${error.message}). The driver stops; no PR is blamed`, prs);
       throw error;
     }
   }
@@ -1181,8 +1177,7 @@ const abandonPrepared = (h: PreparedPosition): void => {
 
 // Position k on the actual position below it, from its preparation: the one-by-one build's merge, then the prepared tree, whose
 // sources must be the merge's (else it is built one by one here), then the device step and the checks (finishPosition).
-const assemblePosition = (prev: string, it: { entry: Entry; ticket: Ticket }, k: number, h: PreparedPosition): Built => tracked(it.entry, it.ticket, () => assemblePositionHere(prev, it, k, h));
-const assemblePositionHere = (prev: string, it: { entry: Entry; ticket: Ticket }, k: number, h: PreparedPosition): Built => {
+const assemblePosition = (prev: string, it: { entry: Entry; ticket: Ticket }, k: number, h: PreparedPosition): Built => {
   const { entry: e, ticket: t } = it;
   current = e;
   holdPriority();
@@ -1204,7 +1199,7 @@ const assemblePositionHere = (prev: string, it: { entry: Entry; ticket: Ticket }
     if (sources.length > 0) {
       log(`  parallel build: the prepared tree's sources differ from the merge's (${sources.slice(0, 5).join(', ')}${sources.length > 5 ? ', ...' : ''}); building this position one by one here`);
       install('install', WT);
-      regenTree('regen', 'regen');
+      regenTree('regen', 'regen', attribute('regen', { trees: TREES, prev, pr: e.pr }));
       return finishPosition(prev, e, t, k, merge, false);
     }
     wtGit(['read-tree', '-u', '--reset', tree]);
@@ -1219,7 +1214,7 @@ const assemblePositionHere = (prev: string, it: { entry: Entry; ticket: Ticket }
         else writeInTree(WT, p, wtGit(['show', `${merge}:${p}`]));
       }
       log(`  parallel build: took the merge's device records (${records.join(', ')}); regenerating on them`);
-      regenTree('regen-records', 'regen');
+      regenTree('regen-records', 'regen', attribute('regen', { trees: TREES, prev, pr: e.pr }));
     }
     return finishPosition(prev, e, t, k, merge, true);
   });
@@ -1245,15 +1240,7 @@ const buildAllPositions = (base: string, items: readonly { entry: Entry; ticket:
       speculate: (k, its) => preparePosition(base, k, its),
       // A prepared position's CI regen runs its PR's tree too: an outage there is that PR's, and a run that dies while waiting
       // for it leaves it pending.
-      await: (h) => {
-        const it = items[h.k - 1]!;
-        try {
-          awaitPrepared(h);
-        } catch (error) {
-          if (error instanceof CiOutage) ledger.outage(it.entry.pr, it.ticket.prHead, `the prepared regen of #${it.entry.pr}'s position: ${msg(error)}`);
-          throw error;
-        }
-      },
+      await: (h) => awaitPrepared(h, attribute('prepared-regen', { trees: TREES, batch: items.map((it) => it.entry.pr), k: h.k })),
       assemble: assemblePosition,
       sequential: (prev, it, k) => withWorktree(WT_HOME, () => buildPosition(prev, it.entry, it.ticket, k)),
       abandon: abandonPrepared,
@@ -1269,10 +1256,10 @@ const buildAllPositions = (base: string, items: readonly { entry: Entry; ticket:
 // The full test of one commit's tree, rerun once on a quiet machine when it fails. Only the tree the last build left is tested
 // in place; any other commit (a bisect probe, master, a top whose later member was ejected) is checked out clean, ignored
 // outputs of other trees included.
-const proveCommit = (head: string, what: string): void => {
+const proveCommit = (head: string, what: string, prs: readonly number[]): void => {
   holdPriority();
   let onCi: ReturnType<typeof runOnCi> | null = null;
-  if (TEST_ON !== 'local' && ciTestReady()) {
+  if (TEST_ON !== 'local' && ciTestReady(prs)) {
     // The commit itself, pushed to its scratch branch: full-test.yml tests exactly this tree, the regen fixed point included.
     log(`  proving ${head} (${what}): full-test.yml on CI`);
     try {
@@ -1288,7 +1275,7 @@ const proveCommit = (head: string, what: string): void => {
       // GitHub Actions not running the workflow judged nothing: the local test proves the tree instead (ci), or nothing does
       // and the driver stops (ci-only).
       if (!(error instanceof CiUnavailable)) throw error;
-      if (TEST_ON === 'ci-only') throw new CiOutage(`LAND_TEST=ci-only: GitHub Actions did not run the full test (${error.message}). The driver stops; no PR is blamed`);
+      if (TEST_ON === 'ci-only') throw new CiOutage(`LAND_TEST=ci-only: GitHub Actions did not run the full test (${error.message}). The driver stops; no PR is blamed`, prs);
       log(`  !!! LAND_TEST=ci: GitHub Actions did not run the full test (${error.message}); running pnpm test locally`);
     }
   }
@@ -1345,24 +1332,15 @@ const proveIn = (head: string): void => {
 };
 const proveTree = (p: Built, e: Entry): void => {
   current = e;
-  // The full test of a position runs the tree of every PR it holds: an outage there is recorded on each (it cannot be pinned on
-  // one, so each is then built alone, solo), and a pass is a verdict about each. A failure is not yet one: the bisect decides.
-  const k = chain.findIndex((c) => c.head === p.head);
-  const members = k >= 0 ? chain.slice(0, k + 1) : [];
-  const prs = members.map((m) => `#${m.pr}`).join(' ');
-  try {
-    proveCommit(p.head, `#${e.pr}'s position`);
-  } catch (error) {
-    if (error instanceof CiOutage) for (const m of members) ledger.outage(m.pr, m.prHead, `full test of the tree of ${prs}: ${msg(error)}`);
-    throw error;
-  }
-  for (const m of members) ledger.verdict(m.pr, m.prHead, `the full test of the tree of ${prs} passed`);
+  // A pass is not yet a verdict about the PRs the tree holds: each still has to pass CI on its landing commit and merge, and an
+  // outage there must count against it. An outage is recorded where runBatches stops (recordOutage), against the CiOutage's PRs.
+  proveCommit(p.head, `#${e.pr}'s position`, attribute('full-test', { trees: TREES, head: p.head }));
 };
 const proveMaster = (master: string): void => {
   current = null;
   const same = provedTree(proved, (h) => treeMatches(git, master, h).ok);
   if (same !== null) return log(`  master ${master} has the tree of ${same} outside docs/goals/**, which passed pnpm test in this run; not proving it again`);
-  proveCommit(master, 'master');
+  proveCommit(master, 'master', attribute('full-test', { trees: TREES, head: master }));
 };
 
 // Publishes one PR at its position, once the PR before it has merged: push, CI, pr:review, Claude review, merge, tree check.
@@ -1397,7 +1375,7 @@ const publishInside = (e: Entry, b: Built, t: Ticket): string => {
     }
     log(`  pushed ${p.head} to ${e.branch}`);
   }
-  waitCi('ci', p.head, `#${e.pr} landing commit`);
+  waitCi('ci', p.head, `#${e.pr} landing commit`, attribute('publish-ci', { trees: TREES, head: p.head }));
   const review = run('pr-review', [...prReview(), String(e.pr), '--wait'], MAIN);
   if (review.error !== undefined || review.status !== 0) failed('pr-review', review, `pnpm -s pr:review ${e.pr}`);
   const reviewOut = readFileSync(review.log, 'utf8');
@@ -1658,8 +1636,6 @@ const setUp = (): void => {
 
 // Each position is exactly a merge of [previous position, the PR's tip] plus one regen commit, chained on its base.
 const verifyChain = (built: readonly { entry: Entry; ticket: Ticket; position: Built }[]): void => {
-  // The chain the proofs that follow stand on, so an outage of one is marked on exactly the PRs its tree holds.
-  chain = built.map((b) => ({ pr: b.entry.pr, prHead: b.ticket.prHead, head: b.position.head }));
   const plan = planPositions(git, built.map((b) => b.ticket.member), built.map((b) => b.position.head));
   const base = built[0]!.position.prev;
   if (plan.base !== base) throw new Error(`the chain starts on ${plan.base}, not ${base}`);
@@ -1839,14 +1815,16 @@ const nextRound = (queueFile: string): NextRound<Ticket, Built> => {
         killPrepared('builder');
         return empty;
       }
-      let round: Prepared<Ticket, Built> | { fatal: string; outage: boolean };
+      let round: Prepared<Ticket, Built> | { fatal: string; outage: boolean; prs: number[] };
       try {
         round = parsePrepared<Ticket, Built>(text);
       } catch (error) {
         log(`!!! the prepared batch is unreadable (${msg(error)}); preparing it here instead`);
         return empty;
       }
-      if ('fatal' in round) throw round.outage ? new CiOutage(`while preparing the next batch: ${round.fatal}`) : new Fatal(`while preparing the next batch: ${round.fatal}`);
+      if ('fatal' in round) throw round.outage ? new CiOutage(`while preparing the next batch: ${round.fatal}`, round.prs) : new Fatal(`while preparing the next batch: ${round.fatal}`);
+      // The builder admitted these: their heads, for the verdicts and outages this run records about them.
+      for (const b of round.built) admittedHead.set(b.entry.pr, b.ticket.prHead);
       for (const k of round.proven) proved.push(round.built[k - 1]!.position.head);
       return round;
     },
@@ -1984,7 +1962,9 @@ const main = (): number => {
   current = null;
   putStatus(statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: latest, fatal: result.fatal, outage: result.outage, total: queued.length, done: true, stopped: result.stopped, limited: result.limited }));
   writeHandoff({ remainder: result.stopped, stopAsked: result.stopAsked, outage: result.outage, fatal: result.fatal });
-  // The run ended (whatever its batch did): a PR with no verdict and no outage in it is neutral; only a killed run leaves `in`.
+  // The one place an outage is recorded: against the PRs whose code the step that stopped the run ran (CiOutage.prs). Then the
+  // run's end: a PR with no verdict and no outage in it is neutral; only a killed run leaves `in`.
+  recordOutage(ledger, admittedHead, result.outage === null ? [] : result.outagePrs, result.outage ?? '');
   ledger.end();
   try {
     resetWorktree(fetchMaster());
