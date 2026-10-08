@@ -48,7 +48,7 @@ public final class BandError: JsError {
   public let detail: JsString
   public init(_ detail: JsString) throws {
     self.detail = detail
-    super.init(message: jsConcat(S.s126, detail))
+    super.init(message: jsConcat(S.s142, detail))
   }
 }
 
@@ -59,11 +59,11 @@ public let rtBand_MEDIA_EPSILON: Double = (1.0 / 64.0)
 public func rtBand_mediaSize(_ px: Double, _ dpr: Double) throws -> Double {
   // ts: packages/layout/src/rt-band.ts:47
   if try ((!(px >= 0.0)) || (px != rtEasing_truncOf(px))) {
-    throw try BandError(jsConcat(S.s102, jsNumberToString(px)))
+    throw try BandError(jsConcat(S.s117, jsNumberToString(px)))
   }
   // ts: packages/layout/src/rt-band.ts:48
   if ((!(dpr > 0.0)) || (dpr == (1.0 / 0.0))) {
-    throw try BandError(jsConcat(S.s99, jsNumberToString(dpr)))
+    throw try BandError(jsConcat(S.s114, jsNumberToString(dpr)))
   }
   return try rtEasing_froundOf((rtEasing_froundOf(px) * rtEasing_froundOf((1.0 / rtEasing_froundOf(dpr)))))
 }
@@ -106,11 +106,11 @@ public func rtBand_atomHolds(_ atom: BandAtom, _ width: Double, _ height: Double
     }
     // ts: packages/layout/src/rt-band.ts:71
     do {
-      let _a88 = atom.comparisons
-      var _i88 = 0
-      while _i88 < _a88.items.count {
-        let c: BandComparison = _a88.items[_i88]
-        _i88 += 1
+      let _a100 = atom.comparisons
+      var _i100 = 0
+      while _i100 < _a100.items.count {
+        let c: BandComparison = _a100.items[_i100]
+        _i100 += 1
         // ts: packages/layout/src/rt-band.ts:71
         if try (!rtBand_compareMedia(actual, c.value, c.op, faults)) {
           return false
@@ -135,11 +135,11 @@ public func rtBand_atomHolds(_ atom: BandAtom, _ width: Double, _ height: Double
   }
   // ts: packages/layout/src/rt-band.ts:83
   do {
-    let _a89 = atom.comparisons
-    var _i89 = 0
-    while _i89 < _a89.items.count {
-      let c: BandComparison = _a89.items[_i89]
-      _i89 += 1
+    let _a101 = atom.comparisons
+    var _i101 = 0
+    while _i101 < _a101.items.count {
+      let c: BandComparison = _a101.items[_i101]
+      _i101 += 1
       // ts: packages/layout/src/rt-band.ts:83
       if try (!rtBand_compareMedia((w * c.den), (h * c.num), c.op, faults)) {
         return false
@@ -154,11 +154,11 @@ public func rtBand_truthVector(_ table: BandTable, _ width: Double, _ height: Do
   let out: JsArray<Bool> = JsArray<Bool>([])
   // ts: packages/layout/src/rt-band.ts:90
   do {
-    let _a90 = table.atoms
-    var _i90 = 0
-    while _i90 < _a90.items.count {
-      let a: BandAtom = _a90.items[_i90]
-      _i90 += 1
+    let _a102 = table.atoms
+    var _i102 = 0
+    while _i102 < _a102.items.count {
+      let a: BandAtom = _a102.items[_i102]
+      _i102 += 1
       _ = try jsPush(out, rtBand_atomHolds(a, width, height, faults))
     }
   }
@@ -175,7 +175,7 @@ public func rtBand_bandIndex(_ table: BandTable, _ width: Double, _ height: Doub
       let b: JsArray<Bool> = try jsUnwrap(jsAt(table.bands, k))
       // ts: packages/layout/src/rt-band.ts:99
       if (jsLength(b) != jsLength(v)) {
-        throw try BandError(jsConcat(S.s125, jsNumberToString(k), S.s12, jsNumberToString(jsLength(b)), S.s42, jsNumberToString(jsLength(v)), S.s9))
+        throw try BandError(jsConcat(S.s141, jsNumberToString(k), S.s13, jsNumberToString(jsLength(b)), S.s50, jsNumberToString(jsLength(v)), S.s10))
       }
       var same: Bool = true
       // ts: packages/layout/src/rt-band.ts:101
@@ -199,15 +199,15 @@ public func rtBand_bandIndex(_ table: BandTable, _ width: Double, _ height: Doub
   var bits: JsString = S.s0
   // ts: packages/layout/src/rt-band.ts:105
   do {
-    let _a91 = v
-    var _i91 = 0
-    while _i91 < _a91.items.count {
-      let x: Bool = _a91.items[_i91]
-      _i91 += 1
-      bits += (x ? S.s59 : S.s57)
+    let _a103 = v
+    var _i103 = 0
+    while _i103 < _a103.items.count {
+      let x: Bool = _a103.items[_i103]
+      _i103 += 1
+      bits += (x ? S.s68 : S.s66)
     }
   }
-  throw try BandError(jsConcat(S.s278, bits, S.s8, jsNumberToString(width), S.s45, jsNumberToString(height), S.s11))
+  throw try BandError(jsConcat(S.s305, bits, S.s9, jsNumberToString(width), S.s53, jsNumberToString(height), S.s12))
 }
 
 // ts: packages/layout/src/rt-band.ts:110
