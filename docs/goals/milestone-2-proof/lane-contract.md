@@ -9,14 +9,17 @@ macOS, Chrome, Swift or Kotlin. A command may run for at most 30 minutes, and an
 jobs. The SessionStart hook (`scripts/cloud-setup.sh`) installs the pinned Node and pnpm, runs `pnpm install` and
 `pnpm setup:git`, and exports `DRAGON_REQUIRE_NATIVE=1`, so a native test with no toolchain fails instead of passing as
 "blocked". Anything that needs macOS or the native toolchains runs on GitHub Actions. Where the local Mac differs, the
-"Local Mac" section at the end says how; both paths are valid.
+"Local Mac" section at the end says how; both paths are valid. The cloud path applies once #219 (session setup),
+#221 (`pnpm ci:test-files`) and #222 (the driver's `LAND_CI=only`) are on master; until then lanes run on the Mac.
 
 ## GitHub commands (REST)
 The cloud's GitHub proxy may refuse GraphQL, which `gh pr create`, `gh pr view`, `gh pr edit` and `gh pr diff` use. Use these
 `gh api` forms until the PM confirms GraphQL works. `R=repos/compiled-run/dragoncss`.
 - Create a PR (write the body to a file outside the worktree first):
-  `gh api $R/pulls -f base=master -f head=<branch> -f title='...' -F body=@<body-file> --jq .number`
-- Head sha and conflict state (`dirty` means CONFLICTING): `gh api $R/pulls/<n> --jq '.head.sha, .mergeable_state'`
+  `gh api $R/pulls -f base=master -f head=<branch> -f title='...' -F body=@<body-file> --jq .number`;
+  update its body later: `gh api -X PATCH $R/pulls/<n> -F body=@<body-file> --jq .number`
+- Head sha and conflict state (`dirty` means CONFLICTING; `unknown` means GitHub is still computing it, so poll again in a
+  minute): `gh api $R/pulls/<n> --jq '.head.sha, .mergeable_state'`
 - Files a PR changes: `gh api --paginate "$R/pulls/<n>/files?per_page=100" --jq '.[].filename'`
 - Open PRs and their branches: `gh api --paginate "$R/pulls?state=open&per_page=100" --jq '.[] | "\(.number) \(.head.ref)"'`
 - PR comments: `gh api --paginate "$R/issues/<n>/comments?per_page=100" --jq '.[] | "\(.id) \(.user.login): \(.body)"'`
@@ -34,7 +37,8 @@ The cloud's GitHub proxy may refuse GraphQL, which `gh pr create`, `gh pr view`,
   commands above; when unsure, note it in your receipt).
 - Run `pnpm regen`, the full `pnpm test`, captures, wpt:run or tw:sweep in a cloud session: they need macOS and would write
   wrong outputs or blame the wrong thing. Device runs are the landing driver's job, never a lane's.
-- Claim a Chrome or native test file passed unless `pnpm ci:test-files` reported it passing.
+- In a cloud session, claim a Chrome or native test file passed unless `pnpm ci:test-files` reported it passing. (On the
+  Mac, a local run of the file counts.)
 
 ## Work
 - One branch. NO STACKS (owner, 2026-10-04): every new branch starts from origin/master, stays small
@@ -43,7 +47,8 @@ The cloud's GitHub proxy may refuse GraphQL, which `gh pr create`, `gh pr view`,
   Exception (PM, 2026-10-05, so lanes don't idle behind the landing queue): once a parent PR is reviewed and in a landing
   queue, you may prepare the next slice on a branch based on the parent's queued head. Push it (the VM can be reclaimed),
   but open no PR and request no regen until the parent has merged. Then merge origin/master in, regen, and open the PR
-  against master. If the parent's head changes, rebase your prep onto the new head.
+  against master. If the parent's head changes, merge the parent's new head into your prep branch (AGENTS.md step 2);
+  never rebase a pushed branch.
 - Push work in progress early and often: the VM can be reclaimed, and anything not pushed is lost. Commit sources only;
   regenerated outputs come from CI.
 - Develop with targeted tests and `pnpm typecheck`. Find a test file's group with
@@ -52,23 +57,28 @@ The cloud's GitHub proxy may refuse GraphQL, which `gh pr create`, `gh pr view`,
   - `chrome` and `native`: push, then `pnpm ci:test-files <branch> <files...> --once` (it runs Chrome files on macos-26 and
     native files on ubuntu-24.04-arm). Exit codes: 0 passed, 1 failed, 2 error, 3 pending; it prints the run id. Poll it
     again with `pnpm ci:test-files --run <id> --once`. It tests the pushed branch, so push first.
-- Regen only on CI, with no local fallback: push your source commits and add the `regen` label (above), or
-  `gh workflow run regen-on-ci.yml -f branch=<branch>`. A run takes about 35–45 minutes. It is done when the branch gets the
-  github-actions[bot] commit "Regenerate on CI: pnpm regen (regen-on-ci)" or the run summary says "already at a fixed point;
-  no commit"; then `git pull --ff-only`. Its status:
-  `gh api "$R/actions/workflows/regen-on-ci.yml/runs?branch=<branch>&per_page=3" --jq '.workflow_runs[] | "\(.id) \(.status) \(.conclusion) \(.head_sha)"'`.
-  Never push while a regen run is in progress (its push would be refused; label again). If a run fails, read its log
-  (`gh run view <id> --log-failed`), fix the cause and label again. If the runners are down, wait and say so in your receipt.
-- At the end of the branch (owner, 2026-10-04: prove once, in the driver): one regen on CI, pull its commit, then
-  `pnpm typecheck` and the targeted tests for what you touched, on the regenerated head. Always include the cross-cutting
-  registry tests: `packages/parity/test/chrome-ports.test.ts` (every Chrome citation is in docs/ports.json), both
-  `registry-claims.test.ts`, and the iOS and Android profile tests if you promote native rows. They are in the Chrome group,
-  so they go in your ci:test-files run. Chrome-ports failed #197 at landing (2026-10-05).
+- Regen only on CI, with no local fallback, and only through the `regen` label on your PR. (A `gh workflow run
+  regen-on-ci.yml -f branch=<b>` run is filed under master with no branch in its title, so a lane can't find it again
+  after a pause.) Push your source commits, then add the label (above). A run takes about 35–45 minutes. Find your run
+  (other labels' events add skipped runs, which this drops):
+  `gh api "$R/actions/workflows/regen-on-ci.yml/runs?branch=<branch>&event=pull_request&per_page=100" --jq '[.workflow_runs[] | select(.conclusion != "skipped")][0:3][] | "\(.id) \(.status) \(.conclusion) \(.head_sha) \(.created_at)"'`
+  The newest line is yours when its head_sha is the head you labeled. It is done when that run is `completed success` and
+  the branch has the github-actions[bot] commit "Regenerate on CI: pnpm regen (regen-on-ci)", or the run summary says
+  "already at a fixed point; no commit"; then `git pull --ff-only`. Never push while the run is in progress (its push would
+  be refused). If it fails, read `gh run view <id> --log-failed`, fix the cause, push, then remove the label (the workflow
+  removes it only after a success) and add it again. If the runners are down, wait and say so in your receipt.
+- At the end of the branch (owner, 2026-10-04: prove once, in the driver): audit and push, open the PR (Landing, below),
+  add the `regen` label, pull its commit, then run `pnpm typecheck` and the targeted tests for what you touched on the
+  regenerated head, and update the PR body with exactly what passed. Always include the cross-cutting registry tests:
+  `packages/parity/test/chrome-ports.test.ts` (every Chrome citation is in docs/ports.json), both `registry-claims.test.ts`,
+  and the iOS and Android profile tests if you promote native rows. Route each by its group: chrome-ports and parity's
+  registry-claims are in the Chrome group (ci:test-files); `packages/dragon/test/registry-claims.test.ts` is platform-free
+  (local). Chrome-ports failed #197 at landing (2026-10-05).
   Do NOT run the full `pnpm test`: the landing driver runs it once on the merged tree, and sends the PR back with the
   exact failing tests if any fail for real. A review round reruns only its targeted tests (plus a regen if generator inputs
   changed). Don't rerun a step that passed.
-- Catch up (`git merge origin/master`, then regen) only when GitHub says CONFLICTING (`mergeable_state` `dirty`), the driver
-  asks, or your parent has merged. Never rebuild a branch as -v2: merge its parent forward.
+- Catch up (`git merge origin/master`, then regen) only when GitHub says CONFLICTING (`mergeable_state` `dirty`; poll again
+  while it is `unknown`), the driver asks, or your parent has merged. Never rebuild a branch as -v2: merge its parent forward.
 - Device-record tests that fail only for a missing device run are "device step pending"
   (lanes, lanes-records, device-failures, p6a-promotion, lanes-concurrent, and land.test's evidence:stamp case). Never a stop.
   The `devices` label (device-lanes.yml) runs the device lanes for a branch as a diagnostic only; the device evidence that
@@ -113,6 +123,7 @@ Everything else is a default above, or a note in your receipt.
   `--wait`. A short wait may repeat a single poll in the foreground, bounded under 25 minutes, e.g.
   `for i in 1 2 3 4 5 6 7; do pnpm -s ci:test-files --run <id> --once; s=$?; [ $s -ne 3 ] && break; sleep 180; done; echo exit=$s`.
 - No background watchers, /tmp/job.sh, leases or `.done` files: background jobs die when the session pauses.
+- Never wait on anything outside your lane.
 
 ## Landing (when your dispatch says "land")
 1. Audit every changed source and test file once: unchecked external input, silent error paths,
@@ -150,7 +161,7 @@ what costs money or leaves the repo.
 ## Resuming a killed lane
 A new session has only what reached GitHub. `git fetch origin`, check out the lane's branch, and read its state: `git log`,
 the PR (head, conflict state, comments, review comments, labels) with the commands above, its checks, and its CI runs
-(regen runs as above; ci:test-files runs:
+(regen runs with the command in Work; ci:test-files runs, whose titles carry the ref you gave:
 `gh api "$R/actions/workflows/test-files.yml/runs?per_page=20" --jq '.workflow_runs[] | "\(.id) \(.status) \(.conclusion) \(.display_title)"'`).
 Don't redo finished work. Treat generated outputs that did not come from a regen-on-ci commit as untrusted: regen on CI.
 
