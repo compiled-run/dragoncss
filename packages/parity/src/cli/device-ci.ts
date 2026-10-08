@@ -56,7 +56,14 @@ if (mode === 'one' && rest.length === 3) {
     log(`blocked by the device tooling: ${e.message}`);
     process.exit(TOOLING_EXIT);
   }
-  writeFileSync(out, ciOutcomeText({ schema: OUTCOME_SCHEMA, target: t.target, device: spec.name, evidence, producedOn: producerLabel(), outcome, dumps: caseDumpHashes(t.target, spec.name, outcome.set?.dpr ?? null) }));
+  // The hashes are evidence for comparing hosts, not a verdict: one that cannot be read leaves them null, loudly.
+  let dumps: CaseDumpHashes | null = null;
+  try {
+    dumps = caseDumpHashes(t.target, spec.name, outcome.set?.dpr ?? null);
+  } catch (e) {
+    console.log(`::warning::device-ci ${t.target} ${spec.name}: the per-case dump hashes could not be read, so the outcome carries none: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  writeFileSync(out, ciOutcomeText({ schema: OUTCOME_SCHEMA, target: t.target, device: spec.name, evidence, producedOn: producerLabel(), outcome, dumps }));
   log(`outcome written to ${out}${outcome.blocked === null ? '' : ` (blocked: ${outcome.blocked})`}`);
   // A blocked device (a failed boot or settle, a device that does not fit, one that could not be stopped) is a tooling fault: its
   // job fails with TOOLING_EXIT, so the run is not device evidence and judges nothing (the outcome is still uploaded to show why).
@@ -98,19 +105,33 @@ if (mode === 'one' && rest.length === 3) {
   if (process.env['GITHUB_STEP_SUMMARY'] !== undefined) writeFileSync(process.env['GITHUB_STEP_SUMMARY'], text, { flag: 'a' });
   if (!c.same && rest[1] === '--judge') process.exitCode = 1;
   else if (!c.same) console.log('device-ci compare: reported only; the landing driver judges this run against its previous position');
-} else if (mode === 'hashes' && rest.length === 3 && (rest[0] === 'ios' || rest[0] === 'android') && Number.isFinite(Number(rest[2]))) {
-  const dpr = Number(rest[2]);
-  console.log(JSON.stringify(caseDumpHashes(rest[0], rest[1]!, dpr)));
+} else if (mode === 'hashes' && rest.length === 3) {
+  const [target, device, dprText] = rest as [string, string, string];
+  const spec = DEVICE_MATRIX.find((d) => d.target === target && d.name === device);
+  const dpr = Number(dprText);
+  if (spec === undefined || !targets.some((t) => t.target === target && t.dprs.includes(dpr))) {
+    console.error(`device-ci hashes: ${JSON.stringify(device)} at DPR ${JSON.stringify(dprText)} is not a ${target} matrix device at one of its target's DPRs`);
+    process.exit(2);
+  }
+  console.log(JSON.stringify(caseDumpHashes(spec.target, spec.name, dpr)));
 } else if (mode === 'diff' && rest.length === 2) {
   // An outcome file holds its hashes under dumps; a hashes file is the hashes themselves.
   const read = (f: string): CaseDumpHashes => {
-    const v = JSON.parse(readFileSync(f, 'utf8')) as Record<string, unknown>;
-    const h = parseCaseHashes(v['schema'] === OUTCOME_SCHEMA ? v['dumps'] : v, f);
+    const v: unknown = JSON.parse(readFileSync(f, 'utf8'));
+    const outcome = typeof v === 'object' && v !== null && (v as Record<string, unknown>)['schema'] === OUTCOME_SCHEMA;
+    const h = parseCaseHashes(outcome ? (v as Record<string, unknown>)['dumps'] : v, f);
     if (h === null || h === undefined) throw new Error(`${f}: no per-case hashes`);
     return h;
   };
-  const [a, b] = [read(rest[0]!), read(rest[1]!)];
-  if (a.dpr !== b.dpr) throw new Error(`the hashes are of DPR ${a.dpr} and ${b.dpr}`);
+  let a: CaseDumpHashes;
+  let b: CaseDumpHashes;
+  try {
+    [a, b] = [read(rest[0]!), read(rest[1]!)];
+    if (a.dpr !== b.dpr) throw new Error(`the hashes are of DPR ${a.dpr} and ${b.dpr}`);
+  } catch (e) {
+    console.error(`device-ci diff: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(2);
+  }
   const d = diffCaseHashes(a, b);
   for (const k of ['set', 'states', 'hits'] as const) console.log(`${k}: ${d[k].length} of ${new Set([...Object.keys(a[k]), ...Object.keys(b[k])]).size} cases differ${d[k].length === 0 ? '' : `: ${d[k].join(' ')}`}`);
   if (d.set.length + d.states.length + d.hits.length > 0) process.exitCode = 1;
