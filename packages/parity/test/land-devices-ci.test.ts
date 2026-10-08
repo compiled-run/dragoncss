@@ -379,6 +379,15 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     expect(failedJobs([{ name: 'converge', status: 'completed', conclusion: 'failure', steps: [{ name: 'Pick the last round', status: 'completed', conclusion: 'failure' }] }]).verdict).toHaveLength(1);
     expect(failedJobs(step('Host side - JDK 17 and kotlinc, checked against the toolchains lanes.json records')).setup).toHaveLength(1);
     expect(failedJobs(step('Chrome side - fetch the WPT copy when the cache missed')).setup).toHaveLength(1);
+    // A regen cut off (the job's 300-min timeout, a lost runner, a cancel) judged nothing: only a regen step that ran to its end
+    // and failed blames the tree (#220 review).
+    const cut = (jobConclusion: string, stepStatus: string, stepConclusion: string | null) => failedJobs([{ name: 'chrome-1 / round', status: 'completed', conclusion: jobConclusion, steps: [{ name: 'Set up job', status: 'completed', conclusion: 'success' }, { name: 'pnpm regen --skip lanes-host --skip tw-sweep', status: stepStatus, conclusion: stepConclusion }] }]);
+    expect(cut('timed_out', 'completed', 'cancelled')).toEqual({ verdict: [], setup: ['chrome-1 / round (pnpm regen --skip lanes-host --skip tw-sweep)'] });
+    expect(cut('failure', 'in_progress', null).verdict).toEqual([]);
+    expect(cut('failure', 'completed', 'cancelled').verdict).toEqual([]);
+    expect(cut('failure', 'completed', 'failure').verdict).toEqual(['chrome-1 / round (pnpm regen --skip lanes-host --skip tw-sweep)']);
+    // Other workflows' verdicts are judged as before: a timed-out test shard is still the tree's.
+    expect(failedJobs([{ name: 'native (3)', status: 'completed', conclusion: 'timed_out', steps: [{ name: 'vitest run (native files, shard 3/4)', status: 'completed', conclusion: 'cancelled' }] }]).verdict).toHaveLength(1);
     const unavailable = (f: () => unknown): CiUnavailable => {
       try {
         f();
@@ -405,10 +414,20 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     abandonInflight(JSON.stringify({ branch: regenBranch(SHA), runId: null, sha: SHA, workflow: 'regen-on-ci.yml' }), { cancel: (id) => void calls.push(`cancel ${id}`), findRuns: (w, t) => (calls.push(`find ${w} ${t}`), [9]), deleteBranch: (b) => void calls.push(`delete ${b}`), log: () => {} });
     expect(calls).toEqual([`find regen-on-ci.yml regen of ${SHA}`, 'cancel 9', `delete ${regenBranch(SHA)}`]);
   });
-  it('waits at least as long as one regen round may run', () => {
+  it('waits at least as long as the longest chain of regen rounds may run', () => {
     const minutes = [...round.matchAll(/timeout-minutes: (\d+)/g)].map((m) => Number(m[1]));
     expect(minutes.length).toBeGreaterThan(0);
-    expect(DEFAULT_REGEN_WAIT_S).toBeGreaterThanOrEqual(Math.max(...minutes) * 60);
+    const rounds = [...yml.matchAll(/uses: \.\/\.github\/workflows\/regen-on-ci-round\.yml/g)].length;
+    expect(rounds).toBe(6);
+    expect(DEFAULT_REGEN_WAIT_S).toBeGreaterThanOrEqual(rounds * Math.max(...minutes) * 60);
+  });
+  it('master\'s warm cache run yields to branch regens but never to the driver\'s patch-mode runs (#220 review)', () => {
+    const resolve = yml.slice(yml.indexOf('\n  resolve:\n'), yml.indexOf('\n  chrome-1:\n'));
+    const filter = /gh api "repos\/\$REPO\/actions\/workflows\/regen-on-ci\.yml\/runs\?status=\$st&per_page=100" -q '([^']+)'/.exec(resolve)?.[1];
+    expect(filter).toBe('[.workflow_runs[] | select(.event != "push" and (.event != "workflow_dispatch" or ((.display_title // "") | startswith("regen of ") | not)))] | length');
+    // The patch-mode run-name is the prefix the filter skips, and only patch mode gets it.
+    expect(regenTitle(SHA).startsWith('regen of ')).toBe(true);
+    expect(yml).toContain("run-name: ${{ inputs.sha && format('regen of {0}', inputs.sha) ||");
   });
   it('the workflow\'s patch mode: run-name "regen of <sha>", no push, the patch as an artifact, caches restored only; branch mode unchanged', () => {
     expect(yml).toContain("run-name: ${{ inputs.sha && format('regen of {0}', inputs.sha) ||");
@@ -420,6 +439,8 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     for (const c of calls) expect(c).toContain(`save_cache: "\${{ needs.resolve.outputs.mode != 'patch' }}"`);
     expect(round).toContain('save_cache: { type: boolean, required: false, default: true }');
     expect(round).toMatch(/- name: Save the regen cache\n {8}if: success\(\) && inputs\.save_cache\n {8}uses: actions\/cache\/save@v4/);
+    // setup-node's pnpm cache saves in a post step: off unless the round may save (#220 review).
+    expect([...round.matchAll(/\n {10}cache: ([^\n]+)/g)].map((m) => m[1])).toEqual(["${{ inputs.save_cache && 'pnpm' || '' }}"]);
     // Every cache step that saves (actions/cache or actions/cache/save) is gated on save_cache.
     const steps = round.split(/\n {6}- /).filter((st) => /uses: actions\/cache(\/save)?@/.test(st));
     expect(steps.length).toBe(2);

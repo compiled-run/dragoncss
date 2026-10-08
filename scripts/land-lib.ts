@@ -54,7 +54,7 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   under /tmp/device-lease.sh; ci: device-lanes.yml on GitHub runners for each position's tree; the local run until master has
   device-lanes.yml), LAND_DEVICES_WAIT (seconds, 9000), LAND_TEST (local, the default: pnpm test here; ci: full-test.yml on GitHub
   runners for each proved tree; the local test until master has full-test.yml), LAND_TEST_WAIT (seconds, 22500), LAND_REGEN (local,
-  the default: pnpm regen here; ci: regen-on-ci.yml in patch mode), LAND_REGEN_WAIT (seconds, 18900). Each of LAND_DEVICES,
+  the default: pnpm regen here; ci: regen-on-ci.yml in patch mode), LAND_REGEN_WAIT (seconds, default past regen-on-ci.yml's chain of round timeouts). Each of LAND_DEVICES,
   LAND_TEST and LAND_REGEN may also be ci-only: the step never runs here, and when GitHub Actions does not run it the driver stops
   as a CI outage, failing no PR and leaving the rest of the queue queued. LAND_CI=only sets all three to ci-only (the setting for a
   host that is not this Mac): no lease, quiet-machine or priority file, and no /tmp helper script is used. LAND_CI_START (seconds

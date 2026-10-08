@@ -1,8 +1,9 @@
 # CI-OFFLOAD step 2: `pnpm regen` for a branch on GitHub-hosted runners, pushed back to the branch as its own commit.
 # Trigger: workflow_dispatch with a branch, or the `regen` label on a pull request from this repository.
 # Patch mode (the landing driver, LAND_REGEN=ci): workflow_dispatch with a commit `sha` instead of a branch. Nothing is pushed:
-# the final combined outputs.patch (against that commit, the tw-sweep round's) is the artifact regen-patch, and every cache is
-# restored only, as in full-test.yml, since a dispatched run regenerates an unreviewed tree at master's cache scope.
+# the final combined outputs.patch (against that commit, the tw-sweep round's) is the artifact regen-patch, and no cache is saved
+# (the regen and WPT caches are restored only, the pnpm store is not cached), since a dispatched run regenerates an unreviewed
+# tree at master's cache scope.
 # The chain is split by machine (regen-on-ci-round.yml): the Chrome steps on macos-26, whose captures are byte-identical to the
 # local Mac's (capture-proof.yml), and lanes-host on xcode-27, the image with the local Mac's Xcode 27.0. Rounds alternate until
 # one changes nothing (at most 5). tw-sweep, which no other step reads and which takes about 50 min on a 3-core runner, runs
@@ -61,10 +62,12 @@ jobs:
           set -euo pipefail
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             # Branch regens come first: the macOS runners are few (5 at once), so a master cache run yields to any branch regen
-            # queued or running, and the next master push warms the cache instead.
+            # queued or running, and the next master push warms the cache instead. Patch-mode runs ("regen of <sha>", the landing
+            # driver's) never make it yield: they are nearly always in flight during a landing, save no cache themselves, and
+            # restore master's, so master's run must keep saving it.
             busy=0
             for st in queued in_progress waiting pending; do
-              n=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" -q '[.workflow_runs[] | select(.event != "push")] | length')
+              n=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" -q '[.workflow_runs[] | select(.event != "push" and (.event != "workflow_dispatch" or ((.display_title // "") | startswith("regen of ") | not)))] | length')
               busy=$((busy + n))
             done
             if [ "$busy" -gt 0 ]; then

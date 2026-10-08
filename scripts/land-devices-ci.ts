@@ -112,6 +112,12 @@ export const SUMMARY_STEP = "Every test's state";
 export const VERDICT_STEP = /^(vitest run|Every test's state|pnpm regen|Pick the last round|No native run was blocked|Device run |Merge the device outcomes|Compare every device lane)/;
 
 /**
+ * A regen step (regen-on-ci.yml) judges the tree only when it ran to its end and failed: one cut off by the job's timeout, a lost
+ * runner or a cancel says nothing about the tree (a regen has no limit of its own the tree could exceed).
+ */
+export const REGEN_STEP = /^(pnpm regen |Pick the last round)/;
+
+/**
  * The real jobs (not the resolve job) that failed, split by the step that failed: a verdict step (a failure of the tree) or a
  * setup step (CI's own trouble). A job that failed or timed out with no failed step is judged by the step it stopped in.
  */
@@ -121,7 +127,8 @@ export function failedJobs(jobs: readonly CiJob[]): { verdict: string[]; setup: 
   for (const j of jobs) {
     if (j.name === 'resolve' || j.status !== 'completed' || (j.conclusion !== 'failure' && j.conclusion !== 'timed_out')) continue;
     const step = j.steps.find((st) => st.conclusion === 'failure') ?? j.steps.find((st) => st.status !== 'completed' || (st.conclusion !== 'success' && st.conclusion !== 'skipped'));
-    if (step !== undefined && VERDICT_STEP.test(step.name)) verdict.push(`${j.name} (${step.name})`);
+    const cutOff = step !== undefined && REGEN_STEP.test(step.name) && (j.conclusion !== 'failure' || step.status !== 'completed' || step.conclusion !== 'failure');
+    if (step !== undefined && VERDICT_STEP.test(step.name) && !cutOff) verdict.push(`${j.name} (${step.name})`);
     else setup.push(`${j.name} (${step?.name ?? 'no step'})`);
   }
   // The summary fails whenever a shard wrote no report, and a shard that died in setup writes none: with a setup failure in the
@@ -352,8 +359,12 @@ export const REGEN_WORKFLOW_FILE = 'regen-on-ci.yml';
 export const PATCH_ARTIFACT = 'regen-patch';
 export const PATCH_FILE = 'outputs.patch';
 export const regenTitle = (sha: string): string => `regen of ${sha}`;
-/** A round's own timeout is 300 min (regen-on-ci-round.yml); a whole regen usually takes 30 to 45 min. */
-export const DEFAULT_REGEN_WAIT_S = 5 * 3600 + 900;
+/**
+ * Past the longest chain of rounds (regen-on-ci.yml: chrome-1, host-1, chrome-2, host-2, chrome-3 and sweep, 300 min each), so a
+ * run still within its own limits is never cut short; a whole regen usually takes 30 to 45 min. LAND_REGEN_WAIT sets it lower.
+ */
+export const REGEN_ROUNDS = 6;
+export const DEFAULT_REGEN_WAIT_S = REGEN_ROUNDS * 300 * 60 + 900;
 
 /** The regen-patch artifact: exactly outputs.patch (empty at a fixed point). */
 export function patchFiles(files: readonly string[]): string[] {

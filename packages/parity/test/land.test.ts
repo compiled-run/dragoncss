@@ -1527,6 +1527,13 @@ describe('LAND_REGEN (every regen of a landing tree on CI)', () => {
     expect(prepare.indexOf("if (REGEN_ON !== 'local')")).toBeGreaterThan(-1);
     expect(prepare.indexOf("if (REGEN_ON !== 'local')")).toBeLessThan(prepare.indexOf('spawn('));
     expect(src).toContain("'refs/heads/land-regen/*'");
+    // A local git error making the tree's commit judged nothing about the PR (#220 review).
+    const dispatch = src.slice(src.indexOf('const dispatchRegen'), src.indexOf('const finishRegen'));
+    expect(dispatch).toMatch(/try \{\n {4}sha = commitApart\([^\n]+\n {2}\} catch \(error\) \{\n {4}throw new CiUnavailable\(/);
+    // The regen commit names the CI run that regenerated it (#220 review).
+    expect(src).toContain('regenRan = `${REGEN.join(\' \')} on CI (regen-on-ci.yml ${url})`;');
+    expect(src).toContain('const commands = [regenRan];');
+    expect(src).toContain('commands.push(ran, regenRan);');
   });
 
   describe('where a regen runs when GitHub Actions does not run it', () => {
