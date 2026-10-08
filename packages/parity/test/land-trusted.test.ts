@@ -1,14 +1,15 @@
 // land.yml and the trusted driver (LAND_TRUSTED): the token job runs no tree code, the tree checks come back as data, the
 // cross-host lock, and the dispatches that never let GitHub drop a queued run. No network: gh is a fake, git a scratch repository.
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { SETUP_GIT_CONFIG } from '../../../scripts/floor-merge.ts';
-import { treeCodeRefusal, trustedGitConfig } from '../../../scripts/land-lib.ts';
-import { checksBranch, checksFiles, checksTitle, checksWorkflow, parseChecksResult, runIdOf, scratchRef, staleScratchBranches, titleOf } from '../../../scripts/land-devices-ci.ts';
+import { patchHasSymlink, readInTree, removeInTree, symlinkEntries, treeCodeRefusal, trustedGitConfig, writeInTree } from '../../../scripts/land-lib.ts';
+import { applyRegenPatch, VERDICT_STEP, checksBranch, checksFiles, checksTitle, checksWorkflow, parseChecksResult, runIdOf, scratchRef, staleScratchBranches, titleOf } from '../../../scripts/land-devices-ci.ts';
 import {
+  checkLockFree,
   dispatchLand,
   type DispatchDeps,
   landJobStatus,
@@ -63,7 +64,7 @@ describe('land.yml: the job that holds LAND_TOKEN runs no tree code', () => {
     expect(withSecret).toEqual(['Check the token and the ref', 'Land one batch']);
     // The check sees only whether it is set.
     expect(steps.find((st) => st.includes('Check the token'))).toContain("HAS_LAND_TOKEN: ${{ secrets.LAND_TOKEN != '' }}");
-    expect(steps.find((st) => st.includes('Land one batch'))).toMatch(/env:\n {10}LAND_TOKEN: \$\{\{ secrets\.LAND_TOKEN \}\}\n {8}run: pnpm land "\$LAND_QUEUE_FILE"/);
+    expect(steps.find((st) => st.includes('Land one batch'))).toMatch(/env:\n {10}LAND_TOKEN: \$\{\{ secrets\.LAND_TOKEN \}\}\n {8}run: node scripts\/land\.ts "\$LAND_QUEUE_FILE"/);
     const jobEnv = land.slice(land.indexOf('\n    env:\n'), land.indexOf('\n    steps:\n'));
     expect(jobEnv).not.toMatch(/secrets\./);
     expect(jobEnv).toContain('GH_TOKEN: ${{ github.token }}');
@@ -84,21 +85,57 @@ describe('land.yml: the job that holds LAND_TOKEN runs no tree code', () => {
     expect(checkouts[0]).toMatch(/persist-credentials: false/);
     // Every action is one of these; every command, one of these exact scripts (none runs in a landing worktree).
     const uses = steps.flatMap((st) => /uses: (\S+)/.exec(st)?.[1] ?? []);
-    expect(uses.sort()).toEqual(['actions/checkout@v4', 'actions/setup-node@v4', 'actions/upload-artifact@v4', 'pnpm/action-setup@v4']);
+    expect(uses.sort()).toEqual(['actions/checkout@v4', 'actions/setup-node@v4', 'actions/upload-artifact@v4']);
     const runs = steps.map(runOf).filter((r): r is string => r !== null);
     const allowed = [
       /^if \[ -z "\$\(printf '%s' "\$QUEUE" \| tr -d '\[:space:\]'\)" \]; then/,
       /^\{\n {2}echo "LAND_LOG_DIR=\$RUNNER_TEMP\/land-logs"/,
-      /^pnpm install --frozen-lockfile$/,
-      /^pnpm setup:git\ngit config --global user\.name 'dragon landing driver'\ngit config --global user\.email '[^']+'$/,
+      /^git config rerere\.enabled false\ngit config core\.symlinks false\n/,
       /^free=\$\(df -BG --output=avail \/tmp \| tail -1 \| tr -dc '0-9'\)/,
       /^mkdir -p "\$LAND_LOG_DIR"\nnode scripts\/land-actions\.ts queue "\$LAND_QUEUE_FILE"$/,
-      /^pnpm land "\$LAND_QUEUE_FILE"$/,
+      /^chmod -R a-w "\$GITHUB_WORKSPACE"\nchmod -R u\+w "\$GITHUB_WORKSPACE\/\.git"\n/,
+      /^node scripts\/land\.ts "\$LAND_QUEUE_FILE"$/,
     ];
     for (const r of runs) expect(allowed.some((a) => a.test(r)), r).toBe(true);
     expect(runs).toHaveLength(allowed.length);
     // The installs and commands above run in the workspace, the trusted checkout: no step changes directory.
     expect(steps.some((st) => /working-directory:|\bcd /.test(st))).toBe(false);
+    // No package manager, in either job: package.json commands are not the code review reads.
+    for (const job of [land, jobs.get('redispatch')!]) for (const r of stepsOf(job).map(runOf)) expect(r ?? '', r ?? '').not.toMatch(/\b(pnpm|npx|npm|yarn|corepack)\b(?! regen rebuilds)/);
+    expect(yml).not.toMatch(/pnpm\/action-setup|\binstall\b.*--frozen-lockfile/);
+    // The merge drivers are the trusted checkout's, by absolute path; the checkout is made read-only before the driver runs.
+    const git = runs.find((r) => r.startsWith('git config rerere'))!;
+    expect(git).toContain(`git config merge.dragon-floor.driver "node '$GITHUB_WORKSPACE/scripts/floor-merge.ts' %O %A %B %P"`);
+    expect(git).toContain(`git config merge.dragon-sorted.driver "node '$GITHUB_WORKSPACE/scripts/sorted-merge.ts' %O %A %B %P"`);
+    const names = steps.map((st) => /- name: (.*)/.exec(st)![1]);
+    expect(names.indexOf('Make the trusted checkout read-only')).toBe(names.indexOf('Land one batch') - 1);
+  });
+
+  it('refuses a queue when there is no stop channel (LAND_STOP_ISSUE)', () => {
+    const check = runOf(stepsOf(land).find((st) => st.includes('Check the token and the ref'))!)!;
+    expect(stepsOf(land).find((st) => st.includes('Check the token and the ref'))).toContain('STOP_ISSUE: ${{ vars.LAND_STOP_ISSUE }}');
+    // After the empty-queue exit, so only a queue needs it.
+    expect(check.indexOf('[[ "$STOP_ISSUE" =~ ^[1-9][0-9]*$ ]]')).toBeGreaterThan(check.indexOf('exit 0'));
+  });
+
+  it('the token job\'s scripts import only node: built-ins and repository files, so it installs nothing', async () => {
+    const ts = (await import('typescript')).default;
+    const roots = ['land.ts', 'land-actions.ts', 'land-review-lookup.ts', 'pr-review.ts', 'floor-merge.ts', 'sorted-merge.ts', 'land-watchdog.ts'];
+    const seen = new Set<string>();
+    const outside: string[] = [];
+    const walk = (f: string): void => {
+      if (seen.has(f)) return;
+      seen.add(f);
+      for (const i of ts.preProcessFile(readFileSync(f, 'utf8'), true, true).importedFiles) {
+        if (i.fileName.startsWith('.')) walk(resolve(dirname(f), i.fileName));
+        else if (!i.fileName.startsWith('node:')) outside.push(`${f}: ${i.fileName}`);
+      }
+    };
+    for (const r of roots) walk(repoPath(`scripts/${r}`));
+    expect(outside).toEqual([]);
+    // Every file it reaches is a script of the repository (no package's source).
+    expect([...seen].every((f) => f.startsWith(repoPath('scripts/')))).toBe(true);
+    expect(seen.size).toBeGreaterThan(roots.length);
   });
 
   it('serialises the land jobs, not the runs, and re-dispatches from a job with no secret', () => {
@@ -118,6 +155,14 @@ describe('land.yml: the job that holds LAND_TOKEN runs no tree code', () => {
     expect(checks).toMatch(/persist-credentials: false/);
     expect(checks).toMatch(/run-name: \$\{\{ format\('land checks of \{0\}', inputs\.sha\) \}\}/);
     expect(checks).not.toMatch(/cache: pnpm/);
+    // Every tree command under timeout, so a hang is its recorded failure; the results upload whatever happened.
+    expect(checks).toMatch(/timeout --kill-after=60s "\$limit" "\$@"/);
+    for (const [name, limit] of [['install', '30m'], ['merge', '15m'], ['typecheck', '40m'], ['stamp', '20m'], ['lanes', '20m']]) expect(checks).toMatch(new RegExp(`record ${name} ${limit} `));
+    expect(checks).toMatch(/timeout-minutes: 150/);
+    expect(checks).toMatch(/- name: Upload the results\n {8}if: always\(\)/);
+    // The record lines are the only places the tree's commands run.
+    const body = runOf(stepsOf(jobsOf(checks).get('checks')!).find((st) => st.includes('- name: Land checks'))!)!;
+    expect(body.split('\n').filter((l) => /\b(pnpm|node) /.test(l) && !/^\s*(record |typecheck\)|stamp\)|lanes\))/.test(l))).toEqual([]);
   });
 });
 
@@ -136,10 +181,11 @@ describe('the trusted driver (LAND_TRUSTED)', () => {
     expect(() => trustedGitConfig([['merge.x.driver', 'sh tree/evil.sh %A']], '/m')).toThrow(/is not the trusted checkout's script/);
   });
 
-  it('refuses any command outside the trusted checkout', () => {
+  it('refuses any command outside the trusted checkout, and any package manager anywhere', () => {
     const id = (p: string): string => p.replace(/\/$/, '');
-    expect(treeCodeRefusal(['pnpm', '-s', 'pr:review', '5'], '/w/main/', '/w/main', id)).toBeNull();
-    expect(treeCodeRefusal(['pnpm', 'install', '--frozen-lockfile'], '/tmp/dragon-land', '/w/main', id)).toMatch(/LAND_TRUSTED: refusing to run pnpm install --frozen-lockfile in \/tmp\/dragon-land/);
+    expect(treeCodeRefusal(['/usr/bin/node', '/w/main/scripts/pr-review.ts', '5'], '/w/main/', '/w/main', id)).toBeNull();
+    for (const pm of ['pnpm', 'npx', 'npm', '/usr/local/bin/pnpm', 'yarn']) expect(treeCodeRefusal([pm, '-s', 'pr:review'], '/w/main', '/w/main', id), pm).toMatch(/no package manager runs/);
+    expect(treeCodeRefusal(['node', 'scripts/x.ts'], '/tmp/dragon-land', '/w/main', id)).toMatch(/LAND_TRUSTED: refusing to run node scripts\/x.ts in \/tmp\/dragon-land/);
   });
 
   it('every way land.ts runs a command goes through the refusal when trusted', () => {
@@ -158,6 +204,14 @@ describe('the trusted driver (LAND_TRUSTED)', () => {
     // bash only for a local preparation's regen, which LAND_REGEN=ci-only (required by LAND_TRUSTED) never reaches.
     expect(src).toMatch(/if \(REGEN_ON !== 'local'\) \{[\s\S]{0,600}return \{ k, dir, done: '', log: '', pgid: 0, start: null, ci: \{ d, record \} \};\n {4}\}\n {4}const done = runFile/);
     expect(src).toMatch(/if \(TRUSTED && !CI_ONLY\) throw new Error/);
+    // pr:review, the one command the driver runs in its own checkout, is the script itself with node when trusted.
+    expect(src).toContain("const prReview = (): string[] => (TRUSTED ? [process.execPath, join(MAIN, 'scripts/pr-review.ts')] : ['pnpm', '-s', 'pr:review']);");
+    expect(src.match(/'pr:review'/g)).toHaveLength(1);
+    // Records go into a tree's worktree only through the no-follow writers, after the symlink check of the trees they come from.
+    expect(src).not.toMatch(/(writeFileSync|copyFileSync|rmSync)\(join\(WT,/);
+    expect(src.match(/writeInTree\(WT, p,/g)).toHaveLength(2);
+    expect(src.match(/refuseRecordSymlinks\(\[/g)).toHaveLength(2);
+    expect(src).toMatch(/\['core\.symlinks', 'false'\]/);
     // The token: read once, out of the environment, only to git push and gh.
     expect(src).toMatch(/const TOKEN = env\['LAND_TOKEN'\] \|\| null;\ndelete env\['LAND_TOKEN'\];/);
     expect(src.match(/withToken\(/g)!.length).toBe(2); // the driver's spawn and the builder's
@@ -179,7 +233,14 @@ describe('the tree checks on CI (land-checks.yml)', () => {
     expect(scratchRef(checksBranch(sha('d')))).toBe(`refs/heads/land-checks/c-${sha('d').slice(0, 12)}`);
     expect(staleScratchBranches(`x\trefs/heads/land-checks/c-${'d'.repeat(12)}\ny\trefs/heads/land-checks/other`)).toEqual([`land-checks/c-${'d'.repeat(12)}`]);
     expect(checksFiles(['result.json', 'outputs.patch'])).toEqual(['result.json', 'outputs.patch']);
-    expect(() => checksFiles(['result.json'])).toThrow(/not exactly outputs.patch and result.json/);
+    // A step the tree's commands ended leaves only outputs.patch: the driver then blames the tree.
+    expect(checksFiles(['outputs.patch'])).toEqual(['outputs.patch']);
+    expect(() => checksFiles(['result.json'])).toThrow(/not outputs.patch and result.json/);
+    expect(() => checksFiles([])).toThrow(/holds nothing/);
+    // A failed "Land checks" step is the tree's verdict; the other steps are setup.
+    expect(VERDICT_STEP.test('Land checks')).toBe(true);
+    expect(VERDICT_STEP.test('Check the inputs')).toBe(false);
+    expect(VERDICT_STEP.test('Download the device outcomes')).toBe(false);
     expect(runIdOf('https://github.com/o/r/actions/runs/123')).toBe(123);
     expect(() => runIdOf('https://github.com/o/r/pull/1')).toThrow(/not a run URL/);
   });
@@ -248,6 +309,20 @@ describe('the cross-host lock (refs/tags/land-lock) on a scratch repository', ()
     const tagC = takeLock({ git: a, me: mac(11), here: here({ completed: true }), now: () => 5_000_000, log: () => {} });
     releaseLock(a, tagC, () => {});
     expect(() => origin(['rev-parse', '--verify', '-q', 'refs/tags/land-lock'])).toThrow();
+  });
+
+  it('a run that does not take the lock still refuses to start while a land.yml run holds it (read only)', () => {
+    const { a, b, origin } = setup();
+    const said: string[] = [];
+    // No lock: nothing changes, and nothing is written to the remote.
+    checkLockFree({ git: b, runCompleted: () => false, log: (l) => said.push(l) });
+    expect(said).toEqual([]);
+    const tag = takeLock({ git: a, me: ci, here: here(), now: () => 1_000_000, log: () => {} });
+    expect(() => checkLockFree({ git: b, runCompleted: () => false, log: () => {} })).toThrow(/land.yml run 77 of o\/r .*holds refs\/tags\/land-lock and is still running/);
+    checkLockFree({ git: b, runCompleted: () => true, log: (l) => said.push(l) });
+    expect(said[0]).toMatch(/!!! refs\/tags\/land-lock is held by land.yml run 77/);
+    expect(origin(['rev-parse', 'refs/tags/land-lock'])).toBe(tag);
+    releaseLock(a, tag, () => {});
   });
 
   it('never judges a holder on another host, or an unreadable one, gone', () => {
@@ -399,5 +474,81 @@ describe('land.yml\'s steps (scripts/land-actions.ts with a fake gh on PATH)', (
     expect(redispatchDecision({ ...h, fatal: 'tree mismatch' }, false)).toMatchObject({ dispatch: false, why: expect.stringMatching(/stopped: tree mismatch/) });
     expect(redispatchDecision({ ...h, remainder: [] }, false)).toEqual({ dispatch: false, why: 'the queue is done' });
     expect(redispatchDecision(null, false)).toMatchObject({ dispatch: false, why: expect.stringMatching(/no handoff/) });
+  });
+});
+
+describe('a tree\'s symlink never redirects a write of the driver', () => {
+  const setup = () => {
+    const dir = tempDir();
+    const trusted = join(dir, 'trusted');
+    mkdirSync(trusted);
+    writeFileSync(join(trusted, 'package.json'), '{"scripts":{}}\n');
+    const wt = join(dir, 'wt');
+    mkdirSync(join(wt, 'packages/parity/out'), { recursive: true });
+    return { dir, trusted, wt, trustedFile: join(trusted, 'package.json') };
+  };
+
+  it('refuses a planted symlink at the record, or at a directory above it, and leaves the trusted file unchanged', () => {
+    const { trusted, wt, trustedFile } = setup();
+    const rec = 'packages/parity/out/device-failures-ios.json';
+    symlinkSync(trustedFile, join(wt, rec));
+    expect(() => writeInTree(wt, rec, '{"scripts":{"pr:review":"curl evil"}}')).toThrow(/is a symlink; refusing to write it/);
+    expect(() => readInTree(wt, rec)).toThrow(/is a symlink; refusing to read it/);
+    expect(readFileSync(trustedFile, 'utf8')).toBe('{"scripts":{}}\n');
+    // Removing it removes the link, never its target.
+    removeInTree(wt, rec);
+    expect(existsSync(join(wt, rec))).toBe(false);
+    expect(readFileSync(trustedFile, 'utf8')).toBe('{"scripts":{}}\n');
+    // A symlinked directory on the way.
+    rmSync(join(wt, 'packages/parity/out'), { recursive: true });
+    symlinkSync(trusted, join(wt, 'packages/parity/out'));
+    expect(() => writeInTree(wt, 'packages/parity/out/package.json', 'x')).toThrow(/packages\/parity\/out is a symlink; refusing to write packages\/parity\/out\/package.json through it/);
+    expect(() => removeInTree(wt, 'packages/parity/out/package.json')).toThrow(/is a symlink; refusing to remove/);
+    expect(() => readInTree(wt, 'packages/parity/out/package.json')).toThrow(/is a symlink; refusing to read/);
+    expect(readFileSync(trustedFile, 'utf8')).toBe('{"scripts":{}}\n');
+    expect(() => writeInTree(wt, '../trusted/package.json', 'x')).toThrow(/not a plain relative path/);
+    expect(() => writeInTree(wt, '/etc/x', 'x')).toThrow(/not a plain relative path/);
+  });
+
+  it('writes and reads a real file as usual, creating its directories', () => {
+    const { wt } = setup();
+    writeInTree(wt, 'packages/parity/out/new/lanes.json', '{"a":1}');
+    expect(readInTree(wt, 'packages/parity/out/new/lanes.json')).toBe('{"a":1}');
+    writeInTree(wt, 'packages/parity/out/new/lanes.json', '{}');
+    expect(readInTree(wt, 'packages/parity/out/new/lanes.json')).toBe('{}');
+    expect(lstatSync(join(wt, 'packages/parity/out/new')).isDirectory()).toBe(true);
+  });
+
+  it('finds symlinks in git listings, and refuses a regen or checks patch that plants one', () => {
+    expect(symlinkEntries(`100644 ${'a'.repeat(40)} 0\tpackages/x.json\u0000120000 ${'b'.repeat(40)} 0\tpackages/parity/out\u0000`)).toEqual(['packages/parity/out']);
+    expect(symlinkEntries(`120000 blob ${'b'.repeat(40)}\tpackages/l`)).toEqual([]);
+    expect(symlinkEntries(`120000 ${'b'.repeat(40)}\tpackages/l\n`)).toEqual(['packages/l']);
+    expect(patchHasSymlink('diff --git a/x b/x\nnew file mode 120000\nindex 0000000..1111111\n')).toBe(true);
+    expect(patchHasSymlink('diff --git a/x b/x\nold mode 100644\nnew mode 120000\n')).toBe(true);
+    expect(patchHasSymlink('diff --git a/x b/x\nindex 1111111..2222222 120000\n')).toBe(true);
+    expect(patchHasSymlink('diff --git a/x b/x\nindex 1111111..2222222 100644\n+120000\n')).toBe(false);
+    // On a scratch repository: the patch is refused before git apply, and the trusted file is untouched.
+    const { dir, trustedFile } = setup();
+    const repo = join(dir, 'repo');
+    const g = (args: string[]): string => execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).trim();
+    execFileSync('git', ['init', '-q', repo]);
+    g(['config', 'user.email', 't@t']);
+    g(['config', 'user.name', 't']);
+    mkdirSync(join(repo, 'packages/parity/out'), { recursive: true });
+    writeFileSync(join(repo, 'packages/parity/out/lanes.json'), '{}\n');
+    g(['add', '-A']);
+    g(['commit', '-q', '-m', 'base']);
+    const base = g(['rev-parse', 'HEAD']);
+    rmSync(join(repo, 'packages/parity/out/lanes.json'));
+    symlinkSync(trustedFile, join(repo, 'packages/parity/out/lanes.json'));
+    g(['add', '-A']);
+    const patch = join(dir, 'outputs.patch');
+    writeFileSync(patch, execFileSync('git', ['-C', repo, 'diff', '--cached', '--binary', 'HEAD']));
+    g(['reset', '-q', '--hard', base]);
+    expect(readFileSync(patch, 'utf8')).toMatch(/new file mode 120000/);
+    expect(() => applyRegenPatch(g, base, patch)).toThrow(/creates or keeps a symlink \(mode 120000\)/);
+    expect(lstatSync(join(repo, 'packages/parity/out/lanes.json')).isSymbolicLink()).toBe(false);
+    expect(readFileSync(trustedFile, 'utf8')).toBe('{"scripts":{}}\n');
+    chmodSync(trustedFile, 0o444);
   });
 });

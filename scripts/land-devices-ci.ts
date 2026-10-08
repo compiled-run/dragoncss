@@ -2,9 +2,9 @@
 // branch) and force-pushed to the driver's scratch branch, device-lanes.yml is dispatched on master for that commit and its run
 // found by its run-name, waited for, and its device-outcomes artifact handed back, for the driver to merge (device-ci.ts merge)
 // and judge against the previous position as a local run is judged. The scratch branch is deleted whatever happens.
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { CiOutage, type CiMode, LandFailure } from './land-lib.ts';
+import { CiOutage, type CiMode, LandFailure, patchHasSymlink } from './land-lib.ts';
 
 export const DEVICE_WORKFLOW = 'device-lanes.yml';
 export const OUTCOMES_ARTIFACT = 'device-outcomes';
@@ -111,7 +111,7 @@ export function parseJobs(text: string): CiJob[] {
  * downloads, the runtime and SDK installs, cache and artifact steps) is setup: its failure says nothing about the tree.
  */
 export const SUMMARY_STEP = "Every test's state";
-export const VERDICT_STEP = /^(vitest run|Every test's state|pnpm regen|Pick the last round|No native run was blocked|Device run |Merge the device outcomes|Compare every device lane)/;
+export const VERDICT_STEP = /^(vitest run|Every test's state|pnpm regen|Pick the last round|No native run was blocked|Device run |Merge the device outcomes|Compare every device lane|Land checks$)/;
 
 /**
  * A regen step (regen-on-ci.yml) judges the tree only when it ran to its end and failed: one cut off by the job's timeout, a lost
@@ -396,12 +396,17 @@ export type { CiMode };
  * all of it or nothing. Returns the patch's size in bytes (0: the tree was at its fixed point).
  */
 export function applyRegenPatch(git: (args: string[]) => string, base: string, patch: string): number {
-  if (!existsSync(patch)) throw new Error(`${patch} is missing`);
+  const st = lstatSync(patch, { throwIfNoEntry: false });
+  if (st === undefined) throw new Error(`${patch} is missing`);
+  // An artifact's file, read without following a link a run could have uploaded.
+  if (!st.isFile()) throw new Error(`${patch} is not a regular file`);
   git(['add', '-A']);
   const tree = git(['write-tree']).trim();
   const want = git(['rev-parse', `${base}^{tree}`]).trim();
   if (tree !== want) throw new Error(`the worktree's tree ${tree} is not the tree ${want} of ${base}, which the CI regen ran on`);
   const bytes = statSync(patch).size;
+  // A symlink a patch plants would redirect the driver's later writes into the tree (to the trusted checkout, say).
+  if (bytes > 0 && patchHasSymlink(readFileSync(patch, 'latin1'))) throw new Error(`${patch} creates or keeps a symlink (mode 120000); a regen's outputs never are, so it is refused`);
   if (bytes > 0) git(['apply', '--binary', '--index', patch]);
   return bytes;
 }
@@ -530,10 +535,13 @@ export const checksTitle = (sha: string): string => `land checks of ${sha}`;
 export type TreeCheck = 'typecheck' | 'stamp' | 'lanes';
 export type CheckRun = { readonly status: number; readonly stdout: string; readonly stderr: string };
 export type ChecksResult = { readonly sha: string; readonly install: CheckRun; readonly merge: CheckRun | null } & { readonly [K in TreeCheck]: CheckRun | null };
-/** The land-checks artifact: exactly result.json and outputs.patch. */
+/**
+ * The land-checks artifact: outputs.patch and result.json, or outputs.patch alone (the tree's commands ended the step before it
+ * wrote its results, which the driver blames on the tree). Anything else is not land-checks.yml's.
+ */
 export function checksFiles(files: readonly string[]): string[] {
-  const want = ['outputs.patch', 'result.json'];
-  if ([...files].sort().join(',') !== want.join(',')) throw new Error(`the ${CHECKS_ARTIFACT} artifact holds ${files.length === 0 ? 'nothing' : files.join(', ')}, not exactly ${want.join(' and ')}`);
+  const got = [...files].sort().join(',');
+  if (got !== 'outputs.patch,result.json' && got !== 'outputs.patch') throw new Error(`the ${CHECKS_ARTIFACT} artifact holds ${files.length === 0 ? 'nothing' : files.join(', ')}, not outputs.patch and result.json`);
   return [...files];
 }
 /** land-checks.yml for one commit: `checks` run after the install (and the merge of a device run's outcomes, `devicesRun`). */

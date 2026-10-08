@@ -2084,7 +2084,9 @@ describe('the driver state on GitHub (land-state.ts)', () => {
     expect(proofOf([st('failure', 'garbled', '2026-10-08T01:00:00Z')], sha('1'), trusted)).toEqual({ proved: false, unproved: { pr: 0, head: sha('1') } });
     expect(() => proofOf({}, sha('1'), trusted)).toThrow(/not a list/);
     expect(() => proofOf([{ context: PROOF_CONTEXT, state: 'success', creator: { id: ME } }], sha('1'), trusted)).toThrow(/no created_at or id/);
-    expect(() => proofOf([{ context: PROOF_CONTEXT, state: 'success', id: 1, created_at: 't' }], sha('1'), trusted)).toThrow(/no creator id/);
+    // A status with no creator id cannot be tied to a trusted writer: ignored, not trusted and not an error.
+    expect(proofOf([{ context: PROOF_CONTEXT, state: 'success', id: 1, created_at: 't' }], sha('1'), trusted)).toBeNull();
+    expect(proofOf([{ context: PROOF_CONTEXT, state: 'success', id: 2, created_at: 't2', creator: null }, st('pending', `unproved: #5 position ${sha('2')}`, 't')], sha('1'), trusted)).toEqual({ proved: false, unproved: { pr: 5, head: sha('2') } });
     const calls: string[] = [];
     const statuses: Record<string, unknown[]> = { [sha('3')]: [st('success', 'proved', 't', 1, 666)], [sha('4')]: [st('pending', `unproved: #9 position ${sha('4')}`, 't')], [sha('5')]: [st('success', 'proved', 't')] };
     const gh = (args: string[]): string => {

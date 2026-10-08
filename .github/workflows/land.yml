@@ -67,6 +67,7 @@ jobs:
         env:
           QUEUE: ${{ inputs.queue }}
           HAS_LAND_TOKEN: ${{ secrets.LAND_TOKEN != '' }}
+          STOP_ISSUE: ${{ vars.LAND_STOP_ISSUE }}
         run: |
           if [ -z "$(printf '%s' "$QUEUE" | tr -d '[:space:]')" ]; then
             [ "$HAS_LAND_TOKEN" = true ] || echo "::warning::LAND_TOKEN is not set in the land environment; the queue is empty, so this run only proves the start-up. A queue would fail here."
@@ -77,7 +78,12 @@ jobs:
             exit 1
           fi
           if [ "$GITHUB_REF_NAME" != master ]; then
-            echo "::error::land.yml lands a queue only from master (dispatched on $GITHUB_REF_NAME); use pnpm land:dispatch."
+            echo "::error::land.yml lands a queue only from master (dispatched on $GITHUB_REF_NAME); dispatch it with scripts/land-actions.ts dispatch (the land:dispatch script)."
+            exit 1
+          fi
+          # The land-stop label is the only way to stop a run here after its batch (the Mac's stop file cannot reach it).
+          if ! [[ "$STOP_ISSUE" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::The repository variable LAND_STOP_ISSUE is '$STOP_ISSUE', not an issue number. Set it to the tracking issue whose land-stop label stops the driver after its batch: without it nothing can stop the chain of runs but cancelling one mid-merge."
             exit 1
           fi
       - name: Free disk space
@@ -97,19 +103,24 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Set up pnpm 10.33.2
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.33.2
+      # No package manager runs in this job: its package.json commands are not reviewed as code, and the driver's scripts import
+      # only node: built-ins (land-trusted.test.ts checks their import closure), so nothing is installed.
       - name: Set up Node 24.15.0
         uses: actions/setup-node@v4
         with:
           node-version: '24.15.0'
-      - name: Install the trusted checkout's dependencies
-        run: pnpm install --frozen-lockfile
+      # What pnpm setup:git sets, with the merge drivers as the trusted checkout's scripts by absolute path (the driver checks
+      # the same, trustedGitConfig), and a tree's symlinks checked out as plain files.
       - name: Set up git
         run: |
-          pnpm setup:git
+          git config rerere.enabled false
+          git config core.symlinks false
+          git config merge.dragon-generated.name 'keep this side; pnpm regen rebuilds it'
+          git config merge.dragon-generated.driver true
+          git config merge.dragon-floor.name 'structural merge of floors and pins (scripts/floor-merge.ts)'
+          git config merge.dragon-floor.driver "node '$GITHUB_WORKSPACE/scripts/floor-merge.ts' %O %A %B %P"
+          git config merge.dragon-sorted.name 'interleave additions to the sorted registries (scripts/sorted-merge.ts)'
+          git config merge.dragon-sorted.driver "node '$GITHUB_WORKSPACE/scripts/sorted-merge.ts' %O %A %B %P"
           git config --global user.name 'dragon landing driver'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
       # Parallel position worktrees take a few GB each; they stay on only when the disk keeps the driver's floor (40 GB).
@@ -126,10 +137,18 @@ jobs:
         run: |
           mkdir -p "$LAND_LOG_DIR"
           node scripts/land-actions.ts queue "$LAND_QUEUE_FILE"
+      # The trusted checkout read-only from here: a write the driver is misled into (a tree's symlink) cannot change its scripts.
+      # Only .git stays writable: the driver's worktrees, fetches, refs, config and merges live there.
+      - name: Make the trusted checkout read-only
+        run: |
+          chmod -R a-w "$GITHUB_WORKSPACE"
+          chmod -R u+w "$GITHUB_WORKSPACE/.git"
+          writable=$(find "$GITHUB_WORKSPACE" -path "$GITHUB_WORKSPACE/.git" -prune -o -perm -u=w -print | head -5)
+          [ -z "$writable" ] || { echo "::error::the trusted checkout is still writable: $writable"; exit 1; }
       - name: Land one batch
         env:
           LAND_TOKEN: ${{ secrets.LAND_TOKEN }}
-        run: pnpm land "$LAND_QUEUE_FILE"
+        run: node scripts/land.ts "$LAND_QUEUE_FILE"
       - name: Upload the driver's logs and status
         if: always()
         uses: actions/upload-artifact@v4

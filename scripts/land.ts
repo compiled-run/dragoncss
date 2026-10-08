@@ -6,7 +6,7 @@
 // --match-head-commit. A PR that fails a step gets the landing-failed label and a comment, and the queue continues.
 // Run with: pnpm land <queue-file> [--dry-run]   (queue: one <branch>:<pr>:<clean-head> per line)
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { closeSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statfsSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statfsSync, statSync, writeFileSync } from 'node:fs';
 import { hostname, loadavg, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import {
@@ -15,6 +15,10 @@ import {
   ciStep,
   claudeReviewGate,
   defangReview,
+  readInTree,
+  removeInTree,
+  symlinkEntries,
+  writeInTree,
   treeCodeRefusal,
   trustedGitConfig,
   type Entry,
@@ -106,7 +110,7 @@ import {
 } from './merge-train-lib.ts';
 import { SETUP_GIT_CONFIG } from './floor-merge.ts';
 import { reviewerIds } from './land-review-lookup.ts';
-import { lockHolder, releaseLock, takeLock, checkNotReviewer, missingProof, parseIds, parseSelf, parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
+import { checkLockFree, lockHolder, releaseLock, takeLock, checkNotReviewer, missingProof, parseIds, parseSelf, parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
 import { matcher, STEPS } from './regen.ts';
 import { abandonInflight, CiUnavailable, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, staleScratchBranches, failedTestsOf, fullTestWorkflow, parseRunRows, runDevicesOnCi, runOnCi, scratchRef, testBranch } from './land-devices-ci.ts';
@@ -371,6 +375,8 @@ const must = (step: string, argv: string[], cwd: string, extraEnv: Record<string
 const install = (step: string, dir: string): void => {
   if (!TRUSTED) must(step, ['pnpm', 'install', '--frozen-lockfile'], dir);
 };
+// pnpm pr:review; under LAND_TRUSTED the trusted checkout's script itself, with node (no package.json command runs in that job).
+const prReview = (): string[] => (TRUSTED ? [process.execPath, join(MAIN, 'scripts/pr-review.ts')] : ['pnpm', '-s', 'pr:review']);
 const heavy = (step: string, argv: string[]): Run => run(step, [HEAVY, ...argv], WT, { HEAVY_PRIORITY: '1' });
 
 const holdPriority = (): void => {
@@ -438,7 +444,7 @@ const evidenceAt = (commit: string): ReturnType<typeof parseDeviceEvidence> => {
 // `ran`: the tree's parity:lanes as land-checks.yml ran it (LAND_TRUSTED); null runs it here.
 type LanesRun = { status: number | null; signal: string | null; stdout: string; stderr: string; error?: string };
 const judgeDevices = (master: string, startedMs: number | null, onCi = false, ran: LanesRun | null = null): { problems: string[]; rebaseline: string | null } => {
-  const local = (path: string): unknown => JSON.parse(readFileSync(join(WT, path), 'utf8'));
+  const local = (path: string): unknown => JSON.parse(readInTree(WT, path));
   const before = evidenceAt(master);
   // The run's own records that cannot be read are the device step's failure, not the driver's.
   let after: ReturnType<typeof parseDeviceEvidence>;
@@ -619,7 +625,7 @@ const fullTestFailures = (runId: number): string | null => {
   const dir = mkdtempSync(join(tmpdir(), 'land-full-test-'));
   try {
     gh(['run', 'download', String(runId), '--repo', REPO, '-n', 'full-test-results', '-D', dir]);
-    return failedTestsOf(readFileSync(join(dir, 'full-test-results.json'), 'utf8'));
+    return failedTestsOf(readInTree(dir, 'full-test-results.json'));
   } catch {
     return null;
   } finally {
@@ -657,10 +663,18 @@ const resetWorktree = (master: string, ignored = false): void => {
   } catch {}
   wtGit(['checkout', '-q', '-f', '--detach', master]);
   wtGit(['clean', '-q', '-fd']);
-  if (ignored) for (const p of ignoredToRemove(wtGit(ignoredFilesArgs()).toString('utf8'))) rmSync(join(WT, p), { force: true });
+  if (ignored) for (const p of ignoredToRemove(wtGit(ignoredFilesArgs()).toString('utf8'))) removeInTree(WT, p);
 };
 
+// The device records the driver writes into a worktree: a symlink at one of them, or at a directory above one, in a tree it takes
+// them from or in the worktree's index, fails the PR (a tree's link would redirect the write; writeInTree refuses one on disk).
+const refuseRecordSymlinks = (trees: readonly string[], paths: readonly string[]): void => {
+  const links = [...trees.map((t) => wtGit(['ls-tree', '-r', '-z', t, '--', 'packages']).toString('utf8')), wtGit(['ls-files', '-s', '-z', '--', 'packages']).toString('utf8')].flatMap(symlinkEntries);
+  const hit = links.filter((l) => paths.some((p) => p === l || p.startsWith(`${l}/`)));
+  if (hit.length > 0) throw new LandFailure('records', `the tree has a symlink (mode 120000) at or above a device record the driver writes: ${[...new Set(hit)].join(', ')}`);
+};
 const seedRegenCache = (e: Entry, shas: string[]): void => {
+  if (TRUSTED) return; // a local regen's cache; nothing of a tree's worktree is written outside git under LAND_TRUSTED
   const porcelain = text(git, ['worktree', 'list', '--porcelain']);
   for (const w of worktreesOf(porcelain, e.branch, shas, OWN())) {
     const from = join(w, 'node_modules/.cache/dragon-regen/state.json');
@@ -768,7 +782,7 @@ const admit = (e: Entry, earlier: readonly Entry[]): { merged: string } | { tick
   // Its review must be clean at the current head (GitHub runs no review of a conflicting head, so that waits for the landing commit).
   if (ci === 'success') {
     // --conflicts-ok: GitHub's CONFLICTING ignores the merge drivers; the merge train below decides (judgedHead).
-    const review = run('review-before', ['pnpm', '-s', 'pr:review', String(e.pr), '--wait', '--conflicts-ok'], MAIN);
+    const review = run('review-before', [...prReview(), String(e.pr), '--wait', '--conflicts-ok'], MAIN);
     if (review.error !== undefined || review.status !== 0) failed('review-before', review, `pnpm -s pr:review ${e.pr} (before the build)`);
     const out = readFileSync(review.log, 'utf8');
     if (!out.includes(`PR #${e.pr} at ${pr.headOid}`)) throw new LandFailure('review-before', `pr:review judged another head than ${pr.headOid} (log ${review.log})`);
@@ -846,9 +860,12 @@ const treeChecks = (prev: string, checks: TreeCheck[], devicesRun: number | null
     throw error;
   }
   try {
+    // The run completed but its step wrote no results: the tree's commands ended it, so it is the PR's failure.
+    if (!lstatSync(join(r.outcomesDir, 'result.json'), { throwIfNoEntry: false })) throw new LandFailure('checks', `the tree checks ${r.url} completed with no result.json: the tree's commands ended the step before it wrote its results`);
     let result: ChecksResult;
     try {
-      result = parseChecksResult(readFileSync(join(r.outcomesDir, 'result.json'), 'utf8'), { sha, checks, devicesRun });
+      // An artifact is a run's files: read without following a link (a tree's run could have uploaded one).
+      result = parseChecksResult(readInTree(r.outcomesDir, 'result.json'), { sha, checks, devicesRun });
       if (result.install.status === 0 && result.merge !== null && (result.merge.status === 0 || result.merge.status === 1)) {
         const bytes = applyRegenPatch((args) => text(wtGit, args), sha, join(r.outcomesDir, 'outputs.patch'));
         log(`  tree checks: applied the ${bytes}-byte patch of the merged device records`);
@@ -893,9 +910,10 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
     // Equal stamps: the one-by-one build's merge would have carried the previous position's device records into this tree, so
     // they are carried here, and the tree regenerated to its fixed point on them.
     const outs = [LANES_JSON, failuresJson('ios'), failuresJson('android')];
-    const differ = outs.filter((p) => git(['show', `${prev}:${p}`]).toString('utf8') !== readFileSync(join(WT, p), 'utf8'));
+    refuseRecordSymlinks([prev], outs);
+    const differ = outs.filter((p) => git(['show', `${prev}:${p}`]).toString('utf8') !== readInTree(WT, p));
     if (differ.length > 0) {
-      for (const p of outs) writeFileSync(join(WT, p), git(['show', `${prev}:${p}`]));
+      for (const p of outs) writeInTree(WT, p, git(['show', `${prev}:${p}`]));
       log(`  carried the previous position's device records (${differ.join(', ')}); regenerating on them`);
       regenTree('regen-carried', 'regen');
       commands.push(regenRan);
@@ -1133,10 +1151,11 @@ const assemblePosition = (prev: string, it: { entry: Entry; ticket: Ticket }, k:
     if (records.length > 0) {
       // The merge carries the device records of the position below; the prepared tree has the base's. Take the merge's, and
       // regenerate to the fixed point on them.
+      refuseRecordSymlinks([merge, tree], records);
       for (const p of records) {
         const blob = wtGit(['ls-tree', '-z', merge, '--', p]).toString('utf8');
-        if (blob === '') rmSync(join(WT, p), { force: true });
-        else writeFileSync(join(WT, p), wtGit(['show', `${merge}:${p}`]));
+        if (blob === '') removeInTree(WT, p);
+        else writeInTree(WT, p, wtGit(['show', `${merge}:${p}`]));
       }
       log(`  parallel build: took the merge's device records (${records.join(', ')}); regenerating on them`);
       regenTree('regen-records', 'regen');
@@ -1297,7 +1316,7 @@ const publishInside = (e: Entry, b: Built, t: Ticket): string => {
     log(`  pushed ${p.head} to ${e.branch}`);
   }
   waitCi('ci', p.head, `#${e.pr} landing commit`);
-  const review = run('pr-review', ['pnpm', '-s', 'pr:review', String(e.pr), '--wait'], MAIN);
+  const review = run('pr-review', [...prReview(), String(e.pr), '--wait'], MAIN);
   if (review.error !== undefined || review.status !== 0) failed('pr-review', review, `pnpm -s pr:review ${e.pr}`);
   const reviewOut = readFileSync(review.log, 'utf8');
   if (!reviewOut.includes(`PR #${e.pr} at ${p.head}`)) throw new LandFailure('pr-review', `pr:review judged another head than ${p.head} (log ${review.log})`);
@@ -1491,7 +1510,8 @@ const unlock = (): void => {
 const prepareWorktree = (): void => {
   // What pnpm setup:git sets (rerere off, the merge drivers of .gitattributes), in the shared config every worktree of this
   // repository reads, so a landing merge resolves generated outputs and raised floors the same way a lane's does.
-  for (const [key, value] of TRUSTED ? trustedGitConfig(SETUP_GIT_CONFIG, resolvePath(MAIN)) : SETUP_GIT_CONFIG) {
+  // Under LAND_TRUSTED git also checks out a tree's symlinks as plain files (core.symlinks=false), so none exists on disk.
+  for (const [key, value] of TRUSTED ? [...trustedGitConfig(SETUP_GIT_CONFIG, resolvePath(MAIN)), ['core.symlinks', 'false'] as [string, string]] : SETUP_GIT_CONFIG) {
     let now = '';
     try {
       now = text(git, ['config', '--get', key]);
@@ -1517,7 +1537,8 @@ const setUp = (): void => {
   QUIET_MAX_S = seconds('LAND_QUIET_MAX', 5400);
   ({ devices: DEVICES_ON, test: TEST_ON, regen: REGEN_ON, ciOnly: CI_ONLY } = parseLandModes(env));
   if (TRUSTED && !CI_ONLY) throw new Error('land: LAND_TRUSTED=1 needs LAND_CI=only: nothing of a tree may run in this job');
-  CHECKS_WAIT_S = seconds('LAND_CHECKS_WAIT', 3600);
+  // Past land-checks.yml's own 150-minute job limit, so a run within its limits is never cut short.
+  CHECKS_WAIT_S = seconds('LAND_CHECKS_WAIT', 150 * 60 + 900);
   DEVICES_WAIT_S = seconds('LAND_DEVICES_WAIT', DEFAULT_DEVICES_WAIT_S);
   TEST_WAIT_S = seconds('LAND_TEST_WAIT', DEFAULT_TEST_WAIT_S);
   REGEN_WAIT_S = seconds('LAND_REGEN_WAIT', DEFAULT_REGEN_WAIT_S);
@@ -1944,6 +1965,15 @@ const takeGlobalLock = (): string => {
     log,
   });
 };
+// Without LAND_GLOBAL_LOCK=1 the lock is only read: a running land.yml driver that holds it stops this one.
+const checkGlobalLock = (): void => {
+  MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
+  checkLockFree({
+    git: (args) => gitAt(MAIN)(args).toString('utf8').trim(),
+    runCompleted: (repo, run) => JSON.parse(execFileSync('gh', ['api', `repos/${repo}/actions/runs/${run}`], { encoding: 'utf8', env: ghEnv() })).status === 'completed',
+    log,
+  });
+};
 const releaseGlobalLock = (tag: string): void => releaseLock((args) => gitAt(MAIN)(args).toString('utf8').trim(), tag, log);
 
 // The supervisor: checks the arguments, holds the lock, runs the driver (this file, LAND_SUPERVISED=1) in its own process group,
@@ -1968,6 +1998,7 @@ const supervisor = async (): Promise<number> => {
     // An empty queue lands nothing, so it takes no lock (and needs no token to push one).
     const empty = parseQueue(readFileSync(args.queue, 'utf8'), { allowEmpty: env['LAND_QUEUE_EMPTY_OK'] === '1' }).length === 0;
     if (env['LAND_GLOBAL_LOCK'] === '1' && !empty) held = takeGlobalLock();
+    else if (!empty) checkGlobalLock();
     if (leftover !== null) cleanUpAfter(leftover, `the death of an earlier run (driver pid ${leftover})`);
     rmSync(RUN_DIR, { recursive: true, force: true });
     mkdirSync(RUN_DIR, { recursive: true });

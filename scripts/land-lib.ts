@@ -1,7 +1,7 @@
 // The checked parts of land.ts: queue and argument parsing, retries of network calls, the CI verdict, the Claude review gate and
 // the queue loop that records a failed PR and continues. The git and device judgements come from merge-train-lib.ts.
 import { spawn, spawnSync } from 'node:child_process';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, constants as fsConstants, lstatSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync, writeSync } from 'node:fs';
 import { type CheckRun, CI_CHECK } from './pr-review-vouch.ts';
 import { type DeviceEvidence, modelChanges } from './merge-train-lib.ts';
 
@@ -425,8 +425,71 @@ export const trustedGitConfig = (entries: readonly (readonly [string, string])[]
   return out;
 };
 /** Why a command may not run in `cwd` under LAND_TRUSTED (any directory but the trusted checkout holds a tree's code), or null. */
-export const treeCodeRefusal = (argv: readonly string[], cwd: string, main: string, resolve: (p: string) => string): string | null =>
-  resolve(cwd) === resolve(main) ? null : `LAND_TRUSTED: refusing to run ${argv.join(' ')} in ${cwd}: in the job that holds the landing token only the trusted checkout's own commands run; a tree's commands run in land-checks.yml`;
+// A package manager runs package.json commands, which review does not read as code, so none runs anywhere in the token job.
+const PACKAGE_MANAGERS = new Set(['pnpm', 'npx', 'npm', 'yarn', 'pnpx', 'corepack']);
+export const treeCodeRefusal = (argv: readonly string[], cwd: string, main: string, resolve: (p: string) => string): string | null => {
+  const bin = (argv[0] ?? '').split('/').at(-1)!;
+  if (PACKAGE_MANAGERS.has(bin)) return `LAND_TRUSTED: refusing to run ${argv.join(' ')}: in the job that holds the landing token no package manager runs (its scripts are package.json commands); run the script with node`;
+  return resolve(cwd) === resolve(main) ? null : `LAND_TRUSTED: refusing to run ${argv.join(' ')} in ${cwd}: in the job that holds the landing token only the trusted checkout's own commands run; a tree's commands run in land-checks.yml`;
+};
+
+/**
+ * Writes a file inside a tree's worktree without following a symlink anywhere on its path (a tree can plant one, pointing at the
+ * trusted checkout): every directory on the way must be a real directory, and the file is opened with O_NOFOLLOW.
+ */
+// The directories on the way to `rel`, each a real directory (created when `create`), never a symlink.
+const realParents = (root: string, rel: string, create: boolean, what: string): void => {
+  const parts = rel.split('/');
+  if (rel === '' || rel.startsWith('/') || parts.some((x) => x === '' || x === '.' || x === '..')) throw new Error(`land: ${JSON.stringify(rel)} is not a plain relative path`);
+  let at = root;
+  for (const part of parts.slice(0, -1)) {
+    at = `${at}/${part}`;
+    const st = lstatSync(at, { throwIfNoEntry: false });
+    if (st === undefined && create) mkdirSync(at);
+    else if (st === undefined) return;
+    else if (!st.isDirectory()) throw new Error(`land: ${at} is ${st.isSymbolicLink() ? 'a symlink' : 'not a directory'}; refusing to ${what} ${rel} through it`);
+  }
+};
+const noFollow = (path: string, flags: number, what: string): number => {
+  try {
+    return openSync(path, flags | fsConstants.O_NOFOLLOW, 0o644);
+  } catch (error) {
+    if ((error as { code?: unknown }).code === 'ELOOP') throw new Error(`land: ${path} is a symlink; refusing to ${what} it`);
+    throw error;
+  }
+};
+export const writeInTree = (root: string, rel: string, data: string | Buffer): void => {
+  realParents(root, rel, true, 'write');
+  const fd = noFollow(`${root}/${rel}`, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC, 'write');
+  try {
+    writeSync(fd, typeof data === 'string' ? Buffer.from(data) : data);
+  } finally {
+    closeSync(fd);
+  }
+};
+/** Reads a file inside a tree's worktree without following a symlink (a tree's link could name any file the runner can read). */
+export const readInTree = (root: string, rel: string): string => {
+  realParents(root, rel, false, 'read');
+  const fd = noFollow(`${root}/${rel}`, fsConstants.O_RDONLY, 'read');
+  try {
+    return readFileSync(fd, 'utf8');
+  } finally {
+    closeSync(fd);
+  }
+};
+/** Removes a file inside a tree's worktree; a symlinked directory on its way is refused, and a symlink itself is removed, not its target. */
+export const removeInTree = (root: string, rel: string): void => {
+  realParents(root, rel, false, 'remove');
+  rmSync(`${root}/${rel}`, { force: true });
+};
+/** `git ls-tree` or `git ls-files -s` output: the paths that are symlinks (mode 120000). */
+export const symlinkEntries = (lsOutput: string): string[] =>
+  lsOutput.split(/\0|\n/).flatMap((l) => {
+    const m = /^120000 [0-9a-f]+(?: \d+)?\t(.*)$/.exec(l);
+    return m ? [m[1]!] : [];
+  });
+/** A git patch that creates or keeps a symlink (mode 120000). A regen's outputs are never symlinks. */
+export const patchHasSymlink = (patch: string): boolean => /^(?:new file mode|new mode|old mode|deleted file mode) 120000$|^index [0-9a-f]+\.\.[0-9a-f]+ 120000$/m.test(patch);
 
 /** The marker line of a precomputed review comment (land-review-lookup.ts reads it, pnpm land:post-review writes it). */
 export const REVIEW_MARKER = '<!-- dragon-land-review v1 -->';

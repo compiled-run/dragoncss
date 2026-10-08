@@ -54,8 +54,8 @@ export const proofOf = (statuses: unknown, sha: string, trusted: ReadonlySet<num
   const ours = statuses.filter((s) => {
     if (!isObject(s) || typeof s.context !== 'string') throw new Error(`land-state: a status of ${sha} has no context`);
     if (s.context !== PROOF_CONTEXT) return false;
-    if (!isObject(s.creator) || !Number.isSafeInteger(s.creator.id)) throw new Error(`land-state: a ${PROOF_CONTEXT} status of ${sha} has no creator id`);
-    return trusted.has(s.creator.id as number);
+    // A status with no creator id cannot be tied to a trusted writer: it is ignored, as another creator's is.
+    return isObject(s.creator) && Number.isSafeInteger(s.creator.id) && trusted.has(s.creator.id as number);
   }) as Record<string, unknown>[];
   if (ours.length === 0) return null;
   const at = (s: Record<string, unknown>): string => {
@@ -204,24 +204,40 @@ export const lockTag = (master: string, holder: LockHolder, epochS: number): str
 };
 
 type LockGit = (args: string[], input?: string) => string;
+// The lock's current tag object and its holder (fetched into refs/land/lock-seen), or null when no lock is set.
+const currentLock = (git: LockGit): { tag: string; holder: LockHolder | null } | null => {
+  const out = git(['ls-remote', 'origin', LOCK_REF]);
+  if (out === '') return null;
+  const tag = out.split('\t')[0] ?? '';
+  if (!SHA.test(tag)) throw new Error(`land-state: ls-remote land-lock printed ${JSON.stringify(out.slice(0, 100))}`);
+  git(['fetch', '--quiet', '--no-tags', 'origin', `+${LOCK_REF}:refs/land/lock-seen`]);
+  const body = git(['cat-file', 'tag', 'refs/land/lock-seen']);
+  return { tag, holder: body.includes('\n\n') ? parseLockHolder(body.slice(body.indexOf('\n\n') + 2)) : null };
+};
+/**
+ * The check every run makes when it does not take the lock itself (a Mac run without LAND_GLOBAL_LOCK=1): it only reads. With no
+ * lock set nothing changes; a land.yml run that holds it and has not completed stops this run before it touches anything.
+ */
+export const checkLockFree = (o: { git: LockGit; runCompleted: (repo: string, run: number) => boolean; log: (line: string) => void }): void => {
+  const lock = currentLock(o.git);
+  if (lock === null) return;
+  const h = lock.holder;
+  if (h?.host === 'actions' && !o.runCompleted(h.repo, h.run)) throw new Error(`land: ${describeHolder(h)} holds ${LOCK_REF} and is still running; a second driver would land the same queue against it. Wait for it, or stop it with the land-stop label`);
+  o.log(`!!! ${LOCK_REF} is held by ${describeHolder(h)}; this run does not take the lock (LAND_GLOBAL_LOCK is not 1), so make sure that driver is not running`);
+};
 /** Takes the lock for `me` (a push under the lease of what was seen), replacing a stale holder; returns the lock's tag object. */
 export const takeLock = (o: { git: LockGit; me: LockHolder; here: Parameters<typeof lockStale>[1]; now: () => number; log: (line: string) => void }): string => {
   const sha = (v: string, what: string): string => {
     if (!SHA.test(v)) throw new Error(`land-state: ${what} printed ${JSON.stringify(v.slice(0, 100))}`);
     return v;
   };
-  const ls = (): string | null => {
-    const out = o.git(['ls-remote', 'origin', LOCK_REF]);
-    return out === '' ? null : sha(out.split('\t')[0] ?? '', 'ls-remote land-lock');
-  };
   const master = sha(o.git(['ls-remote', 'origin', 'refs/heads/master']).split('\t')[0] ?? '', 'ls-remote master');
   const tag = sha(o.git(['mktag'], lockTag(master, o.me, Math.floor(o.now() / 1000))), 'mktag');
   for (let attempt = 0; attempt < 3; attempt++) {
-    const seen = ls();
-    if (seen !== null) {
-      o.git(['fetch', '--quiet', 'origin', `+${LOCK_REF}:refs/land/lock-seen`]);
-      const body = o.git(['cat-file', 'tag', 'refs/land/lock-seen']);
-      const holder = body.includes('\n\n') ? parseLockHolder(body.slice(body.indexOf('\n\n') + 2)) : null;
+    const lock = currentLock(o.git);
+    const seen = lock?.tag ?? null;
+    if (lock !== null) {
+      const holder = lock.holder;
       if (!lockStale(holder, o.here)) throw new Error(`land: another landing driver holds ${LOCK_REF}: ${describeHolder(holder)}. Wait for it, or stop it; if it is gone, delete the lock with git push origin :${LOCK_REF}`);
       o.log(`the landing lock ${LOCK_REF} is held by ${describeHolder(holder)}, which is gone; taking it over`);
     }

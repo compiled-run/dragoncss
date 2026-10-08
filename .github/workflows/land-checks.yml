@@ -2,8 +2,12 @@
 # the token-holding land.yml job must never run itself. Dispatched on master by the driver for a tree's commit, pushed apart to
 # land-checks/c-<sha>. With no secrets and contents read only, it installs the tree, merges a device run's outcomes into its lane
 # records (devices_run), and runs the asked checks: typecheck, evidence:stamp --compare <prev>, parity:lanes. Every command's exit
-# code and output go into result.json, and the merged records into outputs.patch; the driver judges them as data. The job
-# itself fails only when it cannot produce the artifact, which the driver counts as CI trouble, never as the PR's failure.
+# code and output go into result.json, and the merged records into outputs.patch; the driver judges them as data.
+# Each tree command runs under `timeout`, so a hang is that command's recorded failure (exit 124), not a run that never ends:
+# install 30 min, the device merge 15 min, typecheck 40 min, evidence stamp 20 min, parity:lanes 20 min (each several times its
+# usual run; a SIGKILL follows 60 s after the SIGTERM). The job's 150 min covers all of them with setup. A failed "Land checks"
+# step, or a completed run with no result.json, is the tree's failure (the driver blames the PR); only setup steps and the
+# runner are CI trouble.
 name: land-checks
 run-name: ${{ format('land checks of {0}', inputs.sha) }}
 on:
@@ -36,7 +40,7 @@ concurrency:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 150
     steps:
       - name: Check the inputs
         env:
@@ -85,8 +89,8 @@ jobs:
           [ "$(git rev-parse HEAD)" = "$SHA" ] || { echo "::error::checked out $(git rev-parse HEAD), not $SHA"; exit 1; }
           # One command: its exit code, and the last 200 KB of its stdout and stderr.
           record() {
-            local name=$1; shift
-            "$@" > "$parts/$name.out" 2> "$parts/$name.err"
+            local name=$1 limit=$2; shift 2
+            timeout --kill-after=60s "$limit" "$@" > "$parts/$name.out" 2> "$parts/$name.err"
             local status=$?
             tail -c 200000 "$parts/$name.out" > "$parts/$name.out.tail"
             tail -c 200000 "$parts/$name.err" > "$parts/$name.err.tail"
@@ -98,9 +102,9 @@ jobs:
           jq -n --arg sha "$SHA" '{sha: $sha}' > "$parts/sha.json"
           : > "$out/outputs.patch"
           ok=1
-          record install pnpm install --frozen-lockfile || ok=0
+          record install 30m pnpm install --frozen-lockfile || ok=0
           if [ "$ok" = 1 ] && [ -n "$DEVICES_RUN" ]; then
-            record merge node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts merge "$RUNNER_TEMP/outcomes"
+            record merge 15m node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts merge "$RUNNER_TEMP/outcomes"
             st=$?
             if [ "$st" = 0 ] || [ "$st" = 1 ]; then
               git add -A packages/parity/out
@@ -112,20 +116,22 @@ jobs:
           if [ "$ok" = 1 ]; then
             for c in ${CHECKS//,/ }; do
               case "$c" in
-                typecheck) record typecheck pnpm typecheck ;;
-                stamp) record stamp pnpm -s evidence:stamp --compare "$PREV" ;;
-                lanes) record lanes pnpm -s run parity:lanes ;;
+                typecheck) record typecheck 40m pnpm typecheck ;;
+                stamp) record stamp 20m pnpm -s evidence:stamp --compare "$PREV" ;;
+                lanes) record lanes 20m pnpm -s run parity:lanes ;;
               esac
             done
           fi
           jq -s add "$parts"/*.json > "$out/result.json"
           echo "result.json: $(jq -c 'with_entries(if .key == "sha" then . else .value |= .status end)' "$out/result.json")"
+      # Whatever the step left, so a step the tree's commands ended still hands back what it has.
       - name: Upload the results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: land-checks
           path: |
             ${{ runner.temp }}/land-checks/result.json
             ${{ runner.temp }}/land-checks/outputs.patch
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
