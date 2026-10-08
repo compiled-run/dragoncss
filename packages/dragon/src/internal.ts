@@ -311,6 +311,17 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
   return out;
 }
 
+// GEN-c (T151 R14): the compile-time ordinal and marker text of every list item in one case (analysis/markers.ts).
+export type { ListItemMarker, MarkerType } from './analysis/markers.ts';
+import { listItemMarkers } from './analysis/markers.ts';
+import type { GenCFaults } from './faults/gen-c.ts';
+
+/** The list items of one case in tree order, with their ordinals and marker text; null without a resolved case. */
+export function listItemMarkersOf(compiled: object, assignment: Assignment, faults?: GenCFaults): readonly import('./analysis/markers.ts').ListItemMarker[] | null {
+  const c = caseOf(compiled, assignment);
+  return typeof c === 'string' || c.resolved === null ? null : listItemMarkers(c.resolved, faults);
+}
+
 // T065 ANIM-b1: the animation tables of a compile and the runtime animator's TypeScript reference.
 export type { AnimationAnalysis, AnimValue } from './analysis/animations.ts';
 export type { AnimProgram, SlotListing, TransitionSlot } from './lower/anim-program.ts';

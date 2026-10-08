@@ -13,6 +13,10 @@ import type { ListStyleType } from '../src/css/counter-styles.ts';
 import { COUNTER_STYLES, counterRepresentation, isCounterStyleName, markerText } from '../src/css/counter-styles.ts';
 import type { GenCFaults } from '../src/faults/gen-c.ts';
 import { GEN_C_FAULTS } from '../src/faults/gen-c.ts';
+import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
+import { createProjectWith, listItemMarkersOf, NO_FAULTS } from '../src/internal.ts';
+import { markerTypeOf } from '../src/analysis/markers.ts';
+import { DOC, inputFor, staticClass } from './helpers.ts';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..', '..');
 type ProbeText = { readonly owner: string; readonly text: string };
@@ -197,4 +201,60 @@ describe('the GEN-c compiler plants (faults/gen-c.ts) each change a probe case',
       expect(Object.fromEntries(planted)).not.toEqual(Object.fromEntries(chromeMarkers(c, 'dpr-1/ltr')));
     });
   }
+});
+
+// The same probe cases through the compiler: its cascade (UA sheet, the case CSS, the list-style shorthand), its display, and
+// analysis/markers.ts reading the resolved tree. The probe's style attributes become one class rule each.
+const ORDINAL_ATTRIBUTES = ['start', 'reversed', 'value'];
+function compiledMarkers(c: ProbeCase, faults: GenCFaults = GEN_C_FAULTS): Map<string, string> {
+  const inline: string[] = [];
+  const toTree = (r: SourceRef, p: Parsed, i: number): TreeNode => {
+    const origin: Origin = { kind: 'authored', span: { source: r, start: 0, end: 0 } };
+    const id = p.attributes.get('data-p') ?? `n${i}`;
+    const classes = (p.attributes.get('class') ?? '').split(/\s+/).filter((x) => x !== '');
+    const style = p.attributes.get('style');
+    if (style !== undefined) classes.push(`inline-${id}`);
+    const node: ElementNode = {
+      kind: 'element', id, tag: p.tag, origin,
+      classes: classes.map((name) => staticClass({ owner: DOC, sheet: 's', name }, origin)),
+      attributes: ORDINAL_ATTRIBUTES.filter((a) => p.attributes.has(a)).map((name) => ({ name, value: [{ when: { kind: 'true' }, value: p.attributes.get(name) as string }], origin })),
+      children: p.children.map((ch, k) => toTree(r, ch, k)),
+    };
+    return node;
+  };
+  const parsed = parseHtml(c.html);
+  const collect = (p: Parsed, i: number): void => {
+    const style = p.attributes.get('style');
+    if (style !== undefined) inline.push(`.inline-${p.attributes.get('data-p') ?? `n${i}`} { ${style} }`);
+    p.children.forEach(collect);
+  };
+  parsed.forEach(collect);
+  const body = (r: SourceRef): TreeNode[] => parsed.map((p, i) => toTree(r, p, i));
+  const project = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' });
+  const compiled = project.compile(inputFor(`${c.css}\n${inline.join('\n')}`, body));
+  const markers = listItemMarkersOf(compiled, [], faults);
+  if (markers === null) throw new Error(`${c.id}: no resolved case: ${compiled.diagnostics.map((d) => `${d.code} ${d.message}`).join('; ')}`);
+  return new Map(markers.flatMap((m) => (m.text === null ? [] : [[m.address, m.text] as [string, string]])));
+}
+
+describe('marker text through the compiler (analysis/markers.ts) against the GEN-P probe', () => {
+  for (const c of MARKER_CASES) {
+    it(`${c.id}: the compiled tree's marker text equals Chrome's`, () => {
+      expect(Object.fromEntries(compiledMarkers(c))).toEqual(Object.fromEntries(chromeMarkers(c, 'dpr-1/ltr')));
+    });
+  }
+  it('every compiler plant changes a compiled case too', () => {
+    for (const [fault, id] of [['ordinalIgnoresValue', 'ordinals'], ['reversedCountsUp', 'ordinals'], ['romanNoFallback', 'counter-lower-roman'], ['leadingZeroUnpadded', 'counter-decimal-leading-zero']] as const) {
+      const c = PROBE.cases.find((x) => x.id === id) as ProbeCase;
+      expect(Object.fromEntries(compiledMarkers(c, { ...GEN_C_FAULTS, [fault]: true })), fault).not.toEqual(Object.fromEntries(chromeMarkers(c, 'dpr-1/ltr')));
+    }
+  });
+  it('reads a computed list-style-type: R14 names, strings (escapes undone), none, and a refusal naming GEN-d1 for any other name', () => {
+    expect(markerTypeOf({ kind: 'keyword', value: 'upper-roman' })).toEqual({ kind: 'type', type: { kind: 'style', name: 'upper-roman' } });
+    expect(markerTypeOf({ kind: 'other', type: 'string', text: '"a\\"\\\\\\a "' })).toEqual({ kind: 'type', type: { kind: 'string', text: 'a"\\\n' } });
+    expect(markerTypeOf({ kind: 'keyword', value: 'none' })).toEqual({ kind: 'none' });
+    expect(markerTypeOf({ kind: 'keyword', value: 'lower-greek' })).toEqual({ kind: 'refused', reason: 'list-style-type: lower-greek is not supported yet: counter styles beyond the R14 list and @counter-style (GEN-d1)' });
+    expect(markerTypeOf({ kind: 'keyword', value: 'Foo' })).toMatchObject({ kind: 'refused' });
+    expect(() => markerTypeOf({ kind: 'other', type: 'string', text: 'unquoted' })).toThrow(/not a serialized CSS string/);
+  });
 });
