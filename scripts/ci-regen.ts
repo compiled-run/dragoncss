@@ -15,6 +15,9 @@ export const WORKFLOW = 'regen-on-ci.yml';
 export const EXIT = { done: 0, failed: 1, error: 2, pending: 3 } as const;
 export const PUSH_STEP = 'Commit and push the outputs, then start CI on the new commit';
 export const FIXED_STEP = 'Already at a fixed point (no commit)';
+/** The workflow's name, which GitHub shows as a run's title until the run-name is evaluated. */
+export const PLACEHOLDER = 'regen-on-ci';
+export const TITLE_WAIT_S = 90;
 export const COMMIT_SUBJECT = 'Regenerate on CI: pnpm regen (regen-on-ci)';
 const USAGE = 'usage: pnpm ci:regen <branch> [--head <sha>] [--from <branch>] [--once] | <branch> --run <id> [--head <sha>] [--once]';
 
@@ -225,6 +228,17 @@ export function waitFor(deps: Deps, repo: string, runId: number, want: Parameter
   for (;;) {
     const run = parseRun(deps.gh(['api', `repos/${repo}/actions/runs/${runId}`]));
     if (run.id !== runId) throw new Error(`asked for run ${runId}, got ${run.id}`);
+    // GitHub shows the workflow's name until it has evaluated the run-name, a few seconds after the dispatch.
+    if (run.title === PLACEHOLDER && run.status !== 'completed') {
+      if (deps.now() - t0 < TITLE_WAIT_S * 1000) {
+        deps.sleep(5_000);
+        continue;
+      }
+      if (o.once) {
+        deps.log(`PENDING (${run.status}) ${run.url}: no run-name yet; poll again with: pnpm ci:regen ${want.branch} --run ${runId} --once`);
+        return EXIT.pending;
+      }
+    }
     const t = checkRun(run, want);
     if (run.status === 'completed') return settle(deps, repo, run, t);
     if (o.once || deps.now() - t0 > (o.waitS ?? DEFAULT_REGEN_WAIT_S) * 1000) {
@@ -246,12 +260,16 @@ export function main(argv: readonly string[], deps: Deps, repo: () => string): n
   try {
     const r = repo();
     if (a.runId !== null) return waitFor(deps, r, a.runId, { branch: a.branch, head: a.head }, { once: a.once });
-    const head = branchHead(deps, r, a.branch);
-    if (a.head !== null && head !== a.head) throw new Error(`${a.branch} is at ${head}, not --head ${a.head}; push it first`);
+    // With --head, a run of that head is found even after its regen commit moved the branch on, so the same command polls it.
+    const head = a.head ?? branchHead(deps, r, a.branch);
     const reuse = findReusable(listRuns(deps, r, a.from), a.branch, head);
     if (reuse !== null) {
       deps.log(`run ${reuse.id} already regenerates ${a.branch} at ${head}: ${reuse.url}`);
       return waitFor(deps, r, reuse.id, { branch: a.branch, head }, { once: a.once });
+    }
+    if (a.head !== null) {
+      const now = branchHead(deps, r, a.branch);
+      if (now !== a.head) throw new Error(`${a.branch} is at ${now}, not --head ${a.head}; push it first`);
     }
     const d = dispatch(deps, r, a, head);
     deps.log(`dispatched ${WORKFLOW} from ${a.from} for ${a.branch} at ${head} (${d.nonce}): run ${d.runId}`);

@@ -6,7 +6,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { COMMIT_SUBJECT, type Deps, EXIT, FIXED_STEP, findReusable, main, parseArgs, parseCommits, parseRun, parseTitle, PUSH_STEP, pushedCommit, type Run, runTitle } from '../../../scripts/ci-regen.ts';
+import { COMMIT_SUBJECT, type Deps, EXIT, FIXED_STEP, findReusable, main, parseArgs, parseCommits, parseRun, parseTitle, PLACEHOLDER, PUSH_STEP, pushedCommit, type Run, runTitle } from '../../../scripts/ci-regen.ts';
 import { regenTitle } from '../../../scripts/land-devices-ci.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -128,6 +128,11 @@ describe('pnpm ci:regen finding the run', () => {
       expect(f.run([BR]), msg).toBe(EXIT.error);
       expect(f.logs.at(-1)).toContain(msg);
     }
+    // The same --head command finds its run after the run's regen commit moved the branch on, and dispatches nothing.
+    const after = fake({ head: NEW, listed: [rawRun()], jobs: [pushJob(true)], commits: [regenCommit()] });
+    expect(after.run([BR, '--head', HEAD, '--once'])).toBe(EXIT.done);
+    expect(after.logs.at(-1)).toBe(`regen commit ${NEW}`);
+    expect(after.calls.some((c) => c.includes('POST') || c.includes('/branches/'))).toBe(false);
     const other = fake();
     expect(other.run([BR, '--run', '77', '--head', NEW])).toBe(EXIT.error);
     expect(other.logs.at(-1)).toContain(`not ${BR} at ${NEW}`);
@@ -186,6 +191,17 @@ describe('pnpm ci:regen verdicts', () => {
     expect(main([BR], deps, () => REPO)).toBe(EXIT.error);
     expect(f.logs.at(-1)).toBe('ERROR gh api failed: HTTP 403');
     expect(f.run(['--bogus'])).toBe(EXIT.error);
+  });
+  it('waits for the run-name GitHub fills in after the dispatch, then judges the run; a run that never gets one is pending, then refused', () => {
+    const named = fake({ states: [{ display_title: PLACEHOLDER, status: 'queued', conclusion: null }, { display_title: PLACEHOLDER, status: 'queued', conclusion: null }, { status: 'queued', conclusion: null }] });
+    expect(named.run([BR, '--once'])).toBe(EXIT.pending);
+    expect(named.logs.at(-1)).toMatch(/^PENDING \(queued\) .*: regen of lane\/x at a{40}; poll again/);
+    const never = fake({ states: [{ display_title: PLACEHOLDER, status: 'queued', conclusion: null }] });
+    expect(never.run([BR, '--once'])).toBe(EXIT.pending);
+    expect(never.logs.at(-1)).toBe(`PENDING (queued) ${URL}: no run-name yet; poll again with: pnpm ci:regen ${BR} --run 77 --once`);
+    const done = fake({ states: [{ display_title: PLACEHOLDER }] });
+    expect(done.run([BR, '--run', '77'])).toBe(EXIT.error);
+    expect(done.logs.at(-1)).toContain('is not a branch regen dispatched with a head and a nonce');
   });
   it('waits without --once until the run completes', () => {
     const f = fake({ states: [{ status: 'queued', conclusion: null }, { status: 'in_progress', conclusion: null }, {}] });
