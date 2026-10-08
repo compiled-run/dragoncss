@@ -159,12 +159,12 @@ describe('OVFL-B: native scroll views for overflow auto and scroll', () => {
   });
 });
 
-describe('OVFL-B: a reversed flex scroll container with a background is refused on native (Chrome paints it in the scrolling contents)', () => {
+describe('OVFL-B: a scroll container whose overflow may extend past its start (rtl or reversed flex) with a background is refused on native (Chrome paints it in the scrolling contents)', () => {
   const NATIVE = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } as const;
   const refusals = (css: string): string[] => {
     const input = inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])])]);
     const c = createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
-    return c.diagnostics.filter((d) => d.message.includes('reversed flex scroll container')).map((d) => `${d.code} ${d.target} ${spanTextOf(input, d)}`);
+    return c.diagnostics.filter((d) => d.message.includes('whose overflow may extend past its start')).map((d) => `${d.code} ${d.target} ${spanTextOf(input, d)}`);
   };
 
   it('row-reverse, column-reverse and wrap-reverse with auto or scroll and a background are DRAGON_UNPROVEN_CONTEXT on ios and android only, at the background', () => {
@@ -175,14 +175,25 @@ describe('OVFL-B: a reversed flex scroll container with a background is refused 
     }
   });
 
-  it('no background, a transparent one, overflow hidden, a forward flex container and a block compile', () => {
+  it('an rtl scroll container with a background, declared or inherited, block or flex, is refused the same way (its scroll origin may be a fraction of a device px)', () => {
+    for (const css of [
+      '.a { overflow: auto; background-color: #eee; direction: rtl; }',
+      '.a { overflow-y: scroll; background-color: #eee; direction: rtl; }',
+      '.a { display: flex; overflow: auto; background-color: #eee; direction: rtl; }',
+      'body { direction: rtl; } .a { overflow: auto; background-color: #eee; }',
+    ]) expect(refusals(css), css).toEqual(['DRAGON_UNPROVEN_CONTEXT android #eee', 'DRAGON_UNPROVEN_CONTEXT ios #eee']);
+  });
+
+  it('no background, a transparent one, overflow hidden, a forward ltr flex container and an ltr block compile', () => {
     for (const css of [
       '.a { display: flex; flex-direction: row-reverse; overflow: auto; }',
       '.a { display: flex; flex-direction: row-reverse; overflow: auto; background-color: transparent; }',
       '.a { display: flex; flex-direction: row-reverse; overflow: auto; background-color: rgba(0, 0, 0, 0); }',
       '.a { display: flex; flex-direction: row-reverse; overflow: hidden; background-color: #eee; }',
       '.a { display: flex; overflow: auto; background-color: #eee; }',
-      '.a { overflow: auto; background-color: #eee; direction: rtl; }',
+      '.a { overflow: auto; background-color: #eee; }',
+      '.a { overflow: auto; direction: rtl; }',
+      '.a { overflow: hidden; background-color: #eee; direction: rtl; }',
     ]) expect(refusals(css), css).toEqual([]);
   });
 });

@@ -101,6 +101,34 @@ const KOTLIN_MEMBERS = String.raw`  /** OVFL-B: this box's scroll offset range i
   }
 `;
 
+/**
+ * One axis of an Android drag, as ScrollView computes it: each position is truncated to whole px before it is differenced, so the
+ * deltas of a drag sum to the finger's whole-px displacement however small each move is, and the move that starts the drag gives up
+ * the touch slop rather than jumping by it. Pure Kotlin, so native-backends.test.ts runs it on the JVM.
+ */
+const KOTLIN_DRAG = String.raw`/** One axis of a drag (ScrollView's arithmetic): whole-px positions, and the slop given up by the move that starts the drag. */
+class DragonDragAxis(private val slop: Int) {
+  private var last = 0
+  /** The finger went down (or the drag restarts) at pos. */
+  fun down(pos: Float) {
+    last = pos.toInt()
+  }
+  /** Whether the finger at pos is more than the slop from where it went down. */
+  fun pastSlop(pos: Float): Boolean = kotlin.math.abs(last - pos.toInt()) > slop
+  /** The scroll delta for the finger now at pos (positive scrolls toward the end); start: this move starts the drag. */
+  fun step(pos: Float, start: Boolean): Int {
+    val p = pos.toInt()
+    var d = last - p
+    if (start && kotlin.math.abs(d) > slop) d -= if (d > 0) slop else -slop
+    last = p
+    return d
+  }
+}
+`;
+
+/** The pure drag arithmetic of the Android scroll view, for the JVM test. */
+export const scrollDragKotlinSource = (): string => `package dev.dragon.views\n\n${KOTLIN_DRAG}`;
+
 const KOTLIN = String.raw`package dev.dragon.views
 
 import android.content.Context
@@ -111,6 +139,7 @@ import android.view.ViewConfiguration
 import android.widget.OverScroller
 import dev.dragon.dump.DumpJson
 
+${KOTLIN_DRAG}
 /**
  * A scroll container's padding box: a clip view scrolled with View.scrollTo between the engine's offsets, in both axes (the
  * platform ScrollView scrolls one), with OverScroller flings, the platform touch slop and fling speeds, and overlay scrollbars that
@@ -124,12 +153,16 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
   private val minFling: Int
   private val maxFling: Int
   private var tracker: VelocityTracker? = null
-  private var lastX = 0f
-  private var lastY = 0f
+  private val ax: DragonDragAxis
+  private val ay: DragonDragAxis
   private var dragging = false
+  /** The drag started in onInterceptTouchEvent, so the next move in onTouchEvent gives up the slop. */
+  private var startPending = false
   init {
     val c = ViewConfiguration.get(ctx)
     slop = c.scaledTouchSlop
+    ax = DragonDragAxis(slop)
+    ay = DragonDragAxis(slop)
     minFling = c.scaledMinimumFlingVelocity
     maxFling = c.scaledMaximumFlingVelocity
     scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
@@ -161,26 +194,39 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
 
   private fun canScroll(): Boolean = dragonRange[1] > dragonRange[0] || dragonRange[3] > dragonRange[2]
 
+  private fun pastSlop(e: MotionEvent): Boolean = (scrollsX && ax.pastSlop(e.x)) || (scrollsY && ay.pastSlop(e.y))
+
+  private fun beginDrag() {
+    dragging = true
+    isHorizontalScrollBarEnabled = scrollsX
+    isVerticalScrollBarEnabled = scrollsY
+    parent?.requestDisallowInterceptTouchEvent(true)
+  }
+
+  private fun endDrag() {
+    dragging = false
+    startPending = false
+    tracker?.recycle()
+    tracker = null
+  }
+
   override fun onInterceptTouchEvent(e: MotionEvent): Boolean {
     if (!canScroll()) return false
+    (tracker ?: VelocityTracker.obtain().also { tracker = it }).addMovement(e)
     when (e.actionMasked) {
       MotionEvent.ACTION_DOWN -> {
-        lastX = e.x
-        lastY = e.y
-        dragging = !scroller.isFinished
+        ax.down(e.x)
+        ay.down(e.y)
+        // A touch that catches a fling keeps dragging from where it stopped, with no slop to cross.
+        val caught = !scroller.isFinished
         scroller.forceFinished(true)
+        if (caught) beginDrag()
       }
-      MotionEvent.ACTION_MOVE -> {
-        val dx = kotlin.math.abs(e.x - lastX)
-        val dy = kotlin.math.abs(e.y - lastY)
-        if ((scrollsX && dx > slop) || (scrollsY && dy > slop)) {
-          dragging = true
-          lastX = e.x
-          lastY = e.y
-          parent?.requestDisallowInterceptTouchEvent(true)
-        }
+      MotionEvent.ACTION_MOVE -> if (!dragging && pastSlop(e)) {
+        beginDrag()
+        startPending = true
       }
-      MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> dragging = false
+      MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> endDrag()
     }
     return dragging
   }
@@ -192,22 +238,22 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
     when (e.actionMasked) {
       MotionEvent.ACTION_DOWN -> {
         scroller.forceFinished(true)
-        lastX = e.x
-        lastY = e.y
+        ax.down(e.x)
+        ay.down(e.y)
         isHorizontalScrollBarEnabled = scrollsX
         isVerticalScrollBarEnabled = scrollsY
       }
       MotionEvent.ACTION_MOVE -> {
-        val dx = (lastX - e.x).toInt()
-        val dy = (lastY - e.y).toInt()
-        if (!dragging && ((scrollsX && kotlin.math.abs(dx) > slop) || (scrollsY && kotlin.math.abs(dy) > slop))) {
-          dragging = true
-          parent?.requestDisallowInterceptTouchEvent(true)
+        var start = startPending
+        if (!dragging && pastSlop(e)) {
+          beginDrag()
+          start = true
         }
         if (dragging) {
+          startPending = false
+          val dx = ax.step(e.x, start)
+          val dy = ay.step(e.y, start)
           scrollTo(scrollX + (if (scrollsX) dx else 0), scrollY + (if (scrollsY) dy else 0))
-          lastX = e.x
-          lastY = e.y
           awakenScrollBars()
         }
       }
@@ -215,19 +261,13 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
         t.computeCurrentVelocity(1000, maxFling.toFloat())
         val vx = if (scrollsX) -t.xVelocity.toInt() else 0
         val vy = if (scrollsY) -t.yVelocity.toInt() else 0
-        if (kotlin.math.abs(vx) > minFling || kotlin.math.abs(vy) > minFling) {
+        if (dragging && (kotlin.math.abs(vx) > minFling || kotlin.math.abs(vy) > minFling)) {
           scroller.fling(scrollX, scrollY, vx, vy, dragonRange[0], dragonRange[1], dragonRange[2], dragonRange[3])
           postInvalidateOnAnimation()
         }
-        dragging = false
-        t.recycle()
-        tracker = null
+        endDrag()
       }
-      MotionEvent.ACTION_CANCEL -> {
-        dragging = false
-        t.recycle()
-        tracker = null
-      }
+      MotionEvent.ACTION_CANCEL -> endDrag()
     }
     return true
   }

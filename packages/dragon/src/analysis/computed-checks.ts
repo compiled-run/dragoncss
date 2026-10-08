@@ -52,23 +52,24 @@ const isScrollKeyword = (k: string): boolean => k === 'hidden' || k === 'auto' |
 /**
  * OVFL-B: Chrome 145 paints a user-scrollable box's solid background in its scrolling contents (LayoutBox::
  * ComputeBackgroundPaintLocation), over the scrollable overflow rect plus borders at the contents paint offset
- * (BoxFragmentPainter::PaintBoxDecorationBackground), which places it by the scroll origin's whole device px. A reversed flex
- * container (row-reverse, column-reverse or wrap-reverse) overflows past its start, and where that overflow is a fraction of a
- * device px its background stops up to one device px short of the padding box's end edge (measured: overflow-flex-reverse a2 at
- * DPR 2.625, x 180). The native scroll views paint the background over the whole padding box, so this one configuration is
- * refused on ios and android until its scrolling background is drawn.
+ * (BoxFragmentPainter::PaintBoxDecorationBackground), which places it by the scroll origin's whole device px. A scroll container
+ * whose overflow may extend past its start (any rtl one, and a reversed flex container: row-reverse, column-reverse or
+ * wrap-reverse) has a scroll origin, and where that is a fraction of a device px its background stops up to one device px short
+ * of the padding box's end edge (measured: overflow-flex-reverse a2 at DPR 2.625, x 180). The native scroll views paint the
+ * background over the whole padding box, so a painted background there is refused on ios and android until it is drawn so.
  */
-function checkReversedScrollBackground(el: ResolvedElement, propagated: ResolvedElement | null, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkStartOverflowBackground(el: ResolvedElement, propagated: ResolvedElement | null, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   if (nativeTargets.length === 0 || el === propagated) return;
   const kw = (p: Longhand): string => keywordOf(el.props.get(p) as ResolvedValue);
-  if (kw('display') !== 'flex') return;
-  const reversed = kw('flex-direction').endsWith('-reverse') || kw('flex-wrap') === 'wrap-reverse';
+  const reversed = kw('display') === 'flex' && (kw('flex-direction').endsWith('-reverse') || kw('flex-wrap') === 'wrap-reverse');
+  const rtl = kw('direction') === 'rtl';
   const scrolls = (['overflow-x', 'overflow-y'] as const).some((p) => kw(p) === 'auto' || kw(p) === 'scroll');
   const bg = el.props.get('background-color') as ResolvedValue;
   const painted = bg.value.kind === 'color' ? bg.value.value.alpha > 0 : !(bg.value.kind === 'keyword' && bg.value.value === 'transparent');
-  if (!reversed || !scrolls || !painted) return;
+  if (!(reversed || rtl) || !scrolls || !painted) return;
   const origin = bg.declaration === null ? el.element.node.origin : authored(bg.declaration.valueSpan);
-  const message = `background-color on ${el.element.address}, a reversed flex scroll container (${kw('flex-direction')}, ${kw('flex-wrap')}): Chrome paints it in the scrolling contents, offset by the scroll origin's whole device px, which the native scroll view does not draw yet (OVFL-B)`;
+  const shape = reversed ? `a reversed flex scroll container (${kw('flex-direction')}, ${kw('flex-wrap')}${rtl ? ', rtl' : ''})` : 'an rtl scroll container';
+  const message = `background-color on ${el.element.address}, ${shape} whose overflow may extend past its start: Chrome paints it in the scrolling contents, offset by the scroll origin's whole device px, which the native scroll view does not draw yet (OVFL-B)`;
   for (const t of nativeTargets) {
     const id = `${t}|ovfl-b-bg|${JSON.stringify(origin)}|${el.element.address}`;
     if (reported.has(id)) continue;
@@ -444,7 +445,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
-    if (!here) checkReversedScrollBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     if (!here) checkBidi(el, diagnostics, reported);

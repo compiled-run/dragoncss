@@ -49,6 +49,7 @@ import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, renderedF
 import type { FontWireProblem, ProjectedFonts } from './fonts/wire.ts';
 import type { CompilerFaults } from './faults.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
+import { undecidedScrollContainers } from './lower/scroll-decidable.ts';
 import { PROGRAM_VERSIONS } from './lower/native-program.ts';
 import type { BandAnalysis } from './lower/band-program.ts';
 import { bandTableOf, refuseBandedNativeAnimations, refuseBandedStateSpace, refuseSizeTransitions } from './lower/band-program.ts';
@@ -1120,7 +1121,17 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const lowerings = (bandCases[k] as { cases: CaseResult[] }).cases.flatMap((c) => (c.resolved === null ? [] : [{ key: c.key, resolved: c.resolved }, ...c.interaction.map((i) => ({ key: interactionKey(c.key, i.value), resolved: i.resolved }))]));
       for (const c of lowerings) {
         try {
-          lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals));
+          const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals);
+          lowered.set(c.key, tree);
+          // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
+          // may refuse is refused here, naming the engine's reason.
+          for (const u of undecidedScrollContainers(tree)) {
+            const id = `ovfl-b-range|${u.containerId}|${u.nodeId}`;
+            if (reported.has(id)) continue;
+            reported.add(id);
+            const message = `overflow auto or scroll on ${u.containerId}: the native scroll view's range is not decided at ${u.nodeId}: ${u.detail} (OVFL-B)`;
+            for (const t of lowerFor) diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin: originOfAddress(c.resolved, u.containerId), message, target: t, manual: 'Use overflow: hidden or clip, or keep inline boxes, <br>s and inline-level boxes out of the scroll container (wrap the text in a block).' }));
+          }
         } catch (e) {
           if (!(e instanceof LoweringError)) throw e;
           const id = `${e.nodeId}|${e.property}|${e.message}`;
