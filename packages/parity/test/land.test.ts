@@ -44,6 +44,7 @@ import {
   LandFailure,
   cleanUpAfterDriver,
   clearsUnproved,
+  defangReview,
   interruptedStatus,
   lockState,
   MERGES_LOG,
@@ -81,9 +82,9 @@ import { commitRegen, deviceRunProblems, failuresJson, type Member, memberTip, m
 import { parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
 import { type CheckRun, type Git, ignoreAt, regenOnlyProblems } from '../../../scripts/pr-review-vouch.ts';
 import { parseLanesForStamp, stampProblems } from '../../../scripts/evidence-stamp.ts';
-import { lookupReview, lookupReviewComment, parseCommentPages, repoOf, REVIEW_MARKER, reviewBlock, reviewComment, reviewers, type IssueComment } from '../../../scripts/land-review-lookup.ts';
+import { lookupReview, lookupReviewComment, parseCommentPages, repoOf, REVIEW_MARKER, reviewBlock, reviewComment, reviewerIds, topLevel, type IssueComment } from '../../../scripts/land-review-lookup.ts';
 import { postableReview } from '../../../scripts/land-post-review.ts';
-import { hasStopLabel, parseFirstParents, parseHandoff, parseMaxBatches, parseStopIssue, PROOF_CONTEXT, proofCommits, proofOf, queueFromInput, readProof, reconcileQueue, redispatchDecision, serializeHandoff, statusSummary, stopLabelSet, writeProof } from '../../../scripts/land-state.ts';
+import { checkNotReviewer, hasStopLabel, missingProof, parseFirstParents, parseHandoff, parseIds, parseMaxBatches, parseSelf, parseStopIssue, PROOF_CONTEXT, proofCommits, proofOf, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, writeProof } from '../../../scripts/land-state.ts';
 import { applyRegenPatch, CiUnavailable, landRegen } from '../../../scripts/land-devices-ci.ts';
 import { deviceEvidence } from '../src/device-evidence.ts';
 import { LANES_JSON, type LanesFile } from '../src/lanes.ts';
@@ -629,7 +630,7 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(status.split('\n')[0]).toMatch(/^land BATCH DONE /);
     expect(status).toContain('batch limit reached: the next run gets #3 #4 #5 (no PR failed for it)');
     expect(status).toContain('every PR handled landed');
-    expect(redispatchDecision({ remainder: r.stopped, stopAsked: r.stopAsked, outage: r.outage, fatal: r.fatal }, false)).toEqual({ dispatch: true, queue: [3, 4, 5].map((n) => `b${n}:${n}:${sha('a')}`).join('\n') });
+    expect(parseHandoff(serializeHandoff({ remainder: r.stopped, stopAsked: r.stopAsked, outage: r.outage, fatal: r.fatal }))?.remainder.map((x) => x.pr)).toEqual([3, 4, 5]);
     expect(() => runBatches([e(1)], 2, { ...h.ops, maxBatches: 0 })).toThrow(/batch limit 0/);
   });
 
@@ -644,10 +645,9 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(f).toMatchObject({ limited: true, exit: 1 });
     // #2 was built on #1's position, so it goes back to the queue, ahead of #3, for the next run.
     expect(f.stopped.map((x) => x.pr)).toEqual([2, 3]);
-    expect(redispatchDecision({ remainder: f.stopped, stopAsked: f.stopAsked, outage: f.outage, fatal: f.fatal }, false)).toMatchObject({ dispatch: true });
   });
 
-  it('starts no new batch once the land-stop label is set on the tracking issue, and does not re-dispatch', () => {
+  it('starts no new batch once the land-stop label is set on the tracking issue', () => {
     const h = harness();
     let reads = 0;
     // The label appears while the first batch publishes.
@@ -659,7 +659,6 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(results(r)).toEqual(['#1 landed', '#2 landed']);
     expect(r).toMatchObject({ stopAsked: true, limited: false, exit: 0 });
     expect(r.stopped.map((x) => x.pr)).toEqual([3, 4]);
-    expect(redispatchDecision({ remainder: r.stopped, stopAsked: r.stopAsked, outage: null, fatal: null }, false)).toEqual({ dispatch: false, why: 'a stop was requested; still queued: #3 #4' });
   });
 
   it('splits a long queue into batches of the given size, each built on the master the one before left', () => {
@@ -1891,99 +1890,152 @@ describe('ci-only: every heavy step on GitHub runners, never here (LAND_CI=only)
   });
 });
 
-describe('the review comment source (LAND_REVIEW_SOURCE=comment, land.yml)', () => {
+describe('the review comment source (LAND_REVIEW_SOURCE=comment)', () => {
   const head = sha('e');
+  const OWNER = 501;
   let id = 100;
-  const comment = (author: string, review: unknown, createdAt: string, o: { marker?: boolean; raw?: string } = {}): IssueComment => ({
-    id: id++,
-    author,
-    createdAt,
-    body: o.raw ?? (o.marker === false ? reviewComment(review as { pr: number; head: string; findings: unknown[] }).replace(`${REVIEW_MARKER}\n`, '') : reviewComment(review as { pr: number; head: string; findings: unknown[] })),
-  });
-  const look = (comments: IssueComment[], pr = '31', allowed = ['owner']) => lookupReviewComment(comments, allowed, pr, head);
+  type Review = { pr: number; head: string; findings: unknown[] };
+  const comment = (authorId: number, review: Review | null, createdAt: string, o: { marker?: boolean; raw?: string; updatedAt?: string; author?: string } = {}): IssueComment => {
+    const body = o.raw ?? reviewComment(review!);
+    return { id: id++, author: o.author ?? `user${authorId}`, authorId, createdAt, updatedAt: o.updatedAt ?? createdAt, body: o.marker === false ? body.replace(`${REVIEW_MARKER}\n`, '') : body };
+  };
+  const look = (comments: IssueComment[], pr = '31', allowed = [OWNER]) => lookupReviewComment(comments, allowed, pr, head);
 
-  it('takes the newest marked comment by an allowed author for the clean head', () => {
-    const older = comment('owner', { pr: 31, head, findings: [finding('medium')] }, '2026-10-08T01:00:00Z');
-    const newer = comment('owner', { pr: 31, head, findings: [] }, '2026-10-08T02:00:00Z');
+  it('takes the newest marked comment by an allowed reviewer (by user id) for the clean head', () => {
+    const older = comment(OWNER, { pr: 31, head, findings: [finding('medium')] }, '2026-10-08T01:00:00Z');
+    const newer = comment(OWNER, { pr: 31, head, findings: [] }, '2026-10-08T02:00:00Z');
     expect(look([newer, older])).toEqual({ ok: true, output: '{"findings":[]}' });
     expect(look([older])).toMatchObject({ ok: true, output: expect.stringContaining('"severity":"medium"') });
-    // Same second: the later comment id wins.
-    const tie = comment('owner', { pr: 31, head, findings: [finding('high')] }, '2026-10-08T02:00:00Z');
+    const tie = comment(OWNER, { pr: 31, head, findings: [finding('high')] }, '2026-10-08T02:00:00Z');
     expect(look([tie, newer])).toMatchObject({ ok: true, output: expect.stringContaining('"severity":"high"') });
+    // A login is never trusted for itself: another user who took the reviewer's old login has another id.
+    expect(look([comment(999, { pr: 31, head, findings: [] }, '2026-10-08T05:00:00Z', { author: `user${OWNER}` })])).toMatchObject({ ok: false, error: expect.stringMatching(/no review comment on #31.*1 marked comment\(s\) by users not on the reviewer allowlist 501 ignored/) });
   });
 
   it('skips a newer review of another head for the one of the clean head, and fails when none is for it', () => {
-    const match = comment('owner', { pr: 31, head, findings: [] }, '2026-10-08T01:00:00Z');
-    const stale = comment('owner', { pr: 31, head: sha('0'), findings: [] }, '2026-10-08T03:00:00Z');
+    const match = comment(OWNER, { pr: 31, head, findings: [] }, '2026-10-08T01:00:00Z');
+    const stale = comment(OWNER, { pr: 31, head: sha('0'), findings: [] }, '2026-10-08T03:00:00Z');
     expect(look([match, stale])).toEqual({ ok: true, output: '{"findings":[]}' });
     expect(look([stale])).toMatchObject({ ok: false, error: expect.stringMatching(/reviews 0{40}, not the clean head e{40}: the review is stale; no review comment is for the clean head/) });
   });
 
-  it('ignores comments without the marker or by authors not on the allowlist, and then fails as missing', () => {
-    const stranger = comment('mallory', { pr: 31, head, findings: [] }, '2026-10-08T05:00:00Z');
-    const unmarked = comment('owner', { pr: 31, head, findings: [] }, '2026-10-08T05:00:00Z', { marker: false });
-    expect(look([stranger, unmarked])).toEqual({ ok: false, error: 'land-review-lookup: no review comment on #31 for ' + head + '; a review agent must post one (pnpm land:post-review) (1 marked comment(s) by authors not on LAND_REVIEWERS owner ignored)' });
-    expect(look([])).toMatchObject({ ok: false, error: expect.stringMatching(/no review comment on #31/) });
-    // Logins compare case-insensitively, as GitHub's do.
-    expect(look([comment('Owner', { pr: 31, head, findings: [] }, '2026-10-08T05:00:00Z')])).toMatchObject({ ok: true });
+  it('fails on an edited review comment, since GitHub keeps the original author when a writer edits it', () => {
+    const edited = comment(OWNER, { pr: 31, head, findings: [] }, '2026-10-08T01:00:00Z', { updatedAt: '2026-10-08T04:00:00Z' });
+    expect(look([edited])).toMatchObject({ ok: false, error: expect.stringMatching(/was edited at 2026-10-08T04:00:00Z; an edited review is not trusted/) });
+    // Newer than a good one, it still fails; older than the good one, it is never reached.
+    const good = comment(OWNER, { pr: 31, head, findings: [] }, '2026-10-08T00:30:00Z');
+    expect(look([good, edited])).toMatchObject({ ok: false });
+    expect(look([{ ...edited, createdAt: '2026-10-08T00:00:00Z' }, good])).toMatchObject({ ok: true });
+  });
+
+  it('ignores comments without a top-level marker or by users not on the allowlist, and then fails as missing', () => {
+    const unmarked = comment(OWNER, { pr: 31, head, findings: [] }, '2026-10-08T05:00:00Z', { marker: false });
+    expect(look([unmarked])).toEqual({ ok: false, error: `land-review-lookup: no review comment on #31 for ${head}; a review agent must post one (pnpm land:post-review)` });
+    // A marker and a block inside another fence are that fence's text.
+    const quoted = `Log tail:\n\`\`\`\`\n${reviewComment({ pr: 31, head, findings: [] })}\`\`\`\`\n`;
+    expect(look([comment(OWNER, null, '2026-10-08T05:00:00Z', { raw: quoted })])).toMatchObject({ ok: false, error: expect.stringMatching(/no review comment on #31/) });
+    const tilde = `~~~\n${REVIEW_MARKER}\n~~~\n\`\`\`json\n${JSON.stringify({ pr: 31, head, findings: [] })}\n\`\`\``;
+    expect(look([comment(OWNER, null, '2026-10-08T05:00:00Z', { raw: tilde })])).toMatchObject({ ok: false, error: expect.stringMatching(/no review comment/) });
+    // A top-level marker with the only json block inside another fence has no block of its own.
+    const nested = `${REVIEW_MARKER}\n\`\`\`\`text\n\`\`\`json\n${JSON.stringify({ pr: 31, head, findings: [] })}\n\`\`\`\n\`\`\`\`\n`;
+    expect(look([comment(OWNER, null, '2026-10-08T05:00:00Z', { raw: nested })])).toMatchObject({ ok: false, error: expect.stringMatching(/has 0 top-level fenced json blocks/) });
   });
 
   it('fails on a malformed or other-PR comment newer than the review of the clean head', () => {
-    const good = comment('owner', { pr: 31, head, findings: [] }, '2026-10-08T01:00:00Z');
+    const good = comment(OWNER, { pr: 31, head, findings: [] }, '2026-10-08T01:00:00Z');
     const at = '2026-10-08T02:00:00Z';
+    const raw = (body: string) => comment(OWNER, null, at, { raw: `${REVIEW_MARKER}\n${body}` });
     const cases: [IssueComment, RegExp][] = [
-      [comment('owner', null, at, { raw: `${REVIEW_MARKER}\n\`\`\`json\n{"pr": 31, "head": "\n\`\`\`\n` }), /is not JSON/],
-      [comment('owner', null, at, { raw: `${REVIEW_MARKER}\nno block here` }), /has 0 fenced json blocks, not exactly one/],
-      [comment('owner', null, at, { raw: `${REVIEW_MARKER}\n\`\`\`json\n{}\n\`\`\`\n\`\`\`json\n{}\n\`\`\`` }), /has 2 fenced json blocks/],
-      [comment('owner', { pr: 32, head, findings: [] }, at), /reviews PR 32, not #31/],
-      [comment('owner', { pr: 31, head, findings: [], verdict: 'pass' }, at, { raw: `${REVIEW_MARKER}\n\`\`\`json\n${JSON.stringify({ pr: 31, head, findings: [], verdict: 'pass' })}\n\`\`\`` }), /not exactly \{ pr, head, findings \}/],
-      [comment('owner', { pr: 31, head: head.slice(0, 12), findings: [] }, at), /is not a full sha/],
-      [comment('owner', { pr: 31, head, findings: [finding('urgent')] }, at), /severity "urgent"/],
+      [raw('```json\n{"pr": 31, "head": "\n```\n'), /is not JSON/],
+      [raw('no block here'), /has 0 top-level fenced json blocks, not exactly one/],
+      [raw('```json\n{}\n```\n```json\n{}\n```'), /has 2 top-level fenced json blocks/],
+      [raw('```json\n{}\n'), /never closed/],
+      [comment(OWNER, { pr: 32, head, findings: [] }, at), /reviews PR 32, not #31/],
+      [raw(`\`\`\`json\n${JSON.stringify({ pr: 31, head, findings: [], verdict: 'pass' })}\n\`\`\``), /not exactly \{ pr, head, findings \}/],
+      [comment(OWNER, { pr: 31, head: head.slice(0, 12), findings: [] }, at), /is not a full sha/],
+      [comment(OWNER, { pr: 31, head, findings: [finding('urgent')] }, at), /severity "urgent"/],
     ];
-    for (const [bad, error] of cases) expect(look([good, bad])).toMatchObject({ ok: false, error: expect.stringMatching(error) });
-    // An older malformed comment is never reached.
-    expect(look([cases[0]![0], { ...good, createdAt: '2026-10-08T09:00:00Z' }])).toMatchObject({ ok: true });
-    expect(lookupReviewComment([good], ['owner'], undefined, head)).toMatchObject({ ok: false, error: expect.stringMatching(/LAND_REVIEW_PR/) });
-    expect(lookupReviewComment([good], ['owner'], '31', 'abc')).toMatchObject({ ok: false, error: expect.stringMatching(/LAND_REVIEW_HEAD/) });
+    for (const [badOne, error] of cases) expect(look([good, badOne])).toMatchObject({ ok: false, error: expect.stringMatching(error) });
+    expect(look([cases[0]![0], { ...good, createdAt: '2026-10-08T09:00:00Z', updatedAt: '2026-10-08T09:00:00Z' }])).toMatchObject({ ok: true });
+    expect(lookupReviewComment([good], [OWNER], undefined, head)).toMatchObject({ ok: false, error: expect.stringMatching(/LAND_REVIEW_PR/) });
+    expect(lookupReviewComment([good], [OWNER], '31', 'abc')).toMatchObject({ ok: false, error: expect.stringMatching(/LAND_REVIEW_HEAD/) });
   });
 
   it('writes a comment that reads back exactly, whatever the findings say', () => {
-    const f = { ...finding('low'), summary: 'a ```json fence\n``` and `ticks`' };
+    const f = { ...finding('low'), summary: 'a ```json fence\n``` and `ticks` and ~~~' };
     const body = reviewComment({ pr: 31, head, findings: [f] });
     expect(body.split('\n')[0]).toBe(REVIEW_MARKER);
     const block = reviewBlock(body);
     expect('json' in block && JSON.parse(block.json)).toEqual({ pr: 31, head, findings: [f] });
-    expect(look([{ id: 1, author: 'owner', createdAt: '2026-10-08T00:00:00Z', body }])).toEqual({ ok: true, output: JSON.stringify({ findings: [f] }) });
+    expect(look([comment(OWNER, null, '2026-10-08T00:00:00Z', { raw: body })])).toEqual({ ok: true, output: JSON.stringify({ findings: [f] }) });
+  });
+
+  it('the driver\'s own comments never read as a review, whatever a PR makes its log print', () => {
+    const review = reviewComment({ pr: 31, head, findings: [] });
+    // A step log tail a PR controls, posted inside the driver's fence, closing it first, or in a finding's text.
+    const bodies = [
+      `**Landing stopped at step \`typecheck\`**\n\n\`\`\`\n${review}\n\`\`\``,
+      `**Landing stopped**\n\n\`\`\`\nx\n\`\`\`\n${review}\n\`\`\`\n`,
+      findingsComment(31, head, [{ ...(finding('high') as Parameters<typeof findingsComment>[2][number]), summary: review, failure_scenario: `\`\`\`JSON\n{}\n\`\`\`\n${REVIEW_MARKER}` }]),
+    ];
+    for (const b of bodies) {
+      const posted = defangReview(b);
+      expect(posted).not.toContain('<!--');
+      expect(topLevel(posted).blocks.filter((x) => x.info.toLowerCase() === 'json')).toEqual([]);
+      expect(look([comment(OWNER, null, '2026-10-08T00:00:00Z', { raw: posted })])).toMatchObject({ ok: false, error: expect.stringMatching(/no review comment/) });
+    }
+    expect(defangReview('plain text\n```\ncode\n```')).toBe('plain text\n```\ncode\n```');
+  });
+
+  it('reads the top level of Markdown as CommonMark does', () => {
+    expect(topLevel('a\n```json\n{}\n```\nb')).toEqual({ lines: ['a', 'b'], blocks: [{ info: 'json', text: '{}', closed: true }] });
+    // A closing fence must be the same character, at least as long; an info string with a backtick opens nothing.
+    expect(topLevel('````\n```\nx\n~~~~\n````\n').blocks).toEqual([{ info: '', text: '```\nx\n~~~~', closed: true }]);
+    expect(topLevel('``` a`b\nc').lines).toEqual(['``` a`b', 'c']);
+    expect(topLevel('    ```json\nx').blocks).toEqual([]);
+    expect(topLevel('~~~json\nx').blocks).toEqual([{ info: 'json', text: 'x', closed: false }]);
   });
 
   it('checks the comments GitHub returns, the allowlist and the repository', () => {
-    expect(parseCommentPages([[{ id: 1, user: { login: 'a' }, body: 'b', created_at: 't' }], []])).toEqual([{ id: 1, author: 'a', body: 'b', createdAt: 't' }]);
+    const c = { id: 1, user: { login: 'a', id: 7 }, body: 'b', created_at: 't', updated_at: 't' };
+    expect(parseCommentPages([[c], []])).toEqual([{ id: 1, author: 'a', authorId: 7, body: 'b', createdAt: 't', updatedAt: 't' }]);
     expect(() => parseCommentPages({})).toThrow(/not a list of pages/);
-    expect(() => parseCommentPages([[{ id: 1, user: null, body: 'b', created_at: 't' }]])).toThrow(/not \{ id, user.login, body, created_at \}/);
-    expect(reviewers(undefined, 'compiled-run/dragoncss')).toEqual(['compiled-run']);
-    expect(reviewers('', 'o/r')).toEqual(['o']);
-    expect(reviewers('alice, bob carol', 'o/r')).toEqual(['alice', 'bob', 'carol']);
-    expect(() => reviewers('al ice;rm', 'o/r')).toThrow(/is not a GitHub login/);
+    expect(() => parseCommentPages([[{ ...c, user: { login: 'a' } }]])).toThrow(/user.id/);
+    expect(() => parseCommentPages([[{ ...c, updated_at: null }]])).toThrow(/updated_at/);
+    const ids: Record<string, number> = { 'compiled-run': 11, alice: 21, bob: 22 };
+    const asked: string[] = [];
+    const idOf = (login: string): number => (asked.push(login), ids[login]!);
+    expect(reviewerIds({}, 'compiled-run/dragoncss', idOf)).toEqual([11]);
+    expect(reviewerIds({ LAND_REVIEWERS: 'alice, 33 bob' }, 'o/r', idOf)).toEqual([21, 33, 22]);
+    expect(asked).toEqual(['compiled-run', 'alice', 'bob']);
+    // The driver's resolved ids win, with no lookup.
+    expect(reviewerIds({ LAND_REVIEWER_IDS: '5,6', LAND_REVIEWERS: 'alice' }, 'o/r', () => 0)).toEqual([5, 6]);
+    expect(() => reviewerIds({ LAND_REVIEWER_IDS: 'alice' }, 'o/r', idOf)).toThrow(/is not a user id/);
+    expect(() => reviewerIds({ LAND_REVIEWERS: 'ice;rm' }, 'o/r', idOf)).toThrow(/is not a GitHub login/);
+    expect(() => reviewerIds({ LAND_REVIEWERS: 'ghost' }, 'o/r', () => Number.NaN)).toThrow(/the user id of ghost/);
     expect(repoOf({ LAND_REVIEW_REPO: 'a/b', GH_REPO: 'c/d' }, () => '')).toBe('a/b');
     expect(repoOf({ GITHUB_REPOSITORY: 'e/f' }, () => '')).toBe('e/f');
     expect(repoOf({}, () => 'git@github.com:compiled-run/dragoncss.git\n')).toBe('compiled-run/dragoncss');
-    expect(repoOf({}, () => 'https://github.com/compiled-run/dragoncss')).toBe('compiled-run/dragoncss');
     expect(() => repoOf({}, () => 'https://example.com/x')).toThrow(/cannot tell the repository/);
   });
 
   it('the real script reads the comments through gh (a fake gh on PATH) and fails closed', () => {
     const dir = tempDir();
-    const pages = (pr: number) => [[{ id: 5, user: { login: 'owner' }, body: reviewComment({ pr, head, findings: [] }), created_at: '2026-10-08T00:00:00Z' }]];
+    const pages = (pr: number, o: { updated?: string } = {}) => [[{ id: 5, user: { login: 'owner', id: OWNER }, body: reviewComment({ pr, head, findings: [] }), created_at: '2026-10-08T00:00:00Z', updated_at: o.updated ?? '2026-10-08T00:00:00Z' }]];
     writeFileSync(join(dir, 'pages.json'), JSON.stringify(pages(41)));
-    writeFileSync(join(dir, 'gh'), `#!/bin/sh\necho "$@" > "${dir}/args"\ncat "${dir}/pages.json"\n`, { mode: 0o755 });
+    writeFileSync(join(dir, 'gh'), `#!/bin/sh\necho "$@" >> "${dir}/args"\ncase "$2" in users/*) echo ${OWNER} ;; *) cat "${dir}/pages.json" ;; esac\n`, { mode: 0o755 });
     const command = `node --conditions=dragon-internal '${repoPath('scripts/land-review-lookup.ts')}'`;
     const lookup = (pr: number, extra: Record<string, string> = {}) =>
-      runReviewer(command, 'prompt', dir, 60_000, { ...reviewerEnv(pr, head), LAND_REVIEW_SOURCE: 'comment', LAND_REVIEW_REPO: 'o/r', LAND_REVIEWERS: 'owner', PATH: `${dir}:${process.env['PATH']}`, ...extra });
-    const ok = lookup(41);
-    expect(ok).toMatchObject({ status: 0, stdout: '{"findings":[]}\n' });
+      runReviewer(command, 'prompt', dir, 60_000, { ...reviewerEnv(pr, head), LAND_REVIEW_SOURCE: 'comment', LAND_REVIEW_REPO: 'o/r', LAND_REVIEWER_IDS: String(OWNER), PATH: `${dir}:${process.env['PATH']}`, ...extra });
+    expect(lookup(41)).toMatchObject({ status: 0, stdout: '{"findings":[]}\n' });
     expect(readFileSync(join(dir, 'args'), 'utf8').trim()).toBe('api --paginate --slurp repos/o/r/issues/41/comments?per_page=100');
-    expect(lookup(41, { LAND_REVIEWERS: 'someone' })).toMatchObject({ status: 1, stderr: expect.stringMatching(/no review comment on #41/) });
+    // LAND_REVIEWERS by login, resolved through gh.
+    expect(lookup(41, { LAND_REVIEWER_IDS: '', LAND_REVIEWERS: 'owner' })).toMatchObject({ status: 0 });
+    expect(readFileSync(join(dir, 'args'), 'utf8')).toContain('api users/owner --jq .id');
+    expect(lookup(41, { LAND_REVIEWER_IDS: '77' })).toMatchObject({ status: 1, stderr: expect.stringMatching(/no review comment on #41/) });
     expect(lookup(42)).toMatchObject({ status: 1, stderr: expect.stringMatching(/reviews PR 41, not #42/) });
+    writeFileSync(join(dir, 'pages.json'), JSON.stringify(pages(41, { updated: '2026-10-08T01:00:00Z' })));
+    expect(lookup(41)).toMatchObject({ status: 1, stderr: expect.stringMatching(/was edited/) });
     writeFileSync(join(dir, 'pages.json'), 'not json');
     expect(lookup(41)).toMatchObject({ status: 1, stderr: expect.stringMatching(/cannot read the review comments of #41/) });
     expect(lookup(41, { LAND_REVIEW_SOURCE: 'issue' })).toMatchObject({ status: 1, stderr: expect.stringMatching(/LAND_REVIEW_SOURCE is "issue"/) });
@@ -1993,7 +2045,7 @@ describe('the review comment source (LAND_REVIEW_SOURCE=comment, land.yml)', () 
     const text = JSON.stringify({ pr: 31, head, findings: [finding('low')] });
     const r = postableReview('31', text, 'r.json');
     expect(r.ok).toBe(true);
-    if (r.ok) expect(look([{ id: 1, author: 'owner', createdAt: 't', body: r.body }])).toMatchObject({ ok: true });
+    if (r.ok) expect(look([comment(OWNER, null, 't', { raw: r.body })])).toMatchObject({ ok: true });
     expect(postableReview('32', text, 'r.json')).toMatchObject({ ok: false, error: expect.stringMatching(/reviews PR 31, not #32/) });
     expect(postableReview('31', JSON.stringify({ pr: 31, head: 'abc', findings: [] }), 'r.json')).toMatchObject({ ok: false, error: expect.stringMatching(/^land-post-review: r.json head is "abc"/) });
     expect(postableReview('x', text, 'r.json')).toMatchObject({ ok: false, error: expect.stringMatching(/^land-post-review: the PR argument is "x"/) });
@@ -2003,6 +2055,8 @@ describe('the review comment source (LAND_REVIEW_SOURCE=comment, land.yml)', () 
 });
 
 describe('the driver state on GitHub (land-state.ts)', () => {
+  const ME = 900;
+  const trusted = new Set([ME]);
   it('reads the land-stop label of the tracking issue', () => {
     expect(parseStopIssue(undefined)).toBeNull();
     expect(parseStopIssue('')).toBeNull();
@@ -2016,25 +2070,45 @@ describe('the driver state on GitHub (land-state.ts)', () => {
     expect(() => stopLabelSet(() => '[]', 'o/r; rm', 1)).toThrow(/not owner\/name/);
   });
 
-  it('reads the land/proof status: the newest record of the first commit that has one', () => {
-    const st = (state: string, description: string, created: string, idn = 1, context = PROOF_CONTEXT) => ({ id: idn, state, description, context, created_at: created });
-    expect(proofOf([st('success', 'x', 't', 1, 'ci')], sha('1'))).toBeNull();
-    expect(proofOf([st('success', 'proved', '2026-10-08T02:00:00Z', 2), st('pending', `unproved: #5 position ${sha('2')}`, '2026-10-08T01:00:00Z')], sha('1'))).toEqual({ proved: true });
-    expect(proofOf([st('success', 'proved', '2026-10-08T01:00:00Z', 2), st('pending', `unproved: #5 position ${sha('2')}`, '2026-10-08T02:00:00Z')], sha('1'))).toEqual({ proved: false, unproved: { pr: 5, head: sha('2') } });
-    // A record that does not read as one is unproved at its own commit, so master is proved again.
-    expect(proofOf([st('failure', 'garbled', '2026-10-08T01:00:00Z')], sha('1'))).toEqual({ proved: false, unproved: { pr: 0, head: sha('1') } });
-    expect(() => proofOf({}, sha('1'))).toThrow(/not a list/);
-    expect(() => proofOf([{ context: PROOF_CONTEXT, state: 'success' }], sha('1'))).toThrow(/no created_at or id/);
+  const st = (state: string, description: string, created: string, idn = 1, creator = ME, context = PROOF_CONTEXT) => ({ id: idn, state, description, context, created_at: created, creator: { login: `u${creator}`, id: creator } });
+  it('reads the land/proof status: the newest record by a trusted creator of the first commit that has one', () => {
+    expect(proofOf([st('success', 'x', 't', 1, ME, 'ci')], sha('1'), trusted)).toBeNull();
+    expect(proofOf([st('success', 'proved', '2026-10-08T02:00:00Z', 2), st('pending', `unproved: #5 position ${sha('2')}`, '2026-10-08T01:00:00Z')], sha('1'), trusted)).toEqual({ proved: true });
+    expect(proofOf([st('success', 'proved', '2026-10-08T01:00:00Z', 2), st('pending', `unproved: #5 position ${sha('2')}`, '2026-10-08T02:00:00Z')], sha('1'), trusted)).toEqual({ proved: false, unproved: { pr: 5, head: sha('2') } });
+    // Anyone with statuses write can post one: a newer "proved" by another creator is not a record.
+    expect(proofOf([st('pending', `unproved: #5 position ${sha('2')}`, '2026-10-08T01:00:00Z'), st('success', 'proved', '2026-10-08T03:00:00Z', 3, 666)], sha('1'), trusted)).toEqual({ proved: false, unproved: { pr: 5, head: sha('2') } });
+    expect(proofOf([st('success', 'proved', '2026-10-08T03:00:00Z', 3, 666)], sha('1'), trusted)).toBeNull();
+    expect(proofOf([st('success', 'proved', '2026-10-08T03:00:00Z', 3, 666)], sha('1'), new Set([ME, 666]))).toEqual({ proved: true });
+    expect(proofOf([st('failure', 'garbled', '2026-10-08T01:00:00Z')], sha('1'), trusted)).toEqual({ proved: false, unproved: { pr: 0, head: sha('1') } });
+    expect(() => proofOf({}, sha('1'), trusted)).toThrow(/not a list/);
+    expect(() => proofOf([{ context: PROOF_CONTEXT, state: 'success', creator: { id: ME } }], sha('1'), trusted)).toThrow(/no created_at or id/);
+    expect(() => proofOf([{ context: PROOF_CONTEXT, state: 'success', id: 1, created_at: 't' }], sha('1'), trusted)).toThrow(/no creator id/);
     const calls: string[] = [];
-    const statuses: Record<string, unknown[]> = { [sha('3')]: [], [sha('4')]: [st('pending', `unproved: #9 position ${sha('4')}`, 't')], [sha('5')]: [st('success', 'proved', 't')] };
+    const statuses: Record<string, unknown[]> = { [sha('3')]: [st('success', 'proved', 't', 1, 666)], [sha('4')]: [st('pending', `unproved: #9 position ${sha('4')}`, 't')], [sha('5')]: [st('success', 'proved', 't')] };
     const gh = (args: string[]): string => {
-      calls.push(args[1]!);
-      return JSON.stringify(statuses[/commits\/([0-9a-f]{40})\//.exec(args[1]!)![1]!]);
+      calls.push(args.join(' '));
+      return JSON.stringify([statuses[/commits\/([0-9a-f]{40})\//.exec(args.at(-1)!)![1]!], []]);
     };
-    expect(readProof(gh, 'o/r', [sha('3'), sha('4'), sha('5')])).toEqual({ proved: false, unproved: { pr: 9, head: sha('4') } });
-    expect(calls).toEqual([`repos/o/r/commits/${sha('3')}/statuses?per_page=100`, `repos/o/r/commits/${sha('4')}/statuses?per_page=100`]);
-    expect(readProof(gh, 'o/r', [sha('3')])).toBeNull();
-    expect(() => readProof(gh, 'o/r', ['HEAD'])).toThrow(/not a full sha/);
+    expect(readProof(gh, 'o/r', [sha('3'), sha('4'), sha('5')], trusted)).toEqual({ proved: false, unproved: { pr: 9, head: sha('4') } });
+    expect(calls).toEqual([`api --paginate --slurp repos/o/r/commits/${sha('3')}/statuses?per_page=100`, `api --paginate --slurp repos/o/r/commits/${sha('4')}/statuses?per_page=100`]);
+    expect(readProof(gh, 'o/r', [sha('3')], trusted)).toBeNull();
+    expect(() => readProof(gh, 'o/r', ['HEAD'], trusted)).toThrow(/not a full sha/);
+    // No record in the lookback: unproved under LAND_CI=only, so a fresh host proves master; the Mac's file speaks otherwise.
+    expect(missingProof(true, sha('6'))).toEqual({ pr: 0, head: sha('6') });
+    expect(missingProof(false, sha('6'))).toBeNull();
+  });
+
+  it('knows the token\'s own identity, and the trusted proof writers', () => {
+    expect(parseSelf(JSON.stringify({ id: 42, login: 'bot' }), undefined)).toEqual({ id: 42, login: 'bot' });
+    expect(parseSelf(null, '43')).toEqual({ id: 43, login: 'user 43' });
+    expect(() => parseSelf(null, undefined)).toThrow(/set LAND_TOKEN_USER_ID/);
+    expect(() => parseSelf(null, 'bot')).toThrow(/LAND_TOKEN_USER_ID/);
+    expect(() => parseSelf('{"login":"x"}', '1')).toThrow(/no id and login/);
+    expect(() => checkNotReviewer({ id: 42, login: 'bot' }, [7, 42])).toThrow(/the token's identity bot \(id 42\) is on the reviewer allowlist/);
+    expect(() => checkNotReviewer({ id: 42, login: 'bot' }, [7])).not.toThrow();
+    expect(parseIds('LAND_PROOF_WRITERS', '1, 2 3')).toEqual([1, 2, 3]);
+    expect(parseIds('LAND_PROOF_WRITERS', undefined)).toEqual([]);
+    expect(() => parseIds('LAND_PROOF_WRITERS', 'me')).toThrow(/LAND_PROOF_WRITERS entry "me" is not a user id/);
   });
 
   it('writes the land/proof status, and walks master with the positions its merges took', () => {
@@ -2046,84 +2120,31 @@ describe('the driver state on GitHub (land-state.ts)', () => {
       ['api', '-X', 'POST', `repos/o/r/statuses/${sha('1')}`, '-f', 'state=pending', '-f', 'context=land/proof', '-f', `description=unproved: #7 position ${sha('2')}`, '-f', 'target_url=https://run'],
       ['api', '-X', 'POST', `repos/o/r/statuses/${sha('1')}`, '-f', 'state=success', '-f', 'context=land/proof', '-f', 'description=proved: a full test passed on this tree'],
     ]);
-    // The description reads back as the record it wrote.
-    expect(proofOf([{ id: 1, context: PROOF_CONTEXT, state: 'pending', created_at: 't', description: calls[0]!.find((x) => x.startsWith('description='))!.slice('description='.length) }], sha('1'))).toEqual({ proved: false, unproved: { pr: 7, head: sha('2') } });
+    const description = calls[0]!.find((x) => x.startsWith('description='))!.slice('description='.length);
+    expect(proofOf([{ ...st('pending', description, 't') }], sha('1'), trusted)).toEqual({ proved: false, unproved: { pr: 7, head: sha('2') } });
     expect(() => writeProof(gh, 'o/r', 'master', null, null)).toThrow(/not a full sha/);
     const log = parseFirstParents(`${sha('a')} ${sha('b')} ${sha('c')}\n${sha('b')} ${sha('d')}\n`);
     expect(proofCommits(log)).toEqual([sha('a'), sha('c'), sha('b')]);
     expect(() => parseFirstParents('HEAD abc')).toThrow(/git log printed/);
   });
 
-  it('builds the queue file from the workflow input', () => {
-    const a = `b1:1:${sha('a')}`;
-    const b = `b2:2:${sha('b').slice(0, 12)}`;
-    expect(queueFromInput(`${a}\n${b}\n`)).toBe(`${a}\n${b}\n`);
-    expect(queueFromInput(`  ${a}   ${b}\r\n`)).toBe(`${a}\n${b}\n`);
-    expect(queueFromInput('')).toBe('');
-    expect(queueFromInput(' \n\t')).toBe('');
-    expect(parseQueue(queueFromInput(`${a} ${b}`)).map((x) => x.pr)).toEqual([1, 2]);
-    expect(() => queueFromInput(`${a} b3:x:${sha('c')}`)).toThrow(/bad PR number/);
-    expect(() => queueFromInput(`${a} master:3:${sha('c')}`)).toThrow(/bad branch name/);
-    expect(() => queueFromInput(`${a} b9:1:${sha('c')}`)).toThrow(/share a pr/);
-    expect(() => queueFromInput(`${a} #comment`)).toThrow(/not <branch>:<pr>:<clean-head>/);
-    // The driver takes an empty queue only when land.yml says so (LAND_QUEUE_EMPTY_OK).
-    expect(() => parseQueue('')).toThrow(/no entries/);
-    expect(parseQueue('', { allowEmpty: true })).toEqual([]);
-  });
-
-  it('skips the queued PRs GitHub reports merged on start', () => {
+  it('skips the queued PRs GitHub reports merged on start, and takes an empty queue only when asked', () => {
     const q = [1, 2, 3].map((pr) => ({ branch: `b${pr}`, pr, clean: sha('a') }));
     const r = reconcileQueue(q, (pr) => (pr === 2 ? { state: 'MERGED', mergeCommit: sha('9') } : { state: 'OPEN', mergeCommit: null }));
     expect(r.queue.map((x) => x.pr)).toEqual([1, 3]);
     expect(r.merged).toEqual([{ entry: q[1], detail: `merged as ${sha('9')} before this run; skipped` }]);
     expect(reconcileQueue(q, () => ({ state: 'MERGED', mergeCommit: null })).queue).toEqual([]);
-    expect(() => reconcileQueue(q, () => {
-      throw new Error('HTTP 502');
-    })).toThrow(/502/);
+    expect(() =>
+      reconcileQueue(q, () => {
+        throw new Error('HTTP 502');
+      }),
+    ).toThrow(/502/);
+    expect(() => parseQueue('')).toThrow(/no entries/);
+    expect(parseQueue('', { allowEmpty: true })).toEqual([]);
   });
 
-  it('land.yml\'s steps: the queue file from the input, and the re-dispatch through gh (a fake gh on PATH)', () => {
-    const dir = tempDir();
-    writeFileSync(join(dir, 'gh'), `#!/bin/sh\nprintf '%s\\n' "$@" >> "${dir}/calls"\ncat "${dir}/labels.json" 2>/dev/null\nexit 0\n`, { mode: 0o755 });
-    const cli = (args: string[], extra: Record<string, string>) => {
-      const env = { ...process.env, PATH: `${dir}:${process.env['PATH']}`, GITHUB_REPOSITORY: 'o/r', GITHUB_REF_NAME: 'master', GITHUB_OUTPUT: join(dir, 'output'), GITHUB_STEP_SUMMARY: join(dir, 'summary'), LAND_STOP_ISSUE: '', ...extra };
-      try {
-        return { status: 0, out: execFileSync('node', [repoPath('scripts/land-actions.ts'), ...args], { env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }) };
-      } catch (error) {
-        return { status: (error as { status: number }).status, out: String((error as { stderr: unknown }).stderr) };
-      }
-    };
-    const a = `b1:1:${sha('a')}`;
-    expect(cli(['queue', join(dir, 'q.txt')], { LAND_QUEUE_INPUT: `${a} b2:2:${sha('b')}` }).status).toBe(0);
-    expect(readFileSync(join(dir, 'q.txt'), 'utf8')).toBe(`${a}\nb2:2:${sha('b')}\n`);
-    expect(readFileSync(join(dir, 'output'), 'utf8')).toBe('count=2\n');
-    expect(cli(['queue', join(dir, 'q0.txt')], { LAND_QUEUE_INPUT: '' }).status).toBe(0);
-    expect(readFileSync(join(dir, 'q0.txt'), 'utf8')).toBe('');
-    expect(cli(['queue', join(dir, 'bad.txt')], { LAND_QUEUE_INPUT: 'b1:x:abc' })).toMatchObject({ status: 1, out: expect.stringMatching(/bad PR number/) });
-    const handoff = join(dir, 'handoff.json');
-    writeFileSync(handoff, serializeHandoff({ remainder: [{ branch: 'b3', pr: 3, clean: sha('c') }], stopAsked: false, outage: null, fatal: null }));
-    expect(cli(['redispatch', handoff], {})).toMatchObject({ status: 0, out: expect.stringMatching(/^re-dispatched land.yml on master/) });
-    expect(readFileSync(join(dir, 'calls'), 'utf8')).toBe(`workflow\nrun\nland.yml\n--repo\no/r\n--ref\nmaster\n-f\nqueue=b3:3:${sha('c')}\n`);
-    rmSync(join(dir, 'calls'));
-    // The land-stop label set since the batch ended: no dispatch.
-    writeFileSync(join(dir, 'labels.json'), JSON.stringify([[{ name: 'land-stop' }]]));
-    expect(cli(['redispatch', handoff], { LAND_STOP_ISSUE: '9' })).toMatchObject({ status: 0, out: expect.stringMatching(/not re-dispatching: a stop was requested/) });
-    expect(readFileSync(join(dir, 'calls'), 'utf8')).toBe('api\n--paginate\n--slurp\nrepos/o/r/issues/9/labels?per_page=100\n');
-    // No handoff (the driver died): no dispatch.
-    expect(cli(['redispatch', join(dir, 'none.json')], {})).toMatchObject({ status: 0, out: expect.stringMatching(/no handoff/) });
-    expect(cli(['other', handoff], {})).toMatchObject({ status: 1, out: expect.stringMatching(/unknown command/) });
-  });
-
-  it('decides whether land.yml dispatches itself again with the rest of the queue', () => {
-    const rest = [{ branch: 'b3', pr: 3, clean: sha('c') }];
-    const h = { remainder: rest, stopAsked: false, outage: null, fatal: null };
-    expect(redispatchDecision(h, false)).toEqual({ dispatch: true, queue: `b3:3:${sha('c')}` });
-    expect(redispatchDecision(h, true)).toMatchObject({ dispatch: false, why: expect.stringMatching(/stop was requested; still queued: #3/) });
-    expect(redispatchDecision({ ...h, stopAsked: true }, false)).toMatchObject({ dispatch: false });
-    expect(redispatchDecision({ ...h, outage: 'runners down' }, false)).toMatchObject({ dispatch: false, why: expect.stringMatching(/CI outage: runners down/) });
-    expect(redispatchDecision({ ...h, fatal: 'tree mismatch' }, false)).toMatchObject({ dispatch: false, why: expect.stringMatching(/stopped: tree mismatch/) });
-    expect(redispatchDecision({ ...h, remainder: [] }, false)).toEqual({ dispatch: false, why: 'the queue is done' });
-    expect(redispatchDecision(null, false)).toMatchObject({ dispatch: false, why: expect.stringMatching(/no handoff/) });
+  it('writes and reads the handoff of the rest of the queue, and the other settings', () => {
+    const h = { remainder: [{ branch: 'b3', pr: 3, clean: sha('c') }], stopAsked: false, outage: null, fatal: null };
     expect(parseHandoff(serializeHandoff(h))).toEqual(h);
     expect(parseHandoff(null)).toBeNull();
     expect(() => parseHandoff('{')).toThrow();

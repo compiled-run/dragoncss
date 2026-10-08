@@ -14,6 +14,7 @@ import {
   ciState,
   ciStep,
   claudeReviewGate,
+  defangReview,
   type Entry,
   errorText,
   Fatal,
@@ -102,7 +103,8 @@ import {
   treeMatches,
 } from './merge-train-lib.ts';
 import { SETUP_GIT_CONFIG } from './floor-merge.ts';
-import { parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
+import { reviewerIds } from './land-review-lookup.ts';
+import { checkNotReviewer, missingProof, parseIds, parseSelf, parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
 import { matcher, STEPS } from './regen.ts';
 import { abandonInflight, CiUnavailable, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, staleScratchBranches, failedTestsOf, fullTestWorkflow, parseRunRows, runDevicesOnCi, runOnCi, scratchRef, testBranch } from './land-devices-ci.ts';
@@ -256,6 +258,9 @@ const net = (g: Git, args: string[]): string => withRetry(`git ${args[0]}`, () =
 const gh = (args: string[]): string =>
   withRetry(`gh ${args.slice(0, 2).join(' ')}`, () => execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 * 1024 * 1024 }), sleep, log);
 let REPO = '';
+let SELF: { id: number; login: string } = { id: 0, login: '' };
+let PROOF_WRITERS: ReadonlySet<number> = new Set();
+let REVIEWER_IDS: number[] | null = null;
 const prView = (pr: number): PrState & { mergeCommit: string | null } => {
   const v = JSON.parse(gh(['pr', 'view', String(pr), '--repo', REPO, '--json', 'number,state,headRefName,headRefOid,baseRefName,isCrossRepository,mergeCommit']));
   const merge = (v as { mergeCommit?: { oid?: unknown } | null }).mergeCommit?.oid;
@@ -271,9 +276,10 @@ const RUN_URL = env['GITHUB_ACTIONS'] === 'true' && env['GITHUB_RUN_ID'] ? `${en
 // Commits whose land/proof record can speak for master: its last 20 first parents and the positions they merged.
 const loadProof = (master: string): void => {
   const commits = proofCommits(parseFirstParents(text(git, ['log', '--first-parent', '--max-count=20', '--format=%H %P', master])));
-  const r = readProof(gh, REPO, commits);
-  githubUnproved = r === null || r.proved ? null : r.unproved;
-  log(`land/proof on GitHub: ${r === null ? 'no record on master or the 20 commits it rests on' : r.proved ? 'master is proved' : `master is unproved (#${r.unproved.pr}'s position ${r.unproved.head})`}`);
+  const r = readProof(gh, REPO, commits, PROOF_WRITERS);
+  githubUnproved = r === null ? missingProof(CI_ONLY, master) : r.proved ? null : r.unproved;
+  const writers = [...PROOF_WRITERS].join(',');
+  log(`land/proof on GitHub (statuses by user ${writers}): ${r === null ? `no record on master or the 20 commits it rests on${CI_ONLY ? '; under LAND_CI=only that counts as unproved' : ''}` : r.proved ? 'master is proved' : `master is unproved (#${r.unproved.pr}'s position ${r.unproved.head})`}`);
 };
 // A status that cannot be written is fatal where the file does not outlive the run (GitHub Actions); elsewhere the file holds it.
 const putProof = (shas: readonly string[], u: Unproved | null): void => {
@@ -758,7 +764,7 @@ const claudeReview = (e: Entry, clean: string, head: string, master: string, ste
     patch: prDiff(e.pr, master, head),
     ignored: (path) => ignore.file.matches(path),
     command: REVIEW_CMD,
-    review: (input) => runReviewer(REVIEW_CMD, input, WT, REVIEW_TIMEOUT_MS, { ...reviewerEnv(e.pr, clean), LAND_REVIEW_REPO: REPO }),
+    review: (input) => runReviewer(REVIEW_CMD, input, WT, REVIEW_TIMEOUT_MS, { ...reviewerEnv(e.pr, clean), LAND_REVIEW_REPO: REPO, ...(REVIEWER_IDS === null ? {} : { LAND_REVIEWER_IDS: REVIEWER_IDS.join(',') }) }),
     save: (r: ReviewRecord) => writeFileSync(saved, `${JSON.stringify(r, null, 2)}\n`),
   });
   if (!verdict.pass) throw new LandFailure(step, `${verdict.reason} (review ${saved})`, verdict.findings.length > 0 ? findingsComment(e.pr, head, verdict.findings) : undefined);
@@ -1277,7 +1283,7 @@ const reportFailure = (e: Entry, f: LandFailure): void => {
     labelReady = true;
     gh(['pr', 'edit', String(e.pr), '--repo', REPO, '--add-label', LABEL]);
     const body = f.comment ?? `**Landing stopped at step \`${f.step}\`** (pnpm land)\n\n\`\`\`\n${f.message.slice(0, 6000)}\n\`\`\`\n\nFix the cause, then hand #${e.pr} back to the landing queue with the new clean head.`;
-    gh(['pr', 'comment', String(e.pr), '--repo', REPO, '--body', body]);
+    gh(['pr', 'comment', String(e.pr), '--repo', REPO, '--body', defangReview(body)]);
   } catch (error) {
     log(`  could not label or comment on #${e.pr}: ${errorText(error).split('\n')[0]}`);
   }
@@ -1428,6 +1434,20 @@ const setUp = (): void => {
   REVIEW_CMD = env['LAND_REVIEW_CMD'] ?? `node --conditions=dragon-internal '${join(MAIN, 'scripts/land-review-lookup.ts')}'`;
   REPO = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']).trim();
   if (!/^[\w.-]+\/[\w.-]+$/.test(REPO)) throw new Error(`land: gh repo view printed ${JSON.stringify(REPO)}`);
+  // The identity this token acts as: the only writer whose land/proof statuses are trusted (with LAND_PROOF_WRITERS), and one
+  // that may never be a reviewer, so the identity that merges can never also approve.
+  let user: string | null = null;
+  try {
+    user = gh(['api', 'user']);
+  } catch (error) {
+    log(`GET user failed (${errorText(error).split('\n')[0]}); taking the token's identity from LAND_TOKEN_USER_ID`);
+  }
+  SELF = parseSelf(user, env['LAND_TOKEN_USER_ID'] || undefined);
+  PROOF_WRITERS = new Set([SELF.id, ...parseIds('LAND_PROOF_WRITERS', env['LAND_PROOF_WRITERS'])]);
+  if (env['LAND_REVIEW_SOURCE'] === 'comment') {
+    REVIEWER_IDS = reviewerIds(env, REPO, (login) => Number(gh(['api', `users/${login}`, '--jq', '.id']).trim()));
+    checkNotReviewer(SELF, REVIEWER_IDS);
+  }
 };
 
 // Each position is exactly a merge of [previous position, the PR's tip] plus one regen commit, chained on its base.

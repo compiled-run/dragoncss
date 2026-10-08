@@ -1,8 +1,8 @@
 // The landing driver's state kept on GitHub rather than in /tmp, so a fresh host (land.yml on ubuntu) knows what the last run
 // left: the land-stop label on a tracking issue (LAND_STOP_ISSUE), the land/proof commit status on master (a merged position no
-// full test has passed), and, for land.yml, the queue input, the reconcile of merged PRs on start and the re-dispatch decision.
+// full test has passed), the reconcile of merged PRs on start and the handoff of the rest of the queue (LAND_MAX_BATCHES).
 // The precomputed review comment is read by land-review-lookup.ts. Every reader checks the shape of what GitHub returned.
-import { type Entry, parseEntry, parseQueue } from './land-lib.ts';
+import { type Entry, parseEntry } from './land-lib.ts';
 
 export type Gh = (args: string[]) => string;
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -44,12 +44,18 @@ export type Unproved = { pr: number; head: string };
 export type ProofRecord = { proved: true } | { proved: false; unproved: Unproved };
 export const proofDescription = (u: Unproved | null): string => (u === null ? 'proved: a full test passed on this tree' : `unproved: #${u.pr} position ${u.head}`);
 export const proofState = (u: Unproved | null): 'success' | 'pending' => (u === null ? 'success' : 'pending');
-/** The land/proof record among one commit's statuses (GET commits/<sha>/statuses), the newest first; null when it has none. */
-export const proofOf = (statuses: unknown, sha: string): ProofRecord | null => {
+/**
+ * The land/proof record among one commit's statuses (GET commits/<sha>/statuses): the newest written by a trusted creator (the
+ * driver's own identity, LAND_PROOF_WRITERS); null when it has none. Anyone with statuses write can post a status, so another
+ * creator's says nothing.
+ */
+export const proofOf = (statuses: unknown, sha: string, trusted: ReadonlySet<number>): ProofRecord | null => {
   if (!Array.isArray(statuses)) throw new Error(`land-state: the statuses of ${sha} are not a list`);
   const ours = statuses.filter((s) => {
     if (!isObject(s) || typeof s.context !== 'string') throw new Error(`land-state: a status of ${sha} has no context`);
-    return s.context === PROOF_CONTEXT;
+    if (s.context !== PROOF_CONTEXT) return false;
+    if (!isObject(s.creator) || !Number.isSafeInteger(s.creator.id)) throw new Error(`land-state: a ${PROOF_CONTEXT} status of ${sha} has no creator id`);
+    return trusted.has(s.creator.id as number);
   }) as Record<string, unknown>[];
   if (ours.length === 0) return null;
   const at = (s: Record<string, unknown>): string => {
@@ -65,10 +71,10 @@ export const proofOf = (statuses: unknown, sha: string): ProofRecord | null => {
   return { proved: false, unproved: m ? { pr: Number(m[1]), head: m[2]! } : { pr: 0, head: sha } };
 };
 /** The newest land/proof record along `commits` (master first, then the commits it rests on, in order); null when none has one. */
-export const readProof = (gh: Gh, repo: string, commits: readonly string[]): ProofRecord | null => {
+export const readProof = (gh: Gh, repo: string, commits: readonly string[], trusted: ReadonlySet<number>): ProofRecord | null => {
   for (const c of commits) {
     if (!SHA.test(c)) throw new Error(`land-state: ${JSON.stringify(c)} is not a full sha`);
-    const r = proofOf(JSON.parse(gh(['api', `repos/${checkRepo(repo)}/commits/${c}/statuses?per_page=100`])), c);
+    const r = proofOf(JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${checkRepo(repo)}/commits/${c}/statuses?per_page=100`])).flat(), c, trusted);
     if (r !== null) return r;
   }
   return null;
@@ -77,6 +83,33 @@ export const writeProof = (gh: Gh, repo: string, sha: string, u: Unproved | null
   if (!SHA.test(sha)) throw new Error(`land-state: ${JSON.stringify(sha)} is not a full sha`);
   gh(['api', '-X', 'POST', `repos/${checkRepo(repo)}/statuses/${sha}`, '-f', `state=${proofState(u)}`, '-f', `context=${PROOF_CONTEXT}`, '-f', `description=${proofDescription(u)}`, ...(targetUrl === null ? [] : ['-f', `target_url=${targetUrl}`])]);
 };
+/**
+ * What master's proof record says when the lookback found none: proved where the driver is not the only writer (a Mac driver,
+ * whose /tmp file is the record), unproved under LAND_CI=only, so a fresh host proves master rather than trust it.
+ */
+export const missingProof = (ciOnly: boolean, master: string): Unproved | null => (ciOnly ? { pr: 0, head: master } : null);
+
+/** The token's own identity (GET user): its numeric id and login. An App installation token cannot read it, so LAND_TOKEN_USER_ID names it. */
+export const parseSelf = (userJson: string | null, fallbackId: string | undefined): { id: number; login: string } => {
+  if (userJson !== null) {
+    const v: unknown = JSON.parse(userJson);
+    if (!isObject(v) || !Number.isSafeInteger(v.id) || typeof v.login !== 'string') throw new Error('land-state: GET user returned no id and login');
+    return { id: v.id as number, login: v.login };
+  }
+  if (fallbackId === undefined || !/^[1-9]\d{0,15}$/.test(fallbackId)) throw new Error('land: GET user failed for this token (an App installation token cannot read it); set LAND_TOKEN_USER_ID to the id of the user it acts as');
+  return { id: Number(fallbackId), login: `user ${fallbackId}` };
+};
+/** Refuses a reviewer allowlist that holds the token's own identity: the identity that merges must never also approve. */
+export const checkNotReviewer = (self: { id: number; login: string }, reviewers: readonly number[]): void => {
+  if (reviewers.includes(self.id)) throw new Error(`land: the token's identity ${self.login} (id ${self.id}) is on the reviewer allowlist; the identity that merges must never also approve, so reviews must come from another identity`);
+};
+/** LAND_PROOF_WRITERS: user ids besides the driver's own whose land/proof statuses are trusted (comma or space separated). */
+export const parseIds = (name: string, v: string | undefined): number[] =>
+  (v ?? '').split(/[\s,]+/).filter((x) => x !== '').map((x) => {
+    if (!/^[1-9]\d{0,15}$/.test(x)) throw new Error(`land: ${name} entry ${JSON.stringify(x)} is not a user id`);
+    return Number(x);
+  });
+
 /** The commits whose land/proof record speaks for master: each first parent, then its second parent (the position it merged). */
 export const proofCommits = (firstParents: readonly { sha: string; parents: readonly string[] }[]): string[] =>
   firstParents.flatMap((c) => [c.sha, ...(c.parents.length === 2 ? [c.parents[1]!] : [])]);
@@ -91,17 +124,7 @@ export const parseFirstParents = (out: string): { sha: string; parents: string[]
       return { sha: sha!, parents };
     });
 
-// ---- land.yml: the queue input, reconciling on start, re-dispatching the rest -----------------------------------------
-/** The workflow_dispatch `queue` input (entries separated by newlines or spaces) as a queue file; '' for an empty input. */
-export const queueFromInput = (input: string): string => {
-  const lines = input.split(/\s+/).filter((t) => t !== '');
-  if (lines.length === 0) return '';
-  for (const l of lines) parseEntry(l);
-  const text = `${lines.join('\n')}\n`;
-  parseQueue(text); // duplicates
-  return text;
-};
-
+// ---- a run that hands on: reconciling on start, the handoff -------------------------------------------------------------
 /** The queue without the PRs GitHub already reports merged (a cancelled run may have merged one), with what was skipped. */
 export const reconcileQueue = (entries: readonly Entry[], stateOf: (pr: number) => { state: string; mergeCommit: string | null }): { queue: Entry[]; merged: { entry: Entry; detail: string }[] } => {
   const queue: Entry[] = [];
@@ -114,7 +137,7 @@ export const reconcileQueue = (entries: readonly Entry[], stateOf: (pr: number) 
   return { queue, merged };
 };
 
-/** What one land.yml job leaves for the next (LAND_HANDOFF): the queue not handled and why the run ended. */
+/** What one run leaves for the next (LAND_HANDOFF): the queue not handled and why the run ended. */
 export type Handoff = { remainder: Entry[]; stopAsked: boolean; outage: string | null; fatal: string | null };
 export const serializeHandoff = (h: Handoff): string => `${JSON.stringify(h, null, 2)}\n`;
 export const parseHandoff = (text: string | null): Handoff | null => {
@@ -128,17 +151,6 @@ export const parseHandoff = (text: string | null): Handoff | null => {
   });
   return { remainder, stopAsked: v.stopAsked, outage: v.outage, fatal: v.fatal };
 };
-export type Redispatch = { dispatch: true; queue: string } | { dispatch: false; why: string };
-/** Whether land.yml dispatches itself again with the rest of the queue: only after a batch that ended normally, with no stop. */
-export const redispatchDecision = (h: Handoff | null, stopNow: boolean): Redispatch => {
-  if (h === null) return { dispatch: false, why: 'the driver left no handoff (it did not end normally); read its log, then dispatch the rest by hand' };
-  if (h.fatal !== null) return { dispatch: false, why: `the driver stopped: ${h.fatal}` };
-  if (h.outage !== null) return { dispatch: false, why: `the driver stopped on a CI outage: ${h.outage}` };
-  if (h.stopAsked || stopNow) return { dispatch: false, why: `a stop was requested; still queued: ${h.remainder.map((e) => `#${e.pr}`).join(' ') || 'none'}` };
-  if (h.remainder.length === 0) return { dispatch: false, why: 'the queue is done' };
-  return { dispatch: true, queue: h.remainder.map((e) => `${e.branch}:${e.pr}:${e.clean}`).join('\n') };
-};
-
 /** LAND_MAX_BATCHES: the batches one run lands before it hands the rest on (land.yml sets 1); unset or empty is no limit. */
 export const parseMaxBatches = (v: string | undefined): number | undefined => {
   if (v === undefined || v === '') return undefined;

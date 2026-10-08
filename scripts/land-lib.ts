@@ -63,10 +63,12 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   900), LAND_CI_QUEUE_WAIT (seconds a run whose jobs wait for a runner, as behind the macOS concurrency cap, is waited for before
   that counts as not running it, default 10800), LAND_CI_MAX_INFLIGHT (positions of a batch whose CI regens are dispatched at once,
   1 to 8, default 2; the positions above are built one by one). For a host with no state of its own (land.yml): LAND_REVIEW_SOURCE=comment
-  (the default reviewer reads the review from a PR comment, pnpm land:post-review, by an author on LAND_REVIEWERS), LAND_STOP_ISSUE
+  (the default reviewer reads the review from a PR comment, pnpm land:post-review), LAND_STOP_ISSUE
   (an issue whose land-stop label stops the driver after its batch, as the stop file does), LAND_MAX_BATCHES (batches this run
   lands; the rest goes to LAND_HANDOFF for the next run), LAND_LOG_DIR (the status, logs, reviews and run directory, instead of /tmp),
-  LAND_QUEUE_EMPTY_OK=1 (an empty queue is nothing to land). Every run also reads and writes master's land/proof commit status.`;
+  LAND_QUEUE_EMPTY_OK=1 (an empty queue is nothing to land). Reviewers are matched by user id (LAND_REVIEWER_IDS, or LAND_REVIEWERS
+  ids or logins), and the token's own identity (GET user, or LAND_TOKEN_USER_ID for an App token) may not be one. Every run reads and
+  writes master's land/proof commit status, trusting only statuses by that identity or LAND_PROOF_WRITERS ids.`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;
@@ -408,6 +410,15 @@ export const findingsComment = (pr: number, head: string, findings: readonly Fin
   lines.push('', `Fix each with a test, or reply with why it does not apply, then hand #${pr} back to the landing queue with the new clean head.`);
   return lines.join('\n');
 };
+
+/** The marker line of a precomputed review comment (land-review-lookup.ts reads it, pnpm land:post-review writes it). */
+export const REVIEW_MARKER = '<!-- dragon-land-review v1 -->';
+/**
+ * A comment body the driver posts, made unreadable as a review: no HTML comment can open (so no marker line), and no code fence
+ * is a json block. The driver posts log tails and finding texts a PR controls, under an identity a reviewer allowlist must not hold.
+ */
+export const defangReview = (body: string): string =>
+  body.replaceAll('<!--', '&lt;!--').replace(/^([ \t]*)(`{3,}|~{3,})([ \t]*)json\b/gim, '$1$2$3text');
 
 // ---------------------------------------------------------------------------------------------------------------------
 // After a merge: GitHub closes, rather than retargets, an open PR whose base branch is deleted. So every open PR based on the
