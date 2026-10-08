@@ -22,7 +22,9 @@ import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
 import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
-import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
+import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, featureOf, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
+import { webProfile } from '../profiles/web.ts';
+import { provenContexts } from '../profiles/types.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
 import { checkEnvCalls, ENV_FIX, envVarRefusal, firstEnv, grammarText } from './env.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
@@ -30,6 +32,8 @@ import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
 import type { AnimationDeclValue } from './properties/animation.ts';
 import type { KeyframesSource } from './at-rules/keyframes.ts';
+import type { CascFaults } from '../faults/casc.ts';
+import { CASC_FAULTS } from '../faults/casc.ts';
 import { isAnimationProperty, parseAnimationDeclaration } from './properties/animation.ts';
 
 export type { CssValue } from './values.ts';
@@ -84,7 +88,7 @@ export type SheetUse = { readonly id: string; readonly owner: string; readonly s
  */
 export type EnclosedRules = { readonly atRule: Diagnostic; readonly span: Span; readonly rules: readonly Rule[]; readonly diagnostics: readonly Diagnostic[] };
 
-type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[] };
+type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[]; readonly faults: CascFaults };
 
 /**
  * Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block.
@@ -93,7 +97,8 @@ type ParseState = { order: number; readonly base: Span; readonly text: string; r
 type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top'; readonly conditions: readonly RuleCondition[] };
 
 /** fontFaces: collects the accepted @font-face rules, in document order, for the fonts module; keyframes the @keyframes (T065). */
-export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = [], keyframes: KeyframesSource[] = []): Rule[] {
+/** faults: CASC's planted parse faults (faults/casc.ts). */
+export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = [], keyframes: KeyframesSource[] = [], faults: CascFaults = CASC_FAULTS): Rule[] {
   const text = preprocessInput(authoredText);
   // Chrome 145 reads a literal U+0000 as U+FFFD inside a name but not where it would start a hash or follow a leading "-" (probed),
   // so Dragon reports it rather than guess which reading applies.
@@ -108,21 +113,22 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
   if (text.includes('\\')) canonicalizeEscapes(ast);
   // An @media prelude is parsed by media/parse.ts, which Chrome 145 proves (an invalid query is `not all`); css-tree's own
   // prelude grammar rejects valid MQ4 such as `(1px < width < 2px)` and `(not (width))`, so its errors there are not reported.
-  const media: { start: number; end: number }[] = [];
+  // An @supports prelude is parsed by at-rules/supports.ts, which refuses what it cannot decide, so the same holds there.
+  const preludes: { start: number; end: number }[] = [];
   const visit = (node: CssNode): void => {
-    const prelude = node.type === 'Atrule' && asciiLower(String(node['name'])) === 'media' ? (node['prelude'] as CssNode | null | undefined) : null;
-    if (prelude !== null && prelude !== undefined && prelude.loc !== null && prelude.loc !== undefined) media.push({ start: prelude.loc.start.offset, end: prelude.loc.end.offset });
+    const prelude = node.type === 'Atrule' && ['media', 'supports'].includes(asciiLower(String(node['name']))) ? (node['prelude'] as CssNode | null | undefined) : null;
+    if (prelude !== null && prelude !== undefined && prelude.loc !== null && prelude.loc !== undefined) preludes.push({ start: prelude.loc.start.offset, end: prelude.loc.end.offset });
     const block = node['block'] as CssNode | null | undefined;
     for (const c of [...list(node, 'children'), ...(block === null || block === undefined ? [] : [block])]) visit(c);
   };
   visit(ast);
   for (const e of errors) {
-    if (media.some((m) => e.offset >= m.start && e.offset <= m.end)) continue;
+    if (preludes.some((m) => e.offset >= m.start && e.offset <= m.end)) continue;
     const at = { source: base.source, start: base.start + e.offset, end: base.start + e.offset };
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
   }
   const rules: Rule[] = [];
-  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes };
+  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes, faults };
   parseTopLevel(list(ast, 'children'), st, { label: 'the stylesheet', selectors: 'top', conditions: [] }, diagnostics, enclosed, rules);
   return rules;
 }
@@ -186,6 +192,11 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
       return;
     }
     const block = node['block'] as CssNode | null | undefined;
+    // CASC: a true @supports keeps its rules as plain rules (under any enclosing @media); Chrome never applies a false one's.
+    if (outcome.kind === 'supports' && at.selectors === 'top' && block !== null && block !== undefined) {
+      if (outcome.holds || st.faults.supportsConditionIgnored) parseTopLevel(list(block, 'children'), st, { label: '@supports', selectors: 'top', conditions: at.conditions }, diagnostics, enclosed, accepted);
+      return;
+    }
     if (outcome.kind === 'conditional' && at.selectors === 'top' && block !== null && block !== undefined) {
       const inner = { label: `@${String(node['name'])}`, selectors: 'top' as const, conditions: [...at.conditions, outcome.condition] };
       parseTopLevel(list(block, 'children'), st, inner, diagnostics, enclosed, accepted);
@@ -339,6 +350,88 @@ function parseResolved(d: CssNode, property: string, base: Span, sheetText: stri
   }
 }
 
+/**
+ * CASC: how Chrome treats one declaration in a @supports condition, decided by parsing it as in a style rule. valid: kept;
+ * invalid: dropped (DRAGON_CSS_INVALID_VALUE only); refused: Dragon cannot tell (it refuses the property or the value).
+ */
+export function declarationSupport(declarationText: string): 'valid' | 'invalid' | { readonly refused: string } {
+  const text = `x{${declarationText}}`;
+  const errors: string[] = [];
+  const ast = parse(text, { positions: true, parseValue: true, onParseError: (e) => errors.push(e.message) });
+  if (text.includes('\\')) canonicalizeEscapes(ast);
+  const rule = list(ast, 'children')[0];
+  const children = rule === undefined || rule.type !== 'Rule' ? [] : list(rule['block'] as CssNode, 'children');
+  const only = children[0];
+  if (errors.length > 0 || children.length !== 1 || only === undefined || only.type !== 'Declaration') return { refused: 'it is not one declaration' };
+  const diagnostics: Diagnostic[] = [];
+  const parsed = parseDeclaration(only, { source: { uri: '@supports', revision: '', hash: '' }, start: 0, end: text.length }, text, 0, diagnostics);
+  if (parsed !== null && diagnostics.length === 0) {
+    // css-variables-1 §2, §3.1: Chrome keeps any custom property value and any value holding var() at parse time.
+    if (parsed.custom !== undefined || parsed.pending !== undefined) return 'valid';
+    // The grammar lists values Chrome 145 has not shipped (text-align: match-parent), so a kept value is trusted only when each
+    // longhand it sets is a value a web profile row proves against Chrome.
+    const unproven = parsed.longhands.find((lh) => provenContexts(webProfile, featureOf(lh.property, lh.value)).length === 0);
+    if (parsed.animation === undefined && parsed.longhands.length > 0 && unproven === undefined) return 'valid';
+    const what = unproven === undefined ? `${parsed.property}: ${parsed.text}` : featureOf(unproven.property, unproven.value);
+    return { refused: `${what} is not a value Dragon has proven Chrome 145 keeps` };
+  }
+  if (parsed === null && diagnostics.length > 0 && diagnostics.every((d) => d.code === 'DRAGON_CSS_INVALID_VALUE')) {
+    // The grammar is not Chrome's parser: Chrome keeps legacy keywords it lacks (overflow: overlay, position: -webkit-sticky), so
+    // a dropped value is trusted only when every identifier in it is a keyword the property's grammar lists.
+    const property = asciiLower(decodeName(String(only['property'])));
+    const keywords = grammarKeywords(property);
+    if (keywords === null) return { refused: `the CSS grammar Dragon checks for ${property} names a type it does not define` };
+    const unlisted = identifiersOf(only['value'] as CssNode).find((id) => /^-[a-z]+-/.test(id) || !keywords.has(id));
+    return unlisted === undefined ? 'invalid' : { refused: `Chrome may keep "${unlisted}" for ${property}, a keyword the CSS grammar Dragon checks does not list` };
+  }
+  const first = diagnostics[0];
+  return { refused: first === undefined ? 'Dragon does not decide it' : first.message };
+}
+
+/** Every identifier in a value, ASCII lower case; function names are not identifiers. */
+function identifiersOf(node: CssNode): string[] {
+  const out: string[] = [];
+  const walk = (n: CssNode): void => {
+    if (n.type === 'Identifier') out.push(asciiLower(decodeName(String(n['name']))));
+    for (const c of list(n, 'children')) walk(c);
+  };
+  walk(node);
+  return out;
+}
+
+const KEYWORDS = new Map<string, ReadonlySet<string> | null>();
+
+/** The keywords a property's webref grammar lists, through every type and property it references; null when a reference is undefined. */
+export function grammarKeywords(property: string): ReadonlySet<string> | null {
+  const known = KEYWORDS.get(property);
+  if (known !== undefined) return known;
+  const lexer = webrefLexer() as unknown as { getProperty(n: string): { syntax: unknown } | null; getType(n: string): { syntax: unknown } | null };
+  const out = new Set<string>();
+  const seen = new Set<string>();
+  const walk = (node: unknown): void => {
+    if (node === null || typeof node !== 'object') return;
+    const n = node as { type?: string; name?: string; term?: unknown; terms?: unknown[]; children?: unknown[] };
+    if (n.type === 'Keyword' && typeof n.name === 'string') out.add(asciiLower(n.name));
+    if ((n.type === 'Type' || n.type === 'Property') && typeof n.name === 'string' && !seen.has(`${n.type}:${n.name}`)) {
+      seen.add(`${n.type}:${n.name}`);
+      const ref = n.type === 'Type' ? lexer.getType(n.name) : lexer.getProperty(n.name);
+      if (ref !== null && ref !== undefined) walk(ref.syntax);
+    }
+    walk(n.term);
+    for (const t of n.terms ?? []) walk(t);
+    for (const c of n.children ?? []) walk(c);
+  };
+  let result: ReadonlySet<string> | null = out;
+  try {
+    walk(lexer.getProperty(property)?.syntax);
+  } catch {
+    // css-tree throws "Bad syntax reference" for a type the grammar names but does not define (<size-keyword>).
+    result = null;
+  }
+  KEYWORDS.set(property, result);
+  return result;
+}
+
 /** css-logical-1 §3: the physical longhands a flow-relative property sets in each direction, or null when it maps the same in both. */
 function directionSides(property: string): { ltr: Longhand[]; rtl: Longhand[] } | null {
   const mapped = expandWide(property, { kind: 'keyword', value: 'unset' });
@@ -386,6 +479,16 @@ function parseCustomDeclaration(name: string, valueNode: CssNode, span: Span, va
   return { property: name, text, span, valueSpan, longhands: [], order, ...important, custom: { name, wide, parts } };
 }
 
+/** The grammar match of a value; css-tree throws "Bad syntax reference" for a type the grammar names but does not define. */
+function grammarMatch(property: string, value: CssNode | string): ReturnType<ReturnType<typeof webrefLexer>['matchProperty']> | 'undefined-reference' {
+  try {
+    return webrefLexer().matchProperty(property, value);
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('Bad syntax reference')) return 'undefined-reference';
+    throw e;
+  }
+}
+
 /** How a value parses for a longhand or shorthand; the parse driver and var() substitution report the failures differently. */
 export type ParsedValue =
   | { readonly kind: 'ok'; readonly longhands: readonly LonghandValue[] }
@@ -420,7 +523,10 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     }
   }
   if (!wide) {
-    const match = webrefLexer().matchProperty(property, env === null ? valueNode : grammarText(tokens));
+    const match = grammarMatch(property, env === null ? valueNode : grammarText(tokens));
+    if (match === 'undefined-reference') {
+      return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(valueNode, base)), message: `${property}: ${generate(valueNode)} is unsupported: the CSS grammar Dragon checks names a type it does not define for it, so Dragon cannot tell whether Chrome keeps it`, manual: `Use a value that matches the ${property} grammar without it.` }) };
+    }
     if (match.error !== null) return { kind: 'invalid' };
     // css-tree types a math function loosely; Chrome drops one its math parser rejects (css/math.ts mathInvalidity).
     const mathInvalid = GRID_VALUE_PROPERTIES.has(property) ? null : invalidMath(property, tokens, base, sheetText);
