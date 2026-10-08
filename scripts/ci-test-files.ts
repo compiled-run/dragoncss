@@ -2,7 +2,8 @@
 // without a Mac or the native toolchains. Only REST gh calls (gh api, gh run view/download), so it works where GraphQL does not.
 //   pnpm ci:test-files <ref> <file>... [--floor-write] [--from <branch>] [--once]   dispatch, then wait (--once: poll one time)
 //   pnpm ci:test-files --run <id> [--once]                                          wait for (or poll once) a dispatched run
-// --from is the branch whose workflow file runs (default master). Exit codes: 0 passed, 1 failed, 2 usage or gh error, 3 pending.
+// --from is the branch whose workflow file runs (default master). GitHub files the run's checks under that branch's head commit,
+// so a run dispatched from a PR branch shows on the PR's checks. Exit codes: 0 passed, 1 failed, 2 usage or gh error, 3 pending.
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
