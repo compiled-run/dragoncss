@@ -72,6 +72,7 @@ import { parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
 import { type CheckRun, type Git, ignoreAt, regenOnlyProblems } from '../../../scripts/pr-review-vouch.ts';
 import { parseLanesForStamp, stampProblems } from '../../../scripts/evidence-stamp.ts';
 import { lookupReview } from '../../../scripts/land-review-lookup.ts';
+import { applyRegenPatch, CiUnavailable, landRegen, parseCiMode } from '../../../scripts/land-devices-ci.ts';
 import { deviceEvidence } from '../src/device-evidence.ts';
 import { LANES_JSON, type LanesFile } from '../src/lanes.ts';
 import { repoPath } from '../src/paths.ts';
@@ -1440,5 +1441,164 @@ describe('floors may only rise (the landing commit against master)', () => {
       const t = readFileSync(repoPath(f), 'utf8');
       expect(floorRegressions(f, t, t), f).toEqual([]);
     }
+  });
+});
+
+describe('LAND_REGEN (every regen of a landing tree on CI)', () => {
+  it('is local or ci, unset is local, and anything else stops the driver before it starts', () => {
+    expect(parseCiMode('LAND_REGEN', undefined)).toBe('local');
+    expect(parseCiMode('LAND_REGEN', 'local')).toBe('local');
+    expect(parseCiMode('LAND_REGEN', 'ci')).toBe('ci');
+    for (const bad of ['', 'CI', 'ci-only', 'remote', ' ci']) expect(() => parseCiMode('LAND_REGEN', bad), bad).toThrow(`land: LAND_REGEN must be local or ci, not ${JSON.stringify(bad)}`);
+    const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
+    expect(src).toContain("REGEN_ON = parseCiMode('LAND_REGEN', env['LAND_REGEN']);");
+    expect(src).toContain("REGEN_WAIT_S = seconds('LAND_REGEN_WAIT', DEFAULT_REGEN_WAIT_S);");
+  });
+  it('sends every regen call site through regenTree, and a parallel preparation dispatches its regen on CI', () => {
+    const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
+    // The only heavy pnpm regen is regenTree's local branch; the four call sites (and the one-by-one fallback) use regenTree.
+    expect([...src.matchAll(/heavy\([^)]*REGEN\)/g)].length).toBe(1);
+    for (const site of ["regenTree('regen', 'regen')", "regenTree('regen-carried', 'regen')", "regenTree('regen-after-devices', 'regen-after-devices')", "regenTree('regen-records', 'regen')"]) expect(src, site).toContain(site);
+    const prepare = src.slice(src.indexOf('const preparePosition'), src.indexOf('const awaitPrepared'));
+    expect(prepare.indexOf("if (REGEN_ON === 'ci')")).toBeGreaterThan(-1);
+    expect(prepare.indexOf("if (REGEN_ON === 'ci')")).toBeLessThan(prepare.indexOf('spawn('));
+    expect(src).toContain("'refs/heads/land-regen/*'");
+    // A local git error making the tree's commit judged nothing about the PR (#220 review).
+    const dispatch = src.slice(src.indexOf('const dispatchRegen'), src.indexOf('const finishRegen'));
+    expect(dispatch).toMatch(/try \{\n {4}sha = commitApart\([^\n]+\n {2}\} catch \(error\) \{\n {4}throw new CiUnavailable\(/);
+    // The regen commit names the CI run that regenerated it (#220 review).
+    expect(src).toContain('regenRan = `${REGEN.join(\' \')} on CI (regen-on-ci.yml ${url})`;');
+    expect(src).toContain('const commands = [regenRan];');
+    expect(src).toContain('commands.push(ran, regenRan);');
+  });
+
+  describe('where a regen runs when GitHub Actions does not run it', () => {
+    const setup = (o: { mode?: 'local' | 'ci'; mac: boolean; ready?: boolean; ci?: () => void }) => {
+      const calls: string[] = [];
+      const go = () =>
+        landRegen({
+          mode: o.mode ?? 'ci',
+          mac: o.mac,
+          ready: () => (calls.push('ready'), o.ready ?? true),
+          ci: () => (calls.push('ci'), o.ci?.()),
+          local: () => void calls.push('local'),
+          log: (l) => void calls.push(l),
+        });
+      return { calls, go };
+    };
+    it('local runs pnpm regen locally and never asks CI', () => {
+      const s = setup({ mode: 'local', mac: false });
+      expect(s.go()).toBe('local');
+      expect(s.calls).toEqual(['local']);
+    });
+    it('ci runs on CI, with no local regen', () => {
+      const s = setup({ mac: false });
+      expect(s.go()).toBe('ci');
+      expect(s.calls).toEqual(['ready', 'ci']);
+    });
+    it('on a Mac, falls back to the local regen loudly, as LAND_DEVICES=ci does', () => {
+      const s = setup({ mac: true, ci: () => { throw new CiUnavailable('no run appeared'); } });
+      expect(s.go()).toBe('local');
+      expect(s.calls).toEqual(['ready', 'ci', '  !!! LAND_REGEN=ci: GitHub Actions did not run the regen (no run appeared); running pnpm regen locally', 'local']);
+      const early = setup({ mac: true, ready: false });
+      expect(early.go()).toBe('local');
+      expect(early.calls[1]).toContain("master's regen-on-ci.yml has no patch mode yet");
+    });
+    it('off a Mac, stops the driver (Fatal) and blames no PR, with no local regen', () => {
+      const s = setup({ mac: false, ci: () => { throw new CiUnavailable('jobs never started'); } });
+      expect(s.go).toThrow(Fatal);
+      expect(s.go).toThrow('GitHub Actions did not run the regen (jobs never started); this host is not a Mac, so no local regen can stand in for it. The driver stops; no PR is blamed');
+      expect(s.calls).not.toContain('local');
+      const early = setup({ mac: false, ready: false });
+      expect(early.go).toThrow(Fatal);
+      expect(early.calls).toEqual(['ready']);
+    });
+    it('a regen that failed on CI is the PR\'s, as a failed local regen is: never a fallback', () => {
+      for (const mac of [true, false]) {
+        const s = setup({ mac, ci: () => { throw new LandFailure('regen-after-devices', 'the CI regen run u has failed jobs'); } });
+        expect(s.go).toThrow(LandFailure);
+        expect(s.calls).not.toContain('local');
+      }
+      // Any other error is not swallowed either (the queue loop fails the PR with it, as before).
+      const odd = setup({ mac: true, ci: () => { throw new Error('disk full'); } });
+      expect(odd.go).toThrow('disk full');
+      expect(odd.calls).not.toContain('local');
+    });
+  });
+
+  describe('the CI regen\'s patch, applied to the landing tree on a scratch repository', () => {
+    const dir = tempDir();
+    const ci = join(dir, 'ci');
+    const repo = join(dir, 'repo');
+    mkdirSync(repo);
+    const config = ['user.name=t', 'user.email=t@t', 'commit.gpgsign=false', 'core.hooksPath=/dev/null'].flatMap((c) => ['-c', c]);
+    const at = (cwd: string) => (args: string[]): string => execFileSync('git', [...config, ...args], { cwd, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const git = at(repo);
+    const bin = (seed: number, n: number): Buffer => Buffer.from(Array.from({ length: n }, (_, i) => (i * seed + (i >> 3)) % 256));
+    const write = (root: string, files: Record<string, string | Buffer | null>): void => {
+      for (const [p, body] of Object.entries(files)) {
+        if (body === null) rmSync(join(root, p));
+        else {
+          mkdirSync(dirname(join(root, p)), { recursive: true });
+          writeFileSync(join(root, p), body);
+        }
+      }
+    };
+    git(['init', '-q', '-b', 'master']);
+    write(repo, { 'src/a.ts': 'export const a = 1;\n', 'out/x.json': '{"x":1}\n', 'out/shot.png': bin(7, 4096), 'out/gone.bin': bin(3, 300), 'out/keep.txt': 'same\n' });
+    git(['add', '-A']);
+    git(['commit', '-q', '-m', 'base']);
+    // The landing tree: HEAD plus uncommitted work (a carried device record, an untracked file), committed apart as the driver
+    // does (commitApart: a scratch index, HEAD as parent).
+    write(repo, { 'out/x.json': '{"x":2}\n', 'out/new-record.json': '{}\n' });
+    const index = join(dir, 'scratch-index');
+    const apart = (args: string[]) => execFileSync('git', [...config, ...args], { cwd: repo, encoding: 'utf8', env: { ...process.env, GIT_INDEX_FILE: index } }).trim();
+    apart(['read-tree', 'HEAD']);
+    apart(['add', '-A']);
+    const base = apart(['commit-tree', apart(['write-tree']), '-p', 'HEAD', '-m', 'landing tree']);
+    // The CI regen: a checkout of that commit, regenerated (binary changes, a new binary, a deletion, a text change), its patch
+    // the round's own command (git diff --cached --binary <sha>).
+    git(['worktree', 'add', '-q', '--detach', ci, base]);
+    write(ci, { 'out/shot.png': bin(11, 5000), 'out/new.png': bin(13, 777), 'out/gone.bin': null, 'out/x.json': '{"x":2,"y":3}\n' });
+    at(ci)(['add', '-A']);
+    const regenerated = at(ci)(['write-tree']).trim();
+    const patch = join(dir, 'outputs.patch');
+    writeFileSync(patch, at(ci)(['diff', '--cached', '--binary', base]));
+    const empty = join(dir, 'empty.patch');
+    writeFileSync(empty, '');
+    afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+    it('makes the tree exactly the CI regen\'s, binary files included, staged', () => {
+      expect(readFileSync(patch, 'utf8')).toContain('GIT binary patch');
+      const bytes = applyRegenPatch(git, base, patch);
+      expect(bytes).toBe(readFileSync(patch).length);
+      expect(git(['write-tree']).trim()).toBe(regenerated);
+      for (const p of ['out/shot.png', 'out/new.png', 'out/x.json', 'out/keep.txt', 'src/a.ts']) expect(readFileSync(join(repo, p)).equals(readFileSync(join(ci, p))), p).toBe(true);
+      expect(existsSync(join(repo, 'out/gone.bin'))).toBe(false);
+      // Staged whole: the worktree is the index (git apply --index).
+      expect(git(['diff', '--name-only'])).toBe('');
+      // Back to the landing tree for the next cases.
+      git(['read-tree', '-u', '--reset', base]);
+      expect(git(['write-tree']).trim()).toBe(at(repo)(['rev-parse', `${base}^{tree}`]).trim());
+    });
+    it('applies nothing for an empty patch (a tree at its fixed point)', () => {
+      expect(applyRegenPatch(git, base, empty)).toBe(0);
+      expect(git(['write-tree']).trim()).toBe(git(['rev-parse', `${base}^{tree}`]).trim());
+    });
+    it('refuses a tree that is not the commit the CI regen ran on, a missing patch, and a patch that does not apply, changing nothing', () => {
+      write(repo, { 'src/a.ts': 'export const a = 2;\n' });
+      expect(() => applyRegenPatch(git, base, patch)).toThrow(`which the CI regen ran on`);
+      write(repo, { 'src/a.ts': 'export const a = 1;\n' });
+      expect(() => applyRegenPatch(git, base, join(dir, 'nope.patch'))).toThrow('nope.patch is missing');
+      const broken = join(dir, 'broken.patch');
+      writeFileSync(broken, readFileSync(patch, 'utf8').replace('{"x":2}', '{"x":9}'));
+      git(['add', '-A']);
+      const before = git(['write-tree']).trim();
+      expect(before).toBe(git(['rev-parse', `${base}^{tree}`]).trim());
+      expect(() => applyRegenPatch(git, base, broken)).toThrow();
+      // All or nothing: not even the binary files of the patch were written.
+      expect(git(['write-tree']).trim()).toBe(before);
+      expect(git(['diff', '--name-only'])).toBe('');
+    });
   });
 });
