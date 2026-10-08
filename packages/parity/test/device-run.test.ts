@@ -11,6 +11,8 @@ import { trustCoverageProblems } from '../src/lanes.ts';
 import type { AvdDeviceSpec, DeviceRecord, DeviceSpec, GoldenParts } from '../src/device-run.ts';
 import type { SettleState } from '../src/device-run.ts';
 import { ANDROID_RENDERER, avdDir, dropGolden, deviceRecord, dropSuspect, emulatorArgs, failedAttemptStep, GOLDEN_SNAPSHOT, goldenEnabled, GUEST_TIMEZONE, IOS_SPRINGBOARD_PINS, snapshotLoadFailed, goldenCurrent, goldenKey, goldenKeyFile, springboardPinsToWrite } from '../src/device-run.ts';
+import { installWithRetries, ToolingFault, transientInstallFailure, SYSTEMUI_RESTART_AFTER, systemUiRestart } from '../src/device-run.ts';
+import type { ExecResult } from '../src/device-exec.ts';
 import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, isGlyphPlant, isLinePlant, isPaintPlant, judgeGlyphPlant, judgeLinePlant, LINE_PLANT_CASE, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from 'dragon';
 import { paintPlants } from '../../dragon/src/emit/paint/registry.ts';
@@ -84,7 +86,7 @@ describe('device records', () => {
   });
   it('names a scale disagreement, a root that does not fit (a tooling fault, never cropped) and an unpinned text scale', () => {
     expect(recordProblems({ ...good, appScale: 2.5 }, root)).toEqual(['dragon-smoke: the device profile scale 2.625 differs from the app\'s 2.5']);
-    expect(recordProblems({ ...good, stagePx: [1000, 2138] }, root)[0]).toMatch(/cannot hold the 1050x788 root \(device fit, tooling fault; never cropped\)$/);
+    expect(recordProblems({ ...good, stagePx: [1000, 2138] }, root)[0]).toMatch(/cannot hold the 1050x788 root \(device fit; never cropped\)$/);
     expect(recordProblems({ ...good, textScale: '1.3' }, root)).toEqual(['dragon-smoke: text scale 1.3, pinned 1.0']);
     expect(recordProblems({ ...good, model: 'Android SDK built for arm64 / dragon-320' }, root)).toEqual(['dragon-smoke: the app ran on "Android SDK built for arm64 / dragon-320", not dragon-smoke']);
     expect(recordProblems({ ...good, target: 'ios', name: 'iPhone 17', model: 'iPad (A16)', textScale: TEXT_SCALE.ios }, root)).toEqual(['iPhone 17: the app ran on "iPad (A16)", not iPhone 17']);
@@ -242,12 +244,73 @@ describe('an AVD settles on the home screen before the app starts (T112)', () =>
     expect(actions).toEqual(['wait', 'wait', 'wait', 'wait', 'wait', 'done']);
     expect(state.unparseable).toBe(1);
   });
+  it('an error dialog that outlives SYSTEMUI_RESTART_AFTER BACK presses gets System UI restarted, again each time it stays', () => {
+    const { actions, state } = feed([...Array.from({ length: 2 * SYSTEMUI_RESTART_AFTER }, () => anr), home(), home(), home()], 3);
+    const back = Array.from({ length: SYSTEMUI_RESTART_AFTER - 1 }, () => 'back');
+    expect(actions).toEqual([...back, 'restart-systemui', ...back, 'restart-systemui', 'wait', 'wait', 'done']);
+    expect(state.restarts).toBe(2);
+    // The dialog run counts only dialogs in a row: one cleared by BACK starts the count again.
+    const cleared = feed([...Array.from({ length: SYSTEMUI_RESTART_AFTER - 1 }, () => anr), booting, anr], 3);
+    expect(cleared.actions.filter((a) => a === 'restart-systemui')).toEqual([]);
+    expect(cleared.state.dialogs).toBe(1);
+    // The first restart is the documented am crash after closing the system dialogs; later ones also kill System UI as root.
+    expect(systemUiRestart(1)).toEqual([['am', 'broadcast', '-a', 'android.intent.action.CLOSE_SYSTEM_DIALOGS'], ['am', 'crash', 'com.android.systemui']]);
+    expect(systemUiRestart(2).slice(0, 2)).toEqual(systemUiRestart(1));
+    expect(systemUiRestart(2)[2]).toEqual(['su', '0', 'sh', '-c', "'kill -9 $(pidof com.android.systemui)'"]);
+    expect(settleTimeoutMessage('emulator-5584', 300_000, state, 3)).toMatch(/, 2 System UI restarts$/);
+  });
   it('the timeout names the state it last read: the focus and its run, or the unparseable output', () => {
     const flap = feed([home('aaa'), home('bbb')], 3).state;
     expect(settleTimeoutMessage('emulator-5582', 300_000, flap, 3)).toBe('emulator-5582 did not settle on the home screen within 300 s (tooling fault): the last focus was mCurrentFocus=Window{bbb u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher} mFocusedApp=ActivityRecord{143482133 u0 com.android.launcher3/.uioverrides.QuickstepLauncher t12}, held for 1 of 3 samples; 2 samples, 1 focus changes, 0 unparseable');
     const bad = feed(['adb exited 1: error: device offline'], 3).state;
     expect(settleTimeoutMessage('emulator-5582', 300_000, bad, 3)).toBe('emulator-5582 did not settle on the home screen within 300 s (tooling fault): the last dumpsys window output had no single mCurrentFocus and mFocusedApp: "adb exited 1: error: device offline"; 1 samples, 0 focus changes, 1 unparseable');
     expect(settleTimeoutMessage('emulator-5582', 300_000, SETTLE_START)).toMatch(/no sample was read/);
+  });
+});
+
+describe('installs retried on a transient failure', () => {
+  const result = (out: string, ok = false, extra: Partial<ExecResult> = {}): ExecResult => ({ cmd: 'adb install', status: ok ? 0 : 1, signal: null, error: null, errorCode: null, stdout: out, stderr: '', out, ok, ...extra });
+  it('names the transient adb and simctl errors, and nothing else', () => {
+    expect(transientInstallFailure('android', result('adb: device offline'))).toBe('device offline');
+    expect(transientInstallFailure('android', result("cmd: Can't find service: package"))).toBe('package service unavailable');
+    expect(transientInstallFailure('android', result('adb: error: closed'))).toBe('adb connection dropped');
+    expect(transientInstallFailure('android', result('', false, { errorCode: 'ETIMEDOUT', signal: 'SIGKILL' }))).toBe('install timed out');
+    expect(transientInstallFailure('ios', result('An error was encountered processing the command (domain=NSMachErrorDomain, code=-308)'))).toBe('CoreSimulator connection');
+    expect(transientInstallFailure('ios', result('Unable to lookup in current state: Booting'))).toBe('simulator still booting');
+    expect(transientInstallFailure('ios', result('CoreSimulatorService connection became invalid.'))).toBe('CoreSimulator connection');
+    // Only the named codes: another Mach error, or a simulator shut down, is not retried.
+    expect(transientInstallFailure('ios', result('(domain=NSMachErrorDomain, code=-3080)'))).toBeNull();
+    expect(transientInstallFailure('ios', result('Unable to lookup in current state: Shutdown'))).toBeNull();
+    // An app the device refuses is the tree's app at fault: never retried.
+    expect(transientInstallFailure('android', result('Failure [INSTALL_PARSE_FAILED_MANIFEST_MALFORMED]'))).toBeNull();
+    expect(transientInstallFailure('ios', result('Missing bundle ID'))).toBeNull();
+    expect(transientInstallFailure('android', result('device offline', true))).toBeNull();
+  });
+  const run = async (outs: ExecResult[]) => {
+    const logs: string[] = [];
+    const waits: number[] = [];
+    let calls = 0;
+    const r = installWithRetries('android', 'adb install', () => outs[Math.min(calls++, outs.length - 1)]!, { log: (l) => void logs.push(l), wait: async (ms) => void waits.push(ms) });
+    return { r, logs, waits, calls: () => calls };
+  };
+  it('retries a transient failure, logging the error, and returns the first success', async () => {
+    const x = await run([result('error: device offline'), result('Success', true)]);
+    expect((await x.r).out).toBe('Success');
+    expect(x.calls()).toBe(2);
+    expect(x.waits).toEqual([10_000]);
+    expect(x.logs).toEqual(['adb install failed with a transient error (device offline), attempt 1 of 3; retrying in 10 s: error: device offline']);
+  });
+  it('a transient failure on the last of three attempts is a tooling fault; any other failure throws at once as the tree\'s', async () => {
+    const x = await run([result('error: device offline')]);
+    const e = await x.r.catch((err: unknown) => err);
+    expect(e).toBeInstanceOf(ToolingFault);
+    expect((e as Error).message).toBe('adb install failed 3 times with a transient error (device offline; tooling fault): error: device offline');
+    expect(x.calls()).toBe(3);
+    const y = await run([result('Failure [INSTALL_PARSE_FAILED_MANIFEST_MALFORMED]')]);
+    const f = await y.r.catch((err: unknown) => err);
+    expect(f).not.toBeInstanceOf(ToolingFault);
+    expect((f as Error).message).toBe('adb install failed: Failure [INSTALL_PARSE_FAILED_MANIFEST_MALFORMED]');
+    expect(y.calls()).toBe(1);
   });
 });
 
