@@ -9,8 +9,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DeviceEvidence } from './device-evidence.ts';
 import { parseOutcome } from './device-jobs.ts';
-import type { DeviceOutcome } from './device-lanes.ts';
-import { mergeOutcomes } from './device-lanes.ts';
+import type { BlockReason, DeviceOutcome } from './device-lanes.ts';
+import { BLOCK_REASONS, mergeOutcomes } from './device-lanes.ts';
 import type { DeviceSpec } from './device-run.ts';
 import { DEVICE_MATRIX } from './device-run.ts';
 import type { DeviceRun } from './lanes.ts';
@@ -20,6 +20,16 @@ import type { NativeTarget } from './targets.ts';
 export const OUTCOME_SCHEMA = 'dragon.device-outcome/2';
 /** device-ci.ts one's exit code for a device the tooling blocked (boot, settle, install): the job judges nothing of the tree. */
 export const TOOLING_EXIT = 4;
+/** device-ci.ts one's exit code for a device run that judged the tree (a failed run, or a block the tree caused): a verdict. */
+export const VERDICT_EXIT = 1;
+
+/**
+ * The exit code of a blocked device: TOOLING_EXIT only when every reason is the tooling's; any reason of the tree's (a matrix
+ * mismatch, a device record from an app that ran) or a block without its reasons (an older producer) is a verdict.
+ */
+export function blockedExit(reasons: readonly BlockReason[] | undefined): number {
+  return reasons !== undefined && reasons.length > 0 && reasons.every((r) => BLOCK_REASONS[r] === 'tooling') ? TOOLING_EXIT : VERDICT_EXIT;
+}
 
 /**
  * sha256 of every dump and hit record a device wrote, by case, with the device header (model, ABI, OS build, toolchain) and the
@@ -39,14 +49,19 @@ export function rawDumpHash(text: string): string {
   return createHash('sha256').update(body).digest('hex');
 }
 
-/** The hashes of the files <case>@<dpr><ext> in dir, by case id (a missing dir has none). */
+/** A case id usable as a map key: never one of Object.prototype's names (__proto__, constructor, ...). */
+const caseKey = (k: string): boolean => k !== '' && !(k in Object.prototype);
+
+/** The hashes of the files <case>@<dpr><ext> in dir, by case id (a missing dir has none; a file named for a prototype key throws). */
 export function dumpHashesIn(dir: string, ext: '.json' | '.hit', dpr: number): Record<string, string> {
   if (!existsSync(dir)) return {};
   const suffix = `@${dpr}${ext}`;
   const out: Record<string, string> = {};
   for (const f of readdirSync(dir).filter((x) => x.endsWith(suffix)).sort()) {
     const text = readFileSync(join(dir, f), 'utf8');
-    out[f.slice(0, -suffix.length)] = ext === '.hit' ? createHash('sha256').update(text).digest('hex') : rawDumpHash(text);
+    const id = f.slice(0, -suffix.length);
+    if (!caseKey(id)) throw new Error(`${join(dir, f)}: ${JSON.stringify(id)} is not a case id`);
+    out[id] = ext === '.hit' ? createHash('sha256').update(text).digest('hex') : rawDumpHash(text);
   }
   return out;
 }
@@ -112,8 +127,8 @@ export function parseCiOutcome(text: string, file: string): CiOutcome {
 /** The per-case hashes of an outcome, checked: absent (an older outcome), null, or a DPR and three maps of case id to sha256. */
 export function parseCaseHashes(v: unknown, file: string): CaseDumpHashes | null | undefined {
   if (v === undefined || v === null) return v;
-  const map = (m: unknown): m is Record<string, string> => isObj(m) && Object.values(m).every((h) => typeof h === 'string' && HEX64.test(h));
-  if (!isObj(v) || typeof v['dpr'] !== 'number' || !map(v['set']) || !map(v['states']) || !map(v['hits'])) throw new Error(`${file}: dumps is not a DPR and per-case sha256 maps of set, states and hits`);
+  const map = (m: unknown): m is Record<string, string> => isObj(m) && Object.keys(m).every(caseKey) && Object.values(m).every((h) => typeof h === 'string' && HEX64.test(h));
+  if (!isObj(v) || typeof v['dpr'] !== 'number' || !map(v['set']) || !map(v['states']) || !map(v['hits'])) throw new Error(`${file}: dumps is not a DPR and per-case sha256 maps of set, states and hits (case ids, never a prototype key)`);
   return { dpr: v['dpr'], set: v['set'], states: v['states'], hits: v['hits'] };
 }
 

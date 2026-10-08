@@ -466,6 +466,12 @@ export function releaseDeviceMemory(name: string): void {
  */
 export class DeviceLeftRunning extends Error {}
 
+/**
+ * A booted device that is not the tree's matrix device (liveProblems against DEVICE_MATRIX): a defect of the tree's matrix or
+ * provisioning, judged as a verdict, never retried as a tooling hiccup once the boot was cold.
+ */
+export class MatrixMismatch extends Error {}
+
 /** Runs a boot holding the device's memory until release(); a failed boot gives it back unless it left the device running. */
 export async function withDeviceSlot(spec: DeviceSpec, bootIt: () => Promise<DeviceHandle>, opts: AdmitOptions = {}): Promise<DeviceHandle> {
   await admitDevice(spec, opts);
@@ -833,7 +839,7 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
   const expectSdk = provision ? ANDROID_IMAGE_API : null;
   if (serialsRunning(tools).includes(serial)) {
     const live = liveProblems(spec, readLive(h), expectSdk);
-    if (live.length > 0) throw new Error(`${serial} is running but is not the matrix device: ${live.join('; ')}; it was not started by this runner, so it is left running (tooling fault)`);
+    if (live.length > 0) throw new MatrixMismatch(`${serial} is running but is not the matrix device: ${live.join('; ')}; it was not started by this runner, so it is left running`);
     await prepareAvd(h);
     return { ...h, startedHere: false, boot: 'running' };
   }
@@ -864,10 +870,11 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
       // The settle is part of the attempt: a booted image whose focus never settles (a System UI ANR that outlives every
       // remedy) is stopped and booted cold once more, as a boot that never completes is.
       const live = liveProblems(spec, readLive(h), expectSdk);
-      if (live.length > 0) throw new Error(`${serial} booted but is not the matrix device: ${live.join('; ')} (tooling fault)`);
+      if (live.length > 0) throw new MatrixMismatch(`${serial} booted but is not the matrix device: ${live.join('; ')}`);
       await prepareAvd(h);
       break;
     } catch (e) {
+      const wasGolden = golden;
       const step = failedAttemptStep(golden, p.alive(), attempt, golden && !p.alive() && snapshotLoadFailed(p.logTail()));
       // A snapshot that would not boot is dropped: the retry, and every boot after it until a new one is saved, is cold.
       if (step.dropGolden) {
@@ -888,6 +895,8 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
       const problems = await stopAll([() => stopDevice({ ...h, startedHere: true }), () => stopSpawned(p, spec.name)]);
       if (problems.length > 0) throw new DeviceLeftRunning(`the ${spec.name} emulator failed to boot and settle (${e instanceof Error ? e.message : String(e)}); and ${problems.join('; ')}`);
       await sleep(5000);
+      // A cold boot of the wrong device boots the same wrong device again; one from a snapshot may be the snapshot's, so it is retried cold.
+      if (e instanceof MatrixMismatch && !wasGolden) throw e;
       if (step.next === 'stop-then-fail') throw new Error(`the ${spec.name} emulator failed to boot and settle twice (tooling fault): ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
       console.log(`${spec.name}: attempt ${attempt} failed to boot and settle, so the emulator was stopped and the next attempt boots cold: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -1162,9 +1171,8 @@ const TRANSIENT_INSTALL: { readonly [t in NativeTarget]: readonly (readonly [str
     ['adb connection dropped', /error: closed|protocol fault|Broken pipe|Connection reset/i],
   ],
   ios: [
-    ['CoreSimulator connection', /CoreSimulatorService|Connection (?:was )?(?:invalid|interrupted)|NSMachErrorDomain|Mach error/i],
-    ['simulator busy', /Unable to lookup in current state: Booting|Resource temporarily unavailable|Device is busy/i],
-    ['install coordinator', /installcoordinationd|Failed to communicate/i],
+    ['CoreSimulator connection', /CoreSimulatorService connection (?:became invalid|interrupted)|domain=NSMachErrorDomain, code=-308\b/],
+    ['simulator still booting', /Unable to lookup in current state: Booting/],
   ],
 };
 
@@ -1350,7 +1358,7 @@ export function recordProblems(r: DeviceRecord, root: { readonly width: number; 
   // The app must have run on the device the runner booted: iOS reports SIMULATOR_DEVICE_NAME, Android "<model> / <AVD>".
   if (!(r.target === 'ios' ? r.model === r.name : r.model.endsWith(` / ${r.name}`))) out.push(`${r.name}: the app ran on ${JSON.stringify(r.model)}, not ${r.name}`);
   if (r.profileScale !== r.appScale) out.push(`${r.name}: the device profile scale ${r.profileScale} differs from the app's ${r.appScale}`);
-  if (r.stagePx[0] < root.width || r.stagePx[1] < root.height) out.push(`${r.name}: the stage ${r.stagePx[0]}x${r.stagePx[1]} device px cannot hold the ${root.width}x${root.height} root (device fit, tooling fault; never cropped)`);
+  if (r.stagePx[0] < root.width || r.stagePx[1] < root.height) out.push(`${r.name}: the stage ${r.stagePx[0]}x${r.stagePx[1]} device px cannot hold the ${root.width}x${root.height} root (device fit; never cropped)`);
   const pinned = r.target === 'ios' ? TEXT_SCALE.ios : TEXT_SCALE.android;
   if (r.textScale !== pinned) out.push(`${r.name}: text scale ${r.textScale}, pinned ${pinned}`);
   return out;

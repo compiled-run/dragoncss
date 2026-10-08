@@ -4,6 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { blockedExit, TOOLING_EXIT, VERDICT_EXIT } from '../src/device-ci.ts';
+import { afterRelease, BLOCK_REASONS, type BlockReason, runOneDevice } from '../src/device-lanes.ts';
+import { MatrixMismatch } from '../src/device-run.ts';
 import { caseDumpHashes, ciOutcomeText, type CiOutcome, compareWithCommitted, comparisonText, diffCaseHashes, mergeCiOutcomes, OUTCOME_SCHEMA, parseCaseHashes, parseCiOutcome, producerLabel, rawDumpHash } from '../src/device-ci.ts';
 import { allRunFailures } from '../src/device-lanes.ts';
 import { lanesFile, laneSources, checkLaneParity } from '../src/lanes.ts';
@@ -66,6 +69,38 @@ describe('device outcome files', () => {
   });
 });
 
+describe('a blocked device\'s exit: the tooling\'s (4) or a verdict (1), by an explicit reason', () => {
+  it('maps every block reason to its exit code, and a mix or a block without reasons to a verdict', () => {
+    const want: Record<BlockReason, number> = { boot: TOOLING_EXIT, stop: TOOLING_EXIT, 'install-transient': TOOLING_EXIT, 'matrix-mismatch': VERDICT_EXIT, 'device-record': VERDICT_EXIT };
+    expect(Object.keys(BLOCK_REASONS).sort()).toEqual(Object.keys(want).sort());
+    for (const [r, code] of Object.entries(want)) expect(blockedExit([r as BlockReason]), r).toBe(code);
+    expect(blockedExit(['boot', 'stop'])).toBe(TOOLING_EXIT);
+    // A tree defect is a verdict even when the stop failed too.
+    expect(blockedExit(['device-record', 'stop'])).toBe(VERDICT_EXIT);
+    expect(blockedExit([])).toBe(VERDICT_EXIT);
+    expect(blockedExit(undefined)).toBe(VERDICT_EXIT);
+  });
+  it('a failed boot is the tooling\'s, a booted device that is not the matrix device the tree\'s; a failed stop adds its reason', async () => {
+    const t = nativeTargets().find((x) => x.target === 'android')!;
+    const spec = DEVICE_MATRIX.find((d) => d.name === 'dragon-480')!;
+    const run = (e: Error) => runOneDevice(t, spec, null, 'app.apk', () => [], false, () => undefined, { boot: () => Promise.reject(e), release: null });
+    expect((await run(new Error('emulator-5584 did not settle on the home screen within 300 s (tooling fault)'))).blockedBy).toEqual(['boot']);
+    expect((await run(new MatrixMismatch('emulator-5584 booted but is not the matrix device: hw.lcd.density 420, not 480'))).blockedBy).toEqual(['matrix-mismatch']);
+    const fit = { device: 'dragon-480', set: null, trust: null, vectors: null, blocked: 'device fit', blockedBy: ['device-record'] as BlockReason[] };
+    expect(afterRelease(fit, 'still runs').blockedBy).toEqual(['device-record', 'stop']);
+    expect(blockedExit(afterRelease(fit, 'still runs').blockedBy)).toBe(VERDICT_EXIT);
+  });
+  it('an outcome\'s reasons are checked: known reasons, present only on a blocked outcome', () => {
+    const o = outcomeOf('ios', 'iPhone 17');
+    expect(parseCiOutcome(ciOutcomeText({ ...o, outcome: { ...o.outcome, blockedBy: ['boot'] } }), 'f.json').outcome.blockedBy).toEqual(['boot']);
+    const bad = (blockedBy: unknown, blocked: string | null = o.outcome.blocked): void => expect(() => parseCiOutcome(JSON.stringify({ ...o, outcome: { ...o.outcome, blocked, blockedBy } }), 'f.json')).toThrow('blockedBy is not the block reasons of a blocked outcome');
+    bad(['flaky']);
+    bad('boot');
+    bad([]);
+    bad(['__proto__']);
+  });
+});
+
 describe('per-case dump hashes (raw equality across hosts)', () => {
   const dump = (model: string, x: number, ms: number): string => JSON.stringify({ case: 'c', device: { platform: 'android', os: 'Android 16', model, abi: model.includes('arm') ? 'arm64-v8a' : 'x86_64' }, nodes: [{ id: 'a', frame: [x, 0, 10, 10] }], timing: { ms } });
   it('ignores the device header and the timing, and nothing else', () => {
@@ -92,6 +127,9 @@ describe('per-case dump hashes (raw equality across hosts)', () => {
       expect(Object.keys(h!.states)).toEqual(['s']);
       expect(Object.keys(h!.hits)).toEqual(['a']);
       expect(caseDumpHashes('android', 'dragon-320', null, root)).toBeNull();
+      writeFileSync(join(lanes, 'dragon-320-states', '__proto__@2.json'), dump('emu arm', 4, 5));
+      expect(() => caseDumpHashes('android', 'dragon-320', 2, root)).toThrow('"__proto__" is not a case id');
+      rmSync(join(lanes, 'dragon-320-states', '__proto__@2.json'));
       expect(caseDumpHashes('android', 'dragon-480', 2, root)).toEqual({ dpr: 2, set: {}, states: {}, hits: {} });
       writeFileSync(join(lanes, 'dragon-320', 'b@2.json'), dump('emu x86', 3, 7));
       expect(diffCaseHashes(h!, caseDumpHashes('android', 'dragon-320', 2, root)!)).toEqual({ set: [], states: [], hits: [] });
@@ -108,7 +146,8 @@ describe('per-case dump hashes (raw equality across hosts)', () => {
     expect(parseCiOutcome(ciOutcomeText({ ...o, dumps }), 'f.json')).toEqual({ ...o, dumps });
     expect(parseCiOutcome(ciOutcomeText({ ...o, dumps: null }), 'f.json')).toEqual({ ...o, dumps: null });
     expect(parseCiOutcome(ciOutcomeText(o), 'f.json')).toEqual(o);
-    for (const bad of [{ ...dumps, dpr: '3' }, { ...dumps, set: { a: 'zz' } }, { ...dumps, hits: [] }, { dpr: 3, set: {}, states: {} }, 'x']) {
+    const proto = JSON.parse(`{"dpr":3,"set":{"__proto__":"${'a'.repeat(64)}"},"states":{},"hits":{}}`) as unknown;
+    for (const bad of [{ ...dumps, dpr: '3' }, { ...dumps, set: { a: 'zz' } }, { ...dumps, hits: [] }, { dpr: 3, set: {}, states: {} }, 'x', proto, { ...dumps, states: { constructor: 'a'.repeat(64) } }]) {
       expect(() => parseCaseHashes(bad, 'f.json')).toThrow('f.json: dumps is not a DPR and per-case sha256 maps of set, states and hits');
       expect(() => parseCiOutcome(JSON.stringify({ ...o, dumps: bad }), 'f.json')).toThrow('dumps is not');
     }

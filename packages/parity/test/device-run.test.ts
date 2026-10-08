@@ -86,7 +86,7 @@ describe('device records', () => {
   });
   it('names a scale disagreement, a root that does not fit (a tooling fault, never cropped) and an unpinned text scale', () => {
     expect(recordProblems({ ...good, appScale: 2.5 }, root)).toEqual(['dragon-smoke: the device profile scale 2.625 differs from the app\'s 2.5']);
-    expect(recordProblems({ ...good, stagePx: [1000, 2138] }, root)[0]).toMatch(/cannot hold the 1050x788 root \(device fit, tooling fault; never cropped\)$/);
+    expect(recordProblems({ ...good, stagePx: [1000, 2138] }, root)[0]).toMatch(/cannot hold the 1050x788 root \(device fit; never cropped\)$/);
     expect(recordProblems({ ...good, textScale: '1.3' }, root)).toEqual(['dragon-smoke: text scale 1.3, pinned 1.0']);
     expect(recordProblems({ ...good, model: 'Android SDK built for arm64 / dragon-320' }, root)).toEqual(['dragon-smoke: the app ran on "Android SDK built for arm64 / dragon-320", not dragon-smoke']);
     expect(recordProblems({ ...good, target: 'ios', name: 'iPhone 17', model: 'iPad (A16)', textScale: TEXT_SCALE.ios }, root)).toEqual(['iPhone 17: the app ran on "iPad (A16)", not iPhone 17']);
@@ -276,7 +276,11 @@ describe('installs retried on a transient failure', () => {
     expect(transientInstallFailure('android', result('adb: error: closed'))).toBe('adb connection dropped');
     expect(transientInstallFailure('android', result('', false, { errorCode: 'ETIMEDOUT', signal: 'SIGKILL' }))).toBe('install timed out');
     expect(transientInstallFailure('ios', result('An error was encountered processing the command (domain=NSMachErrorDomain, code=-308)'))).toBe('CoreSimulator connection');
-    expect(transientInstallFailure('ios', result('Unable to lookup in current state: Booting'))).toBe('simulator busy');
+    expect(transientInstallFailure('ios', result('Unable to lookup in current state: Booting'))).toBe('simulator still booting');
+    expect(transientInstallFailure('ios', result('CoreSimulatorService connection became invalid.'))).toBe('CoreSimulator connection');
+    // Only the named codes: another Mach error, or a simulator shut down, is not retried.
+    expect(transientInstallFailure('ios', result('(domain=NSMachErrorDomain, code=-3080)'))).toBeNull();
+    expect(transientInstallFailure('ios', result('Unable to lookup in current state: Shutdown'))).toBeNull();
     // An app the device refuses is the tree's app at fault: never retried.
     expect(transientInstallFailure('android', result('Failure [INSTALL_PARSE_FAILED_MANIFEST_MALFORMED]'))).toBeNull();
     expect(transientInstallFailure('ios', result('Missing bundle ID'))).toBeNull();

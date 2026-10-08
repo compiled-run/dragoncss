@@ -200,6 +200,10 @@ func dragonRun(window: UIWindow, host: UIView) {
   dragonCase(0, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
 }
 
+/// The warm-up capture's sha256 by case, and the cases whose dumped capture differed from it (evidence only, warmup-ios.txt).
+var dragonWarmSha: [String: String] = [:]
+var dragonWarmDiffers: [String] = []
+
 /// Every layout case of the run drawn and captured once before any is dumped: a fresh render server (a CI virtual Mac's) draws
 /// transformed layers differently until its first use of them completes, so a case's first capture is never its dumped one.
 func dragonWarmUp(_ run: DragonRun, stage: UIView, scale: Double, bridge: DragonBridge) {
@@ -216,13 +220,14 @@ func dragonWarmUp(_ run: DragonRun, stage: UIView, scale: Double, bridge: Dragon
     stage.layoutIfNeeded()
     tree.root.layoutIfNeeded()
     CATransaction.flush()
-    _ = dragonCapture(tree.root, scale: scale, points: [])
+    dragonWarmSha[id] = dragonCapture(tree.root, scale: scale, points: []).sha256
     tree.root.removeFromSuperview()
   }
 }
 
 func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Double, device: DumpDevice, bridge: DragonBridge) {
   if k >= run.ids.count {
+    dragonWrite(out + "/warmup-ios.txt", "warmed \(dragonWarmSha.count) cases; the dumped capture differed from the warm-up capture in \(dragonWarmDiffers.count)\(dragonWarmDiffers.isEmpty ? "" : ": " + dragonWarmDiffers.joined(separator: " "))\n")
     dragonWrite(out + "/done-ios", "ok")
     exit(0)
   }
@@ -256,6 +261,7 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   CATransaction.flush()
   let t1 = CACurrentMediaTime()
   let pixels = dragonCapture(tree.root, scale: scale, points: run.points[id] ?? [])
+  if let warm = dragonWarmSha[id], warm != pixels.sha256 { dragonWarmDiffers.append(id) }
   let t2 = CACurrentMediaTime()
   let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000))
   dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))

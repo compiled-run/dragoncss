@@ -181,7 +181,9 @@ jobs:
           # A download can fail transiently ("unknown archive"): sdkmanager is retried, three failures fail the step, and every
           # package is then checked installed on its own.
           pkgs=(emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64')
-          retry "$sdk" --install "${pkgs[@]}" >/dev/null
+          # Its progress output goes to a log; a failed attempt prints the log's tail beside the retry warning.
+          sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }
+          retry sdk_install
           installed=$("$sdk" --list_installed | awk -F'|' 'NF >= 3 { gsub(/ /, "", $1); print $1 }')
           echo "$installed"
           for p in "${pkgs[@]}"; do grep -qFx "$p" <<<"$installed" || { echo "::error::sdkmanager did not install $p"; exit 1; }; done

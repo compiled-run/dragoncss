@@ -360,7 +360,9 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     expect(yml.match(/retry pnpm install --frozen-lockfile/g)?.length).toBe(3);
     expect(yml).not.toMatch(/^\s*- run: pnpm install/m);
     expect(yml).toContain('retry brew install openjdk@17 kotlin');
-    expect(yml).toContain('retry "$sdk" --install "${pkgs[@]}"');
+    expect(yml).toContain('sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }\n          retry sdk_install\n');
+    // The retry warnings are never sent to /dev/null with the command's output.
+    expect(yml).not.toMatch(/retry [^\n]*>\s*\/dev\/null/);
     expect(yml).toContain('for p in "${pkgs[@]}"; do grep -qFx "$p" <<<"$installed" || { echo "::error::sdkmanager did not install $p"; exit 1; }; done');
     expect(yml).toMatch(/for i in 1 2 3; do have && break; xcodebuild -downloadPlatform iOS -buildVersion 23F77/);
     expect(yml).toContain('echo "::error::$* failed 3 times"; return 1; }');
