@@ -18,7 +18,8 @@ const TOLERANCE = { 'linux-dragon-layout': 'gate-1-device-px', 'chrome-dual': 'd
 
 function candidate(row: ProfileRow): SupportCandidate | null {
   if (row.status === 'unsupported') return null;
-  return { feature: row.feature, context: row.context, status: row.status, proofs: row.proofs.map((p) => ({ lane: p.lane, cases: p.cases, tolerance: TOLERANCE[p.lane] })) };
+  const proofs = row.proofs.map((p) => ({ lane: p.lane, cases: p.cases, tolerance: TOLERANCE[p.lane] }));
+  return row.note === undefined ? { feature: row.feature, context: row.context, status: row.status, proofs } : { feature: row.feature, context: row.context, status: row.status, proofs, note: row.note };
 }
 
 const invalid = (message: string, code: 'DRAGON_CONFIG_INVALID' | 'DRAGON_INPUT_INVALID' | 'DRAGON_TREE_REFERENCE' = 'DRAGON_CONFIG_INVALID'): SupportAnswer =>

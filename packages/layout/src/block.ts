@@ -110,6 +110,10 @@ export type EngineFaults = {
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
   readonly orderUnclamped: boolean;
+  /** A scroll container reserves a classic 15px scrollbar gutter at its inline end and block end (overflow.ts). */
+  readonly gutterReserved: boolean;
+  /** A scroll container's scrollable overflow leaves out its end padding after the in-flow content (overflow.ts). */
+  readonly overflowIgnoresPadding: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -154,6 +158,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   fragmentFromLineTop: false,
   orderHalfEven: false,
   orderUnclamped: false,
+  gutterReserved: false,
+  overflowIgnoresPadding: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
