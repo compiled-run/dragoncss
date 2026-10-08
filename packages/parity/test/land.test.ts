@@ -196,10 +196,10 @@ describe('CI, base, worktree and quiet decisions', () => {
     expect(ciStep(ciState([ci('completed', 'success')]), 0, limits, true)).toBe('success');
     // Mergeable (or the landing commit, where conflicting is never passed) and no CI run: wait, then fail closed as before.
     expect(ciStep(none, 899, limits, false)).toBe('wait');
-    expect(ciStep(none, 900, limits, false)).toEqual({ fail: 'has no CI checks run after 900s' });
-    expect(ciStep(none, 900, limits)).toEqual({ fail: 'has no CI checks run after 900s' });
+    expect(ciStep(none, 900, limits, false)).toEqual({ fail: 'has no CI checks run after 900s', outage: true });
+    expect(ciStep(none, 900, limits)).toEqual({ fail: 'has no CI checks run after 900s', outage: true });
     expect(ciStep(failed, 0, limits, false)).toEqual({ fail: 'did not succeed: failure f' });
-    expect(ciStep(ciState([ci('queued', null)]), 5400, limits)).toEqual({ fail: 'CI checks still pending after 5400s' });
+    expect(ciStep(ciState([ci('queued', null)]), 5400, limits)).toEqual({ fail: 'CI checks still pending after 5400s', outage: true });
   });
 
   it('retargets a landed parent (or its review/* copy) to master, and fails on a parent still open', () => {
@@ -1835,7 +1835,11 @@ describe('ci-only: every heavy step on GitHub runners, never here (LAND_CI=only)
       expect(src).toContain('const auto = !arch.rebaseline && onCi ? ciArchRebaseline(before, after)');
       expect(src).toContain('!!! ARCHITECTURE REBASELINE');
       expect(src).toContain("rebaseline: arch.rebaseline || auto.rebaseline");
-      expect(src).toMatch(/const abis = \[\.\.\.androidAbis\(evidenceAt\(prev\)\)\]\.filter\(\(a\) => a !== hostAbi\(process\.arch\)\);\n\s+if \(abis\.length > 0\) throw new CiOutage\(/);
+      expect(src).toMatch(/prevAbis = androidAbis\(evidenceAt\(prev\)\);\n\s+\} catch \(cause\) \{\n\s+throw new Fatal\(/);
+    expect(src).toMatch(/const abis = \[\.\.\.prevAbis\]\.filter\(\(a\) => a !== hostAbi\(process\.arch\)\);\n\s+if \(abis\.length > 0\) throw new CiOutage\(/);
+    // Under LAND_CI=only the PR's own CI never running is an outage too; a failed run is still the PR's.
+    expect(src).toContain('if (typeof next === \'object\' && next.outage === true && CI_ONLY) throw new CiOutage(');
+    expect(ciStep({ state: 'failure', conclusions: ['failure u'] }, 0, { appearS: 900, waitS: 5400 })).toEqual({ fail: 'did not succeed: failure u' });
     });
   });
 });

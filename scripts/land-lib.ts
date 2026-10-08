@@ -139,13 +139,14 @@ export const ciState = (runs: CheckRun[]): CiState => {
 // One poll of a CI wait. GitHub runs no pull_request CI on a PR that is CONFLICTING with its base, so before the build
 // (`conflicting` is passed only there) a conflicting PR whose clean head has no CI run proceeds; the landing commit, which contains
 // master, must still pass CI before the merge. A failed run always fails; a missing run past `appearS` fails otherwise.
-export type CiStep = 'success' | 'wait' | 'skip' | { fail: string };
+// `outage`: GitHub Actions ran no verdict (no run appeared, or it never finished), as opposed to a run that did not succeed.
+export type CiStep = 'success' | 'wait' | 'skip' | { fail: string; outage?: true };
 export const ciStep = (s: CiState, waitedS: number, limits: { appearS: number; waitS: number }, conflicting = false): CiStep => {
   if (s.state === 'success') return 'success';
   if (s.state === 'failure') return { fail: `did not succeed: ${s.conclusions.join('; ')}` };
   if (s.state === 'none' && conflicting) return 'skip';
-  if (s.state === 'none' && waitedS >= limits.appearS) return { fail: `has no CI checks run after ${limits.appearS}s` };
-  if (waitedS >= limits.waitS) return { fail: `CI checks still ${s.state} after ${limits.waitS}s` };
+  if (s.state === 'none' && waitedS >= limits.appearS) return { fail: `has no CI checks run after ${limits.appearS}s`, outage: true };
+  if (waitedS >= limits.waitS) return { fail: `CI checks still ${s.state} after ${limits.waitS}s`, outage: true };
   return 'wait';
 };
 

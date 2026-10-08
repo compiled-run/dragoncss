@@ -209,7 +209,7 @@ function settle(w: CiWorkflow, deps: DevicesCiDeps, branch: string, pushed: bool
  * Runs a workflow for the commit the driver pushes to its scratch branch and returns the run and its artifact. Only a verdict on
  * the tree is a LandFailure at the workflow's step: a run some of whose real jobs ran and concluded failure. Everything else
  * (the push, gh, malformed answers, no run, jobs never started, a wait past waitS with no job failed, a cancelled run, a bad
- * artifact) judged nothing and is CiUnavailable, for the caller to run the step locally. A run in flight is cancelled on any
+ * artifact) judged nothing and is CiUnavailable, for the caller to run the step locally (ci) or stop (ci-only). A run in flight is cancelled on any
  * failure and the scratch branch is deleted in every case.
  */
 export function runOnCi(w: CiWorkflow, o: CiOptions & { readonly branch: string }): DevicesCiResult {
@@ -247,39 +247,50 @@ export function awaitOnCi(w: CiWorkflow, d: Dispatched, o: CiOptions): DevicesCi
     }
     deps.log(`  ${w.what} on CI: ${run.url}`);
     deps.record({ branch, runId: run.databaseId, sha, workflow: w.workflow });
-    // "CI never starts a job": past startS no job of the run has started and none is waiting for a runner (the run errored or
-    // runners are not picking up jobs), or jobs still wait for a runner past queueS, or a job is still queued when waitS (counted
-    // from the first job's start, so time queued before it is not taken from the run) runs out. Either way nothing was judged.
-    // A run queued behind busy runners (the macOS concurrency cap) is waited for, up to queueS.
+    // Past startS the jobs are looked at on every poll, each judged on its own: a job waiting for a runner (the macOS cap; a
+    // resolve job still running counts too) may wait up to queueS from when it was first seen waiting, and a running job has waitS
+    // from when it was first seen running (a job seen so on the first look is counted from the dispatch). A job past either limit,
+    // or a run with no job running and none waiting (it errored, or runners are not picking up jobs), judged nothing.
     const queueS = o.queueS ?? DEFAULT_QUEUE_WAIT_S;
-    let startedAt: number | null = null;
+    const waitingSince = new Map<string, number>();
+    const runningSince = new Map<string, number>();
+    let looked = false;
+    let idleSince: number | null = null;
     let queuedSaid = false;
     const waiting = (status: string): boolean => status === 'queued' || status === 'waiting' || status === 'pending' || status === 'requested';
     const jobsOf = (id: number) => parseJobs(deps.gh(['run', 'view', String(id), '--json', 'jobs']));
     while (run.status !== 'completed') {
-      const elapsed = deps.now() - t0;
-      const over = startedAt !== null && deps.now() - startedAt > o.waitS * 1000;
-      if (over || (startedAt === null && elapsed > startS * 1000)) {
+      const now = deps.now();
+      if (now - t0 > startS * 1000) {
         const jobs = jobsOf(run.databaseId);
         // A job that already failed at a verdict step is a verdict, whatever the rest of the run is doing; one that failed at a
         // setup step judged nothing.
         const failed = failedJobs(jobs);
         if (failed.verdict.length > 0) throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} has failed jobs (${failed.verdict.join(', ')})${explainOf(run.databaseId)}`);
         if (failed.setup.length > 0) throw new CiUnavailable(`the CI ${w.what} run ${run.url} failed in setup (${failed.setup.join(', ')})`);
-        // A resolve job still running is the run still starting, as a queued job is.
+        const since = looked ? now : t0;
+        looked = true;
         const queued = jobs.filter((j) => waiting(j.status) || (j.name === 'resolve' && j.status === 'in_progress'));
-        const names = queued.map((j) => j.name).join(', ') || 'none listed';
-        // The resolve job (ubuntu, seconds) does not count: the work is in the jobs after it.
-        if (startedAt === null && jobs.some((j) => j.name !== 'resolve' && (j.status === 'in_progress' || j.status === 'completed'))) startedAt = deps.now();
-        if (startedAt === null) {
-          // Queued: the run exists and waits for runners (its jobs queued, or the run itself before it has any job).
-          if (queued.length === 0 && !(jobs.length === 0 && waiting(run.status))) throw new CiUnavailable(`the CI ${w.what} run ${run.url} has jobs that never started (none waiting for a runner; run ${run.status}) after ${Math.round(elapsed / 1000)}s`);
-          if (elapsed > queueS * 1000) throw new CiUnavailable(`the CI ${w.what} run ${run.url} has jobs that never started (${names}) after ${Math.round(elapsed / 1000)}s, waiting for a runner past the queue wait of ${queueS}s (LAND_CI_QUEUE_WAIT)`);
-          if (!queuedSaid) deps.log(`  ${w.what} on CI: queued, waiting for a runner (${names}); waiting up to ${queueS}s for it to start`);
+        const running = jobs.filter((j) => j.status === 'in_progress' && j.name !== 'resolve');
+        for (const j of queued) if (!waitingSince.has(j.name)) waitingSince.set(j.name, since);
+        for (const j of running) if (!runningSince.has(j.name)) runningSince.set(j.name, since);
+        // Queued: the run exists and waits for runners (jobs queued, or the run itself before it has any job). With no job
+        // running or waiting, a run none of whose jobs ever ran never started; one whose jobs ran (between a job's end and the
+        // next job's queueing, or the run's own end) may stay so for up to queueS.
+        const idle = queued.length === 0 && running.length === 0 && !(jobs.length === 0 && waiting(run.status));
+        const ran = jobs.some((j) => j.name !== 'resolve' && j.status === 'completed') || runningSince.size > 0;
+        if (idle && !ran) throw new CiUnavailable(`the CI ${w.what} run ${run.url} has jobs that never started (none waiting for a runner; run ${run.status}) after ${Math.round((now - t0) / 1000)}s`);
+        idleSince = idle ? (idleSince ?? now) : null;
+        if (idleSince !== null && now - idleSince > queueS * 1000) throw new CiUnavailable(`the CI ${w.what} run ${run.url} has had no job running or waiting for a runner for ${Math.round((now - idleSince) / 1000)}s, and is not completed`);
+        if (jobs.length === 0 && !waitingSince.has('')) waitingSince.set('', since);
+        const stale = [...waitingSince].filter(([name]) => name === '' ? jobs.length === 0 : queued.some((j) => j.name === name)).filter(([, at]) => now - at > queueS * 1000);
+        if (stale.length > 0) throw new CiUnavailable(`the CI ${w.what} run ${run.url} has jobs that never started (${stale.map(([n]) => n || 'the run').join(', ')}) after ${Math.round((now - t0) / 1000)}s, waiting for a runner past the queue wait of ${queueS}s (LAND_CI_QUEUE_WAIT)`);
+        const slow = running.filter((j) => now - runningSince.get(j.name)! > o.waitS * 1000);
+        if (slow.length > 0) throw new CiUnavailable(`the CI ${w.what} run ${run.url} did not finish within ${o.waitS}s, and no job of it failed (${slow.map((j) => j.name).join(', ')} running past ${o.waitS}s from its own start)`);
+        const names = queued.map((j) => j.name);
+        if (names.length > 0 || jobs.length === 0) {
+          if (!queuedSaid) deps.log(`  ${w.what} on CI: queued, waiting for a runner (${names.join(', ') || 'none listed'}); each job waits up to ${queueS}s for one`);
           queuedSaid = true;
-        } else if (over) {
-          if (queued.length > 0) throw new CiUnavailable(`the CI ${w.what} run ${run.url} has jobs that never started (${names}) after ${Math.round(elapsed / 1000)}s`);
-          throw new CiUnavailable(`the CI ${w.what} run ${run.url} did not finish within ${o.waitS}s, and no job of it failed (counted from its first job's start)`);
         }
       }
       deps.sleep(poll);

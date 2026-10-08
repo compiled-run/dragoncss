@@ -309,6 +309,8 @@ const waitCi = (step: string, sha: string, what: string, conflicting?: () => boo
     const next = ciStep(s, (Date.now() - t0) / 1000, { appearS: CI_APPEAR_S, waitS: CI_WAIT_S }, s.state === 'none' && conflicting !== undefined && conflicting());
     if (next === 'success') return log(`  CI checks success on ${what} ${sha}`), 'success';
     if (next === 'skip') return log(`  ${what} ${sha} is CONFLICTING with master and has no CI run (GitHub runs none on a conflicting PR); building anyway, CI on the landing commit is still required`), 'skip';
+    // With every step ci-only, CI that never ran or never finished is an outage, as for the driver's own CI steps.
+    if (typeof next === 'object' && next.outage === true && CI_ONLY) throw new CiOutage(`LAND_CI=only: GitHub Actions did not run the CI checks of ${what} ${sha}: it ${next.fail}. The driver stops; no PR is blamed`);
     if (typeof next === 'object') throw new LandFailure(step, `${what} ${sha} ${next.fail}`);
     sleep(30_000);
   }
@@ -781,7 +783,13 @@ const finishPosition = (prev: string, e: Entry, t: Ticket, k: number, merge: str
         if (DEVICES_ON === 'ci-only') throw new CiOutage(`LAND_DEVICES=ci-only: ${why}. The driver stops; no PR is blamed`);
         // The local run is this host's Android ABI: against records of another ABI (a CI run's) it could only differ in
         // architecture, failing the PR for the host, so the driver stops instead.
-        const abis = [...androidAbis(evidenceAt(prev))].filter((a) => a !== hostAbi(process.arch));
+        let prevAbis: Set<string>;
+        try {
+          prevAbis = androidAbis(evidenceAt(prev));
+        } catch (cause) {
+          throw new Fatal(`LAND_DEVICES=ci: ${why}, and the previous position ${prev}'s device records cannot be read to tell whether a local run may stand in (${msg(cause)}); the driver stops, no PR is blamed`);
+        }
+        const abis = [...prevAbis].filter((a) => a !== hostAbi(process.arch));
         if (abis.length > 0) throw new CiOutage(`LAND_DEVICES=ci: ${why}, and the previous position's Android records are of ${abis.join(', ')}, not this host's ${hostAbi(process.arch)}, so no local run may stand in. The driver stops; no PR is blamed`);
         log(`  !!! LAND_DEVICES=ci: ${why}; running them locally`);
       }
