@@ -264,3 +264,15 @@ Review of #225 found that a driver job holding the merge token while it ran merg
 ## land-checks session-kill proof (2026-10-08)
 
 On a throwaway tree, the `typecheck` script started a background process that overwrote `$RUNNER_TEMP/land-checks/result.json` and the parts file every second for 120 s. land-checks run 37765094196 succeeded, and its uploaded `result.json` was intact (typecheck status 0, the correct sha). So the per-session `pkill -s` killed the stray before the results were assembled. An earlier run, 37764921871, planted a plain background sleep and finished in 60 s. The throwaway branch has been deleted.
+
+## Status 2026-10-08 08:05: code complete
+
+Landed: #217, #219, #220, #221, #222, #223, #224, #225, #226, #227. #227 brought CI device reliability, explicit block reasons, and the iOS warm-up; CI's iOS per-case hashes now equal the Mac's.
+
+**Remaining before cloud lanes and the Actions driver:**
+1. Owner setup:
+   - restrict the `land` Environment to master and add LAND_TOKEN (App token preferred)
+   - a master ruleset requiring PRs
+   - vars LAND_STOP_ISSUE, LAND_REVIEWERS (an identity separate from the token's) and LAND_PROOF_WRITERS
+2. A first real land.yml landing, which includes the one-time Android arm64-to-x86_64 rebaseline.
+3. A first cloud lane session, to confirm the cloud-setup hook and GraphQL-free gh in a real cloud VM.
