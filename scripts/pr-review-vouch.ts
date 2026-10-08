@@ -284,6 +284,10 @@ export const outcome = (
 export const reviewExit = (o: { pending: string[]; failed: string[] }, unansweredFindings: number): 0 | 1 =>
   o.pending.length + o.failed.length + unansweredFindings > 0 ? 1 : 0;
 
+// `pr:review --once`: 2 while the poll is not settled (where --wait would poll again), otherwise reviewExit.
+export const onceExit = (isSettled: boolean, o: { pending: string[]; failed: string[] }, unansweredFindings: number): 0 | 1 | 2 =>
+  isSettled ? reviewExit(o, unansweredFindings) : 2;
+
 // The git side, with git passed in so tests can run it on a scratch repository. Every failure becomes a PatchId error.
 // Git output is bytes; text is decoded as strict UTF-8, so nothing is changed or dropped before it is hashed.
 export type Git = (args: string[], input?: Buffer) => Buffer;

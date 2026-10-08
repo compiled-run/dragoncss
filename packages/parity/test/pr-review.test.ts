@@ -12,6 +12,7 @@ import {
   type PrHead,
   parsePrHead,
   NO_CODE_REVIEWED,
+  onceExit,
   reviewExit,
   SPENDING_LIMIT,
   spendingLimitWaived,
@@ -41,6 +42,7 @@ import {
   regenOnlyProblems,
   vouchForSkip,
 } from '../../../scripts/pr-review-vouch.ts';
+import { type Gh, ghRest } from '../../../scripts/gh-rest.ts';
 
 const sha = (c: string): string => c.repeat(40);
 const run = (conclusion: string | null, title: string | null, name = 'Macroscope - Correctness Check'): CheckRun => ({
@@ -629,5 +631,95 @@ describe('--conflicts-ok (GitHub mergeability ignores the merge drivers)', () =>
     expect(judgedHead(head, false)).toBe(head);
     const clean = { sha: head.sha, mergeable: 'MERGEABLE' as const };
     expect(judgedHead(clean, true)).toBe(clean);
+  });
+});
+
+describe('pr-review over REST', () => {
+  const REPO = 'compiled-run/dragoncss';
+  const restPull = (mergeable: boolean | null, state: string) => ({
+    number: 7,
+    state: 'open',
+    merged_at: null,
+    draft: false,
+    body: '',
+    labels: [],
+    mergeable,
+    mergeable_state: state,
+    head: { sha: HEAD.sha, ref: 'topic', repo: { full_name: REPO } },
+    base: { ref: 'master', repo: { full_name: REPO } },
+  });
+  const restFor = (pull: unknown, runs: CheckRun[], comments: unknown[]) => {
+    const table: Record<string, unknown> = {
+      [`api repos/${REPO}/pulls/7`]: pull,
+      [`api --paginate --slurp repos/${REPO}/commits/${HEAD.sha}/check-runs?per_page=100`]: [{ total_count: runs.length, check_runs: runs }],
+      [`api --paginate --slurp repos/${REPO}/pulls/7/comments?per_page=100`]: [comments],
+    };
+    const gh: Gh = (args) => {
+      const key = args.join(' ');
+      if (!(key in table)) throw new Error(`fake gh: no answer for ${key}`);
+      return JSON.stringify(table[key]);
+    };
+    return ghRest({ gh, repo: REPO, sleep: () => {} });
+  };
+  const ci = (conclusion: string | null): CheckRun => run(conclusion, null, CI_CHECK);
+  const limit = (name: string): CheckRun => run('skipped', SPENDING_LIMIT, name);
+  const finding = { id: 1, user: { login: 'macroscopeapp[bot]' }, path: 'a.ts', line: 3, body: 'bug', html_url: 'f' };
+  const reply = { id: 2, in_reply_to_id: 1, user: { login: 'someone' }, path: 'a.ts', line: 3, body: 'Fixed in x', html_url: 'r' };
+  // What pr-review.ts does with one poll: the head from the pull, its check runs, and the unanswered findings.
+  const poll = (pull: unknown, runs: CheckRun[], comments: unknown[], conflictsOk = false) => {
+    const rest = restFor(pull, runs, comments);
+    const view = rest.prView(7);
+    const head = judgedHead({ sha: view.sha, mergeable: view.mergeable }, conflictsOk);
+    const seen = rest.checkRuns(head.sha);
+    const all = rest.reviewComments(7);
+    const answered = new Set(all.filter((c) => c.in_reply_to_id !== undefined && !c.user.login.includes('macroscope')).map((c) => c.in_reply_to_id));
+    const open = all.filter((c) => c.in_reply_to_id === undefined && c.user.login.includes('macroscope') && !answered.has(c.id));
+    const o = outcome(seen, new Map(), head);
+    return { head, exit: reviewExit(o, open.length), once: onceExit(settled(seen, new Map(), head), o, open.length), o };
+  };
+  const green = [ci('success'), run('success', 'No issues identified')];
+
+  it('passes a clean PR, in both modes', () => {
+    expect(poll(restPull(true, 'clean'), green, [])).toMatchObject({ head: HEAD, exit: 0, once: 0 });
+    expect(poll(restPull(true, 'blocked'), green, [finding, reply])).toMatchObject({ exit: 0, once: 0 });
+  });
+
+  it('reports an unanswered finding as not clean', () => {
+    expect(poll(restPull(true, 'clean'), green, [finding])).toMatchObject({ exit: 1, once: 1 });
+  });
+
+  it('reports a running check as pending only under --once', () => {
+    expect(poll(restPull(true, 'clean'), [ci(null)], [])).toMatchObject({ exit: 1, once: 2 });
+    expect(poll(restPull(null, 'unknown'), [ci('success')], [])).toMatchObject({ head: { mergeable: 'UNKNOWN' }, exit: 1, once: 2 });
+  });
+
+  it('fails a dirty PR at once, unless --conflicts-ok', () => {
+    const dirty = restPull(false, 'dirty');
+    expect(poll(dirty, [ci(null)], [])).toMatchObject({ head: { mergeable: 'CONFLICTING' }, exit: 1, once: 1 });
+    expect(poll(dirty, green, [], true)).toMatchObject({ head: { mergeable: 'UNKNOWN' }, exit: 0, once: 0 });
+  });
+
+  it('passes an unreviewed PR (spending limit) with CI green and no findings', () => {
+    const r = poll(restPull(true, 'clean'), [ci('success'), limit(CORRECTNESS), limit('Macroscope - Proof guard')], []);
+    expect(r).toMatchObject({ exit: 0, once: 0 });
+    expect(r.o.unreviewed).toBe(true);
+  });
+
+  it('rejects a malformed REST answer, naming the field', () => {
+    expect(() => poll({ ...restPull(true, 'clean'), head: { sha: 'abc', ref: 'topic', repo: null } }, green, [])).toThrow(/pull\.head\.sha/);
+    expect(() => poll(restPull(true, 'clean'), green, [{ ...finding, path: null }])).toThrow(/review comment\.path/);
+  });
+
+  // The proxy in Claude Code cloud sessions refuses GraphQL, so neither script may call a gh subcommand that uses it.
+  it('uses no GraphQL gh subcommand', () => {
+    const graphql = [
+      /['"](pr|repo|issue|label|search|project|release)['"]\s*,\s*['"]\w+['"]/,
+      /\bgh\s+(pr|repo|issue|search|project|release)\s+\w+/,
+      /graphql/i,
+    ];
+    for (const file of ['pr-review.ts', 'gh-rest.ts']) {
+      const source = readFileSync(new URL(`../../../scripts/${file}`, import.meta.url), 'utf8');
+      for (const pattern of graphql) expect(source.match(pattern)?.[0], `${file}: ${pattern}`).toBeUndefined();
+    }
   });
 });
