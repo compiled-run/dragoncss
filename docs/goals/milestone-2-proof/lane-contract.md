@@ -63,23 +63,32 @@ the PM to do it. Never work around a refusal. Start a lane session on its PR's b
     macos-26 and native files on ubuntu-24.04-arm). Give the pushed head's full sha, not the branch, so the run's title and
     its `tested <ref> at <sha>` line name the exact commit. Exit codes: 0 passed, 1 failed, 2 error, 3 pending; it prints the
     run id. Poll it again with `pnpm ci:test-files --run <id> --once`.
-- Regen only on CI, with no local fallback, and only through the `regen` label on your PR. (A `gh workflow run
-  regen-on-ci.yml -f branch=<b>` run is filed under master with no branch in its title, so a lane can't find it again
-  after a pause.) Push your source commits, then add the label (above). A run takes about 35–45 minutes. Find your run
-  (other labels' events add skipped runs, which this drops):
+- Regen only on CI, with no local fallback, through `pnpm ci:regen <branch>` (regen-on-ci.yml in branch mode). It works
+  whether or not your PR conflicts, since it is a dispatch, not a pull_request event. Push your source commits, then run
+  `pnpm ci:regen <branch> --head <full head sha> --once`. It dispatches a run named `regen of branch <branch> at <sha>
+  (<nonce>)` (or reuses the run already going for that head), and the run refuses to regenerate or push a branch that is not
+  at that sha. A run takes about 35–45 minutes. Exit codes: 0 done, printing `regen commit <sha>` (pushed on top of your
+  head) or `head <sha>` ("already at a fixed point; no commit"); 1 failed, printing the failing step and its error; 2 error
+  (a usage or gh error, a cancelled run, a run that is not the one asked for); 3 pending. It prints the run id; poll again
+  with `pnpm ci:regen <branch> --run <id> --once`, or run the first command again: with the same `--head` it finds the same
+  run by its name, even after the run's regen commit moved the branch on.
+  After exit 0, `git pull --ff-only`. Never push while the run is in progress (it would fail with "moved during the run"
+  and push nothing). If it fails, fix the cause, push, and run it again. If the runners are down, wait and say so in your
+  receipt. Find a lane's regen runs after a pause:
+  `gh api "$R/actions/workflows/regen-on-ci.yml/runs?event=workflow_dispatch&per_page=100" --jq '.workflow_runs[] | select(.display_title | startswith("regen of branch <branch> at ")) | "\(.id) \(.status) \(.conclusion) \(.display_title)"'`
+  Alternative, the `regen` label on your PR (above): it starts a run only while GitHub does not call the PR conflicting
+  (`mergeable_state` `dirty`), because GitHub skips pull_request workflows on a PR that can't merge, and a master regen that
+  rewrites a generated file the PR also changes (usually `packages/parity/out/lanes.json`) makes it conflict. Find a label
+  run (other labels' events add skipped runs, which this drops):
   `gh api "$R/actions/workflows/regen-on-ci.yml/runs?branch=<branch>&event=pull_request&per_page=100" --jq '[.workflow_runs[] | select(.conclusion != "skipped")][0:3][] | "\(.id) \(.status) \(.conclusion) \(.head_sha) \(.created_at)"'`
   The newest line is yours when its head_sha is the head you labeled. It is done when that run is `completed success` and
   the branch has the github-actions[bot] commit "Regenerate on CI: pnpm regen (regen-on-ci)", or the run summary says
-  "already at a fixed point; no commit"; then `git pull --ff-only`. Never push while the run is in progress (its push would
-  be refused). If it fails, read `gh run view <id> --log-failed`, fix the cause, push, then remove the label (the workflow
-  removes it only after a success) and add it again. If the runners are down, wait and say so in your receipt.
-  A label added while GitHub calls the PR conflicting (`mergeable_state` `dirty`) starts no run: GitHub skips pull_request
-  workflows on a PR that can't merge. A master regen that rewrites a generated file the PR also changes (usually
-  `packages/parity/out/lanes.json`) causes this. Then merge origin/master (the repo's merge drivers settle generated files),
-  push, wait until `mergeable_state` is no longer `dirty`, and remove and re-add the label.
+  "already at a fixed point; no commit". If it fails, fix the cause, push, then remove the label (the workflow removes it
+  only after a success) and add it again.
 - At the end of the branch (owner, 2026-10-04: prove once, in the driver): audit and push, open the PR (Landing, below),
-  add the `regen` label, pull its commit, then run `pnpm typecheck` and the targeted tests for what you touched on the
-  regenerated head, and update the PR body with exactly what passed. Always include the cross-cutting registry tests:
+  regenerate with `pnpm ci:regen <branch>` (above) and pull its commit, then run `pnpm typecheck` and the targeted tests for
+  what you touched on the regenerated head, and update the PR body with exactly what passed. Always include the cross-cutting
+  registry tests:
   `packages/parity/test/chrome-ports.test.ts` (every Chrome citation is in docs/ports.json), both `registry-claims.test.ts`,
   and the iOS and Android profile tests if you promote native rows. Route each by its group: chrome-ports and parity's
   registry-claims are in the Chrome group (ci:test-files); `packages/dragon/test/registry-claims.test.ts` is platform-free
@@ -126,10 +135,10 @@ the PM to do it. Never work around a refusal. Start a lane session on its PR's b
 Everything else is a default above, or a note in your receipt.
 
 ## Waiting
-- Never keep a session busy waiting on CI. Start the CI work (a push, the `regen` label, a ci:test-files dispatch), poll
+- Never keep a session busy waiting on CI. Start the CI work (a push, a ci:regen or ci:test-files dispatch), poll
   once, and if it is still running, end your turn with a receipt that names what you wait on (PR, run ids). The PM resumes
   you; on resume, read the state from GitHub (the commands above), not from memory.
-- Every command must finish within 30 minutes: use `--once` with ci:test-files and with `pnpm pr:review <n>`. A short wait may repeat a single poll in the foreground, bounded under 25 minutes, e.g.
+- Every command must finish within 30 minutes: use `--once` with ci:test-files, ci:regen and `pnpm pr:review <n>`. A short wait may repeat a single poll in the foreground, bounded under 25 minutes, e.g.
   `for i in 1 2 3 4 5 6 7; do pnpm -s ci:test-files --run <id> --once; s=$?; [ $s -ne 3 ] && break; sleep 180; done; echo exit=$s`.
 - No background watchers, /tmp/job.sh, leases or `.done` files: background jobs die when the session pauses.
 - Never wait on anything outside your lane.
@@ -178,7 +187,8 @@ what costs money or leaves the repo.
 ## Resuming a killed lane
 A new session has only what reached GitHub. `git fetch origin`, check out the lane's branch, and read its state: `git log`,
 the PR (head, conflict state, comments, review comments, labels) with the commands above, its checks, and its CI runs
-(regen runs with the command in Work; the ci:test-files runs of a head, whose titles carry the sha you gave:
+(regen runs with the commands in Work; the ci:test-files runs of a head, whose titles
+carry the sha you gave:
 `gh api "$R/actions/workflows/test-files.yml/runs?event=workflow_dispatch&per_page=100" --jq '.workflow_runs[] | select(.display_title | startswith("test files of <sha> ")) | "\(.id) \(.status) \(.conclusion) \(.html_url)"'`).
 Don't redo finished work. Treat generated outputs that did not come from a regen-on-ci commit as untrusted: regen on CI.
 
