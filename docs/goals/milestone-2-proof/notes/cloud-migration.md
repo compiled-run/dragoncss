@@ -251,3 +251,16 @@ Review of #225 found that a driver job holding the merge token while it ran merg
 - a reviewer identity separate from the token's
 
 #225 is split: A is the state-out-of-/tmp work, B is land.yml with the split design.
+
+## Trust boundary (security review of #226, 2026-10-08)
+
+- **Tree-produced verdicts are correctness signals, not security controls.** A PR's own code runs inside full-test, regen-on-ci, device-lanes and land-checks, so a malicious tree can forge its own results. That is true on the Mac driver today as well. What the driver checks on that data still holds: the regen commit is regen-only, floors never fall, and the merged tree matches.
+- **Security rests on three things:**
+  1. review of everything that executes, including package.json, which is now reviewed
+  2. a master ruleset requiring PRs (owner setup)
+  3. tree-controlled bytes, symlinks included, never touching the token job's filesystem or processes. The token job runs no pnpm and no tree code, its trusted checkout is read-only, and it never follows symlinks.
+- Generated code such as grammar.generated.ts and the profiles still reaches master unreviewed. That is not a token risk, but it is accepted because the regen-only check and the review of its generator cover it.
+
+## land-checks session-kill proof (2026-10-08)
+
+On a throwaway tree, the `typecheck` script started a background process that overwrote `$RUNNER_TEMP/land-checks/result.json` and the parts file every second for 120 s. land-checks run 37765094196 succeeded, and its uploaded `result.json` was intact (typecheck status 0, the correct sha). So the per-session `pkill -s` killed the stray before the results were assembled. An earlier run, 37764921871, planted a plain background sleep and finished in 60 s. The throwaway branch has been deleted.

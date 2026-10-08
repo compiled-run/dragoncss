@@ -1,7 +1,7 @@
 // The checked parts of land.ts: queue and argument parsing, retries of network calls, the CI verdict, the Claude review gate and
 // the queue loop that records a failed PR and continues. The git and device judgements come from merge-train-lib.ts.
 import { spawn, spawnSync } from 'node:child_process';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, constants as fsConstants, lstatSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync, writeSync } from 'node:fs';
 import { type CheckRun, CI_CHECK } from './pr-review-vouch.ts';
 import { type DeviceEvidence, modelChanges } from './merge-train-lib.ts';
 
@@ -26,7 +26,8 @@ export const parseEntry = (line: string): Entry => {
   return { branch, pr: Number(pr), clean };
 };
 
-export const parseQueue = (text: string): Entry[] => {
+// `allowEmpty` (land.yml, LAND_QUEUE_EMPTY_OK=1): an empty queue is nothing to land rather than a mistake.
+export const parseQueue = (text: string, o: { allowEmpty?: boolean } = {}): Entry[] => {
   const entries: Entry[] = [];
   for (const raw of text.split('\n')) {
     const line = raw.replace(/#.*/, '').trim();
@@ -34,7 +35,7 @@ export const parseQueue = (text: string): Entry[] => {
     if (/^train\b/.test(line)) return fail(`"${line}": trains are gone; the queue is a plain list of <branch>:<pr>:<clean-head> lines`);
     entries.push(parseEntry(line));
   }
-  if (entries.length === 0) return fail('the queue has no entries');
+  if (entries.length === 0 && o.allowEmpty !== true) return fail('the queue has no entries');
   for (const key of ['branch', 'pr'] as const) {
     if (new Set(entries.map((e) => e[key])).size !== entries.length) fail(`two queue entries share a ${key}`);
   }
@@ -61,7 +62,16 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   a CI run may go without starting a job, with none waiting for a runner, before GitHub Actions counts as not running it, default
   900), LAND_CI_QUEUE_WAIT (seconds a run whose jobs wait for a runner, as behind the macOS concurrency cap, is waited for before
   that counts as not running it, default 10800), LAND_CI_MAX_INFLIGHT (positions of a batch whose CI regens are dispatched at once,
-  1 to 8, default 2; the positions above are built one by one)`;
+  1 to 8, default 2; the positions above are built one by one). For a host with no state of its own (land.yml): LAND_REVIEW_SOURCE=comment
+  (the default reviewer reads the review from a PR comment, pnpm land:post-review), LAND_STOP_ISSUE
+  (an issue whose land-stop label stops the driver after its batch, as the stop file does), LAND_MAX_BATCHES (batches this run
+  lands; the rest goes to LAND_HANDOFF for the next run), LAND_LOG_DIR (the status, logs, reviews and run directory, instead of /tmp),
+  LAND_QUEUE_EMPTY_OK=1 (an empty queue is nothing to land). Reviewers are matched by user id (LAND_REVIEWER_IDS, or LAND_REVIEWERS
+  ids or logins), and the token's own identity (GET user, or LAND_TOKEN_USER_ID for an App token) may not be one. Every run reads and
+  writes master's land/proof commit status, trusting only statuses by that identity or LAND_PROOF_WRITERS ids. Under LAND_CI=only
+  each run records on each PR's head (land/outage) whether it ended with a verdict about the PR or an outage in a step that ran its
+  tree (or was killed); LAND_OUTAGE_EJECT such runs in a row (default 2) eject the PR at admission, and a PR with any is built alone
+  until it gets a verdict. pnpm land:clear-outage <pr> ends a streak after a real outage.`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;
@@ -405,6 +415,96 @@ export const findingsComment = (pr: number, head: string, findings: readonly Fin
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
+// LAND_TRUSTED (land.yml): the job that holds the landing token runs no code of a PR or a merged tree. Its own commands run only in
+// its trusted checkout (MAIN, master at dispatch time), and git's merge drivers, which git runs inside the landing worktree, are
+// the trusted checkout's scripts by absolute path, never the tree's own scripts/.
+
+/** pnpm setup:git's config with each `node scripts/<x>` driver pointed at the trusted checkout's copy. */
+export const trustedGitConfig = (entries: readonly (readonly [string, string])[], main: string): [string, string][] => {
+  if (!main.startsWith('/') || /['"\\$`\s]/.test(main)) throw new Error(`land: the trusted checkout ${JSON.stringify(main)} must be an absolute path with no quotes, spaces or shell characters`);
+  const out = entries.map(([k, v]): [string, string] => [k, v.replace(/^node scripts\//, `node '${main}/scripts/`).replace(/^(node '[^']+\.ts)( |$)/, "$1'$2")]);
+  // Every driver is a no-op or the trusted checkout's script; anything else would run code from the tree being merged.
+  for (const [k, v] of out) if (k.endsWith('.driver') && v !== 'true' && !v.startsWith(`node '${main}/scripts/`)) throw new Error(`land: the merge driver ${k} = ${JSON.stringify(v)} is not the trusted checkout's script`);
+  return out;
+};
+/** Why a command may not run in `cwd` under LAND_TRUSTED (any directory but the trusted checkout holds a tree's code), or null. */
+// A package manager runs package.json commands, which review does not read as code, so none runs anywhere in the token job.
+const PACKAGE_MANAGERS = new Set(['pnpm', 'npx', 'npm', 'yarn', 'pnpx', 'corepack']);
+export const treeCodeRefusal = (argv: readonly string[], cwd: string, main: string, resolve: (p: string) => string): string | null => {
+  const bin = (argv[0] ?? '').split('/').at(-1)!;
+  if (PACKAGE_MANAGERS.has(bin)) return `LAND_TRUSTED: refusing to run ${argv.join(' ')}: in the job that holds the landing token no package manager runs (its scripts are package.json commands); run the script with node`;
+  return resolve(cwd) === resolve(main) ? null : `LAND_TRUSTED: refusing to run ${argv.join(' ')} in ${cwd}: in the job that holds the landing token only the trusted checkout's own commands run; a tree's commands run in land-checks.yml`;
+};
+
+/**
+ * Writes a file inside a tree's worktree without following a symlink anywhere on its path (a tree can plant one, pointing at the
+ * trusted checkout): every directory on the way must be a real directory, and the file is opened with O_NOFOLLOW.
+ */
+// The directories on the way to `rel`, each a real directory (created when `create`), never a symlink.
+const realParents = (root: string, rel: string, create: boolean, what: string): void => {
+  const parts = rel.split('/');
+  if (rel === '' || rel.startsWith('/') || parts.some((x) => x === '' || x === '.' || x === '..')) throw new Error(`land: ${JSON.stringify(rel)} is not a plain relative path`);
+  let at = root;
+  for (const part of parts.slice(0, -1)) {
+    at = `${at}/${part}`;
+    const st = lstatSync(at, { throwIfNoEntry: false });
+    if (st === undefined && create) mkdirSync(at);
+    else if (st === undefined) return;
+    else if (!st.isDirectory()) throw new Error(`land: ${at} is ${st.isSymbolicLink() ? 'a symlink' : 'not a directory'}; refusing to ${what} ${rel} through it`);
+  }
+};
+const noFollow = (path: string, flags: number, what: string): number => {
+  try {
+    return openSync(path, flags | fsConstants.O_NOFOLLOW, 0o644);
+  } catch (error) {
+    if ((error as { code?: unknown }).code === 'ELOOP') throw new Error(`land: ${path} is a symlink; refusing to ${what} it`);
+    throw error;
+  }
+};
+export const writeInTree = (root: string, rel: string, data: string | Buffer): void => {
+  realParents(root, rel, true, 'write');
+  const fd = noFollow(`${root}/${rel}`, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC, 'write');
+  try {
+    writeSync(fd, typeof data === 'string' ? Buffer.from(data) : data);
+  } finally {
+    closeSync(fd);
+  }
+};
+/** Reads a file inside a tree's worktree without following a symlink (a tree's link could name any file the runner can read). */
+export const readInTree = (root: string, rel: string): string => {
+  realParents(root, rel, false, 'read');
+  const fd = noFollow(`${root}/${rel}`, fsConstants.O_RDONLY, 'read');
+  try {
+    return readFileSync(fd, 'utf8');
+  } finally {
+    closeSync(fd);
+  }
+};
+/** Removes a file inside a tree's worktree; a symlinked directory on its way is refused, and a symlink itself is removed, not its target. */
+export const removeInTree = (root: string, rel: string): void => {
+  realParents(root, rel, false, 'remove');
+  rmSync(`${root}/${rel}`, { force: true });
+};
+/** `git ls-tree` or `git ls-files -s` output: the paths that are symlinks (mode 120000). */
+export const symlinkEntries = (lsOutput: string): string[] =>
+  lsOutput.split(/\0|\n/).flatMap((l) => {
+    const m = /^120000 [0-9a-f]+(?: \d+)?\t(.*)$/.exec(l);
+    return m ? [m[1]!] : [];
+  });
+/** A git patch that creates or keeps a symlink (mode 120000). A regen's outputs are never symlinks. */
+// Line ends are normalised first: git apply takes a CRLF patch, so a "mode 120000\r" line must not slip past.
+export const patchHasSymlink = (patch: string): boolean => /^(?:new file mode|new mode|old mode|deleted file mode)[ \t]+120000[ \t]*$|^index [0-9a-f]+\.\.[0-9a-f]+[ \t]+120000[ \t]*$/m.test(patch.replace(/\r/g, ''));
+
+/** The marker line of a precomputed review comment (land-review-lookup.ts reads it, pnpm land:post-review writes it). */
+export const REVIEW_MARKER = '<!-- dragon-land-review v1 -->';
+/**
+ * A comment body the driver posts, made unreadable as a review: no HTML comment can open (so no marker line), and no code fence
+ * is a json block. The driver posts log tails and finding texts a PR controls, under an identity a reviewer allowlist must not hold.
+ */
+export const defangReview = (body: string): string =>
+  body.replaceAll('<!--', '&lt;!--').replace(/^([ \t]*)(`{3,}|~{3,})([ \t]*)json\b/gim, '$1$2$3text');
+
+// ---------------------------------------------------------------------------------------------------------------------
 // After a merge: GitHub closes, rather than retargets, an open PR whose base branch is deleted. So every open PR based on the
 // merged branch is moved to master first, the list is read again, and the branch is deleted last, only when none is left.
 
@@ -559,7 +659,62 @@ export class Fatal extends Error {}
  * failures): nothing was judged and nothing may run locally instead, so the driver stops. No PR is failed for it, and every PR
  * not landed yet stays queued (runBatches' `stopped`).
  */
-export class CiOutage extends Fatal {}
+export class CiOutage extends Fatal {
+  /**
+   * `prs`: every PR whose code the step ran (attribute), so the outage counts against them (land-state.ts outageLedger); an
+   * empty list for a step that ran no PR's code (master's own proof, a workflow missing from master). Required, so no CI step
+   * can stop the driver without saying whose tree it ran.
+   */
+  readonly prs: readonly number[];
+  constructor(message: string, prs: readonly number[]) {
+    super(message);
+    this.prs = prs;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The CI stages of a landing run: each dispatches or waits on a CI run that runs PR code, and an outage there counts against the
+// PRs `attribute` names. Every call site in land.ts takes its PRs from attribute (land-trusted.test.ts checks every site, and
+// injects an outage at each stage through runBatches).
+export const CI_STAGES = ['admission-ci', 'prepared-regen', 'regen', 'tree-checks', 'devices', 'full-test', 'publish-ci'] as const;
+export type CiStage = (typeof CI_STAGES)[number];
+/** The PRs merged into each position's tree, by the position's head (master and anything not built: none). */
+export class Trees {
+  readonly #of = new Map<string, readonly number[]>();
+  of(head: string): readonly number[] {
+    return this.#of.get(head) ?? [];
+  }
+  /** Position `head`, built on `prev` with `pr` merged. */
+  add(head: string, prev: string, pr: number): void {
+    this.#of.set(head, [...this.of(prev), pr]);
+  }
+}
+/**
+ * The PRs whose code a CI stage runs:
+ * - admission-ci: the PR head's own ci.yml run: that PR;
+ * - regen, tree-checks, devices: the tree of the position being built, `prev` with `pr` merged: prev's PRs and that PR;
+ * - prepared-regen: a prepared position k, master with the batch's first k PRs merged: those PRs;
+ * - full-test (the batch top, a bisect prefix, master) and publish-ci (ci.yml on the landing commit): the PRs in that tree.
+ */
+export const attribute = (stage: CiStage, c: { trees: Trees; pr?: number; prev?: string; head?: string; batch?: readonly number[]; k?: number }): number[] => {
+  const need = <V>(v: V | undefined, what: string): V => {
+    if (v === undefined) throw new Error(`attribute ${stage}: no ${what}`);
+    return v;
+  };
+  switch (stage) {
+    case 'admission-ci':
+      return [need(c.pr, 'pr')];
+    case 'regen':
+    case 'tree-checks':
+    case 'devices':
+      return [...c.trees.of(need(c.prev, 'prev')), need(c.pr, 'pr')];
+    case 'prepared-regen':
+      return need(c.batch, 'batch').slice(0, need(c.k, 'k'));
+    case 'full-test':
+    case 'publish-ci':
+      return [...c.trees.of(need(c.head, 'head'))];
+  }
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Where each heavy step runs: LAND_DEVICES, LAND_TEST and LAND_REGEN, each local (here), ci (on GitHub runners, falling back to a
@@ -721,8 +876,15 @@ export type BatchOps<T, P extends { head: string }> = {
   verify: (built: readonly { entry: Entry; ticket: T; position: P }[]) => void;
   /** Proves the tree of one position (the full test). Throws LandFailure at step "test" when the test fails. */
   prove: (position: P, e: Entry) => void;
-  /** True when the PM asked for a graceful stop (STOP_FILE or SIGUSR1): no new batch starts. */
+  /** True when the PM asked for a graceful stop (STOP_FILE, SIGUSR1 or the land-stop label): no new batch starts. */
   stopRequested?: () => boolean;
+  /** At most this many batches that built a position (LAND_MAX_BATCHES; land.yml runs one per job): the rest stays queued. */
+  maxBatches?: number;
+  /**
+   * True for a PR that must be built and proved alone (a batch of 1), asked before its admission: one whose earlier build or
+   * proof ended without a verdict, which a batch could not pin on one PR. It starts a batch of its own, never joins one.
+   */
+  solo?: (e: Entry) => boolean;
   /** Proves master's own tree, before a bisect blames the first PR of a batch. Throws LandFailure at step "test" when it fails. */
   proveMaster: (master: string) => void;
   /** Pushes, reviews and merges one PR at its position. Throws LandFailure (that PR fails) or Fatal. */
@@ -913,7 +1075,7 @@ export type Prepared<T, P> = {
   proven: number[];
   culprit: { index: number; failure: LandFailure } | null;
 };
-export type PrepareOps<T, P extends { head: string }> = Pick<BatchOps<T, P>, 'admit' | 'build' | 'buildAll' | 'verify' | 'prove' | 'proveMaster' | 'log'>;
+export type PrepareOps<T, P extends { head: string }> = Pick<BatchOps<T, P>, 'admit' | 'build' | 'buildAll' | 'verify' | 'prove' | 'proveMaster' | 'log' | 'solo'>;
 
 export const prepareRound = <T, P extends { head: string }>(
   queue: Entry[],
@@ -932,18 +1094,27 @@ export const prepareRound = <T, P extends { head: string }>(
     result({ entry: e, failure: asFailure(error) });
   };
   const admitted: { entry: Entry; ticket: T }[] = [];
-  while (admitted.length < size && queue.length > 0) {
-    const e = queue.shift()!;
+  let alone = false;
+  while (admitted.length < size && queue.length > 0 && !alone) {
+    const e = queue[0]!;
+    const solo = ops.solo?.(e) === true;
+    // A PR that must be alone waits for the next batch when this one already has a PR.
+    if (solo && admitted.length > 0) break;
+    queue.shift();
     consumed.push(e);
     at(e);
     try {
       const a = ops.admit(e, [...(o.earlier ?? []), ...admitted.map((x) => x.entry)]);
       if ('merged' in a) result({ entry: e, merged: a.merged });
-      else admitted.push({ entry: e, ticket: a.ticket });
+      else {
+        admitted.push({ entry: e, ticket: a.ticket });
+        alone = solo;
+      }
     } catch (error) {
       failure(e, error);
     }
   }
+  if (alone) ops.log(`batch: #${admitted[0]!.entry.pr} is built and proved alone (an earlier build or proof of it ended without a verdict)`);
   const none = (b: string): Prepared<T, P> => ({ base: b, consumed, results, built: [], good: 0, proven: [], culprit: null });
   if (admitted.length === 0) return none('');
   let b: string;
@@ -1042,7 +1213,7 @@ export type NextRound<T, P> = {
 };
 
 /** A builder's Fatal as JSON (parsePrepared reads it back): a CiOutage stays one. */
-export const serializeFatal = (error: Fatal): string => JSON.stringify({ fatal: error.message, outage: error instanceof CiOutage });
+export const serializeFatal = (error: Fatal): string => JSON.stringify({ fatal: error.message, outage: error instanceof CiOutage, ...(error instanceof CiOutage ? { prs: error.prs } : {}) });
 // A builder's round as JSON, and back. LandFailures keep their step, message and comment; anything malformed is an error.
 export const serializePrepared = <T, P>(p: Prepared<T, P>): string =>
   JSON.stringify({
@@ -1055,11 +1226,13 @@ const toFailure = (v: unknown): LandFailure => {
   if (!isObject(v) || typeof v.step !== 'string' || typeof v.message !== 'string' || !(v.comment === null || typeof v.comment === 'string')) return fail(`a prepared failure is malformed: ${JSON.stringify(v)?.slice(0, 200)}`);
   return new LandFailure(v.step, v.message, v.comment ?? undefined);
 };
-export const parsePrepared = <T, P extends { head: string }>(text: string): Prepared<T, P> | { fatal: string; outage: boolean } => {
+export const parsePrepared = <T, P extends { head: string }>(text: string): Prepared<T, P> | { fatal: string; outage: boolean; prs: number[] } => {
   const v: unknown = JSON.parse(text);
   if (isObject(v) && typeof v.fatal === 'string') {
     if (v.outage !== undefined && typeof v.outage !== 'boolean') return fail(`a prepared round's outage is not a boolean: ${text.slice(0, 200)}`);
-    return { fatal: v.fatal, outage: v.outage === true };
+    const prs = v.prs ?? [];
+    if (!Array.isArray(prs) || !prs.every((x) => Number.isSafeInteger(x) && (x as number) > 0)) return fail(`a prepared round's outage PRs are malformed: ${text.slice(0, 200)}`);
+    return { fatal: v.fatal, outage: v.outage === true, prs: prs as number[] };
   }
   if (!isObject(v) || typeof v.base !== 'string' || !Array.isArray(v.consumed) || !v.consumed.every(isEntry) || !Array.isArray(v.results) || !Array.isArray(v.built) || !Array.isArray(v.proven)) {
     return fail(`a prepared round is malformed: ${text.slice(0, 200)}`);
@@ -1087,12 +1260,17 @@ export const runBatches = <T, P extends { head: string }>(
   entries: readonly Entry[],
   size: number,
   ops: BatchOps<T, P> & { next?: NextRound<T, P> },
-): { outcomes: Outcome[]; fatal: string | null; outage: string | null; exit: 0 | 1; stopped: Entry[] } => {
+): { outcomes: Outcome[]; fatal: string | null; outage: string | null; outagePrs: readonly number[]; exit: 0 | 1; stopped: Entry[]; stopAsked: boolean; limited: boolean } => {
   if (!Number.isInteger(size) || size < 1) return fail(`batch size ${size}`);
+  const max = ops.maxBatches ?? Infinity;
+  if (max !== Infinity && (!Number.isInteger(max) || max < 1)) return fail(`batch limit ${max}`);
+  let batches = 0;
+  let limited = false;
   const queue = [...entries];
   const outcomes: Outcome[] = [];
   let fatal: string | null = null;
   let outage: string | null = null;
+  let outagePrs: readonly number[] = [];
   const done = (o: Outcome): void => {
     outcomes.push(o);
     ops.onOutcome(outcomes);
@@ -1126,6 +1304,11 @@ export const runBatches = <T, P extends { head: string }>(
         ops.log(`stop requested: not starting ${prs(queue)}`);
         break;
       }
+      if (batches >= max) {
+        limited = true;
+        ops.log(`batch limit (${max}) reached: ${prs(queue)} stay queued for the next run`);
+        break;
+      }
       let round: Prepared<T, P>;
       if (pending && usable) {
         pending = false;
@@ -1155,10 +1338,11 @@ export const runBatches = <T, P extends { head: string }>(
       }
       const { built, good, culprit } = round;
       if (built.length === 0) continue;
+      batches++;
       const proven = new Set(round.proven);
 
       // The whole batch is proven and the queue has more: start preparing the next batch on this top while this one publishes.
-      if (ops.next !== undefined && good === built.length && queue.length > 0 && !stopping()) {
+      if (ops.next !== undefined && good === built.length && queue.length > 0 && batches < max && !stopping()) {
         ops.next.start(built.at(-1)!.position.head, [...queue], built.map((b) => b.entry), size);
         pending = true;
         usable = false;
@@ -1205,7 +1389,7 @@ export const runBatches = <T, P extends { head: string }>(
     }
   } catch (error) {
     if (!(error instanceof Fatal)) throw error;
-    if (error instanceof CiOutage) outage = error.message;
+    if (error instanceof CiOutage) [outage, outagePrs] = [error.message, error.prs];
     else {
       fatal = error.message;
       if (at !== null) outcomes.push({ entry: at, result: 'failed', step: 'fatal', detail: fatal });
@@ -1216,7 +1400,7 @@ export const runBatches = <T, P extends { head: string }>(
   }
   // After an outage every PR with no outcome stays queued (those of the batch it hit included), in queue order.
   const stopped = outage !== null ? entries.filter((e) => !outcomes.some((o) => o.entry.pr === e.pr)) : fatal === null ? queue : [];
-  return { outcomes, fatal, outage, exit: fatal === null && outage === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1, stopped };
+  return { outcomes, fatal, outage, outagePrs, exit: fatal === null && outage === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1, stopped, stopAsked, limited };
 };
 
 export const statusText = (o: {
@@ -1230,10 +1414,14 @@ export const statusText = (o: {
   total: number;
   done: boolean;
   stopped?: readonly Entry[];
+  /** The run ended at its batch limit (LAND_MAX_BATCHES), not on a stop request: `stopped` goes to the next run. */
+  limited?: boolean;
 }): string => {
   const outage = o.done && !o.fatal && typeof o.outage === 'string';
-  const asked = o.done && !o.fatal && !outage && (o.stopped?.length ?? 0) > 0;
-  const lines = [`land ${o.done ? (o.fatal ? 'STOPPED' : outage ? 'STOPPED BY A CI OUTAGE' : asked ? 'STOPPED ON REQUEST' : 'DONE') : 'RUNNING'} ${o.now} (started ${o.startedAt}) queue ${o.queue}: ${o.outcomes.length} of ${o.total} handled`];
+  const rest = o.done && !o.fatal && !outage && (o.stopped?.length ?? 0) > 0;
+  const handOff = rest && o.limited === true;
+  const asked = rest && !handOff;
+  const lines = [`land ${o.done ? (o.fatal ? 'STOPPED' : outage ? 'STOPPED BY A CI OUTAGE' : asked ? 'STOPPED ON REQUEST' : handOff ? 'BATCH DONE' : 'DONE') : 'RUNNING'} ${o.now} (started ${o.startedAt}) queue ${o.queue}: ${o.outcomes.length} of ${o.total} handled`];
   if (o.fatal) lines.push(`fatal: ${o.fatal}`);
   if (outage) lines.push(`CI outage: ${o.outage}`, `no PR was failed for it; still queued, not landed: ${(o.stopped ?? []).map((e) => `#${e.pr}`).join(' ') || 'none'}`);
   if (o.running) lines.push(`landing now: #${o.running.pr} ${o.running.branch}`);
@@ -1243,7 +1431,8 @@ export const statusText = (o: {
   }
   const failed = o.outcomes.filter((r) => r.result === 'failed').length;
   if (asked) lines.push(`stop requested: not started ${o.stopped!.map((e) => `#${e.pr}`).join(' ')} (no PR failed for it)`);
-  if (o.done) lines.push(failed === 0 && !o.fatal ? (asked || outage ? 'every PR handled landed' : 'every PR landed') : `${failed} PR(s) failed; each has the landing-failed label and a comment naming the step`);
+  if (handOff) lines.push(`batch limit reached: the next run gets ${o.stopped!.map((e) => `#${e.pr}`).join(' ')} (no PR failed for it)`);
+  if (o.done) lines.push(failed === 0 && !o.fatal ? (rest || outage ? 'every PR handled landed' : 'every PR landed') : `${failed} PR(s) failed; each has the landing-failed label and a comment naming the step`);
   return `${lines.join('\n')}\n`;
 };
 

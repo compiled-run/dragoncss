@@ -2,9 +2,9 @@
 // branch) and force-pushed to the driver's scratch branch, device-lanes.yml is dispatched on master for that commit and its run
 // found by its run-name, waited for, and its device-outcomes artifact handed back, for the driver to merge (device-ci.ts merge)
 // and judge against the previous position as a local run is judged. The scratch branch is deleted whatever happens.
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { CiOutage, type CiMode, LandFailure } from './land-lib.ts';
+import { CiOutage, type CiMode, LandFailure, patchHasSymlink } from './land-lib.ts';
 
 export const DEVICE_WORKFLOW = 'device-lanes.yml';
 export const OUTCOMES_ARTIFACT = 'device-outcomes';
@@ -14,12 +14,14 @@ export const tempBranch = (pr: number): string => `${TEMP_PREFIX}${pr}`;
 export const testBranch = (sha: string): string => `land-test/c-${sha.slice(0, 12)}`;
 /** The CI regen's scratch branch of a landing tree's commit (LAND_REGEN=ci). */
 export const regenBranch = (sha: string): string => `land-regen/c-${sha.slice(0, 12)}`;
+/** The tree checks' scratch branch of a landing tree's commit (LAND_TRUSTED: land-checks.yml). */
+export const checksBranch = (sha: string): string => `land-checks/c-${sha.slice(0, 12)}`;
 /**
  * The driver's scratch branches, the only refs it force-pushes or deletes: exactly land-devices/pr-<n>, land-test/c-<12 hex> or
  * land-regen/c-<12 hex>, never a PR branch.
  */
 export function scratchRef(branch: string): string {
-  if (!/^land-devices\/pr-[1-9]\d*$|^land-(test|regen)\/c-[0-9a-f]{12}$/.test(branch)) throw new Error(`${JSON.stringify(branch)} is not a land-devices/pr-<n>, land-test/c-<sha> or land-regen/c-<sha> scratch branch`);
+  if (!/^land-devices\/pr-[1-9]\d*$|^land-(test|regen|checks)\/c-[0-9a-f]{12}$/.test(branch)) throw new Error(`${JSON.stringify(branch)} is not a land-devices/pr-<n>, land-test/c-<sha>, land-regen/c-<sha> or land-checks/c-<sha> scratch branch`);
   return `refs/heads/${branch}`;
 }
 export const runTitle = (sha: string): string => `device lanes of ${sha}`;
@@ -109,7 +111,7 @@ export function parseJobs(text: string): CiJob[] {
  * downloads, the runtime and SDK installs, cache and artifact steps) is setup: its failure says nothing about the tree.
  */
 export const SUMMARY_STEP = "Every test's state";
-export const VERDICT_STEP = /^(vitest run|Every test's state|pnpm regen|Pick the last round|No native run was blocked|Device run |Merge the device outcomes|Compare every device lane)/;
+export const VERDICT_STEP = /^(vitest run|Every test's state|pnpm regen|Pick the last round|No native run was blocked|Device run |Merge the device outcomes|Compare every device lane|Land checks$)/;
 
 /**
  * A regen step (regen-on-ci.yml) judges the tree only when it ran to its end and failed: one cut off by the job's timeout, a lost
@@ -156,6 +158,19 @@ export function failedJobs(jobs: readonly CiJob[]): { verdict: string[]; setup: 
   }
   return { verdict, setup };
 }
+
+const errorLine = (e: unknown): string => {
+  const o = e as { stderr?: unknown; message?: unknown } | null;
+  return `${typeof o?.stderr === 'string' && o.stderr.trim() !== '' ? o.stderr : e instanceof Error ? e.message : String(e)}`.trim().split('\n')[0]!.slice(0, 300);
+};
+/** gh run download's answer when the run has no artifact of that name (as opposed to a network error). */
+export const artifactMissing = (e: unknown): boolean => /no valid artifacts found|no artifact matches|artifact .* not found/i.test(`${(e as { stderr?: unknown } | null)?.stderr ?? ''} ${e instanceof Error ? e.message : String(e)}`);
+
+/**
+ * A patch that is the tree's doing and is refused (a symlink, not a regular file, missing, or one git cannot apply to the tree it
+ * was made from): after a completed run that passed, this is the PR's failure, not CI's.
+ */
+export class PatchRefused extends Error {}
 
 /** A workflow the driver runs for one commit: dispatched on master with the commit, found by its run-name, waited for. */
 export type CiWorkflow = {
@@ -322,9 +337,22 @@ export function awaitOnCi(w: CiWorkflow, d: Dispatched, o: CiOptions): DevicesCi
       deps.log(`  ${w.what} on CI: passed, ${run.url} in ${Math.round((deps.now() - t0) / 1000)}s`);
       return { sha, url: run.url, outcomesDir: '' };
     }
-    const got = deps.download(run.databaseId, w.artifact);
+    // The run completed and passed, and every byte of its artifact comes from a runner where the tree's code ran: an artifact
+    // that is missing or is not the workflow's shape is the tree's doing, so it fails the PR (a network error stays CI trouble).
+    let got: { readonly dir: string; readonly files: readonly string[] };
+    try {
+      got = deps.download(run.databaseId, w.artifact);
+    } catch (e) {
+      if (artifactMissing(e)) throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} passed but left no ${w.artifact} artifact: ${errorLine(e)}`);
+      throw e;
+    }
     outcomesDir = got.dir;
-    const files = w.check(got.files) as readonly string[];
+    let files: readonly string[];
+    try {
+      files = w.check(got.files) as readonly string[];
+    } catch (e) {
+      throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} passed but its ${w.artifact} artifact is not the workflow's: ${errorLine(e)}`);
+    }
     deps.log(`  ${w.what} on CI: ${files.length} files of ${run.url} in ${Math.round((deps.now() - t0) / 1000)}s`);
     outcomesDir = null;
     return { sha, url: run.url, outcomesDir: got.dir };
@@ -409,13 +437,25 @@ export type { CiMode };
  * all of it or nothing. Returns the patch's size in bytes (0: the tree was at its fixed point).
  */
 export function applyRegenPatch(git: (args: string[]) => string, base: string, patch: string): number {
-  if (!existsSync(patch)) throw new Error(`${patch} is missing`);
+  const st = lstatSync(patch, { throwIfNoEntry: false });
+  if (st === undefined) throw new PatchRefused(`${patch} is missing`);
+  // An artifact's file, read without following a link a run could have uploaded.
+  if (!st.isFile()) throw new PatchRefused(`${patch} is not a regular file`);
+  // The driver's own precondition (its worktree is the tree the run was given), so a mismatch is never the PR's.
   git(['add', '-A']);
   const tree = git(['write-tree']).trim();
   const want = git(['rev-parse', `${base}^{tree}`]).trim();
   if (tree !== want) throw new Error(`the worktree's tree ${tree} is not the tree ${want} of ${base}, which the CI regen ran on`);
-  const bytes = statSync(patch).size;
-  if (bytes > 0) git(['apply', '--binary', '--index', patch]);
+  const bytes = st.size;
+  // A symlink a patch plants would redirect the driver's later writes into the tree (to the trusted checkout, say).
+  if (bytes > 0 && patchHasSymlink(readFileSync(patch, 'latin1'))) throw new PatchRefused(`${patch} creates or keeps a symlink (mode 120000); a regen's outputs never are, so it is refused`);
+  if (bytes > 0) {
+    try {
+      git(['apply', '--binary', '--index', patch]);
+    } catch (e) {
+      throw new PatchRefused(`git apply of ${patch} to the tree it was made from failed: ${errorLine(e)}`);
+    }
+  }
   return bytes;
 }
 
@@ -430,6 +470,8 @@ export function awaitRegenOnCi(step: string, d: Dispatched, o: CiOptions & { rea
     try {
       bytes = o.apply(join(r.outcomesDir, PATCH_FILE));
     } catch (e) {
+      // The run passed: a patch it made that is refused is the tree's (PatchRefused); the driver's own trouble is CI's.
+      if (e instanceof PatchRefused) throw new LandFailure(step, `the patch of the CI regen ${r.url} is refused: ${e.message}`);
       throw new CiUnavailable(`the patch of the CI regen ${r.url} could not be applied: ${e instanceof Error ? e.message : String(e)}`);
     }
     o.deps.log(bytes === 0 ? `  regen on CI: ${d.sha} is at its fixed point; nothing to apply (${r.url})` : `  regen on CI: applied the ${bytes}-byte outputs.patch of ${r.url}`);
@@ -447,7 +489,7 @@ export function awaitRegenOnCi(step: string, d: Dispatched, o: CiOptions & { rea
  *   keyed by platform, lanes-host needs Xcode), so the driver stops and no PR is blamed.
  * A LandFailure (the regen itself failed on CI) is the PR's, as a failed local regen is. Returns where the regen ran.
  */
-export function landRegen(o: { readonly mode: CiMode; readonly mac: boolean; readonly ready: () => boolean; readonly ci: () => void; readonly local: () => void; readonly log: (line: string) => void }): CiMode {
+export function landRegen(o: { readonly prs: readonly number[]; readonly mode: CiMode; readonly mac: boolean; readonly ready: () => boolean; readonly ci: () => void; readonly local: () => void; readonly log: (line: string) => void }): CiMode {
   if (o.mode === 'local') {
     o.local();
     return 'local';
@@ -462,8 +504,8 @@ export function landRegen(o: { readonly mode: CiMode; readonly mac: boolean; rea
       why = `GitHub Actions did not run the regen (${e.message})`;
     }
   } else why = `master's ${REGEN_WORKFLOW_FILE} has no patch mode yet`;
-  if (o.mode === 'ci-only') throw new CiOutage(`LAND_REGEN=ci-only: ${why}. The driver stops; no PR is blamed`);
-  if (!o.mac) throw new CiOutage(`LAND_REGEN=ci: ${why}; this host is not a Mac, so no local regen can stand in for it. The driver stops; no PR is blamed`);
+  if (o.mode === 'ci-only') throw new CiOutage(`LAND_REGEN=ci-only: ${why}. The driver stops; no PR is blamed`, o.prs);
+  if (!o.mac) throw new CiOutage(`LAND_REGEN=ci: ${why}; this host is not a Mac, so no local regen can stand in for it. The driver stops; no PR is blamed`, o.prs);
   o.log(`  !!! LAND_REGEN=ci: ${why}; running pnpm regen locally`);
   o.local();
   return 'local';
@@ -471,7 +513,7 @@ export function landRegen(o: { readonly mode: CiMode; readonly mac: boolean; rea
 
 /** The run-name a workflow gives a dispatch for a commit, to find a run whose id was never recorded. */
 export const titleOf = (workflow: string, sha: string): string | null =>
-  workflow === DEVICE_WORKFLOW ? runTitle(sha) : workflow === FULL_TEST_WORKFLOW_FILE ? fullTestTitle(sha) : workflow === REGEN_WORKFLOW_FILE ? regenTitle(sha) : null;
+  workflow === DEVICE_WORKFLOW ? runTitle(sha) : workflow === FULL_TEST_WORKFLOW_FILE ? fullTestTitle(sha) : workflow === REGEN_WORKFLOW_FILE ? regenTitle(sha) : workflow === CHECKS_WORKFLOW_FILE ? checksTitle(sha) : null;
 
 /**
  * After an interrupted driver: cancels the CI run it recorded in flight and deletes its scratch branch. A run whose id was not yet
@@ -514,8 +556,8 @@ export function abandonInflight(text: string, o: { readonly cancel: (runId: numb
 }
 
 /**
- * The driver's scratch branches in `git ls-remote origin` output: every land-devices/pr-<n>, land-test/c-<sha12> and
- * land-regen/c-<sha12>. At the driver's start none is in flight (it holds the lock), so each is a leftover to delete.
+ * The driver's scratch branches in `git ls-remote origin` output: every land-devices/pr-<n>, land-test/c-<sha12>,
+ * land-regen/c-<sha12> and land-checks/c-<sha12>. At the driver's start none is in flight (it holds the lock), so each is a leftover to delete.
  */
 export function staleScratchBranches(lsRemote: string): string[] {
   const out: string[] = [];
@@ -532,3 +574,68 @@ export function staleScratchBranches(lsRemote: string): string[] {
   }
   return out.sort();
 }
+
+// ---- LAND_TRUSTED: the tree's own commands on CI -----------------------------------------------------------------------
+// In the job that holds the landing token (land.yml) no code of a PR or a merged tree runs: its install, typecheck, evidence
+// stamp, lane judgement and device-outcome merge run in land-checks.yml (contents: read, no secrets) on the tree's commit, pushed
+// apart to land-checks/c-<sha>, and come back as data: result.json, and outputs.patch (the merged device records).
+export const CHECKS_WORKFLOW_FILE = 'land-checks.yml';
+export const CHECKS_ARTIFACT = 'land-checks';
+export const checksTitle = (sha: string): string => `land checks of ${sha}`;
+export type TreeCheck = 'typecheck' | 'stamp' | 'lanes';
+export type CheckRun = { readonly status: number; readonly stdout: string; readonly stderr: string };
+export type ChecksResult = { readonly sha: string; readonly install: CheckRun; readonly merge: CheckRun | null } & { readonly [K in TreeCheck]: CheckRun | null };
+/**
+ * The land-checks artifact: outputs.patch and result.json, or outputs.patch alone (the tree's commands ended the step before it
+ * wrote its results, which the driver blames on the tree). Anything else is not land-checks.yml's.
+ */
+export function checksFiles(files: readonly string[]): string[] {
+  const got = [...files].sort().join(',');
+  if (got !== 'outputs.patch,result.json' && got !== 'outputs.patch') throw new Error(`the ${CHECKS_ARTIFACT} artifact holds ${files.length === 0 ? 'nothing' : files.join(', ')}, not outputs.patch and result.json`);
+  return [...files];
+}
+/** land-checks.yml for one commit: `checks` run after the install (and the merge of a device run's outcomes, `devicesRun`). */
+export const checksWorkflow = (o: { readonly prev: string; readonly checks: readonly TreeCheck[]; readonly devicesRun: number | null }): CiWorkflow => {
+  if (!/^[0-9a-f]{40}$/.test(o.prev)) throw new Error(`land-checks: prev ${JSON.stringify(o.prev)} is not a full sha`);
+  if (o.checks.length === 0 && o.devicesRun === null) throw new Error('land-checks: nothing to run');
+  if (o.devicesRun !== null && !(Number.isSafeInteger(o.devicesRun) && o.devicesRun > 0)) throw new Error(`land-checks: devices run ${o.devicesRun} is not a run id`);
+  return { workflow: CHECKS_WORKFLOW_FILE, step: 'checks', what: 'tree checks', title: checksTitle, inputs: [`prev=${o.prev}`, `checks=${o.checks.join(',')}`, `devices_run=${o.devicesRun ?? ''}`], artifact: CHECKS_ARTIFACT, check: checksFiles };
+};
+const checkRun = (v: unknown, what: string): CheckRun => {
+  const o = v as { status?: unknown; stdout?: unknown; stderr?: unknown } | null;
+  if (typeof o !== 'object' || o === null || !Number.isSafeInteger(o.status) || (o.status as number) < 0 || (o.status as number) > 255 || typeof o.stdout !== 'string' || typeof o.stderr !== 'string') throw new Error(`land-checks result: ${what} is not { status, stdout, stderr }`);
+  return { status: o.status as number, stdout: o.stdout, stderr: o.stderr };
+};
+/**
+ * result.json of a land-checks run, checked against what was asked: the commit, the install, the merge exactly when a device run
+ * was given, and each asked check exactly when the install (and merge) succeeded. Anything else judged nothing.
+ */
+export function parseChecksResult(text: string, want: { readonly sha: string; readonly checks: readonly TreeCheck[]; readonly devicesRun: number | null }): ChecksResult {
+  const v = JSON.parse(text) as Record<string, unknown>;
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error('land-checks result is not an object');
+  const known = ['sha', 'install', 'merge', 'typecheck', 'stamp', 'lanes'];
+  const extra = Object.keys(v).filter((k) => !known.includes(k));
+  if (extra.length > 0) throw new Error(`land-checks result has unknown fields ${extra.join(', ')}`);
+  if (v.sha !== want.sha) throw new Error(`land-checks result is for ${JSON.stringify(v.sha)}, not ${want.sha}`);
+  const install = checkRun(v.install, 'install');
+  const merge = v.merge === undefined || v.merge === null ? null : checkRun(v.merge, 'merge');
+  const ran = install.status === 0 && (want.devicesRun === null || (merge !== null && (merge.status === 0 || merge.status === 1)));
+  if (install.status === 0 && (want.devicesRun === null) !== (merge === null)) throw new Error(`land-checks result ${merge === null ? 'has no' : 'has a'} device merge, but one was ${want.devicesRun === null ? 'not ' : ''}asked for`);
+  const get = (k: TreeCheck): CheckRun | null => {
+    const asked = want.checks.includes(k);
+    const x = v[k];
+    if (x === undefined || x === null) {
+      if (asked && ran) throw new Error(`land-checks result has no ${k}, which was asked for`);
+      return null;
+    }
+    if (!asked) throw new Error(`land-checks result has ${k}, which was not asked for`);
+    return checkRun(x, k);
+  };
+  return { sha: want.sha, install, merge, typecheck: get('typecheck'), stamp: get('stamp'), lanes: get('lanes') };
+}
+/** The run id at the end of a run URL. */
+export const runIdOf = (url: string): number => {
+  const m = /\/actions\/runs\/([1-9]\d*)(?:\/|$)/.exec(url);
+  if (m === null) throw new Error(`${JSON.stringify(url)} is not a run URL`);
+  return Number(m[1]);
+};
