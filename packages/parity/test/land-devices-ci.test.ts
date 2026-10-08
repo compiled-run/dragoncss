@@ -104,7 +104,7 @@ describe('LAND_DEVICES=ci', () => {
   });
   it('force-pushes only the scratch branch, so one an interrupted run left behind never blocks the next (#135 review)', () => {
     expect(scratchRef(tempBranch(42))).toBe('refs/heads/land-devices/pr-42');
-    for (const bad of ['master', 'land-devices/pr-0', 'land-devices/pr-42/x', 'feature', 'land-devices/pr-']) expect(() => scratchRef(bad)).toThrow('is not a land-devices/pr-<n>, land-test/c-<sha> or land-regen/c-<sha> scratch branch');
+    for (const bad of ['master', 'land-devices/pr-0', 'land-devices/pr-42/x', 'feature', 'land-devices/pr-']) expect(() => scratchRef(bad)).toThrow('is not a land-devices/pr-<n>, land-test/c-<sha>, land-regen/c-<sha> or land-checks/c-<sha> scratch branch');
   });
   it('treats a failed delete of the scratch branch as a warning the next driver start sweeps (#193 review)', () => {
     const f = fake({ deleteFails: true });

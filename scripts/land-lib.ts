@@ -411,6 +411,23 @@ export const findingsComment = (pr: number, head: string, findings: readonly Fin
   return lines.join('\n');
 };
 
+// ---------------------------------------------------------------------------------------------------------------------
+// LAND_TRUSTED (land.yml): the job that holds the landing token runs no code of a PR or a merged tree. Its own commands run only in
+// its trusted checkout (MAIN, master at dispatch time), and git's merge drivers, which git runs inside the landing worktree, are
+// the trusted checkout's scripts by absolute path, never the tree's own scripts/.
+
+/** pnpm setup:git's config with each `node scripts/<x>` driver pointed at the trusted checkout's copy. */
+export const trustedGitConfig = (entries: readonly (readonly [string, string])[], main: string): [string, string][] => {
+  if (!main.startsWith('/') || /['"\\$`\s]/.test(main)) throw new Error(`land: the trusted checkout ${JSON.stringify(main)} must be an absolute path with no quotes, spaces or shell characters`);
+  const out = entries.map(([k, v]): [string, string] => [k, v.replace(/^node scripts\//, `node '${main}/scripts/`).replace(/^(node '[^']+\.ts)( |$)/, "$1'$2")]);
+  // Every driver is a no-op or the trusted checkout's script; anything else would run code from the tree being merged.
+  for (const [k, v] of out) if (k.endsWith('.driver') && v !== 'true' && !v.startsWith(`node '${main}/scripts/`)) throw new Error(`land: the merge driver ${k} = ${JSON.stringify(v)} is not the trusted checkout's script`);
+  return out;
+};
+/** Why a command may not run in `cwd` under LAND_TRUSTED (any directory but the trusted checkout holds a tree's code), or null. */
+export const treeCodeRefusal = (argv: readonly string[], cwd: string, main: string, resolve: (p: string) => string): string | null =>
+  resolve(cwd) === resolve(main) ? null : `LAND_TRUSTED: refusing to run ${argv.join(' ')} in ${cwd}: in the job that holds the landing token only the trusted checkout's own commands run; a tree's commands run in land-checks.yml`;
+
 /** The marker line of a precomputed review comment (land-review-lookup.ts reads it, pnpm land:post-review writes it). */
 export const REVIEW_MARKER = '<!-- dragon-land-review v1 -->';
 /**

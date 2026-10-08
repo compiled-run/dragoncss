@@ -1,0 +1,131 @@
+# The landing driver's tree checks (LAND_TRUSTED, scripts/land-devices-ci.ts checksWorkflow): the commands of a landing tree that
+# the token-holding land.yml job must never run itself. Dispatched on master by the driver for a tree's commit, pushed apart to
+# land-checks/c-<sha>. With no secrets and contents read only, it installs the tree, merges a device run's outcomes into its lane
+# records (devices_run), and runs the asked checks: typecheck, evidence:stamp --compare <prev>, parity:lanes. Every command's exit
+# code and output go into result.json, and the merged records into outputs.patch; the driver judges them as data. The job
+# itself fails only when it cannot produce the artifact, which the driver counts as CI trouble, never as the PR's failure.
+name: land-checks
+run-name: ${{ format('land checks of {0}', inputs.sha) }}
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: The landing tree's commit
+        required: true
+        type: string
+      prev:
+        description: The previous position (evidence:stamp --compare)
+        required: true
+        type: string
+      checks:
+        description: Comma-separated checks to run after the install (typecheck, stamp, lanes)
+        required: false
+        default: ''
+        type: string
+      devices_run:
+        description: A device-lanes.yml run whose device-outcomes are merged into the tree's lane records first; empty for none
+        required: false
+        default: ''
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ${{ format('land-checks-{0}', inputs.sha) }}
+  cancel-in-progress: false
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check the inputs
+        env:
+          SHA: ${{ inputs.sha }}
+          PREV: ${{ inputs.prev }}
+          CHECKS: ${{ inputs.checks }}
+          DEVICES_RUN: ${{ inputs.devices_run }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::sha '$SHA' is not a full sha"; exit 1; }
+          [[ "$PREV" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::prev '$PREV' is not a full sha"; exit 1; }
+          [[ "$CHECKS" =~ ^((typecheck|stamp|lanes)(,(typecheck|stamp|lanes))*)?$ ]] || { echo "::error::checks '$CHECKS' is not a list of typecheck, stamp, lanes"; exit 1; }
+          [[ "$DEVICES_RUN" =~ ^([1-9][0-9]*)?$ ]] || { echo "::error::devices_run '$DEVICES_RUN' is not a run id"; exit 1; }
+      - name: Check out the tree
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up pnpm 10.33.2
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      # No dependency cache: an unreviewed tree must not save one at master's scope.
+      - name: Set up Node 24.15.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - name: Download the device outcomes
+        if: inputs.devices_run != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEVICES_RUN: ${{ inputs.devices_run }}
+        run: gh run download "$DEVICES_RUN" --repo "$GITHUB_REPOSITORY" -n device-outcomes -D "$RUNNER_TEMP/outcomes"
+      - name: Land checks
+        env:
+          SHA: ${{ inputs.sha }}
+          PREV: ${{ inputs.prev }}
+          CHECKS: ${{ inputs.checks }}
+          DEVICES_RUN: ${{ inputs.devices_run }}
+        run: |
+          # Every command's failure is a result, not this step's: no -e.
+          set +e -u -o pipefail
+          out="$RUNNER_TEMP/land-checks"
+          parts="$RUNNER_TEMP/land-checks-parts"
+          mkdir -p "$out" "$parts"
+          [ "$(git rev-parse HEAD)" = "$SHA" ] || { echo "::error::checked out $(git rev-parse HEAD), not $SHA"; exit 1; }
+          # One command: its exit code, and the last 200 KB of its stdout and stderr.
+          record() {
+            local name=$1; shift
+            "$@" > "$parts/$name.out" 2> "$parts/$name.err"
+            local status=$?
+            tail -c 200000 "$parts/$name.out" > "$parts/$name.out.tail"
+            tail -c 200000 "$parts/$name.err" > "$parts/$name.err.tail"
+            jq -n --arg name "$name" --argjson status "$status" --rawfile stdout "$parts/$name.out.tail" --rawfile stderr "$parts/$name.err.tail" \
+              '{($name): {status: $status, stdout: $stdout, stderr: $stderr}}' > "$parts/$name.json"
+            echo "$name: exit $status"
+            return "$status"
+          }
+          jq -n --arg sha "$SHA" '{sha: $sha}' > "$parts/sha.json"
+          : > "$out/outputs.patch"
+          ok=1
+          record install pnpm install --frozen-lockfile || ok=0
+          if [ "$ok" = 1 ] && [ -n "$DEVICES_RUN" ]; then
+            record merge node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts merge "$RUNNER_TEMP/outcomes"
+            st=$?
+            if [ "$st" = 0 ] || [ "$st" = 1 ]; then
+              git add -A packages/parity/out
+              git diff --cached --binary HEAD -- packages/parity/out > "$out/outputs.patch"
+            else
+              ok=0
+            fi
+          fi
+          if [ "$ok" = 1 ]; then
+            for c in ${CHECKS//,/ }; do
+              case "$c" in
+                typecheck) record typecheck pnpm typecheck ;;
+                stamp) record stamp pnpm -s evidence:stamp --compare "$PREV" ;;
+                lanes) record lanes pnpm -s run parity:lanes ;;
+              esac
+            done
+          fi
+          jq -s add "$parts"/*.json > "$out/result.json"
+          echo "result.json: $(jq -c 'with_entries(if .key == "sha" then . else .value |= .status end)' "$out/result.json")"
+      - name: Upload the results
+        uses: actions/upload-artifact@v4
+        with:
+          name: land-checks
+          path: |
+            ${{ runner.temp }}/land-checks/result.json
+            ${{ runner.temp }}/land-checks/outputs.patch
+          if-no-files-found: error
+          retention-days: 7

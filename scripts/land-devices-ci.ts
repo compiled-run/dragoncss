@@ -14,12 +14,14 @@ export const tempBranch = (pr: number): string => `${TEMP_PREFIX}${pr}`;
 export const testBranch = (sha: string): string => `land-test/c-${sha.slice(0, 12)}`;
 /** The CI regen's scratch branch of a landing tree's commit (LAND_REGEN=ci). */
 export const regenBranch = (sha: string): string => `land-regen/c-${sha.slice(0, 12)}`;
+/** The tree checks' scratch branch of a landing tree's commit (LAND_TRUSTED: land-checks.yml). */
+export const checksBranch = (sha: string): string => `land-checks/c-${sha.slice(0, 12)}`;
 /**
  * The driver's scratch branches, the only refs it force-pushes or deletes: exactly land-devices/pr-<n>, land-test/c-<12 hex> or
  * land-regen/c-<12 hex>, never a PR branch.
  */
 export function scratchRef(branch: string): string {
-  if (!/^land-devices\/pr-[1-9]\d*$|^land-(test|regen)\/c-[0-9a-f]{12}$/.test(branch)) throw new Error(`${JSON.stringify(branch)} is not a land-devices/pr-<n>, land-test/c-<sha> or land-regen/c-<sha> scratch branch`);
+  if (!/^land-devices\/pr-[1-9]\d*$|^land-(test|regen|checks)\/c-[0-9a-f]{12}$/.test(branch)) throw new Error(`${JSON.stringify(branch)} is not a land-devices/pr-<n>, land-test/c-<sha>, land-regen/c-<sha> or land-checks/c-<sha> scratch branch`);
   return `refs/heads/${branch}`;
 }
 export const runTitle = (sha: string): string => `device lanes of ${sha}`;
@@ -456,7 +458,7 @@ export function landRegen(o: { readonly mode: CiMode; readonly mac: boolean; rea
 
 /** The run-name a workflow gives a dispatch for a commit, to find a run whose id was never recorded. */
 export const titleOf = (workflow: string, sha: string): string | null =>
-  workflow === DEVICE_WORKFLOW ? runTitle(sha) : workflow === FULL_TEST_WORKFLOW_FILE ? fullTestTitle(sha) : workflow === REGEN_WORKFLOW_FILE ? regenTitle(sha) : null;
+  workflow === DEVICE_WORKFLOW ? runTitle(sha) : workflow === FULL_TEST_WORKFLOW_FILE ? fullTestTitle(sha) : workflow === REGEN_WORKFLOW_FILE ? regenTitle(sha) : workflow === CHECKS_WORKFLOW_FILE ? checksTitle(sha) : null;
 
 /**
  * After an interrupted driver: cancels the CI run it recorded in flight and deletes its scratch branch. A run whose id was not yet
@@ -499,8 +501,8 @@ export function abandonInflight(text: string, o: { readonly cancel: (runId: numb
 }
 
 /**
- * The driver's scratch branches in `git ls-remote origin` output: every land-devices/pr-<n>, land-test/c-<sha12> and
- * land-regen/c-<sha12>. At the driver's start none is in flight (it holds the lock), so each is a leftover to delete.
+ * The driver's scratch branches in `git ls-remote origin` output: every land-devices/pr-<n>, land-test/c-<sha12>,
+ * land-regen/c-<sha12> and land-checks/c-<sha12>. At the driver's start none is in flight (it holds the lock), so each is a leftover to delete.
  */
 export function staleScratchBranches(lsRemote: string): string[] {
   const out: string[] = [];
@@ -517,3 +519,65 @@ export function staleScratchBranches(lsRemote: string): string[] {
   }
   return out.sort();
 }
+
+// ---- LAND_TRUSTED: the tree's own commands on CI -----------------------------------------------------------------------
+// In the job that holds the landing token (land.yml) no code of a PR or a merged tree runs: its install, typecheck, evidence
+// stamp, lane judgement and device-outcome merge run in land-checks.yml (contents: read, no secrets) on the tree's commit, pushed
+// apart to land-checks/c-<sha>, and come back as data: result.json, and outputs.patch (the merged device records).
+export const CHECKS_WORKFLOW_FILE = 'land-checks.yml';
+export const CHECKS_ARTIFACT = 'land-checks';
+export const checksTitle = (sha: string): string => `land checks of ${sha}`;
+export type TreeCheck = 'typecheck' | 'stamp' | 'lanes';
+export type CheckRun = { readonly status: number; readonly stdout: string; readonly stderr: string };
+export type ChecksResult = { readonly sha: string; readonly install: CheckRun; readonly merge: CheckRun | null } & { readonly [K in TreeCheck]: CheckRun | null };
+/** The land-checks artifact: exactly result.json and outputs.patch. */
+export function checksFiles(files: readonly string[]): string[] {
+  const want = ['outputs.patch', 'result.json'];
+  if ([...files].sort().join(',') !== want.join(',')) throw new Error(`the ${CHECKS_ARTIFACT} artifact holds ${files.length === 0 ? 'nothing' : files.join(', ')}, not exactly ${want.join(' and ')}`);
+  return [...files];
+}
+/** land-checks.yml for one commit: `checks` run after the install (and the merge of a device run's outcomes, `devicesRun`). */
+export const checksWorkflow = (o: { readonly prev: string; readonly checks: readonly TreeCheck[]; readonly devicesRun: number | null }): CiWorkflow => {
+  if (!/^[0-9a-f]{40}$/.test(o.prev)) throw new Error(`land-checks: prev ${JSON.stringify(o.prev)} is not a full sha`);
+  if (o.checks.length === 0 && o.devicesRun === null) throw new Error('land-checks: nothing to run');
+  if (o.devicesRun !== null && !(Number.isSafeInteger(o.devicesRun) && o.devicesRun > 0)) throw new Error(`land-checks: devices run ${o.devicesRun} is not a run id`);
+  return { workflow: CHECKS_WORKFLOW_FILE, step: 'checks', what: 'tree checks', title: checksTitle, inputs: [`prev=${o.prev}`, `checks=${o.checks.join(',')}`, `devices_run=${o.devicesRun ?? ''}`], artifact: CHECKS_ARTIFACT, check: checksFiles };
+};
+const checkRun = (v: unknown, what: string): CheckRun => {
+  const o = v as { status?: unknown; stdout?: unknown; stderr?: unknown } | null;
+  if (typeof o !== 'object' || o === null || !Number.isSafeInteger(o.status) || (o.status as number) < 0 || (o.status as number) > 255 || typeof o.stdout !== 'string' || typeof o.stderr !== 'string') throw new Error(`land-checks result: ${what} is not { status, stdout, stderr }`);
+  return { status: o.status as number, stdout: o.stdout, stderr: o.stderr };
+};
+/**
+ * result.json of a land-checks run, checked against what was asked: the commit, the install, the merge exactly when a device run
+ * was given, and each asked check exactly when the install (and merge) succeeded. Anything else judged nothing.
+ */
+export function parseChecksResult(text: string, want: { readonly sha: string; readonly checks: readonly TreeCheck[]; readonly devicesRun: number | null }): ChecksResult {
+  const v = JSON.parse(text) as Record<string, unknown>;
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error('land-checks result is not an object');
+  const known = ['sha', 'install', 'merge', 'typecheck', 'stamp', 'lanes'];
+  const extra = Object.keys(v).filter((k) => !known.includes(k));
+  if (extra.length > 0) throw new Error(`land-checks result has unknown fields ${extra.join(', ')}`);
+  if (v.sha !== want.sha) throw new Error(`land-checks result is for ${JSON.stringify(v.sha)}, not ${want.sha}`);
+  const install = checkRun(v.install, 'install');
+  const merge = v.merge === undefined || v.merge === null ? null : checkRun(v.merge, 'merge');
+  const ran = install.status === 0 && (want.devicesRun === null || (merge !== null && (merge.status === 0 || merge.status === 1)));
+  if (install.status === 0 && (want.devicesRun === null) !== (merge === null)) throw new Error(`land-checks result ${merge === null ? 'has no' : 'has a'} device merge, but one was ${want.devicesRun === null ? 'not ' : ''}asked for`);
+  const get = (k: TreeCheck): CheckRun | null => {
+    const asked = want.checks.includes(k);
+    const x = v[k];
+    if (x === undefined || x === null) {
+      if (asked && ran) throw new Error(`land-checks result has no ${k}, which was asked for`);
+      return null;
+    }
+    if (!asked) throw new Error(`land-checks result has ${k}, which was not asked for`);
+    return checkRun(x, k);
+  };
+  return { sha: want.sha, install, merge, typecheck: get('typecheck'), stamp: get('stamp'), lanes: get('lanes') };
+}
+/** The run id at the end of a run URL. */
+export const runIdOf = (url: string): number => {
+  const m = /\/actions\/runs\/([1-9]\d*)(?:\/|$)/.exec(url);
+  if (m === null) throw new Error(`${JSON.stringify(url)} is not a run URL`);
+  return Number(m[1]);
+};

@@ -2,7 +2,7 @@
 // left: the land-stop label on a tracking issue (LAND_STOP_ISSUE), the land/proof commit status on master (a merged position no
 // full test has passed), the reconcile of merged PRs on start and the handoff of the rest of the queue (LAND_MAX_BATCHES).
 // The precomputed review comment is read by land-review-lookup.ts. Every reader checks the shape of what GitHub returned.
-import { type Entry, parseEntry } from './land-lib.ts';
+import { type Entry, parseEntry, parseQueue } from './land-lib.ts';
 
 export type Gh = (args: string[]) => string;
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -159,3 +159,189 @@ export const parseMaxBatches = (v: string | undefined): number | undefined => {
 };
 /** The job summary for the status (GitHub Actions shows $GITHUB_STEP_SUMMARY as Markdown). */
 export const statusSummary = (status: string): string => `## Landing driver\n\n\`\`\`\n${status.replaceAll('```', "'''").trimEnd()}\n\`\`\`\n`;
+
+// ---- the cross-host lock (LAND_GLOBAL_LOCK=1) ---------------------------------------------------------------------------
+// One landing driver at a time across hosts (a Mac and land.yml): the tag refs/tags/land-lock, an annotated tag whose message
+// names its holder, created and deleted with git push --force-with-lease, which GitHub applies atomically. A holder that is gone
+// (its land.yml run completed, or its process on this same host dead) is replaced, again under the lease.
+export const LOCK_REF = 'refs/tags/land-lock';
+export type LockHolder = { host: 'actions'; repo: string; run: number; started: string } | { host: 'local'; hostname: string; pid: number; pidStart: string; started: string };
+export const lockHolder = (env: Readonly<Record<string, string | undefined>>, local: { hostname: string; pid: number; pidStart: string }, started: string): LockHolder => {
+  if (env['GITHUB_ACTIONS'] === 'true') {
+    const run = env['GITHUB_RUN_ID'] ?? '';
+    if (!/^[1-9]\d*$/.test(run)) throw new Error(`land: GITHUB_RUN_ID ${JSON.stringify(run)} is not a run id`);
+    return { host: 'actions', repo: checkRepo(env['GITHUB_REPOSITORY'] ?? ''), run: Number(run), started };
+  }
+  return { host: 'local', ...local, started };
+};
+export const parseLockHolder = (message: string): LockHolder | null => {
+  let v: unknown;
+  try {
+    v = JSON.parse(message.trim());
+  } catch {
+    return null;
+  }
+  if (!isObject(v) || typeof v.started !== 'string') return null;
+  if (v.host === 'actions' && typeof v.repo === 'string' && REPO.test(v.repo) && Number.isSafeInteger(v.run) && (v.run as number) > 0) return { host: 'actions', repo: v.repo, run: v.run as number, started: v.started };
+  if (v.host === 'local' && typeof v.hostname === 'string' && Number.isSafeInteger(v.pid) && typeof v.pidStart === 'string') return { host: 'local', hostname: v.hostname, pid: v.pid as number, pidStart: v.pidStart, started: v.started };
+  return null;
+};
+export const describeHolder = (h: LockHolder | null): string =>
+  h === null ? 'an unreadable holder' : h.host === 'actions' ? `land.yml run ${h.run} of ${h.repo} (since ${h.started})` : `the driver pid ${h.pid} on ${h.hostname} (since ${h.started})`;
+/**
+ * Whether a held lock may be replaced: its land.yml run has completed, or its process on this host is gone. An unreadable holder,
+ * or a process on another host, is never judged gone from here: the PM removes that lock by hand.
+ */
+export const lockStale = (h: LockHolder | null, here: { hostname: string; runCompleted: (repo: string, run: number) => boolean; alive: (pid: number, start: string) => boolean }): boolean => {
+  if (h === null) return false;
+  if (h.host === 'actions') return here.runCompleted(h.repo, h.run);
+  return h.hostname === here.hostname && !here.alive(h.pid, h.pidStart);
+};
+/** The annotated tag object of the lock (git mktag input), on master's commit, its message the holder. */
+export const lockTag = (master: string, holder: LockHolder, epochS: number): string => {
+  if (!SHA.test(master)) throw new Error(`land-state: ${JSON.stringify(master)} is not a full sha`);
+  return `object ${master}\ntype commit\ntag land-lock\ntagger dragon landing driver <land@users.noreply.github.com> ${epochS} +0000\n\n${JSON.stringify(holder)}\n`;
+};
+
+type LockGit = (args: string[], input?: string) => string;
+/** Takes the lock for `me` (a push under the lease of what was seen), replacing a stale holder; returns the lock's tag object. */
+export const takeLock = (o: { git: LockGit; me: LockHolder; here: Parameters<typeof lockStale>[1]; now: () => number; log: (line: string) => void }): string => {
+  const sha = (v: string, what: string): string => {
+    if (!SHA.test(v)) throw new Error(`land-state: ${what} printed ${JSON.stringify(v.slice(0, 100))}`);
+    return v;
+  };
+  const ls = (): string | null => {
+    const out = o.git(['ls-remote', 'origin', LOCK_REF]);
+    return out === '' ? null : sha(out.split('\t')[0] ?? '', 'ls-remote land-lock');
+  };
+  const master = sha(o.git(['ls-remote', 'origin', 'refs/heads/master']).split('\t')[0] ?? '', 'ls-remote master');
+  const tag = sha(o.git(['mktag'], lockTag(master, o.me, Math.floor(o.now() / 1000))), 'mktag');
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const seen = ls();
+    if (seen !== null) {
+      o.git(['fetch', '--quiet', 'origin', `+${LOCK_REF}:refs/land/lock-seen`]);
+      const body = o.git(['cat-file', 'tag', 'refs/land/lock-seen']);
+      const holder = body.includes('\n\n') ? parseLockHolder(body.slice(body.indexOf('\n\n') + 2)) : null;
+      if (!lockStale(holder, o.here)) throw new Error(`land: another landing driver holds ${LOCK_REF}: ${describeHolder(holder)}. Wait for it, or stop it; if it is gone, delete the lock with git push origin :${LOCK_REF}`);
+      o.log(`the landing lock ${LOCK_REF} is held by ${describeHolder(holder)}, which is gone; taking it over`);
+    }
+    try {
+      o.git(['push', '--quiet', `--force-with-lease=${LOCK_REF}:${seen ?? ''}`, 'origin', `${tag}:${LOCK_REF}`]);
+      o.log(`took the landing lock ${LOCK_REF} (${describeHolder(o.me)})`);
+      return tag;
+    } catch (error) {
+      o.log(`could not take ${LOCK_REF} (${error instanceof Error ? error.message.split('\n')[0] : String(error)}); looking again`);
+    }
+  }
+  throw new Error(`land: could not take the landing lock ${LOCK_REF} after 3 attempts`);
+};
+/** Deletes the lock only while it is still `tag` (the lease); a failure is logged, and the next run replaces a gone holder. */
+export const releaseLock = (git: LockGit, tag: string, log: (line: string) => void): void => {
+  try {
+    git(['push', '--quiet', `--force-with-lease=${LOCK_REF}:${tag}`, 'origin', `:${LOCK_REF}`]);
+    log(`released the landing lock ${LOCK_REF}`);
+  } catch (error) {
+    log(`!!! could not release the landing lock ${LOCK_REF} (${error instanceof Error ? error.message.split('\n')[0] : String(error)}); the next run replaces it once this run is gone`);
+  }
+};
+
+// ---- land.yml: the queue input, re-dispatching the rest, dispatching safely ------------------------------------------------
+/** The workflow_dispatch `queue` input (entries separated by newlines or spaces) as a queue file; '' for an empty input. */
+export const queueFromInput = (input: string): string => {
+  const lines = input.split(/\s+/).filter((t) => t !== '');
+  if (lines.length === 0) return '';
+  for (const l of lines) parseEntry(l);
+  const text = `${lines.join('\n')}\n`;
+  parseQueue(text); // duplicates
+  return text;
+};
+export type Redispatch = { dispatch: true; queue: string } | { dispatch: false; why: string };
+/** Whether land.yml dispatches itself again with the rest of the queue: only after a batch that ended normally, with no stop. */
+export const redispatchDecision = (h: Handoff | null, stopNow: boolean): Redispatch => {
+  if (h === null) return { dispatch: false, why: 'the driver left no handoff (it did not end normally); read its log, then dispatch the rest by hand' };
+  if (h.fatal !== null) return { dispatch: false, why: `the driver stopped: ${h.fatal}` };
+  if (h.outage !== null) return { dispatch: false, why: `the driver stopped on a CI outage: ${h.outage}` };
+  if (h.stopAsked || stopNow) return { dispatch: false, why: `a stop was requested; still queued: ${h.remainder.map((e) => `#${e.pr}`).join(' ') || 'none'}` };
+  if (h.remainder.length === 0) return { dispatch: false, why: 'the queue is done' };
+  return { dispatch: true, queue: h.remainder.map((e) => `${e.branch}:${e.pr}:${e.clean}`).join('\n') };
+};
+
+// GitHub keeps one pending run per concurrency group and cancels the older pending one when another is queued, so a dispatch
+// while a land.yml run waits would silently drop that run's queue. Every dispatch (the PM's, pnpm land:dispatch, and the
+// re-dispatch) first waits until no land.yml run is pending, then dispatches, then watches its run until it is past the window
+// in which a racing dispatch could still replace it.
+export type LandRun = { id: number; status: string; landJob: string | null };
+const WAITING = new Set(['queued', 'waiting', 'pending', 'requested']);
+/** The land.yml runs (but `self`) whose land job has not started: a run with no land job listed yet counts as not started. */
+export const pendingRuns = (runs: readonly LandRun[], self: number | null): number[] =>
+  runs.filter((r) => r.id !== self && r.status !== 'completed' && (r.landJob === null || WAITING.has(r.landJob))).map((r) => r.id);
+/** A run's jobs page (GET actions/runs/<id>/jobs): the status of its job named land, or null. */
+export const landJobStatus = (jobsJson: unknown): string | null => {
+  if (!isObject(jobsJson) || !Array.isArray(jobsJson.jobs)) throw new Error('land-state: a run\'s jobs are not { jobs: [...] }');
+  for (const j of jobsJson.jobs) {
+    if (!isObject(j) || typeof j.name !== 'string' || typeof j.status !== 'string') throw new Error('land-state: a job has no name or status');
+    if (j.name === 'land') return j.status;
+  }
+  return null;
+};
+/** The workflow's runs (GET actions/workflows/<f>/runs pages, slurped): each id and status, checked. */
+export const workflowRuns = (pages: unknown): { id: number; status: string }[] => {
+  if (!Array.isArray(pages)) throw new Error('land-state: the workflow runs are not a list of pages');
+  return pages.flatMap((p) => {
+    if (!isObject(p) || !Array.isArray(p.workflow_runs)) throw new Error('land-state: a workflow runs page has no workflow_runs');
+    return p.workflow_runs.map((r) => {
+      if (!isObject(r) || !Number.isSafeInteger(r.id) || typeof r.status !== 'string') throw new Error('land-state: a workflow run has no id or status');
+      return { id: r.id as number, status: r.status };
+    });
+  });
+};
+export type DispatchDeps = {
+  readonly gh: Gh;
+  readonly repo: string;
+  readonly ref: string;
+  readonly self: number | null;
+  readonly sleep: (ms: number) => void;
+  readonly now: () => number;
+  readonly log: (line: string) => void;
+  readonly waitS: number;
+  readonly watchS?: number;
+};
+const listLandRuns = (d: DispatchDeps): LandRun[] => {
+  // The newest 100 runs: a run that waits to start is among the newest.
+  const runs = workflowRuns([JSON.parse(d.gh(['api', `repos/${checkRepo(d.repo)}/actions/workflows/land.yml/runs?per_page=100&exclude_pull_requests=true`]))]);
+  return runs.filter((r) => r.status !== 'completed').map((r) => ({ ...r, landJob: landJobStatus(JSON.parse(d.gh(['api', `repos/${d.repo}/actions/runs/${r.id}/jobs?per_page=100`]))) }));
+};
+/** Dispatches land.yml with `queue` once no land.yml run is pending, and makes sure no racing dispatch replaced it; returns its run id. */
+export const dispatchLand = (queue: string, d: DispatchDeps): number => {
+  queueFromInput(queue);
+  if (!/^[\w./-]+$/.test(d.ref)) throw new Error(`land-state: ref ${JSON.stringify(d.ref)}`);
+  const t0 = d.now();
+  for (;;) {
+    const pending = pendingRuns(listLandRuns(d), d.self);
+    if (pending.length > 0) {
+      if (d.now() - t0 > d.waitS * 1000) throw new Error(`land: land.yml run(s) ${pending.join(', ')} still wait to start after ${d.waitS}s; a dispatch now would cancel one. Dispatch again once it starts`);
+      d.log(`land.yml run(s) ${pending.join(', ')} wait to start; a dispatch now would make GitHub cancel one, so waiting`);
+      d.sleep(60_000);
+      continue;
+    }
+    const out: unknown = JSON.parse(d.gh(['api', '-X', 'POST', `repos/${checkRepo(d.repo)}/actions/workflows/land.yml/dispatches`, '-f', `ref=${d.ref}`, '-f', `inputs[queue]=${queue}`, '-F', 'return_run_details=true']));
+    if (!isObject(out) || !Number.isSafeInteger(out.workflow_run_id)) throw new Error('land: the dispatch returned no workflow_run_id');
+    const id = out.workflow_run_id as number;
+    d.log(`dispatched land.yml run ${id} on ${d.ref}`);
+    // A racing dispatch (another dispatcher between our look and our dispatch) makes GitHub cancel the older pending run.
+    const watchT0 = d.now();
+    let replaced = false;
+    while (d.now() - watchT0 < (d.watchS ?? 120) * 1000) {
+      d.sleep(15_000);
+      const r: unknown = JSON.parse(d.gh(['api', `repos/${d.repo}/actions/runs/${id}`]));
+      if (!isObject(r) || typeof r.status !== 'string') throw new Error(`land: run ${id} has no status`);
+      if (r.status === 'completed' && r.conclusion === 'cancelled') {
+        replaced = true;
+        break;
+      }
+      if (r.status !== 'queued' && r.status !== 'pending' && r.status !== 'waiting' && r.status !== 'requested') break;
+    }
+    if (!replaced) return id;
+    d.log(`land.yml run ${id} was cancelled before it started (another dispatch replaced it); dispatching again`);
+  }
+};

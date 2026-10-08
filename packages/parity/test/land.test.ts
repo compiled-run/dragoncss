@@ -1737,9 +1737,11 @@ describe('ci-only: every heavy step on GitHub runners, never here (LAND_CI=only)
 
   it('never falls back to a local run: every CiUnavailable the driver catches stops it as a CI outage under ci-only, before any local run', () => {
     const catches = [...src.matchAll(/instanceof CiUnavailable\)/g)].map((m) => src.slice(m.index - 120, m.index + 700));
-    expect(catches.length).toBe(3); // devices, the full test, a prepared CI regen (regenTree goes through landRegen)
+    // devices, the full test, a prepared CI regen (regenTree goes through landRegen), and the tree checks (LAND_TRUSTED), which
+    // have no local run at all and always stop.
+    expect(catches.length).toBe(4);
     for (const c of catches) {
-      const stop = c.search(/if \((DEVICES_ON|TEST_ON|REGEN_ON) === 'ci-only'(?: && error instanceof CiUnavailable)?\) throw new CiOutage\(/);
+      const stop = c.search(/if \((DEVICES_ON|TEST_ON|REGEN_ON) === 'ci-only'(?: && error instanceof CiUnavailable)?\) throw new CiOutage\(|if \(error instanceof CiUnavailable\) throw new CiOutage\(`LAND_TRUSTED: /);
       expect(stop, c.slice(0, 120)).toBeGreaterThan(-1);
       const local = c.search(/running (them|pnpm test) locally/);
       if (local !== -1) expect(stop).toBeLessThan(local);
@@ -1750,7 +1752,7 @@ describe('ci-only: every heavy step on GitHub runners, never here (LAND_CI=only)
       expect(body, ready).toMatch(/=== 'ci-only'\) throw new CiOutage\(/);
     }
     // Every CI wait passes the queue wait.
-    expect([...src.matchAll(/startS: CI_START_S, queueS: CI_QUEUE_S/g)].length).toBe(2);
+    expect([...src.matchAll(/startS: CI_START_S, queueS: CI_QUEUE_S/g)].length).toBe(3); // the devices, the regen and the tree checks
     expect(src).toMatch(/startS: CI_START_S,\n\s+queueS: CI_QUEUE_S,/);
   });
 
@@ -1876,8 +1878,8 @@ describe('ci-only: every heavy step on GitHub runners, never here (LAND_CI=only)
       expect(ciArchRebaseline(master, vectorsDevice).rebaseline).toBe(false);
     });
     it('is wired into the driver: only a CI device run rebaselines, logged loudly and recorded in the landing; a local fallback onto another ABI stops instead', () => {
-      expect(src).toContain('const judged = judgeDevices(prev, started, ci !== null);');
-      expect(src).toContain('const { problems } = judgeDevices(prev, null);');
+      expect(src).toContain('const judged = judgeDevices(prev, TRUSTED ? null : started, ci !== null, lanesRan);');
+      expect(src).toContain('const { problems } = judgeDevices(prev, null, false, lanesRan);');
       expect(src).toContain('const auto = !arch.rebaseline && onCi ? ciArchRebaseline(before, after)');
       expect(src).toContain('!!! ARCHITECTURE REBASELINE');
       expect(src).toContain("rebaseline: arch.rebaseline || auto.rebaseline");

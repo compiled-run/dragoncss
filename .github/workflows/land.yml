@@ -1,0 +1,170 @@
+# The landing driver (scripts/land.ts, AGENTS.md step 7) on a GitHub runner (cloud migration item 9).
+#
+# How the PM dispatches: `pnpm land:dispatch <branch>:<pr>:<clean-head> ...` (scripts/land-actions.ts). It waits until no land.yml
+# run waits to start, dispatches on master, and checks no racing dispatch replaced its run: GitHub keeps one pending run per
+# concurrency group and cancels the older, which would drop that run's queue. Never `gh workflow run land.yml` by hand while a
+# land run is queued. To stop after the current batch, add the land-stop label to issue vars.LAND_STOP_ISSUE (the PM clears it).
+#
+# The job that holds LAND_TOKEN runs no code of a PR or a merged tree (LAND_TRUSTED, scripts/land-lib.ts treeCodeRefusal):
+# - its checkout is this workflow's own commit (master at dispatch time), without persisted credentials, and only that checkout
+#   is installed and run;
+# - the driver's merges use the trusted checkout's merge drivers by absolute path, and the driver never pulls what merges into it;
+# - every command of a tree (install, typecheck, evidence stamp, lane judgement, device-outcome merge, regen, full test, device
+#   lanes) runs in a workflow the driver dispatches on master for a scratch ref (land-checks.yml, regen-on-ci.yml, full-test.yml,
+#   device-lanes.yml), with no secrets; the driver reads their results as data;
+# - LAND_TOKEN is only in the driver step's environment; the driver takes it out of its own and hands it only to git push and to
+#   its own gh calls, per call. GITHUB_TOKEN (read-only here) serves every other read.
+# LAND_TOKEN lives in the `land` environment, which the owner restricts to master. LAND_GLOBAL_LOCK takes refs/tags/land-lock, so a
+# Mac driver (run with LAND_GLOBAL_LOCK=1) and this one never land at once.
+# One batch per job (LAND_MAX_BATCHES=1), for the 6-hour job limit: the redispatch job dispatches the rest of the queue when the
+# batch ended normally and no stop is set. A new run reconciles from GitHub (skips merged PRs, proves an unproved master first).
+name: land
+run-name: ${{ inputs.queue == '' && 'land (empty queue)' || 'land' }}
+on:
+  workflow_dispatch:
+    inputs:
+      queue:
+        description: 'Queue entries <branch>:<pr>:<clean-head>, separated by newlines or spaces'
+        required: false
+        default: ''
+        type: string
+permissions:
+  contents: read
+jobs:
+  land:
+    runs-on: ubuntu-latest
+    environment: land
+    timeout-minutes: 350
+    # On the job, not the run: the redispatch job below runs after this one ends, while the next run's land job may start.
+    concurrency:
+      group: land
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+      statuses: read
+      checks: read
+      actions: read
+    outputs:
+      count: ${{ steps.queue.outputs.count }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      LAND_CI: only
+      LAND_TRUSTED: '1'
+      LAND_GLOBAL_LOCK: '1'
+      LAND_MAX_BATCHES: '1'
+      LAND_PIPELINE: '0'
+      LAND_QUEUE_EMPTY_OK: '1'
+      LAND_REVIEW_SOURCE: comment
+      LAND_REVIEWERS: ${{ vars.LAND_REVIEWERS }}
+      LAND_STOP_ISSUE: ${{ vars.LAND_STOP_ISSUE }}
+      LAND_TOKEN_USER_ID: ${{ vars.LAND_TOKEN_USER_ID }}
+      LAND_PROOF_WRITERS: ${{ vars.LAND_PROOF_WRITERS }}
+    steps:
+      # Fail fast: a queue needs LAND_TOKEN and lands only from master; an empty queue only proves the start-up.
+      - name: Check the token and the ref
+        env:
+          QUEUE: ${{ inputs.queue }}
+          HAS_LAND_TOKEN: ${{ secrets.LAND_TOKEN != '' }}
+        run: |
+          if [ -z "$(printf '%s' "$QUEUE" | tr -d '[:space:]')" ]; then
+            [ "$HAS_LAND_TOKEN" = true ] || echo "::warning::LAND_TOKEN is not set in the land environment; the queue is empty, so this run only proves the start-up. A queue would fail here."
+            exit 0
+          fi
+          if [ "$HAS_LAND_TOKEN" != true ]; then
+            echo "::error::LAND_TOKEN is not set in the land environment. Add a GitHub App token or fine-grained PAT with contents, pull-requests, actions and statuses write: pushes and merges made with GITHUB_TOKEN start no CI, so the driver would wait forever."
+            exit 1
+          fi
+          if [ "$GITHUB_REF_NAME" != master ]; then
+            echo "::error::land.yml lands a queue only from master (dispatched on $GITHUB_REF_NAME); use pnpm land:dispatch."
+            exit 1
+          fi
+      - name: Free disk space
+        run: |
+          {
+            echo "LAND_LOG_DIR=$RUNNER_TEMP/land-logs"
+            echo "LAND_HANDOFF=$RUNNER_TEMP/land-logs/handoff.json"
+            echo "LAND_QUEUE_FILE=$RUNNER_TEMP/land-queue.txt"
+          } >> "$GITHUB_ENV"
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+          sudo docker image prune --all --force > /dev/null || true
+          df -h /
+      - name: Check out this workflow's commit (trusted)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up pnpm 10.33.2
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - name: Set up Node 24.15.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - name: Install the trusted checkout's dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Set up git
+        run: |
+          pnpm setup:git
+          git config --global user.name 'dragon landing driver'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      # Parallel position worktrees take a few GB each; they stay on only when the disk keeps the driver's floor (40 GB).
+      - name: Choose parallel builds by free disk
+        run: |
+          free=$(df -BG --output=avail /tmp | tail -1 | tr -dc '0-9')
+          if [ "$free" -ge 40 ]; then parallel=1; else parallel=0; fi
+          echo "free disk ${free} GB: LAND_PARALLEL=$parallel"
+          echo "LAND_PARALLEL=$parallel" >> "$GITHUB_ENV"
+      - name: Build the queue file
+        id: queue
+        env:
+          LAND_QUEUE_INPUT: ${{ inputs.queue }}
+        run: |
+          mkdir -p "$LAND_LOG_DIR"
+          node scripts/land-actions.ts queue "$LAND_QUEUE_FILE"
+      - name: Land one batch
+        env:
+          LAND_TOKEN: ${{ secrets.LAND_TOKEN }}
+        run: pnpm land "$LAND_QUEUE_FILE"
+      - name: Upload the driver's logs and status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: land-logs
+          path: ${{ runner.temp }}/land-logs
+          if-no-files-found: warn
+          retention-days: 30
+  redispatch:
+    needs: land
+    if: ${{ !cancelled() && needs.land.outputs.count != '' && needs.land.outputs.count != '0' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    # GITHUB_TOKEN may dispatch a workflow (workflow_dispatch is the exception to its no-new-runs rule); no secret is needed here.
+    permissions:
+      contents: read
+      issues: read
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      LAND_STOP_ISSUE: ${{ vars.LAND_STOP_ISSUE }}
+    steps:
+      - name: Check out this workflow's commit (trusted)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up Node 24.15.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - name: Download the handoff
+        uses: actions/download-artifact@v4
+        with:
+          name: land-logs
+          path: ${{ runner.temp }}/land-logs
+      - name: Re-dispatch the rest of the queue
+        run: node scripts/land-actions.ts redispatch "$RUNNER_TEMP/land-logs/handoff.json"
