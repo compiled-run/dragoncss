@@ -31,7 +31,7 @@ describe('@charset', () => {
     expect(refused('@charset "iso-8859-1";')).toContain('its encoding iso-8859-1 is not UTF-8');
     expect(refused('@charset "utf8";')).toContain('its encoding utf8 is not UTF-8');
     for (const t of ["@charset 'utf-8';", '@CHARSET "utf-8";', '@charset  "utf-8";', '@charset "utf-8" ;', '@charset utf-8;']) expect(refused(t), t).toContain('as the encoding sniffer requires');
-    for (const t of [' @charset "utf-8";', '\n@charset "utf-8";', '.a { width: 1px; } @charset "utf-8";', '@media (min-width: 1px) { @charset "utf-8"; }']) expect(refused(t), t).toContain('not at the very start');
+    for (const t of [' @charset "utf-8";', '\n@charset "utf-8";', '.a { width: 1px; } @charset "utf-8";', '@media (min-width: 1px) { @charset "utf-8"; }', '@supports (display: flex) { @charset "utf-8"; }']) expect(refused(t), t).toContain('not at the very start');
   });
   it('renders in Chrome exactly as the same sheet without it (committed captures, both directions)', () => {
     const none = read('packages/parity/fixtures/charset-none.html');
