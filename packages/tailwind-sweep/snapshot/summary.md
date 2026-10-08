@@ -4,9 +4,9 @@
 
 | target | supported | refused | invalid | mismatch |
 |---|---:|---:|---:|---:|
-| web | 2406 (10.3%) | 20879 (89.7%) | 1 | 0 |
-| ios | 2404 (10.3%) | 20881 (89.7%) | 1 | 0 |
-| android | 2404 (10.3%) | 20881 (89.7%) | 1 | 0 |
+| web | 2418 (10.4%) | 20867 (89.6%) | 1 | 0 |
+| ios | 2416 (10.4%) | 20869 (89.6%) | 1 | 0 |
+| android | 2416 (10.4%) | 20869 (89.6%) | 1 | 0 |
 
 As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
 
@@ -20,7 +20,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | sizing | 1015 | 899 / 116 / 0 / 0 | 899 / 116 / 0 / 0 | 899 / 116 / 0 / 0 |
 | typography | 261 | 21 / 240 / 0 / 0 | 21 / 240 / 0 / 0 | 21 / 240 / 0 / 0 |
 | colours | 14842 | 87 / 14755 / 0 / 0 | 87 / 14755 / 0 / 0 | 87 / 14755 / 0 / 0 |
-| backgrounds | 151 | 7 / 144 / 0 / 0 | 7 / 144 / 0 / 0 | 7 / 144 / 0 / 0 |
+| backgrounds | 151 | 19 / 132 / 0 / 0 | 19 / 132 / 0 / 0 | 19 / 132 / 0 / 0 |
 | borders | 250 | 166 / 84 / 0 / 0 | 164 / 86 / 0 / 0 | 164 / 86 / 0 / 0 |
 | effects | 1178 | 48 / 1130 / 0 / 0 | 48 / 1130 / 0 / 0 | 48 / 1130 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 | 0 / 134 / 0 / 0 | 0 / 134 / 0 / 0 |

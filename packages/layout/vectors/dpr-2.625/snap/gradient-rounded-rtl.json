@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 41600
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 41600
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": -2688,
+   "y": 0,
+   "width": 69888,
+   "height": 41600
+  },
+  {
+   "id": "record",
+   "parent": "row",
+   "x": 48384,
+   "y": 1344,
+   "width": 20160,
+   "height": 20160
+  },
+  {
+   "id": "track",
+   "parent": "row",
+   "x": 13440,
+   "y": 1344,
+   "width": 33600,
+   "height": 2688
+  },
+  {
+   "id": "round",
+   "parent": "row",
+   "x": 54208,
+   "y": 22848,
+   "width": 14336,
+   "height": 7616
+  },
+  {
+   "id": "pill",
+   "parent": "row",
+   "x": 37744,
+   "y": 22848,
+   "width": 15120,
+   "height": 4032
+  },
+  {
+   "id": "ring",
+   "parent": "row",
+   "x": 18992,
+   "y": 22848,
+   "width": 17408,
+   "height": 17408
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 650,
+   "width": 1050,
+   "height": 650
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 650,
+   "width": 1050,
+   "height": 650
+  },
+  {
+   "id": "row",
+   "left": -42,
+   "top": 0,
+   "right": 1050,
+   "bottom": 650,
+   "width": 1092,
+   "height": 650
+  },
+  {
+   "id": "record",
+   "left": 714,
+   "top": 21,
+   "right": 1029,
+   "bottom": 336,
+   "width": 315,
+   "height": 315
+  },
+  {
+   "id": "track",
+   "left": 168,
+   "top": 21,
+   "right": 693,
+   "bottom": 63,
+   "width": 525,
+   "height": 42
+  },
+  {
+   "id": "round",
+   "left": 805,
+   "top": 357,
+   "right": 1029,
+   "bottom": 476,
+   "width": 224,
+   "height": 119
+  },
+  {
+   "id": "pill",
+   "left": 548,
+   "top": 357,
+   "right": 784,
+   "bottom": 420,
+   "width": 236,
+   "height": 63
+  },
+  {
+   "id": "ring",
+   "left": 255,
+   "top": 357,
+   "right": 527,
+   "bottom": 629,
+   "width": 272,
+   "height": 272
+  }
+ ]
+}

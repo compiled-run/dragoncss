@@ -20,6 +20,7 @@ import { COLOR_SCHEME } from './fixture-groups/color-scheme.ts';
 import { OPACITY } from './fixture-groups/opacity.ts';
 import { STACKING } from './fixture-groups/stacking.ts';
 import { VISIBILITY } from './fixture-groups/visibility.ts';
+import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
@@ -104,6 +105,7 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'opacity', fixtures: OPACITY },
   { id: 'stacking', fixtures: STACKING },
   { id: 'visibility', fixtures: VISIBILITY },
+  { id: 'gradients', fixtures: GRADIENTS },
   // values stays last: the extended corpus keys its vectors on the values- prefix (values.test.ts).
   { id: 'values', fixtures: VALUES },
 ];

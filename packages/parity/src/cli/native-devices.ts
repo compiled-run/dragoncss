@@ -14,7 +14,7 @@ import type { SupportPlant } from 'dragon';
 import { GATE_GLYPH_POSITION_DEVICE_PX } from '../compare.ts';
 import { caseReference, dumpFile, evaluateCase, plantVerdict, readDump } from '../device-lanes.ts';
 import type { DeviceSpec } from '../device-run.ts';
-import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, isGlyphPlant, judgeGlyphPlant, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_LANES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
+import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, isGlyphPlant, judgeGlyphPlant, matrixProblems, DORMANT_PLANTS, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_LANES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
 import { glyphPositions } from '../native-compare.ts';
 import { validateNativeDump } from '../native-dump.ts';
 import { existsSync, readFileSync } from 'node:fs';
@@ -69,6 +69,12 @@ if (plant === null) {
   }
   log(`status ${failures === 0 ? 'pass' : 'fail'} (${failures} problem(s))`);
   process.exit(failures === 0 ? 0 : 1);
+}
+
+// A dormant plant (DORMANT_PLANTS) has nothing a device can observe; it is reported and not run.
+if (!isGlyphPlant(plant) && DORMANT_PLANTS[plant] !== undefined) {
+  log(`plant ${plant}: dormant, not run (${DORMANT_PLANTS[plant]})`);
+  process.exit(0);
 }
 
 // A paint plant (P6a): pixels must see what (d) cannot, on the plant's cases (PLANT_CASES) and sample rules (PLANT_RULES).

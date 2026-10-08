@@ -36,7 +36,7 @@ const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const CSS = 'body { margin: 0; font-family: Ahem; font-size: 10px; } .a { padding: 3px; border: 2px dashed red; background-color: #3366ff; overflow: hidden; }';
 const input = inputFor(CSS, (r) => [div(r, 'a', ['a'], [text(r, 't', 'AB'), div(r, 'b', [])])]);
 /** The modules a package has filled (EMS moved background, border and clip; PNT1 fills radius, shadow, effects and stacking); the rest are stubs. */
-const FILLED: readonly string[] = ['background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'visibility'];
+const FILLED: readonly string[] = ['background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'gradient', 'visibility'];
 const STUBS = PAINT_MODULE_NAMES.filter((n) => !FILLED.includes(n));
 
 function programs() {
@@ -55,7 +55,7 @@ describe('EMS: the paint registries', () => {
     expect(PAINT_VALUES.map((m) => m.name)).toEqual([...PAINT_MODULE_NAMES]);
   });
   it('the paint write kinds are the background, border and clip modules\' and every one has a vocabulary entry on both backends', () => {
-    expect(PAINT_EMITTERS.flatMap((m) => m.kinds)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'border-radius', 'box-shadow', 'opacity', 'paint-order', 'paint-foreground', 'outline', 'visibility']);
+    expect(PAINT_EMITTERS.flatMap((m) => m.kinds)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'border-radius', 'box-shadow', 'opacity', 'paint-order', 'paint-foreground', 'outline', 'background-layers', 'visibility']);
     for (const m of PAINT_LOWERINGS) {
       for (const k of Object.keys(m.css)) {
         expect(isPaintKind(k), k).toBe(true);
@@ -63,7 +63,7 @@ describe('EMS: the paint registries', () => {
         for (const b of ['uikit', 'android-views'] as const) expect(VOCABULARY[b][k as keyof (typeof VOCABULARY)['uikit']]).toEqual((m.vocabulary[b] as Record<string, unknown>)[k]);
       }
     }
-    expect(Object.keys(VOCABULARY.uikit)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'border-radius', 'box-shadow', 'opacity', 'paint-order', 'paint-foreground', 'outline', 'visibility', 'font', 'text-color']);
+    expect(Object.keys(VOCABULARY.uikit)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip', 'border-radius', 'box-shadow', 'opacity', 'paint-order', 'paint-foreground', 'outline', 'background-layers', 'visibility', 'font', 'text-color']);
     expect(isPaintKind('font')).toBe(false);
     expect(isPaintKind('text-color')).toBe(false);
   });
@@ -85,9 +85,9 @@ describe('EMS: the paint registries', () => {
       for (const b of ['uikit', 'android-views'] as const) expect(e?.native[b], name).toEqual({ boxMembers: '', file: null, stages: {}, afterLayout: null, applied: null, roundedPath: null, container: null });
       expect(PAINT_LOWERINGS.find((m) => m.name === name)?.css, name).toEqual({});
     }
-    // The border module (P6a) declares the two dash plants, then radius, shadow, effects, stacking (with the foreground) and outline (PNT1) theirs, and visibility (T150a) its two, in registry order; every stub declares none.
-    expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored', 'order-swap', 'foreground-under', 'outline-offset-1', 'visibility-ignored', 'visibility-subtree']);
-    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored', 'order-swap', 'foreground-under', 'outline-offset-1', 'visibility-ignored', 'visibility-subtree']);
+    // The border module (P6a) declares the two dash plants, then radius, shadow, effects, stacking (with the foreground) and outline (PNT1) theirs, then gradient (BG2) its two and visibility (T150a) its two, in registry order; every stub declares none.
+    expect(paintPlants().map((p) => p.name)).toEqual(['dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored', 'order-swap', 'foreground-under', 'outline-offset-1', 'gradient-offset-1', 'gradient-unpremultiplied-upload', 'visibility-ignored', 'visibility-subtree']);
+    expect(SUPPORT_PLANTS).toEqual(['glyph-offset-1', 'glyph-offset-y-1', 'dash-phase-1', 'dash-gap-unfitted', 'radius-square', 'shadow-offset-1', 'alpha-ignored', 'order-swap', 'foreground-under', 'outline-offset-1', 'gradient-offset-1', 'gradient-unpremultiplied-upload', 'visibility-ignored', 'visibility-subtree']);
   });
 });
 
@@ -119,8 +119,8 @@ describe('EMS: programs', () => {
 
 describe('EMS: native support', () => {
   it('emits the stages file and one file per paint module with native code, under Support/Paint and views/paint', () => {
-    expect(SUPPORT_FILES.uikit).toEqual(['Support/DragonChecked.swift', 'Support/DragonFontTables.swift', 'Support/DragonViews.swift', 'Support/DragonBridge.swift', 'Support/DragonTree.swift', 'Support/DragonPaintStages.swift', 'Support/Paint/DragonPaintBackground.swift', 'Support/Paint/DragonPaintBorder.swift', 'Support/Paint/DragonPaintClip.swift', 'Support/Paint/DragonPaintRadius.swift', 'Support/Paint/DragonPaintShadow.swift', 'Support/Paint/DragonPaintEffects.swift', 'Support/Paint/DragonPaintStacking.swift', 'Support/Paint/DragonPaintOutline.swift', 'Support/Paint/DragonPaintVisibility.swift', 'Support/DragonClock.swift', 'Support/DragonState.swift']);
-    expect(SUPPORT_FILES['android-views']).toEqual(['kotlin/dev/dragon/views/DragonChecked.kt', 'kotlin/dev/dragon/views/DragonFontTables.kt', 'kotlin/dev/dragon/views/DragonViews.kt', 'kotlin/dev/dragon/views/DragonBridge.kt', 'kotlin/dev/dragon/views/DragonTree.kt', 'kotlin/dev/dragon/views/DragonPaintStages.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBackground.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBorder.kt', 'kotlin/dev/dragon/views/paint/DragonPaintClip.kt', 'kotlin/dev/dragon/views/paint/DragonPaintRadius.kt', 'kotlin/dev/dragon/views/paint/DragonPaintShadow.kt', 'kotlin/dev/dragon/views/paint/DragonPaintEffects.kt', 'kotlin/dev/dragon/views/paint/DragonPaintStacking.kt', 'kotlin/dev/dragon/views/paint/DragonPaintOutline.kt', 'kotlin/dev/dragon/views/paint/DragonPaintVisibility.kt', 'kotlin/dev/dragon/views/DragonClock.kt', 'kotlin/dev/dragon/views/DragonState.kt']);
+    expect(SUPPORT_FILES.uikit).toEqual(['Support/DragonChecked.swift', 'Support/DragonFontTables.swift', 'Support/DragonViews.swift', 'Support/DragonBridge.swift', 'Support/DragonTree.swift', 'Support/DragonPaintStages.swift', 'Support/Paint/DragonPaintBackground.swift', 'Support/Paint/DragonPaintBorder.swift', 'Support/Paint/DragonPaintClip.swift', 'Support/Paint/DragonPaintRadius.swift', 'Support/Paint/DragonPaintShadow.swift', 'Support/Paint/DragonPaintEffects.swift', 'Support/Paint/DragonPaintStacking.swift', 'Support/Paint/DragonPaintOutline.swift', 'Support/Paint/DragonPaintGradient.swift', 'Support/Paint/DragonPaintVisibility.swift', 'Support/DragonClock.swift', 'Support/DragonState.swift']);
+    expect(SUPPORT_FILES['android-views']).toEqual(['kotlin/dev/dragon/views/DragonChecked.kt', 'kotlin/dev/dragon/views/DragonFontTables.kt', 'kotlin/dev/dragon/views/DragonViews.kt', 'kotlin/dev/dragon/views/DragonBridge.kt', 'kotlin/dev/dragon/views/DragonTree.kt', 'kotlin/dev/dragon/views/DragonPaintStages.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBackground.kt', 'kotlin/dev/dragon/views/paint/DragonPaintBorder.kt', 'kotlin/dev/dragon/views/paint/DragonPaintClip.kt', 'kotlin/dev/dragon/views/paint/DragonPaintRadius.kt', 'kotlin/dev/dragon/views/paint/DragonPaintShadow.kt', 'kotlin/dev/dragon/views/paint/DragonPaintEffects.kt', 'kotlin/dev/dragon/views/paint/DragonPaintStacking.kt', 'kotlin/dev/dragon/views/paint/DragonPaintOutline.kt', 'kotlin/dev/dragon/views/paint/DragonPaintGradient.kt', 'kotlin/dev/dragon/views/paint/DragonPaintVisibility.kt', 'kotlin/dev/dragon/views/DragonClock.kt', 'kotlin/dev/dragon/views/DragonState.kt']);
     for (const f of emitNativeSupport('android-views')) expect(f.text, f.path).toContain('\npackage dev.dragon.views\n');
   });
   it('applies a support plant only when its source text occurs exactly once across the support files', () => {
@@ -140,13 +140,13 @@ describe('EMS: native support', () => {
       expect(stagePainters(b, 'border')).toEqual(['dragonPaintBorderStage']);
       expect(body).toContain(`dragonPaintBorderStage(${args})`);
       expect(text.indexOf('dragonAfterLayoutBorder(v, shape, scale)')).toBeLessThan(text.indexOf('dragonAfterLayoutClip(v, shape, scale)'));
-      const applied = ['dragonAppliedBackground', 'dragonAppliedBorder', 'dragonAppliedClip', 'dragonAppliedRadius', 'dragonAppliedShadow', 'dragonAppliedEffects', 'dragonAppliedStacking', 'dragonAppliedOutline', 'dragonAppliedVisibility'].map((f) => text.indexOf(`${f}(v)`));
+      const applied = ['dragonAppliedBackground', 'dragonAppliedBorder', 'dragonAppliedClip', 'dragonAppliedRadius', 'dragonAppliedShadow', 'dragonAppliedEffects', 'dragonAppliedStacking', 'dragonAppliedOutline', 'dragonAppliedGradient', 'dragonAppliedVisibility'].map((f) => text.indexOf(`${f}(v)`));
       expect(applied.every((i) => i > 0)).toBe(true);
       expect([...applied].sort((x, y) => x - y)).toEqual(applied);
       // The radius module provides the rounded path hook (PNT1).
       expect(text).toContain(b === 'uikit' ? 'return dragonRoundedPathRadius(v, shape, inner)' : ': Path? = dragonRoundedPathRadius(v, shape, inner)');
     }
-    expect(nativePaints('uikit').filter((m) => m.native.file !== null).map((m) => m.stem)).toEqual(['DragonPaintBackground', 'DragonPaintBorder', 'DragonPaintClip', 'DragonPaintRadius', 'DragonPaintShadow', 'DragonPaintEffects', 'DragonPaintStacking', 'DragonPaintOutline', 'DragonPaintVisibility']);
+    expect(nativePaints('uikit').filter((m) => m.native.file !== null).map((m) => m.stem)).toEqual(['DragonPaintBackground', 'DragonPaintBorder', 'DragonPaintClip', 'DragonPaintRadius', 'DragonPaintShadow', 'DragonPaintEffects', 'DragonPaintStacking', 'DragonPaintOutline', 'DragonPaintGradient', 'DragonPaintVisibility']);
   });
   it('keeps the case code on the modules\' public writers, which repaint when a runtime write changes them', () => {
     const swift = emitNativeSupport('uikit').map((f) => f.text).join('\n');
