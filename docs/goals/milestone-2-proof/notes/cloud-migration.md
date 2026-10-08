@@ -235,3 +235,19 @@ Items 1–5 unblock cloud lanes, and lanes can move once those land. The driver 
 - **(R2) Too few retries.** Settle, installs, brew, pnpm and the Xcode platform download need bounded retries. PR: ci-device-reliability.
 - **(R3) Android records are tied to the arm64 image.** The first CI landing needs LAND_ARCH_REBASELINE. After that, a fallback to the local arm64 run must never happen under LAND_DEVICES=ci; it should re-dispatch or stop. To be done with item 7.
 - **(R4) No proof of raw dump equality.** Upload per-case dump hashes without the device header, and explain why the iOS frame and pixel hashes changed between 5b94e4354f and d9386187d0. PR: ci-device-reliability.
+
+## Security ruling for the Actions landing driver (2026-10-08)
+
+Review of #225 found that a driver job holding the merge token while it ran merged-tree code (pnpm install scripts, typecheck, the tree's own merge drivers) would let any PR or dependency steal the token and push to master. Master has no branch protection today. The local Mac driver has the same exposure with the owner's credentials.
+
+**Ruling:**
+- The token job never runs tree code. It works from a trusted master checkout with persist-credentials false, uses the trusted merge drivers by absolute path, and passes the token to each push and gh call only. All tree code runs in dispatched workflows that have no secrets.
+- Reviews are trusted only from unedited comments by allowlisted numeric user ids, never from the token's identity.
+- One driver at a time across hosts.
+
+**Owner setup before enabling:**
+- a `land` Environment restricted to master, holding LAND_TOKEN (a GitHub App preferred)
+- a master ruleset requiring PRs
+- a reviewer identity separate from the token's
+
+#225 is split: A is the state-out-of-/tmp work, B is land.yml with the split design.
