@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Gh, ghRest, mapMergeable, parseCommitPages, parseFilePages, parseIssueCommentPages, parsePull, repoFromRemote, resolveRepo } from '../../../scripts/gh-rest.ts';
+import { type Gh, ghRest, mapMergeable, parseCommitPages, parseFilePages, parseIssueCommentPages, parsePull, parsePullSummary, repoFromRemote, resolveRepo } from '../../../scripts/gh-rest.ts';
 
 const sha = (c: string): string => c.repeat(40);
 const REPO = 'compiled-run/dragoncss';
@@ -52,6 +52,9 @@ describe('repo resolution', () => {
     expect(resolveRepo({ GH_REPO: '' }, origin)).toBe('other/repo');
     expect(() => resolveRepo({ GH_REPO: 'a/b/c/d' }, origin)).toThrow(/GH_REPO/);
     expect(() => resolveRepo({ GH_REPO: 'nope' }, origin)).toThrow(/GH_REPO/);
+    // Every call goes to github.com, so another host is refused rather than silently dropped.
+    expect(() => resolveRepo({ GH_REPO: 'ghe.example.com/o/r' }, origin)).toThrow(/GH_REPO host/);
+    expect(resolveRepo({ GH_REPO: 'GitHub.com/o/r' }, origin)).toBe('o/r');
   });
 });
 
@@ -89,9 +92,11 @@ describe('pull shape', () => {
     expect(parsePull(pull({ state: 'closed' })).state).toBe('CLOSED');
     expect(parsePull(pull({ body: null })).body).toBe('');
     expect(parsePull(pull({ mergeable: false, mergeable_state: 'dirty' })).mergeable).toBe('CONFLICTING');
-    // The list endpoint carries no mergeability.
+    // The list endpoint carries no mergeability: the summary reads it without one, and the full view refuses it.
     const { mergeable: _m, mergeable_state: _s, ...listed } = pull();
-    expect(parsePull(listed).mergeable).toBe('UNKNOWN');
+    expect(parsePullSummary(listed)).not.toHaveProperty('mergeable');
+    expect(parsePullSummary(listed).number).toBe(7);
+    expect(() => parsePull(listed)).toThrow(/pull\.mergeable \(missing\)/);
     expect(parsePull(pull({ head: { sha: sha('a'), ref: 'topic', repo: { full_name: 'fork/dragoncss' } } })).crossRepository).toBe(true);
     expect(parsePull(pull({ head: { sha: sha('a'), ref: 'topic', repo: null } })).crossRepository).toBe(true);
   });
@@ -162,11 +167,11 @@ describe('ghRest over a fake gh', () => {
     expect(calls.every((c) => c.args[0] === 'api')).toBe(true);
   });
 
-  it('picks the open PR for a branch, else the newest', () => {
-    const key = `api --paginate --slurp repos/${REPO}/pulls?state=all&per_page=100&head=compiled-run%3Atopic`;
-    expect(ghRest({ ...opts, gh: fakeGh({ [key]: [[pull({ number: 3, state: 'closed' }), pull({ number: 2 })]] }).gh }).prForBranch('topic')?.number).toBe(2);
-    expect(ghRest({ ...opts, gh: fakeGh({ [key]: [[pull({ number: 3, state: 'closed' }), pull({ number: 5, state: 'closed' })]] }).gh }).prForBranch('topic')?.number).toBe(5);
+  it('finds only the open PR for a branch, and refuses two', () => {
+    const key = `api --paginate --slurp repos/${REPO}/pulls?state=open&per_page=100&head=compiled-run%3Atopic`;
+    expect(ghRest({ ...opts, gh: fakeGh({ [key]: [[pull({ number: 2 })]] }).gh }).prForBranch('topic')?.number).toBe(2);
     expect(ghRest({ ...opts, gh: fakeGh({ [key]: [[]] }).gh }).prForBranch('topic')).toBeNull();
+    expect(() => ghRest({ ...opts, gh: fakeGh({ [key]: [[pull({ number: 2 })], [pull({ number: 3 })]] }).gh }).prForBranch('topic')).toThrow(/more than one/);
   });
 
   it('retries a failed read, but not a malformed answer or a write', () => {

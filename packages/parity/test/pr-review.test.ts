@@ -625,12 +625,33 @@ describe('the CI run is required', () => {
 });
 
 describe('--conflicts-ok (GitHub mergeability ignores the merge drivers)', () => {
-  it('turns only CONFLICTING into UNKNOWN, and only when asked', () => {
+  it('marks CONFLICTING and UNKNOWN as IGNORED, and only when asked', () => {
     const head = { sha: 'a'.repeat(40), mergeable: 'CONFLICTING' as const };
-    expect(judgedHead(head, true)).toEqual({ sha: head.sha, mergeable: 'UNKNOWN' });
+    expect(judgedHead(head, true)).toEqual({ sha: head.sha, mergeable: 'IGNORED' });
+    expect(judgedHead({ ...head, mergeable: 'UNKNOWN' }, true)).toEqual({ sha: head.sha, mergeable: 'IGNORED' });
     expect(judgedHead(head, false)).toBe(head);
     const clean = { sha: head.sha, mergeable: 'MERGEABLE' as const };
     expect(judgedHead(clean, true)).toBe(clean);
+    // A merged or closed PR has no mergeability to wait for.
+    expect(judgedHead({ ...head, mergeable: 'UNKNOWN' }, false, false)).toEqual({ sha: head.sha, mergeable: 'IGNORED' });
+  });
+
+  // GitHub answers null (UNKNOWN) while it computes mergeability, e.g. right after master moves; #214 read clean, then dirty.
+  it('waits on an UNKNOWN mergeability without --conflicts-ok, and never passes it', () => {
+    const green = [run('success', null, CI_CHECK), run('success', 'No issues identified')];
+    const unknown: PrHead = { ...HEAD, mergeable: 'UNKNOWN' };
+    expect(settled(green, new Map(), unknown)).toBe(false);
+    const o = outcome(green, new Map(), unknown);
+    expect(o).toEqual({ pending: [`mergeability of ${HEAD.sha} (GitHub has not computed it yet)`], failed: [], unreviewed: false });
+    expect(reviewExit(o, 0)).toBe(1);
+    expect(onceExit(false, o, 0)).toBe(2);
+    // A failed check still ends the wait.
+    expect(settled([run('failure', null, CI_CHECK)], new Map(), unknown)).toBe(true);
+    // The IGNORED that --conflicts-ok (or a closed PR) produces is judged on the checks alone.
+    for (const ignored of [judgedHead(unknown, true), judgedHead(unknown, false, false)]) {
+      expect(settled(green, new Map(), ignored)).toBe(true);
+      expect(reviewExit(outcome(green, new Map(), ignored), 0)).toBe(0);
+    }
   });
 });
 
@@ -669,7 +690,7 @@ describe('pr-review over REST', () => {
   const poll = (pull: unknown, runs: CheckRun[], comments: unknown[], conflictsOk = false) => {
     const rest = restFor(pull, runs, comments);
     const view = rest.prView(7);
-    const head = judgedHead({ sha: view.sha, mergeable: view.mergeable }, conflictsOk);
+    const head = judgedHead({ sha: view.sha, mergeable: view.mergeable }, conflictsOk, view.state === 'OPEN');
     const seen = rest.checkRuns(head.sha);
     const all = rest.reviewComments(7);
     const answered = new Set(all.filter((c) => c.in_reply_to_id !== undefined && !c.user.login.includes('macroscope')).map((c) => c.in_reply_to_id));
@@ -693,10 +714,17 @@ describe('pr-review over REST', () => {
     expect(poll(restPull(null, 'unknown'), [ci('success')], [])).toMatchObject({ head: { mergeable: 'UNKNOWN' }, exit: 1, once: 2 });
   });
 
+  it('keeps a green PR pending while GitHub computes its mergeability, unless --conflicts-ok or merged', () => {
+    expect(poll(restPull(null, 'unknown'), green, [])).toMatchObject({ head: { mergeable: 'UNKNOWN' }, exit: 1, once: 2 });
+    expect(poll(restPull(null, 'unknown'), green, [], true)).toMatchObject({ head: { mergeable: 'IGNORED' }, exit: 0, once: 0 });
+    const merged = { ...restPull(null, 'unknown'), state: 'closed', merged_at: '2026-10-08T00:00:00Z' };
+    expect(poll(merged, green, [])).toMatchObject({ head: { mergeable: 'IGNORED' }, exit: 0, once: 0 });
+  });
+
   it('fails a dirty PR at once, unless --conflicts-ok', () => {
     const dirty = restPull(false, 'dirty');
     expect(poll(dirty, [ci(null)], [])).toMatchObject({ head: { mergeable: 'CONFLICTING' }, exit: 1, once: 1 });
-    expect(poll(dirty, green, [], true)).toMatchObject({ head: { mergeable: 'UNKNOWN' }, exit: 0, once: 0 });
+    expect(poll(dirty, green, [], true)).toMatchObject({ head: { mergeable: 'IGNORED' }, exit: 0, once: 0 });
   });
 
   it('passes an unreviewed PR (spending limit) with CI green and no findings', () => {
@@ -712,11 +740,8 @@ describe('pr-review over REST', () => {
 
   // The proxy in Claude Code cloud sessions refuses GraphQL, so neither script may call a gh subcommand that uses it.
   it('uses no GraphQL gh subcommand', () => {
-    const graphql = [
-      /['"](pr|repo|issue|label|search|project|release)['"]\s*,\s*['"]\w+['"]/,
-      /\bgh\s+(pr|repo|issue|search|project|release)\s+\w+/,
-      /graphql/i,
-    ];
+    const subcommands = '(pr|repo|issue|label|search|project|release)';
+    const graphql = [new RegExp(`['"]${subcommands}['"]\\s*,\\s*['"]\\w+['"]`), new RegExp(`\\bgh\\s+${subcommands}\\s+\\w+`), /graphql/i];
     for (const file of ['pr-review.ts', 'gh-rest.ts']) {
       const source = readFileSync(new URL(`../../../scripts/${file}`, import.meta.url), 'utf8');
       for (const pattern of graphql) expect(source.match(pattern)?.[0], `${file}: ${pattern}`).toBeUndefined();

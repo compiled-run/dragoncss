@@ -1,6 +1,6 @@
 // Typed helpers over `gh api`, REST only: Claude Code cloud sessions reach GitHub through a proxy that allows REST alone.
 import { execFileSync } from 'node:child_process';
-import { type CheckRun, parseCheckRunPages, parseReviewCommentPages, type ReviewComment } from './pr-review-vouch.ts';
+import { type CheckRun, type Mergeable, parseCheckRunPages, parseReviewCommentPages, type ReviewComment } from './pr-review-vouch.ts';
 
 // Runs `gh` with the given arguments (and stdin), returning stdout; throws on a non-zero exit.
 export type Gh = (args: string[], input?: string) => string;
@@ -48,19 +48,19 @@ export const repoFromRemote = (url: string): string => {
   return parts.length >= 2 && REPO.test(repo) ? repo : fail('remote URL', url);
 };
 
-// GH_REPO wins, as it does for gh itself; otherwise the origin remote.
+// GH_REPO wins, as it does for gh itself; otherwise the origin remote. Every call goes to github.com, so GH_REPO may name no other host.
 export const resolveRepo = (env: NodeJS.ProcessEnv = process.env, originUrl: () => string = () => execFileSync('git', ['remote', 'get-url', 'origin'], { encoding: 'utf8' })): string => {
   const fromEnv = env.GH_REPO?.trim();
   if (fromEnv) {
     // gh accepts [HOST/]OWNER/REPO.
     const parts = fromEnv.split('/');
     const repo = parts.slice(-2).join('/');
+    if (parts.length === 3 && parts[0]!.toLowerCase() !== 'github.com') return fail('GH_REPO host (only github.com is supported)', fromEnv);
     return parts.length <= 3 && REPO.test(repo) ? repo : fail('GH_REPO', fromEnv);
   }
   return repoFromRemote(originUrl());
 };
 
-export type Mergeable = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
 // REST reports mergeability as `mergeable` (null while GitHub computes it) and `mergeable_state`; "dirty" means conflicts.
 export const mapMergeable = (mergeable: unknown, mergeableState: unknown): Mergeable => {
   if (mergeable !== null && typeof mergeable !== 'boolean') return fail('pull.mergeable', mergeable);
@@ -70,19 +70,20 @@ export const mapMergeable = (mergeable: unknown, mergeableState: unknown): Merge
 };
 
 export type PrState = 'OPEN' | 'CLOSED' | 'MERGED';
-export type PrView = {
+// The list endpoints and write answers; only `GET pulls/<n>` carries mergeability.
+export type PrSummary = {
   number: number;
   state: PrState;
   sha: string;
   headRef: string;
   base: string;
-  mergeable: Mergeable;
   labels: string[];
   body: string;
   draft: boolean;
   crossRepository: boolean;
 };
-export const parsePull = (v: unknown): PrView => {
+export type PrView = PrSummary & { mergeable: Mergeable };
+export const parsePullSummary = (v: unknown): PrSummary => {
   if (!isObject(v)) return fail('pull', v);
   const state = str(v, 'state', 'pull');
   if (state !== 'open' && state !== 'closed') return fail('pull.state', state);
@@ -98,12 +99,18 @@ export const parsePull = (v: unknown): PrView => {
     sha: checkSha(head.sha, 'pull.head.sha'),
     headRef: str(head, 'ref', 'pull.head'),
     base: str(base, 'ref', 'pull.base'),
-    mergeable: v.mergeable === undefined ? 'UNKNOWN' : mapMergeable(v.mergeable, v.mergeable_state),
     labels: arr(v.labels, 'pull.labels').map((l) => (isObject(l) ? str(l, 'name', 'pull.labels[]') : fail('pull.labels[]', l))),
     body: strOrNull(v, 'body', 'pull') ?? '',
     draft: bool(v, 'draft', 'pull'),
     crossRepository: headRepo === null || str(headRepo, 'full_name', 'pull.head.repo') !== str(baseRepo, 'full_name', 'pull.base.repo'),
   };
+};
+
+export const parsePull = (v: unknown): PrView => {
+  const summary = parsePullSummary(v);
+  const o = v as Record<string, unknown>;
+  if (!('mergeable' in o)) return fail('pull.mergeable (missing)', undefined);
+  return { ...summary, mergeable: mapMergeable(o.mergeable, o.mergeable_state) };
 };
 
 export type PrFile = { path: string; status: string; previousPath?: string };
@@ -174,13 +181,14 @@ export const ghRest = (options: GhRestOptions = {}) => {
     prView: (pr: number): PrView => parsePull(get(`pulls/${n(pr)}`, 'pull')),
     prFiles: (pr: number): PrFile[] => parseFilePages(pages(`pulls/${n(pr)}/files?per_page=100`, 'pull files')),
     prCommits: (pr: number): string[] => parseCommitPages(pages(`pulls/${n(pr)}/commits?per_page=100`, 'pull commits')),
-    prList: (base?: string): PrView[] =>
-      listPages(pages(`pulls?state=open&per_page=100${base === undefined ? '' : `&base=${encodeURIComponent(base)}`}`, 'pulls'), 'pulls').map(parsePull),
-    // The PR whose head is `branch` in this repository: the open one, else the most recently created.
-    prForBranch: (branch: string): PrView | null => {
+    prList: (base?: string): PrSummary[] =>
+      listPages(pages(`pulls?state=open&per_page=100${base === undefined ? '' : `&base=${encodeURIComponent(base)}`}`, 'pulls'), 'pulls').map(parsePullSummary),
+    // The open PR whose head is `branch` in this repository, or null; a closed or merged one is never picked.
+    prForBranch: (branch: string): PrSummary | null => {
       const owner = repo().split('/')[0]!;
-      const found = listPages(pages(`pulls?state=all&per_page=100&head=${encodeURIComponent(`${owner}:${branch}`)}`, 'pulls'), 'pulls').map(parsePull);
-      return found.find((p) => p.state === 'OPEN') ?? found.sort((a, b) => b.number - a.number)[0] ?? null;
+      const found = listPages(pages(`pulls?state=open&per_page=100&head=${encodeURIComponent(`${owner}:${branch}`)}`, 'pulls'), 'pulls').map(parsePullSummary);
+      if (found.length > 1) return fail(`open pulls for ${owner}:${branch} (more than one)`, found.map((p) => p.number));
+      return found[0] ?? null;
     },
     prCreate: (p: { title: string; body: string; head: string; base: string; draft?: boolean }): { number: number; url: string } => {
       const v = write('POST', 'pulls', { title: p.title, body: p.body, head: p.head, base: p.base, draft: p.draft ?? false }, 'created pull');
@@ -197,7 +205,7 @@ export const ghRest = (options: GhRestOptions = {}) => {
       return isObject(v) ? { id: int(v, 'id', 'created comment'), url: str(v, 'html_url', 'created comment') } : fail('created comment', v);
     },
     prSetBase: (pr: number, base: string): void => {
-      const v = parsePull(write('PATCH', `pulls/${n(pr)}`, { base }, 'pull'));
+      const v = parsePullSummary(write('PATCH', `pulls/${n(pr)}`, { base }, 'pull'));
       if (v.base !== base) fail(`pull.base.ref after setting it to ${base}`, v.base);
     },
     // Merges only if the PR's head is still `sha`; GitHub refuses (409) otherwise.

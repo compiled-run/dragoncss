@@ -39,7 +39,7 @@ const rest = ghRest();
 const currentBranchPr = (): string => {
   const branch = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' }).trim();
   const found = rest.prForBranch(branch);
-  if (found === null) throw new Error(`pr-review: no PR has ${branch} as its head`);
+  if (found === null) throw new Error(`pr-review: no open PR has ${branch} as its head; pass the PR number`);
   return String(found.number);
 };
 const pr = args.find((a) => /^\d+$/.test(a)) ?? currentBranchPr();
@@ -52,7 +52,7 @@ const checkRuns = (): CheckRun[] => {
   const view = rest.prView(prNumber);
   const seen: PrHead = { sha: view.sha, mergeable: view.mergeable };
   if (conflictsOk && seen.mergeable === 'CONFLICTING' && head.sha !== seen.sha) console.error(`pr-review: GitHub reports ${seen.sha} CONFLICTING; --conflicts-ok leaves that to the merge train's drivers`);
-  head = judgedHead(seen, conflictsOk);
+  head = judgedHead(seen, conflictsOk, view.state === 'OPEN');
   sha = head.sha;
   return runsOf(sha);
 };
