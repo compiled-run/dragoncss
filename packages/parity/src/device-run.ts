@@ -514,6 +514,40 @@ async function bootIosHeld(spec: IosDeviceSpec): Promise<DeviceHandle> {
   }
 }
 
+/**
+ * The SpringBoard preferences every simulator is pinned to: Full Screen Apps (no Windowed Apps, no Stage Manager). iPadOS 26 defaults
+ * to Windowed Apps, where SpringBoard reopens an app at the window size it last kept for the bundle, across reinstalls and reboots:
+ * one scene rotation on a portrait iPad (requestGeometryUpdate) left every later launch of the host in a scaled window, so the OS
+ * screenshot of capture trust showed the wallpaper around it. Each key reads 0 once pinned.
+ */
+export const IOS_SPRINGBOARD_PINS: readonly string[] = ['SBMedusaMultitaskingEnabled', 'SBChamoisWindowingEnabled'];
+
+/** The pinned keys a simulator does not hold yet; read gives a key's `defaults read` output, or null when the key is absent. */
+export function springboardPinsToWrite(read: (key: string) => string | null): string[] {
+  return IOS_SPRINGBOARD_PINS.filter((k) => read(k)?.trim() !== '0');
+}
+
+function readSpringboard(udid: string, key: string): string | null {
+  const r = exec('xcrun', ['simctl', 'spawn', udid, 'defaults', 'read', 'com.apple.springboard', key], { allowFailure: 'an absent key fails the read; it is written below' });
+  return r.ok ? r.stdout : null;
+}
+
+/**
+ * Pins the multitasking mode (IOS_SPRINGBOARD_PINS). SpringBoard reads it when it starts, so a simulator that did not hold it
+ * boots once more; the pins persist, so that happens once per simulator. A pin that does not read back fails the boot.
+ */
+async function pinFullScreenApps(spec: IosDeviceSpec, udid: string): Promise<void> {
+  const missing = springboardPinsToWrite((k) => readSpringboard(udid, k));
+  if (missing.length === 0) return;
+  for (const k of missing) exec('xcrun', ['simctl', 'spawn', udid, 'defaults', 'write', 'com.apple.springboard', k, '-bool', 'NO']);
+  exec('xcrun', ['simctl', 'shutdown', udid]);
+  exec('xcrun', ['simctl', 'boot', udid]);
+  const b = await execAsync('xcrun', ['simctl', 'bootstatus', udid, '-b'], { timeoutMs: 300_000, allowFailure: 'a failed reboot fails naming this output' });
+  if (!b.ok) throw new Error(`the ${spec.name} simulator did not boot again after its multitasking mode was pinned (tooling fault): ${b.out.slice(-500)}`);
+  const still = springboardPinsToWrite((k) => readSpringboard(udid, k));
+  if (still.length > 0) throw new Error(`the ${spec.name} simulator does not hold the SpringBoard pins ${still.join(', ')} after writing them (tooling fault)`);
+}
+
 async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Promise<DeviceHandle> {
   for (let attempt = 1; ; attempt++) {
     if (was === 'Shutdown') noteStartedSim(udid, spec.name);
@@ -526,6 +560,7 @@ async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Prom
     const stopped = await stopDevice({ spec, udid, startedHere: true });
     if (stopped !== null) throw new Error(`the ${spec.name} simulator failed to boot, and before the retry ${stopped} (tooling fault): ${b.out.slice(-500)}`);
   }
+  await pinFullScreenApps(spec, udid);
   exec('xcrun', ['simctl', 'ui', udid, 'content_size', 'large']);
   return { spec, udid, startedHere: was === 'Shutdown' };
 }

@@ -220,3 +220,34 @@ Each item is one PR. [L] blocks cloud lanes; [D] blocks a cloud landing driver.
 11. **Optional proofs.** Run the native group once on ubuntu-latest x86_64 with swift.org 6.4.0 x86_64, so cloud lanes could run native files locally. Run the Chrome group once on ubuntu, then record a Linux-safe list in `test-shards.ts` with a CI check that keeps it true.
 
 Items 1–5 unblock cloud lanes, and lanes can move once those land. The driver needs items 2 and 6–9, and item 10 is the safety check before relying on land.yml. Until those land, the driver should stay on the Mac with `LAND_DEVICES=ci` and `LAND_TEST=ci`. That still needs items 2 and 8 so the PM can feed it queues and reviews from the cloud.
+
+## Parity proof on master d9386187d0 (2026-10-08)
+
+**full-test 37732571447:** all 13 jobs passed. That includes the regen fixed-point check (regen-chrome on macos-26 and regen-host on xcode-27), so CI regenerates master's committed outputs byte for byte.
+
+**device-lanes 37732567961:** compared with the records the Mac committed when #91 landed.
+- iPhone 17, iPad (A16), dragon-320 and dragon-smoke have identical verdicts on every lane. The known pixel failures match exactly, down to the RGB values in the detail text, even though CI Android runs x86_64 and the Mac runs arm64; both use the swiftshader renderer.
+- dragon-480 was blocked by a flake: a System UI ANR during settle, with no retry.
+- No earlier CI device failure was a difference from the Mac's verdicts. Each was a workflow bug since fixed, or an sdkmanager download flake.
+
+**Gaps found:**
+- **(R1) Tooling faults blame the PR.** A tooling-blocked device or a timed-out job counts as a verdict, so LAND_DEVICES=ci would eject the PR being landed. Fix: a separate tooling exit code and step, mapped to CiUnavailable. PR: ci-device-reliability.
+- **(R2) Too few retries.** Settle, installs, brew, pnpm and the Xcode platform download need bounded retries. PR: ci-device-reliability.
+- **(R3) Android records are tied to the arm64 image.** The first CI landing needs LAND_ARCH_REBASELINE. After that, a fallback to the local arm64 run must never happen under LAND_DEVICES=ci; it should re-dispatch or stop. To be done with item 7.
+- **(R4) No proof of raw dump equality.** Upload per-case dump hashes without the device header, and explain why the iOS frame and pixel hashes changed between 5b94e4354f and d9386187d0. PR: ci-device-reliability.
+
+## Security ruling for the Actions landing driver (2026-10-08)
+
+Review of #225 found that a driver job holding the merge token while it ran merged-tree code (pnpm install scripts, typecheck, the tree's own merge drivers) would let any PR or dependency steal the token and push to master. Master has no branch protection today. The local Mac driver has the same exposure with the owner's credentials.
+
+**Ruling:**
+- The token job never runs tree code. It works from a trusted master checkout with persist-credentials false, uses the trusted merge drivers by absolute path, and passes the token to each push and gh call only. All tree code runs in dispatched workflows that have no secrets.
+- Reviews are trusted only from unedited comments by allowlisted numeric user ids, never from the token's identity.
+- One driver at a time across hosts.
+
+**Owner setup before enabling:**
+- a `land` Environment restricted to master, holding LAND_TOKEN (a GitHub App preferred)
+- a master ruleset requiring PRs
+- a reviewer identity separate from the token's
+
+#225 is split: A is the state-out-of-/tmp work, B is land.yml with the split design.

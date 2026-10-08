@@ -10,7 +10,7 @@ import { repoPath } from '../src/paths.ts';
 import { trustCoverageProblems } from '../src/lanes.ts';
 import type { AvdDeviceSpec, DeviceRecord, DeviceSpec, GoldenParts } from '../src/device-run.ts';
 import type { SettleState } from '../src/device-run.ts';
-import { ANDROID_RENDERER, avdDir, dropGolden, deviceRecord, dropSuspect, emulatorArgs, failedAttemptStep, GOLDEN_SNAPSHOT, goldenEnabled, GUEST_TIMEZONE, snapshotLoadFailed, goldenCurrent, goldenKey, goldenKeyFile } from '../src/device-run.ts';
+import { ANDROID_RENDERER, avdDir, dropGolden, deviceRecord, dropSuspect, emulatorArgs, failedAttemptStep, GOLDEN_SNAPSHOT, goldenEnabled, GUEST_TIMEZONE, IOS_SPRINGBOARD_PINS, snapshotLoadFailed, goldenCurrent, goldenKey, goldenKeyFile, springboardPinsToWrite } from '../src/device-run.ts';
 import { installWithRetries, ToolingFault, transientInstallFailure, SYSTEMUI_RESTART_AFTER, systemUiRestart } from '../src/device-run.ts';
 import type { ExecResult } from '../src/device-exec.ts';
 import { ANDROID_IMAGE_API, avdKeys, parseWindowFocus, SETTLE_SAMPLES, SETTLE_START, settleStep, settleTimeoutMessage, avdScale, DEVICE_MATRIX, isGlyphPlant, isLinePlant, isPaintPlant, judgeGlyphPlant, judgeLinePlant, LINE_PLANT_CASE, liveProblems, matrixProblems, parseAppRecord, spawnDetached, PLANT_AXIS, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, PLANT_MARGIN_DEVICE_PX, PLANT_SHIFT_DEVICE_PX, PLANT_SHIFT_SPREAD_DEVICE_PX, recordProblems, TEXT_SCALE, TRUST_CASES, VECTOR_DEVICES } from '../src/device-run.ts';
@@ -443,5 +443,24 @@ describe('the golden snapshot (Android quickboot)', () => {
     expect(src).toMatch(/await saveGolden\(h, key, [^\n]*\n {2}await waitForSettledFocus\(h\);/);
     expect(src).toContain('if (key !== null && !golden) await saveGoldenAndSettle(');
     expect(src).toMatch(/provision: \[prepareAvd, waitForSettledFocus, saveGolden, saveGoldenAndSettle,/);
+  });
+});
+
+describe('the simulators run in Full Screen Apps (iPadOS 26 Windowed Apps kept the host in a scaled window)', () => {
+  it('writes every pin a simulator does not hold as 0', () => {
+    expect(IOS_SPRINGBOARD_PINS).toEqual(['SBMedusaMultitaskingEnabled', 'SBChamoisWindowingEnabled']);
+    expect(springboardPinsToWrite(() => null)).toEqual([...IOS_SPRINGBOARD_PINS]);
+    expect(springboardPinsToWrite(() => '0\n')).toEqual([]);
+    expect(springboardPinsToWrite((k) => (k === 'SBChamoisWindowingEnabled' ? '1\n' : '0\n'))).toEqual(['SBChamoisWindowingEnabled']);
+    expect(springboardPinsToWrite(() => '')).toEqual([...IOS_SPRINGBOARD_PINS]);
+  });
+
+  it('pins the mode on every iOS boot, rebooting once and reading the pins back, before the app is installed', () => {
+    const src = readFileSync(repoPath('packages/parity/src/device-run.ts'), 'utf8');
+    expect(src).toMatch(/ {2}await pinFullScreenApps\(spec, udid\);\n {2}exec\('xcrun', \['simctl', 'ui', udid, 'content_size', 'large'\]\);/);
+    const pin = src.slice(src.indexOf('async function pinFullScreenApps'), src.indexOf('async function bootIosFrom'));
+    expect(pin).toMatch(/'defaults', 'write', 'com\.apple\.springboard', k, '-bool', 'NO'/);
+    expect(pin.indexOf("'shutdown'")).toBeLessThan(pin.indexOf("'boot', udid"));
+    expect(pin).toContain('const still = springboardPinsToWrite(');
   });
 });

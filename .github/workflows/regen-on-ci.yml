@@ -1,5 +1,9 @@
 # CI-OFFLOAD step 2: `pnpm regen` for a branch on GitHub-hosted runners, pushed back to the branch as its own commit.
 # Trigger: workflow_dispatch with a branch, or the `regen` label on a pull request from this repository.
+# Patch mode (the landing driver, LAND_REGEN=ci): workflow_dispatch with a commit `sha` instead of a branch. Nothing is pushed:
+# the final combined outputs.patch (against that commit, the tw-sweep round's) is the artifact regen-patch, and no cache is saved
+# (the regen and WPT caches are restored only, the pnpm store is not cached), since a dispatched run regenerates an unreviewed
+# tree at master's cache scope.
 # The chain is split by machine (regen-on-ci-round.yml): the Chrome steps on macos-26, whose captures are byte-identical to the
 # local Mac's (capture-proof.yml), and lanes-host on xcode-27, the image with the local Mac's Xcode 27.0. Rounds alternate until
 # one changes nothing (at most 5). tw-sweep, which no other step reads and which takes about 50 min on a 3-core runner, runs
@@ -9,12 +13,17 @@
 # Every push to master runs the same chain without pushing ("warm"): Actions caches made in a pull request are visible only to
 # that pull request, while master's are visible to every branch, so master's run keeps the regen cache warm for all of them.
 name: regen-on-ci
+run-name: ${{ inputs.sha && format('regen of {0}', inputs.sha) || (github.event_name == 'pull_request' && github.event.pull_request.title) || (github.event_name == 'push' && github.event.head_commit.message) || 'regen-on-ci' }}
 on:
   workflow_dispatch:
     inputs:
       branch:
-        description: Branch to regenerate (never master)
-        required: true
+        description: Branch to regenerate and push to (never master); leave empty to give a sha
+        required: false
+        type: string
+      sha:
+        description: Commit to regenerate without pushing (patch mode, the landing driver); the artifact regen-patch is the result
+        required: false
         type: string
   pull_request:
     types: [labeled]
@@ -25,7 +34,7 @@ permissions:
 # Master's cache runs share one group and cancel each other: only the newest master matters. A branch's runs have their own
 # group, per branch and per label, so a label event that is not `regen` never takes a queued regen's place.
 concurrency:
-  group: ${{ github.event_name == 'push' && 'regen-on-ci-master-warm' || format('regen-on-ci-{0}-{1}', inputs.branch || github.head_ref, github.event.label.name || 'dispatch') }}
+  group: ${{ github.event_name == 'push' && 'regen-on-ci-master-warm' || format('regen-on-ci-{0}-{1}', inputs.sha || inputs.branch || github.head_ref, github.event.label.name || 'dispatch') }}
   cancel-in-progress: ${{ github.event_name == 'push' }}
 jobs:
   resolve:
@@ -45,6 +54,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           DISPATCH_BRANCH: ${{ inputs.branch }}
+          DISPATCH_SHA: ${{ inputs.sha }}
           PR_BRANCH: ${{ github.head_ref }}
           PR_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           PR_SHA: ${{ github.event.pull_request.head.sha }}
@@ -52,10 +62,12 @@ jobs:
           set -euo pipefail
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             # Branch regens come first: the macOS runners are few (5 at once), so a master cache run yields to any branch regen
-            # queued or running, and the next master push warms the cache instead.
+            # queued or running, and the next master push warms the cache instead. Patch-mode runs ("regen of <sha>", the landing
+            # driver's) never make it yield: they are nearly always in flight during a landing, save no cache themselves, and
+            # restore master's, so master's run must keep saving it.
             busy=0
             for st in queued in_progress waiting pending; do
-              n=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" -q '[.workflow_runs[] | select(.event != "push")] | length')
+              n=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" -q '[.workflow_runs[] | select(.event != "push" and (.event != "workflow_dispatch" or ((.display_title // "") | startswith("regen of ") | not)))] | length')
               busy=$((busy + n))
             done
             if [ "$busy" -gt 0 ]; then
@@ -65,6 +77,13 @@ jobs:
             fi
             { echo "branch=master"; echo "sha=$GITHUB_SHA"; echo "mode=warm"; } >> "$GITHUB_OUTPUT"
             echo "regen-on-ci: warming the regen cache on master at $GITHUB_SHA (nothing is pushed)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ -n "$DISPATCH_SHA" ]; then
+            [ -z "$DISPATCH_BRANCH" ] || { echo "::error::give a branch or a sha, not both"; exit 1; }
+            [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::not a full commit sha: $DISPATCH_SHA"; exit 1; }
+            { echo "branch="; echo "sha=$DISPATCH_SHA"; echo "mode=patch"; } >> "$GITHUB_OUTPUT"
+            echo "regen-on-ci: regen of $DISPATCH_SHA (patch mode: nothing is pushed, caches are restored only)" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then branch=$DISPATCH_BRANCH; else branch=$PR_BRANCH
@@ -83,26 +102,26 @@ jobs:
     needs: resolve
     if: needs.resolve.outputs.mode != 'skip'
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', name: chrome-1 }
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', name: chrome-1, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
   host-1:
     needs: [resolve, chrome-1]
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-1, name: host-1 }
+    with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-1, name: host-1, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
   chrome-2:
     needs: [resolve, host-1]
     if: needs.host-1.outputs.changed == 'true'
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: host-1, name: chrome-2 }
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: host-1, name: chrome-2, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
   host-2:
     needs: [resolve, chrome-2]
     if: needs.chrome-2.outputs.changed == 'true'
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-2, name: host-2 }
+    with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-2, name: host-2, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
   chrome-3:
     needs: [resolve, host-2]
     if: needs.host-2.outputs.changed == 'true'
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3 }
+    with: { runner: macos-26, side: chrome, args: '--skip lanes-host --skip tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
   converge:
     needs: [resolve, chrome-1, host-1, chrome-2, host-2, chrome-3]
     if: always() && needs.resolve.result == 'success' && needs.resolve.outputs.mode != 'skip' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
@@ -131,7 +150,7 @@ jobs:
     needs: [resolve, converge]
     if: always() && needs.converge.result == 'success'
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--only tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: '${{ needs.converge.outputs.last }}', name: sweep }
+    with: { runner: macos-26, side: chrome, args: '--only tw-sweep', sha: '${{ needs.resolve.outputs.sha }}', prev: '${{ needs.converge.outputs.last }}', name: sweep, save_cache: "${{ needs.resolve.outputs.mode != 'patch' }}" }
   warm-check:
     needs: [resolve, sweep]
     if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'warm'
@@ -149,6 +168,37 @@ jobs:
             exit 1
           fi
           echo "regen-on-ci: master at ${{ needs.resolve.outputs.sha }} is at a fixed point; the regen cache is warm" >> "$GITHUB_STEP_SUMMARY"
+  # Patch mode: the final combined patch alone (the sweep artifact also holds the regen cache and logs), for the landing driver to
+  # apply with git apply --binary --index. Empty when the commit is already at its fixed point.
+  patch:
+    needs: [resolve, sweep]
+    if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'patch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the sweep round (the converged tree with tw-sweep run)
+        uses: actions/download-artifact@v4
+        with:
+          name: sweep
+          path: ${{ runner.temp }}/last
+      - name: The combined outputs.patch
+        env:
+          SHA: ${{ needs.resolve.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test -f "$RUNNER_TEMP/last/outputs.patch" || { echo "::error::the sweep round has no outputs.patch"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/patch"
+          cp "$RUNNER_TEMP/last/outputs.patch" "$RUNNER_TEMP/patch/outputs.patch"
+          if [ -s "$RUNNER_TEMP/patch/outputs.patch" ]; then
+            echo "regen-on-ci: regen of $SHA changes files: $(git apply --stat "$RUNNER_TEMP/patch/outputs.patch" | tail -1)" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "regen-on-ci: $SHA is at a fixed point; the patch is empty" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload the patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: regen-patch
+          path: ${{ runner.temp }}/patch/outputs.patch
+          if-no-files-found: error
   push:
     needs: [resolve, sweep]
     if: always() && needs.sweep.result == 'success' && needs.resolve.outputs.mode == 'push'

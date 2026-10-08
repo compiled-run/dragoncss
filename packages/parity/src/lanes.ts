@@ -217,6 +217,8 @@ type TranslateNative = {
   readonly swiftTool: () => { readonly version: string } | null;
   readonly kotlinTool: (lookup?: KotlinLookup) => { readonly javaHome: string; readonly version: string } | null;
   readonly defaultKotlinLookup: () => KotlinLookup;
+  readonly requireNative: () => boolean;
+  readonly REQUIRE_NATIVE_ENV: string;
 };
 // packages/parity does not depend on packages/translate, so the tool lookups are loaded at run time from its source.
 const translateNative = async (): Promise<TranslateNative> => (await import(pathToFileURL(repoPath('packages/translate/src/native.ts')).href)) as TranslateNative;
@@ -291,6 +293,8 @@ export type HostOptions = {
   readonly kotlinLookup?: KotlinLookup;
   /** The node arguments run in place of packages/translate/src/cli/native.ts <target>; a test passes a fake host CLI. */
   readonly command?: readonly string[];
+  /** A missing toolchain throws instead of reading blocked (owner tooling); DRAGON_REQUIRE_NATIVE=1 by default. */
+  readonly requireNative?: boolean;
 };
 
 /** How the host CLI process ended: exit code, signal, start error and its stderr tail. */
@@ -305,7 +309,11 @@ export function hostEnd(e: HostEnd): string {
 /** Runs the target's generated engine on the host through its existing CLI; blocked (owner tooling) only when a tool lookup fails. */
 export async function runHostLane(t: TargetConfig, opts: HostOptions = {}): Promise<HostRun> {
   const native = await translateNative();
-  const blocked = (reason: string): HostRun => ({ state: 'blocked (owner tooling)', reason, toolchain: null, suites: unrun(t), digests: { p1: null, extended: null } });
+  const require = opts.requireNative ?? native.requireNative();
+  const blocked = (reason: string): HostRun => {
+    if (require) throw new Error(`${native.REQUIRE_NATIVE_ENV}=1 and ${t.hostCli} has no toolchain: ${reason}; run it where the toolchain is installed (CI) instead`);
+    return { state: 'blocked (owner tooling)', reason, toolchain: null, suites: unrun(t), digests: { p1: null, extended: null } };
+  };
   let env: NodeJS.ProcessEnv = process.env;
   if (t.hostCli === 'native:swift') {
     if (native.swiftTool() === null) return blocked('swiftc was not found');
