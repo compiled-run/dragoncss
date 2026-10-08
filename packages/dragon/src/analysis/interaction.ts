@@ -445,7 +445,10 @@ export function interactionCapRefusal(caseLabel: string, over: NonNullable<Inter
 }
 
 const all = (): boolean => true;
-const visibleOrHidden = (v: CssValue): boolean => v.kind === 'keyword' && (v.value === 'visible' || v.value === 'hidden');
+// OVFL: rt-hit clips hidden, auto, scroll and clip at the padding box. That is the hit at scroll offset 0, and native views do not
+// scroll until OVFL Phase B, which adds the offsets to the hit test.
+const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip', 'auto', 'scroll']);
+const overflowAtRest = (v: CssValue): boolean => v.kind === 'keyword' && OVERFLOW_AT_REST.has(v.value);
 
 /**
  * R13: the paint longhands Dragon's hit test (packages/layout/src/rt-hit.ts) models, each with the values it models. Box
@@ -464,8 +467,8 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['border-right-color', all],
   ['border-bottom-color', all],
   ['border-left-color', all],
-  ['overflow-x', visibleOrHidden],
-  ['overflow-y', visibleOrHidden],
+  ['overflow-x', overflowAtRest],
+  ['overflow-y', overflowAtRest],
   ['transform-origin', all],
   // SVG-a1: the svg family paints only an <svg>'s shapes, never a box; native refuses svg until SVG-a2, whose shape hit test
   // (pointer-events: visiblePainted) comes with it.

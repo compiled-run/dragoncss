@@ -25,32 +25,90 @@ const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.
 /** UAX #9: in an rtl paragraph only these keep logical order (strong L letters, space, U+200B not at the end). */
 const RTL_SAFE = /^[A-Za-z \u200b]*$/u;
 
-// css-overflow-3 §3.1 and §3.3: only overflow hidden on both axes is supported. A computed auto, scroll or clip (including auto
-// computed from visible beside hidden) and any overflow on html or body (which propagates to the viewport) are refused.
+// css-overflow-3 §3.1: clip beside visible on the other axis keeps both, and clips one axis only, which native views do not draw
+// yet (OVFL-c). Every other computed pair is supported, html and body included: the lowering resolves viewport propagation (§3.3).
 function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const axes: Longhand[] = ['overflow-x', 'overflow-y'];
   const values = axes.map((p) => el.props.get(p) as ResolvedValue);
-  const declared = values.find((v) => v.declaration !== null);
-  const tag = el.element.tag;
-  for (const [i, v] of values.entries()) {
-    const k = keywordOf(v);
-    const onRoot = (tag === 'html' || tag === 'body') && k !== 'visible';
-    const unsupportedValue = k === 'auto' || k === 'scroll' || k === 'clip';
-    if (!onRoot && !unsupportedValue) continue;
-    // A value the author wrote and no profile row supports is already DRAGON_UNSUPPORTED_VALUE from the profile check.
-    if (!onRoot && v.declared !== null && v.declared.kind === 'keyword' && v.declared.value === k) continue;
-    const source = v.declaration !== null ? v : declared;
-    if (source === undefined || source.declaration === null) continue;
-    const span = source.declaration.valueSpan;
-    const property = axes[i] as Longhand;
-    const message = onRoot
-      ? `${property}: ${k} on <${tag}> ${el.element.address} propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out`
-      : `${property} computes to ${k} on ${el.element.address} (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported`;
+  const keys = values.map(keywordOf);
+  const oneAxisClip = (keys[0] === 'clip') !== (keys[1] === 'clip') && (keys[0] === 'visible' || keys[1] === 'visible');
+  if (!oneAxisClip) return;
+  const i = keys[0] === 'clip' ? 0 : 1;
+  const v = values[i] as ResolvedValue;
+  const source = v.declaration !== null ? v : values.find((x) => x.declaration !== null);
+  if (source === undefined || source.declaration === null) return;
+  const span = source.declaration.valueSpan;
+  const property = axes[i] as Longhand;
+  const message = `${property}: clip beside ${axes[1 - i] as Longhand}: visible on ${el.element.address} clips one axis only, which needs OVFL-c (css-overflow-3 §3.1)`;
+  for (const t of targets) {
+    const id = `${t}|${span.source.uri}|${span.start}|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), target: t, message, manual: 'Use overflow: clip on both axes, or hidden.', basis: 'computed-value' }));
+  }
+}
+
+const isScrollKeyword = (k: string): boolean => k === 'hidden' || k === 'auto' || k === 'scroll';
+
+/**
+ * T078 R14: an axis whose used overflow is auto or scroll is a box the user scrolls, and the native outputs have no scroll views
+ * until OVFL-B, so it is refused on each native target (nativeScrollPending), at the axis's own declaration or, for a value
+ * computed from its partner (css-overflow-3 §3.1), at the partner's. The element the viewport takes its overflow from uses
+ * visible (§3.3) and is not refused. The parity lanes skip this check: they prove the layout at scroll offset 0.
+ */
+export function checkNativeScroll(root: ResolvedElement, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (nativeTargets.length === 0) return;
+  const propagated = propagatedFrom(root);
+  const axes: Longhand[] = ['overflow-x', 'overflow-y'];
+  const walk = (el: ResolvedElement): void => {
+    if (keywordOf(el.props.get('display') as ResolvedValue) === 'none') return;
+    if (el !== propagated) {
+      const values = axes.map((p) => el.props.get(p) as ResolvedValue);
+      for (const [i, v] of values.entries()) {
+        const k = keywordOf(v);
+        if (k !== 'auto' && k !== 'scroll') continue;
+        const partner = values[1 - i] as ResolvedValue;
+        const source = v.declaration !== null ? v : partner.declaration !== null ? partner : null;
+        const origin = source === null || source.declaration === null ? el.element.node.origin : authored(source.declaration.valueSpan);
+        const property = axes[i] as Longhand;
+        const how = v.declaration !== null ? `is ${k}` : `computes to ${k} beside ${axes[1 - i] as Longhand}: ${keywordOf(partner)} (css-overflow-3 §3.1)`;
+        for (const t of nativeTargets) {
+          const id = `${t}|ovfl-b|${property}|${JSON.stringify(origin)}`;
+          if (reported.has(id)) continue;
+          reported.add(id);
+          const message = `${property} ${how} on ${el.element.address}, a box the user scrolls; ${t} has no native scroll views until OVFL-B`;
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Use overflow: hidden or clip on both axes for native, or wait for OVFL-B.', basis: 'computed-value' }));
+        }
+      }
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c);
+  };
+  walk(root);
+}
+const hasPercentage = (v: ResolvedValue): boolean => v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
+
+/** css-overflow-3 §3.3: the element whose overflow the viewport takes (html when not visible, else body), which uses visible. */
+function propagatedFrom(root: ResolvedElement): ResolvedElement | null {
+  const visible = (el: ResolvedElement): boolean => keywordOf(el.props.get('overflow-x') as ResolvedValue) === 'visible' && keywordOf(el.props.get('overflow-y') as ResolvedValue) === 'visible';
+  if (!visible(root)) return root;
+  const body = root.children.find((c): c is ResolvedElement => c.kind === 'element' && c.element.tag === 'body');
+  return body !== undefined && !visible(body) ? body : null;
+}
+
+// OVFL-p: the engine's scrollable overflow (packages/layout/src/overflow.ts) does not decide a relative offset with a percentage
+// top or bottom inside a scroll container or on the root, so it is refused here, on every target as the other overflow refusals are.
+function checkPercentRelative(el: ResolvedElement, where: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (where === null || keywordOf(el.props.get('position') as ResolvedValue) !== 'relative') return;
+  for (const p of ['top', 'bottom'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (!hasPercentage(v)) continue;
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    const message = `position: relative with a percentage ${p} on ${el.element.address} ${where}: the scrollable overflow does not decide its basis yet (OVFL-p)`;
     for (const t of targets) {
-      const id = `${t}|${span.source.uri}|${span.start}|${el.element.address}`;
+      const id = `${t}|ovfl-p|${JSON.stringify(origin)}|${el.element.address}`;
       if (reported.has(id)) continue;
       reported.add(id);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), target: t, message, manual: 'Use overflow: hidden on both axes, on an element other than html and body.', basis: 'computed-value' }));
+      diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin, target: t, message, manual: `Use a length for ${p} here, or move the offset outside the scroll container.` }));
     }
   }
 }
@@ -428,7 +486,9 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
 }
 
 export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext): void {
-  const walk = (el: ResolvedElement, hidden: boolean): void => {
+  const propagated = propagatedFrom(root);
+  // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes only the SVG checks.
     if (isSvgShapeTag(el.element.tag)) {
       checkSvg(el, targets, diagnostics, reported);
@@ -437,6 +497,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
+    if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
@@ -446,9 +507,11 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkInlineLevel(el, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported);
     }
-    for (const c of el.children) if (c.kind === 'element') walk(c, here);
+    const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
+    const inner = el === root ? own : (own ?? scroller);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner);
   };
-  walk(root, false);
+  walk(root, false, 'viewport');
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
