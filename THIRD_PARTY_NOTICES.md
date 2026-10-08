@@ -27,9 +27,13 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/text_decoration_offset.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_border_painter.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/core/paint/contoured_border_geometry.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/paint/decoration_line_painter.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/text_decoration_info.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/paint/text_fragment_painter.cc`: Copyright 2017 The Chromium Authors
+- `third_party/blink/renderer/core/paint/text_painter.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/style/border_edge.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/script_run_iterator.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/font_features.cc`: Copyright 2021 The Chromium Authors
@@ -92,6 +96,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkPathRawShapes.cpp`: Copyright 2025 Google LLC.
 - `third_party/skia/src/core/SkRRect.cpp`: Copyright 2012 Google Inc.
 - `third_party/skia/src/core/SkScan_AAAPath.cpp`: Copyright 2016 The Android Open Source Project
+- `third_party/skia/src/core/SkScan_Antihair.cpp`: Copyright 2011 The Android Open Source Project
 - `third_party/skia/src/core/SkScan_AntiPath.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkStrikeSpec.cpp`: Copyright 2019 The Android Open Source Project
 - `third_party/skia/src/core/SkStroke.cpp`: Copyright 2008 The Android Open Source Project

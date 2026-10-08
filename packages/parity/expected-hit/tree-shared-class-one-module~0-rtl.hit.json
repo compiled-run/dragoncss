@@ -1,0 +1,20 @@
+{
+  "case": "tree-shared-class-one-module#0-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 276,
+  "gridSha256": "99aae6057ac0ba76fcb41c17b5d2b23631956f22853ca0af4886ee1dde27a657",
+  "ids": [
+    "badge/badge",
+    "badge/label",
+    "chip/chip",
+    "chip/label",
+    "html"
+  ],
+  "runs": [[0,26],[1,6],[0,5],[1,6],[0,5],[1,6],[0,7],[1,6],[0,5],[1,6],[0,5],[1,6],[0,40],[2,36],[3,6],[2,5],[3,6],[2,5],[3,6],[2,9],[3,6],[2,5],[3,6],[2,5],[3,6],[2,40],[4,6]]
+}

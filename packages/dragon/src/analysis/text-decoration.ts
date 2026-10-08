@@ -1,13 +1,14 @@
 // Text decorations (TDEC-a, notes/T148J-tdec.md): the a:any-link UA rule and the decorations each text leaf draws. Propagation is
 // written from css-text-decor-3 §2.1 (Blink's style_adjuster.cc and computed_style.cc are LGPL and are behaviour references only)
 // and checked against Chrome by the decoration capture: a decoration propagates to in-flow block children, inline boxes and flex
-// items, and never into out-of-flow boxes or atomic inlines.
+// items, and never into out-of-flow boxes; atomic inlines (which take none either) have no Chrome case yet and are refused.
 import type { CssValue } from '../css/values.ts';
 import type { DecorationLine } from '../css/properties/text-decoration.ts';
 import { DECORATION_LINES } from '../css/properties/text-decoration.ts';
 import type { Longhand } from '../css/properties.ts';
-import type { CompilerFaults } from '../faults.ts';
-import { NO_FAULTS } from '../faults.ts';
+/** The propagation plant: decorations reach absolutely positioned descendants too (css-text-decor-3 §2.1 says they do not). */
+export type DecorationAnalysisFaults = { readonly propagatedIntoOutOfFlow: boolean };
+export const NO_DECORATION_ANALYSIS_FAULTS: DecorationAnalysisFaults = { propagatedIntoOutOfFlow: false };
 import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
 import { usedColors } from '../lower/native-program.ts';
@@ -51,7 +52,7 @@ export type AppliedDecoration = {
 };
 
 /** How a child of a decorated element takes part in its formatting context, for propagation (css-text-decor-3 §2.1). */
-export type PropagationContext = 'block' | 'inline' | 'flex-item' | 'out-of-flow' | 'atomic-inline' | 'unproven';
+export type PropagationContext = 'block' | 'inline' | 'flex-item' | 'out-of-flow' | 'unproven';
 
 const keyword = (el: ResolvedElement, p: Longhand): string => valueToString((el.props.get(p) as ResolvedValue).value);
 
@@ -62,7 +63,8 @@ export function propagationContext(child: ResolvedElement, parent: ResolvedEleme
   if (position === 'fixed' || position === 'sticky') return 'unproven';
   const display = keyword(child, 'display');
   if (display === 'inline') return 'inline';
-  if (display === 'inline-flex' || display === 'inline-block' || display === 'inline-grid') return 'atomic-inline';
+  // An atomic inline takes no decoration (§2.1), but no Chrome case lays one out natively yet, so it is unproven.
+  if (display === 'inline-flex' || display === 'inline-block' || display === 'inline-grid') return 'unproven';
   if (keyword(parent, 'display') === 'flex' || keyword(parent, 'display') === 'inline-flex') return display === 'block' || display === 'flex' ? 'flex-item' : 'unproven';
   return display === 'block' || display === 'flex' ? 'block' : 'unproven';
 }
@@ -99,7 +101,7 @@ export type DecorationAnalysis = {
  * css-text-decor-3 §2.1: each text leaf's applied decorations. colorOf gives an element's used color (currentcolor of
  * text-decoration-color). The propagatedIntoOutOfFlow plant propagates into absolutely positioned boxes as well.
  */
-export function analyzeDecorations(root: ResolvedElement, colorOf: (el: ResolvedElement) => Rgba8 = (el) => usedColors(el).color, faults: CompilerFaults = NO_FAULTS): DecorationAnalysis {
+export function analyzeDecorations(root: ResolvedElement, colorOf: (el: ResolvedElement) => Rgba8 = (el) => usedColors(el).color, faults: DecorationAnalysisFaults = NO_DECORATION_ANALYSIS_FAULTS): DecorationAnalysis {
   const applied = new Map<string, readonly AppliedDecoration[]>();
   const unproven: { address: string; box: string }[] = [];
   const walk = (el: ResolvedElement, inherited: readonly AppliedDecoration[]): void => {
@@ -122,7 +124,7 @@ export function analyzeDecorations(root: ResolvedElement, colorOf: (el: Resolved
 }
 
 /** The decorations of a compiled case (null when it did not resolve), for the decoration capture. */
-export function appliedDecorationsOf(compiled: object, assignment: Assignment, faults: CompilerFaults = NO_FAULTS): DecorationAnalysis | null {
+export function appliedDecorationsOf(compiled: object, assignment: Assignment, faults: DecorationAnalysisFaults = NO_DECORATION_ANALYSIS_FAULTS): DecorationAnalysis | null {
   const record = internalRecord(compiled);
   const c = record === undefined ? undefined : caseByAssignment(record, assignment);
   return c === undefined || c.resolved === null ? null : analyzeDecorations(c.resolved, undefined, faults);
