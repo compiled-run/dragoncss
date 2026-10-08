@@ -110,11 +110,11 @@ import {
 } from './merge-train-lib.ts';
 import { SETUP_GIT_CONFIG } from './floor-merge.ts';
 import { reviewerIds } from './land-review-lookup.ts';
-import { checkLockFree, lockHolder, releaseLock, takeLock, checkNotReviewer, missingProof, parseIds, parseSelf, parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
+import { OUTAGE_CONTEXT, type OutageMark, parseOutageEject, readOutageStreak, writeOutage, checkLockFree, lockHolder, releaseLock, takeLock, checkNotReviewer, missingProof, parseIds, parseSelf, parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
 import { matcher, STEPS } from './regen.ts';
 import { abandonInflight, CiUnavailable, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, staleScratchBranches, failedTestsOf, fullTestWorkflow, parseRunRows, runDevicesOnCi, runOnCi, scratchRef, testBranch } from './land-devices-ci.ts';
-import { checksBranch, checksWorkflow, type ChecksResult, type CheckRun, parseChecksResult, runIdOf, type TreeCheck, awaitOnCi } from './land-devices-ci.ts';
+import { PatchRefused, checksBranch, checksWorkflow, type ChecksResult, type CheckRun, parseChecksResult, runIdOf, type TreeCheck, awaitOnCi } from './land-devices-ci.ts';
 import { applyRegenPatch, awaitRegenOnCi, DEFAULT_QUEUE_WAIT_S, DEFAULT_REGEN_WAIT_S, type Dispatched, dispatchOnCi, landRegen, regenBranch, regenWorkflow } from './land-devices-ci.ts';
 
 const HEAVY = '/tmp/heavy-lease.sh';
@@ -738,6 +738,12 @@ const admit = (e: Entry, earlier: readonly Entry[]): { merged: string } | { tick
   if (pr.state !== 'OPEN') throw new LandFailure('check', `PR #${e.pr} is ${pr.state}`);
   if (pr.head !== e.branch) throw new LandFailure('check', `PR #${e.pr} is from ${pr.head}, not ${e.branch}`);
   if (pr.cross) throw new LandFailure('check', `PR #${e.pr} comes from a fork`);
+  // A PR whose own CI runs ended without a verdict LAND_OUTAGE_EJECT times in a row is ejected, so it cannot stall the queue.
+  if (CI_ONLY) {
+    const streak = readOutageStreak(gh, REPO, pr.headOid, PROOF_WRITERS);
+    if (streak.count >= OUTAGE_EJECT) throw new LandFailure('ci-outage', `the builds of #${e.pr}'s position at ${pr.headOid} ended without a verdict ${streak.count} times in a row (LAND_OUTAGE_EJECT is ${OUTAGE_EJECT}): a CI outage, or a run killed or past its limit while building it:\n  ${streak.runs.join('\n  ')}\nEjected so the queue goes on. If CI was at fault, push a new head (it starts a new count) and queue it again.`);
+    if (streak.count > 0) log(`  #${e.pr}: ${streak.count} build(s) of its position ended without a verdict so far (ejected at ${OUTAGE_EJECT})`);
+  }
   net(git, ['fetch', '--quiet', 'origin', `+refs/heads/${e.branch}:refs/remotes/origin/${e.branch}`]);
   let clean: string;
   try {
@@ -813,7 +819,31 @@ const claudeReview = (e: Entry, clean: string, head: string, master: string, ste
 };
 
 // Builds position k on `prev`: merge, regen, typecheck, device evidence against `prev`, regen, commit, regen-only and floors.
-const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => {
+// ---- outages at a PR's own CI runs (land-state.ts, LAND_OUTAGE_EJECT) -----------------------------------------------------
+let OUTAGE_EJECT = 2;
+const putOutage = (sha: string, mark: OutageMark, description: string): void => {
+  try {
+    writeOutage(gh, REPO, sha, mark, description, RUN_URL);
+  } catch (error) {
+    log(`  !!! could not record ${OUTAGE_CONTEXT} (${mark}) on ${sha}: ${errorText(error).split('\n')[0]}`);
+  }
+};
+// Under ci-only, a position's build is recorded on the PR's head: building, then a verdict or a CI outage.
+const tracked = <R>(e: Entry, t: Ticket, fn: () => R): R => {
+  if (!CI_ONLY) return fn();
+  putOutage(t.prHead, 'building', `building #${e.pr}'s position${RUN_URL === null ? ` on ${hostname()}` : ''}`);
+  try {
+    const r = fn();
+    putOutage(t.prHead, 'verdict', 'built');
+    return r;
+  } catch (error) {
+    if (error instanceof CiOutage) putOutage(t.prHead, 'outage', `CI outage: ${msg(error)}`);
+    else if (error instanceof LandFailure) putOutage(t.prHead, 'verdict', `failed at ${error.step}`);
+    throw error;
+  }
+};
+const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => tracked(e, t, () => buildPositionHere(prev, e, t, k));
+const buildPositionHere = (prev: string, e: Entry, t: Ticket, k: number): Built => {
   current = e;
   holdPriority();
   log(`=== #${e.pr} ${e.branch}: position ${k} on ${prev}`);
@@ -862,16 +892,24 @@ const treeChecks = (prev: string, checks: TreeCheck[], devicesRun: number | null
   try {
     // The run completed but its step wrote no results: the tree's commands ended it, so it is the PR's failure.
     if (!lstatSync(join(r.outcomesDir, 'result.json'), { throwIfNoEntry: false })) throw new LandFailure('checks', `the tree checks ${r.url} completed with no result.json: the tree's commands ended the step before it wrote its results`);
+    // The run completed and its tree step finished: every byte of the artifact is the tree's doing (a process it left behind can
+    // rewrite it), so results that do not read, or a patch that is refused, fail the PR. Only the driver's own precondition
+    // (its worktree is the tree it sent) stays CI trouble.
     let result: ChecksResult;
     try {
       // An artifact is a run's files: read without following a link (a tree's run could have uploaded one).
       result = parseChecksResult(readInTree(r.outcomesDir, 'result.json'), { sha, checks, devicesRun });
-      if (result.install.status === 0 && result.merge !== null && (result.merge.status === 0 || result.merge.status === 1)) {
+    } catch (error) {
+      throw new LandFailure('checks', `the results of the tree checks ${r.url} do not read: ${msg(error)}`);
+    }
+    if (result.install.status === 0 && result.merge !== null && (result.merge.status === 0 || result.merge.status === 1)) {
+      try {
         const bytes = applyRegenPatch((args) => text(wtGit, args), sha, join(r.outcomesDir, 'outputs.patch'));
         log(`  tree checks: applied the ${bytes}-byte patch of the merged device records`);
+      } catch (error) {
+        if (error instanceof PatchRefused) throw new LandFailure('checks', `the merged device records of the tree checks ${r.url} are refused: ${error.message}`);
+        throw new CiOutage(`LAND_TRUSTED: the patch of the tree checks ${r.url} could not be applied (${msg(error)}). The driver stops; no PR is blamed`);
       }
-    } catch (error) {
-      throw new CiOutage(`LAND_TRUSTED: the results of the tree checks ${r.url} do not read (${msg(error)}). The driver stops; no PR is blamed`);
     }
     if (result.install.status !== 0) throw new LandFailure('install', `pnpm install --frozen-lockfile exited ${result.install.status} (${r.url})\n${checkTail(result.install)}`);
     log(`  tree checks: ${(['merge', ...checks] as const).flatMap((k) => (result[k] ? [`${k} ${result[k]!.status}`] : [])).join(', ')} (${r.url})`);
@@ -1121,7 +1159,8 @@ const abandonPrepared = (h: PreparedPosition): void => {
 
 // Position k on the actual position below it, from its preparation: the one-by-one build's merge, then the prepared tree, whose
 // sources must be the merge's (else it is built one by one here), then the device step and the checks (finishPosition).
-const assemblePosition = (prev: string, it: { entry: Entry; ticket: Ticket }, k: number, h: PreparedPosition): Built => {
+const assemblePosition = (prev: string, it: { entry: Entry; ticket: Ticket }, k: number, h: PreparedPosition): Built => tracked(it.entry, it.ticket, () => assemblePositionHere(prev, it, k, h));
+const assemblePositionHere = (prev: string, it: { entry: Entry; ticket: Ticket }, k: number, h: PreparedPosition): Built => {
   const { entry: e, ticket: t } = it;
   current = e;
   holdPriority();
@@ -1539,6 +1578,7 @@ const setUp = (): void => {
   if (TRUSTED && !CI_ONLY) throw new Error('land: LAND_TRUSTED=1 needs LAND_CI=only: nothing of a tree may run in this job');
   // Past land-checks.yml's own 150-minute job limit, so a run within its limits is never cut short.
   CHECKS_WAIT_S = seconds('LAND_CHECKS_WAIT', 150 * 60 + 900);
+  OUTAGE_EJECT = parseOutageEject(env['LAND_OUTAGE_EJECT']);
   DEVICES_WAIT_S = seconds('LAND_DEVICES_WAIT', DEFAULT_DEVICES_WAIT_S);
   TEST_WAIT_S = seconds('LAND_TEST_WAIT', DEFAULT_TEST_WAIT_S);
   REGEN_WAIT_S = seconds('LAND_REGEN_WAIT', DEFAULT_REGEN_WAIT_S);
@@ -1969,7 +2009,8 @@ const takeGlobalLock = (): string => {
 const checkGlobalLock = (): void => {
   MAIN = dirname(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
   checkLockFree({
-    git: (args) => gitAt(MAIN)(args).toString('utf8').trim(),
+    // The network reads are retried on a transient error, as every other git network call of the driver is.
+    git: (args) => withRetry(`git ${args[0]}`, () => gitAt(MAIN)(args).toString('utf8').trim(), sleep, log),
     runCompleted: (repo, run) => JSON.parse(execFileSync('gh', ['api', `repos/${repo}/actions/runs/${run}`], { encoding: 'utf8', env: ghEnv() })).status === 'completed',
     log,
   });

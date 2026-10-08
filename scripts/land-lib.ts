@@ -68,7 +68,9 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   lands; the rest goes to LAND_HANDOFF for the next run), LAND_LOG_DIR (the status, logs, reviews and run directory, instead of /tmp),
   LAND_QUEUE_EMPTY_OK=1 (an empty queue is nothing to land). Reviewers are matched by user id (LAND_REVIEWER_IDS, or LAND_REVIEWERS
   ids or logins), and the token's own identity (GET user, or LAND_TOKEN_USER_ID for an App token) may not be one. Every run reads and
-  writes master's land/proof commit status, trusting only statuses by that identity or LAND_PROOF_WRITERS ids.`;
+  writes master's land/proof commit status, trusting only statuses by that identity or LAND_PROOF_WRITERS ids. Under LAND_CI=only
+  each position build is marked on the PR's head (land/outage), and a PR whose builds ended without a verdict LAND_OUTAGE_EJECT
+  times in a row (default 2) is ejected at admission.`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;
@@ -489,7 +491,8 @@ export const symlinkEntries = (lsOutput: string): string[] =>
     return m ? [m[1]!] : [];
   });
 /** A git patch that creates or keeps a symlink (mode 120000). A regen's outputs are never symlinks. */
-export const patchHasSymlink = (patch: string): boolean => /^(?:new file mode|new mode|old mode|deleted file mode) 120000$|^index [0-9a-f]+\.\.[0-9a-f]+ 120000$/m.test(patch);
+// Line ends are normalised first: git apply takes a CRLF patch, so a "mode 120000\r" line must not slip past.
+export const patchHasSymlink = (patch: string): boolean => /^(?:new file mode|new mode|old mode|deleted file mode)[ \t]+120000[ \t]*$|^index [0-9a-f]+\.\.[0-9a-f]+[ \t]+120000[ \t]*$/m.test(patch.replace(/\r/g, ''));
 
 /** The marker line of a precomputed review comment (land-review-lookup.ts reads it, pnpm land:post-review writes it). */
 export const REVIEW_MARKER = '<!-- dragon-land-review v1 -->';

@@ -361,3 +361,43 @@ export const dispatchLand = (queue: string, d: DispatchDeps): number => {
     d.log(`land.yml run ${id} was cancelled before it started (another dispatch replaced it); dispatching again`);
   }
 };
+
+// ---- outages at a PR's own CI runs (LAND_OUTAGE_EJECT) ---------------------------------------------------------------------
+// A tree can end its own CI runs without a verdict (kill the runner, run each step just under its timeout until the job's limit),
+// which stops the driver as a CI outage, blaming no PR, at that PR every time. So each build of a PR's position is recorded on
+// the PR's head as the commit status land/outage: pending while it builds, error when it ended in a CI outage, success when it
+// came to a verdict (built, or failed). A run killed mid-build leaves its pending. At admission, N of those in a row with no
+// success between (LAND_OUTAGE_EJECT, default 2) eject the PR, naming the runs.
+export const OUTAGE_CONTEXT = 'land/outage';
+export type OutageMark = 'building' | 'outage' | 'verdict';
+const OUTAGE_STATE: Record<OutageMark, 'pending' | 'error' | 'success'> = { building: 'pending', outage: 'error', verdict: 'success' };
+export const parseOutageEject = (v: string | undefined): number => {
+  if (v === undefined || v === '') return 2;
+  if (!/^[1-9]\d{0,2}$/.test(v)) throw new Error(`land: LAND_OUTAGE_EJECT must be a positive number of outages, not ${JSON.stringify(v)}`);
+  return Number(v);
+};
+/** The trusted land/outage statuses of one commit (GET commits/<sha>/statuses pages, flattened), newest first, since the last verdict. */
+export const outageStreak = (statuses: unknown, sha: string, trusted: ReadonlySet<number>): { count: number; runs: string[] } => {
+  if (!Array.isArray(statuses)) throw new Error(`land-state: the statuses of ${sha} are not a list`);
+  const ours = statuses.flatMap((s) => {
+    if (!isObject(s) || typeof s.context !== 'string') throw new Error(`land-state: a status of ${sha} has no context`);
+    if (s.context !== OUTAGE_CONTEXT || !isObject(s.creator) || !Number.isSafeInteger(s.creator.id) || !trusted.has(s.creator.id as number)) return [];
+    if (typeof s.created_at !== 'string' || typeof s.id !== 'number' || typeof s.state !== 'string') throw new Error(`land-state: a ${OUTAGE_CONTEXT} status of ${sha} has no created_at, id or state`);
+    return [{ key: `${s.created_at} ${String(s.id).padStart(16, '0')}`, state: s.state, url: typeof s.target_url === 'string' ? s.target_url : '', description: typeof s.description === 'string' ? s.description : '' }];
+  });
+  ours.sort((a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0));
+  const streak = [];
+  for (const s of ours) {
+    if (s.state === 'success') break;
+    streak.push(s);
+  }
+  return { count: streak.length, runs: streak.map((s) => `${s.url || 'a run with no URL'} (${s.state === 'pending' ? 'ended mid-build' : s.description})`) };
+};
+export const readOutageStreak = (gh: Gh, repo: string, sha: string, trusted: ReadonlySet<number>): { count: number; runs: string[] } => {
+  if (!SHA.test(sha)) throw new Error(`land-state: ${JSON.stringify(sha)} is not a full sha`);
+  return outageStreak((JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${checkRepo(repo)}/commits/${sha}/statuses?per_page=100`])) as unknown[]).flat(), sha, trusted);
+};
+export const writeOutage = (gh: Gh, repo: string, sha: string, mark: OutageMark, description: string, targetUrl: string | null): void => {
+  if (!SHA.test(sha)) throw new Error(`land-state: ${JSON.stringify(sha)} is not a full sha`);
+  gh(['api', '-X', 'POST', `repos/${checkRepo(repo)}/statuses/${sha}`, '-f', `state=${OUTAGE_STATE[mark]}`, '-f', `context=${OUTAGE_CONTEXT}`, '-f', `description=${description.replace(/\s+/g, ' ').slice(0, 139)}`, ...(targetUrl === null ? [] : ['-f', `target_url=${targetUrl}`])]);
+};

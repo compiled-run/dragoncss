@@ -9,6 +9,9 @@ import { SETUP_GIT_CONFIG } from '../../../scripts/floor-merge.ts';
 import { patchHasSymlink, readInTree, removeInTree, symlinkEntries, treeCodeRefusal, trustedGitConfig, writeInTree } from '../../../scripts/land-lib.ts';
 import { applyRegenPatch, VERDICT_STEP, checksBranch, checksFiles, checksTitle, checksWorkflow, parseChecksResult, runIdOf, scratchRef, staleScratchBranches, titleOf } from '../../../scripts/land-devices-ci.ts';
 import {
+  outageStreak,
+  parseOutageEject,
+  writeOutage,
   checkLockFree,
   dispatchLand,
   type DispatchDeps,
@@ -160,6 +163,11 @@ describe('land.yml: the job that holds LAND_TOKEN runs no tree code', () => {
     for (const [name, limit] of [['install', '30m'], ['merge', '15m'], ['typecheck', '40m'], ['stamp', '20m'], ['lanes', '20m']]) expect(checks).toMatch(new RegExp(`record ${name} ${limit} `));
     expect(checks).toMatch(/timeout-minutes: 150/);
     expect(checks).toMatch(/- name: Upload the results\n {8}if: always\(\)/);
+    // Strays the tree's commands left are killed before the results are put together, and the records patch made after that.
+    const land = runOf(stepsOf(jobsOf(checks).get('checks')!).find((st) => st.includes('- name: Land checks'))!)!;
+    expect(land.indexOf('\nkill_strays\n')).toBeGreaterThan(land.lastIndexOf('record lanes'));
+    expect(land.indexOf('\nkill_strays\n')).toBeLessThan(land.indexOf('git diff --cached --binary HEAD'));
+    expect(land.indexOf('\nkill_strays\n')).toBeLessThan(land.indexOf('jq -s add'));
     // The record lines are the only places the tree's commands run.
     const body = runOf(stepsOf(jobsOf(checks).get('checks')!).find((st) => st.includes('- name: Land checks'))!)!;
     expect(body.split('\n').filter((l) => /\b(pnpm|node) /.test(l) && !/^\s*(record |typecheck\)|stamp\)|lanes\))/.test(l))).toEqual([]);
@@ -527,6 +535,9 @@ describe('a tree\'s symlink never redirects a write of the driver', () => {
     expect(patchHasSymlink('diff --git a/x b/x\nold mode 100644\nnew mode 120000\n')).toBe(true);
     expect(patchHasSymlink('diff --git a/x b/x\nindex 1111111..2222222 120000\n')).toBe(true);
     expect(patchHasSymlink('diff --git a/x b/x\nindex 1111111..2222222 100644\n+120000\n')).toBe(false);
+    // git apply takes a CRLF patch, so its line ends must not hide the mode.
+    expect(patchHasSymlink('diff --git a/x b/x\r\nnew file mode 120000\r\nindex 0000000..1111111\r\n')).toBe(true);
+    expect(patchHasSymlink('diff --git a/x b/x\r\nindex 1111111..2222222 120000\r\n')).toBe(true);
     // On a scratch repository: the patch is refused before git apply, and the trusted file is untouched.
     const { dir, trustedFile } = setup();
     const repo = join(dir, 'repo');
@@ -550,5 +561,53 @@ describe('a tree\'s symlink never redirects a write of the driver', () => {
     expect(lstatSync(join(repo, 'packages/parity/out/lanes.json')).isSymbolicLink()).toBe(false);
     expect(readFileSync(trustedFile, 'utf8')).toBe('{"scripts":{}}\n');
     chmodSync(trustedFile, 0o444);
+  });
+});
+
+describe('a PR whose own CI runs keep ending without a verdict is ejected (LAND_OUTAGE_EJECT)', () => {
+  const ME = 900;
+  const trusted = new Set([ME]);
+  const sha = 'c'.repeat(40);
+  let n = 0;
+  const st = (state: string, at: string, o: { creator?: number | null; url?: string; description?: string; context?: string } = {}) => ({
+    id: ++n,
+    context: o.context ?? 'land/outage',
+    state,
+    created_at: at,
+    target_url: o.url ?? `https://github.com/o/r/actions/runs/${n}`,
+    description: o.description ?? state,
+    creator: o.creator === null ? null : { id: o.creator ?? ME },
+  });
+  it('counts the builds since the last verdict: an outage, or a build a killed run left pending', () => {
+    expect(outageStreak([], sha, trusted)).toEqual({ count: 0, runs: [] });
+    const two = [st('error', '2026-10-08T03:00:00Z', { description: 'CI outage: runners down', url: 'https://r/3' }), st('pending', '2026-10-08T02:00:00Z', { url: 'https://r/2' }), st('success', '2026-10-08T01:00:00Z'), st('error', '2026-10-08T00:00:00Z')];
+    expect(outageStreak(two, sha, trusted)).toEqual({ count: 2, runs: ['https://r/3 (CI outage: runners down)', 'https://r/2 (ended mid-build)'] });
+    // A verdict since resets it; another context, another creator or none is not counted.
+    expect(outageStreak([st('success', '2026-10-08T04:00:00Z'), ...two], sha, trusted).count).toBe(0);
+    expect(outageStreak([st('error', '2026-10-08T05:00:00Z', { creator: 666 }), st('error', '2026-10-08T05:00:00Z', { creator: null }), st('error', '2026-10-08T05:00:00Z', { context: 'ci' }), st('success', '2026-10-08T04:00:00Z')], sha, trusted).count).toBe(0);
+    expect(() => outageStreak({}, sha, trusted)).toThrow(/not a list/);
+    expect(parseOutageEject(undefined)).toBe(2);
+    expect(parseOutageEject('3')).toBe(3);
+    expect(() => parseOutageEject('0')).toThrow(/LAND_OUTAGE_EJECT/);
+  });
+  it('writes the mark on the PR head as a commit status', () => {
+    const calls: string[][] = [];
+    writeOutage((a) => (calls.push(a), '{}'), 'o/r', sha, 'outage', `CI outage: ${'x'.repeat(300)}`, 'https://run');
+    writeOutage((a) => (calls.push(a), '{}'), 'o/r', sha, 'building', 'building', null);
+    expect(calls[0]!.slice(0, 8)).toEqual(['api', '-X', 'POST', `repos/o/r/statuses/${sha}`, '-f', 'state=error', '-f', 'context=land/outage']);
+    expect(calls[0]!.find((x) => x.startsWith('description='))!.length).toBe('description='.length + 139);
+    expect(calls[1]).toContain('state=pending');
+    expect(calls[1]).not.toContain('-f target_url');
+    expect(() => writeOutage(() => '', 'o/r', 'HEAD', 'verdict', 'x', null)).toThrow(/not a full sha/);
+  });
+  it('is wired into the driver: each position build is marked, and admission ejects at the limit', () => {
+    const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
+    expect(src).toContain('const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => tracked(e, t, () => buildPositionHere(prev, e, t, k));');
+    expect(src).toContain('=> tracked(it.entry, it.ticket, () => assemblePositionHere(prev, it, k, h));');
+    expect(src).toMatch(/if \(error instanceof CiOutage\) putOutage\(t\.prHead, 'outage'/);
+    expect(src).toMatch(/if \(streak\.count >= OUTAGE_EJECT\) throw new LandFailure\('ci-outage'/);
+    // A completed run's unreadable results or refused patch are the PR's, not an outage.
+    expect(src).toMatch(/throw new LandFailure\('checks', `the results of the tree checks \$\{r\.url\} do not read/);
+    expect(src).toMatch(/if \(error instanceof PatchRefused\) throw new LandFailure\('checks'/);
   });
 });

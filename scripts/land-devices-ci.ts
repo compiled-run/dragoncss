@@ -144,6 +144,19 @@ export function failedJobs(jobs: readonly CiJob[]): { verdict: string[]; setup: 
   return { verdict, setup };
 }
 
+const errorLine = (e: unknown): string => {
+  const o = e as { stderr?: unknown; message?: unknown } | null;
+  return `${typeof o?.stderr === 'string' && o.stderr.trim() !== '' ? o.stderr : e instanceof Error ? e.message : String(e)}`.trim().split('\n')[0]!.slice(0, 300);
+};
+/** gh run download's answer when the run has no artifact of that name (as opposed to a network error). */
+export const artifactMissing = (e: unknown): boolean => /no valid artifacts found|no artifact matches|artifact .* not found/i.test(`${(e as { stderr?: unknown } | null)?.stderr ?? ''} ${e instanceof Error ? e.message : String(e)}`);
+
+/**
+ * A patch that is the tree's doing and is refused (a symlink, not a regular file, missing, or one git cannot apply to the tree it
+ * was made from): after a completed run that passed, this is the PR's failure, not CI's.
+ */
+export class PatchRefused extends Error {}
+
 /** A workflow the driver runs for one commit: dispatched on master with the commit, found by its run-name, waited for. */
 export type CiWorkflow = {
   readonly workflow: string;
@@ -309,9 +322,22 @@ export function awaitOnCi(w: CiWorkflow, d: Dispatched, o: CiOptions): DevicesCi
       deps.log(`  ${w.what} on CI: passed, ${run.url} in ${Math.round((deps.now() - t0) / 1000)}s`);
       return { sha, url: run.url, outcomesDir: '' };
     }
-    const got = deps.download(run.databaseId, w.artifact);
+    // The run completed and passed, and every byte of its artifact comes from a runner where the tree's code ran: an artifact
+    // that is missing or is not the workflow's shape is the tree's doing, so it fails the PR (a network error stays CI trouble).
+    let got: { readonly dir: string; readonly files: readonly string[] };
+    try {
+      got = deps.download(run.databaseId, w.artifact);
+    } catch (e) {
+      if (artifactMissing(e)) throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} passed but left no ${w.artifact} artifact: ${errorLine(e)}`);
+      throw e;
+    }
     outcomesDir = got.dir;
-    const files = w.check(got.files) as readonly string[];
+    let files: readonly string[];
+    try {
+      files = w.check(got.files) as readonly string[];
+    } catch (e) {
+      throw new LandFailure(w.step, `the CI ${w.what} run ${run.url} passed but its ${w.artifact} artifact is not the workflow's: ${errorLine(e)}`);
+    }
     deps.log(`  ${w.what} on CI: ${files.length} files of ${run.url} in ${Math.round((deps.now() - t0) / 1000)}s`);
     outcomesDir = null;
     return { sha, url: run.url, outcomesDir: got.dir };
@@ -397,17 +423,24 @@ export type { CiMode };
  */
 export function applyRegenPatch(git: (args: string[]) => string, base: string, patch: string): number {
   const st = lstatSync(patch, { throwIfNoEntry: false });
-  if (st === undefined) throw new Error(`${patch} is missing`);
+  if (st === undefined) throw new PatchRefused(`${patch} is missing`);
   // An artifact's file, read without following a link a run could have uploaded.
-  if (!st.isFile()) throw new Error(`${patch} is not a regular file`);
+  if (!st.isFile()) throw new PatchRefused(`${patch} is not a regular file`);
+  // The driver's own precondition (its worktree is the tree the run was given), so a mismatch is never the PR's.
   git(['add', '-A']);
   const tree = git(['write-tree']).trim();
   const want = git(['rev-parse', `${base}^{tree}`]).trim();
   if (tree !== want) throw new Error(`the worktree's tree ${tree} is not the tree ${want} of ${base}, which the CI regen ran on`);
-  const bytes = statSync(patch).size;
+  const bytes = st.size;
   // A symlink a patch plants would redirect the driver's later writes into the tree (to the trusted checkout, say).
-  if (bytes > 0 && patchHasSymlink(readFileSync(patch, 'latin1'))) throw new Error(`${patch} creates or keeps a symlink (mode 120000); a regen's outputs never are, so it is refused`);
-  if (bytes > 0) git(['apply', '--binary', '--index', patch]);
+  if (bytes > 0 && patchHasSymlink(readFileSync(patch, 'latin1'))) throw new PatchRefused(`${patch} creates or keeps a symlink (mode 120000); a regen's outputs never are, so it is refused`);
+  if (bytes > 0) {
+    try {
+      git(['apply', '--binary', '--index', patch]);
+    } catch (e) {
+      throw new PatchRefused(`git apply of ${patch} to the tree it was made from failed: ${errorLine(e)}`);
+    }
+  }
   return bytes;
 }
 
@@ -422,6 +455,8 @@ export function awaitRegenOnCi(step: string, d: Dispatched, o: CiOptions & { rea
     try {
       bytes = o.apply(join(r.outcomesDir, PATCH_FILE));
     } catch (e) {
+      // The run passed: a patch it made that is refused is the tree's (PatchRefused); the driver's own trouble is CI's.
+      if (e instanceof PatchRefused) throw new LandFailure(step, `the patch of the CI regen ${r.url} is refused: ${e.message}`);
       throw new CiUnavailable(`the patch of the CI regen ${r.url} could not be applied: ${e instanceof Error ? e.message : String(e)}`);
     }
     o.deps.log(bytes === 0 ? `  regen on CI: ${d.sha} is at its fixed point; nothing to apply (${r.url})` : `  regen on CI: applied the ${bytes}-byte outputs.patch of ${r.url}`);

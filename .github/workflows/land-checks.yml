@@ -6,8 +6,9 @@
 # Each tree command runs under `timeout`, so a hang is that command's recorded failure (exit 124), not a run that never ends:
 # install 30 min, the device merge 15 min, typecheck 40 min, evidence stamp 20 min, parity:lanes 20 min (each several times its
 # usual run; a SIGKILL follows 60 s after the SIGTERM). The job's 150 min covers all of them with setup. A failed "Land checks"
-# step, or a completed run with no result.json, is the tree's failure (the driver blames the PR); only setup steps and the
-# runner are CI trouble.
+# step, or a completed run whose artifact is missing, malformed or refused, is the tree's failure (the driver blames the PR);
+# only setup steps and the runner are CI trouble. Before the results are put together, every process the tree's commands left
+# behind is killed, so none rewrites them.
 name: land-checks
 run-name: ${{ format('land checks of {0}', inputs.sha) }}
 on:
@@ -99,19 +100,29 @@ jobs:
             echo "$name: exit $status"
             return "$status"
           }
+          # Whatever the tree's commands left running (a daemon escapes timeout) is killed before the results are put together,
+          # so nothing rewrites them: every process of this user but this shell's ancestors and the runner's own.
+          kill_strays() {
+            local keep=" $$ " p=$$ pid _
+            while [ "$p" -gt 1 ]; do p=$(ps -o ppid= -p "$p" | tr -d ' '); keep="$keep$p "; done
+            for _ in 1 2 3; do
+              for pid in $(ps -u "$(id -u)" -o pid=); do
+                case "$keep" in *" $pid "*) continue ;; esac
+                case "$(ps -o args= -p "$pid" 2>/dev/null)" in *Runner.Listener*|*Runner.Worker*|*runsvc.sh*|*/run.sh*|*run-helper*) continue ;; esac
+                kill -KILL "$pid" 2>/dev/null
+              done
+              sleep 1
+            done
+          }
           jq -n --arg sha "$SHA" '{sha: $sha}' > "$parts/sha.json"
           : > "$out/outputs.patch"
           ok=1
+          merged=0
           record install 30m pnpm install --frozen-lockfile || ok=0
           if [ "$ok" = 1 ] && [ -n "$DEVICES_RUN" ]; then
             record merge 15m node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts merge "$RUNNER_TEMP/outcomes"
             st=$?
-            if [ "$st" = 0 ] || [ "$st" = 1 ]; then
-              git add -A packages/parity/out
-              git diff --cached --binary HEAD -- packages/parity/out > "$out/outputs.patch"
-            else
-              ok=0
-            fi
+            if [ "$st" = 0 ] || [ "$st" = 1 ]; then merged=1; else ok=0; fi
           fi
           if [ "$ok" = 1 ]; then
             for c in ${CHECKS//,/ }; do
@@ -121,6 +132,11 @@ jobs:
                 lanes) record lanes 20m pnpm -s run parity:lanes ;;
               esac
             done
+          fi
+          kill_strays
+          if [ "$merged" = 1 ]; then
+            git add -A packages/parity/out
+            git diff --cached --binary HEAD -- packages/parity/out > "$out/outputs.patch"
           fi
           jq -s add "$parts"/*.json > "$out/result.json"
           echo "result.json: $(jq -c 'with_entries(if .key == "sha" then . else .value |= .status end)' "$out/result.json")"

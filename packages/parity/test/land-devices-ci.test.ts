@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { LandFailure } from '../../../scripts/land-lib.ts';
 import { repoPath } from '../src/paths.ts';
-import { abandonInflight, awaitRegenOnCi, CiUnavailable, DEFAULT_QUEUE_WAIT_S, DEFAULT_REGEN_WAIT_S, dispatchOnCi, PATCH_ARTIFACT, patchFiles, regenBranch, regenTitle, regenWorkflow, titleOf, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, failedJobs, failedTestsOf, parseJobs, staleScratchBranches, fullTestWorkflow, runOnCi, testBranch, type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, scratchRef, tempBranch } from '../../../scripts/land-devices-ci.ts';
+import { artifactMissing, PatchRefused, abandonInflight, awaitRegenOnCi, CiUnavailable, DEFAULT_QUEUE_WAIT_S, DEFAULT_REGEN_WAIT_S, dispatchOnCi, PATCH_ARTIFACT, patchFiles, regenBranch, regenTitle, regenWorkflow, titleOf, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, failedJobs, failedTestsOf, parseJobs, staleScratchBranches, fullTestWorkflow, runOnCi, testBranch, type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, scratchRef, tempBranch } from '../../../scripts/land-devices-ci.ts';
 
 const SHA = 'a'.repeat(40);
 const T0 = Date.parse('2026-10-04T12:00:00Z');
@@ -265,7 +265,7 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     expect(failure(() => runDevicesOnCi({ pr: 42, deps: early.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 }))).toMatchObject({ step: 'devices', message: expect.stringContaining('has failed jobs (chrome (1) (vitest run (every other file, shard 1/3)))') });
     expect(early.calls).toContain('run cancel');
   });
-  it('everything that judged nothing is CiUnavailable: a wait past its limit with no failed job, a cancelled run, a refused push, gh outages and malformed answers, a bad artifact', () => {
+  it('everything that judged nothing is CiUnavailable: a wait past its limit with no failed job, a cancelled run, a refused push, gh outages and malformed answers, a failed download', () => {
     const slow = fake({ doneAfter: 1e9 });
     expect(unavailable(() => runDevicesOnCi({ pr: 42, deps: slow.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 })).message).toContain('did not finish within 1200s, and no job of it failed');
     expect(slow.calls.slice(-3)).toEqual(['run cancel', 'record null', `delete ${tempBranch(42)}`]);
@@ -274,9 +274,20 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     expect(unavailable(() => run(refused)).message).toBe('the CI device lanes could not be run: push refused');
     expect(refused.calls).toEqual([`record ${tempBranch(42)} - -`, `push ${tempBranch(42)}`, 'record null']);
     expect(unavailable(() => run(fake({ ghBad: true }))).message).toContain('unexpected gh run JSON');
+    // A run that passed but whose artifact is not the workflow's: every byte of it came from where the tree's code ran, so it is
+    // the tree's failure, not CI's (#226 review: a tree must not steer its own runs into an outage).
     const empty = fake({ files: [] });
-    expect(unavailable(() => run(empty)).message).toContain('the device-outcomes artifact holds nothing');
+    expect(failure(() => run(empty))).toMatchObject({ step: 'devices', message: expect.stringContaining('passed but its device-outcomes artifact is not the workflow\'s: the device-outcomes artifact holds nothing') });
     expect(empty.calls).toContain('remove /tmp/outcomes');
+    // No artifact at all after a run that passed is the tree's too; any other download error is CI's.
+    const gone = fake();
+    gone.deps = { ...gone.deps, download: () => { throw Object.assign(new Error('exit 1'), { stderr: 'no valid artifacts found to download' }); } } as DevicesCiDeps;
+    expect(failure(() => run(gone))).toMatchObject({ step: 'devices', message: expect.stringContaining('passed but left no device-outcomes artifact: no valid artifacts found to download') });
+    const net = fake();
+    net.deps = { ...net.deps, download: () => { throw Object.assign(new Error('exit 1'), { stderr: 'connection reset by peer' }); } } as DevicesCiDeps;
+    expect(unavailable(() => run(net)).message).toBe('the CI device lanes could not be run: exit 1');
+    expect(artifactMissing(Object.assign(new Error('x'), { stderr: 'no artifact matches any of the names or patterns provided' }))).toBe(true);
+    expect(artifactMissing(new Error('HTTP 502'))).toBe(false);
     expect(parseJobs('{"jobs":[{"name":"a","status":"queued"}]}')).toEqual([{ name: 'a', status: 'queued', conclusion: null, steps: [] }]);
     expect(() => parseJobs('{"jobs":[{"name":1}]}')).toThrow('unexpected gh run job');
   });
@@ -393,7 +404,7 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     expect(patchFiles(['outputs.patch'])).toEqual(['outputs.patch']);
     for (const bad of [[], ['store.tgz'], ['outputs.patch', 'store.tgz']]) expect(() => patchFiles(bad), bad.join()).toThrow('not exactly outputs.patch');
   });
-  it('blames the PR at the call site\'s step only when a regen round failed on CI; a patch that does not apply, a bad artifact or no run judged nothing', () => {
+  it('blames the PR at the call site\'s step when a regen round failed on CI or its patch or artifact is refused; the driver\'s own trouble applying it, or no run, judged nothing', () => {
     expect(failure(() => regen(fake({ title: regenTitle(SHA), conclusion: 'failure' }), 'regen-after-devices'))).toMatchObject({ step: 'regen-after-devices', message: expect.stringContaining('the CI regen run https://ci/run/7 concluded failure') });
     const step = (name: string) => [{ name: 'chrome-1 / round', status: 'completed', conclusion: 'failure', steps: [{ name, status: 'completed', conclusion: 'failure' }] }];
     expect(failedJobs(step('pnpm regen --skip lanes-host --skip tw-sweep')).verdict).toHaveLength(1);
@@ -422,7 +433,10 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
     const bad = fake({ title: regenTitle(SHA), files: ['outputs.patch'] });
     expect(unavailable(() => regen(bad, 'regen', () => { throw new Error('patch does not apply'); })).message).toBe('the patch of the CI regen https://ci/run/7 could not be applied: patch does not apply');
     expect(bad.calls.at(-1)).toBe('remove /tmp/outcomes');
-    expect(unavailable(() => regen(fake({ title: regenTitle(SHA), files: ['outputs.patch', 'store.tgz'] }))).message).toContain('not exactly outputs.patch');
+    // A patch that is the tree's doing and is refused, or an artifact that is not the workflow's, after a run that passed: the
+    // PR's failure at the call site's step (#226 review). The driver's own trouble applying it stays CI's (above).
+    expect(failure(() => regen(fake({ title: regenTitle(SHA), files: ['outputs.patch'] }), 'regen-records', () => { throw new PatchRefused('/tmp/outcomes/outputs.patch creates or keeps a symlink (mode 120000)'); }))).toMatchObject({ step: 'regen-records', message: 'the patch of the CI regen https://ci/run/7 is refused: /tmp/outcomes/outputs.patch creates or keeps a symlink (mode 120000)' });
+    expect(failure(() => regen(fake({ title: regenTitle(SHA), files: ['outputs.patch', 'store.tgz'] })))).toMatchObject({ step: 'regen', message: expect.stringContaining('not exactly outputs.patch') });
     const none = fake({ title: regenTitle(SHA), appearAfter: 1e9 });
     expect(unavailable(() => regen(none)).message).toContain('no regen-on-ci.yml run for');
     expect(none.calls.slice(-2)).toEqual(['record null', `delete ${regenBranch(SHA)}`]);
