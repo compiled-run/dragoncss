@@ -77,7 +77,10 @@ jobs:
           for i in 1 2 3; do have && break; xcodebuild -downloadPlatform iOS -buildVersion 23F77 || echo "::warning::xcodebuild -downloadPlatform failed (attempt $i of 3)"; done
           have || { xcrun simctl list runtimes; echo "::error::iOS 26.5 (23F77) is not installed"; exit 1; }
           echo "runtime ready in $(( $(date +%s) - start )) s"
+          # The host's OS, chip and GPU: the simulator composites transformed layers on the host GPU (raw pixel hashes follow it).
           sw_vers
+          sysctl -n machdep.cpu.brand_string hw.model
+          system_profiler SPDisplaysDataType | grep -E 'Chipset Model|Type|Metal' || true
       - name: Xcode 27.0 (27A266a) and the Swift the committed host lane records
         run: |
           xcodebuild -version
