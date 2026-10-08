@@ -2,19 +2,20 @@
 <html data-dragon-id="html">
 <head>
 <style>
+/* The page stays inside the 400x300 viewport, so every border pixel is in the capture (p6a-dash-oracle's pre-T116 subset proof). */
 body { margin: 0; font-family: Ahem; font-size: 10px; }
 .k { width: 20px; height: 10px; background-color: #00c; }
 .k2 { width: 40px; height: 15px; background-color: #0c0; }
 .bs { box-sizing: border-box; width: 120px; padding: 1px; }
 .bs > div { box-sizing: inherit; width: 40px; height: 10px; padding: 5px; border: 2px solid #000; }
 .fc { justify-content: flex-end; align-items: flex-end; flex-direction: row-reverse; flex-wrap: wrap; align-content: flex-end; column-gap: 7px; width: 140px; }
-.fc > div { display: flex; justify-content: inherit; align-items: inherit; flex-direction: inherit; flex-wrap: inherit; align-content: inherit; column-gap: inherit; width: 100px; height: 50px; background-color: #eee; }
+.fc > div { display: flex; justify-content: inherit; align-items: inherit; flex-direction: inherit; flex-wrap: inherit; align-content: inherit; column-gap: inherit; width: 100px; height: 40px; background-color: #eee; }
 .fc > .nf { display: block; justify-content: inherit; align-items: inherit; flex-direction: inherit; flex-wrap: inherit; align-content: inherit; column-gap: inherit; width: 30px; height: 4px; background-color: #888; }
 .fc2 { justify-content: space-between; align-items: center; flex-direction: column; flex-wrap: nowrap; column-gap: 3px; }
-.fc2 > div { display: flex; justify-content: inherit; align-items: inherit; flex-direction: inherit; flex-wrap: inherit; column-gap: inherit; width: 100px; height: 60px; background-color: #ddd; }
+.fc2 > div { display: flex; justify-content: inherit; align-items: inherit; flex-direction: inherit; flex-wrap: inherit; column-gap: inherit; width: 100px; height: 40px; background-color: #ddd; }
 .fi { flex-grow: 2; flex-shrink: 0; flex-basis: 30px; align-self: flex-end; order: -1; width: 160px; }
 .fi > div { flex-grow: inherit; flex-shrink: inherit; flex-basis: inherit; align-self: inherit; order: inherit; height: 6px; background-color: #c0c; }
-.row { display: flex; width: 200px; height: 30px; background-color: #ccc; flex-grow: 1; flex-shrink: 1; flex-basis: 10px; align-self: center; order: 2; }
+.row { display: flex; width: 200px; height: 20px; background-color: #ccc; flex-grow: 1; flex-shrink: 1; flex-basis: 10px; align-self: center; order: 2; }
 .row > div { flex-grow: inherit; flex-shrink: inherit; flex-basis: inherit; align-self: inherit; order: inherit; height: 8px; background-color: #c60; }
 .row > .last { order: 0; flex-grow: 0; flex-basis: 20px; }
 .row2 { display: flex; width: 100px; height: 12px; background-color: #bbb; flex-shrink: 3; flex-basis: 80px; }
