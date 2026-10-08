@@ -118,10 +118,21 @@ export const VERDICT_STEP = /^(vitest run|Every test's state|pnpm regen|Pick the
  * runner or a cancel says nothing about the tree (a regen has no limit of its own the tree could exceed).
  */
 export const REGEN_STEP = /^(pnpm regen |Pick the last round)/;
+/**
+ * The device-lanes.yml step that fails a device job the tooling blocked (device-ci.ts one exits TOOLING_EXIT: a boot, settle or
+ * install fault): not a verdict step, so it judges nothing.
+ */
+export const TOOLING_STEP = 'Device tooling';
+/**
+ * A device run cut off by its job's timeout judged nothing: every case launch inside it has its own limit, whose failure is
+ * recorded in the outcome as a verdict, so a job past its limit is a hung runner, simulator or emulator.
+ */
+export const DEVICE_RUN_STEP = /^Device run /;
 
 /**
  * The real jobs (not the resolve job) that failed, split by the step that failed: a verdict step (a failure of the tree) or a
- * setup step (CI's own trouble). A job that failed or timed out with no failed step is judged by the step it stopped in.
+ * setup step (CI's own trouble). A job that failed or timed out with no failed step is judged by the step it stopped in, but a
+ * device run that timed out (DEVICE_RUN_STEP) is setup.
  */
 export function failedJobs(jobs: readonly CiJob[]): { verdict: string[]; setup: string[] } {
   const verdict: string[] = [];
@@ -129,6 +140,10 @@ export function failedJobs(jobs: readonly CiJob[]): { verdict: string[]; setup: 
   for (const j of jobs) {
     if (j.name === 'resolve' || j.status !== 'completed' || (j.conclusion !== 'failure' && j.conclusion !== 'timed_out')) continue;
     const step = j.steps.find((st) => st.conclusion === 'failure') ?? j.steps.find((st) => st.status !== 'completed' || (st.conclusion !== 'success' && st.conclusion !== 'skipped'));
+    if (j.conclusion === 'timed_out' && step !== undefined && DEVICE_RUN_STEP.test(step.name)) {
+      setup.push(`${j.name} (timed out in ${step.name})`);
+      continue;
+    }
     const cutOff = step !== undefined && REGEN_STEP.test(step.name) && (j.conclusion !== 'failure' || step.status !== 'completed' || step.conclusion !== 'failure');
     if (step !== undefined && VERDICT_STEP.test(step.name) && !cutOff) verdict.push(`${j.name} (${step.name})`);
     else setup.push(`${j.name} (${step?.name ?? 'no step'})`);

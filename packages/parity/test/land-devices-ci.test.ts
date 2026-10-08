@@ -5,7 +5,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { LandFailure } from '../../../scripts/land-lib.ts';
 import { repoPath } from '../src/paths.ts';
-import { artifactMissing, PatchRefused, abandonInflight, awaitRegenOnCi, CiUnavailable, DEFAULT_QUEUE_WAIT_S, DEFAULT_REGEN_WAIT_S, dispatchOnCi, PATCH_ARTIFACT, patchFiles, regenBranch, regenTitle, regenWorkflow, titleOf, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, failedJobs, failedTestsOf, parseJobs, staleScratchBranches, fullTestWorkflow, runOnCi, testBranch, type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, scratchRef, tempBranch } from '../../../scripts/land-devices-ci.ts';
+import { artifactMissing, PatchRefused, abandonInflight, awaitRegenOnCi, CiUnavailable, DEFAULT_QUEUE_WAIT_S, DEFAULT_REGEN_WAIT_S, dispatchOnCi, PATCH_ARTIFACT, patchFiles, regenBranch, regenTitle, regenWorkflow, titleOf, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, failedJobs, failedTestsOf, parseJobs, staleScratchBranches, fullTestWorkflow, runOnCi, testBranch, type DevicesCiDeps, outcomeFiles, OUTCOMES_ARTIFACT, parseRunRows, runDevicesOnCi, runTitle, scratchRef, tempBranch, DEVICE_RUN_STEP, TOOLING_STEP, VERDICT_STEP } from '../../../scripts/land-devices-ci.ts';
+import { TOOLING_EXIT } from '../src/device-ci.ts';
 
 const SHA = 'a'.repeat(40);
 const T0 = Date.parse('2026-10-04T12:00:00Z');
@@ -13,7 +14,7 @@ type Run = { databaseId: number; displayTitle: string; createdAt: string; headBr
 const OUTCOMES = ['android-dragon-320.json', 'android-dragon-480.json', 'android-dragon-smoke.json', 'ios-iPad__A16__.json', 'ios-iPhone_17.json'];
 
 /** A fake GitHub: runs appear after `appearAfter` list calls and complete after `doneAfter` view calls. */
-function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; conclusion?: string | null; files?: string[]; pushFails?: boolean; ghBad?: boolean; deleteFails?: boolean; title?: string; jobsQueued?: boolean; dispatchFails?: boolean; failedEarly?: boolean; setupFails?: boolean; queuedFor?: number; noneWaiting?: boolean; runPendingNoJobs?: boolean; ubuntu?: 'in_progress' | 'completed' } = {}) {
+function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; conclusion?: string | null; files?: string[]; pushFails?: boolean; ghBad?: boolean; deleteFails?: boolean; title?: string; jobsQueued?: boolean; dispatchFails?: boolean; failedEarly?: boolean; setupFails?: boolean; queuedFor?: number; noneWaiting?: boolean; runPendingNoJobs?: boolean; ubuntu?: 'in_progress' | 'completed'; jobs?: object[] } = {}) {
   const calls: string[] = [];
   const dispatched: string[][] = [];
   let clock = T0;
@@ -29,6 +30,7 @@ function fake(o: { runs?: Run[]; appearAfter?: number; doneAfter?: number; concl
       if (args[0] === 'workflow') dispatched.push(args);
       if (args[0] === 'workflow' && o.dispatchFails === true) throw new Error('HTTP 503');
       if (args[0] === 'workflow' || args[1] === 'cancel') return '';
+      if (args.includes('jobs') && o.jobs !== undefined) return JSON.stringify({ jobs: [{ name: 'resolve', status: 'completed', conclusion: 'success' }, ...o.jobs] });
       if (args.includes('jobs')) {
         // queuedFor: the real job waits for a runner for that many looks, then runs (the macOS cap); noneWaiting: the run has no
         // real job and none waiting; runPendingNoJobs: the run itself waits (a concurrency group), with no job yet.
@@ -315,6 +317,55 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     const early = fake({ doneAfter: 1e9, failedEarly: true, setupFails: true });
     expect(unavailable(() => runDevicesOnCi({ pr: 42, deps: early.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 })).message).toContain('failed in setup (chrome (1) (Playwright');
     expect(() => parseJobs('{"jobs":[{"name":"a","status":"completed","steps":[{"name":1}]}]}')).toThrow('unexpected gh run step');
+  });
+  it('never blames the tree for a device the tooling blocked or a device run that timed out; a lane verdict still does', () => {
+    const step = (name: string, conclusion: string) => ({ name, status: 'completed', conclusion });
+    const device = (name: string, conclusion: string, steps: ReturnType<typeof step>[]) => ({ name: `android (${name})`, status: 'completed', conclusion, steps });
+    const tooling = device('dragon-480', 'failure', [step('pnpm install', 'success'), step('Device run dragon-480', 'success'), step(TOOLING_STEP, 'failure')]);
+    const hung = device('dragon-320', 'timed_out', [step('Device run dragon-320', 'cancelled')]);
+    const ok = device('dragon-smoke', 'success', [step('Device run dragon-smoke', 'success'), step(TOOLING_STEP, 'skipped')]);
+    expect(VERDICT_STEP.test(TOOLING_STEP)).toBe(false);
+    // Only a device run's timeout is setup: a test shard that timed out is still the tree's (#220 review).
+    expect(DEVICE_RUN_STEP.test('Device run iPad (A16)')).toBe(true);
+    expect(failedJobs([{ name: 'native (3)', status: 'completed', conclusion: 'timed_out', steps: [step('vitest run (native files, shard 3/4)', 'cancelled')] }]).verdict).toHaveLength(1);
+    expect(failedJobs([tooling, hung, ok])).toEqual({ verdict: [], setup: [`android (dragon-480) (${TOOLING_STEP})`, 'android (dragon-320) (timed out in Device run dragon-320)'] });
+    for (const jobs of [[tooling, ok], [hung, ok], [tooling, hung]]) {
+      const f = fake({ conclusion: 'failure', jobs });
+      expect(unavailable(() => run(f)).message).toMatch(/with no failed test or device step \(failed in setup: android \(dragon-(480|320)\)/);
+      expect(f.calls).not.toContain(`download 7 ${OUTCOMES_ARTIFACT}`);
+      expect(f.calls.at(-1)).toBe(`delete ${tempBranch(42)}`);
+    }
+    // A device run that failed (not the tooling), or a lane comparison that differs, is the tree's: the PR fails at devices.
+    const crashed = device('dragon-480', 'failure', [step('Device run dragon-480', 'failure'), step(TOOLING_STEP, 'skipped')]);
+    const differs = { name: 'merge', status: 'completed', conclusion: 'failure', steps: [step('Merge the device outcomes into the lane records', 'success'), step('Compare every device lane with the committed records', 'failure')] };
+    for (const jobs of [[crashed, ok], [tooling, differs], [hung, crashed]]) expect(failure(() => run(fake({ conclusion: 'failure', jobs })))).toMatchObject({ step: 'devices' });
+    // A tooling-blocked job seen while the rest of the run still goes is never a verdict.
+    const live = fake({ doneAfter: 1e9, jobs: [tooling, { name: 'ios (iPhone 17)', status: 'in_progress', conclusion: null, steps: [] }] });
+    expect(unavailable(() => runDevicesOnCi({ pr: 42, deps: live.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 })).message).toContain(`failed in setup (android (dragon-480) (${TOOLING_STEP}))`);
+  });
+  it('device-lanes.yml reports device-ci.ts TOOLING_EXIT in the Device tooling step, never in Device run', () => {
+    const yml = readFileSync(repoPath('.github/workflows/device-lanes.yml'), 'utf8');
+    for (const [target, next] of [['ios', 'android'], ['android', 'merge']] as const) {
+      const job = yml.slice(yml.indexOf(`\n  ${target}:\n`), yml.indexOf(`\n  ${next}:\n`));
+      const run = job.slice(job.indexOf('- name: Device run '), job.indexOf(`- name: ${TOOLING_STEP}\n`));
+      // The run's own exit is read with errexit off, TOOLING_EXIT turned into the tooling output and every other code kept.
+      expect(run, target).toContain('set +e\n');
+      expect(run, target).toContain(`if [ "$code" = ${TOOLING_EXIT} ]; then echo "tooling=true" >> "$GITHUB_OUTPUT"; exit 0; fi\n          exit "$code"\n`);
+      expect(job, target).toContain(`- name: ${TOOLING_STEP}\n        if: steps.run.outputs.tooling == 'true'\n`);
+      expect(job.indexOf(`- name: ${TOOLING_STEP}`), target).toBeGreaterThan(job.indexOf('id: run'));
+    }
+  });
+  it('device-lanes.yml retries its downloads three times and fails hard after the third, checking every SDK package', () => {
+    const yml = readFileSync(repoPath('.github/workflows/device-lanes.yml'), 'utf8');
+    expect(yml.match(/retry pnpm install --frozen-lockfile/g)?.length).toBe(3);
+    expect(yml).not.toMatch(/^\s*- run: pnpm install/m);
+    expect(yml).toContain('retry brew install openjdk@17 kotlin');
+    expect(yml).toContain('sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }\n          retry sdk_install\n');
+    // The retry warnings are never sent to /dev/null with the command's output.
+    expect(yml).not.toMatch(/retry [^\n]*>\s*\/dev\/null/);
+    expect(yml).toContain('for p in "${pkgs[@]}"; do grep -qFx "$p" <<<"$installed" || { echo "::error::sdkmanager did not install $p"; exit 1; }; done');
+    expect(yml).toMatch(/for i in 1 2 3; do have && break; xcodebuild -downloadPlatform iOS -buildVersion 23F77/);
+    expect(yml).toContain('echo "::error::$* failed 3 times"; return 1; }');
   });
   it('does not blame the tree for a summary that failed because a shard died in setup and wrote no report (#199 review)', () => {
     const job = (name: string, stepName: string) => ({ name, status: 'completed', conclusion: 'failure', steps: [{ name: stepName, status: 'completed', conclusion: 'failure' }] });
