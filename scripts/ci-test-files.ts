@@ -313,7 +313,7 @@ export function main(argv: readonly string[], deps: Deps, repo: () => string): n
 
 const READS = new Set(['run', 'api']);
 /** gh, with reads retried on transient failures (never the dispatch, which is not idempotent). */
-const gh = (args: string[]): string => {
+export const gh = (args: string[]): string => {
   const read = READS.has(args[0] as string) && !args.includes('POST');
   for (let attempt = 1; ; attempt++) {
     try {
