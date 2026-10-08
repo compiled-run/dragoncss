@@ -25,6 +25,7 @@
     "build": "node scripts/build-dist.ts",
     "pr:review": "node scripts/pr-review.ts",
     "ci:test-files": "node scripts/ci-test-files.ts",
+    "ci:regen": "node scripts/ci-regen.ts",
     "train": "node scripts/merge-train.ts",
     "land": "node scripts/land.ts",
     "land:review-lookup": "node --conditions=dragon-internal scripts/land-review-lookup.ts",

@@ -511,9 +511,9 @@ describe('LAND_REGEN=ci (the regen on CI, regen-on-ci.yml in patch mode)', () =>
   it('master\'s warm cache run yields to branch regens but never to the driver\'s patch-mode runs (#220 review)', () => {
     const resolve = yml.slice(yml.indexOf('\n  resolve:\n'), yml.indexOf('\n  chrome-1:\n'));
     const filter = /gh api "repos\/\$REPO\/actions\/workflows\/regen-on-ci\.yml\/runs\?status=\$st&per_page=100" -q '([^']+)'/.exec(resolve)?.[1];
-    expect(filter).toBe('[.workflow_runs[] | select(.event != "push" and (.event != "workflow_dispatch" or ((.display_title // "") | startswith("regen of ") | not)))] | length');
-    // The patch-mode run-name is the prefix the filter skips, and only patch mode gets it.
-    expect(regenTitle(SHA).startsWith('regen of ')).toBe(true);
+    expect(filter).toBe('[.workflow_runs[] | select(.event != "push" and (.event != "workflow_dispatch" or ((.display_title // "") | test("^regen of [0-9a-f]{40}$") | not)))] | length');
+    // The patch-mode run-name is exactly what the filter skips; branch mode's "regen of branch ..." is not (ci-regen.test.ts runs it).
+    expect(regenTitle(SHA)).toMatch(/^regen of [0-9a-f]{40}$/);
     expect(yml).toContain("run-name: ${{ inputs.sha && format('regen of {0}', inputs.sha) ||");
   });
   it('the workflow\'s patch mode: run-name "regen of <sha>", no push, the patch as an artifact, caches restored only; branch mode unchanged', () => {

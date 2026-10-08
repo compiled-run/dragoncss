@@ -1,5 +1,7 @@
 # CI-OFFLOAD step 2: `pnpm regen` for a branch on GitHub-hosted runners, pushed back to the branch as its own commit.
 # Trigger: workflow_dispatch with a branch, or the `regen` label on a pull request from this repository.
+# Branch mode (pnpm ci:regen): workflow_dispatch with a branch, the `head` it must still be at and a caller `nonce`; the run-name
+# "regen of branch <branch> at <head> (<nonce>)" lets the caller find its run again, and resolve refuses a branch not at `head`.
 # Patch mode (the landing driver, LAND_REGEN=ci): workflow_dispatch with a commit `sha` instead of a branch. Nothing is pushed:
 # the final combined outputs.patch (against that commit, the tw-sweep round's) is the artifact regen-patch, and no cache is saved
 # (the regen and WPT caches are restored only, the pnpm store is not cached), since a dispatched run regenerates an unreviewed
@@ -13,7 +15,7 @@
 # Every push to master runs the same chain without pushing ("warm"): Actions caches made in a pull request are visible only to
 # that pull request, while master's are visible to every branch, so master's run keeps the regen cache warm for all of them.
 name: regen-on-ci
-run-name: ${{ inputs.sha && format('regen of {0}', inputs.sha) || (github.event_name == 'pull_request' && github.event.pull_request.title) || (github.event_name == 'push' && github.event.head_commit.message) || 'regen-on-ci' }}
+run-name: ${{ inputs.sha && format('regen of {0}', inputs.sha) || inputs.branch && format('regen of branch {0} at {1} ({2})', inputs.branch, inputs.head || 'its head', inputs.nonce || 'no nonce') || (github.event_name == 'pull_request' && github.event.pull_request.title) || (github.event_name == 'push' && github.event.head_commit.message) || 'regen-on-ci' }}
 on:
   workflow_dispatch:
     inputs:
@@ -23,6 +25,14 @@ on:
         type: string
       sha:
         description: Commit to regenerate without pushing (patch mode, the landing driver); the artifact regen-patch is the result
+        required: false
+        type: string
+      head:
+        description: With a branch, the full commit sha the branch must be at; the run refuses a branch that is anywhere else
+        required: false
+        type: string
+      nonce:
+        description: With a branch, the caller's token for finding this run by its run-name (pnpm ci:regen)
         required: false
         type: string
   pull_request:
@@ -55,6 +65,8 @@ jobs:
           REPO: ${{ github.repository }}
           DISPATCH_BRANCH: ${{ inputs.branch }}
           DISPATCH_SHA: ${{ inputs.sha }}
+          DISPATCH_HEAD: ${{ inputs.head }}
+          DISPATCH_NONCE: ${{ inputs.nonce }}
           PR_BRANCH: ${{ github.head_ref }}
           PR_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           PR_SHA: ${{ github.event.pull_request.head.sha }}
@@ -62,12 +74,12 @@ jobs:
           set -euo pipefail
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             # Branch regens come first: the macOS runners are few (5 at once), so a master cache run yields to any branch regen
-            # queued or running, and the next master push warms the cache instead. Patch-mode runs ("regen of <sha>", the landing
-            # driver's) never make it yield: they are nearly always in flight during a landing, save no cache themselves, and
-            # restore master's, so master's run must keep saving it.
+            # queued or running ("regen of branch ...", a label run), and the next master push warms the cache instead. Patch-mode
+            # runs (exactly "regen of <sha>", the landing driver's) never make it yield: they are nearly always in flight during a
+            # landing, save no cache themselves, and restore master's, so master's run must keep saving it.
             busy=0
             for st in queued in_progress waiting pending; do
-              n=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" -q '[.workflow_runs[] | select(.event != "push" and (.event != "workflow_dispatch" or ((.display_title // "") | startswith("regen of ") | not)))] | length')
+              n=$(gh api "repos/$REPO/actions/workflows/regen-on-ci.yml/runs?status=$st&per_page=100" -q '[.workflow_runs[] | select(.event != "push" and (.event != "workflow_dispatch" or ((.display_title // "") | test("^regen of [0-9a-f]{40}$") | not)))] | length')
               busy=$((busy + n))
             done
             if [ "$busy" -gt 0 ]; then
@@ -86,7 +98,10 @@ jobs:
             echo "regen-on-ci: regen of $DISPATCH_SHA (patch mode: nothing is pushed, caches are restored only)" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then branch=$DISPATCH_BRANCH; else branch=$PR_BRANCH
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then branch=$DISPATCH_BRANCH
+            [ -z "$DISPATCH_HEAD" ] || [[ "$DISPATCH_HEAD" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::head is not a full commit sha: $DISPATCH_HEAD"; exit 1; }
+            [[ "$DISPATCH_NONCE" =~ ^[0-9A-Za-z_-]*$ ]] || { echo "::error::nonce may hold only letters, digits, _ and -: $DISPATCH_NONCE"; exit 1; }
+          else branch=$PR_BRANCH
             [ "$PR_REPO" = "$REPO" ] || { echo "::error::the pull request comes from $PR_REPO, not $REPO; regen-on-ci pushes only to this repository"; exit 1; }
           fi
           git check-ref-format --branch "$branch" >/dev/null || { echo "::error::not a branch name: $branch"; exit 1; }
@@ -96,6 +111,7 @@ jobs:
           [ "$(jq -r .protected <<<"$info")" = false ] || { echo "::error::refusing to push to the protected branch $branch"; exit 1; }
           sha=$(jq -r .commit.sha <<<"$info")
           if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ "$sha" != "$PR_SHA" ]; then echo "::error::$branch moved from the labelled head $PR_SHA to $sha; label again"; exit 1; fi
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ -n "$DISPATCH_HEAD" ] && [ "$sha" != "$DISPATCH_HEAD" ]; then echo "::error::$branch is at $sha, not the dispatched head $DISPATCH_HEAD; dispatch again"; exit 1; fi
           { echo "branch=$branch"; echo "sha=$sha"; echo "mode=push"; } >> "$GITHUB_OUTPUT"
           echo "regen-on-ci: $branch at $sha" >> "$GITHUB_STEP_SUMMARY"
   chrome-1:
@@ -232,6 +248,9 @@ jobs:
             echo "pushed=none" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # A plain push already refuses a branch that moved forward or sideways; this also refuses one moved back to an ancestor.
+          now=$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)
+          [ "$now" = "$SHA" ] || { echo "::error::$BRANCH moved from $SHA to ${now:-nothing} during the run; nothing pushed, regen again"; exit 1; }
           git apply --binary --index "$RUNNER_TEMP/last/outputs.patch"
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -q -F - <<EOF
           Regenerate on CI: pnpm regen (regen-on-ci)
@@ -247,6 +266,10 @@ jobs:
           echo "regen-on-ci: pushed $new to $BRANCH" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "pushed=$new" >> "$GITHUB_OUTPUT"
           gh workflow run ci.yml --ref "$BRANCH" -R "$GITHUB_REPOSITORY"
+      # pnpm ci:regen reads this step's conclusion over REST: success means no commit, skipped means the step above pushed one.
+      - name: Already at a fixed point (no commit)
+        if: steps.push.outputs.pushed == 'none'
+        run: echo "nothing to push"
       - name: Remove the regen label
         if: always() && github.event_name == 'pull_request'
         env:
