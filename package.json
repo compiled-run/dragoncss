@@ -29,6 +29,8 @@
     "land": "node scripts/land.ts",
     "land:review-lookup": "node --conditions=dragon-internal scripts/land-review-lookup.ts",
     "land:post-review": "node --conditions=dragon-internal scripts/land-post-review.ts",
+    "land:dispatch": "node scripts/land-actions.ts dispatch",
+    "land:clear-outage": "node scripts/land-actions.ts clear-outage",
     "evidence:stamp": "node --conditions=dragon-internal scripts/evidence-stamp.ts",
     "layout:subset": "node packages/translate/src/cli/subset.ts",
     "linebreak:gen": "node scripts/gen-linebreak-data.ts",
