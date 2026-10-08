@@ -59,7 +59,7 @@ describe('scripts/cloud-setup.sh', () => {
       const f = fixture(["'24.15.0'", "'25.0.0'"], 'npm@10.0.0');
       const home = join(f.root, 'home');
       mkdirSync(home);
-      const r = run(f.script, [], env({ CLAUDE_CODE_REMOTE: remote, HOME: home }));
+      const r = run(f.script, [], env({ CLAUDE_CODE_REMOTE: remote, CLAUDE_ENV_FILE: join(home, 'claude-env'), HOME: home }));
       expect([remote, r.status, r.stdout, r.stderr]).toEqual([remote, 0, '', '']);
       expect(readdirSync(home), String(remote)).toEqual([]);
     }
@@ -76,13 +76,16 @@ describe('scripts/cloud-setup.sh', () => {
     ];
     for (const [nodes, pm, want] of cases) {
       const f = fixture(nodes, pm);
+      const envFile = join(f.root, 'claude-env');
       for (const [args, remote] of [[['--print-versions'], undefined], [[], 'true']] as const) {
         // In a cloud session the pins are read before anything is installed, so a bad pin fails there too.
-        const r = run(f.script, args, env({ CLAUDE_CODE_REMOTE: remote, HOME: join(f.root, 'home') }));
+        const r = run(f.script, args, env({ CLAUDE_CODE_REMOTE: remote, CLAUDE_ENV_FILE: envFile, HOME: join(f.root, 'home') }));
         expect(r.status, `${nodes.join(',')} ${pm} ${args.join(' ')}`).toBe(1);
         expect(r.stderr).toMatch(want);
         expect(r.stdout).toBe('');
       }
+      // The cloud run exported DRAGON_REQUIRE_NATIVE=1 before it read the pins, so native runs fail even when setup does.
+      expect(readFileSync(envFile, 'utf8')).toBe('export DRAGON_REQUIRE_NATIVE=1\n');
     }
   });
 
@@ -91,14 +94,31 @@ describe('scripts/cloud-setup.sh', () => {
     expect(run(f.script, ['--print-versions'], env()).stdout).toBe('node 24.15.0\npnpm 10.33.2\n');
   });
 
+  it('in a cloud session, exports DRAGON_REQUIRE_NATIVE=1 through CLAUDE_ENV_FILE, and fails loudly without that file', () => {
+    const f = fixture(["'24.15.0'"], 'pnpm@10.33.2');
+    const home = join(f.root, 'home');
+    mkdirSync(home);
+    const missing = run(f.script, [], env({ CLAUDE_CODE_REMOTE: 'true', CLAUDE_ENV_FILE: undefined, HOME: home }));
+    expect([missing.status, missing.stdout]).toEqual([1, '']);
+    expect(missing.stderr).toMatch(/^cloud-setup: CLAUDE_ENV_FILE is not set, so the session's commands would not get DRAGON_REQUIRE_NATIVE=1/);
+    // Past the export, a host other than Linux stops at the Node download; the export is already in place.
+    const envFile = join(f.root, 'claude-env');
+    const r = run(f.script, [], env({ CLAUDE_CODE_REMOTE: 'true', CLAUDE_ENV_FILE: envFile, HOME: home }));
+    expect(readFileSync(envFile, 'utf8').split('\n')[0]).toBe('export DRAGON_REQUIRE_NATIVE=1');
+    if (process.platform !== 'linux') {
+      expect([r.status, r.stdout]).toEqual([1, '']);
+      expect(r.stderr).toMatch(/^cloud-setup: no Node download for /);
+    }
+  });
+
   it('rejects an unknown argument', () => {
     const r = run(SCRIPT, ['--install'], env());
     expect([r.status, r.stderr]).toEqual([1, "cloud-setup: unknown argument '--install' (only --print-versions)\n"]);
   });
 
-  it('runs as the project SessionStart hook on startup and resume, and setup:git turns rerere off', () => {
-    const settings = JSON.parse(readFileSync(repoPath('.claude/settings.json'), 'utf8')) as { hooks: { SessionStart: { matcher: string; hooks: { type: string; command: string; timeout: number }[] }[] } };
-    expect(settings.hooks.SessionStart).toEqual([{ matcher: 'startup|resume', hooks: [{ type: 'command', command: 'bash "$CLAUDE_PROJECT_DIR"/scripts/cloud-setup.sh', timeout: 900 }] }]);
+  it('runs as the project SessionStart hook on every source (no matcher: compaction drops CLAUDE_ENV_FILE exports), and setup:git turns rerere off', () => {
+    const settings = JSON.parse(readFileSync(repoPath('.claude/settings.json'), 'utf8')) as { hooks: { SessionStart: unknown[] } };
+    expect(settings.hooks.SessionStart).toEqual([{ hooks: [{ type: 'command', command: 'bash "$CLAUDE_PROJECT_DIR"/scripts/cloud-setup.sh', timeout: 900 }] }]);
     const setupGit = (JSON.parse(readFileSync(repoPath('package.json'), 'utf8')) as { scripts: Record<string, string> }).scripts['setup:git'] ?? '';
     expect(setupGit.split(' && ')).toContain('git config rerere.enabled false');
   });
