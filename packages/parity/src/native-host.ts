@@ -196,7 +196,29 @@ func dragonRun(window: UIWindow, host: UIView) {
   let abi = "x86_64"
   #endif
   let device = DumpDevice(platform: "ios", os: os, model: model, abi: abi, scale: scale, toolchain: dragonToolchain, renderer: "simulator-metal")
+  dragonWarmUp(run, stage: stage, scale: scale, bridge: bridge)
   dragonCase(0, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
+}
+
+/// Every layout case of the run drawn and captured once before any is dumped: a fresh render server (a CI virtual Mac's) draws
+/// transformed layers differently until its first use of them completes, so a case's first capture is never its dumped one.
+func dragonWarmUp(_ run: DragonRun, stage: UIView, scale: Double, bridge: DragonBridge) {
+  for id in run.ids {
+    guard let c = DragonHost.dragonCaseTable[id] else { continue }
+    let tree = DragonTree()
+    c.build(tree)
+    stage.addSubview(tree.root)
+    do {
+      try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
+    } catch {
+      fatalError("dragon host: warming up \(id): \(error)")
+    }
+    stage.layoutIfNeeded()
+    tree.root.layoutIfNeeded()
+    CATransaction.flush()
+    _ = dragonCapture(tree.root, scale: scale, points: [])
+    tree.root.removeFromSuperview()
+  }
 }
 
 func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Double, device: DumpDevice, bridge: DragonBridge) {
