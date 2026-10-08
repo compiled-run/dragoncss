@@ -7,7 +7,7 @@ import type { Target } from '../src/check.ts';
 import { buildExtendedCorpus } from '../src/corpus-dpr.ts';
 import { EXTENDED_FAULTS } from '../src/faults.ts';
 import { lowerAll } from '../src/generate.ts';
-import { failures, kotlinTool, swiftTool } from '../src/native.ts';
+import { failures, isBlocked, kotlinTool, swiftTool } from '../src/native.ts';
 
 describe('planted translator fault snap-truncating-division (native:planted)', () => {
   const l = lowerAll();
@@ -29,7 +29,7 @@ describe('planted translator fault snap-truncating-division (native:planted)', (
     it(`${target}: fails at least one extended corpus case`, () => {
       if (process.platform === 'darwin') expect(target === 'swift' ? swiftTool() : kotlinTool(), `${target} toolchain`).not.toBeNull();
       const r = runTarget(target, x, expectedFiles(target, l, 'snap-truncating-division'), `test-planted-${target}-snap`, true);
-      if (r.status === 'blocked (owner tooling)') {
+      if (isBlocked(r)) {
         expect(target === 'swift' ? swiftTool() : kotlinTool()).toBeNull();
         return;
       }
