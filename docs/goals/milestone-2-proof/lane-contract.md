@@ -1,57 +1,102 @@
-<!-- Binding lane contract, owner-approved 2026-10-03 (process review). Replaces /tmp/lane-preamble.md, lane-header-2.md, resume-header.md, spec-header.md. Defaults D1–D13: notes/PM-2026-10-03.md. -->
+<!-- Binding lane contract, owner-approved 2026-10-03 (process review: notes/PM-2026-10-03.md, "Owner decisions on the process review"). That note's D1–D13 table was never filled in; the defaults are the Work and Scope sections below. Rewritten for cloud sessions 2026-10-08 (notes/cloud-migration.md, item 5): every rule is kept; only how it is met changed. -->
 # Dragon lane contract (binding for every lane: worker, spec author, resumer)
 
-Read AGENTS.md and this file. Your dispatch message gives: task id, spec (if any), worktree, branch, base.
+Read AGENTS.md and this file. Your dispatch message gives: task id, spec (if any), branch, base.
 Everything else here is a default you apply without asking.
+
+Lanes run in Claude Code cloud sessions: Ubuntu x86_64, 4 vCPU, 16 GB RAM, 30 GB disk, a fresh clone per session, no
+macOS, Chrome, Swift or Kotlin. A command may run for at most 30 minutes, and an idle session pauses and loses its background
+jobs. The SessionStart hook (`scripts/cloud-setup.sh`) installs the pinned Node and pnpm, runs `pnpm install` and
+`pnpm setup:git`, and exports `DRAGON_REQUIRE_NATIVE=1`, so a native test with no toolchain fails instead of passing as
+"blocked". Anything that needs macOS or the native toolchains runs on GitHub Actions. Where the local Mac differs, the
+"Local Mac" section at the end says how; both paths are valid. The cloud path applies once #219 (session setup),
+#221 (`pnpm ci:test-files`) and #222 (the driver's `LAND_CI=only`) are on master; until then lanes run on the Mac.
+
+## GitHub commands (REST)
+The cloud's GitHub proxy may refuse GraphQL, which `gh pr create`, `gh pr view`, `gh pr edit` and `gh pr diff` use. Use these
+`gh api` forms until the PM confirms GraphQL works. `R=repos/compiled-run/dragoncss`.
+- Create a PR (write the body to a file outside the worktree first):
+  `gh api $R/pulls -f base=master -f head=<branch> -f title='...' -F body=@<body-file> --jq .number`;
+  update its body later: `gh api -X PATCH $R/pulls/<n> -F body=@<body-file> --jq .number`
+- Head sha and conflict state (`dirty` means CONFLICTING; `unknown` means GitHub is still computing it, so poll again in a
+  minute): `gh api $R/pulls/<n> --jq '.head.sha, .mergeable_state'`
+- Files a PR changes: `gh api --paginate "$R/pulls/<n>/files?per_page=100" --jq '.[].filename'`
+- Open PRs and their branches: `gh api --paginate "$R/pulls?state=open&per_page=100" --jq '.[] | "\(.number) \(.head.ref)"'`
+- PR comments: `gh api --paginate "$R/issues/<n>/comments?per_page=100" --jq '.[] | "\(.id) \(.user.login): \(.body)"'`
+- Review comments (findings and their threads):
+  `gh api --paginate "$R/pulls/<n>/comments?per_page=100" --jq '.[] | "\(.id) reply-to=\(.in_reply_to_id) \(.user.login) \(.path):\(.line): \(.body)"'`
+- Reply to a review comment: `gh api $R/pulls/<n>/comments/<id>/replies -f body='Fixed in <sha>'`
+- Add a label: `gh api $R/issues/<n>/labels -f 'labels[]=regen'`; remove one: `gh api -X DELETE $R/issues/<n>/labels/regen`
+- Checks on a commit: `gh api "$R/commits/<sha>/check-runs?per_page=100" --jq '.check_runs[] | "\(.name) \(.status) \(.conclusion)"'`
 
 ## Never
 - Loosen a tolerance, delete or skip a check or test, or claim support without a passing comparison test.
-- Hand-edit a generated output. Regenerate with `pnpm regen` and commit its outputs on their own,
-  naming the command in the message.
-- Push master, force-push, merge a PR, or write docs/goals/** (report in your receipt instead).
-- Edit a file another in-flight lane owns (until `pnpm scope:check` exists: check the open PRs' file lists with `gh pr diff <n> --name-only`; when unsure, note it in your receipt).
-- Run a heavy command outside `/tmp/heavy-lease.sh` (until the job queue exists): full `pnpm test`, `pnpm regen`,
-  captures, wpt:run, tw:sweep. Device runs are the landing driver's job, never a lane's.
+- Hand-edit a generated output. Regenerate on CI (Work, below) and commit its outputs on their own, naming the command.
+- Push master, force-push, merge a PR, or write docs/goals/** (report in your receipt instead; spec authors, see below).
+- Edit a file another in-flight lane owns (until `pnpm scope:check` exists: list the open PRs and their files with the
+  commands above; when unsure, note it in your receipt).
+- Run `pnpm regen`, the full `pnpm test`, captures, wpt:run or tw:sweep in a cloud session: they need macOS and would write
+  wrong outputs or blame the wrong thing. Device runs are the landing driver's job, never a lane's.
+- In a cloud session, claim a Chrome or native test file passed unless `pnpm ci:test-files` reported it passing. (On the
+  Mac, a local run of the file counts.)
 
 ## Work
-- One worktree, one branch. NO STACKS (owner, 2026-10-04): every new branch starts from origin/master, stays small
+- One branch. NO STACKS (owner, 2026-10-04): every new branch starts from origin/master, stays small
   (one theme, ~150 KB reviewed), and is built to land within about a day. If you need unlanded work, wait for it or
   have the PM fold it in; never build on top of an unlanded branch. Existing stacks drain as they are.
   Exception (PM, 2026-10-05, so lanes don't idle behind the landing queue): once a parent PR is reviewed and in a landing
-  queue, you may prepare the next slice LOCALLY in a worktree based on the parent's queued head. Develop, run targeted
-  tests and even regen there, but never push it or open its PR until the parent has merged. Then merge origin/master in,
-  regen, and open the PR from master. If the parent's head changes, rebase your local prep onto the new head.
-- Develop with targeted `vitest run <files>` and `pnpm typecheck` (no queue needed).
-- At the end of the branch (owner, 2026-10-04: prove once, in the driver): one `pnpm regen` (through the queue),
-  commit its outputs, run the targeted tests for what you touched plus `pnpm typecheck`, push, open the PR.
-  Always include the cross-cutting registry tests, which PR CI (ci.yml's platform-free set) does not run:
-  `packages/parity/test/chrome-ports.test.ts` (every Chrome citation is in docs/ports.json), both
-  `registry-claims.test.ts`, and the iOS and Android profile tests if you promote native rows.
-  Chrome-ports failed #197 at landing (2026-10-05).
-  Do NOT run the full `pnpm test` locally: the landing driver runs it once on the merged tree, reruns failing
-  files alone, and sends the PR back with the exact failing tests if any fail for real. A review round reruns
-  only its targeted tests (plus regen if generator inputs changed). Don't rerun a step that passed.
-- Regen on CI (#124, preferred over a local regen): push your source commits and add the `regen` label to your PR (or
-  `gh workflow run regen-on-ci.yml -f branch=<branch>`). Wait for the github-actions[bot] commit "Regenerate on CI: pnpm regen
-  (regen-on-ci)" or the run summary "already at a fixed point; no commit", then `git pull --ff-only`. Never push to the
-  branch while a regen-on-ci run is in progress (its push would be refused; label again). A local regen through the queue
-  stays allowed when the runners are down or slow: if your regen-on-ci run has been queued for 15 minutes or more, run
-  `pnpm regen` locally through /tmp/job.sh instead (the Mac is mostly idle now), commit its outputs and push.
-- Catch up (`git merge origin/master`, then regen) only when GitHub says CONFLICTING, the driver asks,
-  or your parent has merged. Never rebuild a branch as -v2: merge its parent forward.
+  queue, you may prepare the next slice on a branch based on the parent's queued head. Push it (the VM can be reclaimed),
+  but open no PR and request no regen until the parent has merged. Then merge origin/master in, regen, and open the PR
+  against master. If the parent's head changes, merge the parent's new head into your prep branch (AGENTS.md step 2);
+  never rebase a pushed branch.
+- Push work in progress early and often: the VM can be reclaimed, and anything not pushed is lost. Commit sources only;
+  regenerated outputs come from CI.
+- Develop with targeted tests and `pnpm typecheck`. Find a test file's group with
+  `node scripts/test-shards.ts group-files <file>...`:
+  - `platform-free` (packages/layout, packages/dragon): run it locally with `pnpm vitest run <files>`.
+  - `chrome` and `native`: push, then `pnpm ci:test-files <full head sha> <files...> --once` (it runs Chrome files on
+    macos-26 and native files on ubuntu-24.04-arm). Give the pushed head's full sha, not the branch, so the run's title and
+    its `tested <ref> at <sha>` line name the exact commit. Exit codes: 0 passed, 1 failed, 2 error, 3 pending; it prints the
+    run id. Poll it again with `pnpm ci:test-files --run <id> --once`.
+- Regen only on CI, with no local fallback, and only through the `regen` label on your PR. (A `gh workflow run
+  regen-on-ci.yml -f branch=<b>` run is filed under master with no branch in its title, so a lane can't find it again
+  after a pause.) Push your source commits, then add the label (above). A run takes about 35–45 minutes. Find your run
+  (other labels' events add skipped runs, which this drops):
+  `gh api "$R/actions/workflows/regen-on-ci.yml/runs?branch=<branch>&event=pull_request&per_page=100" --jq '[.workflow_runs[] | select(.conclusion != "skipped")][0:3][] | "\(.id) \(.status) \(.conclusion) \(.head_sha) \(.created_at)"'`
+  The newest line is yours when its head_sha is the head you labeled. It is done when that run is `completed success` and
+  the branch has the github-actions[bot] commit "Regenerate on CI: pnpm regen (regen-on-ci)", or the run summary says
+  "already at a fixed point; no commit"; then `git pull --ff-only`. Never push while the run is in progress (its push would
+  be refused). If it fails, read `gh run view <id> --log-failed`, fix the cause, push, then remove the label (the workflow
+  removes it only after a success) and add it again. If the runners are down, wait and say so in your receipt.
+- At the end of the branch (owner, 2026-10-04: prove once, in the driver): audit and push, open the PR (Landing, below),
+  add the `regen` label, pull its commit, then run `pnpm typecheck` and the targeted tests for what you touched on the
+  regenerated head, and update the PR body with exactly what passed. Always include the cross-cutting registry tests:
+  `packages/parity/test/chrome-ports.test.ts` (every Chrome citation is in docs/ports.json), both `registry-claims.test.ts`,
+  and the iOS and Android profile tests if you promote native rows. Route each by its group: chrome-ports and parity's
+  registry-claims are in the Chrome group (ci:test-files); `packages/dragon/test/registry-claims.test.ts` is platform-free
+  (local). Chrome-ports failed #197 at landing (2026-10-05).
+  Do NOT run the full `pnpm test`: the landing driver runs it once on the merged tree, and sends the PR back with the
+  exact failing tests if any fail for real. A review round reruns only its targeted tests (plus a regen if generator inputs
+  changed). Don't rerun a step that passed.
+- Catch up (`git merge origin/master`, then regen) only when GitHub says CONFLICTING (`mergeable_state` `dirty`; poll again
+  while it is `unknown`), the driver asks, or your parent has merged. Never rebuild a branch as -v2: merge its parent forward.
 - Device-record tests that fail only for a missing device run are "device step pending"
   (lanes, lanes-records, device-failures, p6a-promotion, lanes-concurrent, and land.test's evidence:stamp case). Never a stop.
-- A test that times out: rerun that file alone. Passes means load (record it); fails means real (stop
-  landing this branch, report).
+  The `devices` label (device-lanes.yml) runs the device lanes for a branch as a diagnostic only; the device evidence that
+  lands comes from the driver.
+- A test that times out: rerun that file alone (on CI if it is a Chrome or native file). Passes means load (record it);
+  fails means real (stop landing this branch, report).
 
 ## Scope (defaults; no stop, no ruling)
 - Outside your spec's file map: edit it, and list it in the PR body under "Outside the spec", one line each.
 - A pinned test your change legitimately moves: retarget it, keep its intent, and list it. Since #125, registry,
   longhand, twin, suite and LGPL pins live in floor files (packages/*/test/*-floor.json, glyph-clearance-pins.json):
   a new entry is appended there (`DRAGON_FLOOR_WRITE=1` / `DRAGON_PIN_WRITE=1`; they never lower), not by editing a test.
-- Floor and pin files merge structurally (#183, merge=dragon-floor; run `pnpm setup:git` once per clone): a catch-up merge takes
-  the larger count and the union of names. A conflict it still leaves means a removed name, disagreeing orders or a pin changed on
-  both sides: resolve it by hand, never lower a floor, and state the reason.
+  For a floor or pin a Chrome or native test writes, use `pnpm ci:test-files <full head sha> <files...> --floor-write` and apply
+  the patch it prints.
+- Floor and pin files merge structurally (#183, merge=dragon-floor; `pnpm setup:git`, which the session hook runs): a catch-up
+  merge takes the larger count and the union of names. A conflict it still leaves means a removed name, disagreeing orders or a
+  pin changed on both sides: resolve it by hand, never lower a floor, and state the reason.
 - Features register in per-feature files (#137/#138): codes/<feature>.ts, faults/<feature>.ts, one sorted GROUPS line,
   scripts/regen-steps/<feature>.ts. Don't edit the central lists beyond one sorted line.
 - A Chrome/Skia/V8 citation: register it in docs/ports.json. LGPL files are class A
@@ -68,33 +113,48 @@ Everything else here is a default you apply without asking.
    no process-local fix).
 3. A fix would need a looser tolerance, a skipped test, or a claim without a test.
 4. You need a file another in-flight lane owns.
-5. Disk is under 40 GB free (`df -h /System/Volumes/Data`).
+5. The session's disk has under 5 GB free (`df -h .`) after you remove your own build outputs.
 Everything else is a default above, or a note in your receipt.
 
 ## Waiting
-- Start every long job (regen, full test, chains of them) DETACHED with `/tmp/job.sh <job-name> <worktree> <cmd...>`
-  (e.g. `/tmp/job.sh repla-regen /tmp/dragon-repla pnpm regen`). It runs through the heavy lease in its own
-  session, logs to /tmp/jobs/<job-name>.log and writes /tmp/jobs/<job-name>.done (the exit code) when finished.
-  Jobs started as session background tasks get killed; detached jobs survive. Name jobs <lane>-<step>.
-- Then end your turn with a receipt listing the job names. The PM's watcher resumes you when they finish.
-  Never sleep-poll; never wait on anything outside your lane.
-- A multi-step chain (regen, commit, test) goes in one small script run through /tmp/job.sh.
+- Never keep a session busy waiting on CI. Start the CI work (a push, the `regen` label, a ci:test-files dispatch), poll
+  once, and if it is still running, end your turn with a receipt that names what you wait on (PR, run ids). The PM resumes
+  you; on resume, read the state from GitHub (the commands above), not from memory.
+- Every command must finish within 30 minutes: use `--once` with ci:test-files and run `pnpm pr:review <n>` without
+  `--wait`. A short wait may repeat a single poll in the foreground, bounded under 25 minutes, e.g.
+  `for i in 1 2 3 4 5 6 7; do pnpm -s ci:test-files --run <id> --once; s=$?; [ $s -ne 3 ] && break; sleep 180; done; echo exit=$s`.
+- No background watchers, /tmp/job.sh, leases or `.done` files: background jobs die when the session pauses.
+- Never wait on anything outside your lane.
 
 ## Landing (when your dispatch says "land")
 1. Audit every changed source and test file once: unchecked external input, silent error paths,
    checks judged on a subset, missing cleanup on failure. Fix with tests.
-2. `git push -u origin <branch>`; `gh pr create --base <master or parent branch>`. Body: what changed, exactly
-   what passed, a reason for every changed test, check, tolerance or fixture, and "🤖 Generated with [Claude Code](https://claude.com/claude-code)".
-   (Until CI runs on every push, a stacked PR's base is review/<parent>, pushed at the parent's head.)
-3. Review loop: `pnpm -s pr:review <n> --wait`; fix every finding with a test that fails without the fix;
-   batch one round into one push; reply `Fixed in <sha>` or why it's intentional in each thread.
-   No regen or device run in a round unless the fix changes generator inputs.
-4. When `pr:review` exits 0, hand the PR to the landing driver (receipt with the clean head).
-   The driver does the catch-up, regen, device run, test and merge. While Macroscope is at its limit, the PM
-   has a review agent write the precomputed review for each queued PR's clean head before the driver lands it.
+2. `git push -u origin <branch>`, then create the PR with the REST command above (base master). Body: what changed, exactly
+   what passed (with the ci:test-files run URLs), a reason for every changed test, check, tolerance or fixture, and
+   "🤖 Generated with [Claude Code](https://claude.com/claude-code)".
+3. Review loop: `pnpm -s pr:review <n>` (one poll; exit 0 is clean, 1 means CI is running or something is open); fix every
+   finding with a test that fails without the fix; batch one round into one push; reply `Fixed in <sha>` or why it's
+   intentional in each thread (REST reply above). No regen or device run in a round unless the fix changes generator inputs.
+   Until pr:review is ported to REST (cloud plan item 2) it may fail at the proxy. Then answer the findings from the review
+   comments above, check CI with the check-runs command, and say in your receipt that pr:review could not run; the PM runs
+   it. Never claim clean without a pr:review exit 0.
+4. Hand the PR to the landing driver (READY, below) only when all of these hold for one head sha, the PR's current head
+   (`gh api $R/pulls/<n> --jq .head.sha`):
+   - `pr:review` exits 0 on it;
+   - its regen run finished with that sha as its result (the bot's commit, or "already at a fixed point; no commit" for that
+     sha), or no regen was needed because no generator input changed since the last one;
+   - `pnpm typecheck` passed on it;
+   - every targeted test passed on it: platform-free files locally, the rest through ci:test-files runs whose
+     `tested <ref> at <sha>` line names that sha. pr:review can't see these runs (their checks are filed under master), so
+     they are the lane's to prove. A push after any of them (a review fix, a merge) means running them again on the new head.
+   The READY report lists that sha and the URL of each regen and ci:test-files run.
+   The driver does the catch-up, regen, device run, full test and merge (on CI when the PM runs it with `LAND_CI=only`). While Macroscope is at its
+   limit, the driver also needs a precomputed Claude review of each queued PR's clean head; the PM provides it (today a file the
+   driver reads; plan item 8 moves it to a PR comment). Lanes don't write it.
 
 ## Spec authors (read-only)
-Write /tmp/specs/<task>.md:
+Write the spec as docs/goals/milestone-2-proof/notes/<task>-spec.md on a branch `spec/<task>` from origin/master, push it,
+and open no PR. The PM commits it to master as a board update; this is the one docs/goals/** write a lane makes. Contents:
 - scope, with refusals and their diagnostic codes;
 - R-rulings, each with evidence (Chrome 145 source file and function, a spec section, a measurement you
   ran, or decisions.md precedent);
@@ -109,17 +169,35 @@ No allowed_files list, no live queue order. Open questions: answer by research; 
 what costs money or leaves the repo.
 
 ## Resuming a killed lane
-Read the dead agent's tail (`python3 /tmp/transcript-tail2.py <id> 150 first`, or the path in your dispatch) and `git status` and
-`git log` in its worktrees. Treat uncommitted generated outputs as untrusted: commit sources, regen
-from committed sources, commit the outputs.
+A new session has only what reached GitHub. `git fetch origin`, check out the lane's branch, and read its state: `git log`,
+the PR (head, conflict state, comments, review comments, labels) with the commands above, its checks, and its CI runs
+(regen runs with the command in Work; the ci:test-files runs of a head, whose titles carry the sha you gave:
+`gh api "$R/actions/workflows/test-files.yml/runs?event=workflow_dispatch&per_page=100" --jq '.workflow_runs[] | select(.display_title | startswith("test files of <sha> ")) | "\(.id) \(.status) \(.conclusion) \(.html_url)"'`).
+Don't redo finished work. Treat generated outputs that did not come from a regen-on-ci commit as untrusted: regen on CI.
 
 ## Receipt (last message)
-    result: done | blocked
+When a PR meets Landing step 4, the first line is `READY <branch>:<pr>:<full clean head sha>`, and the `commands` lines name
+that sha, the regen run URL (or why none was needed) and every ci:test-files run URL.
+
+    result: done | blocked | waiting
     task / branch / head / PR
-    commands: <cmd>: pass | fail (one line each; timeouts noted)
+    commands: <cmd or CI run URL>: pass | fail (one line each; say which ran locally and which on CI; timeouts noted)
     outside the spec: <files, one line each>
     retargeted pins: <test: old -> new, intent kept because ...>
     blocked: <which stop above, and the evidence>
-    queued: <job ids still running>
-Environment for every command: the job queue (and the leases) set JAVA_HOME, ANDROID_HOME and
-DRAGON_WPT_DIR.
+    waiting on: <PR checks, regen or ci:test-files run ids still running>
+
+## Local Mac (alternative path; still valid)
+A lane on the local Mac meets the same rules this way:
+- Worktrees under /tmp, one per branch; `git -C <worktree>` for git commands.
+- Heavy commands (full `pnpm test`, `pnpm regen`, captures, wpt:run, tw:sweep) run only through `/tmp/heavy-lease.sh`, and long
+  jobs detached with `/tmp/job.sh <lane>-<step> <worktree> <cmd...>` (log in /tmp/jobs/<name>.log, exit code in
+  /tmp/jobs/<name>.done). The job queue sets JAVA_HOME, ANDROID_HOME and DRAGON_WPT_DIR.
+- Chrome and native test files may run locally with `pnpm vitest run <files>`; ci:test-files is optional.
+- Regen on CI is preferred. If a regen-on-ci run has been queued for 15 minutes or more, `pnpm regen` through /tmp/job.sh is
+  allowed; commit its outputs and push.
+- Waiting: a background watcher on the job's .done file, or end the turn and let the PM's watcher resume you.
+- `gh pr create`, `gh pr view` and `pnpm pr:review <n> --wait` work there.
+- Stop rule 5 is disk under 40 GB free (`df -h /System/Volumes/Data`).
+- Resuming also reads the dead agent's transcript tail and `git status` in its worktrees: commit uncommitted sources, never
+  uncommitted generated outputs, and regenerate from the committed sources.
