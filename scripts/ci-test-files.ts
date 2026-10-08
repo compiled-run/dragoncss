@@ -3,16 +3,21 @@
 //   pnpm ci:test-files <ref> <file>... [--floor-write] [--from <branch>] [--once]   dispatch, then wait (--once: poll one time)
 //   pnpm ci:test-files --run <id> [--once]                                          wait for (or poll once) a dispatched run
 // --from is the branch whose workflow file runs (default master). GitHub files the run's checks under that branch's head commit,
-// so a run dispatched from a PR branch shows on the PR's checks. Exit codes: 0 passed, 1 failed, 2 usage or gh error, 3 pending.
+// so a run dispatched from a PR branch shows on the PR's checks. Each dispatch carries a nonce shown in its run-name, so the run is
+// found exactly, and the verdict checks the run's resolved request (ref, nonce, files) and its reports against what was asked.
+// Exit codes: 0 passed, 1 failed, 2 usage or gh error, a cancelled run or a run that is not the one asked for, 3 pending.
 import { execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { type CiJob, dispatchedRun, parseJobs, parseRunRows, type RunRow } from './land-devices-ci.ts';
+import { type CiJob, parseJobs, parseRunRows } from './land-devices-ci.ts';
+
+type RunRow = ReturnType<typeof parseRunRows>[number];
 
 export const WORKFLOW = 'test-files.yml';
 export const EXIT = { passed: 0, failed: 1, error: 2, pending: 3 } as const;
-export const runTitle = (ref: string): string => `test files of ${ref}`;
+export const runTitle = (ref: string, nonce: string): string => `test files of ${ref} (${nonce})`;
 /** Past the workflow's longest job (120 min) behind a busy macOS pool; a run still going after it is reported as pending. */
 export const WAIT_S = 4 * 3600;
 const USAGE = 'usage: pnpm ci:test-files <ref> <file>... [--floor-write] [--from <branch>] [--once] | --run <id> [--once]';
@@ -71,7 +76,13 @@ export type Deps = {
   readonly log: (line: string) => void;
   /** Downloads a run's named artifact into a fresh directory; returns the directory. */
   readonly download: (runId: number, artifact: string) => string;
+  /** A fresh token for one dispatch. */
+  readonly nonce: () => string;
 };
+
+/** What a dispatch asked for, to check the run against: the ref, the nonce and the files as the workflow normalises them. */
+export type Expected = { readonly ref: string; readonly nonce: string; readonly files: readonly string[] };
+export const normalFiles = (files: readonly string[]): string[] => [...new Set(files.map((f) => f.replace(/^\.\//, '')))].sort();
 
 /** The run id in the dispatch API's answer (return_run_details), or null when the answer carries none. */
 export function runIdOfDispatch(text: string): number | null {
@@ -83,26 +94,51 @@ export function runIdOfDispatch(text: string): number | null {
   return v.workflow_run_id;
 }
 
-/** Dispatches the workflow and returns its run: from the dispatch's answer, else found by its run-name. */
-export function dispatch(deps: Deps, repo: string, a: Extract<Args, { kind: 'dispatch' }>, appearS = 180): number {
+/** Dispatches the workflow and returns its run (from the dispatch's answer, else by its run-name) and what it asked for. */
+export function dispatch(deps: Deps, repo: string, a: Extract<Args, { kind: 'dispatch' }>, appearS = 180): { readonly runId: number; readonly expected: Expected } {
+  const nonce = deps.nonce();
+  if (!/^[0-9a-f]{8,}$/.test(nonce)) throw new Error(`bad nonce ${JSON.stringify(nonce)}`);
+  const expected: Expected = { ref: a.ref, nonce, files: normalFiles(a.files) };
   const t0 = deps.now();
-  const out = deps.gh(['api', '-X', 'POST', `repos/${repo}/actions/workflows/${WORKFLOW}/dispatches`, '-f', `ref=${a.from}`, '-f', `inputs[ref]=${a.ref}`, '-f', `inputs[files]=${a.files.join(' ')}`, '-f', `inputs[floor_write]=${a.floorWrite}`, '-F', 'return_run_details=true']);
+  const out = deps.gh(['api', '-X', 'POST', `repos/${repo}/actions/workflows/${WORKFLOW}/dispatches`, '-f', `ref=${a.from}`, '-f', `inputs[ref]=${a.ref}`, '-f', `inputs[files]=${a.files.join(' ')}`, '-f', `inputs[floor_write]=${a.floorWrite}`, '-f', `inputs[nonce]=${nonce}`, '-F', 'return_run_details=true']);
   const id = runIdOfDispatch(out);
-  if (id !== null) return id;
+  if (id !== null) return { runId: id, expected };
   for (;;) {
-    const rows = parseRunRows(deps.gh(['run', 'list', '-R', repo, '--workflow', WORKFLOW, '--event', 'workflow_dispatch', '--branch', a.from, '--limit', '20', '--json', 'databaseId,displayTitle,createdAt,headBranch,status,conclusion,url']));
-    const run = dispatchedRun(rows, { branch: a.from, title: runTitle(a.ref), since: t0 });
-    if (run !== undefined) return run.databaseId;
-    if (deps.now() - t0 > appearS * 1000) throw new Error(`no ${WORKFLOW} run for ${a.ref} appeared within ${appearS}s of the dispatch`);
+    // The nonce makes the run-name unique to this dispatch: no time window, so no earlier run of the same ref can match.
+    const rows = parseRunRows(deps.gh(['run', 'list', '-R', repo, '--workflow', WORKFLOW, '--event', 'workflow_dispatch', '--branch', a.from, '--limit', '50', '--json', 'databaseId,displayTitle,createdAt,headBranch,status,conclusion,url']));
+    const run = rows.find((r) => r.headBranch === a.from && r.displayTitle === runTitle(a.ref, nonce));
+    if (run !== undefined) return { runId: run.databaseId, expected };
+    if (deps.now() - t0 > appearS * 1000) throw new Error(`no ${WORKFLOW} run named ${JSON.stringify(runTitle(a.ref, nonce))} appeared within ${appearS}s of the dispatch`);
     deps.sleep(10_000);
   }
 }
 
-export type Polled = { readonly run: RunRow; readonly jobs: readonly CiJob[] };
+export type Polled = { readonly run: RunRow; readonly headSha: string; readonly jobs: readonly CiJob[] };
 export const poll = (deps: Deps, repo: string, runId: number): Polled => {
-  const text = deps.gh(['run', 'view', String(runId), '-R', repo, '--json', 'databaseId,status,conclusion,url,jobs']);
-  return { run: parseRunRows(text)[0] as RunRow, jobs: parseJobs(text) };
+  const text = deps.gh(['run', 'view', String(runId), '-R', repo, '--json', 'databaseId,displayTitle,headBranch,headSha,status,conclusion,url,jobs']);
+  const headSha = (JSON.parse(text) as { headSha?: unknown }).headSha;
+  if (typeof headSha !== 'string' || !/^[0-9a-f]{40}$/.test(headSha)) throw new Error(`unexpected gh run JSON: no headSha in ${text.slice(0, 200)}`);
+  return { run: parseRunRows(text)[0] as RunRow, headSha, jobs: parseJobs(text) };
 };
+
+export type Request = { readonly ref: string; readonly sha: string; readonly nonce: string; readonly files: readonly string[]; readonly groups: Readonly<Record<string, string>> };
+
+/** The resolve job's request.json: the ref, the sha it resolved to, the nonce, and the files with their groups. */
+export function parseRequest(text: string): Request {
+  const v = JSON.parse(text) as Partial<Record<keyof Request, unknown>>;
+  const strs = (x: unknown): x is string[] => Array.isArray(x) && x.every((y) => typeof y === 'string');
+  const groups = v?.groups;
+  if (typeof v !== 'object' || v === null || typeof v.ref !== 'string' || typeof v.sha !== 'string' || !/^[0-9a-f]{40}$/.test(v.sha) || typeof v.nonce !== 'string' || !strs(v.files) || v.files.length === 0 || typeof groups !== 'object' || groups === null || Array.isArray(groups) || !v.files.every((f) => typeof (groups as Record<string, unknown>)[f] === 'string')) {
+    throw new Error(`not a test-files request: ${text.slice(0, 200)}`);
+  }
+  return v as Request;
+}
+
+/** The run is the one asked for: same ref, same nonce, same files. */
+export function checkExpected(r: Request, e: Expected): void {
+  const files = normalFiles(r.files);
+  if (r.ref !== e.ref || r.nonce !== e.nonce || files.join(' ') !== e.files.join(' ')) throw new Error(`the run tested ${r.ref} (${r.nonce}) with ${files.join(' ')}, not the dispatched ${e.ref} (${e.nonce}) with ${e.files.join(' ')}`);
+}
 
 type Report = { testResults: { name: string; status: string; message?: string; assertionResults: { fullName: string; status: string; failureMessages?: string[] }[] }[] };
 
@@ -117,13 +153,49 @@ export function parseReport(text: string): Report {
   return v;
 }
 
+type Listed = { name: string; file: string };
+/** vitest list --json: every test vitest collects, by name and file. */
+export function parseList(text: string): Listed[] {
+  const v = JSON.parse(text) as unknown;
+  if (!Array.isArray(v) || !v.every((t) => typeof (t as Listed)?.name === 'string' && typeof (t as Listed)?.file === 'string')) throw new Error(`not a vitest list: ${text.slice(0, 200)}`);
+  return v as Listed[];
+}
+
+const rel = (name: string): string => name.replace(/^.*?\/(packages\/)/, '$1');
+
+/**
+ * What the run did not do of the request: a requested file not in the reports or in two, a file whose passed and failed tests are
+ * fewer than vitest collects for it without filters, a file nobody asked for. Empty when every requested file ran in full.
+ */
+export function checkRan(want: readonly string[], reports: readonly Report[], lists: readonly (readonly Listed[])[]): string[] {
+  const out: string[] = [];
+  const ran = new Map<string, Report['testResults'][number]>();
+  for (const r of reports) {
+    for (const f of r.testResults) {
+      if (ran.has(rel(f.name))) out.push(`RUN TWICE ${rel(f.name)}`);
+      ran.set(rel(f.name), f);
+    }
+  }
+  const collected = new Map<string, number>();
+  for (const l of lists) for (const t of l) collected.set(rel(t.file), (collected.get(rel(t.file)) ?? 0) + 1);
+  for (const w of want) {
+    const f = ran.get(w);
+    const done = f?.assertionResults.filter((t) => t.status === 'passed' || t.status === 'failed').length ?? 0;
+    if (f === undefined) out.push(`NOT RUN ${w}`);
+    else if (f.status !== 'failed' && done === 0) out.push(`NO TEST RAN ${w} (every test skipped)`);
+    else if (f.status !== 'failed' && done !== (collected.get(w) ?? 0)) out.push(`NOT EVERY TEST RAN ${w}: ${done} passed or failed, but vitest collects ${collected.get(w) ?? 0} without filters`);
+  }
+  for (const f of ran.keys()) if (!want.includes(f)) out.push(`NOT REQUESTED ${f}`);
+  return out;
+}
+
 /** One line per file and test state, then every failing test with its first message line. */
 export function describeReports(reports: readonly { readonly group: string; readonly report: Report }[]): { readonly lines: string[]; readonly failed: number } {
   const lines: string[] = [];
   let failed = 0;
   for (const { group, report } of reports) {
     for (const f of report.testResults) {
-      const file = f.name.replace(/^.*?\/(packages\/)/, '$1');
+      const file = rel(f.name);
       const count = (s: string): number => f.assertionResults.filter((t) => t.status === s).length;
       lines.push(`${group}: ${file}: ${count('passed')} passed, ${count('failed')} failed, ${f.assertionResults.length - count('passed') - count('failed')} skipped`);
       if (f.status === 'failed' && f.assertionResults.length === 0) {
@@ -143,29 +215,54 @@ export function describeReports(reports: readonly { readonly group: string; read
 export const failedSteps = (jobs: readonly CiJob[]): string[] =>
   jobs.filter((j) => j.conclusion === 'failure' || j.conclusion === 'timed_out' || j.conclusion === 'cancelled').map((j) => `${j.name}: ${j.conclusion} at ${j.steps.find((s) => s.conclusion === 'failure' || s.conclusion === 'cancelled')?.name ?? 'no step'}`);
 
-/** The outcome of a completed run: its reports and floor patches read, and its exit code. A passed run without a report failed. */
-export function settle(deps: Deps, repo: string, p: Polled): number {
+/**
+ * The outcome of a completed run: its request, reports and floor patches read and checked, and its exit code. A run passes only
+ * when GitHub says success, it is the run asked for, and its reports show every requested file run in full with no failure.
+ */
+export function settle(deps: Deps, repo: string, p: Polled, expected: Expected | null): number {
+  if (p.run.conclusion === 'cancelled') {
+    deps.log(`CANCELLED ${p.run.url}: nothing was judged (cancelled by hand or by a newer run in its concurrency group)`);
+    return EXIT.error;
+  }
   const names = artifactNames(deps.gh(['api', `repos/${repo}/actions/runs/${p.run.databaseId}/artifacts?per_page=100`]));
-  const reports: { group: string; report: Report }[] = [];
-  for (const n of names.filter((x) => x.startsWith('test-files-report-'))) {
-    const dir = deps.download(p.run.databaseId, n);
+  const artifact = <T>(name: string, read: (dir: string) => T): T => {
+    const dir = deps.download(p.run.databaseId, name);
     try {
-      const json = readdirSync(dir).filter((x) => x.endsWith('.json'));
-      if (json.length !== 1) throw new Error(`the ${n} artifact holds ${json.length} JSON reports, not 1`);
-      reports.push({ group: n.slice('test-files-report-'.length), report: parseReport(readFileSync(join(dir, json[0] as string), 'utf8')) });
+      return read(dir);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  };
+  const request = names.includes('test-files-request') ? artifact('test-files-request', (dir) => parseRequest(readFileSync(join(dir, 'request.json'), 'utf8'))) : null;
+  deps.log(`run ${p.run.url}: ${WORKFLOW} of ${p.run.headBranch} at ${p.headSha}`);
+  if (request !== null) {
+    deps.log(`tested ${request.ref} at ${request.sha}: ${request.files.map((f) => `${f} (${request.groups[f]})`).join(', ')}`);
+    if (expected !== null) checkExpected(request, expected);
   }
-  const d = describeReports(reports);
+  const reports: Report[] = [];
+  const lists: Listed[][] = [];
+  const groups: string[] = [];
+  for (const n of names.filter((x) => x.startsWith('test-files-report-'))) {
+    artifact(n, (dir) => {
+      const json = readdirSync(dir).filter((x) => x.endsWith('.json'));
+      const list = json.filter((x) => x.endsWith('.list.json'));
+      const report = json.filter((x) => !x.endsWith('.list.json'));
+      if (report.length !== 1 || list.length !== 1) throw new Error(`the ${n} artifact holds ${report.length} vitest reports and ${list.length} vitest lists, not 1 of each`);
+      reports.push(parseReport(readFileSync(join(dir, report[0] as string), 'utf8')));
+      lists.push(parseList(readFileSync(join(dir, list[0] as string), 'utf8')));
+      groups.push(n.slice('test-files-report-'.length));
+    });
+  }
+  const d = describeReports(reports.map((report, i) => ({ group: groups[i] as string, report })));
   for (const l of d.lines) deps.log(l);
+  const problems = request === null ? ['no request record (the resolve job did not finish)'] : checkRan(normalFiles(request.files), reports, lists);
+  for (const l of problems) deps.log(l);
   for (const n of names.filter((x) => x.startsWith('test-files-floor-'))) deps.log(`floor and pin patch (${n.slice('test-files-floor-'.length)}): git apply ${join(deps.download(p.run.databaseId, n), 'floor.patch')}`);
-  if (p.run.conclusion === 'success' && reports.length > 0 && d.failed === 0) {
+  if (p.run.conclusion === 'success' && problems.length === 0 && d.failed === 0) {
     deps.log(`PASSED ${p.run.url}`);
     return EXIT.passed;
   }
   for (const s of failedSteps(p.jobs)) deps.log(`failed job ${s}`);
-  if (reports.length === 0) deps.log('no test report was uploaded (the files were refused, or no test job ran)');
   deps.log(`FAILED (${p.run.conclusion ?? 'no conclusion'}) ${p.run.url}`);
   return EXIT.failed;
 }
@@ -181,11 +278,11 @@ export function artifactNames(text: string): string[] {
 }
 
 /** Waits for the run (or polls it once) and returns the exit code. */
-export function waitFor(deps: Deps, repo: string, runId: number, o: { readonly once: boolean; readonly waitS?: number; readonly pollS?: number }): number {
+export function waitFor(deps: Deps, repo: string, runId: number, o: { readonly once: boolean; readonly expected?: Expected; readonly waitS?: number; readonly pollS?: number }): number {
   const t0 = deps.now();
   for (;;) {
     const p = poll(deps, repo, runId);
-    if (p.run.status === 'completed') return settle(deps, repo, p);
+    if (p.run.status === 'completed') return settle(deps, repo, p, o.expected ?? null);
     if (o.once || deps.now() - t0 > (o.waitS ?? WAIT_S) * 1000) {
       deps.log(`PENDING (${p.run.status}) ${p.run.url}; poll again with: pnpm ci:test-files --run ${runId} --once`);
       return EXIT.pending;
@@ -204,9 +301,10 @@ export function main(argv: readonly string[], deps: Deps, repo: () => string): n
   }
   try {
     const r = repo();
-    const runId = a.kind === 'attach' ? a.runId : dispatch(deps, r, a);
-    if (a.kind === 'dispatch') deps.log(`dispatched ${WORKFLOW} from ${a.from} for ${a.ref}: run ${runId}`);
-    return waitFor(deps, r, runId, { once: a.once });
+    if (a.kind === 'attach') return waitFor(deps, r, a.runId, { once: a.once });
+    const d = dispatch(deps, r, a);
+    deps.log(`dispatched ${WORKFLOW} from ${a.from} for ${a.ref} (${d.expected.nonce}): run ${d.runId}`);
+    return waitFor(deps, r, d.runId, { once: a.once, expected: d.expected });
   } catch (e) {
     deps.log(`ERROR ${e instanceof Error ? e.message : String(e)}`);
     return EXIT.error;
@@ -235,6 +333,7 @@ if (import.meta.main) {
     sleep: (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms),
     now: () => Date.now(),
     log: (l) => console.log(l),
+    nonce: () => randomBytes(6).toString('hex'),
     download: (runId, artifact) => {
       const dir = mkdtempSync(join(tmpdir(), `ci-test-files-${runId}-`));
       gh(['run', 'download', String(runId), '-R', (r ||= repo()), '-n', artifact, '-D', dir]);

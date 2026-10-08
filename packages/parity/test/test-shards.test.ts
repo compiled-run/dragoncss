@@ -83,22 +83,67 @@ describe('test-files.yml groups (group-files)', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
-  it('sets each group up exactly as full-test.yml sets up its shards', () => {
-    const job = (file: string, name: string): string => {
-      const yml = readFileSync(repoPath(`.github/workflows/${file}`), 'utf8');
-      const start = yml.indexOf(`\n  ${name}:\n`);
-      expect(start, `${file} ${name}`).toBeGreaterThan(0);
-      const end = yml.slice(start + 1).search(/\n {2}\S/);
-      return end < 0 ? yml.slice(start + 1) : yml.slice(start + 1, start + 1 + end);
-    };
-    // The job's runner, time limit and environment, and every step before the test run.
-    const setup = (text: string): string => {
-      const keep = text.split('\n').filter((l) => /^ {4}(runs-on|timeout-minutes):|^ {6}DRAGON_WPT_DIR:/.test(l));
-      const steps = text.slice(text.indexOf('\n    steps:\n'));
-      const run = steps.search(/\n {6}- (name: vitest run|[&*]vitest\n)/);
-      expect(run, text.slice(0, 40)).toBeGreaterThan(0);
-      return [...keep, steps.slice(0, run)].join('\n');
-    };
-    for (const name of ['platform-free', 'native', 'chrome']) expect(setup(job('test-files.yml', name)), name).toBe(setup(job('full-test.yml', name)));
+  // A test-files.yml job is judged as its full-test.yml shard is: same environment, runner, setup, vitest command and blocked scan.
+  // Only the file list's source and the report's name differ, and the floor-write variables (unset unless floor_write).
+  const yml = (file: string): string => readFileSync(repoPath(`.github/workflows/${file}`), 'utf8');
+  const jobOf = (text: string, name: string): string => {
+    const start = text.indexOf(`\n  ${name}:\n`);
+    expect(start, name).toBeGreaterThan(0);
+    const end = text.slice(start + 1).search(/\n {2}\S/);
+    return end < 0 ? text.slice(start + 1) : text.slice(start + 1, start + 1 + end);
+  };
+  /** The step of a job that starts at the line matching head, up to the next step. */
+  const stepOf = (job: string, head: RegExp): string => {
+    const at = job.search(head);
+    expect(at, String(head)).toBeGreaterThan(0);
+    const end = job.slice(at + 1).search(/\n {6}- /);
+    return end < 0 ? job.slice(at + 1) : job.slice(at + 1, at + 1 + end);
+  };
+  /** A step from its run: line on: what it runs, whatever its name, id and condition. */
+  const runOf = (step: string): string => step.slice(step.indexOf('\n        run: |\n'));
+  const vitestOf = (step: string): string =>
+    runOf(step)
+      .replace(/\n {10}list=\$\(node scripts\/test-shards\.ts plan [^\n]+\n {10}files=\(\); while IFS= read -r f; do files\+=\("\$f"\); done <<< "\$list"\n/, '\n<files>\n')
+      .replace('\n          read -ra files <<< "$FILES"\n', '\n<files>\n')
+      .replace(/--outputFile="\$RUNNER_TEMP\/report\/[^"\n]+\.json"/, '--outputFile=<report>');
+  const header = (job: string): string[] => job.slice(0, job.indexOf('\n    steps:\n')).split('\n');
+
+  it('runs each group exactly as full-test.yml runs its shards', () => {
+    const [full, files] = [yml('full-test.yml'), yml('test-files.yml')];
+    // The workflow environment.
+    const envOf = (text: string): string => text.slice(text.indexOf('\nenv:\n'), text.indexOf('\njobs:\n'));
+    expect(envOf(files)).toBe(envOf(full));
+    // The anchored steps, defined in the platform-free job and used unchanged by the others.
+    const defined = jobOf(files, 'platform-free');
+    const vitest = stepOf(defined, /\n {6}- &vitest\n/);
+    expect(vitest.split('\n').slice(0, 7)).toEqual(['      - &vitest', '        id: vitest', '        name: vitest run (the requested files)', '        env:', "          DRAGON_FLOOR_WRITE: ${{ inputs.floor_write && '1' || '' }}", "          DRAGON_PIN_WRITE: ${{ inputs.floor_write && '1' || '' }}", '        run: |']);
+    const blocked = stepOf(defined, /\n {6}- &blocked\n/);
+    expect(blocked.split('\n').slice(0, 4)).toEqual(['      - &blocked', '        name: No native run was blocked (owner tooling)', "        if: always() && steps.vitest.outcome != 'skipped'", '        run: |']);
+    // vitest list takes the requested files and nothing else: the count every file must run in full.
+    expect(runOf(stepOf(defined, /\n {6}- &list\n/))).toBe('\n        run: |\n          read -ra files <<< "$FILES"\n          npx vitest list "${files[@]}" --json="$RUNNER_TEMP/report/$GITHUB_JOB.list.json"');
+    const after = ['vitest', 'blocked', 'list', 'ran', 'report', 'floor', 'floor-upload'];
+    for (const name of ['platform-free', 'native', 'chrome']) {
+      const [a, b] = [jobOf(files, name), jobOf(full, name)];
+      // The runner, time limit and job environment (but the requested files).
+      const keep = (h: string[]): string[] => {
+        const env = h.indexOf('    env:');
+        const end = h.slice(env + 1).findIndex((l) => !/^ {6}/.test(l));
+        const vars = env < 0 ? [] : h.slice(env + 1, end < 0 ? h.length : env + 1 + end);
+        return [...h.filter((l) => /^ {4}(runs-on|timeout-minutes):/.test(l)), ...vars.filter((l) => !l.startsWith('      FILES:'))];
+      };
+      expect(keep(header(a)), name).toEqual(keep(header(b)));
+      // Every step before the test run.
+      const setup = (job: string): string => job.slice(job.indexOf('\n    steps:\n'), job.search(/\n {6}- (name: vitest run|[&*]vitest\n)/));
+      expect(setup(a), name).toBe(setup(b));
+      // The vitest command and the blocked scan.
+      const fullVitest = stepOf(b, /\n {6}- name: vitest run/);
+      expect(vitestOf(vitest), name).toBe(vitestOf(fullVitest));
+      expect(runOf(blocked), name).toBe(runOf(stepOf(b, /\n {6}- name: No native run was blocked/)));
+      // Then the shared steps, in order, and nothing else.
+      const rest = a.slice(a.search(/\n {6}- [&*]vitest\n/) + 1);
+      const steps = rest.split('\n').filter((l) => /^ {6}- /.test(l)).map((l) => l.replace(/^ {6}- [&*]/, ''));
+      expect(steps, name).toEqual(after);
+      if (name !== 'platform-free') expect(rest.trimEnd(), name).toBe(after.map((x) => `      - *${x}`).join('\n'));
+    }
   });
 });

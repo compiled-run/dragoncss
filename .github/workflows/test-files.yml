@@ -2,14 +2,17 @@
 # native toolchains (pnpm ci:test-files dispatches it and reads the outcome). Judged as full-test.yml judges a shard: no tolerance,
 # filter or retry is added, and a failing test fails the run.
 # The resolve job sorts the requested files into their groups with this workflow's own scripts/test-shards.ts (group-files), read
-# against the requested tree, so a branch that predates the mode can be tested; an unknown file fails the run before any test.
-# Each group's job sets up exactly as its full-test.yml job does (test-shards.test.ts keeps the setup steps equal), runs only its
-# files, keeps the "No native run was blocked" scan, and fails when a requested file did not run (the vitest JSON report).
+# against the requested tree, so a branch that predates the mode can be tested; an unknown file fails the run before any test, and
+# so does a file the ref's own test-shards.ts (all) puts in another group, since full-test.yml at that ref would run it there.
+# Each group's job sets up and runs vitest exactly as its full-test.yml job does (test-shards.test.ts keeps the environment, the
+# setup steps, the vitest command and the blocked scan equal), runs only its files, and fails when a requested file did not run
+# every test vitest collects for it without filters (vitest list against the vitest JSON report).
+# nonce: set by pnpm ci:test-files and shown in the run-name, so the client finds exactly the run it dispatched.
 #   floor_write: the tests run with DRAGON_FLOOR_WRITE=1 and DRAGON_PIN_WRITE=1, and each job uploads a patch of the floor and pin
 #     files (.gitattributes merge=dragon-floor) it changed, made on that group's platform.
 # Caches are only restored here, never saved: a dispatched run tests an unreviewed tree at master's cache scope.
 name: test-files
-run-name: test files of ${{ inputs.ref }}
+run-name: test files of ${{ inputs.ref }}${{ inputs.nonce != '' && format(' ({0})', inputs.nonce) || '' }}
 on:
   workflow_dispatch:
     inputs:
@@ -26,6 +29,11 @@ on:
         required: false
         default: false
         type: boolean
+      nonce:
+        description: A token of this dispatch, shown in the run-name (pnpm ci:test-files sets it)
+        required: false
+        default: ''
+        type: string
 permissions:
   contents: read
 env:
@@ -60,12 +68,21 @@ jobs:
         env:
           REF: ${{ inputs.ref }}
           FILES: ${{ inputs.files }}
+          NONCE: ${{ inputs.nonce }}
         run: |
           set -o pipefail
           sha=$(git -C target rev-parse HEAD)
           [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::could not resolve $REF"; exit 1; }
           read -ra files <<< "$FILES"
           groups=$(node tools/scripts/test-shards.ts group-files --root target "${files[@]}") || { echo "::error::the requested files are not all test files of $REF (see the log)"; exit 1; }
+          # The ref's own rules decide where full-test.yml runs a file; a file this workflow would run elsewhere is refused.
+          own=$(node target/scripts/test-shards.ts all) || { echo "::error::$REF's scripts/test-shards.ts all failed"; exit 1; }
+          bad=0
+          while IFS=$'\t' read -r f g; do
+            want=$(awk -F'\t' -v f="$f" '$1 == f { print $2 }' <<< "$own")
+            [[ "$want" == "$g" ]] || { echo "::error::$f: this workflow's test-shards.ts puts it in $g, but $REF's own puts it in ${want:-no group}"; bad=1; }
+          done <<< "$groups"
+          [[ $bad == 0 ]] || exit 1
           {
             echo "sha=$sha"
             echo "files=$(cut -f1 <<< "$groups" | paste -sd' ' -)"
@@ -73,6 +90,17 @@ jobs:
             for g in chrome native platform-free; do echo "${g//-/_}=$(awk -F'\t' -v g="$g" '$2 == g { print $1 }' <<< "$groups" | paste -sd' ' -)"; done
           } >> "$GITHUB_OUTPUT"
           { echo "test files of $REF ($sha)"; echo; echo '```'; echo "$groups"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p "$RUNNER_TEMP/request"
+          GROUPS_TSV="$groups" SHA="$sha" node -e '
+            const groups = Object.fromEntries(process.env.GROUPS_TSV.split("\n").map((l) => l.split("\t")));
+            const r = { ref: process.env.REF, sha: process.env.SHA, nonce: process.env.NONCE, files: Object.keys(groups), groups };
+            require("node:fs").writeFileSync(`${process.env.RUNNER_TEMP}/request/request.json`, `${JSON.stringify(r, null, 1)}\n`);'
+      - name: The request as resolved
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-files-request
+          path: ${{ runner.temp }}/request/request.json
+          if-no-files-found: error
 
   platform-free:
     needs: resolve
@@ -113,30 +141,45 @@ jobs:
         run: |
           # The run lines native.ts describe() prints (the test titles that mention "blocked" are not run lines).
           if grep -nE 'status blocked \(owner tooling\)|native:(swift|kotlin): (swiftc not found|no JDK 17\+ or kotlinc)' "$RUNNER_TEMP/shard.log"; then echo "::error::a native run was blocked (owner tooling): its toolchain was missing, so the test proved nothing"; exit 1; fi
+      - &list
+        name: The tests vitest collects for the requested files, without filters
+        if: always() && steps.vitest.outcome != 'skipped'
+        run: |
+          read -ra files <<< "$FILES"
+          npx vitest list "${files[@]}" --json="$RUNNER_TEMP/report/$GITHUB_JOB.list.json"
       - &ran
         name: Every requested file ran
         if: always() && steps.vitest.outcome != 'skipped'
         run: |
           cat > "$RUNNER_TEMP/ran.mjs" <<'EOF'
-          // Every requested file is in the vitest reports with a test that ran, and nothing else is; the failures are listed.
+          // Every requested file is in the vitest reports, every test vitest collects for it without filters (vitest list) passed or
+          // failed, and nothing else ran; the failures are listed.
           import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs';
           const want = process.env.FILES.split(' ').filter(Boolean);
           const dir = `${process.env.RUNNER_TEMP}/report`;
-          const reports = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.json')) : [];
-          const out = reports.length === 0 ? ['NO REPORT: vitest wrote no JSON report, so no requested file is known to have run'] : [];
+          const names = existsSync(dir) ? readdirSync(dir) : [];
+          const reports = names.filter((f) => f.endsWith('.json') && !f.endsWith('.list.json'));
+          const lists = names.filter((f) => f.endsWith('.list.json'));
+          const out = [];
+          if (reports.length === 0) out.push('NO REPORT: vitest wrote no JSON report, so no requested file is known to have run');
+          if (lists.length !== reports.length) out.push(`${reports.length} reports but ${lists.length} vitest lists`);
+          const rel = (name) => name.replace(/^.*?\/(packages\/)/, '$1');
           const ran = new Map();
           for (const r of reports) {
             for (const f of JSON.parse(readFileSync(`${dir}/${r}`, 'utf8')).testResults) {
-              const file = f.name.replace(/^.*?\/(packages\/)/, '$1');
+              const file = rel(f.name);
               if (ran.has(file)) out.push(`RUN TWICE ${file}`);
               ran.set(file, f);
             }
           }
-          const idle = (t) => t.status === 'skipped' || t.status === 'pending' || t.status === 'todo';
+          const collected = new Map();
+          for (const l of lists) for (const t of JSON.parse(readFileSync(`${dir}/${l}`, 'utf8'))) collected.set(rel(t.file), (collected.get(rel(t.file)) ?? 0) + 1);
           for (const w of want) {
             const f = ran.get(w);
+            const done = f === undefined ? 0 : f.assertionResults.filter((t) => t.status === 'passed' || t.status === 'failed').length;
             if (f === undefined) out.push(`NOT RUN ${w}`);
-            else if (f.status !== 'failed' && (f.assertionResults.length === 0 || f.assertionResults.every(idle))) out.push(`NO TEST RAN ${w} (every test skipped)`);
+            else if (f.status !== 'failed' && done === 0) out.push(`NO TEST RAN ${w} (every test skipped)`);
+            else if (f.status !== 'failed' && done !== (collected.get(w) ?? 0)) out.push(`NOT EVERY TEST RAN ${w}: ${done} passed or failed, but vitest collects ${collected.get(w) ?? 0} without filters`);
           }
           for (const f of ran.keys()) if (!want.includes(f)) out.push(`NOT REQUESTED ${f}`);
           const failed = [...ran].flatMap(([file, f]) => (f.assertionResults.length === 0 && f.status === 'failed' ? [`FAILED ${file} > (file) ${(f.message ?? '').split('\n')[0]}`] : f.assertionResults.filter((t) => t.status === 'failed').map((t) => `FAILED ${file} > ${t.fullName}`)));
@@ -223,6 +266,7 @@ jobs:
           node --conditions=dragon-internal "$RUNNER_TEMP/tools.mts"
       - *vitest
       - *blocked
+      - *list
       - *ran
       - *report
       - *floor
@@ -276,6 +320,7 @@ jobs:
           echo "ANDROID_HOME=${ANDROID_HOME:-unset}"; find "${ANDROID_HOME:-/nonexistent}/platforms" -maxdepth 1 2>&1 | tail -3
       - *vitest
       - *blocked
+      - *list
       - *ran
       - *report
       - *floor

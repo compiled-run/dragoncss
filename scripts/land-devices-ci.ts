@@ -48,7 +48,7 @@ export type DevicesCiDeps = {
 
 export type DevicesCiResult = { readonly sha: string; readonly url: string; readonly outcomesDir: string };
 
-export type RunRow = { databaseId: number; displayTitle: string; createdAt: string; headBranch: string; status: string; conclusion: string | null; url: string };
+type RunRow = { databaseId: number; displayTitle: string; createdAt: string; headBranch: string; status: string; conclusion: string | null; url: string };
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 
 /** gh run list/view JSON, checked: a malformed answer stops the step instead of being read as "no run yet". */
@@ -63,13 +63,6 @@ export function parseRunRows(text: string): RunRow[] {
     return { databaseId: r['databaseId'], displayTitle: (r['displayTitle'] as string | undefined) ?? '', createdAt: (r['createdAt'] as string | undefined) ?? '', headBranch: (r['headBranch'] as string | undefined) ?? '', status: r['status'], conclusion: r['conclusion'] as string | null, url: r['url'] };
   });
 }
-
-/**
- * The run a dispatch made, by its run-name: only the workflow of the branch it was dispatched from, created after the dispatch
- * (2 min clock skew), so neither an earlier run for the same commit nor a run dispatched from another branch.
- */
-export const dispatchedRun = <R extends Pick<RunRow, 'headBranch' | 'displayTitle' | 'createdAt'>>(rows: readonly R[], o: { readonly branch: string; readonly title: string; readonly since: number }): R | undefined =>
-  rows.find((r) => r.headBranch === o.branch && r.displayTitle === o.title && Date.parse(r.createdAt) >= o.since - 120_000);
 
 /** The device outcome files of the artifact: at least one, all JSON files (device-ci.ts merge checks each device and stamp). */
 export function outcomeFiles(files: readonly string[]): string[] {
@@ -191,7 +184,9 @@ export function runOnCi(w: CiWorkflow, o: { readonly branch: string; readonly de
     deps.log(`  ${w.what} on CI: dispatched ${w.workflow} for ${sha} (branch ${branch})`);
     while (run === undefined) {
       const rows = parseRunRows(deps.gh(['run', 'list', '--workflow', w.workflow, '--event', 'workflow_dispatch', '--branch', 'master', '--limit', '20', '--json', 'databaseId,displayTitle,createdAt,headBranch,status,conclusion,url']));
-      run = dispatchedRun(rows, { branch: 'master', title: w.title(sha), since: t0 });
+      // Only master's workflow, dispatched after this dispatch (2 min clock skew): not an earlier run for the same commit, and not
+      // a run of the workflow dispatched from another branch.
+      run = rows.find((r) => r.headBranch === 'master' && r.displayTitle === w.title(sha) && Date.parse(r.createdAt) >= t0 - 120_000);
       if (run !== undefined) break;
       if (deps.now() - t0 > o.appearS * 1000) throw new CiUnavailable(`no ${w.workflow} run for ${sha} appeared within ${o.appearS}s of the dispatch`);
       deps.sleep(Math.min(poll, 10_000));
