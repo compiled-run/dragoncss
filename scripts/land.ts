@@ -101,7 +101,7 @@ import {
   staleLines,
   treeMatches,
 } from './merge-train-lib.ts';
-import { MERGE_DRIVERS } from './floor-merge.ts';
+import { SETUP_GIT_CONFIG } from './floor-merge.ts';
 import { parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
 import { matcher, STEPS } from './regen.ts';
@@ -1387,9 +1387,9 @@ const unlock = (): void => {
 };
 
 const prepareWorktree = (): void => {
-  // The merge drivers of .gitattributes (pnpm setup:git), in the shared config every worktree of this repository reads, so a
-  // landing merge resolves generated outputs and raised floors the same way a lane's does.
-  for (const [key, value] of MERGE_DRIVERS) {
+  // What pnpm setup:git sets (rerere off, the merge drivers of .gitattributes), in the shared config every worktree of this
+  // repository reads, so a landing merge resolves generated outputs and raised floors the same way a lane's does.
+  for (const [key, value] of SETUP_GIT_CONFIG) {
     let now = '';
     try {
       now = text(git, ['config', '--get', key]);

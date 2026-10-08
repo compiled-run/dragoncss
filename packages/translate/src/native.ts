@@ -34,6 +34,23 @@ export type RunResult = {
   readonly runSeconds: number;
 };
 
+/** Set to 1, a missing toolchain fails the run instead of reading blocked (owner tooling), as CI's "No native run was blocked" step does. */
+export const REQUIRE_NATIVE_ENV = 'DRAGON_REQUIRE_NATIVE';
+
+/** Whether DRAGON_REQUIRE_NATIVE is on: 1 is on, unset, empty or 0 is off, and any other value throws. */
+export function requireNative(env: NodeJS.ProcessEnv = process.env): boolean {
+  const v = env[REQUIRE_NATIVE_ENV];
+  if (v === undefined || v === '' || v === '0') return false;
+  if (v === '1') return true;
+  throw new Error(`${REQUIRE_NATIVE_ENV} is ${JSON.stringify(v)}; set it to 1 (a missing native toolchain fails) or 0`);
+}
+
+/** A run whose toolchain is missing: blocked (owner tooling), or with require on, an error naming the missing tool. */
+export function blockedRun(target: 'swift' | 'kotlin', toolchain: string, reason: string, require: boolean): RunResult {
+  if (require) throw new Error(`${REQUIRE_NATIVE_ENV}=1 and native:${target} has no toolchain: ${toolchain} (${reason}); run it where the toolchain is installed (CI) instead`);
+  return { target, status: 'blocked (owner tooling)', toolchain, reason, suites: [], buildSeconds: 0, runSeconds: 0 };
+}
+
 export type SwiftTool = { readonly swiftc: string; readonly version: string };
 export type KotlinTool = { readonly kotlinc: string; readonly javaHome: string; readonly version: string };
 
