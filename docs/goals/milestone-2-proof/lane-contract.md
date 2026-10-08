@@ -54,9 +54,10 @@ The cloud's GitHub proxy may refuse GraphQL, which `gh pr create`, `gh pr view`,
 - Develop with targeted tests and `pnpm typecheck`. Find a test file's group with
   `node scripts/test-shards.ts group-files <file>...`:
   - `platform-free` (packages/layout, packages/dragon): run it locally with `pnpm vitest run <files>`.
-  - `chrome` and `native`: push, then `pnpm ci:test-files <branch> <files...> --once` (it runs Chrome files on macos-26 and
-    native files on ubuntu-24.04-arm). Exit codes: 0 passed, 1 failed, 2 error, 3 pending; it prints the run id. Poll it
-    again with `pnpm ci:test-files --run <id> --once`. It tests the pushed branch, so push first.
+  - `chrome` and `native`: push, then `pnpm ci:test-files <full head sha> <files...> --once` (it runs Chrome files on
+    macos-26 and native files on ubuntu-24.04-arm). Give the pushed head's full sha, not the branch, so the run's title and
+    its `tested <ref> at <sha>` line name the exact commit. Exit codes: 0 passed, 1 failed, 2 error, 3 pending; it prints the
+    run id. Poll it again with `pnpm ci:test-files --run <id> --once`.
 - Regen only on CI, with no local fallback, and only through the `regen` label on your PR. (A `gh workflow run
   regen-on-ci.yml -f branch=<b>` run is filed under master with no branch in its title, so a lane can't find it again
   after a pause.) Push your source commits, then add the label (above). A run takes about 35–45 minutes. Find your run
@@ -91,7 +92,7 @@ The cloud's GitHub proxy may refuse GraphQL, which `gh pr create`, `gh pr view`,
 - A pinned test your change legitimately moves: retarget it, keep its intent, and list it. Since #125, registry,
   longhand, twin, suite and LGPL pins live in floor files (packages/*/test/*-floor.json, glyph-clearance-pins.json):
   a new entry is appended there (`DRAGON_FLOOR_WRITE=1` / `DRAGON_PIN_WRITE=1`; they never lower), not by editing a test.
-  For a floor or pin a Chrome or native test writes, use `pnpm ci:test-files <branch> <files...> --floor-write` and apply
+  For a floor or pin a Chrome or native test writes, use `pnpm ci:test-files <full head sha> <files...> --floor-write` and apply
   the patch it prints.
 - Floor and pin files merge structurally (#183, merge=dragon-floor; `pnpm setup:git`, which the session hook runs): a catch-up
   merge takes the larger count and the union of names. A conflict it still leaves means a removed name, disagreeing orders or a
@@ -137,7 +138,16 @@ Everything else is a default above, or a note in your receipt.
    Until pr:review is ported to REST (cloud plan item 2) it may fail at the proxy. Then answer the findings from the review
    comments above, check CI with the check-runs command, and say in your receipt that pr:review could not run; the PM runs
    it. Never claim clean without a pr:review exit 0.
-4. When `pr:review` exits 0, hand the PR to the landing driver (receipt with the clean head, `gh api $R/pulls/<n> --jq .head.sha`).
+4. Hand the PR to the landing driver (READY, below) only when all of these hold for one head sha, the PR's current head
+   (`gh api $R/pulls/<n> --jq .head.sha`):
+   - `pr:review` exits 0 on it;
+   - its regen run finished with that sha as its result (the bot's commit, or "already at a fixed point; no commit" for that
+     sha), or no regen was needed because no generator input changed since the last one;
+   - `pnpm typecheck` passed on it;
+   - every targeted test passed on it: platform-free files locally, the rest through ci:test-files runs whose
+     `tested <ref> at <sha>` line names that sha. pr:review can't see these runs (their checks are filed under master), so
+     they are the lane's to prove. A push after any of them (a review fix, a merge) means running them again on the new head.
+   The READY report lists that sha and the URL of each regen and ci:test-files run.
    The driver does the catch-up, regen, device run, full test and merge (on CI when the PM runs it with `LAND_CI=only`). While Macroscope is at its
    limit, the driver also needs a precomputed Claude review of each queued PR's clean head; the PM provides it (today a file the
    driver reads; plan item 8 moves it to a PR comment). Lanes don't write it.
@@ -161,12 +171,13 @@ what costs money or leaves the repo.
 ## Resuming a killed lane
 A new session has only what reached GitHub. `git fetch origin`, check out the lane's branch, and read its state: `git log`,
 the PR (head, conflict state, comments, review comments, labels) with the commands above, its checks, and its CI runs
-(regen runs with the command in Work; ci:test-files runs, whose titles carry the ref you gave:
-`gh api "$R/actions/workflows/test-files.yml/runs?per_page=20" --jq '.workflow_runs[] | "\(.id) \(.status) \(.conclusion) \(.display_title)"'`).
+(regen runs with the command in Work; the ci:test-files runs of a head, whose titles carry the sha you gave:
+`gh api "$R/actions/workflows/test-files.yml/runs?event=workflow_dispatch&per_page=100" --jq '.workflow_runs[] | select(.display_title | startswith("test files of <sha> ")) | "\(.id) \(.status) \(.conclusion) \(.html_url)"'`).
 Don't redo finished work. Treat generated outputs that did not come from a regen-on-ci commit as untrusted: regen on CI.
 
 ## Receipt (last message)
-When a PR is clean, the first line is `READY <branch>:<pr>:<full clean head sha>`.
+When a PR meets Landing step 4, the first line is `READY <branch>:<pr>:<full clean head sha>`, and the `commands` lines name
+that sha, the regen run URL (or why none was needed) and every ci:test-files run URL.
 
     result: done | blocked | waiting
     task / branch / head / PR
