@@ -4,7 +4,7 @@
 //   pnpm ci:test-files --run <id> [--once]                                          wait for (or poll once) a dispatched run
 // --from is the branch whose workflow file runs (default master). Exit codes: 0 passed, 1 failed, 2 usage or gh error, 3 pending.
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type CiJob, dispatchedRun, parseJobs, parseRunRows, type RunRow } from './land-devices-ci.ts';
@@ -110,8 +110,8 @@ export function parseReport(text: string): Report {
   const v = JSON.parse(text) as Report;
   if (typeof v !== 'object' || v === null || !Array.isArray(v.testResults)) throw new Error('not a vitest JSON report');
   for (const f of v.testResults) {
-    if (typeof f?.name !== 'string' || typeof f.status !== 'string' || !Array.isArray(f.assertionResults)) throw new Error(`not a vitest JSON report file entry: ${JSON.stringify(f).slice(0, 200)}`);
-    for (const t of f.assertionResults) if (typeof t?.fullName !== 'string' || typeof t.status !== 'string') throw new Error(`not a vitest JSON report test entry: ${JSON.stringify(t).slice(0, 200)}`);
+    if (typeof f?.name !== 'string' || typeof f.status !== 'string' || !(f.message === undefined || typeof f.message === 'string') || !Array.isArray(f.assertionResults)) throw new Error(`not a vitest JSON report file entry: ${JSON.stringify(f).slice(0, 200)}`);
+    for (const t of f.assertionResults) if (typeof t?.fullName !== 'string' || typeof t.status !== 'string' || !(t.failureMessages === undefined || (Array.isArray(t.failureMessages) && t.failureMessages.every((m) => typeof m === 'string')))) throw new Error(`not a vitest JSON report test entry: ${JSON.stringify(t).slice(0, 200)}`);
   }
   return v;
 }
@@ -122,7 +122,7 @@ export function describeReports(reports: readonly { readonly group: string; read
   let failed = 0;
   for (const { group, report } of reports) {
     for (const f of report.testResults) {
-      const file = f.name.includes('packages/') ? f.name.slice(f.name.lastIndexOf('/packages/') + 1) : f.name;
+      const file = f.name.replace(/^.*?\/(packages\/)/, '$1');
       const count = (s: string): number => f.assertionResults.filter((t) => t.status === s).length;
       lines.push(`${group}: ${file}: ${count('passed')} passed, ${count('failed')} failed, ${f.assertionResults.length - count('passed') - count('failed')} skipped`);
       if (f.status === 'failed' && f.assertionResults.length === 0) {
@@ -148,7 +148,13 @@ export function settle(deps: Deps, repo: string, p: Polled): number {
   const reports: { group: string; report: Report }[] = [];
   for (const n of names.filter((x) => x.startsWith('test-files-report-'))) {
     const dir = deps.download(p.run.databaseId, n);
-    for (const f of readdirSync(dir).filter((x) => x.endsWith('.json'))) reports.push({ group: n.slice('test-files-report-'.length), report: parseReport(readFileSync(join(dir, f), 'utf8')) });
+    try {
+      const json = readdirSync(dir).filter((x) => x.endsWith('.json'));
+      if (json.length !== 1) throw new Error(`the ${n} artifact holds ${json.length} JSON reports, not 1`);
+      reports.push({ group: n.slice('test-files-report-'.length), report: parseReport(readFileSync(join(dir, json[0] as string), 'utf8')) });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   }
   const d = describeReports(reports);
   for (const l of d.lines) deps.log(l);

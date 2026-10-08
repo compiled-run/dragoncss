@@ -1,6 +1,6 @@
 // pnpm ci:test-files (scripts/ci-test-files.ts): its arguments, the dispatch and run lookup, and the verdict read from the run,
 // against a fake gh.
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -107,6 +107,16 @@ describe('pnpm ci:test-files dispatch and verdict', () => {
     // A wait past its limit is pending, never a verdict.
     expect(waitFor(fake({ states: [{ status: 'queued', conclusion: null }] }).deps, 'o/r', 77, { once: false, waitS: 60 })).toBe(EXIT.pending);
   });
+  it('refuses a report artifact without exactly one report, and removes every downloaded report', () => {
+    const f = fake({ artifacts: { 'test-files-report-chrome': report(false) } });
+    const empty = { ...f.deps, download: (id: number, name: string): string => { const d = f.deps.download(id, name); rmSync(join(d, 'chrome.json')); return d; } };
+    expect(main(['--run', '77'], empty, () => 'o/r')).toBe(EXIT.error);
+    expect(f.logs.at(-1)).toBe('ERROR the test-files-report-chrome artifact holds 0 JSON reports, not 1');
+    const g = fake({});
+    let got = '';
+    expect(waitFor({ ...g.deps, download: (id, name) => (got = g.deps.download(id, name)) }, 'o/r', 77, { once: false })).toBe(EXIT.passed);
+    expect(existsSync(got)).toBe(false);
+  });
   it('fails a successful run that uploaded no report, and points at the floor patch', () => {
     expect(waitFor(fake({ artifacts: {} }).deps, 'o/r', 77, { once: false })).toBe(EXIT.failed);
     const f = fake({ artifacts: { 'test-files-report-chrome': report(false), 'test-files-floor-chrome': 'diff --git a b' } });
@@ -124,6 +134,7 @@ describe('pnpm ci:test-files dispatch and verdict', () => {
     expect(() => parseReport('{}')).toThrow('not a vitest JSON report');
     expect(() => parseReport('{"testResults":[{"name":"a","status":"passed"}]}')).toThrow('file entry');
     expect(() => artifactNames('{"artifacts":[{}]}')).toThrow('unexpected artifact');
+    expect(() => parseReport('{"testResults":[{"name":"a","status":"failed","assertionResults":[{"fullName":"x","status":"failed","failureMessages":[1]}]}]}')).toThrow('test entry');
     const collect = describeReports([{ group: 'native', report: parseReport(JSON.stringify({ testResults: [{ name: `/w/${NATIVE}`, status: 'failed', message: 'SyntaxError: x\nmore', assertionResults: [] }] })) }]);
     expect(collect).toEqual({ lines: [`native: ${NATIVE}: 0 passed, 0 failed, 0 skipped`, `  FAILED ${NATIVE} > (file) SyntaxError: x`], failed: 1 });
   });

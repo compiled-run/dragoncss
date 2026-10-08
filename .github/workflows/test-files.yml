@@ -39,6 +39,7 @@ jobs:
       chrome: ${{ steps.r.outputs.chrome }}
       native: ${{ steps.r.outputs.native }}
       platform_free: ${{ steps.r.outputs.platform_free }}
+      files: ${{ steps.r.outputs.files }}
     steps:
       - name: This workflow's scripts/test-shards.ts
         uses: actions/checkout@v4
@@ -55,6 +56,7 @@ jobs:
         with:
           node-version: '24.15.0'
       - id: r
+        name: Sort the requested files into their groups
         env:
           REF: ${{ inputs.ref }}
           FILES: ${{ inputs.files }}
@@ -66,6 +68,7 @@ jobs:
           groups=$(node tools/scripts/test-shards.ts group-files --root target "${files[@]}") || { echo "::error::the requested files are not all test files of $REF (see the log)"; exit 1; }
           {
             echo "sha=$sha"
+            echo "files=$(cut -f1 <<< "$groups" | paste -sd' ' -)"
             echo "key=$(printf '%s\n' "${files[@]}" | sed 's|^\./||' | sort -u | sha256sum | cut -c1-16)"
             for g in chrome native platform-free; do echo "${g//-/_}=$(awk -F'\t' -v g="$g" '$2 == g { print $1 }' <<< "$groups" | paste -sd' ' -)"; done
           } >> "$GITHUB_OUTPUT"
@@ -115,27 +118,32 @@ jobs:
         if: always() && steps.vitest.outcome != 'skipped'
         run: |
           cat > "$RUNNER_TEMP/ran.mjs" <<'EOF'
-          // Every requested file is in vitest's report with a test that ran, and nothing else is; the failures are listed.
-          import { appendFileSync, existsSync, readFileSync } from 'node:fs';
-          import { relative } from 'node:path';
+          // Every requested file is in the vitest reports with a test that ran, and nothing else is; the failures are listed.
+          import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs';
           const want = process.env.FILES.split(' ').filter(Boolean);
-          const path = `${process.env.RUNNER_TEMP}/report/${process.env.GITHUB_JOB}.json`;
-          const out = [];
+          const dir = `${process.env.RUNNER_TEMP}/report`;
+          const reports = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.json')) : [];
+          const out = reports.length === 0 ? ['NO REPORT: vitest wrote no JSON report, so no requested file is known to have run'] : [];
           const ran = new Map();
-          if (!existsSync(path)) out.push(`NO REPORT: vitest wrote no JSON report, so no requested file is known to have run`);
-          else for (const f of JSON.parse(readFileSync(path, 'utf8')).testResults) ran.set(relative(process.env.GITHUB_WORKSPACE, f.name), f);
+          for (const r of reports) {
+            for (const f of JSON.parse(readFileSync(`${dir}/${r}`, 'utf8')).testResults) {
+              const file = f.name.replace(/^.*?\/(packages\/)/, '$1');
+              if (ran.has(file)) out.push(`RUN TWICE ${file}`);
+              ran.set(file, f);
+            }
+          }
           const idle = (t) => t.status === 'skipped' || t.status === 'pending' || t.status === 'todo';
           for (const w of want) {
             const f = ran.get(w);
-            if (existsSync(path) && f === undefined) out.push(`NOT RUN ${w}`);
-            else if (f !== undefined && f.status !== 'failed' && (f.assertionResults.length === 0 || f.assertionResults.every(idle))) out.push(`NO TEST RAN ${w} (every test skipped)`);
+            if (f === undefined) out.push(`NOT RUN ${w}`);
+            else if (f.status !== 'failed' && (f.assertionResults.length === 0 || f.assertionResults.every(idle))) out.push(`NO TEST RAN ${w} (every test skipped)`);
           }
           for (const f of ran.keys()) if (!want.includes(f)) out.push(`NOT REQUESTED ${f}`);
           const failed = [...ran].flatMap(([file, f]) => (f.assertionResults.length === 0 && f.status === 'failed' ? [`FAILED ${file} > (file) ${(f.message ?? '').split('\n')[0]}`] : f.assertionResults.filter((t) => t.status === 'failed').map((t) => `FAILED ${file} > ${t.fullName}`)));
-          const text = [`${ran.size} of ${want.length} requested files in the report`, ...out, ...failed].join('\n');
+          const text = [`${ran.size} of ${want.length} requested files in the reports`, ...out, ...failed].join('\n');
           console.log(text);
           appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${text}\n`);
-          if (out.length > 0) process.exitCode = 1;
+          if (out.length > 0 || failed.length > 0) process.exitCode = 1;
           EOF
           node "$RUNNER_TEMP/ran.mjs"
       - &report
@@ -272,3 +280,18 @@ jobs:
       - *report
       - *floor
       - *floor-upload
+
+  # Every requested file ran in exactly one group's job: a group job that was skipped or wrote no report fails the run here.
+  summary:
+    needs: [resolve, platform-free, native, chrome]
+    if: always() && needs.resolve.result == 'success'
+    runs-on: ubuntu-latest
+    env:
+      FILES: ${{ needs.resolve.outputs.files }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: test-files-report-*
+          path: ${{ runner.temp }}/report
+          merge-multiple: true
+      - *ran
