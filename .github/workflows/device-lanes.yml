@@ -63,16 +63,24 @@ jobs:
         with:
           node-version: '24.15.0'
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      # A registry or network hiccup is retried; three failures fail the step (setup: it judges nothing of the tree).
+      - name: pnpm install
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          retry pnpm install --frozen-lockfile
       - name: The pinned iOS 26.5 (23F77) simulator runtime
         run: |
           have() { xcrun simctl list runtimes -j | jq -e '.runtimes[] | select(.buildversion == "23F77" and .isAvailable)' >/dev/null; }
           start=$(date +%s)
           # "-buildVersion 26.5" fetches the 26.5 release candidate (23F73); the release the evidence was recorded on is 23F77.
-          have || xcodebuild -downloadPlatform iOS -buildVersion 23F77
+          # A download that fails is retried while the runtime is still missing, three attempts in all.
+          for i in 1 2 3; do have && break; xcodebuild -downloadPlatform iOS -buildVersion 23F77 || echo "::warning::xcodebuild -downloadPlatform failed (attempt $i of 3)"; done
           have || { xcrun simctl list runtimes; echo "::error::iOS 26.5 (23F77) is not installed"; exit 1; }
           echo "runtime ready in $(( $(date +%s) - start )) s"
+          # The host's OS, chip and GPU: the simulator composites transformed layers on the host GPU (raw pixel hashes follow it).
           sw_vers
+          sysctl -n machdep.cpu.brand_string hw.model
+          system_profiler SPDisplaysDataType | grep -E 'Chipset Model|Type|Metal' || true
       - name: Xcode 27.0 (27A266a) and the Swift the committed host lane records
         run: |
           xcodebuild -version
@@ -91,6 +99,7 @@ jobs:
           node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts" ios
       # The step name marks the device run as a verdict step for the landing driver (land-devices-ci.ts VERDICT_STEP).
       - name: Device run ${{ matrix.device }}
+        id: run
         env:
           DEVICE: ${{ matrix.device }}
         run: |
@@ -98,15 +107,35 @@ jobs:
           echo $$ > /tmp/dragon-device.lock/pid
           slug=$(echo "$DEVICE" | tr -c 'A-Za-z0-9-' '_')
           start=$(date +%s)
+          set +e
           node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts one ios "$DEVICE" "$RUNNER_TEMP/out/ios-$slug.json" 2>&1 | tee "$RUNNER_TEMP/out/ios-$slug.log"
           code=${PIPESTATUS[0]}
+          set -e
           echo "ios $DEVICE: exit $code in $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+          # device-ci.ts TOOLING_EXIT: the tooling blocked the device (boot, settle, install); Device tooling fails the job instead.
+          if [ "$code" = 4 ]; then echo "tooling=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           exit "$code"
+      # Not a verdict step (land-devices-ci.ts TOOLING_STEP): a device the tooling blocked judged nothing of the tree.
+      - name: Device tooling
+        if: steps.run.outputs.tooling == 'true'
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          echo "::error::the device tooling blocked $DEVICE (a boot, settle or install fault; the Device run log says which), so this job judged nothing of the tree"
+          exit 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: outcome-ios-${{ strategy.job-index }}
           path: ${{ runner.temp }}/out
+      # The raw dumps, hit records and trust screenshots, to compare with another host's case by case (the outcome's dumps hashes).
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dumps-ios-${{ strategy.job-index }}
+          path: packages/parity/out/native/ios/lanes
+          if-no-files-found: ignore
+          retention-days: 14
   android:
     needs: resolve
     strategy:
@@ -129,7 +158,11 @@ jobs:
         with:
           node-version: '24.15.0'
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      # A registry or network hiccup is retried; three failures fail the step (setup: it judges nothing of the tree).
+      - name: pnpm install
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          retry pnpm install --frozen-lockfile
       - name: KVM for the emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -138,15 +171,22 @@ jobs:
           ls -l /dev/kvm
       - name: JDK 17, kotlinc and the Android SDK packages (the local Mac's versions, from Homebrew)
         run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew install openjdk@17 kotlin
+          retry brew install openjdk@17 kotlin
           echo "JAVA_HOME=$(brew --prefix openjdk@17)" >> "$GITHUB_ENV"
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
           sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$sdk" --licenses >/dev/null || true
-          # A download can fail transiently ("unknown archive"); sdkmanager is retried, and the list below proves what is installed.
-          for i in 1 2 3; do "$sdk" --install emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64' >/dev/null && break; echo "sdkmanager failed (attempt $i)"; sleep 15; done
-          "$sdk" --list_installed | grep -E 'emulator|system-images|build-tools;36|platforms;android-36'
+          # A download can fail transiently ("unknown archive"): sdkmanager is retried, three failures fail the step, and every
+          # package is then checked installed on its own.
+          pkgs=(emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64')
+          # Its progress output goes to a log; a failed attempt prints the log's tail beside the retry warning.
+          sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }
+          retry sdk_install
+          installed=$("$sdk" --list_installed | awk -F'|' 'NF >= 3 { gsub(/ /, "", $1); print $1 }')
+          echo "$installed"
+          for p in "${pkgs[@]}"; do grep -qFx "$p" <<<"$installed" || { echo "::error::sdkmanager did not install $p"; exit 1; }; done
       - name: kotlinc and the JDK the committed host lane records
         run: |
           cat > "$RUNNER_TEMP/toolchain.mts" <<'EOF'
@@ -166,6 +206,7 @@ jobs:
           ln -sfn "$HOME/.android" "$HOME/.config/.android"
       # The step name marks the device run as a verdict step for the landing driver (land-devices-ci.ts VERDICT_STEP).
       - name: Device run ${{ matrix.device }}
+        id: run
         env:
           DEVICE: ${{ matrix.device }}
         run: |
@@ -174,15 +215,35 @@ jobs:
           mkdir -p "$RUNNER_TEMP/out" /tmp/dragon-device.lock
           echo $$ > /tmp/dragon-device.lock/pid
           start=$(date +%s)
+          set +e
           node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts one android "$DEVICE" "$RUNNER_TEMP/out/android-$DEVICE.json" 2>&1 | tee "$RUNNER_TEMP/out/android-$DEVICE.log"
           code=${PIPESTATUS[0]}
+          set -e
           echo "android $DEVICE: exit $code in $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+          # device-ci.ts TOOLING_EXIT: the tooling blocked the device (boot, settle, install); Device tooling fails the job instead.
+          if [ "$code" = 4 ]; then echo "tooling=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           exit "$code"
+      # Not a verdict step (land-devices-ci.ts TOOLING_STEP): a device the tooling blocked judged nothing of the tree.
+      - name: Device tooling
+        if: steps.run.outputs.tooling == 'true'
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          echo "::error::the device tooling blocked $DEVICE (a boot, settle or install fault; the Device run log says which), so this job judged nothing of the tree"
+          exit 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: outcome-android-${{ matrix.device }}
           path: ${{ runner.temp }}/out
+      # The raw dumps, hit records and trust screenshots, to compare with another host's case by case (the outcome's dumps hashes).
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dumps-android-${{ matrix.device }}
+          path: packages/parity/out/native/android/lanes
+          if-no-files-found: ignore
+          retention-days: 14
   merge:
     needs: [resolve, ios, android]
     runs-on: ubuntu-latest
@@ -197,7 +258,11 @@ jobs:
         with:
           node-version: '24.15.0'
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      # A registry or network hiccup is retried; three failures fail the step (setup: it judges nothing of the tree).
+      - name: pnpm install
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          retry pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v4
         with:
           pattern: outcome-*
