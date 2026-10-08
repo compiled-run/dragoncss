@@ -69,9 +69,9 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   LAND_QUEUE_EMPTY_OK=1 (an empty queue is nothing to land). Reviewers are matched by user id (LAND_REVIEWER_IDS, or LAND_REVIEWERS
   ids or logins), and the token's own identity (GET user, or LAND_TOKEN_USER_ID for an App token) may not be one. Every run reads and
   writes master's land/proof commit status, trusting only statuses by that identity or LAND_PROOF_WRITERS ids. Under LAND_CI=only
-  each position build is marked on the PR's head (land/outage), and a PR whose builds ended without a verdict LAND_OUTAGE_EJECT
-  times in a row (default 2) is ejected at admission; the prepared regens and the full tests are marked too (a full test on every PR
-  its tree holds, each then built alone until it gets a verdict). pnpm land:clear-outage <pr> ends a streak after a real outage.`;
+  each run records on each PR's head (land/outage) whether it ended with a verdict about the PR or an outage in a step that ran its
+  tree (or was killed); LAND_OUTAGE_EJECT such runs in a row (default 2) eject the PR at admission, and a PR with any is built alone
+  until it gets a verdict. pnpm land:clear-outage <pr> ends a streak after a real outage.`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;

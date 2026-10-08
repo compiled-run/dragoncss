@@ -10,6 +10,7 @@ import { type BatchOps, type Entry, runBatches, patchHasSymlink, readInTree, rem
 import { applyRegenPatch, VERDICT_STEP, checksBranch, checksFiles, checksTitle, checksWorkflow, parseChecksResult, runIdOf, scratchRef, staleScratchBranches, titleOf } from '../../../scripts/land-devices-ci.ts';
 import {
   clearOutage,
+  outageLedger,
   outageStreak,
   parseOutageEject,
   writeOutage,
@@ -581,77 +582,225 @@ describe('a PR whose own CI runs keep ending without a verdict is ejected (LAND_
     description: o.description ?? state,
     creator: o.creator === null ? null : { id: o.creator ?? ME },
   });
-  // A fake GitHub status store: writeOutage appends (newest last, one second apart); outageStreak reads it back as the API does.
-  const store = () => {
-    const statuses: Record<string, unknown>[] = [];
+  // A fake GitHub status store per PR head: writeOutage appends (one second apart); outageStreak reads it back, newest first.
+  const shaOf = (pr: number): string => pr.toString(16).padStart(40, '0');
+  const stores = () => {
+    const statuses = new Map<string, Record<string, unknown>[]>();
     let t = Date.parse('2026-10-08T00:00:00Z');
     const gh = (a: string[]): string => {
       const f = (k: string): string => a.find((x) => x.startsWith(`${k}=`))!.slice(k.length + 1);
-      statuses.push({ id: ++n, context: f('context'), state: f('state'), description: f('description'), created_at: new Date((t += 1000)).toISOString(), target_url: a.find((x) => x.startsWith('target_url='))?.slice(11) ?? null, creator: { id: ME } });
+      const sha = /statuses\/([0-9a-f]{40})$/.exec(a[3]!)![1]!;
+      statuses.set(sha, [...(statuses.get(sha) ?? []), { id: ++n, context: f('context'), state: f('state'), description: f('description'), created_at: new Date((t += 1000)).toISOString(), target_url: a.find((x) => x.startsWith('target_url='))?.slice(11) ?? null, creator: { id: ME } }]);
       return '{}';
     };
-    return { gh, streak: () => outageStreak([...statuses].reverse(), sha, trusted) };
+    const ledger = (run: string) => outageLedger({ run, write: (sha, kind, why) => writeOutage(gh, 'o/r', sha, run, kind, why, `https://github.com/o/r/actions/runs/${run}`) });
+    return { ledger, streak: (pr: number) => outageStreak([...(statuses.get(shaOf(pr)) ?? [])].reverse(), shaOf(pr), trusted) };
   };
   const EJECT = parseOutageEject(undefined);
 
-  it('counts builds, not statuses: one outage is one, so the PR is rebuilt alone, not ejected', () => {
-    const s = store();
-    // The real sequence of one build that ends in an outage: its pending, then its error, under one build id.
-    writeOutage(s.gh, 'o/r', sha, 'r77.1.d1', 'building', "building #5's position", 'https://github.com/o/r/actions/runs/77');
-    writeOutage(s.gh, 'o/r', sha, 'r77.1.d1', 'outage', 'CI outage: runners down', 'https://github.com/o/r/actions/runs/77');
-    expect(s.streak()).toEqual({ count: 1, runs: ['https://github.com/o/r/actions/runs/77 (CI outage: runners down)'] });
-    // Below the eject limit and above zero: the driver's solo rule builds it alone at its next admission.
-    expect(s.streak().count).toBeGreaterThan(0);
-    expect(s.streak().count).toBeLessThan(EJECT);
-    // A full test marks every member with one build id: still one per PR.
-    writeOutage(s.gh, 'o/r', sha, 'r78.1.d1', 'building', 'full test of the tree of #4 #5', 'https://github.com/o/r/actions/runs/78');
-    writeOutage(s.gh, 'o/r', sha, 'r78.1.d1', 'verdict', 'full test of #4 #5 passed', 'https://github.com/o/r/actions/runs/78');
-    expect(s.streak().count).toBe(0);
+  it('counts runs, not phases: one outage is one, passed phases never reset it, and a verdict does', () => {
+    const s = stores();
+    // Run 1: the prepared regen and the build pass (they write nothing), then the full test hits an outage: one.
+    const r1 = s.ledger('r1.1');
+    r1.admitted(5, shaOf(5));
+    r1.outage(5, shaOf(5), 'full test of the tree of #5: runner lost');
+    r1.end();
+    expect(s.streak(5)).toEqual({ count: 1, runs: ['https://github.com/o/r/actions/runs/r1.1 (full test of the tree of #5: runner lost)'] });
+    expect(s.streak(5).count).toBeLessThan(EJECT); // rebuilt alone next, not ejected
+    // Run 2: again only in the full test: two, so the next admission ejects it.
+    const r2 = s.ledger('r2.1');
+    r2.admitted(5, shaOf(5));
+    r2.outage(5, shaOf(5), 'full test: runner lost');
+    r2.end();
+    expect(s.streak(5).count).toBe(EJECT);
+    // A killed run (admitted, then nothing) counts once; a run that ends with no verdict and no outage (requeued) is neutral.
+    const k = s.ledger('host.1.2');
+    k.admitted(6, shaOf(6));
+    expect(s.streak(6).count).toBe(1);
+    const n2 = s.ledger('r3.1');
+    n2.admitted(6, shaOf(6));
+    n2.end();
+    expect(s.streak(6).count).toBe(1);
+    // A verdict (a full test passed on its tree, it failed, or it merged) ends the streak.
+    const v = s.ledger('r4.1');
+    v.admitted(6, shaOf(6));
+    v.verdict(6, shaOf(6), 'merged');
+    v.end();
+    expect(s.streak(6).count).toBe(0);
+    expect(() => s.ledger('bad id!')).toThrow(/not a run id/);
   });
 
-  it('ejects at two real outages in a row, and counts a killed build once', () => {
-    const s = store();
-    for (const run of ['80', '81']) {
-      writeOutage(s.gh, 'o/r', sha, `r${run}.1.d1`, 'building', 'building', `https://r/${run}`);
-      writeOutage(s.gh, 'o/r', sha, `r${run}.1.d1`, 'outage', `CI outage in ${run}`, `https://r/${run}`);
+  // A seeded generator (mulberry32), so a failing case can be replayed from its seed.
+  const rng = (seed: number) => () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let x = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+  type Result = 'pass' | 'fail' | 'outage' | 'killed';
+  type Phase = 'prepared regen' | 'build' | 'land-checks' | 'devices' | 'full test' | 'bisect prefix';
+  /**
+   * The driver's land/outage handling, run by run, through the real ledger, writers and streak: admission (ejecting at the limit,
+   * solo for a PR with a streak), each member's phases, the full test of the top and the bisect prefixes, publish. `result`
+   * decides each phase's outcome for the PRs whose tree it runs. Alongside, the expected count by the rule: +1 for a run with an
+   * outage touching the PR or killed with it in, no verdict; 0 on a verdict; else unchanged.
+   */
+  const simulate = (o: { prs: number[]; runs: number; size: number; result: (phase: Phase, tree: number[], run: number) => Result }) => {
+    const s = stores();
+    const want = new Map<number, number>(o.prs.map((p) => [p, 0]));
+    const ejected: number[] = [];
+    const merged: number[] = [];
+    const failed: number[] = [];
+    let queue = [...o.prs];
+    const problems: string[] = [];
+    for (let run = 1; run <= o.runs && queue.length > 0; run++) {
+      const ledger = s.ledger(`r${run}.1`);
+      const touched = new Set<number>();
+      const settled = new Set<number>();
+      const verdict = new Set<number>();
+      let killed = false;
+      let stopped = false;
+      const outage = (tree: number[], phase: Phase): void => {
+        for (const p of tree) (ledger.outage(p, shaOf(p), `${phase}: outage`), settled.add(p));
+        stopped = true;
+      };
+      const pass = (tree: number[], why: string): void => {
+        for (const p of tree) (ledger.verdict(p, shaOf(p), why), settled.add(p), verdict.add(p));
+      };
+      // Admission, as runBatches's prepareRound does it with the driver's solo and its eject.
+      const batch: number[] = [];
+      while (batch.length < o.size && queue.length > 0) {
+        const p = queue[0]!;
+        const count = s.streak(p).count;
+        if (count !== want.get(p)) problems.push(`run ${run}: #${p} counts ${count}, the rule says ${want.get(p)}`);
+        if (count >= EJECT) {
+          queue.shift();
+          ejected.push(p);
+          continue;
+        }
+        if (count > 0 && batch.length > 0) break;
+        queue.shift();
+        batch.push(p);
+        ledger.admitted(p, shaOf(p));
+        touched.add(p);
+        if (count > 0) break;
+      }
+      // Each member's phases on the chain; a failure ejects it (a verdict), and the chain goes on without it.
+      const chain: number[] = [];
+      for (const p of batch) {
+        if (stopped || killed) break;
+        let ok = true;
+        for (const phase of ['prepared regen', 'build', 'land-checks', 'devices'] as Phase[]) {
+          const r = o.result(phase, [p], run);
+          if (r === 'killed') killed = true;
+          else if (r === 'outage') outage([p], phase);
+          else if (r === 'fail') {
+            ledger.verdict(p, shaOf(p), `failed at ${phase}`);
+            settled.add(p);
+            verdict.add(p);
+            failed.push(p);
+            ok = false;
+          }
+          if (killed || stopped || !ok) break;
+        }
+        if (ok && !killed && !stopped) chain.push(p);
+      }
+      // The full test of the top; on a failure, the bisect: prefixes until the first that fails, whose last PR is the culprit.
+      let landed: number[] = [];
+      if (!killed && !stopped && chain.length > 0) {
+        const top = o.result('full test', chain, run);
+        if (top === 'killed') killed = true;
+        else if (top === 'outage') outage(chain, 'full test');
+        else if (top === 'pass') (pass(chain, 'full test passed'), (landed = chain));
+        else {
+          for (let k = 1; k <= chain.length; k++) {
+            const prefix = chain.slice(0, k);
+            const r = k === chain.length ? 'fail' : o.result('bisect prefix', prefix, run);
+            if (r === 'killed') {
+              killed = true;
+              break;
+            }
+            if (r === 'outage') {
+              outage(prefix, 'bisect prefix');
+              break;
+            }
+            if (r === 'fail') {
+              pass(prefix.slice(0, -1), 'full test passed');
+              landed = prefix.slice(0, -1);
+              const culprit = prefix.at(-1)!;
+              ledger.verdict(culprit, shaOf(culprit), 'failed at test');
+              settled.add(culprit);
+              verdict.add(culprit);
+              failed.push(culprit);
+              // The PRs after the culprit go back to the queue, with no verdict.
+              queue = [...chain.slice(k), ...queue];
+              break;
+            }
+          }
+        }
+      }
+      for (const p of landed) (ledger.verdict(p, shaOf(p), 'merged'), merged.push(p));
+      if (!killed) ledger.end();
+      // The rule, applied to the expected counts; a PR not finished goes back to the queue's front.
+      for (const p of touched) {
+        if (verdict.has(p)) want.set(p, 0);
+        else if (killed || settled.has(p)) want.set(p, want.get(p)! + 1);
+      }
+      const done = new Set([...merged, ...failed]);
+      const back = batch.filter((p) => !done.has(p) && !queue.includes(p));
+      queue = [...back, ...queue.filter((p) => !done.has(p))];
     }
-    expect(s.streak()).toEqual({ count: 2, runs: ['https://r/81 (CI outage in 81)', 'https://r/80 (CI outage in 80)'] });
-    expect(s.streak().count).toBeGreaterThanOrEqual(EJECT);
-    // A killed build: its pending, and nothing after it.
-    const k = store();
-    writeOutage(k.gh, 'o/r', sha, 'r90.1.d1', 'verdict', 'built', 'https://r/90');
-    writeOutage(k.gh, 'o/r', sha, 'r91.1.d1', 'building', "building #5's position", 'https://r/91');
-    expect(k.streak()).toEqual({ count: 1, runs: ["https://r/91 (ended mid-build: building #5's position)"] });
-    // The same build marked again later (its prepared regen, then its position) is still judged by its newest status.
-    writeOutage(k.gh, 'o/r', sha, 'r92.1.d1', 'building', 'prepared regen', 'https://r/92');
-    writeOutage(k.gh, 'o/r', sha, 'r92.1.d1', 'verdict', 'prepared regen ran', 'https://r/92');
-    expect(k.streak().count).toBe(0);
-    expect(() => writeOutage(k.gh, 'o/r', sha, 'bad id!', 'building', 'x', null)).toThrow(/not a build id/);
+    for (const p of o.prs) if (s.streak(p).count !== want.get(p)) problems.push(`at the end: #${p} counts ${s.streak(p).count}, the rule says ${want.get(p)}`);
+    return { problems, ejected, merged, failed };
+  };
+
+  it('property: random runs of random phases count exactly by the rule, reset on verdicts and eject at the limit (seeded)', () => {
+    for (let seed = 1; seed <= 3000; seed++) {
+      const r = rng(seed);
+      const pick = <T>(xs: readonly T[]): T => xs[Math.floor(r() * xs.length)]!;
+      const prs = Array.from({ length: 1 + Math.floor(r() * 5) }, (_, i) => i + 1);
+      const weights: Result[] = ['pass', 'pass', 'pass', 'pass', 'fail', 'outage', 'outage', 'killed'];
+      const out = simulate({ prs, runs: 12, size: 1 + Math.floor(r() * 4), result: () => pick(weights) });
+      expect(out.problems, `seed ${seed}`).toEqual([]);
+    }
   });
 
-  it('counts the builds since the last verdict, and a status with no build id on its own', () => {
-    expect(outageStreak([], sha, trusted)).toEqual({ count: 0, runs: [] });
-    const two = [st('error', '2026-10-08T03:00:00Z', { description: 'CI outage: runners down', url: 'https://r/3' }), st('pending', '2026-10-08T02:00:00Z', { url: 'https://r/2' }), st('success', '2026-10-08T01:00:00Z'), st('error', '2026-10-08T00:00:00Z')];
-    expect(outageStreak(two, sha, trusted)).toEqual({ count: 2, runs: ['https://r/3 (CI outage: runners down)', 'https://r/2 (ended mid-build: pending)'] });
-    // A verdict since resets it; another context, another creator or none is not counted.
-    expect(outageStreak([st('success', '2026-10-08T04:00:00Z'), ...two], sha, trusted).count).toBe(0);
-    expect(outageStreak([st('error', '2026-10-08T05:00:00Z', { creator: 666 }), st('error', '2026-10-08T05:00:00Z', { creator: null }), st('error', '2026-10-08T05:00:00Z', { context: 'ci' }), st('success', '2026-10-08T04:00:00Z')], sha, trusted).count).toBe(0);
+  it('property: a PR that kills its runner in one phase is ejected within a bounded number of runs; every other PR lands (seeded)', () => {
+    const phases: Phase[] = ['prepared regen', 'build', 'land-checks', 'devices', 'full test', 'bisect prefix'];
+    for (let seed = 1; seed <= 2000; seed++) {
+      const r = rng(seed);
+      const prs = Array.from({ length: 2 + Math.floor(r() * 4) }, (_, i) => i + 1);
+      const culprit = prs[Math.floor(r() * prs.length)]!;
+      // It stops only one phase, the one a fixed phase count cannot see; either as an outage or by killing the run.
+      const where = phases[Math.floor(r() * phases.length)]!;
+      const how: Result = r() < 0.5 ? 'outage' : 'killed';
+      const size = 1 + Math.floor(r() * 4);
+      const out = simulate({ prs, runs: 4 * prs.length + 6, size, result: (phase, tree) => (tree.includes(culprit) && (phase === where || (where === 'bisect prefix' && phase === 'full test')) ? how : 'pass') });
+      expect(out.problems, `seed ${seed}`).toEqual([]);
+      // (c, e) the culprit, and only it, is ejected; (d) every other PR gets its verdict and lands.
+      expect(out.ejected, `seed ${seed}: ${where} ${how}, culprit #${culprit}`).toEqual([culprit]);
+      expect(out.merged.sort(), `seed ${seed}`).toEqual(prs.filter((p) => p !== culprit));
+    }
+  });
+
+  it('writes the mark on the PR head as a commit status, its run and kind first', () => {
+    const calls: string[][] = [];
+    writeOutage((a) => (calls.push(a), '{}'), 'o/r', sha, 'r1.1', 'outage', `CI outage: ${'x'.repeat(300)}`, 'https://run');
+    writeOutage((a) => (calls.push(a), '{}'), 'o/r', sha, 'mac.12.1700000000', 'in', '#5 admitted', null);
+    expect(calls[0]!.slice(0, 8)).toEqual(['api', '-X', 'POST', `repos/o/r/statuses/${sha}`, '-f', 'state=error', '-f', 'context=land/outage']);
+    expect(calls[0]!.find((x) => x.startsWith('description='))).toMatch(/^description=\[run r1\.1 outage\] CI outage: x+$/);
+    expect(calls[0]!.find((x) => x.startsWith('description='))!.length).toBe('description='.length + 139);
+    expect(calls[1]).toContain('state=pending');
+    expect(() => writeOutage(() => '', 'o/r', 'HEAD', 'b', 'verdict', 'x', null)).toThrow(/not a full sha/);
+    expect(() => writeOutage(() => '', 'o/r', sha, 'b c', 'verdict', 'x', null)).toThrow(/not a run id/);
+    // Statuses with no run tag (or by an untrusted writer) are judged on their own.
+    expect(outageStreak([st('error', '2026-10-08T03:00:00Z'), st('pending', '2026-10-08T02:00:00Z'), st('success', '2026-10-08T01:00:00Z'), st('error', '2026-10-08T00:00:00Z')], sha, trusted).count).toBe(2);
+    expect(outageStreak([st('error', '2026-10-08T05:00:00Z', { creator: 666 }), st('error', '2026-10-08T05:00:00Z', { creator: null }), st('error', '2026-10-08T05:00:00Z', { context: 'ci' })], sha, trusted).count).toBe(0);
     expect(() => outageStreak({}, sha, trusted)).toThrow(/not a list/);
-    expect(parseOutageEject(undefined)).toBe(2);
     expect(parseOutageEject('3')).toBe(3);
     expect(() => parseOutageEject('0')).toThrow(/LAND_OUTAGE_EJECT/);
   });
-  it('writes the mark on the PR head as a commit status', () => {
-    const calls: string[][] = [];
-    writeOutage((a) => (calls.push(a), '{}'), 'o/r', sha, 'r1.1.d1', 'outage', `CI outage: ${'x'.repeat(300)}`, 'https://run');
-    writeOutage((a) => (calls.push(a), '{}'), 'o/r', sha, 'r1.1.d2', 'building', 'building', null);
-    expect(calls[0]!.find((x) => x.startsWith('description='))).toMatch(/^description=\[build r1\.1\.d1\] CI outage: x+$/);
-    expect(calls[0]!.slice(0, 8)).toEqual(['api', '-X', 'POST', `repos/o/r/statuses/${sha}`, '-f', 'state=error', '-f', 'context=land/outage']);
-    expect(calls[0]!.find((x) => x.startsWith('description='))!.length).toBe('description='.length + 139);
-    expect(calls[1]).toContain('state=pending');
-    expect(calls[1]).not.toContain('-f target_url');
-    expect(() => writeOutage(() => '', 'o/r', 'HEAD', 'b', 'verdict', 'x', null)).toThrow(/not a full sha/);
-  });
+
   it('clears a streak at the PR\'s current head with a success status (pnpm land:clear-outage)', () => {
     const calls: string[] = [];
     const gh = (a: string[]): string => {
@@ -661,7 +810,7 @@ describe('a PR whose own CI runs keep ending without a verdict is ejected (LAND_
       return '{}';
     };
     expect(clearOutage(gh, 'o/r', '7')).toEqual({ context: 'land/outage', head: sha, login: 'pm', id: 42 });
-    expect(calls.at(-1)).toMatch(new RegExp(`^api -X POST repos/o/r/statuses/${sha} -f state=success -f context=land/outage -f description=\\[build clear-\\d+\\] cleared by pm after a GitHub outage \\(pnpm land:clear-outage\\)$`));
+    expect(calls.at(-1)).toMatch(new RegExp(`^api -X POST repos/o/r/statuses/${sha} -f state=success -f context=land/outage -f description=\\[run clear-\\d+ verdict\\] cleared by pm after a GitHub outage \\(pnpm land:clear-outage\\)$`));
     // As every status, it counts only from a trusted writer.
     const cleared = [st('success', '2026-10-08T06:00:00Z', { creator: 42 }), st('error', '2026-10-08T05:00:00Z')];
     expect(outageStreak(cleared, sha, trusted).count).toBe(1);
@@ -697,25 +846,28 @@ describe('a PR whose own CI runs keep ending without a verdict is ejected (LAND_
     expect(trace.filter((t) => t.startsWith('batch'))).toEqual(['batch #1', 'batch #2']);
   });
 
-  it('is wired into the driver: each position build is marked, and admission ejects at the limit', () => {
+  it('is wired into the driver: admission, outages where a PR\'s tree runs, verdicts, and the run\'s end', () => {
     const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
     expect(src).toContain('const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => tracked(e, t, () => buildPositionHere(prev, e, t, k));');
     expect(src).toContain('=> tracked(it.entry, it.ticket, () => assemblePositionHere(prev, it, k, h));');
-    expect(src).toMatch(/if \(error instanceof CiOutage\) putOutage\(t\.prHead, build, 'outage'/);
-    // Every mark carries its build's id, from newBuild, so a pending and its outcome count once.
-    expect(src.match(/putOutage\([^,]+, build, '/g)!.length).toBe(src.match(/putOutage\(/g)!.length - 1);
-    expect(src.match(/const build = newBuild\(\);/g)).toHaveLength(3);
+    expect(src).toMatch(/if \(error instanceof CiOutage\) ledger\.outage\(e\.pr, t\.prHead,/);
+    expect(src).toMatch(/if \(error instanceof CiOutage\) ledger\.outage\(it\.entry\.pr, it\.ticket\.prHead, `the prepared regen/);
+    expect(src).toMatch(/if \(error instanceof CiOutage\) for \(const m of members\) ledger\.outage\(m\.pr, m\.prHead,/);
+    // Verdicts: a pass of the full test of a tree holding it, a failure (but an outage ejection), a merge.
+    expect(src).toMatch(/for \(const m of members\) ledger\.verdict\(m\.pr, m\.prHead, `the full test of the tree of \$\{prs\} passed`\);/);
+    expect(src).toMatch(/if \(head !== undefined && f\.step !== 'ci-outage'\) ledger\.verdict\(e\.pr, head,/);
+    expect(src).toMatch(/ledger\.verdict\(e\.pr, t\.prHead, 'merged'\);/);
+    expect(src).toMatch(/ledger\.admitted\(e\.pr, pr\.headOid\);/);
+    expect(src).toMatch(/\n {2}ledger\.end\(\);\n/);
+    // No phase's success writes anything; nothing else writes the context.
+    expect(src.match(/ledger\.(verdict|outage|admitted|end)\(/g)!.length).toBe(8);
+    expect(src.match(/writeOutage\(/g)).toHaveLength(1);
+    // The Mac's run id holds the process start time, so a reused pid is another run.
+    expect(src).toMatch(/\$\{process\.pid\}\.\$\{Math\.round\(Date\.now\(\) \/ 1000 - process\.uptime\(\)\)\}/);
     expect(src).toMatch(/if \(streak\.count >= OUTAGE_EJECT\) throw new LandFailure\('ci-outage'/);
-    // A completed run's unreadable results or refused patch are the PR's, not an outage.
     expect(src).toMatch(/throw new LandFailure\('checks', `the results of the tree checks \$\{r\.url\} do not read/);
     expect(src).toMatch(/if \(error instanceof PatchRefused\) throw new LandFailure\('checks'/);
-    // The other two places a PR's tree runs: a prepared position's CI regen, marked on that PR; the full test of a position,
-    // marked on every PR its tree holds (the chain up to it), then each of them built alone (solo).
-    expect(src).toMatch(/await: \(h\) => \{\n {8}const it = items\[h\.k - 1\]!;\n {8}if \(!CI_ONLY\) return awaitPrepared\(h\);\n {8}const build = newBuild\(\);[\s\S]{0,200}putOutage\(it\.ticket\.prHead, build, 'building', what\);\n {8}try \{\n {10}awaitPrepared\(h\);\n {8}\} catch \(error\) \{\n[^\n]*\n {10}putOutage\(it\.ticket\.prHead, build, error instanceof CiOutage \? 'outage' : 'verdict'/);
-    expect(src).toMatch(/const members = CI_ONLY && k >= 0 \? chain\.slice\(0, k \+ 1\) : \[\];/);
-    expect(src).toMatch(/if \(error instanceof CiOutage\) for \(const m of members\) putOutage\(m\.prHead, build, 'outage'/);
     expect(src).toMatch(/chain = built\.map\(/);
-    expect(src.match(/\bsolo\b(?=[,\s}])/g)!.length).toBeGreaterThanOrEqual(2); // the driver's ops and the builder's
     expect(src).toMatch(/return readOutageStreak\(gh, REPO, pr\.headOid, PROOF_WRITERS\)\.count > 0;/);
   });
 });

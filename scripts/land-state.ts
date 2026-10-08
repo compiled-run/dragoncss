@@ -363,25 +363,29 @@ export const dispatchLand = (queue: string, d: DispatchDeps): number => {
 };
 
 // ---- outages at a PR's own CI runs (LAND_OUTAGE_EJECT) ---------------------------------------------------------------------
-// A tree can end its own CI runs without a verdict (kill the runner, run each step just under its timeout until the job's limit),
-// which stops the driver as a CI outage, blaming no PR, at that PR every time. So each build of a PR's position is recorded on
-// the PR's head as the commit status land/outage: pending while it builds, error when it ended in a CI outage, success when it
-// came to a verdict (built, or failed). A run killed mid-build leaves its pending. At admission, N of those in a row with no
-// success between (LAND_OUTAGE_EJECT, default 2) eject the PR, naming the runs.
+// A tree can end its own CI runs without a verdict (kill its runner, or run each step just under its limit until the job's),
+// which stops the driver as a CI outage, blaming no PR, at that PR every time. So outages are counted per driver run and per PR,
+// as the commit status land/outage on the PR's head, each status naming its run ("[run <id> <kind>] ..."):
+//   in       the PR was admitted to the run (pending);
+//   outage   a CI outage in a step that ran the PR's tree: its build, a prepared regen, or a full test of a tree holding it (error);
+//   verdict  a verdict about the PR: it failed, a full test passed on a tree holding it, or it merged (success);
+//   left     the run ended normally without either, as a PR requeued behind a culprit does (success, neutral).
+// A run counts 1 for the PR when it has no verdict and has an outage, or has only `in` (the run was killed, maybe by the tree).
+// A run with a verdict ends the streak; a neutral run neither counts nor ends it. Phases that pass write nothing, so a tree that
+// stops only its full test is still counted. LAND_OUTAGE_EJECT such runs in a row (default 2) eject the PR at admission; a PR
+// with any is built and proved alone (solo), so the next run pins the outage on the PR that causes it.
 export const OUTAGE_CONTEXT = 'land/outage';
-export type OutageMark = 'building' | 'outage' | 'verdict';
-const OUTAGE_STATE: Record<OutageMark, 'pending' | 'error' | 'success'> = { building: 'pending', outage: 'error', verdict: 'success' };
+export type OutageKind = 'in' | 'outage' | 'verdict' | 'left';
+const OUTAGE_STATE: Record<OutageKind, 'pending' | 'error' | 'success'> = { in: 'pending', outage: 'error', verdict: 'success', left: 'success' };
+const RUN_ID = /^[\w.-]{1,80}$/;
 export const parseOutageEject = (v: string | undefined): number => {
   if (v === undefined || v === '') return 2;
   if (!/^[1-9]\d{0,2}$/.test(v)) throw new Error(`land: LAND_OUTAGE_EJECT must be a positive number of outages, not ${JSON.stringify(v)}`);
   return Number(v);
 };
-/** The trusted land/outage statuses of one commit (GET commits/<sha>/statuses pages, flattened), newest first, since the last verdict. */
 /**
- * The builds, not the statuses, since the last verdict, newest first. Each build writes its statuses with its own id in the
- * description ("[build <id>] ..."): a pending mark and the error or success that follows it are one build, judged by its newest
- * status; a build whose newest status is still pending (its run was killed) counts as one outage too. A status with no id counts
- * on its own.
+ * The driver runs since the last verdict about the PR that count as outages, newest first, from the trusted land/outage statuses
+ * of its head (GET commits/<sha>/statuses pages, flattened). A status with no run tag is a run of its own, judged by its state.
  */
 export const outageStreak = (statuses: unknown, sha: string, trusted: ReadonlySet<number>): { count: number; runs: string[] } => {
   if (!Array.isArray(statuses)) throw new Error(`land-state: the statuses of ${sha} are not a list`);
@@ -390,31 +394,61 @@ export const outageStreak = (statuses: unknown, sha: string, trusted: ReadonlySe
     if (s.context !== OUTAGE_CONTEXT || !isObject(s.creator) || !Number.isSafeInteger(s.creator.id) || !trusted.has(s.creator.id as number)) return [];
     if (typeof s.created_at !== 'string' || typeof s.id !== 'number' || typeof s.state !== 'string') throw new Error(`land-state: a ${OUTAGE_CONTEXT} status of ${sha} has no created_at, id or state`);
     const description = typeof s.description === 'string' ? s.description : '';
-    const build = /^\[build ([\w.-]{1,60})\] /.exec(description)?.[1] ?? `status ${s.id}`;
-    return [{ key: `${s.created_at} ${String(s.id).padStart(16, '0')}`, build, state: s.state, url: typeof s.target_url === 'string' ? s.target_url : '', description: description.replace(/^\[build [^\]]*\] /, '') }];
+    const tag = /^\[run ([\w.-]{1,80}) (in|outage|verdict|left)\] /.exec(description);
+    const kind: OutageKind = tag ? (tag[2] as OutageKind) : s.state === 'success' ? 'verdict' : s.state === 'pending' ? 'in' : 'outage';
+    return [{ key: `${s.created_at} ${String(s.id).padStart(16, '0')}`, run: tag?.[1] ?? `status ${s.id}`, kind, url: typeof s.target_url === 'string' ? s.target_url : '', description: tag ? description.slice(tag[0].length) : description }];
   });
   ours.sort((a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0));
-  // Each build's newest status, in the order of those.
-  const seen = new Set<string>();
-  const builds = ours.filter((s) => (seen.has(s.build) ? false : (seen.add(s.build), true)));
-  const streak = [];
-  for (const b of builds) {
-    if (b.state === 'success') break;
-    streak.push(b);
+  // The runs, each with its statuses, in the order of their newest status.
+  const runs = new Map<string, typeof ours>();
+  for (const s of ours) runs.set(s.run, [...(runs.get(s.run) ?? []), s]);
+  const counted: string[] = [];
+  for (const [, ss] of runs) {
+    const kinds = new Set(ss.map((x) => x.kind));
+    if (kinds.has('verdict')) break;
+    const outage = ss.find((x) => x.kind === 'outage');
+    if (outage !== undefined) counted.push(`${outage.url || 'a run with no URL'} (${outage.description})`);
+    else if (!kinds.has('left')) counted.push(`${ss[0]!.url || 'a run with no URL'} (the run ended without finishing: ${ss[0]!.description})`);
   }
-  return { count: streak.length, runs: streak.map((s) => `${s.url || 'a run with no URL'} (${s.state === 'pending' ? `ended mid-build: ${s.description}` : s.description})`) };
+  return { count: counted.length, runs: counted };
 };
 export const readOutageStreak = (gh: Gh, repo: string, sha: string, trusted: ReadonlySet<number>): { count: number; runs: string[] } => {
   if (!SHA.test(sha)) throw new Error(`land-state: ${JSON.stringify(sha)} is not a full sha`);
   return outageStreak((JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${checkRepo(repo)}/commits/${sha}/statuses?per_page=100`])) as unknown[]).flat(), sha, trusted);
 };
-export const writeOutage = (gh: Gh, repo: string, sha: string, build: string, mark: OutageMark, description: string, targetUrl: string | null): void => {
+export const writeOutage = (gh: Gh, repo: string, sha: string, run: string, kind: OutageKind, description: string, targetUrl: string | null): void => {
   if (!SHA.test(sha)) throw new Error(`land-state: ${JSON.stringify(sha)} is not a full sha`);
-  if (!/^[\w.-]{1,60}$/.test(build)) throw new Error(`land-state: ${JSON.stringify(build)} is not a build id`);
-  description = `[build ${build}] ${description}`;
-  gh(['api', '-X', 'POST', `repos/${checkRepo(repo)}/statuses/${sha}`, '-f', `state=${OUTAGE_STATE[mark]}`, '-f', `context=${OUTAGE_CONTEXT}`, '-f', `description=${description.replace(/\s+/g, ' ').slice(0, 139)}`, ...(targetUrl === null ? [] : ['-f', `target_url=${targetUrl}`])]);
+  if (!RUN_ID.test(run)) throw new Error(`land-state: ${JSON.stringify(run)} is not a run id`);
+  const text = `[run ${run} ${kind}] ${description.replace(/\s+/g, ' ')}`;
+  gh(['api', '-X', 'POST', `repos/${checkRepo(repo)}/statuses/${sha}`, '-f', `state=${OUTAGE_STATE[kind]}`, '-f', `context=${OUTAGE_CONTEXT}`, '-f', `description=${text.slice(0, 139)}`, ...(targetUrl === null ? [] : ['-f', `target_url=${targetUrl}`])]);
 };
-
+/**
+ * One driver run's land/outage bookkeeping: `admitted` (once per PR), `outage` and `verdict` as they happen, and `end` when the
+ * run ends normally (however its batch went), which leaves every PR with neither as neutral. A run that never reaches `end`
+ * (killed) leaves its PRs at `in`, each counted as one outage.
+ */
+export const outageLedger = (o: { run: string; write: (sha: string, kind: OutageKind, description: string) => void }) => {
+  if (!RUN_ID.test(o.run)) throw new Error(`land-state: ${JSON.stringify(o.run)} is not a run id`);
+  const prs = new Map<number, { sha: string; settled: boolean }>();
+  const mark = (pr: number, sha: string, kind: OutageKind, why: string): void => {
+    const p = prs.get(pr) ?? { sha, settled: false };
+    prs.set(pr, p);
+    if (kind === 'outage' || kind === 'verdict') p.settled = true;
+    o.write(sha, kind, why);
+  };
+  return {
+    run: o.run,
+    admitted: (pr: number, sha: string): void => {
+      if (!prs.has(pr) || prs.get(pr)!.sha !== sha) mark(pr, sha, 'in', `#${pr} admitted`);
+    },
+    outage: (pr: number, sha: string, why: string): void => mark(pr, sha, 'outage', why),
+    verdict: (pr: number, sha: string, why: string): void => mark(pr, sha, 'verdict', why),
+    end: (): void => {
+      for (const [pr, p] of prs) if (!p.settled) mark(pr, p.sha, 'left', `#${pr}: no verdict and no outage in this run`);
+    },
+  };
+};
+export type OutageLedger = ReturnType<typeof outageLedger>;
 /** Ends a PR's land/outage streak at its current head (pnpm land:clear-outage), as the identity gh acts as; returns who and where. */
 export const clearOutage = (gh: Gh, repo: string, pr: string): { context: string; head: string; login: string; id: number } => {
   if (!/^[1-9]\d{0,8}$/.test(pr)) throw new Error(`land: ${JSON.stringify(pr)} is not a PR number`);

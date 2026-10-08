@@ -110,7 +110,7 @@ import {
 } from './merge-train-lib.ts';
 import { SETUP_GIT_CONFIG } from './floor-merge.ts';
 import { reviewerIds } from './land-review-lookup.ts';
-import { OUTAGE_CONTEXT, type OutageMark, parseOutageEject, readOutageStreak, writeOutage, checkLockFree, lockHolder, releaseLock, takeLock, checkNotReviewer, missingProof, parseIds, parseSelf, parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
+import { OUTAGE_CONTEXT, type OutageLedger, outageLedger, parseOutageEject, readOutageStreak, writeOutage, checkLockFree, lockHolder, releaseLock, takeLock, checkNotReviewer, missingProof, parseIds, parseSelf, parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
 import { matcher, STEPS } from './regen.ts';
 import { abandonInflight, CiUnavailable, DEFAULT_DEVICES_WAIT_S, DEFAULT_TEST_WAIT_S, staleScratchBranches, failedTestsOf, fullTestWorkflow, parseRunRows, runDevicesOnCi, runOnCi, scratchRef, testBranch } from './land-devices-ci.ts';
@@ -741,8 +741,10 @@ const admit = (e: Entry, earlier: readonly Entry[]): { merged: string } | { tick
   // A PR whose own CI runs ended without a verdict LAND_OUTAGE_EJECT times in a row is ejected, so it cannot stall the queue.
   if (CI_ONLY) {
     const streak = readOutageStreak(gh, REPO, pr.headOid, PROOF_WRITERS);
-    if (streak.count >= OUTAGE_EJECT) throw new LandFailure('ci-outage', `the builds of #${e.pr}'s position at ${pr.headOid} ended without a verdict ${streak.count} times in a row (LAND_OUTAGE_EJECT is ${OUTAGE_EJECT}): a CI outage, or a run killed or past its limit while building it:\n  ${streak.runs.join('\n  ')}\nEjected so the queue goes on. If CI was at fault, push a new head (it starts a new count) and queue it again.`);
-    if (streak.count > 0) log(`  #${e.pr}: ${streak.count} build(s) of its position ended without a verdict so far (ejected at ${OUTAGE_EJECT})`);
+    if (streak.count >= OUTAGE_EJECT) throw new LandFailure('ci-outage', `${streak.count} landing runs in a row ended without a verdict about #${e.pr} at ${pr.headOid} (LAND_OUTAGE_EJECT is ${OUTAGE_EJECT}): a CI outage in a step that ran its tree, or a run killed or past its limit:\n  ${streak.runs.join('\n  ')}\nEjected so the queue goes on. If CI was at fault, push a new head (it starts a new count) and queue it again.`);
+    if (streak.count > 0) log(`  #${e.pr}: ${streak.count} run(s) ended without a verdict about it so far (ejected at ${OUTAGE_EJECT})`);
+    admittedHead.set(e.pr, pr.headOid);
+    ledger.admitted(e.pr, pr.headOid);
   }
   net(git, ['fetch', '--quiet', 'origin', `+refs/heads/${e.branch}:refs/remotes/origin/${e.branch}`]);
   let clean: string;
@@ -835,29 +837,30 @@ const solo = (e: Entry): boolean => {
     return false;
   }
 };
-// A build's id, written in each of its statuses so its pending and its outcome count as one build: the land.yml run and attempt,
-// or this host and process, and a counter.
-let builds = 0;
-const newBuild = (): string => `${env['GITHUB_ACTIONS'] === 'true' && env['GITHUB_RUN_ID'] ? `r${env['GITHUB_RUN_ID']}.${env['GITHUB_RUN_ATTEMPT'] ?? '1'}` : `${hostname().replace(/[^\w.-]/g, '-').slice(0, 30)}.${process.pid}`}.${ROLE === 'builder' ? 'b' : 'd'}${++builds}`;
-const putOutage = (sha: string, build: string, mark: OutageMark, description: string): void => {
-  try {
-    writeOutage(gh, REPO, sha, build, mark, description, RUN_URL);
-  } catch (error) {
-    log(`  !!! could not record ${OUTAGE_CONTEXT} (${mark}) on ${sha}: ${errorText(error).split('\n')[0]}`);
-  }
-};
-// Under ci-only, a position's build is recorded on the PR's head: building, then a verdict or a CI outage.
+// This run's id in its land/outage statuses: the land.yml run and attempt, or this host, process and its start time (a pid alone
+// is reused); a builder's own suffix.
+const RUN_TAG = `${env['GITHUB_ACTIONS'] === 'true' && env['GITHUB_RUN_ID'] ? `r${env['GITHUB_RUN_ID']}.${env['GITHUB_RUN_ATTEMPT'] ?? '1'}` : `${hostname().replace(/[^\w.-]/g, '-').slice(0, 30)}.${process.pid}.${Math.round(Date.now() / 1000 - process.uptime())}`}${ROLE === 'builder' ? '.b' : ''}`;
+// The run's land/outage ledger (land-state.ts outageLedger). Only under ci-only. A builder records outages and verdicts but no
+// admission and no end: the driver throws its batch away by killing it, which must not count as an outage.
+const ledger: OutageLedger = outageLedger({
+  run: RUN_TAG,
+  write: (sha, kind, description) => {
+    if (!CI_ONLY || (ROLE === 'builder' && (kind === 'in' || kind === 'left'))) return;
+    try {
+      writeOutage(gh, REPO, sha, RUN_TAG, kind, description, RUN_URL);
+    } catch (error) {
+      log(`  !!! could not record ${OUTAGE_CONTEXT} (${kind}) on ${sha}: ${errorText(error).split('\n')[0]}`);
+    }
+  },
+});
+// The head each admitted PR was admitted at, for its verdicts.
+const admittedHead = new Map<number, string>();
+// An outage while building a PR's position (its regen, tree checks or devices on CI) is that PR's.
 const tracked = <R>(e: Entry, t: Ticket, fn: () => R): R => {
-  if (!CI_ONLY) return fn();
-  const build = newBuild();
-  putOutage(t.prHead, build, 'building', `building #${e.pr}'s position${RUN_URL === null ? ` on ${hostname()}` : ''}`);
   try {
-    const r = fn();
-    putOutage(t.prHead, build, 'verdict', 'built');
-    return r;
+    return fn();
   } catch (error) {
-    if (error instanceof CiOutage) putOutage(t.prHead, build, 'outage', `CI outage: ${msg(error)}`);
-    else if (error instanceof LandFailure) putOutage(t.prHead, build, 'verdict', `failed at ${error.step}`);
+    if (error instanceof CiOutage) ledger.outage(e.pr, t.prHead, `building #${e.pr}'s position: ${msg(error)}`);
     throw error;
   }
 };
@@ -1244,18 +1247,12 @@ const buildAllPositions = (base: string, items: readonly { entry: Entry; ticket:
       // for it leaves it pending.
       await: (h) => {
         const it = items[h.k - 1]!;
-        if (!CI_ONLY) return awaitPrepared(h);
-        const build = newBuild();
-        const what = `the prepared regen of #${it.entry.pr}'s position`;
-        putOutage(it.ticket.prHead, build, 'building', what);
         try {
           awaitPrepared(h);
         } catch (error) {
-          // Any other end of the regen came to an outcome (the position is then built one by one, marked on its own).
-          putOutage(it.ticket.prHead, build, error instanceof CiOutage ? 'outage' : 'verdict', error instanceof CiOutage ? `${what}: ${msg(error)}` : `${what} failed; built one by one`);
+          if (error instanceof CiOutage) ledger.outage(it.entry.pr, it.ticket.prHead, `the prepared regen of #${it.entry.pr}'s position: ${msg(error)}`);
           throw error;
         }
-        putOutage(it.ticket.prHead, build, 'verdict', `${what} ran`);
       },
       assemble: assemblePosition,
       sequential: (prev, it, k) => withWorktree(WT_HOME, () => buildPosition(prev, it.entry, it.ticket, k)),
@@ -1348,21 +1345,18 @@ const proveIn = (head: string): void => {
 };
 const proveTree = (p: Built, e: Entry): void => {
   current = e;
-  // Under ci-only the full test of a position is marked on every PR its tree holds: an outage there cannot be pinned on one of
-  // them, so each is then built alone (solo) until one ends in a verdict, and the streak pins the outage on the PR that causes it.
+  // The full test of a position runs the tree of every PR it holds: an outage there is recorded on each (it cannot be pinned on
+  // one, so each is then built alone, solo), and a pass is a verdict about each. A failure is not yet one: the bisect decides.
   const k = chain.findIndex((c) => c.head === p.head);
-  const members = CI_ONLY && k >= 0 ? chain.slice(0, k + 1) : [];
+  const members = k >= 0 ? chain.slice(0, k + 1) : [];
   const prs = members.map((m) => `#${m.pr}`).join(' ');
-  const build = newBuild();
-  for (const m of members) putOutage(m.prHead, build, 'building', `full test of the tree of ${prs}`);
   try {
     proveCommit(p.head, `#${e.pr}'s position`);
   } catch (error) {
-    if (error instanceof CiOutage) for (const m of members) putOutage(m.prHead, build, 'outage', `full test of ${prs}: ${msg(error)}`);
-    else if (error instanceof LandFailure) for (const m of members) putOutage(m.prHead, build, 'verdict', `full test of ${prs} failed`);
+    if (error instanceof CiOutage) for (const m of members) ledger.outage(m.pr, m.prHead, `full test of the tree of ${prs}: ${msg(error)}`);
     throw error;
   }
-  for (const m of members) putOutage(m.prHead, build, 'verdict', `full test of ${prs} passed`);
+  for (const m of members) ledger.verdict(m.pr, m.prHead, `the full test of the tree of ${prs} passed`);
 };
 const proveMaster = (master: string): void => {
   current = null;
@@ -1481,6 +1475,9 @@ const publishInside = (e: Entry, b: Built, t: Ticket): string => {
 let labelReady = false;
 const reportFailure = (e: Entry, f: LandFailure): void => {
   log(`  FAILED #${e.pr} at ${f.step}: ${f.message}`);
+  // Its failure is a verdict about it, except an ejection for outages, which must keep its streak (the same head ejects again).
+  const head = admittedHead.get(e.pr);
+  if (head !== undefined && f.step !== 'ci-outage') ledger.verdict(e.pr, head, `failed at ${f.step}`);
   try {
     if (!labelReady) gh(['label', 'create', LABEL, '--repo', REPO, '--force', '--color', 'B60205', '--description', 'The landing driver stopped this PR; see its comment']);
     labelReady = true;
@@ -1968,7 +1965,12 @@ const main = (): number => {
     prove: (p, e) => (write(false, null, e), proveTree(p, e)),
     solo,
     proveMaster: (m) => (write(false, null, null), proveMaster(m)),
-    publish: (e, p, t) => (write(false, null, e), publish(e, p, t)),
+    publish: (e, p, t) => {
+      write(false, null, e);
+      const merged = publish(e, p, t);
+      ledger.verdict(e.pr, t.prHead, 'merged');
+      return merged;
+    },
     onFail: reportFailure,
     stopRequested: stopAsked,
     ...(MAX_BATCHES === undefined ? {} : { maxBatches: MAX_BATCHES }),
@@ -1982,6 +1984,8 @@ const main = (): number => {
   current = null;
   putStatus(statusText({ queue: args.queue, startedAt, now: stamp(), running: null, outcomes: latest, fatal: result.fatal, outage: result.outage, total: queued.length, done: true, stopped: result.stopped, limited: result.limited }));
   writeHandoff({ remainder: result.stopped, stopAsked: result.stopAsked, outage: result.outage, fatal: result.fatal });
+  // The run ended (whatever its batch did): a PR with no verdict and no outage in it is neutral; only a killed run leaves `in`.
+  ledger.end();
   try {
     resetWorktree(fetchMaster());
   } catch {}
