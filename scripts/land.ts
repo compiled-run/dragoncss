@@ -835,9 +835,13 @@ const solo = (e: Entry): boolean => {
     return false;
   }
 };
-const putOutage = (sha: string, mark: OutageMark, description: string): void => {
+// A build's id, written in each of its statuses so its pending and its outcome count as one build: the land.yml run and attempt,
+// or this host and process, and a counter.
+let builds = 0;
+const newBuild = (): string => `${env['GITHUB_ACTIONS'] === 'true' && env['GITHUB_RUN_ID'] ? `r${env['GITHUB_RUN_ID']}.${env['GITHUB_RUN_ATTEMPT'] ?? '1'}` : `${hostname().replace(/[^\w.-]/g, '-').slice(0, 30)}.${process.pid}`}.${ROLE === 'builder' ? 'b' : 'd'}${++builds}`;
+const putOutage = (sha: string, build: string, mark: OutageMark, description: string): void => {
   try {
-    writeOutage(gh, REPO, sha, mark, description, RUN_URL);
+    writeOutage(gh, REPO, sha, build, mark, description, RUN_URL);
   } catch (error) {
     log(`  !!! could not record ${OUTAGE_CONTEXT} (${mark}) on ${sha}: ${errorText(error).split('\n')[0]}`);
   }
@@ -845,14 +849,15 @@ const putOutage = (sha: string, mark: OutageMark, description: string): void => 
 // Under ci-only, a position's build is recorded on the PR's head: building, then a verdict or a CI outage.
 const tracked = <R>(e: Entry, t: Ticket, fn: () => R): R => {
   if (!CI_ONLY) return fn();
-  putOutage(t.prHead, 'building', `building #${e.pr}'s position${RUN_URL === null ? ` on ${hostname()}` : ''}`);
+  const build = newBuild();
+  putOutage(t.prHead, build, 'building', `building #${e.pr}'s position${RUN_URL === null ? ` on ${hostname()}` : ''}`);
   try {
     const r = fn();
-    putOutage(t.prHead, 'verdict', 'built');
+    putOutage(t.prHead, build, 'verdict', 'built');
     return r;
   } catch (error) {
-    if (error instanceof CiOutage) putOutage(t.prHead, 'outage', `CI outage: ${msg(error)}`);
-    else if (error instanceof LandFailure) putOutage(t.prHead, 'verdict', `failed at ${error.step}`);
+    if (error instanceof CiOutage) putOutage(t.prHead, build, 'outage', `CI outage: ${msg(error)}`);
+    else if (error instanceof LandFailure) putOutage(t.prHead, build, 'verdict', `failed at ${error.step}`);
     throw error;
   }
 };
@@ -1239,13 +1244,18 @@ const buildAllPositions = (base: string, items: readonly { entry: Entry; ticket:
       // for it leaves it pending.
       await: (h) => {
         const it = items[h.k - 1]!;
-        if (CI_ONLY) putOutage(it.ticket.prHead, 'building', `the prepared regen of #${it.entry.pr}'s position`);
+        if (!CI_ONLY) return awaitPrepared(h);
+        const build = newBuild();
+        const what = `the prepared regen of #${it.entry.pr}'s position`;
+        putOutage(it.ticket.prHead, build, 'building', what);
         try {
           awaitPrepared(h);
         } catch (error) {
-          if (CI_ONLY && error instanceof CiOutage) putOutage(it.ticket.prHead, 'outage', `the prepared regen of #${it.entry.pr}'s position: ${msg(error)}`);
+          // Any other end of the regen came to an outcome (the position is then built one by one, marked on its own).
+          putOutage(it.ticket.prHead, build, error instanceof CiOutage ? 'outage' : 'verdict', error instanceof CiOutage ? `${what}: ${msg(error)}` : `${what} failed; built one by one`);
           throw error;
         }
+        putOutage(it.ticket.prHead, build, 'verdict', `${what} ran`);
       },
       assemble: assemblePosition,
       sequential: (prev, it, k) => withWorktree(WT_HOME, () => buildPosition(prev, it.entry, it.ticket, k)),
@@ -1343,15 +1353,16 @@ const proveTree = (p: Built, e: Entry): void => {
   const k = chain.findIndex((c) => c.head === p.head);
   const members = CI_ONLY && k >= 0 ? chain.slice(0, k + 1) : [];
   const prs = members.map((m) => `#${m.pr}`).join(' ');
-  for (const m of members) putOutage(m.prHead, 'building', `full test of the tree of ${prs}`);
+  const build = newBuild();
+  for (const m of members) putOutage(m.prHead, build, 'building', `full test of the tree of ${prs}`);
   try {
     proveCommit(p.head, `#${e.pr}'s position`);
   } catch (error) {
-    if (error instanceof CiOutage) for (const m of members) putOutage(m.prHead, 'outage', `full test of ${prs}: ${msg(error)}`);
-    else if (error instanceof LandFailure) for (const m of members) putOutage(m.prHead, 'verdict', `full test of ${prs} failed`);
+    if (error instanceof CiOutage) for (const m of members) putOutage(m.prHead, build, 'outage', `full test of ${prs}: ${msg(error)}`);
+    else if (error instanceof LandFailure) for (const m of members) putOutage(m.prHead, build, 'verdict', `full test of ${prs} failed`);
     throw error;
   }
-  for (const m of members) putOutage(m.prHead, 'verdict', `full test of ${prs} passed`);
+  for (const m of members) putOutage(m.prHead, build, 'verdict', `full test of ${prs} passed`);
 };
 const proveMaster = (master: string): void => {
   current = null;

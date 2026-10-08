@@ -377,28 +377,41 @@ export const parseOutageEject = (v: string | undefined): number => {
   return Number(v);
 };
 /** The trusted land/outage statuses of one commit (GET commits/<sha>/statuses pages, flattened), newest first, since the last verdict. */
+/**
+ * The builds, not the statuses, since the last verdict, newest first. Each build writes its statuses with its own id in the
+ * description ("[build <id>] ..."): a pending mark and the error or success that follows it are one build, judged by its newest
+ * status; a build whose newest status is still pending (its run was killed) counts as one outage too. A status with no id counts
+ * on its own.
+ */
 export const outageStreak = (statuses: unknown, sha: string, trusted: ReadonlySet<number>): { count: number; runs: string[] } => {
   if (!Array.isArray(statuses)) throw new Error(`land-state: the statuses of ${sha} are not a list`);
   const ours = statuses.flatMap((s) => {
     if (!isObject(s) || typeof s.context !== 'string') throw new Error(`land-state: a status of ${sha} has no context`);
     if (s.context !== OUTAGE_CONTEXT || !isObject(s.creator) || !Number.isSafeInteger(s.creator.id) || !trusted.has(s.creator.id as number)) return [];
     if (typeof s.created_at !== 'string' || typeof s.id !== 'number' || typeof s.state !== 'string') throw new Error(`land-state: a ${OUTAGE_CONTEXT} status of ${sha} has no created_at, id or state`);
-    return [{ key: `${s.created_at} ${String(s.id).padStart(16, '0')}`, state: s.state, url: typeof s.target_url === 'string' ? s.target_url : '', description: typeof s.description === 'string' ? s.description : '' }];
+    const description = typeof s.description === 'string' ? s.description : '';
+    const build = /^\[build ([\w.-]{1,60})\] /.exec(description)?.[1] ?? `status ${s.id}`;
+    return [{ key: `${s.created_at} ${String(s.id).padStart(16, '0')}`, build, state: s.state, url: typeof s.target_url === 'string' ? s.target_url : '', description: description.replace(/^\[build [^\]]*\] /, '') }];
   });
   ours.sort((a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0));
+  // Each build's newest status, in the order of those.
+  const seen = new Set<string>();
+  const builds = ours.filter((s) => (seen.has(s.build) ? false : (seen.add(s.build), true)));
   const streak = [];
-  for (const s of ours) {
-    if (s.state === 'success') break;
-    streak.push(s);
+  for (const b of builds) {
+    if (b.state === 'success') break;
+    streak.push(b);
   }
-  return { count: streak.length, runs: streak.map((s) => `${s.url || 'a run with no URL'} (${s.state === 'pending' ? 'ended mid-build' : s.description})`) };
+  return { count: streak.length, runs: streak.map((s) => `${s.url || 'a run with no URL'} (${s.state === 'pending' ? `ended mid-build: ${s.description}` : s.description})`) };
 };
 export const readOutageStreak = (gh: Gh, repo: string, sha: string, trusted: ReadonlySet<number>): { count: number; runs: string[] } => {
   if (!SHA.test(sha)) throw new Error(`land-state: ${JSON.stringify(sha)} is not a full sha`);
   return outageStreak((JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${checkRepo(repo)}/commits/${sha}/statuses?per_page=100`])) as unknown[]).flat(), sha, trusted);
 };
-export const writeOutage = (gh: Gh, repo: string, sha: string, mark: OutageMark, description: string, targetUrl: string | null): void => {
+export const writeOutage = (gh: Gh, repo: string, sha: string, build: string, mark: OutageMark, description: string, targetUrl: string | null): void => {
   if (!SHA.test(sha)) throw new Error(`land-state: ${JSON.stringify(sha)} is not a full sha`);
+  if (!/^[\w.-]{1,60}$/.test(build)) throw new Error(`land-state: ${JSON.stringify(build)} is not a build id`);
+  description = `[build ${build}] ${description}`;
   gh(['api', '-X', 'POST', `repos/${checkRepo(repo)}/statuses/${sha}`, '-f', `state=${OUTAGE_STATE[mark]}`, '-f', `context=${OUTAGE_CONTEXT}`, '-f', `description=${description.replace(/\s+/g, ' ').slice(0, 139)}`, ...(targetUrl === null ? [] : ['-f', `target_url=${targetUrl}`])]);
 };
 
@@ -410,6 +423,6 @@ export const clearOutage = (gh: Gh, repo: string, pr: string): { context: string
   if (p.state !== 'open') throw new Error(`land: PR #${pr} is ${String(p.state)}, not open`);
   const me: unknown = JSON.parse(gh(['api', 'user']));
   if (!isObject(me) || !Number.isSafeInteger(me.id) || typeof me.login !== 'string') throw new Error('land: GET user returned no id and login');
-  writeOutage(gh, repo, p.head.sha, 'verdict', `cleared by ${me.login} after a GitHub outage (pnpm land:clear-outage)`, null);
+  writeOutage(gh, repo, p.head.sha, `clear-${Date.now()}`, 'verdict', `cleared by ${me.login} after a GitHub outage (pnpm land:clear-outage)`, null);
   return { context: OUTAGE_CONTEXT, head: p.head.sha, login: me.login, id: me.id as number };
 };
