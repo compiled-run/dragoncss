@@ -23,6 +23,8 @@ import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts'
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
+import { layerLonghandValue } from './shorthands/background.ts';
+import { isBackgroundLayerLonghand } from './properties/background-layers.ts';
 
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
@@ -385,6 +387,8 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
   if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);
   // Paint families (PNT1): multi-token paint values, with the checks Chrome makes beyond the grammar (css/paint-parsers.ts).
+  // css-backgrounds-3 §2.2: a background layer longhand holds one comma-separated item per layer (BG2).
+  if (!wide && isBackgroundLayerLonghand(property)) return layerLonghandValue(property, tokens, base, sheetText);
   const paint = wide ? undefined : PAINT_VALUE_PARSERS.get(property);
   if (paint !== undefined) return paint(tokens, base);
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.

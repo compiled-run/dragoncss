@@ -46,6 +46,7 @@ const SUBSET = [
   'border-radius', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius',
   'box-shadow',
   'opacity', 'z-index', 'color-scheme',
+  'background-image', 'background-position', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip',
   'outline', 'outline-color', 'outline-style', 'outline-width', 'outline-offset',
   'visibility',
 ] as const;

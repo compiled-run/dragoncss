@@ -218,10 +218,13 @@ const REMOVED_AFTER_BASE: Readonly<Record<string, string>> = {
 };
 
 // BASE fixtures a later package retargeted on purpose (V1 of the value model supports vw and calc(), so its rejects moved to
-// svw and round()), with their BASE text: the reader is still checked on that text, and each file must now differ from it.
+// svw and round(); BG2 draws gradients and several layers, so its background rejects moved to url() and a conic layer), with
+// their BASE text: the reader is still checked on that text, and each file must now differ from it.
 const RETARGETED_AFTER_BASE: Readonly<Record<string, string>> = {
   'reject-unit-calc': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.a { width: calc(10px + 2em); height: 10px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
   'reject-unit-vw': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.a { width: 50vw; height: 10px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
+  'reject-background-image': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.swatch { width: 20px; height: 20px; background: linear-gradient(red, blue) red; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="swatch" class="swatch"></div>\n</body>\n</html>\n',
+  'reject-background-layers': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.swatch { width: 20px; height: 20px; background: none, red; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="swatch" class="swatch"></div>\n</body>\n</html>\n',
 };
 
 describe('fixture reader identity', () => {

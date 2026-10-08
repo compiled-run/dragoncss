@@ -19,12 +19,26 @@ function declare(value: string): { declaration: Declaration | null; diagnostics:
 
 const spanOf = (css: string, d: Diagnostic): string => (d.origin.kind === 'authored' ? css.slice(d.origin.span.start, d.origin.span.end) : '<unlocated>');
 
+const LAYER_LONGHANDS = ['background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip'];
+const initialLayers = (): unknown[] => [
+  { property: 'background-image', value: { kind: 'keyword', value: 'none' }, explicit: false },
+  { property: 'background-position-x', value: { kind: 'percentage', value: 0 }, explicit: false },
+  { property: 'background-position-y', value: { kind: 'percentage', value: 0 }, explicit: false },
+  { property: 'background-size', value: { kind: 'keyword', value: 'auto' }, explicit: false },
+  { property: 'background-repeat', value: { kind: 'keyword', value: 'repeat' }, explicit: false },
+  { property: 'background-attachment', value: { kind: 'keyword', value: 'scroll' }, explicit: false },
+  { property: 'background-origin', value: { kind: 'keyword', value: 'padding-box' }, explicit: false },
+  { property: 'background-clip', value: { kind: 'keyword', value: 'border-box' }, explicit: false },
+];
+const byProperty = (d: Declaration | null): Record<string, { value: unknown; explicit: boolean }> => Object.fromEntries((d?.longhands ?? []).map((l) => [l.property, { value: l.value, explicit: l.explicit }]));
+
 describe('background shorthand: parse and expansion', () => {
   it('lists the eight non-colour longhands with their initial values as Chrome 145 serializes them', () => {
     expect(BACKGROUND_RESET_LONGHANDS).toEqual({
       'background-image': 'none', 'background-position-x': '0%', 'background-position-y': '0%', 'background-size': 'auto',
       'background-repeat': 'repeat', 'background-attachment': 'scroll', 'background-origin': 'padding-box', 'background-clip': 'border-box',
     });
+    expect(Object.keys(BACKGROUND_RESET_LONGHANDS)).toEqual(LAYER_LONGHANDS);
   });
 
   const colours: [string, unknown][] = [
@@ -36,82 +50,131 @@ describe('background shorthand: parse and expansion', () => {
     ['currentcolor', { kind: 'keyword', value: 'currentcolor' }],
   ];
   for (const [value, expected] of colours) {
-    it(`background: ${value} sets background-color explicitly and nothing else`, () => {
+    it(`background: ${value} sets background-color explicitly and every layer longhand to its initial value`, () => {
       const { declaration, diagnostics } = declare(value);
       expect(diagnostics).toEqual([]);
       expect(declaration?.property).toBe('background');
-      expect(declaration?.longhands).toEqual([{ property: 'background-color', value: expected, explicit: true }]);
+      expect(declaration?.longhands).toEqual([...initialLayers(), { property: 'background-color', value: expected, explicit: true }]);
     });
   }
 
-  it('background: none fills background-color with its initial transparent, implicitly', () => {
+  it('background: none sets background-image explicitly and fills background-color with its initial transparent', () => {
     const { declaration, diagnostics } = declare('none');
     expect(diagnostics).toEqual([]);
-    expect(declaration?.longhands).toEqual([{ property: 'background-color', value: { kind: 'keyword', value: 'transparent' }, explicit: false }]);
+    expect(declaration?.longhands).toEqual([
+      { property: 'background-image', value: { kind: 'keyword', value: 'none' }, explicit: true },
+      ...initialLayers().slice(1),
+      { property: 'background-color', value: { kind: 'keyword', value: 'transparent' }, explicit: false },
+    ]);
   });
 
-  const initialForms = [
-    'none red', 'red none', '0% 0% red', 'left top red', 'top left red', 'left 0% top 0% red', 'top 0% left red', '0% 0% / auto red',
-    'left top / auto auto red', 'repeat red', 'repeat repeat red', 'scroll red', 'padding-box border-box red',
-    'none repeat scroll 0% 0% / auto padding-box border-box red', 'red padding-box scroll border-box',
+  // [value, the explicit layer longhands and their values]
+  const components: [string, Record<string, unknown>][] = [
+    ['left top red', { 'background-position-x': { kind: 'keyword', value: 'left' }, 'background-position-y': { kind: 'keyword', value: 'top' } }],
+    ['top red', { 'background-position-x': { kind: 'keyword', value: 'center' }, 'background-position-y': { kind: 'keyword', value: 'top' } }],
+    ['10px 25% red', { 'background-position-x': { kind: 'length', value: 10, unit: 'px' }, 'background-position-y': { kind: 'percentage', value: 25 } }],
+    ['left 5px top 3px red', { 'background-position-x': { kind: 'other', type: 'position-x', text: 'left 5px' }, 'background-position-y': { kind: 'other', type: 'position-y', text: 'top 3px' } }],
+    ['0% 0% / cover red', { 'background-position-x': { kind: 'percentage', value: 0 }, 'background-position-y': { kind: 'percentage', value: 0 }, 'background-size': { kind: 'keyword', value: 'cover' } }],
+    ['0 0 / 10px auto red', { 'background-position-x': { kind: 'length', value: 0, unit: 'px' }, 'background-position-y': { kind: 'length', value: 0, unit: 'px' }, 'background-size': { kind: 'other', type: 'size', text: '10px auto' } }],
+    ['no-repeat red', { 'background-repeat': { kind: 'keyword', value: 'no-repeat' } }],
+    ['repeat-x red', { 'background-repeat': { kind: 'keyword', value: 'repeat-x' } }],
+    ['padding-box red', { 'background-origin': { kind: 'keyword', value: 'padding-box' }, 'background-clip': { kind: 'keyword', value: 'padding-box' } }],
+    ['border-box content-box red', { 'background-origin': { kind: 'keyword', value: 'border-box' }, 'background-clip': { kind: 'keyword', value: 'content-box' } }],
+    ['scroll red', { 'background-attachment': { kind: 'keyword', value: 'scroll' } }],
+    ['linear-gradient(red, blue)', { 'background-image': { kind: 'other', type: 'linear-gradient()', text: 'linear-gradient(red,blue)' } }],
   ];
-  for (const value of initialForms) {
-    it(`background: ${value} spells out only initial values, so it compiles to the colour`, () => {
+  for (const [value, set] of components) {
+    it(`background: ${value} sets exactly its components explicitly`, () => {
       const { declaration, diagnostics } = declare(value);
       expect(diagnostics).toEqual([]);
-      expect(declaration?.longhands).toEqual([{ property: 'background-color', value: { kind: 'color', value: { r: 255, g: 0, b: 0, alpha: 255 }, syntax: 'named-color' }, explicit: true }]);
+      const got = byProperty(declaration);
+      for (const l of LAYER_LONGHANDS) {
+        expect(got[l]?.explicit, l).toBe(l in set);
+        if (l in set) expect(got[l]?.value, l).toEqual(set[l]);
+      }
     });
   }
 
-  it('CSS-wide keywords set background-color to the keyword', () => {
+  it('expands the music player\'s two-layer record background into a list per longhand', () => {
+    const { declaration, diagnostics } = declare('radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%), repeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)');
+    expect(diagnostics).toEqual([]);
+    const got = byProperty(declaration);
+    expect(got['background-image']).toEqual({ explicit: true, value: { kind: 'other', type: 'list', text: 'radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)' } });
+    expect(got['background-position-x']).toEqual({ explicit: false, value: { kind: 'other', type: 'list', text: '0%, 0%' } });
+    expect(got['background-clip']).toEqual({ explicit: false, value: { kind: 'other', type: 'list', text: 'border-box, border-box' } });
+    expect(got['background-color']).toEqual({ explicit: false, value: { kind: 'keyword', value: 'transparent' } });
+  });
+
+  it('CSS-wide keywords set every longhand to the keyword', () => {
     for (const wide of ['inherit', 'initial', 'unset', 'revert', 'revert-layer']) {
       const { declaration, diagnostics } = declare(wide);
       expect(diagnostics).toEqual([]);
-      expect(declaration?.longhands).toEqual([{ property: 'background-color', value: { kind: 'keyword', value: wide }, explicit: true }]);
+      expect(declaration?.longhands).toEqual([...LAYER_LONGHANDS, 'background-color'].map((property) => ({ property, value: { kind: 'keyword', value: wide }, explicit: true })));
     }
   });
 });
 
+describe('background layer longhands and background-position', () => {
+  const declareAs = (property: string, value: string): { declaration: Declaration | null; diagnostics: Diagnostic[]; css: string } => {
+    const css = `.a { ${property}: ${value}; }`;
+    const diagnostics: Diagnostic[] = [];
+    const rules = parseStylesheet(css, { source: SOURCE, start: 0, end: css.length }, { id: 's', owner: 'doc', scope: 'document' }, 0, diagnostics);
+    return { declaration: rules[0]?.declarations[0] ?? null, diagnostics, css };
+  };
+  it('each longhand takes a comma-separated list, one item per layer', () => {
+    expect(declareAs('background-image', 'linear-gradient(red, blue), none').declaration?.longhands).toEqual([{ property: 'background-image', value: { kind: 'other', type: 'list', text: 'linear-gradient(red,blue), none' }, explicit: true }]);
+    expect(declareAs('background-size', '50% auto').declaration?.longhands).toEqual([{ property: 'background-size', value: { kind: 'other', type: 'size', text: '50% auto' }, explicit: true }]);
+    expect(declareAs('background-repeat', 'repeat no-repeat, repeat-y').declaration?.longhands).toEqual([{ property: 'background-repeat', value: { kind: 'other', type: 'list', text: 'repeat no-repeat, repeat-y' }, explicit: true }]);
+    expect(declareAs('background-clip', 'content-box').declaration?.longhands).toEqual([{ property: 'background-clip', value: { kind: 'keyword', value: 'content-box' }, explicit: true }]);
+  });
+  it('background-position sets both position longhands, per layer', () => {
+    expect(declareAs('background-position', 'right 30%, 10px').declaration?.longhands).toEqual([
+      { property: 'background-position-x', value: { kind: 'other', type: 'list', text: 'right, 10px' }, explicit: true },
+      { property: 'background-position-y', value: { kind: 'other', type: 'list', text: '30%, center' }, explicit: true },
+    ]);
+  });
+});
+
 describe('background shorthand: refusals', () => {
-  // [value, the span the diagnostic points at, the longhands the message names]
-  const unsupported: [string, string, string[]][] = [
-    ['url(a.png) red', 'url(a.png)', ['background-image']],
-    ['linear-gradient(red, blue)', 'linear-gradient(red, blue)', ['background-image']],
-    ['image-set("a.png" 1x)', 'image-set("a.png" 1x)', ['background-image']],
-    ['center red', 'center', ['background-position-x', 'background-position-y']],
-    ['left red', 'left', ['background-position-y']],
-    ['top red', 'top', ['background-position-x']],
-    ['0% red', '0%', ['background-position-y']],
-    ['0 0 red', '0 0', ['background-position-x', 'background-position-y']],
-    ['0px 0% red', '0px 0%', ['background-position-x']],
-    ['right bottom red', 'right bottom', ['background-position-x', 'background-position-y']],
-    ['left 5px top red', 'left 5px top', ['background-position-x']],
-    ['0% 0% / cover red', '/ cover', ['background-size']],
-    ['0% 0% / 10px auto red', '/ 10px auto', ['background-size']],
-    ['no-repeat red', 'no-repeat', ['background-repeat']],
-    ['repeat-x red', 'repeat-x', ['background-repeat']],
-    ['repeat space red', 'repeat space', ['background-repeat']],
-    ['fixed red', 'fixed', ['background-attachment']],
-    ['local red', 'local', ['background-attachment']],
-    ['padding-box red', 'padding-box', ['background-clip']],
-    ['border-box red', 'border-box', ['background-origin']],
-    ['content-box red', 'content-box', ['background-origin', 'background-clip']],
-    ['border-box padding-box red', 'border-box padding-box', ['background-origin', 'background-clip']],
-    ['none, red', 'none, red', Object.keys(BACKGROUND_RESET_LONGHANDS)],
-    ['url(a.png), url(b.png) red', 'url(a.png), url(b.png) red', Object.keys(BACKGROUND_RESET_LONGHANDS)],
+  // [property, value, the span the diagnostic points at, a part of its reason]
+  const unsupported: [string, string, string, string][] = [
+    ['background', 'url(a.png) red', 'url(a.png)', 'BG2-u'],
+    ['background', 'image-set("a.png" 1x)', 'image-set("a.png" 1x)', 'BG2b'],
+    ['background', 'conic-gradient(red, blue)', 'conic-gradient(red, blue)', 'BG2-c'],
+    ['background', 'linear-gradient(in oklab, red, blue)', 'linear-gradient(in oklab, red, blue)', 'BG2b'],
+    ['background', 'linear-gradient(red, 30%, blue)', '30%', 'BG2b'],
+    ['background', 'linear-gradient(red 1vw, blue)', '1vw', 'CALC-p'],
+    ['background', 'radial-gradient(circle calc(10px + 5%), red, blue)', 'calc(10px + 5%)', 'CALC-p'],
+    ['background', 'right 10vh top red', '10vh', 'CALC-p'],
+    ['background', 'fixed red', 'fixed', 'BG2b'],
+    ['background', 'local red', 'local', 'BG2b'],
+    ['background', 'text red', 'text', 'BG2c'],
+    ['background-image', 'url(a.png), linear-gradient(red, blue)', 'url(a.png)', 'BG2-u'],
+    ['background-position-x', 'right calc(5px + 1%)', 'calc(5px + 1%)', 'CALC-p'],
+    ['background-size', '2vmin', '2vmin', 'CALC-p'],
+    ['background-attachment', 'scroll, fixed', 'fixed', 'BG2b'],
   ];
-  for (const [value, span, longhands] of unsupported) {
-    it(`background: ${value} is DRAGON_UNSUPPORTED_VALUE naming ${longhands.join(', ')}`, () => {
-      const { declaration, diagnostics, css } = declare(value);
-      expect(declaration).toBeNull();
+  // R7 and R8: what bg2 refused at parse time and BG2-a accepts (em folds at computed-value time; edge offsets; negative stops;
+  // space and round, which only the native targets refuse, in the element check).
+  for (const [property, value] of [['background', 'linear-gradient(red 1em, blue)'], ['background', 'right 10px top red'], ['background', 'repeat space red'], ['background', 'round red'], ['background-position-x', 'right 5px'], ['background-size', '2em'], ['background-image', 'linear-gradient(red -5px, blue)']]) {
+    it(`${property}: ${value} parses for every target`, () => {
+      const css = `.a { ${property}: ${value}; }`;
+      const diagnostics: Diagnostic[] = [];
+      const rules = parseStylesheet(css, { source: SOURCE, start: 0, end: css.length }, { id: 's', owner: 'doc', scope: 'document' }, 0, diagnostics);
+      expect(diagnostics).toEqual([]);
+      expect(rules[0]?.declarations.length).toBe(1);
+    });
+  }
+  for (const [property, value, span, reason] of unsupported) {
+    it(`${property}: ${value} is DRAGON_UNSUPPORTED_VALUE at ${span} (${reason})`, () => {
+      const css = `.a { ${property}: ${value}; }`;
+      const diagnostics: Diagnostic[] = [];
+      const rules = parseStylesheet(css, { source: SOURCE, start: 0, end: css.length }, { id: 's', owner: 'doc', scope: 'document' }, 0, diagnostics);
+      expect(rules[0]?.declarations).toEqual([]);
       expect(diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
       const d = diagnostics[0] as Diagnostic;
       expect(spanOf(css, d)).toBe(span);
-      expect(d.message.startsWith(`background: "${span}" `)).toBe(true);
-      for (const l of longhands) expect(d.message).toContain(`${l} (initial ${BACKGROUND_RESET_LONGHANDS[l as keyof typeof BACKGROUND_RESET_LONGHANDS]})`);
-      const named = Object.keys(BACKGROUND_RESET_LONGHANDS).filter((l) => d.message.includes(`${l} (initial`));
-      expect(named.sort()).toEqual([...longhands].sort());
-      expect(d.fix !== null && 'manual' in d.fix && d.fix.manual).toMatch(/background-color/);
+      expect(d.message).toContain(reason);
       expectCatalogued(diagnostics);
     });
   }
