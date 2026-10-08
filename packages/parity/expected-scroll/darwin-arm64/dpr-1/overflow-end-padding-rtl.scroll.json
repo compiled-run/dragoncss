@@ -1,0 +1,81 @@
+{
+ "case": "overflow-end-padding-rtl",
+ "chrome": "145.0.7632.6",
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 1,
+ "direction": "rtl",
+ "scrollbars": "overlay",
+ "scrollbarArgs": "-AppleShowScrollBars WhenScrolling",
+ "records": [
+  {
+   "id": "viewport",
+   "scrollWidth": 400,
+   "scrollHeight": 558,
+   "clientWidth": 400,
+   "clientHeight": 300
+  },
+  {
+   "id": "a1",
+   "scrollWidth": 100,
+   "scrollHeight": 84,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a2",
+   "scrollWidth": 115,
+   "scrollHeight": 103,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a3",
+   "scrollWidth": 70,
+   "scrollHeight": 75,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a4",
+   "scrollWidth": 70,
+   "scrollHeight": 54,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a5",
+   "scrollWidth": 124,
+   "scrollHeight": 54,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a6",
+   "scrollWidth": 70,
+   "scrollHeight": 54,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a7",
+   "scrollWidth": 70,
+   "scrollHeight": 54,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a8",
+   "scrollWidth": 100,
+   "scrollHeight": 74,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a9",
+   "scrollWidth": 70,
+   "scrollHeight": 86,
+   "clientWidth": 70,
+   "clientHeight": 54
+  }
+ ]
+}

@@ -69,6 +69,7 @@ packages/layout/rt-vectors/**
 packages/layout/break-vectors/**
 packages/parity/expected-breaks/**
 packages/parity/expected-pixels/**
+packages/parity/expected-scroll/**
 packages/layout/paint-vectors/*/vectors.json
 packages/parity/out/**
 packages/dragon/test/fonts/captures/**
