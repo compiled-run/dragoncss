@@ -138,15 +138,15 @@
   }
  },
  "summary": {
-  "diagnostics": 216,
-  "errors": 211,
+  "diagnostics": 200,
+  "errors": 195,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
    "DRAGON_SELECTOR_DROPPED": 1,
-   "DRAGON_UNPROVEN_CONTEXT [android]": 3,
-   "DRAGON_UNPROVEN_CONTEXT [ios]": 3,
-   "DRAGON_UNPROVEN_CONTEXT [web]": 5,
+   "DRAGON_UNPROVEN_CONTEXT [android]": 2,
+   "DRAGON_UNPROVEN_CONTEXT [ios]": 2,
+   "DRAGON_UNPROVEN_CONTEXT [web]": 4,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
@@ -157,19 +157,19 @@
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 4,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 25,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 25,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 11
+   "DRAGON_UNSUPPORTED_VALUE [android]": 22,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 22,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 4
   },
   "perTarget": {
    "web": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 5,
+     "DRAGON_UNPROVEN_CONTEXT": 4,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_PROPERTY": 30,
      "DRAGON_UNSUPPORTED_SELECTOR": 4,
-     "DRAGON_UNSUPPORTED_VALUE": 14
+     "DRAGON_UNSUPPORTED_VALUE": 7
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -178,13 +178,13 @@
    },
    "ios": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 3,
+     "DRAGON_UNPROVEN_CONTEXT": 2,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 28,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 28
+     "DRAGON_UNSUPPORTED_VALUE": 25
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -195,13 +195,13 @@
    },
    "android": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 3,
+     "DRAGON_UNPROVEN_CONTEXT": 2,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 28,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 28
+     "DRAGON_UNSUPPORTED_VALUE": 25
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -217,7 +217,7 @@
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
   "supportedBothTargets": 229,
-  "supportedWeb": 244,
+  "supportedWeb": 247,
   "supportedIos": 229,
   "supportedAndroid": 229,
   "supportPercent": 79.2,
@@ -303,9 +303,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 90,
-   "B-unwrapped": 90,
-   "C-context": 141
+   "A-authored": 84,
+   "B-unwrapped": 84,
+   "C-context": 131
   }
  },
  "features": {
@@ -635,11 +635,10 @@
    "atRule": null,
    "property": "overflow-x",
    "value": "hidden",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
@@ -807,7 +806,7 @@
    "atRule": null,
    "property": "overflow-x",
    "value": "hidden",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
@@ -2970,7 +2969,7 @@
    "atRule": null,
    "property": "overflow",
    "value": "auto",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
@@ -4850,126 +4849,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6456-6460|overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-x values: hidden or visible",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 6456,
-    "end": 6460,
-    "line": 368,
-    "column": 12,
-    "text": "auto"
-   },
-   "message": "overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-x values: hidden or visible",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6456-6460|overflow-y: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-y values: hidden or visible",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 6456,
-    "end": 6460,
-    "line": 368,
-    "column": 12,
-    "text": "auto"
-   },
-   "message": "overflow-y: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-y values: hidden or visible",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6456-6460|overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-x values: hidden or visible",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 6456,
-    "end": 6460,
-    "line": 368,
-    "column": 12,
-    "text": "auto"
-   },
-   "message": "overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-x values: hidden or visible",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6456-6460|overflow-y: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-y values: hidden or visible",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 6456,
-    "end": 6460,
-    "line": 368,
-    "column": 12,
-    "text": "auto"
-   },
-   "message": "overflow-y: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-y values: hidden or visible",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6456-6460|overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-x values: hidden or visible",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 6456,
-    "end": 6460,
-    "line": 368,
-    "column": 12,
-    "text": "auto"
-   },
-   "message": "overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-x values: hidden or visible",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6456-6460|overflow-y: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-y values: hidden or visible",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 6456,
-    "end": 6460,
-    "line": 368,
-    "column": 12,
-    "text": "auto"
-   },
-   "message": "overflow-y: auto (set by overflow: auto) is unsupported (support profile m1-s5); supported overflow-y values: hidden or visible",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6473-6478|position: fixed is unsupported (support profile m1-s5); supported position values: absolute, relative or static",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -5796,64 +5675,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@484-490|overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 484,
-    "end": 490,
-    "line": 25,
-    "column": 14,
-    "text": "hidden"
-   },
-   "message": "overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@484-490|overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 484,
-    "end": 490,
-    "line": 25,
-    "column": 14,
-    "text": "hidden"
-   },
-   "message": "overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@484-490|overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 484,
-    "end": 490,
-    "line": 25,
-    "column": 14,
-    "text": "hidden"
-   },
-   "message": "overflow-x:hidden on html is used in the root/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no overflow-x value is proven in root/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@484-490|overflow-x: hidden on <body> body propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@484-490|overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on body, a box the user scrolls; android has no native scroll views until OVFL-B",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -5865,33 +5687,14 @@
     "column": 14,
     "text": "hidden"
    },
-   "message": "overflow-x: hidden on <body> body propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out",
+   "message": "overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on body, a box the user scrolls; android has no native scroll views until OVFL-B",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@484-490|overflow-x: hidden on <html> html propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 484,
-    "end": 490,
-    "line": 25,
-    "column": 14,
-    "text": "hidden"
-   },
-   "message": "overflow-x: hidden on <html> html propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@484-490|overflow-x: hidden on <body> body propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@484-490|overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on body, a box the user scrolls; ios has no native scroll views until OVFL-B",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -5903,64 +5706,7 @@
     "column": 14,
     "text": "hidden"
    },
-   "message": "overflow-x: hidden on <body> body propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@484-490|overflow-x: hidden on <html> html propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 484,
-    "end": 490,
-    "line": 25,
-    "column": 14,
-    "text": "hidden"
-   },
-   "message": "overflow-x: hidden on <html> html propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@484-490|overflow-x: hidden on <body> body propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 484,
-    "end": 490,
-    "line": 25,
-    "column": 14,
-    "text": "hidden"
-   },
-   "message": "overflow-x: hidden on <body> body propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@484-490|overflow-x: hidden on <html> html propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 484,
-    "end": 490,
-    "line": 25,
-    "column": 14,
-    "text": "hidden"
-   },
-   "message": "overflow-x: hidden on <html> html propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out",
+   "message": "overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on body, a box the user scrolls; ios has no native scroll views until OVFL-B",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6043,7 +5789,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@884-890|overflow-y computes to auto on page/app (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@884-890|overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on page/app, a box the user scrolls; android has no native scroll views until OVFL-B",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -6055,14 +5801,14 @@
     "column": 14,
     "text": "hidden"
    },
-   "message": "overflow-y computes to auto on page/app (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported",
+   "message": "overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on page/app, a box the user scrolls; android has no native scroll views until OVFL-B",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@884-890|overflow-y computes to auto on page/app (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@884-890|overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on page/app, a box the user scrolls; ios has no native scroll views until OVFL-B",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -6074,26 +5820,7 @@
     "column": 14,
     "text": "hidden"
    },
-   "message": "overflow-y computes to auto on page/app (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@884-890|overflow-y computes to auto on page/app (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 884,
-    "end": 890,
-    "line": 64,
-    "column": 14,
-    "text": "hidden"
-   },
-   "message": "overflow-y computes to auto on page/app (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported",
+   "message": "overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on page/app, a box the user scrolls; ios has no native scroll views until OVFL-B",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6632,7 +6359,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6456-6460|overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); in block/ltr use hidden or visible",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6456-6460|overflow-x is auto on page/library-call/library, a box the user scrolls; android has no native scroll views until OVFL-B",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -6644,14 +6371,14 @@
     "column": 12,
     "text": "auto"
    },
-   "message": "overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); in block/ltr use hidden or visible",
+   "message": "overflow-x is auto on page/library-call/library, a box the user scrolls; android has no native scroll views until OVFL-B",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6456-6460|overflow-y: auto (set by overflow: auto) is unsupported (support profile m1-s5); in block/ltr use hidden or visible",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6456-6460|overflow-y is auto on page/library-call/library, a box the user scrolls; android has no native scroll views until OVFL-B",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -6663,14 +6390,14 @@
     "column": 12,
     "text": "auto"
    },
-   "message": "overflow-y: auto (set by overflow: auto) is unsupported (support profile m1-s5); in block/ltr use hidden or visible",
+   "message": "overflow-y is auto on page/library-call/library, a box the user scrolls; android has no native scroll views until OVFL-B",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6456-6460|overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); in block/ltr use hidden or visible",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6456-6460|overflow-x is auto on page/library-call/library, a box the user scrolls; ios has no native scroll views until OVFL-B",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -6682,14 +6409,14 @@
     "column": 12,
     "text": "auto"
    },
-   "message": "overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); in block/ltr use hidden or visible",
+   "message": "overflow-x is auto on page/library-call/library, a box the user scrolls; ios has no native scroll views until OVFL-B",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6456-6460|overflow-y: auto (set by overflow: auto) is unsupported (support profile m1-s5); in block/ltr use hidden or visible",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6456-6460|overflow-y is auto on page/library-call/library, a box the user scrolls; ios has no native scroll views until OVFL-B",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -6701,45 +6428,7 @@
     "column": 12,
     "text": "auto"
    },
-   "message": "overflow-y: auto (set by overflow: auto) is unsupported (support profile m1-s5); in block/ltr use hidden or visible",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6456-6460|overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); in block/ltr use hidden or visible",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 6456,
-    "end": 6460,
-    "line": 368,
-    "column": 12,
-    "text": "auto"
-   },
-   "message": "overflow-x: auto (set by overflow: auto) is unsupported (support profile m1-s5); in block/ltr use hidden or visible",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@6456-6460|overflow-y: auto (set by overflow: auto) is unsupported (support profile m1-s5); in block/ltr use hidden or visible",
-   "code": "DRAGON_UNSUPPORTED_VALUE",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 6456,
-    "end": 6460,
-    "line": 368,
-    "column": 12,
-    "text": "auto"
-   },
-   "message": "overflow-y: auto (set by overflow: auto) is unsupported (support profile m1-s5); in block/ltr use hidden or visible",
+   "message": "overflow-y is auto on page/library-call/library, a box the user scrolls; ios has no native scroll views until OVFL-B",
    "viaRelated": false,
    "passes": [
     "C-context"

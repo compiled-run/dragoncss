@@ -16810,7 +16810,7 @@
     "css/css-flexbox/layout-algorithm_algo-cross-line-002.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/layout-with-inline-svg-001.html": {"interop":["interop-2021-flexbox"],"missing":"kind:testharness-other","status":"not-runnable"},
     "css/css-flexbox/main-axis-margin-rounding.html": {"missing":"kind:testharness-other","status":"not-runnable"},
-    "css/css-flexbox/max-width-violation.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNSUPPORTED_VALUE:overflow-x:auto","status":"not-runnable"},
+    "css/css-flexbox/max-width-violation.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNPROVEN_CONTEXT:overflow-x:auto","status":"not-runnable"},
     "css/css-flexbox/min-height-min-content-crash.html": {"missing":"kind:crashtest","status":"not-runnable"},
     "css/css-flexbox/min-size-auto-overflow-clip.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/mixed-containing-blocks-crash.html": {"missing":"kind:crashtest","status":"not-runnable"},
