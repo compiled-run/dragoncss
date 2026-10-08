@@ -111,8 +111,10 @@ describe('E2 seams: FIXTURES', () => {
     expect(fixtures.slice(0, MILESTONE_1_IDS.length).map((f) => f.id)).toEqual(MILESTONE_1_IDS);
     expect(new Set(fixtures.map((f) => f.id)).size).toBe(fixtures.length);
   });
-  it('the milestone-1 specs are byte-identical to 4c1331c', async () => {
-    expect(sha((await load()).slice(0, MILESTONE_1_IDS.length))).toBe('48d8a64b9fc390f1ebaed1047756416eba71054719f7bba3986a588986751b98');
+  // OVFL retargeted reject-overflow-single-axis to clip and removed reject-overflow-body and reject-overflow-scroll (now layout
+  // fixtures in the overflow group); every other milestone-1 spec is unchanged.
+  it('the milestone-1 specs are byte-identical to 4c1331c but for the OVFL rejects', async () => {
+    expect(sha((await load()).slice(0, MILESTONE_1_IDS.length))).toBe('a336142203f67ef5287bfd48a891f5c542ebeb581f5ac720964e1563c1269389');
   });
 });
 
@@ -252,7 +254,7 @@ const MILESTONE_1_IDS: readonly string[] = [
   'reject-shorthand-filled', 'reject-unproven-context', 'reject-tree-alias-cycle', 'reject-tree-choice-overlap',
   'reject-tree-unknown-state', 'reject-tree-initial-domain', 'reject-tree-producer-error',
   'reject-tree-raw-html', 'reject-white-space-pre', 'reject-nesting-ampersand', 'reject-nested-media',
-  'reject-overflow-single-axis', 'reject-overflow-body', 'reject-overflow-scroll', 'reject-last-baseline',
+  'reject-overflow-single-axis', 'reject-last-baseline',
   'reject-bidi-neutral', 'reject-position-fixed', 'reject-position-sticky', 'reject-abspos-in-inline',
 ];
 
