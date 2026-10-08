@@ -276,3 +276,12 @@ Landed: #217, #219, #220, #221, #222, #223, #224, #225, #226, #227. #227 brought
    - vars LAND_STOP_ISSUE, LAND_REVIEWERS (an identity separate from the token's) and LAND_PROOF_WRITERS
 2. A first real land.yml landing, which includes the one-time Android arm64-to-x86_64 rebaseline.
 3. A first cloud lane session, to confirm the cloud-setup hook and GraphQL-free gh in a real cloud VM.
+
+## First real cloud session (2026-10-08)
+
+- Session setup worked: Node 24.15.0, pnpm 10.33.2, DRAGON_REQUIRE_NATIVE=1, rerere off, merge drivers set.
+- Install, typecheck and platform-free tests passed locally.
+- ci:test-files run 37801867068 put chrome-ports on macos-26 and native-backends on ubuntu-24.04-arm (Swift 6.4, kotlinc 2.4.20), and both passed.
+- pr:review over REST worked. GraphQL is refused (HTTP 403), as expected; the contract is updated.
+- **Bug found:** packages/dragon/test/native-backends.test.ts trapRun passes "blocked" without consulting requireNative(). A whole-class fix is in progress on branch strict-native-class.
+- To read runner labels, use `gh api repos/compiled-run/dragoncss/actions/runs/<id>/jobs --jq '.jobs[] | "\(.name) \(.labels)"'`; `gh run view --json jobs` returns null labels.

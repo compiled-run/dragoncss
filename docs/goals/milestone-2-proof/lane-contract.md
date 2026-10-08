@@ -13,8 +13,8 @@ jobs. The SessionStart hook (`scripts/cloud-setup.sh`) installs the pinned Node 
 #221 (`pnpm ci:test-files`) and #222 (the driver's `LAND_CI=only`) are on master; until then lanes run on the Mac.
 
 ## GitHub commands (REST)
-The cloud's GitHub proxy may refuse GraphQL, which `gh pr create`, `gh pr view`, `gh pr edit` and `gh pr diff` use. Use these
-`gh api` forms until the PM confirms GraphQL works. `R=repos/compiled-run/dragoncss`.
+The cloud's GitHub proxy refuses GraphQL (confirmed 2026-10-08: `gh pr view` gets HTTP 403), and `gh pr create`, `gh pr view`,
+`gh pr edit` and `gh pr diff` all use it. Always use these `gh api` forms in the cloud; `pnpm pr:review` is REST-only. `R=repos/compiled-run/dragoncss`.
 - Create a PR (write the body to a file outside the worktree first):
   `gh api $R/pulls -f base=master -f head=<branch> -f title='...' -F body=@<body-file> --jq .number`;
   update its body later: `gh api -X PATCH $R/pulls/<n> -F body=@<body-file> --jq .number`
