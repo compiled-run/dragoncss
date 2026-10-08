@@ -15,6 +15,7 @@ import type { InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak } from '@
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
+import { clipsChildren } from './clip.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
 
@@ -307,8 +308,8 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
       z: b.style.position !== 'static' || parentFlex ? z : null,
       opacity,
       transformed: el !== null && transformedForStacking(el),
-      // css-overflow-3 §3: overflow applies to block containers, never to an inline box.
-      clips: b.kind !== 'inline' && b.style.overflowX === 'hidden',
+      // The native tree's clip (clip.ts): any overflow but visible clips (OVFL), and overflow never applies to an inline box.
+      clips: b.kind !== 'inline' && clipsChildren(b),
       text: false,
       children,
     };

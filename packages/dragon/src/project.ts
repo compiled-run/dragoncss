@@ -16,8 +16,9 @@ import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import { splitNotApplicable } from './css/not-applicable.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
-import { checkComputed, checkNativeScroll } from './analysis/computed-checks.ts';
+import { checkComputed, checkNativeScroll, propagatedFrom } from './analysis/computed-checks.ts';
 import { checkTranslucent } from './analysis/paint-values/effects.ts';
+import { checkStackingClips } from './analysis/paint-values/stacking.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
@@ -669,6 +670,9 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     // T078 R14: outside the parity lanes, native refuses overflow auto and scroll until OVFL-B; the lanes prove their layout at rest.
     if (!options.interactionLanes) checkNativeScroll(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    // PNT1: outside the parity lanes, native refuses a layer item whose re-hosting would leave or enter an overflow clip wrongly
+    // (analysis/paint-values/stacking.ts); the lanes keep it under the clip, and the device pixels judge it.
+    if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
@@ -1054,9 +1058,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         diagnostics.splice(valuesAt, 0, ...values);
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
-      // PNT1 and T078 R14: the lanes lower a fractional opacity and overflow auto and scroll on native, but a user's compile refuses
-      // them there until PNT1-opacity-b and OVFL-B, so a document that uses one is lane-only on native and proves no native row
-      // (pipeline.ts).
+      // PNT1 and T078 R14: the lanes lower a fractional opacity, a layer item kept under a clip and overflow auto and scroll on
+      // native, but a user's compile refuses them there until PNT1-opacity-b, a clip-chain view and OVFL-B, so a document that uses
+      // one is lane-only on native and proves no native row (pipeline.ts).
       if (options.interactionLanes) {
         const pending: Diagnostic[] = [];
         const native = NATIVE_TARGETS.filter((t) => targets.includes(t));
@@ -1065,6 +1069,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
             if (r === null) continue;
             checkTranslucent(r, native, pending, new Set());
             checkNativeScroll(r, native, pending, new Set());
+            checkStackingClips(r, propagatedFrom(r), native, pending, new Set());
           }
         }
         laneOnlyNative = native.filter((t) => laneOnlyNative.includes(t) || pending.some((d) => d.target === t));

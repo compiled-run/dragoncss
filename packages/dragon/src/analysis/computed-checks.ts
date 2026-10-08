@@ -17,7 +17,6 @@ import { isReplacedTag } from './elements/replaced.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { environmentOf, valueToString } from './resolve.ts';
 import { usedColors } from '../lower/paint/colors.ts';
-import { checkStackingClips } from './paint-values/stacking.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
 
@@ -89,7 +88,7 @@ export function checkNativeScroll(root: ResolvedElement, nativeTargets: readonly
 const hasPercentage = (v: ResolvedValue): boolean => v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
 
 /** css-overflow-3 §3.3: the element whose overflow the viewport takes (html when not visible, else body), which uses visible. */
-function propagatedFrom(root: ResolvedElement): ResolvedElement | null {
+export function propagatedFrom(root: ResolvedElement): ResolvedElement | null {
   const visible = (el: ResolvedElement): boolean => keywordOf(el.props.get('overflow-x') as ResolvedValue) === 'visible' && keywordOf(el.props.get('overflow-y') as ResolvedValue) === 'visible';
   if (!visible(root)) return root;
   const body = root.children.find((c): c is ResolvedElement => c.kind === 'element' && c.element.tag === 'body');
@@ -479,7 +478,5 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
-  // PNT1: a z-index box whose layer would leave an overflow clip of its containing-block chain (analysis/paint-values/stacking.ts).
-  checkStackingClips(root, targets, diagnostics, reported);
 }
 

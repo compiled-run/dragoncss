@@ -3,7 +3,7 @@
 // the clip rule, the refusals on the native targets, the lowering to writes with facts, and the emitted writer lines.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
-import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
+import { createProjectWith, laneOnlyNative, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { nativeString, STACKING_EMITTER } from '../src/emit/paint/stacking.ts';
@@ -182,6 +182,40 @@ describe('stacking: refusals on the native targets', () => {
   });
 });
 
+describe('stacking: clips as the native tree clips them (after merging #194, OVFL)', () => {
+  const compile = (css: string, body: Parameters<typeof inputFor>[1]) =>
+    createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; } ${css}`, body));
+  it('overflow: clip clips like hidden: a z-index box whose layer leaves it and paints below a later box is refused on ios', () => {
+    const c = compile('.clip { overflow: clip; height: 20px; } .d { position: relative; z-index: 2; height: 30px; } .after { position: relative; height: 5px; }', (r) => [div(r, 'clip', ['clip'], [div(r, 'd', ['d'])]), div(r, 'after', ['after'])]);
+    const errs = c.diagnostics.filter((d) => d.severity === 'error');
+    expect(errs.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
+    expect(errs[0]?.message).toMatch(/^d paints in a stacking context outside clip, whose overflow clip applies to it/);
+    expectCatalogued(errs);
+  });
+  it('the overflow body gives the viewport (css-overflow-3 §3.3) clips nothing itself, so a z < 0 box in it is not kept under it', () => {
+    const c = compile('body { overflow: hidden; } .d { position: relative; z-index: -1; height: 10px; }', (r) => [div(r, 'd', ['d'])]);
+    expect(c.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+  });
+  it('the parity lanes compile a refused layer item kept under a clip as a lane-only native case, as OVFL\'s overflow-replaced needs', () => {
+    const css = 'body { margin: 0; } .clip { overflow: clip; height: 20px; } .d { position: relative; z-index: 2; height: 30px; } .after { position: relative; height: 5px; }';
+    const body = (r: SourceRef) => [div(r, 'clip', ['clip'], [div(r, 'd', ['d'])]), div(r, 'after', ['after'])];
+    const lanes = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: true }).compile(inputFor(css, body));
+    expect(lanes.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect(laneOnlyNative(lanes, 'ios')).toBe(true);
+    const p = nativePrograms(lanes, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    expect(p.programs.uikit.nodes.find((x) => x.id === 'd')?.facts['stacking']).toMatchObject({ host: 'clip', underClip: true });
+  });
+  it('the layout stack tree clips where clip.ts hosts the children in a clip view: any overflow but visible', () => {
+    const el = (): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: { kind: 'keyword', value: 'auto' } }], ['opacity', { value: { kind: 'number', value: 1 } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
+    for (const overflow of ['hidden', 'clip', 'auto', 'scroll', 'visible']) {
+      const style = { position: 'static', display: 'block', overflowX: overflow, overflowY: overflow } as unknown as LayoutBox['style'];
+      const root: LayoutBox = { kind: 'box', id: 'root', boxType: 'element', style, strut: null, children: [] };
+      expect(layoutStackTree(root, new Map([['root', el()]])).clips, overflow).toBe(overflow !== 'visible');
+    }
+  });
+});
+
 describe('stacking: lowering and emission', () => {
   const programs = (css: string, body: Parameters<typeof inputFor>[1]) => {
     const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; } ${css}`, body));
@@ -215,7 +249,7 @@ describe('stacking: lowering and emission', () => {
 
 describe('the stack tree of a layout tree with a replaced leaf (REPL-a)', () => {
   it('takes a replaced leaf as an element box with no children: its position, z-index and opacity count, and it hosts nothing', () => {
-    const style = (position: string): LayoutBox['style'] => ({ position, display: 'block', overflowX: 'visible' }) as unknown as LayoutBox['style'];
+    const style = (position: string): LayoutBox['style'] => ({ position, display: 'block', overflowX: 'visible', overflowY: 'visible' }) as unknown as LayoutBox['style'];
     const el = (z: number | null, opacity = 1): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: z === null ? { kind: 'keyword', value: 'auto' } : zIndexValue(z) }], ['opacity', { value: { kind: 'number', value: opacity } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
     const img: LayoutNode = { kind: 'replaced', id: 'img', style: style('relative') } as unknown as LayoutNode;
     const root: LayoutBox = { kind: 'box', id: 'root', boxType: 'element', style: style('static'), strut: null, children: [img] };
@@ -258,7 +292,7 @@ describe('the stack tree of inline content (INL1a, as the native tree places it)
     expect(compile('.f20 { opacity: 1; }', para).diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
   it('an inline box is a childless node followed by its content, and never clips (css-overflow-3 §3)', () => {
-    const style = (o: Record<string, string>): LayoutBox['style'] => ({ position: 'static', display: 'block', overflowX: 'visible', ...o }) as unknown as LayoutBox['style'];
+    const style = (o: Record<string, string>): LayoutBox['style'] => ({ position: 'static', display: 'block', overflowX: 'visible', overflowY: 'visible', ...o }) as unknown as LayoutBox['style'];
     const el1 = (): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: { kind: 'keyword', value: 'auto' } }], ['opacity', { value: { kind: 'number', value: 1 } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
     const inner = { kind: 'inline', id: 'i', style: style({ display: 'inline', overflowX: 'hidden' }), children: [{ kind: 'text', id: 'i:t' }] };
     const outer = { kind: 'inline', id: 'o', style: style({ display: 'inline' }), children: [inner, { kind: 'br', id: 'b' }] };

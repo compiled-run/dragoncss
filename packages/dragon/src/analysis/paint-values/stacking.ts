@@ -15,8 +15,12 @@ const keyword = (el: ResolvedElement, p: 'display' | 'position' | 'overflow-x'):
   return v.kind === 'keyword' ? v.value : '';
 };
 
-/** The stacking tree of a resolved document: display: none subtrees generate no boxes; text is never positioned. */
-export function resolvedStackTree(root: ResolvedElement): StackNode {
+/**
+ * The stacking tree of a resolved document: display: none subtrees generate no boxes; text is never positioned. A box clips as the
+ * native tree's does (lower/paint/clip.ts: any overflow but visible), except an inline box and the element whose overflow the
+ * viewport takes (propagated; css-overflow-3 §3.3), which use visible.
+ */
+export function resolvedStackTree(root: ResolvedElement, propagated: ResolvedElement | null): StackNode {
   let texts = 0;
   const node = (el: ResolvedElement, parentFlex: boolean): StackNode => {
     const position = keyword(el, 'position');
@@ -30,7 +34,7 @@ export function resolvedStackTree(root: ResolvedElement): StackNode {
       z: position !== 'static' || parentFlex ? z : null,
       opacity,
       transformed: transformedForStacking(el),
-      clips: keyword(el, 'overflow-x') === 'hidden',
+      clips: el !== propagated && keyword(el, 'display') !== 'inline' && keyword(el, 'overflow-x') !== 'visible',
       text: false,
       children: el.children.flatMap((c): StackNode[] => {
         if (c.kind === 'text') return [{ id: `${el.element.address}:text#${texts++}`, position: 'static', z: null, opacity: 1, transformed: false, clips: false, text: true, children: [] }];
@@ -54,14 +58,14 @@ function itemOrigin(el: ResolvedElement): ReturnType<typeof authored> | Resolved
 }
 
 /** The refusals above over a case's resolved tree, on the native targets. */
-export function checkStackingClips(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+export function checkStackingClips(el: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const byId = new Map<string, ResolvedElement>();
   const walk = (e: ResolvedElement): void => {
     byId.set(e.element.address, e);
     for (const c of e.children) if (c.kind === 'element') walk(c);
   };
   walk(el);
-  for (const { id, clip, kind } of stackingOf(resolvedStackTree(el)).clipped) {
+  for (const { id, clip, kind } of stackingOf(resolvedStackTree(el, propagated)).clipped) {
     const at = byId.get(id);
     if (at === undefined) throw new Error(`${id}: a clipped stacking item that is not an element`);
     for (const t of targets) {
