@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: Commit sha or branch to test
+        description: Full commit sha or branch to test
         required: true
         type: string
       files:
