@@ -218,7 +218,7 @@ type TranslateNative = {
   readonly kotlinTool: (lookup?: KotlinLookup) => { readonly javaHome: string; readonly version: string } | null;
   readonly defaultKotlinLookup: () => KotlinLookup;
   readonly requireNative: () => boolean;
-  readonly REQUIRE_NATIVE_ENV: string;
+  readonly missingToolchain: (subject: string, missing: string, require?: boolean) => string;
 };
 // packages/parity does not depend on packages/translate, so the tool lookups are loaded at run time from its source.
 const translateNative = async (): Promise<TranslateNative> => (await import(pathToFileURL(repoPath('packages/translate/src/native.ts')).href)) as TranslateNative;
@@ -310,17 +310,18 @@ export function hostEnd(e: HostEnd): string {
 export async function runHostLane(t: TargetConfig, opts: HostOptions = {}): Promise<HostRun> {
   const native = await translateNative();
   const require = opts.requireNative ?? native.requireNative();
-  const blocked = (reason: string): HostRun => {
-    if (require) throw new Error(`${native.REQUIRE_NATIVE_ENV}=1 and ${t.hostCli} has no toolchain: ${reason}; run it where the toolchain is installed (CI) instead`);
-    return { state: 'blocked (owner tooling)', reason, toolchain: null, suites: unrun(t), digests: { p1: null, extended: null } };
-  };
   let env: NodeJS.ProcessEnv = process.env;
+  let missing: string | null = null;
   if (t.hostCli === 'native:swift') {
-    if (native.swiftTool() === null) return blocked('swiftc was not found');
+    if (native.swiftTool() === null) missing = 'swiftc was not found';
   } else {
     const tool = native.kotlinTool(opts.kotlinLookup ?? native.defaultKotlinLookup());
-    if (tool === null) return blocked('no JDK 17+ or kotlinc was found (docs/decisions.md, Native lanes, milestone 2)');
-    env = { ...process.env, JAVA_HOME: tool.javaHome };
+    if (tool === null) missing = 'no JDK 17+ or kotlinc was found (docs/decisions.md, Native lanes, milestone 2)';
+    else env = { ...process.env, JAVA_HOME: tool.javaHome };
+  }
+  if (missing !== null) {
+    native.missingToolchain(t.hostCli, missing, require);
+    return { state: 'blocked (owner tooling)', reason: missing, toolchain: null, suites: unrun(t), digests: { p1: null, extended: null } };
   }
   const script = t.hostCli === 'native:swift' ? 'swift' : 'kotlin';
   // Awaited, not blocking, so parity:lanes runs the host lanes of both targets at once. The whole stdout is kept for the parse
