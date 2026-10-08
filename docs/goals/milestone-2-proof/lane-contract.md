@@ -120,8 +120,7 @@ Everything else is a default above, or a note in your receipt.
 - Never keep a session busy waiting on CI. Start the CI work (a push, the `regen` label, a ci:test-files dispatch), poll
   once, and if it is still running, end your turn with a receipt that names what you wait on (PR, run ids). The PM resumes
   you; on resume, read the state from GitHub (the commands above), not from memory.
-- Every command must finish within 30 minutes: use `--once` with ci:test-files and run `pnpm pr:review <n>` without
-  `--wait`. A short wait may repeat a single poll in the foreground, bounded under 25 minutes, e.g.
+- Every command must finish within 30 minutes: use `--once` with ci:test-files and with `pnpm pr:review <n>`. A short wait may repeat a single poll in the foreground, bounded under 25 minutes, e.g.
   `for i in 1 2 3 4 5 6 7; do pnpm -s ci:test-files --run <id> --once; s=$?; [ $s -ne 3 ] && break; sleep 180; done; echo exit=$s`.
 - No background watchers, /tmp/job.sh, leases or `.done` files: background jobs die when the session pauses.
 - Never wait on anything outside your lane.
@@ -132,12 +131,11 @@ Everything else is a default above, or a note in your receipt.
 2. `git push -u origin <branch>`, then create the PR with the REST command above (base master). Body: what changed, exactly
    what passed (with the ci:test-files run URLs), a reason for every changed test, check, tolerance or fixture, and
    "🤖 Generated with [Claude Code](https://claude.com/claude-code)".
-3. Review loop: `pnpm -s pr:review <n>` (one poll; exit 0 is clean, 1 means CI is running or something is open); fix every
-   finding with a test that fails without the fix; batch one round into one push; reply `Fixed in <sha>` or why it's
-   intentional in each thread (REST reply above). No regen or device run in a round unless the fix changes generator inputs.
-   Until pr:review is ported to REST (cloud plan item 2) it may fail at the proxy. Then answer the findings from the review
-   comments above, check CI with the check-runs command, and say in your receipt that pr:review could not run; the PM runs
-   it. Never claim clean without a pr:review exit 0.
+3. Review loop: `pnpm -s pr:review <n> --once` (one poll over REST: exit 0 clean, 1 not clean, 2 still pending: CI, the
+   review or GitHub's mergeability not settled yet); fix every finding with a test that fails without the fix; batch one
+   round into one push; reply `Fixed in <sha>` or why it's intentional in each thread (REST reply above). No regen or device
+   run in a round unless the fix changes generator inputs. On exit 2, poll again later (end your turn if it's long). Never
+   claim clean without a pr:review exit 0.
 4. Hand the PR to the landing driver (READY, below) only when all of these hold for one head sha, the PR's current head
    (`gh api $R/pulls/<n> --jq .head.sha`):
    - `pr:review` exits 0 on it;
