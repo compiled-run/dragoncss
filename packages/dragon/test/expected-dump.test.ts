@@ -66,3 +66,26 @@ describe('expected dumps', () => {
     expect(a).toMatch(/^[0-9a-f]{64}$/);
   });
 });
+
+describe('OVFL-B: the scroll range in the expected dump', () => {
+  const scrolling = inputFor('body { margin: 0; } .s { overflow: auto; width: 50px; height: 20px; } .w { width: 200px; height: 10px; }', (r) => [div(r, 's', ['s'], [div(r, 'w', ['w'])]), div(r, 'h', [])]);
+  const program = () => {
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(scrolling);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    return p.programs.uikit;
+  };
+  const refusing = (id: string): ExpectedEngine => ({ ...engine, scrollRanges: (i, mm) => {
+    const r = scrollRanges(i, mm);
+    if (r.kind !== 'ok') return r;
+    return { kind: 'ok', ranges: r.ranges.filter((g) => g.id !== id), refused: [...r.refused, { id, nodeId: 'i', detail: 'an inline box (R16, INL1a)' }] };
+  } });
+
+  it('a scroll view reads the engine range in whole device px', () => {
+    expect(expectedDump(program(), 'c', VIEW, 2, engine).nodes.find((n) => n.id === 's')?.applied['dragonScroll.range']).toEqual([0, 300, 0, 0]);
+  });
+  it('an engine refusal stops the dump only for a node that is a scroll view, naming the node and the reason', () => {
+    expect(() => expectedDump(program(), 'c', VIEW, 2, refusing('s'))).toThrow('c@2: the engine refused the scroll range of s at i: an inline box (R16, INL1a)');
+    expect(expectedDump(program(), 'c', VIEW, 2, refusing('h')).nodes.find((n) => n.id === 's')?.applied['dragonScroll.range']).toEqual([0, 300, 0, 0]);
+  });
+});

@@ -118,6 +118,8 @@ describe('OVFL-B: the scroll offset range against Chrome', () => {
     if (m.kind !== 'ok') throw new Error(m.detail);
     const r = scrollRanges(v.input, m.measurer);
     if (r.kind !== 'ok') throw new Error(`${c.id}: ${r.detail}`);
+    // Every scroll container of the overflow cases is decided: none is left out of the comparison as refused.
+    if (r.refused.length > 0) throw new Error(`${c.id}@${dpr}: the engine refused the scroll range of ${r.refused.map((x) => `${x.id} at ${x.nodeId}: ${x.detail}`).join('; ')}`);
     return r.ranges;
   };
 

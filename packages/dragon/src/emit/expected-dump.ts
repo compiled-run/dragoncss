@@ -181,6 +181,7 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
   const ranges = engine.scrollRanges(input, engine.measurer);
   if (ranges.kind !== 'ok') throw new Error(`${caseId}@${dpr}: the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
   const scroll = new Map(ranges.ranges.map((r) => [r.id, [r.minX, r.maxX, r.minY, r.maxY] as const]));
+  const unscrollable = new Map(ranges.refused.map((r) => [r.id, r]));
   const byId = new Map(p.nodes.map((n) => [n.id, n]));
   const nodes: ExpectedNode[] = [];
   out.boxes.forEach((r, i) => {
@@ -190,6 +191,8 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
     const box = snapped[i] as SnappedRect;
     const rp = replaced.get(r.id);
     const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box, fontSize: fontSizes.get(r.id) ?? null, replaced: rp === undefined ? null : { content: relative(rp.content, box), dest: relative(rp.dest, box), drawn: rp.drawn === null ? null : relative(rp.drawn, box) }, scroll: scroll.get(r.id) ?? null };
+    const no = unscrollable.get(r.id);
+    if (no !== undefined && n.writes.some((w) => w.kind === 'scroll-container')) throw new Error(`${caseId}@${dpr}: the engine refused the scroll range of ${r.id} at ${no.nodeId}: ${no.detail}`);
     const applied: { [key: string]: JsonValue } = {};
     for (const w of n.writes) applied[w.key] = appliedValue(engine, p.backend, w, dpr, g);
     nodes.push({ id: n.id, kind: n.kind, native: n.native, applied });

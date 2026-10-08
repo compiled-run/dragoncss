@@ -7,6 +7,8 @@ import { NO_NATIVE_PAINT } from './types.ts';
 
 const SWIFT_MEMBERS = String.raw`  /// OVFL-B: this box's scroll offset range in device px from the translated engine, or nil when it is no scroll container.
   public var dragonScrollRange: [Double]? = nil
+  /// OVFL-B: why the translated engine gave this scroll container no range, or nil.
+  public var dragonScrollRefusal: String? = nil
   /// Overflow auto or scroll: the clip view becomes a DragonScrollView that scrolls on the axes given (a hidden axis is locked).
   public func dragonEnableScroll(_ x: Bool, _ y: Bool) {
     guard let old = dragonClipView else { fatalError("dragon: \(dragonId) scrolls without a clip view") }
@@ -72,7 +74,7 @@ public final class DragonScrollView: UIScrollView {
 /// After every layout (the clip module has set the frame): the engine's range, re-applied and clamped (R10).
 public func dragonAfterLayoutScroll(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
   guard let sv = v.dragonClipView as? DragonScrollView else { return }
-  guard let r = v.dragonScrollRange else { fatalError("dragon: \(v.dragonId): a scroll view with no engine scroll range") }
+  guard let r = v.dragonScrollRange else { fatalError("dragon: \(v.dragonId): a scroll view with no engine scroll range: \(v.dragonScrollRefusal ?? "no container")") }
   sv.dragonSetRange(r, scale)
 }
 
@@ -87,6 +89,8 @@ public func dragonAppliedScroll(_ v: DragonBoxView) -> DumpJsonObject {
 
 const KOTLIN_MEMBERS = String.raw`  /** OVFL-B: this box's scroll offset range in device px from the translated engine, or null when it is no scroll container. */
   var dragonScrollRange: IntArray? = null
+  /** OVFL-B: why the translated engine gave this scroll container no range, or null. */
+  var dragonScrollRefusal: String? = null
   /** Overflow auto or scroll: the clip view becomes a DragonScrollView that scrolls on the axes given (a hidden axis is locked). */
   fun dragonEnableScroll(x: Boolean, y: Boolean) {
     val old = dragonClipView ?: throw IllegalStateException("dragon: " + dragonId + " scrolls without a clip view")
@@ -240,7 +244,7 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
 /** After every layout (the clip module has set the frame): the engine's range, re-applied and clamped (R10). */
 fun dragonAfterLayoutScroll(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
   val sv = v.dragonClipView as? DragonScrollView ?: return
-  val r = v.dragonScrollRange ?: throw IllegalStateException("dragon: " + v.dragonId + ": a scroll view with no engine scroll range")
+  val r = v.dragonScrollRange ?: throw IllegalStateException("dragon: " + v.dragonId + ": a scroll view with no engine scroll range: " + (v.dragonScrollRefusal ?: "no container"))
   sv.dragonSetRange(r)
 }
 

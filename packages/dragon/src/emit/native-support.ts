@@ -592,6 +592,8 @@ public final class DragonTree {
     if let no = sr as? ScrollRangesResult_refused { fatalError("dragon: the engine refused the scroll ranges at \(no.nodeId): \(no.detail)") }
     guard let srOk = sr as? ScrollRangesResult_ok else { fatalError("dragon: the engine gave no scroll ranges") }
     for g in srOk.ranges.items { scrollRanges[g.id.description] = [g.minX, g.maxX, g.minY, g.maxY] }
+    var scrollRefusals: [String: String] = [:]
+    for g in srOk.refused.items { scrollRefusals[g.id.description] = "the engine refused its scroll range at " + g.nodeId.description + ": " + g.detail.description }
     let lu = units_LU_PER_PX
     let s = scale
     let cg = CGFloat(scale)
@@ -635,6 +637,7 @@ public final class DragonTree {
         bv.dragonScale = s
         bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px)
         bv.dragonScrollRange = scrollRanges[id]
+        bv.dragonScrollRefusal = scrollRefusals[id]
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
@@ -1405,6 +1408,8 @@ class DragonTree(val context: Context) {
     if (srNo != null) throw IllegalStateException("dragon: the engine refused the scroll ranges at " + srNo.nodeId + ": " + srNo.detail)
     val srOk = sr as? ScrollRangesResult_ok ?: throw IllegalStateException("dragon: the engine gave no scroll ranges")
     for (g in srOk.ranges) scrollRanges[g.id] = intArrayOf(dragonCheckedInt(g.minX, g.id + " scroll minX"), dragonCheckedInt(g.maxX, g.id + " scroll maxX"), dragonCheckedInt(g.minY, g.id + " scroll minY"), dragonCheckedInt(g.maxY, g.id + " scroll maxY"))
+    val scrollRefusals = HashMap<String, String>()
+    for (g in srOk.refused) scrollRefusals[g.id] = "the engine refused its scroll range at " + g.nodeId + ": " + g.detail
     val lu = units_LU_PER_PX
     setFrame(root.dragonFrame, 0.0, 0.0, kotlin.math.ceil(input.viewport.width * scale), kotlin.math.ceil(input.viewport.height * scale), "root")
     val edges = HashMap<String, DoubleArray>()
@@ -1449,6 +1454,7 @@ class DragonTree(val context: Context) {
         borders[id] = px
         v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px)
         v.dragonScrollRange = scrollRanges[id]
+        v.dragonScrollRefusal = scrollRefusals[id]
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }
