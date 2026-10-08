@@ -33,7 +33,7 @@ out/**
 **/*.gen.ts
 
 # === Macroscope defaults: package manager and lock files ===
-**/package.json
+# package.json is reviewed: its scripts are commands (the landing driver's among them), not data.
 **/Package.swift
 **/Package.resolved
 **/*.pbxproj

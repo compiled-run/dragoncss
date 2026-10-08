@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { committedFiles, runTarget } from '../src/check.ts';
 import { buildExtendedCorpus } from '../src/corpus-dpr.ts';
-import { describe as describeRun, kotlinTool, writeReport } from '../src/native.ts';
+import { describe as describeRun, isBlocked, kotlinTool, writeReport } from '../src/native.ts';
 
 describe('Kotlin host run on the extended corpus (native:kotlin)', () => {
   it('the committed Kotlin engine reproduces vectors-m2, the DPR vectors, engine-dpr, units-m2 and snap bit for bit', () => {
@@ -10,7 +10,7 @@ describe('Kotlin host run on the extended corpus (native:kotlin)', () => {
     writeReport(r, x, 'extended');
     console.log(describeRun(r, x));
     if (process.platform === 'darwin') expect(kotlinTool(), 'JDK 17 and kotlinc are installed on the macOS reference machine').not.toBeNull();
-    if (r.status === 'blocked (owner tooling)') {
+    if (isBlocked(r)) {
       expect(kotlinTool()).toBeNull();
       return;
     }

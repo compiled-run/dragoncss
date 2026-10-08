@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { committedFiles, runTarget } from '../src/check.ts';
 import { buildExtendedCorpus } from '../src/corpus-dpr.ts';
-import { describe as describeRun, swiftTool, writeReport } from '../src/native.ts';
+import { describe as describeRun, isBlocked, swiftTool, writeReport } from '../src/native.ts';
 
 describe('Swift host run on the extended corpus (native:swift)', () => {
   it('the committed Swift engine reproduces vectors-m2, the DPR vectors, engine-dpr, units-m2 and snap bit for bit', () => {
@@ -10,7 +10,7 @@ describe('Swift host run on the extended corpus (native:swift)', () => {
     writeReport(r, x, 'extended');
     console.log(describeRun(r, x));
     if (process.platform === 'darwin') expect(swiftTool(), 'the Swift toolchain is installed on the macOS reference machine').not.toBeNull();
-    if (r.status === 'blocked (owner tooling)') {
+    if (isBlocked(r)) {
       expect(swiftTool()).toBeNull();
       return;
     }
