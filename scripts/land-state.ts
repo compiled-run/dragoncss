@@ -401,3 +401,15 @@ export const writeOutage = (gh: Gh, repo: string, sha: string, mark: OutageMark,
   if (!SHA.test(sha)) throw new Error(`land-state: ${JSON.stringify(sha)} is not a full sha`);
   gh(['api', '-X', 'POST', `repos/${checkRepo(repo)}/statuses/${sha}`, '-f', `state=${OUTAGE_STATE[mark]}`, '-f', `context=${OUTAGE_CONTEXT}`, '-f', `description=${description.replace(/\s+/g, ' ').slice(0, 139)}`, ...(targetUrl === null ? [] : ['-f', `target_url=${targetUrl}`])]);
 };
+
+/** Ends a PR's land/outage streak at its current head (pnpm land:clear-outage), as the identity gh acts as; returns who and where. */
+export const clearOutage = (gh: Gh, repo: string, pr: string): { context: string; head: string; login: string; id: number } => {
+  if (!/^[1-9]\d{0,8}$/.test(pr)) throw new Error(`land: ${JSON.stringify(pr)} is not a PR number`);
+  const p: unknown = JSON.parse(gh(['api', `repos/${checkRepo(repo)}/pulls/${pr}`]));
+  if (!isObject(p) || !isObject(p.head) || typeof p.head.sha !== 'string' || !SHA.test(p.head.sha)) throw new Error(`land: PR #${pr} has no head sha`);
+  if (p.state !== 'open') throw new Error(`land: PR #${pr} is ${String(p.state)}, not open`);
+  const me: unknown = JSON.parse(gh(['api', 'user']));
+  if (!isObject(me) || !Number.isSafeInteger(me.id) || typeof me.login !== 'string') throw new Error('land: GET user returned no id and login');
+  writeOutage(gh, repo, p.head.sha, 'verdict', `cleared by ${me.login} after a GitHub outage (pnpm land:clear-outage)`, null);
+  return { context: OUTAGE_CONTEXT, head: p.head.sha, login: me.login, id: me.id as number };
+};

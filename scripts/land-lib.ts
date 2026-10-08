@@ -70,7 +70,8 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   ids or logins), and the token's own identity (GET user, or LAND_TOKEN_USER_ID for an App token) may not be one. Every run reads and
   writes master's land/proof commit status, trusting only statuses by that identity or LAND_PROOF_WRITERS ids. Under LAND_CI=only
   each position build is marked on the PR's head (land/outage), and a PR whose builds ended without a verdict LAND_OUTAGE_EJECT
-  times in a row (default 2) is ejected at admission.`;
+  times in a row (default 2) is ejected at admission; the prepared regens and the full tests are marked too (a full test on every PR
+  its tree holds, each then built alone until it gets a verdict). pnpm land:clear-outage <pr> ends a streak after a real outage.`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;
@@ -824,6 +825,11 @@ export type BatchOps<T, P extends { head: string }> = {
   stopRequested?: () => boolean;
   /** At most this many batches that built a position (LAND_MAX_BATCHES; land.yml runs one per job): the rest stays queued. */
   maxBatches?: number;
+  /**
+   * True for a PR that must be built and proved alone (a batch of 1), asked before its admission: one whose earlier build or
+   * proof ended without a verdict, which a batch could not pin on one PR. It starts a batch of its own, never joins one.
+   */
+  solo?: (e: Entry) => boolean;
   /** Proves master's own tree, before a bisect blames the first PR of a batch. Throws LandFailure at step "test" when it fails. */
   proveMaster: (master: string) => void;
   /** Pushes, reviews and merges one PR at its position. Throws LandFailure (that PR fails) or Fatal. */
@@ -1014,7 +1020,7 @@ export type Prepared<T, P> = {
   proven: number[];
   culprit: { index: number; failure: LandFailure } | null;
 };
-export type PrepareOps<T, P extends { head: string }> = Pick<BatchOps<T, P>, 'admit' | 'build' | 'buildAll' | 'verify' | 'prove' | 'proveMaster' | 'log'>;
+export type PrepareOps<T, P extends { head: string }> = Pick<BatchOps<T, P>, 'admit' | 'build' | 'buildAll' | 'verify' | 'prove' | 'proveMaster' | 'log' | 'solo'>;
 
 export const prepareRound = <T, P extends { head: string }>(
   queue: Entry[],
@@ -1033,18 +1039,27 @@ export const prepareRound = <T, P extends { head: string }>(
     result({ entry: e, failure: asFailure(error) });
   };
   const admitted: { entry: Entry; ticket: T }[] = [];
-  while (admitted.length < size && queue.length > 0) {
-    const e = queue.shift()!;
+  let alone = false;
+  while (admitted.length < size && queue.length > 0 && !alone) {
+    const e = queue[0]!;
+    const solo = ops.solo?.(e) === true;
+    // A PR that must be alone waits for the next batch when this one already has a PR.
+    if (solo && admitted.length > 0) break;
+    queue.shift();
     consumed.push(e);
     at(e);
     try {
       const a = ops.admit(e, [...(o.earlier ?? []), ...admitted.map((x) => x.entry)]);
       if ('merged' in a) result({ entry: e, merged: a.merged });
-      else admitted.push({ entry: e, ticket: a.ticket });
+      else {
+        admitted.push({ entry: e, ticket: a.ticket });
+        alone = solo;
+      }
     } catch (error) {
       failure(e, error);
     }
   }
+  if (alone) ops.log(`batch: #${admitted[0]!.entry.pr} is built and proved alone (an earlier build or proof of it ended without a verdict)`);
   const none = (b: string): Prepared<T, P> => ({ base: b, consumed, results, built: [], good: 0, proven: [], culprit: null });
   if (admitted.length === 0) return none('');
   let b: string;

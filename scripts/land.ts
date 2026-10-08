@@ -821,6 +821,20 @@ const claudeReview = (e: Entry, clean: string, head: string, master: string, ste
 // Builds position k on `prev`: merge, regen, typecheck, device evidence against `prev`, regen, commit, regen-only and floors.
 // ---- outages at a PR's own CI runs (land-state.ts, LAND_OUTAGE_EJECT) -----------------------------------------------------
 let OUTAGE_EJECT = 2;
+// The positions of the batch being proved: each PR, its head and its position.
+let chain: { pr: number; prHead: string; head: string }[] = [];
+// A PR one of whose builds or proofs ended without a verdict since its last verdict is built and proved alone (runBatches solo).
+const solo = (e: Entry): boolean => {
+  if (!CI_ONLY) return false;
+  try {
+    const pr = prView(e.pr);
+    if (pr.state !== 'OPEN') return false;
+    return readOutageStreak(gh, REPO, pr.headOid, PROOF_WRITERS).count > 0;
+  } catch (error) {
+    log(`  could not read #${e.pr}'s ${OUTAGE_CONTEXT} record (${errorText(error).split('\n')[0]}); admission decides`);
+    return false;
+  }
+};
 const putOutage = (sha: string, mark: OutageMark, description: string): void => {
   try {
     writeOutage(gh, REPO, sha, mark, description, RUN_URL);
@@ -1221,7 +1235,18 @@ const buildAllPositions = (base: string, items: readonly { entry: Entry; ticket:
   try {
     return buildPositionsParallel<Ticket, Built, PreparedPosition>(base, items, {
       speculate: (k, its) => preparePosition(base, k, its),
-      await: awaitPrepared,
+      // A prepared position's CI regen runs its PR's tree too: an outage there is that PR's, and a run that dies while waiting
+      // for it leaves it pending.
+      await: (h) => {
+        const it = items[h.k - 1]!;
+        if (CI_ONLY) putOutage(it.ticket.prHead, 'building', `the prepared regen of #${it.entry.pr}'s position`);
+        try {
+          awaitPrepared(h);
+        } catch (error) {
+          if (CI_ONLY && error instanceof CiOutage) putOutage(it.ticket.prHead, 'outage', `the prepared regen of #${it.entry.pr}'s position: ${msg(error)}`);
+          throw error;
+        }
+      },
       assemble: assemblePosition,
       sequential: (prev, it, k) => withWorktree(WT_HOME, () => buildPosition(prev, it.entry, it.ticket, k)),
       abandon: abandonPrepared,
@@ -1313,7 +1338,20 @@ const proveIn = (head: string): void => {
 };
 const proveTree = (p: Built, e: Entry): void => {
   current = e;
-  proveCommit(p.head, `#${e.pr}'s position`);
+  // Under ci-only the full test of a position is marked on every PR its tree holds: an outage there cannot be pinned on one of
+  // them, so each is then built alone (solo) until one ends in a verdict, and the streak pins the outage on the PR that causes it.
+  const k = chain.findIndex((c) => c.head === p.head);
+  const members = CI_ONLY && k >= 0 ? chain.slice(0, k + 1) : [];
+  const prs = members.map((m) => `#${m.pr}`).join(' ');
+  for (const m of members) putOutage(m.prHead, 'building', `full test of the tree of ${prs}`);
+  try {
+    proveCommit(p.head, `#${e.pr}'s position`);
+  } catch (error) {
+    if (error instanceof CiOutage) for (const m of members) putOutage(m.prHead, 'outage', `full test of ${prs}: ${msg(error)}`);
+    else if (error instanceof LandFailure) for (const m of members) putOutage(m.prHead, 'verdict', `full test of ${prs} failed`);
+    throw error;
+  }
+  for (const m of members) putOutage(m.prHead, 'verdict', `full test of ${prs} passed`);
 };
 const proveMaster = (master: string): void => {
   current = null;
@@ -1612,6 +1650,8 @@ const setUp = (): void => {
 
 // Each position is exactly a merge of [previous position, the PR's tip] plus one regen commit, chained on its base.
 const verifyChain = (built: readonly { entry: Entry; ticket: Ticket; position: Built }[]): void => {
+  // The chain the proofs that follow stand on, so an outage of one is marked on exactly the PRs its tree holds.
+  chain = built.map((b) => ({ pr: b.entry.pr, prHead: b.ticket.prHead, head: b.position.head }));
   const plan = planPositions(git, built.map((b) => b.ticket.member), built.map((b) => b.position.head));
   const base = built[0]!.position.prev;
   if (plan.base !== base) throw new Error(`the chain starts on ${plan.base}, not ${base}`);
@@ -1674,7 +1714,7 @@ const builderMain = (): number => {
       setUpWorktree();
     }
     log(`preparing the next batch on ${base} in ${WT}`);
-    const round = prepareRound<Ticket, Built>([...input.queue], input.size, () => base, { admit, build: buildPosition, buildAll: buildAllPositions, verify: verifyChain, prove: proveTree, proveMaster, log }, { earlier: input.earlier, baseProven: true });
+    const round = prepareRound<Ticket, Built>([...input.queue], input.size, () => base, { admit, build: buildPosition, buildAll: buildAllPositions, verify: verifyChain, prove: proveTree, proveMaster, log, solo }, { earlier: input.earlier, baseProven: true });
     put(serializePrepared(round));
     log(`prepared: ${round.built.length} position(s), ${round.good} proven to land`);
     // Each builder prepares one batch: its position worktrees go with it (the driver proves its chain in its own worktree).
@@ -1915,6 +1955,7 @@ const main = (): number => {
     buildAll: (base, items, failed) => buildAllPositions(base, items, failed),
     verify: verifyChain,
     prove: (p, e) => (write(false, null, e), proveTree(p, e)),
+    solo,
     proveMaster: (m) => (write(false, null, null), proveMaster(m)),
     publish: (e, p, t) => (write(false, null, e), publish(e, p, t)),
     onFail: reportFailure,

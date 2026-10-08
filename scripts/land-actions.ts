@@ -4,13 +4,15 @@
 //   redispatch <handoff-file>: dispatches land.yml again on GITHUB_REF_NAME with the rest of the queue, when the driver's batch
 //     ended normally, no stop was asked for and the land-stop label (LAND_STOP_ISSUE) is not set now.
 //   dispatch <queue entries...>: the PM's dispatch (pnpm land:dispatch), on master.
+//   clear-outage <pr>: after a real GitHub outage, ends a PR's land/outage streak at its current head without a new push (pnpm
+//     land:clear-outage), with a success status. The driver trusts it only from its own identity or LAND_PROOF_WRITERS ids.
 // Every dispatch first waits until no land.yml run waits to start: GitHub keeps one pending run per concurrency group and cancels
 // the older one, which would drop its queue silently (dispatchLand).
 // Run with: node scripts/land-actions.ts <command> <args>
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { dispatchLand, type DispatchDeps, parseHandoff, parseStopIssue, queueFromInput, redispatchDecision, stopLabelSet } from './land-state.ts';
+import { clearOutage, dispatchLand, type DispatchDeps, parseHandoff, parseStopIssue, queueFromInput, redispatchDecision, stopLabelSet } from './land-state.ts';
 
 const env = process.env;
 const gh = (args: string[]): string => execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
@@ -86,13 +88,19 @@ const dispatch = (entries: string[]): void => {
   console.log(`dispatched land.yml run ${id} on master with:\n${q.trimEnd()}`);
 };
 
+const clear = (pr: string): void => {
+  const r = clearOutage(gh, repoOf(), pr);
+  console.log(`cleared the ${r.context} streak of #${pr} at ${r.head} as ${r.login} (user ${r.id}). The driver counts it only if user ${r.id} is its token's identity or on LAND_PROOF_WRITERS.`);
+};
+
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === import.meta.filename) {
   const [command, ...rest] = process.argv.slice(2);
   try {
     if (command === 'queue' && rest.length === 1) queue(rest[0]!);
     else if (command === 'redispatch' && rest.length === 1) redispatch(rest[0]!);
     else if (command === 'dispatch' && rest.length > 0) dispatch(rest);
-    else throw new Error('usage: node scripts/land-actions.ts queue <out-file> | redispatch <handoff-file> | dispatch <entry>...');
+    else if (command === 'clear-outage' && rest.length === 1) clear(rest[0]!);
+    else throw new Error('usage: node scripts/land-actions.ts queue <out-file> | redispatch <handoff-file> | dispatch <entry>... | clear-outage <pr>');
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);

@@ -6,9 +6,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { SETUP_GIT_CONFIG } from '../../../scripts/floor-merge.ts';
-import { patchHasSymlink, readInTree, removeInTree, symlinkEntries, treeCodeRefusal, trustedGitConfig, writeInTree } from '../../../scripts/land-lib.ts';
+import { type BatchOps, type Entry, runBatches, patchHasSymlink, readInTree, removeInTree, symlinkEntries, treeCodeRefusal, trustedGitConfig, writeInTree } from '../../../scripts/land-lib.ts';
 import { applyRegenPatch, VERDICT_STEP, checksBranch, checksFiles, checksTitle, checksWorkflow, parseChecksResult, runIdOf, scratchRef, staleScratchBranches, titleOf } from '../../../scripts/land-devices-ci.ts';
 import {
+  clearOutage,
   outageStreak,
   parseOutageEject,
   writeOutage,
@@ -163,11 +164,13 @@ describe('land.yml: the job that holds LAND_TOKEN runs no tree code', () => {
     for (const [name, limit] of [['install', '30m'], ['merge', '15m'], ['typecheck', '40m'], ['stamp', '20m'], ['lanes', '20m']]) expect(checks).toMatch(new RegExp(`record ${name} ${limit} `));
     expect(checks).toMatch(/timeout-minutes: 150/);
     expect(checks).toMatch(/- name: Upload the results\n {8}if: always\(\)/);
-    // Strays the tree's commands left are killed before the results are put together, and the records patch made after that.
+    // Each command in a session of its own, whose leftovers are killed by session id once it ends: no name list, nothing of the
+    // runner's at risk. The records patch and result.json are made after every command's session is gone.
     const land = runOf(stepsOf(jobsOf(checks).get('checks')!).find((st) => st.includes('- name: Land checks'))!)!;
-    expect(land.indexOf('\nkill_strays\n')).toBeGreaterThan(land.lastIndexOf('record lanes'));
-    expect(land.indexOf('\nkill_strays\n')).toBeLessThan(land.indexOf('git diff --cached --binary HEAD'));
-    expect(land.indexOf('\nkill_strays\n')).toBeLessThan(land.indexOf('jq -s add'));
+    expect(land).toMatch(/ {2}setsid timeout --kill-after=60s "\$limit" "\$@" > "\$parts\/\$name\.out" 2> "\$parts\/\$name\.err" &\n {2}local sid=\$!\n {2}wait "\$sid"\n {2}local status=\$\?\n {2}pkill -KILL -s "\$sid" 2> \/dev\/null \|\| true\n/);
+    expect(land).not.toMatch(/kill_strays|Runner\.Worker|ps -u/);
+    expect(land.indexOf('git diff --cached --binary HEAD')).toBeGreaterThan(land.lastIndexOf('record lanes'));
+    expect(land.indexOf('jq -s add')).toBeGreaterThan(land.lastIndexOf('record lanes'));
     // The record lines are the only places the tree's commands run.
     const body = runOf(stepsOf(jobsOf(checks).get('checks')!).find((st) => st.includes('- name: Land checks'))!)!;
     expect(body.split('\n').filter((l) => /\b(pnpm|node) /.test(l) && !/^\s*(record |typecheck\)|stamp\)|lanes\))/.test(l))).toEqual([]);
@@ -600,6 +603,51 @@ describe('a PR whose own CI runs keep ending without a verdict is ejected (LAND_
     expect(calls[1]).not.toContain('-f target_url');
     expect(() => writeOutage(() => '', 'o/r', 'HEAD', 'verdict', 'x', null)).toThrow(/not a full sha/);
   });
+  it('clears a streak at the PR\'s current head with a success status (pnpm land:clear-outage)', () => {
+    const calls: string[] = [];
+    const gh = (a: string[]): string => {
+      calls.push(a.join(' '));
+      if (a[1] === 'repos/o/r/pulls/7') return JSON.stringify({ state: 'open', head: { sha } });
+      if (a[1] === 'user') return JSON.stringify({ id: 42, login: 'pm' });
+      return '{}';
+    };
+    expect(clearOutage(gh, 'o/r', '7')).toEqual({ context: 'land/outage', head: sha, login: 'pm', id: 42 });
+    expect(calls.at(-1)).toBe(`api -X POST repos/o/r/statuses/${sha} -f state=success -f context=land/outage -f description=cleared by pm after a GitHub outage (pnpm land:clear-outage)`);
+    // As every status, it counts only from a trusted writer.
+    const cleared = [st('success', '2026-10-08T06:00:00Z', { creator: 42 }), st('error', '2026-10-08T05:00:00Z')];
+    expect(outageStreak(cleared, sha, trusted).count).toBe(1);
+    expect(outageStreak(cleared, sha, new Set([ME, 42])).count).toBe(0);
+    expect(() => clearOutage(gh, 'o/r', 'x')).toThrow(/not a PR number/);
+    expect(() => clearOutage(() => JSON.stringify({ state: 'closed', head: { sha } }), 'o/r', '7')).toThrow(/is closed, not open/);
+  });
+
+  it('builds a PR alone once a build or proof of it ended without a verdict, so the next outage is pinned on it', () => {
+    const e = (pr: number): Entry => ({ branch: `b${pr}`, pr, clean: 'a'.repeat(40) });
+    const trace: string[] = [];
+    const soloPrs = new Set([3]);
+    const ops: BatchOps<{ pr: number }, { head: string }> = {
+      admit: (x) => (trace.push(`admit #${x.pr}`), { ticket: { pr: x.pr } }),
+      base: () => 'm',
+      build: (prev, x) => ({ head: `${prev}+${x.pr}` }),
+      verify: (built) => void trace.push(`batch ${built.map((b) => `#${b.entry.pr}`).join(' ')}`),
+      prove: () => {},
+      proveMaster: () => {},
+      publish: () => 'merged',
+      onFail: () => {},
+      onOutcome: () => {},
+      log: () => {},
+      solo: (x) => soloPrs.has(x.pr),
+    };
+    runBatches([1, 2, 3, 4, 5].map(e), 4, ops);
+    // #3 waits for the batch after #1 #2, is alone in its own, and #4 #5 follow it; it is never admitted twice.
+    expect(trace.filter((t) => t.startsWith('batch'))).toEqual(['batch #1 #2', 'batch #3', 'batch #4 #5']);
+    expect(trace.filter((t) => t === 'admit #3')).toHaveLength(1);
+    soloPrs.add(1);
+    trace.length = 0;
+    runBatches([1, 2].map(e), 4, ops);
+    expect(trace.filter((t) => t.startsWith('batch'))).toEqual(['batch #1', 'batch #2']);
+  });
+
   it('is wired into the driver: each position build is marked, and admission ejects at the limit', () => {
     const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
     expect(src).toContain('const buildPosition = (prev: string, e: Entry, t: Ticket, k: number): Built => tracked(e, t, () => buildPositionHere(prev, e, t, k));');
@@ -609,5 +657,13 @@ describe('a PR whose own CI runs keep ending without a verdict is ejected (LAND_
     // A completed run's unreadable results or refused patch are the PR's, not an outage.
     expect(src).toMatch(/throw new LandFailure\('checks', `the results of the tree checks \$\{r\.url\} do not read/);
     expect(src).toMatch(/if \(error instanceof PatchRefused\) throw new LandFailure\('checks'/);
+    // The other two places a PR's tree runs: a prepared position's CI regen, marked on that PR; the full test of a position,
+    // marked on every PR its tree holds (the chain up to it), then each of them built alone (solo).
+    expect(src).toMatch(/await: \(h\) => \{\n {8}const it = items\[h\.k - 1\]!;\n {8}if \(CI_ONLY\) putOutage\(it\.ticket\.prHead, 'building'[\s\S]{0,200}awaitPrepared\(h\);\n {8}\} catch \(error\) \{\n {10}if \(CI_ONLY && error instanceof CiOutage\) putOutage\(it\.ticket\.prHead, 'outage'/);
+    expect(src).toMatch(/const members = CI_ONLY && k >= 0 \? chain\.slice\(0, k \+ 1\) : \[\];/);
+    expect(src).toMatch(/if \(error instanceof CiOutage\) for \(const m of members\) putOutage\(m\.prHead, 'outage'/);
+    expect(src).toMatch(/chain = built\.map\(/);
+    expect(src.match(/\bsolo\b(?=[,\s}])/g)!.length).toBeGreaterThanOrEqual(2); // the driver's ops and the builder's
+    expect(src).toMatch(/return readOutageStreak\(gh, REPO, pr\.headOid, PROOF_WRITERS\)\.count > 0;/);
   });
 });
