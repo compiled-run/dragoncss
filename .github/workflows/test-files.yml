@@ -1,0 +1,274 @@
+# CI-TESTFILES: chosen test files of one ref, each on its full-test group's runner, for sessions that have neither a Mac nor the
+# native toolchains (pnpm ci:test-files dispatches it and reads the outcome). Judged as full-test.yml judges a shard: no tolerance,
+# filter or retry is added, and a failing test fails the run.
+# The resolve job sorts the requested files into their groups with this workflow's own scripts/test-shards.ts (group-files), read
+# against the requested tree, so a branch that predates the mode can be tested; an unknown file fails the run before any test.
+# Each group's job sets up exactly as its full-test.yml job does (test-shards.test.ts keeps the setup steps equal), runs only its
+# files, keeps the "No native run was blocked" scan, and fails when a requested file did not run (the vitest JSON report).
+#   floor_write: the tests run with DRAGON_FLOOR_WRITE=1 and DRAGON_PIN_WRITE=1, and each job uploads a patch of the floor and pin
+#     files (.gitattributes merge=dragon-floor) it changed, made on that group's platform.
+# Caches are only restored here, never saved: a dispatched run tests an unreviewed tree at master's cache scope.
+name: test-files
+run-name: test files of ${{ inputs.ref }}
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit sha or branch to test
+        required: true
+        type: string
+      files:
+        description: Space-separated test file paths (packages/<pkg>/test/...test.ts)
+        required: true
+        type: string
+      floor_write:
+        description: Run with DRAGON_FLOOR_WRITE=1 and DRAGON_PIN_WRITE=1 and upload a patch of the changed floor and pin files
+        required: false
+        default: false
+        type: boolean
+permissions:
+  contents: read
+env:
+  DRAGON_WPT_DIR: /Users/runner/wpt
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.r.outputs.sha }}
+      key: ${{ steps.r.outputs.key }}
+      chrome: ${{ steps.r.outputs.chrome }}
+      native: ${{ steps.r.outputs.native }}
+      platform_free: ${{ steps.r.outputs.platform_free }}
+    steps:
+      - name: This workflow's scripts/test-shards.ts
+        uses: actions/checkout@v4
+        with:
+          path: tools
+          sparse-checkout: scripts/test-shards.ts
+          sparse-checkout-cone-mode: false
+      - name: The requested tree
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          path: target
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - id: r
+        env:
+          REF: ${{ inputs.ref }}
+          FILES: ${{ inputs.files }}
+        run: |
+          set -o pipefail
+          sha=$(git -C target rev-parse HEAD)
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::could not resolve $REF"; exit 1; }
+          read -ra files <<< "$FILES"
+          groups=$(node tools/scripts/test-shards.ts group-files --root target "${files[@]}") || { echo "::error::the requested files are not all test files of $REF (see the log)"; exit 1; }
+          {
+            echo "sha=$sha"
+            echo "key=$(printf '%s\n' "${files[@]}" | sed 's|^\./||' | sort -u | sha256sum | cut -c1-16)"
+            for g in chrome native platform-free; do echo "${g//-/_}=$(awk -F'\t' -v g="$g" '$2 == g { print $1 }' <<< "$groups" | paste -sd' ' -)"; done
+          } >> "$GITHUB_OUTPUT"
+          { echo "test files of $REF ($sha)"; echo; echo '```'; echo "$groups"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  platform-free:
+    needs: resolve
+    if: needs.resolve.outputs.platform_free != ''
+    concurrency:
+      group: test-files-${{ inputs.ref }}-${{ needs.resolve.outputs.key }}-platform-free
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      FILES: ${{ needs.resolve.outputs.platform_free }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - &vitest
+        id: vitest
+        name: vitest run (the requested files)
+        env:
+          DRAGON_FLOOR_WRITE: ${{ inputs.floor_write && '1' || '' }}
+          DRAGON_PIN_WRITE: ${{ inputs.floor_write && '1' || '' }}
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/report"
+          read -ra files <<< "$FILES"
+          npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/$GITHUB_JOB.json" 2>&1 | tee "$RUNNER_TEMP/shard.log"
+      - &blocked
+        name: No native run was blocked (owner tooling)
+        if: always() && steps.vitest.outcome != 'skipped'
+        run: |
+          # The run lines native.ts describe() prints (the test titles that mention "blocked" are not run lines).
+          if grep -nE 'status blocked \(owner tooling\)|native:(swift|kotlin): (swiftc not found|no JDK 17\+ or kotlinc)' "$RUNNER_TEMP/shard.log"; then echo "::error::a native run was blocked (owner tooling): its toolchain was missing, so the test proved nothing"; exit 1; fi
+      - &ran
+        name: Every requested file ran
+        if: always() && steps.vitest.outcome != 'skipped'
+        run: |
+          cat > "$RUNNER_TEMP/ran.mjs" <<'EOF'
+          // Every requested file is in vitest's report with a test that ran, and nothing else is; the failures are listed.
+          import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+          import { relative } from 'node:path';
+          const want = process.env.FILES.split(' ').filter(Boolean);
+          const path = `${process.env.RUNNER_TEMP}/report/${process.env.GITHUB_JOB}.json`;
+          const out = [];
+          const ran = new Map();
+          if (!existsSync(path)) out.push(`NO REPORT: vitest wrote no JSON report, so no requested file is known to have run`);
+          else for (const f of JSON.parse(readFileSync(path, 'utf8')).testResults) ran.set(relative(process.env.GITHUB_WORKSPACE, f.name), f);
+          const idle = (t) => t.status === 'skipped' || t.status === 'pending' || t.status === 'todo';
+          for (const w of want) {
+            const f = ran.get(w);
+            if (existsSync(path) && f === undefined) out.push(`NOT RUN ${w}`);
+            else if (f !== undefined && f.status !== 'failed' && (f.assertionResults.length === 0 || f.assertionResults.every(idle))) out.push(`NO TEST RAN ${w} (every test skipped)`);
+          }
+          for (const f of ran.keys()) if (!want.includes(f)) out.push(`NOT REQUESTED ${f}`);
+          const failed = [...ran].flatMap(([file, f]) => (f.assertionResults.length === 0 && f.status === 'failed' ? [`FAILED ${file} > (file) ${(f.message ?? '').split('\n')[0]}`] : f.assertionResults.filter((t) => t.status === 'failed').map((t) => `FAILED ${file} > ${t.fullName}`)));
+          const text = [`${ran.size} of ${want.length} requested files in the report`, ...out, ...failed].join('\n');
+          console.log(text);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${text}\n`);
+          if (out.length > 0) process.exitCode = 1;
+          EOF
+          node "$RUNNER_TEMP/ran.mjs"
+      - &report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-files-report-${{ github.job }}
+          path: ${{ runner.temp }}/report
+          if-no-files-found: ignore
+      - &floor
+        name: The floor and pin files the run wrote
+        if: always() && inputs.floor_write && steps.vitest.outcome != 'skipped'
+        run: |
+          # The files the dragon-floor merge driver owns (.gitattributes), new ones too.
+          specs=(); while IFS= read -r s; do specs+=("$s"); done < <(awk '$2 == "merge=dragon-floor" { print ":(glob)" $1 }' .gitattributes)
+          [[ ${#specs[@]} -gt 0 ]] || { echo "::error::.gitattributes names no merge=dragon-floor files"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/floor"
+          git add -A -- "${specs[@]}"
+          git diff --cached --binary -- "${specs[@]}" > "$RUNNER_TEMP/floor/floor.patch"
+          if [[ -s "$RUNNER_TEMP/floor/floor.patch" ]]; then git diff --cached --stat -- "${specs[@]}" | tee -a "$GITHUB_STEP_SUMMARY"; else echo "no floor or pin file changed" | tee -a "$GITHUB_STEP_SUMMARY"; rm "$RUNNER_TEMP/floor/floor.patch"; fi
+      - &floor-upload
+        uses: actions/upload-artifact@v4
+        if: always() && inputs.floor_write
+        with:
+          name: test-files-floor-${{ github.job }}
+          path: ${{ runner.temp }}/floor
+          if-no-files-found: ignore
+
+  native:
+    needs: resolve
+    if: needs.resolve.outputs.native != ''
+    concurrency:
+      group: test-files-${{ inputs.ref }}-${{ needs.resolve.outputs.key }}-native
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    env:
+      DRAGON_WPT_DIR: ''
+      FILES: ${{ needs.resolve.outputs.native }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Swift 6.4.0 (swift.org) and kotlinc 2.4.20
+        run: |
+          sudo apt-get install -y -q libcurl4-openssl-dev libxml2-dev >/dev/null
+          curl -sSfL https://download.swift.org/swift-6.4.0-release/ubuntu2404-aarch64/swift-6.4.0-RELEASE/swift-6.4.0-RELEASE-ubuntu24.04-aarch64.tar.gz | tar xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/swift-6.4.0-RELEASE-ubuntu24.04-aarch64/usr/bin" >> "$GITHUB_PATH"
+          curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
+      - name: Toolchain versions
+        run: |
+          swiftc --version 2>&1 | tee /dev/stderr | grep -q 'Swift version 6.4 ' || swiftc --version 2>&1 | grep -q 'swift-6.4.0-RELEASE' || { echo "::error::not Swift 6.4.0"; exit 1; }
+          kotlinc -version 2>&1 | tee /dev/stderr | grep -q 'kotlinc-jvm 2.4.20' || { echo "::error::not kotlinc 2.4.20"; exit 1; }
+          java -version
+      - name: The native tests find both toolchains (else they would read as "blocked (owner tooling)" and pass)
+        run: |
+          cat > "$RUNNER_TEMP/tools.mts" <<'EOF'
+          const { swiftTool, kotlinTool } = await import(`${process.env.GITHUB_WORKSPACE}/packages/translate/src/native.ts`);
+          const s = swiftTool(); const k = kotlinTool();
+          console.log(`swift: ${s?.version ?? 'NOT FOUND'}; kotlin: ${k?.version ?? 'NOT FOUND'}`);
+          if (s === null || k === null) { console.error('a native shard must have both toolchains'); process.exit(1); }
+          EOF
+          node --conditions=dragon-internal "$RUNNER_TEMP/tools.mts"
+      - *vitest
+      - *blocked
+      - *ran
+      - *report
+      - *floor
+      - *floor-upload
+
+  chrome:
+    needs: resolve
+    if: needs.resolve.outputs.chrome != ''
+    concurrency:
+      group: test-files-${{ inputs.ref }}-${{ needs.resolve.outputs.key }}-chrome
+      cancel-in-progress: false
+    runs-on: macos-26
+    timeout-minutes: 120
+    env:
+      FILES: ${{ needs.resolve.outputs.chrome }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Restored only: a dispatched run tests an unreviewed tree at master's cache scope, so it never saves into it.
+      - name: Restore Playwright's Chromium (chromium-1208 for Playwright 1.58.2)
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: playwright-1.58.2-macos-${{ runner.arch }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: /Users/runner/wpt
+          key: wpt-${{ hashFiles('packages/wpt/wpt.lock') }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Playwright 1.58.2 Chromium, the pinned WPT copy and kotlinc 2.4.20
+        run: |
+          test "$(pnpm --filter @dragon/parity exec playwright --version)" = "Version 1.58.2"
+          pnpm --filter @dragon/parity exec playwright install chromium
+          bash scripts/fetch-wpt.sh
+          curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/kotlinc/bin/kotlinc" -version 2>&1 | grep -q 'kotlinc-jvm 2.4.20' || { echo "::error::not kotlinc 2.4.20"; exit 1; }
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"; find "${ANDROID_HOME:-/nonexistent}/platforms" -maxdepth 1 2>&1 | tail -3
+      - *vitest
+      - *blocked
+      - *ran
+      - *report
+      - *floor
+      - *floor-upload
