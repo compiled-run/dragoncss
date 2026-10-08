@@ -21,6 +21,8 @@ export const MERGE_DRIVERS: readonly (readonly [string, string])[] = [
   ['merge.dragon-sorted.name', 'interleave additions to the sorted registries (scripts/sorted-merge.ts)'],
   ['merge.dragon-sorted.driver', SORTED_MERGE_DRIVER],
 ];
+/** Everything pnpm setup:git sets, in its order: rerere off (a fresh clone has no rerere cache to replay), then the merge drivers. */
+export const SETUP_GIT_CONFIG: readonly (readonly [string, string])[] = [['rerere.enabled', 'false'], ...MERGE_DRIVERS];
 export type Json = null | boolean | number | string | Json[] | { [k: string]: Json };
 export class Refuse extends Error {}
 const refuse = (at: string, why: string): never => {
