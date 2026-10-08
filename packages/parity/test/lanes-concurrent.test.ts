@@ -119,7 +119,7 @@ describe('devices of a target at once', () => {
     const o = outcome('dragon-480');
     expect(afterRelease(o, null)).toBe(o);
     const b = afterRelease(o, 'emulator-5582 (dragon-480) still runs after adb emu kill');
-    expect(b).toEqual({ device: 'dragon-480', set: null, trust: null, vectors: null, blocked: 'dragon-480: the device could not be stopped after its run (tooling fault), so its results are not used: emulator-5582 (dragon-480) still runs after adb emu kill' });
+    expect(b).toEqual({ device: 'dragon-480', set: null, trust: null, vectors: null, blocked: 'dragon-480: the device could not be stopped after its run (tooling fault), so its results are not used: emulator-5582 (dragon-480) still runs after adb emu kill', blockedBy: ['stop'] });
     expect(parseOutcome(JSON.stringify(b), 'dragon-480')).toEqual(b);
     expect(afterRelease({ ...o, set: null, trust: null, blocked: 'no fit' }, 'x').blocked).toMatch(/results are not used: x; no fit$/);
     const run = mergeOutcomes([outcome('a'), b], { laneCode: '', referenceData: '', app: '' });

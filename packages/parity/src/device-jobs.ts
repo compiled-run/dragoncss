@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { Readable, Writable } from 'node:stream';
 import type { DeviceOutcome, HostSource, RunLog } from './device-lanes.ts';
-import { afterRelease, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE } from './device-lanes.ts';
+import { afterRelease, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, isBlockReason, STATE_LANE } from './device-lanes.ts';
 import type { DeviceHandle, DeviceSpec } from './device-run.ts';
 import { spawnChild } from './device-exec.ts';
 import { boot, DEVICE_MATRIX, DeviceLeftRunning, release } from './device-run.ts';
@@ -107,6 +107,8 @@ export function parseOutcome(text: string, device: string): DeviceOutcome {
   const vectors = v['vectors'];
   if (vectors !== null && (!isObj(vectors) || vectors['device'] !== device || typeof vectors['state'] !== 'string' || !Array.isArray(vectors['suites']))) problems.push('vectors is not this device\'s vectors run');
   if (v['blocked'] !== null && typeof v['blocked'] !== 'string') problems.push('blocked is neither null nor a string');
+  const by = v['blockedBy'];
+  if (by !== undefined && (!Array.isArray(by) || !by.every(isBlockReason) || (by.length > 0) !== (v['blocked'] !== null))) problems.push('blockedBy is not the block reasons of a blocked outcome');
   if (v['blocked'] === null && set === null) problems.push('neither a set nor a blocked reason');
   if (problems.length > 0) throw new Error(`${device}: malformed device outcome: ${problems.join('; ')}`);
   return v as unknown as DeviceOutcome;
