@@ -4,22 +4,26 @@
 //     and host.
 //   merge <dir>: merges every outcome in <dir> (all matrix devices of both targets, this tree's evidence) and writes out/lanes.json
 //     and out/device-failures-<target>.json as parity:lanes --run-device does.
+//   hashes <target> <device> <dpr>: prints the per-case hashes (CaseDumpHashes) of the dumps a run on this host left for the device.
+//   diff <a> <b>: the cases whose hashes differ between two outcome files or hashes files (exit 1 when any differ).
 //   compare <committed-dir> [--judge]: compares the merged records with the copies in <committed-dir> (the tested commit's); with
 //     --judge (a run for review) a difference exits 1, without it (a run the landing driver judges itself) it only reports.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ciOutcomeText, compareWithCommitted, comparisonText, mergeCiOutcomes, OUTCOME_SCHEMA, parseCiOutcome, producerLabel } from '../device-ci.ts';
+import type { CaseDumpHashes } from '../device-ci.ts';
+import { caseDumpHashes, ciOutcomeText, diffCaseHashes, parseCaseHashes, compareWithCommitted, comparisonText, mergeCiOutcomes, OUTCOME_SCHEMA, parseCiOutcome, producerLabel, TOOLING_EXIT } from '../device-ci.ts';
 import { deviceEvidence } from '../device-evidence.ts';
 import { allRunFailures, deviceFailuresText, failuresByKind, runOneDevice } from '../device-lanes.ts';
-import { DEVICE_MATRIX, requireDeviceLease } from '../device-run.ts';
+import { DEVICE_MATRIX, requireDeviceLease, ToolingFault } from '../device-run.ts';
 import { checkLaneParity, committedHostRun, fileStatusProblems, laneSources, lanesFile, readLanesFile, writeLanesFile } from '../lanes.ts';
 import { buildAndroid, buildIos, nativeCases } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import { nativeTargets } from '../targets.ts';
 
-// Exit codes: 0 merged with lane parity; 1 a parity failure, or a blocked device; 2 usage; 3 a refused merge (a missing,
-// repeated or foreign half), with nothing written.
-const USAGE = 'usage: device-ci.ts one <ios|android> <device> <outcome.json> | merge <dir> | compare <committed-dir> [--judge]';
+// Exit codes: 0 merged with lane parity; 1 a parity failure, or a failed device run; 2 usage; 3 a refused merge (a missing,
+// repeated or foreign half), with nothing written; 4 (TOOLING_EXIT) a device the tooling blocked: a boot or settle that failed,
+// a blocked outcome, or an install that kept failing transiently. The workflow reports 4 in a step that judges nothing.
+const USAGE = 'usage: device-ci.ts one <ios|android> <device> <outcome.json> | merge <dir> | compare <committed-dir> [--judge] | hashes <ios|android> <device> <dpr> | diff <a.json> <b.json>';
 const [mode, ...rest] = process.argv.slice(2);
 const targets = nativeTargets();
 
@@ -43,11 +47,20 @@ if (mode === 'one' && rest.length === 3) {
   if (build.cases !== cases.length) throw new Error(`${t.target}: the app holds ${build.cases} cases, layoutCases() ${cases.length}`);
   const host = committedHostRun(readLanesFile(), targets, t.target);
   if (host === null) log('no current committed host run: the vectors lane is judged without one');
-  const outcome = await runOneDevice(t, spec, host, build.artifact, () => cases, true, log);
-  writeFileSync(out, ciOutcomeText({ schema: OUTCOME_SCHEMA, target: t.target, device: spec.name, evidence, producedOn: producerLabel(), outcome }));
+  let outcome: Awaited<ReturnType<typeof runOneDevice>>;
+  try {
+    outcome = await runOneDevice(t, spec, host, build.artifact, () => cases, true, log);
+  } catch (e) {
+    // An install that kept failing transiently judged nothing of the tree; any other failure of the run stays a failure (1).
+    if (!(e instanceof ToolingFault)) throw e;
+    log(`blocked by the device tooling: ${e.message}`);
+    process.exit(TOOLING_EXIT);
+  }
+  writeFileSync(out, ciOutcomeText({ schema: OUTCOME_SCHEMA, target: t.target, device: spec.name, evidence, producedOn: producerLabel(), outcome, dumps: caseDumpHashes(t.target, spec.name, outcome.set?.dpr ?? null) }));
   log(`outcome written to ${out}${outcome.blocked === null ? '' : ` (blocked: ${outcome.blocked})`}`);
-  // A blocked device fails its job: the run is not device evidence (the outcome is still uploaded to show why).
-  if (outcome.blocked !== null) process.exitCode = 1;
+  // A blocked device (a failed boot or settle, a device that does not fit, one that could not be stopped) is a tooling fault: its
+  // job fails with TOOLING_EXIT, so the run is not device evidence and judges nothing (the outcome is still uploaded to show why).
+  if (outcome.blocked !== null) process.exitCode = TOOLING_EXIT;
 } else if (mode === 'merge' && rest.length === 1) {
   const dir = rest[0]!;
   let files: string[] = [];
@@ -85,6 +98,22 @@ if (mode === 'one' && rest.length === 3) {
   if (process.env['GITHUB_STEP_SUMMARY'] !== undefined) writeFileSync(process.env['GITHUB_STEP_SUMMARY'], text, { flag: 'a' });
   if (!c.same && rest[1] === '--judge') process.exitCode = 1;
   else if (!c.same) console.log('device-ci compare: reported only; the landing driver judges this run against its previous position');
+} else if (mode === 'hashes' && rest.length === 3 && (rest[0] === 'ios' || rest[0] === 'android') && Number.isFinite(Number(rest[2]))) {
+  const dpr = Number(rest[2]);
+  console.log(JSON.stringify(caseDumpHashes(rest[0], rest[1]!, dpr)));
+} else if (mode === 'diff' && rest.length === 2) {
+  // An outcome file holds its hashes under dumps; a hashes file is the hashes themselves.
+  const read = (f: string): CaseDumpHashes => {
+    const v = JSON.parse(readFileSync(f, 'utf8')) as Record<string, unknown>;
+    const h = parseCaseHashes(v['schema'] === OUTCOME_SCHEMA ? v['dumps'] : v, f);
+    if (h === null || h === undefined) throw new Error(`${f}: no per-case hashes`);
+    return h;
+  };
+  const [a, b] = [read(rest[0]!), read(rest[1]!)];
+  if (a.dpr !== b.dpr) throw new Error(`the hashes are of DPR ${a.dpr} and ${b.dpr}`);
+  const d = diffCaseHashes(a, b);
+  for (const k of ['set', 'states', 'hits'] as const) console.log(`${k}: ${d[k].length} of ${new Set([...Object.keys(a[k]), ...Object.keys(b[k])]).size} cases differ${d[k].length === 0 ? '' : `: ${d[k].join(' ')}`}`);
+  if (d.set.length + d.states.length + d.hits.length > 0) process.exitCode = 1;
 } else {
   console.error(USAGE);
   process.exit(2);

@@ -1,7 +1,10 @@
 // CI device lanes (device-ci.ts): the pinned iOS runtime, the host's Android image, the CI memory reserve, and the merge of
 // per-device outcomes, which refuses a missing, repeated or foreign outcome instead of merging a subset.
 import { describe, expect, it } from 'vitest';
-import { ciOutcomeText, type CiOutcome, compareWithCommitted, comparisonText, mergeCiOutcomes, OUTCOME_SCHEMA, parseCiOutcome, producerLabel } from '../src/device-ci.ts';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { caseDumpHashes, ciOutcomeText, type CiOutcome, compareWithCommitted, comparisonText, diffCaseHashes, mergeCiOutcomes, OUTCOME_SCHEMA, parseCaseHashes, parseCiOutcome, producerLabel, rawDumpHash } from '../src/device-ci.ts';
 import { allRunFailures } from '../src/device-lanes.ts';
 import { lanesFile, laneSources, checkLaneParity } from '../src/lanes.ts';
 import { nativeTargets } from '../src/targets.ts';
@@ -60,6 +63,55 @@ describe('device outcome files', () => {
     bad({ ...o, outcome: { ...o.outcome, device: 'iPad (A16)' } }, 'iPhone 17: malformed device outcome');
     bad({ ...o, outcome: { ...o.outcome, blocked: null } }, 'neither a set nor a blocked reason');
     bad({ ...o, producedOn: 3 }, 'producedOn is not a host label');
+  });
+});
+
+describe('per-case dump hashes (raw equality across hosts)', () => {
+  const dump = (model: string, x: number, ms: number): string => JSON.stringify({ case: 'c', device: { platform: 'android', os: 'Android 16', model, abi: model.includes('arm') ? 'arm64-v8a' : 'x86_64' }, nodes: [{ id: 'a', frame: [x, 0, 10, 10] }], timing: { ms } });
+  it('ignores the device header and the timing, and nothing else', () => {
+    expect(rawDumpHash(dump('emu arm', 1, 5))).toBe(rawDumpHash(dump('emu x86', 1, 9)));
+    expect(rawDumpHash(dump('emu arm', 1, 5))).not.toBe(rawDumpHash(dump('emu arm', 2, 5)));
+    // Text that is not a dump object is hashed as it is, never equal to a dump's hash.
+    expect(rawDumpHash('{trunc')).toMatch(/^[0-9a-f]{64}$/);
+    expect(rawDumpHash('[1]')).not.toBe(rawDumpHash('{"0":1}'));
+  });
+  it('hashes each case of a device run\'s set, states and hit records at its DPR, and diffs two hosts case by case', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dragon-hashes-'));
+    try {
+      const lanes = join(root, 'lanes');
+      mkdirSync(join(lanes, 'dragon-320'), { recursive: true });
+      mkdirSync(join(lanes, 'dragon-320-states'), { recursive: true });
+      writeFileSync(join(lanes, 'dragon-320', 'a@2.json'), dump('emu arm', 1, 5));
+      writeFileSync(join(lanes, 'dragon-320', 'b@2.json'), dump('emu arm', 3, 5));
+      writeFileSync(join(lanes, 'dragon-320', 'a@3.json'), dump('emu arm', 9, 5));
+      writeFileSync(join(lanes, 'dragon-320', 'a@2.hit'), '0,0;1,1');
+      writeFileSync(join(lanes, 'dragon-320-states', 's@2.json'), dump('emu arm', 4, 5));
+      const h = caseDumpHashes('android', 'dragon-320', 2, root);
+      expect(h).not.toBeNull();
+      expect(Object.keys(h!.set)).toEqual(['a', 'b']);
+      expect(Object.keys(h!.states)).toEqual(['s']);
+      expect(Object.keys(h!.hits)).toEqual(['a']);
+      expect(caseDumpHashes('android', 'dragon-320', null, root)).toBeNull();
+      expect(caseDumpHashes('android', 'dragon-480', 2, root)).toEqual({ dpr: 2, set: {}, states: {}, hits: {} });
+      writeFileSync(join(lanes, 'dragon-320', 'b@2.json'), dump('emu x86', 3, 7));
+      expect(diffCaseHashes(h!, caseDumpHashes('android', 'dragon-320', 2, root)!)).toEqual({ set: [], states: [], hits: [] });
+      writeFileSync(join(lanes, 'dragon-320', 'b@2.json'), dump('emu x86', 4, 7));
+      rmSync(join(lanes, 'dragon-320-states', 's@2.json'));
+      expect(diffCaseHashes(h!, caseDumpHashes('android', 'dragon-320', 2, root)!)).toEqual({ set: ['b'], states: ['s'], hits: [] });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+  it('round-trips an outcome with its hashes, reads one without (older), and refuses malformed hashes', () => {
+    const o = outcomeOf('ios', 'iPhone 17');
+    const dumps = { dpr: 3, set: { a: 'a'.repeat(64) }, states: {}, hits: { a: 'b'.repeat(64) } };
+    expect(parseCiOutcome(ciOutcomeText({ ...o, dumps }), 'f.json')).toEqual({ ...o, dumps });
+    expect(parseCiOutcome(ciOutcomeText({ ...o, dumps: null }), 'f.json')).toEqual({ ...o, dumps: null });
+    expect(parseCiOutcome(ciOutcomeText(o), 'f.json')).toEqual(o);
+    for (const bad of [{ ...dumps, dpr: '3' }, { ...dumps, set: { a: 'zz' } }, { ...dumps, hits: [] }, { dpr: 3, set: {}, states: {} }, 'x']) {
+      expect(() => parseCaseHashes(bad, 'f.json')).toThrow('f.json: dumps is not a DPR and per-case sha256 maps of set, states and hits');
+      expect(() => parseCiOutcome(JSON.stringify({ ...o, dumps: bad }), 'f.json')).toThrow('dumps is not');
+    }
   });
 });
 

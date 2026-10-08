@@ -4,6 +4,9 @@
 // every device of both targets ran exactly once on this tree's evidence, merges in matrix order as a local run does
 // (mergeOutcomes), and writes the same lanes.json and device-failures-<target>.json records, each device lane naming the hosts
 // that produced it (producedOn).
+import { createHash } from 'node:crypto';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { DeviceEvidence } from './device-evidence.ts';
 import { parseOutcome } from './device-jobs.ts';
 import type { DeviceOutcome } from './device-lanes.ts';
@@ -11,12 +14,58 @@ import { mergeOutcomes } from './device-lanes.ts';
 import type { DeviceSpec } from './device-run.ts';
 import { DEVICE_MATRIX } from './device-run.ts';
 import type { DeviceRun } from './lanes.ts';
+import { nativeOut } from './native-host.ts';
 import type { NativeTarget } from './targets.ts';
 
 export const OUTCOME_SCHEMA = 'dragon.device-outcome/2';
+/** device-ci.ts one's exit code for a device the tooling blocked (boot, settle, install): the job judges nothing of the tree. */
+export const TOOLING_EXIT = 4;
 
-/** One device job's result: the device, the evidence stamp of the tree it ran on, the host that ran it, and its outcome. */
-export type CiOutcome = { readonly schema: typeof OUTCOME_SCHEMA; readonly target: NativeTarget; readonly device: string; readonly evidence: DeviceEvidence; readonly producedOn: string; readonly outcome: DeviceOutcome };
+/**
+ * sha256 of every dump and hit record a device wrote, by case, with the device header (model, ABI, OS build, toolchain) and the
+ * timing removed, so two hosts' raw output can be compared case by case. Absent from an older outcome; null for a blocked device.
+ */
+export type CaseDumpHashes = { readonly dpr: number; readonly set: Readonly<Record<string, string>>; readonly states: Readonly<Record<string, string>>; readonly hits: Readonly<Record<string, string>> };
+
+/** A dump's hash without its device header and timing; a dump that is not a JSON object is hashed as it is, marked unparseable. */
+export function rawDumpHash(text: string): string {
+  let v: unknown;
+  try {
+    v = JSON.parse(text);
+  } catch {
+    v = undefined;
+  }
+  const body = typeof v === 'object' && v !== null && !Array.isArray(v) ? JSON.stringify({ ...v, timing: null, device: null }) : `unparseable\0${text}`;
+  return createHash('sha256').update(body).digest('hex');
+}
+
+/** The hashes of the files <case>@<dpr><ext> in dir, by case id (a missing dir has none). */
+export function dumpHashesIn(dir: string, ext: '.json' | '.hit', dpr: number): Record<string, string> {
+  if (!existsSync(dir)) return {};
+  const suffix = `@${dpr}${ext}`;
+  const out: Record<string, string> = {};
+  for (const f of readdirSync(dir).filter((x) => x.endsWith(suffix)).sort()) {
+    const text = readFileSync(join(dir, f), 'utf8');
+    out[f.slice(0, -suffix.length)] = ext === '.hit' ? createHash('sha256').update(text).digest('hex') : rawDumpHash(text);
+  }
+  return out;
+}
+
+/** A device's per-case hashes at its DPR from the directories its run wrote (runOneDevice), or null when it ran no set (no DPR). */
+export function caseDumpHashes(target: NativeTarget, device: string, dpr: number | null, root: string = nativeOut(target)): CaseDumpHashes | null {
+  if (dpr === null) return null;
+  const lanes = join(root, 'lanes');
+  return { dpr, set: dumpHashesIn(join(lanes, device), '.json', dpr), states: dumpHashesIn(join(lanes, `${device}-states`), '.json', dpr), hits: dumpHashesIn(join(lanes, device), '.hit', dpr) };
+}
+
+/** The cases whose hashes differ between two hosts' outcomes, by kind (a case on one side only counts as differing). */
+export function diffCaseHashes(a: CaseDumpHashes, b: CaseDumpHashes): { readonly set: string[]; readonly states: string[]; readonly hits: string[] } {
+  const diff = (x: Readonly<Record<string, string>>, y: Readonly<Record<string, string>>): string[] => [...new Set([...Object.keys(x), ...Object.keys(y)])].filter((k) => x[k] !== y[k]).sort();
+  return { set: diff(a.set, b.set), states: diff(a.states, b.states), hits: diff(a.hits, b.hits) };
+}
+
+/** One device job's result: the device, the evidence stamp of the tree it ran on, the host that ran it, its outcome and its per-case hashes. */
+export type CiOutcome = { readonly schema: typeof OUTCOME_SCHEMA; readonly target: NativeTarget; readonly device: string; readonly evidence: DeviceEvidence; readonly producedOn: string; readonly outcome: DeviceOutcome; readonly dumps?: CaseDumpHashes | null };
 
 export const ciOutcomeText = (o: CiOutcome): string => `${JSON.stringify(o)}\n`;
 
@@ -56,7 +105,16 @@ export function parseCiOutcome(text: string, file: string): CiOutcome {
   const evidence = parseEvidence(v['evidence'], file);
   const producedOn = parseProducer(v['producedOn'], file);
   const outcome = parseOutcome(JSON.stringify(v['outcome'] ?? null), device);
-  return { schema: OUTCOME_SCHEMA, target, device, evidence, producedOn, outcome };
+  const dumps = parseCaseHashes(v['dumps'], file);
+  return { schema: OUTCOME_SCHEMA, target, device, evidence, producedOn, outcome, ...(dumps === undefined ? {} : { dumps }) };
+}
+
+/** The per-case hashes of an outcome, checked: absent (an older outcome), null, or a DPR and three maps of case id to sha256. */
+export function parseCaseHashes(v: unknown, file: string): CaseDumpHashes | null | undefined {
+  if (v === undefined || v === null) return v;
+  const map = (m: unknown): m is Record<string, string> => isObj(m) && Object.values(m).every((h) => typeof h === 'string' && HEX64.test(h));
+  if (!isObj(v) || typeof v['dpr'] !== 'number' || !map(v['set']) || !map(v['states']) || !map(v['hits'])) throw new Error(`${file}: dumps is not a DPR and per-case sha256 maps of set, states and hits`);
+  return { dpr: v['dpr'], set: v['set'], states: v['states'], hits: v['hits'] };
 }
 
 /**

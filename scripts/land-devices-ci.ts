@@ -105,10 +105,16 @@ export function parseJobs(text: string): CiJob[] {
  */
 export const SUMMARY_STEP = "Every test's state";
 export const VERDICT_STEP = /^(vitest run|Every test's state|pnpm regen --check|No native run was blocked|Device run |Merge the device outcomes|Compare every device lane)/;
+/**
+ * The device-lanes.yml step that fails a device job the tooling blocked (device-ci.ts one exits TOOLING_EXIT: a boot, settle or
+ * install fault): not a verdict step, so it judges nothing.
+ */
+export const TOOLING_STEP = 'Device tooling';
 
 /**
  * The real jobs (not the resolve job) that failed, split by the step that failed: a verdict step (a failure of the tree) or a
- * setup step (CI's own trouble). A job that failed or timed out with no failed step is judged by the step it stopped in.
+ * setup step (CI's own trouble). A job that failed with no failed step is judged by the step it stopped in. A job that timed out
+ * judged nothing, whatever step it stopped in (a hung runner or device, not a verdict): it is setup.
  */
 export function failedJobs(jobs: readonly CiJob[]): { verdict: string[]; setup: string[] } {
   const verdict: string[] = [];
@@ -116,6 +122,10 @@ export function failedJobs(jobs: readonly CiJob[]): { verdict: string[]; setup: 
   for (const j of jobs) {
     if (j.name === 'resolve' || j.status !== 'completed' || (j.conclusion !== 'failure' && j.conclusion !== 'timed_out')) continue;
     const step = j.steps.find((st) => st.conclusion === 'failure') ?? j.steps.find((st) => st.status !== 'completed' || (st.conclusion !== 'success' && st.conclusion !== 'skipped'));
+    if (j.conclusion === 'timed_out') {
+      setup.push(`${j.name} (timed out${step === undefined ? '' : ` in ${step.name}`})`);
+      continue;
+    }
     if (step !== undefined && VERDICT_STEP.test(step.name)) verdict.push(`${j.name} (${step.name})`);
     else setup.push(`${j.name} (${step?.name ?? 'no step'})`);
   }
