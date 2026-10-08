@@ -966,7 +966,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       dependencies.push({ kind: 'stylesheet', uri: src.ref.uri, hash: src.ref.hash });
       const sheet = { id: use.id, owner: valid.styleOwner.get(use.id) as string, scope: use.scope.kind };
       const before = enclosed.length;
-      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed, fontFaces, keyframeSources);
+      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed, fontFaces, keyframeSources, options.faults);
       for (const r of [...parsed, ...enclosed.slice(before).flatMap((e) => e.rules)]) for (const d of r.declarations) order = Math.max(order, d.order + 1);
       rules.push(...parsed);
     }
