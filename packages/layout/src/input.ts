@@ -124,8 +124,11 @@ export type AspectRatioValue =
 export type Display = 'block' | 'flex' | 'grid' | 'inline';
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
-/** css-overflow-3 §3: hidden makes a scroll container; the validator requires both axes to be equal (the §3.1 computed pair). */
-export type Overflow = 'visible' | 'hidden';
+/**
+ * css-overflow-3 §3: hidden, auto and scroll make a scroll container; clip clips without one. The validator requires a §3.1
+ * computed pair: both axes in visible and clip, or both in hidden, auto and scroll.
+ */
+export type Overflow = 'visible' | 'hidden' | 'clip' | 'auto' | 'scroll';
 export type Direction = 'ltr' | 'rtl';
 export type BoxSizing = 'content-box' | 'border-box';
 export type FlexDirection = 'row' | 'row-reverse' | 'column' | 'column-reverse';
