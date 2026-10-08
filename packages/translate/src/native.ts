@@ -45,10 +45,26 @@ export function requireNative(env: NodeJS.ProcessEnv = process.env): boolean {
   throw new Error(`${REQUIRE_NATIVE_ENV} is ${JSON.stringify(v)}; set it to 1 (a missing native toolchain fails) or 0`);
 }
 
+/**
+ * The one handler of a missing native toolchain (strict-native-guard.test.ts keeps it the only one): with require on, an error
+ * naming what is missing; off, the blocked (owner tooling) line the caller reports before it stops.
+ */
+export function missingToolchain(subject: string, missing: string, require: boolean = requireNative()): string {
+  if (require) throw new Error(`${REQUIRE_NATIVE_ENV}=1 and ${subject} has no toolchain: ${missing}; run it where the toolchain is installed (CI) instead`);
+  return `${subject}: blocked (owner tooling): ${missing}`;
+}
+
 /** A run whose toolchain is missing: blocked (owner tooling), or with require on, an error naming the missing tool. */
 export function blockedRun(target: 'swift' | 'kotlin', toolchain: string, reason: string, require: boolean): RunResult {
-  if (require) throw new Error(`${REQUIRE_NATIVE_ENV}=1 and native:${target} has no toolchain: ${toolchain} (${reason}); run it where the toolchain is installed (CI) instead`);
+  missingToolchain(`native:${target}`, `${toolchain} (${reason})`, require);
   return { target, status: 'blocked (owner tooling)', toolchain, reason, suites: [], buildSeconds: 0, runSeconds: 0 };
+}
+
+/** Whether a run read blocked (owner tooling); with require on, a blocked run throws naming its tool instead of letting the caller stop early. */
+export function isBlocked(r: Pick<RunResult, 'target' | 'status' | 'toolchain' | 'reason'>, require: boolean = requireNative()): boolean {
+  if (r.status !== 'blocked (owner tooling)') return false;
+  missingToolchain(`native:${r.target}`, `${r.toolchain} (${r.reason ?? 'no reason given'})`, require);
+  return true;
 }
 
 export type SwiftTool = { readonly swiftc: string; readonly version: string };

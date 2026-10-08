@@ -285,3 +285,17 @@ Landed: #217, #219, #220, #221, #222, #223, #224, #225, #226, #227. #227 brought
 - pr:review over REST worked. GraphQL is refused (HTTP 403), as expected; the contract is updated.
 - **Bug found:** packages/dragon/test/native-backends.test.ts trapRun passes "blocked" without consulting requireNative(). A whole-class fix is in progress on branch strict-native-class.
 - To read runner labels, use `gh api repos/compiled-run/dragoncss/actions/runs/<id>/jobs --jq '.jobs[] | "\(.name) \(.labels)"'`; `gh run view --json jobs` returns null labels.
+
+## Follow-up: strengthen the strict-native guard
+
+#228 fixed every current site where a missing toolchain passed silently. Its AST guard, though, misses many hypothetical shapes:
+- aliased imports and helper functions
+- tool variables not named `tool`
+- `command -v` through `sh -c`
+- `existsSync` on SDK paths
+- positive guards (`if (tool !== null) { assertions }`)
+- try/catch returns and ternaries
+- `skipIf` on a variable
+- anything under scripts/
+
+Better: a runtime check. Under DRAGON_REQUIRE_NATIVE=1, every native-group test must record that it actually ran a toolchain, enforced by a vitest setup file. Low priority, since none of these shapes exist today.

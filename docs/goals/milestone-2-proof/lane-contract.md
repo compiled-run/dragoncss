@@ -15,6 +15,11 @@ jobs. The SessionStart hook (`scripts/cloud-setup.sh`) installs the pinned Node 
 ## GitHub commands (REST)
 The cloud's GitHub proxy refuses GraphQL (confirmed 2026-10-08: `gh pr view` gets HTTP 403), and `gh pr create`, `gh pr view`,
 `gh pr edit` and `gh pr diff` all use it. Always use these `gh api` forms in the cloud; `pnpm pr:review` is REST-only. `R=repos/compiled-run/dragoncss`.
+
+**Session permissions (confirmed 2026-10-08).** GitHub's proxy allows a plain push to an existing PR branch and REST writes,
+but a cloud session's own permission check asks before each kind of write (git push, adding a label, replying to a review
+comment, editing a PR). A write it refuses is a stop: report the exact command and wait for the owner to approve it or for
+the PM to do it. Never work around a refusal. Start a lane session on its PR's branch when you can.
 - Create a PR (write the body to a file outside the worktree first):
   `gh api $R/pulls -f base=master -f head=<branch> -f title='...' -F body=@<body-file> --jq .number`;
   update its body later: `gh api -X PATCH $R/pulls/<n> -F body=@<body-file> --jq .number`

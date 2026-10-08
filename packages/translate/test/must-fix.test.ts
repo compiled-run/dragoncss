@@ -9,7 +9,7 @@ import { committedFiles, diffFiles, runTarget } from '../src/check.ts';
 import type { Corpus } from '../src/corpus.ts';
 import { KOTLIN_DIR, listTree, rootBuildDirs, SWIFT_DIR } from '../src/generate.ts';
 import type { KotlinLookup, RunResult } from '../src/native.ts';
-import { describe as describeRun, execSuite, kotlinTool, requireNative } from '../src/native.ts';
+import { describe as describeRun, execSuite, kotlinTool, missingToolchain } from '../src/native.ts';
 import { checkSubset } from '../src/subset.ts';
 
 function tree(files: readonly string[]): string {
@@ -98,7 +98,7 @@ describe('must-fix: a failed Kotlin tool lookup is blocked (owner tooling), neve
   it('a JDK without kotlinc is blocked too', () => {
     const tool = kotlinTool();
     if (tool === null) {
-      expect(requireNative(), 'DRAGON_REQUIRE_NATIVE=1 needs a JDK and kotlinc here').toBe(false);
+      console.log(missingToolchain('must-fix: a JDK without kotlinc', 'no JDK 17+ or kotlinc'));
       return;
     }
     expect(kotlinTool({ javaHomeEnv: tool.javaHome, javaHomeCommand: '/nonexistent/java_home', jdkHomes: [], kotlincs: ['/nonexistent/kotlinc'] })).toBeNull();
