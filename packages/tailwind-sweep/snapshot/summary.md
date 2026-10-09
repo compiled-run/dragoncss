@@ -4,24 +4,24 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4190 (18.0%) | 19095 (82.0%) | 1 | 0 | 0 |
-| ios | 4171 (17.9%) | 19076 (81.9%) | 1 | 0 | 38 |
-| android | 4171 (17.9%) | 19076 (81.9%) | 1 | 0 | 38 |
+| web | 4294 (18.4%) | 18991 (81.6%) | 1 | 0 | 0 |
+| ios | 4267 (18.3%) | 18980 (81.5%) | 1 | 0 | 38 |
+| android | 4267 (18.3%) | 18980 (81.5%) | 1 | 0 | 38 |
 
-As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4067, ios 4087 and android 4087 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 1413 / 138 / 0 / 0 / 0 | 1413 / 138 / 0 / 0 / 0 | 1413 / 138 / 0 / 0 / 0 |
-| flexbox-grid | 513 | 357 / 155 / 1 / 0 / 0 | 357 / 155 / 1 / 0 / 0 | 357 / 155 / 1 / 0 / 0 |
+| layout | 1551 | 1422 / 129 / 0 / 0 / 0 | 1414 / 137 / 0 / 0 / 0 | 1414 / 137 / 0 / 0 / 0 |
+| flexbox-grid | 513 | 365 / 147 / 1 / 0 / 0 | 365 / 147 / 1 / 0 / 0 | 365 / 147 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 |
-| typography | 261 | 21 / 240 / 0 / 0 / 0 | 21 / 240 / 0 / 0 / 0 | 21 / 240 / 0 / 0 / 0 |
+| typography | 261 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 |
 | colours | 14842 | 71 / 14771 / 0 / 0 / 0 | 71 / 14771 / 0 / 0 / 0 | 71 / 14771 / 0 / 0 / 0 |
 | backgrounds | 151 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 |
-| borders | 250 | 75 / 175 / 0 / 0 / 0 | 75 / 175 / 0 / 0 / 0 | 75 / 175 / 0 / 0 / 0 |
+| borders | 250 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 |
 | effects | 1178 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 |
