@@ -333,28 +333,6 @@ function blocksTarget(d: Diagnostic, t: Target): boolean {
 /** The profile features of the svg property family (fill, stroke, stroke-width). */
 const SVG_PROFILE_FEATURE = /^(fill|stroke|stroke-width):/;
 
-/** SVG-a1: every <svg> template node, refused on each native target until SVG-a2 draws its shapes there. */
-function svgNativeRefusals(nodes: readonly TreeNode[], nativeTargets: readonly Target[]): Diagnostic[] {
-  const out: Diagnostic[] = [];
-  const visit = (ns: readonly TreeNode[]): void => {
-    for (const n of ns) {
-      if (n.kind === 'element') {
-        if (n.tag === 'svg') {
-          for (const t of nativeTargets) out.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, target: t, message: `<svg> ${n.id} is not drawn on ${t} yet: its shapes wait for the native SVG package SVG-a2`, manual: 'Use an image for this graphic on native, or compile for web only.' }));
-        }
-        visit(n.children);
-      } else if (n.kind === 'branch') {
-        visit(n.then);
-        visit(n.else);
-      } else if (n.kind === 'call') {
-        for (const sl of n.slots) visit(sl.children);
-      }
-    }
-  };
-  visit(nodes);
-  return out;
-}
-
 /**
  * Tags and attributes are checked on every template node, including both arms of every branch. inside: the SVG content model the
  * nodes sit in (SVG-a1): an <svg> holds only <path>, <rect> and <circle>, a shape holds nothing, and a shape outside an <svg> is
@@ -1033,9 +1011,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // NA-NATIVE: a refusal of a listed property or rule blocks only web; native gets an info (css/not-applicable.ts).
     diagnostics.splice(0, diagnostics.length, ...splitNotApplicable(diagnostics, targets));
     diagnostics.push(...interactionRefusals(rules));
-    const nativeTargets = NATIVE_TARGETS.filter((t) => targets.includes(t));
-    // SVG-a1 draws an <svg>'s shapes on web only; in the parity lanes native lays out its box (SVG-a2 draws the shapes).
-    const nativeRefusals = [...nativeInteractionRefusals(rules, nativeTargets), ...[...valid.components.values()].flatMap((c) => svgNativeRefusals(c.root, nativeTargets))];
+    const nativeRefusals = nativeInteractionRefusals(rules, NATIVE_TARGETS.filter((t) => targets.includes(t)));
     if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
     else diagnostics.push(...nativeRefusals);
     const conditions = conditionsOf(rules);
@@ -1160,8 +1136,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       diagnostics.splice(valuesAt, 0, ...values);
     }
   }
-  // SVG-a1: in the parity lanes native lays out an <svg>'s box without its shapes (svgNativeRefusals is lane-only there), so the svg
-  // family's native profile refusals are lane-only too; outside the lanes svgNativeRefusals blocks native on its own.
+  // SVG-a2: a native row of the svg family is derived from the parity run (chrome-dual computed values, capped at caveat as every
+  // native paint row is; device-pixels judges the drawing). In an enforced parity-lanes compile a value with no row yet is lane-only,
+  // so the lanes still lower the shapes; a compile outside the lanes refuses it until its row exists.
   if (options.interactionLanes) {
     const svgNative = diagnostics.filter((d) => d.target !== null && (NATIVE_TARGETS as readonly string[]).includes(d.target) && d.profile !== undefined && d.profile !== null && SVG_PROFILE_FEATURE.test(d.profile.feature));
     if (svgNative.length > 0) {

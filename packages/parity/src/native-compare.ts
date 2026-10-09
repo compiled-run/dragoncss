@@ -231,6 +231,8 @@ export const CHANNEL_DELTA_BY_KIND: { readonly [K in SampleRule]: number } = {
   gradient: GRADIENT_CHANNEL_DELTA,
   // REPL-a (R8): flat image content is compared strictly, with no allowance.
   'image-flat': GATE_CHANNEL_DELTA,
+  // SVG-a2: a point clear of every shape edge shows one solid paint (or the backdrop), compared strictly.
+  svg: GATE_CHANNEL_DELTA,
 };
 
 /**

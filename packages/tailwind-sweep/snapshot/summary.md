@@ -5,10 +5,10 @@
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
 | web | 4294 (18.4%) | 18991 (81.6%) | 1 | 0 | 0 |
-| ios | 4260 (18.3%) | 18987 (81.5%) | 1 | 0 | 38 |
-| android | 4260 (18.3%) | 18987 (81.5%) | 1 | 0 | 38 |
+| ios | 4267 (18.3%) | 18980 (81.5%) | 1 | 0 | 38 |
+| android | 4267 (18.3%) | 18980 (81.5%) | 1 | 0 | 38 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4067, ios 4080 and android 4080 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4067, ios 4087 and android 4087 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
@@ -19,7 +19,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4067, ios 4
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 |
 | typography | 261 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 |
-| colours | 14842 | 71 / 14771 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 |
+| colours | 14842 | 71 / 14771 / 0 / 0 / 0 | 71 / 14771 / 0 / 0 / 0 | 71 / 14771 / 0 / 0 / 0 |
 | backgrounds | 151 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 |
 | borders | 250 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 |
 | effects | 1178 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 |
@@ -28,7 +28,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4067, ios 4
 | transitions-animation | 36 | 19 / 17 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 |
 | transforms | 680 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 |
 | interactivity | 1246 | 4 / 1242 / 0 / 0 / 0 | 4 / 1204 / 0 / 0 / 38 | 4 / 1204 / 0 / 0 / 38 |
-| svg | 6 | 6 / 0 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 |
+| svg | 6 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 |
 | accessibility | 4 | 0 / 4 / 0 / 0 / 0 | 0 / 4 / 0 / 0 / 0 | 0 / 4 / 0 / 0 / 0 |
 
 ## Largest refusal groups (first blocking diagnostic)
