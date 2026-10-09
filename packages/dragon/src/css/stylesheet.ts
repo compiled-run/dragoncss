@@ -70,6 +70,8 @@ export type Declaration = {
   readonly animation?: AnimationDeclValue;
   /** The legacy alias the declaration was written with (aliases.ts); property is the property it stands for. */
   readonly alias?: string;
+  /** SVG-a1: a presentation attribute's stand-in declaration, at the element's start tag, so its value is profile-checked like CSS. */
+  readonly presentationHint?: true;
   /** CASC 3: the cascade rank of the declaration's layer (layerRanks); absent when unlayered, which ranks above every layer. */
   readonly layer?: number;
 };

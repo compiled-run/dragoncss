@@ -2309,10 +2309,63 @@
       "fileSha256": "d3c29c8469ccbb9a3fbabeaf0b99982edb276862002cc3d30c47b1eb3cca9499",
       "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
       "ranges": [
-        { "lines": "279-302", "symbol": "SkChopQuadAtYExtrema", "source": "located" }
+        { "lines": "54-75", "symbol": "valid_unit_divide", "source": "located" },
+        { "lines": "95-126", "symbol": "SkFindUnitQuadRoots", "source": "located" },
+        { "lines": "265-270", "symbol": "SkFindQuadExtrema", "source": "located" },
+        { "lines": "279-302", "symbol": "SkChopQuadAtYExtrema", "source": "located" },
+        { "lines": "454-462", "symbol": "SkFindCubicExtrema", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/svg-geometry.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkGeometry.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "ecf18a48d66aac4801af4ff4f38f2a96b84c61b1692224e28528c25214652819",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "420-445", "symbol": "SkQuadCoeff", "source": "located" },
+        { "lines": "475-496", "symbol": "SkCubicCoeff", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/svg-geometry.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkPathPriv.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2025 Google Inc.",
+      "fileSha256": "7594634848919395547ebd4acf734df79f1241ba314d1a0f3a545ff36ed68340",
+      "headerSha256": "6a4460a50a1ccf6bd3aea933e2f1c73e1e8510558e763c5606c7cc2a95ccac3a",
+      "ranges": [
+        { "lines": "1429-1439", "symbol": "compute_quad_extremas", "source": "located" },
+        { "lines": "1454-1464", "symbol": "compute_cubic_extremas", "source": "located" },
+        { "lines": "1466-1512", "symbol": "SkPathPriv::ComputeTightBounds", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/svg-geometry.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkPathPriv.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 Google Inc.",
+      "fileSha256": "eb978220f89fada40647ed4313a55788ed3e5a6884012c9fcf1c094fde52f785",
+      "headerSha256": "4c66cc21a1f800a4dc2688173a1eb7c2a17eb9af43681961c51429b749c43f26",
+      "ranges": [
+        { "lines": "418-432", "symbol": "SkPathPriv::TrimmedBounds", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/svg-geometry.ts", "symbol": null, "use": "port" }
       ]
     },
     {
@@ -2581,6 +2634,21 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/rt-easing.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "ui/gfx/geometry/rect_f.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 The Chromium Authors",
+      "fileSha256": "d473d330e16e12c822b8704412ab250f2ad93bf53c5b15281784a67c87e728e3",
+      "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
+      "ranges": [
+        { "lines": "312-335", "symbol": "BoundingRect", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/svg-geometry.ts", "symbol": "boundingRect", "use": "port" }
       ]
     },
     {

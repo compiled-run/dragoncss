@@ -3,7 +3,7 @@ import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromeDeviations, NO_ENGINE_FAULTS, platformRules } from '@dragon/layout';
 import type { Assignment, ProfileRow } from 'dragon';
-import { CATALOGUE, iosLayoutProjection, iosProfile, MEDIA_CONTEXT, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
+import { CATALOGUE, COLOR_LONGHANDS, iosLayoutProjection, iosProfile, MEDIA_CONTEXT, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
 import type { Longhand } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { captureFixture, captureJson } from '../src/capture.ts';
@@ -300,7 +300,10 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     if (dual === null) throw new Error('no dual comparison');
     expect(dual.boxesEqual).toBe(dual.boxesCompared);
     expect(dual.channelsEqual).toBeLessThan(dual.channelsCompared);
-    expect(dual.problems.every((p) => /color/.test(p))).toBe(true);
+    // Every problem names a longhand whose value is a colour: the colour longhands, and SVG-a1's fill and stroke, whose initial
+    // value is black, so the plant moves them too.
+    const colourCarrying: readonly string[] = [...COLOR_LONGHANDS, 'fill', 'stroke'];
+    expect(dual.problems.filter((p) => !colourCarrying.includes((/^[^:]+: ([a-z-]+) /.exec(p) ?? [])[1] ?? ''))).toEqual([]);
   });
 
   it('planted fault: stateCollapse on a/trigger fails exactly the non-initial cases of instance a in both directions, and the initial cases pass', async () => {

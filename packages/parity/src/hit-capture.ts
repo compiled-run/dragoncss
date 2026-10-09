@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
-import { hitFacts, programInput } from 'dragon';
+import { hitFacts, programInput, svgScenes } from 'dragon';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
@@ -121,13 +121,16 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
 /**
  * Why the hit lane leaves a layout case out, or null when it covers it. The hit test models box geometry, overflow clips, positioned
  * layers and pointer-events (T064 R13); a case whose program writes a transform is refused by name until SELD-R2b (T146) models
- * hit testing through transforms, and one whose program rounds a corner until the hit test models rounded borders (Blink clips a
- * hit to the rounded border box), so it is never silently mis-hit; one holding an inline box or a <br> (INL1a) is refused as rt-hit.ts
- * hitRefusal names it, since the hit table does not model them yet.
+ * hit testing through transforms, a case with an <svg> until SVG-a2 models its shapes, and one whose program rounds a corner until
+ * the hit test models rounded borders (Blink clips a hit to the rounded border box), so none is silently mis-hit; one holding an
+ * inline box or a <br> (INL1a) is refused as rt-hit.ts hitRefusal names it, since the hit table does not model them yet.
  */
 export function hitRefusal(n: NativeCase): string | null {
   const moved = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
+  // SVG-a1: Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit test models with SVG-a2.
+  const svgs = (svgScenes(n.compiled, n.case.assignment) ?? []).map((s) => s.address);
+  if (svgs.length > 0) return `<svg> ${svgs.join(', ')}: hit testing an svg's shapes comes with SVG-a2`;
   // PNT1-radius: Blink clips a hit to the rounded border box, which the hit test does not model yet.
   const rounded = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'border-radius')).map((x) => x.id);
   if (rounded.length > 0) return `border-radius on ${rounded.join(', ')}: hit testing through rounded corners is not modelled yet (PNT1)`;
@@ -217,10 +220,17 @@ const CSS_KEYS = new RegExp(`^[ ]*(${KEYS_SINCE_BASE.join('|')}): [^;\\n]*;\\n`,
  * ol rule sets it, in GEN_B_DECIMAL_FIXTURES; any other value stays in the text, so the file no longer hashes to the base.
  */
 const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
+/**
+ * SVG-a1's svg family (fill, stroke, stroke-width), also added after the identity base, at its initial values only, in LONGHANDS order:
+ * a base file has no SVG, so any other value stays in the text and the file no longer hashes to the base (svg.test.ts proves the
+ * family's own values).
+ */
+const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"/g;
+const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n/gm;
 const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
 
 /**
- * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and GEN-b's neutral longhands) removed: the computed
+ * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and GEN-b's and SVG-a1's neutral longhands) removed: the computed
  * value of every captured element, and the declaration of every emitted rule; an emitted file's compilation digest (its first line)
  * is masked, since every compilation digest moves with the compiler input.
  */
@@ -228,11 +238,11 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    return text.replace(JSON_KEYS, '').replace(genB, '');
+    return text.replace(JSON_KEYS, '').replace(genB, '').replace(SVG_JSON, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
-    return text.replace(CSS_KEYS, '').replace(genB, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+    return text.replace(CSS_KEYS, '').replace(genB, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }

@@ -34,6 +34,7 @@ import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
+import { SVG } from './fixture-groups/svg.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
@@ -126,6 +127,7 @@ export const GROUPS = {
   showcase: SHOWCASE,
   'sizing-ratio': SIZING,
   states: STATES,
+  svg: SVG,
   transforms: TRANSFORMS,
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,

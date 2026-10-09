@@ -62,7 +62,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   let v: CssValue;
   const only = children[0];
   const ratio = property === 'aspect-ratio' ? ratioValue(children) : property === 'object-position' ? positionValue(children) : null;
-  const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property);
+  const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property) || property === 'fill' || property === 'stroke';
   const color = isColor && only !== undefined && children.length === 1 ? parseColorNode(only) : null;
   if (ratio !== null && ratio !== 'invalid' && !('token' in ratio)) v = ratio;
   else if (color !== null && color.ok) v = color.kind === 'keyword' ? { kind: 'keyword', value: color.keyword } : { kind: 'color', value: color.value, syntax: color.syntax };

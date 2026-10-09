@@ -61,6 +61,8 @@ export function checkAgainstChrome(dump: NativeDump, capture: WebCapture): Check
       if (n !== undefined) problems.push(`${c.id}: Chrome generates no box but the dump has one`);
       continue;
     }
+    // SVG-a1: a shape is its <svg>'s content, which no native view stands for (the outline is svg-compare.ts's, at DPR 1).
+    if (n === undefined && c.svg !== undefined) continue;
     if (n === undefined) {
       problems.push(`${c.id}: Chrome has a box but the dump has no node ${c.id}`);
       continue;

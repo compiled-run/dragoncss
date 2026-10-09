@@ -1,7 +1,7 @@
 // The element table: the HTML tags the compiler resolves, each with captured Chrome UA defaults (ua/chrome-145.*.generated.ts).
 // Every other tag is refused by the projection. pre is refused: white-space: pre is not supported.
 import type { CapturedTag, UaKey } from '../ua/datasets.ts';
-import { REPLACED_TAGS, REPLACED_UA_KEYS } from './elements/replaced.ts';
+import { REPLACED_TAGS, REPLACED_UA_KEYS, SVG_SHAPE_TAGS } from './elements/replaced.ts';
 
 export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   'html', 'body', 'div',
@@ -10,6 +10,7 @@ export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   'span', 'a', 'label',
   'br',
   ...REPLACED_TAGS,
+  ...SVG_SHAPE_TAGS,
 ]);
 
 /**

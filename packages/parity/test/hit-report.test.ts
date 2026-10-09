@@ -9,18 +9,18 @@ import { capturedIds, caseHitTable, committedHits, compareHits, gridSha256, HIT_
 import { nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
 import { hitCaseIds, nativeTargets } from '../src/targets.ts';
-import { INLINE_OUT, INLINE_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
+import { INLINE_OUT, INLINE_REASON, SVG_OUT, SVG_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
 import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 
 const cases = hitCases();
 
 describe('the host hit lane', () => {
-  // The hit lane leaves out the union of three refusals (hit-refusals.ts, hit-refusals-radius.ts); taking any alone would bring the others' cases back.
+  // The hit lane leaves out the union of four refusals (hit-refusals.ts, hit-refusals-radius.ts); taking any alone would bring the others' cases back.
   const transformed = (): string[] => nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform'))).map((n) => n.case.id);
-  it('leaves out exactly the union of the transform cases, the PNT1 radius fixtures and the INL1a inline-box and <br> fixtures, each with a named reason', () => {
+  it('leaves out exactly the union of the transform cases, the PNT1 radius fixtures, the INL1a inline-box and <br> fixtures and the svg fixtures, each with a named reason', () => {
     const hit = new Set(cases.map((n) => n.case.id));
     const out = nativeCases().filter((n) => !hit.has(n.case.id));
-    const union = new Set([...transformed(), ...RADIUS_OUT, ...INLINE_OUT]);
+    const union = new Set([...transformed(), ...RADIUS_OUT, ...INLINE_OUT, ...SVG_OUT]);
     expect(out.map((n) => n.case.id)).toEqual(nativeCases().map((n) => n.case.id).filter((id) => union.has(id)));
     for (const n of out.filter((x) => INLINE_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(INLINE_REASON);
     // The device-hit lane declares exactly the hit cases at every device DPR (targets.ts hitCaseIds), so P5 counts them, not all.
@@ -39,7 +39,7 @@ describe('the host hit lane', () => {
     }
   });
 
-  it('refuses by name every case whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 radius and INL1a inline cases with their own reasons', () => {
+  it('refuses by name every case whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 radius, INL1a inline and svg cases (SVG-a2 lifts it) with their own reasons', () => {
     const refused = hitRefusedCases();
     const moved = new Set(transformed());
     expect(refused.filter((r) => moved.has(r.id)).map((r) => r.id)).toEqual(transformed());
@@ -47,6 +47,7 @@ describe('the host hit lane', () => {
     expect(moved.size).toBeGreaterThan(0);
     for (const r of refused) {
       if (moved.has(r.id)) expect(r.reason, r.id).toMatch(TRANSFORM_REASON);
+      else if (SVG_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(SVG_REASON);
       else if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
       else expect([INLINE_OUT.includes(r.id), r.reason], r.id).toEqual([true, expect.stringMatching(INLINE_REASON)]);
     }

@@ -56,8 +56,9 @@ describe("rec1 colour_rows: the 'paint' role", () => {
     expect(floorProblems(new URL('./seams-floor.json', import.meta.url), 'role:paint', paint, true)).toEqual([]);
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
-    // Two values of each paint longhand: two colours, or for the PNT2 longhands two transforms, origins and will-change features.
-    const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'] };
+    // Two values of each paint longhand: two colours, or for the PNT2 longhands two transforms, origins and will-change features, and
+    // two stroke widths (SVG-a1).
+    const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'], 'stroke-width': ['2px', '5'] };
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
       const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: relative; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
@@ -78,6 +79,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       if (f.endsWith(join('src', 'media', 'viewport.ts'))) continue;
       // CASC 2: css/chrome-number.ts writes registered @property numbers as Chrome 145 serialises them (six significant digits, %g; probed in casc-property); only that file.
       if (f.endsWith(join('src', 'css', 'chrome-number.ts'))) continue;
+      // SVG-a1: analysis/elements/svg-path.ts reproduces Chrome's float32 path-number arithmetic (svg.test.ts pins it); only that file.
+      if (f.endsWith(join('src', 'analysis', 'elements', 'svg-path.ts'))) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });

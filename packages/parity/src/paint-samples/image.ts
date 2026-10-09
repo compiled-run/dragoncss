@@ -74,17 +74,34 @@ function uniform(img: RgbaImage, x0: number, y0: number, x1: number, y1: number)
   return true;
 }
 
+/**
+ * SVG-a1: the replaced boxes with neither an image nor a foreign view, whose content the device does not draw (an <svg>, whose
+ * shapes wait for SVG-a2): every base rule with a pixel inside one is dropped, as Chrome draws the shapes there.
+ */
+function undrawnReplaced(ctx: PaintSampleContext): readonly { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number }[] {
+  const byId = new Map(ctx.program.nodes.map((n) => [n.id, n]));
+  const ids = new Set<string>();
+  const walk = (b: { readonly kind: string; readonly id: string; readonly children?: readonly unknown[] }): void => {
+    if (b.kind === 'replaced' && !(byId.get(b.id)?.writes ?? []).some((w) => w.kind === 'replaced-image' || w.kind === 'foreign-view')) ids.add(b.id);
+    for (const c of b.children ?? []) walk(c as { readonly kind: string; readonly id: string; readonly children?: readonly unknown[] });
+  };
+  walk(ctx.program.root as unknown as { readonly kind: string; readonly id: string; readonly children?: readonly unknown[] });
+  return ctx.boxes.filter((b) => ids.has(b.id));
+}
+
 /** The base rules, of any box, that touch a pixel inside a drawn image where the source is not flat and no opaque later box hides it. */
 const dropped = new WeakMap<PaintSampleContext, ReadonlySet<string>>();
 function droppedRules(ctx: PaintSampleContext): ReadonlySet<string> {
   const hit = dropped.get(ctx);
   if (hit !== undefined) return hit;
   const images = [...replacedBoxes(ctx).values()].filter((b) => b.image !== null && b.paint.drawn !== null);
+  const undrawn = undrawnReplaced(ctx);
   const out = new Set<string>();
   for (const p of ctx.base) {
     for (const b of images) {
       if (dropsBaseAt(b, p.x, p.y)) out.add(p.rule);
     }
+    if (undrawn.some((b) => p.x >= b.left && p.x < b.right && p.y >= b.top && p.y < b.bottom)) out.add(p.rule);
   }
   dropped.set(ctx, out);
   return out;
