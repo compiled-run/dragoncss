@@ -835,6 +835,7 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/ordinals.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/analysis/markers.ts", "symbol": "ordinalTreeOf", "use": "reference" },
         { "file": "packages/dragon/src/faults/gen-c.ts", "symbol": "GenCFaults", "use": "reference" },
         { "file": "packages/dragon/test/markers-text.test.ts", "symbol": null, "use": "reference" }
       ]
@@ -2658,7 +2659,8 @@
       "dragon": [
         { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "listMarkerOf", "use": "reference" },
         { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "COUNTER_STYLES", "use": "reference" },
-        { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "markerText", "use": "port" }
+        { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "markerText", "use": "port" },
+        { "file": "packages/dragon/src/analysis/markers.ts", "symbol": "ListItemMarker", "use": "reference" }
       ]
     },
     {

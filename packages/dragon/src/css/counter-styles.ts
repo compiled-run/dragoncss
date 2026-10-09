@@ -83,6 +83,9 @@ export function isCounterStyleName(name: string): name is CounterStyleName {
 const INT_MIN = -(2 ** 31);
 const INT_MAX = 2 ** 31 - 1;
 
+/** C++ unsigned integer division of two non-negative integers; exact in a double for 32-bit values. */
+const quotient = (a: number, b: number): number => (a - (a % b)) / b;
+
 /** CyclicAlgorithm. C++ % truncates toward zero, as JavaScript's does. */
 function cyclic(value: number, n: number): number[] {
   let v = (value % n) - 1;
@@ -94,7 +97,7 @@ function cyclic(value: number, n: number): number[] {
 function numeric(value: number, n: number): number[] {
   if (value === 0) return [0];
   const out: number[] = [];
-  for (let v = value; v > 0; v = Math.floor(v / n)) out.push(v % n);
+  for (let v = value; v > 0; v = quotient(v, n)) out.push(v % n);
   return out.reverse();
 }
 
@@ -104,7 +107,7 @@ function alphabetic(value: number, n: number): number[] {
   for (let v = value; v > 0; ) {
     v -= 1;
     out.push(v % n);
-    v = Math.floor(v / n);
+    v = quotient(v, n);
   }
   return out.reverse();
 }
@@ -116,7 +119,7 @@ function additive(value: number, weights: readonly number[]): number[] | null {
   let v = value;
   for (let i = 0; v > 0 && i < weights.length && (weights[i] as number) > 0; i++) {
     const w = weights[i] as number;
-    const repetitions = Math.floor(v / w);
+    const repetitions = quotient(v, w);
     if (out.length + repetitions > COUNTER_LENGTH_LIMIT) return null;
     for (let r = 0; r < repetitions; r++) out.push(i);
     v %= w;
