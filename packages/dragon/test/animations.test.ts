@@ -258,9 +258,10 @@ describe('animation analysis', () => {
     // ios as caveat rows; a feature no frame case proves stays refused on every target.
     expect(compile('.a { transition: color 1s; } .b { animation: k 1s; } @keyframes k { to { color: rgb(1, 2, 3) } }', 'enforce')).toEqual([]);
     // Whatever the frame lanes do not prove, ios refuses exactly as web does (one set of rows on every target).
-    const ds = compile('.a { transition: color 1s ease-in-out, background-color 2s ease-out; } .b { animation: k 1s 2 alternate backwards; } @keyframes k { to { color: rgb(1, 2, 3) } }', 'enforce').filter((d) => d.profile?.context === 'animation');
+    const ds = compile('.a { transition: color 1s ease-in-out, background-color 2s ease-out; } .b { animation: k 1s 2 alternate backwards; } @keyframes k { to { color: rgb(1, 2, 3); margin-top: 3px } }', 'enforce').filter((d) => d.profile?.context === 'animation');
     expect(ds.every((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.target !== null)).toBe(true);
     const on = (t: string) => ds.filter((d) => d.target === t).map((d) => d.profile?.feature).sort();
+    expect(on('web')).toEqual(['animatable:margin-top']);
     expect(on('ios')).toEqual(on('web'));
   });
 });

@@ -5,7 +5,7 @@
 // expected dump of the frame-applied program (check b, native classes and the expected digest). Pixels and line breaks have no
 // per-sample Chrome reference (the frame capture records boxes and computed values), so they are not judged here; the settled
 // sample equals the end assignment's static program (anim-lanes.test). Failures are relabelled device-anim.
-import type { FrameEmit, FrameScriptStep, NativeBackend, NativeProgram } from 'dragon';
+import type { FrameEmit, FrameScriptStep, NativeBackend, NativeProgram, StateEmit } from 'dragon';
 import { expectedDigest, expectedDump } from 'dragon';
 import type { AnimCase, AnimFrame } from './anim-cases.ts';
 import { animCasesOf, animFixtures, frameScript, frameStateProgram, runFrameScript } from './anim-cases.ts';
@@ -55,22 +55,28 @@ function hostSteps(r: FrameRun): FrameScriptStep[] {
 }
 
 /**
- * The frame cases for the host apps of a target: machine k of each is dragonStates<first + i>, the i-th frame case's state
- * program in the host's state program list (native-host.ts appends the frame cases' programs after the state groups').
+ * The frame cases for the host apps of a target, on the machines of `emits` (the exact list the host passes to emitStatePrograms,
+ * which names machine k dragonStates<k>): each frame case runs on the one entry with its id and animation tables, and its steps
+ * resolve against that entry's program, so a reordered or filtered list cannot put a script on another case's machine.
  */
-export function frameCaseEmits(target: NativeTarget, first: number): FrameEmit[] {
+export function frameCaseEmits(target: NativeTarget, emits: readonly StateEmit[]): FrameEmit[] {
   const engine = expectedEngine();
-  return frameRuns(BACKEND_OF[target]).map((r, i): FrameEmit => ({
-    id: r.c.id,
-    fixture: r.c.fixture.id,
-    direction: r.c.direction,
-    compilerDigest: r.c.compiled.digest,
-    viewport: r.c.viewport,
-    machine: `dragonStates${first + i}`,
-    program: frameStateProgram(r.c, r.backend),
-    steps: hostSteps(r),
-    samples: r.programs.map((p, k) => ({ id: sampleId(r.c.id, k), expectedDigests: deviceDprs(target).map((dpr) => ({ dpr, sha256: expectedDigest(expectedDump(p, sampleId(r.c.id, k), r.c.viewport, dpr, engine)) })) })),
-  }));
+  return frameRuns(BACKEND_OF[target]).map((r): FrameEmit => {
+    const at = emits.flatMap((e, k) => (e.id === r.c.id && e.anim !== undefined ? [k] : []));
+    const k = at[0];
+    if (at.length !== 1 || k === undefined) throw new Error(`${r.c.id}: ${at.length} state programs with animation tables carry this frame case, not 1`);
+    return {
+      id: r.c.id,
+      fixture: r.c.fixture.id,
+      direction: r.c.direction,
+      compilerDigest: r.c.compiled.digest,
+      viewport: r.c.viewport,
+      machine: `dragonStates${k}`,
+      program: (emits[k] as StateEmit).program,
+      steps: hostSteps(r),
+      samples: r.programs.map((p, j) => ({ id: sampleId(r.c.id, j), expectedDigests: deviceDprs(target).map((dpr) => ({ dpr, sha256: expectedDigest(expectedDump(p, sampleId(r.c.id, j), r.c.viewport, dpr, engine)) })) })),
+    };
+  });
 }
 
 /** A frame sample as a native case for the device checks, and its program on each backend. */
@@ -114,7 +120,11 @@ const UNJUDGED = new Set<string>(['pixel', 'raster-size', 'capture-kind', 'blank
 /** device-anim at one DPR: every sample's dump checked against its references, failures under device-anim. */
 export function evaluateAnim(target: NativeTarget, dpr: number, dir: string, device: DeviceRecord, samples: readonly FrameSampleCase[], extra: readonly LaneFailure[] = []): DeviceSet {
   const byId = new Map(samples.map((s) => [s.sample.case.id, s]));
-  const set = evaluateSet(target, dpr, dir, device, samples.map((s) => s.sample), [], (n) => sampleReference(target, byId.get(n.case.id) as FrameSampleCase, dpr));
+  const set = evaluateSet(target, dpr, dir, device, samples.map((s) => s.sample), [], (n) => {
+    const s = byId.get(n.case.id);
+    if (s === undefined) throw new Error(`${n.case.id}: not a frame sample of this run`);
+    return sampleReference(target, s, dpr);
+  });
   // One failure per kind, case and detail: the check lanes report a missing or invalid dump each.
   const seen = new Set<string>();
   const failures: LaneFailure[] = [...extra];

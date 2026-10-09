@@ -588,10 +588,10 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   files.push(...emitNativeSupport(backend, supportPlant));
   files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
   // SELD-R1a: the state programs and their case scripts; ANIM-b1: the frame cases' state programs with their animation tables.
-  const states = stateEmits(target);
-  files.push(...emitStatePrograms(backend, [...states, ...frameEmits(target)]));
-  // ANIM-b1: the frame samples (the device-anim lane), run on the frame cases' machines.
-  files.push(...emitFrameScripts(backend, frameCaseEmits(target, states.length)));
+  const programs = [...stateEmits(target), ...frameEmits(target)];
+  files.push(...emitStatePrograms(backend, programs));
+  // ANIM-b1: the frame samples (the device-anim lane), run on the frame cases' machines in that list.
+  files.push(...emitFrameScripts(backend, frameCaseEmits(target, programs)));
   // SELD-R1b: the device-hit facts and runner.
   files.push(deviceHitSource(target));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);

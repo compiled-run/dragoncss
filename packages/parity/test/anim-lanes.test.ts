@@ -6,12 +6,12 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { NativeDump } from '../src/native-dump.ts';
 import { emitFrameScripts, expectedDigest, expectedDump, programAt, programInput, StateRuntime } from 'dragon';
 import type { FrameSampleCase } from '../src/anim-lanes.ts';
 import { evaluateAnim, frameCaseEmits, frameRuns, frameSampleCases, sampleId } from '../src/anim-lanes.ts';
-import { frameStateProgram } from '../src/anim-cases.ts';
+import { frameEmits, frameStateProgram } from '../src/anim-cases.ts';
 import { ANIM_LANE } from '../src/device-lanes.ts';
 import type { DeviceRecord } from '../src/device-run.ts';
 import { referenceDump } from '../src/native-compare.ts';
@@ -19,8 +19,13 @@ import { BACKEND_OF, engineBoxes, expectedEngine } from '../src/native-host.ts';
 import { stateEmits } from '../src/state-cases.ts';
 import { frameSampleIds } from '../src/targets.ts';
 
-const dir = mkdtempSync(join(tmpdir(), 'dragon-anim-'));
-afterAll(() => rmSync(dir, { recursive: true, force: true }));
+let dir = '';
+beforeAll(() => {
+  dir = mkdtempSync(join(tmpdir(), 'dragon-anim-'));
+});
+afterAll(() => {
+  if (dir !== '') rmSync(dir, { recursive: true, force: true });
+});
 
 const DPR = 2;
 const device = { name: 'fake', platform: 'ios', os: 'host', build: 'host', profileScale: DPR, appScale: DPR, windowPx: [0, 0], stagePx: [0, 0], rootOriginPx: [0, 0], textScale: 'none' } as unknown as DeviceRecord;
@@ -82,9 +87,9 @@ describe('device-anim on fake dumps', () => {
     const at = join(dir, 'moved');
     mkdirSync(at);
     const moving = samples.filter((s) => s.caseId === 'anim-layout-margin@393x852');
-    const [first, ...rest] = moving;
-    if (first === undefined) throw new Error('no anim-layout-margin samples');
-    const last = rest[rest.length - 1] as FrameSampleCase;
+    const first = moving[0];
+    const last = moving[moving.length - 1];
+    if (first === undefined || last === undefined || moving.length < 2) throw new Error('anim-layout-margin has fewer than two samples');
     write(at, last, first);
     const set = evaluateAnim('ios', DPR, at, device, [last, first]);
     expect(set.failures.every((f) => f.lane === ANIM_LANE)).toBe(true);
@@ -96,16 +101,28 @@ describe('device-anim on fake dumps', () => {
 });
 
 describe('the host apps\' frame samples', () => {
-  it('emit one sample case per dump on the frame cases\' machines, after the state groups\' programs', () => {
-    const first = stateEmits('ios').length;
-    const frames = frameCaseEmits('ios', first);
+  it('emit one sample case per dump, each frame case on the machine of its own entry in the host\'s state program list', () => {
+    const programs = [...stateEmits('ios'), ...frameEmits('ios')];
+    const frames = frameCaseEmits('ios', programs);
     const files = emitFrameScripts('uikit', frames);
     const table = files.find((f) => f.path === 'Cases/DragonFrameCaseTable.swift')?.text ?? '';
     expect(files.length).toBe(frames.length + 1);
     expect((table.match(/dragonFrames\d+Sample\d+/g) ?? []).length).toBe(samples.length);
-    expect(files[0]?.text).toContain(`DragonFrameScript(make: dragonStates${first}Machine, steps: [`);
+    expect(frames.length).toBeGreaterThan(1);
+    frames.forEach((f, k) => {
+      const m = Number(/^dragonStates(\d+)$/.exec(f.machine)?.[1]);
+      expect(programs[m]?.id, f.id).toBe(f.id);
+      expect(programs[m]?.anim, f.id).toBeDefined();
+      expect(files[k]?.text, f.id).toContain(`DragonFrameScript(make: ${f.machine}Machine, steps: [`);
+    });
     expect(files[0]?.text).toContain(`dragonFrameSample(id: "${sampleId(frames[0]?.id ?? '', 0)}"`);
-    const kotlin = emitFrameScripts('android-views', frameCaseEmits('android', stateEmits('android').length));
+    // A reordered list moves each script with its case; a list without a frame case's program, or with it twice, is refused.
+    const reordered = frameCaseEmits('ios', [...programs].reverse());
+    expect(reordered.map((f) => f.machine)).toEqual(frames.map((f) => `dragonStates${programs.length - 1 - Number(f.machine.slice('dragonStates'.length))}`));
+    expect(() => frameCaseEmits('ios', programs.slice(0, -1))).toThrow(/0 state programs with animation tables carry this frame case, not 1/);
+    expect(() => frameCaseEmits('ios', [...programs, ...frameEmits('ios').slice(0, 1)])).toThrow(/2 state programs with animation tables carry this frame case, not 1/);
+    const androidPrograms = [...stateEmits('android'), ...frameEmits('android')];
+    const kotlin = emitFrameScripts('android-views', frameCaseEmits('android', androidPrograms));
     expect(kotlin[0]?.text).toContain(`DragonFrameScript(::dragonStates${stateEmits('android').length}Machine, listOf(`);
     expect(() => emitFrameScripts('uikit', [{ ...(frames[0] as (typeof frames)[number]), samples: [] }])).toThrow(/dump steps for 0 samples/);
   }, 600_000);
