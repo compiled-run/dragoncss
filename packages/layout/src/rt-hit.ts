@@ -569,6 +569,7 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
 }
 
 function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<string, number> | null, target: number, inherited: PointerEvents): void {
+  if (b.style.display === 'grid') throw new HitError(gridRefusal(b.id));
   const i = s.nodes.length;
   let pe = inherited;
   let own = target;
@@ -639,7 +640,14 @@ function inlineRefusal(id: string, kind: 'inline' | 'br'): string {
   return `${id} is ${kind === 'br' ? 'a <br>' : 'an inline box'}, which the hit table does not model yet (INL1a; no Chrome hit capture)`;
 }
 
+/** Blink paints grid items atomically in order-modified document order (css-grid-2 §9), which the hit table does not model. */
+function gridRefusal(id: string): string {
+  return `${id} is a grid container, which the hit table does not model yet (GRID: atomic grid items in order-modified document order; no Chrome hit capture)`;
+}
+
 function boxHitRefusal(b: LayoutBox): string | null {
+  // Grid items sit only in grid containers (validate.ts), so refusing the container refuses its items.
+  if (b.style.display === 'grid') return gridRefusal(b.id);
   for (const c of b.children) {
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
     if (c.kind === 'box') {
@@ -650,7 +658,7 @@ function boxHitRefusal(b: LayoutBox): string | null {
   return null;
 }
 
-/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a) has no hit model yet. */
+/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a) and a grid container have no hit model yet. */
 export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);
 }

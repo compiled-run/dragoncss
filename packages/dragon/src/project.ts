@@ -19,7 +19,7 @@ import { usedKeys } from './analysis/context.ts';
 import { checkComputed, checkNativeScroll } from './analysis/computed-checks.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
@@ -756,17 +756,24 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
     for (const c of cases) {
       const reachable = c.interaction.filter((i) => i.value.kind === 'reachable');
       if (c.resolved === null || reachable.length === 0) continue;
-      const fact = [c.resolved, ...reachable.map((i) => i.resolved)].map((r) => hitUnmodelledFact(r, options.ua, compiles)).find((f) => f !== null) ?? null;
-      if (fact === null) continue;
+      const trees = [c.resolved, ...reachable.map((i) => i.resolved)];
+      const fact = trees.map((r) => hitUnmodelledFact(r, options.ua, compiles)).find((f) => f !== null) ?? null;
+      const grid = fact === null ? (trees.map((r) => hitUnmodelledGrid(r, compiles)).find((g) => g !== null) ?? null) : null;
+      if (fact === null && grid === null) continue;
       for (const r of rules) {
         const pseudo = firstInteractionPseudo(r);
         if (pseudo === null) continue;
         const origin = interactionRuleOrigin(r, c.resolved.element.node.origin);
-        const message = `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`;
+        const message = fact !== null
+          ? `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
+          : `:${pseudo} needs Dragon hit testing through the grid container ${grid as string}, which is not built yet (package GRID hit model)`;
         const id = `${t}|${JSON.stringify(origin)}|${message}`;
         if (seen.has(id)) continue;
         seen.add(id);
-        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual: `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.` }));
+        const manual = fact !== null
+          ? `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
+          : `Use flex or block layout in a document with :${pseudo} rules, or style the state with a component state until grid hit testing is built.`;
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual }));
       }
     }
   }
