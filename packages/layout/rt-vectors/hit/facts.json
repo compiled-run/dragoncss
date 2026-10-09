@@ -663,6 +663,8 @@
     "svg-paint-rtl": "<svg> s1, s2, s3: hit testing an svg's shapes comes with SVG-a2",
     "svg-flex": "<svg> s1, s2: hit testing an svg's shapes comes with SVG-a2",
     "svg-flex-rtl": "<svg> s1, s2: hit testing an svg's shapes comes with SVG-a2",
+    "svg-hidden": "<svg> s1: hit testing an svg's shapes comes with SVG-a2",
+    "svg-hidden-rtl": "<svg> s1: hit testing an svg's shapes comes with SVG-a2",
     "transform-rotate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
     "transform-scale": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
     "transform-translate": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4: hit testing through transforms is SELD-R2b (T146)",
