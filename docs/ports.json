@@ -1013,10 +1013,13 @@
       "fileSha256": "a2c1fc9940828cc9863b4c1c6aca04b0488e19c015ec800743258ca01815cfd3",
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
-        { "lines": "1807-1990", "symbol": "HandleTextForFastMinContent", "source": "located" }
+        { "lines": "1807-1990", "symbol": "HandleTextForFastMinContent", "source": "located" },
+        { "lines": "858-972", "symbol": "LineBreaker::NextLine", "source": "located" },
+        { "lines": "1286-1468", "symbol": "LineBreaker::HandleText", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/inline.ts", "symbol": "cachedWidth", "use": "port" },
+        { "file": "packages/layout/src/shaping.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/units.ts", "symbol": "cachedRangeWidth", "use": "port" },
         { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
       ]

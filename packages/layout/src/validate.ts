@@ -169,7 +169,7 @@ export const styleSchema = obj({
 });
 
 /** css-fonts-4 §2: a font with its specified size expression (input.ts FontSpec). */
-export const fontSpecSchema = obj({ family: lit('Ahem'), size: num(0), specifiedSize: fontSizeExpr, absoluteSize: bool });
+export const fontSpecSchema = obj({ family: str, size: num(0), specifiedSize: fontSizeExpr, absoluteSize: bool });
 
 /** CSS2 §10.8.1: line-height is non-negative; a percentage is of the font size, and a calculation, clamped to 0, may hold one. */
 export const lineHeightSchema = tagged({ normal: {}, number: { value: num(0) }, px: { value: num(0) }, percent: { value: num(0) }, calc: { expr: calcExpr, range: lit('non-negative') } });

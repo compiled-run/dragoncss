@@ -18,6 +18,8 @@ const VENDORED_FONTS: Readonly<Record<string, string>> = {
   'Inter-Regular.ttf': 'Inter/Inter-Regular.ttf',
   'Lato-Regular.ttf': 'Lato/Lato-Regular.ttf',
   'Lato-Bold.ttf': 'Lato/Lato-Bold.ttf',
+  'Inter-Italic.ttf': 'Inter/Inter-Italic.ttf',
+  'Inter-BoldItalic.ttf': 'Inter/Inter-BoldItalic.ttf',
 };
 
 /** The repo path of a spike font file named in the reference. */
@@ -36,6 +38,13 @@ export const GATE_REFERENCES: ReadonlyArray<{ readonly reference: string; readon
   { reference: REFERENCE_PATH, loadedFonts: LOADED_FONTS_PATH },
   { reference: LATO_REFERENCE_PATH, loadedFonts: LATO_LOADED_FONTS_PATH },
 ];
+
+/**
+ * The Inter Italic and Bold Italic cases (TXT1a-1 R6), measured by docs/research/text-spike/italic with the Lato method. Kept out of
+ * GATE_REFERENCES, whose cases TXT1-N's committed transcript records; packages/text-shaper/test/gate.test.ts runs them.
+ */
+export const ITALIC_REFERENCE_PATH = `${SPIKE_DIR}italic/out/chrome-145-italic.json`;
+export const ITALIC_LOADED_FONTS_PATH = `${SPIKE_DIR}italic/loaded-fonts.sha256`;
 
 /** [start, end, width in LayoutUnits, rect count]. */
 export type ReferenceLine = readonly [number, number, number, number];
