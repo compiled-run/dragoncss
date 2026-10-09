@@ -15,6 +15,7 @@ import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
+import { STATES } from './fixture-groups/states.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { UNITS } from './fixture-groups/units.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
@@ -22,6 +23,7 @@ import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
 import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
+import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { VALUES } from './fixture-groups/values.ts';
 
 /**
@@ -96,10 +98,12 @@ export const FIXTURE_GROUPS: readonly { readonly id: string; readonly fixtures: 
   { id: 'inline', fixtures: INLINE },
   // values stays last: the extended corpus keys its vectors on the values- prefix (values.test.ts).
   { id: 'values', fixtures: VALUES },
+  { id: 'states', fixtures: STATES },
   { id: 'text-latin', fixtures: TEXT_LATIN },
   { id: 'text-calibration', fixtures: TEXT_CALIBRATION },
   { id: 'inline-tags', fixtures: INLINE_TAGS },
   { id: 'text-weight', fixtures: TEXT_WEIGHT },
+  { id: 'font-shorthand', fixtures: FONT_SHORTHAND },
 ];
 
 export const FIXTURES: readonly FixtureSpec[] = FIXTURE_GROUPS.flatMap((g) => g.fixtures);

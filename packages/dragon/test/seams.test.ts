@@ -31,15 +31,17 @@ describe('E2 seams: the property registry', () => {
       'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
       'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
       'justify-content', 'align-items', 'align-self', 'align-content', 'row-gap', 'column-gap',
-      'font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
+      'font-size', 'font-family', 'font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
       // GRID G0 appends its family (test/grid.test.ts pins GRID_LONGHANDS).
       ...GRID_LONGHANDS,
+      // SELD-R1b appends pointer-events (test/pointer-events.test.ts).
+      'pointer-events',
     ]);
   });
   it('SHORTHANDS keeps its order', () => {
     expect([...SHORTHANDS]).toEqual([
       'margin', 'padding', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
-      'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
+      'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space', 'font', 'font-synthesis',
       'background',
       ...LOGICAL_SHORTHANDS,
       'writing-mode', 'text-orientation', 'text-combine-upright',
@@ -48,11 +50,11 @@ describe('E2 seams: the property registry', () => {
   });
   it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE are unchanged', () => {
     expect(Object.keys(PROPERTY_ASPECTS)).toEqual([...LONGHANDS]);
-    expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color']);
+    expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'pointer-events']);
     const byRole = (r: string): string[] => LONGHANDS.filter((p) => PROPERTY_ROLE[p] === r);
     expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap',
       'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items']);
-    expect(byRole('text')).toEqual(['font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
+    expect(byRole('text')).toEqual(['font-size', 'font-family', 'font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
     expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color']);
   });
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
@@ -227,7 +229,10 @@ describe('EMS seams: the paint families (notes/T046-paint-spec.md §3 item 4)', 
       const start = text.indexOf(block);
       const body = text.slice(start, Math.min(...['\n]', '\n}'].map((e) => text.indexOf(e, start)).filter((i) => i > 0)));
       const fams = [...body.matchAll(/\.\.\.([A-Z_]+?)_(?:LONGHANDS|SHORTHANDS|INHERITED|ASPECTS|CONTAINER|TEXT_ROLE),/g)].map((m) => m[1]);
-      expect(fams.slice(-8), block).toEqual(['GRID', 'RADIUS', 'SHADOW', 'EFFECTS', 'OUTLINE', 'TRANSFORM', 'BACKGROUND_LAYERS', 'SCROLLBAR']);
+      // SELD-R1b's pointer-events family sits between grid and the paint families in the three tables it is in.
+      const pointer = ['LONGHANDS = [', 'INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([', 'PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {'].includes(block) ? ['POINTER'] : [];
+      const want = ['GRID', ...pointer, 'RADIUS', 'SHADOW', 'EFFECTS', 'OUTLINE', 'TRANSFORM', 'BACKGROUND_LAYERS', 'SCROLLBAR'];
+      expect(fams.slice(-want.length), block).toEqual(want);
     }
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());
   });

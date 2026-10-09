@@ -118,13 +118,18 @@ export function requestOf(weight: number, style: ComputedFontStyle): FontSelecti
   return selectionRequest(weight, 100, style);
 }
 
+/** font-synthesis-weight and font-synthesis-style: whether Chrome may synthesize bold and oblique (css-fonts-4 §7.2, §7.3). */
+export type SynthesisAllowed = { readonly weight: boolean; readonly style: boolean };
+export const SYNTHESIS_AUTO: SynthesisAllowed = { weight: true, style: true };
+
 /**
- * css_segmented_font_face.cc: bold is synthesized when the request is 600 or more and the matched face's maximum weight is below 600,
- * and italic when the request slope is 14 or more and the face's maximum slope is below 14. Null when Chrome draws the face as it is.
+ * css_segmented_font_face.cc: bold is synthesized when the request is 600 or more, the matched face's maximum weight is below 600
+ * and font-synthesis-weight allows it; oblique when the request slope is 14 or more, the face's maximum slope is below 14 and
+ * font-synthesis-style allows it. Null when Chrome draws the face as it is.
  */
-export function synthesisOf(capabilities: FontSelectionCapabilities, request: FontSelectionRequest, faults: FontFaults = NO_FONT_FAULTS): 'synthetic bold' | 'synthetic oblique' | null {
+export function synthesisOf(capabilities: FontSelectionCapabilities, request: FontSelectionRequest, faults: FontFaults = NO_FONT_FAULTS, allowed: SynthesisAllowed = SYNTHESIS_AUTO): 'synthetic bold' | 'synthetic oblique' | null {
   const boldAt = faults.syntheticBoldThreshold700 ? fsv(700) : kBoldThreshold;
-  if (request.weight.raw >= boldAt.raw && capabilities.weight.maximum.raw < kBoldThreshold.raw) return 'synthetic bold';
-  if (request.slope.raw >= kItalicThreshold.raw && capabilities.slope.maximum.raw < kItalicThreshold.raw) return 'synthetic oblique';
+  if (allowed.weight && request.weight.raw >= boldAt.raw && capabilities.weight.maximum.raw < kBoldThreshold.raw) return 'synthetic bold';
+  if (allowed.style && request.slope.raw >= kItalicThreshold.raw && capabilities.slope.maximum.raw < kItalicThreshold.raw) return 'synthetic oblique';
   return null;
 }

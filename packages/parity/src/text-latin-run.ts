@@ -7,7 +7,7 @@
 import type { Browser, Page } from 'playwright';
 import type { EngineFaults, GlyphShaper, LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
 import { layout, measurerFor, NO_ENGINE_FAULTS, shapedMeasurerFor } from '@dragon/layout';
-import { iosLayoutProjection, NO_FAULTS } from 'dragon';
+import { engineLayoutProjection, NO_FAULTS } from 'dragon';
 import type { CapturedNode, WebCapture } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
@@ -15,6 +15,7 @@ import { layoutCases } from './dpr.ts';
 import { TEXT_CALIBRATION_FACES } from './fixture-groups/text-calibration.ts';
 import { INLINE_TAGS_FACES } from './fixture-groups/inline-tags.ts';
 import { TEXT_WEIGHT_FACES } from './fixture-groups/text-weight.ts';
+import { FONT_SHORTHAND_FACES } from './fixture-groups/font-shorthand.ts';
 import { TEXT_LATIN_FACES } from './fixture-groups/text-latin.ts';
 import { faceProblem } from './fonts-run.ts';
 import type { PlatformFont } from './font-reference.ts';
@@ -66,7 +67,7 @@ export function isShapedInput(input: LayoutInput): boolean {
 
 /** The faces Chrome must draw each listed element's text with in a fixture (data-dragon-id to postScriptName), or null. */
 export function expectedFacesOf(fixture: string): { readonly [id: string]: string } | null {
-  return TEXT_LATIN_FACES.get(fixture) ?? TEXT_CALIBRATION_FACES.get(fixture) ?? INLINE_TAGS_FACES.get(fixture) ?? TEXT_WEIGHT_FACES.get(fixture) ?? null;
+  return TEXT_LATIN_FACES.get(fixture) ?? TEXT_CALIBRATION_FACES.get(fixture) ?? INLINE_TAGS_FACES.get(fixture) ?? TEXT_WEIGHT_FACES.get(fixture) ?? FONT_SHORTHAND_FACES.get(fixture) ?? null;
 }
 
 /**
@@ -246,7 +247,7 @@ export function shapedCaseIds(): ReadonlySet<string> {
         compiled = compileFixture(f.spec, NO_FAULTS, 'derive', c.environment.direction).compiled;
         byDirection.set(c.environment.direction, compiled);
       }
-      const p = iosLayoutProjection(compiled, c.environment, c.assignment);
+      const p = engineLayoutProjection(compiled, c.environment, c.assignment);
       if (p.kind === 'ready' && isShapedInput(p.input)) out.add(c.id);
     }
   }

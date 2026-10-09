@@ -97,16 +97,17 @@ export function deriveScripts(g: StateGroup, sp: StateProgram): Script[] {
 
 /**
  * A script's dumps on the runtime reference, mounted as the device mounts it (DragonStateMount): the program rendered at the start
- * and again after every committed setter, and the assignment, at every dump step.
+ * and again after every committed setter, the assignment, and the taps since the previous dump (hit on the rendered program).
  */
-export function runScript(sp: StateProgram, steps: readonly ScriptStep[], faults: StateFaults = NO_STATE_FAULTS): { readonly assignment: number; readonly program: NativeProgram }[] {
+export function runScript(sp: StateProgram, steps: readonly ScriptStep[], faults: StateFaults = NO_STATE_FAULTS, tap: ((program: NativeProgram, assignment: number, x: number, y: number) => string | null) | null = null): { readonly assignment: number; readonly program: NativeProgram; readonly taps: readonly (string | null)[] }[] {
   const rt = new StateRuntime(sp, faults);
   let rendered = rt.program();
   rt.onChange = () => {
     rendered = rt.program();
   };
   const clock = new VirtualClock();
-  const out: { assignment: number; program: NativeProgram }[] = [];
+  const out: { assignment: number; program: NativeProgram; taps: (string | null)[] }[] = [];
+  let taps: (string | null)[] = [];
   for (const s of steps) {
     switch (s.kind) {
       case 'set':
@@ -116,12 +117,17 @@ export function runScript(sp: StateProgram, steps: readonly ScriptStep[], faults
         clock.advance(s.ms);
         break;
       case 'tap':
-        throw new Error(`tap(${s.x}, ${s.y}) needs Dragon hit testing, which comes with SELD-R1b`);
+        // RT-9 tap dispatch on the rendered program: the activation target the hit test reaches, recorded with the next dump.
+        if (tap === null) throw new Error(`tap(${s.x}, ${s.y}) needs a tap handler (the hit table of the live program)`);
+        taps.push(tap(rendered, rt.assignment, s.x, s.y));
+        break;
       case 'dump':
-        out.push({ assignment: rt.assignment, program: rendered });
+        out.push({ assignment: rt.assignment, program: rendered, taps });
+        taps = [];
         break;
     }
   }
+  if (taps.length > 0) throw new Error(`${taps.length} tap(s) after the last dump would be recorded nowhere`);
   return out;
 }
 
@@ -167,7 +173,7 @@ export function checkStates(faults: StateFaults = NO_STATE_FAULTS): { readonly f
       for (const s of deriveScripts(g, sp)) {
         scripts++;
         const want = (g.cases[s.ends] as NativeCase).programs[backend];
-        let dumps: { assignment: number; program: NativeProgram }[];
+        let dumps: ReturnType<typeof runScript>;
         try {
           dumps = runScript(sp, s.steps, faults);
         } catch (e) {

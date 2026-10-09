@@ -9,7 +9,8 @@ import { atDpr, layoutCases } from '../src/dpr.ts';
 import { readHtmlFixture } from '../src/fixture-reader.ts';
 import { BACKEND_OF, emitCases, expectedEngine, nativeCases } from '../src/native-host.ts';
 import { compileFixture } from '../src/pipeline.ts';
-import { deviceDprs, layoutCaseIds } from '../src/targets.ts';
+import { deviceDprs, vectorCaseIds } from '../src/targets.ts';
+import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 const cases = nativeCases();
 const m = expectedEngine();
@@ -26,10 +27,10 @@ function enforcedCompile(spec: Parameters<typeof compileFixture>[0], direction: 
 }
 
 describe('the native generation compile (derive mode, ios and android)', () => {
-  it('covers every layout case, derived from layoutCases()', () => {
-    expect(cases.map((c) => c.case.id)).toEqual([...layoutCaseIds()]);
-    expect(cases.length).toBe(layoutCases().reduce((n, f) => n + f.cases.length, 0));
-    expect(cases.length).toBe(declaredLayoutCaseCount());
+  it('covers every device case: every layout case of layoutCases() but the shaped ones (TXT1a-2 phase R draws those)', () => {
+    expect(cases.map((c) => c.case.id)).toEqual([...vectorCaseIds()]);
+    expect(cases.length + shapedCaseIds().size).toBe(layoutCases().reduce((n, f) => n + f.cases.length, 0));
+    expect(cases.length + shapedCaseIds().size).toBe(declaredLayoutCaseCount());
     expect(cases.length).toBeGreaterThanOrEqual(MILESTONE_1_LAYOUT_CASES);
   });
   it('its layout input deep-equals nativeLayoutProjection of the enforced { ios, web } compile for every case', () => {
@@ -46,7 +47,7 @@ describe('the native generation compile (derive mode, ios and android)', () => {
       expect(n.programs.uikit.root).toBe(n.programs['android-views'].root);
       equal++;
     }
-    expect(equal).toBe(layoutCaseIds().length);
+    expect(equal).toBe(vectorCaseIds().length);
   }, 300_000);
   it('the compile configures ios and android in derive mode and keeps both analysis-only', () => {
     for (const n of cases) {
@@ -69,7 +70,7 @@ describe('expected dumps', () => {
         dumps += e.expectedDigests.length;
       }
     }
-    expect(dumps).toBe((['ios', 'android'] as const).reduce((n, t) => n + deviceDprs(t).length * layoutCaseIds().length, 0));
+    expect(dumps).toBe((['ios', 'android'] as const).reduce((n, t) => n + deviceDprs(t).length * vectorCaseIds().length, 0));
   }, 300_000);
   it('color-border-sides node long expects its initial border widths as 3 device px: 1 pt at scale 3 on iOS, 3 px on Android', () => {
     const n = cases.find((c) => c.case.id === 'color-border-sides');

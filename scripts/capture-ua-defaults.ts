@@ -18,6 +18,7 @@ import { CHROME_VERSION, launchChrome, openPage } from '../packages/parity/src/c
 import { repoPath } from '../packages/parity/src/paths.ts';
 import { hostPlatform } from '../packages/parity/src/platform.ts';
 import { LONGHANDS } from '../packages/dragon/src/css/properties.ts';
+import { UNCAPTURED_LONGHANDS } from '../packages/dragon/src/ua/uncaptured.ts';
 
 const TAGS = [
   'html', 'body', 'div',
@@ -76,8 +77,8 @@ type Spec = { readonly tag: string; readonly attrs: Readonly<Record<string, stri
 const SPECS: Record<string, Spec> = { ...Object.fromEntries(TAGS.map((t) => [t, { tag: t, attrs: {} }])), ...KEY_SPECS, ...REPLACED_KEY_SPECS, ...PHRASING_KEY_SPECS };
 /** Inherited font properties no milestone longhand models; a UA value for them changes how text is drawn. */
 const TEXT_FONT_PROPERTIES = ['font-weight', 'font-style'] as const;
-/** TXT-W1: every longhand but the text-font ones, which only the text-font rows hold (datasets.ts TEXT_FONT_LONGHANDS). */
-const CAPTURED_LONGHANDS = LONGHANDS.filter((p) => !(TEXT_FONT_PROPERTIES as readonly string[]).includes(p));
+/** Every longhand but those only the dataset holds (uncaptured.ts: the text-font rows' and font-synthesis's). */
+const CAPTURED_LONGHANDS = LONGHANDS.filter((p) => !(UNCAPTURED_LONGHANDS as readonly string[]).includes(p));
 const BORDER_KEYWORDS = ['thin', 'medium', 'thick'] as const;
 const SYSTEM_COLORS = [
   'Canvas', 'CanvasText', 'LinkText', 'VisitedText', 'ActiveText', 'ButtonFace', 'ButtonText', 'ButtonBorder', 'Field', 'FieldText',

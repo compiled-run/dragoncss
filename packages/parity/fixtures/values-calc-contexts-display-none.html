@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.a { width: 50px; height: 20px; background-color: #ccc; }
+.none { display: none; }
+.n1 { width: calc(10% + 5px); height: calc(8px + 0.5em); margin: calc(1px + 1%) calc(2% - 1px) calc(1px + 0.2em) calc(1em - 2%); padding: calc(1px + 1%) calc(0.3em + 1px) calc(2% - 2px) calc(2px + 0.5%); }
+.n2 { width: min(20%, 50px); height: min(12px, 2em); margin: min(3px, 1%) min(2%, 9px) min(4px, 1em) min(1em, 3%); padding: min(2%, 5px) min(1em, 3px) min(1px, 4%) min(3%, 2px); }
+.n3 { width: max(10%, 20px); height: max(8px, 0.5em); margin: max(3px, 1%) max(2%, 1px) max(4px, 1em) max(0.5em, 3%); padding: max(2%, 5px) max(0.1em, 3px) max(1px, 2%) max(3%, 2px); }
+.n4 { width: clamp(20px, 15%, 200px); height: clamp(6px, 1em, 30px); margin: clamp(1px, 1%, 5px) clamp(0px, 2%, 1em) clamp(2px, 1em, 3px) clamp(1em, 3%, 20px); padding: clamp(1px, 2%, 3px) clamp(1px, 1em, 2em) clamp(0px, 4%, 1px) clamp(1px, 3%, 20px); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="a"></div>
+<div data-dragon-id="n" class="none"><div data-dragon-id="n1" class="n1"></div><div data-dragon-id="n2" class="n2"></div><div data-dragon-id="n3" class="n3"></div><div data-dragon-id="n4" class="n4"></div></div>
+<div data-dragon-id="b" class="a"></div>
+</body>
+</html>

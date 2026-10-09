@@ -618,18 +618,21 @@ export function parseMath(text: string, context: MathContext): ParsedMath {
  * 145.0.7632.6): ConsumeLength takes kCalcLength only (a <line-width>), ConsumeLengthOrPercent a length, a percentage or a mix
  * (kCalcLengthFunction), ConsumeNumber and ConsumeInteger a number, and ConsumeLineHeight or the flex shorthand either.
  */
-export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or-length-percentage' | 'angle';
+export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or-length-percentage' | 'angle' | 'font';
 
 // aspect-ratio: each <ratio> part is a <number [0,∞]> (css-sizing-4 §5.1), so a math function in it resolves to a number.
 // font-weight: Chrome's ConsumeFontWeight takes ConsumeNumber; font-style: its oblique angle is ConsumeAngle (css-fonts-4 §2.2, §2.3).
 const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'font-weight']);
 const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style']);
+// The font shorthand's parts take a number (weight, line-height), a length-percentage (size, line-height) or an angle (oblique).
+const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
 const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex']);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
 export function mathGrammarFor(property: string): MathGrammar {
   if (NUMBER_GRAMMAR.has(property)) return 'number';
   if (ANGLE_GRAMMAR.has(property)) return 'angle';
+  if (FONT_GRAMMAR.has(property)) return 'font';
   if (NUMBER_OR_LENGTH_GRAMMAR.has(property)) return 'number-or-length-percentage';
   if (LINE_WIDTH.test(property)) return 'length';
   return 'length-percentage';
@@ -1023,6 +1026,7 @@ const GRAMMAR_ACCEPTS: { readonly [g in MathGrammar]: readonly VCategory[] } = {
   number: ['number'],
   'number-or-length-percentage': ['number', 'length', 'percent', 'length-function'],
   angle: ['angle'],
+  font: ['number', 'length', 'percent', 'length-function', 'angle'],
 };
 const GRAMMAR_NAMES: { readonly [g in MathGrammar]: string } = {
   length: 'a length without a percentage (a <line-width> takes no percentage, css-backgrounds-3 §3.3)',
@@ -1030,6 +1034,7 @@ const GRAMMAR_NAMES: { readonly [g in MathGrammar]: string } = {
   number: 'a number',
   'number-or-length-percentage': 'a number, a length or a percentage',
   angle: 'an angle',
+  font: 'a number, a length, a percentage or an angle (the font shorthand\'s parts)',
 };
 
 /**
