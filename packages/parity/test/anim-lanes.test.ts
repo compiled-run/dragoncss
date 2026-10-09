@@ -131,10 +131,12 @@ describe('device-anim on fake dumps', () => {
     for (const s of rest) write(at, s, programAt(sp, s.assignment));
     const set = evaluateAnim('ios', DPR, at, device, [xs]);
     expect(kinds(set.failures, missing!.id)).toEqual(['dump-missing']);
-    const moving = rest.filter((s) => !s.still);
+    // A sample whose live program differs from the static one (1 ms before the end, the 8-bit colours already equal the end's).
+    const differs = (s: AnimSample): boolean => canonicalJsonText(s.program) !== canonicalJsonText(programAt(sp, s.assignment));
+    const moving = rest.filter(differs);
     expect(moving.length).toBeGreaterThan(0);
     for (const s of moving) expect(kinds(set.failures, s.id).some((k) => k === 'applied' || k === 'expected-digest'), s.id).toBe(true);
-    for (const s of rest.filter((x) => x.still)) for (const k of ['applied', 'expected-digest']) expect(kinds(set.failures, s.id), s.id).not.toContain(k);
+    for (const s of rest.filter((x) => !differs(x))) for (const k of ['applied', 'expected-digest']) expect(kinds(set.failures, s.id), s.id).not.toContain(k);
   });
 
   it('a sample whose frame capture has no such sample fails with frame-reference, not as a pass', () => {

@@ -4,7 +4,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AnimCase, FrameStep } from '../src/anim-cases.ts';
 import { animCasesOf, animFixtures, FRAME_PIXEL_CAP, frameScript, NO_PIXEL_FAULTS, pixelSamples, pixelSampleTotal } from '../src/anim-cases.ts';
 import type { FrameCapture } from '../src/frame-capture.ts';
@@ -59,8 +59,14 @@ describe('R18 pixel subset', () => {
 });
 
 describe('frame reference readers', () => {
-  const root = mkdtempSync(join(tmpdir(), 'frame-refs-'));
-  afterAll(() => rmSync(root, { recursive: true, force: true }));
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let root = '';
+  beforeAll(() => {
+    root = mkdtempSync(join(tmpdir(), 'frame-refs-'));
+  });
+  afterAll(() => {
+    if (root !== '') rmSync(root, { recursive: true, force: true });
+  });
   const id = 'refs@10x10';
   const dpr = 2;
   const cap: FrameCapture = { schema: FRAMES_CAPTURE_SCHEMA, case: id, chrome: 'Chrome/1', rendering: 'authored', devicePixelRatio: dpr, direction: 'ltr', viewport: { width: 10, height: 10 }, steps: 3, samples: [{ at: 0, settle: false, nodes: [] }, { at: 5, settle: true, nodes: [] }] };

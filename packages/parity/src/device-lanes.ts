@@ -34,7 +34,7 @@ import { deriveScripts, stateEmits, stateGroups, stateProgramOf } from './state-
 import type { AnimSample } from './anim-samples.ts';
 import { animSamples } from './anim-samples.ts';
 import { frameScript, pixelSamples } from './anim-cases.ts';
-import { committedFrameBreaks, committedFramePixels, committedFrames } from './frame-capture.ts';
+import { committedFrameBreaks, committedFramePixels, committedFrames, framePixelSamples } from './frame-capture.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
@@ -589,6 +589,8 @@ export function animReference(target: NativeTarget, s: AnimSample, dpr: number, 
   if (cap === null || sample === undefined) return `no committed frame capture of ${s.case.id} sample ${s.index} at DPR ${dpr} (pnpm run parity:anim-capture)`;
   if (sample.at !== s.at || sample.settle !== s.settle) return `the frame capture's sample ${s.index} is at ${sample.at} ms${sample.settle ? ' (settle)' : ''}, the script's at ${s.at} ms${s.settle ? ' (settle)' : ''}`;
   const chromeBreaks = committedFrameBreaks(s.case.id, dpr)?.[s.index] ?? null;
+  const committedSubset = framePixelSamples(s.case.id, dpr);
+  if (committedSubset !== null && committedSubset.join(',') !== [...pixelSubset].join(',')) return `the committed pixel samples of ${s.case.id} at DPR ${dpr} are [${committedSubset.join(', ')}], the derived R18 subset [${[...pixelSubset].join(', ')}]`;
   const compared = pixelSubset.has(s.index);
   const m = expectedEngine();
   return {
