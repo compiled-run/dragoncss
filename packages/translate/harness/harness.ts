@@ -62,6 +62,9 @@ import type {
 import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
 import { measurerFor } from '../../layout/src/platform.ts';
+import type { TextMeasurer } from '../../layout/src/text.ts';
+import type { ScrollMetrics } from '../../layout/src/overflow.ts';
+import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
@@ -121,6 +124,8 @@ import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColo
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
 import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
+import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
+import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
 export class HarnessError extends Error {
@@ -708,8 +713,8 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     right: sizeValue(f('right'), p('right')) as InsetValue,
     bottom: sizeValue(f('bottom'), p('bottom')) as InsetValue,
     left: sizeValue(f('left'), p('left')) as InsetValue,
-    overflowX: lit(f('overflowX'), ['visible', 'hidden'], p('overflowX')) as Overflow,
-    overflowY: lit(f('overflowY'), ['visible', 'hidden'], p('overflowY')) as Overflow,
+    overflowX: lit(f('overflowX'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowX')) as Overflow,
+    overflowY: lit(f('overflowY'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowY')) as Overflow,
     direction: lit(f('direction'), ['ltr', 'rtl'], p('direction')) as Direction,
     boxSizing: lit(f('boxSizing'), ['content-box', 'border-box'], p('boxSizing')) as BoxSizing,
     width: sizeValue(f('width'), p('width')),
@@ -927,7 +932,9 @@ const FAULT_KEYS: readonly string[] = [
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
   'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes',
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
-  'orderHalfEven', 'orderUnclamped',
+  'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
+  'metricRoundingSwapped', 'latinCheckSkipped',
+  'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -973,8 +980,18 @@ function decodeFaults(v: JsonValue): EngineFaults {
     brIgnored: b('brIgnored'),
     breakAtBoxBoundary: b('breakAtBoxBoundary'),
     fragmentFromLineTop: b('fragmentFromLineTop'),
+    advanceNot16_16: b('advanceNot16_16'),
+    doubleAccumulation: b('doubleAccumulation'),
+    noReshapeAtBreak: b('noReshapeAtBreak'),
+    kerningDropped: b('kerningDropped'),
+    wholePixelPositions: b('wholePixelPositions'),
+    softHyphenWidthMissing: b('softHyphenWidthMissing'),
+    metricRoundingSwapped: b('metricRoundingSwapped'),
+    latinCheckSkipped: b('latinCheckSkipped'),
     orderHalfEven: b('orderHalfEven'),
     orderUnclamped: b('orderUnclamped'),
+    gutterReserved: b('gutterReserved'),
+    overflowIgnoresPadding: b('overflowIgnoresPadding'),
   };
 }
 
@@ -998,12 +1015,53 @@ function h(x: number): string {
   return `"${bitsHex(x)}"`;
 }
 
+/** A scroll metrics record: the id, the client size and the scroll rect (overflow.ts). */
+function scrollRecord(s: ScrollMetrics): string {
+  return `[${q(s.id)},${h(s.clientWidth)},${h(s.clientHeight)},${h(s.scrollRect.x)},${h(s.scrollRect.y)},${h(s.scrollRect.width)},${h(s.scrollRect.height)}]`;
+}
+
+/**
+ * A line with a viewportDirection key (the engine-overflow suite) also runs scrollMetrics and appends its result; every other line
+ * keeps its output byte for byte.
+ */
+function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: string, faults: EngineFaults): string {
+  const r = scrollMetricsWithFaults(input, measurer, direction === 'rtl' ? 'rtl' : 'ltr', faults);
+  if (r.kind === 'refused') return `,["refused",${q(r.nodeId)},${q(r.detail)}]`;
+  let out = `,["ok",${scrollRecord(r.viewport)},[`;
+  r.containers.forEach((c, i) => {
+    if (i > 0) out += ',';
+    out += scrollRecord(c);
+  });
+  return `${out}]]`;
+}
+
+/**
+ * The first shaping plant set in faults, or ''. The shaping plants act only through the shaped measurer (platform.ts
+ * shapedMeasurerFor), and the harness lays out with measurerFor's Ahem measurer, so it refuses them rather than run them inert.
+ */
+function shapingPlantOf(f: EngineFaults): string {
+  if (f.advanceNot16_16) return 'advanceNot16_16';
+  if (f.doubleAccumulation) return 'doubleAccumulation';
+  if (f.noReshapeAtBreak) return 'noReshapeAtBreak';
+  if (f.kerningDropped) return 'kerningDropped';
+  if (f.wholePixelPositions) return 'wholePixelPositions';
+  if (f.softHyphenWidthMissing) return 'softHyphenWidthMissing';
+  if (f.metricRoundingSwapped) return 'metricRoundingSwapped';
+  if (f.latinCheckSkipped) return 'latinCheckSkipped';
+  return '';
+}
+
 /** One engine case: {"platform", "faults", "input"} in, the layout result with every LU as bits out. */
 export function runEngineCase(line: string): string {
   try {
-    const o = obj(parseJson(line), ['platform', 'faults', 'input'], '$');
+    const parsed = parseJson(line);
+    const scroll = parsed.kind === 'obj' && parsed.values.has('viewportDirection');
+    const o = obj(parsed, scroll ? ['platform', 'faults', 'input', 'viewportDirection'] : ['platform', 'faults', 'input'], '$');
+    const direction = scroll ? lit(field(o, 'viewportDirection', '$'), ['ltr', 'rtl'], '$.viewportDirection') : 'ltr';
     const platform = str(field(o, 'platform', '$'), '$.platform');
     const faults = decodeFaults(field(o, 'faults', '$'));
+    const plant = shapingPlantOf(faults);
+    if (plant !== '') fail(`$.faults.${plant} is a shaping plant, which acts only through the shaped measurer; the harness has only measurerFor's Ahem measurer`);
     const input = decodeInput(field(o, 'input', '$'));
     const m = measurerFor(platform);
     if (m.kind !== 'ok') return `["refused",${q(m.code)}]`;
@@ -1024,7 +1082,7 @@ export function runEngineCase(line: string): string {
       first = false;
       out += `[${q(id)},${h(rect.x)},${h(rect.y)},${h(rect.width)},${h(rect.height)}]`;
     }
-    return `${out}]]`;
+    return `${out}]${scroll ? scrollSuffix(input, m.measurer, direction, faults) : ''}]`;
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -1116,6 +1174,42 @@ function unitsResult(name: string, a: readonly JsonValue[]): number {
 
 // ---------------------------------------------------------------- paint suites (EMS)
 
+/** count doubles from argument i on. */
+function argList(a: readonly JsonValue[], i: number, count: number): number[] {
+  const out: number[] = [];
+  for (let k = 0; k < count; k++) out.push(arg(a, i + k));
+  return out;
+}
+
+/** A result list of doubles as bits. */
+function numList(xs: readonly number[]): string {
+  let out = '["ok",[';
+  for (let k = 0; k < xs.length; k++) {
+    if (k > 0) out += ',';
+    out += h(xs[k] as number);
+  }
+  return `${out}]]`;
+}
+
+/** One radius length from arguments i (percent flag, 0 or 1) and i + 1 (value). */
+function radiusLength(a: readonly JsonValue[], i: number): RadiusLength {
+  const flag = arg(a, i);
+  if (flag !== 0 && flag !== 1) return fail(`radius length flag ${flag} is not 0 or 1`);
+  return { percent: flag === 1, value: arg(a, i + 1) };
+}
+
+/** Eight radius lengths from argument i on. */
+function radiusLengths(a: readonly JsonValue[], i: number): RadiusLength[] {
+  const out: RadiusLength[] = [];
+  for (let k = 0; k < 8; k++) out.push(radiusLength(a, i + 2 * k));
+  return out;
+}
+
+/** The radius faults from arguments i (radiusUnclamped) and i + 1 (innerRadiusNotReduced), each 0 or 1. */
+function radiusFaults(a: readonly JsonValue[], i: number): RadiusFaults {
+  return { radiusUnclamped: arg(a, i) !== 0, innerRadiusNotReduced: arg(a, i + 1) !== 0 };
+}
+
 /**
  * One paint case, run through the units mode: ["paint:<feature>:<function>", arg...] in, the whole result line out; null for any
  * other name. Registration point (RT-13 style): each paint package adds one case per root; its vectors are
@@ -1143,6 +1237,13 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const p = mapPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
     return `["ok",[${h(p.x)},${h(p.y)}]]`;
   }
+  if (name === 'paint:radius:radiusComponent') return `["ok",${h(radiusComponent(radiusLength(a, 1), arg(a, 3), arg(a, 4)))}]`;
+  if (name === 'paint:radius:resolveCornerRadii') return numList(resolveCornerRadii(radiusLengths(a, 1), arg(a, 17), arg(a, 18), arg(a, 19)));
+  if (name === 'paint:radius:constrainCornerRadii') return numList(constrainCornerRadii(argList(a, 1, 8), arg(a, 9), arg(a, 10), radiusFaults(a, 11)));
+  if (name === 'paint:radius:radiiRenderable') return `["ok",${radiiRenderable(argList(a, 1, 8), arg(a, 9), arg(a, 10)) ? 'true' : 'false'}]`;
+  if (name === 'paint:radius:innerCornerRadii') return numList(innerCornerRadii(argList(a, 1, 8), argList(a, 9, 4), arg(a, 13), arg(a, 14), radiusFaults(a, 15)));
+  if (name === 'paint:radius:roundedShape') return numList(roundedShape(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), argList(a, 7, 4), radiusLengths(a, 11), arg(a, 27), radiusFaults(a, 28)));
+  if (name === 'paint:radius:hasRoundedCorner') return `["ok",${hasRoundedCorner(argList(a, 1, 8)) ? 'true' : 'false'}]`;
   const gradient = gradientResult(name, a);
   if (gradient !== null) return gradient;
   return null;

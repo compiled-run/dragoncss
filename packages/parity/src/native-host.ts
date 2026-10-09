@@ -9,11 +9,12 @@ import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
 import type { LayoutInput, LayoutRect } from '@dragon/layout';
 import type { LU } from '@dragon/layout';
-import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, replacedPaint, resolveBorder, resolvePadding, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
 import { stateEmits } from './state-cases.ts';
+import { frameEmits } from './anim-cases.ts';
 import { deviceHitSource } from './hit-capture.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
@@ -89,7 +90,7 @@ export function referenceMeasurer() {
 
 /** The TS engine the expected dumps are projected with: the helpers the device runs translated, and the float a platform stores. */
 export function expectedEngine(): ExpectedEngine {
-  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround };
+  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround, paint: { roundedShape } };
 }
 
 const emitted = new Map<NativeTarget, EmitCase[]>();
@@ -571,8 +572,8 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   const supportPlant = plant !== null && (SUPPORT_PLANTS as readonly string[]).includes(plant) ? (plant as SupportPlant) : null;
   files.push(...emitNativeSupport(backend, supportPlant));
   files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
-  // SELD-R1a: the state programs and their case scripts.
-  files.push(...emitStatePrograms(backend, stateEmits(target)));
+  // SELD-R1a: the state programs and their case scripts; ANIM-b1: the frame cases' state programs with their animation tables.
+  files.push(...emitStatePrograms(backend, [...stateEmits(target), ...frameEmits(target)]));
   // SELD-R1b: the device-hit facts and runner.
   files.push(deviceHitSource(target));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);

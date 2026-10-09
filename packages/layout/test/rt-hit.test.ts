@@ -296,3 +296,27 @@ describe('hitTableOf stacks positioned flex children in order-modified document 
     expect(await answer('row-reverse', [['s1', { marginLeft: len(-30) }], ['s2', {}]], 155, 20)).toBe('s1');
   });
 });
+
+// OVFL: a scroll container (hidden, auto or scroll, at rest) and clip on both axes clip hits to the padding box; visible does not.
+describe('hitTableOf clips every clipping overflow', () => {
+  it('marks hidden, auto, scroll and clip boxes as clipping, and visible ones not; a point past an auto box falls outside it', async () => {
+    const { hitTableOf, hitTest } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { box, neutralEnvironment, px } = await import('./helpers.ts');
+    const at = (o: 'visible' | 'hidden' | 'auto' | 'scroll' | 'clip') => {
+      const c = box('c', { overflowX: o, overflowY: o, width: px(20), height: px(20) }, [box('k', { width: px(60), height: px(10) })]);
+      const root = box('html', { width: px(100) }, [c]);
+      const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
+      const fact = { pointerEvents: 'auto', inherited: true, activation: false } as const;
+      return hitTableOf(input, ahemMeasurer, new Map([['html', fact], ['c', fact], ['k', fact]]), NO_HIT_TABLE_FAULTS);
+    };
+    for (const o of ['hidden', 'auto', 'scroll', 'clip'] as const) {
+      const t = at(o);
+      expect(t.nodes[1]?.clips, o).toBe(true);
+      expect(t.ids[hitTest(t.nodes, 40 * PX, 5 * PX, NO_HIT_FAULTS)], o).toBe('html');
+    }
+    const v = at('visible');
+    expect(v.nodes[1]?.clips).toBe(false);
+    expect(v.ids[hitTest(v.nodes, 40 * PX, 5 * PX, NO_HIT_FAULTS)]).toBe('k');
+  });
+});

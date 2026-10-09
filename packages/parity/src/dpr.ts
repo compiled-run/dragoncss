@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import type { DprChromeDeviation, EngineFaults, LayoutInput, LayoutRect } from '@dragon/layout';
 import { absoluteRects, dprChromeDeviations, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, snapEdges, validateLayoutInput } from '@dragon/layout';
+import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import type { Compiled, Environment } from 'dragon';
 import { iosLayoutProjection } from 'dragon';
 import type { WebCapture } from './capture.ts';
@@ -112,7 +113,7 @@ export function runDprCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, dpr
   if (projection.kind === 'blocked') return { ...base, status: 'fail', reason: `ios projection blocked: ${projection.reason}` };
   const validated = validateLayoutInput(JSON.parse(JSON.stringify(projection.input)));
   if (!validated.ok) return { ...base, status: 'fail', reason: `layout input rejected: ${validated.errors.map((e) => `${e.path} ${e.code}`).join('; ')}` };
-  const result = layoutWithFaults(validated.input, referenceMeasurer().measurer, faults);
+  const result = layoutWithFaults(validated.input, referenceShapedMeasurer(faults), faults);
   if (result.kind === 'unsupported') return { ...base, status: 'fail', reason: `LayoutUnsupported ${result.unsupported.code} at ${result.unsupported.nodeId}` };
   const comparison = compareZoomedLayout(capture, absoluteRects(result.boxes), validated.input, env);
   const compared = comparison.nodes.filter((n) => n.dragon !== null);

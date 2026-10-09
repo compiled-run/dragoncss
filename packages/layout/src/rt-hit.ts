@@ -9,7 +9,7 @@
 // hit_test_location.cc or paint_layer.cc. Every length is in LU (1/64 px), absolute to the root.
 import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
-import { resolveBorder } from './box.ts';
+import { isScrollContainer, resolveBorder } from './box.ts';
 import { controlAsBox } from './controls.ts';
 import { placeLines } from './inline.ts';
 import { fromRaw } from './units.ts';
@@ -585,7 +585,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   const border = resolveBorder(zoomedBox(s, b.id).style, s.ctx.devicePixelRatio);
   const order = orders === null ? undefined : orders.get(b.id);
   pushNode(s, {
-    kind: 'box', parent, target: own, x: r.x, y: r.y, width: r.width, height: r.height, clips: b.style.overflowX === 'hidden',
+    kind: 'box', parent, target: own, x: r.x, y: r.y, width: r.width, height: r.height, clips: clipsBothAxes(b.style),
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: b.style.position !== 'static',
     absolute: b.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order,
     layerOrder: orders !== null && b.style.position !== 'absolute' ? b.style.order : 0, line: -1,
@@ -608,6 +608,11 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     else if (c.kind === 'control') boxNodes(s, controlAsBox(c), i, childOrders, own, pe);
     else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders);
   }
+}
+
+/** css-overflow-3 §3: a scroll container (at rest) and clip on both axes clip hits to the padding box. */
+function clipsBothAxes(style: LayoutStyle): boolean {
+  return isScrollContainer(style) || (style.overflowX === 'clip' && style.overflowY === 'clip');
 }
 
 /**

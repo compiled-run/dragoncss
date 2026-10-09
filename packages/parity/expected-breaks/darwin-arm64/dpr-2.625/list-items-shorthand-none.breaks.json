@@ -1,0 +1,13 @@
+{
+  "case": "list-items-shorthand-none",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"la:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"lb:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"lc:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"ld:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"le:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"lf:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

@@ -52,19 +52,21 @@
       "calc-goldens",
       "engine-calc",
       "units-calc",
-      "engine-inline"
+      "engine-inline",
+      "engine-overflow"
     ],
     "counts": {
-      "vectors-m2": 334,
-      "vectors-dpr": 1776,
-      "engine-dpr": 1776,
+      "vectors-m2": 353,
+      "vectors-dpr": 1833,
+      "engine-dpr": 1833,
       "units-m2": 120000,
-      "snap": 21560,
+      "snap": 21617,
       "snap-values": 216,
       "calc-goldens": 17,
       "engine-calc": 4000,
       "units-calc": 50000,
-      "engine-inline": 3000
+      "engine-inline": 3000,
+      "engine-overflow": 3000
     }
   }
 }
