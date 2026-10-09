@@ -52,6 +52,7 @@ function oldAhem(faults: AhemRuleFaults): TextMeasurer {
       throw new Error('the pre-R4 reference measures no font-relative lengths');
     },
     shaped: () => ({ ok: false, code: 'text-glyph', reason: 'the old Ahem measurer does not shape' }),
+    hasFace: (family: string) => family === 'Ahem',
   };
 }
 

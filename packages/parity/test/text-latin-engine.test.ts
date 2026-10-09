@@ -5,15 +5,17 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults, FontSpec, GlyphShaper, InlineBox, InlineChild, LayoutBox, LayoutInput, LayoutResult, TextLeaf } from '@dragon/layout';
-import { layoutWithFaults, NO_ENGINE_FAULTS, shapedMeasurerFor, validateLayoutInput } from '@dragon/layout';
+import { intrinsicContentInlineSize } from '../../layout/src/intrinsic.ts';
+import { layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, shapedMeasurerFor, validateLayoutInput } from '@dragon/layout';
 import { repoPath } from '../src/paths.ts';
+import { launchChrome } from '../src/chrome.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
 import { ahemFaceId, fontDataOf, hanKerningOf, hostShaper, referenceShapedMeasurer, REFERENCE_LANGUAGE, registerFace, shapedFaceOf } from '../src/text-shaper-host.ts';
 
 type Reference = {
   readonly fonts: Readonly<Record<string, { readonly file: string; readonly sha256: string }>>;
   readonly paragraphs: Readonly<Record<string, string>>;
-  readonly cases: ReadonlyArray<{ readonly id: string; readonly font: string; readonly paragraph: string; readonly lang: string; readonly size: number; readonly width: number; readonly lines: ReadonlyArray<readonly [number, number, number, number]> }>;
+  readonly cases: ReadonlyArray<{ readonly id: string; readonly font: string; readonly paragraph: string; readonly lang: string; readonly size: number; readonly width: number; readonly lines: ReadonlyArray<readonly [number, number, number, number]>; readonly nowrap: number }>;
 };
 // The translate harness and packages/text-shaper are loaded by path at run time, as paint-vectors.ts and text-shaper-host.ts do.
 const { runEngineCase } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runEngineCase(line: string): string };
@@ -57,11 +59,15 @@ const span = (id: string, child: TextLeaf): InlineBox => ({ kind: 'inline', id, 
 /** A width px block of inline content whose first child is a text leaf in the block's font, in a 2000x300 viewport; validated. */
 function inputOf(width: number, children: readonly InlineChild[]): LayoutInput {
   const first = children[0] as TextLeaf;
-  const p: LayoutBox = { kind: 'box', id: 'p', boxType: 'element', style: { ...style, width: { kind: 'px', value: width } }, strut: { font: first.font, lineHeight: first.lineHeight }, children: [...children] };
-  const body: LayoutBox = { kind: 'box', id: 'body', boxType: 'element', style, strut: null, children: [p] };
+  return pageOf([{ kind: 'box', id: 'p', boxType: 'element', style: { ...style, width: { kind: 'px', value: width } }, strut: { font: first.font, lineHeight: first.lineHeight }, children: [...children] }]);
+}
+
+/** html > body > the given boxes, in a 2000x300 viewport at a device pixel ratio; validated. */
+function pageOf(boxes: readonly LayoutBox[], devicePixelRatio = 1): LayoutInput {
+  const body: LayoutBox = { kind: 'box', id: 'body', boxType: 'element', style, strut: null, children: [...boxes] };
   const html: LayoutBox = { kind: 'box', id: 'html', boxType: 'element', style, strut: null, children: [body] };
   const viewport = { width: 2000, height: 300 };
-  return validated({ viewport, devicePixelRatio: 1, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root: html });
+  return validated({ viewport, devicePixelRatio, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root: html });
 }
 
 /** The line widths (LayoutUnits) of leaf t, or the refusal. */
@@ -174,7 +180,8 @@ function hostRun(input: LayoutInput, faults: EngineFaults): { readonly result: L
 
 /** runEngineCase's output as the TS layout result's form: [id, parent, x, y, width, height] boxes, or the refusal. */
 function harnessRun(input: LayoutInput, faults: EngineFaults, shaping: unknown): unknown {
-  const out = JSON.parse(runEngineCase(JSON.stringify({ platform: REFERENCE_PLATFORM, faults, input, shaping }))) as unknown[];
+  const line = shaping === undefined ? { platform: REFERENCE_PLATFORM, faults, input } : { platform: REFERENCE_PLATFORM, faults, input, shaping };
+  const out = JSON.parse(runEngineCase(JSON.stringify(line))) as unknown[];
   if (out[0] === 'unsupported') return out.slice(1, 3);
   if (out[0] !== 'ok') return out;
   return (out[2] as [string, string | null, string, string, string, string][]).map(([id, parent, ...rest]) => [id, parent, ...rest.map(hexBits)]);
@@ -231,4 +238,117 @@ describe('TXT1a-1 phase B: the translate harness replays a shape transcript as t
       expect(changed, plant).toBeGreaterThan(0);
     });
   }
+});
+
+describe('TXT1a-1 phase B: a face the measurer does not hold is refused with text-glyph at every entry point', () => {
+  const ahem = (id: string): TextLeaf => leaf(id, 'XX', 'Ahem', 16);
+  const latoFont = fontOf(latoId, 16);
+  const ahemSpan = (id: string, child: TextLeaf): InlineBox => span(id, child);
+  // Every text leaf is Ahem, so measure() never sees the face; only metrics() or lengths() would.
+  const entries: ReadonlyArray<readonly [string, LayoutInput, string]> = [
+    ['the strut', pageOf([{ kind: 'box', id: 'p', boxType: 'element', style, strut: { font: latoFont, lineHeight: { kind: 'normal' } }, children: [ahemSpan('s', ahem('t'))] }]), 'p'],
+    [
+      'an inline box',
+      pageOf([{ kind: 'box', id: 'p', boxType: 'element', style, strut: { font: fontOf('Ahem', 16), lineHeight: { kind: 'normal' } }, children: [ahem('t'), { kind: 'inline', id: 's', style: { ...style, display: 'inline' }, font: latoFont, lineHeight: { kind: 'normal' }, children: [ahemSpan('k', ahem('u'))] }] }]),
+      's',
+    ],
+    ...(['ex', 'ch'] as const).map((metric) => [`${metric} in a width`, pageOf([{ kind: 'box', id: 'q', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'font-metric', value: 2, metric, font: latoFont }, range: 'non-negative' } }, strut: null, children: [] }]), 'q'] as const),
+    ['lh with line-height normal in a width', pageOf([{ kind: 'box', id: 'q', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'lh', value: 1, font: latoFont, lineHeight: { kind: 'normal' } }, range: 'non-negative' } }, strut: null, children: [] }]), 'q'],
+    ['the strut at DPR 2 (the environment pass)', pageOf([{ kind: 'box', id: 'p', boxType: 'element', style, strut: { font: latoFont, lineHeight: { kind: 'normal' } }, children: [ahemSpan('s', ahem('t'))] }], 2), 'p'],
+  ];
+  const refusal = (r: LayoutResult): unknown => (r.kind === 'ok' ? 'ok' : [r.unsupported.code, r.unsupported.nodeId]);
+  const ahemOnly = measurerFor(REFERENCE_PLATFORM);
+  if (ahemOnly.kind !== 'ok') throw new Error(ahemOnly.detail);
+
+  for (const [name, input, node] of entries) {
+    it(`${name}: measurerFor's Ahem measurer, a shaped measurer without the face, and the harness with and without a transcript`, () => {
+      expect(refusal(layout(input, ahemOnly.measurer)), 'Ahem measurer').toEqual(['text-glyph', node]);
+      expect(refusal(layout(input, referenceShapedMeasurer())), 'shaped measurer').toEqual(['text-glyph', node]);
+      expect(harnessRun(input, NO_ENGINE_FAULTS, undefined), 'harness, no transcript').toEqual(['text-glyph', node]);
+      const t = hostRun(input, NO_ENGINE_FAULTS).shaping as { language: string; faces: { id: string }[]; calls: unknown[] };
+      expect(harnessRun(input, NO_ENGINE_FAULTS, { ...t, faces: t.faces.filter((f) => f.id !== latoId) }), 'harness, transcript without the face').toEqual(['text-glyph', node]);
+      // With the face, the same input lays out.
+      expect(refusal(layout(input, referenceShapedMeasurer(NO_ENGINE_FAULTS, [lato])))).toBe('ok');
+    });
+  }
+});
+
+/** One gate face, paragraph and size, with Chrome's nowrap (max-content) width in LayoutUnits. */
+const sized = [...new Map(latin.map((c) => [`${c.font}/${c.paragraph}/${c.size}`, c])).values()];
+
+/**
+ * Paragraphs whose widest segment ends at a soft hyphen, where min-content adds the generated hyphen (no gate paragraph has one),
+ * in Lato and Inter at 16px: the min-content cases beside the gate's.
+ */
+const hyphenated = ['Lato', 'Inter'].flatMap((font) => {
+  const base = sized.find((c) => c.font === font && c.size === 16) as (typeof latin)[number];
+  return ['extraordinarily\u00adshort word', 'an\u00adtidisestablishmentarian\u00adism is long', 'incomprehensibility\u00adno'].map((text, k) => ({ ...base, id: `${font}/hyphenated-${k}/16`, text }));
+});
+const minCases = [...sized, ...hyphenated];
+
+/** The engine's min-content or max-content inline size of a gate paragraph in its face and size, in LayoutUnits. */
+function intrinsicOf(c: (typeof latin)[number], kind: 'min' | 'max', faults: EngineFaults = NO_ENGINE_FAULTS): number {
+  const input = inputOf(c.width, [leaf('t', c.text, registerFace(c.bytes), c.size)]);
+  const p = ((input.root.children[0] as LayoutBox).children[0]) as LayoutBox;
+  return intrinsicContentInlineSize({ measurer: referenceShapedMeasurer(faults, faceBytes), devicePixelRatio: 1, faults }, p, kind) as number;
+}
+
+describe('TXT1a-1 phase B: real-font intrinsic sizes', () => {
+  it('the soft hyphen paragraphs are where softHyphenWidthMissing acts on min-content', () => {
+    const planted = { ...NO_ENGINE_FAULTS, softHyphenWidthMissing: true };
+    expect(hyphenated.filter((c) => intrinsicOf(c, 'min', planted) !== intrinsicOf(c, 'min')).length).toBe(hyphenated.length);
+  });
+
+  it(`max-content equals Chrome 145's nowrap width of every gate face, paragraph and size (${sized.length})`, () => {
+    expect(sized.length).toBe(224);
+    const failed = sized.filter((c) => intrinsicOf(c, 'max') !== c.nowrap).map((c) => `${c.id}: ${intrinsicOf(c, 'max')} vs ${c.nowrap}`);
+    expect(failed).toEqual([]);
+  });
+
+  // Chrome 145 live: each paragraph in an absolutely positioned block of width min-content (and max-content, which must equal the
+  // gate's nowrap width, checking the method), every face loaded from the vendored bytes with the FontFace API.
+  it(`min-content equals Chrome 145's on every gate face, paragraph and size and ${hyphenated.length} soft hyphen paragraphs, and softHyphenWidthMissing is caught there`, async () => {
+    const fonts = [...new Map(latin.map((c) => [c.font, Buffer.from(c.bytes).toString('base64')])).entries()];
+    const browser = await launchChrome();
+    let chrome: { min: number; max: number }[];
+    try {
+      const page = await browser.newPage();
+      await page.setContent('<body style="margin:0"></body>');
+      chrome = await page.evaluate(
+        async ({ fonts, cases }) => {
+          for (const [name, b64] of fonts) {
+            const face = new FontFace(name, Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0)).buffer);
+            await face.load();
+            document.fonts.add(face);
+          }
+          const out: { min: number; max: number }[] = [];
+          for (const c of cases) {
+            const at = (width: string): number => {
+              const d = document.createElement('div');
+              d.style.cssText = `position:absolute;left:0;top:0;width:${width};font-family:"${c.font}";font-size:${c.size}px;line-height:normal`;
+              d.textContent = c.text;
+              document.body.appendChild(d);
+              const w = d.getBoundingClientRect().width;
+              d.remove();
+              return Math.round(w * 64);
+            };
+            out.push({ min: at('min-content'), max: at('max-content') });
+          }
+          return out;
+        },
+        { fonts, cases: minCases.map((c) => ({ font: c.font, size: c.size, text: c.text })) },
+      );
+    } finally {
+      await browser.close();
+    }
+    expect(chrome.length).toBe(minCases.length);
+    expect(sized.filter((c, i) => (chrome[i] as { max: number }).max !== c.nowrap).map((c) => c.id), 'Chrome max-content is the gate nowrap width').toEqual([]);
+    const failed = minCases.flatMap((c, i) => {
+      const got = intrinsicOf(c, 'min');
+      return got === (chrome[i] as { min: number }).min ? [] : [`${c.id}: ${got} vs ${(chrome[i] as { min: number }).min}`];
+    });
+    expect(failed).toEqual([]);
+    const planted = { ...NO_ENGINE_FAULTS, softHyphenWidthMissing: true };
+    expect(minCases.filter((c, i) => intrinsicOf(c, 'min', planted) !== (chrome[i] as { min: number }).min).length).toBeGreaterThan(0);
+  }, 300_000);
 });

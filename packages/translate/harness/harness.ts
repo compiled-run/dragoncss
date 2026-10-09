@@ -1143,6 +1143,9 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
     shaped(text: string, font: TextFont): ShapedItem {
       return itemFor(text, font);
     },
+    hasFace(family: string): boolean {
+      return s.faces.has(family);
+    },
   };
 }
 

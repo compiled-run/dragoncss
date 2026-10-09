@@ -27,6 +27,8 @@ export interface TextMeasurer {
   lengths(font: TextFont): FontLengths;
   /** The text shaped as one text item with HarfBuzz (shaping.ts), which real-font line breaking reads; the Ahem font data has none. */
   shaped(text: string, font: TextFont): ShapedItem;
+  /** Whether the measurer holds the face a font names; the engine refuses any other face with text-glyph before it asks for metrics. */
+  hasFace(family: string): boolean;
 }
 
 const ZWSP = 0x200b;
@@ -153,6 +155,9 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
     lengths(font: TextFont): FontLengths {
       if (font.family !== AHEM_FACE_ID) throw new Error(`the font data measurer measures the bundled Ahem, not ${font.family}`);
       return fontMetricLengths(data, instanceSize(font.size));
+    },
+    hasFace(family: string): boolean {
+      return family === AHEM_FACE_ID;
     },
     shaped(text: string, font: TextFont): ShapedItem {
       return { ok: false, code: 'text-glyph', reason: `the font data measurer does not shape ${font.family}; real-font text needs the shaped measurer` };

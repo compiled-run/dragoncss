@@ -1573,6 +1573,9 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     shaped(text: string, font: TextFont): ShapedItem {
       return itemFor(text, font);
     },
+    hasFace(family: string): boolean {
+      return faces.has(family);
+    },
   };
   return { measurer, item, line };
 }
@@ -1610,6 +1613,9 @@ export function latinScopedMeasurer(measurer: TextMeasurer, latinCheckSkipped: b
       const outside = firstOutsideLatin(text);
       if (outside >= 0) return { ok: false, code: 'text-script', reason: outsideLatinReason(outside) };
       return measurer.shaped(text, font);
+    },
+    hasFace(family: string): boolean {
+      return measurer.hasFace(family);
     },
   };
 }

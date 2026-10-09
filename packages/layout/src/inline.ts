@@ -12,6 +12,7 @@ import type { Ctx } from './block.ts';
 import { directionOf } from './block.ts';
 import type { LineBreakFaults } from './linebreak.ts';
 import { asciiPairBreaks } from './linebreak.ts';
+import type { FontMetrics } from './text.ts';
 import { AHEM_FACE_ID, coveredIndex } from './text.ts';
 import { scriptCode, scriptExtensions, USCRIPT_COMMON, USCRIPT_INHERITED, USCRIPT_LATIN } from './script-data.ts';
 import type { BreakItem, BreakResult, BrokenLine } from './shaping.ts';
@@ -211,7 +212,7 @@ function resolvedLineHeight(id: string, lh: LineHeightValue): NormalValue | Numb
 // leading, and the descent side takes the rest. The planted spec reading of deviation half-leading-floor keeps the exact half,
 // and planted fault halfLeadingUnflooredPerBox keeps it for inline boxes only.
 function metricsOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: LineHeightValue, inlineBox: boolean): BoxMetrics {
-  const m = ctx.measurer.metrics(fontOf(font));
+  const m = fontMetricsOf(ctx, id, font);
   const glyphHeight = add(add(m.ascent, m.descent), m.lineGap);
   const lh = resolvedLineHeight(id, lineHeight);
   const height = lh.kind === 'normal' ? glyphHeight : lh.kind === 'number' ? lineHeightFromNumber(font.size, lh.value) : fromFloatRound(lh.value);
@@ -219,6 +220,12 @@ function metricsOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: LineHeightV
   const half = exact ? divInt(sub(height, glyphHeight), 2) : floorToWholePx(divInt(sub(height, glyphHeight), 2));
   const above = add(m.ascent, half);
   return { above, below: sub(height, above), ascent: m.ascent, descent: m.descent };
+}
+
+/** The rounded metrics of a node's font, or the text-glyph refusal for a face the measurer does not hold. */
+function fontMetricsOf(ctx: Ctx, id: string, font: FontSpec): FontMetrics {
+  if (!ctx.measurer.hasFace(font.family)) unsupported('text-glyph', id, 'css-fonts-4 §5', `${id} names the face ${font.family}, which the measurer does not hold`);
+  return ctx.measurer.metrics(fontOf(font));
 }
 
 /** Whether a margin or padding is zero: a zero px or percentage (a calculation counts as a decoration). */
@@ -1074,7 +1081,7 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
       let through = i;
       while (through < line.end && (ifc.items[through] as Item).kind === 'char' && (ifc.items[through] as Item).leaf === it.leaf) through++;
       const t = ifc.leaves[it.leaf] as TextLeaf;
-      const m = ctx.measurer.metrics(fontOf(t.font));
+      const m = fontMetricsOf(ctx, t.id, t.font);
       // Planted fault fragmentFromLineTop: the leaf's content area starts at the line top instead of its baseline minus its ascent.
       const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(baseline, m.ascent);
       pieces.push({ leaf: it.leaf, start: it.at, visibleEnd: it.at + (i - from), end: it.at + (through - from), x: penAt(ctx, ifc, line, offset, from), width: spanWidth(ctx, ifc, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent });

@@ -43,11 +43,11 @@ export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, fau
   // Planted platform-rule faults replace the Ahem measurer's two macOS rules (platform-rules.ts).
   const m = faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
   // ex, ch and cap read the measurer's faces; a planted platform rule reads the Ahem font data, as zoomInput (the device's) does.
-  const input = faults.metricHalfUp || faults.untruncatedFontSize ? zoomInput(given, faults) : resolveEnvironment(given, faults, m);
-  const root = input.root;
-  const icbWidth = fromCssPx(input.viewport.width);
-  const icbHeight = fromCssPx(input.viewport.height);
   try {
+    const input = faults.metricHalfUp || faults.untruncatedFontSize ? zoomInput(given, faults) : resolveEnvironment(given, faults, m);
+    const root = input.root;
+    const icbWidth = fromCssPx(input.viewport.width);
+    const icbHeight = fromCssPx(input.viewport.height);
     const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults };
     const icbDirection = directionOf(ctx, root);
     // The root element establishes a block formatting context in the initial containing block.
