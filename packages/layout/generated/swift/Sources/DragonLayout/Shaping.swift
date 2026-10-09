@@ -1582,7 +1582,7 @@ public func shaping_hyphenWidth(_ item: ShapeItem) throws -> any U_LineResult_ok
     }
     return try shaping_shapeItem((made as! ItemResult_okTrue).item)
   }
-  var r: ShapeResult = try own(S.s681)
+  var r: ShapeResult = try own(S.s682)
   // ts: packages/layout/src/shaping.ts:731
   if ((r.missing >= 0.0) || (jsLength(r.runs) == 0.0)) {
     try r = own(S.s75)
@@ -2431,7 +2431,7 @@ public func shaping_breakItemLines(_ items: JsArray<any U_BreakItem_br_BreakItem
       }
       // ts: packages/layout/src/shaping.ts:1475
       if ((line.nextItem == curItem) && (line.nextOffset == curOffset)) {
-        throw try BreakFailure(jsConcat(S.s657, jsNumberToString(curItem)))
+        throw try BreakFailure(jsConcat(S.s658, jsNumberToString(curItem)))
       }
       _ = jsPush(lines, line)
       curItem = line.nextItem
