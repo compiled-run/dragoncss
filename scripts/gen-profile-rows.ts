@@ -19,7 +19,7 @@ import type { CaseOutcome } from '../packages/parity/src/pipeline.ts';
 import { runFixture } from '../packages/parity/src/pipeline.ts';
 import { committedLanes, deriveAnimationRows, deriveMediaRows, deriveRows, nativeLanesSource, profileSource } from '../packages/parity/src/profile-rows.ts';
 import { resizeReport } from '../packages/parity/src/resize-capture.ts';
-import { animCasesOf, animFixtures } from '../packages/parity/src/anim-cases.ts';
+import { animCasesOf, animFixtures, nativeRefusals } from '../packages/parity/src/anim-cases.ts';
 import { animCaseReport } from '../packages/parity/src/frame-capture.ts';
 import { animationFeatures, mediaFeatures } from '../packages/dragon/src/internal.ts';
 
@@ -52,7 +52,10 @@ try {
 const framePassing = animFixtures().flatMap(animCasesOf).flatMap((c) => {
   const r = animCaseReport(c);
   for (const f of r.failures.slice(0, 3)) console.log(`not passing, proves nothing: ${f}`);
-  return r.failures.length === 0 ? [{ id: c.id, features: animationFeatures(c.compiled) }] : [];
+  if (r.failures.length > 0) return [];
+  const refused = nativeRefusals(c);
+  if (refused.length > 0) console.log(`refused on native, proves no native row: ${c.id}: ${refused[0]}`);
+  return [{ id: c.id, features: animationFeatures(c.compiled), nativeRefused: refused.length > 0 }];
 });
 // MQ-R1: the resize cases that pass the resize host lanes against the committed resize captures prove the media rows.
 const resize = resizeReport();

@@ -91,20 +91,61 @@ describe('ANIM-b1: the state machine runs the animator', () => {
     expect(animSupport('android-views', () => '').text).toContain('class DragonAnimator(');
   });
 
-  it('raises one event per setter call, moves the animator by the script clock, starts it at mount and draws the frame', () => {
+  it('holds every mount weakly from a global map keyed by its machine (the mount holds the machine, so a strong value never frees it)', () => {
+    const kotlin = emitNativeSupport('android-views').map((f) => f.text).join('\n');
+    const swift = emitNativeSupport('uikit').map((f) => f.text).join('\n');
+    // Every Kotlin map whose value is a mount: its value is a WeakReference.
+    const kMaps = [...kotlin.matchAll(/(?:Weak)?HashMap<\s*DragonStateMachine\s*,\s*([^\n]*?)>\(\)/g)].map((m) => m[1] as string);
+    expect(kMaps.some((v) => v.includes('DragonAnimMount'))).toBe(true);
+    for (const v of kMaps) if (/Mount/.test(v)) expect(v, v).toMatch(/^java\.lang\.ref\.WeakReference<\w+Mount>$/);
+    expect(kotlin).toContain('dragonAnimMounts[m]?.get()');
+    // Every Swift map table whose value is a mount holds it weakly.
+    const sMaps = [...swift.matchAll(/NSMapTable<DragonStateMachine, (\w+)>\(keyOptions: \.(\w+), valueOptions: \.(\w+)\)/g)];
+    expect(sMaps.some((m) => m[1] === 'DragonAnimMount')).toBe(true);
+    for (const m of sMaps) {
+      expect(m[2], m[0]).toBe('weakMemory');
+      if (/Mount/.test(m[1] as string)) expect(m[3], m[0]).toBe('weakMemory');
+    }
+  });
+
+  it('lets a dropped mount go: the display driver reaches it only weakly, a detached stage pauses it, and dispose stops it for good', () => {
+    for (const [backend, lang] of [['uikit', 'swift'], ['android-views', 'kotlin']] as const) {
+      const t = emitNativeSupport(backend).map((f) => f.text).join('\n');
+      // The frame callback (CADisplayLink, Choreographer) holds its tick strongly, so the tick must not hold the mount.
+      const ticks = [...t.matchAll(/DragonDisplayDriver(?:\(tick: )?\s*\{([^\n]*)/g)].map((m) => m[1] as string);
+      expect(ticks.length, lang).toBe(1);
+      const tick = ticks[0] as string;
+      if (lang === 'swift') expect(tick.trim(), lang).toMatch(/^\[weak self\] dt in$/);
+      else {
+        expect(tick.trim(), lang).toBe('dt -> ref.get()?.tick(dt) ?: false }');
+        expect(t, lang).toContain('val ref = java.lang.ref.WeakReference(this)\n      driver = DragonDisplayDriver {');
+      }
+      // A stop path on both: the driver removes its frame callback, the mount's dispose stops it, and nothing restarts it after.
+      expect(t, lang).toContain(lang === 'swift' ? 'link?.invalidate()' : 'Choreographer.getInstance().removeFrameCallback(this)');
+      expect(t, lang).toMatch(lang === 'swift' ? /public func dispose\(\) \{\n {4}disposed = true\n {4}driver\?\.stop\(\)/ : /fun dispose\(\) \{\n {4}disposed = true\n {4}driver\?\.stop\(\)/);
+      expect(t, lang).toContain(lang === 'swift' ? 'if let d = driver, animator.busy, !paused, !disposed { d.start() }' : 'if (animator.busy && !paused && !disposed) d.start()');
+      expect(t, lang).toContain(lang === 'swift' ? 'public func dispose() { anim?.dispose() }' : 'anim?.dispose()');
+    }
+    // Android: the stage's attach listener pauses and resumes the driver through a weak reference, and dispose removes it.
+    const k = emitNativeSupport('android-views').map((f) => f.text).join('\n');
+    expect(k).toContain('override fun onViewDetachedFromWindow(v: android.view.View) { ref.get()?.stop() }');
+    expect(k).toContain('override fun onViewAttachedToWindow(v: android.view.View) { ref.get()?.resume() }');
+    expect(k).toContain('if (attach != null) stage.removeOnAttachStateChangeListener(attach)');
+  });
+
+  it('keeps state.ts to its hooks: one adapter per mount, its event before each render, the patched input and the frame drawn after layout', () => {
     for (const [lang, t] of [['swift', swift], ['kotlin', kotlin]] as const) {
-      expect(t, lang).toContain('animator?.event(to)');
-      expect(t, lang).toContain('machine.startAnimator(measurer)');
-      // A case script's advance moves the animator, not the bare clock.
-      expect(t, lang).toMatch(lang === 'swift' ? /case \.advance\(let ms\): m\.advance\(ms\)/ : /is DragonScriptStep\.Advance -> m\.advance\(s\.ms\)/);
-      expect(t, lang).not.toMatch(/m\.clock\.advance/);
-      expect(t, lang).toContain('animator?.patch(i)');
-      expect(t, lang).toContain('dragonAnimatedSides(animator, n.id, ');
-      expect(t, lang).toContain('animator?.color(n.id, "background-color")');
+      const state = t.slice(t.indexOf(lang === 'swift' ? 'public final class DragonStateMount' : 'class DragonStateMount('));
+      const mount = state.slice(0, state.indexOf(lang === 'swift' ? '\n}\n' : '\n}\n'));
+      expect(mount.match(/anim\?\.(event\(\)|input\(|draw\(t\))/g), lang).toEqual(['anim?.event()', 'anim?.input(', 'anim?.draw(t)']);
+      expect(mount, lang).toContain(lang === 'swift' ? 'anim = DragonAnimMount(machine, measurer, display: display)' : 'DragonAnimMount.of(machine, measurer, display)');
+      // The machine itself carries nothing of the animation: the tables are attached to it by the per-program sources.
+      const machine = t.slice(t.indexOf(lang === 'swift' ? 'public final class DragonStateMachine' : 'class DragonStateMachine('), t.indexOf(lang === 'swift' ? 'public final class DragonStateMount' : 'class DragonStateMount('));
+      expect(machine, lang).not.toMatch(/anim/i);
+      // The adapter moves with the machine's clock (R2) and writes the background through the background module's writer.
+      expect(t, lang).toContain(lang === 'swift' ? 'machine.clock.onAdvance = { [weak self] ms in self?.advance(ms) }' : 'machine.clock.onAdvance = { ms -> advance(ms) }');
+      expect(t, lang).toMatch(/dragonBackground\((b|v), (c|it)\)/);
       // The frame colour goes through the paint writer (PNT1-radius rounded fill), never straight to the platform property.
-      expect(t, lang).toMatch(lang === 'swift'
-        ? /case \.background\(let c\): dragonBackground\(v, animator\?\.color\(n\.id, "background-color"\) \?\? c\)/
-        : /is DragonStateWrite\.Background -> dragonBackground\(v, animator\?\.color\(n\.id, "background-color"\) \?: w\.c\)/);
       expect(t, lang).not.toMatch(/backgroundColor = dragonUIColor\(animator|setBackgroundColor\(.*animator/);
     }
   });
@@ -114,7 +155,9 @@ describe('ANIM-b1: the state machine runs the animator', () => {
     expect(kotlin).toContain('display: Boolean = false');
     expect(swift.match(/DragonDisplayDriver\(tick:/g)?.length).toBe(1);
     expect(swift).toMatch(/if display \{\n {6}driver = DragonDisplayDriver\(tick:/);
-    expect(kotlin).toMatch(/if \(display\) \{\n {6}driver = DragonDisplayDriver \{/);
+    // Kotlin builds the driver's weak reference to the mount first, inside the same branch.
+    expect(kotlin).toMatch(/if \(display\) \{\n(?: {6}(?:\/\/[^\n]*|val ref = java\.lang\.ref\.WeakReference\(this\))\n)* {6}driver = DragonDisplayDriver \{/);
+    expect(kotlin.match(/DragonDisplayDriver \{/g)?.length).toBe(1);
     // R16: no platform animation API, and no timer but the display link and the choreographer.
     for (const t of [swift, kotlin]) expect(t).not.toMatch(/CABasicAnimation|CAKeyframeAnimation|UIView\.animate|UIViewPropertyAnimator|ValueAnimator|ObjectAnimator|ViewPropertyAnimator|Timer\.scheduled|postDelayed/);
   });

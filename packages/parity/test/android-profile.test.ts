@@ -3,7 +3,11 @@
 // compile, an unblocked android output for every proving case, and the Android Views emitter generating every proving case.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from 'dragon';
-import { androidProfile, compiledFeatures, createProjectWith, emitAndroidViewsCases, interactionPartitionOf, iosProfile, MEDIA_CONTEXT, nativePrograms, NO_FAULTS } from 'dragon';
+import { androidProfile, compiledFeatures, createProjectWith, emitAndroidViewsCases, emitFrameScripts, interactionPartitionOf, iosProfile, MEDIA_CONTEXT, nativePrograms, NO_FAULTS } from 'dragon';
+import { frameCaseEmits, frameRuns, sampleId } from '../src/anim-lanes.ts';
+import { frameEmits } from '../src/anim-cases.ts';
+import { ANIMATION_CONTEXT } from '../src/profile-rows.ts';
+import { stateEmits } from '../src/state-cases.ts';
 import { fixtureInput } from '../src/cases.ts';
 import { PROJECT_ID } from '../src/fixture-reader.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
@@ -14,9 +18,11 @@ import { resizeCaseReport, resizeCases, resizeProgram } from '../src/resize-capt
 
 const cases = nativeCases();
 const byId = new Map(cases.map((n) => [n.case.id, n]));
-// MQ-R1: media rows are proven by resize cases, not layout cases; the last test here checks those on android.
-const promoted = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context !== MEDIA_CONTEXT);
+// MQ-R1: media rows are proven by resize cases, and T065 animation rows by frame cases, not layout cases; the last two tests here
+// check those on android.
+const promoted = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context !== MEDIA_CONTEXT && r.context !== ANIMATION_CONTEXT);
 const promotedMedia = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context === MEDIA_CONTEXT);
+const promotedAnimation = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context === ANIMATION_CONTEXT);
 
 /** The lane compile of native-host.ts nativeCompile, with the committed profiles enforced. */
 function enforcedNative(spec: FixtureSpec, direction: 'ltr' | 'rtl') {
@@ -112,6 +118,24 @@ describe('the android profile follows the iOS rule', () => {
       expect(c.diagnostics.filter((x) => x.target === 'android' && x.severity === 'error').map((x) => `${x.code} ${x.message}`), id).toEqual([]);
       expect(resizeCaseReport(rc, [1]).failures.filter((f) => f.includes(' android-views ')), id).toEqual([]);
       expect(resizeProgram(rc, undefined, 'android-views').backend, id).toBe('android-views');
+    }
+  }, 600_000);
+
+  it('every frame case proving an animation row compiles for android unblocked, enforced, with ready programs, and the android host runs its every sample on device-anim', () => {
+    const proving = new Set(promotedAnimation.flatMap((r) => r.proofs.flatMap((p) => p.cases)));
+    expect(proving.size).toBeGreaterThan(0);
+    const runs = new Map(frameRuns('android-views').map((r) => [r.c.id, r]));
+    const frames = new Map(frameCaseEmits('android', [...stateEmits('android'), ...frameEmits('android')]).map((f) => [f.id, f]));
+    const text = emitFrameScripts('android-views', [...frames.values()]).map((f) => f.text).join('\n');
+    for (const id of proving) {
+      const r = runs.get(id);
+      if (r === undefined) throw new Error(`${id} proves an android animation row and is not a frame case`);
+      const c = enforcedOf(r.c.fixture.spec, r.c.direction);
+      expect(c.outputs.android.kind, id).not.toBe('blocked');
+      expect(c.diagnostics.filter((x) => x.target === 'android' && x.severity === 'error').map((x) => `${x.code} ${x.message}`), id).toEqual([]);
+      expect(r.programs.length, id).toBeGreaterThan(0);
+      expect(frames.get(id)?.samples.map((x) => x.id), id).toEqual(r.programs.map((_, k) => sampleId(id, k)));
+      for (let k = 0; k < r.programs.length; k++) expect(text.includes(JSON.stringify(sampleId(id, k))), `${id} sample ${k}`).toBe(true);
     }
   }, 600_000);
 });

@@ -31,6 +31,7 @@ import type { NativeCase } from './native-host.ts';
 import { BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, nativeCases, nativeOut } from './native-host.ts';
 import { expectedHitRuns, hitCases } from './hit-capture.ts';
 import { deriveScripts, stateEmits, stateGroups, stateProgramOf } from './state-cases.ts';
+import { evaluateAnim, frameSampleCases } from './anim-lanes.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
@@ -48,7 +49,9 @@ export type FailureKind =
 /** SELD-R1b's device lanes: the case scripts' dumps (device-states) and the device hit test's answers (device-hit). */
 export const STATE_LANE = 'device-states';
 export const HIT_LANE = 'device-hit';
-export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE;
+/** T065 ANIM-b1: the frame samples' dumps (anim-lanes.ts). */
+export const ANIM_LANE = 'device-anim';
+export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE | typeof ANIM_LANE;
 
 /** One failure, named: lane, case, DPR, node (or sample rule), kind and the values. */
 export type LaneFailure = { readonly lane: DeviceLaneId; readonly case: string; readonly dpr: number; readonly node: string | null; readonly kind: FailureKind; readonly detail: string };
@@ -412,6 +415,8 @@ export type DeviceOutcome = {
   /** SELD-R1b: the case scripts' set (device-states) and the hit records' set (device-hit); absent before them. */
   readonly states?: DeviceSet | null;
   readonly hits?: DeviceSet | null;
+  /** T065 ANIM-b1: the frame samples' set (device-anim); absent before it. */
+  readonly anims?: DeviceSet | null;
   readonly trust: { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] } | null;
   readonly vectors: (HostRun & { readonly device: string }) | null;
   readonly blocked: string | null;
@@ -469,6 +474,7 @@ export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: Devi
   const sets: DeviceSet[] = [];
   const states: DeviceSet[] = [];
   const hits: DeviceSet[] = [];
+  const anims: DeviceSet[] = [];
   const trust: { device: string; dpr: number; rows: readonly TrustRow[] }[] = [];
   const blocked: string[] = [];
   let vectors: (HostRun & { device: string }) | null = null;
@@ -477,18 +483,19 @@ export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: Devi
     if (o.set !== null) sets.push(o.set);
     if (o.states !== undefined && o.states !== null) states.push(o.states);
     if (o.hits !== undefined && o.hits !== null) hits.push(o.hits);
+    if (o.anims !== undefined && o.anims !== null) anims.push(o.anims);
     if (o.trust !== null) trust.push(o.trust);
     if (o.vectors !== null) {
       if (vectors !== null) throw new Error(`two devices ran the vectors lane (${vectors.device}, ${o.vectors.device})`);
       vectors = o.vectors;
     }
   }
-  return { vectors, sets, states, hits, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
+  return { vectors, sets, states, hits, anims, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
 }
 
 /** Every failure of a target's run, the SELD-R1b lanes' too (the list written to out/device-failures-<target>.json). */
 export function allRunFailures(d: DeviceRun): LaneFailure[] {
-  return [...d.sets, ...(d.states ?? []), ...(d.hits ?? [])].flatMap((s) => s.failures);
+  return [...d.sets, ...(d.states ?? []), ...(d.hits ?? []), ...(d.anims ?? [])].flatMap((s) => s.failures);
 }
 
 /** The text of out/device-failures-<target>.json for a target's run. */
@@ -636,6 +643,14 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const stateExtra: LaneFailure[] = sr.error === null ? [] : [{ lane: STATE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the scripts: ${sr.error}` }];
     const states = evaluateStates(t.target, dpr, statesDir, rec, scripts, stateExtra);
     log(`${spec.name}: device-states ${states.dumps}/${states.cases} dumps in ${((Date.now() - s0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(states.failures))}`);
+    // T065 ANIM-b1: device-anim from a launch of the frame samples, each its frame case's script run up to its dump.
+    const samples = frameSampleCases();
+    const animDir = join(nativeOut(t.target), 'lanes', `${spec.name}-anim`);
+    const a0 = Date.now();
+    const ar = await runApp(h, artifact, { runFile: runFileText(samples.map((s) => ({ id: s.sample.case.id, points: [] })), false), caseCount: samples.length, outDir: animDir });
+    const animExtra: LaneFailure[] = ar.error === null ? [] : [{ lane: ANIM_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the frame samples: ${ar.error}` }];
+    const anims = evaluateAnim(t.target, dpr, animDir, rec, samples, animExtra);
+    log(`${spec.name}: device-anim ${anims.dumps}/${anims.cases} dumps in ${((Date.now() - a0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(anims.failures))}`);
     const trustDir = join(nativeOut(t.target), 'lanes', `${spec.name}-trust`);
     const trustCases: TrustCase[] = TRUST_CASES.map((id) => {
       const tc = cases.find((c) => c.case.id === id);
@@ -654,7 +669,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
       vectors = await runDeviceVectors(h, t, host);
       log(`${spec.name}: layout-vectors-device ${vectors.state}${vectors.reason === null ? '' : ` (${vectors.reason})`}; ${vectors.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'}`).join(', ')}; digests ${vectors.digests.p1} ${vectors.digests.extended}; ${((Date.now() - v0) / 1000).toFixed(0)} s`);
     }
-    return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, states, hits, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
+    return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, states, hits, anims, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
   };
   const stop = source.release;
   if (stop === null) return work();

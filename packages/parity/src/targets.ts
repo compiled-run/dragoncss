@@ -11,7 +11,9 @@ import { SAMPLE_RULES } from './samples.ts';
 
 export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels',
   // SELD-R1b (notes/T047 §3.3 item 5): the case scripts' dumps, and the device hit test's answers.
-  'device-states', 'device-hit'] as const;
+  'device-states', 'device-hit',
+  // T065 ANIM-b1 (R18): the frame samples' dumps.
+  'device-anim'] as const;
 export type LaneId = (typeof LANES)[number];
 export type NativeTarget = 'ios' | 'android';
 export const NATIVE_TARGETS: readonly NativeTarget[] = ['ios', 'android'];
@@ -115,6 +117,21 @@ export function stateScriptIds(): readonly string[] {
   return scripts;
 }
 
+let frames: readonly string[] | null = null;
+/**
+ * Every frame sample id device-anim runs (anim-lanes.ts sampleId), from the committed frame captures alone: "<frame case>~f<k>" for
+ * each sample of the case's authored DPR 1 capture, cases in directory order.
+ */
+export function frameSampleIds(): readonly string[] {
+  if (frames !== null) return frames;
+  frames = readdirSync(repoPath('packages/parity/expected-frames')).sort().flatMap((id) => {
+    const c = readJson<{ readonly case?: unknown; readonly samples?: unknown }>(`packages/parity/expected-frames/${id}/authored-dpr1.json`);
+    if (c.case !== id || !Array.isArray(c.samples)) throw new Error(`packages/parity/expected-frames/${id}/authored-dpr1.json is not the capture of ${id}`);
+    return c.samples.map((_, k) => `${id}~f${k}`);
+  });
+  return frames;
+}
+
 /**
  * The case ids device-hit runs, in layout order: every layout case but those the hit lane refuses by name (hit-capture.ts hitCases;
  * the committed rt-vectors/hit/facts.json lists the refused ones, which hit-report.test checks against hitRefusedCases).
@@ -133,6 +150,7 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
   }
   if (lane === 'device-states') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, stateScriptIds())), corpora: [] };
   if (lane === 'device-hit') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, hitCaseIds())), corpora: [] };
+  if (lane === 'device-anim') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, frameSampleIds())), corpora: [] };
   return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, ids)), corpora: [] };
 }
 
