@@ -176,8 +176,8 @@ async function mismatches(plant: (p: NativeProgram) => NativeProgram): Promise<{
 
 describe('PNT2: the transform sample filter on a rotated box', () => {
   const size = { width: 200, height: 200 };
-  const outer: SampleBox = { id: 'p', left: 0, top: 0, right: 200, bottom: 200, border: { top: 0, right: 0, bottom: 0, left: 0 }, radius: 0, clips: false };
-  const box: SampleBox = { id: 'b', left: 60, top: 60, right: 140, bottom: 120, border: { top: 4, right: 4, bottom: 4, left: 4 }, radius: 0, clips: true };
+  const outer: SampleBox = { id: 'p', left: 0, top: 0, right: 200, bottom: 200, border: { top: 0, right: 0, bottom: 0, left: 0 }, radius: 0, clips: false, size: [200, 200] };
+  const box: SampleBox = { id: 'b', left: 60, top: 60, right: 140, bottom: 120, border: { top: 4, right: 4, bottom: 4, left: 4 }, radius: 0, clips: true, size: [80, 60] };
   const px = { kind: 'px', px: 0, percent: 0 } as const;
   const node = (id: string, parent: string | null, facts: Record<string, unknown>) => ({ id, parent, host: parent, kind: 'element' as const, native: 'DragonBoxView', clips: false, text: null, writes: [], facts });
   const program = (deg: number): NativeProgram => ({ version: 'v', backend: 'uikit', root: {} as never, rootFontSize: 16, nodes: [node('p', null, {}), node('b', 'p', { transform: { ops: [{ fn: 'rotate', x: px, y: px, angle: deg, sx: 1, sy: 1 }], origin: { x: { kind: 'percent', px: 0, percent: 50 }, y: { kind: 'percent', px: 0, percent: 50 } }, willChange: [] } })] });

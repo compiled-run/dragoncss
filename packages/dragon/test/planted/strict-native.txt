@@ -1,0 +1,46 @@
+// Planted shapes for strict-native-guard.test.ts: every "flag" section must be caught, every "clean" one must not.
+// ==== flag: the checked int Swift compile before strict-native-class (native-backends.test.ts trapRun)
+    const c = spawnSync('swiftc', ['-O', '-o', join(dir, 'checked'), join(dir, 'Checked.swift'), join(dir, 'main.swift')], { encoding: 'utf8' });
+    if (c.status !== 0) return { tool: { ok: false, why: `swiftc: ${c.stderr ?? c.error}` }, outcomes: [] };
+// ==== flag: the checked int Kotlin lookup before strict-native-class
+  const javaHome = process.env['JAVA_HOME'];
+  const which = spawnSync('which', ['kotlinc'], { encoding: 'utf8' });
+  if (javaHome === undefined || which.status !== 0) return { tool: { ok: false, why: 'no JAVA_HOME or kotlinc' }, outcomes: [] };
+// ==== flag: the checked int caller before strict-native-class
+      if (!tool.ok) {
+        console.log(`checked int ${lang}: blocked (owner tooling): ${tool.why}`);
+        return;
+      }
+// ==== flag: a missing Android SDK logged and passed
+    if (file === null || !existsSync(file)) {
+      console.log('api-versions.xml: blocked (owner tooling): no ANDROID_HOME with platforms/android-36');
+      return;
+    }
+// ==== flag: a blocked run skipped by its status
+      if (r.status === 'blocked (owner tooling)') continue;
+// ==== flag: a missing tool that returns early
+    if (t.kotlinTool() === null) return expect(run.state).toBe('lookup failed');
+// ==== flag: a test skipped on a missing tool
+  it.skipIf(swiftTool() === null)('runs the harness', () => {});
+// ==== flag: a test run only with a tool
+  describe.runIf(process.env['JAVA_HOME'] !== undefined)('the Kotlin harness', () => {});
+// ==== flag: a spawn error read as a missing tool
+    if (r.error?.code === 'ENOENT') return null;
+// ==== flag: a test skipped at run time on a missing JDK
+    if (process.env['JAVA_HOME'] === undefined) ctx.skip();
+// ==== flag: a blocked line printed outside the helper
+    process.stdout.write(`native:swift: blocked (owner tooling): swiftc not found\n`);
+// ==== flag: a missing xcrun that breaks out of a loop
+    for (const d of devices) {
+      if (spawnSync('xcrun', ['--version']).status !== 0) break;
+    }
+// ==== clean: a missing tool through the helper
+    if (tool === null) return native.missingToolchain('checked int swift', 'swiftc not found');
+// ==== clean: a blocked run through the helper
+      if (isBlocked(r)) continue;
+// ==== clean: a missing tool that throws
+  if (which.status !== 0) throw new Error('kotlinc is not on PATH');
+// ==== clean: a run result through blockedRun
+    if (tool === null) return blockedRun(target, 'swiftc not found', 'no swiftc on PATH', require);
+// ==== clean: a status compared in an assertion
+    expect(r.status).toBe('blocked (owner tooling)');

@@ -1,0 +1,10 @@
+{
+  "case": "overflow-auto-flex-min-size-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"r1a:text0","lines":[[0,8]]},
+    {"id":"r1b:text0","lines":[[0,8]]},
+    {"id":"r2a:text0","lines":[[0,8]]},
+    {"id":"r2b:text0","lines":[[0,8]]}
+  ]
+}

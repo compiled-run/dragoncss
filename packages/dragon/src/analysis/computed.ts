@@ -2,6 +2,7 @@
 // substitution hook (its work is in variables.ts), and value serialization.
 import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
+import type { Registrations } from '../css/at-rules/property.ts';
 import { parseColorNode, serializeColor } from '../css/color.ts';
 import { absolutizeGridText, GRID_TRACK_LONGHANDS } from '../css/grid-values.ts';
 import { properties as grammar } from '../css/grammar.generated.ts';
@@ -29,7 +30,8 @@ export type Origin = 'author' | 'presentational-hint' | 'inherited' | 'user-agen
  * UA dataset of the reference platform. rootFont 'ahem' is the parity fixture environment (docs/api.md §10.1); 'ua-default'
  * leaves the root font-family at the dataset's value.
  */
-export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl'; readonly rootFont: RootFont; readonly ua: UaDataset };
+/** registered: the document's @property registrations (css/at-rules/property.ts); none when absent. */
+export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl'; readonly rootFont: RootFont; readonly ua: UaDataset; readonly registered?: Registrations };
 
 export type RootFont = 'ahem' | 'ua-default';
 

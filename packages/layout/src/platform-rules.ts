@@ -18,8 +18,8 @@ export const platformRules: readonly PlatformRule[] = [
   {
     id: 'ahem-metric-half-down',
     platform: 'darwin-arm64',
-    rule: 'Ahem ascent and descent round to the nearest whole px, with an exact half rounded down (units.ts roundFontMetricToWholePx).',
-    source: 'third_party/blink/renderer/platform/fonts/font_metrics.cc at 145.0.7632.6 rounds with SkScalarRoundToScalar (halves up, lines 111-112), so the half-down result on macOS is taken to come from the CoreText metric values; inferred, not traced. Lines 114-126 move 1 px from ascent to descent on Linux, ChromeOS, Android and Fuchsia, which this rule does not claim.',
+    rule: 'Ascent and descent are Core Text\'s 16.16 fraction of the em times the size, rounded to the nearest whole px with halves up (units.ts roundCoreTextMetricToWholePx); Ahem\'s 200/1000 quantises below 0.2, so an exact half px Ahem descent rounds down, as roundFontMetricToWholePx gives up to 662.5 px.',
+    source: 'Traced (notes/T082-txt1s.md §1, docs/research/text-spike/metric-rounding): CTFontGetAscent and CTFontGetDescent through Skia\'s call sequence return (round(units * 65536 / upem) * upem / 65536) * (size / upem) for Ahem, 5 Inter and 2 Lato faces at every size from 0.01 to 192 px in hundredths (0 mismatches), Skia stores it as a float, and third_party/blink/renderer/platform/fonts/font_metrics.cc at 145.0.7632.6 rounds it with SkScalarRoundToScalar (floorf(x + 0.5f), lines 111-112); Chrome matches on all 129 probed rows at DPR 1, 2, 2.625 and 3. Lines 114-126 move 1 px from ascent to descent on Linux, ChromeOS, Android and Fuchsia, which this rule does not claim.',
     fault: 'metricHalfUp',
     branches: [{ id: 'half-down', description: 'a descent of exactly n + 0.5 px rounds to n: 12.5px, 17.5px and 22.5px Ahem have glyph boxes 12, 17 and 22 px tall, not 13, 18 and 23' }],
     nodes: [

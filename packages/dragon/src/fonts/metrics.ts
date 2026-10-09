@@ -74,6 +74,16 @@ function scaled(units: number, upem: number, size: number): number {
 }
 
 /**
+ * A vertical metric as Core Text returns it (R5, traced in docs/research/text-spike/metric-rounding): the metric as a 16.16 fraction
+ * of the em times the size, stored by Skia as a float. Measured up to 192 px; the 64 px strike above 256 px is not probed.
+ */
+function coreTextMetric(units: number, upem: number, size: number): number {
+  const quantised = (Math.round((units * 65536) / upem) * upem) / 65536;
+  if (size > 256) return scaled(quantised, upem, size);
+  return f32(quantised * (size / upem));
+}
+
+/**
  * SkScalerContext_Mac::generateMetrics advance: Core Text's advance times the remaining transform sA, whose scale is
  * size * (1 / size) in float (SkScalerContextRec::computeMatrices, preScale by SkScalarInvert), applied in CGFloat.
  */
@@ -101,11 +111,11 @@ export function faceMetrics(font: SfntFont, fontSize: number, dpr: number, d: Me
   const size = effectiveFontSize(o.sizeAdjust === undefined ? computed : f32(computed * f32(o.sizeAdjust)));
   const round = faults.metricsRoundHalfDown ? (x: number): number => (x - Math.floor(x) === 0.5 ? Math.floor(x) : Math.round(x)) : skRound;
   // SkScalerContext_Mac::generateFontMetrics: hhea through Core Text; AscentDescentWithHacks overrides use platform size.
-  const rawAscent = o.ascentOverride === undefined ? scaled(font.hhea.ascender, upem, size) : f32(size * f32(o.ascentOverride));
-  const rawDescent = o.descentOverride === undefined ? scaled(-font.hhea.descender, upem, size) : f32(size * f32(o.descentOverride));
+  const rawAscent = o.ascentOverride === undefined ? coreTextMetric(font.hhea.ascender, upem, size) : f32(size * f32(o.ascentOverride));
+  const rawDescent = o.descentOverride === undefined ? coreTextMetric(-font.hhea.descender, upem, size) : f32(size * f32(o.descentOverride));
   const ascent = round(rawAscent);
   const descent = round(rawDescent);
-  const lineGap = o.lineGapOverride === undefined ? scaled(font.hhea.lineGap, upem, size) : f32(f32(o.lineGapOverride) * size);
+  const lineGap = o.lineGapOverride === undefined ? coreTextMetric(font.hhea.lineGap, upem, size) : f32(f32(o.lineGapOverride) * size);
   const lineSpacing = lroundf(ascent) + lroundf(descent) + lroundf(lineGap);
   // x-height: on Apple, -bounds.y() of glyph x (simple_font_data.cc); cap height: OS/2 sCapHeight (SkScalerContext_mac_ct.cpp).
   const os2 = font.os2;
