@@ -142,7 +142,7 @@ export function substituteDeclaration(d: Declaration, customs: CustomProperties)
   const invalid = pending.longhands.map(unset);
   if (text === null) return make(invalid, null, true);
   const parsed = parseSubstitutedValue(d.property as Longhand | Shorthand, text, d.valueSpan);
-  const shown = `${d.property}: ${d.text} substitutes to "${readable(text)}"`;
+  const shown = `${d.alias ?? d.property}: ${d.text} substitutes to "${readable(text)}"`;
   switch (parsed.kind) {
     case 'ok':
       // css-logical-1 §3: a declaration narrowed to one direction keeps that direction's mapping (analysis/logical.ts).

@@ -319,7 +319,10 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   if (shaped) checkShapedText(ctx, box, flat.leaves, items);
   for (const t of flat.leaves) {
     const m = ctx.measurer.measure(t.text, fontOf(t.font));
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    }
     if (first !== undefined && t.textWrapMode !== first.textWrapMode) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-4 §5.1', `text runs with different text-wrap-mode in one formatting context of ${box.id}`);
     }
@@ -346,7 +349,10 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   };
 }
 
-/** Whether every code point is in R4's Latin scope: Script Latin, or Common or Inherited whose Script_Extensions hold Latin. */
+/**
+ * Why text is outside real-font Latin scope, or '': R4 (shaping.ts latinScopedMeasurer, every face) plus, for a real face, Common
+ * or Inherited code points whose Script_Extensions exclude Latin, which Blink shapes in a run of their own.
+ */
 function latinScopeRefusal(text: string): string {
   for (const ch of text) {
     const cp = ch.codePointAt(0) as number;
@@ -371,7 +377,7 @@ function checkShapedText(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], 
   if (!ctx.faults.latinCheckSkipped) {
     for (const t of leaves) {
       const r = latinScopeRefusal(t.text);
-      if (r !== '') unsupported('text-script', t.id, 'TXT1a R4', `${r}; real-font text is Latin only (TXT1c, TXT2)`);
+      if (r !== '') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', `${r}; real-font text is Latin only (TXT1c, TXT2)`);
     }
   }
   let last = -1;
@@ -738,7 +744,10 @@ function width(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
     while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) text += (ifc.items[i++] as Item).ch;
     const t = ifc.leaves[it.leaf] as TextLeaf;
     const m = ctx.measurer.measure(text, fontOf(t.font));
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    }
     total = add(total, m.measure.width);
   }
   return total;
@@ -762,7 +771,10 @@ function cachedWidth(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
     while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === first.leaf) last = ifc.items[i++] as Item;
     const t = ifc.leaves[first.leaf] as TextLeaf;
     const m = ctx.measurer.measureRange(t.text, first.at, last.at + 1, fontOf(t.font));
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    }
     total = add(total, m.measure.width);
   }
   return total;
@@ -870,7 +882,10 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
       while (i < ifc.items.length && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) i++;
       const t = ifc.leaves[it.leaf] as TextLeaf;
       const s = ctx.measurer.shaped(t.text, fontOf(t.font));
-      if (!s.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', s.reason);
+      if (!s.ok) {
+        if (s.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', s.reason);
+        unsupported('text-glyph', t.id, 'css-fonts-4 §5', s.reason);
+      }
       if (s.result.end !== i - first) unsupported('text-glyph', t.id, 'css-fonts-4 §5', `${t.id} holds a code point outside the Basic Multilingual Plane`);
       const opps: number[] = [];
       for (let o = 1; o < i - first; o++) if (opportunityAt(ifc, first + o)) opps.push(o);

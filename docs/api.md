@@ -532,7 +532,7 @@ type ExplainResult<K extends string> =
   | { kind: 'invalid-query'; diagnostics: readonly Diagnostic[] };
 ```
 
-Each explained case names its element, instance, target and symbolic condition, winning origin, losing origins/reasons, custom-property chain, typed CSS value and contextual support decision. Partial assignments leave the other conditions visible. A source-position query first finds authored nodes/declarations, then their linked instances; an ambiguous position returns candidates, never an arbitrary instance. Stale revisions, invalid states and unknown targets are invalid queries. Synthetic defaults and inheritance use `Origin`. A future CLI position query converts 1-based line/column through the same source registry and calls this API.
+Each explained case names its element, instance, target and symbolic condition, winning origin, losing origins/reasons, custom-property chain, typed CSS value and contextual support decision. When the support decision's profile row holds only in a limited environment, it carries an optional `note` saying so. Today, only the web overflow `auto` and `scroll` rows do: they hold with overlay scrollbars only. Partial assignments leave the other conditions visible. A source-position query first finds authored nodes/declarations, then their linked instances; an ambiguous position returns candidates, never an arbitrary instance. Stale revisions, invalid states and unknown targets are invalid queries. Synthetic defaults and inheritance use `Origin`. A future CLI position query converts 1-based line/column through the same source registry and calls this API.
 
 ### 6.3 Possibilities are not contextual support
 
@@ -544,7 +544,7 @@ type SupportQuery<K extends string> =
   | { kind: 'possibilities'; target: NormalizedTarget; css: string }
   | { kind: 'resolved'; result: Compiled<K>; target: NoInfer<K>; node: string; instance: string; assignment: Assignment; property: string };
 type SupportCandidate = { feature: string; context: string; status: Exclude<Status, 'unsupported'>;
-  proofs: readonly { lane: string; cases: readonly string[]; tolerance: 'gate-1-device-px' | 'dual-exact' }[] };
+  proofs: readonly { lane: string; cases: readonly string[]; tolerance: 'gate-1-device-px' | 'dual-exact' }[]; note?: string };
 type SupportAnswer =
   | { kind: 'needs-context'; declaration: string; candidates: readonly SupportCandidate[] }
   | { kind: 'unsupported'; declaration: string; reason: string }
@@ -554,7 +554,7 @@ type SupportAnswer =
   | { kind: 'invalid-query'; diagnostics: readonly Diagnostic[] };
 ```
 
-A declaration with any supported row answers `needs-context`, listing its contexts. A declaration with no row answers `unsupported`. On ios or android, a declaration on the not-applicable list (`profiles/not-applicable-native.ts`, today only `cursor`) answers `not-applicable`, and so does a resolved query of that property once its element is found: the native output leaves it out and reports `DRAGON_NOT_APPLICABLE_NATIVE` (info); it is never counted as supported. API change (NA-NATIVE): `not-applicable` is a new `SupportAnswer` member, so a consumer that switches over every kind must handle it. An android possibilities query needs `{ kind: 'android', minSdk }` with an integer from 31 to 36. Today it answers `unsupported` for every declaration, because no android row is proven.
+A declaration with any supported row answers `needs-context`, listing its contexts. A candidate's optional `note` names the environment its claim is limited to, as in explanations. A declaration with no row answers `unsupported`. On ios or android, a declaration on the not-applicable list (`profiles/not-applicable-native.ts`, today `cursor` and `scroll-behavior`) answers `not-applicable`, and so does a resolved query of that property once its element is found: the native output leaves it out and reports `DRAGON_NOT_APPLICABLE_NATIVE` (info); it is never counted as supported. API change (NA-NATIVE): `not-applicable` is a new `SupportAnswer` member, so a consumer that switches over every kind must handle it. An android possibilities query needs `{ kind: 'android', minSdk }` with an integer from 31 to 36. Today it answers `unsupported` for every declaration, because no android row is proven.
 
 ```ts
 export function querySupport<K extends string>(query:

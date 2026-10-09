@@ -1,10 +1,12 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
 import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeResetLonghand } from 'dragon';
+import { ALIASES } from './fixture-groups/aliases.ts';
 import { ANIMATIONS } from './fixture-groups/animations.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
+import { CASC } from './fixture-groups/casc.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
@@ -15,8 +17,10 @@ import { GRID } from './fixture-groups/grid.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
+import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
+import { OVERFLOW } from './fixture-groups/overflow.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
@@ -25,6 +29,7 @@ import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
+import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
 import { VALUES } from './fixture-groups/values.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
@@ -81,11 +86,13 @@ export type FixtureSpec =
  * import and one line here, each in sorted order (test/registry-claims.test.ts).
  */
 export const GROUPS = {
+  aliases: ALIASES,
   animations: ANIMATIONS,
   attributes: ATTRIBUTES,
   background: BACKGROUND,
   'block-elements': BLOCK_ELEMENTS,
   'border-paint': BORDER_PAINT,
+  casc: CASC,
   'cascade-var': CASCADE_VAR,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,
@@ -97,7 +104,9 @@ export const GROUPS = {
   interaction: INTERACTION,
   'logical-props': LOGICAL_PROPS,
   media: MEDIA,
+  'media-runtime': MEDIA_RUNTIME,
   'milestone-1': MILESTONE_1,
+  overflow: OVERFLOW,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
@@ -106,6 +115,7 @@ export const GROUPS = {
   'sizing-ratio': SIZING,
   states: STATES,
   transforms: TRANSFORMS,
+  'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,
   values: VALUES,
   'writing-mode': WRITING_MODE,

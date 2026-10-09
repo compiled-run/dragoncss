@@ -1,6 +1,7 @@
 // Text measurement is injected. The Ahem measurer is pure: it models the WPT Ahem v1.50 metrics without reading the font.
 import type { TextFont } from './input.ts';
 import type { ShapedItem } from './shaping.ts';
+import type { TextRefusalCode } from './unsupported.ts';
 import type { LU } from './units.ts';
 import { cachedRangeWidth, fontMetricPx, glyphBoundsMetricPx, platformFontSize, roundFontMetricHalfUpToWholePx, roundFontMetricToWholePx, textAdvanceAt, ZERO } from './units.ts';
 
@@ -12,7 +13,7 @@ export type FontLengths = { readonly xHeight: number; readonly capHeight: number
 /** The advance of one run of text on one line. */
 export type TextMeasure = { readonly width: LU };
 
-export type MeasureResult = { readonly ok: true; readonly measure: TextMeasure } | { readonly ok: false; readonly reason: string };
+export type MeasureResult = { readonly ok: true; readonly measure: TextMeasure } | { readonly ok: false; readonly code: TextRefusalCode; readonly reason: string };
 
 export interface TextMeasurer {
   metrics(font: TextFont): FontMetrics;
@@ -123,26 +124,26 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
     },
     // css-fonts-4 §5: every covered glyph advances its whole-em advance; anything else is not an Ahem glyph.
     measure(text: string, font: TextFont): MeasureResult {
-      if (font.family !== AHEM_FACE_ID) return { ok: false, reason: `the font data measurer measures the bundled Ahem, not ${font.family}` };
+      if (font.family !== AHEM_FACE_ID) return { ok: false, code: 'text-glyph', reason: `the font data measurer measures the bundled Ahem, not ${font.family}` };
       let glyphs = 0;
       for (const ch of text) {
         const cp = ch.codePointAt(0) as number;
         const advance = emAdvance(data, cp);
-        if (advance < 0) return { ok: false, reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
+        if (advance < 0) return { ok: false, code: 'text-glyph', reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
         glyphs += advance;
       }
       return { ok: true, measure: { width: textAdvanceAt(glyphs, instanceSize(font.size)) } };
     },
     // Blink shapes the whole item; a character's cached position is the ceiled advance sum before it (units.ts cachedRangeWidth).
     measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
-      if (font.family !== AHEM_FACE_ID) return { ok: false, reason: `the font data measurer measures the bundled Ahem, not ${font.family}` };
+      if (font.family !== AHEM_FACE_ID) return { ok: false, code: 'text-glyph', reason: `the font data measurer measures the bundled Ahem, not ${font.family}` };
       let k = 0;
       let before = 0;
       let through = 0;
       for (const ch of text) {
         const cp = ch.codePointAt(0) as number;
         const advance = emAdvance(data, cp);
-        if (advance < 0) return { ok: false, reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
+        if (advance < 0) return { ok: false, code: 'text-glyph', reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
         if (k < start) before += advance;
         if (k < end) through += advance;
         k++;
@@ -154,7 +155,7 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
       return fontMetricLengths(data, instanceSize(font.size));
     },
     shaped(text: string, font: TextFont): ShapedItem {
-      return { ok: false, reason: `the font data measurer does not shape ${font.family}; real-font text needs the shaped measurer` };
+      return { ok: false, code: 'text-glyph', reason: `the font data measurer does not shape ${font.family}; real-font text needs the shaped measurer` };
     },
   };
 }

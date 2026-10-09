@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { floorRegressions, isFloorFile } from '../../../scripts/land-lib.ts';
-import { format, MERGE_DRIVERS, mergeFloorFile, Refuse } from '../../../scripts/floor-merge.ts';
+import { format, mergeFloorFile, Refuse, SETUP_GIT_CONFIG } from '../../../scripts/floor-merge.ts';
 import { repoPath } from '../src/paths.ts';
 
 const temps: string[] = [];
@@ -188,10 +188,10 @@ describe('the floor merge driver as git runs it', () => {
 });
 
 describe('the floor merge driver is registered', () => {
-  it('pnpm setup:git sets exactly the merge drivers the landing driver sets', () => {
+  it('pnpm setup:git sets exactly the git config the landing driver sets: rerere off, then the merge drivers', () => {
     const cmd = (JSON.parse(readFileSync(repoPath('package.json'), 'utf8')) as { scripts: Record<string, string> }).scripts['setup:git']!;
     const sets = [...cmd.matchAll(/git config (\S+) (?:'([^']*)'|(\S+))/g)].map((m) => [m[1], m[2] ?? m[3]]);
-    expect(sets).toEqual(MERGE_DRIVERS.map(([k, v]) => [k, v]));
+    expect(sets).toEqual(SETUP_GIT_CONFIG.map(([k, v]) => [k, v]));
   });
 
   it('writes every floor and pin file in this tree byte for byte as it is, so a merge changes only what it merges', () => {
@@ -205,7 +205,7 @@ describe('the floor merge driver is registered', () => {
 
   it('marks exactly the floor and pin files the landing driver judges (isFloorFile) merge=dragon-floor', () => {
     const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter((p) => p !== '');
-    const marked = execFileSync('git', ['ls-files', '-z', ':(attr:merge=dragon-floor)'], { cwd: repoPath('.'), encoding: 'utf8' }).split('\0').filter((p) => p !== '');
+    const marked = execFileSync('git', ['ls-files', '-z', ':(attr:merge=dragon-floor)'], { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter((p) => p !== '');
     expect(marked).toEqual(tracked.filter(isFloorFile));
     expect(marked.length).toBeGreaterThanOrEqual(6);
   });

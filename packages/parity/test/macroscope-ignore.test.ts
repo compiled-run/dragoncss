@@ -87,7 +87,6 @@ describe('macroscope ignore matcher', () => {
       'packages/parity/out/lanes.json',
       'packages/dragon/src/profiles/web.ts',
       'packages/layout/rt-oracle/a.json',
-      'package.json',
       'pnpm-lock.yaml',
       'docs/goals/milestone-2-proof/state.yaml',
       'packages/parity/expected-dpr/a.json',
@@ -96,6 +95,9 @@ describe('macroscope ignore matcher', () => {
     }
     for (const path of [
       'scripts/pr-review.ts',
+      // A package.json's scripts are commands, so it is reviewed (the land.yml review, #226).
+      'package.json',
+      'packages/dragon/package.json',
       'packages/parity/test/pr-review.test.ts',
       'packages/layout/src/index.ts',
       '.macroscope/ignore.md',

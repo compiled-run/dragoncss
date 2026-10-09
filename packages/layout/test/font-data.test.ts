@@ -23,7 +23,7 @@ function oldAdvance(cp: number): number {
 function oldAhem(faults: AhemRuleFaults): TextMeasurer {
   const instanceSize = (px: number): number => (faults.untruncatedFontSize ? px : platformFontSize(px));
   const round = faults.metricHalfUp ? roundFontMetricHalfUpToWholePx : roundFontMetricToWholePx;
-  const refuse = (cp: number): MeasureResult => ({ ok: false, reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` });
+  const refuse = (cp: number): MeasureResult => ({ ok: false, code: 'text-glyph', reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` });
   return {
     metrics: (font) => ({ ascent: round(fontMetricPx(instanceSize(font.size), 1000, 800)), descent: round(fontMetricPx(instanceSize(font.size), 1000, 200)), lineGap: ZERO }),
     measure(text, font) {
@@ -51,7 +51,7 @@ function oldAhem(faults: AhemRuleFaults): TextMeasurer {
     lengths: () => {
       throw new Error('the pre-R4 reference measures no font-relative lengths');
     },
-    shaped: () => ({ ok: false, reason: 'the old Ahem measurer does not shape' }),
+    shaped: () => ({ ok: false, code: 'text-glyph', reason: 'the old Ahem measurer does not shape' }),
   };
 }
 

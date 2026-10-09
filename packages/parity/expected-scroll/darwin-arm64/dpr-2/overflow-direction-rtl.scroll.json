@@ -1,0 +1,46 @@
+{
+ "case": "overflow-direction-rtl",
+ "chrome": "145.0.7632.6",
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "direction": "rtl",
+ "scrollbars": "overlay",
+ "scrollbarArgs": "-AppleShowScrollBars WhenScrolling",
+ "records": [
+  {
+   "id": "viewport",
+   "scrollWidth": 400,
+   "scrollHeight": 300,
+   "clientWidth": 400,
+   "clientHeight": 300
+  },
+  {
+   "id": "r1",
+   "scrollWidth": 113,
+   "scrollHeight": 62,
+   "clientWidth": 68,
+   "clientHeight": 52
+  },
+  {
+   "id": "r2",
+   "scrollWidth": 113,
+   "scrollHeight": 62,
+   "clientWidth": 68,
+   "clientHeight": 52
+  },
+  {
+   "id": "r3",
+   "scrollWidth": 110,
+   "scrollHeight": 52,
+   "clientWidth": 68,
+   "clientHeight": 52
+  },
+  {
+   "id": "r4",
+   "scrollWidth": 108,
+   "scrollHeight": 52,
+   "clientWidth": 68,
+   "clientHeight": 52
+  }
+ ]
+}
