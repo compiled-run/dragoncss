@@ -226,7 +226,7 @@ public func inline_checkRtlText(_ box: LayoutBox, _ leaves: JsArray<TextLeaf>, _
       _i31 += 1
       // ts: packages/layout/src/inline.ts:108
       if try (!inline_isRtlSafe(t.text)) {
-        try unsupported_unsupported(S.s_bidi_neutral, t.id, S.s112, jsConcat(S.s410, box.id, S.s22))
+        try unsupported_unsupported(S.s_bidi_neutral, t.id, S.s112, jsConcat(S.s411, box.id, S.s22))
       }
     }
   }
@@ -344,7 +344,7 @@ public func inline_checkInlineBox(_ ctx: Ctx, _ b: InlineBox) throws -> Void {
   let va: any U_LengthCalc_Percent_Px_VerticalAlignKeywordValue = s.verticalAlign
   // ts: packages/layout/src/inline.ts:231
   if ((va.kind != S.s_keyword) || ((va as! VerticalAlignKeywordValue).value != S.s_baseline)) {
-    try unsupported_unsupported(S.s_vertical_align, b.id, S.s99, jsConcat(S.s437, b.id, S.s3))
+    try unsupported_unsupported(S.s_vertical_align, b.id, S.s99, jsConcat(S.s438, b.id, S.s3))
   }
   // ts: packages/layout/src/inline.ts:232
   if (s.position != S.s_static) {
@@ -481,7 +481,7 @@ public func inline_buildIfc(_ ctx: Ctx, _ box: LayoutBox) throws -> Ifc {
       }
       // ts: packages/layout/src/inline.ts:307
       if try ((first != nil) && (t.textWrapMode != jsUnwrap(first).textWrapMode)) {
-        try unsupported_unsupported(S.s_mixed_text_wrap_mode, t.id, S.s192, jsConcat(S.s411, box.id))
+        try unsupported_unsupported(S.s_mixed_text_wrap_mode, t.id, S.s192, jsConcat(S.s412, box.id))
       }
     }
   }
@@ -851,7 +851,7 @@ public func inline_alignOffset(_ ctx: Ctx, _ box: LayoutBox, _ free: Double) thr
   let align: JsString = box.style.textAlign
   // ts: packages/layout/src/inline.ts:558
   if (align == S.s_justify) {
-    try unsupported_unsupported(S.s_text_align, box.id, S.s191, S.s413)
+    try unsupported_unsupported(S.s_text_align, box.id, S.s191, S.s414)
   }
   let rtl: Bool = try (block_directionOf(ctx, box) == S.s_rtl)
   // ts: packages/layout/src/inline.ts:560

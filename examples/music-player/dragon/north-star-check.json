@@ -133,13 +133,13 @@
   "contextProbe": {
    "rounds": 2,
    "blankedRules": 4,
-   "blankedDeclarations": 35,
+   "blankedDeclarations": 34,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 199,
-  "errors": 194,
+  "diagnostics": 200,
+  "errors": 195,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -151,11 +151,11 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 29,
+   "DRAGON_UNSUPPORTED_PROPERTY": 28,
    "DRAGON_UNSUPPORTED_PROPERTY [web]": 2,
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
-   "DRAGON_UNSUPPORTED_SELECTOR [android]": 4,
-   "DRAGON_UNSUPPORTED_SELECTOR [ios]": 4,
+   "DRAGON_UNSUPPORTED_SELECTOR [android]": 5,
+   "DRAGON_UNSUPPORTED_SELECTOR [ios]": 5,
    "DRAGON_UNSUPPORTED_VALUE": 3,
    "DRAGON_UNSUPPORTED_VALUE [android]": 21,
    "DRAGON_UNSUPPORTED_VALUE [ios]": 21,
@@ -167,7 +167,7 @@
      "DRAGON_UNPROVEN_CONTEXT": 4,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_PROPERTY": 31,
+     "DRAGON_UNSUPPORTED_PROPERTY": 30,
      "DRAGON_UNSUPPORTED_SELECTOR": 4,
      "DRAGON_UNSUPPORTED_VALUE": 7
     },
@@ -182,8 +182,8 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 29,
-     "DRAGON_UNSUPPORTED_SELECTOR": 8,
+     "DRAGON_UNSUPPORTED_PROPERTY": 28,
+     "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 24
     },
     "warnings": {
@@ -199,8 +199,8 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 29,
-     "DRAGON_UNSUPPORTED_SELECTOR": 8,
+     "DRAGON_UNSUPPORTED_PROPERTY": 28,
+     "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 24
     },
     "warnings": {
@@ -217,7 +217,7 @@
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
   "supportedBothTargets": 231,
-  "supportedWeb": 245,
+  "supportedWeb": 246,
   "supportedIos": 231,
   "supportedAndroid": 231,
   "supportPercent": 79.9,
@@ -303,9 +303,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 85,
-   "B-unwrapped": 85,
-   "C-context": 129
+   "A-authored": 86,
+   "B-unwrapped": 86,
+   "C-context": 131
   }
  },
  "features": {
@@ -2546,11 +2546,11 @@
    "atRule": null,
    "property": "outline",
    "value": "none",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
   {
@@ -4701,10 +4701,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5416-5429|outline is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|android|css@5416-5429|:focus is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4",
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 5416,
@@ -4713,11 +4713,33 @@
     "column": 2,
     "text": "outline: none"
    },
-   "message": "outline is not supported in milestone 1",
+   "message": ":focus is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4",
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_SELECTOR|ios|css@5416-5429|:focus is not supported on ios yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4",
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 5416,
+    "end": 5429,
+    "line": 306,
+    "column": 2,
+    "text": "outline: none"
+   },
+   "message": ":focus is not supported on ios yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {

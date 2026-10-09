@@ -119,7 +119,7 @@ public func units_fromFloatRound(_ px: Double) throws -> Double {
 public func units_fromWholePx(_ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:85
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s439, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s440, jsNumberToString(n)))
   }
   return try units_saturate((n * units_LU_PER_PX))
 }
