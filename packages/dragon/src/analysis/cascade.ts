@@ -1,6 +1,6 @@
 // css-cascade-5 §6: the cascade of author declarations for one element. Only the author origin has declarations (user-agent
 // values come from the captured dataset, computed.ts, and Chrome's UA rules for the supported tags hold no !important), so the
-// order is importance, then specificity, then order of appearance.
+// order is importance, then cascade layer, then specificity, then order of appearance.
 import type { Longhand } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import type { Registrations } from '../css/at-rules/property.ts';
@@ -25,11 +25,18 @@ export type Candidate = {
   readonly substitution?: Substitution;
 };
 
-/** css-cascade-5 §6.2-§6.5: importance (author !important over author normal), specificity, then order of appearance. */
+/**
+ * css-cascade-5 §6.2-§6.5: importance (author !important over author normal), cascade layers (a later layer wins for normal
+ * declarations and an earlier one for !important ones; unlayered declarations rank above every layer), specificity, then order
+ * of appearance.
+ */
 export function beats(a: Pick<Candidate, 'declaration' | 'specificity'>, b: Pick<Candidate, 'declaration' | 'specificity'>): boolean {
   const ia = a.declaration.important === true;
   const ib = b.declaration.important === true;
   if (ia !== ib) return ia;
+  const la = a.declaration.layer ?? Number.POSITIVE_INFINITY;
+  const lb = b.declaration.layer ?? Number.POSITIVE_INFINITY;
+  if (la !== lb) return ia ? la < lb : la > lb;
   for (let i = 0; i < 3; i++) {
     const x = a.specificity[i] as number;
     const y = b.specificity[i] as number;

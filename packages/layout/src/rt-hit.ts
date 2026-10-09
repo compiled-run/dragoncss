@@ -15,7 +15,8 @@ import { placeLines } from './inline.ts';
 import { fromRaw } from './units.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
 import type { LayoutRect } from './layout.ts';
-import { absoluteRects, layout, zoomInput } from './layout.ts';
+import { absoluteRects, layout, resolvedInput } from './layout.ts';
+import { UnsupportedSignal } from './unsupported.ts';
 import { floorOf, roundOf } from './rt-easing.ts';
 import type { TextMeasurer } from './text.ts';
 
@@ -654,11 +655,21 @@ export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);
 }
 
+/** The input as layout resolved it, with the caller's measurer; a refusal there is a HitError, as the layout's own is. */
+function hitZoomed(input: LayoutInput, measurer: TextMeasurer): LayoutInput {
+  try {
+    return resolvedInput(input, measurer, NO_ENGINE_FAULTS);
+  } catch (e) {
+    if (e instanceof UnsupportedSignal) throw new HitError(`the engine refused the input (${e.unsupported.code} at ${e.unsupported.nodeId})`);
+    throw e;
+  }
+}
+
 /** The hit table of an engine input at its device scale, from the engine's own layout of it and the compiler's hit facts. */
 export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: ReadonlyMap<string, HitFact>, faults: HitTableFaults): HitTable {
   const out = layout(input, measurer);
   if (out.kind !== 'ok') throw new HitError(`the engine refused the input (${out.unsupported.code} at ${out.unsupported.nodeId})`);
-  const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
+  const zoomed = hitZoomed(input, measurer);
   const zmap = new Map<string, LayoutBox>();
   const rmap = new Map<string, LayoutStyle>();
   indexZoomed(zmap, rmap, zoomed.root);

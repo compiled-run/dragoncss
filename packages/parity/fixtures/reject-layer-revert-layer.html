@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+@layer base, top;
+@layer base { .a { width: 30px; height: 4px; } }
+@layer top { .a { width: revert-layer; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="a"></div>
+</body>
+</html>

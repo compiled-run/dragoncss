@@ -47,14 +47,12 @@ export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, fau
 
 /** layoutWithFaults with seeded grid errors; only the G-P differential test passes anything but NO_GRID_FAULTS. */
 export function layoutWithGridFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults, gridFaults: GridFaults): LayoutResult {
-  // Planted platform-rule faults replace the Ahem measurer's two macOS rules (platform-rules.ts).
-  const m = faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
-  // ex, ch and cap read the measurer's faces; a planted platform rule reads the Ahem font data, as zoomInput (the device's) does.
-  const input = faults.metricHalfUp || faults.untruncatedFontSize ? zoomInput(given, faults) : resolveEnvironment(given, faults, m);
-  const root = input.root;
-  const icbWidth = fromCssPx(input.viewport.width);
-  const icbHeight = fromCssPx(input.viewport.height);
+  const m = layoutMeasurer(measurer, faults);
   try {
+    const input = resolvedInput(given, measurer, faults);
+    const root = input.root;
+    const icbWidth = fromCssPx(input.viewport.width);
+    const icbHeight = fromCssPx(input.viewport.height);
     const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults };
     const icbDirection = directionOf(ctx, root);
     // The root element establishes a block formatting context in the initial containing block.
@@ -124,6 +122,20 @@ function containingBlock(ctx: Ctx, box: LayoutBox, parentOf: Map<string, LayoutB
     height: sub(sub(r.height, top), bottom),
     direction: directionOf(ctx, at),
   };
+}
+
+/** The measurer a layout reads: planted platform-rule faults replace the Ahem measurer's two macOS rules (platform-rules.ts). */
+export function layoutMeasurer(measurer: TextMeasurer, faults: EngineFaults): TextMeasurer {
+  return faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
+}
+
+/**
+ * The input resolved for its environment as layoutWithFaults lays it out: ex, ch, cap and lh read the measurer's faces; a planted
+ * platform rule reads the Ahem font data, as zoomInput (the device's) does. Post-layout passes (scroll metrics, the hit table)
+ * resolve with it too. A face the measurer does not hold throws the text-glyph UnsupportedSignal.
+ */
+export function resolvedInput(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): LayoutInput {
+  return faults.metricHalfUp || faults.untruncatedFontSize ? zoomInput(given, faults) : resolveEnvironment(given, faults, layoutMeasurer(measurer, faults));
 }
 
 /** Places each pending absolutely positioned box in order; boxes found inside one are queued after it. */
