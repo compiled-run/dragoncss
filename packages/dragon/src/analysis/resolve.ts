@@ -10,7 +10,7 @@ import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeJustifyItems, computeLengths, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
 import { applyAnyLink } from './text-decoration.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
@@ -221,6 +221,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     computeOverflowPair(props);
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);
     computeGridLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
+    computeInheritedMathLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
     computeJustifyItems(props, parent === null ? null : parent.props);
     const self: { kind: 'element'; element: LinkedElement; props: Map<Longhand, ResolvedValue>; children: (ResolvedElement | ResolvedText)[] } = {
       kind: 'element',
