@@ -33,7 +33,7 @@ import { parseKeyframesRules } from './css/at-rules/keyframes.ts';
 import type { PropertySource, Registrations } from './css/at-rules/property.ts';
 import { NO_REGISTRATIONS } from './css/at-rules/property.ts';
 import { registrationsOf } from './analysis/registered.ts';
-import { rankLayers } from './analysis/layers.ts';
+import { rankLayers, revertLayerInAtRules } from './analysis/layers.ts';
 import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
 import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
 import { emitNativeSupport, supportDigest } from './emit/native-support.ts';
@@ -972,6 +972,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // CASC 3: every layered declaration takes its layer's rank, from the layer order of the whole document.
     rules.splice(0, rules.length, ...rankLayers(rules, layers, options.faults, diagnostics));
     enclosed.splice(0, enclosed.length, ...enclosed.map((e) => ({ ...e, rules: rankLayers(e.rules, layers, options.faults, null) })));
+    revertLayerInAtRules([...propertySources, ...keyframeSources].map((s) => s.context), layers, diagnostics);
     for (const s of [...valid.sources.values()].sort((a, b) => (a.ref.uri < b.ref.uri ? -1 : a.ref.uri > b.ref.uri ? 1 : 0))) dependencies.push({ kind: 'source', uri: s.ref.uri, hash: s.ref.hash });
     // T065: the @keyframes blocks parse with the stylesheet, so their refusals come whether or not the analysis runs.
     const keyframesRules = parseKeyframesRules(keyframeSources, diagnostics);

@@ -14,6 +14,8 @@ import type { CompilerFaults } from '../src/faults.ts';
 import { NO_FAULTS } from '../src/faults.ts';
 import type { Diagnostic } from '../src/types.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
+import { createProject } from '../src/index.ts';
+import { div, inputFor } from './helpers.ts';
 
 const SRC = { uri: 's.css', revision: 'r', hash: 'h' };
 const origin = { kind: 'unlocated', reason: 'test' } as const;
@@ -107,6 +109,24 @@ describe('CASC 3: refusals', () => {
     expect(messages('@layer a; .z { font-family: "revert-layer", revert-layers; }')).toEqual([]);
     // With no layer declared, revert-layer is not this refusal's (it reverts as revert does, casc.test.ts).
     expect(messages('.z { width: revert-layer; height: var(--u, revert-layer); }')).toEqual([]);
+  });
+  it('revert-layer in an @property initial-value or an @keyframes block is refused in a document with layers too', () => {
+    const compile = (css: string) => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }).compile(inputFor(css, (r) => [div(r, 'z', ['z'])]));
+    const found = (css: string): string[] => compile(css).diagnostics.filter((d) => d.message.includes('revert-layer')).map((d) => `${d.code}: ${d.message}`);
+    // The review probe: Chrome 145 tokenizes the initial-value, so the escaped or commented keyword drops the rule (casc-property.test.ts)
+    // and var(--x) is invalid at computed-value time; Dragon refuses the rule rather than registering it and reverting display.
+    for (const v of ['revert-layer/**/', 'r\\65vert-layer']) {
+      const c = compile(`@layer a { .z { display: flex; } } @property --x { syntax: "*"; inherits: false; initial-value: ${v}; } .z { display: var(--x); }`);
+      expect(c.diagnostics.map((d) => d.code), v).toContain('DRAGON_UNSUPPORTED_AT_RULE');
+      expect([c.outputs.ios.kind, c.outputs.web.kind], v).toEqual(['blocked', 'blocked']);
+    }
+    // A registration the CSS-wide check lets through (a longer token sequence) and a keyframes block are scanned as well.
+    const at = '@property --x { syntax: "*"; inherits: false; initial-value: revert-layer x; } @keyframes k { to { --y: r\\65vert-layer; } }';
+    expect(found(`@layer a; ${at} .z { width: 1px; }`)).toEqual([
+      'DRAGON_UNSUPPORTED_VALUE: @property --x: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
+      'DRAGON_UNSUPPORTED_VALUE: @keyframes k: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
+    ]);
+    expect(found(`${at} .z { width: 1px; }`).filter((m) => m.includes('cascade layers'))).toEqual([]);
   });
   it(':host matches nothing in a document (css-scoping-1), and is refused inside a selector argument', () => {
     expect(messages(':root, :host { --a: 1px; } :host .x, :host.y { width: 1px; }')).toEqual([]);
