@@ -3,6 +3,8 @@
 // order is importance, then specificity, then order of appearance.
 import type { Longhand } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
+import type { Registrations } from '../css/at-rules/property.ts';
+import { NO_REGISTRATIONS } from '../css/at-rules/property.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { LinkedElement } from './link.ts';
 import type { DirectionContext } from './logical.ts';
@@ -64,7 +66,7 @@ const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var(
  * order: custom properties first (over the parent's, inherited), then direction with var() substituted, then every other
  * longhand with each flow-relative declaration mapped to the physical side of that direction.
  */
-export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties, ix: InteractionState = NO_INTERACTION): CascadeResult {
+export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties, ix: InteractionState = NO_INTERACTION, registered: Registrations = NO_REGISTRATIONS): CascadeResult {
   const customs = new Map<string, { declaration: Declaration; specificity: readonly [number, number, number] }>();
   for (const rule of rules) {
     for (const sel of rule.selectors) {
@@ -78,7 +80,7 @@ export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedEle
       }
     }
   }
-  const scope: VarScope = { customs: computeCustoms(new Map([...customs].map(([name, c]) => [name, c.declaration])), inheritedCustoms), memo: new Map<Declaration, SubstitutedDeclaration>() };
+  const scope: VarScope = { customs: computeCustoms(new Map([...customs].map(([name, c]) => [name, c.declaration])), inheritedCustoms, registered), memo: new Map<Declaration, SubstitutedDeclaration>() };
   // css-logical-1 §4: flow-relative declarations take part as the physical longhands of the element's direction (logical.ts).
   const own = hasDirectionalValues(rules) ? elementDirection(rules, chain, faults, direction, scope) : null;
   const winners = new Map<Longhand, Candidate>();
