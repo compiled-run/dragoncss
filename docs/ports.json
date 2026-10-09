@@ -2527,7 +2527,8 @@
         { "lines": "50-68", "symbol": "PointerType", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/parity/java/PointerRule.java", "symbol": "PointerRule", "use": "port" }
+        { "file": "packages/parity/java/PointerRule.java", "symbol": "PointerRule", "use": "port" },
+        { "file": "packages/parity/src/resize-capture.ts", "symbol": "POINTER_TYPE", "use": "port" }
       ]
     },
     {
