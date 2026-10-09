@@ -15,7 +15,9 @@ import type { GenCFaults } from '../src/faults/gen-c.ts';
 import { GEN_C_FAULTS } from '../src/faults/gen-c.ts';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, listItemMarkersOf, NO_FAULTS } from '../src/internal.ts';
-import { markerTypeOf } from '../src/analysis/markers.ts';
+import { attributeRefusal } from '../src/attributes.ts';
+import type { ResolvedElement } from '../src/analysis/resolve.ts';
+import { markerTypeOf, ordinalTreeOf } from '../src/analysis/markers.ts';
 import { DOC, inputFor, staticClass } from './helpers.ts';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..', '..');
@@ -234,13 +236,16 @@ function compiledMarkers(c: ProbeCase, faults: GenCFaults = GEN_C_FAULTS): Map<s
   const compiled = project.compile(inputFor(`${c.css}\n${inline.join('\n')}`, body));
   const markers = listItemMarkersOf(compiled, [], faults);
   if (markers === null) throw new Error(`${c.id}: no resolved case: ${compiled.diagnostics.map((d) => `${d.code} ${d.message}`).join('; ')}`);
+  const attributeRefusals = compiled.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ATTRIBUTE');
+  if (attributeRefusals.length > 0) throw new Error(`${c.id}: ${attributeRefusals.map((d) => d.message).join('; ')}`);
   return new Map(markers.flatMap((m) => (m.text === null ? [] : [[m.address, m.text] as [string, string]])));
 }
 
 describe('marker text through the compiler (analysis/markers.ts) against the GEN-P probe', () => {
   for (const c of MARKER_CASES) {
-    it(`${c.id}: the compiled tree's marker text equals Chrome's`, () => {
-      expect(Object.fromEntries(compiledMarkers(c))).toEqual(Object.fromEntries(chromeMarkers(c, 'dpr-1/ltr')));
+    it(`${c.id}: the compiled tree's marker text equals Chrome's, at every DPR`, () => {
+      const compiled = Object.fromEntries(compiledMarkers(c));
+      for (const run of LTR_RUNS(c)) expect(compiled, `${c.id} ${run}`).toEqual(Object.fromEntries(chromeMarkers(c, run)));
     });
   }
   it('every compiler plant changes a compiled case too', () => {
@@ -256,5 +261,18 @@ describe('marker text through the compiler (analysis/markers.ts) against the GEN
     expect(markerTypeOf({ kind: 'keyword', value: 'lower-greek' })).toEqual({ kind: 'refused', reason: 'list-style-type: lower-greek is not supported yet: counter styles beyond the R14 list and @counter-style (GEN-d1)' });
     expect(markerTypeOf({ kind: 'keyword', value: 'Foo' })).toMatchObject({ kind: 'refused' });
     expect(() => markerTypeOf({ kind: 'other', type: 'string', text: 'unquoted' })).toThrow(/not a serialized CSS string/);
+  });
+  it('throws on a display or list-style-type that did not resolve to a keyword, rather than treating the element as a block', () => {
+    const el = (props: [string, unknown][]): ResolvedElement =>
+      ({ element: { address: 'body > div', tag: 'div', attributes: new Map() }, props: new Map(props.map(([k, v]) => [k, { value: v }])), children: [] }) as unknown as ResolvedElement;
+    expect(() => ordinalTreeOf(el([]))).toThrow(/body > div: display did not resolve/);
+    expect(() => ordinalTreeOf(el([['display', { kind: 'other', type: 'x', text: 'list-item' }]]))).toThrow(/display computed to a other, not a keyword/);
+    expect(ordinalTreeOf(el([['display', { kind: 'keyword', value: 'list-item' }]]))).toMatchObject({ box: 'box', listItem: true });
+  });
+  it('handles ol start and reversed and li value only (HTML §4.4.5, §4.4.8); the same names elsewhere stay refused', () => {
+    for (const [tag, name] of [['ol', 'start'], ['ol', 'reversed'], ['li', 'value']]) expect(attributeRefusal(tag as string, name as string), `<${tag} ${name}>`).toBeNull();
+    for (const [tag, name, owner] of [['ul', 'start', 'not proven neutral'], ['ul', 'reversed', 'not proven neutral'], ['div', 'start', 'not proven neutral'], ['ol', 'value', 'FORM-a'], ['input', 'value', 'FORM-a'], ['li', 'start', 'not proven neutral']]) {
+      expect(attributeRefusal(tag as string, name as string), `<${tag} ${name}>`).toContain(owner);
+    }
   });
 });

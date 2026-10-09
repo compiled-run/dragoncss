@@ -41,7 +41,8 @@ const keywordOf = (el: ResolvedElement, property: 'display' | 'list-style-type')
 
 const displayOf = (el: ResolvedElement): string => {
   const v = keywordOf(el, 'display');
-  return v.kind === 'keyword' ? v.value : '';
+  if (v.kind !== 'keyword') throw new Error(`${el.element.address}: display computed to a ${v.kind}, not a keyword`);
+  return v.value;
 };
 
 /** The resolved tree as list_item_ordinal.cc walks it: node ids are element addresses. */
