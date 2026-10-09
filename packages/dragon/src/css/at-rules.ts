@@ -10,6 +10,7 @@ import type { Diagnostic, Span } from '../types.ts';
 import { asciiLower } from './escapes.ts';
 import { charsetAtRule } from './at-rules/charset.ts';
 import { keyframesAtRule } from './at-rules/keyframes.ts';
+import { propertyAtRule } from './at-rules/property.ts';
 import { supportsAtRule } from './at-rules/supports.ts';
 
 /**
@@ -40,6 +41,8 @@ export type AtRuleOutcome =
   | { readonly kind: 'refuse'; readonly diagnostic: Diagnostic }
   | { readonly kind: 'font-face'; readonly context: AtRuleContext }
   | { readonly kind: 'keyframes'; readonly context: AtRuleContext }
+  /** @property at the top level: collected for css/at-rules/property.ts parsePropertyRules (CASC 2). */
+  | { readonly kind: 'property'; readonly context: AtRuleContext }
   | { readonly kind: 'conditional'; readonly condition: RuleCondition }
   /** @supports, decided at build time (at-rules/supports.ts): holds true keeps the block's rules as plain rules, false drops them. */
   | { readonly kind: 'supports'; readonly holds: boolean; readonly text: string }
@@ -117,7 +120,7 @@ export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
   namespace: refuseAtRule,
   page: refuseAtRule,
   'position-try': refuseAtRule,
-  property: refuseAtRule,
+  property: propertyAtRule,
   scope: refuseAtRule,
   'starting-style': refuseAtRule,
   supports: supportsAtRule,
