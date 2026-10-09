@@ -10,6 +10,7 @@ import { repoPath } from './paths.ts';
 import { SAMPLE_RULES } from './samples.ts';
 import { directionSuffix, environmentsOf, FIXTURES } from './fixtures.ts';
 import { RESIZE_SCRIPTS } from './fixture-groups/media-runtime.ts';
+import { ENV_SCRIPTS, MEDIA_ENVIRONMENT_FIXTURES } from './fixture-groups/media-environment.ts';
 
 export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels',
   // SELD-R1b (notes/T047 §3.3 item 5): the case scripts' dumps, and the device hit test's answers.
@@ -96,6 +97,8 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'p1', suite: 'animator', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/animator/cases.json').cases.length },
     // MQ-R1 (T067 R4): one band case per media fixture band table (packages/layout/rt-vectors/band/cases.json).
     { corpus: 'p1', suite: 'band', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/band/cases.json').cases.length },
+    // MQ-R2 (T067 R9): one pointer case per input-device source set (packages/layout/rt-vectors/pointer/cases.json).
+    { corpus: 'p1', suite: 'pointer', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/pointer/cases.json').cases.length },
     { corpus: 'extended', suite: 'engine-dpr', cases: layoutCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },
     { corpus: 'extended', suite: 'snap', cases: x.snapVectors + x.snapGenerated },
@@ -111,13 +114,20 @@ export function corpusSuites(): readonly CorpusSuite[] {
   ];
 }
 
-/** MQ-R1 device-env (device-env.ts): the rotation's three phases of the fill-the-stage fixture, in the order one launch runs them. */
-export const ENV_CASE_IDS: readonly string[] = ['portrait', 'landscape', 'back'].map((p) => `mqr-rotate~env~${p}`);
+/**
+ * MQ-R1 device-env (device-env.ts): the rotation's three phases of the fill-the-stage fixture, in the order one launch runs them.
+ * MQ-R2 (T067 R9): then two more on both platforms, the OS's reduced-motion setting turned on and back off while the app holds
+ * (Android's animator duration scale over adb; iOS's Reduce Motion, the simulator's com.apple.Accessibility default and its
+ * change notification).
+ */
+export function envCaseIds(_target: NativeTarget): readonly string[] {
+  return ['portrait', 'landscape', 'back', 'motion', 'motion-back'].map((p) => `mqr-rotate~env~${p}`);
+}
 
-/** MQ-R1: every resize prefix script id ("<fixture>[-rtl]~resize<k>", resize-scripts.ts), from the scripts and the fixtures' directions alone. */
 export function resizeScriptIds(): readonly string[] {
-  return RESIZE_SCRIPTS.flatMap((s) => {
-    const spec = FIXTURES.find((f) => f.id === s.fixture);
+  // MQ-R2: then the media-environment scripts, whose fixtures run only as scripts.
+  return [...RESIZE_SCRIPTS, ...ENV_SCRIPTS].flatMap((s) => {
+    const spec = [...FIXTURES, ...MEDIA_ENVIRONMENT_FIXTURES].find((f) => f.id === s.fixture);
     if (spec === undefined) throw new Error(`resize script ${s.fixture}: no such fixture`);
     return environmentsOf(spec).flatMap((env) => Array.from({ length: s.steps.length + 1 }, (_, k) => `${s.fixture}${directionSuffix(env.direction)}~resize${k}`));
   });
@@ -150,7 +160,7 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
   if (lane === 'layout-vectors-host' || lane === 'layout-vectors-device') {
     return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids }, ...DPRS.map((d) => dprSet(d, ids))], corpora: corpusSuites() };
   }
-  if (lane === 'device-env') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, ENV_CASE_IDS)), corpora: [] };
+  if (lane === 'device-env') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, envCaseIds(target))), corpora: [] };
   if (lane === 'device-states') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, stateScriptIds())), corpora: [] };
   if (lane === 'device-hit') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, hitCaseIds())), corpora: [] };
   return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, ids)), corpora: [] };

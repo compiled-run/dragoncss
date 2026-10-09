@@ -57,13 +57,16 @@ export const TRUST_CASES: readonly string[] = ['color-border-sides', 'text-wrap-
 export const PLANT_CASE = 'tree-projected-text#1';
 /** The glyph plants (T093), judged against the clean run on PLANT_CASE; every other support plant is a paint plant. */
 export type GlyphPlant = 'glyph-offset-1' | 'glyph-offset-y-1';
+/** MQ-R2's reading plant: run by parity:device-mqr --plant on device-env, not by native:devices. */
+export type MediaPlant = 'reduced-motion-transition-scale';
+export const isMediaPlant = (p: SupportPlant): p is MediaPlant => p === 'reduced-motion-transition-scale';
 /** The INL1a line plant, judged against the clean run on LINE_PLANT_CASE (judgeLinePlant). */
 export type LinePlant = 'single-run-baseline';
-/** The paint plants: every support plant that is neither a glyph plant nor the line plant. */
-export type PaintPlant = Exclude<SupportPlant, GlyphPlant | LinePlant>;
+/** The paint plants: every support plant that is neither a glyph plant, the line plant nor a media plant. */
+export type PaintPlant = Exclude<SupportPlant, GlyphPlant | LinePlant | MediaPlant>;
 export const isGlyphPlant = (p: SupportPlant): p is GlyphPlant => p === 'glyph-offset-1' || p === 'glyph-offset-y-1';
 export const isLinePlant = (p: SupportPlant): p is LinePlant => p === 'single-run-baseline';
-export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(p) && !isLinePlant(p);
+export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(p) && !isLinePlant(p) && !isMediaPlant(p);
 /**
  * The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures, the image plant (REPL-a) on the
  * replaced fixtures whose images are drawn, the radius plant (PNT1) on a rounded case of its own group.
@@ -1306,6 +1309,30 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
   const recFile = join(opts.outDir, `device-${h.spec.target}.json`);
   if (!existsSync(recFile)) throw new Error(`${h.spec.name}: the app wrote no device record${error === null ? '' : ` (${error})`}`);
   return { outDir: opts.outDir, record: parseAppRecord(readFileSync(recFile, 'utf8'), h.spec.target), error };
+}
+
+/**
+ * MQ-R2 (T067 R9): the OS's animator duration scale of an Android device (Settings.Global ANIMATOR_DURATION_SCALE): 0 turns reduced
+ * motion on (Chromium's AccessibilityState.prefersReducedMotion), 1 is the default. device-env's motion phases set it while the
+ * app holds, and the run puts it back to 1 whatever happens. On iOS it is a no-op: simctl has no reduced-motion switch.
+ */
+export function setAnimatorDurationScale(h: DeviceHandle, value: 0 | 1): void {
+  // A failed adb call throws (device-exec.ts), so a scale the device did not take is never mistaken for one it did.
+  if ('serial' in h) adb(h, ['shell', 'settings', 'put', 'global', 'animator_duration_scale', String(value)]);
+}
+
+/** The iOS simulator's Reduce Motion: the accessibility default UIAccessibility reads, then the notification that tells apps it changed. */
+export const IOS_REDUCE_MOTION = { domain: 'com.apple.Accessibility', key: 'ReduceMotionEnabled', notification: 'com.apple.accessibility.reduce.motion.status' } as const;
+
+/** Turns the OS's reduced-motion setting on or off: Android's animator duration scale (0 is on), iOS's Reduce Motion. A failed call throws. */
+export function setReducedMotion(h: DeviceHandle, on: boolean): void {
+  if ('serial' in h) {
+    setAnimatorDurationScale(h, on ? 0 : 1);
+    return;
+  }
+  const m = IOS_REDUCE_MOTION;
+  exec('xcrun', ['simctl', 'spawn', h.udid, 'defaults', 'write', m.domain, m.key, '-bool', on ? 'YES' : 'NO']);
+  exec('xcrun', ['simctl', 'spawn', h.udid, 'notifyutil', '-p', m.notification]);
 }
 
 /**

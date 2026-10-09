@@ -28,7 +28,18 @@ export type Corpus = {
     readonly queries: readonly string[];
     readonly bandSheets: readonly { readonly name: string; readonly queries: readonly string[] }[];
   };
+  /** MQ-R2: rows captured on each listed device (DPR, page kind, reduced motion). */
+  readonly environment: {
+    readonly viewport: Viewport;
+    readonly devices: readonly EnvDevice[];
+    readonly queries: readonly string[];
+    /** unreachable: why some bands of the sheet hold no device Chrome can emulate (a touch screen with a mouse). */
+    readonly bandSheets: readonly { readonly name: string; readonly queries: readonly string[]; readonly unreachable?: string }[];
+  };
 };
+
+/** A captured device: its DPR, a desktop (mouse), touch (hasTouch) or mobile (isMobile and hasTouch) page, and reduced motion. */
+export type EnvDevice = readonly [number, 'desktop' | 'touch' | 'mobile', 'no-preference' | 'reduce'];
 
 type Row = { readonly mediaText: string; readonly matches: string };
 
@@ -44,6 +55,12 @@ export type Capture = {
   /** One bit per frame in each row's matches, in frame order. */
   readonly fractional: {
     readonly frames: readonly (readonly [FrameKind, number, number, number])[];
+    readonly queries: readonly ({ readonly query: string } & Row)[];
+    readonly bands: readonly { readonly sheet: string; readonly conditions: readonly ({ readonly text: string } & Row)[] }[];
+  };
+  /** One bit per device in each row's matches, in device order. */
+  readonly environment: {
+    readonly devices: readonly EnvDevice[];
     readonly queries: readonly ({ readonly query: string } & Row)[];
     readonly bands: readonly { readonly sheet: string; readonly conditions: readonly ({ readonly text: string } & Row)[] }[];
   };

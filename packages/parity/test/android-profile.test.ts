@@ -11,6 +11,7 @@ import { ENVIRONMENT } from '../src/fixtures.ts';
 import { emitCases, NATIVE_CONFIG, nativeCases } from '../src/native-host.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
 import { resizeCaseReport, resizeCases, resizeProgram } from '../src/resize-capture.ts';
+import { MEDIA_CAVEATS } from '../src/profile-rows.ts';
 
 const cases = nativeCases();
 const byId = new Map(cases.map((n) => [n.case.id, n]));
@@ -43,7 +44,10 @@ describe('the android profile follows the iOS rule', () => {
   it('holds exactly the iOS rows, statuses and proofs', () => {
     expect(androidProfile.target).toBe('android');
     expect(androidProfile.revision).toBe(iosProfile.revision);
-    expect(androidProfile.rows).toEqual(iosProfile.rows);
+    // MQ-R2 (T067 R9): the one planned difference is a media row iOS answers with a caveat that Android answers exactly.
+    const exactOnAndroid = (r: (typeof iosProfile.rows)[number]) => r.context === MEDIA_CONTEXT && MEDIA_CAVEATS.ios.includes(r.feature) && !MEDIA_CAVEATS.android.includes(r.feature);
+    expect(androidProfile.rows).toEqual(iosProfile.rows.map((r) => (exactOnAndroid(r) ? { ...r, status: 'exact' } : r)));
+    expect(iosProfile.rows.filter(exactOnAndroid).map((r) => r.status)).toEqual(MEDIA_CAVEATS.ios.map(() => 'caveat'));
     expect(promoted.length).toBeGreaterThan(0);
   });
 

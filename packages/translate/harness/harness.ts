@@ -132,8 +132,8 @@ import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTab
 import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors } from '../../layout/src/rt-animator.ts';
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
 import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
-import type { BandAtom, BandComparison, BandFaults, BandFeature, BandOp, BandTable } from '../../layout/src/rt-band.ts';
-import { bandAtPx, mediaSize } from '../../layout/src/rt-band.ts';
+import type { BandAtom, BandComparison, BandEnvironment, BandFaults, BandFeature, BandKeyword, BandOp, BandTable } from '../../layout/src/rt-band.ts';
+import { androidPointerReadings, bandAtPx, mediaSize } from '../../layout/src/rt-band.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
 import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
@@ -1774,6 +1774,9 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
     // band suite (MQ-R1, T067 R4): a stylesheet's band table looked up at root sizes in whole device px.
     case 'rt-band':
       return rtBandResult(a);
+    // pointer suite (MQ-R2, T067 R9): the Android pointer and hover readings of input devices' sources.
+    case 'rt-pointer':
+      return rtPointerResult(a);
     default:
       return fail(`unknown operation ${op}`);
   }
@@ -2386,7 +2389,7 @@ function bandOp(v: JsonValue, path: string): BandOp {
 
 function bandFeature(v: JsonValue, path: string): BandFeature {
   const t = str(v, path);
-  if (t === 'width' || t === 'height' || t === 'orientation' || t === 'aspect-ratio') return t;
+  if (t === 'width' || t === 'height' || t === 'orientation' || t === 'aspect-ratio' || t === 'resolution' || t === 'pointer' || t === 'any-pointer' || t === 'hover' || t === 'any-hover' || t === 'prefers-reduced-motion') return t;
   return fail(`${path}: unknown band feature ${t}`);
 }
 
@@ -2394,8 +2397,10 @@ function bandFeature(v: JsonValue, path: string): BandFeature {
 function bandAtom(v: JsonValue, path: string): BandAtom {
   const a = arr(v, path);
   if (a.length !== 3) return fail(`${path}: expected [feature, keyword, comparisons]`);
-  const k = str(item(a, 1, path), `${path}[1]`);
-  if (k !== 'portrait' && k !== 'landscape' && k !== 'none') return fail(`${path}[1]: unknown keyword ${k}`);
+  const kw = str(item(a, 1, path), `${path}[1]`);
+  let k: BandKeyword = 'none';
+  if (kw === 'portrait' || kw === 'landscape' || kw === 'none' || kw === 'any' || kw === 'coarse' || kw === 'fine' || kw === 'hover' || kw === 'no-preference' || kw === 'reduce') k = kw;
+  else return fail(`${path}[1]: unknown keyword ${kw}`);
   const comparisons: BandComparison[] = [];
   arr(item(a, 2, path), `${path}[2]`).forEach((c, i) => {
     const p = `${path}[2][${i.toString(16)}]`;
@@ -2423,16 +2428,34 @@ function rtBandResult(a: readonly JsonValue[]): string {
     bands.push(row);
   });
   const table: BandTable = { atoms, bands };
-  const noFaults: BandFaults = { bandBoundaryExclusive: false };
+  const noFaults: BandFaults = { bandBoundaryExclusive: false, primaryPointerFineFirst: false };
   let out = '';
   arr(item(a, 2, '$'), '$[2]').forEach((x, i) => {
     const p = `$[2][${i.toString(16)}]`;
     const g = arr(x, p);
-    if (g.length !== 3) fail(`${p}: expected [widthPx, heightPx, dpr]`);
+    if (g.length !== 4) fail(`${p}: expected [widthPx, heightPx, dpr, readings]`);
     const w = arg(g, 0);
     const hh = arg(g, 1);
     const dpr = arg(g, 2);
-    out += `${out === '' ? '' : ','}[${h(mediaSize(w, dpr))},${h(mediaSize(hh, dpr))},${h(bandAtPx(table, w, hh, dpr, noFaults))}]`;
+    // MQ-R2: the readings as [pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion].
+    const r = arr(item(g, 3, p), `${p}[3]`);
+    if (r.length !== 6) fail(`${p}[3]: expected [pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion]`);
+    const env: BandEnvironment = { dpr, pointer: str(item(r, 0, p), `${p}[3][0]`), hover: bool(item(r, 1, p), `${p}[3][1]`), anyCoarse: bool(item(r, 2, p), `${p}[3][2]`), anyFine: bool(item(r, 3, p), `${p}[3][3]`), anyHover: bool(item(r, 4, p), `${p}[3][4]`), reducedMotion: bool(item(r, 5, p), `${p}[3][5]`) };
+    out += `${out === '' ? '' : ','}[${h(mediaSize(w, dpr))},${h(mediaSize(hh, dpr))},${h(bandAtPx(table, w, hh, env, noFaults))}]`;
   });
   return `[${out}]`;
+}
+
+/**
+ * The Android pointer readings: [op, devices]; a device is its getSources() as bits. The result is the primary pointer (0 none, 1
+ * coarse, 2 fine), then hover, anyCoarse, anyFine and anyHover as 0 or 1, as bits.
+ */
+function rtPointerResult(a: readonly JsonValue[]): string {
+  if (a.length !== 2) return fail('rt-pointer: expected [op, devices]');
+  const sources: number[] = [];
+  const devices = arr(item(a, 1, '$'), '$[1]');
+  for (let i = 0; i < devices.length; i++) sources.push(arg(devices, i));
+  const r = androidPointerReadings(sources, { bandBoundaryExclusive: false, primaryPointerFineFirst: false });
+  const b = (x: boolean): string => h(x ? 1 : 0);
+  return `[${h(r.pointer === 'coarse' ? 1 : r.pointer === 'fine' ? 2 : 0)},${b(r.hover)},${b(r.anyCoarse)},${b(r.anyFine)},${b(r.anyHover)}]`;
 }

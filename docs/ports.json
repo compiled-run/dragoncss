@@ -2501,6 +2501,54 @@
       ]
     },
     {
+      "upstream": "ui/base/pointer/pointer_device.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2013 The Chromium Authors",
+      "fileSha256": "bcb3b2d78aff779aa9f3f1fa11caad08a5d9f7515c9a9cf7303ca225dcf286c5",
+      "headerSha256": "5bde2a7773d1626e4d2987f3588e7e04db2a6628be0fd28c87de5d18607dd8ca",
+      "ranges": [
+        { "lines": "47-57", "symbol": "GetPrimaryPointerType", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-band.ts", "symbol": "BandFaults", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "ui/base/pointer/pointer_device.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 The Chromium Authors",
+      "fileSha256": "e98e06800b77e7709fb3883b6b6ea4edb50d9ae26769a6907f1b71f430009df6",
+      "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
+      "ranges": [
+        { "lines": "50-68", "symbol": "PointerType", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/parity/java/PointerRule.java", "symbol": "PointerRule", "use": "port" },
+        { "file": "packages/parity/src/resize-capture.ts", "symbol": "POINTER_TYPE", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "ui/base/pointer/pointer_device_android.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2013 The Chromium Authors",
+      "fileSha256": "b007c59a5055e5a06f945f0994c424e03857bd901fdcb5fc6c3eeaf1dc4c4458",
+      "headerSha256": "5bde2a7773d1626e4d2987f3588e7e04db2a6628be0fd28c87de5d18607dd8ca",
+      "ranges": [
+        { "lines": "35-55", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-band.ts", "symbol": null, "use": "port" },
+        { "file": "packages/parity/java/PointerRule.java", "symbol": null, "use": "port" },
+        { "file": "packages/parity/src/pointer-vectors.ts", "symbol": "pointerVectorsJson", "use": "reference" }
+      ]
+    },
+    {
       "upstream": "ui/gfx/animation/keyframe/timing_function.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",

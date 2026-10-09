@@ -71,6 +71,7 @@
     "parity:quads-capture": "node --conditions=dragon-internal packages/parity/src/cli/quads-capture.ts",
     "parity:band-vectors": "node --conditions=dragon-internal packages/parity/src/cli/band-vectors.ts",
     "parity:device-mqr": "node --conditions=dragon-internal packages/parity/src/cli/device-mqr.ts",
+    "parity:pointer-vectors": "node --conditions=dragon-internal packages/parity/src/cli/pointer-vectors.ts",
     "parity:resize-capture": "node --conditions=dragon-internal packages/parity/src/cli/resize-capture.ts",
     "parity:resize-report": "node --conditions=dragon-internal packages/parity/src/cli/resize-report.ts"
   },

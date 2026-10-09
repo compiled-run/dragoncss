@@ -1916,30 +1916,6 @@
    }
   },
   {
-   "query": "(orientation > portrait)",
-   "mediaText": "(orientation > portrait)",
-   "matches": {
-    "16": "1111111011111111111101110000000000000000000000001111000000000000000000000000000000000000000000000000000000000",
-    "20": "1111111011111111111101110000000000000000000000001111000000000000000000000000000000000000000000000000000000000"
-   }
-  },
-  {
-   "query": "(orientation <= landscape)",
-   "mediaText": "(orientation <= landscape)",
-   "matches": {
-    "16": "0000000100000000000010001111111111111111111111110000111111111111111111111111111111111111111111111111111111111",
-    "20": "0000000100000000000010001111111111111111111111110000111111111111111111111111111111111111111111111111111111111"
-   }
-  },
-  {
-   "query": "(prefers-color-scheme: dark)",
-   "mediaText": "(prefers-color-scheme: dark)",
-   "matches": {
-    "16": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-    "20": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-   }
-  },
-  {
    "query": "(prefers-reduced-motion)",
    "mediaText": "(prefers-reduced-motion)",
    "matches": {
@@ -2012,6 +1988,30 @@
    }
   },
   {
+   "query": "(orientation > portrait)",
+   "mediaText": "(orientation > portrait)",
+   "matches": {
+    "16": "1111111011111111111101110000000000000000000000001111000000000000000000000000000000000000000000000000000000000",
+    "20": "1111111011111111111101110000000000000000000000001111000000000000000000000000000000000000000000000000000000000"
+   }
+  },
+  {
+   "query": "(orientation <= landscape)",
+   "mediaText": "(orientation <= landscape)",
+   "matches": {
+    "16": "0000000100000000000010001111111111111111111111110000111111111111111111111111111111111111111111111111111111111",
+    "20": "0000000100000000000010001111111111111111111111110000111111111111111111111111111111111111111111111111111111111"
+   }
+  },
+  {
+   "query": "(prefers-color-scheme: dark)",
+   "mediaText": "(prefers-color-scheme: dark)",
+   "matches": {
+    "16": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "20": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+   }
+  },
+  {
    "query": "(color)",
    "mediaText": "(color)",
    "matches": {
@@ -2073,6 +2073,14 @@
    "matches": {
     "16": "0000000000000000000000000000011111111111111111111111000000000000000000000000000000000000000000000000000000000",
     "20": "0000000000000000000000000000011111111111111111111111000000000000000000000000000000000000000000000000000000000"
+   }
+  },
+  {
+   "query": "(pointer > coarse)",
+   "mediaText": "(pointer > coarse)",
+   "matches": {
+    "16": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "20": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
    }
   }
  ],
@@ -4346,6 +4354,979 @@
       "text": "(not (max-width: 639.99px)) and (not (width < 640.4px)) and (min-height: 300.01px) and (width: 640.5px)",
       "mediaText": "(not (max-width: 639.99px)) and (not (width < 640.4px)) and (min-height: 300.01px) and (width: 640.5px)",
       "matches": "00000100000000000000000000000000"
+     }
+    ]
+   }
+  ]
+ },
+ "environment": {
+  "devices": [
+   [
+    1,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    1.25,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    1.5,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    1.75,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    2,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    2.25,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    2.5,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    2.625,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    2.75,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    3,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    3.5,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    4,
+    "desktop",
+    "no-preference"
+   ],
+   [
+    1,
+    "touch",
+    "no-preference"
+   ],
+   [
+    1,
+    "touch",
+    "reduce"
+   ],
+   [
+    1,
+    "mobile",
+    "no-preference"
+   ],
+   [
+    1,
+    "mobile",
+    "reduce"
+   ],
+   [
+    2.625,
+    "touch",
+    "no-preference"
+   ],
+   [
+    2.625,
+    "touch",
+    "reduce"
+   ],
+   [
+    2.625,
+    "mobile",
+    "no-preference"
+   ],
+   [
+    2.625,
+    "mobile",
+    "reduce"
+   ],
+   [
+    3,
+    "touch",
+    "no-preference"
+   ],
+   [
+    3,
+    "touch",
+    "reduce"
+   ],
+   [
+    3,
+    "mobile",
+    "no-preference"
+   ],
+   [
+    3,
+    "mobile",
+    "reduce"
+   ],
+   [
+    1,
+    "desktop",
+    "reduce"
+   ],
+   [
+    3,
+    "desktop",
+    "reduce"
+   ]
+  ],
+  "queries": [
+   {
+    "query": "(resolution: 1dppx)",
+    "mediaText": "(resolution: 1dppx)",
+    "matches": "10000000000011110000000010"
+   },
+   {
+    "query": "(resolution: 2dppx)",
+    "mediaText": "(resolution: 2dppx)",
+    "matches": "00001000000000000000000000"
+   },
+   {
+    "query": "(resolution: 3dppx)",
+    "mediaText": "(resolution: 3dppx)",
+    "matches": "00000000010000000000111101"
+   },
+   {
+    "query": "(resolution: 2.625dppx)",
+    "mediaText": "(resolution: 2.625dppx)",
+    "matches": "00000001000000001111000000"
+   },
+   {
+    "query": "(resolution: 2.6250001dppx)",
+    "mediaText": "(resolution: 2.625dppx)",
+    "matches": "00000001000000001111000000"
+   },
+   {
+    "query": "(resolution: 2.624999dppx)",
+    "mediaText": "(resolution: 2.625dppx)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(resolution: 2.6249999dppx)",
+    "mediaText": "(resolution: 2.625dppx)",
+    "matches": "00000001000000001111000000"
+   },
+   {
+    "query": "(resolution: 1.75x)",
+    "mediaText": "(resolution: 1.75x)",
+    "matches": "00010000000000000000000000"
+   },
+   {
+    "query": "(resolution: 2x)",
+    "mediaText": "(resolution: 2x)",
+    "matches": "00001000000000000000000000"
+   },
+   {
+    "query": "(resolution: 3x)",
+    "mediaText": "(resolution: 3x)",
+    "matches": "00000000010000000000111101"
+   },
+   {
+    "query": "(resolution: 96dpi)",
+    "mediaText": "(resolution: 96dpi)",
+    "matches": "10000000000011110000000010"
+   },
+   {
+    "query": "(resolution: 192dpi)",
+    "mediaText": "(resolution: 192dpi)",
+    "matches": "00001000000000000000000000"
+   },
+   {
+    "query": "(resolution: 252dpi)",
+    "mediaText": "(resolution: 252dpi)",
+    "matches": "00000001000000001111000000"
+   },
+   {
+    "query": "(resolution: 251.99999dpi)",
+    "mediaText": "(resolution: 252dpi)",
+    "matches": "00000001000000001111000000"
+   },
+   {
+    "query": "(resolution: 251.9999dpi)",
+    "mediaText": "(resolution: 252dpi)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(resolution: 288dpi)",
+    "mediaText": "(resolution: 288dpi)",
+    "matches": "00000000010000000000111101"
+   },
+   {
+    "query": "(resolution: 37.8dpcm)",
+    "mediaText": "(resolution: 37.8dpcm)",
+    "matches": "10000000000011110000000010"
+   },
+   {
+    "query": "(resolution: 37.79dpcm)",
+    "mediaText": "(resolution: 37.79dpcm)",
+    "matches": "10000000000011110000000010"
+   },
+   {
+    "query": "(resolution: 37.8dpcm)",
+    "mediaText": "(resolution: 37.8dpcm)",
+    "matches": "10000000000011110000000010"
+   },
+   {
+    "query": "(resolution: 75.59dpcm)",
+    "mediaText": "(resolution: 75.59dpcm)",
+    "matches": "00001000000000000000000000"
+   },
+   {
+    "query": "(resolution: 75.6dpcm)",
+    "mediaText": "(resolution: 75.6dpcm)",
+    "matches": "00001000000000000000000000"
+   },
+   {
+    "query": "(resolution: 99.21dpcm)",
+    "mediaText": "(resolution: 99.21dpcm)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(resolution: 99.22dpcm)",
+    "mediaText": "(resolution: 99.22dpcm)",
+    "matches": "00000001000000001111000000"
+   },
+   {
+    "query": "(resolution: 99.2126dpcm)",
+    "mediaText": "(resolution: 99.2126dpcm)",
+    "matches": "00000001000000001111000000"
+   },
+   {
+    "query": "(resolution: 113.39dpcm)",
+    "mediaText": "(resolution: 113.39dpcm)",
+    "matches": "00000000010000000000111101"
+   },
+   {
+    "query": "(resolution: 113.38dpcm)",
+    "mediaText": "(resolution: 113.38dpcm)",
+    "matches": "00000000010000000000111101"
+   },
+   {
+    "query": "(resolution: 0dppx)",
+    "mediaText": "(resolution: 0dppx)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(resolution: 0.5dppx)",
+    "mediaText": "(resolution: 0.5dppx)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(resolution: 1e0dppx)",
+    "mediaText": "(resolution: 1dppx)",
+    "matches": "10000000000011110000000010"
+   },
+   {
+    "query": "(min-resolution: 2dppx)",
+    "mediaText": "(min-resolution: 2dppx)",
+    "matches": "00001111111100001111111101"
+   },
+   {
+    "query": "(max-resolution: 2dppx)",
+    "mediaText": "(max-resolution: 2dppx)",
+    "matches": "11111000000011110000000010"
+   },
+   {
+    "query": "(min-resolution: 2.625dppx)",
+    "mediaText": "(min-resolution: 2.625dppx)",
+    "matches": "00000001111100001111111101"
+   },
+   {
+    "query": "(max-resolution: 2.625dppx)",
+    "mediaText": "(max-resolution: 2.625dppx)",
+    "matches": "11111111000011111111000010"
+   },
+   {
+    "query": "(min-resolution: 2.6250001dppx)",
+    "mediaText": "(min-resolution: 2.625dppx)",
+    "matches": "00000001111100001111111101"
+   },
+   {
+    "query": "(max-resolution: 2.6250001dppx)",
+    "mediaText": "(max-resolution: 2.625dppx)",
+    "matches": "11111111000011111111000010"
+   },
+   {
+    "query": "(min-resolution: 3dppx)",
+    "mediaText": "(min-resolution: 3dppx)",
+    "matches": "00000000011100000000111101"
+   },
+   {
+    "query": "(max-resolution: 3dppx)",
+    "mediaText": "(max-resolution: 3dppx)",
+    "matches": "11111111110011111111111111"
+   },
+   {
+    "query": "(min-resolution: 99.215dpcm)",
+    "mediaText": "(min-resolution: 99.215dpcm)",
+    "matches": "00000001111100001111111101"
+   },
+   {
+    "query": "(max-resolution: 99.215dpcm)",
+    "mediaText": "(max-resolution: 99.215dpcm)",
+    "matches": "11111111000011111111000010"
+   },
+   {
+    "query": "(min-resolution: 99.225dpcm)",
+    "mediaText": "(min-resolution: 99.225dpcm)",
+    "matches": "00000001111100001111111101"
+   },
+   {
+    "query": "(max-resolution: 99.225dpcm)",
+    "mediaText": "(max-resolution: 99.225dpcm)",
+    "matches": "11111111000011111111000010"
+   },
+   {
+    "query": "(min-resolution: 1.5x)",
+    "mediaText": "(min-resolution: 1.5x)",
+    "matches": "00111111111100001111111101"
+   },
+   {
+    "query": "(max-resolution: 1.5x)",
+    "mediaText": "(max-resolution: 1.5x)",
+    "matches": "11100000000011110000000010"
+   },
+   {
+    "query": "(min-resolution: 168dpi)",
+    "mediaText": "(min-resolution: 168dpi)",
+    "matches": "00011111111100001111111101"
+   },
+   {
+    "query": "(max-resolution: 168dpi)",
+    "mediaText": "(max-resolution: 168dpi)",
+    "matches": "11110000000011110000000010"
+   },
+   {
+    "query": "(min-resolution: 0dppx)",
+    "mediaText": "(min-resolution: 0dppx)",
+    "matches": "11111111111111111111111111"
+   },
+   {
+    "query": "(max-resolution: 0dppx)",
+    "mediaText": "(max-resolution: 0dppx)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(resolution)",
+    "mediaText": "(resolution)",
+    "matches": "11111111111111111111111111"
+   },
+   {
+    "query": "(resolution < 2.625dppx)",
+    "mediaText": "(resolution < 2.625dppx)",
+    "matches": "11111110000011110000000010"
+   },
+   {
+    "query": "(resolution <= 2.625dppx)",
+    "mediaText": "(resolution <= 2.625dppx)",
+    "matches": "11111111000011111111000010"
+   },
+   {
+    "query": "(resolution > 2.62dppx)",
+    "mediaText": "(resolution > 2.62dppx)",
+    "matches": "00000001111100001111111101"
+   },
+   {
+    "query": "(resolution >= 2.625dppx)",
+    "mediaText": "(resolution >= 2.625dppx)",
+    "matches": "00000001111100001111111101"
+   },
+   {
+    "query": "(resolution = 2.625dppx)",
+    "mediaText": "(resolution = 2.625dppx)",
+    "matches": "00000001000000001111000000"
+   },
+   {
+    "query": "(2dppx < resolution < 3dppx)",
+    "mediaText": "(2dppx < resolution < 3dppx)",
+    "matches": "00000111100000001111000000"
+   },
+   {
+    "query": "(2dppx <= resolution <= 3dppx)",
+    "mediaText": "(2dppx <= resolution <= 3dppx)",
+    "matches": "00001111110000001111111101"
+   },
+   {
+    "query": "(3x > resolution >= 2x)",
+    "mediaText": "(3x > resolution >= 2x)",
+    "matches": "00001111100000001111000000"
+   },
+   {
+    "query": "(resolution: 2)",
+    "mediaText": "(resolution: 2)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(resolution: -1dppx)",
+    "mediaText": "(resolution: -1dppx)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(not (resolution > -1dppx))",
+    "mediaText": "(not (resolution > -1dppx))",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(not (min-resolution: -1dppx))",
+    "mediaText": "(not (min-resolution: -1dppx))",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(resolution: 2.625X)",
+    "mediaText": "(resolution: 2.625x)",
+    "matches": "00000001000000001111000000"
+   },
+   {
+    "query": "(resolution: 2.6250DPPX)",
+    "mediaText": "(resolution: 2.625dppx)",
+    "matches": "00000001000000001111000000"
+   },
+   {
+    "query": "(resolution: infinite)",
+    "mediaText": "(resolution: infinite)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(resolution: 1e40dppx)",
+    "mediaText": "(resolution: 3.40282e+38dppx)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(max-resolution: 1e40dppx)",
+    "mediaText": "(max-resolution: 3.40282e+38dppx)",
+    "matches": "11111111111111111111111111"
+   },
+   {
+    "query": "(not (resolution: 2))",
+    "mediaText": "(not (resolution: 2))",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(min-resolution: 2dpi) and (max-resolution: 2dppx)",
+    "mediaText": "(min-resolution: 2dpi) and (max-resolution: 2dppx)",
+    "matches": "11111000000011110000000010"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio: 1)",
+    "mediaText": "(-webkit-device-pixel-ratio: 1)",
+    "matches": "10000000000011110000000010"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio: 2)",
+    "mediaText": "(-webkit-device-pixel-ratio: 2)",
+    "matches": "00001000000000000000000000"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio: 3)",
+    "mediaText": "(-webkit-device-pixel-ratio: 3)",
+    "matches": "00000000010000000000111101"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio: 2.625)",
+    "mediaText": "(-webkit-device-pixel-ratio: 2.625)",
+    "matches": "00000001000000001111000000"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio: 2.6250001)",
+    "mediaText": "(-webkit-device-pixel-ratio: 2.625)",
+    "matches": "00000001000000001111000000"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio: 2.624999)",
+    "mediaText": "(-webkit-device-pixel-ratio: 2.625)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio: 1.75)",
+    "mediaText": "(-webkit-device-pixel-ratio: 1.75)",
+    "matches": "00010000000000000000000000"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio: 0)",
+    "mediaText": "(-webkit-device-pixel-ratio: 0)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio: -1)",
+    "mediaText": "(-webkit-device-pixel-ratio: -1)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio: 2.5)",
+    "mediaText": "(-webkit-device-pixel-ratio: 2.5)",
+    "matches": "00000010000000000000000000"
+   },
+   {
+    "query": "(-webkit-min-device-pixel-ratio: 2)",
+    "mediaText": "(-webkit-min-device-pixel-ratio: 2)",
+    "matches": "00001111111100001111111101"
+   },
+   {
+    "query": "(-webkit-max-device-pixel-ratio: 2)",
+    "mediaText": "(-webkit-max-device-pixel-ratio: 2)",
+    "matches": "11111000000011110000000010"
+   },
+   {
+    "query": "(-webkit-min-device-pixel-ratio: 2.625)",
+    "mediaText": "(-webkit-min-device-pixel-ratio: 2.625)",
+    "matches": "00000001111100001111111101"
+   },
+   {
+    "query": "(-webkit-max-device-pixel-ratio: 2.625)",
+    "mediaText": "(-webkit-max-device-pixel-ratio: 2.625)",
+    "matches": "11111111000011111111000010"
+   },
+   {
+    "query": "(-webkit-min-device-pixel-ratio: 2.6)",
+    "mediaText": "(-webkit-min-device-pixel-ratio: 2.6)",
+    "matches": "00000001111100001111111101"
+   },
+   {
+    "query": "(-webkit-max-device-pixel-ratio: 2.6)",
+    "mediaText": "(-webkit-max-device-pixel-ratio: 2.6)",
+    "matches": "11111110000011110000000010"
+   },
+   {
+    "query": "(-webkit-min-device-pixel-ratio: 3)",
+    "mediaText": "(-webkit-min-device-pixel-ratio: 3)",
+    "matches": "00000000011100000000111101"
+   },
+   {
+    "query": "(-webkit-max-device-pixel-ratio: 3)",
+    "mediaText": "(-webkit-max-device-pixel-ratio: 3)",
+    "matches": "11111111110011111111111111"
+   },
+   {
+    "query": "(-webkit-min-device-pixel-ratio: 1.5)",
+    "mediaText": "(-webkit-min-device-pixel-ratio: 1.5)",
+    "matches": "00111111111100001111111101"
+   },
+   {
+    "query": "(-webkit-max-device-pixel-ratio: 1.5)",
+    "mediaText": "(-webkit-max-device-pixel-ratio: 1.5)",
+    "matches": "11100000000011110000000010"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio)",
+    "mediaText": "(-webkit-device-pixel-ratio)",
+    "matches": "11111111111111111111111111"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio > 2)",
+    "mediaText": "(-webkit-device-pixel-ratio > 2)",
+    "matches": "00000111111100001111111101"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio <= 2.625)",
+    "mediaText": "(-webkit-device-pixel-ratio <= 2.625)",
+    "matches": "11111111000011111111000010"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio: 2dppx)",
+    "mediaText": "(-webkit-device-pixel-ratio: 2dppx)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(not (-webkit-device-pixel-ratio: 2dppx))",
+    "mediaText": "(not (-webkit-device-pixel-ratio: 2dppx))",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(not (-webkit-device-pixel-ratio: -1))",
+    "mediaText": "(not (-webkit-device-pixel-ratio: -1))",
+    "matches": "11111111111111111111111111"
+   },
+   {
+    "query": "(min--webkit-device-pixel-ratio: 2)",
+    "mediaText": "(min--webkit-device-pixel-ratio: 2)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(-webkit-device-pixel-ratio: 21/8)",
+    "mediaText": "(-webkit-device-pixel-ratio: 21/8)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(min-device-pixel-ratio: 2)",
+    "mediaText": "(min-device-pixel-ratio: 2)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(hover)",
+    "mediaText": "(hover)",
+    "matches": "11111111111100000000000011"
+   },
+   {
+    "query": "(not (hover))",
+    "mediaText": "(not (hover))",
+    "matches": "00000000000011111111111100"
+   },
+   {
+    "query": "(hover: hover)",
+    "mediaText": "(hover: hover)",
+    "matches": "11111111111100000000000011"
+   },
+   {
+    "query": "(hover: none)",
+    "mediaText": "(hover: none)",
+    "matches": "00000000000011111111111100"
+   },
+   {
+    "query": "(hover: HOVER)",
+    "mediaText": "(hover: hover)",
+    "matches": "11111111111100000000000011"
+   },
+   {
+    "query": "(hover: fine)",
+    "mediaText": "(hover: fine)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(hover: 1)",
+    "mediaText": "(hover: 1)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(any-hover)",
+    "mediaText": "(any-hover)",
+    "matches": "11111111111100000000000011"
+   },
+   {
+    "query": "(not (any-hover))",
+    "mediaText": "(not (any-hover))",
+    "matches": "00000000000011111111111100"
+   },
+   {
+    "query": "(any-hover: hover)",
+    "mediaText": "(any-hover: hover)",
+    "matches": "11111111111100000000000011"
+   },
+   {
+    "query": "(any-hover: none)",
+    "mediaText": "(any-hover: none)",
+    "matches": "00000000000011111111111100"
+   },
+   {
+    "query": "(pointer)",
+    "mediaText": "(pointer)",
+    "matches": "11111111111111111111111111"
+   },
+   {
+    "query": "(not (pointer))",
+    "mediaText": "(not (pointer))",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(pointer: fine)",
+    "mediaText": "(pointer: fine)",
+    "matches": "11111111111100000000000011"
+   },
+   {
+    "query": "(pointer: coarse)",
+    "mediaText": "(pointer: coarse)",
+    "matches": "00000000000011111111111100"
+   },
+   {
+    "query": "(pointer: none)",
+    "mediaText": "(pointer: none)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(pointer: Fine)",
+    "mediaText": "(pointer: fine)",
+    "matches": "11111111111100000000000011"
+   },
+   {
+    "query": "(pointer: auto)",
+    "mediaText": "(pointer: auto)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(any-pointer)",
+    "mediaText": "(any-pointer)",
+    "matches": "11111111111111111111111111"
+   },
+   {
+    "query": "(not (any-pointer))",
+    "mediaText": "(not (any-pointer))",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(any-pointer: fine)",
+    "mediaText": "(any-pointer: fine)",
+    "matches": "11111111111100000000000011"
+   },
+   {
+    "query": "(any-pointer: coarse)",
+    "mediaText": "(any-pointer: coarse)",
+    "matches": "00000000000011111111111100"
+   },
+   {
+    "query": "(any-pointer: none)",
+    "mediaText": "(any-pointer: none)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(prefers-reduced-motion)",
+    "mediaText": "(prefers-reduced-motion)",
+    "matches": "00000000000001010101010111"
+   },
+   {
+    "query": "(not (prefers-reduced-motion))",
+    "mediaText": "(not (prefers-reduced-motion))",
+    "matches": "11111111111110101010101000"
+   },
+   {
+    "query": "(prefers-reduced-motion: reduce)",
+    "mediaText": "(prefers-reduced-motion: reduce)",
+    "matches": "00000000000001010101010111"
+   },
+   {
+    "query": "(prefers-reduced-motion: no-preference)",
+    "mediaText": "(prefers-reduced-motion: no-preference)",
+    "matches": "11111111111110101010101000"
+   },
+   {
+    "query": "(prefers-reduced-motion: REDUCE)",
+    "mediaText": "(prefers-reduced-motion: reduce)",
+    "matches": "00000000000001010101010111"
+   },
+   {
+    "query": "(prefers-reduced-motion: none)",
+    "mediaText": "(prefers-reduced-motion: none)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(min-hover: hover)",
+    "mediaText": "(min-hover: hover)",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(not (pointer: auto))",
+    "mediaText": "(not (pointer: auto))",
+    "matches": "00000000000000000000000000"
+   },
+   {
+    "query": "(hover: hover) and (pointer: fine)",
+    "mediaText": "(hover: hover) and (pointer: fine)",
+    "matches": "11111111111100000000000011"
+   },
+   {
+    "query": "(hover: none) or (pointer: coarse)",
+    "mediaText": "(hover: none) or (pointer: coarse)",
+    "matches": "00000000000011111111111100"
+   },
+   {
+    "query": "not all and (any-pointer: coarse)",
+    "mediaText": "not all and (any-pointer: coarse)",
+    "matches": "11111111111100000000000011"
+   },
+   {
+    "query": "(prefers-reduced-motion: reduce) and (max-width: 500px)",
+    "mediaText": "(prefers-reduced-motion: reduce) and (max-width: 500px)",
+    "matches": "00000000000001010101010111"
+   },
+   {
+    "query": "(prefers-reduced-motion: no-preference) and (min-resolution: 2dppx)",
+    "mediaText": "(prefers-reduced-motion: no-preference) and (min-resolution: 2dppx)",
+    "matches": "00001111111100001010101000"
+   },
+   {
+    "query": "screen and (pointer: coarse) and (hover: none)",
+    "mediaText": "screen and (pointer: coarse) and (hover: none)",
+    "matches": "00000000000011111111111100"
+   },
+   {
+    "query": "(any-pointer: fine) and (any-hover: none)",
+    "mediaText": "(any-pointer: fine) and (any-hover: none)",
+    "matches": "00000000000000000000000000"
+   }
+  ],
+  "bands": [
+   {
+    "sheet": "pointer-hover",
+    "conditions": [
+     {
+      "text": "(hover: hover) and (not (pointer: coarse))",
+      "mediaText": "(hover: hover) and (not (pointer: coarse))",
+      "matches": "11111111111100000000000011"
+     },
+     {
+      "text": "(not (hover: hover)) and (not (pointer: coarse))",
+      "mediaText": "(not (hover: hover)) and (not (pointer: coarse))",
+      "matches": "00000000000000000000000000"
+     },
+     {
+      "text": "(not (hover: hover)) and (pointer: coarse)",
+      "mediaText": "(not (hover: hover)) and (pointer: coarse)",
+      "matches": "00000000000011111111111100"
+     },
+     {
+      "text": "(hover: hover) and (pointer: coarse)",
+      "mediaText": "(hover: hover) and (pointer: coarse)",
+      "matches": "00000000000000000000000000"
+     }
+    ]
+   },
+   {
+    "sheet": "any-pointer",
+    "conditions": [
+     {
+      "text": "(any-pointer: fine) and (any-hover: hover) and (pointer: fine)",
+      "mediaText": "(any-pointer: fine) and (any-hover: hover) and (pointer: fine)",
+      "matches": "11111111111100000000000011"
+     },
+     {
+      "text": "(not (any-pointer: fine)) and (not (any-hover: hover)) and (not (pointer: fine))",
+      "mediaText": "(not (any-pointer: fine)) and (not (any-hover: hover)) and (not (pointer: fine))",
+      "matches": "00000000000011111111111100"
+     },
+     {
+      "text": "(not (any-pointer: fine)) and (any-hover: hover) and (not (pointer: fine))",
+      "mediaText": "(not (any-pointer: fine)) and (any-hover: hover) and (not (pointer: fine))",
+      "matches": "00000000000000000000000000"
+     },
+     {
+      "text": "(any-pointer: fine) and (not (any-hover: hover)) and (pointer: fine)",
+      "mediaText": "(any-pointer: fine) and (not (any-hover: hover)) and (pointer: fine)",
+      "matches": "00000000000000000000000000"
+     },
+     {
+      "text": "(any-pointer: fine) and (not (any-hover: hover)) and (not (pointer: fine))",
+      "mediaText": "(any-pointer: fine) and (not (any-hover: hover)) and (not (pointer: fine))",
+      "matches": "00000000000000000000000000"
+     },
+     {
+      "text": "(any-pointer: fine) and (any-hover: hover) and (not (pointer: fine))",
+      "mediaText": "(any-pointer: fine) and (any-hover: hover) and (not (pointer: fine))",
+      "matches": "00000000000000000000000000"
+     }
+    ]
+   },
+   {
+    "sheet": "motion",
+    "conditions": [
+     {
+      "text": "(not (prefers-reduced-motion: reduce)) and (not (prefers-reduced-motion))",
+      "mediaText": "(not (prefers-reduced-motion: reduce)) and (not (prefers-reduced-motion))",
+      "matches": "11111111111110101010101000"
+     },
+     {
+      "text": "(prefers-reduced-motion: reduce) and (prefers-reduced-motion)",
+      "mediaText": "(prefers-reduced-motion: reduce) and (prefers-reduced-motion)",
+      "matches": "00000000000001010101010111"
+     }
+    ]
+   },
+   {
+    "sheet": "resolution",
+    "conditions": [
+     {
+      "text": "(not (min-resolution: 2dppx)) and (not (min-resolution: 3dppx)) and (max-resolution: 2.625x)",
+      "mediaText": "(not (min-resolution: 2dppx)) and (not (min-resolution: 3dppx)) and (max-resolution: 2.625x)",
+      "matches": "11110000000011110000000010"
+     },
+     {
+      "text": "(min-resolution: 2dppx) and (not (min-resolution: 3dppx)) and (max-resolution: 2.625x)",
+      "mediaText": "(min-resolution: 2dppx) and (not (min-resolution: 3dppx)) and (max-resolution: 2.625x)",
+      "matches": "00001111000000001111000000"
+     },
+     {
+      "text": "(min-resolution: 2dppx) and (not (min-resolution: 3dppx)) and (not (max-resolution: 2.625x))",
+      "mediaText": "(min-resolution: 2dppx) and (not (min-resolution: 3dppx)) and (not (max-resolution: 2.625x))",
+      "matches": "00000000100000000000000000"
+     },
+     {
+      "text": "(min-resolution: 2dppx) and (min-resolution: 3dppx) and (not (max-resolution: 2.625x))",
+      "mediaText": "(min-resolution: 2dppx) and (min-resolution: 3dppx) and (not (max-resolution: 2.625x))",
+      "matches": "00000000011100000000111101"
+     }
+    ]
+   },
+   {
+    "sheet": "resolution-dpcm",
+    "conditions": [
+     {
+      "text": "(not (min-resolution: 99.22dpcm)) and (-webkit-max-device-pixel-ratio: 1.5)",
+      "mediaText": "(not (min-resolution: 99.22dpcm)) and (-webkit-max-device-pixel-ratio: 1.5)",
+      "matches": "11100000000011110000000010"
+     },
+     {
+      "text": "(not (min-resolution: 99.22dpcm)) and (not (-webkit-max-device-pixel-ratio: 1.5))",
+      "mediaText": "(not (min-resolution: 99.22dpcm)) and (not (-webkit-max-device-pixel-ratio: 1.5))",
+      "matches": "00011110000000000000000000"
+     },
+     {
+      "text": "(min-resolution: 99.22dpcm) and (not (-webkit-max-device-pixel-ratio: 1.5))",
+      "mediaText": "(min-resolution: 99.22dpcm) and (not (-webkit-max-device-pixel-ratio: 1.5))",
+      "matches": "00000001111100001111111101"
+     }
+    ]
+   },
+   {
+    "sheet": "mixed",
+    "conditions": [
+     {
+      "text": "(hover: hover) and (not (-webkit-min-device-pixel-ratio: 2)) and (not (prefers-reduced-motion))",
+      "mediaText": "(hover: hover) and (not (-webkit-min-device-pixel-ratio: 2)) and (not (prefers-reduced-motion))",
+      "matches": "11110000000000000000000000"
+     },
+     {
+      "text": "(not (hover: hover)) and (not (-webkit-min-device-pixel-ratio: 2)) and (not (prefers-reduced-motion))",
+      "mediaText": "(not (hover: hover)) and (not (-webkit-min-device-pixel-ratio: 2)) and (not (prefers-reduced-motion))",
+      "matches": "00000000000010100000000000"
+     },
+     {
+      "text": "(not (hover: hover)) and (not (-webkit-min-device-pixel-ratio: 2)) and (prefers-reduced-motion)",
+      "mediaText": "(not (hover: hover)) and (not (-webkit-min-device-pixel-ratio: 2)) and (prefers-reduced-motion)",
+      "matches": "00000000000001010000000000"
+     },
+     {
+      "text": "(hover: hover) and (not (-webkit-min-device-pixel-ratio: 2)) and (prefers-reduced-motion)",
+      "mediaText": "(hover: hover) and (not (-webkit-min-device-pixel-ratio: 2)) and (prefers-reduced-motion)",
+      "matches": "00000000000000000000000010"
+     },
+     {
+      "text": "(not (hover: hover)) and (-webkit-min-device-pixel-ratio: 2) and (not (prefers-reduced-motion))",
+      "mediaText": "(not (hover: hover)) and (-webkit-min-device-pixel-ratio: 2) and (not (prefers-reduced-motion))",
+      "matches": "00000000000000001010101000"
+     },
+     {
+      "text": "(not (hover: hover)) and (-webkit-min-device-pixel-ratio: 2) and (prefers-reduced-motion)",
+      "mediaText": "(not (hover: hover)) and (-webkit-min-device-pixel-ratio: 2) and (prefers-reduced-motion)",
+      "matches": "00000000000000000101010100"
+     },
+     {
+      "text": "(hover: hover) and (-webkit-min-device-pixel-ratio: 2) and (not (prefers-reduced-motion))",
+      "mediaText": "(hover: hover) and (-webkit-min-device-pixel-ratio: 2) and (not (prefers-reduced-motion))",
+      "matches": "00001111111100000000000000"
+     },
+     {
+      "text": "(hover: hover) and (-webkit-min-device-pixel-ratio: 2) and (prefers-reduced-motion)",
+      "mediaText": "(hover: hover) and (-webkit-min-device-pixel-ratio: 2) and (prefers-reduced-motion)",
+      "matches": "00000000000000000000000001"
      }
     ]
    }

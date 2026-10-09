@@ -17,7 +17,7 @@ import type { SupportPlant } from 'dragon';
 import { GATE_GLYPH_POSITION_DEVICE_PX } from '../compare.ts';
 import { caseReference, dumpFile, evaluateCase, plantVerdict, readDump } from '../device-lanes.ts';
 import type { DeviceSpec } from '../device-run.ts';
-import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, isGlyphPlant, isPaintPlant, judgeGlyphPlant, judgeLinePlant, LINE_PLANT_CASE, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
+import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, isGlyphPlant, isMediaPlant, isPaintPlant, judgeGlyphPlant, judgeLinePlant, LINE_PLANT_CASE, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
 import { glyphPositions } from '../native-compare.ts';
 import { validateNativeDump } from '../native-dump.ts';
 import { existsSync, readFileSync } from 'node:fs';
@@ -36,6 +36,7 @@ if (onlyArg !== null && onlyArg !== 'ios' && onlyArg !== 'android') {
 const only: NativeTarget | null = onlyArg;
 const plant = args.includes('--plant') ? (args[args.indexOf('--plant') + 1] as SupportPlant) : null;
 if (plant !== null && !SUPPORT_PLANTS.includes(plant)) throw new Error(`--plant takes one of ${SUPPORT_PLANTS.join(', ')}`);
+if (plant !== null && isMediaPlant(plant)) throw new Error(`${plant} is a device-env plant: run it with pnpm run parity:device-mqr -- --target android --plant ${plant}`);
 const targets: NativeTarget[] = (['ios', 'android'] as const).filter((t) => only === null || t === only);
 const log = (s: string): void => console.log(`native:devices: ${s}`);
 

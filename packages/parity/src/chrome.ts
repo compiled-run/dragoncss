@@ -31,9 +31,12 @@ export function ahemFontFace(): string {
   return ahemFace;
 }
 
-/** Launches the pinned Chrome; forceDeviceScaleFactor is 1 for every milestone-1 lane and N for a device-DPR capture. */
-export async function launchChrome(forceDeviceScaleFactor: number = 1): Promise<Browser> {
-  const browser = await chromium.launch({ args: [...chromeArgsAt(forceDeviceScaleFactor)] });
+/**
+ * Launches the pinned Chrome; forceDeviceScaleFactor is 1 for every milestone-1 lane and N for a device-DPR capture. extra: more
+ * flags after CHROME_ARGS (MQ-R2: a resize capture's --blink-settings pointer readings).
+ */
+export async function launchChrome(forceDeviceScaleFactor: number = 1, extra: readonly string[] = []): Promise<Browser> {
+  const browser = await chromium.launch({ args: [...chromeArgsAt(forceDeviceScaleFactor), ...extra] });
   const version = browser.version();
   if (version !== CHROME_VERSION) {
     await browser.close();

@@ -6,13 +6,34 @@ import { INITIAL_FONT_SIZE, resolveLength } from './length.ts';
 import { featuresOfList } from './parse.ts';
 import type { Comparison, MediaCondition, MediaFeature, MediaQuery, MediaQueryList, MediaValue } from './parse.ts';
 import { serialiseFeature } from './parse.ts';
-import { wholePx } from './viewport.ts';
+import { clampToFloat, twoDecimals, wholePx } from './viewport.ts';
+import { DEVICE_FEATURES } from './features.ts';
+
+/**
+ * MQ-R2 (T067 R9): the device readings the device features answer from. dpr is the device scale (resolution and
+ * -webkit-device-pixel-ratio); pointer and hover are the primary pointing device's, anyPointer and anyHover every one's.
+ */
+export type MediaDevice = {
+  readonly dpr: number;
+  readonly pointer: 'none' | 'coarse' | 'fine';
+  readonly anyPointer: readonly ('coarse' | 'fine')[];
+  readonly hover: 'none' | 'hover';
+  readonly anyHover: 'none' | 'hover';
+  readonly reducedMotion: 'no-preference' | 'reduce';
+};
+
+/** Headless Chrome's desktop page at DPR 1 (M7): a mouse, no motion preference. Every capture without its own device is this. */
+export const DESKTOP_DEVICE: MediaDevice = { dpr: 1, pointer: 'fine', anyPointer: ['fine'], hover: 'hover', anyHover: 'hover', reducedMotion: 'no-preference' };
+/** A touch-only page (hasTouch, with or without isMobile, M7): a coarse pointer that cannot hover. */
+export const TOUCH_DEVICE: MediaDevice = { dpr: 1, pointer: 'coarse', anyPointer: ['coarse'], hover: 'none', anyHover: 'none', reducedMotion: 'no-preference' };
 
 export type MediaEnvironment = {
   readonly width: number;
   readonly height: number;
   /** The document's root font size. Media queries ignore it; only the emFromRoot fault reads it. */
   readonly rootFontSize?: number;
+  /** The device readings; DESKTOP_DEVICE when absent. */
+  readonly device?: MediaDevice;
 };
 
 export type MediaRefusal = { readonly feature: string; readonly reason: 'environment' | 'value' };
@@ -73,9 +94,51 @@ export function ratioSize(env: MediaEnvironment, untruncated: boolean): { readon
   return untruncated ? env : { width: wholePx(env.width), height: wholePx(env.height) };
 }
 
+
+/** dppx per authored unit, as Blink's canonical-unit factors (1 / CSS px per inch, 1 / CSS px per cm). */
+const DPPX_PER: Readonly<Record<string, number>> = { dppx: 1, x: 1, dpi: 1 / 96, dpcm: 1 / (96 / 2.54) };
+
+
+/** A comparison of the device scale with a query value, exact (Chrome's CompareValue, measured with its EvalResolution). */
+function compareExact(actual: number, op: Comparison, query: number): boolean {
+  switch (op) {
+    case '<':
+      return actual < query;
+    case '<=':
+      return actual <= query;
+    case '>':
+      return actual > query;
+    case '>=':
+      return actual >= query;
+    case '=':
+      return actual === query;
+  }
+}
+
+/** One device feature: the scale against <resolution> or <number>, or a discrete reading against its keyword. */
+function evaluateDevice(f: MediaFeature, d: MediaDevice, faults: MediaFaults): boolean {
+  if (f.base === 'resolution' || f.base === '-webkit-device-pixel-ratio') {
+    // Planted: both sides kept as doubles, so 2.6250001dppx no longer equals a 2.625 scale.
+    const float = faults.resolutionDouble ? (x: number): number => x : clampToFloat;
+    const actual = float(d.dpr);
+    if (f.form === 'boolean') return actual !== 0;
+    return comparisonsOf(f, faults).every(({ op, value }) => {
+      if (value.kind === 'number') return compareExact(actual, op, float(value.value));
+      const r = value as MediaValue & { kind: 'resolution' };
+      const dppx = float(r.value * (DPPX_PER[r.unit] as number));
+      return r.unit === 'dpcm' ? compareExact(twoDecimals(actual), op, twoDecimals(dppx)) : compareExact(actual, op, dppx);
+    });
+  }
+  const reading: readonly string[] = f.base === 'pointer' ? [d.pointer] : f.base === 'any-pointer' ? (d.anyPointer.length === 0 ? ['none'] : d.anyPointer) : f.base === 'hover' ? [d.hover] : f.base === 'any-hover' ? [d.anyHover] : [d.reducedMotion];
+  // The boolean form holds unless the reading is none (no-preference for prefers-reduced-motion).
+  if (f.form === 'boolean') return !reading.includes('none') && !reading.includes('no-preference');
+  return reading.includes((f.value as MediaValue & { kind: 'ident' }).name);
+}
+
 /** Evaluates one feature Dragon supports. Throws for a refused feature. */
 export function evaluateFeature(f: MediaFeature, env: MediaEnvironment, faults: MediaFaults = NO_MEDIA_FAULTS): boolean {
   if (f.refused !== null) throw new Error(`media feature ${f.name} is refused`);
+  if (DEVICE_FEATURES.has(f.base)) return evaluateDevice(f, env.device ?? DESKTOP_DEVICE, faults);
   const emBase = faults.emFromRoot ? (env.rootFontSize ?? INITIAL_FONT_SIZE) : INITIAL_FONT_SIZE;
   if (f.base === 'orientation') {
     // A square viewport is portrait; the boolean form is true for any size.

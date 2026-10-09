@@ -64,18 +64,19 @@ describe('MQ-a: @media in the parse driver', () => {
     expect(c?.text).toBe('screen and (max-width: 25em)');
     expect(text.slice(c?.span.start, c?.span.end)).toBe(text);
   });
-  it('environment features (until MQ-R2 or MQ-R3) and values Dragon does not evaluate are refused on every target', () => {
+  it('environment features (prefers-color-scheme until PNT1 and MQ-R2, the rest until MQ-R3) and values Dragon does not evaluate are refused on every target', () => {
     for (const [prelude, why] of [
       ['(prefers-color-scheme: dark)', '(prefers-color-scheme: dark) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
-      ['(max-width: 400px) and (resolution: 2dppx)', '(resolution: 2dppx) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
-      ['(hover)', '(hover) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
+      // MQ-R2 reads resolution, pointer and hover; a list that also uses a refused feature is refused for that one alone.
+      ['(hover) and (prefers-color-scheme: dark)', '(prefers-color-scheme: dark) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
       ['(prefers-contrast: more)', '(prefers-contrast: more) depends on the device or the user, which Dragon does not read yet (package MQ-R3)'],
-      ['(hover) and (color)', '(hover), (color) depends on the device or the user, which Dragon does not read yet (package MQ-R3)'],
+      ['(hover) and (color)', '(color) depends on the device or the user, which Dragon does not read yet (package MQ-R3)'],
       ['(max-width: 10vw)', '(max-width: 10vw) uses a value Dragon does not evaluate'],
+      ['(min-resolution: calc(2dppx))', '(min-resolution: calc(2dppx)) uses a value Dragon does not evaluate'],
     ] as const) {
       const { rules, diagnostics, enclosed } = parse(`@media ${prelude} { .a { width: 2px; } }`);
       expect(rules, prelude).toEqual([]);
-      expect(diagnostics.map((d) => [d.code, d.target, d.message]), prelude).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', null, expect.stringMatching(new RegExp(`^@media .* in the stylesheet is not supported: ${why.replace(/[()/]/g, '\\$&')}; only width, height, orientation and aspect-ratio media features are supported$`))]]);
+      expect(diagnostics.map((d) => [d.code, d.target, d.message]), prelude).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', null, expect.stringMatching(new RegExp(`^@media .* in the stylesheet is not supported: ${why.replace(/[()/]/g, '\\$&')}; only width, height, orientation, aspect-ratio, resolution, -webkit-device-pixel-ratio, pointer, any-pointer, hover, any-hover and prefers-reduced-motion media features are supported$`))]]);
       expect(enclosed.length, prelude).toBe(1);
     }
   });

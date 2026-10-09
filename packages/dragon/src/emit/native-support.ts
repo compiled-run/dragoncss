@@ -8,6 +8,8 @@ import type { GeneratedFile } from '../types.ts';
 import type { FontSpec } from '@dragon/layout';
 import type { NativeBackend, NativeProgram } from '../lower/native-program.ts';
 import type { PaintPlantName } from './paint/registry.ts';
+import type { MediaPlantName } from './runtime/media.ts';
+import { mediaPlants } from './runtime/media.ts';
 import { nativePaints, PAINT_STAGES, paintPlants, soleHook, stagePainters } from './paint/registry.ts';
 import { runtimeSupportFiles } from './runtime/index.ts';
 
@@ -1667,9 +1669,9 @@ const header = (comment: string, what: string): string => `${comment} GENERATED 
 
 /**
  * Raster plants of the support code: glyph-offset-1 draws every glyph 1 device px right of the engine's position (P5), and
- * glyph-offset-y-1 1 device px below it (T093); the paint modules add theirs.
+ * glyph-offset-y-1 1 device px below it (T093); the paint modules add theirs, and MQ-R2 its reduced-motion reading plant.
  */
-export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1' | PaintPlantName | 'single-run-baseline';
+export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1' | PaintPlantName | MediaPlantName | 'single-run-baseline';
 
 type PlantReplacement = { readonly name: SupportPlant; readonly replace: { readonly [B in NativeBackend]: readonly [string, string] } };
 
@@ -1686,6 +1688,8 @@ const PLANT_REPLACEMENTS: readonly PlantReplacement[] = [
   glyphPlant('glyph-offset-y-1', 'public let dragonGlyphPlantYDevicePx: Double = ', 'const val DRAGON_GLYPH_PLANT_Y_DEVICE_PX = '),
   ...(paintPlants() as readonly PlantReplacement[]),
   glyphPlant('single-run-baseline', 'public let dragonSingleRunBaselinePlant: Double = ', 'const val DRAGON_SINGLE_RUN_BASELINE_PLANT = '),
+  // MQ-R2: the media runtime's reading plant.
+  ...mediaPlants(),
 ];
 
 export const SUPPORT_PLANTS: readonly SupportPlant[] = PLANT_REPLACEMENTS.map((p) => p.name);

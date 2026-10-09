@@ -498,7 +498,7 @@ public func environment_fontLengths(_ font: FontSpec, _ env: Env) throws -> Font
 public func environment_refuseUnknownFace(_ m: TextMeasurer, _ font: FontSpec, _ env: Env) throws -> Void {
   // ts: packages/layout/src/environment.ts:429
   if try (!m.hasFace(font.family)) {
-    try unsupported_unsupported(S.s_text_glyph, env.node, S.s425, jsConcat(env.node, S.s50, font.family, S.s79))
+    try unsupported_unsupported(S.s_text_glyph, env.node, S.s429, jsConcat(env.node, S.s50, font.family, S.s79))
   }
 }
 
