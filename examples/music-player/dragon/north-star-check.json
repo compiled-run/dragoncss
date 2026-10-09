@@ -133,7 +133,7 @@
   "contextProbe": {
    "rounds": 2,
    "blankedRules": 4,
-   "blankedDeclarations": 43,
+   "blankedDeclarations": 35,
    "residualTargetless": 0
   }
  },
@@ -151,14 +151,14 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 37,
+   "DRAGON_UNSUPPORTED_PROPERTY": 29,
    "DRAGON_UNSUPPORTED_PROPERTY [web]": 2,
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 4,
    "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 17,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 17,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 21,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 21,
    "DRAGON_UNSUPPORTED_VALUE [web]": 4
   },
   "perTarget": {
@@ -167,7 +167,7 @@
      "DRAGON_UNPROVEN_CONTEXT": 4,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_PROPERTY": 39,
+     "DRAGON_UNSUPPORTED_PROPERTY": 31,
      "DRAGON_UNSUPPORTED_SELECTOR": 4,
      "DRAGON_UNSUPPORTED_VALUE": 7
     },
@@ -182,9 +182,9 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 37,
+     "DRAGON_UNSUPPORTED_PROPERTY": 29,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 20
+     "DRAGON_UNSUPPORTED_VALUE": 24
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -199,9 +199,9 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 37,
+     "DRAGON_UNSUPPORTED_PROPERTY": 29,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 20
+     "DRAGON_UNSUPPORTED_VALUE": 24
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -216,11 +216,11 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 225,
-  "supportedWeb": 238,
-  "supportedIos": 225,
-  "supportedAndroid": 225,
-  "supportPercent": 77.9,
+  "supportedBothTargets": 231,
+  "supportedWeb": 245,
+  "supportedIos": 231,
+  "supportedAndroid": 231,
+  "supportPercent": 79.9,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -303,9 +303,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 93,
-   "B-unwrapped": 93,
-   "C-context": 121
+   "A-authored": 85,
+   "B-unwrapped": 85,
+   "C-context": 129
   }
  },
  "features": {
@@ -1212,12 +1212,10 @@
    "atRule": null,
    "property": "border-radius",
    "value": "0.5rem",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 63,
@@ -1430,12 +1428,10 @@
    "atRule": null,
    "property": "border-radius",
    "value": "50%",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 80,
@@ -1568,12 +1564,10 @@
    "atRule": null,
    "property": "border-radius",
    "value": "50%",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 91,
@@ -1806,12 +1800,10 @@
    "atRule": null,
    "property": "border-radius",
    "value": "999px",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 110,
@@ -1992,12 +1984,10 @@
    "atRule": null,
    "property": "border-radius",
    "value": "50%",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 125,
@@ -2364,12 +2354,10 @@
    "atRule": null,
    "property": "border-radius",
    "value": "1rem",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 155,
@@ -3243,11 +3231,11 @@
    "atRule": null,
    "property": "border-radius",
    "value": "0.35rem",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -3741,7 +3729,6 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -4311,26 +4298,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2012-2033|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 2012,
-    "end": 2033,
-    "line": 120,
-    "column": 2,
-    "text": "border-radius: 0.5rem"
-   },
-   "message": "border-radius is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2036-2080|box-shadow is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -4451,26 +4418,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2681-2699|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 2681,
-    "end": 2699,
-    "line": 151,
-    "column": 2,
-    "text": "border-radius: 50%"
-   },
-   "message": "border-radius is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2702-2842|box-shadow is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -4484,26 +4431,6 @@
     "text": "box-shadow:\n\t\t0 28px 70px var(--shadow-strong),\n\t\tinset 0 0 0 0.7rem rgba(255, 255, 255, 0.02),\n\t\tinset 0 0 2.5rem rgba(255, 255, 255, 0.05)"
    },
    "message": "box-shadow is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3106-3124|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3106,
-    "end": 3124,
-    "line": 171,
-    "column": 2,
-    "text": "border-radius: 50%"
-   },
-   "message": "border-radius is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4591,26 +4518,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3756-3776|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3756,
-    "end": 3776,
-    "line": 207,
-    "column": 2,
-    "text": "border-radius: 999px"
-   },
-   "message": "border-radius is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3904-3916|opacity is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
@@ -4644,26 +4551,6 @@
     "text": "opacity: 0.28"
    },
    "message": "opacity is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4151-4169|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 4151,
-    "end": 4169,
-    "line": 231,
-    "column": 2,
-    "text": "border-radius: 50%"
-   },
-   "message": "border-radius is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4807,26 +4694,6 @@
     "text": "linear-gradient(to right, #2f4f66, #a57c5b)"
    },
    "message": "background: \"linear-gradient(to right, #2f4f66, #a57c5b)\" sets background-image (initial none) to a non-initial value. Dragon supports background only when every longhand except background-color keeps its initial value",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5063-5082|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5063,
-    "end": 5082,
-    "line": 284,
-    "column": 2,
-    "text": "border-radius: 1rem"
-   },
-   "message": "border-radius is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5070,26 +4937,6 @@
     "text": "z-index: 30"
    },
    "message": "z-index is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6969-6991|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6969,
-    "end": 6991,
-    "line": 404,
-    "column": 2,
-    "text": "border-radius: 0.35rem"
-   },
-   "message": "border-radius is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5354,26 +5201,6 @@
     "text": "::-webkit-scrollbar-thumb"
    },
    "message": "pseudo-element ::-webkit-scrollbar-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (the scrollbar package OVFL-s)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@8310-8329|border-radius is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 8310,
-    "end": 8329,
-    "line": 485,
-    "column": 2,
-    "text": "border-radius: 20px"
-   },
-   "message": "border-radius is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -6484,6 +6311,158 @@
     "text": "fixed"
    },
    "message": "position: fixed is unsupported (support profile m1-s5); in block/ltr use static",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6984-6991|<img> page/library-call/song-1/cover rounds its corners, but android draws replaced content square (rounded replaced content is not supported yet)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6984,
+    "end": 6991,
+    "line": 404,
+    "column": 17,
+    "text": "0.35rem"
+   },
+   "message": "<img> page/library-call/song-1/cover rounds its corners, but android draws replaced content square (rounded replaced content is not supported yet)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6984-6991|<img> page/library-call/song-2/cover rounds its corners, but android draws replaced content square (rounded replaced content is not supported yet)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6984,
+    "end": 6991,
+    "line": 404,
+    "column": 17,
+    "text": "0.35rem"
+   },
+   "message": "<img> page/library-call/song-2/cover rounds its corners, but android draws replaced content square (rounded replaced content is not supported yet)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6984-6991|<img> page/library-call/song-3/cover rounds its corners, but android draws replaced content square (rounded replaced content is not supported yet)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6984,
+    "end": 6991,
+    "line": 404,
+    "column": 17,
+    "text": "0.35rem"
+   },
+   "message": "<img> page/library-call/song-3/cover rounds its corners, but android draws replaced content square (rounded replaced content is not supported yet)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6984-6991|<img> page/library-call/song-4/cover rounds its corners, but android draws replaced content square (rounded replaced content is not supported yet)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 6984,
+    "end": 6991,
+    "line": 404,
+    "column": 17,
+    "text": "0.35rem"
+   },
+   "message": "<img> page/library-call/song-4/cover rounds its corners, but android draws replaced content square (rounded replaced content is not supported yet)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6984-6991|<img> page/library-call/song-1/cover rounds its corners, but ios draws replaced content square (rounded replaced content is not supported yet)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 6984,
+    "end": 6991,
+    "line": 404,
+    "column": 17,
+    "text": "0.35rem"
+   },
+   "message": "<img> page/library-call/song-1/cover rounds its corners, but ios draws replaced content square (rounded replaced content is not supported yet)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6984-6991|<img> page/library-call/song-2/cover rounds its corners, but ios draws replaced content square (rounded replaced content is not supported yet)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 6984,
+    "end": 6991,
+    "line": 404,
+    "column": 17,
+    "text": "0.35rem"
+   },
+   "message": "<img> page/library-call/song-2/cover rounds its corners, but ios draws replaced content square (rounded replaced content is not supported yet)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6984-6991|<img> page/library-call/song-3/cover rounds its corners, but ios draws replaced content square (rounded replaced content is not supported yet)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 6984,
+    "end": 6991,
+    "line": 404,
+    "column": 17,
+    "text": "0.35rem"
+   },
+   "message": "<img> page/library-call/song-3/cover rounds its corners, but ios draws replaced content square (rounded replaced content is not supported yet)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6984-6991|<img> page/library-call/song-4/cover rounds its corners, but ios draws replaced content square (rounded replaced content is not supported yet)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 6984,
+    "end": 6991,
+    "line": 404,
+    "column": 17,
+    "text": "0.35rem"
+   },
+   "message": "<img> page/library-call/song-4/cover rounds its corners, but ios draws replaced content square (rounded replaced content is not supported yet)",
    "viaRelated": false,
    "passes": [
     "C-context"
