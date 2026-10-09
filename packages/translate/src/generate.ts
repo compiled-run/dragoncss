@@ -87,6 +87,11 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
   for (const st of hit.statements) {
     if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('rt-hit.ts'), name: st.name.text });
   }
+  // SELD-R2 (T064 R12): the interaction runtime.
+  const interaction = program.getSourceFile(at('rt-interaction.ts')) as ts.SourceFile;
+  for (const st of interaction.statements) {
+    if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('rt-interaction.ts'), name: st.name.text });
+  }
   return roots;
 }
 

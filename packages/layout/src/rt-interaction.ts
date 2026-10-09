@@ -239,23 +239,27 @@ export function keyboardFocused(t: InteractionTables, s: InteractionPointer, e: 
 }
 
 /**
- * The layout changed (a committed setter, a resize) with hit the element now under the pointer's last point: a hovering pointer's
- * chain follows it at the same frame (P11). remap gives each old element its index in the new tables (-1: it left the tree), and
- * an element that left the tree loses hover, press and focus.
+ * The tables changed (a committed app setter): remap gives each old element its index in the new tables (-1: it left the tree), and
+ * an element that left the tree loses hover, press, focus and forcing.
  */
-export function layoutChanged(t: InteractionTables, s: InteractionPointer, remap: readonly number[], hit: number, faults: InteractionFaults): InteractionPointer {
-  const h = element(t, hit, 'layoutChanged');
+export function remapPointer(t: InteractionTables, s: InteractionPointer, remap: readonly number[]): InteractionPointer {
   const moved: InteractionPointer = { ...s, hover: remapped(t, remap, s.hover), active: remapped(t, remap, s.active), focused: remapped(t, remap, s.focused), forcedElement: remapped(t, remap, s.forcedElement) };
   const focusKept: InteractionPointer = moved.focused >= 0 ? moved : { ...moved, focusVisible: false };
-  const forcedKept: InteractionPointer = focusKept.forcedElement >= 0 ? focusKept : { ...focusKept, forced: 'none' };
-  if (!s.pointerIn || faults.hoverNotRecomputedAfterLayout) return forcedKept;
-  return { ...forcedKept, hover: h };
+  const pressKept: InteractionPointer = focusKept.active >= 0 ? focusKept : { ...focusKept, pressing: 'none' };
+  return pressKept.forcedElement >= 0 ? pressKept : { ...pressKept, forced: 'none' };
+}
+
+/** The layout changed with hit the element now under the pointer's last point: a hovering pointer's chain follows it (P11). */
+export function layoutChanged(t: InteractionTables, s: InteractionPointer, hit: number, faults: InteractionFaults): InteractionPointer {
+  const h = element(t, hit, 'layoutChanged');
+  if (!s.pointerIn || faults.hoverNotRecomputedAfterLayout) return s;
+  return { ...s, hover: h };
 }
 
 function remapped(t: InteractionTables, remap: readonly number[], e: number): number {
   if (e < 0) return -1;
-  if (e >= remap.length) throw new InteractionError(`layoutChanged: element ${e} has no remap entry`);
-  return element(t, remap[e] as number, 'layoutChanged remap');
+  if (e >= remap.length) throw new InteractionError(`remapPointer: element ${e} has no remap entry`);
+  return element(t, remap[e] as number, 'remapPointer');
 }
 
 /** CSS.forcePseudoState: exactly e matches kind, and every real interaction is set aside until forcing stops (T047 RT-6(a)). */
