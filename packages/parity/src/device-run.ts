@@ -64,10 +64,14 @@ export type PaintPlant = Exclude<SupportPlant, GlyphPlant | LinePlant>;
 export const isGlyphPlant = (p: SupportPlant): p is GlyphPlant => p === 'glyph-offset-1' || p === 'glyph-offset-y-1';
 export const isLinePlant = (p: SupportPlant): p is LinePlant => p === 'single-run-baseline';
 export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(p) && !isLinePlant(p);
-/** The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures, the image plant (REPL-a) on the replaced fixtures whose images are drawn. */
+/**
+ * The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures, the image plant (REPL-a) on the
+ * replaced fixtures whose images are drawn, the radius plant (PNT1) on a rounded case of its own group.
+ */
 export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
+  'radius-square': ['radius-basic'],
   // PNT1: opacity-basic's translucent boxes paint opaque when the writer ignores the alpha; stacking-basic samples the interiors of
   // overlapping boxes, whose colours swap when the layer items sort beneath the flow.
   'alpha-ignored': ['opacity-basic'],
@@ -77,10 +81,12 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'translate-percent-of-parent': ['transform-translate'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
 };
-/** The sample rules a paint plant's device-pixels failures must name: border bands and edges for the dash plants. */
+/** The sample rules a paint plant's device-pixels failures must name: border bands and edges, or radius points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
+  // Square corners paint the box's colour where Chrome's rounded corner shows the backdrop: the radius rule catches it.
+  'radius-square': /^radius:/,
   'alpha-ignored': /^interior:/,
   'order-swap': /^interior:/,
   // A transform moves every pixel of the box, so any colour rule may catch it.

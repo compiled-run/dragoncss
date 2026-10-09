@@ -8,6 +8,7 @@ import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, POINTER_LONGHANDS, PROPERTY_ASPECTS } from '../src/css/properties.ts';
 import { GRID_LONGHANDS } from '../src/css/properties/grid.ts';
 import { EFFECTS_LONGHANDS } from '../src/css/properties/effects.ts';
+import { RADIUS_LONGHANDS } from '../src/css/properties/radius.ts';
 import { TRANSFORM_LONGHANDS } from '../src/css/properties/transform.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { ACTIVATION_TAGS, hitFacts } from '../src/internal.ts';
@@ -25,10 +26,13 @@ function parse(value: string): Diagnostic[] {
 describe('pointer-events: registry', () => {
   it('follows grid before the paint families, inherited, with no layout or paint aspect, and webref\'s grammar', () => {
     expect([...POINTER_LONGHANDS]).toEqual(['pointer-events']);
-    // The paint families register after it: PNT1's effects first (radius and shadow are still empty), then PNT2's transform.
+    // The paint families register after it in registry order: PNT1's radius first (shadow is still empty), then PNT1's effects,
+    // then PNT2's transform.
     expect(LONGHANDS[LONGHANDS.indexOf('pointer-events') - 1]).toBe(GRID_LONGHANDS[GRID_LONGHANDS.length - 1]);
-    expect(LONGHANDS[LONGHANDS.indexOf('pointer-events') + 1]).toBe(EFFECTS_LONGHANDS[0]);
-    expect(LONGHANDS.indexOf(TRANSFORM_LONGHANDS[0])).toBe(LONGHANDS.indexOf('pointer-events') + 1 + EFFECTS_LONGHANDS.length);
+    expect(LONGHANDS.indexOf(RADIUS_LONGHANDS[0])).toBe(LONGHANDS.indexOf('pointer-events') + 1);
+    expect(LONGHANDS.indexOf(EFFECTS_LONGHANDS[0])).toBe(LONGHANDS.indexOf('pointer-events') + 1 + RADIUS_LONGHANDS.length);
+    expect(LONGHANDS.indexOf(TRANSFORM_LONGHANDS[0])).toBeGreaterThan(LONGHANDS.indexOf(RADIUS_LONGHANDS[3]));
+    expect(LONGHANDS.indexOf(TRANSFORM_LONGHANDS[0])).toBe(LONGHANDS.indexOf(EFFECTS_LONGHANDS[0]) + EFFECTS_LONGHANDS.length);
     expect(INHERITED.has('pointer-events')).toBe(true);
     expect(PROPERTY_ASPECTS['pointer-events']).toEqual({ layout: false, paint: false });
     expect(grammar['pointer-events']?.initial).toBe('auto');
@@ -62,9 +66,12 @@ describe('pointer-events: compile and hit facts', () => {
     }
   });
 
-  it('keeps border-radius refused, so no rounded box reaches the hit table (which also refuses one loudly)', () => {
-    const c = project().compile(inputFor('.a { border-radius: 4px; }', tree));
-    expect(c.diagnostics.map((d) => d.code)).toContain('DRAGON_UNSUPPORTED_PROPERTY');
+  it('compiles border-radius (PNT1) and leaves the hit facts unchanged; the hit lane refuses a rounded case by name (parity hit-report.test)', () => {
+    const plain = project().compile(inputFor('.a { pointer-events: none; }', tree));
+    const c = project().compile(inputFor('.a { pointer-events: none; border-radius: 4px; }', tree));
+    expect(c.diagnostics.map((d) => d.code)).not.toContain('DRAGON_UNSUPPORTED_PROPERTY');
+    expect(c.outputs.web.kind).toBe('ready');
+    expect(hitFacts(c, [])).toEqual(hitFacts(plain, []));
   });
 
   it('carries the computed value, its inheritance and the activation handler', () => {

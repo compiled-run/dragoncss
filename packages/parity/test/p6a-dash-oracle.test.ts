@@ -277,6 +277,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     // A border inside an opacity group (an opacity write on the box or an ancestor) is composited with the group's alpha, which this
     // reference does not model; pnt1-effects.test compares those pixels against Chrome.
     if (inOpacityGroup(p, n.id)) continue;
+    // A rounded box is drawn by PNT1's rounded border painter, never by the side painter this file judges (paint-dash.ts models no
+    // radii); the radius oracle compares those borders.
+    if (writeOf(p, n.id, 'border-radius') !== undefined) continue;
     if (mode.preT116 && !st.styles.some((s, k) => (s === 'dashed' || s === 'dotted') && (w[k] as number) > 0 && co.colors[k]?.alpha !== 0)) continue;
     boxes++;
     const ops = borderPaintOps(b.left, b.top, b.right, b.bottom, w, st.styles, colors, faults);

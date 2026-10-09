@@ -8,6 +8,7 @@ import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/prop
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
 import { EFFECTS_LONGHANDS } from '../packages/dragon/src/css/properties/effects.ts';
+import { RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 
 type WebrefEntry = {
@@ -46,6 +47,9 @@ const SUBSET = [
 
   // SELD-R1b: pointer-events, after grid.
   'pointer-events',
+  // Border radii (PNT1), after pointer-events, as LONGHANDS registers them, then their shorthands.
+  ...RADIUS_LONGHANDS,
+  'border-radius', '-webkit-border-radius',
   // Transforms (PNT2), after grid, as LONGHANDS registers them.
   ...TRANSFORM_LONGHANDS,
   // opacity and z-index (PNT1), after transforms.

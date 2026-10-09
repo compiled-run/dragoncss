@@ -60,7 +60,7 @@ describe("rec1 colour_rows: the 'paint' role", () => {
     // for PNT1's two opacities and z-indexes.
     const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'], opacity: ['0', '100%'], 'z-index': ['3', '-1'] };
     for (const p of paint) {
-      const [va, vb] = pair[p] ?? ['#102030', 'rgba(200, 100, 50, 0.5)'];
+      const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
       const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: relative; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
       const m = boxes(input);
       const [a, b] = [m.get('a') as LayoutBox, m.get('b') as LayoutBox];
