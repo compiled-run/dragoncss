@@ -268,6 +268,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     const w = [...(borders.get(n.id) ?? [0, 0, 0, 0])];
     const colors = co.colors.flatMap((c) => [c.r, c.g, c.b, c.alpha]);
     if (!borderNeedsSidePainter(w, st.styles, colors)) continue;
+    // A rounded box is drawn by PNT1's rounded border painter, never by the side painter this file judges (paint-dash.ts models no
+    // radii); the radius oracle compares those borders.
+    if (writeOf(p, n.id, 'border-radius') !== undefined) continue;
     if (mode.preT116 && !st.styles.some((s, k) => (s === 'dashed' || s === 'dotted') && (w[k] as number) > 0 && co.colors[k]?.alpha !== 0)) continue;
     boxes++;
     const ops = borderPaintOps(b.left, b.top, b.right, b.bottom, w, st.styles, colors, faults);
