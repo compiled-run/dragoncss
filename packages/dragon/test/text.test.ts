@@ -96,7 +96,7 @@ describe('text nodes carry their inherited text styles (goal.md principle 3)', (
     expect(t?.context).toBe('text-in-block/ltr');
   });
   it('the lowering reads the text node, never its parent: a text node with a dropped font-size lays out at its own 16px', () => {
-    expect(find(lowered(input), 'p:text0')).toEqual({ kind: 'text', id: 'p:text0', text: 'XX XX', font: { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'nowrap' });
+    expect(find(lowered(input), 'p:text0')).toEqual({ kind: 'text', id: 'p:text0', text: 'XX XX', font: { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'nowrap', overflowWrap: 'normal', wordBreak: 'normal' });
     const faulty = find(lowered(input, { ...NO_FAULTS, dropInheritedText: true }), 'p:text0');
     expect(faulty?.kind === 'text' && faulty.font.size).toBe(16);
     expect((find(lowered(input, { ...NO_FAULTS, dropInheritedText: true }), 'p') as LayoutBox).style.textAlign).toBe('center');

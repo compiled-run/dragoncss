@@ -177,7 +177,7 @@ describe('a calculated line height is built as the engine\'s LineHeightCalc (non
     return p.input.root;
   }
   it('on a text leaf and inside an lh leaf, in Swift and Kotlin', () => {
-    const leaf = { kind: 'text', id: 'p:t', text: 'XX', font, lineHeight: lhCalc, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' } as const;
+    const leaf = { kind: 'text', id: 'p:t', text: 'XX', font, lineHeight: lhCalc, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', overflowWrap: 'normal', wordBreak: 'normal' } as const;
     const width = { kind: 'calc', range: 'non-negative', expr: { kind: 'lh', value: 2, font, lineHeight: lhCalc } } as const;
     // INL1a: the container's strut has the leaf's font and line-height (validate.ts leaf-font), so it is a third LineHeightCalc.
     const root = { kind: 'box', id: 'p', boxType: 'element', style: style(width), strut: { font, lineHeight: lhCalc }, children: [leaf] } as const;

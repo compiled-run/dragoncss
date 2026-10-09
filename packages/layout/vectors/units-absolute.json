@@ -901,7 +901,9 @@
           "value": 16
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1056,7 +1058,9 @@
           "value": 15.11811023622047
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },
@@ -1211,7 +1215,9 @@
           "value": 19.200000000000003
          },
          "whiteSpaceCollapse": "collapse",
-         "textWrapMode": "wrap"
+         "textWrapMode": "wrap",
+         "overflowWrap": "normal",
+         "wordBreak": "normal"
         }
        ]
       },

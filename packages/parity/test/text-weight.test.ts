@@ -25,6 +25,15 @@ import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-re
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
+/** A JSON value with every text leaf's overflowWrap and wordBreak removed where they are 'normal' (the TXT2-a migration). */
+function withoutWrapKeys(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(withoutWrapKeys);
+  if (typeof v !== 'object' || v === null) return v;
+  const o = v as Record<string, unknown>;
+  const leaf = o['kind'] === 'text';
+  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal')).map(([k, x]) => [k, withoutWrapKeys(x)]));
+}
+
 /** The commit this branch was cut from (inl1a-tags-v2, T133 on INL1a part C2); its outputs are BASE. */
 const BASE = '398c8bc16';
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
@@ -203,10 +212,21 @@ describe('BASE pins', () => {
     const added = TEXT_WEIGHT.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
     expect(ids.slice(502, 502 + added.length)).toEqual(added);
   });
-  it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
+  it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE (vectors up to the TXT2-a TextLeaf keys)', () => {
     const changed = git('diff', '--name-status', BASE, '--', 'packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels')
       .split('\n').filter((l) => l !== '' && !l.startsWith('A\t') && !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(l));
-    expect(changed).toEqual([]);
+    // TXT2-a gives every text leaf overflowWrap and wordBreak; a vector changed since BASE equals BASE once both are removed at 'normal'.
+    const vector = /^M\t(packages\/layout\/vectors\/.+\.json)$/;
+    // The vectors README (a format document, not a vector) documents the two keys.
+    const others = changed.filter((l) => !vector.test(l) && l !== 'M\tpackages/layout/vectors/README.md');
+    expect(others).toEqual([]);
+    const notMigration = changed.filter((l) => vector.test(l)).map((l) => (vector.exec(l) as RegExpExecArray)[1] as string).filter((f) => {
+      const now = withoutWrapKeys(JSON.parse(readFileSync(repoPath(f), 'utf8')) as unknown);
+      return JSON.stringify(now) !== JSON.stringify(JSON.parse(git('show', `${BASE}:${f}`)) as unknown);
+    });
+    expect(notMigration).toEqual([]);
+    // The migration exception is not a blanket pass: a leaf whose key is not 'normal' keeps the key and differs.
+    expect(withoutWrapKeys({ kind: 'text', overflowWrap: 'anywhere', wordBreak: 'normal' })).toEqual({ kind: 'text', overflowWrap: 'anywhere' });
   });
   /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands. */
   const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS];

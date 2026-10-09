@@ -652,7 +652,9 @@
               "value": 22.75
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           },
@@ -808,7 +810,9 @@
               "value": 22.75
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           },
@@ -962,7 +966,9 @@
               "value": 22.75
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           }
@@ -1357,7 +1363,9 @@
               "value": 17.1171
              },
              "whiteSpaceCollapse": "collapse",
-             "textWrapMode": "wrap"
+             "textWrapMode": "wrap",
+             "overflowWrap": "normal",
+             "wordBreak": "normal"
             }
            ]
           },
@@ -1630,7 +1638,9 @@
                 "value": 17.1171
                },
                "whiteSpaceCollapse": "collapse",
-               "textWrapMode": "wrap"
+               "textWrapMode": "wrap",
+               "overflowWrap": "normal",
+               "wordBreak": "normal"
               }
              ]
             },
@@ -1784,7 +1794,9 @@
                 "value": 1.3
                },
                "whiteSpaceCollapse": "collapse",
-               "textWrapMode": "wrap"
+               "textWrapMode": "wrap",
+               "overflowWrap": "normal",
+               "wordBreak": "normal"
               }
              ]
             }
@@ -1944,7 +1956,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }
@@ -2220,7 +2234,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },
@@ -2374,7 +2390,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         }
@@ -2651,7 +2669,9 @@
             "kind": "normal"
            },
            "whiteSpaceCollapse": "collapse",
-           "textWrapMode": "wrap"
+           "textWrapMode": "wrap",
+           "overflowWrap": "normal",
+           "wordBreak": "normal"
           }
          ]
         },

@@ -241,6 +241,10 @@ export type FontSpec = { readonly family: string; readonly size: number; readonl
 export type WhiteSpaceCollapse = 'collapse';
 /** css-text-4 §5.1 text-wrap-mode. */
 export type TextWrapMode = 'wrap' | 'nowrap';
+/** css-text-3 §5.5 overflow-wrap (word-wrap is its alias). */
+export type OverflowWrap = 'normal' | 'break-word' | 'anywhere';
+/** css-text-3 §5.2 word-break; break-all, keep-all and auto-phrase are refused (code word-break, TXT2-d). */
+export type WordBreak = 'normal' | 'break-all' | 'keep-all' | 'break-word' | 'auto-phrase';
 
 /** A text run with every inherited text property written on it by the compiler (goal.md principle 3). */
 export type TextLeaf = {
@@ -252,6 +256,8 @@ export type TextLeaf = {
   readonly lineHeight: LineHeightValue;
   readonly whiteSpaceCollapse: WhiteSpaceCollapse;
   readonly textWrapMode: TextWrapMode;
+  readonly overflowWrap: OverflowWrap;
+  readonly wordBreak: WordBreak;
 };
 
 /** element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4). */
