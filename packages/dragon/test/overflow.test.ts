@@ -197,3 +197,38 @@ describe('OVFL-B: a scroll container whose overflow may extend past its start (r
     ]) expect(refusals(css), css).toEqual([]);
   });
 });
+
+describe('OVFL-B with PNT1: border-radius on a native scroll container is refused (its rounded clip mask would scroll with the content)', () => {
+  const NATIVE = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } as const;
+  const compile = (css: string) => {
+    const input = inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])])]);
+    return { input, c: createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input) };
+  };
+  const errors = (css: string): string[] => {
+    const { input, c } = compile(css);
+    return c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.target} ${spanTextOf(input, d)} ${d.message.includes('border-radius') ? 'radius' : d.message.includes('past its start') ? 'start-background' : d.message}`).sort();
+  };
+
+  it('auto or scroll with a rounded corner is DRAGON_UNPROVEN_CONTEXT on ios and android only, at the radius; web compiles', () => {
+    for (const css of ['.a { overflow: auto; border-radius: 8px; }', '.a { overflow-y: scroll; border-top-left-radius: 10% 6px; }', '.a { overflow-x: hidden; border-radius: 4px; }']) {
+      const e = errors(css);
+      expect(e.length, css).toBe(2);
+      expect(e.every((x) => x.startsWith('DRAGON_UNPROVEN_CONTEXT') && x.endsWith(' radius')), css).toBe(true);
+      expect(compile(css).c.outputs.web.kind, css).toBe('ready');
+    }
+    expect(errors('.a { overflow: auto; border-radius: 8px; }')).toEqual(['DRAGON_UNPROVEN_CONTEXT android 8px radius', 'DRAGON_UNPROVEN_CONTEXT ios 8px radius']);
+  });
+
+  it('the radius and start-overflow background refusals both fire on one rtl rounded scroll container with a background', () => {
+    expect(errors('.a { overflow: auto; border-radius: 8px; background-color: #eee; direction: rtl; }')).toEqual([
+      'DRAGON_UNPROVEN_CONTEXT android #eee start-background',
+      'DRAGON_UNPROVEN_CONTEXT android 8px radius',
+      'DRAGON_UNPROVEN_CONTEXT ios #eee start-background',
+      'DRAGON_UNPROVEN_CONTEXT ios 8px radius',
+    ]);
+  });
+
+  it('a rounded overflow: hidden or clip box, square corners on a scroll container, and a corner with a zero component compile', () => {
+    for (const css of ['.a { overflow: hidden; border-radius: 8px; }', '.a { overflow: auto; border-radius: 0; }', '.a { overflow: auto; border-top-left-radius: 8px 0; }']) expect(errors(css), css).toEqual([]);
+  });
+});

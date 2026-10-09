@@ -2,6 +2,9 @@
 // (the css-overflow-3 §3.1 pair rule, Chrome's user-agent defaults), on where a declaration applies (html and body), or on the
 // text and its direction (UAX #9).
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
+import { radiusLengths, roundsAnyCorner } from '../lower/paint/radius.ts';
+import { ProgramError } from '../lower/paint/types.ts';
+import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import { exactLayoutRatio, featureOf } from '../css/values.ts';
@@ -76,6 +79,35 @@ function checkStartOverflowBackground(el: ResolvedElement, propagated: ResolvedE
     if (reported.has(id)) continue;
     reported.add(id);
     diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin, target: t, message, manual: 'Move the background to a wrapper outside the scroll container, or use overflow: hidden.' }));
+  }
+}
+
+/**
+ * OVFL-B with PNT1 (#198): a rounded overflow clip masks the clip view (iOS layer mask, Android outline or overlay mask) in its own
+ * coordinates, which a scroll view moves with its scroll offset, and no fixture compares a rounded scroll container with Chrome.
+ * So border-radius on an auto or scroll container is refused on ios and android until it is drawn and proven.
+ */
+function checkRoundedScrollContainer(el: ResolvedElement, propagated: ResolvedElement | null, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (nativeTargets.length === 0 || el === propagated) return;
+  const kw = (p: Longhand): string => keywordOf(el.props.get(p) as ResolvedValue);
+  if (!(['overflow-x', 'overflow-y'] as const).some((p) => kw(p) === 'auto' || kw(p) === 'scroll')) return;
+  let rounded: boolean;
+  try {
+    rounded = roundsAnyCorner(radiusLengths(el.props, el.element.address));
+  } catch (e) {
+    // A radius that does not compute to px or a percentage is refused by the radius lowering itself.
+    if (e instanceof ProgramError) return;
+    throw e;
+  }
+  if (!rounded) return;
+  const decl = RADIUS_LONGHANDS.map((p) => el.props.get(p) as ResolvedValue).find((v) => v.declaration !== null);
+  const origin = decl === undefined || decl.declaration === null ? el.element.node.origin : authored(decl.declaration.valueSpan);
+  const message = `border-radius on ${el.element.address}, a scroll container: the rounded clip of a native scroll view is not drawn or proven yet (OVFL-B with PNT1)`;
+  for (const t of nativeTargets) {
+    const id = `${t}|ovfl-b-radius|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin, target: t, message, manual: 'Round a wrapper outside the scroll container, or use overflow: hidden.' }));
   }
 }
 
@@ -447,6 +479,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     if (!here) checkBidi(el, diagnostics, reported);
