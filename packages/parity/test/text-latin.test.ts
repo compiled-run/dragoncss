@@ -3,6 +3,7 @@
 // Ahem runs, read the bundled Ahem's font data as the engine's constants, and refuse text outside Latin, Common and Inherited
 // (R4). Each shaping plant that acts on Ahem through the engine's measurer must change a committed vector or T082's committed
 // Chrome runs; the three that cannot act there are pinned inert on every committed vector, each with its reason.
+import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutInput, LayoutResult } from '@dragon/layout';
@@ -234,12 +235,12 @@ describe('TXT1a-1 phase B: the text-latin registry', () => {
     expect(() => tl.requireAdmitted(f, tl.compileTextLatin(f, 'ltr').compiled, c)).toThrow(/not a text-latin case/);
   });
 
-  const BASE_LAYOUT_CASES = 569;
+  const BASE_LAYOUT_CASES = 664;
   it('keeps every FIXTURES layout case (and so every native and device case) as it was at BASE', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
-    // BASE is txt1a-1b-v2 with inl1a-lowering at #91's head 0636a60b21 merged in (23bff72e8d), whose FIXTURES hold 569 layout cases.
+    // BASE is txt1a-1b-v2 at #102's land-ready head d542a45419 (master with #101, #210, #208, #198, #216 and #218), whose FIXTURES hold 664 layout cases.
     expect(ids.length).toBe(BASE_LAYOUT_CASES);
-    expect(createHash('sha256').update(ids.join('\n')).digest('hex')).toBe('3c0c5d0b0b43e575706b4fe27f1782b0cdc313bb0cd1b6d41a353dc8f2467fc9');
+    expect(createHash('sha256').update(ids.join('\n')).digest('hex')).toBe('d989c5282224bcb236bc6a3229caad913a2ec4a66223b8cafd16177171a74ec6');
   });
 
   it('gives every FIXTURES case the native projection as its engine projection, at every DPR', () => {
@@ -407,4 +408,12 @@ describe('TXT1a-1 phase B: text-latin vectors replay in the translated engine (R
       expect(r.status, JSON.stringify(r.suites).slice(0, 2000)).toBe('pass');
     }, 1_800_000);
   }
+});
+
+describe('the text-latin capture CLI', () => {
+  it('refuses an unknown argument with exit 2 before it cleans or captures anything', () => {
+    // A mistyped --vectors would otherwise run the live capture, which first deletes the committed captures.
+    const r = spawnSync(process.execPath, ['--conditions=dragon-internal', repoPath('packages/parity/src/cli/text-latin-capture.ts'), '--vector'], { encoding: 'utf8' });
+    expect([r.status, r.stderr.trim()]).toEqual([2, 'unknown argument --vector; usage: text-latin-capture.ts [--vectors]']);
+  });
 });

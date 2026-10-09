@@ -138,7 +138,6 @@ const LEGACY_MANUAL: readonly ManualOutput[] = [
   { command: 'pnpm run parity:hit-capture -- --identity-base <rev> (the pointer-events identity manifest, once per base)', outputs: ['packages/parity/expected-hit/identity-base.json'] },
   { command: 'pnpm run parity:glyph-calibration', outputs: ['packages/parity/expected-glyphs/darwin-arm64/**'] },
   { command: 'node scripts/gen-script-data.ts', outputs: ['packages/layout/src/script-data.ts'] },
-  { command: 'node --conditions=dragon-internal packages/parity/src/cli/text-latin-capture.ts [--vectors] (TXT1a-1; TXT1a-2 moves them into the regen steps)', outputs: ['packages/parity/expected-text-latin/**', 'packages/layout/vectors/text-latin/**'] },
   { command: 'packages/layout/test/fixtures/linebreak/capture/*.mjs', outputs: ['packages/layout/test/fixtures/linebreak/*.json'] },
   { command: 'node scripts/gen-baseline-source-matrix.ts, node scripts/gen-granularity-fixtures.ts', outputs: ['packages/parity/generated/**'] },
   { command: 'node packages/parity/test/css-token-fuzz/generate.ts', outputs: ['packages/parity/test/css-token-fuzz/generated/**'] },

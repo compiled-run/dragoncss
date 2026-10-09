@@ -29,7 +29,7 @@ export type { DprChromeDeviation, DprDeviationControl, DprDeviationFault, DprDev
 export { dprChromeDeviations } from './chrome-deviations-dpr.ts';
 export type { AhemRuleFaults, FontData } from './text.ts';
 export { AHEM_FONT_DATA, ahemMeasurerWith, coveredCodePoints, coveredIndex, fontDataMeasurer } from './text.ts';
-export { zoomInput } from './layout.ts';
+export { resolvedInput, zoomInput } from './layout.ts';
 export type { Edges } from './box.ts';
 export { resolveBorder } from './box.ts';
 export { platformFontSize, snapEdge, zoomFontSize } from './units.ts';

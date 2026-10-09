@@ -93,7 +93,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     for (const id of frames) expect(FIXTURES.some((f) => f.id === id), `${id} is both a frame fixture and in FIXTURES`).toBe(false);
     const webOnly = [...FONT_FIXTURES, ...ENV_FIXTURES, ...TEXT_LATIN_FIXTURES].map((f) => f.spec);
     const registered = new Set([...[...FIXTURES, ...webOnly].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...TEXT_LATIN_PROBES.map((id) => `${id}.html`), ...frames]);
-    for (const f of [...FONT_FIXTURES, ...ENV_FIXTURES].map((x) => x.spec)) expect(statSync(`${dir}/${f.id}.html`).isFile(), f.id).toBe(true);
+    for (const id of [...webOnly.map((f) => f.id), ...TEXT_LATIN_PROBES]) expect(statSync(`${dir}/${id}.html`).isFile(), id).toBe(true);
     expect(new Set([...FIXTURES.map((f) => f.id), ...webOnly.map((f) => f.id), ...TEXT_LATIN_PROBES]).size).toBe(FIXTURES.length + webOnly.length + TEXT_LATIN_PROBES.length);
     for (const e of entries) expect(registered.has(e), `${e} is not in FIXTURES`).toBe(true);
     for (const f of FIXTURES) {
