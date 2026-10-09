@@ -7,6 +7,7 @@ import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resol
 import type { Candidate } from '../src/analysis/resolve.ts';
 import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
 import { keyframesAtRule } from '../src/css/at-rules/keyframes.ts';
+import { layerAtRule } from '../src/css/at-rules/layer.ts';
 import { propertyAtRule } from '../src/css/at-rules/property.ts';
 import { charsetAtRule } from '../src/css/at-rules/charset.ts';
 import { supportsAtRule } from '../src/css/at-rules/supports.ts';
@@ -120,14 +121,14 @@ describe('E2 seams: FIXTURES', () => {
   });
 });
 
-describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property and @charset is still refused', () => {
+describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, @charset and @layer is still refused', () => {
   // MQ-a made @media conditional, ANIM-b1 accepted a top-level @keyframes (keyframes.test.ts), ANIM-b2 accepted @-webkit-keyframes
-  // as @keyframes (aliases.test.ts), CASC decides @supports (casc.test.ts) and CASC 2 registers a top-level @property
-  // (casc-property.test.ts). The enclosing at-rule of the fourth sheet is @layer, which stays refused. @charset has its own handler,
-  // which accepts only "utf-8" at the start of a sheet (charset.test.ts).
+  // as @keyframes (aliases.test.ts), CASC decides @supports (casc.test.ts), CASC 2 registers a top-level @property
+  // (casc-property.test.ts) and CASC 3 orders cascade layers (casc-layer.test.ts). The enclosing at-rule of the fourth sheet is
+  // @unknown-thing, which no handler will ever take. @charset has its own handler, which accepts only "utf-8" at the start of a sheet (charset.test.ts).
   const KEYFRAMES = ['keyframes', '-webkit-keyframes'];
-  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'supports' && n !== 'property' && n !== 'charset' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
-  const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@layer w { @${n} z { .b { height: 3px; } } }`];
+  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'supports' && n !== 'property' && n !== 'charset' && n !== 'layer' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
+  const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@unknown-thing w { @${n} z { .b { height: 3px; } } }`];
   const run = (text: string): { text: string; diagnostics: Diagnostic[]; enclosed: EnclosedRules[]; rules: number } => {
     const diagnostics: Diagnostic[] = [];
     const enclosed: EnclosedRules[] = [];
@@ -135,8 +136,8 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property a
     return { text, diagnostics, enclosed, rules: rules.length };
   };
   const atRules = (ds: readonly Diagnostic[]): [string, string][] => ds.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.code, d.message]);
-  it('every registered name but font-face, media, keyframes, supports, property and charset is refused today', () => {
-    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : name === 'supports' ? supportsAtRule : name === 'property' ? propertyAtRule : name === 'charset' ? charsetAtRule : refuseAtRule);
+  it('every registered name but font-face, media, keyframes, supports, property, charset and layer is refused today', () => {
+    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : name === 'supports' ? supportsAtRule : name === 'property' ? propertyAtRule : name === 'charset' ? charsetAtRule : name === 'layer' ? layerAtRule : refuseAtRule);
     expect(atRuleHandler('MEDIA')).toBe(mediaAtRule);
     expect(atRuleHandler('no-such-rule')).toBe(refuseAtRule);
     expect(atRuleHandler('Font-Face')).toBe(acceptFontFace);
@@ -163,8 +164,8 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property a
       expect([top.rules, top.diagnostics, top.enclosed], n).toEqual([1, [], []]);
       expect(atRules(statement.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
       expect(atRules(nested.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in a rule block is not supported in milestone 1`]]);
-      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@layer in the stylesheet is not supported in milestone 1']]);
-      // The @media inside the refused @layer is parsed into the enclosed rules, with its condition, for analysis only.
+      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@unknown-thing in the stylesheet is not supported in milestone 1']]);
+      // The @media inside the refused @unknown-thing is parsed into the enclosed rules, with its condition, for analysis only.
       expect(inner.enclosed.length, n).toBe(1);
       expect(inner.enclosed[0]?.rules.map((r) => r.condition?.map((c) => c.text)), n).toEqual([['z']]);
     }
@@ -176,7 +177,7 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property a
       expect(atRules(top.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
       expect(atRules(statement.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
       expect(atRules(nested.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in a rule block is not supported in milestone 1`]]);
-      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@layer in the stylesheet is not supported in milestone 1']]);
+      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@unknown-thing in the stylesheet is not supported in milestone 1']]);
       expect(inner.enclosed.length, n).toBe(2);
     }
   });
@@ -187,8 +188,9 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property a
     // fca72903… for these runs too. -webkit-keyframes left with ANIM-b2 (a36ce22e09 gave a0302641… without it); casc-supports
     // before taking ANIM-b2 (1b8eacfdf9) gives 48d27023… for this list too. charset left with its own handler: without it master
     // before it (9b32f10e18) gives ecd10b0c… too. property left with CASC 2: without it master before CASC 2 (508db670c4) gives
-    // 1397573c… too, so every other at-rule is still unchanged.
-    const pinned = ['color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'layer', 'namespace', 'page', 'position-try', 'scope', 'starting-style', 'view-transition', 'Font-Face', 'unknown-thing'];
+    // 1397573c… too. CASC 3 orders @layer, so layer left the list and the enclosing at-rule became @unknown-thing (never registered, so always refused): master before
+    // CASC 3 (8a91837674) gives 180df812… for these runs too, so every other at-rule is still unchanged.
+    const pinned = ['color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'namespace', 'page', 'position-try', 'scope', 'starting-style', 'view-transition', 'Font-Face', 'unknown-thing'];
     const runs = pinned.flatMap((n) => sheets(n).map((text) => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
@@ -203,7 +205,7 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property a
       }
       return x;
     }));
-    expect(sha(strip(runs))).toBe('1397573c6d9621bc237be694213b68ef37df92dfc0d61e17e1d4dfd2f6054119');
+    expect(sha(strip(runs))).toBe('180df812178562c5c4cde6b617b5ba74c2aa0f3565c8d39177a9d8717aed5b3e');
     expect(added.length).toBeGreaterThan(0);
     for (const x of added) expect([[], null, false]).toContainEqual(x);
   });

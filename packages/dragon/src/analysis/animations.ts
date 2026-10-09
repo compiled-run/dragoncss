@@ -251,7 +251,7 @@ function byAddress(root: ResolvedElement): Map<string, ResolvedElement> {
 
 /**
  * Which of two same-named @keyframes rules applies, as Chrome's ScopedStyleResolver::AddKeyframeStyle decides: an unprefixed rule
- * beats an @-webkit-keyframes one in either order, and otherwise the later rule wins (Dragon refuses @layer, so all share a layer).
+ * beats an @-webkit-keyframes one in either order, and otherwise the later rule wins (Dragon refuses @keyframes inside @layer, so all share a layer).
  */
 export function keyframesOverride(next: KeyframesRule, existing: KeyframesRule | undefined): boolean {
   return existing === undefined || (next.prefixed === existing.prefixed ? true : existing.prefixed);
