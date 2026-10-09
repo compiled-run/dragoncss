@@ -8,11 +8,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { TextFont } from '../src/input.ts';
-import type { GlyphShaper, HanKerningFontData, ShapedFace, ShapedText, ShapingFaults } from '../src/shaping.ts';
-import { FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_HAN_KERNING, NO_SHAPING_FAULTS, segmentText, shapedMeasurer, shapedText } from '../src/shaping.ts';
+import type { BreakItem, GlyphShaper, HanKerningFontData, ShapedFace, ShapedText, ShapingFaults } from '../src/shaping.ts';
+import { FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_HAN_KERNING, NO_SHAPING_FAULTS, segmentText, shapedMeasurer, shapedText, breakItemLines } from '../src/shaping.ts';
 import type { FontData } from '../src/text.ts';
 import { AHEM_FONT_DATA, ahemMeasurer } from '../src/text.ts';
 import { fromRaw } from '../src/units.ts';
+import { isLatinText } from '../src/script-data.ts';
 
 // packages/text-shaper is loaded by relative path at run time (no package.json change); these are the parts the test uses.
 type Feature = { readonly tag: string; readonly value: number; readonly start?: number; readonly end?: number };
@@ -335,5 +336,73 @@ describe('TXT1-S: Ahem through HarfBuzz (R2)', () => {
 
   it('calls the WASM shaper', () => {
     expect(shaper.calls).toBeGreaterThan(1000);
+  });
+});
+
+// TXT1a-1: the engine decides the breaks itself. LineBreaker over one text item (shaping.ts breakItemLines, which runs
+// ShapingLineBreaker::ShapeLine, BreakText's hyphen retry, HandleTrailingSpaces and HandleOverflow) must give Chrome's break
+// offsets and widths on every line of every gate case, with Chrome's break opportunities as the break iterator.
+type DecidedLine = readonly [number, number, number];
+function decideLines(st: ShapedText, text: string, font: string, size: number, widthLu: number, opps: readonly number[]): DecidedLine[] | string {
+  const shaped = st.item(text, font, size);
+  if (!shaped.ok) return shaped.reason;
+  const items: BreakItem[] = [{ kind: 'text', item: shaped.item, result: shaped.result, opportunities: [...opps].sort((x, y) => x - y), atEnd: true, offset: 0 }];
+  const r = breakItemLines(items, fromRaw(widthLu), true, false, true);
+  if (!r.ok) return r.reason;
+  let start = 0;
+  return r.lines.map((l) => {
+    const end = l.nextItem >= 1 ? text.length : l.nextOffset;
+    const width = l.visibleWidths.reduce((n, w) => n + w, 0);
+    const line: DecidedLine = [start, end, width];
+    start = end;
+    return line;
+  });
+}
+
+describe('TXT1a-1: the engine decides every Latin gate line', () => {
+  // The 60 Japanese-script cases are outside R4's Latin scope, which the engine refuses (TXT2 owns them and HanKerning's line end).
+  it('gives Chrome 145\'s break offsets and widths on all 1,200 Latin-scope cases', () => {
+    const byLang = new Map<string, ShapedText>();
+    const failed: string[] = [];
+    let lines = 0;
+    let cases = 0;
+    for (const ref of refs) {
+      for (const c of ref.cases) {
+        let st = byLang.get(c.lang);
+        if (st === undefined) {
+          st = shapedText(facesFor(c.lang), shaper, NO_SHAPING_FAULTS, c.lang);
+          byLang.set(c.lang, st);
+        }
+        const text = ref.paragraphs[c.paragraph] as string;
+        if (!isLatinText(text)) continue;
+        cases++;
+        const got = decideLines(st, text, c.font, c.size, c.width * 64, ref.opportunities[c.paragraph] as number[]);
+        const want = c.lines.map((l) => [l[0], l[1], l[2]]);
+        lines += want.length;
+        if (JSON.stringify(got) !== JSON.stringify(want)) failed.push(`${c.id}: ${JSON.stringify(got).slice(0, 300)} vs ${JSON.stringify(want).slice(0, 300)}`);
+      }
+    }
+    expect(failed).toEqual([]);
+    expect(cases).toBe(1200);
+    expect(lines).toBeGreaterThan(9000);
+  });
+});
+
+// R6: the engine decides the 400 Inter Italic and Bold Italic gate lines as Chrome does (docs/research/text-spike/italic).
+describe('TXT1a-1: the engine decides every italic gate line (R6)', () => {
+  it('gives Chrome 145\'s break offsets and widths on all 400 italic cases', () => {
+    const italic = loadReference(gate.ITALIC_REFERENCE_PATH as string);
+    for (const [id, meta] of Object.entries(italic.fonts)) files.set(id, fontPath(meta.file));
+    const faces = new Map(Object.keys(italic.fonts).map((id) => [id, { id, data: fontData(id), hanKerning: NO_HAN_KERNING }] as const));
+    const st = shapedText(faces, shaper, NO_SHAPING_FAULTS, 'en');
+    const failed: string[] = [];
+    for (const c of italic.cases) {
+      const text = italic.paragraphs[c.paragraph] as string;
+      const got = decideLines(st, text, c.font, c.size, c.width * 64, italic.opportunities[c.paragraph] as number[]);
+      const want = c.lines.map((l) => [l[0], l[1], l[2]]);
+      if (JSON.stringify(got) !== JSON.stringify(want)) failed.push(c.id);
+    }
+    expect(failed).toEqual([]);
+    expect(italic.cases.length).toBe(400);
   });
 });

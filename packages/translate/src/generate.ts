@@ -53,6 +53,8 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     { file: at('layout.ts'), name: 'absoluteRects' },
     { file: at('platform.ts'), name: 'measurerFor' },
     { file: at('text.ts'), name: 'ahemMeasurer' },
+    // R4: a host scopes its shaped measurer to Latin text as platform.ts shapedMeasurerFor does (the harness's replay included).
+    { file: at('shaping.ts'), name: 'latinScopedMeasurer' },
     // The one pixel-snap rule (native-strategy.md section 3.3): native lanes snap engine rects to device px with it.
     { file: at('snap.ts'), name: 'snapEdges' },
     { file: at('snap.ts'), name: 'snapRect' },

@@ -29,10 +29,15 @@ export const NEUTRAL_ATTRIBUTES: readonly NeutralAttribute[] = [
  * Attributes a replaced element renders, which REPL-a handles (HTML §4.8.3, §4.8.5, §15.4.5): src gives the image bytes or the
  * document the iframe's web view loads (an absolute https URL, analysis/elements/replaced.ts iframeSrcRefusal), width and
  * height are presentational hints, and alt renders nothing for an image that decodes, which every accepted image does.
+ * The list ordinal attributes, which GEN-c handles.
  */
 export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
   img: ['src', 'alt', 'width', 'height'],
   iframe: ['src', 'width', 'height'],
+  // GEN-c (notes/T151-gen-spec.md R14): ol start and reversed and li value set list item ordinals (HTML §4.4.5, §4.4.8), which
+  // analysis/ordinals.ts computes; HTML §15 gives them no presentational hint, so their only rendering is the marker text.
+  ol: ['start', 'reversed'],
+  li: ['value'],
 };
 
 /** The package that owns the rendering effect of a refused attribute. */
