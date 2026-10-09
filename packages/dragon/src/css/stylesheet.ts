@@ -10,6 +10,7 @@ import { resolveAlias } from './aliases.ts';
 import { legacyDisplay } from './display-legacy.ts';
 import type { AtRuleContext, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
+import { PAINT_VALUE_PARSERS } from './paint-parsers.ts';
 import { asciiLower, canonicalizeEscapes, decodeName, preprocessInput, trimValue } from './escapes.ts';
 import { GRID_VALUE_PROPERTIES, parseGridValue } from './grid-values.ts';
 import { webrefLexer } from './lexer.ts';
@@ -180,10 +181,16 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
   if (node.type === 'Atrule') {
     const prelude = node['prelude'] as CssNode | null | undefined;
     const preludeSpan = prelude === null || prelude === undefined ? null : spanOf(prelude, base);
-    const context = { node, name: String(node['name']), where, span, prelude: preludeSpan === null ? '' : text.slice(preludeSpan.start - base.start, preludeSpan.end - base.start) };
+    const context = {
+      node, name: String(node['name']), where, span,
+      prelude: preludeSpan === null ? '' : text.slice(preludeSpan.start - base.start, preludeSpan.end - base.start),
+      source: text.slice(span.start - base.start, span.end - base.start),
+      atSheetStart: where === 'the stylesheet' && span.start === base.start,
+    };
     // at-rules.ts decides each at-rule: an accepted @font-face goes to the fonts collector; a conditional one in a rule block is
     // css-nesting-1, and one without a block is invalid, so both are refused.
     const outcome = handleAtRule(context);
+    if (outcome.kind === 'drop') return;
     if (outcome.kind === 'font-face') {
       st.fontFaces.push(outcome.context);
       return;
@@ -517,7 +524,7 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   // css-env-1: env() is checked before the grammar, which is matched with each inset substituted (css/env.ts).
   const env = wide ? null : firstEnv(tokens);
   if (env !== null) {
-    const special = property === 'aspect-ratio' || property === 'object-position' || GRID_VALUE_PROPERTIES.has(property) || TRANSFORM_VALUE_PROPERTIES.has(property);
+    const special = property === 'aspect-ratio' || property === 'object-position' || GRID_VALUE_PROPERTIES.has(property) || TRANSFORM_VALUE_PROPERTIES.has(property) || PAINT_VALUE_PARSERS.has(property);
     const bad = special ? { node: env, reason: `env() in ${property} is not supported` } : checkEnvCalls(tokens);
     if (bad !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(bad.node, base)), message: `${property}: ${generate(bad.node)} is unsupported: ${bad.reason}`, manual: ENV_FIX }) };
@@ -560,6 +567,9 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   }
   // css-transforms-1 (PNT2): multi-token transform, transform-origin and will-change values (properties/transform.ts).
   if (!wide && TRANSFORM_VALUE_PROPERTIES.has(property)) return parseTransformValue(property, tokens, base);
+  // Paint families (PNT1): multi-token paint values, with the checks Chrome makes beyond the grammar (css/paint-parsers.ts).
+  const paint = wide ? undefined : PAINT_VALUE_PARSERS.get(property);
+  if (paint !== undefined) return paint(tokens, base);
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
   const values: CssValue[] = baseline === null ? [] : [baseline];

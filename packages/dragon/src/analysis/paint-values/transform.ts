@@ -33,6 +33,7 @@ function computedFunction(f: TransformFnDecl, ctx: PaintValueContext): Transform
 
 export const TRANSFORM_VALUES: PaintValues = {
   name: 'transform',
+  check: null,
   compute: (props, ctx) => {
     const t = props.get('transform');
     if (t !== undefined && t.value.kind === 'other' && t.value.type === TRANSFORM_LIST_TYPE) {
