@@ -604,9 +604,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : null;
   for (const c of b.children) {
     if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe);
-    // A form control is hit as the box it is laid out as, and so are its contents (Blink hit-tests a button's or a range's
-    // children like any block's; an anonymous part targets the control element).
-    else if (c.kind === 'control') boxNodes(s, controlAsBox(c), i, childOrders, own, pe);
+    else if (c.kind === 'control') throw new HitError(controlRefusal(c.id));
     else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders);
   }
 }
@@ -643,18 +641,30 @@ function inlineRefusal(id: string, kind: 'inline' | 'br'): string {
   return `${id} is ${kind === 'br' ? 'a <br>' : 'an inline box'}, which the hit table does not model yet (INL1a; no Chrome hit capture)`;
 }
 
+/**
+ * FORM-a: Chrome retargets a hit on a control's UA shadow parts (a range's thumb and track, a button's contents) to the control
+ * element, which the hit table does not model, and no Chrome hit capture covers a control.
+ */
+function controlRefusal(id: string): string {
+  return `${id} is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)`;
+}
+
 function boxHitRefusal(b: LayoutBox): string | null {
   for (const c of b.children) {
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
-    if (c.kind === 'box' || c.kind === 'control') {
-      const r = boxHitRefusal(c.kind === 'control' ? controlAsBox(c) : c);
+    if (c.kind === 'control') return controlRefusal(c.id);
+    if (c.kind === 'box') {
+      const r = boxHitRefusal(c);
       if (r !== null) return r;
     }
   }
   return null;
 }
 
-/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a) has no hit model yet. */
+/**
+ * Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a) and a form control (FORM-a)
+ * have no hit model yet.
+ */
 export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);
 }
