@@ -300,7 +300,10 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   const first = flat.leaves[0];
   for (const t of flat.leaves) {
     const m = ctx.measurer.measure(t.text, fontOf(t.font));
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    }
     if (first !== undefined && t.textWrapMode !== first.textWrapMode) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-4 §5.1', `text runs with different text-wrap-mode in one formatting context of ${box.id}`);
     }
@@ -455,7 +458,10 @@ function width(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
     while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) text += (ifc.items[i++] as Item).ch;
     const t = ifc.leaves[it.leaf] as TextLeaf;
     const m = ctx.measurer.measure(text, fontOf(t.font));
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    }
     total = add(total, m.measure.width);
   }
   return total;
@@ -479,7 +485,10 @@ function cachedWidth(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
     while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === first.leaf) last = ifc.items[i++] as Item;
     const t = ifc.leaves[first.leaf] as TextLeaf;
     const m = ctx.measurer.measureRange(t.text, first.at, last.at + 1, fontOf(t.font));
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    }
     total = add(total, m.measure.width);
   }
   return total;

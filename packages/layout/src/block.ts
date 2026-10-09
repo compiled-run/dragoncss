@@ -106,6 +106,22 @@ export type EngineFaults = {
   readonly breakAtBoxBoundary: boolean;
   /** A leaf's content area starts at its line top instead of the baseline minus its ascent. */
   readonly fragmentFromLineTop: boolean;
+  /** Shaped glyph advances are summed as floats instead of 16.16 InlineLayoutUnits (shaping.ts). */
+  readonly advanceNot16_16: boolean;
+  /** Shaped run, part and line widths are kept in double instead of float, through FromFloatCeil (shaping.ts). */
+  readonly doubleAccumulation: boolean;
+  /** A wrapped line keeps the item's glyphs at both edges instead of reshaping there (shaping_line_breaker.cc). */
+  readonly noReshapeAtBreak: boolean;
+  /** HarfBuzz shapes with kern off. */
+  readonly kerningDropped: boolean;
+  /** Shaped advances round to whole pixels (Blink's path for fonts without subpixel positioning). */
+  readonly wholePixelPositions: boolean;
+  /** A soft hyphen break adds no generated hyphen. */
+  readonly softHyphenWidthMissing: boolean;
+  /** Shaped ascent and descent round the unquantised size * units / upem halves up instead of Core Text's 16.16 value (R5). */
+  readonly metricRoundingSwapped: boolean;
+  /** Text outside Latin, Common and Inherited is shaped instead of refused (R4). */
+  readonly latinCheckSkipped: boolean;
   /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
@@ -156,6 +172,14 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   brIgnored: false,
   breakAtBoxBoundary: false,
   fragmentFromLineTop: false,
+  advanceNot16_16: false,
+  doubleAccumulation: false,
+  noReshapeAtBreak: false,
+  kerningDropped: false,
+  wholePixelPositions: false,
+  softHyphenWidthMissing: false,
+  metricRoundingSwapped: false,
+  latinCheckSkipped: false,
   orderHalfEven: false,
   orderUnclamped: false,
   gutterReserved: false,
