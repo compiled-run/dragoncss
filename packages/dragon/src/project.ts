@@ -32,6 +32,9 @@ import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
 import type { KeyframesSource } from './css/at-rules/keyframes.ts';
 import { parseKeyframesRules } from './css/at-rules/keyframes.ts';
+import type { PropertySource, Registrations } from './css/at-rules/property.ts';
+import { NO_REGISTRATIONS } from './css/at-rules/property.ts';
+import { registrationsOf } from './analysis/registered.ts';
 import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
 import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
 import { emitNativeSupport, supportDigest } from './emit/native-support.ts';
@@ -658,14 +661,14 @@ const freshReported = (): Reported => ({ contextual: new Set(), refused: new Set
  * proven only in other contexts blocks with the proven contexts, the alternatives in its own context (T005 rec 6) and, for a
  * shorthand-filled longhand, the shorthand and what to write instead (T005 rec 2).
  */
-function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[], projectFonts: ProjectFonts | null, seen: Reported = freshReported()): CaseResult[] {
+function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[], projectFonts: ProjectFonts | null, seen: Reported = freshReported(), registered: Registrations = NO_REGISTRATIONS): CaseResult[] {
   const { contextual: reported, refused, fonts, fenced } = seen;
   const keys = projectFonts === null ? NO_FONTS : projectFonts.keys;
   const out: CaseResult[] = [];
-  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua };
+  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered };
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
-    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys);
+    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, options.faults);
     // PNT1: outside the parity lanes, native refuses a fractional opacity (PNT1-opacity-b); the lanes run it to prove its web rows.
     if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     // T078 R14: outside the parity lanes, native refuses overflow auto and scroll until OVFL-B; the lanes prove their layout at rest.
@@ -957,6 +960,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const enclosed: EnclosedRules[] = [];
     const fontFaces: AtRuleContext[] = [];
     const keyframeSources: KeyframesSource[] = [];
+    const propertySources: PropertySource[] = [];
     let order = 0;
     for (const useId of valid.document.styles) {
       const use = valid.styles.get(useId);
@@ -966,13 +970,15 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       dependencies.push({ kind: 'stylesheet', uri: src.ref.uri, hash: src.ref.hash });
       const sheet = { id: use.id, owner: valid.styleOwner.get(use.id) as string, scope: use.scope.kind };
       const before = enclosed.length;
-      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed, fontFaces, keyframeSources, options.faults);
+      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed, fontFaces, keyframeSources, propertySources, options.faults);
       for (const r of [...parsed, ...enclosed.slice(before).flatMap((e) => e.rules)]) for (const d of r.declarations) order = Math.max(order, d.order + 1);
       rules.push(...parsed);
     }
     for (const s of [...valid.sources.values()].sort((a, b) => (a.ref.uri < b.ref.uri ? -1 : a.ref.uri > b.ref.uri ? 1 : 0))) dependencies.push({ kind: 'source', uri: s.ref.uri, hash: s.ref.hash });
     // T065: the @keyframes blocks parse with the stylesheet, so their refusals come whether or not the analysis runs.
     const keyframesRules = parseKeyframesRules(keyframeSources, diagnostics);
+    // CASC 2: the @property registrations, and the refusals of registered values and transitions Dragon does not compute.
+    const registered = registrationsOf(propertySources, rules, options.faults, diagnostics);
     // NA-NATIVE: a refusal of a listed property or rule blocks only web; native gets an info (css/not-applicable.ts).
     diagnostics.splice(0, diagnostics.length, ...splitNotApplicable(diagnostics, targets));
     diagnostics.push(...interactionRefusals(rules));
@@ -1016,7 +1022,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const passes = bandList.map((b, k) => {
         const own: Diagnostic[] = [];
         const bandTargets = passTargets(k);
-        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported()) };
+        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(), registered) };
         return { result, diagnostics: scopedTo(own, bandTargets, targets) };
       });
       bandCases = passes.map((p) => p.result);
@@ -1085,7 +1091,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         const scratchSeen = freshReported();
         const scratchLinked = linked;
         const scratchCases = (bands === null ? [null] : bands.partition.bands).flatMap((b) =>
-          checkCases(scratchLinked, [...rulesIn(rules, bands, b, options.faults), ...unwrapped], targets, options, scratch, fonts, scratchSeen),
+          checkCases(scratchLinked, [...rulesIn(rules, bands, b, options.faults), ...unwrapped], targets, options, scratch, fonts, scratchSeen, registered),
         );
         if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap(allUsed), scratch, keys);
         for (const e of enclosed) {

@@ -8,6 +8,8 @@ import { exactLayoutRatio, featureOf } from '../css/values.ts';
 import type { FamilyKeyContext } from '../css/values.ts';
 import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
+import type { GenBFaults } from '../faults/gen-b.ts';
+import { GEN_B_FAULTS } from '../faults/gen-b.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
@@ -317,10 +319,22 @@ function checkAspectRatio(el: ResolvedElement, targets: readonly string[], diagn
 
 const BORDER_STYLES: readonly Longhand[] = ['border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style'];
 
+/**
+ * css-lists-3 §3: the marker a list item generates, named by its list-style-type (or its image), or null when list-style-type and
+ * list-style-image are both none, so no ::marker box exists (Blink ListStyleCategory kNone, list_marker.cc; probe family5
+ * none-and-empty). Such an item is a block (layout_list_item.h: LayoutListItem is a LayoutBlockFlow).
+ */
+function listMarkerOf(el: ResolvedElement): string | null {
+  const type = (el.props.get('list-style-type') as ResolvedValue).value;
+  const image = (el.props.get('list-style-image') as ResolvedValue).value;
+  if (image.kind !== 'keyword' || image.value !== 'none') return valueToString(image);
+  return type.kind === 'keyword' && type.value === 'none' ? null : valueToString(type);
+}
+
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
-// (nested lists), display: list-item (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
+// (nested lists), display: list-item with a marker (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
 // minimum logical font size clamps, and text that inherits a UA font-weight or font-style no longhand models (headings, address).
-function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, faults: GenBFaults): void {
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
     reported.add(id);
@@ -346,8 +360,12 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
       })));
     }
     if (!here) {
-      if (keywordOf(el.props.get('display') as ResolvedValue) === 'list-item') {
-        perTarget(el, 'list-item', `display: list-item on <${tag}> ${el.element.address} generates a ::marker box (css-lists-3 §3), which Dragon does not lay out or draw yet`, `Set display: block (or flex) on <${tag}> ${el.element.address}; list markers need ::marker support.`);
+      const display = keywordOf(el.props.get('display') as ResolvedValue);
+      if (display === 'list-item') {
+        const marker = listMarkerOf(el);
+        if ((marker !== null && !faults.listItemDiscAccepted) || (marker === null && faults.listItemNoneMarkerRefused)) {
+          perTarget(el, 'list-item', `display: list-item on <${tag}> ${el.element.address} generates a ${marker ?? 'none'} marker (::marker, css-lists-3 §3), which Dragon draws from the GEN-c package`, `Set list-style: none on ${el.element.address} or its list, or set display: block.`);
+        }
       }
       const inset = BORDER_STYLES.filter((p) => {
         const v = el.props.get(p) as ResolvedValue;
@@ -455,7 +473,7 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, faults: GenBFaults = GEN_B_FAULTS): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -478,7 +496,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     for (const c of el.children) if (c.kind === 'element') walk(c, here, inner);
   };
   walk(root, false, 'viewport');
-  checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported);
+  checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
 }

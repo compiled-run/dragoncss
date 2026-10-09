@@ -210,22 +210,42 @@ export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; 
 };
 
 /**
- * The longhands added since the identity base, beside pointer-events: PNT1's four corner radii and its opacity and z-index, which
- * every capture and emitted rule gained after the base was written, so the base files must differ from it by exactly these keys and
- * pointer-events.
+ * The longhands added since the identity base, beside pointer-events: PNT1's four corner radii, which every capture and emitted rule
+ * gained after the base was written, so the base files must differ from it by exactly these keys and pointer-events.
  */
-const KEYS_SINCE_BASE = ['pointer-events', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'opacity', 'z-index'];
+const KEYS_SINCE_BASE = ['pointer-events', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'];
 const JSON_KEYS = new RegExp(`,\\n[ ]*"(${KEYS_SINCE_BASE.join('|')})": "[^"]*"`, 'g');
 const CSS_KEYS = new RegExp(`^[ ]*(${KEYS_SINCE_BASE.join('|')}): [^;\\n]*;\\n`, 'gm');
+/**
+ * PNT1's opacity and z-index, also added after the base, only at their neutral values (opacity 1, z-index auto), as GEN-b's below:
+ * any other value stays in the text, so a base file that gained one no longer hashes to the base.
+ */
+const JSON_EFFECTS = /,\n[ ]*"(?:opacity": "1|z-index": "auto)"/g;
+const CSS_EFFECTS = /^[ ]*(?:opacity: 1|z-index: auto);\n/gm;
 
 /**
- * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE) removed: the computed value of every captured
- * element, and the declaration of every emitted rule; an emitted file's compilation digest (its first line) is masked, since every
- * compilation digest moves with the compiler input.
+ * GEN-b's longhands (content, list-style-type, -position, -image), also added after the identity base, at their neutral values in
+ * LONGHANDS order (docs/decisions.md, "Adding engine fields and CSS longhands"). list-style-type is decimal only where Chrome's UA
+ * ol rule sets it, in GEN_B_DECIMAL_FIXTURES; any other value stays in the text, so the file no longer hashes to the base.
+ */
+const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
+const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
+
+/**
+ * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and PNT1's and GEN-b's neutral longhands) removed: the computed
+ * value of every captured element, and the declaration of every emitted rule; an emitted file's compilation digest (its first line)
+ * is masked, since every compilation digest moves with the compiler input.
  */
 export function withoutPointerEvents(path: string, text: string): string {
-  if (path.endsWith('.json')) return text.replace(JSON_KEYS, '');
-  if (path.endsWith('.css')) return text.replace(CSS_KEYS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+  const type = genBType(path);
+  if (path.endsWith('.json')) {
+    const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
+    return text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(genB, '');
+  }
+  if (path.endsWith('.css')) {
+    const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
+    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(genB, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+  }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }
 

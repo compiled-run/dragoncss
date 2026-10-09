@@ -6,6 +6,7 @@ import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
+import { CASC_PROPERTY } from './fixture-groups/casc-property.ts';
 import { CASC } from './fixture-groups/casc.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CHARSET } from './fixture-groups/charset.ts';
@@ -19,6 +20,7 @@ import { GRID } from './fixture-groups/grid.ts';
 import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
+import { LIST_ITEMS } from './fixture-groups/list-items.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
@@ -97,6 +99,7 @@ export const GROUPS = {
   'block-elements': BLOCK_ELEMENTS,
   'border-paint': BORDER_PAINT,
   casc: CASC,
+  'casc-property': CASC_PROPERTY,
   'cascade-var': CASCADE_VAR,
   charset: CHARSET,
   contexts: CONTEXTS,
@@ -109,6 +112,7 @@ export const GROUPS = {
   'inherit-contexts': INHERIT_CONTEXTS,
   inline: INLINE,
   interaction: INTERACTION,
+  'list-items': LIST_ITEMS,
   'logical-props': LOGICAL_PROPS,
   media: MEDIA,
   'media-runtime': MEDIA_RUNTIME,

@@ -1,0 +1,11 @@
+{
+  "case": "list-items-flex",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"r1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"r2:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"c1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"c2:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}
