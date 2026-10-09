@@ -14,7 +14,7 @@ const style = (width: number): LayoutBox['style'] => ({
   width: px(width), height: auto, minWidth: auto, minHeight: auto, maxWidth: { kind: 'none' }, maxHeight: { kind: 'none' }, marginTop: px(0), marginRight: px(0), marginBottom: px(0), marginLeft: px(0),
   paddingTop: px(0), paddingRight: px(0), paddingBottom: px(0), paddingLeft: px(0), borderTopWidth: px(0), borderRightWidth: px(0), borderBottomWidth: px(0), borderLeftWidth: px(0),
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: auto, order: 0, justifyContent: 'flex-start', alignItems: 'stretch', alignSelf: 'auto', alignContent: 'normal',
-  rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: auto, verticalAlign: { kind: 'keyword', value: 'baseline' },
+  rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: auto, verticalAlign: { kind: 'keyword', value: 'baseline' }, grid: null, gridItem: null,
 }) as unknown as LayoutBox['style'];
 const box = (id: string, width: number, children: LayoutBox['children'] = []): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: style(width), strut: null, children });
 
@@ -153,6 +153,11 @@ describe('the generated runtime', () => {
   it('refuses a node write it has no state-node form for and a text node without its run; keeps keys inside their doc comments', () => {
     const odd = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), writes: [{ kind: 'shadow' } as unknown as ProgramNode['writes'][number]] }]) };
     expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [odd]), scripts: [] }])).toThrow(/r: no state-node write for \{"kind":"shadow"\}/);
+    // PNT1's radius writes have no runtime writer yet: refused by name rather than dropped from the case script.
+    for (const w of [{ kind: 'border-radius', lengths: [] }]) {
+      const painted = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), writes: [w as unknown as ProgramNode['writes'][number]] }]) };
+      expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [painted]), scripts: [] }])).toThrow(`r: the state runtime cannot write ${w.kind} yet`);
+    }
     const bare = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), kind: 'text', writes: [] }]) };
     expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [bare]), scripts: [] }])).toThrow(/r: a text node without a text run/);
     const weird = deriveStateProgram('uikit', [{ ...(CASES[0] as StateCase), assignment: [{ state: { instance: 'a*/b\nc', state: 'on' }, value: 'x' }] }]);

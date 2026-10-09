@@ -74,7 +74,11 @@
     "pointer-events",
     "transform",
     "transform-origin",
-    "will-change"
+    "will-change",
+    "content",
+    "list-style-type",
+    "list-style-position",
+    "list-style-image"
   ],
   "shorthands": [
     "margin",
@@ -152,7 +156,8 @@
     "grid-area",
     "grid-gap",
     "grid-row-gap",
-    "grid-column-gap"
+    "grid-column-gap",
+    "list-style"
   ],
   "inherited": [
     "direction",
@@ -163,7 +168,10 @@
     "white-space-collapse",
     "text-wrap-mode",
     "color",
-    "pointer-events"
+    "pointer-events",
+    "list-style-type",
+    "list-style-position",
+    "list-style-image"
   ],
   "role:container": [
     "direction",
@@ -246,6 +254,10 @@
     "grid-column-start",
     "grid-column-end",
     "justify-self",
-    "pointer-events"
+    "pointer-events",
+    "content",
+    "list-style-type",
+    "list-style-position",
+    "list-style-image"
   ]
 }

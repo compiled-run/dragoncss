@@ -1,0 +1,6 @@
+.frame { display: flex; width: 50%; height: 30px; column-gap: 4px; }
+.panel { width: 40px; background-color: #ccc; }
+.panel[ui-open] { width: 80px; background-color: #333; }
+.sib { flex-grow: 1; height: 10px; background-color: #999; }
+@media (max-width: 320px) { .frame { width: 100%; } .panel[ui-open] { width: 60px; } }
+@media (min-width: 384px) { .sib { background-color: #c00; } .panel { height: 20px; } }

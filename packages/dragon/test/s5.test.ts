@@ -189,7 +189,8 @@ describe('T005 rec 2: a shorthand-set longhand names the authored shorthand, its
 });
 
 describe('T005 rec 3: diagnostics inside an unsupported at-rule are reported in the same pass', () => {
-  const R3 = 'body { margin: 0; }\n@media (min-width: 300px) {\n  .caption { width: 80px; }\n}\n.caption { font-size: 10px; line-height: 12px; color: #24292e; margin-right: 6mm; }\n';
+  // A width @media is native too since MQ-R1, so the unsupported at-rule here is @container, which every target refuses.
+  const R3 = 'body { margin: 0; }\n@container (min-width: 300px) {\n  .caption { width: 80px; }\n}\n.caption { font-size: 10px; line-height: 12px; color: #24292e; margin-right: 6mm; }\n';
   it('T005 R3 through the public entry: DRAGON_UNSUPPORTED_AT_RULE, DRAGON_UNSUPPORTED_FONT and DRAGON_UNPROVEN_CONTEXT in one pass, every output blocked', () => {
     const input = inputFor(R3, (r) => [div(r, 'caption', ['caption'], [text(r, 't', 'CAPTION TEXT')])]);
     const c = both().compile(input);
@@ -233,9 +234,9 @@ describe('T005 rec 5: formatDiagnostics groups diagnostics that differ only in t
 });
 
 describe('T005 rec 6: unsupported-value and unproven-context messages list the supported alternatives in context, from the profile rows', () => {
-  it('display: grid in block flow lists block, flex and none', () => {
+  it('display: grid in block flow lists block, flex, list-item, none and the CSS-wide keywords proven there (GEN-b, CASC)', () => {
     const c = both().compile(inputFor('.g { display: grid; }', (r) => [div(r, 'g', ['g'])]));
-    for (const d of c.diagnostics) expect(d.message).toMatch(/^display: grid is unsupported \(support profile m1-s5\); in block\/ltr use block, flex or none$/);
+    for (const d of c.diagnostics) expect(d.message).toMatch(/^display: grid is unsupported \(support profile m1-s5\); in block\/ltr use block, flex, list-item, none, revert or revert-layer$/);
   });
   it('margin-right: 6mm in block flow lists the margin-right values proven there', () => {
     const c = both().compile(inputFor(`${FONT} .a { margin-right: 6mm; }`, (r) => [div(r, 'a', ['a'])]));
