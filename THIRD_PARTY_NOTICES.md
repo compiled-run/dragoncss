@@ -39,6 +39,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/inline/fragment_item.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
+- `third_party/blink/renderer/core/layout/layout_block_flow_hot.cc`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/list/layout_list_item.h`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/list/list_marker.cc`: Copyright 2020 The Chromium Authors

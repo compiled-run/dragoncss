@@ -3,7 +3,7 @@
 // core/layout/scrollable_overflow_calculator.h (AddChild, AddOverflow), and the inflow bounds of core/layout/box_fragment_builder.cc
 // lines 241-366. The scroll rect follows css-overflow-3 §2.2 and matches Chrome (ports.json reference:
 // core/paint/paint_layer_scrollable_area.cc lines 968-982). The layout itself is unchanged: this reads the input and the layout's boxes.
-import type { Direction, LayoutBox, LayoutInput, LayoutNode } from './input.ts';
+import type { Direction, LayoutBox, LayoutInput, ReplacedLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, fromCssPx, max, min, sub, ZERO } from './units.ts';
 import type { Edges } from './box.ts';
@@ -58,9 +58,12 @@ export function scrollMetrics(input: LayoutInput, measurer: TextMeasurer, viewpo
   return scrollMetricsWithFaults(input, measurer, viewportDirection, NO_ENGINE_FAULTS);
 }
 
+/** The nodes this port reads: indexOf refuses a form control (FORM-a), whose scrollable overflow it does not decide. */
+type OverflowNode = LayoutBox | ReplacedLeaf;
+
 /** What the port reads about one box: its node (a box or a replaced leaf), DOM parent, absolute border box and resolved edges. */
 type Node = {
-  readonly box: LayoutNode;
+  readonly box: OverflowNode;
   readonly parent: LayoutBox | null;
   readonly rect: LayoutRect;
   readonly border: Edges;
@@ -72,9 +75,9 @@ type Node = {
 type Index = {
   readonly ctx: Ctx;
   readonly nodes: Map<string, Node>;
-  readonly order: LayoutNode[];
+  readonly order: OverflowNode[];
   /** The absolutely positioned boxes by the id of their containing block ("" for the initial containing block). */
-  readonly oofByCb: Map<string, LayoutNode[]>;
+  readonly oofByCb: Map<string, OverflowNode[]>;
   readonly flows: Map<string, Flow>;
 };
 
@@ -112,7 +115,7 @@ function nodeOf(ix: Index, id: string): Node {
 function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>): Index {
   const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map() };
   const icbWidth = fromCssPx(input.viewport.width);
-  const walk = (b: LayoutNode, parent: LayoutBox | null, cbInline: LU, positioned: LayoutNode | null): void => {
+  const walk = (b: OverflowNode, parent: LayoutBox | null, cbInline: LU, positioned: OverflowNode | null): void => {
     const rect = abs.get(b.id);
     if (rect === undefined) throw new Error(`no laid-out box ${b.id}`);
     const border = resolveBorder(b.style, ctx.devicePixelRatio);
@@ -125,6 +128,7 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>): In
     // A replaced leaf has no children (its fallback content never renders).
     if (b.kind === 'replaced') return;
     for (const k of b.children) {
+      if (k.kind === 'control') throw new OverflowRefusal(k.id, 'a form control: its scrollable overflow is not decided here');
       if (k.kind !== 'box' && k.kind !== 'replaced') continue;
       if (isOutOfFlow(ctx, k)) {
         // CSS2 §10.1: the containing block is the padding box of the nearest positioned ancestor, or the initial one.
@@ -143,13 +147,13 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>): In
   return ix;
 }
 
-function paddingBoxWidthOf(ix: Index, b: LayoutNode): LU {
+function paddingBoxWidthOf(ix: Index, b: OverflowNode): LU {
   const n = nodeOf(ix, b.id);
   return clampNegativeToZero(sub(n.rect.width, add(n.border.left, n.border.right)));
 }
 
 /** The gutter the planted fault gutterReserved takes from a scroll container, or 0. */
-function gutterOf(ix: Index, box: LayoutNode): LU {
+function gutterOf(ix: Index, box: OverflowNode): LU {
   return ix.ctx.faults.gutterReserved && isScrollContainer(box.style) ? fromCssPx(PLANTED_GUTTER_PX) : ZERO;
 }
 
@@ -217,7 +221,7 @@ type OverflowSides = { readonly left: boolean; readonly top: boolean };
  * overflow starts at its main-start and cross-start, so row-reverse moves the inline start, column-reverse the block start, and
  * wrap-reverse the cross start; the logical sides then map to physical ones by direction.
  */
-function overflowSides(ix: Index, b: LayoutNode): OverflowSides {
+function overflowSides(ix: Index, b: OverflowNode): OverflowSides {
   const rtl = directionOf(ix.ctx, b) === 'rtl';
   if (b.kind === 'replaced' || b.style.display !== 'flex') return { left: rtl, top: false };
   const s = b.style;
@@ -440,7 +444,7 @@ type Flow = {
 };
 
 /** layoutContents' formattingContextRoot for a child of a block flow. */
-function isFcRoot(b: LayoutNode): boolean {
+function isFcRoot(b: OverflowNode): boolean {
   return b.kind === 'replaced' || b.style.display !== 'block' || isScrollContainer(b.style);
 }
 

@@ -10,6 +10,7 @@
 import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import { isScrollContainer, resolveBorder } from './box.ts';
+import { controlAsBox } from './controls.ts';
 import { placeLines } from './inline.ts';
 import { fromRaw } from './units.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
@@ -394,6 +395,7 @@ function indexZoomed(m: Map<string, LayoutBox>, r: Map<string, LayoutStyle>, b: 
   m.set(b.id, b);
   for (const c of b.children) {
     if (c.kind === 'box') indexZoomed(m, r, c);
+    else if (c.kind === 'control') indexZoomed(m, r, controlAsBox(c));
     else if (c.kind === 'replaced') r.set(c.id, c.style);
   }
 }
@@ -412,7 +414,7 @@ function fragmentOrders(s: TableState, container: LayoutBox): Map<string, number
   const flow = row && container.style.direction === 'rtl' ? -1 : 1;
   const inFlow = new Map<string, boolean>();
   for (const c of container.children) {
-    if ((c.kind === 'box' || c.kind === 'replaced') && c.style.position !== 'absolute') inFlow.set(c.id, true);
+    if ((c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced') && c.style.position !== 'absolute') inFlow.set(c.id, true);
   }
   const lines: LayoutRect[][] = [];
   let lo = 0;
@@ -602,6 +604,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : null;
   for (const c of b.children) {
     if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe);
+    else if (c.kind === 'control') throw new HitError(controlRefusal(c.id));
     else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders);
   }
 }
@@ -638,9 +641,18 @@ function inlineRefusal(id: string, kind: 'inline' | 'br'): string {
   return `${id} is ${kind === 'br' ? 'a <br>' : 'an inline box'}, which the hit table does not model yet (INL1a; no Chrome hit capture)`;
 }
 
+/**
+ * FORM-a: Chrome retargets a hit on a control's UA shadow parts (a range's thumb and track, a button's contents) to the control
+ * element, which the hit table does not model, and no Chrome hit capture covers a control.
+ */
+function controlRefusal(id: string): string {
+  return `${id} is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)`;
+}
+
 function boxHitRefusal(b: LayoutBox): string | null {
   for (const c of b.children) {
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
+    if (c.kind === 'control') return controlRefusal(c.id);
     if (c.kind === 'box') {
       const r = boxHitRefusal(c);
       if (r !== null) return r;
@@ -649,7 +661,10 @@ function boxHitRefusal(b: LayoutBox): string | null {
   return null;
 }
 
-/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a) has no hit model yet. */
+/**
+ * Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a) and a form control (FORM-a)
+ * have no hit model yet.
+ */
 export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);
 }

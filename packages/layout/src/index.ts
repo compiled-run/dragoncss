@@ -71,5 +71,7 @@ export type { OriginPoint, TransformOrigin } from './paint-transform.ts';
 export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';
 export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';
 export { serializeTransform } from './rt-interpolate.ts';
+// Form controls (FORM-a): the range thumb offset and default track length, and the button's block centring shift.
+export { buttonContentShift, controlAsBox, SLIDER_DEFAULT_TRACK_LENGTH, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, zoomTrackLength } from './controls.ts';
 export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';
 export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';

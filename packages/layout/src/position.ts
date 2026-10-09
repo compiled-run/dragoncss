@@ -22,6 +22,7 @@ import type { Ctx, EngineFaults } from './block.ts';
 import { layoutContents, NO_ENGINE_FAULTS } from './block.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { hasAspectRatio, ratioAbsoluteInlineSize, ratioSetsAbsoluteHeight } from './ratio.ts';
+import { plainBox } from './controls.ts';
 import { unsupported } from './unsupported.ts';
 
 /** CSS2 §9.3.1: an absolutely positioned box leaves the flow (planted fault absposInFlow lays it out as static). */
@@ -37,9 +38,10 @@ export function checkOutOfFlowSiblings(ctx: Ctx, box: LayoutBox): void {
   const oof = box.children.find((k): k is LayoutBox => k.kind === 'box' && isOutOfFlow(ctx, k));
   for (const k of box.children) {
     if (k.kind === 'replaced' && isOutOfFlow(ctx, k)) unsupported('replaced-out-of-flow', k.id, 'CSS 2.2 §10.3.8, §10.6.5', `absolutely positioned replaced ${k.id} is not supported`);
+    if (k.kind === 'control' && isOutOfFlow(ctx, k)) unsupported('control-out-of-flow', k.id, 'CSS2 §10.3.7, §10.6.4', `absolutely positioned form control ${k.id} is not supported`);
   }
   if (oof === undefined) return;
-  if (box.children.some((k) => (k.kind !== 'box' && k.kind !== 'replaced') || (k.kind === 'box' && k.boxType === 'anonymous'))) {
+  if (box.children.some((k) => (k.kind !== 'box' && k.kind !== 'control' && k.kind !== 'replaced') || (k.kind === 'box' && k.boxType === 'anonymous'))) {
     unsupported('abspos-in-inline', oof.id, 'CSS2 §9.2.1.1, §10.3.7', `absolutely positioned ${oof.id} beside text in ${box.id} would take a static position in its inline formatting context`);
   }
 }
@@ -47,6 +49,15 @@ export function checkOutOfFlowSiblings(ctx: Ctx, box: LayoutBox): void {
 function inset(v: InsetValue, basis: LU, faults: EngineFaults): LU | null {
   if (v.kind === 'auto') return null;
   return resolveLength(v, basis, faults);
+}
+
+/** An absolutely positioned box inside a form control's box is not supported yet: its containing block is not looked up there. */
+export function checkControlSubtree(ctx: Ctx, box: LayoutBox): void {
+  for (const k of box.children) {
+    if (k.kind !== 'box' && k.kind !== 'control') continue;
+    if (isOutOfFlow(ctx, k)) unsupported('control-out-of-flow', k.id, 'CSS2 §10.3.7, §10.6.4', `absolutely positioned ${k.id} inside the form control ${box.id} is not supported`);
+    checkControlSubtree(ctx, plainBox(k));
+  }
 }
 
 // CSS2 §9.4.3 and §10.5: a vertical percentage offset against a containing block whose height is not definite behaves as auto.

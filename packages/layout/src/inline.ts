@@ -189,7 +189,7 @@ export function inlineBreaks(box: LayoutBox): LineBreak[] {
 function inlineChildren(box: LayoutBox): InlineChild[] {
   const out: InlineChild[] = [];
   for (const c of box.children) {
-    if (c.kind === 'box' || c.kind === 'replaced') throw new Error(`${box.id} mixes boxes and inline content; validateLayoutInput rejects this input`);
+    if (c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced') throw new Error(`${box.id} mixes boxes and inline content; validateLayoutInput rejects this input`);
     out.push(c);
   }
   return out;

@@ -463,7 +463,7 @@ describe('PORT-0: the Chrome ports registry (docs/ports.json)', () => {
   it('records a ruling for every LGPL entry: class A ones only referenced, class B ones on the clean-room list for T123', () => {
     const lgpl = registry.entries.filter((e) => e.licence === 'lgpl');
     // PIN-DERIVE: chrome-ports-floor.json holds every LGPL entry registered so far (the 18 T118J rulings, computed_style_constants.h
-    // from V2a and layout_replaced.cc from REPL-a); a new citation adds an entry without a test edit, but none may vanish or stop being LGPL.
+    // from V2a layout_replaced.cc from REPL-a and layout_box.cc from FORM-a); a new citation adds an entry without a test edit, but none may vanish or stop being LGPL.
     expect(floorProblems(new URL('./chrome-ports-floor.json', import.meta.url), 'lgpl', lgpl.map((e) => e.upstream), false)).toEqual([]);
     for (const e of lgpl) expect(['A', 'B'], e.upstream).toContain(e.ruling?.class);
     expect(lgpl.filter((e) => e.ruling?.class === 'B').map((e) => e.upstream).sort()).toEqual([...KNOWN_LGPL_CLEAN_ROOM].sort());

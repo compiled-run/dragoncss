@@ -10,6 +10,8 @@ import type {
   BoxSizing,
   BoxType,
   CalcExpr,
+  ControlBox,
+  ControlKind,
   Direction,
   Display,
   FlexBasisValue,
@@ -812,19 +814,53 @@ function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
   };
 }
 
-function decodeBox(o: JsonObj, path: string): LayoutBox {
-  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'children'], path);
-  const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
+function decodeChildren(o: JsonObj, path: string): (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[] {
+  const children: (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
+  return children;
+}
+
+function decodeStrutField(o: JsonObj, path: string): LineStrut | null {
   const strut = field(o, 'strut', path);
+  return strut.kind === 'null' ? null : decodeStrut(strut, `${path}.strut`);
+}
+
+function controlKind(v: JsonValue, path: string): ControlKind {
+  const k = kindOf(v, path);
+  if (k === 'range') return { kind: 'range', defaultInlineSize: numField(obj(v, ['kind', 'defaultInlineSize'], path), 'defaultInlineSize', path) };
+  if (k === 'slider-thumb') return { kind: 'slider-thumb', ratio: numField(obj(v, ['kind', 'ratio'], path), 'ratio', path) };
+  if (k === 'button-block') {
+    obj(v, ['kind'], path);
+    return { kind: 'button-block' };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function decodeControl(o: JsonObj, path: string): ControlBox {
+  obj(o, ['kind', 'id', 'boxType', 'style', 'control', 'strut', 'children'], path);
+  const children = decodeChildren(o, path);
+  return {
+    kind: 'control',
+    id: str(field(o, 'id', path), `${path}.id`),
+    boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
+    style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    control: controlKind(field(o, 'control', path), `${path}.control`),
+    strut: decodeStrutField(o, path),
+    children,
+  };
+}
+
+function decodeBox(o: JsonObj, path: string): LayoutBox {
+  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'children'], path);
+  const children = decodeChildren(o, path);
   return {
     kind: 'box',
     id: str(field(o, 'id', path), `${path}.id`),
     boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
     style: decodeStyle(field(o, 'style', path), `${path}.style`),
-    strut: strut.kind === 'null' ? null : decodeStrut(strut, `${path}.strut`),
+    strut: decodeStrutField(o, path),
     children,
   };
 }
@@ -864,10 +900,11 @@ function decodeInlineChild(v: JsonValue, path: string): InlineChild {
   return fail(`${path}: unknown inline-level node kind ${k}`);
 }
 
-function decodeNode(v: JsonValue, path: string): LayoutBox | ReplacedLeaf | InlineChild {
+function decodeNode(v: JsonValue, path: string): LayoutBox | ControlBox | ReplacedLeaf | InlineChild {
   if (v.kind !== 'obj') return fail(`${path}: expected a node`);
   const k = kindOf(v, path);
   if (k === 'box') return decodeBox(v, path);
+  if (k === 'control') return decodeControl(v, path);
   if (k === 'replaced') return decodeReplaced(v, path);
   return decodeInlineChild(v, path);
 }

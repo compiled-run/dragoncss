@@ -145,7 +145,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;
     for (const c of b.children) {
-      if (c.kind === 'box' || c.kind === 'replaced') {
+      if (c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced') {
         visit(c, b.id, own, transformMoves);
         continue;
       }

@@ -13,6 +13,7 @@ export type UnsupportedCode =
   | 'flex-wrap-indefinite-main'
   | 'flex-intrinsic-wrap-column'
   | 'replaced-out-of-flow'
+  | 'control-out-of-flow'
   | 'line-break'
   | 'mixed-text-wrap-mode'
   | 'inline-box-decoration'

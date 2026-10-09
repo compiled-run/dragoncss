@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
-import type { LayoutBox, LayoutRect } from '@dragon/layout';
+import type { ControlBox, LayoutBox, LayoutRect } from '@dragon/layout';
 import { AHEM_FONT_DATA, coveredIndex, LU_PER_PX, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { borderDevicePx, programInput } from 'dragon';
@@ -268,13 +268,13 @@ const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(
 function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: number }> {
   const out = new Map<string, { family: string; size: number }>();
   // Text leaves sit in their block container or, through any depth of inline boxes, inside it (INL1a).
-  const inline = (c: Exclude<LayoutBox['children'][number], LayoutBox>): void => {
+  const inline = (c: Exclude<LayoutBox['children'][number], LayoutBox | ControlBox>): void => {
     if (c.kind === 'text') out.set(c.id, { family: c.font.family, size: c.font.size });
     else if (c.kind === 'inline') for (const k of c.children) inline(k);
   };
-  const walk = (b: LayoutBox): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
     for (const c of b.children) {
-      if (c.kind === 'box') walk(c);
+      if (c.kind === 'box' || c.kind === 'control') walk(c);
       else inline(c);
     }
   };

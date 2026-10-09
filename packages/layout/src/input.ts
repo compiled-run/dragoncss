@@ -349,8 +349,32 @@ export type ReplacedLeaf = {
   readonly objectPositionY: ObjectPositionValue;
 };
 
-/** A box-level child: an element or anonymous box, or a replaced leaf. */
-export type LayoutNode = LayoutBox | ReplacedLeaf;
+/**
+ * What a form control's box does beyond a plain box (FORM-a, Blink 145):
+ * - range: the input[type=range] flex container, whose intrinsic content inline size is defaultInlineSize CSS px (the compiler
+ *   writes 129, Chrome's measured default track length; the engine zooms it like a px length);
+ * - slider-thumb: the thumb, which its block container's layout moves along the inline axis by ratio x (content width - thumb
+ *   width), ratio being the input's (value - min) / (max - min) in [0, 1] (AdjustSliderThumbInlineOffset);
+ * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent).
+ */
+export type ControlKind =
+  | { readonly kind: 'range'; readonly defaultInlineSize: number }
+  | { readonly kind: 'slider-thumb'; readonly ratio: number }
+  | { readonly kind: 'button-block' };
+
+/** A form control's box: a box with the same fields as LayoutBox plus its control facts. */
+export type ControlBox = {
+  readonly kind: 'control';
+  readonly id: string;
+  readonly boxType: BoxType;
+  readonly style: LayoutStyle;
+  readonly control: ControlKind;
+  readonly strut: LineStrut | null;
+  readonly children: readonly (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[];
+};
+
+/** A box-level child: an element or anonymous box, a form control's box, or a replaced leaf. */
+export type LayoutNode = LayoutBox | ControlBox | ReplacedLeaf;
 
 /**
  * An inline box (CSS2 §9.2.2): an element with display inline inside an inline formatting context. Its font and line-height are
@@ -375,8 +399,9 @@ export type InlineChild = TextLeaf | InlineBox | LineBreak;
 export type LineStrut = { readonly font: FontSpec; readonly lineHeight: LineHeightValue };
 
 /**
- * Children are either all boxes and replaced leaves or all inline-level (text leaves, inline boxes and line breaks): the compiler
- * wraps mixed content in anonymous boxes. strut is the box's font and line-height when its children are inline-level, else null.
+ * Children are either all boxes, control boxes and replaced leaves or all inline-level (text leaves, inline boxes and line breaks):
+ * the compiler wraps mixed content in anonymous boxes. strut is the box's font and line-height when its children are inline-level,
+ * else null.
  */
 export type LayoutBox = {
   readonly kind: 'box';
@@ -384,7 +409,7 @@ export type LayoutBox = {
   readonly boxType: BoxType;
   readonly style: LayoutStyle;
   readonly strut: LineStrut | null;
-  readonly children: readonly (LayoutBox | ReplacedLeaf | InlineChild)[];
+  readonly children: readonly (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[];
 };
 
 /** The initial containing block in CSS px. */

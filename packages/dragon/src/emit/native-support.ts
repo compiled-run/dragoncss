@@ -576,18 +576,19 @@ public final class DragonTree {
         for k in ib.children.items { walkInline(k, container) }
       } else if let br = c as? LineBreak { inlineIds.insert(br.id.description) }
     }
-    func walk(_ b: LayoutBox) {
+    func walk(_ b: LayoutBox) throws {
       zBoxes[b.id.description] = b
       zStyles[b.id.description] = b.style
       for c in b.children.items {
-        if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
+        if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; try walk(cb) }
+        else if let cc = c as? ControlBox { zParent[cc.id.description] = b.id.description; try walk(try controls_controlAsBox(cc)) }
         else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
         else if let rl = c as? ReplacedLeaf { zParent[rl.id.description] = b.id.description; zStyles[rl.id.description] = rl.style; zLeaves.append((rl.id.description, rl)) }
         else if let ib = c as? InlineBox { walkInline(ib, b.id.description) }
         else if let br = c as? LineBreak { walkInline(br, b.id.description) }
       }
     }
-    walk(zoomed.root)
+    try walk(zoomed.root)
     let lu = units_LU_PER_PX
     let s = scale
     let cg = CGFloat(scale)
@@ -1266,6 +1267,7 @@ import dev.dragon.dump.DumpPixels
 import dev.dragon.dump.DumpPixelsSamples
 import dev.dragon.dump.DumpTiming
 import dev.dragon.layout.Ctx
+import dev.dragon.layout.ControlBox
 import dev.dragon.layout.LayoutBox
 import dev.dragon.layout.LayoutInput
 import dev.dragon.layout.LayoutRect
@@ -1280,6 +1282,7 @@ import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
 import dev.dragon.layout.box_resolveBorder
 import dev.dragon.layout.box_resolvePadding
+import dev.dragon.layout.controls_controlAsBox
 import dev.dragon.layout.InlineBox
 import dev.dragon.layout.LineBreak
 import dev.dragon.layout.U_InlineBox_LineBreak_TextLeaf
@@ -1385,6 +1388,7 @@ class DragonTree(val context: Context) {
       zStyles[b.id] = b.style
       for (c in b.children) {
         if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) } else if (c is TextLeaf) zParent[c.id] = b.id
+        else if (c is ControlBox) { zParent[c.id] = b.id; walk(controls_controlAsBox(c)) }
         else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style; zLeaves.add(c) }
         else if (c is InlineBox) walkInline(c, b.id)
         else if (c is LineBreak) walkInline(c, b.id)
@@ -1997,6 +2001,9 @@ export function environmentArgs(viewport: { readonly width: number; readonly hei
   return `ViewportUnitSizes(${v}, ${v}, ${v}), SafeAreaInsets(0.0, 0.0, 0.0, 0.0), ${doubleLit(rootFontSize)}`;
 }
 
+/** The translated union of a box's children (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf). */
+const CHILDREN_UNION = 'U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf';
+
 /**
  * Functions that build a LayoutInput with the translated engine's typed constructors (no JSON, no CSS): one small function per box,
  * which builds its style, its text leaves and calls its child boxes' functions. Returns the declarations and the root call.
@@ -2021,12 +2028,24 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
     if (c.kind === 'br') return `LineBreak(${str('br')}, ${str(c.id)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`;
     return `InlineBox(${str('inline')}, ${str(c.id)}, ${styleOf(c.style)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${list('U_InlineBox_LineBreak_TextLeaf', c.children.map(inline))})`;
   };
-  const visit = (b: import('@dragon/layout').LayoutBox): string => {
+  // A control box's facts (input.ts ControlKind): ControlKind_range, ControlKind_sliderThumb or ControlKind_buttonBlock.
+  const controlKind = (c: import('@dragon/layout').ControlKind): string =>
+    c.kind === 'range'
+      ? `ControlKind_range(${str('range')}, ${doubleLit(c.defaultInlineSize)})`
+      : c.kind === 'slider-thumb'
+        ? `ControlKind_sliderThumb(${str('slider-thumb')}, ${doubleLit(c.ratio)})`
+        : `ControlKind_buttonBlock(${str('button-block')})`;
+  const visit = (b: import('@dragon/layout').LayoutBox | import('@dragon/layout').ControlBox): string => {
     const name = `${prefix}Box${n++}`;
-    const kids = b.children.map((c) => (c.kind === 'box' ? `${visit(c)}()` : c.kind === 'replaced' ? replaced(c) : inline(c)));
+    const kids = b.children.map((c) => (c.kind === 'box' || c.kind === 'control' ? `${visit(c)}()` : c.kind === 'replaced' ? replaced(c) : inline(c)));
     const strut = b.strut === null ? (lang === 'swift' ? 'nil' : 'null') : `LineStrut(${fontSpecValue(lang, b.strut.font)}, ${lineHeightValue(lang, b.strut.lineHeight)})`;
-    const body = `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${styleOf(b.style)}, ${strut}, ${list('U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf', kids)})`;
-    decls.push(lang === 'swift' ? `private func ${name}() -> LayoutBox {\n  return ${body}\n}` : `private fun ${name}(): LayoutBox =\n  ${body}`);
+    const style = styleOf(b.style);
+    const arr = list(CHILDREN_UNION, kids);
+    const type = b.kind === 'control' ? 'ControlBox' : 'LayoutBox';
+    const body = b.kind === 'control'
+      ? `ControlBox(${str('control')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${controlKind(b.control)}, ${strut}, ${arr})`
+      : `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${strut}, ${arr})`;
+    decls.push(lang === 'swift' ? `private func ${name}() -> ${type} {\n  return ${body}\n}` : `private fun ${name}(): ${type} =\n  ${body}`);
     return name;
   };
   const r = visit(root);

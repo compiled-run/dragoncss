@@ -52,6 +52,7 @@
       "calc-goldens",
       "engine-calc",
       "units-calc",
+      "engine-inline",
       "engine-overflow"
     ],
     "counts": {
@@ -64,6 +65,7 @@
       "calc-goldens": 17,
       "engine-calc": 4000,
       "units-calc": 50000,
+      "engine-inline": 3000,
       "engine-overflow": 3000
     }
   }

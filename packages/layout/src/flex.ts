@@ -2,7 +2,7 @@
 // alignment (§8.3, §9.4 step 8). Chrome 145 computes every offset in flow coordinates, from the writing-mode start edge of each
 // axis: a reverse direction reverses the items and swaps flex-start and flex-end, and wrap-reverse does the same for the lines and
 // the cross axis (measured, notes/T035-slice-4a.md). Flow offsets are then mapped to physical ones.
-import type { AlignItems, JustifyContent, LayoutBox, LayoutNode, LayoutStyle } from './input.ts';
+import type { AlignItems, ControlBox, JustifyContent, LayoutBox, LayoutNode, LayoutStyle } from './input.ts';
 import type { DistributedMode, FactorSum, LU } from './units.ts';
 import {
   add,
@@ -43,6 +43,7 @@ import {
 } from './box.ts';
 import type { ContentsResult, Ctx, EngineFaults } from './block.ts';
 import { directionOf, EMPTY_STRUT, layoutContents } from './block.ts';
+import { plainBox } from './controls.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { blockFromRatio, hasAspectRatio, ratioBlockLevelInlineSize, ratioContentInlineSize, transferredBlockMinMax } from './ratio.ts';
@@ -138,7 +139,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
   const absolute: LayoutBox[] = [];
   for (const k of box.children) {
     // css-flexbox-1 §4: the compiler wraps text in anonymous flex items; validateLayoutInput rejects text in a flex container.
-    if (k.kind !== 'box' && k.kind !== 'replaced') throw new Error(`${k.id} is inline content directly in flex container ${box.id}; validateLayoutInput rejects this input`);
+    if (k.kind !== 'box' && k.kind !== 'control' && k.kind !== 'replaced') throw new Error(`${k.id} is inline content directly in flex container ${box.id}; validateLayoutInput rejects this input`);
     // css-flexbox-1 §4.1: an absolutely positioned child is not a flex item.
     // An absolutely positioned replaced child is refused before this (position.ts checkOutOfFlowSiblings).
     if (k.kind === 'box' && isOutOfFlow(ctx, k)) absolute.push(k);
@@ -478,7 +479,7 @@ function buildItem(
   let columnCross = ZERO;
   if (!isRow && box.kind === 'replaced') {
     columnCross = sizeReplacedFlexItem(ctx, box, leafBp, leafSpace as FlexItemSpace, 'normal').inline;
-  } else if (!isRow && box.kind === 'box') {
+  } else if (!isRow && box.kind !== 'replaced') {
     const crossMin = s.minWidth.kind === 'auto' ? hbp : borderBoxFromSpecified(resolveLength(s.minWidth, cbInline, ctx.faults), hbp, s.boxSizing);
     const crossMax = s.maxWidth.kind === 'none' ? null : borderBoxFromSpecified(resolveLength(s.maxWidth, cbInline, ctx.faults), hbp, s.boxSizing);
     const mm: MinMax = { min: crossMin, max: crossMax };
@@ -492,7 +493,7 @@ function buildItem(
       w = min(maxC, max(minC, avail));
       // css-sizing-4 §5.1: fit-content over the ratio's transferred size when the height is definite, else over the content, with
       // the transferred min and max either way. A stretched width takes neither (Blink kStretchExplicit).
-      if (hasAspectRatio(s)) w = ratioBlockLevelInlineSize(ctx, box, cbInline, w);
+      if (hasAspectRatio(s)) w = ratioBlockLevelInlineSize(ctx, plainBox(box), cbInline, w);
     }
     columnCross = max(constrain(w, mm), hbp);
   }
@@ -559,7 +560,7 @@ function buildItem(
     // Blink flex_layout_algorithm.cc lines 1078-1084: an item that cannot shrink skips the content measurement; the result is the same.
     minMain = specifiedMain;
   } else {
-    const suggestionSource = ratio !== null ? ratio.suggestion : isRow && box.kind === 'box' ? intrinsicContentInlineSize(ctx, box, 'min') : !isRow && box.kind === 'box' && specifiedMain !== null ? columnIntrinsicBlockSize(ctx, box, cbInline, columnCross, heightBasis, vbp) : contentMain();
+    const suggestionSource = ratio !== null ? ratio.suggestion : isRow && box.kind !== 'replaced' ? intrinsicContentInlineSize(ctx, box, 'min') : !isRow && box.kind !== 'replaced' && specifiedMain !== null ? columnIntrinsicBlockSize(ctx, box, cbInline, columnCross, heightBasis, vbp) : contentMain();
     const contentSuggestion = maxMain === null ? suggestionSource : min(suggestionSource, maxMain);
     minMain = specifiedMain === null ? contentSuggestion : min(specifiedMain, contentSuggestion);
   }
@@ -597,7 +598,7 @@ function buildItem(
 // CSS2 §10.5 and css-flexbox-1 §9.8: a percentage block size resolves against a definite basis; indefinite behaves as auto (null).
 // css-flexbox-1 §4.5: a column item's content size suggestion is its content height with its own height treated as auto. Blink
 // flex_layout_algorithm.cc at 145.0.7632.6 (BSD) lines 1117-1120 and 914-923 take it from LayoutResult::IntrinsicBlockSize().
-function columnIntrinsicBlockSize(ctx: Ctx, box: LayoutBox, cbInline: LU, borderBoxWidth: LU, heightBasis: HeightBasis, vbp: LU): LU {
+function columnIntrinsicBlockSize(ctx: Ctx, box: LayoutBox | ControlBox, cbInline: LU, borderBoxWidth: LU, heightBasis: HeightBasis, vbp: LU): LU {
   // Blink resolves the children's percentage heights against the set height, which an auto-height measurement cannot reproduce.
   const pct = (v: LayoutStyle['flexBasis'] | LayoutStyle['maxHeight']): boolean => v.kind !== 'auto' && v.kind !== 'none' && v.kind !== 'content' && hasPercent(v);
   const columnFlex = box.style.display === 'flex' && (box.style.flexDirection === 'column' || box.style.flexDirection === 'column-reverse');
@@ -608,7 +609,7 @@ function columnIntrinsicBlockSize(ctx: Ctx, box: LayoutBox, cbInline: LU, border
       return unsupported('percent-height-flex', k.id, 'css-flexbox-1 §4.5', 'percentage height inside a column flex item whose content size suggestion is measured (not yet supported)');
     }
   }
-  const autoHeight: LayoutBox = { ...box, style: { ...box.style, height: { kind: 'auto' } } };
+  const autoHeight = withAutoHeight(box);
   const r = layoutContents(ctx, autoHeight, {
     cbInline,
     borderBoxWidth,
@@ -619,6 +620,17 @@ function columnIntrinsicBlockSize(ctx: Ctx, box: LayoutBox, cbInline: LU, border
     bfcLineOffset: ZERO,
   });
   return contentBox(r.frag.height, vbp);
+}
+
+/** The box with its own height treated as auto; a control keeps its kind, so a block button measures its contents as it lays out. */
+function withAutoHeight(box: LayoutBox | ControlBox): LayoutBox | ControlBox {
+  const style: LayoutStyle = { ...box.style, height: { kind: 'auto' } };
+  if (box.kind === 'control') {
+    const c: ControlBox = { kind: 'control', id: box.id, boxType: box.boxType, style, control: box.control, strut: box.strut, children: box.children };
+    return c;
+  }
+  const b: LayoutBox = { kind: 'box', id: box.id, boxType: box.boxType, style, strut: box.strut, children: box.children };
+  return b;
 }
 
 function percentMainHeight(box: LayoutNode, basis: HeightBasis, prop: string): LU | null {

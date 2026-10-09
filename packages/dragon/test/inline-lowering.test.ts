@@ -30,6 +30,7 @@ function shapeOf(tree: (r: SourceRef) => TreeNode[], id: string, faults: Compile
     if (k.kind === 'inline') return { inline: k.id, size: k.font.size, children: k.children.map(shape) };
     if (k.kind === 'br') return { br: k.id, size: k.font.size };
     if (k.kind === 'replaced') return { replaced: k.id };
+    if (k.kind === 'control') return { control: k.id };
     return { text: k.id, value: k.text, size: k.font.size };
   };
   return { strut: box.strut === null ? null : box.strut.font.size, children: box.children.map(shape) };

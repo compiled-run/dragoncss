@@ -1,4 +1,4 @@
-import type { FontSpec, InlineBox, InlineChild, LayoutBox, LayoutStyle, LineBreak, LineStrut, ReplacedLeaf, SafeAreaInsets, TextLeaf, Viewport, ViewportUnitSizes } from '../src/index.ts';
+import type { ControlBox, ControlKind, FontSpec, InlineBox, InlineChild, LayoutBox, LayoutStyle, LineBreak, LineStrut, ReplacedLeaf, SafeAreaInsets, TextLeaf, Viewport, ViewportUnitSizes } from '../src/index.ts';
 
 /** Test-only: the CSS initial values for a block div, spelled out so each test states what it overrides. */
 export const divStyle: LayoutStyle = {
@@ -49,7 +49,7 @@ export const divStyle: LayoutStyle = {
   gridItem: null,
 };
 
-type Child = LayoutBox | ReplacedLeaf | InlineChild;
+type Child = LayoutBox | ControlBox | ReplacedLeaf | InlineChild;
 
 /** The strut the compiler writes for inline content: the container's font and line-height, here its first text leaf's (or 10px Ahem). */
 export function strutFor(children: readonly Child[]): LineStrut | null {
@@ -71,6 +71,11 @@ function firstLeaf(children: readonly Child[]): TextLeaf | null {
 
 export function box(id: string, style: Partial<LayoutStyle>, children: Child[] = [], strut: LineStrut | null = strutFor(children)): LayoutBox {
   return { kind: 'box', id, boxType: 'element', style: { ...divStyle, ...style }, strut, children };
+}
+
+/** A form control's box (FORM-a), with the div initial values under its style. */
+export function control(id: string, kind: ControlKind, style: Partial<LayoutStyle>, children: Child[] = [], strut: LineStrut | null = strutFor(children)): ControlBox {
+  return { kind: 'control', id, boxType: 'element', style: { ...divStyle, ...style }, control: kind, strut, children };
 }
 
 export function anon(id: string, style: Partial<LayoutStyle>, children: Child[] = [], strut: LineStrut | null = strutFor(children)): LayoutBox {

@@ -3,14 +3,14 @@
 // packages/parity/test/ovfl-metrics.test.ts; these pin the rules the port follows.
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { ahemMeasurer, layout, NO_ENGINE_FAULTS, validateLayoutInput } from '../src/index.ts';
-import type { LayoutBox, LayoutInput, LayoutStyle, Overflow, ReplacedLeaf } from '../src/index.ts';
+import type { ControlBox, LayoutBox, LayoutInput, LayoutStyle, Overflow, ReplacedLeaf } from '../src/index.ts';
 import { isScrollContainer } from '../src/box.ts';
 import type { PlacedLine } from '../src/inline.ts';
 import { ZERO } from '../src/units.ts';
 import { OverflowRefusal, PLACED_LINE_FIELDS, refuseLineLevelBoxes, scrollMetrics, scrollMetricsWithFaults } from '../src/overflow.ts';
-import { box, br, divStyle, neutralEnvironment, pct, px, span, text } from './helpers.ts';
+import { box, br, control, divStyle, neutralEnvironment, pct, px, span, text } from './helpers.ts';
 
-const input = (children: (LayoutBox | ReplacedLeaf)[], html: Partial<LayoutStyle> = {}): LayoutInput => ({
+const input = (children: (LayoutBox | ControlBox | ReplacedLeaf)[], html: Partial<LayoutStyle> = {}): LayoutInput => ({
   viewport: { width: 400, height: 300 },
   devicePixelRatio: 1,
   ...neutralEnvironment({ width: 400, height: 300 }),
@@ -114,6 +114,15 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
     const r = scrollMetrics(input([box('s', sc('auto'), [box('k', { position: 'relative', top: pct(10), height: px(10) })])]), ahemMeasurer, 'ltr');
     expect(r.kind).toBe('refused');
     expect(r.kind === 'refused' ? r.nodeId : '').toBe('k');
+  });
+
+  it('a form control is refused, never skipped: its scrollable overflow is not decided here', () => {
+    const button = control('button', { kind: 'button-block' }, { width: px(300), height: px(300) });
+    for (const i of [input([box('s', sc('auto'), [button])]), input([button])]) {
+      const r = scrollMetrics(i, ahemMeasurer, 'ltr');
+      expect(r.kind).toBe('refused');
+      expect(r.kind === 'refused' ? [r.nodeId, r.detail] : []).toEqual(['button', 'a form control: its scrollable overflow is not decided here']);
+    }
   });
 });
 

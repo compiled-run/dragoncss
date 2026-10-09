@@ -1,5 +1,5 @@
 // Runtime validator for LayoutInput. The schema's inferred type must equal the declared input types exactly.
-import type { CalcExpr, LayoutBox, LayoutInput, LayoutStyle, LineBreak, LineStrut, ReplacedLeaf, TextLeaf } from './input.ts';
+import type { CalcExpr, ControlKind, LayoutBox, LayoutInput, LayoutStyle, LineBreak, LineStrut, ReplacedLeaf, TextLeaf } from './input.ts';
 
 type NumberRule = { readonly t: 'number'; readonly min: number; readonly exclusiveMin: boolean; readonly integer: boolean };
 type StringRule = { readonly t: 'string' };
@@ -197,6 +197,9 @@ export const replacedLeafSchema = obj({
   objectPositionY: tagged({ px: { value: anyNum }, percent: { value: anyNum } }),
 });
 
+/** A control box's facts (input.ts ControlKind); the ratio is also checked to be at most 1. */
+export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {} });
+
 /** A <br> (input.ts LineBreak). */
 export const lineBreakSchema = obj({ kind: lit('br'), id: str, font: fontSpecSchema, lineHeight: lineHeightSchema });
 
@@ -208,6 +211,7 @@ type Assert<T extends true> = T;
 export type SchemaMatchesStyle = Assert<Equal<Infer<typeof styleSchema>, LayoutStyle>>;
 export type SchemaMatchesText = Assert<Equal<Infer<typeof textLeafSchema>, TextLeaf>>;
 export type SchemaMatchesReplaced = Assert<Equal<Infer<typeof replacedLeafSchema>, ReplacedLeaf>>;
+export type SchemaMatchesControl = Assert<Equal<Infer<typeof controlKindSchema>, ControlKind>>;
 export type SchemaMatchesBreak = Assert<Equal<Infer<typeof lineBreakSchema>, LineBreak>>;
 export type SchemaMatchesStrut = Assert<Equal<Infer<typeof strutSchema>, LineStrut>>;
 
@@ -463,7 +467,7 @@ function checkRule(value: unknown, rule: Rule, path: string, errors: ValidationE
   }
 }
 
-function checkNode(value: unknown, path: string, errors: ValidationError[], ids: Set<string>, parentId: string | null): void {
+function checkNode(value: unknown, path: string, errors: ValidationError[], ids: Set<string>, parentId: string | null, inControl = false): void {
   if (!isRecord(value)) {
     errors.push({ path, code: 'wrong-type', message: 'expected a box, replaced leaf, inline box, line break or text object' });
     return;
@@ -512,16 +516,32 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     }
     return;
   }
-  if (kind !== 'box') {
-    errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: 'expected kind box | replaced | inline | br | text' });
+  if (kind !== 'box' && kind !== 'control') {
+    errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: 'expected kind box | control | replaced | inline | br | text' });
     return;
   }
-  checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema }, path, errors, ['kind', 'children', 'strut']);
+  const isControl = kind === 'control';
+  if (isControl) {
+    checkFields(value, { id: str, boxType: lit('element'), style: styleSchema, control: controlKindSchema }, path, errors, ['kind', 'children', 'strut']);
+    checkControl(value, path, errors);
+  } else {
+    checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema }, path, errors, ['kind', 'children', 'strut']);
+  }
+  const ownStyle = value['style'];
+  // An absolutely positioned box inside a control is not supported yet (position.ts checkControlSubtree).
+  if (inControl && isRecord(ownStyle) && ownStyle['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned box inside a form control is not supported' });
   const style = value['style'];
   if (isRecord(style) && style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a box is block, flex or grid; an inline box has kind inline' });
   const children = childrenOf(value, path, errors);
   if (children === null) return;
-  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null));
+  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null, inControl || isControl));
+  // Only a block container's flow moves a slider thumb by its value (block.ts layoutBlockFlow); in a flex track it would sit at 0.
+  children.forEach((child: unknown, i: number) => {
+    if (!isRecord(child) || child['kind'] !== 'control' || !isRecord(child['control']) || child['control']['kind'] !== 'slider-thumb') return;
+    if (!isRecord(style) || style['display'] !== 'block') {
+      errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a slider thumb is a block-flow child: its parent is a block container' });
+    }
+  });
   checkStrut(value, children, path, errors);
   checkInlineContent(value, children, path, errors);
   if (isRecord(style) && clipsOnly(style['overflowX']) !== clipsOnly(style['overflowY'])) {
@@ -562,7 +582,8 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
     }
   }
   children.forEach((child: unknown, i: number) => {
-    if (!isRecord(child) || (child['kind'] !== 'box' && child['kind'] !== 'replaced') || !isRecord(child['style'])) return;
+    // A box, a replaced leaf and a form control (FORM-a) are each a grid item of a grid container; text never is (checkInlineContent).
+    if (!isRecord(child) || (child['kind'] !== 'box' && child['kind'] !== 'replaced' && child['kind'] !== 'control') || !isRecord(child['style'])) return;
     const cs = child['style'];
     const item = cs['gridItem'];
     const inFlowItem = isGrid && cs['position'] !== 'absolute';
@@ -600,6 +621,25 @@ function sameValue(a: unknown, b: unknown): boolean {
     return keys.length === Object.keys(b).length && keys.every((k) => Object.hasOwn(b, k) && sameValue(a[k], b[k]));
   }
   return a === b;
+}
+
+/**
+ * A control box's own rules: a range is a flex container and a block button a block container (controls.ts); a thumb's ratio is
+ * at most 1; a control is never absolutely positioned and takes no aspect-ratio.
+ */
+function checkControl(value: Record<string, unknown>, path: string, errors: ValidationError[]): void {
+  const control = value['control'];
+  const style = value['style'];
+  if (!isRecord(control) || !isRecord(style)) return;
+  const bad = (key: string, message: string): void => {
+    errors.push({ path: `${path}.${key}`, code: 'bad-value', message });
+  };
+  if (control['kind'] === 'range' && style['display'] !== 'flex') bad('style.display', 'a range control is a flex container');
+  if (control['kind'] === 'button-block' && style['display'] !== 'block') bad('style.display', 'a block button control is a block container');
+  if (control['kind'] === 'slider-thumb' && typeof control['ratio'] === 'number' && control['ratio'] > 1) bad('control.ratio', 'a slider thumb ratio is at most 1');
+  if (style['position'] === 'absolute') bad('style.position', 'an absolutely positioned form control is not supported');
+  const ratio = style['aspectRatio'];
+  if (isRecord(ratio) && ratio['kind'] !== 'auto') bad('style.aspectRatio', 'a form control takes no aspect-ratio');
 }
 
 /** css-overflow-3 §3.1: visible and clip stay as they are only beside visible or clip. */

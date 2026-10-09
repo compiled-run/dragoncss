@@ -144,6 +144,54 @@ describe('hitTableOf hit-tests a replaced element as a childless box', () => {
   });
 });
 
+// FORM-a: a form control is refused by name, never hit as its parts: Chrome retargets a hit on a control's UA shadow parts to the
+// control element, which the hit table does not model, and no Chrome hit capture covers a control. Inputs without one are unaffected.
+describe('hitTableOf and hitRefusal refuse a form control by name', () => {
+  const setup = async (display: 'block' | 'flex', withControl: boolean, kind: 'button' | 'range') => {
+    const { box, control, neutralEnvironment, px, text } = await import('./helpers.ts');
+    const { SLIDER_DEFAULT_TRACK_LENGTH } = await import('../src/index.ts');
+    const inner = [box('label', {}, [text('t', 'XX')]), box('icon', { width: px(10), height: px(10) })];
+    const thumb = control('thumb', { kind: 'slider-thumb', ratio: 0.5 }, { width: px(10), height: px(10) });
+    const track = box('track', { width: px(60) }, [thumb]);
+    const ctl = kind === 'button'
+      ? control('btn', { kind: 'button-block' }, { width: px(60), paddingTop: px(4), paddingBottom: px(4) }, inner)
+      : control('btn', { kind: 'range', defaultInlineSize: SLIDER_DEFAULT_TRACK_LENGTH }, { display: 'flex' }, [box('container', { display: 'flex' }, [track])]);
+    const first = withControl ? ctl : box('btn', { width: px(60), paddingTop: px(4), paddingBottom: px(4) }, inner);
+    // The control sits one box deep, so the refusal must walk past the plain boxes above it.
+    const parent = { ...box('p', { display, width: px(100) }), children: [box('wrap', {}, [first]), box('after', { width: px(20), height: px(10) })] };
+    const root = { ...box('html', { width: px(100) }), children: [parent] };
+    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
+    const fact = (activation: boolean) => ({ pointerEvents: 'auto', inherited: true, activation }) as const;
+    const ids = ['html', 'p', 'wrap', 'btn', 'label', 'icon', 'after', 'container', 'track', 'thumb'];
+    return { input, facts: new Map(ids.map((id) => [id, fact(id === 'btn')] as const)) };
+  };
+  const REASON = 'btn is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)';
+
+  it('throws the named HitError for a block button and a range, in block and flex parents', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer, validateLayoutInput } = await import('../src/index.ts');
+    for (const kind of ['button', 'range'] as const) {
+      for (const display of ['block', 'flex'] as const) {
+        const { input, facts } = await setup(display, true, kind);
+        expect(validateLayoutInput(JSON.parse(JSON.stringify(input))).ok, `${kind} ${display}`).toBe(true);
+        expect(hitRefusal(input), `${kind} ${display}`).toBe(REASON);
+        expect(() => hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS), `${kind} ${display}`).toThrow(new HitError(REASON));
+      }
+    }
+  });
+
+  it('leaves the same tree with a plain box in the control\'s place unaffected', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    for (const display of ['block', 'flex'] as const) {
+      const { input, facts } = await setup(display, false, 'button');
+      expect(hitRefusal(input), display).toBeNull();
+      const t = hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+      expect(t.ids.filter((id) => !id.includes(':')), display).toEqual(['html', 'p', 'wrap', 'btn', 'label', 'icon', 'after']);
+    }
+  });
+});
+
 // PR #75 round 1 (Macroscope 4170551537, 4170551540, 4170551550): flex line grouping under wrap-reverse, and the work per point and
 // per table, counted by reads so the bound is exact rather than a timing.
 describe('hitTableOf and prepareHit scale with the table', () => {

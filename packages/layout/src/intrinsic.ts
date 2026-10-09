@@ -1,9 +1,10 @@
 // Intrinsic inline sizes (css-sizing-3 §5) and flex container intrinsic inline sizes (css-flexbox-1 §9.9.1, §9.9.2).
-import type { LayoutBox, LayoutNode } from './input.ts';
+import type { ControlBox, LayoutBox, LayoutNode } from './input.ts';
 import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
 import { borderBoxFromSpecified, hasPercent, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
+import { plainBox } from './controls.ts';
 import { inlineIntrinsicSize } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
 import { hasAspectRatio, ratioInlineContribution } from './ratio.ts';
@@ -13,14 +14,17 @@ import { unsupported } from './unsupported.ts';
 export type IntrinsicKind = 'min' | 'max';
 
 // css-sizing-3 §5.1: the min-content or max-content inline size of a box's content box. Absolutely positioned children take no
-// part (CSS2 §9.3.1).
-export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
+// part (CSS2 §9.3.1). A range's is its default track length, whatever its children (length_utils.cc:1918-1928
+// CalculateMinMaxSizesIgnoringChildren).
+export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, kind: IntrinsicKind): LU {
+  if (node.kind === 'control' && node.control.kind === 'range') return fromCssPx(node.control.defaultInlineSize);
+  const box = plainBox(node);
   const kids = box.children;
   if (box.style.display === 'flex') return flexIntrinsicContent(ctx, box, kind);
   if (box.strut !== null) return inlineIntrinsicSize(ctx, box, kind);
-  if (kids.some((k) => k.kind !== 'box' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
+  if (kids.some((k) => k.kind !== 'box' && k.kind !== 'control' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
   let widest = ZERO;
-  for (const k of kids) if ((k.kind === 'box' || k.kind === 'replaced') && !isOutOfFlow(ctx, k)) widest = max(widest, inlineContribution(ctx, k, kind));
+  for (const k of kids) if ((k.kind === 'box' || k.kind === 'control' || k.kind === 'replaced') && !isOutOfFlow(ctx, k)) widest = max(widest, inlineContribution(ctx, k, kind));
   return widest;
 }
 
@@ -31,7 +35,7 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
   const margin = (v: typeof s.marginLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : v.kind === 'calc' ? resolveLength(v, ZERO, ctx.faults) : ZERO);
   // A replaced box contributes its replaced size, which already holds min-width and max-width (replaced.ts).
   if (node.kind === 'replaced') return add(replacedContribution(ctx, node, kind), add(margin(s.marginLeft), margin(s.marginRight)));
-  const box = node;
+  const box = plainBox(node);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   // A calculation evaluates against a basis of 0 (Blink MinimumValueForLength with no percentage resolution size): calc(10px + 5%) is 10px.
   const pad = (v: typeof s.paddingLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : v.kind === 'calc' ? resolveLength(v, ZERO, ctx.faults) : ZERO);
@@ -41,7 +45,7 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
   let size: LU;
   if (s.width.kind !== 'auto' && !hasPercent(s.width)) size = borderBoxFromSpecified(resolveLength(s.width, ZERO, ctx.faults), bp, s.boxSizing);
   else if (hasAspectRatio(s)) size = ratioInlineContribution(ctx, box, kind);
-  else size = add(intrinsicContentInlineSize(ctx, box, kind), bp);
+  else size = add(intrinsicContentInlineSize(ctx, node, kind), bp);
   if (s.maxWidth.kind !== 'none' && !hasPercent(s.maxWidth)) size = min(size, borderBoxFromSpecified(resolveLength(s.maxWidth, ZERO, ctx.faults), bp, s.boxSizing));
   if (s.minWidth.kind !== 'auto') size = max(size, borderBoxFromSpecified(resolveMinLength(s.minWidth, null, ctx.faults), bp, s.boxSizing));
   size = max(size, bp);
@@ -52,7 +56,7 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
 // largest for a multi-line container. §9.9.2 (column, single-line): the largest contribution.
 function flexIntrinsicContent(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
   const s = box.style;
-  const items = box.children.filter((k): k is LayoutNode => (k.kind === 'box' || k.kind === 'replaced') && !isOutOfFlow(ctx, k));
+  const items = box.children.filter((k): k is LayoutNode => (k.kind === 'box' || k.kind === 'control' || k.kind === 'replaced') && !isOutOfFlow(ctx, k));
   const contributions = items.map((k) => inlineContribution(ctx, k, kind));
   const isRow = s.flexDirection === 'row' || s.flexDirection === 'row-reverse';
   if (!isRow && s.flexWrap !== 'nowrap') unsupported('flex-intrinsic-wrap-column', box.id, 'css-flexbox-1 §9.9.2', 'intrinsic inline size of a multi-line column flex container');
