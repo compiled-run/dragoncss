@@ -99,6 +99,11 @@ describe('ANIM-b1: the state machine runs the animator', () => {
       expect(t, lang).toMatch(lang === 'swift' ? /case \.advance\(let ms\): m\.machine\.advance\(ms\)/ : /is DragonScriptStep\.Advance -> m\.machine\.advance\(s\.ms\)/);
       expect(t, lang).not.toMatch(/m\.clock\.advance/);
       expect(t, lang).toContain('animator?.patch(i)');
+      // MQ-R1: every event reads the before-change style at the old inputs and the after-change style at the staged ones, so a size
+      // change of the media root re-resolves the animator's length endpoints (rt-animator animatorRestyle).
+      expect(t, lang).toContain('rtAnimator_animatorRestyle(state, tables, inputs, after, initial, ');
+      expect(t, lang).not.toContain('rtAnimator_animatorEvent(');
+      expect(t, lang).toMatch(lang === 'swift' ? /let after = staged \?\? inputs\n/ : /val after = staged \?: inputs\n/);
       expect(t, lang).toContain('dragonAnimatedSides(animator, n.id, ');
       expect(t, lang).toContain('animator?.color(n.id, "background-color")');
       // The frame colour goes through the paint writer (PNT1-radius rounded fill), never straight to the platform property.

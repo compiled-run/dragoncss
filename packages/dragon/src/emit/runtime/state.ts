@@ -118,6 +118,7 @@ public final class DragonStateMachine {
   public private(set) var viewport: (Double, Double)
   private let anim: AnimTables?
   private let initialAssignment: Int
+  private var animatorMeasurer: TextMeasurer?
   public let clock = DragonVirtualClock()
   /// ANIM-b1: the animator over the program's animation tables, started by the mount (nil without tables).
   public private(set) var animator: DragonAnimator?
@@ -172,10 +173,15 @@ public final class DragonStateMachine {
   /// ANIM-b1: starts the animator at the current assignment, with every assignment's input resolved at scale 1 and the current viewport by measurer (R14).
   public func startAnimator(_ measurer: TextMeasurer) {
     guard let t = anim, animator == nil else { return }
-    let inputs = deltas.map { d -> LayoutInput in
+    animatorMeasurer = measurer
+    animator = DragonAnimator(tables: t, inputs: animatorInputs(measurer), initial: initialAssignment, current: current)
+  }
+
+  /// Every assignment's engine input resolved at scale 1 and the current viewport: where the animator reads length endpoints.
+  private func animatorInputs(_ measurer: TextMeasurer) -> [LayoutInput] {
+    return deltas.map { d -> LayoutInput in
       do { return try environment_resolveEnvironment(variants[d.variant](1, viewport.0, viewport.1), block_NO_ENGINE_FAULTS, measurer) } catch { fatalError("dragon: the animator inputs: \(error)") }
     }
-    animator = DragonAnimator(tables: t, inputs: inputs, initial: initialAssignment, current: current)
   }
 
   /// The clock step (R2): the virtual clock and every running transition and animation move by ms.
@@ -227,8 +233,11 @@ public final class DragonStateMachine {
 
   /// MQ-R1 (T067 R5): one size change of the media root: its whole device px pick the band, its CSS px are the viewport. The new
   /// band first, through env#band's delta when it changes (whose setter lays out once), else one layout at the new size.
+  /// A running animator re-resolves its length endpoints at the new size, in that same style change event (Chrome's restyle).
   public func resize(_ widthPx: Double, _ heightPx: Double, css: (Double, Double), scale: Double) {
+    let moved = css != viewport
     viewport = css
+    if moved, let a = animator, let m = animatorMeasurer { a.stage(animatorInputs(m)) }
     if let b = band {
       let to = dragonBandAt(b, widthPx, heightPx, scale)
       if to != bandIndex {
@@ -237,6 +246,8 @@ public final class DragonStateMachine {
         return
       }
     }
+    // R4: a size change is a style change event of its own, in the same assignment.
+    if moved { animator?.event(current) }
     onChange?()
   }
 }
@@ -416,6 +427,7 @@ class DragonStateMachine(
 ) {
   private val baseById = HashMap<String, DragonStateNode>()
   private val initialAssignment = initial
+  private var animatorMeasurer: TextMeasurer? = null
   val clock = DragonVirtualClock()
   /** The band of the current assignment, and the viewport (CSS px) the engine lays out at: the media root's size. */
   var bandIndex: Int = initialBand
@@ -478,9 +490,13 @@ class DragonStateMachine(
   fun startAnimator(measurer: TextMeasurer) {
     val t = anim ?: return
     if (animator != null) return
-    val inputs = deltas.map { environment_resolveEnvironment(variants[it.variant](1.0, viewport.first, viewport.second), block_NO_ENGINE_FAULTS, measurer) }
-    animator = DragonAnimator(t, inputs, initialAssignment, current)
+    animatorMeasurer = measurer
+    animator = DragonAnimator(t, animatorInputs(measurer), initialAssignment, current)
   }
+
+  /** Every assignment's engine input resolved at scale 1 and the current viewport: where the animator reads length endpoints. */
+  private fun animatorInputs(measurer: TextMeasurer): List<LayoutInput> =
+    deltas.map { environment_resolveEnvironment(variants[it.variant](1.0, viewport.first, viewport.second), block_NO_ENGINE_FAULTS, measurer) }
 
   /** The clock step (R2): the virtual clock and every running transition and animation move by ms. */
   fun advance(ms: Double) {
@@ -536,7 +552,12 @@ class DragonStateMachine(
    * first, through env#band's delta when it changes (whose setter lays out once), else one layout at the new size.
    */
   fun resize(widthPx: Double, heightPx: Double, css: Pair<Double, Double>, scale: Double) {
+    val moved = css != viewport
     viewport = css
+    // A running animator re-resolves its length endpoints at the new size, in that same style change event (Chrome's restyle).
+    val a = animator
+    val m = animatorMeasurer
+    if (moved && a != null && m != null) a.stage(animatorInputs(m))
     val b = band
     if (b != null) {
       val to = dragonBandAt(b, widthPx, heightPx, scale)
@@ -546,6 +567,8 @@ class DragonStateMachine(
         return
       }
     }
+    // R4: a size change is a style change event of its own, in the same assignment.
+    if (moved) animator?.event(current)
     onChange?.invoke()
   }
 }
@@ -829,8 +852,6 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   let anim = '';
   if (e.anim !== undefined) {
     if (e.anim.assignments !== sp.assignments.length) throw new StateEmitError(`${e.id}: the animation tables hold ${e.anim.assignments} assignments, the state program ${sp.assignments.length}`);
-    // The animator resolves its inputs once, at the start viewport (R14), so a size change would leave its frame lengths stale.
-    if (e.band !== undefined || e.scripts.some((sc) => sc.steps.some((st) => st.kind === 'resize'))) throw new StateEmitError(`${e.id}: an animated state program cannot change its viewport yet (MQ-R1 bands or resize steps with ANIM-b1 tables)`);
     const t = animTablesLit(lang, e.anim, `${p}Anim`);
     out.push(...t.decls);
     out.push(decl(`${p}AnimTables`, 'AnimTables', t.expr));

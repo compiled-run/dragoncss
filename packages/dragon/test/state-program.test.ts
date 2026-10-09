@@ -195,15 +195,29 @@ describe('the generated runtime', () => {
     expect(() => emitStatePrograms('uikit', [emit, emit])).toThrow(/share an id/);
   });
 
-  it('refuses an animated program that can change its viewport (the animator resolves its inputs once, at the start viewport)', () => {
-    const anim = { assignments: emit.program.assignments.length, slots: [], animations: [], keyframes: [], rendered: [], bases: [], closure: [] };
-    expect(emitStatePrograms('uikit', [{ ...emit, anim }]).map((f) => f.text).join('\n')).toContain('anim: dragonStates0AnimTables');
-    const resize = { ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'resize', width: 400, height: 300 } as const, { kind: 'dump' } as const] };
-    for (const backend of ['uikit', 'android-views'] as const) {
-      expect(() => emitStatePrograms(backend, [{ ...emit, anim, scripts: [resize] }])).toThrow(/an animated state program cannot change its viewport yet/);
-      // Without animation tables the same resize script emits.
-      expect(emitStatePrograms(backend, [{ ...emit, scripts: [resize] }]).map((f) => f.text).join('\n')).toMatch(/[Rr]esize\(400\.0, 300\.0\)/);
-    }
+  it('emits an animated program with viewport-relative lengths and resize steps: a size change restyles the animator', () => {
+    const none = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false } as const;
+    const root = (emit.program.variants[0] as StateProgram['variants'][number]).root;
+    const anim = { assignments: emit.program.assignments.length, slots: [], animations: [], keyframes: [], rendered: [], bases: [{ node: root.id, property: 'width', kind: 'length' as const, range: 'all' as const, values: emit.program.assignments.map(() => none) }], closure: [] };
+    const vw = { kind: 'calc', expr: { kind: 'viewport', value: 50, axis: 'width', size: 'small' }, range: 'non-negative' };
+    const program = { ...emit.program, variants: emit.program.variants.map((v) => ({ ...v, root: { ...v.root, style: { ...v.root.style, width: vw } } })) } as StateProgram;
+    const resize = { ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'resize', width: 600, height: 300 } as const, { kind: 'dump' } as const] };
+    const swift = emitStatePrograms('uikit', [{ ...emit, anim, program, scripts: [resize] }]).map((f) => f.text).join('\n');
+    expect(swift).toContain('anim: dragonStates0AnimTables');
+    expect(swift).toContain('.resize(600.0, 300.0)');
+    const kotlin = emitStatePrograms('android-views', [{ ...emit, anim, program, scripts: [resize] }]).map((f) => f.text).join('\n');
+    expect(kotlin).toContain('DragonScriptStep.Resize(600.0, 300.0)');
+    // The machine: a size change stages every assignment's input at the new viewport, then raises one style change event, through
+    // env#band's setter when the band moves and in the current assignment when it does not.
+    const sw = emitNativeSupport('uikit', null).map((f) => f.text).join('\n');
+    expect(sw).toMatch(/let moved = css != viewport\n {4}viewport = css\n {4}if moved, let a = animator, let m = animatorMeasurer \{ a\.stage\(animatorInputs\(m\)\) \}\n {4}if let b = band \{/);
+    expect(sw).toMatch(/if moved \{ animator\?\.event\(current\) \}\n {4}onChange\?\(\)/);
+    expect(sw).toContain('variants[d.variant](1, viewport.0, viewport.1)');
+    const kt = emitNativeSupport('android-views', null).map((f) => f.text).join('\n');
+    expect(kt).toMatch(/val moved = css != viewport\n {4}viewport = css\n/);
+    expect(kt).toContain('if (moved && a != null && m != null) a.stage(animatorInputs(m))');
+    expect(kt).toMatch(/if \(moved\) animator\?\.event\(current\)\n {4}onChange\?\.invoke\(\)/);
+    expect(kt).toContain('variants[it.variant](1.0, viewport.first, viewport.second)');
   });
 
   it('the web attribute program writes each assignment\'s classes and validates before any mutation', async () => {

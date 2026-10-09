@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { LayoutInput } from '../src/input.ts';
 import { NO_RT_FAULTS } from '../src/rt-easing.ts';
 import type { AnimTables, EasingCode, ListingCode, ValueCode } from '../src/rt-animator.ts';
-import { animatorAdvance, animatorBusy, animatorEvent, animatorFrame, animatorStart, colorOf, frameColors, lengthBase, NO_ANIMATOR_FAULTS, patchInput } from '../src/rt-animator.ts';
+import { animatorAdvance, animatorBusy, animatorEvent, animatorFrame, animatorRestyle, animatorStart, colorOf, frameColors, lengthBase, NO_ANIMATOR_FAULTS, patchInput } from '../src/rt-animator.ts';
 import { legacyColor, serializeColor, serializeValue } from '../src/rt-interpolate.ts';
 import { box, divStyle, neutralEnvironment, pct, px } from './helpers.ts';
 
@@ -112,5 +112,49 @@ describe('rt-animator', () => {
     const frame = animatorFrame(s, TABLES, NO_RT_FAULTS);
     expect(frameColors(frame, TABLES, NO_ANIMATOR_FAULTS).map((c) => `${c.node} ${c.property} ${c.rgba.r},${c.rgba.g},${c.rgba.b},${c.rgba.alpha}`)).toEqual(['a background-color 64,64,64,255', 'b color 64,64,64,255']);
     expect(frameColors(frame, TABLES, { ...NO_ANIMATOR_FAULTS, inheritedNotPropagated: true }).map((c) => c.node)).toEqual(['a']);
+  });
+
+  // MQ-R1: a size change of the media root re-resolves every viewport-relative length; the event across it reads the before-change
+  // style at the old size and the after-change style at the new one, as Chrome's restyle after a resize does.
+  describe('a style change event across a size change (animatorRestyle)', () => {
+    // The same assignments at a wider media root: a's width is a viewport-relative length, so it resolves wider.
+    const WIDE = [input(50), input(150), input(0, false)];
+    const frame = (s: ReturnType<typeof animatorStart>): string[] => frameText(TABLES, s).filter((e) => e.startsWith('a width'));
+
+    it('is animatorEvent when the inputs do not change', () => {
+      let a = animatorStart(TABLES, INPUTS, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      let b = a;
+      a = animatorEvent(a, TABLES, INPUTS, 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      b = animatorRestyle(b, TABLES, INPUTS, INPUTS, 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      expect(b).toEqual(a);
+    });
+
+    it('transitions a length the size change moved, from its old to its new resolved value', () => {
+      let s = animatorStart(TABLES, INPUTS, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      // An event that kept the old inputs would see no change and start nothing: the stale case.
+      expect(frame(animatorAdvance(animatorEvent(s, TABLES, INPUTS, 0, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS), TABLES, INPUTS, 0, 500, NO_RT_FAULTS, NO_ANIMATOR_FAULTS))).toEqual([]);
+      s = animatorRestyle(s, TABLES, INPUTS, WIDE, 0, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      s = animatorAdvance(s, TABLES, WIDE, 0, 500, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      expect(frame(s)).toEqual(['a width 30px']);
+    });
+
+    it('retargets a running transition to the end value at the new size, from where it is', () => {
+      let s = animatorStart(TABLES, INPUTS, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      s = animatorEvent(s, TABLES, INPUTS, 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      s = animatorAdvance(s, TABLES, INPUTS, 0, 500, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      expect(frame(s)).toEqual(['a width 60px']);
+      const stale = animatorAdvance(animatorEvent(s, TABLES, INPUTS, 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS), TABLES, INPUTS, 0, 500, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      s = animatorRestyle(s, TABLES, INPUTS, WIDE, 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      s = animatorAdvance(s, TABLES, WIDE, 0, 500, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      // Kept on the old inputs, the transition ran on to its stale end (110px) and is over; Chrome starts a new one from the
+      // current 60px to the new end 150px (css-transitions-1 §3, a running transition whose end value changed).
+      expect(frame(stale)).toEqual([]);
+      expect(frame(s)).toEqual(['a width 105px']);
+    });
+
+    it('refuses inputs that do not cover every assignment', () => {
+      const s = animatorStart(TABLES, INPUTS, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      expect(() => animatorRestyle(s, TABLES, INPUTS, WIDE.slice(0, 2), 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS)).toThrow(/3 and 2 resolved engine inputs for 3 assignments/);
+    });
   });
 });
