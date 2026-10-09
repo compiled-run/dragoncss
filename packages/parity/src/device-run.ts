@@ -472,6 +472,12 @@ export function releaseDeviceMemory(name: string): void {
  */
 export class DeviceLeftRunning extends Error {}
 
+/**
+ * A booted device that is not the tree's matrix device (liveProblems against DEVICE_MATRIX): a defect of the tree's matrix or
+ * provisioning, judged as a verdict, never retried as a tooling hiccup once the boot was cold.
+ */
+export class MatrixMismatch extends Error {}
+
 /** Runs a boot holding the device's memory until release(); a failed boot gives it back unless it left the device running. */
 export async function withDeviceSlot(spec: DeviceSpec, bootIt: () => Promise<DeviceHandle>, opts: AdmitOptions = {}): Promise<DeviceHandle> {
   await admitDevice(spec, opts);
@@ -520,6 +526,40 @@ async function bootIosHeld(spec: IosDeviceSpec): Promise<DeviceHandle> {
   }
 }
 
+/**
+ * The SpringBoard preferences every simulator is pinned to: Full Screen Apps (no Windowed Apps, no Stage Manager). iPadOS 26 defaults
+ * to Windowed Apps, where SpringBoard reopens an app at the window size it last kept for the bundle, across reinstalls and reboots:
+ * one scene rotation on a portrait iPad (requestGeometryUpdate) left every later launch of the host in a scaled window, so the OS
+ * screenshot of capture trust showed the wallpaper around it. Each key reads 0 once pinned.
+ */
+export const IOS_SPRINGBOARD_PINS: readonly string[] = ['SBMedusaMultitaskingEnabled', 'SBChamoisWindowingEnabled'];
+
+/** The pinned keys a simulator does not hold yet; read gives a key's `defaults read` output, or null when the key is absent. */
+export function springboardPinsToWrite(read: (key: string) => string | null): string[] {
+  return IOS_SPRINGBOARD_PINS.filter((k) => read(k)?.trim() !== '0');
+}
+
+function readSpringboard(udid: string, key: string): string | null {
+  const r = exec('xcrun', ['simctl', 'spawn', udid, 'defaults', 'read', 'com.apple.springboard', key], { allowFailure: 'an absent key fails the read; it is written below' });
+  return r.ok ? r.stdout : null;
+}
+
+/**
+ * Pins the multitasking mode (IOS_SPRINGBOARD_PINS). SpringBoard reads it when it starts, so a simulator that did not hold it
+ * boots once more; the pins persist, so that happens once per simulator. A pin that does not read back fails the boot.
+ */
+async function pinFullScreenApps(spec: IosDeviceSpec, udid: string): Promise<void> {
+  const missing = springboardPinsToWrite((k) => readSpringboard(udid, k));
+  if (missing.length === 0) return;
+  for (const k of missing) exec('xcrun', ['simctl', 'spawn', udid, 'defaults', 'write', 'com.apple.springboard', k, '-bool', 'NO']);
+  exec('xcrun', ['simctl', 'shutdown', udid]);
+  exec('xcrun', ['simctl', 'boot', udid]);
+  const b = await execAsync('xcrun', ['simctl', 'bootstatus', udid, '-b'], { timeoutMs: 300_000, allowFailure: 'a failed reboot fails naming this output' });
+  if (!b.ok) throw new Error(`the ${spec.name} simulator did not boot again after its multitasking mode was pinned (tooling fault): ${b.out.slice(-500)}`);
+  const still = springboardPinsToWrite((k) => readSpringboard(udid, k));
+  if (still.length > 0) throw new Error(`the ${spec.name} simulator does not hold the SpringBoard pins ${still.join(', ')} after writing them (tooling fault)`);
+}
+
 async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Promise<DeviceHandle> {
   for (let attempt = 1; ; attempt++) {
     if (was === 'Shutdown') noteStartedSim(udid, spec.name);
@@ -532,6 +572,7 @@ async function bootIosFrom(spec: IosDeviceSpec, udid: string, was: string): Prom
     const stopped = await stopDevice({ spec, udid, startedHere: true });
     if (stopped !== null) throw new Error(`the ${spec.name} simulator failed to boot, and before the retry ${stopped} (tooling fault): ${b.out.slice(-500)}`);
   }
+  await pinFullScreenApps(spec, udid);
   exec('xcrun', ['simctl', 'ui', udid, 'content_size', 'large']);
   return { spec, udid, startedHere: was === 'Shutdown' };
 }
@@ -804,7 +845,7 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
   const expectSdk = provision ? ANDROID_IMAGE_API : null;
   if (serialsRunning(tools).includes(serial)) {
     const live = liveProblems(spec, readLive(h), expectSdk);
-    if (live.length > 0) throw new Error(`${serial} is running but is not the matrix device: ${live.join('; ')}; it was not started by this runner, so it is left running (tooling fault)`);
+    if (live.length > 0) throw new MatrixMismatch(`${serial} is running but is not the matrix device: ${live.join('; ')}; it was not started by this runner, so it is left running`);
     await prepareAvd(h);
     return { ...h, startedHere: false, boot: 'running' };
   }
@@ -832,8 +873,14 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
         if (!p.alive()) throw new Error(`the emulator process ended (${p.exited() ?? 'unknown'}) before ${serial} finished booting`);
         return adb(h, ['shell', 'getprop', 'sys.boot_completed'], 10_000, 'adb does not answer while the emulator boots; the poll asks again until its timeout').stdout.trim() === '1';
       });
+      // The settle is part of the attempt: a booted image whose focus never settles (a System UI ANR that outlives every
+      // remedy) is stopped and booted cold once more, as a boot that never completes is.
+      const live = liveProblems(spec, readLive(h), expectSdk);
+      if (live.length > 0) throw new MatrixMismatch(`${serial} booted but is not the matrix device: ${live.join('; ')}`);
+      await prepareAvd(h);
       break;
     } catch (e) {
+      const wasGolden = golden;
       const step = failedAttemptStep(golden, p.alive(), attempt, golden && !p.alive() && snapshotLoadFailed(p.logTail()));
       // A snapshot that would not boot is dropped: the retry, and every boot after it until a new one is saved, is cold.
       if (step.dropGolden) {
@@ -852,9 +899,12 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
       // An emulator that never attached is not reached by adb emu kill, so the process this attempt spawned is stopped as well,
       // whatever the kill gave; a stop that fails keeps the device's memory held (failBoot).
       const problems = await stopAll([() => stopDevice({ ...h, startedHere: true }), () => stopSpawned(p, spec.name)]);
-      if (problems.length > 0) throw new DeviceLeftRunning(`the ${spec.name} emulator failed to boot (${e instanceof Error ? e.message : String(e)}); and ${problems.join('; ')}`);
+      if (problems.length > 0) throw new DeviceLeftRunning(`the ${spec.name} emulator failed to boot and settle (${e instanceof Error ? e.message : String(e)}); and ${problems.join('; ')}`);
       await sleep(5000);
-      if (step.next === 'stop-then-fail') throw new Error(`the ${spec.name} emulator failed to boot twice (tooling fault): ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
+      // A cold boot of the wrong device boots the same wrong device again; one from a snapshot may be the snapshot's, so it is retried cold.
+      if (e instanceof MatrixMismatch && !wasGolden) throw e;
+      if (step.next === 'stop-then-fail') throw new Error(`the ${spec.name} emulator failed to boot and settle twice (tooling fault): ${e instanceof Error ? e.message : String(e)}; emulator log ${log}: ${p.logTail()}`);
+      console.log(`${spec.name}: attempt ${attempt} failed to boot and settle, so the emulator was stopped and the next attempt boots cold: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
   console.log(`${serial}: ${golden ? `booted from the golden snapshot ${GOLDEN_SNAPSHOT}` : 'booted cold'}`);
@@ -863,9 +913,6 @@ async function bootAvdHeld(spec: AvdDeviceSpec, provision: boolean): Promise<Dev
     dropGolden(spec.name);
   }
   try {
-    const live = liveProblems(spec, readLive(h), expectSdk);
-    if (live.length > 0) throw new Error(`${serial} booted but is not the matrix device: ${live.join('; ')} (tooling fault)`);
-    await prepareAvd(h);
     if (key !== null && !golden) await saveGoldenAndSettle({ ...h, spec }, key);
   } catch (e) {
     if (golden) dropGolden(spec.name);
@@ -916,25 +963,36 @@ export const SETTLE_SAMPLES = 6;
 export const SETTLE_INTERVAL_MS = 500;
 export const SETTLE_TIMEOUT_MS = 300_000;
 
-/** The focus wait so far: the last sample (null when unparseable), its raw text, how many samples in a row read it, and totals. */
-export type SettleState = { readonly last: WindowFocus | null; readonly raw: string; readonly stable: number; readonly samples: number; readonly changes: number; readonly unparseable: number };
-export const SETTLE_START: SettleState = { last: null, raw: '', stable: 0, samples: 0, changes: 0, unparseable: 0 };
+/** An error dialog that holds the focus for this many samples in a row, BACK pressed at each, gets System UI restarted. */
+export const SYSTEMUI_RESTART_AFTER = 20;
+
+/**
+ * The focus wait so far: the last sample (null when unparseable), its raw text, how many samples in a row read it, and totals;
+ * dialogs counts the samples in a row an error dialog held the focus, restarts the System UI restarts asked for.
+ */
+export type SettleState = { readonly last: WindowFocus | null; readonly raw: string; readonly stable: number; readonly samples: number; readonly changes: number; readonly unparseable: number; readonly dialogs: number; readonly restarts: number };
+export const SETTLE_START: SettleState = { last: null, raw: '', stable: 0, samples: 0, changes: 0, unparseable: 0, dialogs: 0, restarts: 0 };
 
 const DIALOG = /Not Responding|has stopped|isn't responding/i;
 const LAUNCHER = /[Ll]auncher/;
 
 /**
- * One focus sample judged: 'back' closes an error dialog, 'home' asks for the home screen when something else has the focus,
- * 'wait' samples again, and 'done' when the launcher has held both the focused window and the focused activity, unchanged (the
- * same window object), for `need` samples in a row. Unparseable output never counts toward the run.
+ * One focus sample judged: 'back' closes an error dialog, and 'restart-systemui' asks for System UI to be restarted when a dialog
+ * has outlived restartAfter samples of BACK (each restartAfter samples again while it stays); 'home' asks for the home screen
+ * when something else has the focus, 'wait' samples again, and 'done' when the launcher has held both the focused window and the
+ * focused activity, unchanged (the same window object), for `need` samples in a row. Unparseable output never counts toward the run.
  */
-export function settleStep(state: SettleState, raw: string, need = SETTLE_SAMPLES): { readonly state: SettleState; readonly action: 'done' | 'wait' | 'home' | 'back' } {
+export function settleStep(state: SettleState, raw: string, need = SETTLE_SAMPLES, restartAfter = SYSTEMUI_RESTART_AFTER): { readonly state: SettleState; readonly action: 'done' | 'wait' | 'home' | 'back' | 'restart-systemui' } {
   const f = parseWindowFocus(raw);
   const samples = state.samples + 1;
   const changed = f !== null && state.last !== null && (f.currentFocus !== state.last.currentFocus || f.focusedApp !== state.last.focusedApp);
-  const base = { last: f, raw, samples, changes: state.changes + (changed ? 1 : 0), unparseable: state.unparseable + (f === null ? 1 : 0) };
+  const base = { last: f, raw, samples, changes: state.changes + (changed ? 1 : 0), unparseable: state.unparseable + (f === null ? 1 : 0), dialogs: 0, restarts: state.restarts };
   if (f === null) return { state: { ...base, stable: 0 }, action: 'wait' };
-  if (DIALOG.test(f.currentFocus)) return { state: { ...base, stable: 0 }, action: 'back' };
+  if (DIALOG.test(f.currentFocus)) {
+    const dialogs = state.dialogs + 1;
+    if (dialogs % restartAfter === 0) return { state: { ...base, stable: 0, dialogs, restarts: state.restarts + 1 }, action: 'restart-systemui' };
+    return { state: { ...base, stable: 0, dialogs }, action: 'back' };
+  }
   if (!LAUNCHER.test(f.currentFocus) || !LAUNCHER.test(f.focusedApp)) return { state: { ...base, stable: 0 }, action: 'home' };
   const stable = !changed && state.last !== null && state.stable > 0 ? state.stable + 1 : 1;
   return { state: { ...base, stable }, action: stable >= need ? 'done' : 'wait' };
@@ -948,7 +1006,20 @@ export function settleTimeoutMessage(serial: string, timeoutMs: number, s: Settl
       : s.last === null
         ? `the last dumpsys window output had no single mCurrentFocus and mFocusedApp: ${JSON.stringify(s.raw.trim().slice(-400))}`
         : `the last focus was mCurrentFocus=${s.last.currentFocus} mFocusedApp=${s.last.focusedApp}, held for ${s.stable} of ${need} samples`;
-  return `${serial} did not settle on the home screen within ${timeoutMs / 1000} s (tooling fault): ${last}; ${s.samples} samples, ${s.changes} focus changes, ${s.unparseable} unparseable`;
+  return `${serial} did not settle on the home screen within ${timeoutMs / 1000} s (tooling fault): ${last}; ${s.samples} samples, ${s.changes} focus changes, ${s.unparseable} unparseable${s.restarts === 0 ? '' : `, ${s.restarts} System UI restarts`}`;
+}
+
+/**
+ * The commands that restart System UI under an error dialog BACK does not close, by the restart's number: the first closes the
+ * system dialogs and crashes System UI the documented way (am crash), which the system restarts as a persistent process; later
+ * ones also kill it as root (su on the userdebug emulator image), for a main thread too stuck to take the crash.
+ */
+export function systemUiRestart(restart: number): readonly (readonly string[])[] {
+  const first = [
+    ['am', 'broadcast', '-a', 'android.intent.action.CLOSE_SYSTEM_DIALOGS'],
+    ['am', 'crash', 'com.android.systemui'],
+  ];
+  return restart <= 1 ? first : [...first, ['su', '0', 'sh', '-c', "'kill -9 $(pidof com.android.systemui)'"]];
 }
 
 /**
@@ -967,6 +1038,13 @@ async function waitForSettledFocus(h: { readonly serial: string; readonly tools:
       return;
     }
     if (step.action === 'back') adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_BACK']);
+    if (step.action === 'restart-systemui') {
+      console.log(`${h.serial}: an error dialog held the focus for ${state.dialogs} samples with BACK pressed at each (${state.last?.currentFocus ?? '?'}), so System UI is restarted (restart ${state.restarts})`);
+      for (const c of systemUiRestart(state.restarts)) {
+        const r = adb(h, ['shell', ...c], 20_000, 'a restart command that fails is logged; the next samples judge whether the dialog went, and the settle timeout bounds the wait');
+        if (!r.ok) console.log(`${h.serial}: ${c.join(' ')} failed: ${r.out.trim().slice(-300)}`);
+      }
+    }
     if (step.action === 'home') adb(h, ['shell', 'input', 'keyevent', 'KEYCODE_HOME']);
     if (Date.now() - t0 > SETTLE_TIMEOUT_MS) throw new Error(settleTimeoutMessage(h.serial, SETTLE_TIMEOUT_MS, state));
     await sleep(SETTLE_INTERVAL_MS);
@@ -1082,15 +1160,66 @@ export function osScreenshot(h: DeviceHandle, file: string): Buffer {
   return r.bytes;
 }
 
-/** adb install; an app signed by another checkout's debug key is the same test host, so it is uninstalled first. */
-export function installApk(h: { readonly serial: string; readonly tools: AndroidTools }, artifact: string): ExecResult {
-  const first = adb(h, ['install', '-r', '-t', artifact], 600_000, 'INSTALL_FAILED_UPDATE_INCOMPATIBLE (another checkout\'s debug key) is answered by a reinstall; any other failure is thrown below');
-  if (!/INSTALL_FAILED_UPDATE_INCOMPATIBLE/.test(first.out)) {
-    if (!first.ok) throw new Error(`adb install failed (tooling fault): ${first.out.slice(-800)}`);
-    return first;
+/**
+ * A fault of the device tooling, not of the tree: an install that kept failing with a transient error. The CI device job exits
+ * with its own code for it, so the landing driver never takes it for a verdict (cli/device-ci.ts).
+ */
+export class ToolingFault extends Error {}
+
+export const INSTALL_ATTEMPTS = 3;
+export const INSTALL_RETRY_MS = 10_000;
+
+/** The transient install errors: the device's package service or adb connection dropping, or a simulator service hiccup. */
+const TRANSIENT_INSTALL: { readonly [t in NativeTarget]: readonly (readonly [string, RegExp])[] } = {
+  android: [
+    ['device offline', /device offline|device '[^']*' not found|no devices\/emulators found/i],
+    ['package service unavailable', /Can't find service: package|Failure calling service package|Is the system running\?|DeadObjectException/i],
+    ['adb connection dropped', /error: closed|protocol fault|Broken pipe|Connection reset/i],
+  ],
+  ios: [
+    ['CoreSimulator connection', /CoreSimulatorService connection (?:became invalid|interrupted)|domain=NSMachErrorDomain, code=-308\b/],
+    ['simulator still booting', /Unable to lookup in current state: Booting/],
+  ],
+};
+
+/** The name of a transient install failure, or null for a failure that is no tooling hiccup (an app the device refuses). */
+export function transientInstallFailure(target: NativeTarget, r: Pick<ExecResult, 'ok' | 'out' | 'errorCode' | 'signal'>): string | null {
+  if (r.ok) return null;
+  if (r.errorCode === 'ETIMEDOUT' || r.signal === 'SIGKILL') return 'install timed out';
+  return TRANSIENT_INSTALL[target].find(([, re]) => re.test(r.out))?.[0] ?? null;
+}
+
+/**
+ * An install, retried on a transient failure up to INSTALL_ATTEMPTS times, each retry logged naming the error. A transient
+ * failure on the last attempt is a ToolingFault; any other failure throws at once as an Error (the tree's app may be at fault).
+ */
+export async function installWithRetries(target: NativeTarget, what: string, attempt: () => ExecResult, o: { readonly attempts?: number; readonly waitMs?: number; readonly log?: (line: string) => void; readonly wait?: (ms: number) => Promise<void> } = {}): Promise<ExecResult> {
+  const attempts = o.attempts ?? INSTALL_ATTEMPTS;
+  const waitMs = o.waitMs ?? INSTALL_RETRY_MS;
+  const log = o.log ?? ((l: string) => console.log(l));
+  for (let i = 1; ; i++) {
+    const r = attempt();
+    if (r.ok) return r;
+    const transient = transientInstallFailure(target, r);
+    const out = r.out.trim().slice(-800);
+    if (transient === null) throw new Error(`${what} failed: ${out}`);
+    if (i >= attempts) throw new ToolingFault(`${what} failed ${attempts} times with a transient error (${transient}; tooling fault): ${out}`);
+    log(`${what} failed with a transient error (${transient}), attempt ${i} of ${attempts}; retrying in ${waitMs / 1000} s: ${out.slice(-300)}`);
+    await (o.wait ?? sleep)(waitMs);
   }
+}
+
+/** adb install, retried on a transient failure; an app signed by another checkout's debug key is the same test host, so it is uninstalled first. */
+export async function installApk(h: { readonly serial: string; readonly tools: AndroidTools }, artifact: string): Promise<ExecResult> {
+  const install = (): ExecResult => adb(h, ['install', '-r', '-t', artifact], 600_000, 'a transient failure is retried, INSTALL_FAILED_UPDATE_INCOMPATIBLE (another checkout\'s debug key) is answered by a reinstall, and any other failure is thrown');
+  const first = await installWithRetries('android', 'adb install', () => {
+    const r = install();
+    // A reinstall answers this one: it is returned for the caller below, not retried.
+    return /INSTALL_FAILED_UPDATE_INCOMPATIBLE/.test(r.out) ? { ...r, ok: true } : r;
+  });
+  if (!/INSTALL_FAILED_UPDATE_INCOMPATIBLE/.test(first.out)) return first;
   adb(h, ['uninstall', HOST_BUNDLE]);
-  return adb(h, ['install', '-r', '-t', artifact], 600_000);
+  return installWithRetries('android', 'adb install after the uninstall', install);
 }
 
 /** Installs the app, hands it the run file, launches it once for every case in the file, waits and pulls the dumps. */
@@ -1101,7 +1230,7 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
   const timeout = 180_000 + opts.caseCount * perCase;
   let error: string | null = null;
   if ('udid' in h) {
-    exec('xcrun', ['simctl', 'install', h.udid, artifact], { timeoutMs: 300_000 });
+    await installWithRetries('ios', 'simctl install', () => exec('xcrun', ['simctl', 'install', h.udid, artifact], { timeoutMs: 300_000, allowFailure: 'a transient failure is retried; any other failure is thrown' }));
     exec('xcrun', ['simctl', 'terminate', h.udid, HOST_BUNDLE], { allowFailure: 'terminating the app fails when it is not running, the usual case' });
     const docs = join(exec('xcrun', ['simctl', 'get_app_container', h.udid, HOST_BUNDLE, 'data']).stdout.trim(), 'Documents');
     mkdirSync(docs, { recursive: true });
@@ -1127,7 +1256,7 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
     rmSync(join(docs, 'dragon-run.tsv'), { force: true });
   } else {
     const remote = `/sdcard/Android/data/${HOST_BUNDLE}/files`;
-    const inst = installApk(h, artifact);
+    const inst = await installApk(h, artifact);
     if (!/Success/.test(inst.out)) throw new Error(`adb install did not report Success: ${inst.out}`);
     adb(h, ['shell', 'am', 'force-stop', HOST_BUNDLE]);
     // A dump left from an earlier run must never be pulled as this run's: the files dir starts empty, or the run stops.
@@ -1235,7 +1364,7 @@ export function recordProblems(r: DeviceRecord, root: { readonly width: number; 
   // The app must have run on the device the runner booted: iOS reports SIMULATOR_DEVICE_NAME, Android "<model> / <AVD>".
   if (!(r.target === 'ios' ? r.model === r.name : r.model.endsWith(` / ${r.name}`))) out.push(`${r.name}: the app ran on ${JSON.stringify(r.model)}, not ${r.name}`);
   if (r.profileScale !== r.appScale) out.push(`${r.name}: the device profile scale ${r.profileScale} differs from the app's ${r.appScale}`);
-  if (r.stagePx[0] < root.width || r.stagePx[1] < root.height) out.push(`${r.name}: the stage ${r.stagePx[0]}x${r.stagePx[1]} device px cannot hold the ${root.width}x${root.height} root (device fit, tooling fault; never cropped)`);
+  if (r.stagePx[0] < root.width || r.stagePx[1] < root.height) out.push(`${r.name}: the stage ${r.stagePx[0]}x${r.stagePx[1]} device px cannot hold the ${root.width}x${root.height} root (device fit; never cropped)`);
   const pinned = r.target === 'ios' ? TEXT_SCALE.ios : TEXT_SCALE.android;
   if (r.textScale !== pinned) out.push(`${r.name}: text scale ${r.textScale}, pinned ${pinned}`);
   return out;

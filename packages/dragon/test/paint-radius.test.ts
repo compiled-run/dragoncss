@@ -136,6 +136,15 @@ describe('border-radius: refusals', () => {
     }
   });
 
+  it('in one walk, a rounded dashed scroll container keeps its PNT1b refusal and its child keeps the OVFL-p refusal (#194 merge)', () => {
+    const { c, input } = compile('.a { width: 40px; height: 20px; overflow: hidden; border: 2px dashed blue; border-radius: 6px; } .b { position: relative; top: 10%; }', { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+    const pnt1b = c.diagnostics.filter((d) => d.message.includes('PNT1b'));
+    expect(pnt1b.map((d) => `${d.code} ${d.target} ${spanTextOf(input, d)}`).sort()).toEqual(['DRAGON_UNSUPPORTED_VALUE android 6px', 'DRAGON_UNSUPPORTED_VALUE ios 6px']);
+    const ovflP = c.diagnostics.filter((d) => d.message.includes('OVFL-p'));
+    expect(ovflP.map((d) => `${d.code} ${d.target}: ${d.message}`).sort()).toEqual(['android', 'ios', 'web'].map((t) => `DRAGON_UNPROVEN_CONTEXT ${t}: position: relative with a percentage top on b inside the scroll container a: the scrollable overflow does not decide its basis yet (OVFL-p)`));
+    expectCatalogued([...pnt1b, ...ovflP]);
+  });
+
   it('square corners with a dashed border, a zero-width dashed side and a solid rounded border are not refused', () => {
     for (const css of ['.a { border: 2px dashed blue; }', '.a { border: 2px solid blue; border-left: 0 dashed red; border-radius: 6px; }', '.a { border: 2px solid blue; border-radius: 6px 0 / 0 6px; border-style: dashed; }']) {
       const { c } = compile(css);

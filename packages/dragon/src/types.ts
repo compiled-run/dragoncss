@@ -238,7 +238,8 @@ export type ExplainedCase = {
   readonly cascade: 'author' | 'inherited' | 'user-agent' | 'initial' | 'environment';
   readonly origin: Origin;
   readonly losing: readonly { readonly origin: Origin; readonly reason: string }[];
-  readonly support: { readonly feature: string; readonly context: string; readonly status: SupportStatus } | null;
+  /** note: the environment the support claim is limited to (support profile row note), when it has one. */
+  readonly support: { readonly feature: string; readonly context: string; readonly status: SupportStatus; readonly note?: string } | null;
 };
 
 export type ExplainResult<K extends string> =
@@ -278,6 +279,8 @@ export type SupportCandidate = {
   readonly context: string;
   readonly status: Exclude<SupportStatus, 'unsupported'>;
   readonly proofs: readonly { readonly lane: string; readonly cases: readonly string[]; readonly tolerance: 'gate-1-device-px' | 'dual-exact' }[];
+  /** The environment the claim is limited to (support profile row note), when it has one. */
+  readonly note?: string;
 };
 
 export type SupportAnswer =
