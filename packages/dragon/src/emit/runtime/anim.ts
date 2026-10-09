@@ -546,10 +546,11 @@ class DragonAnimator(private val tables: AnimTables, inputs: List<LayoutInput>, 
 class DragonAnimProgram(val tables: AnimTables, val inputs: List<(Double) -> LayoutInput>, val initial: Int)
 
 private val dragonAnimPrograms = java.util.WeakHashMap<DragonStateMachine, DragonAnimProgram>()
-private val dragonAnimMounts = java.util.WeakHashMap<DragonStateMachine, DragonAnimMount>()
+// Weak keys and weak values, as Swift's NSMapTable: the mount holds its machine, so a strong value would keep every entry alive.
+private val dragonAnimMounts = java.util.WeakHashMap<DragonStateMachine, java.lang.ref.WeakReference<DragonAnimMount>>()
 
 /** The animation adapter of a mounted machine, or null (the frame scripts defer its renders to their dumps). */
-fun dragonAnimMountOf(m: DragonStateMachine): DragonAnimMount? = dragonAnimMounts[m]
+fun dragonAnimMountOf(m: DragonStateMachine): DragonAnimMount? = dragonAnimMounts[m]?.get()
 
 /** Attaches a program's animation tables to a fresh machine (the per-program sources call it); returns the machine. */
 fun dragonAnimAttach(m: DragonStateMachine, tables: AnimTables, inputs: List<(Double) -> LayoutInput>, initial: Int): DragonStateMachine {
@@ -572,7 +573,7 @@ class DragonAnimMount private constructor(private val machine: DragonStateMachin
 
   init {
     machine.clock.onAdvance = { ms -> advance(ms) }
-    dragonAnimMounts[machine] = this
+    dragonAnimMounts[machine] = java.lang.ref.WeakReference(this)
     if (display) {
       driver = DragonDisplayDriver { dt ->
         machine.clock.advance(dt)

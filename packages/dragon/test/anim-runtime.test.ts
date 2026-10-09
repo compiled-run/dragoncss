@@ -91,6 +91,23 @@ describe('ANIM-b1: the state machine runs the animator', () => {
     expect(animSupport('android-views', () => '').text).toContain('class DragonAnimator(');
   });
 
+  it('holds every mount weakly from a global map keyed by its machine (the mount holds the machine, so a strong value never frees it)', () => {
+    const kotlin = emitNativeSupport('android-views').map((f) => f.text).join('\n');
+    const swift = emitNativeSupport('uikit').map((f) => f.text).join('\n');
+    // Every Kotlin map whose value is a mount: its value is a WeakReference.
+    const kMaps = [...kotlin.matchAll(/(?:Weak)?HashMap<\s*DragonStateMachine\s*,\s*([^\n]*?)>\(\)/g)].map((m) => m[1] as string);
+    expect(kMaps.some((v) => v.includes('DragonAnimMount'))).toBe(true);
+    for (const v of kMaps) if (/Mount/.test(v)) expect(v, v).toMatch(/^java\.lang\.ref\.WeakReference<\w+Mount>$/);
+    expect(kotlin).toContain('dragonAnimMounts[m]?.get()');
+    // Every Swift map table whose value is a mount holds it weakly.
+    const sMaps = [...swift.matchAll(/NSMapTable<DragonStateMachine, (\w+)>\(keyOptions: \.(\w+), valueOptions: \.(\w+)\)/g)];
+    expect(sMaps.some((m) => m[1] === 'DragonAnimMount')).toBe(true);
+    for (const m of sMaps) {
+      expect(m[2], m[0]).toBe('weakMemory');
+      if (/Mount/.test(m[1] as string)) expect(m[3], m[0]).toBe('weakMemory');
+    }
+  });
+
   it('keeps state.ts to its hooks: one adapter per mount, its event before each render, the patched input and the frame drawn after layout', () => {
     for (const [lang, t] of [['swift', swift], ['kotlin', kotlin]] as const) {
       const state = t.slice(t.indexOf(lang === 'swift' ? 'public final class DragonStateMount' : 'class DragonStateMount('));
