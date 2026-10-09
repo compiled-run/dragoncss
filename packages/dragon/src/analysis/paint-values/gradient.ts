@@ -18,6 +18,7 @@ import { lengthToPx, normalizeUnit, unitEntry } from '../../css/units.ts';
 import type { CssValue } from '../../css/values.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import { usedColors } from '../../lower/paint/colors.ts';
+import { elementWillChange } from './transform.ts';
 import { linearSlope } from '../../paint-data/libm.ts';
 import type { Diagnostic } from '../../types.ts';
 import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
@@ -643,24 +644,31 @@ export function resolvedLayers(el: ResolvedElement): ElementLayer[] {
 }
 
 /**
- * R4: the composited layer a gradient box rasters in, whose origin starts the cc tiles, the dither and the shader matrix: the root
- * scroller's, unless the box or an ancestor in its layer has a compositing reason. The compositing reasons R4 models (a transform
- * animation or transition, will-change: transform) are not longhands yet (ANIM, PNT2), and every other one (fixed position,
- * scroll containers, 3D, iframes, video) is refused where it is parsed, so every box Dragon compiles rasters in the root layer.
+ * R4: Chrome rasters a gradient box in the root scroller's layer unless the box or an ancestor has a compositing reason; then the
+ * layer's origin starts the cc tiles, the dither and the shader matrix, which Dragon does not model. will-change: transform or
+ * opacity is the one such reason Dragon compiles (every other one is refused where it is parsed).
  */
-export type GradientLayer = { readonly kind: 'root' };
-export function gradientLayerOf(_el: ResolvedElement): GradientLayer {
-  return { kind: 'root' };
+export function compositesSubtree(el: ResolvedElement): boolean {
+  return elementWillChange(el).some((f) => f === 'transform' || f === 'opacity');
+}
+
+/** Refuses, on the native targets, every gradient box in the subtree of `root`, which rasters in its own composited layer (R4). */
+function refuseComposited(el: ResolvedElement, root: ResolvedElement, native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const image = el.props.get('background-image') as ResolvedValue | undefined;
+  if (image !== undefined && resolvedLayers(el).some((l) => l.image.kind === 'gradient')) {
+    refuse(el, image, native, 'background-layers-layer', `background-image on ${el.element.address}: the box rasters in the composited layer of ${root.element.address} (will-change), which Dragon does not model (${BG2C})`, 'Remove will-change: transform and opacity from the gradient box and its ancestors.', diagnostics, reported);
+  }
+  for (const c of el.children) if (c.kind === 'element') refuseComposited(c, root, native, diagnostics, reported);
 }
 
 /** A located element refusal: at the declaration of `at`, for the targets given. */
-function refuse(el: ResolvedElement, at: ResolvedValue, targets: readonly string[], key: string, message: string, manual: string, diagnostics: Diagnostic[], reported: Set<string>, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNPROVEN_CONTEXT' = 'DRAGON_UNSUPPORTED_VALUE'): void {
+function refuse(el: ResolvedElement, at: ResolvedValue, targets: readonly string[], key: string, message: string, manual: string, diagnostics: Diagnostic[], reported: Set<string>): void {
   const origin = at.declaration === null ? el.element.node.origin : authored(at.declaration.valueSpan);
   for (const t of targets) {
     const id = `${t}|${key}|${el.element.address}`;
     if (reported.has(id)) continue;
     reported.add(id);
-    diagnostics.push(diagnostic(code, { origin, target: t, message, manual, basis: 'computed-value' }));
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
   }
 }
 
@@ -686,6 +694,7 @@ export function unfoldedLength(v: CssValue): string | null {
 
 const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) => {
   const native = targets.filter((t) => t !== 'web');
+  if (compositesSubtree(el)) refuseComposited(el, el, native, diagnostics, reported);
   for (const p of BACKGROUND_LAYERS_LONGHANDS) {
     const v = el.props.get(p as Longhand);
     const length = v === undefined ? null : unfoldedLength(v.value);
@@ -743,10 +752,6 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) =
   const translucent = translucencyRefusal(layers, colors['background-color'], colors.color, boxWidths(el));
   if (translucent !== null) {
     refuse(el, image, native, 'background-layers-translucent', `background-image on ${el.element.address}: ${translucent}`, 'Give the box an opaque background-color or an opaque repeating gradient layer beneath.', diagnostics, reported);
-    return;
-  }
-  if (gradientLayerOf(el).kind !== 'root') {
-    refuse(el, image, native, 'background-layers-layer', `background-image on ${el.element.address}: the box rasters in a composited layer Dragon does not model (${BG2C})`, 'Remove the compositing reason.', diagnostics, reported, 'DRAGON_UNPROVEN_CONTEXT');
     return;
   }
   // Until BG2-a3's lowering, the native programs carry no gradient write, so nothing would draw the layers.

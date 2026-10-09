@@ -6,7 +6,7 @@ import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { describe, expect, it } from 'vitest';
 import type { BoxWidths, ElementLayer, LayerGeometrySpec } from '../src/analysis/paint-values/gradient.ts';
-import { colourClipRefusal, commaItems, elementLayers, gradient, gradientLayerOf, imageItem, linearSlope, obscuresOf, position, positionAxisItem, repeatItem, tilingRefusal, translucencyRefusal, valueItems } from '../src/analysis/paint-values/gradient.ts';
+import { colourClipRefusal, commaItems, elementLayers, gradient, imageItem, linearSlope, obscuresOf, position, positionAxisItem, repeatItem, tilingRefusal, translucencyRefusal, valueItems } from '../src/analysis/paint-values/gradient.ts';
 import type { CssValue } from '../src/css/values.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import { TANF_DIFFS } from '../src/paint-data/libm-darwin-arm64.generated.ts';
@@ -176,6 +176,18 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
     expect(compile('background: linear-gradient(12.34deg, red, blue), red;')).toEqual(pending);
     expect(compile('background: linear-gradient(110deg, red, blue);', { web: {} })).toEqual([]);
   });
+  it('R4: refuses on ios and android a gradient box under will-change: transform or opacity, which rasters in its own layer', () => {
+    for (const wc of ['transform', 'opacity']) {
+      const out = compile(`will-change: ${wc}; background: linear-gradient(110deg, red, blue);`);
+      expect(out.filter((m) => m.includes('composited layer')).map((m) => m.split(' ').slice(0, 2).join(' ')), wc).toEqual(['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios']);
+      expect(compile(`will-change: ${wc}; background: linear-gradient(110deg, red, blue);`, { web: {} }), wc).toEqual([]);
+    }
+    // An ancestor's layer holds its descendants' gradients.
+    const css = 'body { margin: 0; } .p { will-change: transform; } .a { width: 40px; height: 20px; background: linear-gradient(110deg, red, blue); }';
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])]));
+    expect(c.diagnostics.filter((d) => d.message.includes('composited layer of p')).map((d) => d.target).sort()).toEqual(['android', 'ios']);
+    expect(compile('will-change: auto; background: linear-gradient(110deg, red, blue);')).toEqual(pending);
+  });
   it('refuses an angle off the 0.01deg grid and a corner on ios and android only (BG2b)', () => {
     const off = compile('background: linear-gradient(1rad, red, blue);');
     expect(off.map((m) => m.split(' ').slice(0, 2).join(' '))).toEqual(['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios']);
@@ -259,8 +271,5 @@ describe('R3: the linear slope from the measured table', () => {
   it('the libmTableIgnored plant takes fdlibm everywhere, which differs on the table\'s angles', () => {
     expect(linearSlope(35, { libmTableIgnored: true })).toBe(Math.fround(Math.tan(input(35))));
     expect(linearSlope(35, { libmTableIgnored: true })).not.toBe(linearSlope(35));
-  });
-  it('R4: every compiled box rasters in the root layer', () => {
-    expect(gradientLayerOf({} as never)).toEqual({ kind: 'root' });
   });
 });
