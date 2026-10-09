@@ -1,0 +1,8 @@
+{
+  "case": "charset-utf8-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"div:text0","lines":[[0,5]]},
+    {"id":"p:text0","lines":[[0,9]]}
+  ]
+}

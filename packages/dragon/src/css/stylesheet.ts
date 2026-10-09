@@ -179,10 +179,16 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
   if (node.type === 'Atrule') {
     const prelude = node['prelude'] as CssNode | null | undefined;
     const preludeSpan = prelude === null || prelude === undefined ? null : spanOf(prelude, base);
-    const context = { node, name: String(node['name']), where, span, prelude: preludeSpan === null ? '' : text.slice(preludeSpan.start - base.start, preludeSpan.end - base.start) };
+    const context = {
+      node, name: String(node['name']), where, span,
+      prelude: preludeSpan === null ? '' : text.slice(preludeSpan.start - base.start, preludeSpan.end - base.start),
+      source: text.slice(span.start - base.start, span.end - base.start),
+      atSheetStart: where === 'the stylesheet' && span.start === base.start,
+    };
     // at-rules.ts decides each at-rule: an accepted @font-face goes to the fonts collector; a conditional one in a rule block is
     // css-nesting-1, and one without a block is invalid, so both are refused.
     const outcome = handleAtRule(context);
+    if (outcome.kind === 'drop') return;
     if (outcome.kind === 'font-face') {
       st.fontFaces.push(outcome.context);
       return;
