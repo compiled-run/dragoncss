@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { rtBand } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { emitStatePrograms, expectedDigest, expectedDump, nativeBandPrograms, nativeBands, programInput } from 'dragon';
@@ -21,8 +21,14 @@ import { captureResize, rendering as resizeRendering, resizeCases, scriptPoints 
 import { FIXTURES } from '../src/fixtures.ts';
 import { ENV_CASE_IDS, resizeScriptIds, stateScriptIds } from '../src/targets.ts';
 
-const dir = mkdtempSync(join(tmpdir(), 'dragon-mqr-device-'));
-afterAll(() => rmSync(dir, { recursive: true, force: true }));
+// Made in beforeAll: `vitest list` runs module scope but no hooks, so a folder made here would leak.
+let dir = '';
+beforeAll(() => {
+  dir = mkdtempSync(join(tmpdir(), 'dragon-mqr-device-'));
+});
+afterAll(() => {
+  if (dir !== '') rmSync(dir, { recursive: true, force: true });
+});
 const DPR = 3;
 const device = { name: 'fake', platform: 'ios', os: 'host', build: 'host', profileScale: DPR, appScale: DPR, windowPx: [0, 0], stagePx: [0, 0], rootOriginPx: [0, 0], textScale: 'none' } as unknown as DeviceRecord;
 
