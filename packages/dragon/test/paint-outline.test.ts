@@ -150,6 +150,29 @@ describe('outline: the native targets draw solid and double outlines', () => {
   });
 });
 
+describe("outline: the web output keeps Chrome's UA focus ring", () => {
+  const webText = (css: string): string => {
+    const c = compile(css);
+    const out = c.outputs.web;
+    if (out.kind !== 'ready') throw new Error(out.kind);
+    return (out.files[0] as { text: string }).text;
+  };
+  const written = (text: string): string[] => LONGHANDS.filter((p) => text.includes(`  ${p}: `));
+  it("writes no outline longhand no author declaration sets, so Chrome's :focus-visible rule (outline: auto 1px) still applies", () => {
+    expect(written(webText('.a { height: 10px; }'))).toEqual([]);
+    // revert rolls back to the UA origin, whose :focus-visible rule the output must keep.
+    expect(written(webText('.a { outline: revert; }'))).toEqual([]);
+  });
+  it('writes every outline longhand once an author declaration sets one, in the base rule or an interaction state', () => {
+    expect(written(webText('.a { outline: 2px solid red; }'))).toEqual(LONGHANDS);
+    expect(written(webText('.a { outline-style: initial; }'))).toEqual(LONGHANDS);
+    // outline: none under :focus-visible hides the ring: the base rule writes none, which the state then keeps.
+    const text = webText('.a:focus-visible { outline: none; }');
+    expect(written(text)).toEqual(LONGHANDS);
+    expect(text).toContain('  outline-style: none;');
+  });
+});
+
 describe('outline: lowering and emission', () => {
   const programs = (css: string, body: Parameters<typeof inputFor>[1] = (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])]) => {
     const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; color: rgb(10, 20, 30); font-size: 20px; } ${css}`, body));
