@@ -31,6 +31,12 @@ describe('refusal classification', () => {
     expect(classifyOutcome('k', { kind: 'refused', reasons: ['DRAGON_X: subgrid', 'DRAGON_Y: something else'] })).toMatchObject({ kind: 'problem' });
     expect(classifyOutcome('k', { kind: 'refused', reasons: [] })).toMatchObject({ kind: 'problem' });
   });
+  it('owns the native scroll view refusal (computed-checks checkNativeScroll) under overflow-auto, on both axes', () => {
+    const r = (axis: string, how: string): string => `DRAGON_UNSUPPORTED_VALUE: ${axis} ${how} on e0, a box the user scrolls; ios has no native scroll views until OVFL-B`;
+    expect(classifyOutcome('k', { kind: 'refused', reasons: [r('overflow-x', 'is auto'), r('overflow-y', 'is auto')] })).toEqual({ kind: 'refused', category: 'overflow-auto' });
+    expect(classifyOutcome('k', { kind: 'refused', reasons: [r('overflow-y', 'computes to auto beside overflow-x: hidden (css-overflow-3 §3.1)')] })).toEqual({ kind: 'refused', category: 'overflow-auto' });
+    expect(classifyOutcome('k', { kind: 'refused', reasons: ['DRAGON_UNSUPPORTED_VALUE: overflow-x is auto on e0'] })).toMatchObject({ kind: 'problem' });
+  });
   it('judges a mismatch by the pinned list', () => {
     expect(classifyOutcome('k', { kind: 'mismatch', detail: 'x' })).toEqual({ kind: 'problem', detail: 'k: x' });
     expect(classifyOutcome('k', { kind: 'match' })).toEqual({ kind: 'match' });
