@@ -10,7 +10,7 @@ import { emitStatePrograms, programAt } from 'dragon';
 import { canonicalJsonText } from '../src/state-cases.ts';
 import type { AnimSample } from '../src/anim-samples.ts';
 import { allAnimCases, animEmits, animSampleId, animSampleIds, animSamples, animSamplesOf, scriptStepsOf } from '../src/anim-samples.ts';
-import { frameScript, frameStateProgram } from '../src/anim-cases.ts';
+import { frameScript, frameStateProgram, pixelSamples } from '../src/anim-cases.ts';
 import type { DeviceSet, LaneFailure } from '../src/device-lanes.ts';
 import { ANIM_LANE, evaluateAnim } from '../src/device-lanes.ts';
 import type { DeviceRecord } from '../src/device-run.ts';
@@ -31,7 +31,7 @@ afterAll(() => {
 });
 
 const DPR = 2;
-const device = { name: 'fake', platform: 'ios', os: 'host', build: 'host', profileScale: DPR, appScale: DPR, windowPx: [0, 0], stagePx: [0, 0], rootOriginPx: [0, 0], textScale: 'none' } as unknown as DeviceRecord;
+const device = { name: 'fake', platform: 'ios', os: 'host', build: 'host', profileScale: DPR, appScale: DPR, windowPx: [4000, 4000], stagePx: [4000, 4000], rootOriginPx: [0, 0], textScale: 'none' } as unknown as DeviceRecord;
 const samplesOf = (fixture: string): readonly AnimSample[] => {
   const xs = animSamples('ios').find((s) => s[0]?.case.fixture.id === fixture);
   if (xs === undefined) throw new Error(`no frame case of ${fixture}`);
@@ -137,6 +137,22 @@ describe('device-anim on fake dumps', () => {
     expect(moving.length).toBeGreaterThan(0);
     for (const s of moving) expect(kinds(set.failures, s.id).some((k) => k === 'applied' || k === 'expected-digest'), s.id).toBe(true);
     for (const s of rest.filter((x) => !differs(x))) for (const k of ['applied', 'expected-digest']) expect(kinds(set.failures, s.id), s.id).not.toContain(k);
+  });
+
+  it('a stage that cannot hold the root fails each pixel sample under device-record (never cropped) and judges no pixels', () => {
+    const at = join(dir, 'unfit');
+    mkdirSync(at);
+    for (const s of xs) write(at, s);
+    const narrow = { ...device, stagePx: [10, 4000] } as unknown as DeviceRecord;
+    const set = evaluateAnim('ios', DPR, at, narrow, [xs]);
+    const subset = new Set(pixelSamples(xs[0]!.case, frameScript(xs[0]!.case)));
+    expect(subset.size).toBeGreaterThan(0);
+    for (const s of xs) {
+      const fit = set.failures.filter((f) => f.case === s.id && f.kind === 'device-record');
+      expect(fit.length, s.id).toBe(subset.has(s.index) ? 1 : 0);
+      if (subset.has(s.index)) expect(fit[0]!.detail).toContain('device fit; never cropped');
+      for (const k of ['pixel', 'applied', 'frame-engine', 'dump-missing']) expect(kinds(set.failures, s.id), s.id).not.toContain(k);
+    }
   });
 
   it('a sample whose frame capture has no such sample fails with frame-reference, not as a pass', () => {

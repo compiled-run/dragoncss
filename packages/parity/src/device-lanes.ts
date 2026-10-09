@@ -625,7 +625,13 @@ export function evaluateAnim(target: NativeTarget, dpr: number, dir: string, dev
       failures.push({ lane: ANIM_LANE, case: s.id, dpr, node: null, kind: 'frame-reference', detail: ref });
       continue;
     }
-    refs.set(s.id, ref);
+    // The device-fit rule per sample (recordProblems: never cropped): a root the stage cannot hold has no trusted capture, so its
+    // pixels are not compared and the sample fails under device-record; its frames, applied values and lines are still judged.
+    const root = rasterSize(s.case.viewport, dpr);
+    if (ref.pixelsCompared !== false && (device.stagePx[0] < root.width || device.stagePx[1] < root.height)) {
+      failures.push({ lane: ANIM_LANE, case: s.id, dpr, node: null, kind: 'device-record', detail: `${device.name}: the stage ${device.stagePx[0]}x${device.stagePx[1]} device px cannot hold the ${root.width}x${root.height} root, so its pixels are not compared (device fit; never cropped)` });
+      refs.set(s.id, { ...ref, points: [], pixels: null, pixelsCompared: false });
+    } else refs.set(s.id, ref);
     checked.push(sampleCase(target, s));
   }
   const set = evaluateSet(target, dpr, dir, device, checked, [], (n) => refs.get(n.case.id) as CaseReference);
