@@ -1,8 +1,8 @@
 // TMP-LEAK: every vitest run gets its own TMPDIR (scripts/vitest-tmpdir.ts) and fails if a test leaves anything in it.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { isolateTmpdir, leftovers } from '../../../scripts/vitest-tmpdir.ts';
 import { repoPath } from '../src/paths.ts';
@@ -55,6 +55,27 @@ describe('a vitest run under the guard', () => {
     expect(leftovers(outer)).toEqual([]);
   }, 60_000);
 
+  const list = (file: string, outer: string) =>
+    spawnSync(process.execPath, [repoPath('node_modules/vitest/vitest.mjs'), 'list', '--config', config], { encoding: 'utf8', env: { ...process.env, TMPDIR: outer, DRAGON_TMP_GUARD_FILE: file } });
+
+  it('PLANTED: a temp folder made at module scope leaks when `vitest list` collects the file without its hooks', () => {
+    const outer = fresh();
+    const r = list('module-scope.planted.ts', outer);
+    expect(r.status, r.stdout + r.stderr).toBe(1);
+    expect(r.stderr).toMatch(/tests left 1 entry in TMPDIR; .*: dragon-planted-module-\w+/);
+    expect(leftovers(outer)).toEqual([]);
+  }, 60_000);
+
+  it('a temp folder made in beforeAll passes `vitest list` and `vitest run`, and nothing is left behind', () => {
+    const outer = fresh();
+    const l = list('hooked.planted.ts', outer);
+    expect(l.status, l.stdout + l.stderr).toBe(0);
+    const r = vitest('hooked.planted.ts', outer);
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+    expect(r.stdout).toContain('1 passed');
+    expect(leftovers(outer)).toEqual([]);
+  }, 60_000);
+
   it('a test that removes its temp folder passes the run, and nothing is left behind', () => {
     const outer = fresh();
     const r = vitest('cleans.planted.ts', outer);
@@ -62,4 +83,19 @@ describe('a vitest run under the guard', () => {
     expect(r.stdout).toContain('1 passed');
     expect(leftovers(outer)).toEqual([]);
   }, 60_000);
+});
+
+describe('no test file makes a temp folder at module scope', () => {
+  const files = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.name === 'node_modules' ? [] : e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith('.test.ts') ? [join(dir, e.name)] : []));
+  const roots = ['packages', 'scripts'].map((r) => repoPath(r));
+
+  it('every *.test.ts makes its temp folders in a hook or a test (`vitest list` runs module scope, not hooks)', () => {
+    const all = roots.flatMap(files);
+    expect(all.length).toBeGreaterThan(100);
+    const offenders = all.flatMap((f) =>
+      readFileSync(f, 'utf8').split('\n').flatMap((line, i) => (/^\S/.test(line) && /\bmkdtemp(Sync)?\(/.test(line) && !/=>/.test(line.slice(0, line.search(/\bmkdtemp/))) ? [`${relative(repoPath('.'), f)}:${i + 1}`] : [])),
+    );
+    expect(offenders).toEqual([]);
+  });
 });
