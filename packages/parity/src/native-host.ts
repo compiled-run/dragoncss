@@ -13,6 +13,7 @@ import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, Na
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
 import { stateEmits } from './state-cases.ts';
+import { deviceHitSource } from './hit-capture.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
 import { layoutCases } from './dpr.ts';
@@ -28,7 +29,7 @@ import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { NativeTarget } from './targets.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
-import { deviceDprs } from './targets.ts';
+import { deviceDprs, vectorCaseIds } from './targets.ts';
 
 export const BACKEND_OF: { readonly [T in NativeTarget]: NativeBackend } = { ios: 'uikit', android: 'android-views' };
 export const NATIVE_CONFIG = { ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
@@ -42,12 +43,13 @@ export const nativeOut = (target: NativeTarget): string => repoPath(`packages/pa
 // ---------------------------------------------------------------- the native generation compile
 
 /** The lane compile (item 9): ios and android together, derive mode, one per fixture and direction. */
-export function nativeCompile(spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'android'> {
+/** nativeRealFaces: lower real bundled faces natively (TXT1a-2 phase C), off by default until phase R; tests of that lowering turn it on. */
+export function nativeCompile(spec: FixtureSpec, direction: Environment['direction'], nativeRealFaces = false): Compiled<'ios' | 'android'> {
   if (spec.kind !== 'layout') throw new Error(`${spec.id} is not a layout fixture`);
   // MQ-a: every native case runs in the parity environment's viewport, so its @media band is the one holding it.
   // TXT1a-2: a real-font fixture compiles with its font map and the map's vendored faces as assets, as pipeline.ts compileFixture does.
   const fonts = fontMapOf(spec.id);
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG }, ...(fonts === undefined ? {} : { fonts }) }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport });
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG }, ...(fonts === undefined ? {} : { fonts }) }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport, nativeRealFaces });
   return project.compile(fonts === undefined ? fixtureInput(spec) : withFontMapAssets(fixtureInput(spec), fonts));
 }
 
@@ -60,13 +62,18 @@ export type NativeCase = {
 
 let records: readonly NativeCase[] | null = null;
 
-/** Every layout case (layoutCases()), each with the programs of its one native compile; a case that cannot be lowered throws. */
+/**
+ * Every device case (targets.ts vectorCaseIds: every layout case but the shaped ones, which the device runtime cannot draw until
+ * TXT1a-2 phase R), each with the programs of its one native compile; a case that cannot be lowered throws.
+ */
 export function nativeCases(): readonly NativeCase[] {
   if (records !== null) return records;
+  const device = new Set(vectorCaseIds());
   const out: NativeCase[] = [];
   for (const f of layoutCases()) {
     const byDirection = new Map<string, Compiled<'ios' | 'android'>>();
     for (const c of f.cases) {
+      if (!device.has(c.id)) continue;
       const d = c.environment.direction;
       let compiled = byDirection.get(d);
       if (compiled === undefined) {
@@ -235,6 +242,8 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   let t2 = CACurrentMediaTime()
   let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000))
   dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
+  // SELD-R1b: the device-hit record, the translated hit test on the case's own input and the device's measurer.
+  if let facts = dragonHitFactsTable[id] { dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".hit", dragonHitRuns(c, facts, scale: scale, measurer: bridge.measurer)) }
   let next = {
     tree.root.removeFromSuperview()
     dragonCase(k + 1, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
@@ -442,6 +451,8 @@ class DragonActivity : Activity() {
             val pixels = DumpPixels("PixelCopy", w.toDouble(), h.toDouble(), sha, dragonSamples(bytes, w, h, run.points[id] ?: emptyList()))
             val dump = tree.dump(c, scale, device, pixels, DumpTiming((t1 - t0) / 1e6, (SystemClock.elapsedRealtimeNanos() - t2) / 1e6))
             File(out, id + "@" + DumpJsonWriter.format(scale) + ".json").writeText(dumpJson(dump))
+            // SELD-R1b: the device-hit record, the translated hit test on the case's own input and the device's measurer.
+            dragonHitFactsTable[id]?.let { facts -> File(out, id + "@" + DumpJsonWriter.format(scale) + ".hit").writeText(dragonHitRuns(c, facts, scale, bridge.measurer)) }
             val next = Runnable {
               frame.removeView(tree.root)
               frame.post { runCase(k + 1) }
@@ -523,6 +534,8 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
   // SELD-R1a: the state programs and their case scripts.
   files.push(...emitStatePrograms(backend, stateEmits(target)));
+  // SELD-R1b: the device-hit facts and runner.
+  files.push(deviceHitSource(target));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);
   return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }

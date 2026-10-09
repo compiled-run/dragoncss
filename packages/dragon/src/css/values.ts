@@ -31,10 +31,20 @@ const NUMBER_PROPERTIES: ReadonlySet<string> = new Set<string>(['flex-grow', 'fl
 
 export const kw = (value: string): CssValue => ({ kind: 'keyword', value });
 
+/** The shorthands that set a border's width, style and colour together (css-backgrounds-3 §3.1, css-logical-1 §6.3). */
+const BORDER_SHORTHAND = /^border(-(top|right|bottom|left|block|inline|block-start|block-end|inline-start|inline-end))?$/;
+
+/** A math function value (calc(), min(), max(), clamp(), or one V1 refuses), which a border shorthand assigns to the width. */
+export function isMathValue(v: CssValue): boolean {
+  if (v.kind !== 'other') return false;
+  const name = v.type.startsWith(REFUSED_MATH_PREFIX) ? v.type.slice(REFUSED_MATH_PREFIX.length) : v.type;
+  return name.endsWith('()') && V1_MATH_FUNCTIONS.has(name.slice(0, -2));
+}
+
 export const COLOR_FIX = 'Use a named colour, a 3, 4, 6 or 8 digit hex colour, rgb(), rgba(), hsl(), hsla(), transparent or currentcolor.';
 
 function isColorBearing(property: string): boolean {
-  return property === 'color' || property === 'background-color' || property.startsWith('border') && (property.endsWith('-color') || !property.endsWith('-width') && !property.endsWith('-style'));
+  return property === 'color' || property === 'text-decoration-color' || property === 'text-decoration' || property === 'background-color' || property.startsWith('border') && (property.endsWith('-color') || !property.endsWith('-width') && !property.endsWith('-style'));
 }
 
 /**
@@ -43,9 +53,14 @@ function isColorBearing(property: string): boolean {
  */
 export function tokenValue(node: CssNode, property: string): CssValue | string {
   if (!isColorBearing(property)) return toValue(node, property);
-  // The border shorthands assign a token that is neither a length nor a keyword to the colour, so a calculation there is refused.
-  if (node.type === 'Function' && V1_MATH_FUNCTIONS.has(asciiLower(String(node['name']))) && !property.endsWith('color')) {
-    return `a calculation in the ${property} shorthand is not supported; set it with ${property === 'border' ? 'border-width' : `${property}-width`}`;
+  // The text-decoration shorthand's line, style and thickness tokens are not colours (css-text-decor-4 §2.6).
+  if (property === 'text-decoration') {
+    if (node.type === 'Identifier' && TEXT_DECORATION_KEYWORDS.has(asciiLower(String(node['name'])))) return toValue(node, property);
+    if (node.type === 'Function' && V1_MATH_FUNCTIONS.has(asciiLower(String(node['name'])))) return toValue(node, 'text-decoration-thickness');
+  }
+  // css-backgrounds-3 §3.1: a calculation in a border shorthand is its <line-width>, typed as the border-*-width longhands are.
+  if (node.type === 'Function' && V1_MATH_FUNCTIONS.has(asciiLower(String(node['name']))) && BORDER_SHORTHAND.test(property)) {
+    return mathValue(node, asciiLower(String(node['name'])), 'border-top-width');
   }
   if (node.type === 'Identifier') {
     const name = asciiLower(String(node['name']));
@@ -87,8 +102,8 @@ export function toValue(node: CssNode, property: string): CssValue {
 
 /**
  * A css-values-4 §10 math function (css/math.ts). A number calculation (flex-grow, flex-shrink, order, or a number in the flex
- * shorthand) is folded to its number now; a length calculation keeps its text, with feature key <calc()>, <min()>, <max()> or
- * <clamp()>, and is lowered per element (lower/ios-layout.ts). A calculation V1 refuses keeps its text with the reason as a
+ * shorthand) is folded to its number now, order unrounded (the engine rounds it, environment.ts); a length calculation keeps its
+ * text, with feature key <calc()>, <min()>, <max()> or <clamp()>, and is lowered per element (lower/ios-layout.ts). A calculation V1 refuses keeps its text with the reason as a
  * comment and the feature type "refused <name>()", which no profile row supports, so the declaration is refused with the reason.
  */
 export const REFUSED_MATH_PREFIX = 'refused ';
@@ -109,7 +124,6 @@ function mathValue(node: CssNode, name: string, property: string): CssValue {
   if (context.type === 'number') {
     const folded = foldNumber(parsed.node);
     const value = property === 'flex-grow' || property === 'flex-shrink' ? nonNegative(folded) : folded;
-    if (property === 'order' && !Number.isInteger(value)) return refused('order takes an integer, and this calculation is not a whole number');
     return { kind: 'number', value };
   }
   return { kind: 'other', type: `${name}()`, text };
@@ -118,19 +132,62 @@ function mathValue(node: CssNode, name: string, property: string): CssValue {
 /** The properties whose value may be a two-keyword <baseline-position>. */
 export const BASELINE_PROPERTIES: ReadonlySet<string> = new Set<string>(['align-items', 'align-self', 'align-content']);
 
+/** The decoration longhands whose values Chrome 145 parses more narrowly than the grammar or Dragon refuses (textDecorationValue). */
+const TEXT_DECORATION_RULED = ['text-decoration-line', 'text-decoration-style', 'text-decoration-thickness', 'text-underline-position', 'text-decoration-skip-ink'];
+
 /** The properties one of whose single values spans two tokens (<baseline-position>, font-style's oblique <angle>), or that Chrome parses more narrowly than the grammar. */
-export const PAIR_VALUE_PROPERTIES: ReadonlySet<string> = new Set<string>([...BASELINE_PROPERTIES, 'font-style', 'font-synthesis-style']);
+export const PAIR_VALUE_PROPERTIES: ReadonlySet<string> = new Set<string>([...BASELINE_PROPERTIES, 'font-style', 'font-synthesis-style', ...TEXT_DECORATION_RULED]);
 
 /** A two-token value, why Chrome's parser drops it (invalid), why Dragon cannot express it (refused), or null when it is not one. */
 export type PairValue = CssValue | { readonly invalid: string } | { readonly refused: string } | null;
 
 export function pairValue(property: string, tokens: readonly CssNode[]): PairValue {
+  const decoration = textDecorationValue(property, tokens);
+  if (decoration !== undefined) return decoration;
   if (property === 'font-synthesis-style') {
     // Chrome 145 does not parse css-fonts-4's oblique-only.
     const only = tokens.length === 1 && tokens[0]?.type === 'Identifier' ? asciiLower(String(tokens[0]['name'])) : '';
     return only === 'oblique-only' ? { invalid: 'Chrome 145 does not parse font-synthesis-style: oblique-only' } : null;
   }
   return property === 'font-style' ? fontStyleValue(tokens) : baselinePosition(tokens);
+}
+
+/** The keywords of the text-decoration shorthand that are not colours. */
+const TEXT_DECORATION_KEYWORDS: ReadonlySet<string> = new Set(['none', 'underline', 'overline', 'line-through', 'blink', 'spelling-error', 'grammar-error', 'solid', 'double', 'dotted', 'dashed', 'wavy', 'auto', 'from-font', 'thin', 'medium', 'thick']);
+
+
+/** The decoration lines Chrome 145 serializes, in its order. */
+const LINE_ORDER = ['underline', 'overline', 'line-through'];
+
+/**
+ * css-text-decor-4 as Chrome 145 parses it, and the values TDEC-a draws (notes/T148J-tdec.md): text-decoration-line is one value
+ * of up to three lines, kept in Chrome's order; blink, spelling-error and grammar-error, styles other than solid, from-font, and an
+ * underline position other than auto are refused; <line-width> thickness keywords and skip-ink all are not Chrome values. undefined
+ * when the property is not a decoration longhand this rules on.
+ */
+export function textDecorationValue(property: string, tokens: readonly CssNode[]): PairValue | undefined {
+  if (!TEXT_DECORATION_RULED.includes(property)) return undefined;
+  const names = tokens.map((t) => (t.type === 'Identifier' ? asciiLower(String(t['name'])) : ''));
+  const one = tokens.length === 1 ? names[0] : '';
+  switch (property) {
+    case 'text-decoration-line': {
+      const refused = names.find((n) => n === 'blink' || n === 'spelling-error' || n === 'grammar-error');
+      if (refused !== undefined) return { refused: `${refused} is not drawn by Chrome as a decoration line Dragon reproduces` };
+      if (tokens.length < 2) return null;
+      return { kind: 'keyword', value: LINE_ORDER.filter((l) => names.includes(l)).join(' ') };
+    }
+    case 'text-decoration-style':
+      return one !== '' && one !== 'solid' ? { refused: `text-decoration-style: ${one} is drawn by TDEC-c` } : null;
+    case 'text-decoration-thickness':
+      if (one === 'thin' || one === 'medium' || one === 'thick') return { invalid: `Chrome 145 does not parse text-decoration-thickness: ${one}` };
+      return one === 'from-font' ? { refused: 'text-decoration-thickness: from-font reads the font\'s underline metrics, which TDEC-c measures' } : null;
+    case 'text-underline-position':
+      return names.length > 0 && names.join(' ') !== 'auto' ? { refused: `text-underline-position: ${names.join(' ')} is drawn by TDEC-c` } : null;
+    case 'text-decoration-skip-ink':
+      return one === 'all' ? { invalid: 'Chrome 145 does not parse text-decoration-skip-ink: all' } : null;
+    default:
+      return null;
+  }
 }
 
 /** The angle units of an oblique angle, in degrees per unit (css-values-4 §7.1). */

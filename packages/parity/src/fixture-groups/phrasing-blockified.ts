@@ -12,6 +12,7 @@ export const PHRASING_BLOCKIFIED: readonly FixtureSpec[] = [
   both('phrasing-blockified-inline-block'),
   // INL1a lays out a span in a block container (an inline box); one holding a block is block-in-inline, still refused (T058J3 A).
   reject('reject-phrasing-inline-span', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="b">YY</div>', '<div> b is block-level inside the inline box <span> s'),
-  reject('reject-phrasing-a-href', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<a data-dragon-id="a" href="https://example.com/">', 'attribute href on a is not supported'),
+  // TDEC-a: href on a is a hyperlink Dragon models (a:any-link); target on it stays refused, owned by LINK-RT.
+  reject('reject-phrasing-a-href', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<a data-dragon-id="a" href="https://example.com/" target="_blank">', 'attribute target on a is not supported: its rendering effect belongs to the link package LINK-RT'),
   reject('reject-phrasing-inline-block', 'DRAGON_UNPROVEN_CONTEXT', 'inline-block', null),
 ];

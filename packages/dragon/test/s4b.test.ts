@@ -51,11 +51,19 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   const paint = LONGHANDS.filter((p) => PROPERTY_ROLE[p] === 'paint');
   it('(i) paint holds exactly for the aspect-table longhands with a paint aspect and no layout aspect', () => {
     for (const p of LONGHANDS) expect(PROPERTY_ROLE[p] === 'paint', p).toBe(!PROPERTY_ASPECTS[p].layout && PROPERTY_ASPECTS[p].paint);
-    expect([...paint].sort()).toEqual(['background-color', 'border-bottom-color', 'border-left-color', 'border-right-color', 'border-top-color', 'color']);
+    // TDEC-a: the text-decoration longhands paint and never move a box.
+    expect([...paint].sort()).toEqual(['background-color', 'border-bottom-color', 'border-left-color', 'border-right-color', 'border-top-color', 'color',
+      'text-decoration-color', 'text-decoration-line', 'text-decoration-skip-ink', 'text-decoration-style', 'text-decoration-thickness', 'text-underline-offset', 'text-underline-position']);
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
+    // A decoration longhand other than the colour is compared at two values with no line drawn (native refuses decorated text, TDEC-b).
+    const pair: { readonly [p: string]: readonly [string, string] } = {
+      'text-decoration-line': ['none', 'none'], 'text-decoration-style': ['solid', 'solid'], 'text-decoration-thickness': ['2px', '30%'],
+      'text-underline-offset': ['1px', '-2px'], 'text-underline-position': ['auto', 'auto'], 'text-decoration-skip-ink': ['auto', 'none'],
+    };
     for (const p of paint) {
-      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; } .a { ${p}: #102030; } .b { ${p}: rgba(200, 100, 50, 0.5); }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
+      const [va, vb] = pair[p] ?? ['#102030', 'rgba(200, 100, 50, 0.5)'];
+      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
       const m = boxes(input);
       const [a, b] = [m.get('a') as LayoutBox, m.get('b') as LayoutBox];
       expect(a.style, p).toEqual(b.style);

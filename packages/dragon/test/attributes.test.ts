@@ -64,11 +64,14 @@ describe('refused attributes name the package that owns their effect', () => {
   it.each([
     ['input', 'type', 'FORM-a'], ['input', 'min', 'FORM-a'], ['input', 'max', 'FORM-a'], ['input', 'value', 'FORM-a'],
     ['img', 'src', 'REPL'], ['img', 'alt', 'REPL'], ['img', 'width', 'REPL'], ['img', 'height', 'REPL'],
-    ['a', 'href', 'INL1'], ['a', 'rel', 'INL1'], ['a', 'target', 'INL1'], ['html', 'lang', 'TXT1-C'], ['div', 'dir', 'bidi'],
+    ['div', 'href', 'INL1'], ['a', 'rel', 'LINK-RT'], ['a', 'target', 'LINK-RT'], ['html', 'lang', 'TXT1-C'], ['div', 'dir', 'bidi'],
     ['div', 'hidden', 'display'], ['div', 'style', 'SOV'], ['div', 'tabindex', 'not proven neutral'],
     ['div', 'constructor', 'not proven neutral'], ['div', 'toString', 'not proven neutral'],
   ])('<%s %s> names %s', (tag, name, owner) => {
     expect(attributeRefusal(tag, name)).toContain(owner);
+  });
+  it('href on a is a hyperlink TDEC-a models (a:any-link), so it compiles', () => {
+    expect(attributeRefusal('a', 'href')).toBeNull();
   });
 
   it('compiles neutral attributes silently and refuses the others with the owner in the message', () => {

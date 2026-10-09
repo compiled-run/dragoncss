@@ -35,12 +35,15 @@ const SUBSET = [
   'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
   'flex', 'flex-flow', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
   'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap',
-  'font', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-synthesis', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
+  'font', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-synthesis', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', 'text-decoration', 'text-decoration-line', 'text-decoration-style', 'text-decoration-color', 'text-decoration-thickness', 'text-underline-offset', 'text-underline-position', 'text-decoration-skip-ink', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
   ...LOGICAL_SHORTHANDS,
   ...WRITING_MODE_SHORTHANDS,
 
   // Grid (css-grid-2), after the writing-mode family.
   ...GRID_LONGHANDS, ...GRID_SHORTHANDS,
+
+  // SELD-R1b: pointer-events, after grid.
+  'pointer-events',
 ] as const;
 
 /**

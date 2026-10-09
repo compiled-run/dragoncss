@@ -36,7 +36,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | blocked by | web | ios | android | families (web) |
 |---|---:|---:|---:|---:|
 | `property mask-image` | 6280 | 6280 | 6280 | 38 |
-| `value oklch()` | 4004 | 4004 | 4004 | 14 |
+| `value oklch()` | 4290 | 4290 | 4290 | 15 |
 | `property box-shadow` | 1489 | 1489 | 1489 | 8 |
 | `property background-image` | 964 | 964 | 964 | 8 |
 | `property scrollbar-color` | 582 | 582 | 582 | 2 |
@@ -51,7 +51,6 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `property stroke` | 292 | 292 | 292 | 2 |
 | `property caret-color` | 291 | 291 | 291 | 1 |
 | `property outline-color` | 291 | 291 | 291 | 1 |
-| `property text-decoration-color` | 291 | 291 | 291 | 1 |
 | `selector pseudo-element ::placeholder` | 291 | 291 | 291 | 1 |
 | `unproven context bottom:<calc()>` | 234 | 234 | 234 | 4 |
 | `unproven context left:<calc()>` | 234 | 234 | 234 | 4 |
@@ -75,3 +74,4 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `unproven context row-gap:<calc()>` | 64 | 64 | 64 | 2 |
 | `value calc()` | 52 | 52 | 52 | 4 |
 | `profile line-height:<refused calc()>` | 40 | 40 | 40 | 2 |
+| `property cursor` | 36 | 36 | 36 | 36 |

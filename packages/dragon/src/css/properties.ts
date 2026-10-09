@@ -10,6 +10,7 @@ import { GRID_ASPECTS, GRID_CONTAINER, GRID_INHERITED, GRID_LONGHANDS, GRID_SHOR
 import { LOGICAL_ASPECTS, LOGICAL_CONTAINER, LOGICAL_INHERITED, LOGICAL_LONGHANDS, LOGICAL_SHORTHANDS, LOGICAL_TEXT_ROLE } from './properties/logical.ts';
 import { OVERFLOW_ASPECTS, OVERFLOW_CONTAINER, OVERFLOW_INHERITED, OVERFLOW_LONGHANDS, OVERFLOW_SHORTHANDS, OVERFLOW_TEXT_ROLE } from './properties/overflow.ts';
 import { POSITION_ASPECTS, POSITION_CONTAINER, POSITION_INHERITED, POSITION_LONGHANDS, POSITION_SHORTHANDS, POSITION_TEXT_ROLE } from './properties/position.ts';
+import { TEXT_DECORATION_ASPECTS, TEXT_DECORATION_CONTAINER, TEXT_DECORATION_INHERITED, TEXT_DECORATION_LONGHANDS, TEXT_DECORATION_SHORTHANDS, TEXT_DECORATION_TEXT_ROLE } from './properties/text-decoration.ts';
 import { TEXT_FAMILY_ASPECTS, TEXT_FAMILY_CONTAINER, TEXT_FAMILY_INHERITED, TEXT_FAMILY_LONGHANDS, TEXT_FAMILY_SHORTHANDS, TEXT_FAMILY_TEXT_ROLE } from './properties/text.ts';
 import { WRITING_MODE_ASPECTS, WRITING_MODE_CONTAINER, WRITING_MODE_INHERITED, WRITING_MODE_LONGHANDS, WRITING_MODE_SHORTHANDS, WRITING_MODE_TEXT_ROLE } from './properties/writing-mode.ts';
 // Paint families (EMS seams, notes/T046-paint-spec.md §3 item 4): empty until their packages fill them.
@@ -24,6 +25,10 @@ import { SCROLLBAR_ASPECTS, SCROLLBAR_CONTAINER, SCROLLBAR_INHERITED, SCROLLBAR_
 /** What a longhand affects: layout (box geometry) and paint (pixels). */
 export type PropertyAspect = { readonly layout: boolean; readonly paint: boolean };
 
+// SELD-R1b (notes/T047-runtime-spec.md RT-9): pointer-events, inherited, read only by Dragon's hit test; auto and none only.
+export const POINTER_LONGHANDS = ['pointer-events'] as const;
+const POINTER_ASPECTS: { readonly [P in (typeof POINTER_LONGHANDS)[number]]: PropertyAspect } = { 'pointer-events': { layout: false, paint: false } };
+
 export const LONGHANDS = [
   ...POSITION_LONGHANDS,
   ...OVERFLOW_LONGHANDS,
@@ -31,6 +36,7 @@ export const LONGHANDS = [
   ...BORDER_LONGHANDS,
   ...FLEX_LONGHANDS,
   ...TEXT_FAMILY_LONGHANDS,
+  ...TEXT_DECORATION_LONGHANDS,
   ...BACKGROUND_LONGHANDS,
   ...LOGICAL_LONGHANDS,
   ...WRITING_MODE_LONGHANDS,
@@ -38,6 +44,8 @@ export const LONGHANDS = [
   // Grid (css-grid-2) goes after the writing-mode family in every table below.
   ...GRID_LONGHANDS,
 
+  // SELD-R1b appends pointer-events after grid.
+  ...POINTER_LONGHANDS,
   // The paint families (EMS seams) go last in every table below.
   ...RADIUS_LONGHANDS,
   ...SHADOW_LONGHANDS,
@@ -57,6 +65,7 @@ export const SHORTHANDS = [
   ...FLEX_SHORTHANDS,
   ...OVERFLOW_SHORTHANDS,
   ...TEXT_FAMILY_SHORTHANDS,
+  ...TEXT_DECORATION_SHORTHANDS,
   ...BACKGROUND_SHORTHANDS,
   ...LOGICAL_SHORTHANDS,
   ...WRITING_MODE_SHORTHANDS,
@@ -81,12 +90,14 @@ export const INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([
   ...BORDER_INHERITED,
   ...FLEX_INHERITED,
   ...TEXT_FAMILY_INHERITED,
+  ...TEXT_DECORATION_INHERITED,
   ...BACKGROUND_INHERITED,
   ...LOGICAL_INHERITED,
   ...WRITING_MODE_INHERITED,
 
   ...GRID_INHERITED,
 
+  ...POINTER_LONGHANDS,
   ...RADIUS_INHERITED,
   ...SHADOW_INHERITED,
   ...EFFECTS_INHERITED,
@@ -131,12 +142,14 @@ export const PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {
   ...BORDER_ASPECTS,
   ...FLEX_ASPECTS,
   ...TEXT_FAMILY_ASPECTS,
+  ...TEXT_DECORATION_ASPECTS,
   ...BACKGROUND_ASPECTS,
   ...LOGICAL_ASPECTS,
   ...WRITING_MODE_ASPECTS,
 
   ...GRID_ASPECTS,
 
+  ...POINTER_ASPECTS,
   ...RADIUS_ASPECTS,
   ...SHADOW_ASPECTS,
   ...EFFECTS_ASPECTS,
@@ -156,6 +169,7 @@ const CONTAINER_LONGHANDS: readonly Longhand[] = [
   ...BORDER_CONTAINER,
   ...FLEX_CONTAINER,
   ...TEXT_FAMILY_CONTAINER,
+  ...TEXT_DECORATION_CONTAINER,
   ...BACKGROUND_CONTAINER,
   ...LOGICAL_CONTAINER,
   ...WRITING_MODE_CONTAINER,
@@ -177,6 +191,7 @@ const TEXT_ROLE_LONGHANDS: readonly Longhand[] = [
   ...BORDER_TEXT_ROLE,
   ...FLEX_TEXT_ROLE,
   ...TEXT_FAMILY_TEXT_ROLE,
+  ...TEXT_DECORATION_TEXT_ROLE,
   ...BACKGROUND_TEXT_ROLE,
   ...LOGICAL_TEXT_ROLE,
   ...WRITING_MODE_TEXT_ROLE,

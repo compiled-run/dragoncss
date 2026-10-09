@@ -12,6 +12,7 @@ import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
+import { analyzeDecorations } from './text-decoration.ts';
 import { synthesisAllowedOf, textFontOfProps } from './computed.ts';
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
@@ -378,5 +379,67 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   };
   walk(root, false);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt);
+  checkDecorations(root, targets, diagnostics, reported);
+}
+
+/**
+ * TDEC-a: web draws every accepted decoration; ios and android refuse decorated text until TDEC-b draws it. A child of a decorated
+ * element in a formatting context no Chrome case proves propagation for is refused on every target.
+ */
+function checkDecorations(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const { applied, unproven } = analyzeDecorations(root);
+  const byAddress = new Map<string, ResolvedText>();
+  const index = (el: ResolvedElement): void => {
+    for (const c of el.children) {
+      if (c.kind === 'text') byAddress.set(c.node.address, c);
+      else index(c);
+    }
+  };
+  index(root);
+  for (const [address, list] of applied) {
+    const text = byAddress.get(address);
+    if (text === undefined) throw new Error(`${address}: a decorated text leaf that is not in the tree`);
+    const what = list.map((d) => `${d.lines.join(' ')} from ${d.box}`).join(', ');
+    for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+      const id = `${t}|decoration|${address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: text.node.node.origin,
+        target: t,
+        message: `text ${address} draws text-decoration (${what}); ${t} draws decorations from TDEC-b`,
+        manual: `Set text-decoration: none on the decorating box, or build for web; native decorations come with TDEC-b.`,
+        basis: 'computed-value',
+      }));
+    }
+  }
+  for (const u of unproven) {
+    for (const t of targets) {
+      const id = `${t}|decoration-context|${u.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', {
+        origin: originOfElement(root, u.address),
+        target: t,
+        message: `${u.address} sits inside the decorated box ${u.box} in a formatting context for which no Chrome case proves how text-decoration propagates (css-text-decor-3 §2.1)`,
+        manual: `Set text-decoration: none on ${u.box}, or move ${u.address} out of it.`,
+      }));
+    }
+  }
+}
+
+/** The origin of the element at an address in a resolved tree. */
+function originOfElement(root: ResolvedElement, address: string): ResolvedElement['element']['node']['origin'] {
+  const find = (el: ResolvedElement): ResolvedElement | null => {
+    if (el.element.address === address) return el;
+    for (const c of el.children) if (c.kind === 'element') {
+      const hit = find(c);
+      if (hit !== null) return hit;
+    }
+    return null;
+  };
+  const hit = find(root);
+  if (hit === null) throw new Error(`no element ${address}`);
+  return hit.element.node.origin;
 }
 
