@@ -303,7 +303,7 @@ public func block_layoutContents(_ ctx: Ctx, _ box: LayoutBox, _ a: ContentsArgs
   }
   // ts: packages/layout/src/block.ts:261
   if (s.display == S.s_grid) {
-    try unsupported_unsupported(S.s_grid_layout, box.id, S.s183, S.s236)
+    try unsupported_unsupported(S.s_grid_layout, box.id, S.s188, S.s241)
   }
   let canCollapseTop: Bool = (((!a.formattingContextRoot) && (bor.top == 0.0)) && (pad.top == 0.0))
   let r: FlowResult = try block_layoutBlockFlow(ctx, box, FlowArgs(contentWidth, a.borderBoxWidth, (a.formattingContextRoot ? units_ZERO : a.bfcLineOffset), Point(units_add(bor.left, pad.left), units_add(bor.top, pad.top)), canCollapseTop, childBasis))
@@ -408,7 +408,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   if try jsSome(kids, { (k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return ((k.kind != S.s_box) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced))
 }) {
-    throw JsError(message: jsConcat(box.id, S.s79))
+    throw JsError(message: jsConcat(box.id, S.s84))
   }
   let direction: JsString = try block_directionOf(ctx, box)
   let placed: JsArray<Placed> = JsArray<Placed>([])

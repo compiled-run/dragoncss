@@ -8,6 +8,7 @@ import type { Candidate } from '../src/analysis/resolve.ts';
 import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
 import { keyframesAtRule } from '../src/css/at-rules/keyframes.ts';
 import { propertyAtRule } from '../src/css/at-rules/property.ts';
+import { charsetAtRule } from '../src/css/at-rules/charset.ts';
 import { supportsAtRule } from '../src/css/at-rules/supports.ts';
 import type { AtRuleContext } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS, SHORTHANDS_MOVED } from '../src/css/properties.ts';
@@ -90,7 +91,7 @@ describe('E2 seams: the property registry', () => {
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());
     for (const s of SHORTHANDS) for (const l of SHORTHAND_HANDLERS[s].longhands) expect((LONGHANDS as readonly string[]).includes(l), `${s} -> ${l}`).toBe(true);
-    expect(SHORTHAND_HANDLERS.border.longhands).toEqual(LONGHANDS.filter((p) => p.startsWith('border-top-') || p.startsWith('border-right-') || p.startsWith('border-bottom-') || p.startsWith('border-left-')).sort((a, b) => ['top', 'right', 'bottom', 'left'].indexOf(a.split('-')[1] as string) - ['top', 'right', 'bottom', 'left'].indexOf(b.split('-')[1] as string)));
+    expect(SHORTHAND_HANDLERS.border.longhands).toEqual(LONGHANDS.filter((p) => (p.startsWith('border-top-') || p.startsWith('border-right-') || p.startsWith('border-bottom-') || p.startsWith('border-left-')) && !p.endsWith('-radius')).sort((a, b) => ['top', 'right', 'bottom', 'left'].indexOf(a.split('-')[1] as string) - ['top', 'right', 'bottom', 'left'].indexOf(b.split('-')[1] as string)));
   });
   it('the unit registry order is pinned, and unregistered units keep their <length-unit> feature key', () => {
     expect(UNITS.map((u) => u.unit)).toEqual(['px', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'em', 'rem', 'ex', 'rex', 'ch', 'rch', 'cap', 'rcap', 'ic', 'ric', 'lh', 'rlh', 'vw', 'vh', 'vi', 'vb', 'vmin', 'vmax', 'svw', 'svh', 'svi', 'svb', 'svmin', 'svmax', 'lvw', 'lvh', 'lvi', 'lvb', 'lvmin', 'lvmax', 'dvw', 'dvh', 'dvi', 'dvb', 'dvmin', 'dvmax', 'cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax']);
@@ -119,12 +120,13 @@ describe('E2 seams: FIXTURES', () => {
   });
 });
 
-describe('E2 seams: every at-rule but @media, @keyframes, @supports and @property is still refused', () => {
+describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property and @charset is still refused', () => {
   // MQ-a made @media conditional, ANIM-b1 accepted a top-level @keyframes (keyframes.test.ts), ANIM-b2 accepted @-webkit-keyframes
   // as @keyframes (aliases.test.ts), CASC decides @supports (casc.test.ts) and CASC 2 registers a top-level @property
-  // (casc-property.test.ts). The enclosing at-rule of the fourth sheet is @layer, which stays refused.
+  // (casc-property.test.ts). The enclosing at-rule of the fourth sheet is @layer, which stays refused. @charset has its own handler,
+  // which accepts only "utf-8" at the start of a sheet (charset.test.ts).
   const KEYFRAMES = ['keyframes', '-webkit-keyframes'];
-  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'supports' && n !== 'property' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
+  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'supports' && n !== 'property' && n !== 'charset' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
   const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@layer w { @${n} z { .b { height: 3px; } } }`];
   const run = (text: string): { text: string; diagnostics: Diagnostic[]; enclosed: EnclosedRules[]; rules: number } => {
     const diagnostics: Diagnostic[] = [];
@@ -133,8 +135,8 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports and @propert
     return { text, diagnostics, enclosed, rules: rules.length };
   };
   const atRules = (ds: readonly Diagnostic[]): [string, string][] => ds.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.code, d.message]);
-  it('every registered name but font-face, media, keyframes, supports and property is refused today', () => {
-    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : name === 'supports' ? supportsAtRule : name === 'property' ? propertyAtRule : refuseAtRule);
+  it('every registered name but font-face, media, keyframes, supports, property and charset is refused today', () => {
+    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : name === 'supports' ? supportsAtRule : name === 'property' ? propertyAtRule : name === 'charset' ? charsetAtRule : refuseAtRule);
     expect(atRuleHandler('MEDIA')).toBe(mediaAtRule);
     expect(atRuleHandler('no-such-rule')).toBe(refuseAtRule);
     expect(atRuleHandler('Font-Face')).toBe(acceptFontFace);
@@ -183,9 +185,10 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports and @propert
     // it the base before ANIM-b1 gives ba217ee5…, so every other at-rule is unchanged. At cb1a4b2d the full list gave 4cfb6ef0….
     // CASC decides @supports, so supports left the list and the enclosing at-rule became @layer: c80b0487dc (before CASC) gives
     // fca72903… for these runs too. -webkit-keyframes left with ANIM-b2 (a36ce22e09 gave a0302641… without it); casc-supports
-    // before taking ANIM-b2 (1b8eacfdf9) gives 48d27023… for this list too. property left with CASC 2: without it master before
-    // CASC 2 (9b32f10e18) gives 972a3012… too, so every other at-rule is still unchanged.
-    const pinned = ['charset', 'color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'layer', 'namespace', 'page', 'position-try', 'scope', 'starting-style', 'view-transition', 'Font-Face', 'unknown-thing'];
+    // before taking ANIM-b2 (1b8eacfdf9) gives 48d27023… for this list too. charset left with its own handler: without it master
+    // before it (9b32f10e18) gives ecd10b0c… too. property left with CASC 2: without it master before CASC 2 (508db670c4) gives
+    // 1397573c… too, so every other at-rule is still unchanged.
+    const pinned = ['color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'layer', 'namespace', 'page', 'position-try', 'scope', 'starting-style', 'view-transition', 'Font-Face', 'unknown-thing'];
     const runs = pinned.flatMap((n) => sheets(n).map((text) => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
@@ -200,7 +203,7 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports and @propert
       }
       return x;
     }));
-    expect(sha(strip(runs))).toBe('972a3012eb4d12560dbb5c2516075ca1daf9e1c8ca14418fee5dcb115988f058');
+    expect(sha(strip(runs))).toBe('1397573c6d9621bc237be694213b68ef37df92dfc0d61e17e1d4dfd2f6054119');
     expect(added.length).toBeGreaterThan(0);
     for (const x of added) expect([[], null, false]).toContainEqual(x);
   });

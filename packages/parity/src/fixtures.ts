@@ -9,6 +9,7 @@ import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
 import { CASC_PROPERTY } from './fixture-groups/casc-property.ts';
 import { CASC } from './fixture-groups/casc.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
+import { CHARSET } from './fixture-groups/charset.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
@@ -23,6 +24,7 @@ import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { OVERFLOW } from './fixture-groups/overflow.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
+import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
@@ -96,6 +98,7 @@ export const GROUPS = {
   casc: CASC,
   'casc-property': CASC_PROPERTY,
   'cascade-var': CASCADE_VAR,
+  charset: CHARSET,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,
   'display-legacy': DISPLAY_LEGACY,
@@ -110,6 +113,7 @@ export const GROUPS = {
   'milestone-1': MILESTONE_1,
   overflow: OVERFLOW,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
+  radius: RADIUS,
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
   selectors: SELECTORS,
