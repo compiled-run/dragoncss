@@ -96,6 +96,15 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(() => withoutPointerEvents('a.png', '')).toThrow(/only .json captures and .css outputs/);
   });
 
+  it('removes the PNT1 corner radii added since the base, and nothing else', () => {
+    const json = '{\n  "x": "1",\n  "border-top-left-radius": "10px 20px",\n  "border-bottom-left-radius": "50%",\n  "pointer-events": "auto"\n}';
+    expect(withoutPointerEvents('a.json', json)).toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('a.css', '.d {\n  border-top-right-radius: 0px;\n  color: red;\n  border-bottom-right-radius: 4px 2px;\n}\n')).toBe('.d {\n  color: red;\n}\n');
+    // Another radius-like key, or a changed value beside the stripped ones, still differs.
+    expect(withoutPointerEvents('a.json', '{\n  "x": "1",\n  "border-start-start-radius": "0px"\n}')).not.toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('a.css', '.d {\n  border-top-left-radius: 1px;\n  color: blue;\n}\n')).not.toBe(withoutPointerEvents('a.css', '.d {\n  color: red;\n}\n'));
+  });
+
   it('parity:hit-capture takes --vectors, --identity-base <rev> or nothing, and refuses anything else', () => {
     expect(parseHitCaptureArgs([])).toEqual({ mode: 'capture' });
     expect(parseHitCaptureArgs(['--'])).toEqual({ mode: 'capture' });

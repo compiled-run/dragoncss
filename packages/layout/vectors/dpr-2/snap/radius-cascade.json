@@ -1,0 +1,246 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 7936
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 7936
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 7936
+  },
+  {
+   "id": "base",
+   "parent": "row",
+   "x": 768,
+   "y": 768,
+   "width": 4068,
+   "height": 6400
+  },
+  {
+   "id": "over",
+   "parent": "row",
+   "x": 5860,
+   "y": 768,
+   "width": 4067,
+   "height": 6400
+  },
+  {
+   "id": "after",
+   "parent": "row",
+   "x": 10951,
+   "y": 768,
+   "width": 4068,
+   "height": 6400
+  },
+  {
+   "id": "var",
+   "parent": "row",
+   "x": 16043,
+   "y": 768,
+   "width": 4067,
+   "height": 6400
+  },
+  {
+   "id": "varpair",
+   "parent": "row",
+   "x": 21134,
+   "y": 768,
+   "width": 4068,
+   "height": 6400
+  },
+  {
+   "id": "parent",
+   "parent": "row",
+   "x": 26226,
+   "y": 768,
+   "width": 3840,
+   "height": 6400
+  },
+  {
+   "id": "inherit",
+   "parent": "parent",
+   "x": 640,
+   "y": 640,
+   "width": 2560,
+   "height": 2560
+  },
+  {
+   "id": "initial",
+   "parent": "row",
+   "x": 31090,
+   "y": 768,
+   "width": 4067,
+   "height": 6400
+  },
+  {
+   "id": "unset",
+   "parent": "row",
+   "x": 36181,
+   "y": 768,
+   "width": 4068,
+   "height": 6400
+  },
+  {
+   "id": "zero",
+   "parent": "row",
+   "x": 41273,
+   "y": 768,
+   "width": 4067,
+   "height": 6400
+  },
+  {
+   "id": "zero-one",
+   "parent": "row",
+   "x": 46364,
+   "y": 768,
+   "width": 4068,
+   "height": 6400
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 124,
+   "width": 800,
+   "height": 124
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 124,
+   "width": 800,
+   "height": 124
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 124,
+   "width": 800,
+   "height": 124
+  },
+  {
+   "id": "base",
+   "left": 12,
+   "top": 12,
+   "right": 76,
+   "bottom": 112,
+   "width": 64,
+   "height": 100
+  },
+  {
+   "id": "over",
+   "left": 92,
+   "top": 12,
+   "right": 155,
+   "bottom": 112,
+   "width": 63,
+   "height": 100
+  },
+  {
+   "id": "after",
+   "left": 171,
+   "top": 12,
+   "right": 235,
+   "bottom": 112,
+   "width": 64,
+   "height": 100
+  },
+  {
+   "id": "var",
+   "left": 251,
+   "top": 12,
+   "right": 314,
+   "bottom": 112,
+   "width": 63,
+   "height": 100
+  },
+  {
+   "id": "varpair",
+   "left": 330,
+   "top": 12,
+   "right": 394,
+   "bottom": 112,
+   "width": 64,
+   "height": 100
+  },
+  {
+   "id": "parent",
+   "left": 410,
+   "top": 12,
+   "right": 470,
+   "bottom": 112,
+   "width": 60,
+   "height": 100
+  },
+  {
+   "id": "inherit",
+   "left": 420,
+   "top": 22,
+   "right": 460,
+   "bottom": 62,
+   "width": 40,
+   "height": 40
+  },
+  {
+   "id": "initial",
+   "left": 486,
+   "top": 12,
+   "right": 549,
+   "bottom": 112,
+   "width": 63,
+   "height": 100
+  },
+  {
+   "id": "unset",
+   "left": 565,
+   "top": 12,
+   "right": 629,
+   "bottom": 112,
+   "width": 64,
+   "height": 100
+  },
+  {
+   "id": "zero",
+   "left": 645,
+   "top": 12,
+   "right": 708,
+   "bottom": 112,
+   "width": 63,
+   "height": 100
+  },
+  {
+   "id": "zero-one",
+   "left": 724,
+   "top": 12,
+   "right": 788,
+   "bottom": 112,
+   "width": 64,
+   "height": 100
+  }
+ ]
+}
