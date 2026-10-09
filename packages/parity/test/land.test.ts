@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   backoffMs,
   baseAction,
@@ -401,7 +401,11 @@ describe('the Claude reviewer\'s output', () => {
 });
 
 describe('the Claude review gate with a fake reviewer command', () => {
-  const dir = tempDir();
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let dir = '';
+  beforeAll(() => {
+    dir = tempDir();
+  });
   // A fake reviewer: saves the prompt it reads on stdin, then prints a canned answer (or fails).
   const fake = (name: string, body: string): string => {
     const path = join(dir, `${name}.sh`);
@@ -1161,7 +1165,8 @@ describe('batched landing (runBatches with fakes)', () => {
 });
 
 describe('a batch of positions on a scratch repository', () => {
-  const dir = tempDir();
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let dir = '';
   const config = ['user.name=t', 'user.email=t@t', 'commit.gpgsign=false', 'core.hooksPath=/dev/null'].flatMap((c) => ['-c', c]);
   const git: Git = (args, input) => execFileSync('git', [...config, ...args], { cwd: dir, input, stdio: ['pipe', 'pipe', 'pipe'] });
   const commit = (files: Record<string, string>, m: string): string => {
@@ -1174,32 +1179,39 @@ describe('a batch of positions on a scratch repository', () => {
     return git(['rev-parse', 'HEAD']).toString().trim();
   };
   const lines = (tag: string): string => Array.from({ length: 12 }, (_, i) => `export const ${tag}${i} = ${i};\n`).join('');
-  git(['init', '-q', '-b', 'master']);
-  const master = commit({ '.macroscope/ignore.md': '---\nignoreTests: false\n---\n**/out/**\ndocs/goals/**\n', 'src/a.ts': lines('a'), 'src/b.ts': lines('b'), 'src/c.ts': lines('c'), 'out/x.json': '0\n' }, 'base');
+  let master = '';
   const branch = (name: string, files: Record<string, string>): Member => {
     git(['checkout', '-q', '-b', name, master]);
     const clean = commit(files, name);
     return { branch: name, pr: name.charCodeAt(0), clean };
   };
-  const a = branch('a', { 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 33') });
-  const b = branch('b', { 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 34') }); // conflicts with a
-  const c = branch('c', { 'src/c.ts': lines('c').replace('c5 = 5', 'c5 = 55') });
-  git(['checkout', '-q', '--detach', master]);
-  // The driver's build loop: each member on the position before it; a conflict ejects the member and the chain stays put.
+  let a!: Member;
+  let b!: Member;
+  let c!: Member;
   const built: { member: Member; prev: string; merge: string; head: string }[] = [];
   const ejected: string[] = [];
-  let prev = master;
-  for (const m of [a, b, c]) {
-    try {
-      const merge = mergeMember(git, prev, m, built.length + 1, m.clean, 'Land');
-      writeFileSync(join(dir, 'out/x.json'), `${built.length + 1}\n`);
-      const head = commitRegen(git, built.length + 1, m, ['pnpm regen'], 'Land');
-      built.push({ member: m, prev, merge, head });
-      prev = head;
-    } catch (error) {
-      ejected.push(`${m.branch}: ${(error as Error).message}`);
+  beforeAll(() => {
+    dir = tempDir();
+    git(['init', '-q', '-b', 'master']);
+    master = commit({ '.macroscope/ignore.md': '---\nignoreTests: false\n---\n**/out/**\ndocs/goals/**\n', 'src/a.ts': lines('a'), 'src/b.ts': lines('b'), 'src/c.ts': lines('c'), 'out/x.json': '0\n' }, 'base');
+    a = branch('a', { 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 33') });
+    b = branch('b', { 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 34') }); // conflicts with a
+    c = branch('c', { 'src/c.ts': lines('c').replace('c5 = 5', 'c5 = 55') });
+    git(['checkout', '-q', '--detach', master]);
+    // The driver's build loop: each member on the position before it; a conflict ejects the member and the chain stays put.
+    let prev = master;
+    for (const m of [a, b, c]) {
+      try {
+        const merge = mergeMember(git, prev, m, built.length + 1, m.clean, 'Land');
+        writeFileSync(join(dir, 'out/x.json'), `${built.length + 1}\n`);
+        const head = commitRegen(git, built.length + 1, m, ['pnpm regen'], 'Land');
+        built.push({ member: m, prev, merge, head });
+        prev = head;
+      } catch (error) {
+        ejected.push(`${m.branch}: ${(error as Error).message}`);
+      }
     }
-  }
+  });
 
   it('ejects the conflicting member, leaving no merge in progress, and chains the next on the position before it', () => {
     expect(ejected).toEqual([expect.stringMatching(/^b: .*conflicts in src\/a\.ts/)]);
@@ -1267,7 +1279,8 @@ describe('a batch of positions on a scratch repository', () => {
 });
 
 describe('a landing commit on a scratch repository', () => {
-  const dir = tempDir();
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let dir = '';
   const config = ['user.name=t', 'user.email=t@t', 'commit.gpgsign=false', 'core.hooksPath=/dev/null'].flatMap((c) => ['-c', c]);
   const git: Git = (args, input) => execFileSync('git', [...config, ...args], { cwd: dir, input, stdio: ['pipe', 'pipe', 'pipe'] });
   const commit = (files: Record<string, string>, m: string): string => {
@@ -1280,19 +1293,27 @@ describe('a landing commit on a scratch repository', () => {
     return git(['rev-parse', 'HEAD']).toString().trim();
   };
   const lines = (tag: string): string => Array.from({ length: 12 }, (_, i) => `export const ${tag}${i} = ${i};\n`).join('');
-  git(['init', '-q', '-b', 'master']);
-  const base = commit({ '.macroscope/ignore.md': '---\nignoreTests: false\n---\n**/out/**\ndocs/goals/**\n', 'src/a.ts': lines('a'), 'src/b.ts': lines('b'), 'out/x.json': '0\n' }, 'base');
-  git(['checkout', '-q', '-b', 'a']);
-  const clean = commit({ 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 33') }, 'a change');
-  git(['checkout', '-q', 'master']);
-  const master = commit({ 'src/b.ts': lines('b').replace('b9 = 9', 'b9 = 99') }, 'another PR landed');
-  const m: Member = { branch: 'a', pr: 4, clean };
+  let base = '';
+  let clean = '';
+  let master = '';
+  let m!: Member;
   const land = (prev: string, tip: string, out: string): { merge: string; head: string } => {
     const merge = mergeMember(git, prev, m, 1, tip, 'Land');
     writeFileSync(join(dir, 'out/x.json'), out);
     return { merge, head: commitRegen(git, 1, m, ['pnpm regen'], 'Land') };
   };
-  const first = land(master, clean, '1\n');
+  let first!: { merge: string; head: string };
+  beforeAll(() => {
+    dir = tempDir();
+    git(['init', '-q', '-b', 'master']);
+    base = commit({ '.macroscope/ignore.md': '---\nignoreTests: false\n---\n**/out/**\ndocs/goals/**\n', 'src/a.ts': lines('a'), 'src/b.ts': lines('b'), 'out/x.json': '0\n' }, 'base');
+    git(['checkout', '-q', '-b', 'a']);
+    clean = commit({ 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 33') }, 'a change');
+    git(['checkout', '-q', 'master']);
+    master = commit({ 'src/b.ts': lines('b').replace('b9 = 9', 'b9 = 99') }, 'another PR landed');
+    m = { branch: 'a', pr: 4, clean };
+    first = land(master, clean, '1\n');
+  });
 
   it('merges the PR into master and adds one regen-only commit, which pr:review will vouch for', () => {
     expect(git(['log', '-2', '--format=%s', first.head]).toString().trim().split('\n')).toEqual(['Land: regenerate after merging a (#4)', 'Land: merge a (#4)']);
@@ -1352,7 +1373,11 @@ describe('pnpm evidence:stamp --compare', () => {
 });
 
 describe('the precomputed review lookup (the default reviewer)', () => {
-  const dir = tempDir();
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let dir = '';
+  beforeAll(() => {
+    dir = tempDir();
+  });
   const head = sha('e');
   const write = (pr: number, body: unknown): void => writeFileSync(join(dir, `${pr}.json`), typeof body === 'string' ? body : JSON.stringify(body));
   // The real script, run the way the driver runs it: through sh, prompt on stdin, PR and clean head in the environment.
@@ -1641,13 +1666,18 @@ describe('LAND_REGEN (every regen of a landing tree on CI)', () => {
   });
 
   describe('the CI regen\'s patch, applied to the landing tree on a scratch repository', () => {
-    const dir = tempDir();
-    const ci = join(dir, 'ci');
-    const repo = join(dir, 'repo');
-    mkdirSync(repo);
+    // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+    let dir = '';
+    let ci = '';
+    let repo = '';
+    let index = '';
+    let base = '';
+    let regenerated = '';
+    let patch = '';
+    let empty = '';
     const config = ['user.name=t', 'user.email=t@t', 'commit.gpgsign=false', 'core.hooksPath=/dev/null'].flatMap((c) => ['-c', c]);
     const at = (cwd: string) => (args: string[]): string => execFileSync('git', [...config, ...args], { cwd, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
-    const git = at(repo);
+    const git = (args: string[]): string => at(repo)(args);
     const bin = (seed: number, n: number): Buffer => Buffer.from(Array.from({ length: n }, (_, i) => (i * seed + (i >> 3)) % 256));
     const write = (root: string, files: Record<string, string | Buffer | null>): void => {
       for (const [p, body] of Object.entries(files)) {
@@ -1658,29 +1688,37 @@ describe('LAND_REGEN (every regen of a landing tree on CI)', () => {
         }
       }
     };
-    git(['init', '-q', '-b', 'master']);
-    write(repo, { 'src/a.ts': 'export const a = 1;\n', 'out/x.json': '{"x":1}\n', 'out/shot.png': bin(7, 4096), 'out/gone.bin': bin(3, 300), 'out/keep.txt': 'same\n' });
-    git(['add', '-A']);
-    git(['commit', '-q', '-m', 'base']);
-    // The landing tree: HEAD plus uncommitted work (a carried device record, an untracked file), committed apart as the driver
-    // does (commitApart: a scratch index, HEAD as parent).
-    write(repo, { 'out/x.json': '{"x":2}\n', 'out/new-record.json': '{}\n' });
-    const index = join(dir, 'scratch-index');
     const apart = (args: string[]) => execFileSync('git', [...config, ...args], { cwd: repo, encoding: 'utf8', env: { ...process.env, GIT_INDEX_FILE: index } }).trim();
-    apart(['read-tree', 'HEAD']);
-    apart(['add', '-A']);
-    const base = apart(['commit-tree', apart(['write-tree']), '-p', 'HEAD', '-m', 'landing tree']);
-    // The CI regen: a checkout of that commit, regenerated (binary changes, a new binary, a deletion, a text change), its patch
-    // the round's own command (git diff --cached --binary <sha>).
-    git(['worktree', 'add', '-q', '--detach', ci, base]);
-    write(ci, { 'out/shot.png': bin(11, 5000), 'out/new.png': bin(13, 777), 'out/gone.bin': null, 'out/x.json': '{"x":2,"y":3}\n' });
-    at(ci)(['add', '-A']);
-    const regenerated = at(ci)(['write-tree']).trim();
-    const patch = join(dir, 'outputs.patch');
-    writeFileSync(patch, at(ci)(['diff', '--cached', '--binary', base]));
-    const empty = join(dir, 'empty.patch');
-    writeFileSync(empty, '');
-    afterAll(() => rmSync(dir, { recursive: true, force: true }));
+    beforeAll(() => {
+      dir = tempDir();
+      ci = join(dir, 'ci');
+      repo = join(dir, 'repo');
+      mkdirSync(repo);
+      git(['init', '-q', '-b', 'master']);
+      write(repo, { 'src/a.ts': 'export const a = 1;\n', 'out/x.json': '{"x":1}\n', 'out/shot.png': bin(7, 4096), 'out/gone.bin': bin(3, 300), 'out/keep.txt': 'same\n' });
+      git(['add', '-A']);
+      git(['commit', '-q', '-m', 'base']);
+      // The landing tree: HEAD plus uncommitted work (a carried device record, an untracked file), committed apart as the driver
+      // does (commitApart: a scratch index, HEAD as parent).
+      write(repo, { 'out/x.json': '{"x":2}\n', 'out/new-record.json': '{}\n' });
+      index = join(dir, 'scratch-index');
+      apart(['read-tree', 'HEAD']);
+      apart(['add', '-A']);
+      base = apart(['commit-tree', apart(['write-tree']), '-p', 'HEAD', '-m', 'landing tree']);
+      // The CI regen: a checkout of that commit, regenerated (binary changes, a new binary, a deletion, a text change), its patch
+      // the round's own command (git diff --cached --binary <sha>).
+      git(['worktree', 'add', '-q', '--detach', ci, base]);
+      write(ci, { 'out/shot.png': bin(11, 5000), 'out/new.png': bin(13, 777), 'out/gone.bin': null, 'out/x.json': '{"x":2,"y":3}\n' });
+      at(ci)(['add', '-A']);
+      regenerated = at(ci)(['write-tree']).trim();
+      patch = join(dir, 'outputs.patch');
+      writeFileSync(patch, at(ci)(['diff', '--cached', '--binary', base]));
+      empty = join(dir, 'empty.patch');
+      writeFileSync(empty, '');
+    });
+    afterAll(() => {
+      if (dir !== '') rmSync(dir, { recursive: true, force: true });
+    });
 
     it('makes the tree exactly the CI regen\'s, binary files included, staged', () => {
       expect(readFileSync(patch, 'utf8')).toContain('GIT binary patch');
