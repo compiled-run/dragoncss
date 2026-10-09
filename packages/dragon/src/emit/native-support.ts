@@ -205,14 +205,16 @@ public final class DragonClipView: UIView {
 }
 
 /// The box geometry every paint stage and after-layout hook receives: the snapped border-box edges (left, top, right, bottom) and
-/// the border widths (top, right, bottom, left) in device px, and the eight corner radii in device px (horizontal then vertical,
-/// top-left first), zero until the radius module fills them (PNT1).
+/// the border widths (top, right, bottom, left) in device px, the eight corner radii in device px (horizontal then vertical,
+/// top-left first), zero until the radius module fills them (PNT1), and the layout border-box size (width, height) in device px
+/// before snapping, which percentage radii resolve against.
 public struct DragonBoxShape {
   public var edges: [Double]
   public var borders: [Double]
   public var radii: [Double]
-  public init(edges: [Double], borders: [Double], radii: [Double] = [0, 0, 0, 0, 0, 0, 0, 0]) {
-    self.edges = edges; self.borders = borders; self.radii = radii
+  public var size: [Double]
+  public init(edges: [Double], borders: [Double], radii: [Double] = [0, 0, 0, 0, 0, 0, 0, 0], size: [Double] = [0, 0]) {
+    self.edges = edges; self.borders = borders; self.radii = radii; self.size = size
   }
 }
 
@@ -627,7 +629,7 @@ public final class DragonTree {
         }
         borders[id] = px
         bv.dragonScale = s
-        bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px)
+        bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px, size: [r.width / lu, r.height / lu])
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
@@ -1049,10 +1051,11 @@ class DragonClipView(ctx: Context) : DragonGroup(ctx) {
 
 /**
  * The box geometry every paint stage and after-layout hook receives: the snapped border-box edges (left, top, right, bottom) and
- * the border widths (top, right, bottom, left) in device px, and the eight corner radii in device px (horizontal then vertical,
- * top-left first), zero until the radius module fills them (PNT1).
+ * the border widths (top, right, bottom, left) in device px, the eight corner radii in device px (horizontal then vertical,
+ * top-left first), zero until the radius module fills them (PNT1), and the layout border-box size (width, height) in device px
+ * before snapping, which percentage radii resolve against.
  */
-class DragonBoxShape(val edges: DoubleArray, val borders: DoubleArray, val radii: DoubleArray = DoubleArray(8))
+class DragonBoxShape(val edges: DoubleArray, val borders: DoubleArray, val radii: DoubleArray = DoubleArray(8), val size: DoubleArray = DoubleArray(2))
 
 /** A box: the background is a native ColorDrawable; every other paint is a paint module's (views/paint), drawn in CSS stage order. */
 class DragonBoxView(ctx: Context, override val dragonId: String, override val dragonKind: String, override val dragonParent: String?) : DragonGroup(ctx), DragonNodeView {
@@ -1431,7 +1434,7 @@ class DragonTree(val context: Context) {
           doubleArrayOf(be.top / lu, be.right / lu, be.bottom / lu, be.left / lu)
         }
         borders[id] = px
-        v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px)
+        v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px, DoubleArray(8), doubleArrayOf(r.width / lu, r.height / lu))
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }

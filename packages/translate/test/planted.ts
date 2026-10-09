@@ -7,7 +7,7 @@ import { buildCorpus } from '../src/corpus.ts';
 import type { Fault } from '../src/faults.ts';
 import { FAULTS } from '../src/faults.ts';
 import { lowerAll } from '../src/generate.ts';
-import { failures, kotlinTool, swiftTool } from '../src/native.ts';
+import { failures, isBlocked, kotlinTool, swiftTool } from '../src/native.ts';
 
 export const PLANTED_TITLE: Record<Target, string> = {
   swift: 'planted translator faults, Swift (native:planted -- --target swift)',
@@ -23,7 +23,7 @@ export function plantedFaultTest(target: Target, fault: Fault): void {
       const c = buildCorpus();
       if (target === 'swift' && process.platform === 'darwin') expect(swiftTool(), 'swiftc is part of Xcode on the macOS reference machine').not.toBeNull();
       const r = runTarget(target, c, expectedFiles(target, l, fault), `test-planted-${target}-${fault}`, true);
-      if (r.status === 'blocked (owner tooling)') {
+      if (isBlocked(r)) {
         expect(tool()).toBeNull();
         return;
       }

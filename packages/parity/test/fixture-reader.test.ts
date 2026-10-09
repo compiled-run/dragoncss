@@ -213,17 +213,26 @@ const digest = (value: unknown): string => createHash('sha256').update(canonical
 
 // BASE fixtures a later package removed on purpose, with their BASE text, so the reader is still checked on them.
 // reject-background-important: casc-logical supports !important and replaced it with the layout fixture background-important.
+// reject-overflow-body, reject-overflow-scroll, reject-context-root-overflow: OVFL supports overflow on body and html (viewport
+// propagation) and overflow: scroll; they became the layout fixtures viewport-prop-body-hidden, overflow-scroll-basic and
+// viewport-prop-html-x-hidden.
 const REMOVED_AFTER_BASE: Readonly<Record<string, string>> = {
   'reject-background-important': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.swatch { width: 20px; height: 20px; background: red !important; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="swatch" class="swatch"></div>\n</body>\n</html>\n',
+  'reject-overflow-body': "<!DOCTYPE html>\n<html data-dragon-id=\"html\">\n<head>\n<style>\nbody { margin: 0; font-family: Ahem; font-size: 10px; }\n.b { overflow: hidden; }\n</style>\n</head>\n<body data-dragon-id=\"body\" class=\"b\">\n<div data-dragon-id=\"a\">XX</div>\n</body>\n</html>\n",
+  'reject-overflow-scroll': "<!DOCTYPE html>\n<html data-dragon-id=\"html\">\n<head>\n<style>\nbody { margin: 0; font-family: Ahem; font-size: 10px; }\n.a { width: 20px; height: 10px; overflow: scroll; }\n</style>\n</head>\n<body data-dragon-id=\"body\">\n<div data-dragon-id=\"a\" class=\"a\">XX</div>\n</body>\n</html>\n",
+  'reject-context-root-overflow': "<!DOCTYPE html>\n<html data-dragon-id=\"html\">\n<head>\n<style>\nhtml { overflow-x: hidden; }\nbody { margin: 0; font-family: Ahem; font-size: 10px; }\n.a { width: 50px; height: 20px; background-color: #ccc; }\n</style>\n</head>\n<body data-dragon-id=\"body\">\n<div data-dragon-id=\"a\" class=\"a\"></div>\n</body>\n</html>\n",
 };
 
 // BASE fixtures a later package retargeted on purpose (V1 of the value model supports vw and calc(), so its rejects moved to
 // svw and round(); SELD-R2a compiles :hover, so reject-selector-hover moved to :focus-within; CTX-PROOF proves margin-top: auto
 // in block flow, so reject-unproven-context moved it to an absolute box in a flex column; GRID G1a proves display: grid in block
 // flow, so reject-display-grid puts the grid in a column flex container), with their BASE text: the reader is still checked on
-// that text, and each file must now differ from it.
+// that text, and each file must now differ from it. reject-overflow-single-axis: OVFL supports overflow-x: hidden alone (overflow-y
+// computes to auto), so the reject moved to overflow-x: clip beside visible (OVFL-c); its BASE text is the layout fixture
+// overflow-single-axis-hidden.
 const RETARGETED_AFTER_BASE: Readonly<Record<string, string>> = {
   'reject-display-grid': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.grid { display: grid; width: 100px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="grid" class="grid"><div data-dragon-id="cell"></div></div>\n</body>\n</html>\n',
+  'reject-overflow-single-axis': "<!DOCTYPE html>\n<html data-dragon-id=\"html\">\n<head>\n<style>\nbody { margin: 0; font-family: Ahem; font-size: 10px; }\n.a { width: 20px; height: 10px; overflow-x: hidden; }\n</style>\n</head>\n<body data-dragon-id=\"body\">\n<div data-dragon-id=\"a\" class=\"a\">XX XX</div>\n</body>\n</html>\n",
   'reject-selector-hover': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n.a { width: 10px; }\n.a:hover { width: 20px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
   'reject-unit-calc': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.a { width: calc(10px + 2em); height: 10px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
   'reject-unit-vw': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.a { width: 50vw; height: 10px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',

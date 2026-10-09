@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import type { LayoutBox, LayoutRect } from '@dragon/layout';
-import { AHEM_FONT_DATA, coveredIndex, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
+import { AHEM_FONT_DATA, coveredIndex, LU_PER_PX, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { borderDevicePx, programInput } from 'dragon';
 import { chromeArgsAt, CHROME_VERSION } from './chrome.ts';
@@ -289,9 +289,11 @@ function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: numb
  */
 export function glyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): GlyphLine[] {
   const input = programInput(p, viewport, dpr);
+  const sizes = cssFontSizes(input.root);
+  // The glyph rule's own refusal comes first: the engine's font-data measurer refuses a face other than Ahem too (TXT1a-1).
+  for (const [id, css] of sizes) if (css.family !== 'Ahem') throw new Error(`${id}: the glyph rule refuses the font family ${css.family}; glyph boxes are known for Ahem only`);
   const m = referenceMeasurer();
   const texts = engineTextLines(input, m);
-  const sizes = cssFontSizes(input.root);
   const boxes = ahemGlyphBoxes();
   const upem = AHEM_FONT_DATA.unitsPerEm;
   const out: GlyphLine[] = [];
@@ -348,7 +350,7 @@ export function caseSamples(p: NativeProgram, viewport: { readonly width: number
     if (n === undefined || n.kind === 'text') return;
     const s = snapped[i] as { left: number; top: number; right: number; bottom: number };
     const b = borders.get(r.id) ?? [0, 0, 0, 0];
-    boxes.push({ id: r.id, left: s.left, top: s.top, right: s.right, bottom: s.bottom, border: { top: b[0], right: b[1], bottom: b[2], left: b[3] }, radius: 0, clips: n.clips });
+    boxes.push({ id: r.id, left: s.left, top: s.top, right: s.right, bottom: s.bottom, border: { top: b[0], right: b[1], bottom: b[2], left: b[3] }, radius: 0, clips: n.clips, size: [r.width / LU_PER_PX, r.height / LU_PER_PX] });
   });
   const size = rasterSize(viewport, dpr);
   const lines = glyphLines(p, viewport, dpr);

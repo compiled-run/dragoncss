@@ -26,7 +26,8 @@ export { iosProfile } from './profiles/ios.ts';
 export { webProfile } from './profiles/web.ts';
 export { androidProfile } from './profiles/android.ts';
 export type { Proof, ProofAspect, ProofLane, ProfileRow, SupportProfile } from './profiles/types.ts';
-export { statusOf } from './profiles/types.ts';
+export { nativeScrollPending, PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
+export type { ProfileNote } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
 export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';
 export type { UaDataset, UaDatasetChoice } from './ua/datasets.ts';
@@ -104,7 +105,7 @@ export function interactionPartitionOf(compiled: object, assignment: Assignment)
   return typeof c === 'string' ? null : c.partition;
 }
 
-/** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
+/** SELD-R2 and T078 R14: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
 export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
   return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
 }
@@ -415,7 +416,7 @@ export function nativeBandProgram(compiled: object, backend: NativeBackend, faul
 
 // SELD-R2 (notes/T064-seld-r2-spec.md): interaction states, their partition and the generated web conditions.
 export type { ChainValue, FocusValue, ForcedPseudo, InteractionElement, InteractionKind, InteractionPartition, InteractionValue, StateMatch } from './analysis/interaction.ts';
-export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledFact, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
+export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledFact, hitUnmodelledGrid, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
 export type { InteractionState } from './analysis/match.ts';
 export { NO_INTERACTION } from './analysis/match.ts';
 export type { InteractionCondition, WebInteraction } from './emit/web-css.ts';

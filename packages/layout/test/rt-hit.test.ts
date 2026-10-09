@@ -262,3 +262,61 @@ describe('hitTableOf stacks positioned flex children in order-modified document 
     expect(await answer('row-reverse', [['s1', { marginLeft: len(-30) }], ['s2', {}]], 155, 20)).toBe('s1');
   });
 });
+
+// OVFL: a scroll container (hidden, auto or scroll, at rest) and clip on both axes clip hits to the padding box; visible does not.
+describe('hitTableOf clips every clipping overflow', () => {
+  it('marks hidden, auto, scroll and clip boxes as clipping, and visible ones not; a point past an auto box falls outside it', async () => {
+    const { hitTableOf, hitTest } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { box, neutralEnvironment, px } = await import('./helpers.ts');
+    const at = (o: 'visible' | 'hidden' | 'auto' | 'scroll' | 'clip') => {
+      const c = box('c', { overflowX: o, overflowY: o, width: px(20), height: px(20) }, [box('k', { width: px(60), height: px(10) })]);
+      const root = box('html', { width: px(100) }, [c]);
+      const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
+      const fact = { pointerEvents: 'auto', inherited: true, activation: false } as const;
+      return hitTableOf(input, ahemMeasurer, new Map([['html', fact], ['c', fact], ['k', fact]]), NO_HIT_TABLE_FAULTS);
+    };
+    for (const o of ['hidden', 'auto', 'scroll', 'clip'] as const) {
+      const t = at(o);
+      expect(t.nodes[1]?.clips, o).toBe(true);
+      expect(t.ids[hitTest(t.nodes, 40 * PX, 5 * PX, NO_HIT_FAULTS)], o).toBe('html');
+    }
+    const v = at('visible');
+    expect(v.nodes[1]?.clips).toBe(false);
+    expect(v.ids[hitTest(v.nodes, 40 * PX, 5 * PX, NO_HIT_FAULTS)]).toBe('k');
+  });
+});
+
+// GRID G1a review (#212, Medium): Blink paints grid items atomically in order-modified document order (css-grid-2 §9), which the
+// hit table does not model, so a grid container is refused by name instead of hit-testing its items as block children.
+describe('grid containers', () => {
+  const gridInput = async (inGrid: boolean) => {
+    const { box, neutralEnvironment, px } = await import('./helpers.ts');
+    const AUTO = { kind: 'breadth' as const, breadth: { kind: 'auto' as const } };
+    const grid = { templateColumns: [], templateRows: [], autoColumns: [AUTO], autoRows: [AUTO], explicitColumnCount: 0, explicitRowCount: 0, autoFlow: 'row' as const, dense: false, justifyItems: 'normal' as const };
+    const cell = { column: { kind: 'definite' as const, start: 1, end: 2 }, row: { kind: 'definite' as const, start: 1, end: 2 }, justifySelf: 'auto' as const };
+    const items = ['a', 'b'].map((id, k) => box(id, { height: px(20), order: 1 - k, ...(inGrid ? { gridItem: cell } : {}) }));
+    const container = inGrid ? box('g', { display: 'grid', width: px(100), grid }, items) : box('g', { width: px(100) }, items);
+    const root = box('html', {}, [box('body', {}, [container])]);
+    const facts = new Map(['html', 'body', 'g', 'a', 'b'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false }] as const));
+    return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts };
+  };
+  const REASON = 'g is a grid container, which the hit table does not model yet (GRID: atomic grid items in order-modified document order; no Chrome hit capture)';
+
+  it('refuses a grid program with a named HitError, and hitRefusal names the same reason', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer, layout } = await import('../src/index.ts');
+    const { input, facts } = await gridInput(true);
+    expect(layout(input, ahemMeasurer).kind).toBe('ok');
+    expect(hitRefusal(input)).toBe(REASON);
+    expect(() => hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS)).toThrow(new HitError(REASON));
+  });
+
+  it('leaves the same tree as block flow unaffected', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { input, facts } = await gridInput(false);
+    expect(hitRefusal(input)).toBeNull();
+    expect(hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS).ids).toEqual(['html', 'body', 'g', 'a', 'b']);
+  });
+});

@@ -445,7 +445,10 @@ export function interactionCapRefusal(caseLabel: string, over: NonNullable<Inter
 }
 
 const all = (): boolean => true;
-const visibleOrHidden = (v: CssValue): boolean => v.kind === 'keyword' && (v.value === 'visible' || v.value === 'hidden');
+// OVFL: rt-hit clips hidden, auto, scroll and clip at the padding box. That is the hit at scroll offset 0, and native views do not
+// scroll until OVFL Phase B, which adds the offsets to the hit test.
+const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip', 'auto', 'scroll']);
+const overflowAtRest = (v: CssValue): boolean => v.kind === 'keyword' && OVERFLOW_AT_REST.has(v.value);
 
 /**
  * R13: the paint longhands Dragon's hit test (packages/layout/src/rt-hit.ts) models, each with the values it models. Box
@@ -464,10 +467,25 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['border-right-color', all],
   ['border-bottom-color', all],
   ['border-left-color', all],
-  ['overflow-x', visibleOrHidden],
-  ['overflow-y', visibleOrHidden],
+  ['overflow-x', overflowAtRest],
+  ['overflow-y', overflowAtRest],
   ['transform-origin', all],
 ]);
+
+/**
+ * R13: the first grid container of a resolved tree whose display compiles, in preorder, or null. rt-hit.ts refuses grid containers
+ * (Blink paints grid items atomically in order-modified document order, which the hit table does not model yet).
+ */
+export function hitUnmodelledGrid(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): string | null {
+  const d = root.props.get('display');
+  if (d !== undefined && d.value.kind === 'keyword' && (d.value.value === 'grid' || d.value.value === 'inline-grid') && compiles(d)) return root.element.address;
+  for (const c of root.children) {
+    if (c.kind !== 'element') continue;
+    const found = hitUnmodelledGrid(c, compiles);
+    if (found !== null) return found;
+  }
+  return null;
+}
 
 /** R13: the first paint fact of a resolved tree the hit test does not model and that compiles, in preorder and longhand order, or null. */
 export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles: (v: ResolvedValue) => boolean = () => true): { readonly property: Longhand; readonly address: string } | null {

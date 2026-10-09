@@ -1,0 +1,10 @@
+{
+  "case": "content-on-elements-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"none:text0","lines":[[0,2]]},
+    {"id":"normal:text0","lines":[[0,2]]},
+    {"id":"str:text0","lines":[[0,4]]},
+    {"id":"empty:text0","lines":[[0,1]]}
+  ]
+}

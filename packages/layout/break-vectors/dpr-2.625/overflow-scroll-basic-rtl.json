@@ -1,0 +1,7 @@
+{
+  "case": "overflow-scroll-basic-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a:text0","lines":[[0,2]]}
+  ]
+}

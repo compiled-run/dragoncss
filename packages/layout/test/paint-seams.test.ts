@@ -11,9 +11,9 @@ const FEATURES = ['radius', 'shadow', 'gradient', 'transform', 'dash', 'scrollba
 /**
  * The seams a package has filled: dash by P6a (paint-dash.ts, its index.ts line and its vectors), transform by PNT2
  * (paint-transform.ts, its index.ts lines and its suite, packages/layout/test/paint-transform.test.ts), gradient by BG2
- * (paint-gradient.ts, its index.ts lines and its vectors).
+ * (paint-gradient.ts, its index.ts lines and its vectors), radius by PNT1 (paint-radius.ts, its index.ts lines and its vectors).
  */
-const FILLED = ['dash', 'gradient', 'transform'];
+const FILLED = ['dash', 'gradient', 'radius', 'transform'];
 const STUBS = FEATURES.filter((f) => !FILLED.includes(f));
 
 describe('EMS: engine paint seams', () => {
@@ -35,6 +35,8 @@ describe('EMS: engine paint seams', () => {
       "export type { ReplacedPaint } from './paint.ts';",
       "export { replacedPaint } from './paint.ts';",
       "export type { BoxShape } from './paint.ts';",
+      "export type { RadiusFaults, RadiusLength } from './paint-radius.ts';",
+      "export { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from './paint-radius.ts';",
       "export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';",
       "export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';",
       "export type { OriginPoint, TransformOrigin } from './paint-transform.ts';",

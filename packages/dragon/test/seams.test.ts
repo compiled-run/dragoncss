@@ -7,6 +7,10 @@ import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resol
 import type { Candidate } from '../src/analysis/resolve.ts';
 import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
 import { keyframesAtRule } from '../src/css/at-rules/keyframes.ts';
+import { layerAtRule } from '../src/css/at-rules/layer.ts';
+import { propertyAtRule } from '../src/css/at-rules/property.ts';
+import { charsetAtRule } from '../src/css/at-rules/charset.ts';
+import { supportsAtRule } from '../src/css/at-rules/supports.ts';
 import type { AtRuleContext } from '../src/css/at-rules.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS, SHORTHANDS_MOVED } from '../src/css/properties.ts';
 import type { Longhand } from '../src/css/properties.ts';
@@ -88,7 +92,7 @@ describe('E2 seams: the property registry', () => {
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());
     for (const s of SHORTHANDS) for (const l of SHORTHAND_HANDLERS[s].longhands) expect((LONGHANDS as readonly string[]).includes(l), `${s} -> ${l}`).toBe(true);
-    expect(SHORTHAND_HANDLERS.border.longhands).toEqual(LONGHANDS.filter((p) => p.startsWith('border-top-') || p.startsWith('border-right-') || p.startsWith('border-bottom-') || p.startsWith('border-left-')).sort((a, b) => ['top', 'right', 'bottom', 'left'].indexOf(a.split('-')[1] as string) - ['top', 'right', 'bottom', 'left'].indexOf(b.split('-')[1] as string)));
+    expect(SHORTHAND_HANDLERS.border.longhands).toEqual(LONGHANDS.filter((p) => (p.startsWith('border-top-') || p.startsWith('border-right-') || p.startsWith('border-bottom-') || p.startsWith('border-left-')) && !p.endsWith('-radius')).sort((a, b) => ['top', 'right', 'bottom', 'left'].indexOf(a.split('-')[1] as string) - ['top', 'right', 'bottom', 'left'].indexOf(b.split('-')[1] as string)));
   });
   it('the unit registry order is pinned, and unregistered units keep their <length-unit> feature key', () => {
     expect(UNITS.map((u) => u.unit)).toEqual(['px', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'em', 'rem', 'ex', 'rex', 'ch', 'rch', 'cap', 'rcap', 'ic', 'ric', 'lh', 'rlh', 'vw', 'vh', 'vi', 'vb', 'vmin', 'vmax', 'svw', 'svh', 'svi', 'svb', 'svmin', 'svmax', 'lvw', 'lvh', 'lvi', 'lvb', 'lvmin', 'lvmax', 'dvw', 'dvh', 'dvi', 'dvb', 'dvmin', 'dvmax', 'cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax']);
@@ -110,21 +114,24 @@ describe('E2 seams: FIXTURES', () => {
     expect(fixtures.slice(0, MILESTONE_1_IDS.length).map((f) => f.id)).toEqual(MILESTONE_1_IDS);
     expect(new Set(fixtures.map((f) => f.id)).size).toBe(fixtures.length);
   });
-  // GRID G1a retargeted reject-display-grid (display: grid is proven in block flow); every other milestone-1 spec is unchanged.
-  // At 4c1331c all specs hashed to 48d8a64b9fc390f1ebaed1047756416eba71054719f7bba3986a588986751b98 and all but this one to 62e9bb0a.
-  it('the milestone-1 specs are byte-identical to 4c1331c, except the retargeted reject-display-grid', async () => {
+  // OVFL retargeted reject-overflow-single-axis to clip and removed reject-overflow-body and reject-overflow-scroll (now layout
+  // fixtures in the overflow group); GRID G1a retargeted reject-display-grid (display: grid is proven in block flow); every
+  // other milestone-1 spec is unchanged. Before G1a all specs hashed to a336142203f67ef5287bfd48a891f5c542ebeb581f5ac720964e1563c1269389.
+  it('the milestone-1 specs are byte-identical to 4c1331c but for the OVFL rejects and the retargeted reject-display-grid', async () => {
     const m1 = (await load()).slice(0, MILESTONE_1_IDS.length);
-    expect(sha(m1.filter((f) => f.id !== 'reject-display-grid'))).toBe('62e9bb0a45818f9d408ec9bdb7677b975c256653820197cb1a45fe46a62160d8');
+    expect(sha(m1.filter((f) => f.id !== 'reject-display-grid'))).toBe('7725fc41f20e78d69c61b30fa1cd836581aa707810b4bd472553678c8e25ba93');
     expect(m1.find((f) => f.id === 'reject-display-grid')).toEqual({ id: 'reject-display-grid', format: 'html', kind: 'reject', expect: { code: 'DRAGON_UNPROVEN_CONTEXT', spanText: 'grid', messagePrefix: 'display:grid on grid is used in the flex-column/ltr context, which is not proven' } });
   });
 });
 
-describe('E2 seams: every at-rule but @media and @keyframes is still refused', () => {
-  // MQ-a made @media conditional and ANIM-b1 accepted a top-level @keyframes (keyframes.test.ts); ANIM-b2 accepted @-webkit-keyframes
-  // as @keyframes (aliases.test.ts).
+describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, @charset and @layer is still refused', () => {
+  // MQ-a made @media conditional, ANIM-b1 accepted a top-level @keyframes (keyframes.test.ts), ANIM-b2 accepted @-webkit-keyframes
+  // as @keyframes (aliases.test.ts), CASC decides @supports (casc.test.ts), CASC 2 registers a top-level @property
+  // (casc-property.test.ts) and CASC 3 orders cascade layers (casc-layer.test.ts). The enclosing at-rule of the fourth sheet is
+  // @unknown-thing, which no handler will ever take. @charset has its own handler, which accepts only "utf-8" at the start of a sheet (charset.test.ts).
   const KEYFRAMES = ['keyframes', '-webkit-keyframes'];
-  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
-  const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@supports (display: flex) { @${n} z { .b { height: 3px; } } }`];
+  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'supports' && n !== 'property' && n !== 'charset' && n !== 'layer' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
+  const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@unknown-thing w { @${n} z { .b { height: 3px; } } }`];
   const run = (text: string): { text: string; diagnostics: Diagnostic[]; enclosed: EnclosedRules[]; rules: number } => {
     const diagnostics: Diagnostic[] = [];
     const enclosed: EnclosedRules[] = [];
@@ -132,8 +139,8 @@ describe('E2 seams: every at-rule but @media and @keyframes is still refused', (
     return { text, diagnostics, enclosed, rules: rules.length };
   };
   const atRules = (ds: readonly Diagnostic[]): [string, string][] => ds.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.code, d.message]);
-  it('every registered name but font-face and media is refused today', () => {
-    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : refuseAtRule);
+  it('every registered name but font-face, media, keyframes, supports, property, charset and layer is refused today', () => {
+    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : name === 'supports' ? supportsAtRule : name === 'property' ? propertyAtRule : name === 'charset' ? charsetAtRule : name === 'layer' ? layerAtRule : refuseAtRule);
     expect(atRuleHandler('MEDIA')).toBe(mediaAtRule);
     expect(atRuleHandler('no-such-rule')).toBe(refuseAtRule);
     expect(atRuleHandler('Font-Face')).toBe(acceptFontFace);
@@ -160,8 +167,8 @@ describe('E2 seams: every at-rule but @media and @keyframes is still refused', (
       expect([top.rules, top.diagnostics, top.enclosed], n).toEqual([1, [], []]);
       expect(atRules(statement.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
       expect(atRules(nested.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in a rule block is not supported in milestone 1`]]);
-      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@supports in the stylesheet is not supported in milestone 1']]);
-      // The @media inside the refused @supports is parsed into the enclosed rules, with its condition, for analysis only.
+      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@unknown-thing in the stylesheet is not supported in milestone 1']]);
+      // The @media inside the refused @unknown-thing is parsed into the enclosed rules, with its condition, for analysis only.
       expect(inner.enclosed.length, n).toBe(1);
       expect(inner.enclosed[0]?.rules.map((r) => r.condition?.map((c) => c.text)), n).toEqual([['z']]);
     }
@@ -173,15 +180,20 @@ describe('E2 seams: every at-rule but @media and @keyframes is still refused', (
       expect(atRules(top.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
       expect(atRules(statement.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
       expect(atRules(nested.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in a rule block is not supported in milestone 1`]]);
-      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@supports in the stylesheet is not supported in milestone 1']]);
+      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@unknown-thing in the stylesheet is not supported in milestone 1']]);
       expect(inner.enclosed.length, n).toBe(2);
     }
   });
   it('the diagnostics and enclosed rules are byte-identical to 4c1331c', () => {
     // media and MEDIA left the list with MQ-a, and keyframes with ANIM-b1 (T065): with keyframes it gave 0a07dd1a…, and without
     // it the base before ANIM-b1 gives ba217ee5…, so every other at-rule is unchanged. At cb1a4b2d the full list gave 4cfb6ef0….
-    // -webkit-keyframes left with ANIM-b2: without it the base before ANIM-b2 (a36ce22e09) gives a0302641… too.
-    const pinned = ['charset', 'color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'layer', 'namespace', 'page', 'position-try', 'property', 'scope', 'starting-style', 'supports', 'view-transition', 'Font-Face', 'unknown-thing'];
+    // CASC decides @supports, so supports left the list and the enclosing at-rule became @layer: c80b0487dc (before CASC) gives
+    // fca72903… for these runs too. -webkit-keyframes left with ANIM-b2 (a36ce22e09 gave a0302641… without it); casc-supports
+    // before taking ANIM-b2 (1b8eacfdf9) gives 48d27023… for this list too. charset left with its own handler: without it master
+    // before it (9b32f10e18) gives ecd10b0c… too. property left with CASC 2: without it master before CASC 2 (508db670c4) gives
+    // 1397573c… too. CASC 3 orders @layer, so layer left the list and the enclosing at-rule became @unknown-thing (never registered, so always refused): master before
+    // CASC 3 (8a91837674) gives 180df812… for these runs too, so every other at-rule is still unchanged.
+    const pinned = ['color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'namespace', 'page', 'position-try', 'scope', 'starting-style', 'view-transition', 'Font-Face', 'unknown-thing'];
     const runs = pinned.flatMap((n) => sheets(n).map((text) => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
@@ -196,7 +208,7 @@ describe('E2 seams: every at-rule but @media and @keyframes is still refused', (
       }
       return x;
     }));
-    expect(sha(strip(runs))).toBe('a03026419de54b4982a5bd966e8868016a358438fee16c820dd0c7fc1e06d983');
+    expect(sha(strip(runs))).toBe('180df812178562c5c4cde6b617b5ba74c2aa0f3565c8d39177a9d8717aed5b3e');
     expect(added.length).toBeGreaterThan(0);
     for (const x of added) expect([[], null, false]).toContainEqual(x);
   });
@@ -254,7 +266,7 @@ const MILESTONE_1_IDS: readonly string[] = [
   'reject-shorthand-filled', 'reject-unproven-context', 'reject-tree-alias-cycle', 'reject-tree-choice-overlap',
   'reject-tree-unknown-state', 'reject-tree-initial-domain', 'reject-tree-producer-error',
   'reject-tree-raw-html', 'reject-white-space-pre', 'reject-nesting-ampersand', 'reject-nested-media',
-  'reject-overflow-single-axis', 'reject-overflow-body', 'reject-overflow-scroll', 'reject-last-baseline',
+  'reject-overflow-single-axis', 'reject-last-baseline',
   'reject-bidi-neutral', 'reject-position-fixed', 'reject-position-sticky', 'reject-abspos-in-inline',
 ];
 

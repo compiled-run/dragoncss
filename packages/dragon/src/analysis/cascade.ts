@@ -1,8 +1,10 @@
 // css-cascade-5 §6: the cascade of author declarations for one element. Only the author origin has declarations (user-agent
 // values come from the captured dataset, computed.ts, and Chrome's UA rules for the supported tags hold no !important), so the
-// order is importance, then specificity, then order of appearance.
+// order is importance, then cascade layer, then specificity, then order of appearance.
 import type { Longhand } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
+import type { Registrations } from '../css/at-rules/property.ts';
+import { NO_REGISTRATIONS } from '../css/at-rules/property.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { LinkedElement } from './link.ts';
 import type { DirectionContext } from './logical.ts';
@@ -23,11 +25,18 @@ export type Candidate = {
   readonly substitution?: Substitution;
 };
 
-/** css-cascade-5 §6.2-§6.5: importance (author !important over author normal), specificity, then order of appearance. */
+/**
+ * css-cascade-5 §6.2-§6.5: importance (author !important over author normal), cascade layers (a later layer wins for normal
+ * declarations and an earlier one for !important ones; unlayered declarations rank above every layer), specificity, then order
+ * of appearance.
+ */
 export function beats(a: Pick<Candidate, 'declaration' | 'specificity'>, b: Pick<Candidate, 'declaration' | 'specificity'>): boolean {
   const ia = a.declaration.important === true;
   const ib = b.declaration.important === true;
   if (ia !== ib) return ia;
+  const la = a.declaration.layer ?? Number.POSITIVE_INFINITY;
+  const lb = b.declaration.layer ?? Number.POSITIVE_INFINITY;
+  if (la !== lb) return ia ? la < lb : la > lb;
   for (let i = 0; i < 3; i++) {
     const x = a.specificity[i] as number;
     const y = b.specificity[i] as number;
@@ -64,7 +73,7 @@ const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var(
  * order: custom properties first (over the parent's, inherited), then direction with var() substituted, then every other
  * longhand with each flow-relative declaration mapped to the physical side of that direction.
  */
-export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties, ix: InteractionState = NO_INTERACTION): CascadeResult {
+export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties, ix: InteractionState = NO_INTERACTION, registered: Registrations = NO_REGISTRATIONS): CascadeResult {
   const customs = new Map<string, { declaration: Declaration; specificity: readonly [number, number, number] }>();
   for (const rule of rules) {
     for (const sel of rule.selectors) {
@@ -78,7 +87,7 @@ export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedEle
       }
     }
   }
-  const scope: VarScope = { customs: computeCustoms(new Map([...customs].map(([name, c]) => [name, c.declaration])), inheritedCustoms), memo: new Map<Declaration, SubstitutedDeclaration>() };
+  const scope: VarScope = { customs: computeCustoms(new Map([...customs].map(([name, c]) => [name, c.declaration])), inheritedCustoms, registered), memo: new Map<Declaration, SubstitutedDeclaration>() };
   // css-logical-1 §4: flow-relative declarations take part as the physical longhands of the element's direction (logical.ts).
   const own = hasDirectionalValues(rules) ? elementDirection(rules, chain, faults, direction, scope) : null;
   const winners = new Map<Longhand, Candidate>();
