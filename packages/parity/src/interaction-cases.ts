@@ -6,8 +6,10 @@
 // own elements and dimensions (analysis/interaction.ts), not from rt-interaction.ts, so the check is independent of the runtime.
 import type { InteractionFaults } from '@dragon/layout';
 import { rtInteraction } from '@dragon/layout';
-import type { InteractionLevelInput, InteractionPartition, InteractionProgram, InteractionSnapshot, InteractionStep, NativeBackend, NativeProgram } from 'dragon';
-import { deriveInteractionProgram, deriveStateProgram, focusTargetOf, hitFacts, interactionLevelInput, interactionPartitionOf, interactionProgramAt, InteractionRuntime } from 'dragon';
+import type { InteractionLevelInput, InteractionPartition, InteractionProgram, NativeBackend, NativeProgram } from 'dragon';
+import { deriveInteractionProgram, deriveStateProgram, focusTargetOf, hitFacts, interactionLevelInput, interactionPartitionOf, interactionProgramAt } from 'dragon';
+import type { InteractionSnapshot, InteractionStep } from './interaction-runtime.ts';
+import { InteractionRuntime } from './interaction-runtime.ts';
 import { hitAt, prepareHit } from '../../layout/src/rt-hit.ts';
 import { isForcedCaseId } from './cases.ts';
 import { programHitTable } from './hit-capture.ts';
@@ -100,6 +102,7 @@ export function deriveTrace(g: InteractionGroup, ip: InteractionProgram, inputs:
     for (const m of pathBetween(sp, at, app)) steps.push({ kind: 'set', state: m.state, value: m.value });
     at = app;
     const points = elementPoints(g, inputs, app, backend);
+    if (points.length === 0) throw new Error(`${g.id}: app assignment ${app} has no element the hit test reaches`);
     for (const p of points) {
       steps.push({ kind: 'move', x: p.x, y: p.y }, { kind: 'mouse-down', x: p.x, y: p.y }, { kind: 'mouse-up' }, { kind: 'key', modified: true }, { kind: 'key', modified: false });
       steps.push({ kind: 'exit-start' }, { kind: 'mouse-down', x: p.x, y: p.y }, { kind: 'frame' }, { kind: 'mouse-up' }, { kind: 'exit' });

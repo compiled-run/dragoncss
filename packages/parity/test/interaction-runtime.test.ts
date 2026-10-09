@@ -2,7 +2,7 @@
 import { rtInteraction } from '@dragon/layout';
 import type { InteractionFaults } from '@dragon/layout';
 import { describe, expect, it } from 'vitest';
-import { InteractionRuntime } from 'dragon';
+import { InteractionRuntime } from '../src/interaction-runtime.ts';
 import { BACKEND_OF } from '../src/native-host.ts';
 import { checkInteractions, deriveTrace, groupHit, interactionGroups, interactionProgramOf, levelInputs } from '../src/interaction-cases.ts';
 
@@ -26,19 +26,24 @@ describe('interaction runtime, host check (SELD-R2 PR 3)', () => {
     }, 600_000);
   }
 
-  it('raises onInteractionChange once per committed state change, with the old and new state (R16)', () => {
-    const g = interactionGroups().find((x) => x.id === 'interaction-hover');
-    if (g === undefined) throw new Error('no interaction-hover group');
-    const backend = BACKEND_OF.ios;
-    const inputs = levelInputs(g, backend);
-    const ip = interactionProgramOf(g, backend, inputs);
-    const rt = new InteractionRuntime(ip, groupHit(g, inputs));
-    const events: [number, number, number][] = [];
-    rt.onInteractionChange = (app, from, to) => events.push([app, from, to]);
-    const seen: number[] = [rt.state];
-    for (const s of deriveTrace(g, ip, inputs, backend)) seen.push(rt.step(s).state);
-    const changes = seen.flatMap((x, i) => (i > 0 && x !== seen[i - 1] ? [[ip.program.initial, seen[i - 1] as number, x]] : []));
-    expect(changes.length).toBeGreaterThan(2);
-    expect(events).toEqual(changes);
+  it('raises onInteractionChange at most once per step, naming both (app, state) pairs (R16)', () => {
+    let total = 0;
+    for (const g of interactionGroups()) {
+      const backend = BACKEND_OF.ios;
+      const inputs = levelInputs(g, backend);
+      const ip = interactionProgramOf(g, backend, inputs);
+      const rt = new InteractionRuntime(ip, groupHit(g, inputs));
+      let events: [number, number, number, number][] = [];
+      rt.onInteractionChange = (fromApp, from, toApp, to) => events.push([fromApp, from, toApp, to]);
+      for (const s of deriveTrace(g, ip, inputs, backend)) {
+        const before: [number, number] = [rt.assignment, rt.state];
+        events = [];
+        rt.step(s);
+        const changed = (rt.assignment !== before[0] || rt.state !== before[1]) && !(before[1] < 0 && rt.state < 0);
+        expect(events, `${g.id} ${s.kind}`).toEqual(changed ? [[before[0], before[1], rt.assignment, rt.state]] : []);
+        total += events.length;
+      }
+    }
+    expect(total).toBeGreaterThan(2);
   }, 600_000);
 });

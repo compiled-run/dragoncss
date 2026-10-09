@@ -423,8 +423,8 @@ export type { InteractionCondition, WebInteraction } from './emit/web-css.ts';
 export { conditionsExclusive, gatedConditions, HOVER_MEDIA, interactionCondition, NO_HOVER_MEDIA } from './emit/web-css.ts';
 
 // SELD-R2 PR 3 (notes/T064-seld-r2-spec.md R7, R12, R16): the interaction program and the interaction runtime's reference.
-export type { ForcedPseudo as InteractionForced, HitAt, InteractionLevel, InteractionLevelInput, InteractionProgram, InteractionSnapshot, InteractionStep } from './lower/interaction-program.ts';
-export { deriveInteractionProgram, INTERACTION_PROGRAM_VERSION, interactionDelta, interactionProgramAt, InteractionRuntime, interactionTables } from './lower/interaction-program.ts';
+export type { InteractionLevel, InteractionLevelInput, InteractionProgram } from './lower/interaction-program.ts';
+export { deriveInteractionProgram, INTERACTION_PROGRAM_VERSION, interactionDelta, interactionProgramAt, interactionTables } from './lower/interaction-program.ts';
 import type { InteractionLevelInput as LevelInput } from './lower/interaction-program.ts';
 
 /** HTML text fields (input types whose element may show a virtual keyboard, R8, P6): pointer focus on them is focus-visible. */
