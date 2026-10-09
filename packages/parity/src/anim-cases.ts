@@ -172,35 +172,95 @@ function settleMs(records: ReturnType<Animator['records']>): number {
   return end + 1;
 }
 
-/** The script of a frame case: each phase's state step, then its derived samples; a settle dump past every transition's end. */
-export function frameScript(c: AnimCase): FrameStep[] {
+/** R18's pixel subset rule, plantable: the ms after an edge, and whether the settle is shot. */
+export type PixelFaults = { readonly edgeMs: number; readonly settle: boolean };
+export const NO_PIXEL_FAULTS: PixelFaults = { edgeMs: 1, settle: true };
+
+/** At most this many pixel samples per device DPR over every frame case (R18). */
+export const FRAME_PIXEL_CAP = 400;
+
+/** R18's pixel offsets (ms from now), each an expression interestingOffsets also pushes: keyframe offsets + 1 ms, midpoints, active ends + 1 ms. */
+export function pixelOffsets(records: ReturnType<Animator['records']>, faults: PixelFaults = NO_PIXEL_FAULTS): number[] {
+  const out: number[] = [];
+  // The keyframe offsets are 0 and 1 of the first iteration (the script samples no inner offset), so its one segment's midpoint.
+  for (const t of records.transitions) {
+    const s = t.held.seconds * 1000;
+    const d = t.timing.delay * 1000;
+    const dur = t.timing.duration * 1000;
+    out.push(d - s + faults.edgeMs, d + dur - s + faults.edgeMs, d + dur / 2 - s);
+  }
+  for (const a of records.animations) {
+    if (a.paused) continue;
+    const s = a.held.seconds * 1000;
+    const d = a.timing.delay * 1000;
+    const dur = a.timing.duration * 1000;
+    out.push(d - s + faults.edgeMs, d + 0.5 * dur - s);
+    if (1 <= a.timing.iterations) out.push(d + 1 * dur - s + faults.edgeMs);
+    if (Number.isFinite(a.timing.iterations)) out.push(d + a.timing.iterations * dur - s + faults.edgeMs);
+  }
+  return out;
+}
+
+/** The script of a frame case and its pixel subset (dump indexes), from one pass over the simulator. */
+function derivedScript(c: AnimCase, faults: PixelFaults): { readonly steps: FrameStep[]; readonly pixels: number[] } {
   const sim = simulator(c);
-  const steps: FrameStep[] = [{ kind: 'dump', at: 0, settle: false }];
+  const steps: FrameStep[] = [];
+  const pixels: number[] = [];
+  let dumps = 0;
+  const dump = (at: number, settle: boolean, pixel: boolean): void => {
+    if (pixel) pixels.push(dumps);
+    dumps++;
+    steps.push({ kind: 'dump', at, settle });
+  };
+  // t = 0 is the first dump and the dump right after each state step.
+  dump(0, false, true);
   let now = 0;
   for (const p of c.fixture.frames.phases) {
     if (p.set.length > 0) {
       const sets = p.set.map(([state, value]) => ({ state: stateKey('doc', state), value }));
       steps.push({ kind: 'set', sets });
       sim.set(sets);
-      steps.push({ kind: 'dump', at: now, settle: false });
+      dump(now, false, true);
     }
+    const records = sim.animator.records();
     const times = new Set<number>([p.span]);
-    for (const t of interestingOffsets(sim.animator.records())) if (t > 0 && t <= p.span) times.add(t);
+    for (const t of interestingOffsets(records)) if (t > 0 && t <= p.span) times.add(t);
     if (p.grid !== null) for (let k = 1; (k * 1000) / p.grid <= p.span; k++) times.add((k * 1000) / p.grid);
+    const marks = new Set(pixelOffsets(records, faults).filter((t) => t > 0 && t <= p.span));
+    for (const t of marks) if (!times.has(t)) throw new Error(`${c.id}: the pixel sample ${t} ms into a phase is not a dump of the script`);
     let at = 0;
     for (const t of [...times].sort((a, b) => a - b)) {
       if (t - at <= 0) continue;
       steps.push({ kind: 'advance', ms: t - at });
       sim.animator.advance(t - at);
-      steps.push({ kind: 'dump', at: now + t, settle: false });
+      dump(now + t, false, marks.has(t));
       at = t;
     }
     now += p.span;
   }
   const settle = settleMs(sim.animator.records());
   steps.push({ kind: 'advance', ms: settle });
-  steps.push({ kind: 'dump', at: now + settle, settle: true });
-  return steps;
+  dump(now + settle, true, faults.settle);
+  return { steps, pixels };
+}
+
+/** The script of a frame case: each phase's state step, then its derived samples; a settle dump past every transition's end. */
+export function frameScript(c: AnimCase): FrameStep[] {
+  return derivedScript(c, NO_PIXEL_FAULTS).steps;
+}
+
+/** R18: the ascending dump indexes of a frame case's script whose pixels are compared; refuses steps that are not its script. */
+export function pixelSamples(c: AnimCase, steps: readonly FrameStep[], faults: PixelFaults = NO_PIXEL_FAULTS): number[] {
+  const d = derivedScript(c, faults);
+  if (JSON.stringify(d.steps) !== JSON.stringify(steps)) throw new Error(`${c.id}: the steps are not this case's frame script`);
+  return d.pixels;
+}
+
+/** The pixel samples per device DPR over the cases; throws above FRAME_PIXEL_CAP. */
+export function pixelSampleTotal(cases: readonly AnimCase[], faults: PixelFaults = NO_PIXEL_FAULTS): number {
+  const n = cases.reduce((k, c) => k + pixelSamples(c, frameScript(c), faults).length, 0);
+  if (n > FRAME_PIXEL_CAP) throw new Error(`${n} frame pixel samples per DPR, above the cap of ${FRAME_PIXEL_CAP} (R18)`);
+  return n;
 }
 
 /** A frame case's state runtime and animator, mounted at the initial assignment (R7: animations start at first style). */
