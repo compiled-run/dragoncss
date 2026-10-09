@@ -671,7 +671,7 @@ public func rtHit_rectOf(_ s: TableState, _ id: JsString) throws -> LayoutRect {
   let r: LayoutRect? = s.abs.get(id)
   // ts: packages/layout/src/rt-hit.ts:382
   if (r == nil) {
-    throw try HitError(jsConcat(S.s409, id))
+    throw try HitError(jsConcat(S.s411, id))
   }
   return try jsUnwrap(r)
 }
@@ -1124,7 +1124,7 @@ public func rtHit_hitTableOf(_ input: LayoutInput, _ measurer: TextMeasurer, _ f
   let out: any U_LayoutResult_ok_LayoutResult_unsupported = try layout_layout(input, measurer)
   // ts: packages/layout/src/rt-hit.ts:659
   if (out.kind != S.s_ok) {
-    throw try HitError(jsConcat(S.s410, (out as! LayoutResult_unsupported).unsupported.code, S.s9, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s50))
+    throw try HitError(jsConcat(S.s412, (out as! LayoutResult_unsupported).unsupported.code, S.s9, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s50))
   }
   let zoomed: LayoutInput = try layout_zoomInput(input, block_NO_ENGINE_FAULTS)
   let zmap: JsStringMap<LayoutBox> = JsStringMap<LayoutBox>()
