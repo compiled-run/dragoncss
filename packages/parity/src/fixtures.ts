@@ -15,6 +15,7 @@ import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { ENV } from './fixture-groups/env.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
+import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
@@ -103,6 +104,7 @@ export const GROUPS = {
   env: ENV,
   fonts: FONTS,
   grid: GRID,
+  'inherit-contexts': INHERIT_CONTEXTS,
   inline: INLINE,
   interaction: INTERACTION,
   'logical-props': LOGICAL_PROPS,
