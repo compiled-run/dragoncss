@@ -10,14 +10,14 @@
 // Blink's html.css is LGPL, so Dragon stores these captured values as data instead of copying the sheet.
 // The dataset is keyed by the capture platform (process.platform-process.arch): it writes only this platform's files,
 // packages/dragon/src/ua/chrome-145.<platform>[.dark].generated.ts, and refuses a platform argument other than this one.
-// Run with: pnpm run ua:capture [platform] [--check [--plant drop-declared|drop-unmodelled|dark-as-light|drop-font-size-small]] [--compare <file>]
+// Run with: pnpm run ua:capture [platform] [--check [--plant drop-declared|drop-unmodelled|dark-as-light|drop-font-size-small|drop-inherited-reset]] [--compare <file>]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CHROME_VERSION, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import { hostPlatform } from '../packages/parity/src/platform.ts';
-import { LONGHANDS } from '../packages/dragon/src/css/properties.ts';
+import { INHERITED, LONGHANDS } from '../packages/dragon/src/css/properties.ts';
 
 const TAGS = [
   'html', 'body', 'div',
@@ -77,12 +77,59 @@ const SPECS: Record<string, Spec> = { ...Object.fromEntries(TAGS.map((t) => [t, 
 /** Inherited font properties no milestone longhand models; a UA value for them changes how text is drawn. */
 const TEXT_FONT_PROPERTIES = ['font-weight', 'font-style'] as const;
 const BORDER_KEYWORDS = ['thin', 'medium', 'thick'] as const;
+/**
+ * A non-default value for every inherited milestone longhand but direction and font-size (the declared capture varies those
+ * itself). Under a default parent a UA rule that resets an inherited longhand to its default (html.css's control rules:
+ * line-height: normal, color: ButtonText) computes the value the element would inherit anyway, so the declared and unmodelled
+ * captures also read each element under a parent with these values, where such a reset differs from inheriting.
+ */
+const INHERITED_SKEW: Readonly<Record<string, string>> = {
+  'font-family': '"Dragon Skew", fantasy',
+  'line-height': '37px',
+  'text-align': 'justify',
+  'white-space-collapse': 'preserve-breaks',
+  'text-wrap-mode': 'nowrap',
+  color: 'rgb(1, 2, 3)',
+  'pointer-events': 'none',
+  'list-style-type': 'square',
+  'list-style-position': 'inside',
+  'list-style-image': `url("${PIXEL_PNG}")`,
+};
+/** Inherited properties no milestone longhand models that html.css's control rules (font: -webkit-small-control and the reset list) set; skewed the same way so their resets reach userAgentUnmodelled. */
+const UNMODELLED_SKEW: Readonly<Record<string, string>> = {
+  'font-weight': '700',
+  'font-style': 'italic',
+  'font-stretch': 'condensed',
+  'font-variant-caps': 'small-caps',
+  'font-variant-ligatures': 'no-common-ligatures',
+  'font-variant-numeric': 'tabular-nums',
+  'font-variant-east-asian': 'full-width',
+  'font-kerning': 'none',
+  'font-feature-settings': '"liga" 0',
+  'font-optical-sizing': 'none',
+  'font-variation-settings': '"wght" 500',
+  'letter-spacing': '3px',
+  'word-spacing': '5px',
+  'text-transform': 'uppercase',
+  'text-indent': '7px',
+  'text-shadow': 'rgb(1, 2, 3) 1px 1px 0px',
+  'text-rendering': 'geometricprecision',
+  cursor: 'crosshair',
+};
+{
+  // Every inherited milestone longhand but the two the capture varies itself must be skewed, so a new inherited longhand cannot be missed.
+  const want = LONGHANDS.filter((p) => INHERITED.has(p) && p !== 'direction' && p !== 'font-size').sort();
+  const have = Object.keys(INHERITED_SKEW).sort();
+  if (JSON.stringify(want) !== JSON.stringify(have)) throw new Error(`INHERITED_SKEW covers ${have.join(', ')}; the inherited milestone longhands are ${want.join(', ')}`);
+}
+/** The skew as one style attribute, after the given leading declarations. */
+const skewStyle = (lead: string, skews: readonly Readonly<Record<string, string>>[]): string => `${lead};${skews.flatMap((k) => Object.entries(k).map(([p, v]) => `${p}:${v}`)).join(';')}`;
 const SYSTEM_COLORS = [
   'Canvas', 'CanvasText', 'LinkText', 'VisitedText', 'ActiveText', 'ButtonFace', 'ButtonText', 'ButtonBorder', 'Field', 'FieldText',
   'Highlight', 'HighlightText', 'SelectedItem', 'SelectedItemText', 'Mark', 'MarkText', 'GrayText', 'AccentColor', 'AccentColorText',
 ] as const;
 type Browser = Awaited<ReturnType<typeof launchChrome>>;
-const PLANTS = ['drop-declared', 'drop-unmodelled', 'dark-as-light', 'drop-font-size-small'] as const;
+const PLANTS = ['drop-declared', 'drop-unmodelled', 'dark-as-light', 'drop-font-size-small', 'drop-inherited-reset'] as const;
 type Plant = (typeof PLANTS)[number];
 type Scheme = 'light' | 'dark';
 type Dirs = Record<string, Record<string, string>>;
@@ -133,6 +180,8 @@ type Capture = {
   initial: Record<string, Record<string, string>>;
   borderKeywords: Record<string, string>;
   declared: Record<string, Dirs>;
+  /** Per tag and direction, the inherited longhands of declared that a UA rule resets to the value a default parent passes down. */
+  resets: Record<string, Record<string, string[]>>;
   minimumLogicalFontSize: number;
   contexts: Record<string, string[]>;
   textFonts: Record<string, Record<string, string>>;
@@ -192,9 +241,11 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
   // Declared values: each tag under a parent of font-size 100px and 200px, in each direction; a UA rule sets a longhand whose value
   // differs from the same element under "<longhand>: unset" (the parent is not the root). A px value that doubles with the
   // font size is em-relative (font-size to the parent's, every other length to the element's own); an unchanged one is absolute.
+  // An inherited longhand a UA rule resets to the value a default parent passes down shows only under the skewed parent
+  // (INHERITED_SKEW); it is recorded when its value is the same under every parent, and is listed in resets.
   const host = await openPage(browser, hostDoc(scheme), ENV);
-  const declared = await host.evaluate(
-    ({ tags, specs, props }) => {
+  const { out: declared, resets } = await host.evaluate(
+    ({ tags, specs, props, skew }) => {
       const hostEl = document.getElementById('host') as HTMLElement;
       const make = (key: string): HTMLElement => {
         const s = specs[key] as { tag: string; attrs: Record<string, string> };
@@ -204,13 +255,26 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       };
       const px = (v: string): number | null => (/^-?[0-9.]+(e-?[0-9]+)?px$/.test(v) ? Number.parseFloat(v) : null);
       const out: Record<string, Record<string, Record<string, string>>> = {};
+      const resets: Record<string, Record<string, string[]>> = {};
+      const parentValues = (style: string): Record<string, string> => {
+        hostEl.replaceChildren();
+        const parent = document.createElement('div');
+        parent.setAttribute('style', style);
+        hostEl.appendChild(parent);
+        return Object.fromEntries(Object.keys(skew).map((p) => [p, getComputedStyle(parent).getPropertyValue(p)]));
+      };
+      // Each skew must take effect on the parent, or a reset of that longhand could not show.
+      const plain = parentValues('font-size:100px');
+      const skewed = parentValues(`font-size:100px;${Object.entries(skew).map(([p, v]) => `${p}:${v}`).join(';')}`);
+      for (const p of Object.keys(skew)) if (plain[p] === skewed[p]) throw new Error(`the ${p} skew ${skew[p]} leaves the parent at ${plain[p]}`);
       for (const tag of tags) {
         out[tag] = {};
+        resets[tag] = {};
         for (const dir of ['ltr', 'rtl']) {
-          const read = (size: number): { el: HTMLElement; values: Record<string, string>; initial: Record<string, string> } => {
+          const read = (size: number, skewed = false): { el: HTMLElement; values: Record<string, string>; initial: Record<string, string> } => {
             hostEl.replaceChildren();
             const parent = document.createElement('div');
-            parent.setAttribute('style', `font-size:${size}px;direction:${dir}`);
+            parent.setAttribute('style', `font-size:${size}px;direction:${dir}${skewed ? `;${Object.entries(skew).map(([p, v]) => `${p}:${v}`).join(';')}` : ''}`);
             const el = make(tag);
             parent.appendChild(el);
             hostEl.appendChild(parent);
@@ -258,12 +322,22 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
               }
             } else throw new Error(`${tag} ${p}: ${va} at 100px and ${vb} at 200px is neither absolute nor em-relative`);
           }
+          const s = read(100, true);
+          const reset: string[] = [];
+          for (const p of Object.keys(skew)) {
+            if (p in row || s.values[p] === s.initial[p]) continue;
+            const v = s.values[p] as string;
+            if (v !== a.values[p] || v !== b.values[p]) throw new Error(`${tag} ${dir} ${p}: a UA rule resets it to ${v} under the skewed parent but it is ${a.values[p]} and ${b.values[p]} under the default parents`);
+            row[p] = v;
+            reset.push(p);
+          }
           (out[tag] as Record<string, Record<string, string>>)[dir] = row;
+          (resets[tag] as Record<string, string[]>)[dir] = reset.sort();
         }
       }
-      return out;
+      return { out, resets };
     },
-    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, props: [...LONGHANDS] },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, props: [...LONGHANDS], skew: INHERITED_SKEW },
   );
   // Chrome's minimum logical font size: an em font size under the keyword-sized root is clamped up to it; an authored px size is not.
   const { minimumLogicalFontSize, authoredPx } = await host.evaluate(() => {
@@ -384,8 +458,11 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
   // Unmodelled: every property of Chrome's full computed list whose value differs from dragon-unstyled under the same parent
   // given the element's declared and text-font values, other than the milestone longhands and their logical aliases. A milestone
   // longhand that still differs is forced: "unset" and "initial" do not change it (a UA !important rule, or Chrome's adjustment of a form control).
+  // The same comparison under the skewed parent (INHERITED_SKEW and UNMODELLED_SKEW) adds the unmodelled properties a UA rule resets
+  // to the value a default parent passes down (html.css's font: -webkit-small-control, letter-spacing: normal, ...), when that
+  // value is the element's own under the default parent too.
   const { unmodelled, forced } = await host.evaluate(
-    ({ tags, specs, longhands, declared, textFonts }) => {
+    ({ tags, specs, longhands, declared, textFonts, skewStyle }) => {
       const hostEl = document.getElementById('host') as HTMLElement;
       const known = new Set<string>(longhands);
       const physical = (p: string): string =>
@@ -398,27 +475,40 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
         unmodelled[tag] = {};
         forced[tag] = {};
         for (const dir of ['ltr', 'rtl']) {
-          hostEl.replaceChildren();
-          const parent = document.createElement('div');
-          parent.setAttribute('style', `direction:${dir}`);
-          const s = specs[tag] as { tag: string; attrs: Record<string, string> };
-          const el = document.createElement(s.tag);
-          for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
-          const bare = document.createElement('dragon-unstyled');
-          const given = { ...(declared[tag] as Record<string, Record<string, string>>)[dir], ...textFonts[tag] };
-          for (const [p, v] of Object.entries(given)) bare.style.setProperty(p, v as string);
-          parent.append(el, bare);
-          hostEl.appendChild(parent);
-          const cs = getComputedStyle(el);
-          const ref = getComputedStyle(bare);
+          const given: Record<string, string> = { ...(declared[tag] as Record<string, Record<string, string>>)[dir], ...textFonts[tag] };
+          const pair = (style: string): { cs: CSSStyleDeclaration; ref: CSSStyleDeclaration } => {
+            hostEl.replaceChildren();
+            const parent = document.createElement('div');
+            parent.setAttribute('style', style);
+            const s = specs[tag] as { tag: string; attrs: Record<string, string> };
+            const el = document.createElement(s.tag);
+            for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
+            const bare = document.createElement('dragon-unstyled');
+            // Blink LayoutTheme::AdjustStyle makes any element with an appearance other than none inline-block (or block), so the
+            // reference never takes the declared appearance: a control's display stays forced, as it is under appearance: none too.
+            for (const [p, v] of Object.entries(given)) if (p !== 'appearance') bare.style.setProperty(p, v);
+            parent.append(el, bare);
+            hostEl.appendChild(parent);
+            return { cs: getComputedStyle(el), ref: getComputedStyle(bare) };
+          };
+          const { cs, ref } = pair(`direction:${dir}`);
+          const own = Object.fromEntries(Array.from(cs).map((p) => [p, cs.getPropertyValue(p)]));
           const row: Record<string, string> = {};
           const force: Record<string, string> = {};
           for (const p of [...new Set([...Array.from(cs), ...Array.from(ref)])].sort()) {
             if (p.startsWith('--')) continue;
             const v = cs.getPropertyValue(p);
-            if (v === ref.getPropertyValue(p)) continue;
+            if (v === ref.getPropertyValue(p) || (p === 'appearance' && given[p] === v)) continue;
             if (known.has(p)) force[p] = v;
             else if (!known.has(physical(p))) row[p] = v;
+          }
+          const skewed = pair(skewStyle.replace('direction:ltr', `direction:${dir}`));
+          for (const p of [...new Set([...Array.from(skewed.cs), ...Array.from(skewed.ref)])].sort()) {
+            if (p.startsWith('--') || p in row || p in given || known.has(p) || known.has(physical(p))) continue;
+            const v = skewed.cs.getPropertyValue(p);
+            if (v === skewed.ref.getPropertyValue(p)) continue;
+            if (v !== own[p]) throw new Error(`${tag} ${dir} ${p}: a UA rule resets it to ${v} under the skewed parent but it is ${own[p]} under the default parent`);
+            row[p] = v;
           }
           (unmodelled[tag] as Record<string, Record<string, string>>)[dir] = row;
           (forced[tag] as Record<string, Record<string, string>>)[dir] = force;
@@ -426,7 +516,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       }
       return { unmodelled, forced };
     },
-    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, longhands: [...LONGHANDS], declared, textFonts },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, longhands: [...LONGHANDS], declared, textFonts, skewStyle: skewStyle('direction:ltr', [INHERITED_SKEW, UNMODELLED_SKEW]) },
   );
   const systemColors = await host.evaluate((names) => {
     const hostEl = document.getElementById('host') as HTMLElement;
@@ -465,28 +555,33 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
     const ltr = (declared[tag] as Dirs)['ltr'] as Record<string, string>;
     const own = values[tag] as Record<string, string>;
     const init = initial[tag] as Record<string, string>;
-    const set = [...LONGHANDS].sort().filter((p) => own[p] !== init[p]);
-    if (JSON.stringify(Object.keys(ltr).sort()) !== JSON.stringify(set)) throw new Error(`${scheme} ${tag}: declared longhands ${Object.keys(ltr).join(',')} differ from the captured ${set.join(',')}`);
+    const set = [...new Set([...[...LONGHANDS].filter((p) => own[p] !== init[p]), ...((resets[tag] as Record<string, string[]>)['ltr'] as string[])])].sort();
+    if (JSON.stringify(Object.keys(ltr).sort()) !== JSON.stringify(set)) throw new Error(`${scheme} ${tag}: declared longhands ${Object.keys(ltr).join(',')} differ from the captured ${set.join(',')} and the inherited resets`);
   }
   await hidden.context().close();
   await rendered.context().close();
   await host.context().close();
-  return { values, initial, borderKeywords, declared, minimumLogicalFontSize, contexts, textFonts, unmodelled, forced, systemColors, fontSizes };
+  return { values, initial, borderKeywords, declared, resets, minimumLogicalFontSize, contexts, textFonts, unmodelled, forced, systemColors, fontSizes };
 }
 
-/** Each key, in each direction, reproduced by dragon-unstyled given its declared, text-font, unmodelled and forced values; returns the faults. */
+/**
+ * Each key, in each direction, reproduced by dragon-unstyled given its declared, text-font, unmodelled and forced values, under a
+ * default parent and under the skewed parent (INHERITED_SKEW, UNMODELLED_SKEW), where a missed reset of an inherited property
+ * shows; returns the faults. Under the skewed parent a text-font property the key sets is not compared: textFonts holds its value
+ * under a default parent, and a relative keyword (b's bolder) follows the parent's weight.
+ */
 async function selfConsistency(browser: Browser, scheme: Scheme, c: Capture): Promise<string[]> {
   const page = await openPage(browser, hostDoc(scheme), ENV);
   const faults = await page.evaluate(
-    ({ tags, specs, declared, textFonts, unmodelled, forced, scheme }) => {
+    ({ tags, specs, declared, textFonts, unmodelled, forced, scheme, skew }) => {
       const hostEl = document.getElementById('host') as HTMLElement;
       const out: string[] = [];
       for (const tag of tags) {
-        for (const dir of ['ltr', 'rtl']) {
+        for (const [dir, skewed] of [['ltr', false], ['rtl', false], ['ltr', true], ['rtl', true]] as const) {
           hostEl.replaceChildren();
           const under = (child: HTMLElement): HTMLElement => {
             const parent = document.createElement('div');
-            parent.setAttribute('style', `direction:${dir}`);
+            parent.setAttribute('style', `direction:${dir}${skewed ? `;${skew}` : ''}`);
             parent.appendChild(child);
             hostEl.appendChild(parent);
             return child;
@@ -501,15 +596,16 @@ async function selfConsistency(browser: Browser, scheme: Scheme, c: Capture): Pr
           const cs = getComputedStyle(el);
           const rs = getComputedStyle(replica);
           for (const p of [...new Set([...Array.from(cs), ...Array.from(rs)])].sort()) {
+            if (skewed && p in (textFonts[tag] as Record<string, string>)) continue;
             const want = cs.getPropertyValue(p);
             const got = rs.getPropertyValue(p);
-            if (want !== got) out.push(`${scheme} ${tag} ${dir}: ${p} is ${JSON.stringify(want)} in Chrome but ${JSON.stringify(got)} on dragon-unstyled given the captured values`);
+            if (want !== got) out.push(`${scheme} ${tag} ${dir}${skewed ? ' under the skewed parent' : ''}: ${p} is ${JSON.stringify(want)} in Chrome but ${JSON.stringify(got)} on dragon-unstyled given the captured values`);
           }
         }
       }
       return out;
     },
-    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, declared: c.declared, textFonts: c.textFonts, unmodelled: c.unmodelled, forced: c.forced, scheme },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, declared: c.declared, textFonts: c.textFonts, unmodelled: c.unmodelled, forced: c.forced, scheme, skew: skewStyle('', [INHERITED_SKEW, UNMODELLED_SKEW]).slice(1) },
   );
   // Each phrasing key's font size under every elementKeyFontSizes parent, reproduced by dragon-unstyled given its declared and text-font values.
   const sizeFaults = await page.evaluate(
@@ -578,7 +674,7 @@ function render(c: Capture, scheme: Scheme): string {
   for (const tag of TAGS) lines.push(`  ${JSON.stringify(tag)}: ${JSON.stringify(longhandsOf(tag))},`);
   lines.push('};');
   lines.push('');
-  lines.push('/** Declared UA values per tag and element direction: a captured value, or "<n>em" (font-size: of the parent font size; any other length: of the element\'s own). */');
+  lines.push('/** Declared UA values per tag and element direction: a captured value, or "<n>em" (font-size: of the parent font size; any other length: of the element\'s own); an inherited longhand a UA rule resets to its default (a control\'s line-height: normal) is found under a parent with non-default inherited values. */');
   lines.push('export const userAgentDeclared: { readonly [T in CapturedTag]: { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } } } = {');
   for (const tag of TAGS) lines.push(`  ${JSON.stringify(tag)}: ${declaredOf(tag)},`);
   lines.push('};');
@@ -776,13 +872,18 @@ function render(c: Capture, scheme: Scheme): string {
 }
 
 function applyPlant(p: Plant, light: Capture): void {
-  if (p === 'drop-declared') {
-    for (const dir of ['ltr', 'rtl']) delete ((light.declared['button'] as Dirs)[dir] as Record<string, string>)['padding-left'];
-  } else if (p === 'drop-unmodelled') {
-    for (const dir of ['ltr', 'rtl']) delete ((light.unmodelled['button'] as Dirs)[dir] as Record<string, string>)['appearance'];
-  } else if (p === 'drop-font-size-small') {
-    for (const dir of ['ltr', 'rtl']) delete ((light.declared['small'] as Dirs)[dir] as Record<string, string>)['font-size'];
-  }
+  // Each plant deletes one row entry in both directions; a missing entry throws, so a plant can never pass by deleting nothing.
+  const drop = (table: Record<string, Dirs>, key: string, property: string): void => {
+    for (const dir of ['ltr', 'rtl']) {
+      const row = (table[key] as Dirs | undefined)?.[dir] as Record<string, string> | undefined;
+      if (row === undefined || !(property in row)) throw new Error(`plant ${p}: ${key} ${dir} has no ${property} entry to delete`);
+      delete row[property];
+    }
+  };
+  if (p === 'drop-declared') drop(light.declared, 'button', 'padding-left');
+  else if (p === 'drop-unmodelled') drop(light.unmodelled, 'button', 'cursor');
+  else if (p === 'drop-font-size-small') drop(light.declared, 'small', 'font-size');
+  else if (p === 'drop-inherited-reset') drop(light.declared, 'button', 'line-height');
 }
 
 /** Compares the committed light dataset with another dataset file: entries of keys present in both. Returns the exit code. */

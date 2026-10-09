@@ -15,6 +15,7 @@ import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
+import { buttonAppearance, isControlTag } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
@@ -464,10 +465,68 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
   }
 }
 
+/** One refusal per target, keyed so a cascade of cases reports it once. */
+function refuseOn(el: ResolvedElement, v: ResolvedValue | null, what: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT', targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, message: string, manual: string): void {
+  const origin = v === null || v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+  for (const t of targets) {
+    const id = `${t}|button-${what}|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(code === 'DRAGON_UNSUPPORTED_FONT' ? diagnostic(code, { origin, target: t, message, manual }) : diagnostic(code, { origin, target: t, message, manual, basis: 'computed-value' }));
+  }
+}
+
+/**
+ * FORM-a A3: a button is laid out as a block container that centres its contents, or as the flex container its display says,
+ * and painted as CSS boxes. Refused: a button the platform theme paints (R11, FORM-b); an inline-level one (RF-INL); any other
+ * display; an absolutely positioned one (the engine's control-out-of-flow); and one whose font is Chrome's UA control font (R13).
+ */
+function checkButton(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const tag = el.element.tag;
+  const address = el.element.address;
+  const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE'): void =>
+    refuseOn(el, v, what, code, targets, diagnostics, reported, message, manual);
+  const appearance = el.props.get('appearance') as ResolvedValue;
+  if (buttonAppearance(el.props) === 'theme') {
+    refuse(appearance, 'theme', `<${tag}> ${address} with appearance: ${valueToString(appearance.value)} and no author background or border is painted by the platform theme (Blink LayoutTheme::IsControlStyled), which waits for the FORM-b package`, `Set appearance: none, or a background or border, on <${tag}> ${address}.`);
+  }
+  const display = el.props.get('display') as ResolvedValue;
+  const d = valueToString(display.value);
+  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
+    refuse(display, 'inline', `display: ${d} on <${tag}> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block (or flex) on <${tag}> ${address}, or make it a flex item.`);
+  } else if (d !== 'block' && d !== 'flex') {
+    refuse(display, 'display', `display: ${d} on <${tag}> ${address} is not supported on a button; only block and flex buttons are laid out`, `Set display: block (or flex) on <${tag}> ${address}.`);
+  }
+  const position = el.props.get('position') as ResolvedValue;
+  const pos = keywordOf(position);
+  // Chrome sizes a block-level flex button in block flow to its content, as it does a block one (Dragon's button-block), but
+  // the engine lays out a flex button as a plain flex container, which would stretch.
+  const width = el.props.get('width') as ResolvedValue;
+  const inBlockFlow = parentDisplay !== null && parentDisplay !== 'flex' && parentDisplay !== 'inline-flex' && parentDisplay !== 'grid' && parentDisplay !== 'inline-grid';
+  if (d === 'flex' && inBlockFlow && keywordOf(width) === 'auto') {
+    refuse(width, 'flex-width', `<${tag}> ${address} is a flex button with an auto width in block flow, which Chrome sizes to its content; Dragon lays out a flex button as a plain flex container, which would stretch`, `Set a width on <${tag}> ${address}, use display: block, or make it a flex item.`);
+  }
+  if (pos === 'absolute' || pos === 'fixed') {
+    refuse(position, 'position', `position: ${pos} on <${tag}> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <${tag}> ${address} in its flow.`);
+  }
+  const family = el.props.get('font-family') as ResolvedValue;
+  if (family.origin === 'user-agent') {
+    refuse(family, 'font', `<${tag}> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <${tag}> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
+  }
+}
+
+/** An absolutely positioned box inside a form control: the engine does not look up its containing block there (control-out-of-flow). */
+function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const position = el.props.get('position') as ResolvedValue;
+  const pos = keywordOf(position);
+  if (pos !== 'absolute' && pos !== 'fixed') return;
+  refuseOn(el, position, 'inside', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `position: ${pos} on <${el.element.tag}> ${el.element.address} inside <${button.element.tag}> ${button.element.address} is not supported yet: an absolutely positioned box inside a form control`, `Position the box outside <${button.element.tag}> ${button.element.address}.`);
+}
+
 export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, faults: GenBFaults = GEN_B_FAULTS): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
-  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, button: ResolvedElement | null, parentDisplay: string | null): void => {
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
@@ -476,17 +535,23 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
-    else if (!here) {
+    else if (!here && isControlTag(el.element.tag)) {
+      checkButton(el, parentDisplay, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported);
+    } else if (!here) {
       checkInlineLevel(el, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported);
+    if (!here && button !== null) checkInsideButton(el, button, targets, diagnostics, reported);
+    const inside = button ?? (isControlTag(el.element.tag) ? el : null);
+    const display = keywordOf(el.props.get('display') as ResolvedValue);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
-    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, inside, display === 'contents' ? parentDisplay : display);
   };
-  walk(root, false, 'viewport');
+  walk(root, false, 'viewport', null, null);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);

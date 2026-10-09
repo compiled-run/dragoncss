@@ -12,6 +12,7 @@ import { CASC } from './fixture-groups/casc.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CHARSET } from './fixture-groups/charset.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
+import { CONTROLS } from './fixture-groups/controls.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { ENV } from './fixture-groups/env.ts';
@@ -104,6 +105,7 @@ export const GROUPS = {
   'cascade-var': CASCADE_VAR,
   charset: CHARSET,
   contexts: CONTEXTS,
+  controls: CONTROLS,
   'ctx-proof': CTX_PROOF,
   'display-legacy': DISPLAY_LEGACY,
   env: ENV,

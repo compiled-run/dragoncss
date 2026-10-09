@@ -220,7 +220,14 @@ const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
 const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
 
 /**
- * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and GEN-b's neutral longhands) removed: the computed
+ * FORM-a A2's appearance longhand, also added after the identity base, removed only at its initial value none (the UA's auto on a
+ * control stays in the text, so such a file no longer hashes to the base).
+ */
+const APPEARANCE_JSON = /,\n[ ]*"appearance": "none"(?=,\n|\n)/g;
+const APPEARANCE_CSS = /^[ ]*appearance: none;\n/gm;
+
+/**
+ * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, GEN-b's and FORM-a's neutral longhands) removed: the computed
  * value of every captured element, and the declaration of every emitted rule; an emitted file's compilation digest (its first line)
  * is masked, since every compilation digest moves with the compiler input.
  */
@@ -228,11 +235,11 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    return text.replace(JSON_KEYS, '').replace(genB, '');
+    return text.replace(JSON_KEYS, '').replace(genB, '').replace(APPEARANCE_JSON, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
-    return text.replace(CSS_KEYS, '').replace(genB, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+    return text.replace(CSS_KEYS, '').replace(genB, '').replace(APPEARANCE_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }

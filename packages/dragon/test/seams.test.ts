@@ -101,6 +101,23 @@ describe('E2 seams: the property registry', () => {
     expect(lengthFeatureType('em')).toBe('<length-em>');
     expect(featureOf('width', { kind: 'length', value: 2, unit: 'rem' })).toBe('width:<length-rem>');
   });
+  it('appearance and its -webkit-appearance alias parse as Chrome 145 does (FORM-a A2)', () => {
+    // Chrome 145, probed 2026-10-01 on a div: each keyword below is declared and computed as written; base, the older -webkit-
+    // keywords, two keywords and an unknown word are dropped (declared empty, computed none). Both spellings agree.
+    const kept = ['none', 'auto', 'base-select', 'searchfield', 'textarea', 'checkbox', 'radio', 'menulist', 'listbox', 'meter', 'progress-bar', 'button', 'textfield', 'menulist-button'];
+    const dropped = ['base', 'push-button', 'slider-horizontal', 'inner-spin-button', 'square-button', 'sliderthumb-horizontal', 'media-slider', 'none auto', 'bogus'];
+    const read = (decl: string): { longhands: [string, unknown][]; codes: string[] } => {
+      const diagnostics: Diagnostic[] = [];
+      const text = `.a { ${decl} }`;
+      const rules = parseStylesheet(text, { source: SRC, start: 0, end: text.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics);
+      return { longhands: rules.flatMap((r) => r.declarations.flatMap((d) => d.longhands.map((l): [string, unknown] => [l.property, l.value]))), codes: diagnostics.map((d) => d.code) };
+    };
+    for (const property of ['appearance', '-webkit-appearance']) {
+      for (const k of kept) expect(read(`${property}: ${k.toUpperCase()};`), `${property}: ${k}`).toEqual({ longhands: [['appearance', { kind: 'keyword', value: k }]], codes: [] });
+      for (const k of dropped) expect(read(`${property}: ${k};`), `${property}: ${k}`).toEqual({ longhands: [], codes: [expect.stringMatching(/^DRAGON_(CSS_INVALID_VALUE|UNSUPPORTED_VALUE)$/)] });
+      expect(read(`${property}: inherit;`).longhands, `${property}: inherit`).toEqual([['appearance', { kind: 'keyword', value: 'inherit' }]]);
+    }
+  });
 });
 
 describe('E2 seams: FIXTURES', () => {

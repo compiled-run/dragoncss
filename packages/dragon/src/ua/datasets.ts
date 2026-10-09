@@ -2,9 +2,9 @@
 // captured dataset is refused; it never borrows another platform's values.
 import * as darwinArm64Dark from './chrome-145.darwin-arm64.dark.generated.ts';
 import * as darwinArm64 from './chrome-145.darwin-arm64.generated.ts';
-import type { CapturedTag, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
+import type { CapturedTag, ElementKey, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
 
-export type { CapturedTag, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
+export type { CapturedTag, ElementKey, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
 
 type DirRows = { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } };
 
@@ -29,10 +29,21 @@ export type UaDataset = {
   readonly replacedKeyContexts: { readonly [K in ReplacedKey]: readonly string[] };
   readonly replacedKeyTextFonts: { readonly [K in ReplacedKey]: { readonly [property: string]: string } };
   readonly replacedKeyForced: { readonly [K in ReplacedKey]: DirRows };
+  /** ELB-2: the element keys (button, input, input[type=range], ...), in tables of their own; uaRows reads the control keys. */
+  readonly elementKeyComputed: { readonly [K in ElementKey]: { readonly [property: string]: string } };
+  readonly elementKeyLonghands: { readonly [K in ElementKey]: readonly string[] };
+  readonly elementKeyDeclared: { readonly [K in ElementKey]: DirRows };
+  readonly elementKeyContexts: { readonly [K in ElementKey]: readonly string[] };
+  readonly elementKeyTextFonts: { readonly [K in ElementKey]: { readonly [property: string]: string } };
+  /** ELB-2 userAgentForced for every captured key, by key name. */
+  readonly userAgentForced: { readonly [key: string]: DirRows };
 };
 
-/** A row key of the UA dataset: a captured tag, or a replaced key (REPL-0). */
-export type UaKey = CapturedTag | ReplacedKey;
+/** The element keys of the form controls Dragon lays out (FORM-a). */
+export type ControlKey = Extract<ElementKey, 'button'>;
+
+/** A row key of the UA dataset: a captured tag, a replaced key (REPL-0) or a control key (FORM-a). */
+export type UaKey = CapturedTag | ReplacedKey | ControlKey;
 
 /** The UA rows of one key. forced: values Chrome forces whatever the cascade says (ELB-2 userAgentForced); none for a captured tag. */
 export type UaRows = {
@@ -50,8 +61,37 @@ function isReplacedKey(key: UaKey): key is ReplacedKey {
   return key === 'iframe' || key === 'img[src]';
 }
 
+function isControlKey(key: UaKey): key is ControlKey {
+  return key === 'button';
+}
+
+/**
+ * A control key's rows. Its forced display (inline-block) is Chrome's html.css `display: inline-block` on the control, which the
+ * ELB-2 reference records as forced because the reference's appearance adjustment hides it; an author display wins over it
+ * (probed in Chrome 145, packages/parity/fixtures/controls-button-display.html), so it is a declared UA value here, and
+ * analysis/computed.ts applies the appearance adjustment itself. Any other forced row is an error.
+ */
+function controlRows(ua: UaDataset, key: ControlKey): UaRows {
+  const forced = ua.userAgentForced[key];
+  if (forced === undefined) throw new Error(`no forced rows for the ${key} key`);
+  for (const dir of ['ltr', 'rtl'] as const) {
+    const rows = Object.keys(forced[dir]);
+    if (rows.some((p) => p !== 'display') || forced[dir]['display'] !== 'inline-block') throw new Error(`the ${key} key's forced rows are ${JSON.stringify(forced)}, not Chrome's display: inline-block`);
+  }
+  const declared = ua.elementKeyDeclared[key];
+  return {
+    computed: { ...ua.elementKeyComputed[key], display: 'inline-block' },
+    longhands: [...ua.elementKeyLonghands[key], 'display'],
+    declared: { ltr: { ...declared.ltr, display: 'inline-block' }, rtl: { ...declared.rtl, display: 'inline-block' } },
+    contexts: ua.elementKeyContexts[key],
+    textFonts: ua.elementKeyTextFonts[key],
+    forced: NO_FORCED,
+  };
+}
+
 /** The UA rows of a key, from the element tables or the replaced-key tables. */
 export function uaRows(ua: UaDataset, key: UaKey): UaRows {
+  if (isControlKey(key)) return controlRows(ua, key);
   if (isReplacedKey(key)) {
     return { computed: ua.replacedKeyComputed[key], longhands: ua.replacedKeyLonghands[key], declared: ua.replacedKeyDeclared[key], contexts: ua.replacedKeyContexts[key], textFonts: ua.replacedKeyTextFonts[key], forced: ua.replacedKeyForced[key] };
   }

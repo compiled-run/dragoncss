@@ -1,0 +1,12 @@
+{
+  "case": "controls-button-type",
+  "dpr": 2,
+  "texts": [
+    {"id":"t-none:text0","lines":[[0,2]]},
+    {"id":"t-button:text0","lines":[[0,2]]},
+    {"id":"t-submit:text0","lines":[[0,2]]},
+    {"id":"t-reset:text0","lines":[[0,2]]},
+    {"id":"t-bogus:text0","lines":[[0,2]]},
+    {"id":"t-empty:text0","lines":[[0,2]]}
+  ]
+}

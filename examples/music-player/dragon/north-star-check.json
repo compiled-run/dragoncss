@@ -133,13 +133,13 @@
   "contextProbe": {
    "rounds": 2,
    "blankedRules": 4,
-   "blankedDeclarations": 35,
+   "blankedDeclarations": 33,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 199,
-  "errors": 194,
+  "diagnostics": 207,
+  "errors": 202,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -147,11 +147,12 @@
    "DRAGON_UNPROVEN_CONTEXT [android]": 2,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 2,
    "DRAGON_UNPROVEN_CONTEXT [web]": 4,
-   "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
-   "DRAGON_UNSUPPORTED_ELEMENT": 8,
-   "DRAGON_UNSUPPORTED_FONT [android]": 34,
-   "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 29,
+   "DRAGON_UNSUPPORTED_ATTRIBUTE": 11,
+   "DRAGON_UNSUPPORTED_ELEMENT": 1,
+   "DRAGON_UNSUPPORTED_FONT [android]": 42,
+   "DRAGON_UNSUPPORTED_FONT [ios]": 42,
+   "DRAGON_UNSUPPORTED_FONT [web]": 8,
+   "DRAGON_UNSUPPORTED_PROPERTY": 27,
    "DRAGON_UNSUPPORTED_PROPERTY [web]": 2,
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 4,
@@ -165,9 +166,10 @@
    "web": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 4,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
-     "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_PROPERTY": 31,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 11,
+     "DRAGON_UNSUPPORTED_ELEMENT": 1,
+     "DRAGON_UNSUPPORTED_FONT": 8,
+     "DRAGON_UNSUPPORTED_PROPERTY": 29,
      "DRAGON_UNSUPPORTED_SELECTOR": 4,
      "DRAGON_UNSUPPORTED_VALUE": 7
     },
@@ -179,10 +181,10 @@
    "ios": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 2,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
-     "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 29,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 11,
+     "DRAGON_UNSUPPORTED_ELEMENT": 1,
+     "DRAGON_UNSUPPORTED_FONT": 42,
+     "DRAGON_UNSUPPORTED_PROPERTY": 27,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
      "DRAGON_UNSUPPORTED_VALUE": 24
     },
@@ -196,10 +198,10 @@
    "android": {
     "errors": {
      "DRAGON_UNPROVEN_CONTEXT": 2,
-     "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
-     "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 29,
+     "DRAGON_UNSUPPORTED_ATTRIBUTE": 11,
+     "DRAGON_UNSUPPORTED_ELEMENT": 1,
+     "DRAGON_UNSUPPORTED_FONT": 42,
+     "DRAGON_UNSUPPORTED_PROPERTY": 27,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
      "DRAGON_UNSUPPORTED_VALUE": 24
     },
@@ -216,13 +218,13 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 231,
-  "supportedWeb": 245,
-  "supportedIos": 231,
-  "supportedAndroid": 231,
-  "supportPercent": 79.9,
+  "supportedBothTargets": 232,
+  "supportedWeb": 246,
+  "supportedIos": 232,
+  "supportedAndroid": 232,
+  "supportPercent": 80.3,
   "elements": 62,
-  "supportedElements": 51,
+  "supportedElements": 61,
   "tags": {
    "html": {
     "count": 1,
@@ -246,7 +248,7 @@
    },
    "button": {
     "count": 10,
-    "supported": false
+    "supported": true
    },
    "iframe": {
     "count": 1,
@@ -303,9 +305,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 85,
-   "B-unwrapped": 85,
-   "C-context": 129
+   "A-authored": 69,
+   "B-unwrapped": 69,
+   "C-context": 153
   }
  },
  "features": {
@@ -2264,12 +2266,10 @@
    "atRule": null,
    "property": "-webkit-appearance",
    "value": "none",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 148,
@@ -2564,7 +2564,6 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -4073,7 +4072,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -4085,7 +4084,7 @@
     "column": 15,
     "text": "'Lato', sans-serif"
    },
-   "message": "font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem",
+   "message": "font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4093,7 +4092,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -4105,7 +4104,7 @@
     "column": 15,
     "text": "'Lato', sans-serif"
    },
-   "message": "font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem",
+   "message": "font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem or inherit",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4598,26 +4597,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4840-4864|-webkit-appearance is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 4840,
-    "end": 4864,
-    "line": 271,
-    "column": 2,
-    "text": "-webkit-appearance: none"
-   },
-   "message": "-webkit-appearance is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_NOT_APPLICABLE_NATIVE|android|css@4893-4908|cursor has no effect on android: it sets the mouse pointer shape, and a touch screen has no pointer; the android output leaves it out",
    "code": "DRAGON_NOT_APPLICABLE_NATIVE",
    "severity": "info",
@@ -4734,26 +4713,6 @@
     "text": "::-webkit-slider-thumb"
    },
    "message": "pseudo-element ::-webkit-slider-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (the form-control package FORM-a)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5479-5503|-webkit-appearance is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5479,
-    "end": 5503,
-    "line": 310,
-    "column": 2,
-    "text": "-webkit-appearance: none"
-   },
-   "message": "-webkit-appearance is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5350,40 +5309,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/youtube-sync-paused|attribute type on youtube-sync-paused is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "App/youtube-sync-paused",
-    "tag": "button"
-   },
-   "message": "attribute type on youtube-sync-paused is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/youtube-sync-playing|attribute type on youtube-sync-playing is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "App/youtube-sync-playing",
-    "tag": "button"
-   },
-   "message": "attribute type on youtube-sync-playing is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@Document/html|attribute lang on html is not supported: its rendering effect belongs to the text package TXT1-C (lang feeds locale font fallback)",
    "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
    "severity": "error",
@@ -5394,57 +5319,6 @@
     "tag": "html"
    },
    "message": "attribute lang on html is not supported: its rendering effect belongs to the text package TXT1-C (lang feeds locale font fallback)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@LibrarySong/library-song|attribute type on library-song is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "LibrarySong/library-song",
-    "tag": "button"
-   },
-   "message": "attribute type on library-song is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@Nav/library-button|attribute type on library-button is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Nav/library-button",
-    "tag": "button"
-   },
-   "message": "attribute type on library-button is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@Player/play|attribute type on play is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/play",
-    "tag": "button"
-   },
-   "message": "attribute type on play is not supported: its rendering effect belongs to the form-control package FORM-a",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5520,126 +5394,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@Player/skip-back|attribute type on skip-back is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/skip-back",
-    "tag": "button"
-   },
-   "message": "attribute type on skip-back is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@Player/skip-forward|attribute type on skip-forward is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/skip-forward",
-    "tag": "button"
-   },
-   "message": "attribute type on skip-forward is not supported: its rendering effect belongs to the form-control package FORM-a",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/youtube-sync-paused|<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "App/youtube-sync-paused",
-    "tag": "button"
-   },
-   "message": "<button> youtube-sync-paused is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@App/youtube-sync-playing|<button> youtube-sync-playing is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "App/youtube-sync-playing",
-    "tag": "button"
-   },
-   "message": "<button> youtube-sync-playing is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@LibrarySong/library-song|<button> library-song is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "LibrarySong/library-song",
-    "tag": "button"
-   },
-   "message": "<button> library-song is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Nav/library-button|<button> library-button is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Nav/library-button",
-    "tag": "button"
-   },
-   "message": "<button> library-button is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/play|<button> play is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/play",
-    "tag": "button"
-   },
-   "message": "<button> play is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/progress-input|<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
+   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/progress-input|<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, button)",
    "code": "DRAGON_UNSUPPORTED_ELEMENT",
    "severity": "error",
    "target": null,
@@ -5648,41 +5403,7 @@
     "id": "Player/progress-input",
     "tag": "input"
    },
-   "message": "<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/skip-back|<button> skip-back is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/skip-back",
-    "tag": "button"
-   },
-   "message": "<button> skip-back is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_ELEMENT|*|el@Player/skip-forward|<button> skip-forward is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
-   "code": "DRAGON_UNSUPPORTED_ELEMENT",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "element",
-    "id": "Player/skip-forward",
-    "tag": "button"
-   },
-   "message": "<button> skip-forward is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe)",
+   "message": "<input> progress-input is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, button)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5728,7 +5449,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@594-612|font-family:<pinned> on page/nav-call/nav-title:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/row/ltr: Ahem",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@594-612|font-family:<pinned> on page/nav-call/nav-title:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/row/ltr: Ahem or inherit",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -5740,14 +5461,14 @@
     "column": 15,
     "text": "'Lato', sans-serif"
    },
-   "message": "font-family:<pinned> on page/nav-call/nav-title:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/row/ltr: Ahem",
+   "message": "font-family:<pinned> on page/nav-call/nav-title:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/row/ltr: Ahem or inherit",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@594-612|font-family:<pinned> on page/song-call/song-title:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/column/ltr: Ahem",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@594-612|font-family:<pinned> on page/song-call/song-title:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/column/ltr: Ahem or inherit",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -5759,14 +5480,14 @@
     "column": 15,
     "text": "'Lato', sans-serif"
    },
-   "message": "font-family:<pinned> on page/song-call/song-title:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/column/ltr: Ahem",
+   "message": "font-family:<pinned> on page/song-call/song-title:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/column/ltr: Ahem or inherit",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); in text-in-block/ltr use Ahem; in text-in-flex-item/column/ltr use Ahem; in text-in-flex-item/row/ltr use Ahem",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); in text-in-block/ltr use Ahem or inherit; in text-in-flex-item/column/ltr use Ahem or inherit; in text-in-flex-item/row/ltr use Ahem or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -5778,14 +5499,14 @@
     "column": 15,
     "text": "'Lato', sans-serif"
    },
-   "message": "font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); in text-in-block/ltr use Ahem; in text-in-flex-item/column/ltr use Ahem; in text-in-flex-item/row/ltr use Ahem",
+   "message": "font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); in text-in-block/ltr use Ahem or inherit; in text-in-flex-item/column/ltr use Ahem or inherit; in text-in-flex-item/row/ltr use Ahem or inherit",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); in text-in-block/ltr use Ahem; in text-in-flex-item/column/ltr use Ahem; in text-in-flex-item/row/ltr use Ahem",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@594-612|font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); in text-in-block/ltr use Ahem or inherit; in text-in-flex-item/column/ltr use Ahem or inherit; in text-in-flex-item/row/ltr use Ahem or inherit",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -5797,7 +5518,7 @@
     "column": 15,
     "text": "'Lato', sans-serif"
    },
-   "message": "font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); in text-in-block/ltr use Ahem; in text-in-flex-item/column/ltr use Ahem; in text-in-flex-item/row/ltr use Ahem",
+   "message": "font-family: \"Lato\" , sans-serif is unsupported (support profile m1-s5); in text-in-block/ltr use Ahem or inherit; in text-in-flex-item/column/ltr use Ahem or inherit; in text-in-flex-item/row/ltr use Ahem or inherit",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6089,7 +5810,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5976-6014|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5976-6014|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal, animatable:color has no passing frame-lane proof in the animation context (support profile m1-s5)",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -6101,14 +5822,14 @@
     "column": 3,
     "text": "color 0.2s ease,\n\t\ttransform 0.2s ease"
    },
-   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal, animatable:color has no passing frame-lane proof in the animation context (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5976-6014|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5976-6014|transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal, animatable:color has no passing frame-lane proof in the animation context (support profile m1-s5)",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -6120,7 +5841,7 @@
     "column": 3,
     "text": "color 0.2s ease,\n\t\ttransform 0.2s ease"
    },
-   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal has no passing frame-lane proof in the animation context (support profile m1-s5)",
+   "message": "transition-property:<custom-ident>, transition-duration:<time>, transition-timing-function:ease, transition-delay:<time>, transition-behavior:normal, animatable:color has no passing frame-lane proof in the animation context (support profile m1-s5)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6564,6 +6285,134 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|el@LibrarySong/library-song|<button> page/library-call/song-1/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "element",
+    "id": "LibrarySong/library-song",
+    "tag": "button"
+   },
+   "message": "<button> page/library-call/song-1/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|el@LibrarySong/library-song|<button> page/library-call/song-2/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "element",
+    "id": "LibrarySong/library-song",
+    "tag": "button"
+   },
+   "message": "<button> page/library-call/song-2/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|el@LibrarySong/library-song|<button> page/library-call/song-3/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "element",
+    "id": "LibrarySong/library-song",
+    "tag": "button"
+   },
+   "message": "<button> page/library-call/song-3/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|el@LibrarySong/library-song|<button> page/library-call/song-4/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "element",
+    "id": "LibrarySong/library-song",
+    "tag": "button"
+   },
+   "message": "<button> page/library-call/song-4/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|el@Nav/library-button|<button> page/nav-call/library-button uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "element",
+    "id": "Nav/library-button",
+    "tag": "button"
+   },
+   "message": "<button> page/nav-call/library-button uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|el@Player/play|<button> page/player-call/play uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "element",
+    "id": "Player/play",
+    "tag": "button"
+   },
+   "message": "<button> page/player-call/play uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|el@Player/skip-back|<button> page/player-call/skip-back uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "element",
+    "id": "Player/skip-back",
+    "tag": "button"
+   },
+   "message": "<button> page/player-call/skip-back uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|android|el@Player/skip-forward|<button> page/player-call/skip-forward uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "element",
+    "id": "Player/skip-forward",
+    "tag": "button"
+   },
+   "message": "<button> page/player-call/skip-forward uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Library.tsrx:Library|font-family: \"Lato\" , sans-serif on page/library-call/library-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -6596,7 +6445,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: \"Lato\" , sans-serif on page/library-call/song-1/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: Arial on page/library-call/song-1/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6605,14 +6454,14 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.artist} - YouTube"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-1/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-1/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: \"Lato\" , sans-serif on page/library-call/song-2/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: Arial on page/library-call/song-2/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6621,14 +6470,14 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.artist} - YouTube"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-2/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-2/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: \"Lato\" , sans-serif on page/library-call/song-3/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: Arial on page/library-call/song-3/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6637,14 +6486,14 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.artist} - YouTube"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-3/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-3/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: \"Lato\" , sans-serif on page/library-call/song-4/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: Arial on page/library-call/song-4/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6653,7 +6502,7 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.artist} - YouTube"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-4/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-4/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6724,7 +6573,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: \"Lato\" , sans-serif on page/library-call/song-1/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: Arial on page/library-call/song-1/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6733,14 +6582,14 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.name}"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-1/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-1/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: \"Lato\" , sans-serif on page/library-call/song-2/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: Arial on page/library-call/song-2/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6749,14 +6598,14 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.name}"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-2/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-2/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: \"Lato\" , sans-serif on page/library-call/song-3/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: Arial on page/library-call/song-3/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6765,14 +6614,14 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.name}"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-3/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-3/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: \"Lato\" , sans-serif on page/library-call/song-4/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: Arial on page/library-call/song-4/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6781,7 +6630,7 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.name}"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-4/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-4/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6852,7 +6701,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Nav.tsrx:Library ♪|font-family: \"Lato\" , sans-serif on page/nav-call/library-button:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Nav.tsrx:Library ♪|font-family: Arial on page/nav-call/library-button:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6861,7 +6710,7 @@
     "file": "examples/music-player/tree/src/components/Nav.tsrx",
     "text": "Library ♪"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/nav-call/library-button:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/nav-call/library-button:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6932,7 +6781,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Player.tsrx:‹|font-family: \"Lato\" , sans-serif on page/player-call/skip-back:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Player.tsrx:‹|font-family: Arial on page/player-call/skip-back:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6941,14 +6790,14 @@
     "file": "examples/music-player/tree/src/components/Player.tsrx",
     "text": "‹"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/player-call/skip-back:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/player-call/skip-back:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Player.tsrx:›|font-family: \"Lato\" , sans-serif on page/player-call/skip-forward:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Player.tsrx:›|font-family: Arial on page/player-call/skip-forward:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6957,14 +6806,14 @@
     "file": "examples/music-player/tree/src/components/Player.tsrx",
     "text": "›"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/player-call/skip-forward:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/player-call/skip-forward:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Player.tsrx:▶|font-family: \"Lato\" , sans-serif on page/player-call/play-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Player.tsrx:▶|font-family: Arial on page/player-call/play-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6973,14 +6822,14 @@
     "file": "examples/music-player/tree/src/components/Player.tsrx",
     "text": "▶"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/player-call/play-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/player-call/play-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Player.tsrx:❚❚|font-family: \"Lato\" , sans-serif on page/player-call/pause-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Player.tsrx:❚❚|font-family: Arial on page/player-call/pause-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "android",
@@ -6989,7 +6838,7 @@
     "file": "examples/music-player/tree/src/components/Player.tsrx",
     "text": "❚❚"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/player-call/pause-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/player-call/pause-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -7108,6 +6957,134 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@LibrarySong/library-song|<button> page/library-call/song-1/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "LibrarySong/library-song",
+    "tag": "button"
+   },
+   "message": "<button> page/library-call/song-1/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@LibrarySong/library-song|<button> page/library-call/song-2/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "LibrarySong/library-song",
+    "tag": "button"
+   },
+   "message": "<button> page/library-call/song-2/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@LibrarySong/library-song|<button> page/library-call/song-3/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "LibrarySong/library-song",
+    "tag": "button"
+   },
+   "message": "<button> page/library-call/song-3/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@LibrarySong/library-song|<button> page/library-call/song-4/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "LibrarySong/library-song",
+    "tag": "button"
+   },
+   "message": "<button> page/library-call/song-4/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@Nav/library-button|<button> page/nav-call/library-button uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "Nav/library-button",
+    "tag": "button"
+   },
+   "message": "<button> page/nav-call/library-button uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@Player/play|<button> page/player-call/play uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "Player/play",
+    "tag": "button"
+   },
+   "message": "<button> page/player-call/play uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@Player/skip-back|<button> page/player-call/skip-back uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "Player/skip-back",
+    "tag": "button"
+   },
+   "message": "<button> page/player-call/skip-back uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|el@Player/skip-forward|<button> page/player-call/skip-forward uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "element",
+    "id": "Player/skip-forward",
+    "tag": "button"
+   },
+   "message": "<button> page/player-call/skip-forward uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Library.tsrx:Library|font-family: \"Lato\" , sans-serif on page/library-call/library-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -7140,7 +7117,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: \"Lato\" , sans-serif on page/library-call/song-1/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: Arial on page/library-call/song-1/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7149,14 +7126,14 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.artist} - YouTube"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-1/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-1/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: \"Lato\" , sans-serif on page/library-call/song-2/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: Arial on page/library-call/song-2/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7165,14 +7142,14 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.artist} - YouTube"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-2/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-2/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: \"Lato\" , sans-serif on page/library-call/song-3/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: Arial on page/library-call/song-3/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7181,14 +7158,14 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.artist} - YouTube"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-3/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-3/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: \"Lato\" , sans-serif on page/library-call/song-4/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: Arial on page/library-call/song-4/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7197,7 +7174,7 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.artist} - YouTube"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-4/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-4/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -7268,7 +7245,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: \"Lato\" , sans-serif on page/library-call/song-1/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: Arial on page/library-call/song-1/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7277,14 +7254,14 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.name}"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-1/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-1/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: \"Lato\" , sans-serif on page/library-call/song-2/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: Arial on page/library-call/song-2/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7293,14 +7270,14 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.name}"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-2/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-2/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: \"Lato\" , sans-serif on page/library-call/song-3/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: Arial on page/library-call/song-3/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7309,14 +7286,14 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.name}"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-3/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-3/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: \"Lato\" , sans-serif on page/library-call/song-4/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.name}|font-family: Arial on page/library-call/song-4/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7325,7 +7302,7 @@
     "file": "examples/music-player/tree/src/components/LibrarySong.tsrx",
     "text": "{song.name}"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/library-call/song-4/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/library-call/song-4/song-name:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -7396,7 +7373,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Nav.tsrx:Library ♪|font-family: \"Lato\" , sans-serif on page/nav-call/library-button:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Nav.tsrx:Library ♪|font-family: Arial on page/nav-call/library-button:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7405,7 +7382,7 @@
     "file": "examples/music-player/tree/src/components/Nav.tsrx",
     "text": "Library ♪"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/nav-call/library-button:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/nav-call/library-button:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -7476,7 +7453,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Player.tsrx:‹|font-family: \"Lato\" , sans-serif on page/player-call/skip-back:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Player.tsrx:‹|font-family: Arial on page/player-call/skip-back:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7485,14 +7462,14 @@
     "file": "examples/music-player/tree/src/components/Player.tsrx",
     "text": "‹"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/player-call/skip-back:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/player-call/skip-back:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Player.tsrx:›|font-family: \"Lato\" , sans-serif on page/player-call/skip-forward:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Player.tsrx:›|font-family: Arial on page/player-call/skip-forward:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7501,14 +7478,14 @@
     "file": "examples/music-player/tree/src/components/Player.tsrx",
     "text": "›"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/player-call/skip-forward:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/player-call/skip-forward:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Player.tsrx:▶|font-family: \"Lato\" , sans-serif on page/player-call/play-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Player.tsrx:▶|font-family: Arial on page/player-call/play-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7517,14 +7494,14 @@
     "file": "examples/music-player/tree/src/components/Player.tsrx",
     "text": "▶"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/player-call/play-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/player-call/play-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Player.tsrx:❚❚|font-family: \"Lato\" , sans-serif on page/player-call/pause-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Player.tsrx:❚❚|font-family: Arial on page/player-call/pause-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
    "target": "ios",
@@ -7533,7 +7510,7 @@
     "file": "examples/music-player/tree/src/components/Player.tsrx",
     "text": "❚❚"
    },
-   "message": "font-family: \"Lato\" , sans-serif on page/player-call/pause-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "message": "font-family: Arial on page/player-call/pause-icon:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -7646,6 +7623,134 @@
     "text": "YouTube Terms"
    },
    "message": "font-family: \"Lato\" , sans-serif on page/terms-link:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|web|el@LibrarySong/library-song|<button> page/library-call/song-1/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "element",
+    "id": "LibrarySong/library-song",
+    "tag": "button"
+   },
+   "message": "<button> page/library-call/song-1/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|web|el@LibrarySong/library-song|<button> page/library-call/song-2/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "element",
+    "id": "LibrarySong/library-song",
+    "tag": "button"
+   },
+   "message": "<button> page/library-call/song-2/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|web|el@LibrarySong/library-song|<button> page/library-call/song-3/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "element",
+    "id": "LibrarySong/library-song",
+    "tag": "button"
+   },
+   "message": "<button> page/library-call/song-3/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|web|el@LibrarySong/library-song|<button> page/library-call/song-4/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "element",
+    "id": "LibrarySong/library-song",
+    "tag": "button"
+   },
+   "message": "<button> page/library-call/song-4/library-song uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|web|el@Nav/library-button|<button> page/nav-call/library-button uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "element",
+    "id": "Nav/library-button",
+    "tag": "button"
+   },
+   "message": "<button> page/nav-call/library-button uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|web|el@Player/play|<button> page/player-call/play uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "element",
+    "id": "Player/play",
+    "tag": "button"
+   },
+   "message": "<button> page/player-call/play uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|web|el@Player/skip-back|<button> page/player-call/skip-back uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "element",
+    "id": "Player/skip-back",
+    "tag": "button"
+   },
+   "message": "<button> page/player-call/skip-back uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_FONT|web|el@Player/skip-forward|<button> page/player-call/skip-forward uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "element",
+    "id": "Player/skip-forward",
+    "tag": "button"
+   },
+   "message": "<button> page/player-call/skip-forward uses Chrome's user-agent control font (Arial), which the font map does not pin",
    "viaRelated": false,
    "passes": [
     "C-context"

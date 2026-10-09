@@ -23,4 +23,6 @@ export const BOX_ANIMATION: { readonly [P in (typeof BOX_LONGHANDS)[number]]: An
   // REPL-a: object-fit is discrete in Chrome; object-position interpolates, and its writer is not built.
   'object-fit': DISCRETE,
   'object-position': UNADMITTED,
+  // FORM-a A2: appearance is discrete in Chrome (interpolable: false in the snapshot).
+  appearance: DISCRETE,
 };

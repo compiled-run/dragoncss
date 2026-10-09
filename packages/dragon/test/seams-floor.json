@@ -27,6 +27,7 @@
     "padding-left",
     "object-fit",
     "object-position",
+    "appearance",
     "border-top-width",
     "border-right-width",
     "border-bottom-width",
@@ -83,6 +84,7 @@
   "shorthands": [
     "margin",
     "padding",
+    "-webkit-appearance",
     "border",
     "border-top",
     "border-right",
@@ -201,6 +203,7 @@
   "role:paint": [
     "object-fit",
     "object-position",
+    "appearance",
     "border-top-color",
     "border-right-color",
     "border-bottom-color",

@@ -21,6 +21,7 @@ import {
 import { buttonContentShift, controlOf, plainBox, sliderThumbShift } from './controls.ts';
 import { layoutFlexContainer } from './flex.ts';
 import { layoutInline } from './inline.ts';
+import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { checkControlSubtree, checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
@@ -372,7 +373,11 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
   const m = inlineMargins(ctx, s, cbInline, cbDirection, container);
   const specified = resolveInlineLengthWith(s.width, cbInline, ctx.faults);
   const stretched = max(hbp, sub(sub(m.available, m.start.value), m.end.value));
-  const raw = specified === null ? stretched : borderBoxFromSpecified(specified, hbp, s.boxSizing);
+  // A block button's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched by its
+  // block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-width*.html).
+  const fits = node.kind === 'control' && node.control.kind === 'button-block';
+  const auto = fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched;
+  const raw = specified === null ? auto : borderBoxFromSpecified(specified, hbp, s.boxSizing);
   const width = specified === null && hasAspectRatio(s) ? ratioBlockLevelInlineSize(ctx, box, cbInline, raw) : max(constrain(raw, inlineMinMaxWith(s, cbInline, hbp, ctx.faults)), hbp);
   return placeWithMargins(m, container, width);
 }

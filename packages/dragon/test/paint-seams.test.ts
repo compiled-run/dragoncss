@@ -221,7 +221,7 @@ describe('EMS: CSS families and paint values', () => {
     const props = new Map<Longhand, ResolvedValue>([['font-size', v(10, 'px')], ['width', v(2, 'em')]]);
     computeLengths(props, 16, 16);
     expect([...props.entries()].map(([k, x]) => [k, x.value])).toEqual([['font-size', { kind: 'length', value: 10, unit: 'px' }], ['width', { kind: 'length', value: 20, unit: 'px' }]]);
-    // SIZE-ar: aspect-ratio is a longhand (box family, after max-height); PNT2 adds transform, transform-origin and will-change.
+    // SIZE-ar: aspect-ratio is a longhand (box family, after max-height); PNT2 adds transform, transform-origin and will-change; FORM-a A2 adds appearance.
     // PIN-DERIVE: the seams floor holds every longhand there has been, in order, so none goes missing.
     expect(floorProblems(SEAMS_FLOOR, 'longhands', LONGHANDS, true)).toEqual([]);
   });
