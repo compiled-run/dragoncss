@@ -19,7 +19,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
   if try jsSome(kids, { (k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return (((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced))
 }) {
-    throw JsError(message: jsConcat(box.id, S.s99))
+    throw JsError(message: jsConcat(box.id, S.s100))
   }
   var widest: Double = units_ZERO
   // ts: packages/layout/src/intrinsic.ts:27
@@ -89,7 +89,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let isRow: Bool = ((s.flexDirection == S.s_row) || (s.flexDirection == S.s_row_reverse))
   // ts: packages/layout/src/intrinsic.ts:62
   if ((!isRow) && (s.flexWrap != S.s_nowrap)) {
-    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s423, S.s506)
+    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s424, S.s507)
   }
   // ts: packages/layout/src/intrinsic.ts:63
   if ((!isRow) || ((kind == S.s_min) && (s.flexWrap != S.s_nowrap))) {
@@ -109,7 +109,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let gap: any U_LengthCalc_NormalValue_Percent_Px = s.columnGap
   // ts: packages/layout/src/intrinsic.ts:69
   if try ((gap.kind != S.s_normal) && box_hasPercent((gap as! any U_LengthCalc_Percent_Px))) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s417, S.s591)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s418, S.s592)
   }
   let gapLu: Double = try ((gap.kind == S.s_normal) ? units_ZERO : box_resolveLength((gap as! any U_LengthCalc_Percent_Px), units_ZERO, ctx.faults))
   let gaps: Double = try ((jsLength(items) > 1.0) ? units_mulInt(gapLu, (jsLength(items) - 1.0)) : units_ZERO)

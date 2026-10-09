@@ -329,7 +329,7 @@ public func block_layoutContents(_ ctx: Ctx, _ node: any U_ControlBox_LayoutBox,
   }
   // ts: packages/layout/src/block.ts:291
   if (s.display == S.s_grid) {
-    try unsupported_unsupported(S.s_grid_layout, box.id, S.s425, S.s481)
+    try unsupported_unsupported(S.s_grid_layout, box.id, S.s426, S.s482)
   }
   let canCollapseTop: Bool = (((!a.formattingContextRoot) && (bor.top == 0.0)) && (pad.top == 0.0))
   let r: FlowResult = try block_layoutBlockFlow(ctx, box, FlowArgs(contentWidth, a.borderBoxWidth, (a.formattingContextRoot ? units_ZERO : a.bfcLineOffset), Point(units_add(bor.left, pad.left), units_add(bor.top, pad.top)), canCollapseTop, childBasis))
@@ -447,7 +447,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   if try jsSome(kids, { (k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return (((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced))
 }) {
-    throw JsError(message: jsConcat(box.id, S.s99))
+    throw JsError(message: jsConcat(box.id, S.s100))
   }
   let direction: JsString = try block_directionOf(ctx, box)
   let placed: JsArray<Placed> = JsArray<Placed>([])
