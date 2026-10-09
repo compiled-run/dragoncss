@@ -67,11 +67,11 @@ fun rtAnimations_pausedList(entries: JsArray<AnimationEntry>): JsArray<Boolean> 
   val out: JsArray<Boolean> = jsArrayOf<Boolean>()
   // ts: packages/layout/src/rt-animations.ts:59
   run {
-    val _a80 = entries
-    var _i80 = 0
-    while (_i80 < _a80.size) {
-      val e: AnimationEntry = _a80[_i80]
-      _i80++
+    val _a109 = entries
+    var _i109 = 0
+    while (_i109 < _a109.size) {
+      val e: AnimationEntry = _a109[_i109]
+      _i109++
       jsPush(out, e.paused)
     }
   }
@@ -82,11 +82,11 @@ fun rtAnimations_pausedList(entries: JsArray<AnimationEntry>): JsArray<Boolean> 
 fun rtAnimations_findRunning(running: JsArray<RunningAnimation>, name: String, nameIndex: Double, listIndex: Double, faults: RtFaults): RunningAnimation? {
   // ts: packages/layout/src/rt-animations.ts:64
   run {
-    val _a81 = running
-    var _i81 = 0
-    while (_i81 < _a81.size) {
-      val r: RunningAnimation = _a81[_i81]
-      _i81++
+    val _a110 = running
+    var _i110 = 0
+    while (_i110 < _a110.size) {
+      val r: RunningAnimation = _a110[_i110]
+      _i110++
       // ts: packages/layout/src/rt-animations.ts:65
       if ((if (faults.nameChangeKeepsAnimation) (r.listIndex == listIndex) else (jsStrEq(r.name, name) && (r.nameIndex == nameIndex)))) {
         return r
@@ -103,8 +103,8 @@ fun rtAnimations_updateAnimations(running: JsArray<RunningAnimation>, entries: J
   // ts: packages/layout/src/rt-animations.ts:78
   run {
     var i: Double = 0.0
-    loop7@ while ((i < jsLength(entries))) {
-      loop7_body@ do {
+    loop9@ while ((i < jsLength(entries))) {
+      loop9_body@ do {
         val e: AnimationEntry? = jsAt(entries, i)
         // ts: packages/layout/src/rt-animations.ts:80
         if ((e == null)) {
@@ -112,7 +112,7 @@ fun rtAnimations_updateAnimations(running: JsArray<RunningAnimation>, entries: J
         }
         // ts: packages/layout/src/rt-animations.ts:81
         if ((jsStrEq(jsUnwrap(e).name, "none") || (!jsUnwrap(e).hasKeyframes))) {
-          break@loop7_body
+          break@loop9_body
         }
         var nameIndex: Double = 0.0
         // ts: packages/layout/src/rt-animations.ts:83
@@ -131,7 +131,7 @@ fun rtAnimations_updateAnimations(running: JsArray<RunningAnimation>, entries: J
         // ts: packages/layout/src/rt-animations.ts:88
         if ((existing == null)) {
           jsPush(out, RunningAnimation("started", jsUnwrap(e).name, nameIndex, i, jsUnwrap(e).timing, jsUnwrap(e).paused, playStates, rtTiming_HELD_ZERO))
-          break@loop7_body
+          break@loop9_body
         }
         val wasPaused: Boolean = rtAnimations_repeatedPaused(jsUnwrap(existing).playStates, i)
         var toggle: Boolean = false
@@ -143,7 +143,7 @@ fun rtAnimations_updateAnimations(running: JsArray<RunningAnimation>, entries: J
         // ts: packages/layout/src/rt-animations.ts:96
         if ((!changed)) {
           jsPush(out, RunningAnimation("kept", jsUnwrap(existing).name, jsUnwrap(existing).nameIndex, i, jsUnwrap(existing).timing, jsUnwrap(existing).paused, jsUnwrap(existing).playStates, jsUnwrap(existing).held))
-          break@loop7_body
+          break@loop9_body
         }
         val paused: Boolean = (if (toggle) (!jsUnwrap(existing).paused) else jsUnwrap(existing).paused)
         val held: HeldTime = (if ((toggle && faults.pauseLosesPhase)) rtTiming_HELD_ZERO else jsUnwrap(existing).held)
@@ -169,11 +169,11 @@ fun rtAnimations_ruleNamed(rules: JsArray<KeyframesRule>, name: String): Keyfram
   var found: KeyframesRule? = null
   // ts: packages/layout/src/rt-animations.ts:138
   run {
-    val _a82 = rules
-    var _i82 = 0
-    while (_i82 < _a82.size) {
-      val r: KeyframesRule = _a82[_i82]
-      _i82++
+    val _a111 = rules
+    var _i111 = 0
+    while (_i111 < _a111.size) {
+      val r: KeyframesRule = _a111[_i111]
+      _i111++
       // ts: packages/layout/src/rt-animations.ts:138
       if (jsStrEq(r.name, name)) {
         found = r
@@ -188,11 +188,11 @@ fun rtAnimations_stackOrder(list: JsArray<RunningAnimation>, afterEvent: Boolean
   val out: JsArray<RunningAnimation> = jsArrayOf<RunningAnimation>()
   // ts: packages/layout/src/rt-animations.ts:149
   run {
-    val _a83 = list
-    var _i83 = 0
-    while (_i83 < _a83.size) {
-      val a: RunningAnimation = _a83[_i83]
-      _i83++
+    val _a112 = list
+    var _i112 = 0
+    while (_i112 < _a112.size) {
+      val a: RunningAnimation = _a112[_i112]
+      _i112++
       // ts: packages/layout/src/rt-animations.ts:149
       if (((!afterEvent) || jsStrEq(a.event, "kept"))) {
         jsPush(out, a)
@@ -203,11 +203,11 @@ fun rtAnimations_stackOrder(list: JsArray<RunningAnimation>, afterEvent: Boolean
   if (afterEvent) {
     // ts: packages/layout/src/rt-animations.ts:151
     run {
-      val _a84 = list
-      var _i84 = 0
-      while (_i84 < _a84.size) {
-        val a: RunningAnimation = _a84[_i84]
-        _i84++
+      val _a113 = list
+      var _i113 = 0
+      while (_i113 < _a113.size) {
+        val a: RunningAnimation = _a113[_i113]
+        _i113++
         // ts: packages/layout/src/rt-animations.ts:151
         if (jsStrEq(a.event, "started")) {
           jsPush(out, a)
@@ -216,11 +216,11 @@ fun rtAnimations_stackOrder(list: JsArray<RunningAnimation>, afterEvent: Boolean
     }
     // ts: packages/layout/src/rt-animations.ts:152
     run {
-      val _a85 = list
-      var _i85 = 0
-      while (_i85 < _a85.size) {
-        val a: RunningAnimation = _a85[_i85]
-        _i85++
+      val _a114 = list
+      var _i114 = 0
+      while (_i114 < _a114.size) {
+        val a: RunningAnimation = _a114[_i114]
+        _i114++
         // ts: packages/layout/src/rt-animations.ts:152
         if (jsStrEq(a.event, "updated")) {
           jsPush(out, a)
@@ -236,11 +236,11 @@ fun rtAnimations_composeAnimations(list: JsArray<RunningAnimation>, rules: JsArr
   var value: AnimatedValue = base
   // ts: packages/layout/src/rt-animations.ts:160
   run {
-    val _a86 = rtAnimations_stackOrder(list, afterEvent)
-    var _i86 = 0
-    while (_i86 < _a86.size) {
-      val a: RunningAnimation = _a86[_i86]
-      _i86++
+    val _a115 = rtAnimations_stackOrder(list, afterEvent)
+    var _i115 = 0
+    while (_i115 < _a115.size) {
+      val a: RunningAnimation = _a115[_i115]
+      _i115++
       val rule: KeyframesRule? = rtAnimations_ruleNamed(rules, a.name)
       // ts: packages/layout/src/rt-animations.ts:162
       if ((rule == null)) {
@@ -265,11 +265,11 @@ fun rtAnimations_sampleKeys(list: JsArray<RunningAnimation>, faults: RtFaults): 
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/rt-animations.ts:173
   run {
-    val _a87 = list
-    var _i87 = 0
-    while (_i87 < _a87.size) {
-      val a: RunningAnimation = _a87[_i87]
-      _i87++
+    val _a116 = list
+    var _i116 = 0
+    while (_i116 < _a116.size) {
+      val a: RunningAnimation = _a116[_i116]
+      _i116++
       val t: ComputedTiming = rtTiming_computeSecondsTiming(a.timing, a.held.seconds, faults)
       jsPush(out, (if ((t.currentIteration == null)) (0.0 / 0.0) else jsUnwrap(t.currentIteration)))
       jsPush(out, (if ((t.progress == null)) (0.0 / 0.0) else jsUnwrap(t.progress)))
@@ -329,11 +329,11 @@ fun rtAnimations_runAnimationScript(states: JsArray<AnimationState>, rules: JsAr
   val out: JsArray<AnimationReading> = jsArrayOf<AnimationReading>()
   // ts: packages/layout/src/rt-animations.ts:215
   run {
-    val _a88 = steps
-    var _i88 = 0
-    while (_i88 < _a88.size) {
-      val step: ScriptStep = _a88[_i88]
-      _i88++
+    val _a117 = steps
+    var _i117 = 0
+    while (_i117 < _a117.size) {
+      val step: ScriptStep = _a117[_i117]
+      _i117++
       // ts: packages/layout/src/rt-animations.ts:216
       if (jsStrEq(step.kind, "state")) {
         list = rtAnimations_updateAnimations(list, rtAnimations_stateAt(states, step.state).entries, faults)
@@ -344,11 +344,11 @@ fun rtAnimations_runAnimationScript(states: JsArray<AnimationState>, rules: JsAr
         val moved: JsArray<RunningAnimation> = jsArrayOf<RunningAnimation>()
         // ts: packages/layout/src/rt-animations.ts:223
         run {
-          val _a89 = list
-          var _i89 = 0
-          while (_i89 < _a89.size) {
-            val a: RunningAnimation = _a89[_i89]
-            _i89++
+          val _a118 = list
+          var _i118 = 0
+          while (_i118 < _a118.size) {
+            val a: RunningAnimation = _a118[_i118]
+            _i118++
             jsPush(moved, rtAnimations_advanceAnimation(a, step.deltaMs, faults))
           }
         }
@@ -365,11 +365,11 @@ fun rtAnimations_runAnimationScript(states: JsArray<AnimationState>, rules: JsAr
       val playStates: JsArray<String> = jsArrayOf<String>()
       // ts: packages/layout/src/rt-animations.ts:232
       run {
-        val _a90 = list
-        var _i90 = 0
-        while (_i90 < _a90.size) {
-          val a: RunningAnimation = _a90[_i90]
-          _i90++
+        val _a119 = list
+        var _i119 = 0
+        while (_i119 < _a119.size) {
+          val a: RunningAnimation = _a119[_i119]
+          _i119++
           // ts: packages/layout/src/rt-animations.ts:233
           if ((!rtAnimations_animationRelevant(a, faults))) {
             continue

@@ -83,7 +83,7 @@ public func rtAnimations_animationFinished(_ a: RunningAnimation) throws -> Bool
 public func rtAnimations_repeatedPaused(_ list: JsArray<Bool>, _ i: Double) throws -> Bool {
   // ts: packages/layout/src/rt-animations.ts:51
   if (jsLength(list) == 0.0) {
-    throw JsError(message: S.s137)
+    throw JsError(message: S.s158)
   }
   let k: Double = try (i - (rtEasing_floorOf((i / jsLength(list))) * jsLength(list)))
   let v: Bool? = jsAt(list, k)
@@ -95,11 +95,11 @@ public func rtAnimations_pausedList(_ entries: JsArray<AnimationEntry>) throws -
   let out: JsArray<Bool> = JsArray<Bool>([])
   // ts: packages/layout/src/rt-animations.ts:59
   do {
-    let _a80 = entries
-    var _i80 = 0
-    while _i80 < _a80.items.count {
-      let e: AnimationEntry = _a80.items[_i80]
-      _i80 += 1
+    let _a109 = entries
+    var _i109 = 0
+    while _i109 < _a109.items.count {
+      let e: AnimationEntry = _a109.items[_i109]
+      _i109 += 1
       _ = jsPush(out, e.paused)
     }
   }
@@ -110,11 +110,11 @@ public func rtAnimations_pausedList(_ entries: JsArray<AnimationEntry>) throws -
 public func rtAnimations_findRunning(_ running: JsArray<RunningAnimation>, _ name: JsString, _ nameIndex: Double, _ listIndex: Double, _ faults: RtFaults) throws -> RunningAnimation? {
   // ts: packages/layout/src/rt-animations.ts:64
   do {
-    let _a81 = running
-    var _i81 = 0
-    while _i81 < _a81.items.count {
-      let r: RunningAnimation = _a81.items[_i81]
-      _i81 += 1
+    let _a110 = running
+    var _i110 = 0
+    while _i110 < _a110.items.count {
+      let r: RunningAnimation = _a110.items[_i110]
+      _i110 += 1
       // ts: packages/layout/src/rt-animations.ts:65
       if (faults.nameChangeKeepsAnimation ? (r.listIndex == listIndex) : ((r.name == name) && (r.nameIndex == nameIndex))) {
         return r
@@ -131,16 +131,16 @@ public func rtAnimations_updateAnimations(_ running: JsArray<RunningAnimation>, 
   // ts: packages/layout/src/rt-animations.ts:78
   do {
     var i: Double = 0.0
-    loop7: while (i < jsLength(entries)) {
-      loop7_body: do {
+    loop9: while (i < jsLength(entries)) {
+      loop9_body: do {
         let e: AnimationEntry? = jsAt(entries, i)
         // ts: packages/layout/src/rt-animations.ts:80
         if (e == nil) {
-          throw JsError(message: jsConcat(S.s142, jsNumberToString(i), S.s40))
+          throw JsError(message: jsConcat(S.s163, jsNumberToString(i), S.s48))
         }
         // ts: packages/layout/src/rt-animations.ts:81
         if try ((jsUnwrap(e).name == S.s_none) || (!jsUnwrap(e).hasKeyframes)) {
-          break loop7_body
+          break loop9_body
         }
         var nameIndex: Double = 0.0
         // ts: packages/layout/src/rt-animations.ts:83
@@ -159,7 +159,7 @@ public func rtAnimations_updateAnimations(_ running: JsArray<RunningAnimation>, 
         // ts: packages/layout/src/rt-animations.ts:88
         if (existing == nil) {
           _ = try jsPush(out, RunningAnimation(S.s_started, jsUnwrap(e).name, nameIndex, i, jsUnwrap(e).timing, jsUnwrap(e).paused, playStates, rtTiming_HELD_ZERO))
-          break loop7_body
+          break loop9_body
         }
         let wasPaused: Bool = try rtAnimations_repeatedPaused(jsUnwrap(existing).playStates, i)
         var toggle: Bool = false
@@ -171,7 +171,7 @@ public func rtAnimations_updateAnimations(_ running: JsArray<RunningAnimation>, 
         // ts: packages/layout/src/rt-animations.ts:96
         if (!changed) {
           _ = try jsPush(out, RunningAnimation(S.s_kept, jsUnwrap(existing).name, jsUnwrap(existing).nameIndex, i, jsUnwrap(existing).timing, jsUnwrap(existing).paused, jsUnwrap(existing).playStates, jsUnwrap(existing).held))
-          break loop7_body
+          break loop9_body
         }
         let paused: Bool = try (toggle ? (!jsUnwrap(existing).paused) : jsUnwrap(existing).paused)
         let held: HeldTime = try ((toggle && faults.pauseLosesPhase) ? rtTiming_HELD_ZERO : jsUnwrap(existing).held)
@@ -197,11 +197,11 @@ public func rtAnimations_ruleNamed(_ rules: JsArray<KeyframesRule>, _ name: JsSt
   var found: KeyframesRule? = nil
   // ts: packages/layout/src/rt-animations.ts:138
   do {
-    let _a82 = rules
-    var _i82 = 0
-    while _i82 < _a82.items.count {
-      let r: KeyframesRule = _a82.items[_i82]
-      _i82 += 1
+    let _a111 = rules
+    var _i111 = 0
+    while _i111 < _a111.items.count {
+      let r: KeyframesRule = _a111.items[_i111]
+      _i111 += 1
       // ts: packages/layout/src/rt-animations.ts:138
       if (r.name == name) {
         found = r
@@ -216,11 +216,11 @@ public func rtAnimations_stackOrder(_ list: JsArray<RunningAnimation>, _ afterEv
   let out: JsArray<RunningAnimation> = JsArray<RunningAnimation>([])
   // ts: packages/layout/src/rt-animations.ts:149
   do {
-    let _a83 = list
-    var _i83 = 0
-    while _i83 < _a83.items.count {
-      let a: RunningAnimation = _a83.items[_i83]
-      _i83 += 1
+    let _a112 = list
+    var _i112 = 0
+    while _i112 < _a112.items.count {
+      let a: RunningAnimation = _a112.items[_i112]
+      _i112 += 1
       // ts: packages/layout/src/rt-animations.ts:149
       if ((!afterEvent) || (a.event == S.s_kept)) {
         _ = jsPush(out, a)
@@ -231,11 +231,11 @@ public func rtAnimations_stackOrder(_ list: JsArray<RunningAnimation>, _ afterEv
   if afterEvent {
     // ts: packages/layout/src/rt-animations.ts:151
     do {
-      let _a84 = list
-      var _i84 = 0
-      while _i84 < _a84.items.count {
-        let a: RunningAnimation = _a84.items[_i84]
-        _i84 += 1
+      let _a113 = list
+      var _i113 = 0
+      while _i113 < _a113.items.count {
+        let a: RunningAnimation = _a113.items[_i113]
+        _i113 += 1
         // ts: packages/layout/src/rt-animations.ts:151
         if (a.event == S.s_started) {
           _ = jsPush(out, a)
@@ -244,11 +244,11 @@ public func rtAnimations_stackOrder(_ list: JsArray<RunningAnimation>, _ afterEv
     }
     // ts: packages/layout/src/rt-animations.ts:152
     do {
-      let _a85 = list
-      var _i85 = 0
-      while _i85 < _a85.items.count {
-        let a: RunningAnimation = _a85.items[_i85]
-        _i85 += 1
+      let _a114 = list
+      var _i114 = 0
+      while _i114 < _a114.items.count {
+        let a: RunningAnimation = _a114.items[_i114]
+        _i114 += 1
         // ts: packages/layout/src/rt-animations.ts:152
         if (a.event == S.s_updated) {
           _ = jsPush(out, a)
@@ -264,11 +264,11 @@ public func rtAnimations_composeAnimations(_ list: JsArray<RunningAnimation>, _ 
   var value: AnimatedValue = base
   // ts: packages/layout/src/rt-animations.ts:160
   do {
-    let _a86 = try rtAnimations_stackOrder(list, afterEvent)
-    var _i86 = 0
-    while _i86 < _a86.items.count {
-      let a: RunningAnimation = _a86.items[_i86]
-      _i86 += 1
+    let _a115 = try rtAnimations_stackOrder(list, afterEvent)
+    var _i115 = 0
+    while _i115 < _a115.items.count {
+      let a: RunningAnimation = _a115.items[_i115]
+      _i115 += 1
       let rule: KeyframesRule? = try rtAnimations_ruleNamed(rules, a.name)
       // ts: packages/layout/src/rt-animations.ts:162
       if (rule == nil) {
@@ -277,7 +277,7 @@ public func rtAnimations_composeAnimations(_ list: JsArray<RunningAnimation>, _ 
       let v: InterpolatedValue? = try rtKeyframes_sampleKeyframeEffect(a.timing, a.held.seconds, rtKeyframes_groupFromRule(jsUnwrap(rule).keyframes, a.timing.easing), value, range, faults)
       // ts: packages/layout/src/rt-animations.ts:164
       if try ((v != nil) && jsUnwrap(v).refused) {
-        throw JsError(message: jsConcat(S.s95, a.name, S.s21))
+        throw JsError(message: jsConcat(S.s106, a.name, S.s25))
       }
       // ts: packages/layout/src/rt-animations.ts:165
       if (v != nil) {
@@ -293,11 +293,11 @@ public func rtAnimations_sampleKeys(_ list: JsArray<RunningAnimation>, _ faults:
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/rt-animations.ts:173
   do {
-    let _a87 = list
-    var _i87 = 0
-    while _i87 < _a87.items.count {
-      let a: RunningAnimation = _a87.items[_i87]
-      _i87 += 1
+    let _a116 = list
+    var _i116 = 0
+    while _i116 < _a116.items.count {
+      let a: RunningAnimation = _a116.items[_i116]
+      _i116 += 1
       let t: ComputedTiming = try rtTiming_computeSecondsTiming(a.timing, a.held.seconds, faults)
       _ = try jsPush(out, ((t.currentIteration == nil) ? (0.0 / 0.0) : jsUnwrap(t.currentIteration)))
       _ = try jsPush(out, ((t.progress == nil) ? (0.0 / 0.0) : jsUnwrap(t.progress)))
@@ -343,7 +343,7 @@ public func rtAnimations_stateAt(_ states: JsArray<AnimationState>, _ i: Double)
   let s: AnimationState? = (jsIsInteger(i) ? (jsAt(states, i) as AnimationState?) : (nil as AnimationState?))
   // ts: packages/layout/src/rt-animations.ts:200
   if (s == nil) {
-    throw JsError(message: jsConcat(S.s143, jsNumberToString(i), S.s30, jsNumberToString(jsLength(states)), S.s49))
+    throw JsError(message: jsConcat(S.s164, jsNumberToString(i), S.s37, jsNumberToString(jsLength(states)), S.s58))
   }
   return try jsUnwrap(s)
 }
@@ -357,11 +357,11 @@ public func rtAnimations_runAnimationScript(_ states: JsArray<AnimationState>, _
   let out: JsArray<AnimationReading> = JsArray<AnimationReading>([])
   // ts: packages/layout/src/rt-animations.ts:215
   do {
-    let _a88 = steps
-    var _i88 = 0
-    while _i88 < _a88.items.count {
-      let step: ScriptStep = _a88.items[_i88]
-      _i88 += 1
+    let _a117 = steps
+    var _i117 = 0
+    while _i117 < _a117.items.count {
+      let step: ScriptStep = _a117.items[_i117]
+      _i117 += 1
       // ts: packages/layout/src/rt-animations.ts:216
       if (step.kind == S.s_state) {
         try list = rtAnimations_updateAnimations(list, rtAnimations_stateAt(states, step.state).entries, faults)
@@ -372,11 +372,11 @@ public func rtAnimations_runAnimationScript(_ states: JsArray<AnimationState>, _
         let moved: JsArray<RunningAnimation> = JsArray<RunningAnimation>([])
         // ts: packages/layout/src/rt-animations.ts:223
         do {
-          let _a89 = list
-          var _i89 = 0
-          while _i89 < _a89.items.count {
-            let a: RunningAnimation = _a89.items[_i89]
-            _i89 += 1
+          let _a118 = list
+          var _i118 = 0
+          while _i118 < _a118.items.count {
+            let a: RunningAnimation = _a118.items[_i118]
+            _i118 += 1
             _ = try jsPush(moved, rtAnimations_advanceAnimation(a, step.deltaMs, faults))
           }
         }
@@ -393,11 +393,11 @@ public func rtAnimations_runAnimationScript(_ states: JsArray<AnimationState>, _
       let playStates: JsArray<JsString> = JsArray<JsString>([])
       // ts: packages/layout/src/rt-animations.ts:232
       do {
-        let _a90 = list
-        var _i90 = 0
-        while _i90 < _a90.items.count {
-          let a: RunningAnimation = _a90.items[_i90]
-          _i90 += 1
+        let _a119 = list
+        var _i119 = 0
+        while _i119 < _a119.items.count {
+          let a: RunningAnimation = _a119.items[_i119]
+          _i119 += 1
           // ts: packages/layout/src/rt-animations.ts:233
           if try (!rtAnimations_animationRelevant(a, faults)) {
             continue

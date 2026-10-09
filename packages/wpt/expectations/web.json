@@ -23905,7 +23905,7 @@
     "css/css-overflow/overflow-codependent-scrollbars.html": {"missing":"kind:testharness-other","status":"not-runnable"},
     "css/css-overflow/overflow-does-not-apply-to-inline-box.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-overflow/overflow-ellipsis-dynamic-001.html": {"missing":"kind:reftest","status":"not-runnable"},
-    "css/css-overflow/overflow-empty-child-box.html": {"missing":"DRAGON_UNSUPPORTED_PROPERTY:box-shadow: 0 0 0 10px blue","status":"not-runnable"},
+    "css/css-overflow/overflow-empty-child-box.html": {"missing":"assert:scroll-size","status":"not-runnable"},
     "css/css-overflow/overflow-hidden-resize-with-stacking-context-child.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-overflow/overflow-img-border-radius.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-overflow/overflow-img-display-table.html": {"missing":"kind:reftest","status":"not-runnable"},

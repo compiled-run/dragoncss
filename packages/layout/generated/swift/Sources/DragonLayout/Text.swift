@@ -196,16 +196,16 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
     var glyphs: Double = 0.0
     // ts: packages/layout/src/text.ts:124
     do {
-      let _a149 = jsCodePoints(text)
-      var _i149 = 0
-      while _i149 < _a149.items.count {
-        let ch: JsString = _a149.items[_i149]
-        _i149 += 1
+      let _a178 = jsCodePoints(text)
+      var _i178 = 0
+      while _i178 < _a178.items.count {
+        let ch: JsString = _a178.items[_i178]
+        _i178 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:127
         if (advance < 0.0) {
-          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s108, jsToUpperCase(jsToStringRadix16(cp)), S.s26))
+          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s129, jsToUpperCase(jsToStringRadix16(cp)), S.s32))
         }
         glyphs += advance
       }
@@ -217,16 +217,16 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
     var through: Double = 0.0
     // ts: packages/layout/src/text.ts:137
     do {
-      let _a150 = jsCodePoints(text)
-      var _i150 = 0
-      while _i150 < _a150.items.count {
-        let ch: JsString = _a150.items[_i150]
-        _i150 += 1
+      let _a179 = jsCodePoints(text)
+      var _i179 = 0
+      while _i179 < _a179.items.count {
+        let ch: JsString = _a179.items[_i179]
+        _i179 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:140
         if (advance < 0.0) {
-          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s108, jsToUpperCase(jsToStringRadix16(cp)), S.s26))
+          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s129, jsToUpperCase(jsToStringRadix16(cp)), S.s32))
         }
         // ts: packages/layout/src/text.ts:141
         if (k < start) {

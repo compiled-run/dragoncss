@@ -786,11 +786,11 @@ fun paintGradient_gradientDesc(g: GradientImage, w: Double, h: Double, zoom: Dou
   if ((!normalize)) {
     // ts: packages/layout/src/paint-gradient.ts:517
     run {
-      val _a70 = stops
-      var _i70 = 0
-      while (_i70 < _a70.size) {
-        val s: ResolvedStop = _a70[_i70]
-        _i70++
+      val _a92 = stops
+      var _i92 = 0
+      while (_i92 < _a92.size) {
+        val s: ResolvedStop = _a92[_i92]
+        _i92++
         jsPush(offsets, s.offset)
         jsPush(colors, s.color)
       }
@@ -823,11 +823,11 @@ fun paintGradient_gradientDesc(g: GradientImage, w: Double, h: Double, zoom: Dou
   }
   // ts: packages/layout/src/paint-gradient.ts:543
   run {
-    val _a71 = stops
-    var _i71 = 0
-    while (_i71 < _a71.size) {
-      val s: ResolvedStop = _a71[_i71]
-      _i71++
+    val _a93 = stops
+    var _i93 = 0
+    while (_i93 < _a93.size) {
+      val s: ResolvedStop = _a93[_i93]
+      _i93++
       jsPush(offsets, paintGradient_f32((paintGradient_f32((s.offset - first)) / span)))
       jsPush(colors, s.color)
     }
@@ -978,11 +978,11 @@ fun paintGradient_gradientShader(d: GradientDesc, local: Mat, faults: GradientFa
   var opaque: Boolean = true
   // ts: packages/layout/src/paint-gradient.ts:694
   run {
-    val _a72 = cols
-    var _i72 = 0
-    while (_i72 < _a72.size) {
-      val c: PaintGradient_Color4 = _a72[_i72]
-      _i72++
+    val _a94 = cols
+    var _i94 = 0
+    while (_i94 < _a94.size) {
+      val c: PaintGradient_Color4 = _a94[_i94]
+      _i94++
       // ts: packages/layout/src/paint-gradient.ts:694
       if ((c.a != 1.0)) {
         opaque = false
@@ -992,11 +992,11 @@ fun paintGradient_gradientShader(d: GradientDesc, local: Mat, faults: GradientFa
   val pm: JsArray<PaintGradient_Color4> = jsArrayOf<PaintGradient_Color4>()
   // ts: packages/layout/src/paint-gradient.ts:696
   run {
-    val _a73 = cols
-    var _i73 = 0
-    while (_i73 < _a73.size) {
-      val c: PaintGradient_Color4 = _a73[_i73]
-      _i73++
+    val _a95 = cols
+    var _i95 = 0
+    while (_i95 < _a95.size) {
+      val c: PaintGradient_Color4 = _a95[_i95]
+      _i95++
       jsPush(pm, (if (faults.unpremultiplied) c else paintGradient_premul(c)))
     }
   }
@@ -1382,8 +1382,8 @@ fun paintGradient_planBackground(bg: BackgroundPaint, faults: GradientFaults): B
   // ts: packages/layout/src/paint-gradient.ts:1151
   run {
     var i: Double = (jsLength(bg.layers) - 1.0)
-    loop1@ while ((i >= 0.0)) {
-      loop1_body@ do {
+    loop3@ while ((i >= 0.0)) {
+      loop3_body@ do {
         val layer: BackgroundLayer = jsUnwrap(jsAt(bg.layers, i))
         val pl: LayerPlacement = paintGradient_layerPlacement(box, layer.geometry, bg.zoom, (bg.lastIsBottom && (i == (jsLength(bg.layers) - 1.0))), faults)
         // ts: packages/layout/src/paint-gradient.ts:1154
@@ -1394,7 +1394,7 @@ fun paintGradient_planBackground(bg: BackgroundPaint, faults: GradientFaults): B
         val h: Double = paintGradient_luFloat(pl.tileHeight)
         // ts: packages/layout/src/paint-gradient.ts:1157
         if ((((!((w > 0.0) && (h > 0.0))) || (pl.destWidth <= 0.0)) || (pl.destHeight <= 0.0))) {
-          break@loop1_body
+          break@loop3_body
         }
         val desc: GradientDesc = paintGradient_gradientDesc(layer.image, w, h, bg.zoom)
         val sl: Double = paintGradient_luFloat(pl.srcX)
@@ -1404,7 +1404,7 @@ fun paintGradient_planBackground(bg: BackgroundPaint, faults: GradientFaults): B
         val lm: Mat? = paintGradient_matRectToRect(sl, st, paintGradient_f32((sl + paintGradient_luFloat(pl.destWidth))), paintGradient_f32((st + paintGradient_luFloat(pl.destHeight))), dl, dt, paintGradient_f32((dl + paintGradient_luFloat(pl.destWidth))), paintGradient_f32((dt + paintGradient_luFloat(pl.destHeight))))
         // ts: packages/layout/src/paint-gradient.ts:1165
         if ((lm == null)) {
-          break@loop1_body
+          break@loop3_body
         }
         val tileX: Double = (pl.destX - pl.srcX)
         val tileY: Double = (pl.destY - pl.srcY)
@@ -1447,20 +1447,20 @@ fun paintGradient_backgroundPixelExact(plan: BackgroundPlan, px: Double, py: Dou
   val y: Double = (py - plan.originY)
   // ts: packages/layout/src/paint-gradient.ts:1215
   run {
-    val _a74 = plan.layers
-    var _i74 = 0
-    while (_i74 < _a74.size) {
-      val l: PlannedLayer = _a74[_i74]
-      _i74++
+    val _a96 = plan.layers
+    var _i96 = 0
+    while (_i96 < _a96.size) {
+      val l: PlannedLayer = _a96[_i96]
+      _i96++
       val p: LayerPlacement = l.placement
       val edges: JsArray<Double> = jsArrayOf<Double>(p.destX, (p.destX + p.destWidth))
       // ts: packages/layout/src/paint-gradient.ts:1218
       run {
-        val _a75 = edges
-        var _i75 = 0
-        while (_i75 < _a75.size) {
-          val e: Double = _a75[_i75]
-          _i75++
+        val _a97 = edges
+        var _i97 = 0
+        while (_i97 < _a97.size) {
+          val e: Double = _a97[_i97]
+          _i97++
           // ts: packages/layout/src/paint-gradient.ts:1218
           if ((((((e - (rtEasing_floorOf((e / 64.0)) * 64.0)) != 0.0) && (rtEasing_floorOf((e / 64.0)) == x)) && (y >= p.clipTop)) && (y < p.clipBottom))) {
             return false
@@ -1470,11 +1470,11 @@ fun paintGradient_backgroundPixelExact(plan: BackgroundPlan, px: Double, py: Dou
       val vedges: JsArray<Double> = jsArrayOf<Double>(p.destY, (p.destY + p.destHeight))
       // ts: packages/layout/src/paint-gradient.ts:1220
       run {
-        val _a76 = vedges
-        var _i76 = 0
-        while (_i76 < _a76.size) {
-          val e: Double = _a76[_i76]
-          _i76++
+        val _a98 = vedges
+        var _i98 = 0
+        while (_i98 < _a98.size) {
+          val e: Double = _a98[_i98]
+          _i98++
           // ts: packages/layout/src/paint-gradient.ts:1220
           if ((((((e - (rtEasing_floorOf((e / 64.0)) * 64.0)) != 0.0) && (rtEasing_floorOf((e / 64.0)) == y)) && (x >= p.clipLeft)) && (x < p.clipRight))) {
             return false
@@ -1498,16 +1498,16 @@ fun paintGradient_backgroundRow(plan: BackgroundPlan, py: Double, faults: Gradie
   // ts: packages/layout/src/paint-gradient.ts:1238
   run {
     var x: Double = (plan.left - plan.originX)
-    loop2@ while ((x < (plan.right - plan.originX))) {
-      loop2_body@ do {
+    loop4@ while ((x < (plan.right - plan.originX))) {
+      loop4_body@ do {
         var any: Boolean = false
         // ts: packages/layout/src/paint-gradient.ts:1240
         run {
-          val _a77 = plan.layers
-          var _i77 = 0
-          while (_i77 < _a77.size) {
-            val l: PlannedLayer = _a77[_i77]
-            _i77++
+          val _a99 = plan.layers
+          var _i99 = 0
+          while (_i99 < _a99.size) {
+            val l: PlannedLayer = _a99[_i99]
+            _i99++
             // ts: packages/layout/src/paint-gradient.ts:1240
             if (paintGradient_inLayer(l.placement, x, y)) {
               any = true
@@ -1520,7 +1520,7 @@ fun paintGradient_backgroundRow(plan: BackgroundPlan, py: Double, faults: Gradie
           jsPush(out, 0.0)
           jsPush(out, 0.0)
           jsPush(out, 0.0)
-          break@loop2_body
+          break@loop4_body
         }
         val tx: Double = paintDither_ccTileStart(paintDither_ccTileIndex(x, ts), ts)
         // ts: packages/layout/src/paint-gradient.ts:1249
@@ -1530,11 +1530,11 @@ fun paintGradient_backgroundRow(plan: BackgroundPlan, py: Double, faults: Gradie
           valid = jsArrayOf<Boolean>()
           // ts: packages/layout/src/paint-gradient.ts:1253
           run {
-            val _a78 = plan.layers
-            var _i78 = 0
-            while (_i78 < _a78.size) {
-              val l: PlannedLayer = _a78[_i78]
-              _i78++
+            val _a100 = plan.layers
+            var _i100 = 0
+            while (_i100 < _a100.size) {
+              val l: PlannedLayer = _a100[_i100]
+              _i100++
               val m: Mat? = paintGradient_tileMatrix(l.shader, tileX, tileY)
               jsPush(mats, (if ((m == null)) paintGradient_IDENTITY else jsUnwrap(m)))
               jsPush(valid, (m != null))
@@ -1549,26 +1549,26 @@ fun paintGradient_backgroundRow(plan: BackgroundPlan, py: Double, faults: Gradie
         // ts: packages/layout/src/paint-gradient.ts:1261
         run {
           var i: Double = 0.0
-          loop3@ while ((i < jsLength(plan.layers))) {
-            loop3_body@ do {
+          loop5@ while ((i < jsLength(plan.layers))) {
+            loop5_body@ do {
               val l: PlannedLayer = jsUnwrap(jsAt(plan.layers, i))
               // ts: packages/layout/src/paint-gradient.ts:1263
               if ((!paintGradient_inLayer(l.placement, x, y))) {
-                break@loop3_body
+                break@loop5_body
               }
               // ts: packages/layout/src/paint-gradient.ts:1264
               if ((!l.placement.direct)) {
                 val m: Mat? = paintGradient_tileMatrix(l.shader, 0.0, 0.0)
                 // ts: packages/layout/src/paint-gradient.ts:1267
                 if ((m == null)) {
-                  break@loop3_body
+                  break@loop5_body
                 }
                 dst = paintGradient_imageSrcOver(paintGradient_shadePixel(l.shader, jsUnwrap(m), (x - l.tileX), (y - l.tileY), 0.0, 0.0, paintGradient_CLEAR, faults), dst)
-                break@loop3_body
+                break@loop5_body
               }
               // ts: packages/layout/src/paint-gradient.ts:1271
               if ((!jsUnwrap(jsAt(valid, i)))) {
-                break@loop3_body
+                break@loop5_body
               }
               dst = paintGradient_shadePixel(l.shader, jsUnwrap(jsAt(mats, i)), x, y, tileX, tileY, dst, faults)
             } while (false)
