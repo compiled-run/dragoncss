@@ -195,6 +195,9 @@ public final class DragonStateMount {
     }
   }
 
+  /// Stops the mount's display driver for good (its stage is going away); the views stay as last rendered.
+  public func dispose() { anim?.dispose() }
+
   private func render() {
     let t = DragonTree()
     machine.build(t)
@@ -377,6 +380,14 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
   var renders = 0
     private set
   private val anim: DragonAnimMount? = DragonAnimMount.of(machine, measurer, display) { render() }
+  // A detached stage pauses the display driver and an attached one resumes it; the listener reaches the mount only weakly.
+  private val attach: android.view.View.OnAttachStateChangeListener? = if (anim == null) null else {
+    val ref = java.lang.ref.WeakReference(anim)
+    object : android.view.View.OnAttachStateChangeListener {
+      override fun onViewAttachedToWindow(v: android.view.View) { ref.get()?.resume() }
+      override fun onViewDetachedFromWindow(v: android.view.View) { ref.get()?.stop() }
+    }
+  }
 
   init {
     render()
@@ -384,6 +395,13 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
       anim?.event()
       render()
     }
+    if (attach != null) stage.addOnAttachStateChangeListener(attach)
+  }
+
+  /** Stops the mount's display driver for good (its stage is going away); the views stay as last rendered. */
+  fun dispose() {
+    if (attach != null) stage.removeOnAttachStateChangeListener(attach)
+    anim?.dispose()
   }
 
   private fun render() {

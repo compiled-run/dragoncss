@@ -328,6 +328,8 @@ public final class DragonAnimMount {
   private let animator: DragonAnimator
   private let render: () -> Void
   private var driver: DragonDisplayDriver?
+  private var paused = false
+  private var disposed = false
   private var stale = false
   /// A frame script sets this: a clock step marks the frame stale instead of rendering it, and flush renders it at the dump.
   public var deferRenders = false
@@ -360,6 +362,22 @@ public final class DragonAnimMount {
     drive()
   }
 
+  /// Pauses the display driver (a detached stage) until resume; dispose stops it for good. Neither changes the animator's time.
+  public func stop() {
+    paused = true
+    driver?.stop()
+  }
+
+  public func resume() {
+    paused = false
+    drive()
+  }
+
+  public func dispose() {
+    disposed = true
+    driver?.stop()
+  }
+
   private func advance(_ ms: Double) {
     animator.advance(ms)
     if deferRenders { stale = true } else { render() }
@@ -375,7 +393,7 @@ public final class DragonAnimMount {
 
   /// R3: the display driver runs while the animator is busy.
   private func drive() {
-    if let d = driver, animator.busy { d.start() }
+    if let d = driver, animator.busy, !paused, !disposed { d.start() }
   }
 
   /// R16: the engine input with the frame's lengths.
@@ -567,6 +585,8 @@ fun dragonAnimAttach(m: DragonStateMachine, tables: AnimTables, inputs: List<(Do
 class DragonAnimMount private constructor(private val machine: DragonStateMachine, p: DragonAnimProgram, measurer: TextMeasurer, display: Boolean, private val render: () -> Unit) {
   private val animator = DragonAnimator(p.tables, p.inputs.map { environment_resolveEnvironment(it(1.0), block_NO_ENGINE_FAULTS, measurer) }, p.initial, machine.current)
   private var driver: DragonDisplayDriver? = null
+  private var paused = false
+  private var disposed = false
   private var stale = false
   /** A frame script sets this: a clock step marks the frame stale instead of rendering it, and flush renders it at the dump. */
   var deferRenders = false
@@ -575,12 +595,33 @@ class DragonAnimMount private constructor(private val machine: DragonStateMachin
     machine.clock.onAdvance = { ms -> advance(ms) }
     dragonAnimMounts[machine] = java.lang.ref.WeakReference(this)
     if (display) {
-      driver = DragonDisplayDriver { dt ->
-        machine.clock.advance(dt)
-        animator.busy
-      }
+      // Choreographer holds its callback strongly: the tick reaches the mount only weakly (as Swift's [weak self]), so a dropped mount
+      // stops the driver on its next frame instead of being kept alive by it.
+      val ref = java.lang.ref.WeakReference(this)
+      driver = DragonDisplayDriver { dt -> ref.get()?.tick(dt) ?: false }
       drive()
     }
+  }
+
+  private fun tick(dt: Double): Boolean {
+    machine.clock.advance(dt)
+    return animator.busy
+  }
+
+  /** Pauses the display driver (a detached stage) until resume; dispose stops it for good. Neither changes the animator's time. */
+  fun stop() {
+    paused = true
+    driver?.stop()
+  }
+
+  fun resume() {
+    paused = false
+    drive()
+  }
+
+  fun dispose() {
+    disposed = true
+    driver?.stop()
   }
 
   companion object {
@@ -614,7 +655,7 @@ class DragonAnimMount private constructor(private val machine: DragonStateMachin
   /** R3: the display driver runs while the animator is busy. */
   private fun drive() {
     val d = driver ?: return
-    if (animator.busy) d.start()
+    if (animator.busy && !paused && !disposed) d.start()
   }
 
   /** R16: the engine input with the frame's lengths. */
