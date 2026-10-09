@@ -13,10 +13,38 @@ permissions:
   contents: read
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    # ubuntu-24.04 x86_64, the image of Claude Code cloud sessions, so the cloud-setup steps below prove their bootstrap.
+    runs-on: ubuntu-24.04
+    # A run takes 3 to 5 minutes (install, typecheck, the platform-free and registry suites). 30 minutes leaves six times that,
+    # and stays well under the landing driver's CI wait (LAND_CI_WAIT, 90 min), so a run that hangs ends as a failed check, a
+    # verdict on the tree, rather than a wait the driver gives up on as a CI outage.
+    timeout-minutes: 30
     steps:
       - name: Check out
         uses: actions/checkout@v4
+      # Before setup-node, so the runner has only its image's Node: scripts/cloud-setup.sh must install the pinned Node and pnpm.
+      - name: Cloud session bootstrap (scripts/cloud-setup.sh), run twice
+        run: |
+          set -euo pipefail
+          test "$(uname -s)-$(uname -m)" = Linux-x86_64
+          for round in 1 2; do
+            : > "$RUNNER_TEMP/env"
+            CLAUDE_CODE_REMOTE=true CLAUDE_ENV_FILE="$RUNNER_TEMP/env" scripts/cloud-setup.sh > "$RUNNER_TEMP/out-$round" 2> "$RUNNER_TEMP/err-$round" || { cat "$RUNNER_TEMP/err-$round"; exit 1; }
+            cat "$RUNNER_TEMP/err-$round" "$RUNNER_TEMP/out-$round"
+            # Stdout reaches Claude's context: one summary line only.
+            test "$(wc -l < "$RUNNER_TEMP/out-$round")" = 1 || { echo "::error::cloud-setup printed more than its summary line on stdout"; exit 1; }
+            (
+              # shellcheck disable=SC1091
+              . "$RUNNER_TEMP/env"
+              test "$(node -v)" = "v$(sed -n 's/^node //p' <(scripts/cloud-setup.sh --print-versions))" || { echo "::error::node is $(node -v) after sourcing CLAUDE_ENV_FILE"; exit 1; }
+              test "$(pnpm --version)" = "$(sed -n 's/^pnpm //p' <(scripts/cloud-setup.sh --print-versions))" || { echo "::error::pnpm is $(pnpm --version)"; exit 1; }
+              test "${DRAGON_REQUIRE_NATIVE:-}" = 1 || { echo "::error::DRAGON_REQUIRE_NATIVE is not exported as 1"; exit 1; }
+              pnpm typecheck
+            )
+          done
+          # The second run found Node and pnpm in place and installed nothing.
+          if grep -E 'installing (Node|pnpm)' "$RUNNER_TEMP/err-2"; then echo "::error::the second cloud-setup run reinstalled"; exit 1; fi
+          grep -q 'installing Node' "$RUNNER_TEMP/err-1" || { echo "::error::the first run did not install Node, so the install path is unproven"; exit 1; }
       - name: Set up pnpm 10.33.2
         uses: pnpm/action-setup@v4
         with:
@@ -26,9 +54,24 @@ jobs:
         with:
           node-version: '24'
           cache: pnpm
+      # land.yml holds the landing token and land-checks.yml runs a tree's commands for it; actionlint (with shellcheck) checks
+      # their expressions and shell steps. Only these two: the others use custom runner labels actionlint does not know.
+      - name: Lint the landing workflows (actionlint 1.7.12)
+        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.12 -color .github/workflows/land.yml .github/workflows/land-checks.yml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm typecheck
       - name: Platform-free suites (packages/layout, packages/dragon)
         run: pnpm exec vitest run packages/layout packages/dragon
+      # The registry and provenance checks that need no browser or device, so a PR learns of an unregistered Chrome citation, a
+      # registry claim without its proof, an API floor or a floor-file merge problem here, not at landing (they run in the full
+      # test's shards too, which prove every file).
+      - name: Registry and provenance checks (packages/parity)
+        run: >-
+          pnpm exec vitest run
+          packages/parity/test/chrome-ports.test.ts
+          packages/parity/test/registry-claims.test.ts
+          packages/parity/test/api-floor.test.ts
+          packages/parity/test/floor-merge.test.ts
+          packages/parity/test/macroscope-ignore.test.ts

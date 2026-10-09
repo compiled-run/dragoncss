@@ -7,6 +7,7 @@
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { KeyframesRule } from '../css/at-rules/keyframes.ts';
 import type { AnimationKind } from '../css/animation-kinds.ts';
+import { resolveAlias } from '../css/aliases.ts';
 import { admitted, animationKind } from '../css/animation-kinds.ts';
 import type { Longhand } from '../css/properties.ts';
 import { isLonghand, isShorthand, LONGHANDS } from '../css/properties.ts';
@@ -117,8 +118,10 @@ const easingOf = (i: AnimItem): EasingValue => (i.kind === 'easing' ? i.easing :
 const keywordOf = (i: AnimItem): string => (i.kind === 'keyword' ? i.value : i.kind === 'name' ? i.value : '');
 
 /** The longhands a transition-property name stands for (R8: shorthands expand, `all` is every Dragon longhand). */
-function longhandsNamed(name: string): readonly Longhand[] | null {
-  if (name === 'all') return LONGHANDS;
+function longhandsNamed(written: string): readonly Longhand[] | null {
+  if (written === 'all') return LONGHANDS;
+  // css_animations.cc CalculateTransitionUpdateForStandardProperty resolves an alias name to its property.
+  const name = resolveAlias(written);
   if (isLonghand(name)) return [name];
   if (isShorthand(name)) return shorthandHandler(name).longhands;
   return null;
@@ -246,10 +249,18 @@ function byAddress(root: ResolvedElement): Map<string, ResolvedElement> {
   return out;
 }
 
+/**
+ * Which of two same-named @keyframes rules applies, as Chrome's ScopedStyleResolver::AddKeyframeStyle decides: an unprefixed rule
+ * beats an @-webkit-keyframes one in either order, and otherwise the later rule wins (Dragon refuses @keyframes inside @layer, so all share a layer).
+ */
+export function keyframesOverride(next: KeyframesRule, existing: KeyframesRule | undefined): boolean {
+  return existing === undefined || (next.prefixed === existing.prefixed ? true : existing.prefixed);
+}
+
 /** The analysis of every case, with its refusals and warnings appended to diagnostics. */
 export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic[]): AnimationAnalysis {
   const keyframes = new Map<string, KeyframesRule>();
-  for (const r of input.keyframes) keyframes.set(r.name, r);
+  for (const r of input.keyframes) if (keyframesOverride(r, keyframes.get(r.name))) keyframes.set(r.name, r);
   const cases = input.cases.flatMap((c) => (c.resolved === null ? [] : [caseAnimations(c.key, c.resolved, input.rules, keyframes, input.faults)]));
   const trees = input.cases.flatMap((c) => (c.resolved === null ? [] : [byAddress(c.resolved)]));
   const reported = new Set<string>();
@@ -288,7 +299,7 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
     }
   }
   for (const rule of input.keyframes) {
-    feature('at-rule:@keyframes', rule.preludeSpan);
+    feature(rule.prefixed ? 'at-rule:@-webkit-keyframes' : 'at-rule:@keyframes', rule.preludeSpan);
     for (const b of rule.blocks) {
       for (const o of b.offsets) feature(`keyframe-selector:${o === 0 ? 'from' : o === 1 ? 'to' : '<percentage>'}`, rule.preludeSpan);
       for (const v of b.values) {

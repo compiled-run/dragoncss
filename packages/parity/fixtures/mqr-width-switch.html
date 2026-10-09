@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.row { display: flex; height: 20px; }
+.a { width: 40px; height: 10px; background-color: #ccc; }
+.b { flex-grow: 1; height: 10px; background-color: #888; }
+.c { width: 25%; height: 6px; background-color: #444; }
+@media (max-width: 320px) { .a { width: 20px; background-color: #c00; } .c { height: 12px; } }
+@media (min-width: 352px) { .a { margin-left: 8px; background-color: #0c0; } }
+@media (width > 384px) { .b { background-color: #00c; } .c { width: 50%; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row" class="row"><div data-dragon-id="a" class="a"></div><div data-dragon-id="b" class="b"></div></div>
+<div data-dragon-id="c" class="c"></div>
+</body>
+</html>

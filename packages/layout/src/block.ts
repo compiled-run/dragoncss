@@ -24,6 +24,7 @@ import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './posit
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
 import type { TextMeasurer } from './text.ts';
+import { unsupported } from './unsupported.ts';
 
 /** Seeded engine errors, so the parity harness can prove it fails (docs/api.md §7). The product runs with NO_ENGINE_FAULTS. */
 export type EngineFaults = {
@@ -125,6 +126,10 @@ export type EngineFaults = {
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
   readonly orderUnclamped: boolean;
+  /** A scroll container reserves a classic 15px scrollbar gutter at its inline end and block end (overflow.ts). */
+  readonly gutterReserved: boolean;
+  /** A scroll container's scrollable overflow leaves out its end padding after the in-flow content (overflow.ts). */
+  readonly overflowIgnoresPadding: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -177,6 +182,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   latinCheckSkipped: false,
   orderHalfEven: false,
   orderUnclamped: false,
+  gutterReserved: false,
+  overflowIgnoresPadding: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
@@ -273,6 +280,9 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
     const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
   }
+
+  // The grid engine (grid.ts) lands in the next GRID G1a package; the compiler has no profile row for display: grid until then.
+  if (s.display === 'grid') unsupported('grid-layout', box.id, 'css-grid-2 §12', 'grid layout (the grid engine is not in this build)');
 
   const canCollapseTop = !a.formattingContextRoot && bor.top === 0 && pad.top === 0;
   const r = layoutBlockFlow(ctx, box, {

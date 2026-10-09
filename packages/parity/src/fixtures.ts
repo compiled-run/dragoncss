@@ -1,23 +1,33 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
 import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeResetLonghand } from 'dragon';
+import { ALIASES } from './fixture-groups/aliases.ts';
 import { ANIMATIONS } from './fixture-groups/animations.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
+import { CASC_LAYER } from './fixture-groups/casc-layer.ts';
+import { CASC_PROPERTY } from './fixture-groups/casc-property.ts';
+import { CASC } from './fixture-groups/casc.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
+import { CHARSET } from './fixture-groups/charset.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { ENV } from './fixture-groups/env.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
+import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
+import { LIST_ITEMS } from './fixture-groups/list-items.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
+import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
+import { OVERFLOW } from './fixture-groups/overflow.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
+import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
@@ -27,6 +37,7 @@ import { STATES } from './fixture-groups/states.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
+import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
 import { VALUES } from './fixture-groups/values.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
@@ -83,24 +94,34 @@ export type FixtureSpec =
  * import and one line here, each in sorted order (test/registry-claims.test.ts).
  */
 export const GROUPS = {
+  aliases: ALIASES,
   animations: ANIMATIONS,
   attributes: ATTRIBUTES,
   background: BACKGROUND,
   'block-elements': BLOCK_ELEMENTS,
   'border-paint': BORDER_PAINT,
+  casc: CASC,
+  'casc-layer': CASC_LAYER,
+  'casc-property': CASC_PROPERTY,
   'cascade-var': CASCADE_VAR,
+  charset: CHARSET,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,
   'display-legacy': DISPLAY_LEGACY,
   env: ENV,
   fonts: FONTS,
   grid: GRID,
+  'inherit-contexts': INHERIT_CONTEXTS,
   inline: INLINE,
   interaction: INTERACTION,
+  'list-items': LIST_ITEMS,
   'logical-props': LOGICAL_PROPS,
   media: MEDIA,
+  'media-runtime': MEDIA_RUNTIME,
   'milestone-1': MILESTONE_1,
+  overflow: OVERFLOW,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
+  radius: RADIUS,
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
   selectors: SELECTORS,
@@ -110,6 +131,7 @@ export const GROUPS = {
   'text-calibration': TEXT_CALIBRATION,
   'text-latin': TEXT_LATIN,
   transforms: TRANSFORMS,
+  'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,
   values: VALUES,
   'writing-mode': WRITING_MODE,

@@ -1,0 +1,25 @@
+{
+ "case": "overflow-hidden-x-auto-y-rtl",
+ "chrome": "145.0.7632.6",
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "direction": "rtl",
+ "scrollbars": "overlay",
+ "scrollbarArgs": "-AppleShowScrollBars WhenScrolling",
+ "records": [
+  {
+   "id": "viewport",
+   "scrollWidth": 400,
+   "scrollHeight": 300,
+   "clientWidth": 400,
+   "clientHeight": 300
+  },
+  {
+   "id": "app",
+   "scrollWidth": 126,
+   "scrollHeight": 103,
+   "clientWidth": 86,
+   "clientHeight": 66
+  }
+ ]
+}

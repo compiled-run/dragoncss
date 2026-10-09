@@ -304,7 +304,7 @@ export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, 
   const projection = projectionOf !== null ? projectionOf(compiled, c.environment, c.assignment) : state !== null ? nativeLayoutProjection(compiled, c.environment, c.assignment, state) : engineLayoutProjection(compiled, c.environment, c.assignment);
   // TXT1a-2: the engine lane runs a case native refuses for its real faces (engine mode), and a shaped case, which the device runtime
   // cannot draw until phase R; neither proves a native row, so its ios features are empty (as TXT1a-1's registry had them). SELD-R2:
-  // nor does a case only the lanes compile on native (a user's compile refuses it there).
+  // nor does a case only the lanes compile on native (a user's compile refuses it there; T078 R14: overflow auto and scroll until OVFL-B).
   const nativeProven = !laneOnlyNative(compiled, 'ios') && nativeLayoutProjection(compiled, c.environment, c.assignment, state).kind === 'ready' && (projection.kind !== 'ready' || !isShapedInput(projection.input));
   const features = { ios: nativeProven ? compiledFeatures(compiled, 'ios', c.assignment) : [], web: compiledFeatures(compiled, 'web', c.assignment) };
   const topology = textTopology(compiled, c.assignment);

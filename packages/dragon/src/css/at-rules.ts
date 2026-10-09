@@ -1,20 +1,34 @@
-// The at-rule handler registry. @font-face is accepted (fonts/wire.ts) and @media is conditional (MQ-a); every other at-rule is
-// refused: each registered name, and any name not registered, gets the same DRAGON_UNSUPPORTED_AT_RULE diagnostic, and the parse
-// driver (stylesheet.ts) then analyses the rules inside the at-rule's block for diagnostics only (T005 rec 3).
+// The at-rule handler registry. @font-face is accepted (fonts/wire.ts), @media is conditional (MQ-a), @supports is decided at
+// build time (CASC), and @keyframes, @property and @layer have handlers in at-rules/ (ANIM-b1, CASC 2, CASC 3); every other
+// at-rule is refused: each registered name, and any name not registered, gets the same DRAGON_UNSUPPORTED_AT_RULE diagnostic, and
+// the parse driver (stylesheet.ts) then analyses the rules inside the at-rule's block for diagnostics only (T005 rec 3).
 import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { MediaQueryList } from '../media/index.ts';
-import { parseMediaPrelude, parseMediaQueryList, refusalsOf, serialiseMediaQueryList } from '../media/index.ts';
+import { featuresOfList, parseMediaPrelude, parseMediaQueryList, refusalsOf, serialiseMediaQueryList } from '../media/index.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { asciiLower } from './escapes.ts';
+import { charsetAtRule } from './at-rules/charset.ts';
 import { keyframesAtRule } from './at-rules/keyframes.ts';
+import { layerAtRule } from './at-rules/layer.ts';
+import { propertyAtRule } from './at-rules/property.ts';
+import { supportsAtRule } from './at-rules/supports.ts';
 
 /**
  * One at-rule as the driver meets it: its node, its name as written, where it sits ('the stylesheet', 'a rule block',
  * '@media'...), its span, and its prelude as authored ('' when it has none; absent: generated from the node).
  */
-export type AtRuleContext = { readonly node: CssNode; readonly name: string; readonly where: string; readonly span: Span; readonly prelude?: string };
+export type AtRuleContext = {
+  readonly node: CssNode;
+  readonly name: string;
+  readonly where: string;
+  readonly span: Span;
+  readonly prelude?: string;
+  /** The at-rule's source text as written, and whether it starts the sheet's text (@charset reads both). */
+  readonly source?: string;
+  readonly atSheetStart?: boolean;
+};
 
 /** The condition of a conditional at-rule: its parsed media query list, that list serialised, and the at-rule's span. */
 export type RuleCondition = { readonly list: MediaQueryList; readonly text: string; readonly span: Span };
@@ -29,7 +43,15 @@ export type AtRuleOutcome =
   | { readonly kind: 'refuse'; readonly diagnostic: Diagnostic }
   | { readonly kind: 'font-face'; readonly context: AtRuleContext }
   | { readonly kind: 'keyframes'; readonly context: AtRuleContext }
-  | { readonly kind: 'conditional'; readonly condition: RuleCondition };
+  /** @property at the top level: collected for css/at-rules/property.ts parsePropertyRules (CASC 2). */
+  | { readonly kind: 'property'; readonly context: AtRuleContext }
+  /** @layer (CASC 3): the names a statement declares, or a block's one name (none: anonymous); the driver places them. */
+  | { readonly kind: 'layer'; readonly names: readonly (readonly string[])[]; readonly block: boolean }
+  | { readonly kind: 'conditional'; readonly condition: RuleCondition }
+  /** @supports, decided at build time (at-rules/supports.ts): holds true keeps the block's rules as plain rules, false drops them. */
+  | { readonly kind: 'supports'; readonly holds: boolean; readonly text: string }
+  /** Accepted with no effect on any target, as Chrome drops it (@charset "utf-8";). */
+  | { readonly kind: 'drop' };
 
 export type AtRuleHandler = (at: AtRuleContext) => AtRuleOutcome;
 
@@ -55,7 +77,7 @@ export const acceptFontFace: AtRuleHandler = (at) => {
 
 /**
  * MQ-a and MQ-R0: @media whose features are all width, height, orientation and aspect-ratio is conditional. A feature that
- * depends on the device or the user, and a value Dragon does not evaluate, are refused until MQ-R.
+ * depends on the device or the user (until MQ-R2 or MQ-R3, notes/T067 §1) and a value Dragon does not evaluate are refused.
  */
 export const mediaAtRule: AtRuleHandler = (at) => {
   const prelude = at.node['prelude'] as CssNode | null | undefined;
@@ -64,23 +86,31 @@ export const mediaAtRule: AtRuleHandler = (at) => {
   const refused = refusalsOf(list);
   const env = refused.filter((r) => r.reason === 'environment').map((r) => r.feature);
   const values = refused.filter((r) => r.reason === 'value').map((r) => r.feature);
-  const why = env.length > 0 ? `${env.join(', ')} depends on the device or the user` : values.length > 0 ? `${values.join(', ')} uses a value Dragon does not evaluate` : null;
+  // T067 §1: the environment features MQ-R2 reads (R9), and the rest MQ-R3 does.
+  const envPackage = featuresOfList(list).every((f) => f.refused !== 'environment' || MQ_R2_FEATURES.has(f.base)) ? 'MQ-R2' : 'MQ-R3';
+  const why = env.length > 0
+    ? `${env.join(', ')} depends on the device or the user, which Dragon does not read yet (package ${envPackage})`
+    : values.length > 0 ? `${values.join(', ')} uses a value Dragon does not evaluate` : null;
   if (why === null) return { kind: 'conditional', condition: { list, text, span: at.span } };
   return {
     kind: 'refuse',
     diagnostic: diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
       origin: authored(at.span),
-      message: `@media ${text} in ${at.where} is not supported until MQ-R: ${why}; only width, height, orientation and aspect-ratio media features are supported`,
+      message: `@media ${text} in ${at.where} is not supported: ${why}; only width, height, orientation and aspect-ratio media features are supported`,
     }),
   };
 };
+
+/** The environment features notes/T067 R9 assigns to package MQ-R2; every other one waits for MQ-R3. */
+const MQ_R2_FEATURES: ReadonlySet<string> = new Set(['prefers-color-scheme', 'prefers-reduced-motion', 'hover', 'any-hover', 'pointer', 'any-pointer', 'resolution', '-webkit-device-pixel-ratio']);
 
 /**
  * The known at-rules, keyed by lowercased name, one entry each so packages that support different at-rules edit different
  * lines. An at-rule not listed here falls back to refuseAtRule too.
  */
 export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
-  charset: refuseAtRule,
+  '-webkit-keyframes': keyframesAtRule,
+  charset: charsetAtRule,
   'color-profile': refuseAtRule,
   container: refuseAtRule,
   'counter-style': refuseAtRule,
@@ -89,15 +119,15 @@ export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
   'font-palette-values': refuseAtRule,
   import: refuseAtRule,
   keyframes: keyframesAtRule,
-  layer: refuseAtRule,
+  layer: layerAtRule,
   media: mediaAtRule,
   namespace: refuseAtRule,
   page: refuseAtRule,
   'position-try': refuseAtRule,
-  property: refuseAtRule,
+  property: propertyAtRule,
   scope: refuseAtRule,
   'starting-style': refuseAtRule,
-  supports: refuseAtRule,
+  supports: supportsAtRule,
   'view-transition': refuseAtRule,
 };
 

@@ -3,7 +3,7 @@ import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromeDeviations, NO_ENGINE_FAULTS, platformRules } from '@dragon/layout';
 import type { Assignment, ProfileRow } from 'dragon';
-import { CATALOGUE, iosLayoutProjection, iosProfile, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
+import { CATALOGUE, iosLayoutProjection, iosProfile, MEDIA_CONTEXT, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
 import type { Longhand } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { captureFixture, captureJson } from '../src/capture.ts';
@@ -27,7 +27,8 @@ import { DETERMINISM_CHUNKS, determinismChunk, shuffled } from './determinism.ts
 // T065: the row checks here are about rows proven by layout cases. Animation rows (context animation) are proven by frame cases
 // against frame captures, and anim-frames.test.ts gives them the same checks: exactly the passing cases that use the key, every
 // used key has a row, exactly what profile:rows derives, the context and lane shape, and every proof case a passing frame case.
-const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT);
+// MQ-R1: media rows (context media) are proven by resize cases against resize captures, and media-runtime-resize.test.ts does the same.
+const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT && r.context !== MEDIA_CONTEXT);
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
@@ -89,7 +90,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     for (const id of frames) expect(FIXTURES.some((f) => f.id === id), `${id} is both a frame fixture and in FIXTURES`).toBe(false);
     const webOnly = [...FONT_FIXTURES, ...ENV_FIXTURES].map((f) => f.spec);
     const registered = new Set([...[...FIXTURES, ...webOnly].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...TEXT_LATIN_PROBES.map((id) => `${id}.html`), ...frames]);
-    for (const f of webOnly) expect(statSync(`${dir}/${f.id}.html`).isFile(), f.id).toBe(true);
+    for (const id of [...webOnly.map((f) => f.id), ...TEXT_LATIN_PROBES]) expect(statSync(`${dir}/${id}.html`).isFile(), id).toBe(true);
     expect(new Set([...FIXTURES.map((f) => f.id), ...webOnly.map((f) => f.id), ...TEXT_LATIN_PROBES]).size).toBe(FIXTURES.length + webOnly.length + TEXT_LATIN_PROBES.length);
     for (const e of entries) expect(registered.has(e), `${e} is not in FIXTURES`).toBe(true);
     for (const f of FIXTURES) {
@@ -445,7 +446,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
 
   it('paint classification comes from PROPERTY_ASPECTS (M8): no iOS paint row is exact, border-*-style:solid included', () => {
     const aspects = (row: ProfileRow) => PROPERTY_ASPECTS[row.feature.slice(0, row.feature.indexOf(':')) as Longhand];
-    for (const row of iosProfile.rows) {
+    for (const row of layoutRows(iosProfile.rows)) {
       const a = aspects(row);
       expect(a, row.feature).toBeDefined();
       if (a.paint) {
@@ -456,7 +457,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       }
       if (a.layout) expect(row.proofs.some((p) => p.aspect === 'layout' && p.lane === 'linux-dragon-layout'), row.feature).toBe(true);
     }
-    expect(iosProfile.rows.filter((r) => r.status === 'exact' && aspects(r).paint)).toEqual([]);
+    expect(layoutRows(iosProfile.rows).filter((r) => r.status === 'exact' && aspects(r).paint)).toEqual([]);
     // iOS clipping is a paint aspect: overflow rows carry a layout proof and stay caveat.
     const overflow = iosProfile.rows.filter((r) => /^overflow-[xy]:/.test(r.feature));
     expect(overflow.length).toBeGreaterThan(0);
