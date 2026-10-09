@@ -14,6 +14,8 @@ export type DeviceEvidence = { readonly laneCode: string; readonly referenceData
 
 /** The source files whose code decides a device lane verdict. */
 export const EVIDENCE_CODE: readonly string[] = [
+  'packages/parity/src/anim-cases.ts',
+  'packages/parity/src/anim-samples.ts',
   'packages/parity/src/compare.ts',
   'packages/parity/src/device-ci.ts',
   'packages/parity/src/cli/device-ci.ts',
@@ -24,6 +26,7 @@ export const EVIDENCE_CODE: readonly string[] = [
   'packages/parity/src/device-run.ts',
   'packages/parity/src/device-vectors.ts',
   'packages/parity/src/dpr.ts',
+  'packages/parity/src/frame-capture.ts',
   'packages/parity/src/lanes.ts',
   'packages/parity/src/line-breaks.ts',
   'packages/parity/src/native-compare.ts',
@@ -38,6 +41,7 @@ export const EVIDENCE_CODE: readonly string[] = [
 export const EVIDENCE_DATA: readonly string[] = [
   'packages/parity/expected-dpr',
   'packages/parity/expected-breaks',
+  'packages/parity/expected-frames',
   'packages/parity/expected-pixels',
   'packages/layout/break-vectors',
   'vendor/fonts/Ahem.ttf',

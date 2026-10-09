@@ -14,7 +14,7 @@ import type { ProfileRow, SupportProfile } from './profiles/types.ts';
 import { ANDROID_MIN_SDK, COMMITTED_PROFILES, findResolved, internalRecord, profileFor, validAndroid } from './project.ts';
 import type { Diagnostic, SupportAnswer, SupportCandidate, SupportQuery } from './types.ts';
 
-const TOLERANCE = { 'linux-dragon-layout': 'gate-1-device-px', 'chrome-dual': 'dual-exact' } as const;
+const TOLERANCE = { 'linux-dragon-layout': 'gate-1-device-px', 'chrome-dual': 'dual-exact', 'device-anim': 'gate-1-device-px' } as const;
 
 function candidate(row: ProfileRow): SupportCandidate | null {
   if (row.status === 'unsupported') return null;
