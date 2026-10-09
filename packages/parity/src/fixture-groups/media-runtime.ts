@@ -17,6 +17,8 @@ export const MEDIA_RUNTIME: readonly FixtureSpec[] = [
   both('mqr-music-shape'),
   both('mqr-forms'),
   both('mqr-orientation'),
+  // device-env (T067 R7 (c)): a fill-the-stage tree whose root is the device's stage, rotated once on every device.
+  tree('mqr-rotate'),
   reject('reject-mqr-17-bands', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (min-width: 100px) { .a { width: 1px; } }', 'the @media rules of this document split the viewport into 17 bands, more than 16, which is not supported yet (package MQ-R4)'),
   reject('reject-mqr-env-feature', 'DRAGON_UNSUPPORTED_AT_RULE', '@media (prefers-reduced-motion: reduce) { .a { width: 20px; } }', '@media (prefers-reduced-motion: reduce) in the stylesheet is not supported: (prefers-reduced-motion: reduce) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'),
 ];

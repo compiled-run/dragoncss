@@ -121,6 +121,9 @@ export function runScript(sp: StateProgram, steps: readonly ScriptStep[], faults
         if (tap === null) throw new Error(`tap(${s.x}, ${s.y}) needs a tap handler (the hit table of the live program)`);
         taps.push(tap(rendered, rt.assignment, s.x, s.y));
         break;
+      case 'resize':
+        // MQ-R1: a size change runs on the band runtime reference (media-runtime.ts), which resize-capture.ts judges.
+        throw new Error(`resize(${s.width}, ${s.height}) needs the band runtime (media-runtime.ts MediaRuntime), not the state runtime`);
       case 'dump':
         out.push({ assignment: rt.assignment, program: rendered, taps });
         taps = [];

@@ -37,10 +37,10 @@ const stateCaseCount = (name: string): number => {
 };
 
 describe('native targets', () => {
-  it('ios and android, each with the eight lanes in order', () => {
+  it('ios and android, each with the nine lanes in order', () => {
     expect(targets.map((t) => t.target)).toEqual(['ios', 'android']);
-    // SELD-R1b appends device-states and device-hit after the six P5 lanes.
-    expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels', 'device-states', 'device-hit']);
+    // SELD-R1b appends device-states and device-hit after the six P5 lanes; MQ-R1 appends device-env (one rotation per device).
+    expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels', 'device-states', 'device-hit', 'device-env']);
     for (const t of targets) expect(t.lanes.map((l) => l.lane)).toEqual([...LANES]);
   });
   it('case lists come from the constants: the declared top-level cases plus one set per DPR on both vectors lanes of both targets', () => {

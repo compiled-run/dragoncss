@@ -84,6 +84,12 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
       if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at(f), name: st.name.text });
     }
   }
+  // MQ-R1 (T067 R4): the @media band lookup a native root runs on a size change.
+  const bandFile = program.getSourceFile(at('rt-band.ts'));
+  if (bandFile === undefined) throw new Error('the root file rt-band.ts is not an engine file');
+  for (const st of bandFile.statements) {
+    if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('rt-band.ts'), name: st.name.text });
+  }
   // SELD-R1b (T047 RT-9): the hit test and tap dispatch.
   const hit = program.getSourceFile(at('rt-hit.ts')) as ts.SourceFile;
   for (const st of hit.statements) {

@@ -9,7 +9,7 @@ import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_POSITION_DEVICE_PX } fro
 import { GRADIENT_CHANNEL_DELTA } from './allowances/gradient.ts';
 import { SHADOW_CHANNEL_DELTA } from './allowances/shadow.ts';
 import type { DumpEdges, DumpFrame, DumpLine, DumpNode, DumpSample, JsonValue, NativeDump } from './native-dump.ts';
-import { frameOf, REFERENCE_LANE } from './native-dump.ts';
+import { frameOf, NATIVE_DUMP_SCHEMA_ID, REFERENCE_LANE } from './native-dump.ts';
 import type { SamplePoint, SampleRule } from './samples.ts';
 import { GLYPH_EDGE_RULE, isScanlineRule, ruleKind } from './samples.ts';
 
@@ -394,7 +394,7 @@ export function referenceDump(c: ReferenceCase, faults: ReferenceFaults = NO_REF
     nodes.push({ id: r.id, node: { id: r.id, parent: r.parent, kind, native: 'ts-reference', ...g, applied: {} } });
   });
   return {
-    schema: 'dragon.native-dump/1',
+    schema: NATIVE_DUMP_SCHEMA_ID,
     lane: REFERENCE_LANE,
     case: { id: c.caseId, fixture: c.fixture, dpr: c.dpr, viewport: { width: c.input.viewport.width, height: c.input.viewport.height }, direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: null },
     device: { platform: c.platform, os: 'none', model: 'ts-engine', abi: 'none', scale: c.dpr, toolchain: 'packages/layout (TypeScript reference)', renderer: 'none' },
@@ -402,6 +402,7 @@ export function referenceDump(c: ReferenceCase, faults: ReferenceFaults = NO_REF
     nodes: nodes.map((n) => ({ ...n.node, lines: lines.get(n.id) ?? [] })),
     pixels: null,
     timing: null,
+    environment: null,
   };
 }
 

@@ -149,7 +149,9 @@ function swiftText(): string {
 /// are each assignment's engine input resolved for the environment at scale 1 (R14), where length endpoints come from.
 public final class DragonAnimator {
   private let tables: AnimTables
-  private let inputs: JsArray<LayoutInput>
+  private var inputs: JsArray<LayoutInput>
+  /// MQ-R1: the next event's after-change inputs, every assignment's at the media root's new size; nil without a size change.
+  private var staged: JsArray<LayoutInput>?
   private let initial: Double
   private let faults = RtFaults(${falses(faultArity().RtFaults)})
   private let anim = AnimatorFaults(${falses(faultArity().AnimatorFaults)})
@@ -169,9 +171,19 @@ public final class DragonAnimator {
     refresh()
   }
 
-  /// R4: one style change event, the setter having moved the machine to assignment to.
+  /// MQ-R1: the inputs the next event's after-change style resolves against, after a size change of the media root.
+  public func stage(_ after: [LayoutInput]) {
+    if Double(after.count) != tables.assignments { fatalError("dragon: \(after.count) engine inputs for \(tables.assignments) assignments") }
+    staged = JsArray(after)
+  }
+
+  /// R4: one style change event, the setter having moved the machine to assignment to; across a staged size change, the
+  /// before-change style reads the old inputs and the after-change style the new ones (MQ-R1).
   public func event(_ to: Int) {
-    do { state = try rtAnimator_animatorEvent(state, tables, inputs, initial, Double(to), faults, anim) } catch { fatalError("dragon: animator event to \(to): \(error)") }
+    let after = staged ?? inputs
+    do { state = try rtAnimator_animatorRestyle(state, tables, inputs, after, initial, Double(to), faults, anim) } catch { fatalError("dragon: animator event to \(to): \(error)") }
+    inputs = after
+    staged = nil
     refresh()
   }
 
@@ -258,7 +270,9 @@ import dev.dragon.layout.*
  * are each assignment's engine input resolved for the environment at scale 1 (R14), where length endpoints come from.
  */
 class DragonAnimator(private val tables: AnimTables, inputs: List<LayoutInput>, initial: Int, current: Int) {
-  private val inputs: JsArray<LayoutInput> = JsArray<LayoutInput>(inputs.size).also { it.addAll(inputs) }
+  private var inputs: JsArray<LayoutInput> = JsArray<LayoutInput>(inputs.size).also { it.addAll(inputs) }
+  /** MQ-R1: the next event's after-change inputs, every assignment's at the media root's new size; null without a size change. */
+  private var staged: JsArray<LayoutInput>? = null
   private val initial = initial.toDouble()
   private val faults = RtFaults(${falses(faultArity().RtFaults)})
   private val anim = AnimatorFaults(${falses(faultArity().AnimatorFaults)})
@@ -272,9 +286,21 @@ class DragonAnimator(private val tables: AnimTables, inputs: List<LayoutInput>, 
     refresh()
   }
 
-  /** R4: one style change event, the setter having moved the machine to assignment to. */
+  /** MQ-R1: the inputs the next event's after-change style resolves against, after a size change of the media root. */
+  fun stage(after: List<LayoutInput>) {
+    if (after.size.toDouble() != tables.assignments) throw IllegalStateException("dragon: " + after.size + " engine inputs for " + tables.assignments + " assignments")
+    staged = JsArray<LayoutInput>(after.size).also { it.addAll(after) }
+  }
+
+  /**
+   * R4: one style change event, the setter having moved the machine to assignment to; across a staged size change, the
+   * before-change style reads the old inputs and the after-change style the new ones (MQ-R1).
+   */
   fun event(to: Int) {
-    state = rtAnimator_animatorEvent(state, tables, inputs, initial, to.toDouble(), faults, anim)
+    val after = staged ?: inputs
+    state = rtAnimator_animatorRestyle(state, tables, inputs, after, initial, to.toDouble(), faults, anim)
+    inputs = after
+    staged = null
     refresh()
   }
 

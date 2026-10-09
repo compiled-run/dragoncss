@@ -1279,7 +1279,10 @@ export async function runApp(h: DeviceHandle, artifact: string, opts: RunOptions
           const why = 'diagnostics added to the crash error being thrown';
           const focus = adb(h, ['shell', 'dumpsys', 'window', '|', 'grep', '-E', "'mCurrentFocus|mFocusedApp'"], 20_000, why).out.trim();
           const power = adb(h, ['shell', 'dumpsys', 'power', '|', 'grep', '-E', "'mWakefulness=|mHoldingDisplaySuspendBlocker'"], 20_000, why).out.trim();
-          throw new Error(`the Android host crashed (${focus.replace(/\s+/g, ' ')}; ${power.replace(/\s+/g, ' ')}): ${adb(h, ['logcat', '-d', '-b', 'crash'], 20_000).out.slice(-3000)}`);
+          // The exception and its first frames, not the end of a deep stack (a crash in a measure pass is mostly framework frames).
+          const crash = adb(h, ['logcat', '-d', '-b', 'crash'], 20_000).out;
+          const at = crash.lastIndexOf('FATAL EXCEPTION');
+          throw new Error(`the Android host crashed (${focus.replace(/\s+/g, ' ')}; ${power.replace(/\s+/g, ' ')}): ${at < 0 ? crash.slice(-3000) : crash.slice(at, at + 3000)}`);
         }
         if (opts.onHold !== undefined) {
           const listed = adb(h, ['shell', 'ls', remote], 20_000).out.split(/\s+/).filter((f) => f.startsWith('hold-')).map((f) => f.slice('hold-'.length));

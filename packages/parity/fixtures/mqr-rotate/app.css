@@ -1,0 +1,6 @@
+.frame { display: flex; height: 40px; column-gap: 4px; }
+.panel { width: 120px; background-color: #ccc; }
+.panel[ui-open] { background-color: #333; }
+.sib { flex-grow: 1; height: 20px; background-color: #999; }
+@media (orientation: landscape) { .frame { height: 60px; } .sib { background-color: #c00; } }
+@media (max-width: 500px) { .panel { width: 160px; } }

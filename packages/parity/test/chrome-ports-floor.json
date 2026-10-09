@@ -3,6 +3,7 @@
     "third_party/blink/renderer/core/css/css_markup.cc",
     "third_party/blink/renderer/core/css/css_primitive_value.cc",
     "third_party/blink/renderer/core/css/css_primitive_value.h",
+    "third_party/blink/renderer/core/css/resolver/css_to_style_map.cc",
     "third_party/blink/renderer/core/css/selector_checker.cc",
     "third_party/blink/renderer/core/dom/element.cc",
     "third_party/blink/renderer/core/frame/local_frame_view.cc",
