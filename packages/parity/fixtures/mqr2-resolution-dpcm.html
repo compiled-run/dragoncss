@@ -4,20 +4,18 @@
 <style>
 body { margin: 0; }
 .a { width: 80px; height: 12px; background-color: #ccc; }
-.b { width: 80px; height: 12px; background-color: #ccc; }
 .c { width: 80px; height: 12px; background-color: #ccc; }
 .d { width: 80px; height: 12px; background-color: #ccc; }
-/* Each dpcm query holds at a capture DPR only through Chrome's two-decimal rounding: 75.71dpcm is 2.0032 dppx (true from DPR 2),
-   99.22dpcm 2.6252 dppx (true from 2.625), 113.5dpcm 3.0030 dppx (true from 3); 99.15dpcm (2.6233 dppx) holds below 2.625. */
+/* Each query holds at its capture DPR only through Chrome's two-decimal dpcm rounding (an exact comparison is false there): 75.71dpcm
+   is 2.0032 dppx (true from DPR 2), 99.22dpcm 2.6252 dppx (from 2.625), 113.5dpcm 3.0030 dppx (from 3). The max form is
+   mqr2-resolution-dpcm-max's. */
 @media (min-resolution: 75.71dpcm) { .a { background-color: #c00; } }
-@media (max-resolution: 99.15dpcm) { .b { width: 120px; background-color: #0a0; } }
 @media (min-resolution: 99.22dpcm) { .c { background-color: #00c; } }
 @media (min-resolution: 113.5dpcm) { .d { height: 20px; background-color: #a0a; } }
 </style>
 </head>
 <body data-dragon-id="body">
 <div data-dragon-id="a" class="a"></div>
-<div data-dragon-id="b" class="b"></div>
 <div data-dragon-id="c" class="c"></div>
 <div data-dragon-id="d" class="d"></div>
 </body>

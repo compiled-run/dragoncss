@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.a { width: 80px; height: 12px; background-color: #ccc; }
+.b { width: 80px; height: 12px; background-color: #ccc; }
+.d { width: 80px; height: 12px; background-color: #ccc; }
+/* (max-resolution: 75.52dpcm) is 1.9981 dppx: at DPR 2 it holds only through Chrome's two-decimal dpcm rounding (both sides 2.00; the
+   exact comparison is false). The min atoms at 2 and 3 make each capture DPR its own band. A max query that holds only rounded at
+   2.625 does not exist (a value rounding to 2.63 is at least 2.625), and one at 3 would ship a band above 3.005 no capture reaches. */
+@media (max-resolution: 75.52dpcm) { .b { width: 120px; background-color: #0a0; } }
+@media (min-resolution: 75.71dpcm) { .a { background-color: #c00; } }
+@media (min-resolution: 113.5dpcm) { .d { height: 20px; background-color: #a0a; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="a"></div>
+<div data-dragon-id="b" class="b"></div>
+<div data-dragon-id="d" class="d"></div>
+</body>
+</html>

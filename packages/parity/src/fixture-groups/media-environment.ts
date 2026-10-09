@@ -16,6 +16,7 @@ export const MEDIA_ENVIRONMENT_FIXTURES: readonly FixtureSpec[] = [
   both('mqr2-reduced-motion'),
   both('mqr2-resolution'),
   both('mqr2-resolution-dpcm'),
+  both('mqr2-resolution-dpcm-max'),
 ];
 
 /** The group's parity fixtures: none, as its fixtures run only as their scripts (MEDIA_ENVIRONMENT_FIXTURES, ENV_SCRIPTS). */
@@ -44,4 +45,5 @@ export const ENV_SCRIPTS: readonly ResizeScript[] = [
   { fixture: 'mqr2-resolution', start: { width: 400, height: 304 }, steps: [r(352, 304), r(400, 304)] },
   // dpcm compares at two decimals: each atom holds at its DPR only through that rounding, and every DPR is its own band.
   { fixture: 'mqr2-resolution-dpcm', start: { width: 400, height: 304 }, steps: [r(352, 304), r(400, 304)] },
+  { fixture: 'mqr2-resolution-dpcm-max', start: { width: 400, height: 304 }, steps: [r(352, 304), r(400, 304)] },
 ];
