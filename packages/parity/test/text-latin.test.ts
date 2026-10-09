@@ -235,12 +235,12 @@ describe('TXT1a-1 phase B: the text-latin registry', () => {
     expect(() => tl.requireAdmitted(f, tl.compileTextLatin(f, 'ltr').compiled, c)).toThrow(/not a text-latin case/);
   });
 
-  const BASE_LAYOUT_CASES = 664;
+  const BASE_LAYOUT_CASES = 666;
   it('keeps every FIXTURES layout case (and so every native and device case) as it was at BASE', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
-    // BASE is txt1a-1b-v2 at #102's land-ready head d542a45419 (master with #101, #210, #208, #198, #216 and #218), whose FIXTURES hold 664 layout cases.
+    // BASE is master at b97cf50c62 (#102, #203, #232 and #233 landed), whose FIXTURES hold 666 layout cases.
     expect(ids.length).toBe(BASE_LAYOUT_CASES);
-    expect(createHash('sha256').update(ids.join('\n')).digest('hex')).toBe('d989c5282224bcb236bc6a3229caad913a2ec4a66223b8cafd16177171a74ec6');
+    expect(createHash('sha256').update(ids.join('\n')).digest('hex')).toBe('caefcdb7dd74e51b1964132632dbd06014be283d77d0fba5335dc38bb10953ad');
   });
 
   it('gives every FIXTURES case the native projection as its engine projection, at every DPR', () => {
@@ -396,18 +396,7 @@ describe('TXT1a-1 phase B: text-latin vectors replay in the translated engine (R
     const out = runEngineCase(JSON.stringify({ platform: v.platform, faults: NO_ENGINE_FAULTS, input: v.input, shaping: { language: v.language, faces: v.faces, calls: v.calls.slice(1) } }));
     expect(out).toMatch(/^\["harness-error","the shape transcript holds no call/);
   });
-
-  for (const target of ['swift', 'kotlin'] as const) {
-    it(`replays every vector in the generated ${target} engine with the TypeScript results`, async () => {
-      const check = (await import(pathToFileURL(repoPath('packages/translate/src/check.ts')).href)) as { runTarget: (t: string, c: unknown, files: unknown, tag: string) => { status: string; suites: { name: string; failures?: unknown; mismatches?: unknown }[] }; committedFiles: (t: string) => unknown };
-      const lines = vecs.map(({ v }) => lineOf(v));
-      // native.ts corpusFiles keys the written inputs by the corpus digest, so the digest covers the lines.
-      const digest = createHash('sha256').update(lines.join('\n')).digest('hex');
-      const corpus = { suites: [{ name: 'text-latin', mode: 'engine', lines, expected: lines.map(runEngineCase) }], vectors: [], engineSplit: { ok: lines.length, unsupported: 0, refused: 0, threw: 0, harnessError: 0 }, digest, digests: {} };
-      const r = check.runTarget(target, corpus, check.committedFiles(target), `${target}-text-latin`);
-      expect(r.status, JSON.stringify(r.suites).slice(0, 2000)).toBe('pass');
-    }, 1_800_000);
-  }
+  // The Swift and Kotlin replays of these vectors run on the native shards: text-latin-native.test.ts.
 });
 
 describe('the text-latin capture CLI', () => {
