@@ -429,7 +429,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   if try jsSome(kids, { (k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return ((k.kind != S.s_box) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced))
 }) {
-    throw JsError(message: jsConcat(box.id, S.s102))
+    throw JsError(message: jsConcat(box.id, S.s103))
   }
   let direction: JsString = try block_directionOf(ctx, box)
   let placed: JsArray<Placed> = JsArray<Placed>([])

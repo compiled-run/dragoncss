@@ -644,7 +644,7 @@ public func grid_fixedValue(_ b: any U_Auto_Fr_MaxContent_MinContent_Percent_Px,
   if ((b.kind == S.s_px) || ((b as! any U_Auto_Fr_MaxContent_MinContent_Percent).kind == S.s_percent)) {
     return try grid_breadthValue((b as! any U_Percent_Px), available)
   }
-  throw JsError(message: jsConcat(S.s343, (b as! any U_Auto_Fr_MaxContent_MinContent).kind, S.s14))
+  throw JsError(message: jsConcat(S.s344, (b as! any U_Auto_Fr_MaxContent_MinContent).kind, S.s14))
 }
 
 // ts: packages/layout/src/grid.ts:346
@@ -908,7 +908,7 @@ public func grid_runPlacement(_ g: GridContainerStyle, _ boxes: JsArray<LayoutBo
       let gi: GridItemStyle? = b.style.gridItem
       // ts: packages/layout/src/grid.ts:521
       if (gi == nil) {
-        throw JsError(message: jsConcat(b.id, S.s33))
+        throw JsError(message: jsConcat(b.id, S.s34))
       }
       let c: GridAxisPosition = try grid_clampSpan(jsUnwrap(gi).column)
       let r: GridAxisPosition = try grid_clampSpan(jsUnwrap(gi).row)
@@ -2284,7 +2284,7 @@ public func grid_selfAlignOf(_ container: GridContainerStyle, _ box: LayoutBox, 
   let a: JsString = ((box.style.alignSelf == S.s_auto) ? containerStyle.alignItems : box.style.alignSelf)
   // ts: packages/layout/src/grid.ts:1273
   if (a == S.s_baseline) {
-    try unsupported_unsupported(S.s_grid_baseline, box.id, S.s428, S.s385)
+    try unsupported_unsupported(S.s_grid_baseline, box.id, S.s429, S.s386)
   }
   return a
 }
@@ -2443,7 +2443,7 @@ public func grid_contentContribution(_ ctx: Ctx, _ grid: GridState, _ item: Grid
 public func grid_contributionFor(_ ctx: Ctx, _ grid: GridState, _ c: GridCollection, _ type: JsString, _ item: GridItemData) throws -> Double {
   // ts: packages/layout/src/grid.ts:1429
   if (type == S.s_free_space) {
-    throw JsError(message: S.s490)
+    throw JsError(message: S.s491)
   }
   let s: LayoutStyle = item.box.style
   let columns: Bool = (c.axis == S.s_columns)
@@ -2576,7 +2576,7 @@ public func grid_buildGrid(_ ctx: Ctx, _ box: LayoutBox, _ pad: Edges, _ bor: Ed
   let g: GridContainerStyle? = s.grid
   // ts: packages/layout/src/grid.ts:1519
   if (g == nil) {
-    throw JsError(message: jsConcat(box.id, S.s34))
+    throw JsError(message: jsConcat(box.id, S.s35))
   }
   let inFlow: JsArray<LayoutBox> = JsArray<LayoutBox>([])
   // ts: packages/layout/src/grid.ts:1521
@@ -2588,11 +2588,11 @@ public func grid_buildGrid(_ ctx: Ctx, _ box: LayoutBox, _ pad: Edges, _ bor: Ed
       _i70 += 1
       // ts: packages/layout/src/grid.ts:1522
       if ((k.kind != S.s_box) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) {
-        throw JsError(message: jsConcat((k as! any U_InlineBox_LineBreak_TextLeaf).id, S.s38, box.id, S.s114))
+        throw JsError(message: jsConcat((k as! any U_InlineBox_LineBreak_TextLeaf).id, S.s39, box.id, S.s115))
       }
       // ts: packages/layout/src/grid.ts:1523
       if ((k as! any U_LayoutBox_ReplacedLeaf).kind == S.s_replaced) {
-        try unsupported_unsupported(S.s_grid_replaced, (k as! ReplacedLeaf).id, S.s429, S.s355)
+        try unsupported_unsupported(S.s_grid_replaced, (k as! ReplacedLeaf).id, S.s430, S.s356)
       }
       // ts: packages/layout/src/grid.ts:1524
       if ((k as! LayoutBox).kind != S.s_box) {
@@ -2600,7 +2600,7 @@ public func grid_buildGrid(_ ctx: Ctx, _ box: LayoutBox, _ pad: Edges, _ bor: Ed
       }
       // ts: packages/layout/src/grid.ts:1525
       if try position_isOutOfFlow(ctx, (k as! LayoutBox)) {
-        try unsupported_unsupported(S.s_grid_abspos, (k as! LayoutBox).id, S.s430, S.s370)
+        try unsupported_unsupported(S.s_grid_abspos, (k as! LayoutBox).id, S.s431, S.s371)
       }
       _ = jsPush(inFlow, (k as! LayoutBox))
     }

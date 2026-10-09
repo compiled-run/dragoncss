@@ -190,7 +190,7 @@ public func box_resolvePaddingWith(_ style: LayoutStyle, _ cbInline: Double, _ f
 public func box_borderWidthPx(_ v: any U_DevicePx_LengthCalc_Px) throws -> Double {
   // ts: packages/layout/src/box.ts:103
   if (v.kind == S.s_calc) {
-    throw JsError(message: S.s346)
+    throw JsError(message: S.s347)
   }
   return (v as! any U_DevicePx_Px).value
 }
@@ -277,7 +277,7 @@ public func box_percentBlockBasis(_ box: LayoutBox, _ basis: any U_HeightBasis_d
   }
   // ts: packages/layout/src/box.ts:190
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s425, jsConcat(prop, S.s57))
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s426, jsConcat(prop, S.s58))
   }
   return nil
 }

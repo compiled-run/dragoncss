@@ -831,11 +831,11 @@ public func shaping_refusalOf(_ units: JsArray<Double>) throws -> JsString {
       let textDefault: Bool = ((((((((((cp == 35.0) || (cp == 42.0)) || ((cp >= 48.0) && (cp <= 57.0))) || (cp == 169.0)) || (cp == 174.0)) || (cp == 8252.0)) || (cp == 8265.0)) || (cp == 8482.0)) || (cp == 8505.0)) || ((cp >= 8596.0) && (cp <= 8601.0)))
       // ts: packages/layout/src/shaping.ts:213
       if try (scriptData_isExtendedPictographic(cp) && (!textDefault)) {
-        return try jsConcat(S.s318, jsToUpperCase(jsToStringRadix16(cp)), S.s35)
+        return try jsConcat(S.s319, jsToUpperCase(jsToStringRadix16(cp)), S.s36)
       }
       // ts: packages/layout/src/shaping.ts:214
       if try ((cp > 255.0) && scriptData_isMark(cp)) {
-        return try jsConcat(S.s318, jsToUpperCase(jsToStringRadix16(cp)), S.s32)
+        return try jsConcat(S.s319, jsToUpperCase(jsToStringRadix16(cp)), S.s32)
       }
     }
   }
@@ -944,7 +944,7 @@ public func shaping_segmentText(_ text: JsString) throws -> any U_SegmentResult_
         }
         // ts: packages/layout/src/shaping.ts:268
         if try ((jsUnwrap(jsAt(next, 0.0)) == scriptData_USCRIPT_INHERITED) && (jsLength(next) > 1.0)) {
-          return try SegmentResult_okFalse(false, jsConcat(S.s318, jsToUpperCase(jsToStringRadix16(cp)), S.s36))
+          return try SegmentResult_okFalse(false, jsConcat(S.s319, jsToUpperCase(jsToStringRadix16(cp)), S.s37))
         }
         // ts: packages/layout/src/shaping.ts:269
         if try (!shaping_mergeSets(st, next)) {
@@ -1568,7 +1568,7 @@ public func shaping_missingIn(_ results: JsArray<ShapeResult>) throws -> Double 
 
 // ts: packages/layout/src/shaping.ts:702
 public func shaping_noGlyph(_ cp: Double) throws -> any U_LineResult_okFalse_LineResult_okTrue {
-  return try LineResult_okFalse(false, jsConcat(S.s318, jsToUpperCase(jsToStringRadix16(cp)), S.s22))
+  return try LineResult_okFalse(false, jsConcat(S.s319, jsToUpperCase(jsToStringRadix16(cp)), S.s22))
 }
 
 // ts: packages/layout/src/shaping.ts:724
@@ -1582,10 +1582,10 @@ public func shaping_hyphenWidth(_ item: ShapeItem) throws -> any U_LineResult_ok
     }
     return try shaping_shapeItem((made as! ItemResult_okTrue).item)
   }
-  var r: ShapeResult = try own(S.s710)
+  var r: ShapeResult = try own(S.s711)
   // ts: packages/layout/src/shaping.ts:731
   if ((r.missing >= 0.0) || (jsLength(r.runs) == 0.0)) {
-    try r = own(S.s80)
+    try r = own(S.s81)
   }
   // ts: packages/layout/src/shaping.ts:732
   if (r.missing >= 0.0) {
@@ -2003,7 +2003,7 @@ public func shaping_breakText(_ b: LineBuild, _ r: MutableResult, _ availIn: Dou
   let it: any U_BreakItem_br_BreakItem_close_BreakItem_open_BreakItem_text = try jsUnwrap(jsAt(b.items, r.index))
   // ts: packages/layout/src/shaping.ts:1180
   if (it.kind != S.s_text) {
-    throw try BreakFailure(S.s397)
+    throw try BreakFailure(S.s398)
   }
   var avail: Double = availIn
   let wrapped: Bool = (((((it as! BreakItem_text).offset + r.start) != 0.0) && (((it as! BreakItem_text).offset + r.start) == b.lineStart)) && (!b.afterForced))
@@ -2181,7 +2181,7 @@ public func shaping_handleOverflow(_ b: LineBuild) throws -> Void {
           let minAvail: Double = (r.width - 1.0)
           // ts: packages/layout/src/shaping.ts:1298
           if (minAvail <= 0.0) {
-            throw try BreakFailure(S.s358)
+            throw try BreakFailure(S.s359)
           }
           let before: MutableResult = MutableResult(r.index, r.start, r.end, r.width, r.hyphen, r.view, r.canBreakAfter, r.mayBreakInside)
           _ = try shaping_breakText(b, r, ((itemAvail < minAvail) ? itemAvail : minAvail), itemAvail)
@@ -2223,7 +2223,7 @@ public func shaping_handleText(_ b: LineBuild) throws -> Void {
   let it: any U_BreakItem_br_BreakItem_close_BreakItem_open_BreakItem_text = try jsUnwrap(jsAt(b.items, b.curItem))
   // ts: packages/layout/src/shaping.ts:1332
   if (it.kind != S.s_text) {
-    throw try BreakFailure(S.s499)
+    throw try BreakFailure(S.s500)
   }
   // ts: packages/layout/src/shaping.ts:1333
   if (b.state == S.s_trailing) {
@@ -2431,7 +2431,7 @@ public func shaping_breakItemLines(_ items: JsArray<any U_BreakItem_br_BreakItem
       }
       // ts: packages/layout/src/shaping.ts:1475
       if ((line.nextItem == curItem) && (line.nextOffset == curOffset)) {
-        throw try BreakFailure(jsConcat(S.s686, jsNumberToString(curItem)))
+        throw try BreakFailure(jsConcat(S.s687, jsNumberToString(curItem)))
       }
       _ = jsPush(lines, line)
       curItem = line.nextItem
@@ -2510,7 +2510,7 @@ public func shaping_firstOutsideLatin(_ text: JsString) throws -> Double {
 
 // ts: packages/layout/src/shaping.ts:1629
 public func shaping_outsideLatinReason(_ cp: Double) throws -> JsString {
-  return try jsConcat(S.s318, jsToUpperCase(jsToStringRadix16(cp)), S.s44)
+  return try jsConcat(S.s319, jsToUpperCase(jsToStringRadix16(cp)), S.s45)
 }
 
 // ts: packages/layout/src/shaping.ts:1633
