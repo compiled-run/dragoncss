@@ -103,7 +103,7 @@ async function smokeAndroid(outDir: string): Promise<{ scale: number; files: str
     log(`${AVD} (${h.serial}), Android ${release} (API ${sdk}; text drawn with Canvas.drawGlyphs), density ${density}, scale ${scale}`);
     const build = buildAndroid({ reuse: true });
     log(`built ${build.cases} cases, source sha256 ${build.sourceSha256}`);
-    const inst = installApk(h, build.artifact);
+    const inst = await installApk(h, build.artifact);
     if (inst.status !== 0 || !/Success/.test(inst.out)) throw new Error(`adb install failed: ${inst.out}`);
     const remote = `/sdcard/Android/data/${HOST_BUNDLE}/files`;
     adb(['shell', 'rm', '-rf', remote]);

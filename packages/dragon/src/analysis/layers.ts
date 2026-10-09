@@ -2,12 +2,14 @@
 // revert-layer in a document with layers rolls back to the layers below it, which Dragon does not resolve yet, so it is refused.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { layerRanks } from '../css/at-rules/layer.ts';
+import { asciiLower } from '../css/escapes.ts';
 import type { Declaration, Rule } from '../css/stylesheet.ts';
+import { tokenize } from '../media/tokens.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { Diagnostic } from '../types.ts';
 
-const isRevertLayer = (d: Declaration): boolean =>
-  d.custom?.wide === 'revert-layer' || d.longhands.some((lh) => lh.value.kind === 'keyword' && lh.value.value === 'revert-layer') || (d.animation !== undefined && [...d.animation.longhands.values()].some((l) => l.kind === 'wide' && l.keyword === 'revert-layer'));
+// Any revert-layer identifier in the value, escaped or not: a var() fallback or a custom property can carry it into a substitution.
+const isRevertLayer = (d: Declaration): boolean => tokenize(d.text).some((t) => t.type === 'ident' && asciiLower(t.value) === 'revert-layer');
 
 /** The rules with each layered declaration ranked; with no layer declared, the rules as given. */
 export function rankLayers(rules: readonly Rule[], declared: readonly string[], faults: CompilerFaults, diagnostics: Diagnostic[] | null): Rule[] {

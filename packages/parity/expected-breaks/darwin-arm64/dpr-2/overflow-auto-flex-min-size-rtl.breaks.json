@@ -1,0 +1,11 @@
+{
+  "case": "overflow-auto-flex-min-size-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"r1a:text0","data":"XXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"r1b:text0","data":"XXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"r2a:text0","data":"XXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"r2b:text0","data":"XXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

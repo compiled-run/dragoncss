@@ -268,6 +268,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     const w = [...(borders.get(n.id) ?? [0, 0, 0, 0])];
     const colors = co.colors.flatMap((c) => [c.r, c.g, c.b, c.alpha]);
     if (!borderNeedsSidePainter(w, st.styles, colors)) continue;
+    // A rounded box is drawn by PNT1's rounded border painter, never by the side painter this file judges (paint-dash.ts models no
+    // radii); the radius oracle compares those borders.
+    if (writeOf(p, n.id, 'border-radius') !== undefined) continue;
     if (mode.preT116 && !st.styles.some((s, k) => (s === 'dashed' || s === 'dotted') && (w[k] as number) > 0 && co.colors[k]?.alpha !== 0)) continue;
     boxes++;
     const ops = borderPaintOps(b.left, b.top, b.right, b.bottom, w, st.styles, colors, faults);
@@ -340,7 +343,7 @@ describe('the oracle\'s paint order (which boxes hide a border pixel)', () => {
     expect(textPaintsOver(order, layer, 'b5', 'c4')).toBe(false);
     expect(textPaintsOver(order, layer, 'd3', 'b5')).toBe(false);
     // Flex items paint in order-modified document order; other boxes in tree order.
-    const leaf = (id: string, order = 0, display = 'block', position = 'static'): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { display, position, order } as unknown as LayoutBox['style'], children: [] });
+    const leaf = (id: string, order = 0, display = 'block', position = 'static'): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { display, position, order } as unknown as LayoutBox['style'], strut: null, children: [] });
     const flex: LayoutBox = { ...leaf('f', 0, 'flex'), children: [leaf('x', 2), leaf('a', -9, 'block', 'absolute'), leaf('y', -1), leaf('z', 2, 'block', 'relative'), { ...leaf('w', 1), children: [leaf('w1', -5)] }] };
     // a is out of flow, so its order is ignored and it keeps its slot; z is a relatively positioned flex item and is reordered.
     expect(paintOrder({ ...leaf('r'), children: [flex, leaf('after')] })).toEqual(['r', 'f', 'y', 'a', 'w', 'w1', 'x', 'z', 'after']);

@@ -1,0 +1,25 @@
+{
+  "case": "inline-br",
+  "dpr": 3,
+  "texts": [
+    {"id":"r1:text0","lines":[[0,2]]},
+    {"id":"r2:text0","lines":[[0,2]]},
+    {"id":"r3:text0","lines":[[0,2]]},
+    {"id":"r4:text0","lines":[[0,2]]},
+    {"id":"r4:text1","lines":[[0,2]]},
+    {"id":"r6:text0","lines":[[0,1]]},
+    {"id":"r6s:text0","lines":[[0,1]]},
+    {"id":"r6s:text1","lines":[[0,1]]},
+    {"id":"r6:text1","lines":[[0,1]]},
+    {"id":"r7:text0","lines":[[0,2]]},
+    {"id":"r7:text1","lines":[[0,2]]},
+    {"id":"r8:text0","lines":[[0,2]]},
+    {"id":"r8:text1","lines":[[0,2]]},
+    {"id":"r9:text0","lines":[[0,2]]},
+    {"id":"r9:text1","lines":[[0,2]]},
+    {"id":"r10:text0","lines":[[0,2]]},
+    {"id":"r10:text1","lines":[[0,2]]},
+    {"id":"r11:text0","lines":[[0,3]]},
+    {"id":"r11:text1","lines":[[0,2]]}
+  ]
+}

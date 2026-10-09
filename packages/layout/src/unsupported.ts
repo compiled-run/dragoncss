@@ -3,9 +3,9 @@
 export type UnsupportedCode =
   | 'percent-height-flex'
   | 'percent-gap'
-  | 'mixed-inline-font'
   | 'text-align'
   | 'text-glyph'
+  | 'text-script'
   | 'bidi-neutral'
   | 'abspos-in-inline'
   | 'flex-baseline'
@@ -14,7 +14,15 @@ export type UnsupportedCode =
   | 'flex-intrinsic-wrap-column'
   | 'replaced-out-of-flow'
   | 'line-break'
+  | 'mixed-text-wrap-mode'
+  | 'inline-box-decoration'
+  | 'vertical-align'
+  | 'inline-box-position'
+  | 'inline-empty-line'
   | 'grid-layout';
+
+/** The refusals a TextMeasurer returns: a code point with no glyph, or text outside the measurer's scripts (R4, notes/T056-txt1a-spec.md). */
+export type TextRefusalCode = 'text-glyph' | 'text-script';
 
 export type LayoutUnsupported = {
   readonly code: UnsupportedCode;

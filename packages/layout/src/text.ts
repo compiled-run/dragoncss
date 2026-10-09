@@ -1,5 +1,6 @@
 // Text measurement is injected. The Ahem measurer is pure: it models the WPT Ahem v1.50 metrics without reading the font.
 import type { TextFont } from './input.ts';
+import type { TextRefusalCode } from './unsupported.ts';
 import type { LU } from './units.ts';
 import { cachedRangeWidth, fontMetricPx, glyphBoundsMetricPx, platformFontSize, roundFontMetricHalfUpToWholePx, roundFontMetricToWholePx, textAdvanceAt, ZERO } from './units.ts';
 
@@ -11,7 +12,7 @@ export type FontLengths = { readonly xHeight: number; readonly capHeight: number
 /** The advance of one run of text on one line. */
 export type TextMeasure = { readonly width: LU };
 
-export type MeasureResult = { readonly ok: true; readonly measure: TextMeasure } | { readonly ok: false; readonly reason: string };
+export type MeasureResult = { readonly ok: true; readonly measure: TextMeasure } | { readonly ok: false; readonly code: TextRefusalCode; readonly reason: string };
 
 export interface TextMeasurer {
   metrics(font: TextFont): FontMetrics;
@@ -85,6 +86,12 @@ export function fontMetricLengths(data: FontData, instanceSizePx: number): FontL
 
 export const AHEM_FONT_DATA: FontData = ahemFontData();
 
+/** The face id of the bundled WPT Ahem v1.50: its family name, which every milestone-1 input writes. Other faces are named by sha256. */
+export const AHEM_FACE_ID = 'Ahem';
+
+/** The sha256 of the bundled Ahem's bytes (vendor/fonts/Ahem.ttf), which a host checks before it shapes with the face. */
+export const AHEM_SHA256 = 'b719ecb31c5b21fc573c03f6421c74ac63c271a5a3ff841e34f9705fb94b8448';
+
 /** A covered code point's advance in whole em, or -1 when it is not covered or its advance is not a whole number of em. */
 function emAdvance(data: FontData, cp: number): number {
   const k = coveredIndex(cp);
@@ -117,7 +124,7 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
       for (const ch of text) {
         const cp = ch.codePointAt(0) as number;
         const advance = emAdvance(data, cp);
-        if (advance < 0) return { ok: false, reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
+        if (advance < 0) return { ok: false, code: 'text-glyph', reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
         glyphs += advance;
       }
       return { ok: true, measure: { width: textAdvanceAt(glyphs, instanceSize(font.size)) } };
@@ -130,7 +137,7 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
       for (const ch of text) {
         const cp = ch.codePointAt(0) as number;
         const advance = emAdvance(data, cp);
-        if (advance < 0) return { ok: false, reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
+        if (advance < 0) return { ok: false, code: 'text-glyph', reason: `U+${cp.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
         if (k < start) before += advance;
         if (k < end) through += advance;
         k++;

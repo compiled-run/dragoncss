@@ -83,24 +83,32 @@ describe('the css-overflow-3 §3.1 computed pair and the overflow refusals', () 
     const c = project('ltr').compile(inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'])]));
     return { c, x: explainOne(c, 'web', 'a', 'overflow-x').value, y: explainOne(c, 'web', 'a', 'overflow-y').value };
   };
+  // OVFL (T078J) supports every computed pair but clip beside visible; the refusal pins moved to that pair (OVFL-c).
   it('visible beside hidden computes to auto, clip beside hidden to hidden, and clip beside visible stays', () => {
     const pair = project('ltr').compile(inputFor(`${FONT} .a { overflow-x: hidden; }`, (r) => [div(r, 'a', ['a'])]));
-    expect(pair.diagnostics.map((d) => d.message)).toEqual(['overflow-y computes to auto on a (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported', 'overflow-y computes to auto on a (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported']);
+    // The computed auto makes a box the user scrolls, which native refuses until OVFL-B (T078 R14); web compiles it.
+    expect(pair.diagnostics.map((d) => `${d.target} ${d.message}`)).toEqual(['ios overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on a, a box the user scrolls; ios has no native scroll views until OVFL-B']);
+    expect([resolved('.a { overflow-x: hidden; }').x, resolved('.a { overflow-x: hidden; }').y]).toEqual(['hidden', 'auto']);
     expect([resolved('.a { overflow: clip hidden; }').x, resolved('.a { overflow: clip hidden; }').y]).toEqual(['hidden', 'hidden']);
-    expect([resolved('.a { overflow-y: clip; }').x, resolved('.a { overflow-y: clip; }').y]).toEqual(['visible', 'clip']);
+    // clip beside visible keeps both (the refusal below names the pair as computed).
+    const kept = project('ltr').compile(inputFor(`${FONT} .a { overflow-y: clip; }`, (r) => [div(r, 'a', ['a'])]));
+    expect(kept.diagnostics[0]?.message).toBe('overflow-y: clip beside overflow-x: visible on a clips one axis only, which needs OVFL-c (css-overflow-3 §3.1)');
   });
-  it('a computed auto from the pair rule and overflow on body are DRAGON_UNSUPPORTED_VALUE on every target, located at the declaration', () => {
-    for (const css of ['.a { overflow-x: hidden; }', 'body { overflow: hidden; }']) {
+  it('clip beside visible is DRAGON_UNSUPPORTED_VALUE on every target, located at the declaration; overflow on body compiles', () => {
+    for (const css of ['.a { overflow-x: clip; }', '.a { overflow-y: clip; }']) {
       const input = inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'])]);
       const c = project('ltr').compile(input);
       const hits = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
       expect(hits.map((d) => d.target).sort(), css).toEqual(['ios', 'web']);
-      for (const d of hits) expect(spanTextOf(input, d), css).toBe('hidden');
+      for (const d of hits) expect(spanTextOf(input, d), css).toBe('clip');
       expect([c.outputs.ios.kind, c.outputs.web.kind], css).toEqual(['blocked', 'blocked']);
       expectCatalogued(c.diagnostics);
     }
-    const ok = project('ltr').compile(inputFor(`${FONT} .a { overflow: hidden; }`, (r) => [div(r, 'a', ['a'])]));
-    expect(ok.diagnostics).toEqual([]);
+    for (const css of ['.a { overflow: hidden; }', 'body { overflow: hidden; }', 'body { overflow-x: hidden; }']) {
+      expect(project('ltr').compile(inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'])])).diagnostics, css).toEqual([]);
+    }
+    // overflow-x: hidden alone computes overflow-y to auto: web compiles it, native refuses it until OVFL-B (T078 R14).
+    expect(project('ltr').compile(inputFor(`${FONT} .a { overflow-x: hidden; }`, (r) => [div(r, 'a', ['a'])])).diagnostics.map((d) => d.target)).toEqual(['ios']);
   });
 });
 
@@ -183,13 +191,15 @@ describe('C4: one display: none rule, the subtree is omitted wherever it occurs 
 describe('the root font size the engine input carries (V2 rootFontSize)', () => {
   const compileRoot = (fontSize: string) => project('ltr').compile(inputFor(`html { font-size: ${fontSize}; } ${FONT}`, (r) => [div(r, 'a', [], [text(r, 't', 'XX')])]));
   it('is the root font size in px when it computes to px', () => {
-    for (const [fontSize, px] of [['2em', 32], ['1rem', 16], ['12px', 12]] as const) {
+    // INL1a: larger computes to the parent's size times 1.2 (css-fonts-4 §2.5, Blink FontDescription::LargerSize), at the root the
+    // initial 16px, so it is px now.
+    for (const [fontSize, px] of [['2em', 32], ['1rem', 16], ['12px', 12], ['larger', 19.2]] as const) {
       const p = iosLayoutProjection(compileRoot(fontSize), { ...ENV, direction: 'ltr' }, []);
       expect(p.kind === 'ready' ? p.input.rootFontSize : p.reason, fontSize).toBe(px);
     }
   });
   it('blocks the ios output with a typed diagnostic, instead of throwing at projection, when it does not compute to px', () => {
-    for (const fontSize of ['medium', 'larger', '120%', 'calc(10px + 1vw)']) {
+    for (const fontSize of ['medium', '120%', 'calc(10px + 1vw)']) {
       const c = compileRoot(fontSize);
       expect(c.outputs.ios.kind, fontSize).toBe('blocked');
       expect(c.diagnostics.map((d) => d.code), fontSize).toEqual(['DRAGON_LOWERING_FAILED']);

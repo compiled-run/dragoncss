@@ -16,7 +16,7 @@ import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import { splitNotApplicable } from './css/not-applicable.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
-import { checkComputed } from './analysis/computed-checks.ts';
+import { checkComputed, checkNativeScroll } from './analysis/computed-checks.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
@@ -62,7 +62,7 @@ import { band, bandAt, evaluateInBand, featuresOfList, holdsWholePx } from './me
 import { androidProfile } from './profiles/android.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
-import { provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
+import { nativeScrollPending, provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
 import { webProfile } from './profiles/web.ts';
 import type { UaDataset } from './ua/datasets.ts';
 import { REFERENCE_PLATFORM, ReferencePlatformUnavailable, uaDatasetFor } from './ua/datasets.ts';
@@ -386,6 +386,8 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
         for (const t of ruleTargets) {
           const profile = profileFor(profiles, t);
           if (provenContexts(profile, feature).length > 0) continue;
+          // checkNativeScroll refuses these on native outside the lanes (naming OVFL-B), and the lanes run them on purpose.
+          if (t !== 'web' && nativeScrollPending(feature)) continue;
           const values = supportedValuesFor(profile, lh.property);
           const contexts = [...new Set((typeof used === 'function' ? used(t) : used).filter((u) => u.declaration === d && u.property === lh.property).map((u) => u.context))].sort();
           const alternatives = contexts.length > 0
@@ -665,7 +667,9 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered };
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
-    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys);
+    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, options.faults);
+    // T078 R14: outside the parity lanes, native refuses overflow auto and scroll until OVFL-B; the lanes prove their layout at rest.
+    if (!options.interactionLanes) checkNativeScroll(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
@@ -961,7 +965,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       dependencies.push({ kind: 'stylesheet', uri: src.ref.uri, hash: src.ref.hash });
       const sheet = { id: use.id, owner: valid.styleOwner.get(use.id) as string, scope: use.scope.kind };
       const before = enclosed.length;
-      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed, fontFaces, keyframeSources, propertySources, layers);
+      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed, fontFaces, keyframeSources, propertySources, options.faults, layers);
       for (const r of [...parsed, ...enclosed.slice(before).flatMap((e) => e.rules)]) for (const d of r.declarations) order = Math.max(order, d.order + 1);
       rules.push(...parsed);
     }
@@ -1058,6 +1062,14 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         diagnostics.splice(valuesAt, 0, ...values);
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
+      // T078 R14: the lanes lower overflow auto and scroll on native, but a user's compile refuses them there until OVFL-B, so a
+      // document that uses them is lane-only on native and proves no native row (pipeline.ts).
+      if (options.interactionLanes) {
+        const pending: Diagnostic[] = [];
+        const native = NATIVE_TARGETS.filter((t) => targets.includes(t));
+        for (const c of cases) for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) if (r !== null) checkNativeScroll(r, native, pending, new Set());
+        laneOnlyNative = native.filter((t) => laneOnlyNative.includes(t) || pending.some((d) => d.target === t));
+      }
       // T005 rec 3: the rules inside each unsupported at-rule are analysed with the block unwrapped, in a scratch pass whose
       // diagnostics located inside the at-rule become its related entries. Nothing from this pass is resolved into an output.
       if (enclosed.length > 0) {
@@ -1254,6 +1266,13 @@ function valueOrigin(root: ResolvedElement, address: string, p: Longhand, chrome
   return { kind: 'builtin', dataset: `@webref/css ${webrefVersion} initial`, entry: p };
 }
 
+/** explain's support entry: the row's status, with its environment note when the row has one. */
+function supportOfRow(profile: SupportProfile, feature: string, context: string): ExplainedCase['support'] {
+  const row = profile.rows.find((r) => r.feature === feature && r.context === context);
+  const status = statusOf(profile, feature, context);
+  return row?.note === undefined ? { feature, context, status } : { feature, context, status, note: row.note };
+}
+
 function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>, chromeVersion: string): ExplainResult<K> {
   const target = q.target as string;
   if (!(target in a.report.targets)) {
@@ -1298,7 +1317,7 @@ function explainIn<K extends string>(a: Analysis<K>, q: ExplainQuery<K>, chromeV
         origin: authored(d.span),
         reason: d === v.forcedOver ? `the user agent forces ${q.property} on this element whatever the cascade says` : 'lower specificity or earlier in the style order',
       })),
-      support: used === null || used === undefined ? null : { feature: used.feature, context: used.context, status: statusOf(profile, used.feature, used.context) },
+      support: used === null || used === undefined ? null : supportOfRow(profile, used.feature, used.context),
     });
   }
   if (out.length === 0) return { kind: 'not-found', reason: `no ${q.property} on ${address} in any matching case` };

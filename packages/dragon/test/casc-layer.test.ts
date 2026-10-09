@@ -25,7 +25,7 @@ const el = (id: string, classes: string[], children: LinkedElement[] = [], tag =
 function parse(css: string, faults: CompilerFaults = NO_FAULTS): { rules: ReturnType<typeof parseStylesheet>; diagnostics: Diagnostic[]; layers: string[] } {
   const diagnostics: Diagnostic[] = [];
   const layers: string[] = [];
-  const parsed = parseStylesheet(css, { source: SRC, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics, [], [], [], [], layers);
+  const parsed = parseStylesheet(css, { source: SRC, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics, [], [], [], [], faults, layers);
   return { rules: rankLayers(parsed, layers, faults, diagnostics), diagnostics, layers };
 }
 
@@ -67,6 +67,12 @@ describe('CASC 3: cascade layers in the cascade', () => {
     const { layers } = parse('@layer a { @layer x { } } @layer b, a.y; @layer { } @layer a.x.q;');
     expect(layers).toEqual(['a', 'a.x', 'b', 'a.y', '#anon4', 'a.x.q']);
   });
+  it('@supports and @layer nest either way: a true @supports declares its layers, a false one declares none, and its rules keep their layer', () => {
+    const { rules, layers, diagnostics } = parse('@supports (display: flex) { @layer t { .x { width: 1px; } } } @supports (not (display: block)) { @layer f { .y { width: 2px; } } } @layer a { @supports (display: flex) { .z { width: 3px; } } }');
+    expect(diagnostics).toEqual([]);
+    expect(layers).toEqual(['t', 'a']);
+    expect(rules.map((r) => [r.layer, r.declarations.map((d) => d.layer)])).toEqual([['t', [0]], ['a', [1]]]);
+  });
 });
 
 describe('CASC 3: refusals', () => {
@@ -80,6 +86,10 @@ describe('CASC 3: refusals', () => {
     expect(messages('@layer a, b { .x { width: 1px; } }')).toEqual(['DRAGON_UNSUPPORTED_AT_RULE: @layer a, b in the stylesheet is not supported: a layer block takes one name, so Chrome drops the rule']);
     expect(messages('@layer;')).toEqual(['DRAGON_UNSUPPORTED_AT_RULE: @layer in the stylesheet is not supported: a statement must name at least one layer']);
     expect(messages('@layer a . b;')).toEqual(['DRAGON_CSS_PARSE: CSS parse error: Semicolon or block is expected', 'DRAGON_UNSUPPORTED_AT_RULE: @layer a . b in the stylesheet is not supported: "a . b" is not a layer name Dragon reads (an identifier, or identifiers joined by dots with no white space)']);
+    // Rules that would be layered but are not ordered by layer here stay refused inside a layer block (keyframesOverride relies on it).
+    expect(messages('@layer a { @keyframes k { to { width: 1px; } } @property --p { syntax: "*"; inherits: true; } @font-face { font-family: F; src: url(f.ttf); } }').map((m) => m.split(' is not supported')[0])).toEqual([
+      'DRAGON_UNSUPPORTED_AT_RULE: @keyframes inside @layer', 'DRAGON_UNSUPPORTED_AT_RULE: @property in @layer', 'DRAGON_UNSUPPORTED_AT_RULE: @font-face in @layer',
+    ]);
     expect(messages('@layer initial;')).toEqual(['DRAGON_UNSUPPORTED_AT_RULE: @layer initial in the stylesheet is not supported: "initial" is a CSS-wide keyword or default, which Dragon does not accept as a layer name']);
     expect(messages('.x { @layer a { width: 1px; } }').filter((m) => m.includes('@layer'))).toEqual(['DRAGON_UNSUPPORTED_AT_RULE: @layer a in a rule block is not supported: @layer nested in a style rule is not built yet']);
     expect(messages('@layer a { .x { width: revert-layer; --y: revert-layer; } } .z { width: revert-layer; }')).toEqual([
@@ -87,8 +97,16 @@ describe('CASC 3: refusals', () => {
       'DRAGON_UNSUPPORTED_VALUE: --y: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
       'DRAGON_UNSUPPORTED_VALUE: width: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
     ]);
-    // With no layer declared, revert-layer is not this refusal's (it reverts as revert does).
-    expect(messages('.z { width: revert-layer; }')).toEqual([]);
+    // revert-layer reaching a value through var() (a fallback, or a custom property's value) or written with an escape is refused too.
+    expect(messages('@layer a; .z { width: var(--u, revert-layer); --v: var(--w, REVERT-LAYER); height: var(--v); margin: r\\65vert-layer; }')).toEqual([
+      'DRAGON_UNSUPPORTED_VALUE: width: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
+      'DRAGON_UNSUPPORTED_VALUE: --v: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
+      'DRAGON_UNSUPPORTED_VALUE: margin: revert-layer in a document with cascade layers is unsupported: rolling back to the layers below is not built yet',
+    ]);
+    // Not a revert-layer identifier: a string, or a longer name.
+    expect(messages('@layer a; .z { font-family: "revert-layer", revert-layers; }')).toEqual([]);
+    // With no layer declared, revert-layer is not this refusal's (it reverts as revert does, casc.test.ts).
+    expect(messages('.z { width: revert-layer; height: var(--u, revert-layer); }')).toEqual([]);
   });
   it(':host matches nothing in a document (css-scoping-1), and is refused inside a selector argument', () => {
     expect(messages(':root, :host { --a: 1px; } :host .x, :host.y { width: 1px; }')).toEqual([]);

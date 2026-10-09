@@ -18,6 +18,7 @@ and ids, and the at-rule refusals as they were before it.
 | `properties.ts` | The aggregate of `properties/<family>.ts`: `LONGHANDS`, `SHORTHANDS`, `INHERITED`, `PROPERTY_ASPECTS`, `PROPERTY_ROLE`. |
 | `properties/<family>.ts` | Each family's longhands, shorthands, aspects, inherited set and role memberships. |
 | `color.ts`, `lexer.ts`, `grammar.generated.ts` | Colour parsing and serialization, the webref lexer, and the generated grammar (`pnpm run grammar:gen`). |
+| `chrome-number.ts` | `chromeNumber`: a registered `@property` number, length or percentage as Chrome 145 serialises it (six significant digits). The only rounding outside `color.ts` and the ports, exempted by path in `ua.test.ts` and `s4b.test.ts`. |
 
 ## Where a new feature goes
 

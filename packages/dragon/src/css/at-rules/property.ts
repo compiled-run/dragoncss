@@ -10,6 +10,7 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../../types.ts';
 import type { AtRuleContext, AtRuleHandler } from '../at-rules.ts';
 import { list, spanOf } from '../ast.ts';
+import { chromeNumber } from '../chrome-number.ts';
 import { parseColorNode, serializeColor } from '../color.ts';
 import { asciiLower, decodeName } from '../escapes.ts';
 import { CSS_WIDE } from '../values.ts';
@@ -47,22 +48,6 @@ function soleToken(text: string): CssNode | null {
   return ts.length === 1 ? (ts[0] as CssNode) : null;
 }
 
-/**
- * A computed <number>, <length> or <percentage> as Chrome 145 serialises it, and so substitutes it: six significant digits as C's
- * %g writes them (0.10000049 is 0.1, 123456789 is 1.23457e+08; probed). An <integer> keeps every digit (1234567 stays 1234567).
- */
-export function chromeNumber(v: number): string {
-  if (v === 0) return '0';
-  const exp = Math.floor(Math.log10(Math.abs(Number(v.toPrecision(6)))));
-  if (exp < -4 || exp >= 6) {
-    const [mantissa, e] = v.toExponential(5).split('e') as [string, string];
-    const m = mantissa.includes('.') ? mantissa.replace(/\.?0+$/, '') : mantissa;
-    const n = Number(e);
-    return `${m}e${n < 0 ? '-' : '+'}${String(Math.abs(n)).padStart(2, '0')}`;
-  }
-  const fixed = v.toFixed(Math.max(0, 5 - exp));
-  return fixed.includes('.') ? fixed.replace(/\.?0+$/, '') : fixed;
-}
 const number = (v: unknown): string => chromeNumber(Number(v));
 
 function lengthOf(t: CssNode): Computed | null {
