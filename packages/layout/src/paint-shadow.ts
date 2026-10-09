@@ -21,7 +21,7 @@
 // Where this is not bit-exact with Chrome: a small line-only source (try_blit_fat_anti_rect) and the antialiased clips (the border
 // box an outer shadow is clipped out of, the padding box an inset one is clipped to) are supersampled 16 x 16 per pixel, and a
 // backdrop the ancestors' backgrounds do not describe (another box's paint beneath the shadow) is composited over as the platform
-// rounds. packages/parity/test/pnt1-shadow.test.ts measures the device layers against Chrome.
+// rounds. The feature PR that lowers box-shadow measures the device layers against Chrome (packages/parity/test/pnt1-shadow.test.ts).
 import type { A8Mask, BlurFaults, IRect } from './paint-blur.ts';
 import { boxBlur, boxBlurMargin, hasNoBlur, maskBounds, mulDiv255Round, rectShadowCoverage, shadowSigma } from './paint-blur.ts';
 import type { AaPath, Device, IRect as AaIRect, Radius, SkRRect } from './paint-aa.ts';
@@ -413,6 +413,7 @@ function pathBlur(s: ShadowShape, hole: ShadowShape | null, dx: number, dy: numb
 
 /** The coverage of a filled shape drawn with a normal blur of sigma, through the path Skia picks, rastered into a tile at clip. */
 export function blurredCoverage(s: ShadowShape, sigma: number, clip: IRect): A8Mask {
+  if (!isFiniteNum(sigma) || sigma < 0) throw new Error(`paint-shadow: sigma ${sigma} is not a non-negative finite number`);
   return coverageOf(s, 0, 0, sigma, clip);
 }
 
@@ -509,6 +510,25 @@ function isByte(v: number): boolean {
   return v >= 0 && v <= 255 && floorOf(v) === v;
 }
 
+/** Whether a value is a finite number (NaN and the infinities are not). */
+function isFiniteNum(v: number): boolean {
+  return v - v === 0;
+}
+
+/** Refuses a device scale that is not a positive finite number, and a shadow whose lengths are not finite, whose blur is negative or whose colour is not RGBA8. */
+function checkShadows(shadows: readonly ShadowInput[], dpr: number): void {
+  if (!isFiniteNum(dpr) || !(dpr > 0)) throw new Error(`paint-shadow: device scale ${dpr} is not a positive finite number`);
+  for (const sh of shadows) {
+    if (!isFiniteNum(sh.x) || !isFiniteNum(sh.y) || !isFiniteNum(sh.spread) || !isFiniteNum(sh.blur) || sh.blur < 0) throw new Error(`paint-shadow: a shadow ${sh.x} ${sh.y} ${sh.blur} ${sh.spread} has a length that is not finite or a negative blur`);
+    if (!isByte(sh.r) || !isByte(sh.g) || !isByte(sh.b) || !isByte(sh.a)) throw new Error(`paint-shadow: a shadow colour ${sh.r},${sh.g},${sh.b},${sh.a} is not RGBA8`);
+  }
+}
+
+/** Refuses box edges that are not finite or whose right or bottom is before its left or top. */
+function checkEdges(left: number, top: number, right: number, bottom: number): void {
+  if (!isFiniteNum(left) || !isFiniteNum(top) || !isFiniteNum(right) || !isFiniteNum(bottom) || right < left || bottom < top) throw new Error(`paint-shadow: box ${left},${top},${right},${bottom} is not a finite rect`);
+}
+
 /** The backdrop at the centre of pixel (x, y): the white root, then each fill holding the centre, with Skia's 8-bit source-over. */
 export function backdropAt(fills: readonly BackdropFill[], x: number, y: number): number[] {
   let r = 255;
@@ -516,6 +536,7 @@ export function backdropAt(fills: readonly BackdropFill[], x: number, y: number)
   let b = 255;
   for (const f of fills) {
     if (f.radii.length !== 8) throw new Error(`paint-shadow: a backdrop fill has ${f.radii.length} radii, not 8`);
+    if (!isFiniteNum(f.left) || !isFiniteNum(f.top) || !isFiniteNum(f.right) || !isFiniteNum(f.bottom)) throw new Error(`paint-shadow: a backdrop fill ${f.left},${f.top},${f.right},${f.bottom} is not finite`);
     if (!isByte(f.r) || !isByte(f.g) || !isByte(f.b) || !isByte(f.a)) throw new Error(`paint-shadow: a backdrop fill colour ${f.r},${f.g},${f.b},${f.a} is not RGBA8`);
     const shape: ShadowShape = { left: f.left, top: f.top, right: f.right, bottom: f.bottom, radii: f.radii };
     if (f.a === 0 || !insideShape(shape, x + 0.5, y + 0.5)) continue;
@@ -644,6 +665,8 @@ export function outerShadowLayerOver(left: number, top: number, right: number, b
 }
 
 function outerLayer(left: number, top: number, right: number, bottom: number, radii: readonly number[], opaqueBackground: boolean, shadows: readonly ShadowInput[], dpr: number, faults: ShadowFaults, backdrop: readonly BackdropFill[] | null): ShadowLayer {
+  checkEdges(left, top, right, bottom);
+  checkShadows(shadows, dpr);
   const rounded = hasRoundedCorner(radii);
   const border: ShadowShape = { left, top, right, bottom, radii: rounded ? radii : [0, 0, 0, 0, 0, 0, 0, 0] };
   const shapes: ShadowShape[] = [];
@@ -708,6 +731,11 @@ export function insetShadowLayerOver(left: number, top: number, right: number, b
 
 function insetLayer(left: number, top: number, right: number, bottom: number, borders: readonly number[], innerRadii: readonly number[], shadows: readonly ShadowInput[], dpr: number, faults: ShadowFaults, backdrop: readonly BackdropFill[] | null): ShadowLayer {
   if (borders.length !== 4) throw new Error(`paint-shadow: ${borders.length} border widths, not 4`);
+  checkEdges(left, top, right, bottom);
+  checkShadows(shadows, dpr);
+  // The layer covers whole device pixels of the padding box, so the snapped edges and border widths are whole numbers.
+  if (floorOf(left) !== left || floorOf(top) !== top || floorOf(right) !== right || floorOf(bottom) !== bottom) throw new Error(`paint-shadow: box ${left},${top},${right},${bottom} is not on whole device pixels`);
+  for (const w of borders) if (!isFiniteNum(w) || w < 0 || floorOf(w) !== w) throw new Error(`paint-shadow: border width ${w} is not a whole non-negative device pixel count`);
   const pl = left + at(borders, 3);
   const pt = top + at(borders, 0);
   const pr = maxNum(pl, right - at(borders, 1));

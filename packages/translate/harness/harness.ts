@@ -1350,9 +1350,23 @@ function radiusLengths(a: readonly JsonValue[], i: number): RadiusLength[] {
   return out;
 }
 
+/** A flag at argument i: 0 or 1. */
+function argFlag(a: readonly JsonValue[], i: number): boolean {
+  const v = arg(a, i);
+  if (v !== 0 && v !== 1) return fail(`argument ${i}: flag ${bitsHex(v)} is not 0 or 1`);
+  return v === 1;
+}
+
+/** A count at argument i: a whole number from 0 to the arguments left. */
+function argCount(a: readonly JsonValue[], i: number): number {
+  const v = arg(a, i);
+  if (!(v >= 0) || Math.floor(v) !== v || v > a.length) return fail(`argument ${i}: count ${bitsHex(v)} is not a whole number of the arguments left`);
+  return v;
+}
+
 /** The shadow faults from arguments i (spreadIgnored), i + 1 (sigmaHalfBlur) and i + 2 (shadowNotClippedOut). */
 function shadowFaults(a: readonly JsonValue[], i: number): ShadowFaults {
-  return { spreadIgnored: arg(a, i) !== 0, sigmaHalfBlur: arg(a, i + 1) !== 0, shadowNotClippedOut: arg(a, i + 2) !== 0 };
+  return { spreadIgnored: argFlag(a, i), sigmaHalfBlur: argFlag(a, i + 1), shadowNotClippedOut: argFlag(a, i + 2) };
 }
 
 /** A shadow shape from arguments i (left, top, right, bottom, then eight radii). */
@@ -1362,18 +1376,18 @@ function shadowShape(a: readonly JsonValue[], i: number): ShadowShape {
 
 /** A count at argument i, then that many shadows of nine arguments each (inset, x, y, blur, spread, r, g, b, a). */
 function shadowInputs(a: readonly JsonValue[], i: number): ShadowInput[] {
-  const n = arg(a, i);
+  const n = argCount(a, i);
   const out: ShadowInput[] = [];
   for (let k = 0; k < n; k++) {
     const at = i + 1 + 9 * k;
-    out.push({ inset: arg(a, at) !== 0, x: arg(a, at + 1), y: arg(a, at + 2), blur: arg(a, at + 3), spread: arg(a, at + 4), r: arg(a, at + 5), g: arg(a, at + 6), b: arg(a, at + 7), a: arg(a, at + 8) });
+    out.push({ inset: argFlag(a, at), x: arg(a, at + 1), y: arg(a, at + 2), blur: arg(a, at + 3), spread: arg(a, at + 4), r: arg(a, at + 5), g: arg(a, at + 6), b: arg(a, at + 7), a: arg(a, at + 8) });
   }
   return out;
 }
 
 /** A count at argument i, then that many backdrop fills of sixteen arguments each (edges, eight radii, r, g, b, a). */
 function backdropFills(a: readonly JsonValue[], i: number): BackdropFill[] {
-  const n = arg(a, i);
+  const n = argCount(a, i);
   const out: BackdropFill[] = [];
   for (let k = 0; k < n; k++) {
     const at = i + 1 + 16 * k;
@@ -1450,9 +1464,9 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const m = blurredCoverage(shadowShape(a, 1), arg(a, 13), { left: arg(a, 14), top: arg(a, 15), right: arg(a, 16), bottom: arg(a, 17) });
     return layerResult({ left: m.bounds.left, top: m.bounds.top, right: m.bounds.right, bottom: m.bounds.bottom, rgba: m.data });
   }
-  if (name === 'paint:shadow:outerShadowLayer') return layerResult(outerShadowLayer(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14))));
+  if (name === 'paint:shadow:outerShadowLayer') return layerResult(outerShadowLayer(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), argFlag(a, 13), shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14))));
   if (name === 'paint:shadow:insetShadowLayer') return layerResult(insetShadowLayer(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 4), argList(a, 9, 8), shadowInputs(a, 17), arg(a, 18 + 9 * arg(a, 17)), shadowFaults(a, 19 + 9 * arg(a, 17))));
-  if (name === 'paint:shadow:outerShadowLayerOver') return layerResult(outerShadowLayerOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14)), backdropFills(a, 19 + 9 * arg(a, 14))));
+  if (name === 'paint:shadow:outerShadowLayerOver') return layerResult(outerShadowLayerOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), argFlag(a, 13), shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14)), backdropFills(a, 19 + 9 * arg(a, 14))));
   if (name === 'paint:shadow:insetShadowLayerOver') return layerResult(insetShadowLayerOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 4), argList(a, 9, 8), shadowInputs(a, 17), arg(a, 18 + 9 * arg(a, 17)), shadowFaults(a, 19 + 9 * arg(a, 17)), backdropFills(a, 22 + 9 * arg(a, 17))));
   if (name === 'paint:shadow:backdropAt') {
     const fills = backdropFills(a, 1);

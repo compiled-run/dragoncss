@@ -210,7 +210,7 @@ describe('SKIA-AA arithmetic', () => {
   });
 });
 
-describe('SKIA-AA paths crossing their clip (SkEdgeClipper; measured against Chrome through pnt1-shadow.test.ts)', () => {
+describe('SKIA-AA paths crossing their clip (SkEdgeClipper)', () => {
   const full: IRect = { left: 0, top: 0, right: 120, bottom: 90 };
   const fill = (path: AaPath, clip: IRect, a8: boolean): number[] => {
     const d = a8 ? a8Device(full) : whiteDevice(full);

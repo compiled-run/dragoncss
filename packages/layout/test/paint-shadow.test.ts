@@ -184,6 +184,39 @@ describe('paint-shadow: the device layers over a backdrop', () => {
   });
 });
 
+describe('paint-shadow: refused inputs', () => {
+  const box = (sh: ShadowInput, dpr = 1) => () => outerShadowLayer(10, 10, 30, 30, SQUARE, true, [sh], dpr, NO_SHADOW_FAULTS);
+  const ins = (l: number, borders: readonly number[], sh: ShadowInput = shadow({ inset: true, blur: 1 })) => () => insetShadowLayer(l, 10, 40, 30, borders, SQUARE, [sh], 1, NO_SHADOW_FAULTS);
+  it('refuses a shadow colour that is not RGBA8, on both layers and over a backdrop', () => {
+    for (const bad of [{ r: 256 }, { g: -1 }, { b: 1.5 }, { a: Number.NaN }]) {
+      expect(box(shadow({ blur: 1, ...bad })), JSON.stringify(bad)).toThrow(/not RGBA8/);
+      expect(ins(10, [0, 0, 0, 0], shadow({ inset: true, blur: 1, ...bad })), JSON.stringify(bad)).toThrow(/not RGBA8/);
+    }
+    expect(() => outerShadowLayerOver(10, 10, 30, 30, SQUARE, true, [shadow({ blur: 1, a: 300 })], 1, NO_SHADOW_FAULTS, [])).toThrow(/not RGBA8/);
+    // A refused shadow is refused even when it would be skipped (inset on the outer layer, alpha 0).
+    expect(box(shadow({ inset: true, r: 999 }))).toThrow(/not RGBA8/);
+  });
+  it('refuses a non-finite length, a negative blur and a device scale that is not positive and finite', () => {
+    for (const bad of [{ x: Number.NaN }, { y: Number.POSITIVE_INFINITY }, { spread: Number.NEGATIVE_INFINITY }, { blur: -1 }, { blur: Number.NaN }]) {
+      expect(box(shadow(bad)), JSON.stringify(bad)).toThrow(/not finite or a negative blur/);
+    }
+    for (const dpr of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) expect(box(shadow({ blur: 1 }), dpr), String(dpr)).toThrow(/device scale/);
+    expect(() => blurredCoverage({ left: 0, top: 0, right: 4, bottom: 4, radii: SQUARE }, Number.NaN, { left: 0, top: 0, right: 8, bottom: 8 })).toThrow(/sigma/);
+    expect(() => blurredCoverage({ left: 0, top: 0, right: 4, bottom: 4, radii: SQUARE }, -0.5, { left: 0, top: 0, right: 8, bottom: 8 })).toThrow(/sigma/);
+  });
+  it('refuses a box that is not a finite rect, and an inset box or border width off whole device pixels', () => {
+    expect(() => outerShadowLayer(Number.NaN, 10, 30, 30, SQUARE, true, [shadow({ blur: 1 })], 1, NO_SHADOW_FAULTS)).toThrow(/not a finite rect/);
+    expect(() => outerShadowLayer(40, 10, 30, 30, SQUARE, true, [shadow({ blur: 1 })], 1, NO_SHADOW_FAULTS)).toThrow(/not a finite rect/);
+    expect(ins(10.5, [0, 0, 0, 0])).toThrow(/whole device pixels/);
+    expect(ins(10, [0, 1.5, 0, 0])).toThrow(/border width 1.5/);
+    expect(ins(10, [0, 0, -1, 0])).toThrow(/border width -1/);
+    expect(() => backdropAt([fill(Number.NaN, 0, 4, 4, SQUARE, 0, 0, 0, 255)], 1, 1)).toThrow(/not finite/);
+    // The accepted forms still paint.
+    expect(ins(10, [1, 2, 1, 2])().rgba.length).toBeGreaterThan(0);
+    expect(box(shadow({ blur: 1 }))().rgba.length).toBeGreaterThan(0);
+  });
+});
+
 describe('paint-shadow vectors', () => {
   it('are committed and cover every exported function', () => {
     const v = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'paint-vectors', 'shadow', 'vectors.json'), 'utf8')) as { feature: string; lines: string[] };
