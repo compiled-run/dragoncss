@@ -38,6 +38,7 @@ export const EVIDENCE_CODE: readonly string[] = [
   'packages/text-shaper/include',
   'packages/text-shaper/src/dragon_hb.zig',
   'packages/text-shaper/src/dragon_hb_jni.zig',
+  'packages/text-shaper/swift/Sources/CDragonHB/module.modulemap',
   'vendor/harfbuzz/src',
 ];
 

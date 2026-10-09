@@ -19,6 +19,8 @@ export const SHIM_ANDROID_ABIS = ['arm64-v8a', 'x86_64'] as const;
 const SHAPER_DIR = repoPath('packages/text-shaper');
 /** The module map over dragon_hb.h that the Swift wrapper imports (CDragonHB). */
 export const SHIM_SWIFT_INCLUDE = join(SHAPER_DIR, 'swift', 'Sources', 'CDragonHB');
+/** The module map's sha256, a cache-key input: its link lines decide what the app links, and the commands hold only its directory. */
+export const shimModuleMapSha256 = (): string => fileSha(join(SHIM_SWIFT_INCLUDE, 'module.modulemap'));
 
 type Spawned = { readonly status: number; readonly out: string };
 function spawn(cmd: string, args: readonly string[], cwd?: string): Spawned {
@@ -50,7 +52,9 @@ export function androidNdk(env: NodeJS.ProcessEnv = process.env): string {
 /** The command token an Android ABI's built library stands under (native-host.ts androidCommands; expand's tokens have no digits). */
 export const shimToken = (abi: (typeof SHIM_ANDROID_ABIS)[number]): string => ({ 'arm64-v8a': 'SHIM_ANDROID_ARM', x86_64: 'SHIM_ANDROID_INTEL' })[abi];
 
-const fileSha = (path: string): string => createHash('sha256').update(readFileSync(path)).digest('hex');
+function fileSha(path: string): string {
+  return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
 
 /** A built shim: the library files an app links, and their sha256 (the app cache key reads them). */
 export type ShimBuild = { readonly files: Readonly<Record<string, string>>; readonly sha256: Readonly<Record<string, string>>; readonly log: string };
@@ -158,7 +162,8 @@ func dragonCheckShim() {
     let got = DragonShaper.shared.shape(face: p.face, size: p.size, text: p.text, start: 0, end: p.text.utf16.count, script: p.script, rtl: p.rtl, language: p.language, features: p.features)
     let want = p.glyphs.map { Double($0) }
     if got != want {
-      let i = zip(got, want).firstIndex { $0 != $1 } ?? min(got.count, want.count)
+      var i = 0
+      while i < got.count && i < want.count && got[i] == want[i] { i += 1 }
       fatalError("dragon shaper: probe \(k) (\(p.face) at \(p.size) px\(p.rtl ? ", rtl" : "")) gives \(got.count) integers, the host's WASM shim \(want.count); first difference at integer \(i)")
     }
   }

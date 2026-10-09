@@ -30,7 +30,7 @@ import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { NativeTarget } from './targets.ts';
 import { deviceDprs } from './targets.ts';
-import { buildShim, SHIM_ANDROID_ABIS, SHIM_SWIFT_INCLUDE, shimSources, shimToken } from './native-shim.ts';
+import { buildShim, SHIM_ANDROID_ABIS, SHIM_SWIFT_INCLUDE, shimModuleMapSha256, shimSources, shimToken } from './native-shim.ts';
 
 export const BACKEND_OF: { readonly [T in NativeTarget]: NativeBackend } = { ios: 'uikit', android: 'android-views' };
 export const NATIVE_CONFIG = { ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
@@ -781,7 +781,7 @@ export function buildIos(opts: BuildOptions = {}): BuildResult {
   if (notConstruction.length > 0) throw new Error(`the iOS case code is built at -Onone, so it must be construction code only:\n  ${notConstruction.slice(0, 20).join('\n  ')}`);
   // The Xcode version is in the sources (DragonToolchain.swift); the simulator SDK and swiftc are named here.
   const shim = buildShim('ios');
-  const inputs = { sdk: must(run('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-version']), 'xcrun --show-sdk-version').trim(), swiftc: must(run('xcrun', ['-sdk', 'iphonesimulator', 'swiftc', '-version']), 'swiftc -version').trim(), ...shimInputs(shim.sha256) };
+  const inputs = { sdk: must(run('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-version']), 'xcrun --show-sdk-version').trim(), swiftc: must(run('xcrun', ['-sdk', 'iphonesimulator', 'swiftc', '-version']), 'swiftc -version').trim(), ...shimInputs(shim.sha256), 'shim module map': shimModuleMapSha256() };
   const key = appCacheKey(sha, commands, inputs);
   const { dir, log } = cachedApp('ios-app', key, 'DragonHost.app/DragonHost', (d) => existsSync(join(d, 'DragonHost.app', 'Info.plist')), opts.reuse === true, (work, out) => {
     writeSources(work, files);
