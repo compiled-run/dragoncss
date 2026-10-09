@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { ALIAS_FAMILIES } from '../src/css/aliases.ts';
 import { ANIMATION_KINDS } from '../src/css/animation-kinds.ts';
 import { LONGHANDS, PROPERTY_FAMILIES, SHORTHANDS } from '../src/css/properties.ts';
+import { ANIM_LIST_PROPERTIES, ANIM_SHORTHANDS } from '../src/css/properties/animation.ts';
 import { DIAGNOSTIC_FEATURES, LEGACY_FEATURES } from '../src/diagnostics/codes.ts';
 import { paintPlants, PAINT_EMITTERS } from '../src/emit/paint/registry.ts';
 import { FAULT_GROUPS, NO_FAULTS } from '../src/faults.ts';
@@ -76,19 +77,25 @@ describe('property families (css/properties/<family>.ts)', () => {
 
 describe('legacy aliases (css/aliases/<family>.ts)', () => {
   const ids = Object.keys(ALIAS_FAMILIES);
+  // The transition and animation list properties stay out of LONGHANDS (T065 option B), so they are the animation family here.
+  const ANIMATION_FAMILY: readonly string[] = [...ANIM_LIST_PROPERTIES, ...Object.keys(ANIM_SHORTHANDS)];
+  const familyOwn = (id: string): readonly string[] | undefined => {
+    if (id === 'animation') return ANIMATION_FAMILY;
+    const family = PROPERTY_FAMILIES.find((f) => f.id === id);
+    return family === undefined ? undefined : [...family.longhands, ...family.shorthands];
+  };
   it('one line per family, sorted by id, one file per family, each a property family', () => {
     expect(ids).toEqual(sorted(ids));
     expect(sorted(stems('css/aliases'))).toEqual(sorted(ids));
-    for (const id of ids) expect(PROPERTY_FAMILIES.map((f) => f.id), id).toContain(id);
+    for (const id of ids) expect(familyOwn(id), id).toBeDefined();
   });
   it('no alias is claimed twice or is itself a property, and each family file aliases only its own family\'s properties', () => {
     expect(doubleClaims(ids.map((id) => [id, Object.keys(ALIAS_FAMILIES[id]!)]))).toEqual([]);
     for (const id of ids) {
-      const family = PROPERTY_FAMILIES.find((f) => f.id === id)!;
-      const own: readonly string[] = [...family.longhands, ...family.shorthands];
+      const own = familyOwn(id)!;
       for (const [alias, property] of Object.entries(ALIAS_FAMILIES[id]!)) {
         expect(own, `${id}: ${alias}`).toContain(property);
-        expect([...LONGHANDS, ...SHORTHANDS] as readonly string[], alias).not.toContain(alias);
+        expect([...LONGHANDS, ...SHORTHANDS, ...ANIMATION_FAMILY] as readonly string[], alias).not.toContain(alias);
       }
     }
   });

@@ -2,15 +2,17 @@
 // emit/native-support.ts appends them to the support file list of each backend, in this order.
 import type { NativeBackend } from '../../lower/native-program.ts';
 import type { GeneratedFile } from '../../types.ts';
+import { animSupport } from './anim.ts';
 import { clockSupport } from './clock.ts';
 import { mediaSupport } from './media.ts';
 import { stateSupport } from './state.ts';
 
 /** The registered runtime modules, in support-file order. */
 export const RUNTIME_MODULES: readonly { readonly id: string; readonly support: (backend: NativeBackend, header: (what: string) => string) => GeneratedFile }[] = [
+  { id: 'media', support: mediaSupport },
   { id: 'clock', support: clockSupport },
   { id: 'state', support: stateSupport },
-  { id: 'media', support: mediaSupport },
+  { id: 'anim', support: animSupport },
 ];
 
 /** The runtime support files of a backend. */

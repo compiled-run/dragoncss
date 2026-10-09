@@ -76,10 +76,13 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(files).toBeGreaterThan(Object.keys(manifest.files).length);
   });
 
-  it('holds files beyond the base only for cases of registered fixtures', () => {
+  it('holds files beyond the base only for cases of registered fixtures, none of them a base fixture', () => {
     const extra = IDENTITY_ROOTS.flatMap(walk).filter((p) => (p.endsWith('.json') || p.endsWith('.css')) && manifest.files[p] === undefined);
     expect(extra.filter((p) => fixtureOf(p) === null)).toEqual([]);
     expect(extra.length).toBeGreaterThan(0);
+    // INL1a and the stacks merged after the base add fixtures of their own; no file is added to a base fixture.
+    const baseFixtures = new Set(Object.keys(manifest.files).map(fixtureOf));
+    expect(extra.filter((p) => baseFixtures.has(fixtureOf(p)))).toEqual([]);
     // An orphan (a removed or renamed fixture's capture) still fails, as does a suffix on a name no fixture registers.
     expect(fixtureOf('packages/parity/expected/darwin-arm64/no-such-fixture.web.json')).toBeNull();
     expect(fixtureOf('packages/parity/emitted/no-such-fixture~ix0-rtl.css')).toBeNull();
@@ -91,6 +94,31 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(withoutPointerEvents('a.css', '/* compilation ' + 'a'.repeat(64) + ' */\n.d {\n  pointer-events: none;\n  color: red;\n}\n')).toBe('/* compilation <digest> */\n.d {\n  color: red;\n}\n');
     expect(withoutPointerEvents('a.css', '.d {\n  pointer-events: none;\n  color: blue;\n}\n')).not.toBe(withoutPointerEvents('a.css', '.d {\n  color: red;\n}\n'));
     expect(() => withoutPointerEvents('a.png', '')).toThrow(/only .json captures and .css outputs/);
+  });
+
+  it("removes GEN-b's four longhands, added after the base, only at their neutral values (decimal only in block-elements-defaults)", () => {
+    const json = (type: string, image = 'none'): string => `{\n  "will-change": "auto",\n  "content": "normal",\n  "list-style-type": "${type}",\n  "list-style-position": "outside",\n  "list-style-image": "${image}"\n}`;
+    const base = '{\n  "will-change": "auto"\n}';
+    expect(withoutPointerEvents('x/a.web.json', json('disc'))).toBe(base);
+    expect(withoutPointerEvents('x/block-elements-defaults-rtl.web.json', json('decimal'))).toBe(base);
+    expect(withoutPointerEvents('x/a.web.json', json('decimal'))).not.toBe(base);
+    expect(withoutPointerEvents('x/a.web.json', json('square'))).not.toBe(base);
+    expect(withoutPointerEvents('x/a.web.json', json('disc', 'url("a.png")'))).not.toBe(base);
+    const css = (type: string, position = 'outside'): string => `.d {\n  will-change: auto;\n  content: normal;\n  list-style-type: ${type};\n  list-style-position: ${position};\n  list-style-image: none;\n}\n`;
+    const cssBase = '.d {\n  will-change: auto;\n}\n';
+    expect(withoutPointerEvents('e/a.css', css('disc'))).toBe(cssBase);
+    expect(withoutPointerEvents('e/block-elements-defaults.css', css('decimal'))).toBe(cssBase);
+    expect(withoutPointerEvents('e/a.css', css('decimal'))).not.toBe(cssBase);
+    expect(withoutPointerEvents('e/a.css', css('disc', 'inside'))).not.toBe(cssBase);
+  });
+
+  it('removes the PNT1 corner radii added since the base, and nothing else', () => {
+    const json = '{\n  "x": "1",\n  "border-top-left-radius": "10px 20px",\n  "border-bottom-left-radius": "50%",\n  "pointer-events": "auto"\n}';
+    expect(withoutPointerEvents('a.json', json)).toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('a.css', '.d {\n  border-top-right-radius: 0px;\n  color: red;\n  border-bottom-right-radius: 4px 2px;\n}\n')).toBe('.d {\n  color: red;\n}\n');
+    // Another radius-like key, or a changed value beside the stripped ones, still differs.
+    expect(withoutPointerEvents('a.json', '{\n  "x": "1",\n  "border-start-start-radius": "0px"\n}')).not.toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('a.css', '.d {\n  border-top-left-radius: 1px;\n  color: blue;\n}\n')).not.toBe(withoutPointerEvents('a.css', '.d {\n  color: red;\n}\n'));
   });
 
   it('parity:hit-capture takes --vectors, --identity-base <rev> or nothing, and refuses anything else', () => {

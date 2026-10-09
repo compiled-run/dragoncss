@@ -17,6 +17,8 @@ import type {
   FlexWrap,
   FontSpec,
   GapValue,
+  InlineBox,
+  InlineChild,
   GridContainerStyle,
   GridItemStyle,
   GridSelfAlign,
@@ -28,7 +30,9 @@ import type {
   LayoutStyle,
   LengthCalc,
   LineHeightCalc,
+  LineBreak,
   LineHeightValue,
+  LineStrut,
   MarginValue,
   NaturalSizeValue,
   ObjectFit,
@@ -44,6 +48,8 @@ import type {
   TextAlign,
   TextLeaf,
   TextWrapMode,
+  VerticalAlignKeyword,
+  VerticalAlignValue,
   ViewportLength,
   ViewportSize,
   Viewport,
@@ -54,6 +60,13 @@ import type {
 import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
 import { measurerFor } from '../../layout/src/platform.ts';
+import type { GlyphShaper, HanKerningFontData, ShapedItem, ShapeResult, ShapingFaults } from '../../layout/src/shaping.ts';
+import { GLYPH_STRIDE, latinScopedMeasurer, makeItem, shapeItem, viewSnappedWidth, wholeView } from '../../layout/src/shaping.ts';
+import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from '../../layout/src/text.ts';
+import { fontMetricLengths } from '../../layout/src/text.ts';
+import type { TextFont } from '../../layout/src/input.ts';
+import type { ScrollMetrics } from '../../layout/src/overflow.ts';
+import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
@@ -76,13 +89,19 @@ import {
   fromFloatRound,
   fromPxCeil,
   fromPxRound,
+  fontMetricPx,
+  fromRaw,
   growShare,
+  inlineToFloat,
   lineHeightFromNumber,
   percentOf,
   pixelsAndPercentAt,
   platformFontSize,
+  roundCoreTextMetricToWholePx,
+  roundFontMetricHalfUpToWholePx,
   roundFontMetricToWholePx,
   shrinkShare,
+  sub,
   snapBorderWidth,
   snapEdge,
   textAdvance,
@@ -91,6 +110,7 @@ import {
   zoomCssPx,
   zoomFontSize,
   zoomViewportPx,
+  ZERO,
 } from '../../layout/src/units.ts';
 import type { AnimationEntry, AnimationState, KeyframesRule } from '../../layout/src/rt-animations.ts';
 import { runAnimationScript } from '../../layout/src/rt-animations.ts';
@@ -115,6 +135,8 @@ import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackg
 import type { BandAtom, BandComparison, BandEnvironment, BandFaults, BandFeature, BandKeyword, BandOp, BandTable } from '../../layout/src/rt-band.ts';
 import { androidPointerReadings, bandAtPx, mediaSize } from '../../layout/src/rt-band.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
+import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
+import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
 export class HarnessError extends Error {
@@ -471,8 +493,7 @@ function safeAreaSide(v: JsonValue, path: string): SafeAreaSide {
 /** A FontSpec {family, size, specifiedSize, absoluteSize}. */
 function fontSpec(v: JsonValue, path: string): FontSpec {
   const o = obj(v, ['family', 'size', 'specifiedSize', 'absoluteSize'], path);
-  lit(field(o, 'family', path), ['Ahem'], `${path}.family`);
-  return { family: 'Ahem', size: numField(o, 'size', path), specifiedSize: calcExpr(field(o, 'specifiedSize', path), `${path}.specifiedSize`), absoluteSize: bool(field(o, 'absoluteSize', path), `${path}.absoluteSize`) };
+  return { family: str(field(o, 'family', path), `${path}.family`), size: numField(o, 'size', path), specifiedSize: calcExpr(field(o, 'specifiedSize', path), `${path}.specifiedSize`), absoluteSize: bool(field(o, 'absoluteSize', path), `${path}.absoluteSize`) };
 }
 
 /** A LengthCalc {kind: calc, expr, range}. */
@@ -592,8 +613,20 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'grid', 'gridItem',
 ];
+
+function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
+  const k = kindOf(v, path);
+  if (k === 'calc') return lengthCalc(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'keyword') {
+    const o = obj(v, ['kind', 'value'], path);
+    return { kind: 'keyword', value: lit(field(o, 'value', path), ['baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom'], `${path}.value`) as VerticalAlignKeyword };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
 
 const GRID_SELF_ALIGN: readonly string[] = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'];
 
@@ -684,14 +717,14 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const f = (k: string): JsonValue => field(o, k, path);
   const p = (k: string): string => `${path}.${k}`;
   return {
-    display: lit(f('display'), ['block', 'flex', 'grid'], p('display')) as Display,
+    display: lit(f('display'), ['block', 'flex', 'grid', 'inline'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
     bottom: sizeValue(f('bottom'), p('bottom')) as InsetValue,
     left: sizeValue(f('left'), p('left')) as InsetValue,
-    overflowX: lit(f('overflowX'), ['visible', 'hidden'], p('overflowX')) as Overflow,
-    overflowY: lit(f('overflowY'), ['visible', 'hidden'], p('overflowY')) as Overflow,
+    overflowX: lit(f('overflowX'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowX')) as Overflow,
+    overflowY: lit(f('overflowY'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowY')) as Overflow,
     direction: lit(f('direction'), ['ltr', 'rtl'], p('direction')) as Direction,
     boxSizing: lit(f('boxSizing'), ['content-box', 'border-box'], p('boxSizing')) as BoxSizing,
     width: sizeValue(f('width'), p('width')),
@@ -726,6 +759,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     columnGap: gapValue(f('columnGap'), p('columnGap')),
     textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
+    verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
@@ -781,27 +815,63 @@ function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
 }
 
 function decodeBox(o: JsonObj, path: string): LayoutBox {
-  obj(o, ['kind', 'id', 'boxType', 'style', 'children'], path);
-  const children: (LayoutBox | TextLeaf | ReplacedLeaf)[] = [];
+  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'children'], path);
+  const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
+  const strut = field(o, 'strut', path);
   return {
     kind: 'box',
     id: str(field(o, 'id', path), `${path}.id`),
     boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
     style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    strut: strut.kind === 'null' ? null : decodeStrut(strut, `${path}.strut`),
     children,
   };
 }
 
-function decodeNode(v: JsonValue, path: string): LayoutBox | TextLeaf | ReplacedLeaf {
+function decodeStrut(v: JsonValue, path: string): LineStrut {
+  const o = obj(v, ['font', 'lineHeight'], path);
+  return { font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+}
+
+function decodeInline(o: JsonObj, path: string): InlineBox {
+  obj(o, ['kind', 'id', 'style', 'font', 'lineHeight', 'children'], path);
+  const children: InlineChild[] = [];
+  arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
+    children.push(decodeInlineChild(c, `${path}.children[${i}]`));
+  });
+  return {
+    kind: 'inline',
+    id: str(field(o, 'id', path), `${path}.id`),
+    style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    font: fontSpec(field(o, 'font', path), `${path}.font`),
+    lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
+    children,
+  };
+}
+
+function decodeBreak(o: JsonObj, path: string): LineBreak {
+  obj(o, ['kind', 'id', 'font', 'lineHeight'], path);
+  return { kind: 'br', id: str(field(o, 'id', path), `${path}.id`), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+}
+
+function decodeInlineChild(v: JsonValue, path: string): InlineChild {
+  if (v.kind !== 'obj') return fail(`${path}: expected an inline-level node`);
+  const k = kindOf(v, path);
+  if (k === 'text') return decodeText(v, path);
+  if (k === 'inline') return decodeInline(v, path);
+  if (k === 'br') return decodeBreak(v, path);
+  return fail(`${path}: unknown inline-level node kind ${k}`);
+}
+
+function decodeNode(v: JsonValue, path: string): LayoutBox | ReplacedLeaf | InlineChild {
   if (v.kind !== 'obj') return fail(`${path}: expected a node`);
   const k = kindOf(v, path);
   if (k === 'box') return decodeBox(v, path);
-  if (k === 'text') return decodeText(v, path);
   if (k === 'replaced') return decodeReplaced(v, path);
-  return fail(`${path}: unknown node kind ${k}`);
+  return decodeInlineChild(v, path);
 }
 
 function decodeViewport(v: JsonValue, path: string): Viewport {
@@ -835,8 +905,11 @@ const FAULT_KEYS: readonly string[] = [
   'wrapReverseBaselineSpec', 'initialLineWidthZoomed', 'calcPercentPlainOrder', 'calcDoubleEval', 'calcNoNonNegClamp',
   'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled', 'lhUnsnapped',
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
-  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak',
-  'orderHalfEven', 'orderUnclamped',
+  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes',
+  'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
+  'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
+  'metricRoundingSwapped', 'latinCheckSkipped',
+  'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -877,8 +950,23 @@ function decodeFaults(v: JsonValue): EngineFaults {
     fitWithoutEpsilon: b('fitWithoutEpsilon'),
     breakAfterSolidus: b('breakAfterSolidus'),
     noHyphenDigitBreak: b('noHyphenDigitBreak'),
+    lineHeightIgnoresInlineBoxes: b('lineHeightIgnoresInlineBoxes'),
+    halfLeadingUnflooredPerBox: b('halfLeadingUnflooredPerBox'),
+    brIgnored: b('brIgnored'),
+    breakAtBoxBoundary: b('breakAtBoxBoundary'),
+    fragmentFromLineTop: b('fragmentFromLineTop'),
+    advanceNot16_16: b('advanceNot16_16'),
+    doubleAccumulation: b('doubleAccumulation'),
+    noReshapeAtBreak: b('noReshapeAtBreak'),
+    kerningDropped: b('kerningDropped'),
+    wholePixelPositions: b('wholePixelPositions'),
+    softHyphenWidthMissing: b('softHyphenWidthMissing'),
+    metricRoundingSwapped: b('metricRoundingSwapped'),
+    latinCheckSkipped: b('latinCheckSkipped'),
     orderHalfEven: b('orderHalfEven'),
     orderUnclamped: b('orderUnclamped'),
+    gutterReserved: b('gutterReserved'),
+    overflowIgnoresPadding: b('overflowIgnoresPadding'),
   };
 }
 
@@ -902,14 +990,225 @@ function h(x: number): string {
   return `"${bitsHex(x)}"`;
 }
 
-/** One engine case: {"platform", "faults", "input"} in, the layout result with every LU as bits out. */
+/** One recorded GlyphShaper call of a shape transcript (R3) and its integer glyph records. */
+type ReplayCall = {
+  readonly face: string;
+  readonly size: number;
+  readonly text: string;
+  readonly start: number;
+  readonly end: number;
+  readonly script: string;
+  readonly rtl: boolean;
+  readonly language: string;
+  readonly features: readonly number[];
+  readonly glyphs: readonly number[];
+};
+
+/** A face of a transcript: its FontData and HanKerning data, as the host read them from the bundled bytes. */
+type ReplayFace = { readonly data: FontData; readonly hanKerning: HanKerningFontData };
+
+type Shaping = { readonly language: string; readonly faces: Map<string, ReplayFace>; readonly calls: readonly ReplayCall[] };
+
+function numbers(v: JsonValue, path: string): number[] {
+  const out: number[] = [];
+  arr(v, path).forEach((x, i) => {
+    out.push(num(x, `${path}[${i}]`));
+  });
+  return out;
+}
+
+function fontData(v: JsonValue, path: string): FontData {
+  const o = obj(v, ['unitsPerEm', 'ascent', 'descent', 'lineGap', 'advances', 'xHeight', 'capHeight', 'zeroAdvance'], path);
+  return {
+    unitsPerEm: numField(o, 'unitsPerEm', path), ascent: numField(o, 'ascent', path), descent: numField(o, 'descent', path), lineGap: numField(o, 'lineGap', path),
+    advances: numbers(field(o, 'advances', path), `${path}.advances`), xHeight: numField(o, 'xHeight', path), capHeight: numField(o, 'capHeight', path), zeroAdvance: numField(o, 'zeroAdvance', path),
+  };
+}
+
+function hanKerning(v: JsonValue, path: string): HanKerningFontData {
+  const o = obj(v, ['hasAlternateSpacing', 'hasContextualSpacing', 'typeForDot', 'typeForColon', 'typeForSemicolon', 'isQuoteFullwidth'], path);
+  return {
+    hasAlternateSpacing: bool(field(o, 'hasAlternateSpacing', path), `${path}.hasAlternateSpacing`),
+    hasContextualSpacing: bool(field(o, 'hasContextualSpacing', path), `${path}.hasContextualSpacing`),
+    typeForDot: numField(o, 'typeForDot', path), typeForColon: numField(o, 'typeForColon', path), typeForSemicolon: numField(o, 'typeForSemicolon', path),
+    isQuoteFullwidth: bool(field(o, 'isQuoteFullwidth', path), `${path}.isQuoteFullwidth`),
+  };
+}
+
+/** A shape transcript: {language, faces: [{id, data, hanKerning}], calls: [[face, size, text, start, end, script, rtl, language, features, glyphs]]}. */
+function decodeShaping(v: JsonValue, path: string): Shaping {
+  const o = obj(v, ['language', 'faces', 'calls'], path);
+  const faces = new Map<string, ReplayFace>();
+  arr(field(o, 'faces', path), `${path}.faces`).forEach((f, i) => {
+    const at = `${path}.faces[${i}]`;
+    const fo = obj(f, ['id', 'data', 'hanKerning'], at);
+    const id = str(field(fo, 'id', at), `${at}.id`);
+    if (faces.has(id)) fail(`${at}.id: face ${id} is listed twice`);
+    faces.set(id, { data: fontData(field(fo, 'data', at), `${at}.data`), hanKerning: hanKerning(field(fo, 'hanKerning', at), `${at}.hanKerning`) });
+  });
+  const calls: ReplayCall[] = [];
+  arr(field(o, 'calls', path), `${path}.calls`).forEach((c, i) => {
+    const at = `${path}.calls[${i}]`;
+    const a = arr(c, at);
+    if (a.length !== 10) fail(`${at}: expected 10 fields, got ${a.length}`);
+    const item = (k: number): JsonValue => a[k] as JsonValue;
+    const features = numbers(item(8), `${at}[8]`);
+    const glyphs = numbers(item(9), `${at}[9]`);
+    // A call's features must equal the engine's request exactly (replayShaper), so only the glyphs it returns need checking.
+    if (!Number.isInteger(glyphs.length / GLYPH_STRIDE)) fail(`${at}[9]: ${glyphs.length} integers are not whole glyph records of ${GLYPH_STRIDE}`);
+    calls.push({
+      face: str(item(0), `${at}[0]`), size: num(item(1), `${at}[1]`), text: str(item(2), `${at}[2]`), start: num(item(3), `${at}[3]`), end: num(item(4), `${at}[4]`),
+      script: str(item(5), `${at}[5]`), rtl: bool(item(6), `${at}[6]`), language: str(item(7), `${at}[7]`), features, glyphs,
+    });
+  });
+  return { language: str(field(o, 'language', path), `${path}.language`), faces, calls };
+}
+
+function sameNumbers(a: readonly number[], b: readonly number[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if ((a[i] as number) !== (b[i] as number)) return false;
+  return true;
+}
+
+/** R3: a GlyphShaper that replays a transcript; a call the transcript does not hold is a harness error. */
+function replayShaper(calls: readonly ReplayCall[]): GlyphShaper {
+  return {
+    shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
+      for (const c of calls) {
+        if (c.face === face && c.size === size && c.text === text && c.start === start && c.end === end && c.script === script && c.rtl === rtl && c.language === language && sameNumbers(c.features, features)) return c.glyphs;
+      }
+      return fail(`the shape transcript holds no call ${face} ${size} [${start}, ${end}) of ${text}`);
+    },
+  };
+}
+
+/**
+ * The shaped measurer of a transcript from the engine's shaping primitives (shaping.ts makeItem, shapeItem and the view widths the
+ * line breaker reads), as layout/src/shaping.ts shapedText composes them: the translated engine's roots do not reach shapedText,
+ * and a host builds its measurer this way. runEngineCase scopes it to R4 as shapedMeasurerFor does; text-latin-engine.test.ts
+ * proves its layouts equal the Node host's.
+ */
+function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
+  const shaper = replayShaper(s.calls);
+  const sf: ShapingFaults = {
+    advanceNot16_16: faults.advanceNot16_16, doubleAccumulation: faults.doubleAccumulation, noReshapeAtBreak: faults.noReshapeAtBreak, kerningDropped: faults.kerningDropped,
+    wholePixelPositions: faults.wholePixelPositions, softHyphenWidthMissing: faults.softHyphenWidthMissing, metricRoundingSwapped: faults.metricRoundingSwapped,
+  };
+  const faceOf = (family: string): ReplayFace => {
+    const f = s.faces.get(family);
+    if (f === undefined) return fail(`the shape transcript has no face ${family}`);
+    return f;
+  };
+  const itemFor = (text: string, font: TextFont): ShapedItem => {
+    const f = s.faces.get(font.family);
+    if (f === undefined) return { ok: false, code: 'text-glyph', reason: `no bundled face ${font.family}` };
+    const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, faults: sf });
+    if (!made.ok) return { ok: false, code: 'text-glyph', reason: made.reason };
+    const result = shapeItem(made.item);
+    if (result.missing >= 0) return { ok: false, code: 'text-glyph', reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` };
+    return { ok: true, item: made.item, result };
+  };
+  /** A code point index as the UTF-16 offset of the item. */
+  const offsetOf = (units: readonly number[], codePoint: number): number => {
+    let k = 0;
+    for (let i = 0; i < units.length; i++) {
+      if ((units[i] as number) < 0) continue;
+      if (k === codePoint) return i;
+      k++;
+    }
+    return units.length;
+  };
+  const position = (r: ShapeResult, offset: number): LU => {
+    const i = offset - r.start;
+    return i < r.positions.length ? fromRaw(r.positions[i] as number) : fromPxCeil(inlineToFloat(r.total));
+  };
+  return {
+    metrics(font: TextFont): FontMetrics {
+      const d = faceOf(font.family).data;
+      const size = platformFontSize(font.size);
+      const round = (units: number): LU => (sf.metricRoundingSwapped ? roundFontMetricHalfUpToWholePx(fontMetricPx(size, d.unitsPerEm, units)) : roundCoreTextMetricToWholePx(units, d.unitsPerEm, size));
+      return { ascent: round(d.ascent), descent: round(d.descent), lineGap: d.lineGap === 0 ? ZERO : round(d.lineGap) };
+    },
+    measure(text: string, font: TextFont): MeasureResult {
+      const r = itemFor(text, font);
+      if (!r.ok) return { ok: false, code: r.code, reason: r.reason };
+      return { ok: true, measure: { width: viewSnappedWidth(r.item, wholeView(r.result)) } };
+    },
+    measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
+      const r = itemFor(text, font);
+      if (!r.ok) return { ok: false, code: r.code, reason: r.reason };
+      return { ok: true, measure: { width: sub(position(r.result, offsetOf(r.item.units, end)), position(r.result, offsetOf(r.item.units, start))) } };
+    },
+    lengths(font: TextFont): FontLengths {
+      return fontMetricLengths(faceOf(font.family).data, platformFontSize(font.size));
+    },
+    shaped(text: string, font: TextFont): ShapedItem {
+      return itemFor(text, font);
+    },
+    hasFace(family: string): boolean {
+      return s.faces.has(family);
+    },
+  };
+}
+
+/** A scroll metrics record: the id, the client size and the scroll rect (overflow.ts). */
+function scrollRecord(s: ScrollMetrics): string {
+  return `[${q(s.id)},${h(s.clientWidth)},${h(s.clientHeight)},${h(s.scrollRect.x)},${h(s.scrollRect.y)},${h(s.scrollRect.width)},${h(s.scrollRect.height)}]`;
+}
+
+/**
+ * A line with a viewportDirection key (the engine-overflow suite) also runs scrollMetrics and appends its result; every other line
+ * keeps its output byte for byte.
+ */
+function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: string, faults: EngineFaults): string {
+  const r = scrollMetricsWithFaults(input, measurer, direction === 'rtl' ? 'rtl' : 'ltr', faults);
+  if (r.kind === 'refused') return `,["refused",${q(r.nodeId)},${q(r.detail)}]`;
+  let out = `,["ok",${scrollRecord(r.viewport)},[`;
+  r.containers.forEach((c, i) => {
+    if (i > 0) out += ',';
+    out += scrollRecord(c);
+  });
+  return `${out}]]`;
+}
+
+/**
+ * The first shaping plant set in faults, or ''. The shaping plants act only through a shaped measurer (platform.ts
+ * shapedMeasurerFor, or replayMeasurer here), so a case without a shape transcript, which measurerFor's Ahem measurer lays out,
+ * refuses them rather than run them inert.
+ */
+function shapingPlantOf(f: EngineFaults): string {
+  if (f.advanceNot16_16) return 'advanceNot16_16';
+  if (f.doubleAccumulation) return 'doubleAccumulation';
+  if (f.noReshapeAtBreak) return 'noReshapeAtBreak';
+  if (f.kerningDropped) return 'kerningDropped';
+  if (f.wholePixelPositions) return 'wholePixelPositions';
+  if (f.softHyphenWidthMissing) return 'softHyphenWidthMissing';
+  if (f.metricRoundingSwapped) return 'metricRoundingSwapped';
+  if (f.latinCheckSkipped) return 'latinCheckSkipped';
+  return '';
+}
+
+/** One engine case: {platform, faults, input} in, the layout (and its absolute rects) out; with shaping, a replayed HarfBuzz measures. */
 export function runEngineCase(line: string): string {
   try {
-    const o = obj(parseJson(line), ['platform', 'faults', 'input'], '$');
+    const parsed = parseJson(line);
+    const shaped = parsed.kind === 'obj' && parsed.values.has('shaping');
+    const scroll = parsed.kind === 'obj' && parsed.values.has('viewportDirection');
+    const keys: string[] = ['platform', 'faults', 'input'];
+    if (shaped) keys.push('shaping');
+    if (scroll) keys.push('viewportDirection');
+    const o = obj(parsed, keys, '$');
+    const direction = scroll ? lit(field(o, 'viewportDirection', '$'), ['ltr', 'rtl'], '$.viewportDirection') : 'ltr';
     const platform = str(field(o, 'platform', '$'), '$.platform');
     const faults = decodeFaults(field(o, 'faults', '$'));
+    const plant = shapingPlantOf(faults);
+    if (plant !== '' && !shaped) fail(`$.faults.${plant} is a shaping plant, which acts only through the shaped measurer; the harness has only measurerFor's Ahem measurer`);
     const input = decodeInput(field(o, 'input', '$'));
-    const m = measurerFor(platform);
+    let m = measurerFor(platform);
+    if (shaped && m.kind === 'ok') {
+      const s = decodeShaping(field(o, 'shaping', '$'), '$.shaping');
+      m = { kind: 'ok', platform, key: `shaped/${platform}`, measurer: latinScopedMeasurer(replayMeasurer(s, faults), faults.latinCheckSkipped), rules: m.rules };
+    }
     if (m.kind !== 'ok') return `["refused",${q(m.code)}]`;
     const r = layoutWithFaults(input, m.measurer, faults);
     if (r.kind !== 'ok') {
@@ -928,7 +1227,7 @@ export function runEngineCase(line: string): string {
       first = false;
       out += `[${q(id)},${h(rect.x)},${h(rect.y)},${h(rect.width)},${h(rect.height)}]`;
     }
-    return `${out}]]`;
+    return `${out}]${scroll ? scrollSuffix(input, m.measurer, direction, faults) : ''}]`;
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -1020,6 +1319,42 @@ function unitsResult(name: string, a: readonly JsonValue[]): number {
 
 // ---------------------------------------------------------------- paint suites (EMS)
 
+/** count doubles from argument i on. */
+function argList(a: readonly JsonValue[], i: number, count: number): number[] {
+  const out: number[] = [];
+  for (let k = 0; k < count; k++) out.push(arg(a, i + k));
+  return out;
+}
+
+/** A result list of doubles as bits. */
+function numList(xs: readonly number[]): string {
+  let out = '["ok",[';
+  for (let k = 0; k < xs.length; k++) {
+    if (k > 0) out += ',';
+    out += h(xs[k] as number);
+  }
+  return `${out}]]`;
+}
+
+/** One radius length from arguments i (percent flag, 0 or 1) and i + 1 (value). */
+function radiusLength(a: readonly JsonValue[], i: number): RadiusLength {
+  const flag = arg(a, i);
+  if (flag !== 0 && flag !== 1) return fail(`radius length flag ${flag} is not 0 or 1`);
+  return { percent: flag === 1, value: arg(a, i + 1) };
+}
+
+/** Eight radius lengths from argument i on. */
+function radiusLengths(a: readonly JsonValue[], i: number): RadiusLength[] {
+  const out: RadiusLength[] = [];
+  for (let k = 0; k < 8; k++) out.push(radiusLength(a, i + 2 * k));
+  return out;
+}
+
+/** The radius faults from arguments i (radiusUnclamped) and i + 1 (innerRadiusNotReduced), each 0 or 1. */
+function radiusFaults(a: readonly JsonValue[], i: number): RadiusFaults {
+  return { radiusUnclamped: arg(a, i) !== 0, innerRadiusNotReduced: arg(a, i + 1) !== 0 };
+}
+
 /**
  * One paint case, run through the units mode: ["paint:<feature>:<function>", arg...] in, the whole result line out; null for any
  * other name. Registration point (RT-13 style): each paint package adds one case per root; its vectors are
@@ -1047,6 +1382,13 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const p = mapPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
     return `["ok",[${h(p.x)},${h(p.y)}]]`;
   }
+  if (name === 'paint:radius:radiusComponent') return `["ok",${h(radiusComponent(radiusLength(a, 1), arg(a, 3), arg(a, 4)))}]`;
+  if (name === 'paint:radius:resolveCornerRadii') return numList(resolveCornerRadii(radiusLengths(a, 1), arg(a, 17), arg(a, 18), arg(a, 19)));
+  if (name === 'paint:radius:constrainCornerRadii') return numList(constrainCornerRadii(argList(a, 1, 8), arg(a, 9), arg(a, 10), radiusFaults(a, 11)));
+  if (name === 'paint:radius:radiiRenderable') return `["ok",${radiiRenderable(argList(a, 1, 8), arg(a, 9), arg(a, 10)) ? 'true' : 'false'}]`;
+  if (name === 'paint:radius:innerCornerRadii') return numList(innerCornerRadii(argList(a, 1, 8), argList(a, 9, 4), arg(a, 13), arg(a, 14), radiusFaults(a, 15)));
+  if (name === 'paint:radius:roundedShape') return numList(roundedShape(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), argList(a, 7, 4), radiusLengths(a, 11), arg(a, 27), radiusFaults(a, 28)));
+  if (name === 'paint:radius:hasRoundedCorner') return `["ok",${hasRoundedCorner(argList(a, 1, 8)) ? 'true' : 'false'}]`;
   const gradient = gradientResult(name, a);
   if (gradient !== null) return gradient;
   return null;

@@ -139,9 +139,14 @@
     "aspectRatio": {
      "kind": "auto"
     },
+    "verticalAlign": {
+     "kind": "keyword",
+     "value": "baseline"
+    },
     "grid": null,
     "gridItem": null
    },
+   "strut": null,
    "children": [
     {
      "kind": "box",
@@ -254,9 +259,14 @@
       "aspectRatio": {
        "kind": "auto"
       },
+      "verticalAlign": {
+       "kind": "keyword",
+       "value": "baseline"
+      },
       "grid": null,
       "gridItem": null
      },
+     "strut": null,
      "children": [
       {
        "kind": "box",
@@ -370,9 +380,14 @@
         "aspectRatio": {
          "kind": "auto"
         },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        },
         "grid": null,
         "gridItem": null
        },
+       "strut": null,
        "children": [
         {
          "kind": "box",
@@ -488,9 +503,14 @@
            "width": 1024,
            "height": 576
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
          },
+         "strut": null,
          "children": []
         },
         {
@@ -607,9 +627,14 @@
            "width": 1024,
            "height": 576
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
          },
+         "strut": null,
          "children": []
         },
         {
@@ -726,9 +751,14 @@
            "width": 1024,
            "height": 576
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
          },
+         "strut": null,
          "children": []
         },
         {
@@ -845,9 +875,14 @@
            "width": 128,
            "height": 64
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
          },
+         "strut": null,
          "children": []
         },
         {
@@ -965,9 +1000,14 @@
            "width": 1024,
            "height": 576
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
          },
+         "strut": null,
          "children": []
         },
         {
@@ -1085,9 +1125,14 @@
            "width": 1024,
            "height": 576
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
          },
+         "strut": null,
          "children": []
         },
         {
@@ -1204,9 +1249,14 @@
            "width": 1024,
            "height": 576
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
          },
+         "strut": null,
          "children": []
         },
         {
@@ -1321,9 +1371,14 @@
            "width": 1024,
            "height": 576
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
          },
+         "strut": null,
          "children": []
         },
         {
@@ -1440,8 +1495,26 @@
            "width": 64,
            "height": 64
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
+         },
+         "strut": {
+          "font": {
+           "family": "Ahem",
+           "size": 10,
+           "specifiedSize": {
+            "kind": "px",
+            "value": 10
+           },
+           "absoluteSize": true
+          },
+          "lineHeight": {
+           "kind": "normal"
+          }
          },
          "children": [
           {
@@ -1579,8 +1652,26 @@
            "width": 64,
            "height": 64
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
+         },
+         "strut": {
+          "font": {
+           "family": "Ahem",
+           "size": 10,
+           "specifiedSize": {
+            "kind": "px",
+            "value": 10
+           },
+           "absoluteSize": true
+          },
+          "lineHeight": {
+           "kind": "normal"
+          }
          },
          "children": [
           {
@@ -1718,9 +1809,14 @@
            "width": 1024,
            "height": 576
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
          },
+         "strut": null,
          "children": [
           {
            "kind": "box",
@@ -1834,9 +1930,14 @@
             "aspectRatio": {
              "kind": "auto"
             },
+            "verticalAlign": {
+             "kind": "keyword",
+             "value": "baseline"
+            },
             "grid": null,
             "gridItem": null
            },
+           "strut": null,
            "children": []
           }
          ]
@@ -1955,9 +2056,14 @@
            "width": 448,
            "height": 192
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
          },
+         "strut": null,
          "children": []
         },
         {
@@ -2073,9 +2179,14 @@
            "width": 64,
            "height": 64
           },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
           "grid": null,
           "gridItem": null
          },
+         "strut": null,
          "children": []
         }
        ]

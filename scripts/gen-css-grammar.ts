@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/properties/grid.ts';
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
+import { RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 
 type WebrefEntry = {
@@ -45,8 +46,13 @@ const SUBSET = [
 
   // SELD-R1b: pointer-events, after grid.
   'pointer-events',
+  // Border radii (PNT1), after pointer-events, as LONGHANDS registers them, then their shorthands.
+  ...RADIUS_LONGHANDS,
+  'border-radius', '-webkit-border-radius',
   // Transforms (PNT2), after grid, as LONGHANDS registers them.
   ...TRANSFORM_LONGHANDS,
+  // GEN-b: content and list-style (css-content-3, css-lists-3), as LONGHANDS registers them.
+  'content', 'list-style', 'list-style-type', 'list-style-position', 'list-style-image',
 ] as const;
 
 /**
@@ -55,6 +61,10 @@ const SUBSET = [
  */
 const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
   'writing-mode': 'lr | lr-tb | rl | rl-tb | tb | tb-rl',
+  // Blink's image parser (css_parsing_utils.cc ConsumeImage) also takes the prefixed -webkit-image-set() and -webkit-cross-fade(),
+  // which webref's <image> omits; Chrome 145 parses both in content and list-style-image (packages/parity/test/list-style-parse.test.ts).
+  content: '-webkit-image-set( <image-set-option># ) | -webkit-cross-fade( <image> , <image> , [ <percentage> | <number> ] )',
+  'list-style-image': '-webkit-image-set( <image-set-option># ) | -webkit-cross-fade( <image> , <image> , [ <percentage> | <number> ] )',
 };
 
 /**
@@ -65,6 +75,9 @@ const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
  * packages/parity/test/display-parse.test.ts.
  */
 const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
+  // Blink ListStyleType::ParseSingleValue (css/properties/longhands/longhands_custom.cc): none, a string or a counter-style name;
+  // symbols() is parsed only in @counter-style, so webref's <symbols()> is dropped (pinned by packages/parity/test/list-style-parse.test.ts).
+  'list-style-type': '<counter-style-name> | <string> | none',
   display: [
     '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
     '[ block | inline ]? && [ flow | flow-root ]? && list-item',
@@ -80,7 +93,7 @@ const typesByName = new Map(css.types.map((t) => [t.name, t]));
 const functionsByName = new Map(css.functions.map((f) => [f.name, f]));
 // css-tree matches url tokens with its own <url> generic; webref's token-level definition cannot match css-tree's Url node.
 const CSS_TREE_GENERICS = new Set(['url']);
-const refPattern = /<'([^']+)'>|<([a-zA-Z0-9-]+(?:\(\))?)(?:\s*\[[^\]]*\])?>/g;
+const refPattern = /<'([a-z-]+)'>|<([a-zA-Z0-9-]+(?:\(\))?)(?:\s*\[[^\]]*\])?>/g;
 
 const properties = new Map<string, WebrefEntry>();
 const types = new Map<string, string>();

@@ -39,7 +39,7 @@ export function checkOutOfFlowSiblings(ctx: Ctx, box: LayoutBox): void {
     if (k.kind === 'replaced' && isOutOfFlow(ctx, k)) unsupported('replaced-out-of-flow', k.id, 'CSS 2.2 §10.3.8, §10.6.5', `absolutely positioned replaced ${k.id} is not supported`);
   }
   if (oof === undefined) return;
-  if (box.children.some((k) => k.kind === 'text' || (k.kind === 'box' && k.boxType === 'anonymous'))) {
+  if (box.children.some((k) => (k.kind !== 'box' && k.kind !== 'replaced') || (k.kind === 'box' && k.boxType === 'anonymous'))) {
     unsupported('abspos-in-inline', oof.id, 'CSS2 §9.2.1.1, §10.3.7', `absolutely positioned ${oof.id} beside text in ${box.id} would take a static position in its inline formatting context`);
   }
 }

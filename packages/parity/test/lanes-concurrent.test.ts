@@ -39,6 +39,8 @@ describe('devices of a target at once', () => {
     // SELD-R1b: the script and hit sets travel with the batch set.
     states: { dpr: set.dpr, device: { ...set.device, name: device }, cases: 126, dumps: 126, compared: set.compared, dumpsSha256: 's', failures: [], faults: [] } as unknown as DeviceSet,
     hits: { dpr: set.dpr, device: { ...set.device, name: device }, cases: set.cases, dumps: set.cases, compared: set.compared, dumpsSha256: 'h', failures: [], faults: [] } as unknown as DeviceSet,
+    // MQ-R1: the device-env rotation set travels with them too.
+    env: { dpr: set.dpr, device: { ...set.device, name: device }, cases: 3, dumps: 3, compared: set.compared, dumpsSha256: 'e', failures: [], faults: [] } as unknown as DeviceSet,
     trust: { device, dpr: set.dpr, rows: [] },
     vectors: null,
     blocked: null,
@@ -48,16 +50,17 @@ describe('devices of a target at once', () => {
     const o = outcome('iPhone 17');
     expect(parseOutcome(JSON.stringify(o), 'iPhone 17')).toEqual(o);
     expect(() => parseOutcome('{', 'iPhone 17')).toThrow(/wrote no outcome JSON/);
-    expect(() => parseOutcome(JSON.stringify(o), 'iPad (A16)')).toThrow(/malformed device outcome: device "iPhone 17"; set.device is not this device; states.device is not this device; hits.device is not this device; trust is not/);
+    expect(() => parseOutcome(JSON.stringify(o), 'iPad (A16)')).toThrow(/malformed device outcome: device "iPhone 17"; set.device is not this device; states.device is not this device; hits.device is not this device; env.device is not this device; trust is not/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: { ...o.set, failures: 'none' } }), 'iPhone 17')).toThrow(/set.failures is not a failure list/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: null }), 'iPhone 17')).toThrow(/neither a set nor a blocked reason/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: { ...o.set, faults: [{ caught: 1 }] } }), 'iPhone 17')).toThrow(/set.faults is not a fault row list/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: { ...o.set, compared: { a: 1 } } }), 'iPhone 17')).toThrow(/set.compared is not the five check counts/);
     expect(() => parseOutcome(JSON.stringify({ ...o, trust: { ...o.trust, rows: [{ case: 'x', points: 'many', mismatches: [] }] } }), 'iPhone 17')).toThrow(/trust is not this device's trust rows/);
     expect(() => parseOutcome(JSON.stringify({ ...o, trust: null }), 'iPhone 17')).toThrow(/a set without its capture-trust rows/);
-    expect(parseOutcome(JSON.stringify({ ...o, set: null, states: null, hits: null, trust: null, blocked: 'did not boot' }), 'iPhone 17').blocked).toBe('did not boot');
+    expect(parseOutcome(JSON.stringify({ ...o, set: null, states: null, hits: null, env: null, trust: null, blocked: 'did not boot' }), 'iPhone 17').blocked).toBe('did not boot');
     expect(() => parseOutcome(JSON.stringify({ ...o, states: undefined }), 'iPhone 17')).toThrow(/a set without its states set/);
     expect(() => parseOutcome(JSON.stringify({ ...o, hits: { ...o.hits, failures: 'none' } }), 'iPhone 17')).toThrow(/hits.failures is not a failure list/);
+    expect(() => parseOutcome(JSON.stringify({ ...o, env: undefined }), 'iPhone 17')).toThrow(/a set without its env set/);
     expect(() => parseOutcome(JSON.stringify({ ...o, states: { ...o.states, device: { name: 'other' } } }), 'iPhone 17')).toThrow(/states.device is not this device/);
   });
   it('a device job is checked before any device work', () => {
@@ -116,7 +119,7 @@ describe('devices of a target at once', () => {
     const o = outcome('dragon-480');
     expect(afterRelease(o, null)).toBe(o);
     const b = afterRelease(o, 'emulator-5582 (dragon-480) still runs after adb emu kill');
-    expect(b).toEqual({ device: 'dragon-480', set: null, trust: null, vectors: null, blocked: 'dragon-480: the device could not be stopped after its run (tooling fault), so its results are not used: emulator-5582 (dragon-480) still runs after adb emu kill' });
+    expect(b).toEqual({ device: 'dragon-480', set: null, trust: null, vectors: null, blocked: 'dragon-480: the device could not be stopped after its run (tooling fault), so its results are not used: emulator-5582 (dragon-480) still runs after adb emu kill', blockedBy: ['stop'] });
     expect(parseOutcome(JSON.stringify(b), 'dragon-480')).toEqual(b);
     expect(afterRelease({ ...o, set: null, trust: null, blocked: 'no fit' }, 'x').blocked).toMatch(/results are not used: x; no fit$/);
     const run = mergeOutcomes([outcome('a'), b], { laneCode: '', referenceData: '', app: '' });

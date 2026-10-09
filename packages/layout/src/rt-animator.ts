@@ -6,7 +6,7 @@
 // the caller lays out again (R16). The compiler's tables are plain data (EasingCode, ValueCode), so a device holds them as
 // literals; length endpoints come from the engine input of each assignment, resolved for the environment by the engine's own
 // resolver (R14).
-import type { CalcExpr, GapValue, InsetValue, LayoutBox, LayoutInput, LayoutStyle, LengthCalc, MarginValue, MaxSizeValue, MinSizeValue, PaddingValue, Percent, Px, ReplacedLeaf, SizeValue, TextLeaf } from './input.ts';
+import type { CalcExpr, GapValue, InlineChild, InsetValue, LayoutBox, LayoutInput, LayoutStyle, LengthCalc, MarginValue, MaxSizeValue, MinSizeValue, PaddingValue, Percent, Px, ReplacedLeaf, SizeValue } from './input.ts';
 import type { Easing, RtFaults, StepPosition } from './rt-easing.ts';
 import { cubicBezierEasing, froundOf, LINEAR, stepsEasing } from './rt-easing.ts';
 import type { AnimatedValue, LegacyColor, LengthValue, Rgba8Value, ValueRange } from './rt-interpolate.ts';
@@ -370,33 +370,43 @@ export function animatorStart(t: AnimTables, inputs: readonly LayoutInput[], ini
   return { current: s.current, transitions: s.transitions, lists: s.lists, composed: recompose(s, t, inputs, initial, true, faults, anim) };
 }
 
-function slotEvent(t: AnimTables, sl: SlotTable, running: RunningTransition | null, from: number, to: number, inputs: readonly LayoutInput[], faults: RtFaults, anim: AnimatorFaults): RunningTransition | null {
+function slotEvent(t: AnimTables, sl: SlotTable, running: RunningTransition | null, from: number, to: number, beforeInputs: readonly LayoutInput[], afterInputs: readonly LayoutInput[], faults: RtFaults, anim: AnimatorFaults): RunningTransition | null {
   const shownBefore = rendered(t, sl.node, from);
   const shownAfter = rendered(t, sl.node, to);
   // R7: display: none cancels the subtree's transitions; an element's first style (new, or shown again) starts none.
   if (!shownAfter) return anim.displayNoneKeepsTransition ? running : null;
   // Planted displayNoneKeepsTransition: the transition outlives display: none and resumes when the element is shown again.
   if (!shownBefore && anim.displayNoneKeepsTransition && running !== null) return running;
-  const stored = baseValue(sl.kind, sl.node, sl.property, from, sl.values[from], inputs);
+  const stored = baseValue(sl.kind, sl.node, sl.property, from, sl.values[from], beforeInputs);
   // Planted transitionOnFirstStyle: a first style transitions from a zero value (0px, transparent) as if it had an old style.
   const before = stored === null && !shownBefore && anim.transitionOnFirstStyle ? zeroOf(sl.kind) : stored;
-  const after = baseValue(sl.kind, sl.node, sl.property, to, sl.values[to], inputs);
+  const afterValue = baseValue(sl.kind, sl.node, sl.property, to, sl.values[to], afterInputs);
   const listing = sl.listings[to];
-  if (after === null || listing === undefined || !listing.present) return null;
-  const smooth = before !== null && before.kind === after.kind;
+  if (afterValue === null || listing === undefined || !listing.present) return null;
+  const smooth = before !== null && before.kind === afterValue.kind;
   const hasOld = (shownBefore || anim.transitionOnFirstStyle) && before !== null;
-  return updateTransition(running, { hasOldStyle: hasOld, oldBase: before === null ? after : before, after: after, smooth: smooth, listing: listingOf(listing), range: sl.range }, faults);
+  return updateTransition(running, { hasOldStyle: hasOld, oldBase: before === null ? afterValue : before, after: afterValue, smooth: smooth, listing: listingOf(listing), range: sl.range }, faults);
 }
 
 /** R4: one style change event, the state program having moved from the current assignment to `to`. */
 export function animatorEvent(s: AnimatorState, t: AnimTables, inputs: readonly LayoutInput[], initial: number, to: number, faults: RtFaults, anim: AnimatorFaults): AnimatorState {
+  return animatorRestyle(s, t, inputs, inputs, initial, to, faults, anim);
+}
+
+/**
+ * MQ-R1: one style change event across a size change of the media root: the before-change style resolves against `before` and
+ * the after-change style against `after` (every assignment's input at the old and the new environment), as Chrome restyles a
+ * viewport-relative length after a resize; running animations keep their time. animatorEvent is the case before = after.
+ */
+export function animatorRestyle(s: AnimatorState, t: AnimTables, before: readonly LayoutInput[], after: readonly LayoutInput[], initial: number, to: number, faults: RtFaults, anim: AnimatorFaults): AnimatorState {
+  if (before.length !== t.assignments || after.length !== t.assignments) throw new AnimatorError(intToString(before.length) + ' and ' + intToString(after.length) + ' resolved engine inputs for ' + intToString(t.assignments) + ' assignments');
   if (to < 0 || to >= t.assignments) throw new AnimatorError('no assignment ' + intToString(to) + ' (' + intToString(t.assignments) + ' assignments)');
   const from = s.current;
   if (s.transitions.length !== t.slots.length) throw new AnimatorError(intToString(s.transitions.length) + ' transition records for ' + intToString(t.slots.length) + ' slots');
   const transitions = s.transitions.map((r, k): RunningTransition | null => {
     const sl = t.slots[k];
     if (sl === undefined) throw new AnimatorError('no slot ' + intToString(k));
-    return slotEvent(t, sl, r, from, to, inputs, faults, anim);
+    return slotEvent(t, sl, r, from, to, before, after, faults, anim);
   });
   // R7: an element leaving display: none starts its animations again at time 0 (M7).
   const lists = t.animations.map((a, i) => {
@@ -405,7 +415,7 @@ export function animatorEvent(s: AnimatorState, t: AnimTables, inputs: readonly 
     return updateAnimations(prev, entriesOf(t, a, to), faults);
   });
   const next: AnimatorState = { current: to, transitions: transitions, lists: lists, composed: s.composed };
-  return { current: to, transitions: transitions, lists: lists, composed: recompose(next, t, inputs, initial, true, faults, anim) };
+  return { current: to, transitions: transitions, lists: lists, composed: recompose(next, t, after, initial, true, faults, anim) };
 }
 
 /** One lane or display step (R2): every running, unfinished transition and animation moves by ms. */
@@ -528,7 +538,7 @@ function patchStyle(id: string, s: LayoutStyle, frame: readonly FrameEntry[], t:
 }
 
 /** A replaced leaf (img, iframe) is sized by its style as a box is, so its lengths animate too. */
-function patchChild(c: LayoutBox | TextLeaf | ReplacedLeaf, frame: readonly FrameEntry[], t: AnimTables): LayoutBox | TextLeaf | ReplacedLeaf {
+function patchChild(c: LayoutBox | ReplacedLeaf | InlineChild, frame: readonly FrameEntry[], t: AnimTables): LayoutBox | ReplacedLeaf | InlineChild {
   if (c.kind === 'box') return patchBox(c, frame, t);
   if (c.kind === 'replaced') return patchReplaced(c, frame, t);
   return c;

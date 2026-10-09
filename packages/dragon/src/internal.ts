@@ -26,7 +26,8 @@ export { iosProfile } from './profiles/ios.ts';
 export { webProfile } from './profiles/web.ts';
 export { androidProfile } from './profiles/android.ts';
 export type { Proof, ProofAspect, ProofLane, ProfileRow, SupportProfile } from './profiles/types.ts';
-export { statusOf } from './profiles/types.ts';
+export { nativeScrollPending, PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
+export type { ProfileNote } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
 export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';
 export type { UaDataset, UaDatasetChoice } from './ua/datasets.ts';
@@ -53,6 +54,7 @@ export { DIAGNOSTIC_CODES } from './diagnostics/codes.ts';
 export { applyFix } from './diagnostics/fix.ts';
 export type { FixResult } from './diagnostics/fix.ts';
 export { MAX_STATE_ASSIGNMENTS, assignmentKey } from './analysis/link.ts';
+export { collapseInlineContext, collapseInlineRun } from './analysis/resolve.ts';
 export type { FormattingContext, TextContext } from './analysis/context.ts';
 export { TEXT_LONGHANDS } from './css/properties.ts';
 export type { TextLonghand } from './css/properties.ts';
@@ -103,7 +105,7 @@ export function interactionPartitionOf(compiled: object, assignment: Assignment)
   return typeof c === 'string' ? null : c.partition;
 }
 
-/** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
+/** SELD-R2 and T078 R14: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
 export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
   return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
 }
@@ -308,6 +310,17 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
   };
   walk(c.resolved);
   return out;
+}
+
+// GEN-c (T151 R14): the compile-time ordinal and marker text of every list item in one case (analysis/markers.ts).
+export type { ListItemMarker, MarkerType } from './analysis/markers.ts';
+import { listItemMarkers } from './analysis/markers.ts';
+import type { GenCFaults } from './faults/gen-c.ts';
+
+/** The list items of one case in tree order, with their ordinals and marker text; null without a resolved case. */
+export function listItemMarkersOf(compiled: object, assignment: Assignment, faults?: GenCFaults): readonly import('./analysis/markers.ts').ListItemMarker[] | null {
+  const c = caseOf(compiled, assignment);
+  return typeof c === 'string' || c.resolved === null ? null : listItemMarkers(c.resolved, faults);
 }
 
 // T065 ANIM-b1: the animation tables of a compile and the runtime animator's TypeScript reference.

@@ -1,5 +1,5 @@
 // Runtime validator for LayoutInput. The schema's inferred type must equal the declared input types exactly.
-import type { CalcExpr, LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
+import type { CalcExpr, LayoutBox, LayoutInput, LayoutStyle, LineBreak, LineStrut, ReplacedLeaf, TextLeaf } from './input.ts';
 
 type NumberRule = { readonly t: 'number'; readonly min: number; readonly exclusiveMin: boolean; readonly integer: boolean };
 type StringRule = { readonly t: 'string' };
@@ -112,14 +112,14 @@ const gridContainer = obj({
 const gridItem = obj({ column: gridSpan, row: gridSpan, justifySelf: lit('auto', ...gridSelfAlignValues) });
 
 export const styleSchema = obj({
-  display: lit('block', 'flex', 'grid'),
+  display: lit('block', 'flex', 'grid', 'inline'),
   position: lit('static', 'relative', 'absolute'),
   top: inset,
   right: inset,
   bottom: inset,
   left: inset,
-  overflowX: lit('visible', 'hidden'),
-  overflowY: lit('visible', 'hidden'),
+  overflowX: lit('visible', 'hidden', 'clip', 'auto', 'scroll'),
+  overflowY: lit('visible', 'hidden', 'clip', 'auto', 'scroll'),
   direction: lit('ltr', 'rtl'),
   boxSizing: lit('content-box', 'border-box'),
   width: size,
@@ -158,12 +158,18 @@ export const styleSchema = obj({
   columnGap: gap,
   textAlign: lit('start', 'end', 'left', 'right', 'center', 'justify'),
   aspectRatio,
+  verticalAlign: tagged({
+    keyword: { value: lit('baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom') },
+    px: { value: anyNum },
+    percent: { value: anyNum },
+    ...calc,
+  }),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
 });
 
 /** css-fonts-4 §2: a font with its specified size expression (input.ts FontSpec). */
-export const fontSpecSchema = obj({ family: lit('Ahem'), size: num(0), specifiedSize: fontSizeExpr, absoluteSize: bool });
+export const fontSpecSchema = obj({ family: str, size: num(0), specifiedSize: fontSizeExpr, absoluteSize: bool });
 
 /** CSS2 §10.8.1: line-height is non-negative; a percentage is of the font size, and a calculation, clamped to 0, may hold one. */
 export const lineHeightSchema = tagged({ normal: {}, number: { value: num(0) }, px: { value: num(0) }, percent: { value: num(0) }, calc: { expr: calcExpr, range: lit('non-negative') } });
@@ -191,11 +197,19 @@ export const replacedLeafSchema = obj({
   objectPositionY: tagged({ px: { value: anyNum }, percent: { value: anyNum } }),
 });
 
+/** A <br> (input.ts LineBreak). */
+export const lineBreakSchema = obj({ kind: lit('br'), id: str, font: fontSpecSchema, lineHeight: lineHeightSchema });
+
+/** The strut of a block container with inline content (input.ts LineStrut). */
+export const strutSchema = obj({ font: fontSpecSchema, lineHeight: lineHeightSchema });
+
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type Assert<T extends true> = T;
 export type SchemaMatchesStyle = Assert<Equal<Infer<typeof styleSchema>, LayoutStyle>>;
 export type SchemaMatchesText = Assert<Equal<Infer<typeof textLeafSchema>, TextLeaf>>;
 export type SchemaMatchesReplaced = Assert<Equal<Infer<typeof replacedLeafSchema>, ReplacedLeaf>>;
+export type SchemaMatchesBreak = Assert<Equal<Infer<typeof lineBreakSchema>, LineBreak>>;
+export type SchemaMatchesStrut = Assert<Equal<Infer<typeof strutSchema>, LineStrut>>;
 
 export type ValidationErrorCode =
   | 'missing-key'
@@ -208,7 +222,10 @@ export type ValidationErrorCode =
   | 'text-in-flex'
   | 'grid-shape'
   | 'uncollapsed-text'
-  | 'anonymous-shape';
+  | 'leaf-font'
+  | 'anonymous-shape'
+  | 'block-in-inline'
+  | 'strut';
 
 export type ValidationError = { readonly path: string; readonly code: ValidationErrorCode; readonly message: string };
 
@@ -448,7 +465,7 @@ function checkRule(value: unknown, rule: Rule, path: string, errors: ValidationE
 
 function checkNode(value: unknown, path: string, errors: ValidationError[], ids: Set<string>, parentId: string | null): void {
   if (!isRecord(value)) {
-    errors.push({ path, code: 'wrong-type', message: 'expected a box or text object' });
+    errors.push({ path, code: 'wrong-type', message: 'expected a box, replaced leaf, inline box, line break or text object' });
     return;
   }
   const id = value['id'];
@@ -456,14 +473,36 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     if (ids.has(id)) errors.push({ path: `${path}.id`, code: 'duplicate-id', message: `duplicate id "${id}"` });
     ids.add(id);
   }
-  if (value['kind'] === 'text') {
+  const kind = value['kind'];
+  if (kind === 'text') {
     checkRule(value, textLeafSchema, path, errors);
     return;
   }
-  if (value['kind'] === 'replaced') {
+  if (kind === 'br') {
+    checkRule(value, lineBreakSchema, path, errors);
+    return;
+  }
+  if (kind === 'inline') {
+    checkFields(value, { id: str, style: styleSchema, font: fontSpecSchema, lineHeight: lineHeightSchema }, path, errors, ['kind', 'children']);
+    const style = value['style'];
+    if (isRecord(style) && style['display'] !== 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an inline box has display inline' });
+    // css-grid-2 §5 and css-display-3 §2.7: an inline box is no grid container, and a grid item is blockified, so never an inline box.
+    if (isRecord(style) && ((style['grid'] !== null && style['grid'] !== undefined) || (style['gridItem'] !== null && style['gridItem'] !== undefined))) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'an inline box is neither a grid container nor a grid item' });
+    const kids = childrenOf(value, path, errors);
+    if (kids === null) return;
+    kids.forEach((child: unknown, i: number) => {
+      checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null);
+      if (isRecord(child) && !isInlineLevel(child)) errors.push({ path: `${path}.children[${i}]`, code: 'block-in-inline', message: 'an inline box holds only inline-level content (CSS2 §9.2.1.1 block-in-inline is not supported)' });
+    });
+    checkLeafFonts(kids, value['font'], value['lineHeight'], path, errors);
+    return;
+  }
+  if (kind === 'replaced') {
     checkRule(value, replacedLeafSchema, path, errors);
     const style = value['style'];
     if (isRecord(style)) {
+      // Atomic inline-level replaced boxes (CSS2 §10.3.2 in an inline formatting context) are not supported yet.
+      if (style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a replaced leaf is block-level; an inline replaced box is not supported' });
       if (style['overflowX'] !== style['overflowY']) errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
       // CSS 2.2 §10.3.8 and §10.6.5: absolutely positioned replaced boxes are not supported yet.
       if (style['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
@@ -473,25 +512,20 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     }
     return;
   }
-  if (value['kind'] !== 'box') {
-    errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: 'expected kind box | text | replaced' });
+  if (kind !== 'box') {
+    errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: 'expected kind box | replaced | inline | br | text' });
     return;
   }
-  checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema }, path, errors, ['kind', 'children']);
-  if (!Object.prototype.hasOwnProperty.call(value, 'children')) {
-    errors.push({ path: `${path}.children`, code: 'missing-key', message: 'missing required key "children"' });
-    return;
-  }
-  const children = value['children'];
-  if (!Array.isArray(children)) {
-    errors.push({ path: `${path}.children`, code: 'wrong-type', message: 'expected an array' });
-    return;
-  }
-  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null));
-  checkInlineContent(value, children, path, errors);
+  checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema }, path, errors, ['kind', 'children', 'strut']);
   const style = value['style'];
-  if (isRecord(style) && style['overflowX'] !== style['overflowY']) {
-    errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
+  if (isRecord(style) && style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a box is block, flex or grid; an inline box has kind inline' });
+  const children = childrenOf(value, path, errors);
+  if (children === null) return;
+  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null));
+  checkStrut(value, children, path, errors);
+  checkInlineContent(value, children, path, errors);
+  if (isRecord(style) && clipsOnly(style['overflowX']) !== clipsOnly(style['overflowY'])) {
+    errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be a computed pair: css-overflow-3 §3.1 computes visible beside hidden, auto or scroll to auto, and clip to hidden' });
   }
   if (value['boxType'] === 'anonymous') checkAnonymous(value, children, path, errors, parentId);
   if (isRecord(style)) checkRatioBlockLengths(style, path, errors);
@@ -566,6 +600,73 @@ function sameValue(a: unknown, b: unknown): boolean {
     return keys.length === Object.keys(b).length && keys.every((k) => Object.hasOwn(b, k) && sameValue(a[k], b[k]));
   }
   return a === b;
+}
+
+/** css-overflow-3 §3.1: visible and clip stay as they are only beside visible or clip. */
+function clipsOnly(v: unknown): boolean {
+  return v === 'visible' || v === 'clip';
+}
+
+function childrenOf(value: Record<string, unknown>, path: string, errors: ValidationError[]): readonly unknown[] | null {
+  if (!Object.prototype.hasOwnProperty.call(value, 'children')) {
+    errors.push({ path: `${path}.children`, code: 'missing-key', message: 'missing required key "children"' });
+    return null;
+  }
+  const children = value['children'];
+  if (!Array.isArray(children)) {
+    errors.push({ path: `${path}.children`, code: 'wrong-type', message: 'expected an array' });
+    return null;
+  }
+  return children;
+}
+
+const isInlineLevel = (c: unknown): boolean => isRecord(c) && (c['kind'] === 'text' || c['kind'] === 'inline' || c['kind'] === 'br');
+
+/** A value as JSON with every object's keys sorted, so two fonts compare equal whatever their key order. */
+function canonicalOf(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonicalOf).join(',')}]`;
+  if (isRecord(v)) return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonicalOf(v[k])}`).join(',')}}`;
+  const json: string | undefined = JSON.stringify(v);
+  return json === undefined ? 'undefined' : json;
+}
+
+// A text leaf inherits its font and line-height from its parent element (css-cascade-4 §7.2), so they equal its inline box's or
+// the container strut's; line metrics come from the strut and inline boxes only, so a leaf that differed would overflow its line
+// unnoticed.
+function checkLeafFonts(children: readonly unknown[], font: unknown, lineHeight: unknown, path: string, errors: ValidationError[]): void {
+  children.forEach((c: unknown, i: number) => {
+    if (!isRecord(c) || c['kind'] !== 'text') return;
+    if (canonicalOf(c['font']) !== canonicalOf(font) || canonicalOf(c['lineHeight']) !== canonicalOf(lineHeight)) {
+      errors.push({ path: `${path}.children[${i}]`, code: 'leaf-font', message: 'a text leaf has the font and line-height of its parent: the strut, or its inline box' });
+    }
+  });
+}
+
+// CSS2 §10.8.1: a block container with inline content has a strut, its own font and line-height; any other box has none.
+function checkStrut(box: Record<string, unknown>, children: readonly unknown[], path: string, errors: ValidationError[]): void {
+  if (!Object.prototype.hasOwnProperty.call(box, 'strut')) {
+    errors.push({ path: `${path}.strut`, code: 'missing-key', message: 'missing required key "strut"' });
+    return;
+  }
+  const strut = box['strut'];
+  const inline = children.some(isInlineLevel);
+  if (strut === null) {
+    if (inline) errors.push({ path: `${path}.strut`, code: 'strut', message: 'a box with inline content has a strut' });
+    return;
+  }
+  checkRule(strut, strutSchema, `${path}.strut`, errors);
+  if (!inline) errors.push({ path: `${path}.strut`, code: 'strut', message: 'a box without inline content has a null strut' });
+  else if (isRecord(strut)) checkLeafFonts(children, strut['font'], strut['lineHeight'], path, errors);
+}
+
+/** The text leaves of an inline formatting context in tree order, with null marking each line break. */
+function inlineTexts(children: readonly unknown[], out: (Record<string, unknown> | null)[]): void {
+  for (const c of children) {
+    if (!isRecord(c)) continue;
+    if (c['kind'] === 'text') out.push(c);
+    else if (c['kind'] === 'br') out.push(null);
+    else if (c['kind'] === 'inline' && Array.isArray(c['children'])) inlineTexts(c['children'], out);
+  }
 }
 
 /** A length that holds a percentage: a percentage, or a calculation with one. */
@@ -659,6 +760,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   rowGap: { kind: 'normal' },
   columnGap: { kind: 'normal' },
   aspectRatio: { kind: 'auto' },
+  verticalAlign: { kind: 'keyword', value: 'baseline' },
   grid: null,
 };
 
@@ -668,7 +770,7 @@ function checkAnonymous(box: Record<string, unknown>, children: readonly unknown
   const bad = (message: string): void => {
     errors.push({ path, code: 'anonymous-shape', message });
   };
-  if (children.length === 0 || !children.every((c) => isRecord(c) && c['kind'] === 'text')) bad('an anonymous box holds one or more text leaves and no boxes');
+  if (children.length === 0 || !children.every(isInlineLevel)) bad('an anonymous box holds inline-level content (text, inline boxes, line breaks) and no boxes');
   const id = box['id'];
   if (parentId === null || typeof id !== 'string' || !new RegExp(`^${escapeRegExp(parentId)}:anon\\d+$`).test(id)) bad('an anonymous box id is "<parent id>:anon<k>"');
   const style = box['style'];
@@ -684,23 +786,34 @@ function escapeRegExp(s: string): string {
 
 const UNCOLLAPSED = /[\t\n\r\f]| {2}/;
 
-// CSS2 §9.2.1.1, css-flexbox-1 §4 and css-text-3 §4.1.1: the compiler wraps text beside boxes, and text in a flex container, in
-// anonymous boxes, and applies white-space phase I collapsing; the engine never does either.
+// CSS2 §9.2.1.1, css-flexbox-1 §4 and css-text-3 §4.1.1: the compiler wraps inline content beside boxes, and inline content in a
+// flex container, in anonymous boxes, and applies white-space phase I collapsing; the engine never does either. Collapsing runs
+// over the whole formatting context through inline boxes; after a line break a space would collapse, before one it hangs.
 function checkInlineContent(box: Record<string, unknown>, children: readonly unknown[], path: string, errors: ValidationError[]): void {
-  const texts = children.filter((c): c is Record<string, unknown> => isRecord(c) && c['kind'] === 'text');
-  if (texts.length === 0) return;
-  if (texts.length !== children.length) {
-    errors.push({ path: `${path}.children`, code: 'mixed-children', message: 'a box has either text children or box children; wrap the text in anonymous boxes' });
+  const inline = children.filter(isInlineLevel);
+  if (inline.length === 0) return;
+  if (inline.length !== children.length) {
+    errors.push({ path: `${path}.children`, code: 'mixed-children', message: 'a box has either inline-level children or box children; wrap the inline content in anonymous boxes' });
   }
   const style = box['style'];
   if (isRecord(style) && (style['display'] === 'flex' || style['display'] === 'grid')) {
-    errors.push({ path: `${path}.children`, code: 'text-in-flex', message: 'text directly in a flex or grid container must be wrapped in an anonymous item' });
+    errors.push({ path: `${path}.children`, code: 'text-in-flex', message: 'inline content directly in a flex or grid container must be wrapped in an anonymous item' });
   }
+  const runs: (Record<string, unknown> | null)[] = [];
+  inlineTexts(children, runs);
+  const texts = runs.filter((t): t is Record<string, unknown> => t !== null);
   const strings = texts.map((t) => t['text']).filter((t): t is string => typeof t === 'string');
   if (strings.length !== texts.length || !texts.every((t) => t['whiteSpaceCollapse'] === 'collapse')) return;
-  const joined = strings.join('');
-  if (strings.some((t) => t === '') || UNCOLLAPSED.test(joined) || joined.startsWith(' ') || joined.endsWith(' ')) {
-    errors.push({ path: `${path}.children`, code: 'uncollapsed-text', message: 'white-space-collapse: collapse text must arrive collapsed: no empty runs, tabs, segment breaks, doubled spaces or edge spaces' });
+  // The text between line breaks, each piece joined across leaves and inline boxes.
+  const segments: string[] = [''];
+  for (const t of runs) {
+    if (t === null) segments.push('');
+    else segments[segments.length - 1] += t['text'] as string;
+  }
+  const last = segments[segments.length - 1] as string;
+  const bad = strings.some((t) => t === '') || segments.some((g) => UNCOLLAPSED.test(g) || g.startsWith(' ')) || last.endsWith(' ');
+  if (bad) {
+    errors.push({ path: `${path}.children`, code: 'uncollapsed-text', message: 'white-space-collapse: collapse text must arrive collapsed: no empty runs, tabs, segment breaks, doubled spaces, edge spaces or spaces after a line break' });
   }
 }
 

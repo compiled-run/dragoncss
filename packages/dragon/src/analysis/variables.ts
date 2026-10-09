@@ -7,6 +7,8 @@ import type { CssNode } from 'css-tree';
 import type { Longhand, Shorthand } from '../css/properties.ts';
 import type { Declaration, LonghandValue } from '../css/stylesheet.ts';
 import { parseSubstitutedValue } from '../css/stylesheet.ts';
+import type { Registration, Registrations } from '../css/at-rules/property.ts';
+import { computeRegistered, NO_REGISTRATIONS } from '../css/at-rules/property.ts';
 import type { VarPart } from '../css/variables.ts';
 import type { Candidate } from './cascade.ts';
 
@@ -77,9 +79,20 @@ function substitute(parts: readonly VarPart[], values: CustomProperties): string
  * initial gives the guaranteed-invalid value; inherit, unset, revert and revert-layer give the parent's value (a custom property
  * is inherited and has no user-agent or layered declarations). A property in a dependency cycle, or whose substitution fails, is
  * invalid at computed-value time and computes to the guaranteed-invalid value.
+ * A registered property (@property, css-properties-values-api-1 §2) differs: its initial value is the registration's, it inherits
+ * only when the registration says so, and a value that does not match its syntax is invalid at computed-value time, so it computes
+ * as unset (the parent's value when it inherits, else its initial value). inherited is empty only on the root.
  */
-export function computeCustoms(winners: ReadonlyMap<string, Declaration>, inherited: CustomProperties): CustomProperties {
+export function computeCustoms(winners: ReadonlyMap<string, Declaration>, inherited: CustomProperties, registered: Registrations = NO_REGISTRATIONS): CustomProperties {
   const out = new Map(inherited);
+  const put = (name: string, v: string | null | undefined): void => {
+    if (v === null || v === undefined) out.delete(name);
+    else out.set(name, v);
+  };
+  // The parent's value of a registered property; the root has no parent, so its parent's value is the initial value.
+  const parentOf = (r: Registration): string | null => (inherited.has(r.name) ? (inherited.get(r.name) as string) : r.initial);
+  const unsetOf = (r: Registration): string | null => (r.inherits ? parentOf(r) : r.initial);
+  for (const r of registered.values()) put(r.name, unsetOf(r));
   const state = new Map<string, 'resolving' | 'done'>();
   const stack: string[] = [];
   const cyclic = new Set<string>();
@@ -99,8 +112,10 @@ export function computeCustoms(winners: ReadonlyMap<string, Declaration>, inheri
     });
     stack.pop();
     state.set(name, 'done');
-    if (text === null || cyclic.has(name)) out.delete(name);
-    else out.set(name, text);
+    const r = registered.get(name);
+    const computed = r === undefined || text === null || cyclic.has(name) ? null : computeRegistered(r.syntax, text);
+    if (r === undefined) put(name, text === null || cyclic.has(name) ? null : text);
+    else put(name, computed !== null && computed.kind === 'ok' ? computed.text : unsetOf(r));
   }
   const run = (name: string): void => {
     const frames = [resolve(name)];
@@ -110,7 +125,14 @@ export function computeCustoms(winners: ReadonlyMap<string, Declaration>, inheri
       else frames.push(resolve(step.value));
     }
   };
-  for (const [name, d] of winners) if (d.custom?.wide === 'initial') out.delete(name);
+  for (const [name, d] of winners) {
+    const wide = d.custom?.wide;
+    if (wide === null || wide === undefined) continue;
+    const r = registered.get(name);
+    if (r === undefined) {
+      if (wide === 'initial') out.delete(name);
+    } else put(name, wide === 'initial' ? r.initial : wide === 'inherit' ? parentOf(r) : unsetOf(r));
+  }
   for (const name of winners.keys()) run(name);
   return out;
 }
@@ -136,7 +158,7 @@ export function substituteDeclaration(d: Declaration, customs: CustomProperties)
   const pending = d.pending as NonNullable<Declaration['pending']>;
   const text = substitute(pending.parts, customs);
   const make = (longhands: readonly LonghandValue[], refusal: string | null, isInvalid = false): SubstitutedDeclaration => ({
-    declaration: { property: d.property, text: d.text, span: d.span, valueSpan: d.valueSpan, longhands, order: d.order, ...(d.important === true ? { important: true as const } : {}) },
+    declaration: { property: d.property, text: d.text, span: d.span, valueSpan: d.valueSpan, longhands, order: d.order, ...(d.important === true ? { important: true as const } : {}), ...(d.layer === undefined ? {} : { layer: d.layer }) },
     substitution: { source: d, text, invalid: isInvalid, refusal },
   });
   const invalid = pending.longhands.map(unset);

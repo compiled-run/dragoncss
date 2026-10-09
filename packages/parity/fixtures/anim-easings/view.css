@@ -1,0 +1,8 @@
+.bar { width: 0; height: 4px; background-color: rgb(0, 0, 0); }
+.bar.on { width: 100px; }
+.e0 { transition: width 1s ease-in; }
+.e1 { transition: width 1s ease-out; }
+.e2 { transition: width 1s ease-in-out; }
+.e3 { transition: width 1s step-start; }
+.e4 { transition: width 1s step-end; }
+.e5 { transition-property: width; transition-duration: 0.6s; transition-timing-function: ease-in-out; transition-delay: 0.2s; }

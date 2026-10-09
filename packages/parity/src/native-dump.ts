@@ -225,6 +225,15 @@ export function validateNativeDump(value: unknown): DumpValidation {
     nodes.forEach((n, i) => {
       if (n.parent !== null && !ids.has(n.parent)) err(`nodes[${i}].parent`, 'unknown-parent', `${n.parent} is not a node of the dump`);
     });
+    // INL1a: a device dump's element lines (an inline box's fragments) have no text of their own.
+    if (!reference) {
+      nodes.forEach((n, i) => {
+        if (n.kind === 'text') return;
+        n.lines.forEach((l, j) => {
+          if (l.start !== 0 || l.end !== 0) err(`nodes[${i}].lines[${j}]`, 'out-of-range', `${n.id}:line${j} has no own text; start and end are 0`);
+        });
+      });
+    }
   }
   return errors.length === 0 ? { ok: true, dump: value as NativeDump } : { ok: false, errors };
 }

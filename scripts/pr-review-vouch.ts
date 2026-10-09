@@ -158,7 +158,8 @@ export const ciJobIds = (yml: string): string[] => {
 
 // `gh pr view --json headRefOid,mergeable`. GitHub runs no pull_request workflow on a PR it sees as conflicting.
 export type Mergeable = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
-export type PrHead = { sha: string; mergeable: Mergeable };
+// IGNORED: mergeability deliberately not judged (--conflicts-ok, or a PR no longer open); UNKNOWN is GitHub still computing it.
+export type PrHead = { sha: string; mergeable: Mergeable | 'IGNORED' };
 export const parsePrHead = (v: unknown): PrHead => {
   if (!isObject(v)) return fail('pr head', v);
   const mergeable = str(v, 'mergeable', 'pr');
@@ -251,16 +252,21 @@ export const verdictOf = (run: CheckRun, vouches: ReadonlyMap<string, Vouch>, wa
 // GitHub judges mergeability with plain text merges, without the repository's merge drivers (.gitattributes: dragon-generated,
 // dragon-floor, dragon-sorted), so it reports CONFLICTING for a PR those drivers merge cleanly. The landing driver passes
 // --conflicts-ok before its build: its merge train merges with the drivers and fails the PR at "merge" on a real conflict.
-export const judgedHead = (head: PrHead, conflictsOk: boolean): PrHead => (conflictsOk && head.mergeable === 'CONFLICTING' ? { ...head, mergeable: 'UNKNOWN' } : head);
+// A merged or closed PR has no mergeability to wait for (GitHub reports null for it).
+export const judgedHead = (head: PrHead, conflictsOk: boolean, open = true): PrHead =>
+  !open || (conflictsOk && head.mergeable !== 'MERGEABLE') ? { ...head, mergeable: 'IGNORED' } : head;
 
 // Macroscope's correctness review starts only after CI passes, so a green CI alone is not "done"; a failed check or a
-// conflicting PR ends the wait. A missing CI run is waited for, since GitHub may not have queued it yet.
+// conflicting PR ends the wait. A missing CI run, and a mergeability GitHub has not computed yet, are waited for.
 export const settled = (runs: CheckRun[], vouches: ReadonlyMap<string, Vouch>, head: PrHead, now: number = Date.now()): boolean => {
   const waived = spendingLimitWaived(runs, now);
   return (
     head.mergeable === 'CONFLICTING' ||
     runs.some((r) => verdictOf(r, vouches, waived) === 'failed') ||
-    (runs.every((r) => verdictOf(r, vouches, waived) !== 'pending') && (waived || runs.some((r) => r.name === CORRECTNESS)) && runs.some((r) => r.name === CI_CHECK))
+    (runs.every((r) => verdictOf(r, vouches, waived) !== 'pending') &&
+      (waived || runs.some((r) => r.name === CORRECTNESS)) &&
+      runs.some((r) => r.name === CI_CHECK) &&
+      head.mergeable !== 'UNKNOWN')
   );
 };
 
@@ -274,6 +280,7 @@ export const outcome = (
   const waived = spendingLimitWaived(runs, now);
   const pending = runs.filter((r) => verdictOf(r, vouches, waived) === 'pending').map((r) => r.name);
   if (!waived && !runs.some((r) => r.name === CORRECTNESS)) pending.push(CORRECTNESS);
+  if (head.mergeable === 'UNKNOWN') pending.push(`mergeability of ${head.sha} (GitHub has not computed it yet)`);
   const failed = runs.filter((r) => verdictOf(r, vouches, waived) === 'failed').map((r) => r.name);
   if (!runs.some((r) => r.name === CI_CHECK)) failed.push(`no CI run on ${head.sha}: the PR may be conflicting with master`);
   if (head.mergeable === 'CONFLICTING') failed.push(`PR head ${head.sha} is CONFLICTING with its base`);
@@ -283,6 +290,10 @@ export const outcome = (
 // pr:review's exit: 0 only with nothing pending, nothing failed and no unanswered finding (from any commit of the PR).
 export const reviewExit = (o: { pending: string[]; failed: string[] }, unansweredFindings: number): 0 | 1 =>
   o.pending.length + o.failed.length + unansweredFindings > 0 ? 1 : 0;
+
+// `pr:review --once`: 2 while the poll is not settled (where --wait would poll again), otherwise reviewExit.
+export const onceExit = (isSettled: boolean, o: { pending: string[]; failed: string[] }, unansweredFindings: number): 0 | 1 | 2 =>
+  isSettled ? reviewExit(o, unansweredFindings) : 2;
 
 // The git side, with git passed in so tests can run it on a scratch repository. Every failure becomes a PatchId error.
 // Git output is bytes; text is decoded as strict UTF-8, so nothing is changed or dropped before it is hashed.

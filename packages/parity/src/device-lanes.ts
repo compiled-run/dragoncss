@@ -16,7 +16,7 @@ import { GATE_CHANNEL_DELTA } from './compare.ts';
 import type { AppRun, DeviceHandle, DeviceRecord, DeviceSpec } from './device-run.ts';
 import type { EarlyBoots } from './device-jobs.ts';
 import { runDevicesInChildren } from './device-jobs.ts';
-import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, recordProblems, release, runApp, setReducedMotion, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
+import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, MatrixMismatch, recordProblems, release, runApp, setReducedMotion, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
 import { deviceEvidence } from './device-evidence.ts';
 import { runDeviceVectors } from './device-vectors.ts';
 import type { DeviceRun, HostRun } from './lanes.ts';
@@ -444,7 +444,18 @@ export type DeviceOutcome = {
   readonly trust: { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] } | null;
   readonly vectors: (HostRun & { readonly device: string }) | null;
   readonly blocked: string | null;
+  /** Why it was blocked, one reason per cause (absent from an older outcome, empty when not blocked). */
+  readonly blockedBy?: readonly BlockReason[];
 };
+
+/**
+ * Why a device's run was blocked. The tooling's: a boot or settle that failed (not on a matrix mismatch), a device that could not
+ * be stopped, an install that kept failing transiently. The tree's: a booted device that is not the tree's matrix device, and a
+ * device record from an app that ran which does not fit (device fit), with whatever else its record got wrong.
+ */
+export const BLOCK_REASONS = { boot: 'tooling', stop: 'tooling', 'install-transient': 'tooling', 'matrix-mismatch': 'tree', 'device-record': 'tree' } as const;
+export type BlockReason = keyof typeof BLOCK_REASONS;
+export const isBlockReason = (x: unknown): x is BlockReason => typeof x === 'string' && Object.hasOwn(BLOCK_REASONS, x);
 
 /**
  * Runs a target on every device of the matrix: build (reused when the sources are unchanged), then per device boot, one batch
@@ -602,7 +613,7 @@ export type DeviceSource = { readonly boot: () => Promise<DeviceHandle>; readonl
  */
 export function afterRelease(o: DeviceOutcome, problem: string | null): DeviceOutcome {
   if (problem === null) return o;
-  return { device: o.device, set: null, trust: null, vectors: null, blocked: `${o.device}: the device could not be stopped after its run (tooling fault), so its results are not used: ${problem}${o.blocked === null ? '' : `; ${o.blocked}`}` };
+  return { device: o.device, set: null, trust: null, vectors: null, blocked: `${o.device}: the device could not be stopped after its run (tooling fault), so its results are not used: ${problem}${o.blocked === null ? '' : `; ${o.blocked}`}`, blockedBy: [...(o.blockedBy ?? []), 'stop'] };
 }
 
 /** One device of the matrix: boot, the batch launch and its checks, the capture-trust launch and, on the vectors device, the vectors lane. */
@@ -648,7 +659,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
   } catch (e) {
     const blocked = e instanceof Error ? e.message : String(e);
     log(`${spec.name}: ${blocked}`);
-    return { ...none, blocked };
+    return { ...none, blocked, blockedBy: [e instanceof MatrixMismatch ? 'matrix-mismatch' : 'boot'] };
   }
   log(`${spec.name}: booted (the cases computed meanwhile) in ${((Date.now() - b0) / 1000).toFixed(0)} s`);
   const work = async (): Promise<DeviceOutcome> => {
@@ -663,7 +674,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const root = rasterSize(cases[0]?.case.environment.viewport ?? { width: 0, height: 0 }, dpr);
     const recProblems = recordProblems(rec, root);
     log(`${spec.name}: ${rec.os}, build ${rec.build}; scale ${rec.profileScale} (profile) / ${rec.appScale} (app); window ${rec.windowPx.join('x')} px, stage ${rec.stagePx.join('x')} px at ${rec.rootOriginPx.join(',')}; text scale ${rec.textScale}; ${dumpedIds(outDir, dpr).length} dumps in ${((Date.now() - t0) / 1000).toFixed(0)} s${r.error === null ? '' : `; host error: ${r.error}`}`);
-    if (recProblems.some((p) => p.includes('device fit'))) return { ...none, blocked: recProblems.join('; ') };
+    if (recProblems.some((p) => p.includes('device fit'))) return { ...none, blocked: recProblems.join('; '), blockedBy: ['device-record'] };
     const extra: LaneFailure[] = [...recProblems, ...(r.error === null ? [] : [`the host did not finish: ${r.error}`])].flatMap((p) => DEVICE_CHECK_LANES.map((lane): LaneFailure => ({ lane, case: '-', dpr, node: null, kind: 'device-record', detail: p })));
     const e0 = Date.now();
     const set = evaluateSet(t.target, dpr, outDir, rec, cases, extra);
