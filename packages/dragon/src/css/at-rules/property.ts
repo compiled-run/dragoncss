@@ -14,6 +14,7 @@ import { chromeNumber } from '../chrome-number.ts';
 import { parseColorNode, serializeColor } from '../color.ts';
 import { asciiLower, decodeName } from '../escapes.ts';
 import { CSS_WIDE } from '../values.ts';
+import { tokenize } from '../../media/tokens.ts';
 
 /** The syntaxes Dragon registers: the universal syntax and single data types with an element-independent computed value. */
 export const REGISTERED_SYNTAXES = ['*', '<length>', '<number>', '<integer>', '<percentage>', '<length-percentage>', '<color>'] as const;
@@ -165,7 +166,7 @@ export function parsePropertyRules(sources: readonly PropertySource[], diagnosti
     }
     const initialNode = descriptors.get('initial-value');
     let initial: string | null = null;
-    if (initialNode !== undefined && initialNode.source === '') {
+    if (initialNode !== undefined && tokenize(initialNode.source).every((t) => t.type === 'whitespace')) {
       refuse('an empty initial-value is not supported (for "*" it is an empty value, not the guaranteed-invalid value)');
       continue;
     }
@@ -175,11 +176,14 @@ export function parsePropertyRules(sources: readonly PropertySource[], diagnosti
         continue;
       }
     } else {
-      if (CSS_WIDE.has(asciiLower(initialNode.source))) {
+      // Chrome tokenizes the value: an escaped keyword, or one with comments or white space around it, is still the keyword.
+      const tokens = tokenize(initialNode.source).filter((t) => t.type !== 'whitespace');
+      const only = tokens.length === 1 ? tokens[0] : undefined;
+      if (only !== undefined && only.type === 'ident' && CSS_WIDE.has(asciiLower(only.value))) {
         refuse(`the initial-value ${initialNode.source} is a CSS-wide keyword, which no syntax accepts, so Chrome ignores the rule`);
         continue;
       }
-      if (/var\(/i.test(initialNode.source)) {
+      if (/var\(/i.test(initialNode.source) || tokens.some((t) => t.type === 'function' && asciiLower(t.value) === 'var')) {
         refuse('the initial-value holds var(), which is not computationally independent, so Chrome ignores the rule');
         continue;
       }

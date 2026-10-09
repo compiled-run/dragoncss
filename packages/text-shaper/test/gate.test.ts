@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DragonHB, LATO_LOADED_FONTS_PATH, LATO_REFERENCE_PATH, LOADED_FONTS_PATH, fontPath, loadReference, runGate } from '../src/index.ts';
+import { ITALIC_LOADED_FONTS_PATH, ITALIC_REFERENCE_PATH } from '../src/gate.ts';
 import type { CaseResult, GateOptions } from '../src/index.ts';
 
 const ref = loadReference();
@@ -95,6 +96,49 @@ describe('TXT1-0 HarfBuzz gate: Lato', () => {
   for (const [name, options] of latoFaults) {
     it(`catches a planted fault on Lato: ${name}`, () => {
       expect(mismatches(runGate(lato, hb, options))).toBeGreaterThan(0);
+    });
+  }
+});
+
+// TXT1a-1 R6 (notes/T056-txt1a-spec.md): Inter Italic and Bold Italic with the Lato method and corpus at the spike's sizes plus
+// 23.3 px. A mismatch is the gate-mismatch rule (stop and investigate), never tolerated.
+describe('TXT1-0 HarfBuzz gate: Inter Italic and Bold Italic (R6)', () => {
+  const italic = loadReference(ITALIC_REFERENCE_PATH);
+
+  it('uses the italic files Chrome measured, the vendored ones', () => {
+    const loaded = readFileSync(ITALIC_LOADED_FONTS_PATH, 'utf8');
+    expect(Object.entries(italic.fonts).map(([n, m]) => [n, m.file])).toEqual([['InterItalic', 'Inter-Italic.ttf'], ['InterBoldItalic', 'Inter-BoldItalic.ttf']]);
+    for (const [name, meta] of Object.entries(italic.fonts)) {
+      expect(loaded, name).toContain(`${meta.sha256}  ${meta.file}\n`);
+      expect(fontPath(meta.file), name).toMatch(/vendor\/fonts\/Inter\//);
+      expect(createHash('sha256').update(readFileSync(fontPath(meta.file))).digest('hex'), name).toBe(meta.sha256);
+    }
+  });
+
+  it('covers every Latin paragraph of the spike in both faces at five sizes, with the break opportunities of the spike', () => {
+    expect(italic.cases.length).toBe(400);
+    const sizes = new Set(italic.cases.map((c) => c.size));
+    expect([...sizes].sort((a, b) => a - b)).toEqual([12, 16, 17, 23.3, 24]);
+    const en = Object.keys(ref.paragraphs).filter((k) => k.startsWith('en/'));
+    expect(Object.keys(italic.paragraphs).sort()).toEqual(en.sort());
+    for (const k of en) {
+      expect(italic.paragraphs[k], k).toBe(ref.paragraphs[k]);
+      expect(italic.opportunities[k], k).toEqual(ref.opportunities[k]);
+    }
+  });
+
+  it('matches Chrome on every line and nowrap width of all 400 italic cases', () => {
+    const results = runGate(italic, hb);
+    const failed = results.filter((r) => !r.exact).map((r) => ({ id: r.id, error: r.error, lines: r.lineDiffs.slice(0, 3), nowrap: r.nowrap }));
+    expect(failed).toEqual([]);
+    expect(results.length).toBe(400);
+    expect(results.reduce((n, r) => n + r.lines, 0)).toBe(italic.cases.reduce((n, c) => n + c.lines.length, 0));
+  });
+
+  // Float accumulation changes no italic width in this corpus; the 620-case and Lato controls above cover it.
+  for (const [name, options] of [['positions rounded to whole pixels', { faults: { wholePixelPositions: true } }], ['kerning off', { faults: { noKerning: true } }]] as ReadonlyArray<readonly [string, GateOptions]>) {
+    it(`catches a planted fault on the italic faces: ${name}`, () => {
+      expect(mismatches(runGate(italic, hb, options))).toBeGreaterThan(0);
     });
   }
 });
