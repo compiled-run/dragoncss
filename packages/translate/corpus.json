@@ -30,7 +30,8 @@
     "library": 22000,
     "rt": 55362,
     "hit": 2504,
-    "animator": 26
+    "animator": 26,
+    "interaction": 21
   },
   "engineSplit": {
     "ok": 13992,
@@ -46,7 +47,8 @@
     "library": "52c5b758ed05c0fa96d033bf78fcce8a39604a6711f621ac3ad34f38c8133b5d",
     "rt": "b098611f445b1f770ec88444e7fcbd8a801be09a906550bcd03ad7e390d6c6dc",
     "hit": "f19a4dfd66b94d723dc6b987e009598391789cdca549995e55a622754345bcea",
-    "animator": "cb3dcab6688dc142c2695f9bf3bf1991474485d0455d4a4966a2d3ddb5c21ad1"
+    "animator": "cb3dcab6688dc142c2695f9bf3bf1991474485d0455d4a4966a2d3ddb5c21ad1",
+    "interaction": "f97585c89a98da73b70b9c08ccb5fd9d912b204367bd75e5f6ccdf1987b9e662"
   },
-  "digest": "56967168b4f2b1c077a5450ee6d305c7ad51133ce2db4e0ae57228c51c0f4a15"
+  "digest": "5db7bdcd37e91ddfdb943e3499158a949c561e5e3e2d15f98cfc3c2e5d87a600"
 }
