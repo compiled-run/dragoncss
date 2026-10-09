@@ -42,6 +42,8 @@ export type ResolvedText = {
   readonly props: ReadonlyMap<TextLonghand, ResolvedValue>;
 };
 
+/** Longhands whose revert Dragon resolves: the UA origin's value is the html.css text-font row or inheritance (computeFontStyleLonghands). */
+const REVERTS_TO_UA: ReadonlySet<Longhand> = new Set<Longhand>(['font-weight', 'font-style']);
 const WHITE_SPACE = /[ \t\n\r\f]/;
 const ZWSP = '\u200b';
 
@@ -165,8 +167,13 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     // Longhands no author declaration set: their UA value depends on the element's final direction and font size (below).
     const defaulted = new Set<Longhand>();
     for (const p of LONGHANDS) {
-      const raw = winners.get(p);
-      const w = raw === undefined ? undefined : substituteVariables(raw, p, el, scope);
+      const winner = winners.get(p);
+      const substituted = winner === undefined ? undefined : substituteVariables(winner, p, el, scope);
+      // css-cascade-5 §7.3: revert (and revert-layer, with no cascade layers) on an author declaration rolls back to the UA origin,
+      // which for font-weight and font-style is the tag's html.css row or else inheritance, as for an undeclared longhand.
+      const reverted = substituted !== undefined && REVERTS_TO_UA.has(p) && substituted.value.kind === 'keyword' && (substituted.value.value === 'revert' || substituted.value.value === 'revert-layer');
+      const raw = reverted ? undefined : winner;
+      const w = reverted ? undefined : substituted;
       const inherited = INHERITED.has(p);
       // A refused substitution already blocks every target (computed-checks.ts); it keys no profile row.
       const declared = w === undefined || (w.substitution !== undefined && w.substitution.refusal !== null) ? null : w.value;

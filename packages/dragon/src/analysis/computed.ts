@@ -9,7 +9,7 @@ import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
-import { ratioValue } from '../css/values.ts';
+import { ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
 import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
 import { textFontsOf } from '../ua/datasets.ts';
 import type { TextFontValue } from '../fonts/weight.ts';
@@ -223,21 +223,28 @@ export function computeFontStyleLonghands(tag: string, props: Map<Longhand, Reso
   const w = props.get('font-weight') as ResolvedValue;
   const st = props.get('font-style') as ResolvedValue;
   const specified = (v: ResolvedValue): CssValue | null => (v.origin === 'inherited' && parent !== null ? null : v.value);
-  const font = computeTextFont({ weight: specified(w), style: specified(st) }, parent === null ? INITIAL_TEXT_FONT : textFontOfProps(parent));
+  const parentFont = parent === null ? INITIAL_TEXT_FONT : textFontOfProps(parent);
+  // A calculation Dragon refuses keeps its refused value, which no profile row supports, so every target refuses the declaration.
+  const known = (v: ResolvedValue): CssValue | null => (isRefusedMath(v.value) ? null : specified(v));
+  const font = computeTextFont({ weight: known(w), style: known(st) }, parentFont);
   if (font === null) throw new Error(`font-weight ${valueToString(w.value)} or font-style ${valueToString(st.value)} has no computed value`);
-  props.set('font-weight', { ...w, value: { kind: 'number', value: font.weight } });
-  props.set('font-style', { ...st, value: fontStyleCssValue(font.style) });
+  if (!isRefusedMath(w.value)) props.set('font-weight', { ...w, value: { kind: 'number', value: font.weight } });
+  if (!isRefusedMath(st.value)) props.set('font-style', { ...st, value: fontStyleCssValue(font.style) });
 }
 
-/** The computed text font of resolved properties. */
+export const isRefusedMath = (v: CssValue): boolean => v.kind === 'other' && v.type.startsWith(REFUSED_MATH_PREFIX);
+
+/** The computed text font of resolved properties; a refused calculation counts as the initial value, since its declaration is refused. */
 export function textFontOfProps(props: ReadonlyMap<Longhand, ResolvedValue>): TextFontValue {
-  const style = computeFontStyle((props.get('font-style') as ResolvedValue).value);
+  const v = (props.get('font-style') as ResolvedValue).value;
+  const style = isRefusedMath(v) ? INITIAL_TEXT_FONT.style : computeFontStyle(v);
   if (style === null) throw new Error('font-style is not computed');
   return { weight: weightOf(props.get('font-weight') as ResolvedValue), style };
 }
 
-/** A computed font-weight's number. */
+/** A computed font-weight's number; a refused calculation counts as the initial weight, since its declaration is refused. */
 export function weightOf(v: ResolvedValue): number {
+  if (isRefusedMath(v.value)) return INITIAL_TEXT_FONT.weight;
   if (v.value.kind !== 'number') throw new Error(`font-weight ${valueToString(v.value)} is not computed`);
   return v.value.value;
 }

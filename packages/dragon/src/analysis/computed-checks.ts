@@ -12,7 +12,7 @@ import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
-import { textFontOfProps } from './computed.ts';
+import { isRefusedMath, textFontOfProps } from './computed.ts';
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { environmentOf, valueToString } from './resolve.ts';
@@ -280,6 +280,22 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
       }
       if (size.origin === 'user-agent' && size.value.kind === 'length' && size.value.unit === 'px' && size.value.value < ua.minimumLogicalFontSize && !parentAbsolute) {
         perTarget(el, 'font-size', `font-size: ${valueToString(size.value)} on <${tag}> ${el.element.address} comes from Chrome's user-agent stylesheet and is below Chrome's minimum logical font size (${ua.minimumLogicalFontSize}px), which Chrome clamps depending on the device pixel ratio`, `Set a px font-size on <${tag}> ${el.element.address} or one of its ancestors.`);
+      }
+    }
+    if (!here) {
+      for (const property of ['font-weight', 'font-style'] as const) {
+        const v = el.props.get(property) as ResolvedValue;
+        if (v.origin === 'inherited' || !isRefusedMath(v.value)) continue;
+        // Web hands the calculation to Chrome; native targets need its computed value to pick and measure the face.
+        for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+          once(`${t}|font-math|${property}|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+            origin: el.element.node.origin,
+            target: t,
+            message: `${property}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is a calculation Dragon does not compute, and ${t} needs the computed ${property} to choose and measure the face`,
+            manual: `Write ${property} on <${tag}> ${el.element.address} as a keyword or a number.`,
+            basis: 'computed-value',
+          })));
+        }
       }
     }
     const synthetic = here ? [] : syntheticTextFont(el);
