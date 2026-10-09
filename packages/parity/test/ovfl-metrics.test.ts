@@ -6,10 +6,11 @@ import { describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutBox, LayoutInput } from '@dragon/layout';
 import { fromRaw, measurerFor, NO_ENGINE_FAULTS, scrollRanges, validateLayoutInput } from '@dragon/layout';
 import type { Compiled } from 'dragon';
-import { iosLayoutProjection, NO_FAULTS } from 'dragon';
+import { iosLayoutProjection, nativePrograms, NO_FAULTS } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { committedDprCapture, runDprCase } from '../src/dpr.ts';
 import { compileFixture } from '../src/pipeline.ts';
+import { nativeCompile } from '../src/native-host.ts';
 import type { ScrollRecord } from '../src/scroll-metrics.ts';
 import { adjustInt, adjustLayoutUnitRound, assertOverlayScrollbars, CLASSIC_SCROLLBARS, committedScrollCapture, compiledScrollFixture, engineScrollRecords, expectedScrollDir, OVERLAY_PROBE_STYLE, parseScrollCapture, SCROLL_DPRS, SCROLLBAR_ARGS, scrollCases, scrollProblems, viewportDirectionOf } from '../src/scroll-metrics.ts';
 import { CHROME_VERSION } from '../src/chrome.ts';
@@ -49,8 +50,9 @@ describe('OVFL scroll metrics against Chrome', () => {
   it('covers the overflow and viewport-prop fixtures, each case committed at every DPR and nothing else', () => {
     // Every layout fixture of the overflow group, each in ltr and rtl (its -rtl twin), and the two earlier overflow: hidden
     // fixtures (ltr only) that the overflow- prefix also takes.
-    const own = OVERFLOW.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    expect(own.length).toBe(34);
+    // overflow-background runs in ltr only (its rtl twin would be refused on native: OVFL-B's start-overflow background refusal).
+    const own = OVERFLOW.flatMap((f) => (f.kind === 'layout' ? f.environments.map((d) => (d === 'ltr' ? f.id : `${f.id}-rtl`)) : []));
+    expect(own.length).toBe(35);
     expect(ids.filter((id) => !own.includes(id))).toEqual(['overflow-hidden-bfc', 'overflow-hidden-flex-min-size']);
     expect(own.filter((id) => !ids.includes(id))).toEqual([]);
     for (const dpr of SCROLL_DPRS) {
@@ -161,6 +163,26 @@ describe('OVFL-B: the scroll offset range against Chrome', () => {
     const e = committedScrollCapture('overflow-flex-reverse', 2.625).extents.find((r) => r.id === 'a1');
     expect(g?.minX).toBe(-236);
     expect(e === undefined ? null : Math.round(e.minLeft * 2.625)).toBe(-236);
+  });
+});
+
+describe('OVFL-B: a scroll container with a painted background is proven against Chrome', () => {
+  it('some ltr overflow case lowers on native to a scroll view whose box paints an opaque background, and every one of them is in the scroll metrics', () => {
+    const found: string[] = [];
+    for (const f of all) {
+      if (f.spec.kind !== 'layout' || !f.spec.environments.includes('ltr')) continue;
+      const compiled = nativeCompile(f.spec, 'ltr');
+      for (const c of f.cases.filter((x) => x.environment.direction === 'ltr')) {
+        const p = nativePrograms(compiled, c.assignment);
+        if (p.kind !== 'ready') throw new Error(`${c.id}: ${p.reason}`);
+        for (const n of p.programs.uikit.nodes) {
+          const scroll = n.writes.some((w) => w.kind === 'scroll-container');
+          const opaque = n.writes.some((w) => w.kind === 'background-color' && w.color.alpha > 0);
+          if (scroll && opaque) found.push(`${c.id} ${n.id}`);
+        }
+      }
+    }
+    expect(found.filter((x) => x.startsWith('overflow-background '))).toEqual(['overflow-background b1', 'overflow-background b2', 'overflow-background b3', 'overflow-background b4', 'overflow-background b5', 'overflow-background b6a']);
   });
 });
 
