@@ -106,7 +106,6 @@ describe('the not-applicable list', () => {
 describe('off the list, a declaration or rule is still refused on every target', () => {
   const OFF: Record<string, string> = {
     'scrollbar-width (hides scroll indicators)': '.a { scrollbar-width: none; }',
-    '-webkit-appearance (changes form controls)': '.a { -webkit-appearance: none; }',
     'color-scheme (changes the UA colours)': '.a { color-scheme: dark; }',
     '::-webkit-slider-thumb (decides how a range paints)': '.a::-webkit-slider-thumb { width: 16px; }',
     '::-webkit-scrollbar-corner (not listed)': '.a::-webkit-scrollbar-corner { background: red; }',
@@ -144,6 +143,24 @@ describe('off the list, a declaration or rule is still refused on every target',
       expect(c.diagnostics.some((d) => d.code === 'DRAGON_NOT_APPLICABLE_NATIVE')).toBe(false);
     });
   }
+
+  it('-webkit-appearance (changes form controls) is never not-applicable on native: an unproven keyword is refused per target, and none and auto follow their profile rows (FORM-a A3)', () => {
+    // Since FORM-a A2 the alias reaches the appearance longhand, refused per target as a value; A3's controls fixtures prove none
+    // and auto (the appearance:* rows), so those compile on every target and still never take the not-applicable path.
+    for (const v of ['button', 'textfield', 'menulist-button']) {
+      const c = compile(`${BASE}\n.a { -webkit-appearance: ${v}; }`, { web: {}, ...NATIVE });
+      expectCatalogued(c.diagnostics);
+      expect(c.targets, v).toEqual({ web: 'blocked', ios: 'blocked', android: 'blocked' });
+      expect(errors(c.diagnostics).map((d) => [d.code, d.target]).sort(), v).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios'], ['DRAGON_UNSUPPORTED_VALUE', 'web']]);
+      expect(c.diagnostics.some((d) => d.code === 'DRAGON_NOT_APPLICABLE_NATIVE'), v).toBe(false);
+    }
+    for (const v of ['none', 'auto']) {
+      for (const p of [webProfile, iosProfile, androidProfile]) expect(p.rows.some((r) => r.feature === `appearance:${v}`), `${p.target} ${v}`).toBe(true);
+      const c = compile(`${BASE}\n.a { -webkit-appearance: ${v}; }`, { web: {}, ...NATIVE });
+      expect(c.targets, v).toEqual({ web: 'checked', ios: 'checked', android: 'checked' });
+      expect(c.diagnostics.some((d) => d.code === 'DRAGON_NOT_APPLICABLE_NATIVE'), v).toBe(false);
+    }
+  });
 
   it('will-change: transform is never not-applicable on native, and each target follows its transform support (PNT2)', () => {
     // A transform hint makes a containing block and stacking context, a visible effect, so it is never not-applicable; whether it
