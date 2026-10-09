@@ -99,7 +99,11 @@
         "z-index": "auto",
         "transform": "none",
         "transform-origin": "200px 5.5px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -191,7 +195,11 @@
         "z-index": "auto",
         "transform": "none",
         "transform-origin": "200px 5.5px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -283,7 +291,11 @@
         "z-index": "auto",
         "transform": "none",
         "transform-origin": "50px 2.5px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -375,7 +387,11 @@
         "z-index": "auto",
         "transform": "none",
         "transform-origin": "10px 2.5px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -467,7 +483,11 @@
         "z-index": "auto",
         "transform": "none",
         "transform-origin": "1px 2.5px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -559,7 +579,11 @@
         "z-index": "auto",
         "transform": "none",
         "transform-origin": "10px 2.5px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -651,7 +675,11 @@
         "z-index": "auto",
         "transform": "none",
         "transform-origin": "140px 2.5px",
-        "will-change": "auto"
+        "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     }
   ]
