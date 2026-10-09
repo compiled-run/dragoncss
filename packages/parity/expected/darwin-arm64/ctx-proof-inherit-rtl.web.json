@@ -95,6 +95,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "200px 149.5px",
         "will-change": "auto"
@@ -185,6 +187,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "200px 149.5px",
         "will-change": "auto"
@@ -275,6 +279,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "60px 8px",
         "will-change": "auto"
@@ -365,6 +371,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "20px 7px",
         "will-change": "auto"
@@ -455,6 +463,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "70px 22px",
         "will-change": "auto"
@@ -545,6 +555,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "50px 20px",
         "will-change": "auto"
@@ -635,6 +647,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "20px 7.5px",
         "will-change": "auto"
@@ -725,6 +739,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "10px 5px",
         "will-change": "auto"
@@ -815,6 +831,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "20px 7.5px",
         "will-change": "auto"
@@ -905,6 +923,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "15px 2px",
         "will-change": "auto"
@@ -995,6 +1015,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "200px 20px",
         "will-change": "auto"
@@ -1085,6 +1107,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "50px 20px",
         "will-change": "auto"
@@ -1175,6 +1199,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "10px 5px",
         "will-change": "auto"
@@ -1265,6 +1291,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "20px 7.5px",
         "will-change": "auto"
@@ -1355,6 +1383,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "80px 3px",
         "will-change": "auto"
@@ -1445,6 +1475,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "80px 3px",
         "will-change": "auto"
@@ -1535,6 +1567,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "100px 10px",
         "will-change": "auto"
@@ -1625,6 +1659,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "45px 4px",
         "will-change": "auto"
@@ -1715,6 +1751,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "45px 4px",
         "will-change": "auto"
@@ -1805,6 +1843,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "10px 4px",
         "will-change": "auto"
@@ -1895,6 +1935,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "50px 6px",
         "will-change": "auto"
@@ -1985,6 +2027,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "17.5px 3px",
         "will-change": "auto"
@@ -2075,6 +2119,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "32.5px 3px",
         "will-change": "auto"
@@ -2165,6 +2211,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "97px 40px",
         "will-change": "auto"
@@ -2255,6 +2303,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "59px 11.5px",
         "will-change": "auto"
@@ -2345,6 +2395,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "83px 11.5px",
         "will-change": "auto"
@@ -2435,6 +2487,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "82px 10px",
         "will-change": "auto"
@@ -2525,6 +2579,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "56px 3px",
         "will-change": "auto"
@@ -2615,6 +2671,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "75px 11.5px",
         "will-change": "auto"
@@ -2705,6 +2763,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "75px 7px",
         "will-change": "auto"
@@ -2795,6 +2855,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "60px 10px",
         "will-change": "auto"
@@ -2885,6 +2947,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "60px 10px",
         "will-change": "auto"
@@ -2975,6 +3039,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "60px 5px",
         "will-change": "auto"
@@ -3065,6 +3131,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "60px 15px",
         "will-change": "auto"
@@ -3155,6 +3223,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "25px 1px",
         "will-change": "auto"
@@ -3245,6 +3315,8 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "opacity": "1",
+        "z-index": "auto",
         "transform": "none",
         "transform-origin": "60px 1px",
         "will-change": "auto"
