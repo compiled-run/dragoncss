@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   backoffMs,
   baseAction,
@@ -13,6 +13,16 @@ import {
   prepareRound,
   serializePrepared,
   bisectPrefixes,
+  buildPositionsParallel,
+  androidAbis,
+  archChanges,
+  ciArchRebaseline,
+  CiOutage,
+  hostAbi,
+  normalAbi,
+  parseLandModes,
+  parseMaxInflight,
+  serializeFatal,
   ciState,
   ciStep,
   claudeReviewGate,
@@ -34,6 +44,7 @@ import {
   LandFailure,
   cleanUpAfterDriver,
   clearsUnproved,
+  defangReview,
   interruptedStatus,
   lockState,
   MERGES_LOG,
@@ -67,11 +78,14 @@ import {
   withRetry,
   worktreesOf,
 } from '../../../scripts/land-lib.ts';
-import { commitRegen, type Member, memberTip, mergeMember, planPositions, predictPosition, tipProblem, treeMatches } from '../../../scripts/merge-train-lib.ts';
+import { commitRegen, deviceRunProblems, failuresJson, type Member, memberTip, mergeMember, parseDeviceEvidence, planPositions, predictPosition, tipProblem, treeMatches } from '../../../scripts/merge-train-lib.ts';
 import { parseIgnoreFile } from '../../../scripts/macroscope-ignore.ts';
 import { type CheckRun, type Git, ignoreAt, regenOnlyProblems } from '../../../scripts/pr-review-vouch.ts';
 import { parseLanesForStamp, stampProblems } from '../../../scripts/evidence-stamp.ts';
-import { lookupReview } from '../../../scripts/land-review-lookup.ts';
+import { lookupReview, lookupReviewComment, parseCommentPages, repoOf, REVIEW_MARKER, reviewBlock, reviewComment, reviewerIds, topLevel, type IssueComment } from '../../../scripts/land-review-lookup.ts';
+import { postableReview } from '../../../scripts/land-post-review.ts';
+import { checkNotReviewer, hasStopLabel, missingProof, parseFirstParents, parseHandoff, parseIds, parseMaxBatches, parseSelf, parseStopIssue, PROOF_CONTEXT, proofCommits, proofOf, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, writeProof } from '../../../scripts/land-state.ts';
+import { applyRegenPatch, CiUnavailable, landRegen } from '../../../scripts/land-devices-ci.ts';
 import { deviceEvidence } from '../src/device-evidence.ts';
 import { LANES_JSON, type LanesFile } from '../src/lanes.ts';
 import { repoPath } from '../src/paths.ts';
@@ -185,10 +199,10 @@ describe('CI, base, worktree and quiet decisions', () => {
     expect(ciStep(ciState([ci('completed', 'success')]), 0, limits, true)).toBe('success');
     // Mergeable (or the landing commit, where conflicting is never passed) and no CI run: wait, then fail closed as before.
     expect(ciStep(none, 899, limits, false)).toBe('wait');
-    expect(ciStep(none, 900, limits, false)).toEqual({ fail: 'has no CI checks run after 900s' });
-    expect(ciStep(none, 900, limits)).toEqual({ fail: 'has no CI checks run after 900s' });
+    expect(ciStep(none, 900, limits, false)).toEqual({ fail: 'has no CI checks run after 900s', outage: true });
+    expect(ciStep(none, 900, limits)).toEqual({ fail: 'has no CI checks run after 900s', outage: true });
     expect(ciStep(failed, 0, limits, false)).toEqual({ fail: 'did not succeed: failure f' });
-    expect(ciStep(ciState([ci('queued', null)]), 5400, limits)).toEqual({ fail: 'CI checks still pending after 5400s' });
+    expect(ciStep(ciState([ci('queued', null)]), 5400, limits)).toEqual({ fail: 'CI checks still pending after 5400s', outage: true });
   });
 
   it('retargets a landed parent (or its review/* copy) to master, and fails on a parent still open', () => {
@@ -387,7 +401,11 @@ describe('the Claude reviewer\'s output', () => {
 });
 
 describe('the Claude review gate with a fake reviewer command', () => {
-  const dir = tempDir();
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let dir = '';
+  beforeAll(() => {
+    dir = tempDir();
+  });
   // A fake reviewer: saves the prompt it reads on stdin, then prints a canned answer (or fails).
   const fake = (name: string, body: string): string => {
     const path = join(dir, `${name}.sh`);
@@ -604,6 +622,49 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(r).toMatchObject({ fatal: null, exit: 0 });
   });
 
+  it('lands at most maxBatches batches and hands the rest on (land.yml: LAND_MAX_BATCHES=1, one batch per job)', () => {
+    const h = harness();
+    const r = runBatches([1, 2, 3, 4, 5].map(e), 2, { ...h.ops, maxBatches: 1, next: h.next() });
+    expect(results(r)).toEqual(['#1 landed', '#2 landed']);
+    expect(r).toMatchObject({ limited: true, stopAsked: false, fatal: null, outage: null, exit: 0 });
+    expect(r.stopped.map((x) => x.pr)).toEqual([3, 4, 5]);
+    // No next batch is prepared past the limit.
+    expect(h.trace.some((t) => t.startsWith('next start'))).toBe(false);
+    const status = statusText({ queue: 'q', startedAt: 's', now: 'n', running: null, outcomes: r.outcomes, fatal: null, total: 5, done: true, stopped: r.stopped, limited: r.limited });
+    expect(status.split('\n')[0]).toMatch(/^land BATCH DONE /);
+    expect(status).toContain('batch limit reached: the next run gets #3 #4 #5 (no PR failed for it)');
+    expect(status).toContain('every PR handled landed');
+    expect(parseHandoff(serializeHandoff({ remainder: r.stopped, stopAsked: r.stopAsked, outage: r.outage, fatal: r.fatal }))?.remainder.map((x) => x.pr)).toEqual([3, 4, 5]);
+    expect(() => runBatches([e(1)], 2, { ...h.ops, maxBatches: 0 })).toThrow(/batch limit 0/);
+  });
+
+  it('counts only batches that built a position against the limit, and hands on PRs a publish failure requeued', () => {
+    const merged = harness({ merged: [1, 2] });
+    const r = runBatches([1, 2, 3, 4, 5].map(e), 2, { ...merged.ops, maxBatches: 1 });
+    expect(results(r)).toEqual(['#1 merged before', '#2 merged before', '#3 landed', '#4 landed']);
+    expect(r.stopped.map((x) => x.pr)).toEqual([5]);
+    const failing = harness({ publishFail: [1] });
+    const f = runBatches([1, 2, 3].map(e), 2, { ...failing.ops, maxBatches: 1 });
+    expect(results(f)).toEqual(['#1 failed at ci']);
+    expect(f).toMatchObject({ limited: true, exit: 1 });
+    // #2 was built on #1's position, so it goes back to the queue, ahead of #3, for the next run.
+    expect(f.stopped.map((x) => x.pr)).toEqual([2, 3]);
+  });
+
+  it('starts no new batch once the land-stop label is set on the tracking issue', () => {
+    const h = harness();
+    let reads = 0;
+    // The label appears while the first batch publishes.
+    const gh = (args: string[]): string => {
+      expect(args).toEqual(['api', '--paginate', '--slurp', 'repos/o/r/issues/7/labels?per_page=100']);
+      return JSON.stringify([[{ name: 'bug' }, ...(reads++ >= 1 ? [{ name: 'land-stop' }] : [])]]);
+    };
+    const r = runBatches([1, 2, 3, 4].map(e), 2, { ...h.ops, stopRequested: () => stopLabelSet(gh, 'o/r', 7) });
+    expect(results(r)).toEqual(['#1 landed', '#2 landed']);
+    expect(r).toMatchObject({ stopAsked: true, limited: false, exit: 0 });
+    expect(r.stopped.map((x) => x.pr)).toEqual([3, 4]);
+  });
+
   it('splits a long queue into batches of the given size, each built on the master the one before left', () => {
     const h = harness();
     const r = runBatches([1, 2, 3, 4, 5].map(e), 2, h.ops);
@@ -673,6 +734,61 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(results(r)).toEqual(['#1 landed', '#2 failed at fatal']);
     expect(r).toMatchObject({ fatal: '#2 merged, but master differs', exit: 1 });
     expect(h.trace.at(-1)).toBe('publish #2');
+  });
+
+  it('stops on a CI outage (ci-only) blaming no PR: the batch it hit and the rest of the queue stay queued', () => {
+    const outage = (where: string) => new CiOutage(`LAND_TEST=ci-only: GitHub Actions did not run the full test (${where})`, []);
+    // While proving the second batch's top: the first batch landed, nothing of the second is failed or labelled.
+    const h = harness();
+    const r = runBatches([1, 2, 3, 4, 5].map(e), 2, {
+      ...h.ops,
+      prove: (p, x) => {
+        if (p.prs.includes(3)) throw outage('no run appeared');
+        h.ops.prove(p, x);
+      },
+    });
+    expect(results(r)).toEqual(['#1 landed', '#2 landed']);
+    expect(r).toMatchObject({ fatal: null, outage: 'LAND_TEST=ci-only: GitHub Actions did not run the full test (no run appeared)', exit: 1 });
+    expect(r.stopped.map((x) => x.pr)).toEqual([3, 4, 5]);
+    expect(h.failures).toEqual([]);
+    expect(h.trace.some((t) => t === 'publish #3')).toBe(false);
+    const s = statusText({ queue: 'q', startedAt: 't0', now: 't1', running: null, outcomes: r.outcomes, fatal: r.fatal, outage: r.outage, total: 5, done: true, stopped: r.stopped });
+    expect(s).toMatch(/^land STOPPED BY A CI OUTAGE t1/);
+    expect(s).toContain('CI outage: LAND_TEST=ci-only: GitHub Actions did not run the full test (no run appeared)');
+    expect(s).toContain('no PR was failed for it; still queued, not landed: #3 #4 #5');
+    expect(s).not.toContain('FAILED');
+    // While building a position (its CI regen or devices), and during a bisect: PRs ejected before it keep their failure.
+    const b = harness({ conflicts: [1] });
+    const rb = runBatches([1, 2, 3].map(e), 3, { ...b.ops, build: (prev, x, t, k) => (x.pr === 3 ? (() => { throw outage('queued past LAND_CI_QUEUE_WAIT'); })() : b.ops.build(prev, x, t, k)) });
+    expect(results(rb)).toEqual(['#1 failed at merge']);
+    expect(rb.stopped.map((x) => x.pr)).toEqual([2, 3]);
+    expect(b.failures).toEqual(['#1 merge: merging b1 failed; conflicts in src/a.ts']);
+    const bis = harness({ broken: [3] });
+    let proofs = 0;
+    const rbis = runBatches([1, 2, 3, 4].map(e), 4, { ...bis.ops, prove: (p, x) => (++proofs > 1 ? (() => { throw outage('setup failed'); })() : bis.ops.prove(p, x)) });
+    expect(rbis).toMatchObject({ outcomes: [], fatal: null, exit: 1 });
+    expect(rbis.stopped.map((x) => x.pr)).toEqual([1, 2, 3, 4]);
+    expect(bis.failures).toEqual([]);
+    // A plain Fatal is unchanged: recorded against the PR at hand, nothing listed as still queued.
+    const f = harness({ fatalAt: 2 });
+    expect(runBatches([1, 2, 3].map(e), 3, f.ops)).toMatchObject({ outage: null, stopped: [] });
+  });
+
+  it('carries a builder\'s CI outage to the driver as an outage, and a plain Fatal as a Fatal', () => {
+    // The PRs the outage is attributed to travel with it from the builder.
+    expect(parsePrepared(serializeFatal(new CiOutage('LAND_REGEN=ci-only: no run', [4, 5])))).toEqual({ fatal: 'LAND_REGEN=ci-only: no run', outage: true, prs: [4, 5] });
+    expect(() => parsePrepared(JSON.stringify({ fatal: 'x', outage: true, prs: ['4'] }))).toThrow(/outage PRs are malformed/);
+    expect(parsePrepared(serializeFatal(new Fatal('master is red')))).toEqual({ fatal: 'master is red', outage: false, prs: [] });
+    expect(parsePrepared(JSON.stringify({ fatal: 'old builder' }))).toEqual({ fatal: 'old builder', outage: false, prs: [] });
+    expect(() => parsePrepared(JSON.stringify({ fatal: 'x', outage: 'yes' }))).toThrow('outage is not a boolean');
+    const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
+    expect(src).toContain('if (error instanceof Fatal) put(serializeFatal(error));');
+    expect(src).toContain("throw round.outage ? new CiOutage(`while preparing the next batch: ${round.fatal}`, round.prs) : new Fatal(");
+    const h = harness();
+    const r = runBatches([1, 2, 3].map(e), 2, { ...h.ops, next: { ...h.next(), collect: () => { throw new CiOutage('while preparing the next batch: LAND_DEVICES=ci-only: no run', [3]); } } });
+    expect(results(r)).toEqual(['#1 landed', '#2 landed']);
+    expect(r).toMatchObject({ outage: 'while preparing the next batch: LAND_DEVICES=ci-only: no run', outagePrs: [3], fatal: null });
+    expect(r.stopped.map((x) => x.pr)).toEqual([3]);
   });
 
   it('stops with "master is red" when master itself fails, blaming no PR and writing no note', () => {
@@ -881,6 +997,8 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(logs.at(-1)).toMatch(/^!!! MASTER IS RED: it rests on #7's position .* carrying on, so a batch whose top passes can land the fix:\nred: t1\.test\.ts$/);
     expect(proveRestingMaster({ pr: 7, head: sha('d') }, prove(new LandFailure('install', 'ECONNRESET')), clear, (l) => logs.push(l))).toBe(false);
     expect(logs.at(-1)).toMatch(/^!!! could not prove master: .*install/);
+    // A CI outage (ci-only) stops the driver before any batch rather than carrying on into the same outage.
+    expect(() => proveRestingMaster({ pr: 7, head: sha('d') }, prove(new CiOutage('LAND_TEST=ci-only: no run', [])), clear, (l) => logs.push(l))).toThrow(CiOutage);
   });
 
   it('clears the unproved record only when master is on a proven tree', () => {
@@ -963,7 +1081,7 @@ describe('batched landing (runBatches with fakes)', () => {
     expect(back).toEqual(round);
     if ('fatal' in back) throw new Error('unexpected');
     expect(back.results[0]).toMatchObject({ failure: expect.any(LandFailure) });
-    expect(parsePrepared(JSON.stringify({ fatal: 'x' }))).toEqual({ fatal: 'x' });
+    expect(parsePrepared(JSON.stringify({ fatal: 'x' }))).toEqual({ fatal: 'x', outage: false, prs: [] });
     const bad = (patch: object): (() => unknown) => () => parsePrepared(JSON.stringify({ ...JSON.parse(serializePrepared(round)), ...patch }));
     expect(bad({ good: 2 })).toThrow(/good/);
     expect(bad({ culprit: null })).toThrow(/without a culprit/);
@@ -1047,7 +1165,8 @@ describe('batched landing (runBatches with fakes)', () => {
 });
 
 describe('a batch of positions on a scratch repository', () => {
-  const dir = tempDir();
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let dir = '';
   const config = ['user.name=t', 'user.email=t@t', 'commit.gpgsign=false', 'core.hooksPath=/dev/null'].flatMap((c) => ['-c', c]);
   const git: Git = (args, input) => execFileSync('git', [...config, ...args], { cwd: dir, input, stdio: ['pipe', 'pipe', 'pipe'] });
   const commit = (files: Record<string, string>, m: string): string => {
@@ -1060,32 +1179,39 @@ describe('a batch of positions on a scratch repository', () => {
     return git(['rev-parse', 'HEAD']).toString().trim();
   };
   const lines = (tag: string): string => Array.from({ length: 12 }, (_, i) => `export const ${tag}${i} = ${i};\n`).join('');
-  git(['init', '-q', '-b', 'master']);
-  const master = commit({ '.macroscope/ignore.md': '---\nignoreTests: false\n---\n**/out/**\ndocs/goals/**\n', 'src/a.ts': lines('a'), 'src/b.ts': lines('b'), 'src/c.ts': lines('c'), 'out/x.json': '0\n' }, 'base');
+  let master = '';
   const branch = (name: string, files: Record<string, string>): Member => {
     git(['checkout', '-q', '-b', name, master]);
     const clean = commit(files, name);
     return { branch: name, pr: name.charCodeAt(0), clean };
   };
-  const a = branch('a', { 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 33') });
-  const b = branch('b', { 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 34') }); // conflicts with a
-  const c = branch('c', { 'src/c.ts': lines('c').replace('c5 = 5', 'c5 = 55') });
-  git(['checkout', '-q', '--detach', master]);
-  // The driver's build loop: each member on the position before it; a conflict ejects the member and the chain stays put.
+  let a!: Member;
+  let b!: Member;
+  let c!: Member;
   const built: { member: Member; prev: string; merge: string; head: string }[] = [];
   const ejected: string[] = [];
-  let prev = master;
-  for (const m of [a, b, c]) {
-    try {
-      const merge = mergeMember(git, prev, m, built.length + 1, m.clean, 'Land');
-      writeFileSync(join(dir, 'out/x.json'), `${built.length + 1}\n`);
-      const head = commitRegen(git, built.length + 1, m, ['pnpm regen'], 'Land');
-      built.push({ member: m, prev, merge, head });
-      prev = head;
-    } catch (error) {
-      ejected.push(`${m.branch}: ${(error as Error).message}`);
+  beforeAll(() => {
+    dir = tempDir();
+    git(['init', '-q', '-b', 'master']);
+    master = commit({ '.macroscope/ignore.md': '---\nignoreTests: false\n---\n**/out/**\ndocs/goals/**\n', 'src/a.ts': lines('a'), 'src/b.ts': lines('b'), 'src/c.ts': lines('c'), 'out/x.json': '0\n' }, 'base');
+    a = branch('a', { 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 33') });
+    b = branch('b', { 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 34') }); // conflicts with a
+    c = branch('c', { 'src/c.ts': lines('c').replace('c5 = 5', 'c5 = 55') });
+    git(['checkout', '-q', '--detach', master]);
+    // The driver's build loop: each member on the position before it; a conflict ejects the member and the chain stays put.
+    let prev = master;
+    for (const m of [a, b, c]) {
+      try {
+        const merge = mergeMember(git, prev, m, built.length + 1, m.clean, 'Land');
+        writeFileSync(join(dir, 'out/x.json'), `${built.length + 1}\n`);
+        const head = commitRegen(git, built.length + 1, m, ['pnpm regen'], 'Land');
+        built.push({ member: m, prev, merge, head });
+        prev = head;
+      } catch (error) {
+        ejected.push(`${m.branch}: ${(error as Error).message}`);
+      }
     }
-  }
+  });
 
   it('ejects the conflicting member, leaving no merge in progress, and chains the next on the position before it', () => {
     expect(ejected).toEqual([expect.stringMatching(/^b: .*conflicts in src\/a\.ts/)]);
@@ -1153,7 +1279,8 @@ describe('a batch of positions on a scratch repository', () => {
 });
 
 describe('a landing commit on a scratch repository', () => {
-  const dir = tempDir();
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let dir = '';
   const config = ['user.name=t', 'user.email=t@t', 'commit.gpgsign=false', 'core.hooksPath=/dev/null'].flatMap((c) => ['-c', c]);
   const git: Git = (args, input) => execFileSync('git', [...config, ...args], { cwd: dir, input, stdio: ['pipe', 'pipe', 'pipe'] });
   const commit = (files: Record<string, string>, m: string): string => {
@@ -1166,19 +1293,27 @@ describe('a landing commit on a scratch repository', () => {
     return git(['rev-parse', 'HEAD']).toString().trim();
   };
   const lines = (tag: string): string => Array.from({ length: 12 }, (_, i) => `export const ${tag}${i} = ${i};\n`).join('');
-  git(['init', '-q', '-b', 'master']);
-  const base = commit({ '.macroscope/ignore.md': '---\nignoreTests: false\n---\n**/out/**\ndocs/goals/**\n', 'src/a.ts': lines('a'), 'src/b.ts': lines('b'), 'out/x.json': '0\n' }, 'base');
-  git(['checkout', '-q', '-b', 'a']);
-  const clean = commit({ 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 33') }, 'a change');
-  git(['checkout', '-q', 'master']);
-  const master = commit({ 'src/b.ts': lines('b').replace('b9 = 9', 'b9 = 99') }, 'another PR landed');
-  const m: Member = { branch: 'a', pr: 4, clean };
+  let base = '';
+  let clean = '';
+  let master = '';
+  let m!: Member;
   const land = (prev: string, tip: string, out: string): { merge: string; head: string } => {
     const merge = mergeMember(git, prev, m, 1, tip, 'Land');
     writeFileSync(join(dir, 'out/x.json'), out);
     return { merge, head: commitRegen(git, 1, m, ['pnpm regen'], 'Land') };
   };
-  const first = land(master, clean, '1\n');
+  let first!: { merge: string; head: string };
+  beforeAll(() => {
+    dir = tempDir();
+    git(['init', '-q', '-b', 'master']);
+    base = commit({ '.macroscope/ignore.md': '---\nignoreTests: false\n---\n**/out/**\ndocs/goals/**\n', 'src/a.ts': lines('a'), 'src/b.ts': lines('b'), 'out/x.json': '0\n' }, 'base');
+    git(['checkout', '-q', '-b', 'a']);
+    clean = commit({ 'src/a.ts': lines('a').replace('a3 = 3', 'a3 = 33') }, 'a change');
+    git(['checkout', '-q', 'master']);
+    master = commit({ 'src/b.ts': lines('b').replace('b9 = 9', 'b9 = 99') }, 'another PR landed');
+    m = { branch: 'a', pr: 4, clean };
+    first = land(master, clean, '1\n');
+  });
 
   it('merges the PR into master and adds one regen-only commit, which pr:review will vouch for', () => {
     expect(git(['log', '-2', '--format=%s', first.head]).toString().trim().split('\n')).toEqual(['Land: regenerate after merging a (#4)', 'Land: merge a (#4)']);
@@ -1238,7 +1373,11 @@ describe('pnpm evidence:stamp --compare', () => {
 });
 
 describe('the precomputed review lookup (the default reviewer)', () => {
-  const dir = tempDir();
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let dir = '';
+  beforeAll(() => {
+    dir = tempDir();
+  });
   const head = sha('e');
   const write = (pr: number, body: unknown): void => writeFileSync(join(dir, `${pr}.json`), typeof body === 'string' ? body : JSON.stringify(body));
   // The real script, run the way the driver runs it: through sh, prompt on stdin, PR and clean head in the environment.
@@ -1440,5 +1579,628 @@ describe('floors may only rise (the landing commit against master)', () => {
       const t = readFileSync(repoPath(f), 'utf8');
       expect(floorRegressions(f, t, t), f).toEqual([]);
     }
+  });
+});
+
+describe('LAND_REGEN (every regen of a landing tree on CI)', () => {
+  it('is local, ci or ci-only, unset is local, and anything else stops the driver before it starts', () => {
+    expect(parseLandModes({}).regen).toBe('local');
+    for (const v of ['local', 'ci', 'ci-only'] as const) expect(parseLandModes({ LAND_REGEN: v }).regen).toBe(v);
+    for (const bad of ['', 'CI', 'only', 'remote', ' ci']) expect(() => parseLandModes({ LAND_REGEN: bad }), bad).toThrow(`land: LAND_REGEN must be local, ci or ci-only, not ${JSON.stringify(bad)}`);
+    const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
+    expect(src).toContain('({ devices: DEVICES_ON, test: TEST_ON, regen: REGEN_ON, ciOnly: CI_ONLY } = parseLandModes(env));');
+    expect(src).toContain("REGEN_WAIT_S = seconds('LAND_REGEN_WAIT', DEFAULT_REGEN_WAIT_S);");
+  });
+  it('sends every regen call site through regenTree, and a parallel preparation dispatches its regen on CI', () => {
+    const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
+    // The only heavy pnpm regen is regenTree's local branch; the four call sites (and the one-by-one fallback) use regenTree.
+    expect([...src.matchAll(/heavy\([^)]*REGEN\)/g)].length).toBe(1);
+    // Each passes the PRs of the tree it regenerates (attribute), whom an outage of it counts against.
+    for (const site of ["regenTree('regen', 'regen', attribute('regen',", "regenTree('regen-carried', 'regen', attribute('regen',", "regenTree('regen-after-devices', 'regen-after-devices', attribute('regen',", "regenTree('regen-records', 'regen', attribute('regen',"]) expect(src, site).toContain(site);
+    const prepare = src.slice(src.indexOf('const preparePosition'), src.indexOf('const awaitPrepared'));
+    expect(prepare.indexOf("if (REGEN_ON !== 'local')")).toBeGreaterThan(-1);
+    expect(prepare.indexOf("if (REGEN_ON !== 'local')")).toBeLessThan(prepare.indexOf('spawn('));
+    expect(src).toContain("'refs/heads/land-regen/*'");
+    // A local git error making the tree's commit judged nothing about the PR (#220 review).
+    const dispatch = src.slice(src.indexOf('const dispatchRegen'), src.indexOf('const finishRegen'));
+    expect(dispatch).toMatch(/try \{\n {4}sha = commitApart\([^\n]+\n {2}\} catch \(error\) \{\n {4}throw new CiUnavailable\(/);
+    // The regen commit names the CI run that regenerated it (#220 review).
+    expect(src).toContain('regenRan = `${REGEN.join(\' \')} on CI (regen-on-ci.yml ${url})`;');
+    expect(src).toContain('const commands = [regenRan];');
+    expect(src).toContain('commands.push(ran, regenRan);');
+  });
+
+  describe('where a regen runs when GitHub Actions does not run it', () => {
+    const setup = (o: { mode?: 'local' | 'ci'; mac: boolean; ready?: boolean; ci?: () => void }) => {
+      const calls: string[] = [];
+      const go = () =>
+        landRegen({
+          prs: [],
+          mode: o.mode ?? 'ci',
+          mac: o.mac,
+          ready: () => (calls.push('ready'), o.ready ?? true),
+          ci: () => (calls.push('ci'), o.ci?.()),
+          local: () => void calls.push('local'),
+          log: (l) => void calls.push(l),
+        });
+      return { calls, go };
+    };
+    it('local runs pnpm regen locally and never asks CI', () => {
+      const s = setup({ mode: 'local', mac: false });
+      expect(s.go()).toBe('local');
+      expect(s.calls).toEqual(['local']);
+    });
+    it('ci runs on CI, with no local regen', () => {
+      const s = setup({ mac: false });
+      expect(s.go()).toBe('ci');
+      expect(s.calls).toEqual(['ready', 'ci']);
+    });
+    it('on a Mac, falls back to the local regen loudly, as LAND_DEVICES=ci does', () => {
+      const s = setup({ mac: true, ci: () => { throw new CiUnavailable('no run appeared'); } });
+      expect(s.go()).toBe('local');
+      expect(s.calls).toEqual(['ready', 'ci', '  !!! LAND_REGEN=ci: GitHub Actions did not run the regen (no run appeared); running pnpm regen locally', 'local']);
+      const early = setup({ mac: true, ready: false });
+      expect(early.go()).toBe('local');
+      expect(early.calls[1]).toContain("master's regen-on-ci.yml has no patch mode yet");
+    });
+    it('off a Mac, stops the driver (Fatal) and blames no PR, with no local regen', () => {
+      const s = setup({ mac: false, ci: () => { throw new CiUnavailable('jobs never started'); } });
+      expect(s.go).toThrow(Fatal);
+      expect(s.go).toThrow('GitHub Actions did not run the regen (jobs never started); this host is not a Mac, so no local regen can stand in for it. The driver stops; no PR is blamed');
+      expect(s.calls).not.toContain('local');
+      const early = setup({ mac: false, ready: false });
+      expect(early.go).toThrow(Fatal);
+      expect(early.calls).toEqual(['ready']);
+    });
+    it('a regen that failed on CI is the PR\'s, as a failed local regen is: never a fallback', () => {
+      for (const mac of [true, false]) {
+        const s = setup({ mac, ci: () => { throw new LandFailure('regen-after-devices', 'the CI regen run u has failed jobs'); } });
+        expect(s.go).toThrow(LandFailure);
+        expect(s.calls).not.toContain('local');
+      }
+      // Any other error is not swallowed either (the queue loop fails the PR with it, as before).
+      const odd = setup({ mac: true, ci: () => { throw new Error('disk full'); } });
+      expect(odd.go).toThrow('disk full');
+      expect(odd.calls).not.toContain('local');
+    });
+  });
+
+  describe('the CI regen\'s patch, applied to the landing tree on a scratch repository', () => {
+    // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+    let dir = '';
+    let ci = '';
+    let repo = '';
+    let index = '';
+    let base = '';
+    let regenerated = '';
+    let patch = '';
+    let empty = '';
+    const config = ['user.name=t', 'user.email=t@t', 'commit.gpgsign=false', 'core.hooksPath=/dev/null'].flatMap((c) => ['-c', c]);
+    const at = (cwd: string) => (args: string[]): string => execFileSync('git', [...config, ...args], { cwd, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const git = (args: string[]): string => at(repo)(args);
+    const bin = (seed: number, n: number): Buffer => Buffer.from(Array.from({ length: n }, (_, i) => (i * seed + (i >> 3)) % 256));
+    const write = (root: string, files: Record<string, string | Buffer | null>): void => {
+      for (const [p, body] of Object.entries(files)) {
+        if (body === null) rmSync(join(root, p));
+        else {
+          mkdirSync(dirname(join(root, p)), { recursive: true });
+          writeFileSync(join(root, p), body);
+        }
+      }
+    };
+    const apart = (args: string[]) => execFileSync('git', [...config, ...args], { cwd: repo, encoding: 'utf8', env: { ...process.env, GIT_INDEX_FILE: index } }).trim();
+    beforeAll(() => {
+      dir = tempDir();
+      ci = join(dir, 'ci');
+      repo = join(dir, 'repo');
+      mkdirSync(repo);
+      git(['init', '-q', '-b', 'master']);
+      write(repo, { 'src/a.ts': 'export const a = 1;\n', 'out/x.json': '{"x":1}\n', 'out/shot.png': bin(7, 4096), 'out/gone.bin': bin(3, 300), 'out/keep.txt': 'same\n' });
+      git(['add', '-A']);
+      git(['commit', '-q', '-m', 'base']);
+      // The landing tree: HEAD plus uncommitted work (a carried device record, an untracked file), committed apart as the driver
+      // does (commitApart: a scratch index, HEAD as parent).
+      write(repo, { 'out/x.json': '{"x":2}\n', 'out/new-record.json': '{}\n' });
+      index = join(dir, 'scratch-index');
+      apart(['read-tree', 'HEAD']);
+      apart(['add', '-A']);
+      base = apart(['commit-tree', apart(['write-tree']), '-p', 'HEAD', '-m', 'landing tree']);
+      // The CI regen: a checkout of that commit, regenerated (binary changes, a new binary, a deletion, a text change), its patch
+      // the round's own command (git diff --cached --binary <sha>).
+      git(['worktree', 'add', '-q', '--detach', ci, base]);
+      write(ci, { 'out/shot.png': bin(11, 5000), 'out/new.png': bin(13, 777), 'out/gone.bin': null, 'out/x.json': '{"x":2,"y":3}\n' });
+      at(ci)(['add', '-A']);
+      regenerated = at(ci)(['write-tree']).trim();
+      patch = join(dir, 'outputs.patch');
+      writeFileSync(patch, at(ci)(['diff', '--cached', '--binary', base]));
+      empty = join(dir, 'empty.patch');
+      writeFileSync(empty, '');
+    });
+    afterAll(() => {
+      if (dir !== '') rmSync(dir, { recursive: true, force: true });
+    });
+
+    it('makes the tree exactly the CI regen\'s, binary files included, staged', () => {
+      expect(readFileSync(patch, 'utf8')).toContain('GIT binary patch');
+      const bytes = applyRegenPatch(git, base, patch);
+      expect(bytes).toBe(readFileSync(patch).length);
+      expect(git(['write-tree']).trim()).toBe(regenerated);
+      for (const p of ['out/shot.png', 'out/new.png', 'out/x.json', 'out/keep.txt', 'src/a.ts']) expect(readFileSync(join(repo, p)).equals(readFileSync(join(ci, p))), p).toBe(true);
+      expect(existsSync(join(repo, 'out/gone.bin'))).toBe(false);
+      // Staged whole: the worktree is the index (git apply --index).
+      expect(git(['diff', '--name-only'])).toBe('');
+      // Back to the landing tree for the next cases.
+      git(['read-tree', '-u', '--reset', base]);
+      expect(git(['write-tree']).trim()).toBe(at(repo)(['rev-parse', `${base}^{tree}`]).trim());
+    });
+    it('applies nothing for an empty patch (a tree at its fixed point)', () => {
+      expect(applyRegenPatch(git, base, empty)).toBe(0);
+      expect(git(['write-tree']).trim()).toBe(git(['rev-parse', `${base}^{tree}`]).trim());
+    });
+    it('refuses a tree that is not the commit the CI regen ran on, a missing patch, and a patch that does not apply, changing nothing', () => {
+      write(repo, { 'src/a.ts': 'export const a = 2;\n' });
+      expect(() => applyRegenPatch(git, base, patch)).toThrow(`which the CI regen ran on`);
+      write(repo, { 'src/a.ts': 'export const a = 1;\n' });
+      expect(() => applyRegenPatch(git, base, join(dir, 'nope.patch'))).toThrow('nope.patch is missing');
+      const broken = join(dir, 'broken.patch');
+      writeFileSync(broken, readFileSync(patch, 'utf8').replace('{"x":2}', '{"x":9}'));
+      git(['add', '-A']);
+      const before = git(['write-tree']).trim();
+      expect(before).toBe(git(['rev-parse', `${base}^{tree}`]).trim());
+      expect(() => applyRegenPatch(git, base, broken)).toThrow();
+      // All or nothing: not even the binary files of the patch were written.
+      expect(git(['write-tree']).trim()).toBe(before);
+      expect(git(['diff', '--name-only'])).toBe('');
+    });
+  });
+});
+
+describe('ci-only: every heavy step on GitHub runners, never here (LAND_CI=only)', () => {
+  const src = readFileSync(repoPath('scripts/land.ts'), 'utf8');
+  it('reads LAND_CI, LAND_DEVICES, LAND_TEST and LAND_REGEN strictly; LAND_CI=only sets all three and refuses any other value', () => {
+    expect(parseLandModes({})).toEqual({ devices: 'local', test: 'local', regen: 'local', ciOnly: false });
+    expect(parseLandModes({ LAND_CI: 'only' })).toEqual({ devices: 'ci-only', test: 'ci-only', regen: 'ci-only', ciOnly: true });
+    expect(parseLandModes({ LAND_CI: 'only', LAND_TEST: 'ci-only' }).ciOnly).toBe(true);
+    expect(parseLandModes({ LAND_DEVICES: 'ci-only', LAND_TEST: 'ci-only', LAND_REGEN: 'ci-only' }).ciOnly).toBe(true);
+    // One step ci-only: that step never falls back, but the others still run here, so the shared-Mac coordination stays.
+    expect(parseLandModes({ LAND_DEVICES: 'ci-only', LAND_TEST: 'ci' })).toEqual({ devices: 'ci-only', test: 'ci', regen: 'local', ciOnly: false });
+    for (const name of ['LAND_DEVICES', 'LAND_TEST', 'LAND_REGEN']) {
+      for (const bad of ['', 'CI', 'only', 'ci_only', 'ci-only ']) expect(() => parseLandModes({ [name]: bad }), `${name}=${bad}`).toThrow(`land: ${name} must be local, ci or ci-only, not ${JSON.stringify(bad)}`);
+      for (const other of ['local', 'ci']) expect(() => parseLandModes({ LAND_CI: 'only', [name]: other })).toThrow(`land: LAND_CI=only runs every step on CI only, but ${name} is "${other}"`);
+    }
+    for (const bad of ['', 'ONLY', '1', 'ci', 'yes']) expect(() => parseLandModes({ LAND_CI: bad }), bad).toThrow(`land: LAND_CI must be only (or unset), not ${JSON.stringify(bad)}`);
+    expect(parseMaxInflight(undefined)).toBe(2);
+    expect(parseMaxInflight('1')).toBe(1);
+    expect(parseMaxInflight('8')).toBe(8);
+    for (const bad of ['0', '9', '-1', '2.5', '', ' 2', 'two']) expect(() => parseMaxInflight(bad), bad).toThrow('LAND_CI_MAX_INFLIGHT must be a whole number from 1 to 8');
+    expect(src).toContain("CI_QUEUE_S = seconds('LAND_CI_QUEUE_WAIT', DEFAULT_QUEUE_WAIT_S);");
+    expect(src).toContain("CI_MAX_INFLIGHT = parseMaxInflight(env['LAND_CI_MAX_INFLIGHT']);");
+  });
+
+  it('never falls back to a local run: every CiUnavailable the driver catches stops it as a CI outage under ci-only, before any local run', () => {
+    const catches = [...src.matchAll(/instanceof CiUnavailable\)/g)].map((m) => src.slice(m.index - 120, m.index + 700));
+    // devices, the full test, a prepared CI regen (regenTree goes through landRegen), and the tree checks (LAND_TRUSTED), which
+    // have no local run at all and always stop.
+    expect(catches.length).toBe(4);
+    for (const c of catches) {
+      const stop = c.search(/if \((DEVICES_ON|TEST_ON|REGEN_ON) === 'ci-only'(?: && error instanceof CiUnavailable)?\) throw new CiOutage\(|if \(error instanceof CiUnavailable\) throw new CiOutage\(`LAND_TRUSTED: /);
+      expect(stop, c.slice(0, 120)).toBeGreaterThan(-1);
+      const local = c.search(/running (them|pnpm test) locally/);
+      if (local !== -1) expect(stop).toBeLessThan(local);
+    }
+    // The CI workflow missing from master is an outage too under ci-only, never a local run.
+    for (const ready of ['const ciDevicesReady', 'const ciTestReady']) {
+      const body = src.slice(src.indexOf(ready), src.indexOf('};', src.indexOf(ready)));
+      expect(body, ready).toMatch(/=== 'ci-only'\) throw new CiOutage\(/);
+    }
+    // Every CI wait passes the queue wait.
+    expect([...src.matchAll(/startS: CI_START_S, queueS: CI_QUEUE_S/g)].length).toBe(3); // the devices, the regen and the tree checks
+    expect(src).toMatch(/startS: CI_START_S,\n\s+queueS: CI_QUEUE_S,/);
+  });
+
+  it('needs no lease, no quiet-machine or priority file and no /tmp helper script once every step is ci-only', () => {
+    // The leases (zsh scripts in /tmp) are used only by the local regen, test and device run, which ci-only never reaches.
+    expect([...src.matchAll(/\bHEAVY\b/g)].length).toBe(3); // its definition, heavy(), and the local parallel regen
+    expect(src).toMatch(/const heavy = \(step: string, argv: string\[\]\): Run => run\(step, \[HEAVY, \.\.\.argv\]/);
+    expect([...src.matchAll(/\[DEVICE, \.\.\.DEVICES\]/g)].length).toBe(1);
+    const prepare = src.slice(src.indexOf('const preparePosition'), src.indexOf('const awaitPrepared'));
+    expect(prepare.indexOf("if (REGEN_ON !== 'local')")).toBeLessThan(prepare.indexOf('HEAVY'));
+    expect(src).toContain("if (!CI_ONLY) writeFileSync(PRIORITY, String(process.pid));");
+    expect(src).toContain("if (!CI_ONLY && clearStaleQuiet(QUIET_FILE, alive))");
+    const releasePriority = src.slice(src.indexOf('const releasePriority'), src.indexOf('};', src.indexOf('const releasePriority')));
+    expect(releasePriority).toContain('if (CI_ONLY) return;');
+    // The quiet-machine wait is only in the local test's rerun.
+    expect([...src.matchAll(/waitQuiet\(\)/g)].length).toBe(1);
+    expect(src.indexOf('waitQuiet()')).toBeGreaterThan(src.indexOf('const proveIn'));
+  });
+
+  it('dispatches at most LAND_CI_MAX_INFLIGHT prepared CI regens at once; the positions above build one by one', () => {
+    const prepare = src.slice(src.indexOf('const preparePosition'), src.indexOf('const awaitPrepared'));
+    const cap = prepare.indexOf("if (REGEN_ON !== 'local' && k > CI_MAX_INFLIGHT) throw new Error(");
+    expect(cap).toBeGreaterThan(-1);
+    expect(cap).toBeLessThan(prepare.indexOf("git(['worktree', 'add'"));
+    // A preparation that throws builds that position and every one above it one by one (buildPositionsParallel).
+    const order: string[] = [];
+    const slots = buildPositionsParallel<number, { head: string }, number>('m', [1, 2, 3, 4].map((pr) => ({ entry: { branch: `b${pr}`, pr, clean: sha('a') }, ticket: pr })), {
+      speculate: (k) => {
+        if (k > 2) throw new Error('LAND_CI_MAX_INFLIGHT is 2');
+        order.push(`dispatch ${k}`);
+        return k;
+      },
+      await: () => {},
+      assemble: (_p, it) => (order.push(`assemble #${it.entry.pr}`), { head: `h${it.entry.pr}` }),
+      sequential: (_p, it) => (order.push(`one by one #${it.entry.pr}`), { head: `h${it.entry.pr}` }),
+      abandon: () => {},
+      log: () => {},
+    });
+    expect(slots).toHaveLength(4);
+    expect(order).toEqual(['dispatch 1', 'dispatch 2', 'assemble #1', 'assemble #2', 'one by one #3', 'one by one #4']);
+  });
+
+  describe('a regen GitHub Actions did not run', () => {
+    const go = (o: { mode: 'ci' | 'ci-only'; mac: boolean; ready?: boolean; fail?: Error }) => {
+      const calls: string[] = [];
+      const f = () =>
+        landRegen({ prs: [], mode: o.mode, mac: o.mac, ready: () => o.ready ?? true, ci: () => { calls.push('ci'); if (o.fail) throw o.fail; }, local: () => void calls.push('local'), log: (l) => void calls.push(l) });
+      return { calls, f };
+    };
+    it('stops the driver as a CI outage under ci-only, even on a Mac, with no local regen', () => {
+      for (const mac of [true, false]) {
+        const s = go({ mode: 'ci-only', mac, fail: new CiUnavailable('jobs never started') });
+        expect(s.f).toThrow(CiOutage);
+        expect(s.f).toThrow('LAND_REGEN=ci-only: GitHub Actions did not run the regen (jobs never started). The driver stops; no PR is blamed');
+        expect(s.calls).not.toContain('local');
+        const early = go({ mode: 'ci-only', mac, ready: false });
+        expect(early.f).toThrow("LAND_REGEN=ci-only: master's regen-on-ci.yml has no patch mode yet");
+        expect(early.calls).toEqual([]);
+      }
+      // Off a Mac, plain ci is an outage too (no local regen writes the same outputs there).
+      expect(go({ mode: 'ci', mac: false, fail: new CiUnavailable('no run') }).f).toThrow(CiOutage);
+    });
+    it('still blames the PR for a regen that failed on CI, and runs on CI when it can', () => {
+      const s = go({ mode: 'ci-only', mac: false, fail: new LandFailure('regen', 'the CI regen run u has failed jobs') });
+      expect(s.f).toThrow(LandFailure);
+      expect(s.f).not.toThrow(CiOutage);
+      const ok = go({ mode: 'ci-only', mac: false });
+      expect(ok.f()).toBe('ci');
+      expect(ok.calls).toEqual(['ci']);
+    });
+  });
+
+  describe('R3: the Android records CI makes (x86_64) after the ones this Mac made (arm64)', () => {
+    // This tree's device records as this Mac's arm64 image writes them, and as a CI run (x86_64) would: only the ABI differs.
+    const lanesText = readFileSync(repoPath('packages/parity/out/lanes.json'), 'utf8');
+    const failures = (t: string): unknown => JSON.parse(readFileSync(repoPath(failuresJson(t)), 'utf8'));
+    const toArm = (text: string): string => text.replaceAll('built for x86_64 /', 'built for arm64 /').replaceAll('Android 16, x86_64)', 'Android 16, arm64-v8a)');
+    const toCi = (text: string): string => text.replaceAll('built for arm64 /', 'built for x86_64 /').replaceAll('Android 16, arm64-v8a)', 'Android 16, x86_64)');
+    const master = parseDeviceEvidence(JSON.parse(toArm(lanesText)), failures, 'master');
+    const ci = (edit?: (lanes: string) => string, fail: (t: string) => unknown = failures) => {
+      const text = toCi(lanesText);
+      const edited = edit === undefined ? text : edit(text);
+      if (edit !== undefined && edited === text) throw new Error('the edit changed nothing in the records');
+      return parseDeviceEvidence(JSON.parse(edited), fail, 'ci');
+    };
+    it('the arm64 records and the CI copy differ in the Android ABI alone', () => {
+      expect([...androidAbis(master)]).toEqual(['arm64']);
+      expect([...androidAbis(ci())]).toEqual(['x86_64']);
+      expect(normalAbi('arm64-v8a')).toBe('arm64');
+      expect(hostAbi('arm64')).toBe('arm64');
+      expect(hostAbi('x64')).toBe('x86_64');
+      expect(toCi(lanesText)).not.toBe(toArm(lanesText));
+    });
+    it('accepts it as an architecture rebaseline when every lane keeps its state and exact failures', () => {
+      const c = archChanges(master, ci());
+      expect(c.other).toEqual([]);
+      expect(c.abi.length).toBeGreaterThan(0);
+      const r = ciArchRebaseline(master, ci());
+      expect(r.rebaseline).toBe(true);
+      expect(deviceRunProblems(master, ci(), [], { rebaseline: r.rebaseline })).toEqual([]);
+      // Without it the first CI landing fails judge-devices on the architecture alone (the gap R3 names).
+      expect(deviceRunProblems(master, ci(), []).every((p) => p.includes('changing a lane\'s architecture is an explicit rebaseline'))).toBe(true);
+      // Later positions compare like with like: no change, no rebaseline.
+      expect(ciArchRebaseline(ci(), ci())).toEqual({ rebaseline: false, changes: [] });
+    });
+    it('refuses any verdict difference, even one the normal rule allows (a fixed failure on a changed lane)', () => {
+      const android = (failures('android') as { lane: string }[]);
+      expect(android.length).toBeGreaterThan(0);
+      const extra = [...android, { ...(android[0] as object), case: 'a-case-master-does-not-fail' }];
+      const more = ci(undefined, (t) => (t === 'android' ? extra : failures(t)));
+      expect(ciArchRebaseline(master, more).rebaseline).toBe(true);
+      expect(deviceRunProblems(master, more, [], { rebaseline: true }).length).toBeGreaterThan(0);
+      const fewer = ci(undefined, (t) => (t === 'android' ? android.slice(1) : failures(t)));
+      expect(deviceRunProblems(master, fewer, [], { rebaseline: true }).some((p) => p.includes('an architecture rebaseline needs master\'s state and exactly master\'s failures'))).toBe(true);
+    });
+    it('is never automatic for any other model change: an iOS model, another device, or a model that differs beyond its ABI', () => {
+      const ios = ci((x) => x.replaceAll('"model": "iPhone 17"', '"model": "iPhone 17 Pro"'));
+      expect(archChanges(master, ios).other.length).toBeGreaterThan(0);
+      expect(ciArchRebaseline(master, ios)).toEqual({ rebaseline: false, changes: [] });
+      const renamed = ci((x) => x.replaceAll('x86_64 / dragon-320', 'x86_64 / dragon-320b'));
+      expect(ciArchRebaseline(master, renamed).rebaseline).toBe(false);
+      const vectorsDevice = ci((x) => x.replace('ART app_process on dragon-smoke (Android 16, x86_64)', 'ART app_process on dragon-480 (Android 16, x86_64)'));
+      expect(ciArchRebaseline(master, vectorsDevice).rebaseline).toBe(false);
+    });
+    it('is wired into the driver: only a CI device run rebaselines, logged loudly and recorded in the landing; a local fallback onto another ABI stops instead', () => {
+      expect(src).toContain('const judged = judgeDevices(prev, TRUSTED ? null : started, ci !== null, lanesRan);');
+      expect(src).toContain('const { problems } = judgeDevices(prev, null, false, lanesRan);');
+      expect(src).toContain('const auto = !arch.rebaseline && onCi ? ciArchRebaseline(before, after)');
+      expect(src).toContain('!!! ARCHITECTURE REBASELINE');
+      expect(src).toContain("rebaseline: arch.rebaseline || auto.rebaseline");
+      expect(src).toMatch(/prevAbis = androidAbis\(evidenceAt\(prev\)\);\n\s+\} catch \(cause\) \{\n\s+throw new Fatal\(/);
+    expect(src).toMatch(/const abis = \[\.\.\.prevAbis\]\.filter\(\(a\) => a !== hostAbi\(process\.arch\)\);\n\s+if \(abis\.length > 0\) throw new CiOutage\(/);
+    // Under LAND_CI=only the PR's own CI never running is an outage too; a failed run is still the PR's.
+    expect(src).toContain('if (typeof next === \'object\' && next.outage === true && CI_ONLY) throw new CiOutage(');
+    expect(ciStep({ state: 'failure', conclusions: ['failure u'] }, 0, { appearS: 900, waitS: 5400 })).toEqual({ fail: 'did not succeed: failure u' });
+    });
+  });
+});
+
+describe('the review comment source (LAND_REVIEW_SOURCE=comment)', () => {
+  const head = sha('e');
+  const OWNER = 501;
+  let id = 100;
+  type Review = { pr: number; head: string; findings: unknown[] };
+  const comment = (authorId: number, review: Review | null, createdAt: string, o: { marker?: boolean; raw?: string; updatedAt?: string; author?: string } = {}): IssueComment => {
+    const body = o.raw ?? reviewComment(review!);
+    return { id: id++, author: o.author ?? `user${authorId}`, authorId, createdAt, updatedAt: o.updatedAt ?? createdAt, body: o.marker === false ? body.replace(`${REVIEW_MARKER}\n`, '') : body };
+  };
+  const look = (comments: IssueComment[], pr = '31', allowed = [OWNER]) => lookupReviewComment(comments, allowed, pr, head);
+
+  it('takes the newest marked comment by an allowed reviewer (by user id) for the clean head', () => {
+    const older = comment(OWNER, { pr: 31, head, findings: [finding('medium')] }, '2026-10-08T01:00:00Z');
+    const newer = comment(OWNER, { pr: 31, head, findings: [] }, '2026-10-08T02:00:00Z');
+    expect(look([newer, older])).toEqual({ ok: true, output: '{"findings":[]}' });
+    expect(look([older])).toMatchObject({ ok: true, output: expect.stringContaining('"severity":"medium"') });
+    const tie = comment(OWNER, { pr: 31, head, findings: [finding('high')] }, '2026-10-08T02:00:00Z');
+    expect(look([tie, newer])).toMatchObject({ ok: true, output: expect.stringContaining('"severity":"high"') });
+    // A login is never trusted for itself: another user who took the reviewer's old login has another id.
+    expect(look([comment(999, { pr: 31, head, findings: [] }, '2026-10-08T05:00:00Z', { author: `user${OWNER}` })])).toMatchObject({ ok: false, error: expect.stringMatching(/no review comment on #31.*1 marked comment\(s\) by users not on the reviewer allowlist 501 ignored/) });
+  });
+
+  it('skips a newer review of another head for the one of the clean head, and fails when none is for it', () => {
+    const match = comment(OWNER, { pr: 31, head, findings: [] }, '2026-10-08T01:00:00Z');
+    const stale = comment(OWNER, { pr: 31, head: sha('0'), findings: [] }, '2026-10-08T03:00:00Z');
+    expect(look([match, stale])).toEqual({ ok: true, output: '{"findings":[]}' });
+    expect(look([stale])).toMatchObject({ ok: false, error: expect.stringMatching(/reviews 0{40}, not the clean head e{40}: the review is stale; no review comment is for the clean head/) });
+  });
+
+  it('fails on an edited review comment, since GitHub keeps the original author when a writer edits it', () => {
+    const edited = comment(OWNER, { pr: 31, head, findings: [] }, '2026-10-08T01:00:00Z', { updatedAt: '2026-10-08T04:00:00Z' });
+    expect(look([edited])).toMatchObject({ ok: false, error: expect.stringMatching(/was edited at 2026-10-08T04:00:00Z; an edited review is not trusted/) });
+    // Newer than a good one, it still fails; older than the good one, it is never reached.
+    const good = comment(OWNER, { pr: 31, head, findings: [] }, '2026-10-08T00:30:00Z');
+    expect(look([good, edited])).toMatchObject({ ok: false });
+    expect(look([{ ...edited, createdAt: '2026-10-08T00:00:00Z' }, good])).toMatchObject({ ok: true });
+  });
+
+  it('ignores comments without a top-level marker or by users not on the allowlist, and then fails as missing', () => {
+    const unmarked = comment(OWNER, { pr: 31, head, findings: [] }, '2026-10-08T05:00:00Z', { marker: false });
+    expect(look([unmarked])).toEqual({ ok: false, error: `land-review-lookup: no review comment on #31 for ${head}; a review agent must post one (pnpm land:post-review)` });
+    // A marker and a block inside another fence are that fence's text.
+    const quoted = `Log tail:\n\`\`\`\`\n${reviewComment({ pr: 31, head, findings: [] })}\`\`\`\`\n`;
+    expect(look([comment(OWNER, null, '2026-10-08T05:00:00Z', { raw: quoted })])).toMatchObject({ ok: false, error: expect.stringMatching(/no review comment on #31/) });
+    const tilde = `~~~\n${REVIEW_MARKER}\n~~~\n\`\`\`json\n${JSON.stringify({ pr: 31, head, findings: [] })}\n\`\`\``;
+    expect(look([comment(OWNER, null, '2026-10-08T05:00:00Z', { raw: tilde })])).toMatchObject({ ok: false, error: expect.stringMatching(/no review comment/) });
+    // A top-level marker with the only json block inside another fence has no block of its own.
+    const nested = `${REVIEW_MARKER}\n\`\`\`\`text\n\`\`\`json\n${JSON.stringify({ pr: 31, head, findings: [] })}\n\`\`\`\n\`\`\`\`\n`;
+    expect(look([comment(OWNER, null, '2026-10-08T05:00:00Z', { raw: nested })])).toMatchObject({ ok: false, error: expect.stringMatching(/has 0 top-level fenced json blocks/) });
+  });
+
+  it('fails on a malformed or other-PR comment newer than the review of the clean head', () => {
+    const good = comment(OWNER, { pr: 31, head, findings: [] }, '2026-10-08T01:00:00Z');
+    const at = '2026-10-08T02:00:00Z';
+    const raw = (body: string) => comment(OWNER, null, at, { raw: `${REVIEW_MARKER}\n${body}` });
+    const cases: [IssueComment, RegExp][] = [
+      [raw('```json\n{"pr": 31, "head": "\n```\n'), /is not JSON/],
+      [raw('no block here'), /has 0 top-level fenced json blocks, not exactly one/],
+      [raw('```json\n{}\n```\n```json\n{}\n```'), /has 2 top-level fenced json blocks/],
+      [raw('```json\n{}\n'), /never closed/],
+      [comment(OWNER, { pr: 32, head, findings: [] }, at), /reviews PR 32, not #31/],
+      [raw(`\`\`\`json\n${JSON.stringify({ pr: 31, head, findings: [], verdict: 'pass' })}\n\`\`\``), /not exactly \{ pr, head, findings \}/],
+      [comment(OWNER, { pr: 31, head: head.slice(0, 12), findings: [] }, at), /is not a full sha/],
+      [comment(OWNER, { pr: 31, head, findings: [finding('urgent')] }, at), /severity "urgent"/],
+    ];
+    for (const [badOne, error] of cases) expect(look([good, badOne])).toMatchObject({ ok: false, error: expect.stringMatching(error) });
+    expect(look([cases[0]![0], { ...good, createdAt: '2026-10-08T09:00:00Z', updatedAt: '2026-10-08T09:00:00Z' }])).toMatchObject({ ok: true });
+    expect(lookupReviewComment([good], [OWNER], undefined, head)).toMatchObject({ ok: false, error: expect.stringMatching(/LAND_REVIEW_PR/) });
+    expect(lookupReviewComment([good], [OWNER], '31', 'abc')).toMatchObject({ ok: false, error: expect.stringMatching(/LAND_REVIEW_HEAD/) });
+  });
+
+  it('writes a comment that reads back exactly, whatever the findings say', () => {
+    const f = { ...finding('low'), summary: 'a ```json fence\n``` and `ticks` and ~~~' };
+    const body = reviewComment({ pr: 31, head, findings: [f] });
+    expect(body.split('\n')[0]).toBe(REVIEW_MARKER);
+    const block = reviewBlock(body);
+    expect('json' in block && JSON.parse(block.json)).toEqual({ pr: 31, head, findings: [f] });
+    expect(look([comment(OWNER, null, '2026-10-08T00:00:00Z', { raw: body })])).toEqual({ ok: true, output: JSON.stringify({ findings: [f] }) });
+  });
+
+  it('the driver\'s own comments never read as a review, whatever a PR makes its log print', () => {
+    const review = reviewComment({ pr: 31, head, findings: [] });
+    // A step log tail a PR controls, posted inside the driver's fence, closing it first, or in a finding's text.
+    const bodies = [
+      `**Landing stopped at step \`typecheck\`**\n\n\`\`\`\n${review}\n\`\`\``,
+      `**Landing stopped**\n\n\`\`\`\nx\n\`\`\`\n${review}\n\`\`\`\n`,
+      findingsComment(31, head, [{ ...(finding('high') as Parameters<typeof findingsComment>[2][number]), summary: review, failure_scenario: `\`\`\`JSON\n{}\n\`\`\`\n${REVIEW_MARKER}` }]),
+    ];
+    for (const b of bodies) {
+      const posted = defangReview(b);
+      expect(posted).not.toContain('<!--');
+      expect(topLevel(posted).blocks.filter((x) => x.info.toLowerCase() === 'json')).toEqual([]);
+      expect(look([comment(OWNER, null, '2026-10-08T00:00:00Z', { raw: posted })])).toMatchObject({ ok: false, error: expect.stringMatching(/no review comment/) });
+    }
+    expect(defangReview('plain text\n```\ncode\n```')).toBe('plain text\n```\ncode\n```');
+  });
+
+  it('reads the top level of Markdown as CommonMark does', () => {
+    expect(topLevel('a\n```json\n{}\n```\nb')).toEqual({ lines: ['a', 'b'], blocks: [{ info: 'json', text: '{}', closed: true }] });
+    // A closing fence must be the same character, at least as long; an info string with a backtick opens nothing.
+    expect(topLevel('````\n```\nx\n~~~~\n````\n').blocks).toEqual([{ info: '', text: '```\nx\n~~~~', closed: true }]);
+    expect(topLevel('``` a`b\nc').lines).toEqual(['``` a`b', 'c']);
+    expect(topLevel('    ```json\nx').blocks).toEqual([]);
+    expect(topLevel('~~~json\nx').blocks).toEqual([{ info: 'json', text: 'x', closed: false }]);
+  });
+
+  it('checks the comments GitHub returns, the allowlist and the repository', () => {
+    const c = { id: 1, user: { login: 'a', id: 7 }, body: 'b', created_at: 't', updated_at: 't' };
+    expect(parseCommentPages([[c], []])).toEqual([{ id: 1, author: 'a', authorId: 7, body: 'b', createdAt: 't', updatedAt: 't' }]);
+    expect(() => parseCommentPages({})).toThrow(/not a list of pages/);
+    expect(() => parseCommentPages([[{ ...c, user: { login: 'a' } }]])).toThrow(/user.id/);
+    expect(() => parseCommentPages([[{ ...c, updated_at: null }]])).toThrow(/updated_at/);
+    const ids: Record<string, number> = { 'compiled-run': 11, alice: 21, bob: 22 };
+    const asked: string[] = [];
+    const idOf = (login: string): number => (asked.push(login), ids[login]!);
+    expect(reviewerIds({}, 'compiled-run/dragoncss', idOf)).toEqual([11]);
+    expect(reviewerIds({ LAND_REVIEWERS: 'alice, 33 bob' }, 'o/r', idOf)).toEqual([21, 33, 22]);
+    expect(asked).toEqual(['compiled-run', 'alice', 'bob']);
+    // The driver's resolved ids win, with no lookup.
+    expect(reviewerIds({ LAND_REVIEWER_IDS: '5,6', LAND_REVIEWERS: 'alice' }, 'o/r', () => 0)).toEqual([5, 6]);
+    expect(() => reviewerIds({ LAND_REVIEWER_IDS: 'alice' }, 'o/r', idOf)).toThrow(/is not a user id/);
+    expect(() => reviewerIds({ LAND_REVIEWERS: 'ice;rm' }, 'o/r', idOf)).toThrow(/is not a GitHub login/);
+    expect(() => reviewerIds({ LAND_REVIEWERS: 'ghost' }, 'o/r', () => Number.NaN)).toThrow(/the user id of ghost/);
+    expect(repoOf({ LAND_REVIEW_REPO: 'a/b', GH_REPO: 'c/d' }, () => '')).toBe('a/b');
+    expect(repoOf({ GITHUB_REPOSITORY: 'e/f' }, () => '')).toBe('e/f');
+    expect(repoOf({}, () => 'git@github.com:compiled-run/dragoncss.git\n')).toBe('compiled-run/dragoncss');
+    expect(() => repoOf({}, () => 'https://example.com/x')).toThrow(/cannot tell the repository/);
+  });
+
+  it('the real script reads the comments through gh (a fake gh on PATH) and fails closed', () => {
+    const dir = tempDir();
+    const pages = (pr: number, o: { updated?: string } = {}) => [[{ id: 5, user: { login: 'owner', id: OWNER }, body: reviewComment({ pr, head, findings: [] }), created_at: '2026-10-08T00:00:00Z', updated_at: o.updated ?? '2026-10-08T00:00:00Z' }]];
+    writeFileSync(join(dir, 'pages.json'), JSON.stringify(pages(41)));
+    writeFileSync(join(dir, 'gh'), `#!/bin/sh\necho "$@" >> "${dir}/args"\ncase "$2" in users/*) echo ${OWNER} ;; *) cat "${dir}/pages.json" ;; esac\n`, { mode: 0o755 });
+    const command = `node --conditions=dragon-internal '${repoPath('scripts/land-review-lookup.ts')}'`;
+    const lookup = (pr: number, extra: Record<string, string> = {}) =>
+      runReviewer(command, 'prompt', dir, 60_000, { ...reviewerEnv(pr, head), LAND_REVIEW_SOURCE: 'comment', LAND_REVIEW_REPO: 'o/r', LAND_REVIEWER_IDS: String(OWNER), PATH: `${dir}:${process.env['PATH']}`, ...extra });
+    expect(lookup(41)).toMatchObject({ status: 0, stdout: '{"findings":[]}\n' });
+    expect(readFileSync(join(dir, 'args'), 'utf8').trim()).toBe('api --paginate --slurp repos/o/r/issues/41/comments?per_page=100');
+    // LAND_REVIEWERS by login, resolved through gh.
+    expect(lookup(41, { LAND_REVIEWER_IDS: '', LAND_REVIEWERS: 'owner' })).toMatchObject({ status: 0 });
+    expect(readFileSync(join(dir, 'args'), 'utf8')).toContain('api users/owner --jq .id');
+    expect(lookup(41, { LAND_REVIEWER_IDS: '77' })).toMatchObject({ status: 1, stderr: expect.stringMatching(/no review comment on #41/) });
+    expect(lookup(42)).toMatchObject({ status: 1, stderr: expect.stringMatching(/reviews PR 41, not #42/) });
+    writeFileSync(join(dir, 'pages.json'), JSON.stringify(pages(41, { updated: '2026-10-08T01:00:00Z' })));
+    expect(lookup(41)).toMatchObject({ status: 1, stderr: expect.stringMatching(/was edited/) });
+    writeFileSync(join(dir, 'pages.json'), 'not json');
+    expect(lookup(41)).toMatchObject({ status: 1, stderr: expect.stringMatching(/cannot read the review comments of #41/) });
+    expect(lookup(41, { LAND_REVIEW_SOURCE: 'issue' })).toMatchObject({ status: 1, stderr: expect.stringMatching(/LAND_REVIEW_SOURCE is "issue"/) });
+  });
+
+  it('pnpm land:post-review posts only a review that the driver would read', () => {
+    const text = JSON.stringify({ pr: 31, head, findings: [finding('low')] });
+    const r = postableReview('31', text, 'r.json');
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(look([comment(OWNER, null, 't', { raw: r.body })])).toMatchObject({ ok: true });
+    expect(postableReview('32', text, 'r.json')).toMatchObject({ ok: false, error: expect.stringMatching(/reviews PR 31, not #32/) });
+    expect(postableReview('31', JSON.stringify({ pr: 31, head: 'abc', findings: [] }), 'r.json')).toMatchObject({ ok: false, error: expect.stringMatching(/^land-post-review: r.json head is "abc"/) });
+    expect(postableReview('x', text, 'r.json')).toMatchObject({ ok: false, error: expect.stringMatching(/^land-post-review: the PR argument is "x"/) });
+    expect(postableReview('31', '{', 'r.json')).toMatchObject({ ok: false });
+    expect(postableReview('31', JSON.stringify({ pr: 31, head, findings: [finding('bad')] }), 'r.json')).toMatchObject({ ok: false, error: expect.stringMatching(/severity "bad"/) });
+  });
+});
+
+describe('the driver state on GitHub (land-state.ts)', () => {
+  const ME = 900;
+  const trusted = new Set([ME]);
+  it('reads the land-stop label of the tracking issue', () => {
+    expect(parseStopIssue(undefined)).toBeNull();
+    expect(parseStopIssue('')).toBeNull();
+    expect(parseStopIssue('12')).toBe(12);
+    expect(() => parseStopIssue('#12')).toThrow(/LAND_STOP_ISSUE must be an issue number/);
+    expect(hasStopLabel([[{ name: 'bug' }], [{ name: 'land-stop' }]])).toBe(true);
+    expect(hasStopLabel([[{ name: 'land-stopped' }], []])).toBe(false);
+    expect(() => hasStopLabel([[{ label: 'land-stop' }]])).toThrow(/has no name/);
+    expect(() => hasStopLabel({})).toThrow(/not a list of pages/);
+    expect(() => stopLabelSet(() => 'not json', 'o/r', 1)).toThrow();
+    expect(() => stopLabelSet(() => '[]', 'o/r; rm', 1)).toThrow(/not owner\/name/);
+  });
+
+  const st = (state: string, description: string, created: string, idn = 1, creator = ME, context = PROOF_CONTEXT) => ({ id: idn, state, description, context, created_at: created, creator: { login: `u${creator}`, id: creator } });
+  it('reads the land/proof status: the newest record by a trusted creator of the first commit that has one', () => {
+    expect(proofOf([st('success', 'x', 't', 1, ME, 'ci')], sha('1'), trusted)).toBeNull();
+    expect(proofOf([st('success', 'proved', '2026-10-08T02:00:00Z', 2), st('pending', `unproved: #5 position ${sha('2')}`, '2026-10-08T01:00:00Z')], sha('1'), trusted)).toEqual({ proved: true });
+    expect(proofOf([st('success', 'proved', '2026-10-08T01:00:00Z', 2), st('pending', `unproved: #5 position ${sha('2')}`, '2026-10-08T02:00:00Z')], sha('1'), trusted)).toEqual({ proved: false, unproved: { pr: 5, head: sha('2') } });
+    // Anyone with statuses write can post one: a newer "proved" by another creator is not a record.
+    expect(proofOf([st('pending', `unproved: #5 position ${sha('2')}`, '2026-10-08T01:00:00Z'), st('success', 'proved', '2026-10-08T03:00:00Z', 3, 666)], sha('1'), trusted)).toEqual({ proved: false, unproved: { pr: 5, head: sha('2') } });
+    expect(proofOf([st('success', 'proved', '2026-10-08T03:00:00Z', 3, 666)], sha('1'), trusted)).toBeNull();
+    expect(proofOf([st('success', 'proved', '2026-10-08T03:00:00Z', 3, 666)], sha('1'), new Set([ME, 666]))).toEqual({ proved: true });
+    expect(proofOf([st('failure', 'garbled', '2026-10-08T01:00:00Z')], sha('1'), trusted)).toEqual({ proved: false, unproved: { pr: 0, head: sha('1') } });
+    expect(() => proofOf({}, sha('1'), trusted)).toThrow(/not a list/);
+    expect(() => proofOf([{ context: PROOF_CONTEXT, state: 'success', creator: { id: ME } }], sha('1'), trusted)).toThrow(/no created_at or id/);
+    // A status with no creator id cannot be tied to a trusted writer: ignored, not trusted and not an error.
+    expect(proofOf([{ context: PROOF_CONTEXT, state: 'success', id: 1, created_at: 't' }], sha('1'), trusted)).toBeNull();
+    expect(proofOf([{ context: PROOF_CONTEXT, state: 'success', id: 2, created_at: 't2', creator: null }, st('pending', `unproved: #5 position ${sha('2')}`, 't')], sha('1'), trusted)).toEqual({ proved: false, unproved: { pr: 5, head: sha('2') } });
+    const calls: string[] = [];
+    const statuses: Record<string, unknown[]> = { [sha('3')]: [st('success', 'proved', 't', 1, 666)], [sha('4')]: [st('pending', `unproved: #9 position ${sha('4')}`, 't')], [sha('5')]: [st('success', 'proved', 't')] };
+    const gh = (args: string[]): string => {
+      calls.push(args.join(' '));
+      return JSON.stringify([statuses[/commits\/([0-9a-f]{40})\//.exec(args.at(-1)!)![1]!], []]);
+    };
+    expect(readProof(gh, 'o/r', [sha('3'), sha('4'), sha('5')], trusted)).toEqual({ proved: false, unproved: { pr: 9, head: sha('4') } });
+    expect(calls).toEqual([`api --paginate --slurp repos/o/r/commits/${sha('3')}/statuses?per_page=100`, `api --paginate --slurp repos/o/r/commits/${sha('4')}/statuses?per_page=100`]);
+    expect(readProof(gh, 'o/r', [sha('3')], trusted)).toBeNull();
+    expect(() => readProof(gh, 'o/r', ['HEAD'], trusted)).toThrow(/not a full sha/);
+    // No record in the lookback: unproved under LAND_CI=only, so a fresh host proves master; the Mac's file speaks otherwise.
+    expect(missingProof(true, sha('6'))).toEqual({ pr: 0, head: sha('6') });
+    expect(missingProof(false, sha('6'))).toBeNull();
+  });
+
+  it('knows the token\'s own identity, and the trusted proof writers', () => {
+    expect(parseSelf(JSON.stringify({ id: 42, login: 'bot' }), undefined)).toEqual({ id: 42, login: 'bot' });
+    expect(parseSelf(null, '43')).toEqual({ id: 43, login: 'user 43' });
+    expect(() => parseSelf(null, undefined)).toThrow(/set LAND_TOKEN_USER_ID/);
+    expect(() => parseSelf(null, 'bot')).toThrow(/LAND_TOKEN_USER_ID/);
+    expect(() => parseSelf('{"login":"x"}', '1')).toThrow(/no id and login/);
+    expect(() => checkNotReviewer({ id: 42, login: 'bot' }, [7, 42])).toThrow(/the token's identity bot \(id 42\) is on the reviewer allowlist/);
+    expect(() => checkNotReviewer({ id: 42, login: 'bot' }, [7])).not.toThrow();
+    expect(parseIds('LAND_PROOF_WRITERS', '1, 2 3')).toEqual([1, 2, 3]);
+    expect(parseIds('LAND_PROOF_WRITERS', undefined)).toEqual([]);
+    expect(() => parseIds('LAND_PROOF_WRITERS', 'me')).toThrow(/LAND_PROOF_WRITERS entry "me" is not a user id/);
+  });
+
+  it('writes the land/proof status, and walks master with the positions its merges took', () => {
+    const calls: string[][] = [];
+    const gh = (args: string[]): string => (calls.push(args), '{}');
+    writeProof(gh, 'o/r', sha('1'), { pr: 7, head: sha('2') }, 'https://run');
+    writeProof(gh, 'o/r', sha('1'), null, null);
+    expect(calls).toEqual([
+      ['api', '-X', 'POST', `repos/o/r/statuses/${sha('1')}`, '-f', 'state=pending', '-f', 'context=land/proof', '-f', `description=unproved: #7 position ${sha('2')}`, '-f', 'target_url=https://run'],
+      ['api', '-X', 'POST', `repos/o/r/statuses/${sha('1')}`, '-f', 'state=success', '-f', 'context=land/proof', '-f', 'description=proved: a full test passed on this tree'],
+    ]);
+    const description = calls[0]!.find((x) => x.startsWith('description='))!.slice('description='.length);
+    expect(proofOf([{ ...st('pending', description, 't') }], sha('1'), trusted)).toEqual({ proved: false, unproved: { pr: 7, head: sha('2') } });
+    expect(() => writeProof(gh, 'o/r', 'master', null, null)).toThrow(/not a full sha/);
+    const log = parseFirstParents(`${sha('a')} ${sha('b')} ${sha('c')}\n${sha('b')} ${sha('d')}\n`);
+    expect(proofCommits(log)).toEqual([sha('a'), sha('c'), sha('b')]);
+    expect(() => parseFirstParents('HEAD abc')).toThrow(/git log printed/);
+  });
+
+  it('skips the queued PRs GitHub reports merged on start, and takes an empty queue only when asked', () => {
+    const q = [1, 2, 3].map((pr) => ({ branch: `b${pr}`, pr, clean: sha('a') }));
+    const r = reconcileQueue(q, (pr) => (pr === 2 ? { state: 'MERGED', mergeCommit: sha('9') } : { state: 'OPEN', mergeCommit: null }));
+    expect(r.queue.map((x) => x.pr)).toEqual([1, 3]);
+    expect(r.merged).toEqual([{ entry: q[1], detail: `merged as ${sha('9')} before this run; skipped` }]);
+    expect(reconcileQueue(q, () => ({ state: 'MERGED', mergeCommit: null })).queue).toEqual([]);
+    expect(() =>
+      reconcileQueue(q, () => {
+        throw new Error('HTTP 502');
+      }),
+    ).toThrow(/502/);
+    expect(() => parseQueue('')).toThrow(/no entries/);
+    expect(parseQueue('', { allowEmpty: true })).toEqual([]);
+  });
+
+  it('writes and reads the handoff of the rest of the queue, and the other settings', () => {
+    const h = { remainder: [{ branch: 'b3', pr: 3, clean: sha('c') }], stopAsked: false, outage: null, fatal: null };
+    expect(parseHandoff(serializeHandoff(h))).toEqual(h);
+    expect(parseHandoff(null)).toBeNull();
+    expect(() => parseHandoff('{')).toThrow();
+    expect(() => parseHandoff(JSON.stringify({ ...h, extra: 1 }))).toThrow(/not exactly/);
+    expect(() => parseHandoff(JSON.stringify({ ...h, remainder: [{ branch: 'master', pr: 1, clean: sha('a') }] }))).toThrow(/bad branch name/);
+    expect(() => parseHandoff(JSON.stringify({ ...h, stopAsked: 'no' }))).toThrow(/wrong type/);
+    expect(parseMaxBatches(undefined)).toBeUndefined();
+    expect(parseMaxBatches('')).toBeUndefined();
+    expect(parseMaxBatches('1')).toBe(1);
+    expect(() => parseMaxBatches('0')).toThrow(/LAND_MAX_BATCHES/);
+    expect(statusSummary('land DONE\n```x\n')).toBe("## Landing driver\n\n```\nland DONE\n'''x\n```\n");
   });
 });

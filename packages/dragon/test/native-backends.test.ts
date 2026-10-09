@@ -117,32 +117,41 @@ describe('the LayoutStyle constructor arguments', () => {
   });
 });
 
-type Tool = { readonly ok: boolean; readonly why: string };
+type Outcome = { readonly arg: string; readonly status: number; readonly out: string };
+type Native = {
+  readonly swiftTool: () => { readonly swiftc: string } | null;
+  readonly kotlinTool: () => { readonly kotlinc: string; readonly javaHome: string } | null;
+  readonly missingToolchain: (subject: string, missing: string) => string;
+};
+// packages/dragon does not depend on packages/translate, so its tool lookups are loaded at run time from its source.
+const translateNative = async (): Promise<Native> => (await import(pathToFileURL(join(root, 'packages/translate/src/native.ts')).href)) as Native;
 
 // Linux Swift's runtime backtracer symbolicates every trap before exiting, which ate the CI time budget.
 const NO_BACKTRACE = { ...process.env, SWIFT_BACKTRACE: 'enable=no' };
 
-function trapRun(lang: 'swift' | 'kotlin', dir: string): { tool: Tool; outcomes: { arg: string; status: number; out: string }[] } {
+/** The outcomes per argument, or the blocked (owner tooling) line when the toolchain is missing (an error with DRAGON_REQUIRE_NATIVE=1). */
+function trapRun(lang: 'swift' | 'kotlin', dir: string, native: Native): Outcome[] | string {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   const args = ['7', '1.5', '2147483648', '-2147483649', '-2147483648'];
   if (lang === 'swift') {
+    const tool = native.swiftTool();
+    if (tool === null) return native.missingToolchain('checked int swift', 'swiftc not found');
     writeFileSync(join(dir, 'Checked.swift'), checkedConversionSource('uikit'));
     writeFileSync(join(dir, 'main.swift'), 'import Foundation\nlet v = Double(CommandLine.arguments[1])!\nprint(dragonCheckedInt(v, "test"))\n');
-    const c = spawnSync('swiftc', ['-O', '-o', join(dir, 'checked'), join(dir, 'Checked.swift'), join(dir, 'main.swift')], { encoding: 'utf8' });
-    if (c.status !== 0) return { tool: { ok: false, why: `swiftc: ${c.stderr ?? c.error}` }, outcomes: [] };
-    return { tool: { ok: true, why: '' }, outcomes: args.map((arg) => { const r = spawnSync(join(dir, 'checked'), [arg], { encoding: 'utf8', env: NO_BACKTRACE }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; }) };
+    const c = spawnSync(tool.swiftc, ['-O', '-o', join(dir, 'checked'), join(dir, 'Checked.swift'), join(dir, 'main.swift')], { encoding: 'utf8' });
+    if (c.status !== 0) throw new Error(`swiftc failed: ${c.stderr ?? ''}${c.error ?? ''}`);
+    return args.map((arg) => { const r = spawnSync(join(dir, 'checked'), [arg], { encoding: 'utf8', env: NO_BACKTRACE }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; });
   }
-  const javaHome = process.env['JAVA_HOME'];
-  const which = spawnSync('which', ['kotlinc'], { encoding: 'utf8' });
-  if (javaHome === undefined || which.status !== 0) return { tool: { ok: false, why: 'no JAVA_HOME or kotlinc' }, outcomes: [] };
+  const tool = native.kotlinTool();
+  if (tool === null) return native.missingToolchain('checked int kotlin', 'no JDK 17+ or kotlinc');
   writeFileSync(join(dir, 'Checked.kt'), checkedConversionSource('android-views'));
   writeFileSync(join(dir, 'Main.kt'), 'package dev.dragon.views\n\nfun main(args: Array<String>) {\n  println(dragonCheckedInt(args[0].toDouble(), "test"))\n}\n');
   const jar = join(dir, 'checked.jar');
-  const env = { ...process.env, JAVA_HOME: javaHome };
-  const c = spawnSync(which.stdout.trim(), ['-include-runtime', '-d', jar, join(dir, 'Checked.kt'), join(dir, 'Main.kt')], { encoding: 'utf8', env });
-  if (c.status !== 0) return { tool: { ok: false, why: `kotlinc: ${c.stderr}` }, outcomes: [] };
-  return { tool: { ok: true, why: '' }, outcomes: args.map((arg) => { const r = spawnSync(join(javaHome, 'bin', 'java'), ['-cp', jar, 'dev.dragon.views.MainKt', arg], { encoding: 'utf8', env }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; }) };
+  const env = { ...process.env, JAVA_HOME: tool.javaHome, PATH: `${join(tool.javaHome, 'bin')}:${process.env['PATH'] ?? ''}` };
+  const c = spawnSync(tool.kotlinc, ['-include-runtime', '-d', jar, join(dir, 'Checked.kt'), join(dir, 'Main.kt')], { encoding: 'utf8', env });
+  if (c.status !== 0) throw new Error(`kotlinc failed: ${c.stderr ?? ''}${c.error ?? ''}`);
+  return args.map((arg) => { const r = spawnSync(join(tool.javaHome, 'bin', 'java'), ['-cp', jar, 'dev.dragon.views.MainKt', arg], { encoding: 'utf8', env }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; });
 }
 
 describe('the checked int conversion (View.layout ints)', () => {
@@ -150,12 +159,10 @@ describe('the checked int conversion (View.layout ints)', () => {
     it(`${lang}: traps on 1.5, 2^31 and -2^31 - 1, and passes 7 and -2^31`, async () => {
       const dir = join(tmpdir(), `dragon-t014-checked-${lang}-${process.pid}`);
       onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
-      const { tool, outcomes } = trapRun(lang, dir);
-      if (!tool.ok) {
-        // Reported as blocked (owner tooling), never as a pass: the lane records it the same way (lanes.ts).
-        const native = (await import(pathToFileURL(join(root, 'packages/translate/src/native.ts')).href)) as { swiftTool: () => unknown; kotlinTool: () => unknown };
-        expect(lang === 'swift' ? native.swiftTool() : native.kotlinTool()).toBeNull();
-        console.log(`checked int ${lang}: blocked (owner tooling): ${tool.why}`);
+      const outcomes = trapRun(lang, dir, await translateNative());
+      if (typeof outcomes === 'string') {
+        // Reported as blocked (owner tooling), never as a pass, the way the lanes record it (lanes.ts).
+        console.log(outcomes);
         return;
       }
       const by = new Map(outcomes.map((o) => [o.arg, o]));

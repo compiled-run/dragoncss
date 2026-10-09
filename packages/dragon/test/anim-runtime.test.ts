@@ -103,6 +103,8 @@ describe('ANIM-b1: the state machine runs the animator', () => {
       // The adapter moves with the machine's clock (R2) and writes the background through the background module's writer.
       expect(t, lang).toContain(lang === 'swift' ? 'machine.clock.onAdvance = { [weak self] ms in self?.advance(ms) }' : 'machine.clock.onAdvance = { ms -> advance(ms) }');
       expect(t, lang).toMatch(/dragonBackground\((b|v), (c|it)\)/);
+      // The frame colour goes through the paint writer (PNT1-radius rounded fill), never straight to the platform property.
+      expect(t, lang).not.toMatch(/backgroundColor = dragonUIColor\(animator|setBackgroundColor\(.*animator/);
     }
   });
 

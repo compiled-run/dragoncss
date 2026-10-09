@@ -6,19 +6,25 @@ import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
+import { CASC_PROPERTY } from './fixture-groups/casc-property.ts';
+import { CASC } from './fixture-groups/casc.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
+import { CHARSET } from './fixture-groups/charset.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { ENV } from './fixture-groups/env.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { GRID } from './fixture-groups/grid.ts';
+import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
+import { LIST_ITEMS } from './fixture-groups/list-items.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
+import { OVERFLOW } from './fixture-groups/overflow.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
@@ -91,19 +97,25 @@ export const GROUPS = {
   background: BACKGROUND,
   'block-elements': BLOCK_ELEMENTS,
   'border-paint': BORDER_PAINT,
+  casc: CASC,
+  'casc-property': CASC_PROPERTY,
   'cascade-var': CASCADE_VAR,
+  charset: CHARSET,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,
   'display-legacy': DISPLAY_LEGACY,
   env: ENV,
   fonts: FONTS,
   grid: GRID,
+  'inherit-contexts': INHERIT_CONTEXTS,
   inline: INLINE,
   interaction: INTERACTION,
+  'list-items': LIST_ITEMS,
   'logical-props': LOGICAL_PROPS,
   media: MEDIA,
   'media-runtime': MEDIA_RUNTIME,
   'milestone-1': MILESTONE_1,
+  overflow: OVERFLOW,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
   radius: RADIUS,
   'rem-contexts': REM_CONTEXTS,

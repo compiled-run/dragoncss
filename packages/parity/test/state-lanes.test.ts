@@ -5,7 +5,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { expectedDigest, expectedDump } from 'dragon';
 import type { DeviceSet, LaneFailure } from '../src/device-lanes.ts';
 import { evaluateSet, evaluateStates, scriptCases, STATE_LANE } from '../src/device-lanes.ts';
@@ -16,8 +16,14 @@ import { BACKEND_OF, expectedEngine, relabelledReferenceDumps } from '../src/nat
 import { stateEmits } from '../src/state-cases.ts';
 import { nativeTargets, stateScriptIds } from '../src/targets.ts';
 
-const dir = mkdtempSync(join(tmpdir(), 'dragon-states-'));
-afterAll(() => rmSync(dir, { recursive: true, force: true }));
+// Made in beforeAll: `vitest list` runs module scope but no hooks, so a module-scope folder would leak.
+let dir = '';
+beforeAll(() => {
+  dir = mkdtempSync(join(tmpdir(), 'dragon-states-'));
+});
+afterAll(() => {
+  if (dir !== '') rmSync(dir, { recursive: true, force: true });
+});
 
 const DPR = 2;
 const device = { name: 'fake', platform: 'ios', os: 'host', build: 'host', profileScale: DPR, appScale: DPR, windowPx: [0, 0], stagePx: [0, 0], rootOriginPx: [0, 0], textScale: 'none' } as unknown as DeviceRecord;

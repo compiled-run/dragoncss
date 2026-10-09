@@ -3,7 +3,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { DeviceSet, LaneFailure } from '../src/device-lanes.ts';
 import { evaluateHits, HIT_LANE, hitFile } from '../src/device-lanes.ts';
 import type { DeviceRecord } from '../src/device-run.ts';
@@ -13,8 +13,14 @@ import type { DeviceRun } from '../src/lanes.ts';
 import { lanesFile } from '../src/lanes.ts';
 import { layoutCaseIds, nativeTargets } from '../src/targets.ts';
 
-const dir = mkdtempSync(join(tmpdir(), 'dragon-hits-'));
-afterAll(() => rmSync(dir, { recursive: true, force: true }));
+// Made in beforeAll: `vitest list` runs module scope but no hooks, so a module-scope folder would leak.
+let dir = '';
+beforeAll(() => {
+  dir = mkdtempSync(join(tmpdir(), 'dragon-hits-'));
+});
+afterAll(() => {
+  if (dir !== '') rmSync(dir, { recursive: true, force: true });
+});
 const device = { name: 'fake' } as unknown as DeviceRecord;
 const cases = hitCases().filter((n) => n.case.id.startsWith('hit-'));
 

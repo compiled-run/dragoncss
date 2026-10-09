@@ -51,6 +51,10 @@ export type { EnvironmentDependencies } from './environment.ts';
 export { environmentDependencies, resolveEnvironment } from './environment.ts';
 export type { FontLengths } from './text.ts';
 export { fontMetricLengths } from './text.ts';
+export { AHEM_FACE_ID, AHEM_SHA256 } from './text.ts';
+export { shapedMeasurerFor, shapingFaultsOf } from './platform.ts';
+export type { GlyphShaper, HanKerningFontData, ShapedFace, ShapingFaults } from './shaping.ts';
+export { FEATURE_STRIDE, GLYPH_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_HAN_KERNING, NO_SHAPING_FAULTS } from './shaping.ts';
 // ANIM-b1 (T065): the rt roots the runtime animator's TypeScript reference runs (packages/parity/src/anim-cases.ts), namespaced.
 export * as rtEasing from './rt-easing.ts';
 export * as rtTiming from './rt-timing.ts';

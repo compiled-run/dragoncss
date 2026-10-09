@@ -1,6 +1,8 @@
 // The full `pnpm test` split for CI (.github/workflows/full-test.yml) by recorded file durations, so the shards end together.
 //   node scripts/test-shards.ts plan <group> <shard> <count>   the files of one shard (1-based), one per line
 //   node scripts/test-shards.ts all                            every test file with its group, tab-separated
+//   node scripts/test-shards.ts group-files [--root <dir>] <file>... the requested files of the tree at dir with their groups, as
+//                                                              all prints them; any file that is not a test file is refused
 //   node scripts/test-shards.ts refresh <vitest-json-report>... rewrites scripts/test-durations.json from CI reports
 // Groups decide the runner: native (swiftc or kotlinc builds; arm64 Linux, swift.org Swift 6.4.0), platform-free
 // (packages/layout and packages/dragon; ubuntu), chrome (everything else; macos-26). A file without a recorded duration inherits
@@ -126,6 +128,26 @@ export function durationsOf(reports: readonly Report[], root: string): Record<st
 /** The group of a test file of this tree, by its name and its content. */
 export const groupOfFile = (file: string, root: string = ROOT): Group => groupOf(file, readFileSync(join(root, file), 'utf8'));
 
+/**
+ * The requested test files of the tree at root, each in its group's list (sorted, each once). Every name must be exactly a test
+ * file of that tree as testFiles lists it (a leading ./ aside): anything else (a directory, a vitest filter or flag, a missing or
+ * misspelled file) is refused, so a run never silently tests fewer files than were asked for.
+ */
+export function groupFiles(requested: readonly string[], root: string = ROOT): Map<Group, string[]> {
+  if (requested.length === 0) throw new Error('no test files were requested');
+  const known = new Set(testFiles(root));
+  const names = requested.map((f) => f.replace(/^\.\//, ''));
+  const unknown = names.filter((f) => !known.has(f));
+  if (unknown.length > 0) throw new Error(`not test files of this tree (test-shards.ts all lists them): ${unknown.map((f) => JSON.stringify(f)).join(', ')}`);
+  const out = new Map<Group, string[]>(GROUPS.map((g) => [g, []]));
+  for (const f of [...new Set(names)].sort()) {
+    const list = out.get(groupOfFile(f, root));
+    if (list === undefined) throw new Error(`${f} matches no group`);
+    list.push(f);
+  }
+  return out;
+}
+
 function main(): void {
   const [mode, ...rest] = process.argv.slice(2);
   const durations = (): Record<string, number> => parseDurations(readFileSync(join(ROOT, DURATIONS_FILE), 'utf8'));
@@ -138,12 +160,15 @@ function main(): void {
     console.log(files.join('\n'));
   } else if (mode === 'all' && rest.length === 0) {
     for (const f of testFiles()) console.log(`${f}\t${groupOfFile(f)}`);
+  } else if (mode === 'group-files' && rest.length > (rest[0] === '--root' ? 2 : 0)) {
+    const [root, files] = rest[0] === '--root' ? [resolve(rest[1] as string), rest.slice(2)] : [ROOT, rest];
+    for (const [g, list] of groupFiles(files, root)) for (const f of list) console.log(`${f}\t${g}`);
   } else if (mode === 'refresh' && rest.length > 0) {
     const files = durationsOf(rest.map((p) => JSON.parse(readFileSync(p, 'utf8')) as Report), ROOT);
     writeFileSync(join(ROOT, DURATIONS_FILE), `${JSON.stringify({ note: 'Seconds per test file on the CI runners (full-test.yml), written by node scripts/test-shards.ts refresh <reports>.', files }, null, 1)}\n`);
     console.log(`${Object.keys(files).length} file durations written to ${DURATIONS_FILE}`);
   } else {
-    console.error('usage: test-shards.ts plan <native|platform-free|chrome> <shard> <count> | all | refresh <vitest-json-report>...');
+    console.error('usage: test-shards.ts plan <native|platform-free|chrome> <shard> <count> | all | group-files [--root <dir>] <file>... | refresh <vitest-json-report>...');
     process.exit(2);
   }
 }

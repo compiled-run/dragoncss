@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   ALREADY_REVIEWED,
   CI_CHECK,
@@ -12,6 +12,7 @@ import {
   type PrHead,
   parsePrHead,
   NO_CODE_REVIEWED,
+  onceExit,
   reviewExit,
   SPENDING_LIMIT,
   spendingLimitWaived,
@@ -41,6 +42,7 @@ import {
   regenOnlyProblems,
   vouchForSkip,
 } from '../../../scripts/pr-review-vouch.ts';
+import { type Gh, ghRest } from '../../../scripts/gh-rest.ts';
 
 const sha = (c: string): string => c.repeat(40);
 const run = (conclusion: string | null, title: string | null, name = 'Macroscope - Correctness Check'): CheckRun => ({
@@ -319,24 +321,34 @@ const scratch = (hostile: boolean) => {
   };
   return { dir, git, commit, ignoreOf, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 };
+type Scratch = ReturnType<typeof scratch>;
 const IGNORE_MD = '---\nignoreTests: false\n---\n**/out/**\n**/vectors/**\n';
 const PNG = (n: number) => Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, n]);
 
 describe('patchIdOver on a scratch repository', () => {
-  const r = scratch(false);
-  afterAll(r.cleanup);
-  const { git, commit } = r;
-  git(['init', '-q', '-b', 'master']);
-  commit({ '.macroscope/ignore.md': IGNORE_MD, 'src/a.ts': 'a\n', 'src/m.ts': 'm\n', 'out/x.json': '1\n' }, 'base');
-  git(['checkout', '-q', '-b', 'pr']);
-  const reviewedCommit = commit({ 'src/a.ts': 'a2\n', 'pkg/vectors/v.json': '1\n' }, 'pr change');
-  git(['checkout', '-q', 'master']);
-  commit({ 'src/m.ts': 'm2\n', 'out/x.json': '2\n' }, 'master moves');
-  git(['checkout', '-q', 'pr']);
-  git(['merge', '-q', '--no-edit', 'master']);
-  const regen = commit({ 'pkg/vectors/v.json': '2\n', 'out/x.json': '3\n' }, 'regen');
-  const touched = commit({ 'src/a.ts': 'a3\n' }, 'reviewed code changes');
-  const head = r.ignoreOf(regen);
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let r!: Scratch;
+  afterAll(() => r?.cleanup());
+  const git: Git = (args, input) => r.git(args, input);
+  const commit: Scratch['commit'] = (files, msg) => r.commit(files, msg);
+  let reviewedCommit = '';
+  let regen = '';
+  let touched = '';
+  let head!: Ignore;
+  beforeAll(() => {
+    r = scratch(false);
+    git(['init', '-q', '-b', 'master']);
+    commit({ '.macroscope/ignore.md': IGNORE_MD, 'src/a.ts': 'a\n', 'src/m.ts': 'm\n', 'out/x.json': '1\n' }, 'base');
+    git(['checkout', '-q', '-b', 'pr']);
+    reviewedCommit = commit({ 'src/a.ts': 'a2\n', 'pkg/vectors/v.json': '1\n' }, 'pr change');
+    git(['checkout', '-q', 'master']);
+    commit({ 'src/m.ts': 'm2\n', 'out/x.json': '2\n' }, 'master moves');
+    git(['checkout', '-q', 'pr']);
+    git(['merge', '-q', '--no-edit', 'master']);
+    regen = commit({ 'pkg/vectors/v.json': '2\n', 'out/x.json': '3\n' }, 'regen');
+    touched = commit({ 'src/a.ts': 'a3\n' }, 'reviewed code changes');
+    head = r.ignoreOf(regen);
+  });
 
   it('vouches for a merge-plus-regen push: reviewed paths identical, generated ones not', () => {
     const before = patchIdOver(git, reviewedCommit, 'master', 'reviewed paths', head);
@@ -366,30 +378,39 @@ describe('patchIdOver on a scratch repository', () => {
 
 describe('patchIdOver under git config that hides or reshapes diffs', () => {
   for (const hostile of [false, true]) {
-    const r = scratch(hostile);
-    afterAll(r.cleanup);
-    const { git, commit } = r;
-    git(['init', '-q', '-b', 'master']);
-    commit({ '.macroscope/ignore.md': IGNORE_MD, '.gitattributes': 'src/opaque.ts -diff\n', 'src/a.ts': 'a\n', 'src/opaque.ts': 'o\n', 'src/latin.txt': Buffer.from([0x61, 0xe9, 0x0a]), 'img/logo.png': PNG(0) }, 'base');
-    git(['checkout', '-q', '-b', 'pr']);
-    const reviewedCommit = commit({ 'src/a.ts': 'a2\n' }, 'pr change');
-    const ignore = r.ignoreOf(reviewedCommit);
+    // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+    let r!: Scratch;
+    afterAll(() => r?.cleanup());
+    const git: Git = (args, input) => r.git(args, input);
+    const commit: Scratch['commit'] = (files, msg) => r.commit(files, msg);
+    let reviewedCommit = '';
+    let ignore!: Ignore;
+    let sub = '';
+    let subMoved = '';
     const id = (c: string) => patchIdOver(git, c, 'master', 'reviewed paths', ignore);
     const at = (files: Record<string, string | Buffer>, msg: string) => {
       git(['checkout', '-q', '--detach', reviewedCommit]);
       return commit(files, msg);
     };
-    const sub = (() => {
-      git(['checkout', '-q', '--detach', reviewedCommit]);
-      git(['update-index', '--add', '--cacheinfo', `160000,${sha('c')},lib/sub`]);
-      git(['commit', '-q', '-m', 'add submodule']);
-      return git(['rev-parse', 'HEAD']).toString().trim();
-    })();
-    const subMoved = (() => {
-      git(['update-index', '--cacheinfo', `160000,${sha('d')},lib/sub`]);
-      git(['commit', '-q', '-m', 'move submodule']);
-      return git(['rev-parse', 'HEAD']).toString().trim();
-    })();
+    beforeAll(() => {
+      r = scratch(hostile);
+      git(['init', '-q', '-b', 'master']);
+      commit({ '.macroscope/ignore.md': IGNORE_MD, '.gitattributes': 'src/opaque.ts -diff\n', 'src/a.ts': 'a\n', 'src/opaque.ts': 'o\n', 'src/latin.txt': Buffer.from([0x61, 0xe9, 0x0a]), 'img/logo.png': PNG(0) }, 'base');
+      git(['checkout', '-q', '-b', 'pr']);
+      reviewedCommit = commit({ 'src/a.ts': 'a2\n' }, 'pr change');
+      ignore = r.ignoreOf(reviewedCommit);
+      sub = (() => {
+        git(['checkout', '-q', '--detach', reviewedCommit]);
+        git(['update-index', '--add', '--cacheinfo', `160000,${sha('c')},lib/sub`]);
+        git(['commit', '-q', '-m', 'add submodule']);
+        return git(['rev-parse', 'HEAD']).toString().trim();
+      })();
+      subMoved = (() => {
+        git(['update-index', '--cacheinfo', `160000,${sha('d')},lib/sub`]);
+        git(['commit', '-q', '-m', 'move submodule']);
+        return git(['rev-parse', 'HEAD']).toString().trim();
+      })();
+    });
     const label = hostile ? 'with hostile config' : 'with default config';
 
     it(`counts a submodule pointer change as a reviewed change (${label})`, () => {
@@ -422,14 +443,21 @@ describe('patchIdOver under git config that hides or reshapes diffs', () => {
 });
 
 describe('regenOnlyProblems on a scratch repository', () => {
-  const r = scratch(false);
-  afterAll(r.cleanup);
-  const { git, commit } = r;
-  git(['init', '-q', '-b', 'master']);
-  commit({ '.macroscope/ignore.md': IGNORE_MD, 'src/a.ts': 'a\n', 'out/x.json': '1\n', 'img/logo.png': PNG(0) }, 'base');
-  git(['checkout', '-q', '-b', 'pr']);
-  const reviewedCommit = commit({ 'src/a.ts': 'a2\n' }, 'pr change');
-  const ignore = r.ignoreOf(reviewedCommit);
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let r!: Scratch;
+  afterAll(() => r?.cleanup());
+  const git: Git = (args, input) => r.git(args, input);
+  const commit: Scratch['commit'] = (files, msg) => r.commit(files, msg);
+  let reviewedCommit = '';
+  let ignore!: Ignore;
+  beforeAll(() => {
+    r = scratch(false);
+    git(['init', '-q', '-b', 'master']);
+    commit({ '.macroscope/ignore.md': IGNORE_MD, 'src/a.ts': 'a\n', 'out/x.json': '1\n', 'img/logo.png': PNG(0) }, 'base');
+    git(['checkout', '-q', '-b', 'pr']);
+    reviewedCommit = commit({ 'src/a.ts': 'a2\n' }, 'pr change');
+    ignore = r.ignoreOf(reviewedCommit);
+  });
   const at = (files: Record<string, string | Buffer>, msg: string) => {
     git(['checkout', '-q', '--detach', reviewedCommit]);
     return commit(files, msg);
@@ -623,11 +651,126 @@ describe('the CI run is required', () => {
 });
 
 describe('--conflicts-ok (GitHub mergeability ignores the merge drivers)', () => {
-  it('turns only CONFLICTING into UNKNOWN, and only when asked', () => {
+  it('marks CONFLICTING and UNKNOWN as IGNORED, and only when asked', () => {
     const head = { sha: 'a'.repeat(40), mergeable: 'CONFLICTING' as const };
-    expect(judgedHead(head, true)).toEqual({ sha: head.sha, mergeable: 'UNKNOWN' });
+    expect(judgedHead(head, true)).toEqual({ sha: head.sha, mergeable: 'IGNORED' });
+    expect(judgedHead({ ...head, mergeable: 'UNKNOWN' }, true)).toEqual({ sha: head.sha, mergeable: 'IGNORED' });
     expect(judgedHead(head, false)).toBe(head);
     const clean = { sha: head.sha, mergeable: 'MERGEABLE' as const };
     expect(judgedHead(clean, true)).toBe(clean);
+    // A merged or closed PR has no mergeability to wait for.
+    expect(judgedHead({ ...head, mergeable: 'UNKNOWN' }, false, false)).toEqual({ sha: head.sha, mergeable: 'IGNORED' });
+  });
+
+  // GitHub answers null (UNKNOWN) while it computes mergeability, e.g. right after master moves; #214 read clean, then dirty.
+  it('waits on an UNKNOWN mergeability without --conflicts-ok, and never passes it', () => {
+    const green = [run('success', null, CI_CHECK), run('success', 'No issues identified')];
+    const unknown: PrHead = { ...HEAD, mergeable: 'UNKNOWN' };
+    expect(settled(green, new Map(), unknown)).toBe(false);
+    const o = outcome(green, new Map(), unknown);
+    expect(o).toEqual({ pending: [`mergeability of ${HEAD.sha} (GitHub has not computed it yet)`], failed: [], unreviewed: false });
+    expect(reviewExit(o, 0)).toBe(1);
+    expect(onceExit(false, o, 0)).toBe(2);
+    // A failed check still ends the wait.
+    expect(settled([run('failure', null, CI_CHECK)], new Map(), unknown)).toBe(true);
+    // The IGNORED that --conflicts-ok (or a closed PR) produces is judged on the checks alone.
+    for (const ignored of [judgedHead(unknown, true), judgedHead(unknown, false, false)]) {
+      expect(settled(green, new Map(), ignored)).toBe(true);
+      expect(reviewExit(outcome(green, new Map(), ignored), 0)).toBe(0);
+    }
+  });
+});
+
+describe('pr-review over REST', () => {
+  const REPO = 'compiled-run/dragoncss';
+  const restPull = (mergeable: boolean | null, state: string) => ({
+    number: 7,
+    state: 'open',
+    merged_at: null,
+    draft: false,
+    body: '',
+    labels: [],
+    mergeable,
+    mergeable_state: state,
+    head: { sha: HEAD.sha, ref: 'topic', repo: { full_name: REPO } },
+    base: { ref: 'master', repo: { full_name: REPO } },
+  });
+  const restFor = (pull: unknown, runs: CheckRun[], comments: unknown[]) => {
+    const table: Record<string, unknown> = {
+      [`api repos/${REPO}/pulls/7`]: pull,
+      [`api --paginate --slurp repos/${REPO}/commits/${HEAD.sha}/check-runs?per_page=100`]: [{ total_count: runs.length, check_runs: runs }],
+      [`api --paginate --slurp repos/${REPO}/pulls/7/comments?per_page=100`]: [comments],
+    };
+    const gh: Gh = (args) => {
+      const key = args.join(' ');
+      if (!(key in table)) throw new Error(`fake gh: no answer for ${key}`);
+      return JSON.stringify(table[key]);
+    };
+    return ghRest({ gh, repo: REPO, sleep: () => {} });
+  };
+  const ci = (conclusion: string | null): CheckRun => run(conclusion, null, CI_CHECK);
+  const limit = (name: string): CheckRun => run('skipped', SPENDING_LIMIT, name);
+  const finding = { id: 1, user: { login: 'macroscopeapp[bot]' }, path: 'a.ts', line: 3, body: 'bug', html_url: 'f' };
+  const reply = { id: 2, in_reply_to_id: 1, user: { login: 'someone' }, path: 'a.ts', line: 3, body: 'Fixed in x', html_url: 'r' };
+  // What pr-review.ts does with one poll: the head from the pull, its check runs, and the unanswered findings.
+  const poll = (pull: unknown, runs: CheckRun[], comments: unknown[], conflictsOk = false) => {
+    const rest = restFor(pull, runs, comments);
+    const view = rest.prView(7);
+    const head = judgedHead({ sha: view.sha, mergeable: view.mergeable }, conflictsOk, view.state === 'OPEN');
+    const seen = rest.checkRuns(head.sha);
+    const all = rest.reviewComments(7);
+    const answered = new Set(all.filter((c) => c.in_reply_to_id !== undefined && !c.user.login.includes('macroscope')).map((c) => c.in_reply_to_id));
+    const open = all.filter((c) => c.in_reply_to_id === undefined && c.user.login.includes('macroscope') && !answered.has(c.id));
+    const o = outcome(seen, new Map(), head);
+    return { head, exit: reviewExit(o, open.length), once: onceExit(settled(seen, new Map(), head), o, open.length), o };
+  };
+  const green = [ci('success'), run('success', 'No issues identified')];
+
+  it('passes a clean PR, in both modes', () => {
+    expect(poll(restPull(true, 'clean'), green, [])).toMatchObject({ head: HEAD, exit: 0, once: 0 });
+    expect(poll(restPull(true, 'blocked'), green, [finding, reply])).toMatchObject({ exit: 0, once: 0 });
+  });
+
+  it('reports an unanswered finding as not clean', () => {
+    expect(poll(restPull(true, 'clean'), green, [finding])).toMatchObject({ exit: 1, once: 1 });
+  });
+
+  it('reports a running check as pending only under --once', () => {
+    expect(poll(restPull(true, 'clean'), [ci(null)], [])).toMatchObject({ exit: 1, once: 2 });
+    expect(poll(restPull(null, 'unknown'), [ci('success')], [])).toMatchObject({ head: { mergeable: 'UNKNOWN' }, exit: 1, once: 2 });
+  });
+
+  it('keeps a green PR pending while GitHub computes its mergeability, unless --conflicts-ok or merged', () => {
+    expect(poll(restPull(null, 'unknown'), green, [])).toMatchObject({ head: { mergeable: 'UNKNOWN' }, exit: 1, once: 2 });
+    expect(poll(restPull(null, 'unknown'), green, [], true)).toMatchObject({ head: { mergeable: 'IGNORED' }, exit: 0, once: 0 });
+    const merged = { ...restPull(null, 'unknown'), state: 'closed', merged_at: '2026-10-08T00:00:00Z' };
+    expect(poll(merged, green, [])).toMatchObject({ head: { mergeable: 'IGNORED' }, exit: 0, once: 0 });
+  });
+
+  it('fails a dirty PR at once, unless --conflicts-ok', () => {
+    const dirty = restPull(false, 'dirty');
+    expect(poll(dirty, [ci(null)], [])).toMatchObject({ head: { mergeable: 'CONFLICTING' }, exit: 1, once: 1 });
+    expect(poll(dirty, green, [], true)).toMatchObject({ head: { mergeable: 'IGNORED' }, exit: 0, once: 0 });
+  });
+
+  it('passes an unreviewed PR (spending limit) with CI green and no findings', () => {
+    const r = poll(restPull(true, 'clean'), [ci('success'), limit(CORRECTNESS), limit('Macroscope - Proof guard')], []);
+    expect(r).toMatchObject({ exit: 0, once: 0 });
+    expect(r.o.unreviewed).toBe(true);
+  });
+
+  it('rejects a malformed REST answer, naming the field', () => {
+    expect(() => poll({ ...restPull(true, 'clean'), head: { sha: 'abc', ref: 'topic', repo: null } }, green, [])).toThrow(/pull\.head\.sha/);
+    expect(() => poll(restPull(true, 'clean'), green, [{ ...finding, path: null }])).toThrow(/review comment\.path/);
+  });
+
+  // The proxy in Claude Code cloud sessions refuses GraphQL, so neither script may call a gh subcommand that uses it.
+  it('uses no GraphQL gh subcommand', () => {
+    const subcommands = '(pr|repo|issue|label|search|project|release)';
+    const graphql = [new RegExp(`['"]${subcommands}['"]\\s*,\\s*['"]\\w+['"]`), new RegExp(`\\bgh\\s+${subcommands}\\s+\\w+`), /graphql/i];
+    for (const file of ['pr-review.ts', 'gh-rest.ts']) {
+      const source = readFileSync(new URL(`../../../scripts/${file}`, import.meta.url), 'utf8');
+      for (const pattern of graphql) expect(source.match(pattern)?.[0], `${file}: ${pattern}`).toBeUndefined();
+    }
   });
 });

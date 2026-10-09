@@ -212,8 +212,9 @@ describe('profile diagnostics name the alias as written', () => {
     return [...new Set(c.diagnostics.map((d) => `${d.code} ${d.message}`))];
   };
   it('an unsupported value says which alias set it', () => {
-    expect(messages('body { margin: 0 } .a { -webkit-box-sizing: inherit }', 'ltr', (r) => [div(r, 'a', ['a'])])).toEqual([
-      'DRAGON_UNSUPPORTED_VALUE box-sizing: inherit (set by -webkit-box-sizing: inherit) is unsupported (support profile m1-s5); in block/ltr use border-box or content-box',
+    expect(messages('body { margin: 0 } .a { -webkit-box-sizing: unset }', 'ltr', (r) => [div(r, 'a', ['a'])])).toEqual([
+      // ctx-proof-inherit proves box-sizing: inherit, so unset is the alias value still without a row.
+      'DRAGON_UNSUPPORTED_VALUE box-sizing: unset (set by -webkit-box-sizing: unset) is unsupported (support profile m1-s5); in block/ltr use border-box, content-box or inherit',
     ]);
   });
   it('an unproven context names the alias shorthand that set the longhand', () => {
