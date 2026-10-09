@@ -28,6 +28,17 @@ describe('anywhere-if-overflow', () => {
       expect(lines(45, [leaf('t', 'aaaaaaaaaa bb', over)], 't')).toEqual([[0, 4 * G], [0, 4 * G], [0, 2 * G], [0, 2 * G]]);
     });
   }
+  it('a word\'s last grapheme keeps its trailing space on its line: no blank line before the next word (HandleTrailingSpaces)', () => {
+    for (const over of [{ overflowWrap: 'anywhere' }, { overflowWrap: 'break-word' }, { wordBreak: 'break-word' }] as const) {
+      const r = layoutWithFaults(input(box('root', {}, [box('c', { width: px(5) }, [leaf('t', 'ab cd', over)])])), ahemMeasurer, NO_ENGINE_FAULTS);
+      if (r.kind !== 'ok') throw new Error(r.unsupported.code);
+      const abs = absoluteRects(r.boxes);
+      const ys: number[] = [];
+      for (let j = 0; abs.has(`t:line${j}`); j++) ys.push((abs.get(`t:line${j}`) as { y: number }).y);
+      expect(ys, JSON.stringify(over)).toEqual([0, 10, 20, 30].map((y) => y * 64));
+      expect((abs.get('c') as { height: number }).height, JSON.stringify(over)).toBe(40 * 64);
+    }
+  });
   it('normal lets the word overflow', () => {
     expect(lines(45, [leaf('t', 'aaaaaaaaaa bb', {})], 't')).toEqual([[0, 10 * G], [0, 2 * G]]);
   });

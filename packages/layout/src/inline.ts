@@ -1029,7 +1029,9 @@ function breakLines(ctx: Ctx, ifc: Ifc, adv: readonly LU[], available: LU): Line
     // it, or the first one when none does. The next line starts there, at the same boundaries as before.
     if (ifc.anywhere && !always && end === firstEnd && !lineFits(ctx, ifc, adv, start, end, limit, fit)) {
       const g = graphemeBreakIn(ctx, ifc, adv, start, start, end, limit, fit);
-      if (g > start) {
+      // HandleTrailingSpaces keeps the collapsible spaces after a break-character break on this line, so a break before nothing
+      // but hanging space is no break.
+      if (g > start && visibleEndOf(ifc, g, end) > g) {
         end = g;
         forced = false;
         k--;
