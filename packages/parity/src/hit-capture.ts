@@ -207,11 +207,10 @@ export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; 
 };
 
 /**
- * The longhands added since the identity base, beside pointer-events: PNT1's four corner radii and SVG-a1's svg family (fill, stroke,
- * stroke-width; svg.test.ts proves its own values), which every capture and emitted rule gained after the base was written, so the
- * base files must differ from it by exactly these keys and pointer-events.
+ * The longhands added since the identity base, beside pointer-events: PNT1's four corner radii, which every capture and emitted rule
+ * gained after the base was written, so the base files must differ from it by exactly these keys and pointer-events.
  */
-const KEYS_SINCE_BASE = ['pointer-events', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'fill', 'stroke', 'stroke-width'];
+const KEYS_SINCE_BASE = ['pointer-events', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'];
 const JSON_KEYS = new RegExp(`,\\n[ ]*"(${KEYS_SINCE_BASE.join('|')})": "[^"]*"`, 'g');
 const CSS_KEYS = new RegExp(`^[ ]*(${KEYS_SINCE_BASE.join('|')}): [^;\\n]*;\\n`, 'gm');
 
@@ -221,10 +220,17 @@ const CSS_KEYS = new RegExp(`^[ ]*(${KEYS_SINCE_BASE.join('|')}): [^;\\n]*;\\n`,
  * ol rule sets it, in GEN_B_DECIMAL_FIXTURES; any other value stays in the text, so the file no longer hashes to the base.
  */
 const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
+/**
+ * SVG-a1's svg family (fill, stroke, stroke-width), also added after the identity base, at its initial values only, in LONGHANDS order:
+ * a base file has no SVG, so any other value stays in the text and the file no longer hashes to the base (svg.test.ts proves the
+ * family's own values).
+ */
+const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"/g;
+const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n/gm;
 const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
 
 /**
- * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and GEN-b's neutral longhands) removed: the computed
+ * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and GEN-b's and SVG-a1's neutral longhands) removed: the computed
  * value of every captured element, and the declaration of every emitted rule; an emitted file's compilation digest (its first line)
  * is masked, since every compilation digest moves with the compiler input.
  */
@@ -232,11 +238,11 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    return text.replace(JSON_KEYS, '').replace(genB, '');
+    return text.replace(JSON_KEYS, '').replace(genB, '').replace(SVG_JSON, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
-    return text.replace(CSS_KEYS, '').replace(genB, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+    return text.replace(CSS_KEYS, '').replace(genB, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }

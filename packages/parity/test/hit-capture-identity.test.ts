@@ -121,14 +121,21 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(withoutPointerEvents('a.css', '.d {\n  border-top-left-radius: 1px;\n  color: blue;\n}\n')).not.toBe(withoutPointerEvents('a.css', '.d {\n  color: red;\n}\n'));
   });
 
-  it('removes the SVG-a1 svg family (fill, stroke, stroke-width) added since the base, beside the radii, and nothing else', () => {
-    const json = '{\n  "x": "1",\n  "fill": "rgb(0, 0, 0)",\n  "border-top-left-radius": "0px",\n  "stroke": "none",\n  "stroke-width": "1px",\n  "pointer-events": "auto"\n}';
-    expect(withoutPointerEvents('a.json', json)).toBe('{\n  "x": "1"\n}');
-    expect(withoutPointerEvents('a.css', '.d {\n  fill: rgb(30, 90, 200);\n  color: red;\n  stroke: none;\n  stroke-width: 2px;\n}\n')).toBe('.d {\n  color: red;\n}\n');
-    // A key that only starts like the family's, or a changed value beside the stripped ones, still differs.
+  it('removes the SVG-a1 svg family (fill, stroke, stroke-width) only at its initial values, in LONGHANDS order, and nothing else', () => {
+    const json = (fill: string, stroke: string, width: string) => `{\n  "x": "1",\n  "list-style-image": "none",\n  "fill": "${fill}",\n  "stroke": "${stroke}",\n  "stroke-width": "${width}"\n}`;
+    const jsonBase = '{\n  "x": "1",\n  "list-style-image": "none"\n}';
+    expect(withoutPointerEvents('a.json', json('rgb(0, 0, 0)', 'none', '1px'))).toBe(jsonBase);
+    const css = (fill: string, stroke: string, width: string) => `.d {\n  color: red;\n  fill: ${fill};\n  stroke: ${stroke};\n  stroke-width: ${width};\n}\n`;
+    const cssBase = '.d {\n  color: red;\n}\n';
+    expect(withoutPointerEvents('a.css', css('rgb(0, 0, 0)', 'none', '1px'))).toBe(cssBase);
+    // Any non-initial fill, stroke or stroke-width stays in the text, so a base file that gained one no longer hashes to the base.
+    for (const [f, s, w] of [['rgb(30, 90, 200)', 'none', '1px'], ['none', 'none', '1px'], ['rgb(0, 0, 0)', 'rgb(200, 40, 40)', '1px'], ['rgb(0, 0, 0)', 'none', '2px']] as const) {
+      expect(withoutPointerEvents('a.json', json(f, s, w)), `${f} ${s} ${w}`).not.toBe(jsonBase);
+      expect(withoutPointerEvents('a.css', css(f, s, w)), `${f} ${s} ${w}`).not.toBe(cssBase);
+    }
+    // A key that only starts like the family's still differs.
     expect(withoutPointerEvents('a.json', '{\n  "x": "1",\n  "fill-opacity": "1"\n}')).not.toBe('{\n  "x": "1"\n}');
-    expect(withoutPointerEvents('a.css', '.d {\n  stroke-dasharray: none;\n  color: red;\n}\n')).not.toBe('.d {\n  color: red;\n}\n');
-    expect(withoutPointerEvents('a.css', '.d {\n  fill: none;\n  color: blue;\n}\n')).not.toBe(withoutPointerEvents('a.css', '.d {\n  color: red;\n}\n'));
+    expect(withoutPointerEvents('a.css', '.d {\n  stroke-dasharray: none;\n  color: red;\n}\n')).not.toBe(cssBase);
   });
 
   it('parity:hit-capture takes --vectors, --identity-base <rev> or nothing, and refuses anything else', () => {
