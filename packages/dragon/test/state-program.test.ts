@@ -153,6 +153,11 @@ describe('the generated runtime', () => {
   it('refuses a node write it has no state-node form for and a text node without its run; keeps keys inside their doc comments', () => {
     const odd = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), writes: [{ kind: 'shadow' } as unknown as ProgramNode['writes'][number]] }]) };
     expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [odd]), scripts: [] }])).toThrow(/r: no state-node write for \{"kind":"shadow"\}/);
+    // PNT1's radius writes have no runtime writer yet: refused by name rather than dropped from the case script.
+    for (const w of [{ kind: 'border-radius', lengths: [] }]) {
+      const painted = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), writes: [w as unknown as ProgramNode['writes'][number]] }]) };
+      expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [painted]), scripts: [] }])).toThrow(`r: the state runtime cannot write ${w.kind} yet`);
+    }
     const bare = { ...(CASES[0] as StateCase), program: program(box('r', 10), [{ ...node('r', null, 1), kind: 'text', writes: [] }]) };
     expect(() => emitStatePrograms('uikit', [{ ...emit, program: deriveStateProgram('uikit', [bare]), scripts: [] }])).toThrow(/r: a text node without a text run/);
     const weird = deriveStateProgram('uikit', [{ ...(CASES[0] as StateCase), assignment: [{ state: { instance: 'a*/b\nc', state: 'on' }, value: 'x' }] }]);
@@ -188,6 +193,17 @@ describe('the generated runtime', () => {
     expect(() => emitStatePrograms('uikit', [{ ...emit, scripts: [{ ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'advance', ms: -1 }] }] }])).toThrow(/finite, non-negative/);
     expect(() => emitStatePrograms('uikit', [{ ...emit, scripts: [{ ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'set', state: 'doc#open', value: 'x' }] }] }])).toThrow(/no value "x"/);
     expect(() => emitStatePrograms('uikit', [emit, emit])).toThrow(/share an id/);
+  });
+
+  it('refuses an animated program that can change its viewport (the animator resolves its inputs once, at the start viewport)', () => {
+    const anim = { assignments: emit.program.assignments.length, slots: [], animations: [], keyframes: [], rendered: [], bases: [], closure: [] };
+    expect(emitStatePrograms('uikit', [{ ...emit, anim }]).map((f) => f.text).join('\n')).toContain('anim: dragonStates0AnimTables');
+    const resize = { ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'resize', width: 400, height: 300 } as const, { kind: 'dump' } as const] };
+    for (const backend of ['uikit', 'android-views'] as const) {
+      expect(() => emitStatePrograms(backend, [{ ...emit, anim, scripts: [resize] }])).toThrow(/an animated state program cannot change its viewport yet/);
+      // Without animation tables the same resize script emits.
+      expect(emitStatePrograms(backend, [{ ...emit, scripts: [resize] }]).map((f) => f.text).join('\n')).toMatch(/[Rr]esize\(400\.0, 300\.0\)/);
+    }
   });
 
   it('the web attribute program writes each assignment\'s classes and validates before any mutation', async () => {
@@ -237,10 +253,11 @@ describe('the generated state mount (Macroscope 4157246848)', () => {
 
   it('Swift: set ends by calling onChange; the mount re-renders from it; a script runs only on a mount', () => {
     const t = support('uikit');
-    expect(t).toMatch(/current = to\n {4}onChange\?\(\)\n {2}\}/);
-    expect(t).toContain('machine.onChange = { [weak self] in self?.render() }');
+    // ANIM-b1 R4: the animator's style change event comes between the committed set and onChange.
+    expect(t).toMatch(/current = to\n {4}\/\/ ANIM-b1 R4: one style change event per setter call\.\n {4}animator\?\.event\(to\)\n {4}onChange\?\(\)\n {2}\}/);
+    expect(t).toMatch(/machine\.onChange = \{ \[weak self\] in\n {6}self\?\.render\(\)\n/);
     expect(t).toMatch(/let t = DragonTree\(\)\n {4}machine\.build\(t\)\n {4}media\.addSubview\(t\.root\)\n {4}do \{\n {6}try t\.apply\(machine\.input\(scale\)/);
-    expect(t).toMatch(/tree\.root\.removeFromSuperview\(\)\n {4}tree = t\n {4}renders \+= 1/);
+    expect(t).toMatch(/shown\.root\.removeFromSuperview\(\)\n {4}shown = t\n {4}renders \+= 1/);
     // MQ-R1: a script runs on the mount (its resize steps size the mount's media root), its setters on the mount's machine.
     expect(t).toContain('case .set(let a, let b): m.machine.set(a, b)');
     expect(t).toContain('runs on a state mount, not as a layout case');
@@ -248,10 +265,10 @@ describe('the generated state mount (Macroscope 4157246848)', () => {
 
   it('Kotlin: set ends by calling onChange; the mount re-renders from it; a script runs only on a mount', () => {
     const t = support('android-views');
-    expect(t).toMatch(/current = to\n {4}onChange\?\.invoke\(\)\n {2}\}/);
-    expect(t).toContain('machine.onChange = { render() }');
+    expect(t).toMatch(/current = to\n {4}\/\/ ANIM-b1 R4: one style change event per setter call\.\n {4}animator\?\.event\(to\)\n {4}onChange\?\.invoke\(\)\n {2}\}/);
+    expect(t).toMatch(/machine\.onChange = \{\n {6}render\(\)\n/);
     expect(t).toMatch(/val t = DragonTree\(stage\.context\)\n {4}machine\.build\(t\)\n {4}t\.apply\(machine\.input\(scale\), measurer, scale, bridge\)\n {4}media\.addView\(t\.root/);
-    expect(t).toMatch(/media\.removeView\(tree\.root\)\n {4}tree = t\n {4}renders\+\+/);
+    expect(t).toMatch(/media\.removeView\(shown\.root\)\n {4}shown = t\n {4}renders\+\+/);
     expect(t).toContain('is DragonScriptStep.Set -> m.machine.set(s.s, s.v)');
     expect(t).toContain('runs on a state mount, not as a layout case');
   });
