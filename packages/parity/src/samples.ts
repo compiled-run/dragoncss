@@ -17,7 +17,10 @@ const CORNERS = ['top-left', 'top-right', 'bottom-right', 'bottom-left'] as cons
 /** Where a box rule tries its point along a side (or across the padding box), in order, before it drops the point (T093 ruling A). */
 export const ALONG_POSITIONS: readonly number[] = [1 / 2, 1 / 4, 3 / 4, 1 / 8, 7 / 8];
 
-/** One box in whole device px: snapped border-box edges, border band widths, one corner radius, and whether it clips overflow. */
+/**
+ * One box in whole device px: snapped border-box edges, border band widths, one corner radius, whether it clips overflow, and its
+ * layout border-box size in device px before snapping (percentage radii resolve against it).
+ */
 export type SampleBox = {
   readonly id: string;
   readonly left: number;
@@ -27,6 +30,7 @@ export type SampleBox = {
   readonly border: { readonly top: number; readonly right: number; readonly bottom: number; readonly left: number };
   readonly radius: number;
   readonly clips: boolean;
+  readonly size: readonly [number, number];
 };
 
 export type SamplePoint = { readonly x: number; readonly y: number; readonly rule: string };

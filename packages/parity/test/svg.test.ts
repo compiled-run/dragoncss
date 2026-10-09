@@ -4,6 +4,7 @@
 // planted fault fails it.
 import { describe, expect, it } from 'vitest';
 import { absoluteRects, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, REFERENCE_PLATFORM, validateLayoutInput } from '@dragon/layout';
+import type { SvgScene } from 'dragon';
 import { iosLayoutProjection, svgScenes } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { committedAuthored } from '../src/committed.ts';
@@ -68,7 +69,8 @@ describe('the viewBox and client-rect arithmetic', () => {
 
 describe('the svg fixtures against their committed Chrome captures', () => {
   const runs = SVG.filter((s) => s.kind === 'layout').flatMap((spec) => casesOf(spec, fixtureInput(spec)).map((c) => ({ spec, c })));
-  const problems = async (faults: SvgFaults): Promise<string[]> => {
+  type Scenes = readonly SvgScene[] | null;
+  const problems = async (faults: SvgFaults, alter: (scenes: Scenes) => Scenes = (x) => x): Promise<string[]> => {
     const out: string[] = [];
     for (const { spec, c } of runs) {
       const { compiled } = compileFixture(spec, undefined, 'enforce', c.environment.direction);
@@ -78,13 +80,39 @@ describe('the svg fixtures against their committed Chrome captures', () => {
       if (!v.ok) throw new Error(`${c.id}: layout input rejected`);
       const r = layoutWithFaults(v.input, measurer(), NO_ENGINE_FAULTS);
       if (r.kind !== 'ok') throw new Error(`${c.id}: ${r.unsupported.detail}`);
-      out.push(...compareSvg(await committedAuthored(c), svgScenes(compiled, c.assignment) ?? [], absoluteRects(r.boxes), v.input, faults).map((m) => `${c.id}: ${m}`));
+      out.push(...compareSvg(await committedAuthored(c), alter(svgScenes(compiled, c.assignment)), absoluteRects(r.boxes), v.input, faults).map((m) => `${c.id}: ${m}`));
     }
     return out;
   };
   it('every shape of every case equals Chrome as doubles', async () => {
     expect(runs.length).toBe(8);
     expect(await problems(NO_SVG_FAULTS)).toEqual([]);
+  });
+  it('no SVG shape records inline line fragments: its computed display is inline, but SVG lays it out (capture.ts)', async () => {
+    let shapes = 0;
+    for (const { c } of runs) {
+      const nodes = (await committedAuthored(c)).nodes;
+      const shapeIds = new Set(nodes.filter((n) => n.svg !== undefined).map((n) => n.id));
+      shapes += shapeIds.size;
+      expect(nodes.filter((n) => n.kind === 'line' && shapeIds.has(n.id.replace(/:line\d+$/, ''))).map((n) => n.id), c.id).toEqual([]);
+    }
+    expect(shapes).toBeGreaterThan(0);
+  });
+  it('a shape Chrome captured that Dragon drops fails the differential: both sides are judged whole', async () => {
+    const shapes = runs.length > 0 ? (await committedAuthored((runs[0] as (typeof runs)[number]).c)).nodes.filter((n) => n.svg !== undefined).length : 0;
+    expect(shapes).toBeGreaterThan(1);
+    // One shape dropped from the first scene of every case.
+    const dropOne = (sc: Scenes): Scenes => (sc === null ? null : sc.map((x, i) => (i === 0 ? { ...x, shapes: x.shapes.slice(1) } : x)));
+    const one = await problems(NO_SVG_FAULTS, dropOne);
+    expect(one.length).toBe(runs.length);
+    for (const m of one) expect(m).toMatch(/^\S+: [A-Za-z0-9_-]+: Chrome captured an SVG shape that no Dragon svg scene has$/);
+    // No scenes at all, as an empty list and as null (no resolved case).
+    const none = await problems(NO_SVG_FAULTS, (sc) => (sc === null ? null : []));
+    expect(none.length).toBeGreaterThan(runs.length);
+    expect(none.every((m) => /: Chrome captured an SVG shape that no Dragon svg scene has$/.test(m))).toBe(true);
+    const nulls = await problems(NO_SVG_FAULTS, () => null);
+    expect(nulls.length).toBe(runs.length);
+    for (const m of nulls) expect(m).toMatch(/: Dragon resolved no svg scenes for this case, but Chrome captured the shapes [a-z0-9, ]+$/);
   });
   it('each planted fault fails the differential', async () => {
     for (const k of Object.keys(NO_SVG_FAULTS) as (keyof SvgFaults)[]) {

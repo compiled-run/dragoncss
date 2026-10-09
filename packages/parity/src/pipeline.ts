@@ -3,7 +3,7 @@
 //   chrome-dual: Dragon's web output rendered in Chrome against the authored rendering, boxes and computed values exactly.
 import type { Browser } from 'playwright';
 import type { EngineFaults, LayoutInput, LayoutRect, LayoutUnsupported } from '@dragon/layout';
-import { absoluteRects, layoutWithFaults, measurerFor, validateLayoutInput } from '@dragon/layout';
+import { absoluteRects, layoutWithFaults, validateLayoutInput } from '@dragon/layout';
 import type { Assignment, CompilerFaults, Compiled, Diagnostic, Environment, FrontEndResult, Origin, Scalar, TextTopologyEntry } from 'dragon';
 import { compiledCases, compiledFeatures, createProjectWith, interactionPartitionOf, iosLayoutProjection, laneOnlyNative, nativeLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, svgScenes, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
 import type { WebCapture } from './capture.ts';
@@ -23,6 +23,7 @@ import { ENVIRONMENT, environmentsOf } from './fixtures.ts';
 import { fontMapOf, withFontMapAssets } from './fixture-groups/fonts.ts';
 import { fontDataUrl } from './font-reference.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
+import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import { authoredModel } from './render.ts';
 import type { TreeExpectation } from './tree-fixture.ts';
 import { readTreeExpectation } from './tree-fixture.ts';
@@ -108,13 +109,6 @@ export type RunOptions = {
   /** The determinism check (S5 (c)) compiles an order-shuffled copy of the fixture input; every other run passes the input as read. */
   readonly transformInput?: (input: FrontEndResult) => FrontEndResult;
 };
-
-/** The engine measurer of the reference platform; any other platform is refused (docs/decisions.md). */
-function referenceMeasurer() {
-  const m = measurerFor(REFERENCE_PLATFORM);
-  if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
-  return m.measurer;
-}
 
 /** The front-end input a fixture compiles from; a fonts fixture's pinned faces' vendored files ride along as snapshot assets (TXT1-C). */
 export function fixtureCompileInput(spec: FixtureSpec): FrontEndResult {
@@ -303,6 +297,8 @@ export function topologyProblems(declared: TreeExpectation, input: FrontEndResul
 
 async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss: string | null, browser: Browser, opts: RunOptions): Promise<CaseOutcome> {
   // SELD-R2: a case only the lanes compile on native (a user's compile refuses it there) proves no native row; web rows only.
+  // SELD-R2 and T078 R14 (overflow auto and scroll until OVFL-B): a case only the lanes compile on native (a user's compile refuses
+  // it there) proves no native row; web rows only.
   const features = { ios: laneOnlyNative(compiled, 'ios') ? [] : compiledFeatures(compiled, 'ios', c.assignment), web: compiledFeatures(compiled, 'web', c.assignment) };
   const topology = textTopology(compiled, c.assignment);
   const base = { id: c.id, fixture: c.fixture, index: c.index, direction: c.environment.direction, assignment: c.assignment, isInitial: c.isInitial, features, unsupported: null, comparison: null, dual: null, vector: null, topology, textLines: [] };
@@ -318,7 +314,7 @@ async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss:
   // Lane linux-dragon-layout.
   const validated = validateLayoutInput(JSON.parse(JSON.stringify(projection.input)));
   if (!validated.ok) return fail(`layout input rejected: ${validated.errors.map((e) => `${e.path} ${e.code}`).join('; ')}`);
-  const result = layoutWithFaults(validated.input, referenceMeasurer(), opts.engineFaults);
+  const result = layoutWithFaults(validated.input, referenceShapedMeasurer(opts.engineFaults), opts.engineFaults);
   let layoutStatus: LaneStatus;
   let comparison: Comparison | null = null;
   let unsupported: LayoutUnsupported | null = null;
@@ -330,7 +326,7 @@ async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss:
   } else {
     comparison = compareLayout(authored, absoluteRects(result.boxes), validated.input, c.environment);
     // SVG-a1: the shapes' outline differential (svg-compare.ts) belongs to the layout lane.
-    const scenes = svgScenes(compiled, c.assignment) ?? [];
+    const scenes = svgScenes(compiled, c.assignment);
     const svgProblems = compareSvg(authored, scenes, absoluteRects(result.boxes), validated.input);
     if (svgProblems.length > 0) comparison = { ...comparison, pass: false, problems: [...comparison.problems, ...svgProblems] };
     layoutStatus = comparison.pass ? 'pass' : 'fail';

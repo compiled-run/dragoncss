@@ -13,7 +13,7 @@ import { uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeGridLengths, computeJustifyItems, computeLengths, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeGridLengths, computeJustifyItems, computeLengths, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
 import { presentationalHints } from './elements/replaced.ts';
 import { svgHintDeclaration } from './elements/svg.ts';
@@ -90,6 +90,55 @@ export function collapseInlineRun(texts: readonly string[]): string[] {
   return texts.map((_, run) => out.filter((c) => c.run === run).map((c) => c.ch).join(''));
 }
 
+/**
+ * collapseInlineRun over a whole inline formatting context that may hold line breaks (<br>, null in runs): a white space sequence
+ * collapses across run and inline box boundaries, but not across a <br>. The spaces at the start of the context and after a <br>
+ * begin a line, and the spaces at its end end one, so §4.1.2 removes them; a space before a <br> is kept, as Blink keeps it (it
+ * hangs at the end of its line, INL-P f2-after-space). Without a <br> this is collapseInlineRun.
+ */
+export function collapseInlineContext(runs: readonly (string | null)[]): (string | null)[] {
+  type C = { readonly ch: string; readonly run: number } | { readonly br: true };
+  const chars: C[] = [];
+  runs.forEach((t, run) => {
+    if (t === null) chars.push({ br: true });
+    else for (const ch of t) chars.push({ ch, run });
+  });
+  const out: { ch: string; run: number }[] = [];
+  let lineStart = true;
+  let k = 0;
+  while (k < chars.length) {
+    const c = chars[k] as C;
+    if ('br' in c) {
+      lineStart = true;
+      k++;
+      continue;
+    }
+    if (!WHITE_SPACE.test(c.ch)) {
+      out.push(c);
+      lineStart = false;
+      k++;
+      continue;
+    }
+    let e = k;
+    let segmentBreak = false;
+    while (e < chars.length) {
+      const x = chars[e] as C;
+      if ('br' in x || !WHITE_SPACE.test(x.ch)) break;
+      if (x.ch === '\n' || x.ch === '\r') segmentBreak = true;
+      e++;
+    }
+    const before = lineStart ? undefined : out[out.length - 1];
+    const after = chars[e];
+    const nextToZwsp = (before !== undefined && before.ch === ZWSP) || (after !== undefined && !('br' in after) && after.ch === ZWSP);
+    if (before !== undefined && after !== undefined && !(segmentBreak && nextToZwsp)) out.push({ ch: ' ', run: c.run });
+    k = e;
+  }
+  return runs.map((t, run) => (t === null ? null : out.filter((c) => c.run === run).map((c) => c.ch).join('')));
+}
+
+/** CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7). */
+const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline';
+
 const displayOf = (el: ResolvedElement): string => {
   const v = (el.props.get('display') as ResolvedValue).value;
   return v.kind === 'keyword' ? v.value : '';
@@ -102,9 +151,11 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
   const customsOf = new WeakMap<ResolvedElement, CustomProperties>();
+  // The children of each inline box, waiting for its block container's inline formatting context to collapse their text.
+  const pendingInline = new Map<ResolvedElement, readonly (ResolvedElement | LinkedText)[]>();
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
     const here = [...chain, el];
-    const { winners, matched, scope } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction);
+    const { winners, matched, scope } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered);
     const props = new Map<Longhand, ResolvedValue>();
     const tag = uaTagOf(el.tag);
     const none = { declaration: null, declared: null, losing: [] } as const;
@@ -119,6 +170,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     };
     // Longhands no author declaration set: their UA value depends on the element's final direction and font size (below).
     const defaulted = new Set<Longhand>();
+    // Longhands whose author winner is revert or revert-layer: they keep that declaration while taking the rolled-back value.
+    const revertedProps = new Set<Longhand>();
     const hints = presentationalHints(el.tag, el.attributes);
     for (const p of LONGHANDS) {
       const raw = winners.get(p);
@@ -134,11 +187,14 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       };
       // css-color-4 §4.4: currentcolor as the value of color behaves as inherit.
       const currentColorOnColor = p === 'color' && w !== undefined && w.value.kind === 'keyword' && w.value.value === 'currentcolor';
-      if (w !== undefined && !currentColorOnColor && !(w.value.kind === 'keyword' && ['inherit', 'initial', 'unset'].includes(w.value.value))) {
+      // css-cascade-5 §7.3, §7.4: revert in the author origin rolls back to the user-agent origin (there is no user origin), and
+      // revert-layer outside any layer is revert; presentational hints are author-level, so they are rolled back too.
+      const reverted = !faults.revertAsUnset && w !== undefined && w.value.kind === 'keyword' && (w.value.value === 'revert' || w.value.value === 'revert-layer');
+      if (w !== undefined && !currentColorOnColor && !reverted && !(w.value.kind === 'keyword' && ['inherit', 'initial', 'unset', 'revert', 'revert-layer'].includes(w.value.value))) {
         props.set(p, { value: w.value, origin: 'author', span: w.declaration.span, ...author });
-      } else if (w !== undefined && w.value.kind === 'keyword') {
+      } else if (w !== undefined && !reverted && w.value.kind === 'keyword') {
         const kw = w.value.value;
-        const useInherit = kw === 'inherit' || currentColorOnColor || (kw === 'unset' && inherited);
+        const useInherit = kw === 'inherit' || currentColorOnColor || ((kw === 'unset' || kw === 'revert' || kw === 'revert-layer') && inherited);
         const r = useInherit ? fromParent(p) : { value: initialValue(p, environment.ua), origin: 'initial' as const, span: null };
         props.set(p, { ...r, span: w.declaration.span, ...author });
       } else if (w === undefined && hints.has(p)) {
@@ -160,6 +216,10 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         props.set(p, defaultFor(p));
         defaulted.add(p);
       }
+      if (reverted && w !== undefined) {
+        props.set(p, { ...(props.get(p) as ResolvedValue), span: w.declaration.span, ...author });
+        revertedProps.add(p);
+      }
     }
     const parentFontSize = parent === null ? pxOf(parseValueText('font-size', environment.ua.computed.html['font-size'] as string)) : pxOf((parent.props.get('font-size') as ResolvedValue).value);
     const rootFontSize = resolvedRoot === null ? null : pxOf((resolvedRoot.props.get('font-size') as ResolvedValue).value);
@@ -167,7 +227,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const fontSize = new Map<Longhand, ResolvedValue>([['font-size', props.get('font-size') as ResolvedValue]]);
     computeLengths(fontSize, parentFontSize, rootFontSize);
     props.set('font-size', fontSize.get('font-size') as ResolvedValue);
-    applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent);
+    applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent, revertedProps);
     // A replaced key's forced values (iframe overflow: clip) hold whatever the cascade says (ELB-2 userAgentForced).
     applyForcedUserAgent(tag, props, environment.ua);
     for (const p of LONGHANDS) {
@@ -186,6 +246,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);
     computeGridLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
     computeJustifyItems(props, parent === null ? null : parent.props);
+    computeLists(props, faults);
     const self: { kind: 'element'; element: LinkedElement; props: Map<Longhand, ResolvedValue>; children: (ResolvedElement | ResolvedText)[] } = {
       kind: 'element',
       element: el,
@@ -195,28 +256,48 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     if (resolvedRoot === null) resolvedRoot = self;
     customsOf.set(self, scope.customs);
     const kids: (ResolvedElement | LinkedText)[] = el.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
-    // An inline formatting context is a maximal sequence of text; display: none elements generate no box (CSS2 §9.2.4), so
-    // they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
+    // CSS2 §9.2.2: an inline box's content belongs to its block container's inline formatting context, which collapses it.
+    if (parent !== null && isInlineBox(self)) {
+      pendingInline.set(self, kids);
+      return self;
+    }
+    // An inline formatting context is a maximal sequence of text, inline boxes and <br>s; display: none elements generate no box
+    // (CSS2 §9.2.4), so they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
     const collapsed = new Map<LinkedText, string>();
-    let run: LinkedText[] = [];
+    let run: (LinkedText | null)[] = [];
     const flush = (): void => {
-      const texts = collapseInlineRun(run.map((t) => t.text));
-      run.forEach((t, i) => collapsed.set(t, texts[i] as string));
+      const texts = collapseInlineContext(run.map((t) => (t === null ? null : t.text)));
+      run.forEach((t, i) => {
+        if (t !== null) collapsed.set(t, texts[i] as string);
+      });
       run = [];
     };
-    for (const kid of kids) {
-      if (kid.kind === 'text') run.push(kid);
-      else if (displayOf(kid) !== 'none') flush();
-    }
-    flush();
-    for (const kid of kids) {
-      if (kid.kind === 'element') {
-        self.children.push(kid);
-        continue;
+    const gather = (items: readonly (ResolvedElement | LinkedText)[]): void => {
+      for (const kid of items) {
+        if (kid.kind === 'text') run.push(kid);
+        else if (displayOf(kid) === 'none') continue;
+        else if (isInlineBox(kid)) {
+          if (kid.element.tag === 'br') run.push(null);
+          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[]);
+        } else flush();
       }
-      const text = collapsed.get(kid) as string;
-      if (text.length > 0) self.children.push({ kind: 'text', node: kid, text, props: textProps(props, faults, environment.ua) });
-    }
+    };
+    gather(kids);
+    flush();
+    const place = (owner: { children: (ResolvedElement | ResolvedText)[] }, ownerProps: ReadonlyMap<Longhand, ResolvedValue>, items: readonly (ResolvedElement | LinkedText)[]): void => {
+      for (const kid of items) {
+        if (kid.kind === 'element') {
+          owner.children.push(kid);
+          const pending = pendingInline.get(kid);
+          if (pending !== undefined) place(kid as { children: (ResolvedElement | ResolvedText)[] } & ResolvedElement, kid.props, pending);
+          continue;
+        }
+        const text = collapsed.get(kid);
+        if (text === undefined) throw new Error(`${kid.address}: text outside any inline formatting context`);
+        if (text.length > 0) owner.children.push({ kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua) });
+      }
+    };
+    place(self, props, kids);
     return self;
   };
   const resolved = visit(root, [], null);
@@ -237,8 +318,8 @@ export function environmentOf(root: ResolvedElement): ResolveEnvironment {
  * css-cascade-5 §6.3: a longhand no author declaration set takes the tag's declared UA value for the element's computed direction
  * and font size (font-size first, since the others are relative to it), or else its inherited or initial value.
  */
-function applyDeclaredUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, parent: ResolvedElement | null, ua: UaDataset, fromParent: (p: Longhand) => ResolvedValue): void {
-  const none = { span: null, declaration: null, declared: null, losing: [] } as const;
+function applyDeclaredUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, parent: ResolvedElement | null, ua: UaDataset, fromParent: (p: Longhand) => ResolvedValue, reverted: ReadonlySet<Longhand>): void {
+  const unset = { span: null, declaration: null, declared: null, losing: [] } as const;
   const dirValue = (props.get('direction') as ResolvedValue).value;
   const direction = dirValue.kind === 'keyword' && dirValue.value === 'rtl' ? 'rtl' : 'ltr';
   const parentFontSize = (parent === null ? fromParent('font-size') : (parent.props.get('font-size') as ResolvedValue)).value;
@@ -246,8 +327,11 @@ function applyDeclaredUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>,
   for (const p of order) {
     const ownFontSize = (props.get('font-size') as ResolvedValue).value;
     const value = declaredUserAgentValue(tag, p, ua, direction, ownFontSize, parentFontSize);
+    const was = props.get(p) as ResolvedValue;
+    // A reverted longhand keeps its author declaration (its profile row and losing list); only the value is the UA's.
+    const none = reverted.has(p) ? { span: was.span, declaration: was.declaration, declared: was.declared, losing: was.losing, ...(was.substitution === undefined ? {} : { substitution: was.substitution }) } : unset;
     if (value !== null) props.set(p, { value, origin: 'user-agent', ...none });
-    else if ((props.get(p) as ResolvedValue).origin === 'user-agent') props.set(p, INHERITED.has(p) && parent !== null ? fromParent(p) : { value: initialValue(p, ua), origin: 'initial', ...none });
+    else if (was.origin === 'user-agent') props.set(p, INHERITED.has(p) && parent !== null ? { ...fromParent(p), ...none } : { value: initialValue(p, ua), origin: 'initial', ...none });
   }
 }
 

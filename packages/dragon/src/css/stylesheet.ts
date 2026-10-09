@@ -10,6 +10,7 @@ import { resolveAlias } from './aliases.ts';
 import { legacyDisplay } from './display-legacy.ts';
 import type { AtRuleContext, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
+import { PAINT_VALUE_PARSERS } from './paint-parsers.ts';
 import { asciiLower, canonicalizeEscapes, decodeName, preprocessInput, trimValue } from './escapes.ts';
 import { GRID_VALUE_PROPERTIES, parseGridValue } from './grid-values.ts';
 import { webrefLexer } from './lexer.ts';
@@ -19,10 +20,13 @@ import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
 import { markNotApplicable } from './not-applicable.ts';
 import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
+import { LISTS_VALUE_PROPERTIES, parseListsValue } from './properties/lists.ts';
 import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
-import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
+import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, featureOf, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
+import { webProfile } from '../profiles/web.ts';
+import { provenContexts } from '../profiles/types.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
 import { checkEnvCalls, ENV_FIX, envVarRefusal, firstEnv, grammarText } from './env.ts';
 import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
@@ -30,6 +34,9 @@ import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
 import type { AnimationDeclValue } from './properties/animation.ts';
 import type { KeyframesSource } from './at-rules/keyframes.ts';
+import type { PropertySource } from './at-rules/property.ts';
+import type { CascFaults } from '../faults/casc.ts';
+import { CASC_FAULTS } from '../faults/casc.ts';
 import { isAnimationProperty, parseAnimationDeclaration } from './properties/animation.ts';
 
 export type { CssValue } from './values.ts';
@@ -65,6 +72,8 @@ export type Declaration = {
   readonly alias?: string;
   /** SVG-a1: a presentation attribute's stand-in declaration, at the element's start tag, so its value is profile-checked like CSS. */
   readonly presentationHint?: true;
+  /** CASC 3: the cascade rank of the declaration's layer (layerRanks); absent when unlayered, which ranks above every layer. */
+  readonly layer?: number;
 };
 
 /** A class selector in this rule matches only class symbols with this owner and sheet (docs/api.md §3.1). */
@@ -75,6 +84,8 @@ export type Rule = {
   readonly declarations: readonly Declaration[];
   /** MQ-a: the rule applies only where every condition holds (nested @media conjoin); absent on a rule outside @media. */
   readonly condition?: readonly RuleCondition[];
+  /** CASC 3: the key of the cascade layer the rule is in (css/at-rules/layer.ts); absent on an unlayered rule. */
+  readonly layer?: string;
 };
 
 /** One stylesheet use: its id, the owner its class symbols belong to, and whether it is component-scoped. */
@@ -86,16 +97,20 @@ export type SheetUse = { readonly id: string; readonly owner: string; readonly s
  */
 export type EnclosedRules = { readonly atRule: Diagnostic; readonly span: Span; readonly rules: readonly Rule[]; readonly diagnostics: readonly Diagnostic[] };
 
-type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[] };
+type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[]; readonly properties: PropertySource[]; readonly faults: CascFaults; readonly layers: string[] };
 
 /**
  * Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block.
  * conditions: the enclosing @media conditions of a top-level node.
  */
-type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top'; readonly conditions: readonly RuleCondition[] };
+type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top'; readonly conditions: readonly RuleCondition[]; readonly layer: string | null };
 
 /** fontFaces: collects the accepted @font-face rules, in document order, for the fonts module; keyframes the @keyframes (T065). */
-export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = [], keyframes: KeyframesSource[] = []): Rule[] {
+/**
+ * properties: the accepted top-level @property rules (CASC 2); faults: CASC's planted parse faults (faults/casc.ts); layers: the
+ * cascade layer keys in order of first declaration, shared by every sheet of the document (CASC 3).
+ */
+export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = [], keyframes: KeyframesSource[] = [], properties: PropertySource[] = [], faults: CascFaults = CASC_FAULTS, layers: string[] = []): Rule[] {
   const text = preprocessInput(authoredText);
   // Chrome 145 reads a literal U+0000 as U+FFFD inside a name but not where it would start a hash or follow a leading "-" (probed),
   // so Dragon reports it rather than guess which reading applies.
@@ -110,22 +125,23 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
   if (text.includes('\\')) canonicalizeEscapes(ast);
   // An @media prelude is parsed by media/parse.ts, which Chrome 145 proves (an invalid query is `not all`); css-tree's own
   // prelude grammar rejects valid MQ4 such as `(1px < width < 2px)` and `(not (width))`, so its errors there are not reported.
-  const media: { start: number; end: number }[] = [];
+  // An @supports prelude is parsed by at-rules/supports.ts, which refuses what it cannot decide, so the same holds there.
+  const preludes: { start: number; end: number }[] = [];
   const visit = (node: CssNode): void => {
-    const prelude = node.type === 'Atrule' && asciiLower(String(node['name'])) === 'media' ? (node['prelude'] as CssNode | null | undefined) : null;
-    if (prelude !== null && prelude !== undefined && prelude.loc !== null && prelude.loc !== undefined) media.push({ start: prelude.loc.start.offset, end: prelude.loc.end.offset });
+    const prelude = node.type === 'Atrule' && ['media', 'supports'].includes(asciiLower(String(node['name']))) ? (node['prelude'] as CssNode | null | undefined) : null;
+    if (prelude !== null && prelude !== undefined && prelude.loc !== null && prelude.loc !== undefined) preludes.push({ start: prelude.loc.start.offset, end: prelude.loc.end.offset });
     const block = node['block'] as CssNode | null | undefined;
     for (const c of [...list(node, 'children'), ...(block === null || block === undefined ? [] : [block])]) visit(c);
   };
   visit(ast);
   for (const e of errors) {
-    if (media.some((m) => e.offset >= m.start && e.offset <= m.end)) continue;
+    if (preludes.some((m) => e.offset >= m.start && e.offset <= m.end)) continue;
     const at = { source: base.source, start: base.start + e.offset, end: base.start + e.offset };
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
   }
   const rules: Rule[] = [];
-  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes };
-  parseTopLevel(list(ast, 'children'), st, { label: 'the stylesheet', selectors: 'top', conditions: [] }, diagnostics, enclosed, rules);
+  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes, properties, faults, layers };
+  parseTopLevel(list(ast, 'children'), st, { label: 'the stylesheet', selectors: 'top', conditions: [], layer: null }, diagnostics, enclosed, rules);
   return rules;
 }
 
@@ -136,12 +152,12 @@ function parseTopLevel(nodes: readonly CssNode[], st: ParseState, at: Where, dia
       refuseNode(node, st, at, diagnostics, enclosed, rules);
       continue;
     }
-    const rule = parseRule(node, st, diagnostics, enclosed, at.conditions);
+    const rule = parseRule(node, st, diagnostics, enclosed, at.conditions, at.layer);
     if (rule !== null) rules.push(rule);
   }
 }
 
-function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[], conditions: readonly RuleCondition[]): Rule | null {
+function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[], conditions: readonly RuleCondition[], layer: string | null): Rule | null {
   const before = diagnostics.length;
   const selectors = parseSelectorList(node['prelude'] as CssNode, st.base, st.use, diagnostics);
   // Chrome never parses the block of a rule it drops, so neither do its diagnostics count.
@@ -150,14 +166,14 @@ function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enc
   const declarations: Declaration[] = [];
   for (const d of list(node['block'] as CssNode, 'children')) {
     if (d.type !== 'Declaration') {
-      refuseNode(d, st, { label: 'a rule block', selectors, conditions }, blockDiagnostics, dropped ? [] : enclosed, []);
+      refuseNode(d, st, { label: 'a rule block', selectors, conditions, layer }, blockDiagnostics, dropped ? [] : enclosed, []);
       continue;
     }
     const parsed = parseDeclaration(d, st.base, st.text, st.order++, blockDiagnostics);
     if (parsed !== null) declarations.push(parsed);
   }
   if (selectors === null) return null;
-  return { sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }) };
+  return { sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(layer === null ? {} : { layer }) };
 }
 
 /** css-syntax-3 §5.4: an empty declaration (a lone ";") and the <!-- --> tokens produce no rule or declaration in the CSSOM. */
@@ -175,10 +191,16 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
   if (node.type === 'Atrule') {
     const prelude = node['prelude'] as CssNode | null | undefined;
     const preludeSpan = prelude === null || prelude === undefined ? null : spanOf(prelude, base);
-    const context = { node, name: String(node['name']), where, span, prelude: preludeSpan === null ? '' : text.slice(preludeSpan.start - base.start, preludeSpan.end - base.start) };
+    const context = {
+      node, name: String(node['name']), where, span,
+      prelude: preludeSpan === null ? '' : text.slice(preludeSpan.start - base.start, preludeSpan.end - base.start),
+      source: text.slice(span.start - base.start, span.end - base.start),
+      atSheetStart: where === 'the stylesheet' && span.start === base.start,
+    };
     // at-rules.ts decides each at-rule: an accepted @font-face goes to the fonts collector; a conditional one in a rule block is
     // css-nesting-1, and one without a block is invalid, so both are refused.
     const outcome = handleAtRule(context);
+    if (outcome.kind === 'drop') return;
     if (outcome.kind === 'font-face') {
       st.fontFaces.push(outcome.context);
       return;
@@ -187,13 +209,39 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
       st.keyframes.push({ context: outcome.context, base: st.base, text: st.text, use: st.use });
       return;
     }
+    if (outcome.kind === 'property') {
+      st.properties.push({ context: outcome.context, base: st.base, text: st.text });
+      return;
+    }
     const block = node['block'] as CssNode | null | undefined;
+    let layerRefusal: Diagnostic | null = null;
+    if (outcome.kind === 'layer' && at.selectors === 'top') {
+      const key = (n: string): string => (at.layer === null ? n : `${at.layer}.${n}`);
+      // An anonymous layer gets a key no author name can spell, unique in the document.
+      const keys = outcome.block && outcome.names.length === 0 ? [key(`#anon${st.layers.length}`)] : outcome.names.map((n) => key(n.join('.')));
+      const fresh = [...new Set(keys.flatMap((k) => k.split('.').map((_, i, parts) => parts.slice(0, i + 1).join('.'))))].filter((k) => !st.layers.includes(k));
+      if (fresh.length > 0 && at.conditions.length > 0) {
+        layerRefusal = diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
+          origin: authored(span),
+          message: `@${String(node['name'])} ${context.prelude} in ${where} first declares ${fresh.join(', ')} inside a condition, where Chrome counts it only while the condition holds; declare the layer order at the top level first`,
+        });
+      } else {
+        st.layers.push(...fresh);
+        if (block !== null && block !== undefined) parseTopLevel(list(block, 'children'), st, { label: `@${String(node['name'])}`, selectors: 'top', conditions: at.conditions, layer: keys[0] as string }, diagnostics, enclosed, accepted);
+        return;
+      }
+    }
+    // CASC: a true @supports keeps its rules as plain rules (under any enclosing @media); Chrome never applies a false one's.
+    if (outcome.kind === 'supports' && at.selectors === 'top' && block !== null && block !== undefined) {
+      if (outcome.holds || st.faults.supportsConditionIgnored) parseTopLevel(list(block, 'children'), st, { label: '@supports', selectors: 'top', conditions: at.conditions, layer: at.layer }, diagnostics, enclosed, accepted);
+      return;
+    }
     if (outcome.kind === 'conditional' && at.selectors === 'top' && block !== null && block !== undefined) {
-      const inner = { label: `@${String(node['name'])}`, selectors: 'top' as const, conditions: [...at.conditions, outcome.condition] };
+      const inner = { label: `@${String(node['name'])}`, selectors: 'top' as const, conditions: [...at.conditions, outcome.condition], layer: at.layer };
       parseTopLevel(list(block, 'children'), st, inner, diagnostics, enclosed, accepted);
       return;
     }
-    const refusal = outcome.kind === 'refuse' ? outcome.diagnostic : refuseAtRule(context).diagnostic;
+    const refusal = outcome.kind === 'refuse' ? outcome.diagnostic : layerRefusal ?? refuseAtRule(context).diagnostic;
     diagnostics.push(refusal);
     if (block === null || block === undefined) return;
     // T005 rec 3: the enclosed rules are parsed with the block unwrapped, for analysis only.
@@ -203,15 +251,15 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
     if (at.selectors === 'top') {
       for (const c of list(block, 'children')) {
         if (c.type === 'Rule') {
-          const r = parseRule(c, st, inner, enclosed, at.conditions);
+          const r = parseRule(c, st, inner, enclosed, at.conditions, at.layer);
           if (r !== null) rules.push(r);
-        } else if (c.type !== 'Declaration') refuseNode(c, st, { label, selectors: 'top', conditions: at.conditions }, inner, enclosed, rules);
+        } else if (c.type !== 'Declaration') refuseNode(c, st, { label, selectors: 'top', conditions: at.conditions, layer: at.layer }, inner, enclosed, rules);
       }
     } else {
       const declarations: Declaration[] = [];
       for (const c of list(block, 'children')) {
         if (c.type !== 'Declaration') {
-          refuseNode(c, st, { label, selectors: at.selectors, conditions: at.conditions }, inner, enclosed, []);
+          refuseNode(c, st, { label, selectors: at.selectors, conditions: at.conditions, layer: at.layer }, inner, enclosed, []);
           continue;
         }
         const parsed = parseDeclaration(c, base, text, st.order++, inner);
@@ -341,6 +389,88 @@ function parseResolved(d: CssNode, property: string, base: Span, sheetText: stri
   }
 }
 
+/**
+ * CASC: how Chrome treats one declaration in a @supports condition, decided by parsing it as in a style rule. valid: kept;
+ * invalid: dropped (DRAGON_CSS_INVALID_VALUE only); refused: Dragon cannot tell (it refuses the property or the value).
+ */
+export function declarationSupport(declarationText: string): 'valid' | 'invalid' | { readonly refused: string } {
+  const text = `x{${declarationText}}`;
+  const errors: string[] = [];
+  const ast = parse(text, { positions: true, parseValue: true, onParseError: (e) => errors.push(e.message) });
+  if (text.includes('\\')) canonicalizeEscapes(ast);
+  const rule = list(ast, 'children')[0];
+  const children = rule === undefined || rule.type !== 'Rule' ? [] : list(rule['block'] as CssNode, 'children');
+  const only = children[0];
+  if (errors.length > 0 || children.length !== 1 || only === undefined || only.type !== 'Declaration') return { refused: 'it is not one declaration' };
+  const diagnostics: Diagnostic[] = [];
+  const parsed = parseDeclaration(only, { source: { uri: '@supports', revision: '', hash: '' }, start: 0, end: text.length }, text, 0, diagnostics);
+  if (parsed !== null && diagnostics.length === 0) {
+    // css-variables-1 §2, §3.1: Chrome keeps any custom property value and any value holding var() at parse time.
+    if (parsed.custom !== undefined || parsed.pending !== undefined) return 'valid';
+    // The grammar lists values Chrome 145 has not shipped (text-align: match-parent), so a kept value is trusted only when each
+    // longhand it sets is a value a web profile row proves against Chrome.
+    const unproven = parsed.longhands.find((lh) => provenContexts(webProfile, featureOf(lh.property, lh.value)).length === 0);
+    if (parsed.animation === undefined && parsed.longhands.length > 0 && unproven === undefined) return 'valid';
+    const what = unproven === undefined ? `${parsed.property}: ${parsed.text}` : featureOf(unproven.property, unproven.value);
+    return { refused: `${what} is not a value Dragon has proven Chrome 145 keeps` };
+  }
+  if (parsed === null && diagnostics.length > 0 && diagnostics.every((d) => d.code === 'DRAGON_CSS_INVALID_VALUE')) {
+    // The grammar is not Chrome's parser: Chrome keeps legacy keywords it lacks (overflow: overlay, position: -webkit-sticky), so
+    // a dropped value is trusted only when every identifier in it is a keyword the property's grammar lists.
+    const property = asciiLower(decodeName(String(only['property'])));
+    const keywords = grammarKeywords(property);
+    if (keywords === null) return { refused: `the CSS grammar Dragon checks for ${property} names a type it does not define` };
+    const unlisted = identifiersOf(only['value'] as CssNode).find((id) => /^-[a-z]+-/.test(id) || !keywords.has(id));
+    return unlisted === undefined ? 'invalid' : { refused: `Chrome may keep "${unlisted}" for ${property}, a keyword the CSS grammar Dragon checks does not list` };
+  }
+  const first = diagnostics[0];
+  return { refused: first === undefined ? 'Dragon does not decide it' : first.message };
+}
+
+/** Every identifier in a value, ASCII lower case; function names are not identifiers. */
+function identifiersOf(node: CssNode): string[] {
+  const out: string[] = [];
+  const walk = (n: CssNode): void => {
+    if (n.type === 'Identifier') out.push(asciiLower(decodeName(String(n['name']))));
+    for (const c of list(n, 'children')) walk(c);
+  };
+  walk(node);
+  return out;
+}
+
+const KEYWORDS = new Map<string, ReadonlySet<string> | null>();
+
+/** The keywords a property's webref grammar lists, through every type and property it references; null when a reference is undefined. */
+export function grammarKeywords(property: string): ReadonlySet<string> | null {
+  const known = KEYWORDS.get(property);
+  if (known !== undefined) return known;
+  const lexer = webrefLexer() as unknown as { getProperty(n: string): { syntax: unknown } | null; getType(n: string): { syntax: unknown } | null };
+  const out = new Set<string>();
+  const seen = new Set<string>();
+  const walk = (node: unknown): void => {
+    if (node === null || typeof node !== 'object') return;
+    const n = node as { type?: string; name?: string; term?: unknown; terms?: unknown[]; children?: unknown[] };
+    if (n.type === 'Keyword' && typeof n.name === 'string') out.add(asciiLower(n.name));
+    if ((n.type === 'Type' || n.type === 'Property') && typeof n.name === 'string' && !seen.has(`${n.type}:${n.name}`)) {
+      seen.add(`${n.type}:${n.name}`);
+      const ref = n.type === 'Type' ? lexer.getType(n.name) : lexer.getProperty(n.name);
+      if (ref !== null && ref !== undefined) walk(ref.syntax);
+    }
+    walk(n.term);
+    for (const t of n.terms ?? []) walk(t);
+    for (const c of n.children ?? []) walk(c);
+  };
+  let result: ReadonlySet<string> | null = out;
+  try {
+    walk(lexer.getProperty(property)?.syntax);
+  } catch {
+    // css-tree throws "Bad syntax reference" for a type the grammar names but does not define (<size-keyword>).
+    result = null;
+  }
+  KEYWORDS.set(property, result);
+  return result;
+}
+
 /** css-logical-1 §3: the physical longhands a flow-relative property sets in each direction, or null when it maps the same in both. */
 function directionSides(property: string): { ltr: Longhand[]; rtl: Longhand[] } | null {
   const mapped = expandWide(property, { kind: 'keyword', value: 'unset' });
@@ -388,6 +518,16 @@ function parseCustomDeclaration(name: string, valueNode: CssNode, span: Span, va
   return { property: name, text, span, valueSpan, longhands: [], order, ...important, custom: { name, wide, parts } };
 }
 
+/** The grammar match of a value; css-tree throws "Bad syntax reference" for a type the grammar names but does not define. */
+function grammarMatch(property: string, value: CssNode | string): ReturnType<ReturnType<typeof webrefLexer>['matchProperty']> | 'undefined-reference' {
+  try {
+    return webrefLexer().matchProperty(property, value);
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('Bad syntax reference')) return 'undefined-reference';
+    throw e;
+  }
+}
+
 /** How a value parses for a longhand or shorthand; the parse driver and var() substitution report the failures differently. */
 export type ParsedValue =
   | { readonly kind: 'ok'; readonly longhands: readonly LonghandValue[] }
@@ -415,14 +555,17 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   // css-env-1: env() is checked before the grammar, which is matched with each inset substituted (css/env.ts).
   const env = wide ? null : firstEnv(tokens);
   if (env !== null) {
-    const special = property === 'aspect-ratio' || property === 'object-position' || GRID_VALUE_PROPERTIES.has(property) || TRANSFORM_VALUE_PROPERTIES.has(property);
+    const special = property === 'aspect-ratio' || property === 'object-position' || GRID_VALUE_PROPERTIES.has(property) || TRANSFORM_VALUE_PROPERTIES.has(property) || PAINT_VALUE_PARSERS.has(property);
     const bad = special ? { node: env, reason: `env() in ${property} is not supported` } : checkEnvCalls(tokens);
     if (bad !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(bad.node, base)), message: `${property}: ${generate(bad.node)} is unsupported: ${bad.reason}`, manual: ENV_FIX }) };
     }
   }
   if (!wide) {
-    const match = webrefLexer().matchProperty(property, env === null ? valueNode : grammarText(tokens));
+    const match = grammarMatch(property, env === null ? valueNode : grammarText(tokens));
+    if (match === 'undefined-reference') {
+      return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(valueNode, base)), message: `${property}: ${generate(valueNode)} is unsupported: the CSS grammar Dragon checks names a type it does not define for it, so Dragon cannot tell whether Chrome keeps it`, manual: `Use a value that matches the ${property} grammar without it.` }) };
+    }
     if (match.error !== null) return { kind: 'invalid' };
     // css-tree types a math function loosely; Chrome drops one its math parser rejects (css/math.ts mathInvalidity).
     const mathInvalid = GRID_VALUE_PROPERTIES.has(property) ? null : invalidMath(property, tokens, base, sheetText);
@@ -437,6 +580,8 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     }
     return { kind: 'ok', longhands: [{ property, value: ratio, explicit: true }] };
   }
+  // css-content-3 §2 and css-lists-3 §3: content, list-style-type and list-style-image (properties/lists.ts).
+  if (!wide && LISTS_VALUE_PROPERTIES.has(property)) return parseListsValue(property as Longhand, tokens, base);
   // Chrome 145's legacy display keywords (display-legacy.ts).
   const legacy = !wide && property === 'display' ? legacyDisplay(tokens, base) : null;
   if (legacy !== null) return legacy.kind === 'refused' ? legacy : { kind: 'ok', longhands: [{ property: 'display', value: legacy.value, explicit: true }] };
@@ -453,6 +598,9 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   }
   // css-transforms-1 (PNT2): multi-token transform, transform-origin and will-change values (properties/transform.ts).
   if (!wide && TRANSFORM_VALUE_PROPERTIES.has(property)) return parseTransformValue(property, tokens, base);
+  // Paint families (PNT1): multi-token paint values, with the checks Chrome makes beyond the grammar (css/paint-parsers.ts).
+  const paint = wide ? undefined : PAINT_VALUE_PARSERS.get(property);
+  if (paint !== undefined) return paint(tokens, base);
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
   const values: CssValue[] = baseline === null ? [] : [baseline];

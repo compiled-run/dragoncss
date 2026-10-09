@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { hexBits } from '../harness/host.ts';
 import { buildCorpus, m1CaseIds, M1_MANIFEST, topLevelVectorFiles, VECTORS_DIR } from '../src/corpus.ts';
-import { buildExtendedCorpus, CALC_DIR, CALC_SPEC, DPR_SETS, extendedLockedDigest, SNAP_DPRS, UNITS_CALC_FUNCTIONS, UNITS_M2_FUNCTIONS, VALUES_PREFIX } from '../src/corpus-dpr.ts';
+import { buildExtendedCorpus, CALC_DIR, CALC_SPEC, DPR_SETS, extendedLockedDigest, OVERFLOW_SPEC, SNAP_DPRS, UNITS_CALC_FUNCTIONS, UNITS_M2_FUNCTIONS, VALUES_PREFIX } from '../src/corpus-dpr.ts';
 import { EXTENDED_FAULTS, FAULTS } from '../src/faults.ts';
 import { suiteFloorProblems } from './floor.ts';
 
@@ -66,6 +66,8 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
     expect(n['calc-goldens']).toBeGreaterThan(0);
     expect(n['engine-calc']).toBe(CALC_SPEC.engineCalc);
     expect(n['units-calc']).toBe(CALC_SPEC.unitsPerFunction * UNITS_CALC_FUNCTIONS.length);
+    expect(n['engine-inline']).toBe(3000);
+    expect(n['engine-overflow']).toBe(OVERFLOW_SPEC.engineOverflow);
     expect(x.engineSplit.threw + x.engineSplit.harnessError).toBe(0);
   });
 

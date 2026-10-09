@@ -88,12 +88,17 @@ const paintText = (p: SvgPaint): string => (p.kind === 'none' ? 'none' : seriali
 
 /**
  * Every way a case's shapes differ from Chrome's: one problem per shape and quantity that is not equal as a double, and per paint
- * value (fill, stroke and stroke-width as Dragon resolved them) whose computed string differs.
+ * value (fill, stroke and stroke-width as Dragon resolved them) whose computed string differs. Both sides are judged whole: every
+ * shape Chrome captured must be one of Dragon's scene shapes, and null scenes (no resolved case) with captured shapes fail.
  */
-export function compareSvg(capture: WebCapture, scenes: readonly SvgScene[], absolute: ReadonlyMap<string, LayoutRect>, input: LayoutInput, faults: SvgFaults = NO_SVG_FAULTS): string[] {
+export function compareSvg(capture: WebCapture, scenes: readonly SvgScene[] | null, absolute: ReadonlyMap<string, LayoutRect>, input: LayoutInput, faults: SvgFaults = NO_SVG_FAULTS): string[] {
   const problems: string[] = [];
-  if (scenes.length === 0) return problems;
+  const capturedShapes = capture.nodes.filter((n) => n.svg !== undefined).map((n) => n.id);
+  if (scenes === null) return capturedShapes.length === 0 ? problems : [`Dragon resolved no svg scenes for this case, but Chrome captured the shapes ${capturedShapes.join(', ')}`];
+  if (scenes.length === 0 && capturedShapes.length === 0) return problems;
   if (capture.devicePixelRatio !== 1) return [`the svg outline differential runs at DPR 1, not ${capture.devicePixelRatio}`];
+  const dragonShapes = new Set(scenes.flatMap((scene) => scene.shapes.map((s) => s.address)));
+  for (const id of capturedShapes) if (!dragonShapes.has(id)) problems.push(`${id}: Chrome captured an SVG shape that no Dragon svg scene has`);
   const captured = new Map(capture.nodes.filter((n) => n.kind === 'element').map((n) => [n.id, n]));
   for (const scene of scenes) {
     const box = absolute.get(scene.address);

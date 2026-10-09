@@ -117,12 +117,18 @@ export type AspectRatioValue =
   | { readonly kind: 'ratio'; readonly width: number; readonly height: number }
   | { readonly kind: 'auto-ratio'; readonly width: number; readonly height: number };
 
-/** display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. */
-export type Display = 'block' | 'flex' | 'grid';
+/**
+ * display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. inline is the display of an
+ * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid.
+ */
+export type Display = 'block' | 'flex' | 'grid' | 'inline';
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
-/** css-overflow-3 §3: hidden makes a scroll container; the validator requires both axes to be equal (the §3.1 computed pair). */
-export type Overflow = 'visible' | 'hidden';
+/**
+ * css-overflow-3 §3: hidden, auto and scroll make a scroll container; clip clips without one. The validator requires a §3.1
+ * computed pair: both axes in visible and clip, or both in hidden, auto and scroll.
+ */
+export type Overflow = 'visible' | 'hidden' | 'clip' | 'auto' | 'scroll';
 export type Direction = 'ltr' | 'rtl';
 export type BoxSizing = 'content-box' | 'border-box';
 export type FlexDirection = 'row' | 'row-reverse' | 'column' | 'column-reverse';
@@ -165,6 +171,12 @@ export type AlignContent =
   | 'start'
   | 'end';
 export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
+/** CSS2 §10.8.1 vertical-align keywords. */
+export type VerticalAlignKeyword = 'baseline' | 'sub' | 'super' | 'text-top' | 'text-bottom' | 'middle' | 'top' | 'bottom';
+/** A vertical-align keyword value. */
+export type VerticalAlignKeywordValue = { readonly kind: 'keyword'; readonly value: VerticalAlignKeyword };
+/** CSS2 §10.8.1 vertical-align: a keyword, a length, or a percentage of the element's own line-height. The compiler writes baseline. */
+export type VerticalAlignValue = VerticalAlignKeywordValue | Px | Percent | LengthCalc;
 
 /** css-grid-2 §7.2.1 <flex>: a fraction of the leftover space. */
 export type Fr = { readonly kind: 'fr'; readonly value: number };
@@ -271,14 +283,18 @@ export type LayoutStyle = {
   readonly columnGap: GapValue;
   readonly textAlign: TextAlign;
   readonly aspectRatio: AspectRatioValue;
+  readonly verticalAlign: VerticalAlignValue;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the in-flow children of a grid container only; null otherwise. */
   readonly gridItem: GridItemStyle | null;
 };
 
-/** The font a measurer reads: the family and the computed font size in zoomed px. */
-export type TextFont = { readonly family: 'Ahem'; readonly size: number };
+/**
+ * The font a measurer reads: the face and the computed font size in zoomed px. family names the bundled face (text.ts
+ * AHEM_FACE_ID for the bundled Ahem, else sha256:<hex> of its bytes, as the font manifest names a face).
+ */
+export type TextFont = { readonly family: string; readonly size: number };
 
 /**
  * A text run's font (css-fonts-4 §2). specifiedSize is the specified font size (css-fonts-4 §2.5) as an expression in CSS px at
@@ -287,7 +303,7 @@ export type TextFont = { readonly family: 'Ahem'; readonly size: number };
  * or % from a keyword size, which Chrome's minimum logical font size (6px) applies to. size is the computed size in px: the
  * compiler writes it at its reference environment (text scale 1, DPR 1) and the environment pass rewrites it from specifiedSize.
  */
-export type FontSpec = { readonly family: 'Ahem'; readonly size: number; readonly specifiedSize: CalcExpr; readonly absoluteSize: boolean };
+export type FontSpec = { readonly family: string; readonly size: number; readonly specifiedSize: CalcExpr; readonly absoluteSize: boolean };
 
 /** css-text-4 §3.1 white-space-collapse: only collapse is supported; the compiler has already applied phase I collapsing. */
 export type WhiteSpaceCollapse = 'collapse';
@@ -336,13 +352,39 @@ export type ReplacedLeaf = {
 /** A box-level child: an element or anonymous box, or a replaced leaf. */
 export type LayoutNode = LayoutBox | ReplacedLeaf;
 
-/** Children are either all boxes and replaced leaves or all text leaves: the compiler wraps mixed text in anonymous boxes. */
+/**
+ * An inline box (CSS2 §9.2.2): an element with display inline inside an inline formatting context. Its font and line-height are
+ * the element's own, which its box contributes to every line it is on (CSS2 §10.8.1); its style's display is inline.
+ */
+export type InlineBox = {
+  readonly kind: 'inline';
+  readonly id: string;
+  readonly style: LayoutStyle;
+  readonly font: FontSpec;
+  readonly lineHeight: LineHeightValue;
+  readonly children: readonly InlineChild[];
+};
+
+/** A <br> element: a forced line break (UAX #14 class BK). Its font and line-height are its own; Blink ignores them (INL-P). */
+export type LineBreak = { readonly kind: 'br'; readonly id: string; readonly font: FontSpec; readonly lineHeight: LineHeightValue };
+
+/** The inline-level content of an inline formatting context. */
+export type InlineChild = TextLeaf | InlineBox | LineBreak;
+
+/** The strut of a block container with inline content (CSS2 §10.8.1): the container's own font and line-height. */
+export type LineStrut = { readonly font: FontSpec; readonly lineHeight: LineHeightValue };
+
+/**
+ * Children are either all boxes and replaced leaves or all inline-level (text leaves, inline boxes and line breaks): the compiler
+ * wraps mixed content in anonymous boxes. strut is the box's font and line-height when its children are inline-level, else null.
+ */
 export type LayoutBox = {
   readonly kind: 'box';
   readonly id: string;
   readonly boxType: BoxType;
   readonly style: LayoutStyle;
-  readonly children: readonly (LayoutBox | TextLeaf | ReplacedLeaf)[];
+  readonly strut: LineStrut | null;
+  readonly children: readonly (LayoutBox | ReplacedLeaf | InlineChild)[];
 };
 
 /** The initial containing block in CSS px. */

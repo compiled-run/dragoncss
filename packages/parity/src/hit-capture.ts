@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { hitFacts, programInput, svgScenes } from 'dragon';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
-import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
+import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
 import type { NativeCase } from './native-host.ts';
 import { nativeCases, referenceMeasurer } from './native-host.ts';
@@ -121,14 +121,21 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
 /**
  * Why the hit lane leaves a layout case out, or null when it covers it. The hit test models box geometry, overflow clips, positioned
  * layers and pointer-events (T064 R13); a case whose program writes a transform is refused by name until SELD-R2b (T146) models
- * hit testing through transforms, and a case with an <svg> until SVG-a2 models its shapes, so neither is silently mis-hit.
+ * hit testing through transforms, a case with an <svg> until SVG-a2 models its shapes, and one whose program rounds a corner until
+ * the hit test models rounded borders (Blink clips a hit to the rounded border box), so none is silently mis-hit; one holding an
+ * inline box or a <br> (INL1a) is refused as rt-hit.ts hitRefusal names it, since the hit table does not model them yet.
  */
 export function hitRefusal(n: NativeCase): string | null {
   const moved = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
   // SVG-a1: Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit test models with SVG-a2.
   const svgs = (svgScenes(n.compiled, n.case.assignment) ?? []).map((s) => s.address);
-  return svgs.length === 0 ? null : `<svg> ${svgs.join(', ')}: hit testing an svg's shapes comes with SVG-a2`;
+  if (svgs.length > 0) return `<svg> ${svgs.join(', ')}: hit testing an svg's shapes comes with SVG-a2`;
+  // PNT1-radius: Blink clips a hit to the rounded border box, which the hit test does not model yet.
+  const rounded = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'border-radius')).map((x) => x.id);
+  if (rounded.length > 0) return `border-radius on ${rounded.join(', ')}: hit testing through rounded corners is not modelled yet (PNT1)`;
+  // INL1a: hitTableOf refuses an inline box or a <br> by name (rt-hit.ts), so such a case is left out with that reason.
+  return inputHitRefusal(programInput(n.programs.uikit, n.case.environment.viewport, 1));
 }
 
 /** Every layout case the hit lane covers: all of them but the refused ones (hitRefusal). */
@@ -189,10 +196,10 @@ export const IDENTITY_ROOTS: readonly string[] = ['packages/parity/expected', 'p
 export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.json';
 /**
  * Files that are new since the identity base: SELD-R1b's fixtures (hit-*, reject-pointer-events-*), SELD-R2a's (interaction-*,
- * reject-interaction-*), the fixtures of PNT2's transforms group (transform-*, reject-transform-*) and CTX-PROOF's (ctx-proof-*),
- * which landed after it.
+ * reject-interaction-*), the fixtures of PNT2's transforms group (transform-*, reject-transform-*), CTX-PROOF's (ctx-proof-*) and
+ * PNT1's radius group (radius-*, reject-radius-*), which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-)[^/]*$/;
 /** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
@@ -200,15 +207,43 @@ export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; 
 };
 
 /**
- * A committed output with the pointer-events key removed: the "pointer-events" computed value of every captured element, and the
- * pointer-events declaration of every emitted rule; an emitted file's compilation digest (its first line) is masked, since every
- * compilation digest moves with the compiler input.
+ * The longhands added since the identity base, beside pointer-events: PNT1's four corner radii, which every capture and emitted rule
+ * gained after the base was written, so the base files must differ from it by exactly these keys and pointer-events.
+ */
+const KEYS_SINCE_BASE = ['pointer-events', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'];
+const JSON_KEYS = new RegExp(`,\\n[ ]*"(${KEYS_SINCE_BASE.join('|')})": "[^"]*"`, 'g');
+const CSS_KEYS = new RegExp(`^[ ]*(${KEYS_SINCE_BASE.join('|')}): [^;\\n]*;\\n`, 'gm');
+
+/**
+ * GEN-b's longhands (content, list-style-type, -position, -image), also added after the identity base, at their neutral values in
+ * LONGHANDS order (docs/decisions.md, "Adding engine fields and CSS longhands"). list-style-type is decimal only where Chrome's UA
+ * ol rule sets it, in GEN_B_DECIMAL_FIXTURES; any other value stays in the text, so the file no longer hashes to the base.
+ */
+const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
+/**
+ * SVG-a1's svg family (fill, stroke, stroke-width), also added after the identity base, at its initial values only, in LONGHANDS order:
+ * a base file has no SVG, so any other value stays in the text and the file no longer hashes to the base (svg.test.ts proves the
+ * family's own values).
+ */
+const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"/g;
+const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n/gm;
+const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
+
+/**
+ * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and GEN-b's and SVG-a1's neutral longhands) removed: the computed
+ * value of every captured element, and the declaration of every emitted rule; an emitted file's compilation digest (its first line)
+ * is masked, since every compilation digest moves with the compiler input.
  */
 export function withoutPointerEvents(path: string, text: string): string {
-  // SVG-a1 added the svg family (fill, stroke, stroke-width) to every capture and emitted rule after the base; its keys are removed
-  // too, so a base file still differs from the base only by keys a package added (svg.test.ts proves the family's own values).
-  if (path.endsWith('.json')) return text.replace(/,\n[ ]*"pointer-events": "[a-z-]+"/g, '').replace(/,\n[ ]*"(fill|stroke|stroke-width)": "[^"]*"/g, '');
-  if (path.endsWith('.css')) return text.replace(/^[ ]*(pointer-events|fill|stroke|stroke-width): [^;\n]+;\n/gm, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+  const type = genBType(path);
+  if (path.endsWith('.json')) {
+    const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
+    return text.replace(JSON_KEYS, '').replace(genB, '').replace(SVG_JSON, '');
+  }
+  if (path.endsWith('.css')) {
+    const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
+    return text.replace(CSS_KEYS, '').replace(genB, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+  }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }
 

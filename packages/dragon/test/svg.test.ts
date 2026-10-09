@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { objectBoundingBox } from '@dragon/layout';
 import { parsePathData, parseSvgLength, parseViewBox } from '../src/analysis/elements/svg-path.ts';
 import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints } from '../src/analysis/elements/svg.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, NO_FAULTS, svgScenes } from '../src/internal.ts';
 import { svgShapePath } from '../src/lower/paint/image.ts';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/types.ts';
 import { div, inputFor, staticClass, DOC } from './helpers.ts';
@@ -155,5 +155,28 @@ describe('the svg model in a compile', () => {
     expect(e.some((m) => m.includes('width: 5px on <rect> r is not supported'))).toBe(true);
     expect(e.some((m) => m.includes('on <circle> c is unsupported: paint servers'))).toBe(true);
     expect(e.some((m) => m.includes('stroke-width: 10% on <circle> c is unsupported'))).toBe(true);
+  });
+  it('an author rule in a cascade layer (CASC 3) still beats a paint presentation attribute, which is below every author layer', () => {
+    const fillOf = (css: string): unknown => {
+      const c = compile(svgTree(css, (_r, o) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4'], ['fill', 'rgb(9, 9, 9)']])]), true);
+      const s = svgScenes(c, [])?.[0]?.shapes[0];
+      return s?.fill.kind === 'color' ? [s.fill.color.r, s.fill.color.g, s.fill.color.b] : s?.fill.kind;
+    };
+    expect(fillOf('')).toEqual([9, 9, 9]);
+    expect(fillOf('@layer base { rect { fill: rgb(1, 2, 3); } }')).toEqual([1, 2, 3]);
+    expect(fillOf('@layer base, top; @layer top { rect { fill: rgb(4, 5, 6); } } @layer base { rect { fill: rgb(1, 2, 3); } }')).toEqual([4, 5, 6]);
+  });
+  it("in one document, the svg checks and GEN-b's list-marker check both fire (checkSvg beside checkComputed's GEN-b checks)", () => {
+    const input = inputFor('body { margin: 0 } svg { display: block } circle { stroke-width: 10%; }', (r) => {
+      const o: Origin = { kind: 'authored', span: { source: r, start: 0, end: 0 } };
+      const attrs = (list: [string, string][]) => list.map(([name, value]) => ({ name, value: [{ when: { kind: 'true' as const }, value }], origin: o }));
+      const svg: ElementNode = { kind: 'element', id: 's', tag: 'svg', classes: [], attributes: attrs([['width', '24'], ['height', '24']]), children: [shape(o, 'c', 'circle', [['r', '4']])], origin: o };
+      const li: ElementNode = { kind: 'element', id: 'li', tag: 'li', classes: [], attributes: [], children: [], origin: o };
+      const ul: ElementNode = { kind: 'element', id: 'ul', tag: 'ul', classes: [], attributes: [], children: [li], origin: o };
+      return [div(r, 'w', ['w'], [svg, ul])];
+    });
+    const e = errors(compile(input, true));
+    expect(e.filter((m) => m.includes('stroke-width: 10% on <circle> c is unsupported')).length).toBeGreaterThan(0);
+    expect(e.filter((m) => m.includes('display: list-item on <li> li generates a disc marker')).length).toBeGreaterThan(0);
   });
 });
