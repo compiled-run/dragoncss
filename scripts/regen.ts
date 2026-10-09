@@ -29,7 +29,17 @@ import { PNT2 } from './regen-steps/pnt2.ts';
 import { ENGINE_SOURCES, FIXTURES, FONTS, type ManualOutput, placeSteps, pnpm, type RegenFeature, type Step } from './regen-steps/step.ts';
 
 // The device evidence stamp (device-evidence.ts EVIDENCE_CODE) digests these as files without importing them: the CI device code.
-const EVIDENCE_READS = ['packages/parity/src/device-ci.ts', 'packages/parity/src/cli/device-ci.ts'];
+// It also digests the HarfBuzz shim the apps link: its build, C ABI, module map and the vendored HarfBuzz sources.
+const EVIDENCE_READS = [
+  'packages/parity/src/device-ci.ts',
+  'packages/parity/src/cli/device-ci.ts',
+  'packages/text-shaper/build.zig',
+  'packages/text-shaper/include/**',
+  'packages/text-shaper/src/dragon_hb.zig',
+  'packages/text-shaper/src/dragon_hb_jni.zig',
+  'packages/text-shaper/swift/Sources/CDragonHB/module.modulemap',
+  'vendor/harfbuzz/src/**',
+];
 import { TDEC } from './regen-steps/tdec.ts';
 import { TXT1A } from './regen-steps/txt1a.ts';
 import { TXT2 } from './regen-steps/txt2.ts';
