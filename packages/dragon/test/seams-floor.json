@@ -72,6 +72,11 @@
     "justify-items",
     "justify-self",
     "pointer-events",
+    "border-top-left-radius",
+    "border-top-right-radius",
+    "border-bottom-right-radius",
+    "border-bottom-left-radius",
+    "box-shadow",
     "transform",
     "transform-origin",
     "will-change",
@@ -157,6 +162,8 @@
     "grid-gap",
     "grid-row-gap",
     "grid-column-gap",
+    "border-radius",
+    "-webkit-border-radius",
     "list-style"
   ],
   "inherited": [
@@ -207,6 +214,11 @@
     "border-left-color",
     "color",
     "background-color",
+    "border-top-left-radius",
+    "border-top-right-radius",
+    "border-bottom-right-radius",
+    "border-bottom-left-radius",
+    "box-shadow",
     "transform",
     "transform-origin",
     "will-change"

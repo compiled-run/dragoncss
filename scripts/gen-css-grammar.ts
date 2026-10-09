@@ -49,6 +49,8 @@ const SUBSET = [
   // Border radii (PNT1), after pointer-events, as LONGHANDS registers them, then their shorthands.
   ...RADIUS_LONGHANDS,
   'border-radius', '-webkit-border-radius',
+  // Box shadows (PNT1), after the radii.
+  'box-shadow',
   // Transforms (PNT2), after grid, as LONGHANDS registers them.
   ...TRANSFORM_LONGHANDS,
   // GEN-b: content and list-style (css-content-3, css-lists-3), as LONGHANDS registers them.

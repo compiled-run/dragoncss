@@ -456,6 +456,7 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
         // REPL-a draws an image or hosts a web view from its own paint stage; the state runtime does not rebuild either yet.
         throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
       case 'border-radius':
+      case 'box-shadow':
         // The state runtime has no writer for these yet (PNT1 paints them from the program); a case script would drop them.
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       default: {

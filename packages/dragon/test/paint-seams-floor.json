@@ -23,6 +23,8 @@
     "border-styles",
     "border-colors",
     "padding-box-clip",
+    "border-radius",
+    "box-shadow",
     "transform",
     "replaced-image",
     "foreign-view"
@@ -30,6 +32,8 @@
   "paintPlants": [
     "border:dash-phase-1",
     "border:dash-gap-unfitted",
+    "radius:radius-square",
+    "shadow:shadow-offset-1",
     "transform:transform-origin-ignored",
     "transform:translate-percent-of-parent",
     "image:image-offset-1"
@@ -39,9 +43,12 @@
     "glyph-offset-y-1",
     "dash-phase-1",
     "dash-gap-unfitted",
+    "radius-square",
+    "shadow-offset-1",
     "transform-origin-ignored",
     "translate-percent-of-parent",
-    "image-offset-1"
+    "image-offset-1",
+    "single-run-baseline"
   ],
   "supportFiles:uikit": [
     "Support/DragonChecked.swift",
@@ -53,6 +60,8 @@
     "Support/Paint/DragonPaintBackground.swift",
     "Support/Paint/DragonPaintBorder.swift",
     "Support/Paint/DragonPaintClip.swift",
+    "Support/Paint/DragonPaintRadius.swift",
+    "Support/Paint/DragonPaintShadow.swift",
     "Support/Paint/DragonPaintTransform.swift",
     "Support/Paint/DragonPaintImage.swift",
     "Support/Paint/DragonPaintForeignView.swift",
@@ -69,6 +78,8 @@
     "kotlin/dev/dragon/views/paint/DragonPaintBackground.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintBorder.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintClip.kt",
+    "kotlin/dev/dragon/views/paint/DragonPaintRadius.kt",
+    "kotlin/dev/dragon/views/paint/DragonPaintShadow.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintTransform.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintImage.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintForeignView.kt",
@@ -81,6 +92,8 @@
     "clip",
     "foreign-view",
     "image",
+    "radius",
+    "shadow",
     "transform"
   ]
 }

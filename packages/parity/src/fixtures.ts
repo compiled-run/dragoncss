@@ -30,6 +30,7 @@ import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
+import { SHADOW } from './fixture-groups/shadow.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
@@ -121,6 +122,7 @@ export const GROUPS = {
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
   selectors: SELECTORS,
+  shadow: SHADOW,
   showcase: SHOWCASE,
   'sizing-ratio': SIZING,
   states: STATES,
