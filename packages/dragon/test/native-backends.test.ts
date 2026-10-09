@@ -76,7 +76,8 @@ describe('the emitted Swift and Kotlin', () => {
     const swift = emitUikitCases([emitCase(p.uikit)]).map((f) => f.text).join('\n');
     const kotlin = emitAndroidViewsCases([emitCase(p['android-views'])]).map((f) => f.text).join('\n');
     expect(swift).toContain('LayoutStyle(JsString("block")');
-    expect(swift).toContain('.backgroundColor = dragonUIColor(DragonRGBA8(51, 102, 255, 255))');
+    // The background writer is the module's runtime writer on both backends (PNT1: a rounded box paints its colour itself).
+    expect(swift).toMatch(/dragonBackground\(v\d+, DragonRGBA8\(51, 102, 255, 255\)\)/);
     expect(swift).toContain('.dragonEnableClip()');
     expect(kotlin).toContain('LayoutStyle("block"');
     expect(kotlin).toContain('dragonBackground(v');
@@ -98,47 +99,59 @@ describe('the LayoutStyle constructor arguments', () => {
     expect(fields.length).toBeGreaterThan(40);
     expect([...STYLE_FIELDS]).toEqual(fields);
   });
-  it('an aspect ratio is its typed constructor on both backends: ratio, auto-ratio, and auto for a box without one', () => {
+  it('an aspect ratio is its typed constructor on both backends: ratio, auto-ratio, and auto for a box without one, before the null grid fields', () => {
     const css = 'body { margin: 0; } .a { width: 64px; aspect-ratio: 16 / 9; } .b { width: 64px; aspect-ratio: auto 2 / 1; }';
     const ratioInput = inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]);
     const p = nativePrograms(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(ratioInput), []);
     if (p.kind !== 'ready') throw new Error(p.reason);
     const swift = emitUikitCases([emitCase(p.programs.uikit)]).map((f) => f.text).join('\n');
     const kotlin = emitAndroidViewsCases([emitCase(p.programs['android-views'])]).map((f) => f.text).join('\n');
-    expect(swift).toContain('AspectRatioValue_ratio(JsString("ratio"), 1024.0, 576.0))');
-    expect(swift).toContain('AspectRatioValue_autoRatio(JsString("auto-ratio"), 128.0, 64.0))');
-    expect(swift).toContain('JsString("start"), Auto(JsString("auto")))');
-    expect(kotlin).toContain('AspectRatioValue_ratio("ratio", 1024.0, 576.0))');
-    expect(kotlin).toContain('AspectRatioValue_autoRatio("auto-ratio", 128.0, 64.0))');
+    // INL1a: verticalAlign follows aspectRatio (input.ts order), always baseline from the compiler; then GRID's grid and gridItem, nil off a grid.
+    const swiftAlign = ', VerticalAlignKeywordValue(JsString("keyword"), JsString("baseline")), nil, nil)';
+    const kotlinAlign = ', VerticalAlignKeywordValue("keyword", "baseline"), null, null)';
+    expect(swift).toContain(`AspectRatioValue_ratio(JsString("ratio"), 1024.0, 576.0)${swiftAlign}`);
+    expect(swift).toContain(`AspectRatioValue_autoRatio(JsString("auto-ratio"), 128.0, 64.0)${swiftAlign}`);
+    expect(swift).toContain(`JsString("start"), Auto(JsString("auto"))${swiftAlign}`);
+    expect(kotlin).toContain(`AspectRatioValue_ratio("ratio", 1024.0, 576.0)${kotlinAlign}`);
+    expect(kotlin).toContain(`AspectRatioValue_autoRatio("auto-ratio", 128.0, 64.0)${kotlinAlign}`);
   });
 });
 
-type Tool = { readonly ok: boolean; readonly why: string };
+type Outcome = { readonly arg: string; readonly status: number; readonly out: string };
+type Native = {
+  readonly swiftTool: () => { readonly swiftc: string } | null;
+  readonly kotlinTool: () => { readonly kotlinc: string; readonly javaHome: string } | null;
+  readonly missingToolchain: (subject: string, missing: string) => string;
+};
+// packages/dragon does not depend on packages/translate, so its tool lookups are loaded at run time from its source.
+const translateNative = async (): Promise<Native> => (await import(pathToFileURL(join(root, 'packages/translate/src/native.ts')).href)) as Native;
 
 // Linux Swift's runtime backtracer symbolicates every trap before exiting, which ate the CI time budget.
 const NO_BACKTRACE = { ...process.env, SWIFT_BACKTRACE: 'enable=no' };
 
-function trapRun(lang: 'swift' | 'kotlin', dir: string): { tool: Tool; outcomes: { arg: string; status: number; out: string }[] } {
+/** The outcomes per argument, or the blocked (owner tooling) line when the toolchain is missing (an error with DRAGON_REQUIRE_NATIVE=1). */
+function trapRun(lang: 'swift' | 'kotlin', dir: string, native: Native): Outcome[] | string {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   const args = ['7', '1.5', '2147483648', '-2147483649', '-2147483648'];
   if (lang === 'swift') {
+    const tool = native.swiftTool();
+    if (tool === null) return native.missingToolchain('checked int swift', 'swiftc not found');
     writeFileSync(join(dir, 'Checked.swift'), checkedConversionSource('uikit'));
     writeFileSync(join(dir, 'main.swift'), 'import Foundation\nlet v = Double(CommandLine.arguments[1])!\nprint(dragonCheckedInt(v, "test"))\n');
-    const c = spawnSync('swiftc', ['-O', '-o', join(dir, 'checked'), join(dir, 'Checked.swift'), join(dir, 'main.swift')], { encoding: 'utf8' });
-    if (c.status !== 0) return { tool: { ok: false, why: `swiftc: ${c.stderr ?? c.error}` }, outcomes: [] };
-    return { tool: { ok: true, why: '' }, outcomes: args.map((arg) => { const r = spawnSync(join(dir, 'checked'), [arg], { encoding: 'utf8', env: NO_BACKTRACE }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; }) };
+    const c = spawnSync(tool.swiftc, ['-O', '-o', join(dir, 'checked'), join(dir, 'Checked.swift'), join(dir, 'main.swift')], { encoding: 'utf8' });
+    if (c.status !== 0) throw new Error(`swiftc failed: ${c.stderr ?? ''}${c.error ?? ''}`);
+    return args.map((arg) => { const r = spawnSync(join(dir, 'checked'), [arg], { encoding: 'utf8', env: NO_BACKTRACE }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; });
   }
-  const javaHome = process.env['JAVA_HOME'];
-  const which = spawnSync('which', ['kotlinc'], { encoding: 'utf8' });
-  if (javaHome === undefined || which.status !== 0) return { tool: { ok: false, why: 'no JAVA_HOME or kotlinc' }, outcomes: [] };
+  const tool = native.kotlinTool();
+  if (tool === null) return native.missingToolchain('checked int kotlin', 'no JDK 17+ or kotlinc');
   writeFileSync(join(dir, 'Checked.kt'), checkedConversionSource('android-views'));
   writeFileSync(join(dir, 'Main.kt'), 'package dev.dragon.views\n\nfun main(args: Array<String>) {\n  println(dragonCheckedInt(args[0].toDouble(), "test"))\n}\n');
   const jar = join(dir, 'checked.jar');
-  const env = { ...process.env, JAVA_HOME: javaHome };
-  const c = spawnSync(which.stdout.trim(), ['-include-runtime', '-d', jar, join(dir, 'Checked.kt'), join(dir, 'Main.kt')], { encoding: 'utf8', env });
-  if (c.status !== 0) return { tool: { ok: false, why: `kotlinc: ${c.stderr}` }, outcomes: [] };
-  return { tool: { ok: true, why: '' }, outcomes: args.map((arg) => { const r = spawnSync(join(javaHome, 'bin', 'java'), ['-cp', jar, 'dev.dragon.views.MainKt', arg], { encoding: 'utf8', env }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; }) };
+  const env = { ...process.env, JAVA_HOME: tool.javaHome, PATH: `${join(tool.javaHome, 'bin')}:${process.env['PATH'] ?? ''}` };
+  const c = spawnSync(tool.kotlinc, ['-include-runtime', '-d', jar, join(dir, 'Checked.kt'), join(dir, 'Main.kt')], { encoding: 'utf8', env });
+  if (c.status !== 0) throw new Error(`kotlinc failed: ${c.stderr ?? ''}${c.error ?? ''}`);
+  return args.map((arg) => { const r = spawnSync(join(tool.javaHome, 'bin', 'java'), ['-cp', jar, 'dev.dragon.views.MainKt', arg], { encoding: 'utf8', env }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; });
 }
 
 describe('the checked int conversion (View.layout ints)', () => {
@@ -146,12 +159,10 @@ describe('the checked int conversion (View.layout ints)', () => {
     it(`${lang}: traps on 1.5, 2^31 and -2^31 - 1, and passes 7 and -2^31`, async () => {
       const dir = join(tmpdir(), `dragon-t014-checked-${lang}-${process.pid}`);
       onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
-      const { tool, outcomes } = trapRun(lang, dir);
-      if (!tool.ok) {
-        // Reported as blocked (owner tooling), never as a pass: the lane records it the same way (lanes.ts).
-        const native = (await import(pathToFileURL(join(root, 'packages/translate/src/native.ts')).href)) as { swiftTool: () => unknown; kotlinTool: () => unknown };
-        expect(lang === 'swift' ? native.swiftTool() : native.kotlinTool()).toBeNull();
-        console.log(`checked int ${lang}: blocked (owner tooling): ${tool.why}`);
+      const outcomes = trapRun(lang, dir, await translateNative());
+      if (typeof outcomes === 'string') {
+        // Reported as blocked (owner tooling), never as a pass, the way the lanes record it (lanes.ts).
+        console.log(outcomes);
         return;
       }
       const by = new Map(outcomes.map((o) => [o.arg, o]));
@@ -180,13 +191,19 @@ describe('a calculated line height is built as the engine\'s LineHeightCalc (non
   it('on a text leaf and inside an lh leaf, in Swift and Kotlin', () => {
     const leaf = { kind: 'text', id: 'p:t', text: 'XX', font, lineHeight: lhCalc, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' } as const;
     const width = { kind: 'calc', range: 'non-negative', expr: { kind: 'lh', value: 2, font, lineHeight: lhCalc } } as const;
-    const root = { kind: 'box', id: 'p', boxType: 'element', style: style(width), children: [leaf] } as const;
+    // INL1a: the container's strut has the leaf's font and line-height (validate.ts leaf-font), so it is a third LineHeightCalc.
+    const root = { kind: 'box', id: 'p', boxType: 'element', style: style(width), strut: { font, lineHeight: lhCalc }, children: [leaf] } as const;
     for (const lang of ['swift', 'kotlin'] as const) {
       const src = inputFunctions(lang, root as never, 't').decls.join('\n');
       const q = lang === 'swift' ? (s: string) => `JsString("${s}")` : (s: string) => `"${s}"`;
-      expect(src.split(`LineHeightCalc(${q('calc')}, Px(${q('px')}, 12.0), ${q('non-negative')})`).length - 1, lang).toBe(2);
+      expect(src.split(`LineHeightCalc(${q('calc')}, Px(${q('px')}, 12.0), ${q('non-negative')})`).length - 1, lang).toBe(3);
       expect(src, lang).not.toContain(`LengthCalc(${q('calc')}, Px(${q('px')}, 12.0)`);
     }
+  });
+  it('refuses a style without its grid fields instead of building it (they are null where unused)', () => {
+    const { grid: _grid, ...rest } = nativeRoot().style;
+    const root = { kind: 'box', id: 'p', boxType: 'element', style: rest, strut: null, children: [] } as const;
+    for (const lang of ['swift', 'kotlin'] as const) expect(() => inputFunctions(lang, root as never, 't'), lang).toThrow('LayoutStyle.grid is missing');
   });
 });
 

@@ -7,12 +7,13 @@ import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CaseReference, DeviceCheckLane, FailureKind, TrustCase } from '../src/device-lanes.ts';
-import { blankCapture, captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, isSampleRule, readDump, splitByLines, STAGE_RGBA, trustFailuresOf } from '../src/device-lanes.ts';
-import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
+import { blankCapture, captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, isSampleRule, plantVerdict, readDump, splitByLines, STAGE_RGBA, trustFailuresOf } from '../src/device-lanes.ts';import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
 import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSamples } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
+import { REFERENCE_LANE, validateNativeDump } from '../src/native-dump.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { androidCommands, appCacheKey, casesCodeProblems, expand, hostSources, iosCommands, iosModules, nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
+import { PLANT_RULES } from '../src/device-run.ts';
 import { repoPath } from '../src/paths.ts';
 import { casePoints, expectedPixelsPath, rasterSize } from '../src/pixel-reference.ts';
 import type { NativeTarget } from '../src/targets.ts';
@@ -29,7 +30,8 @@ function perfectDump(target: NativeTarget, dpr: number, n: NativeCase, ref: Case
   return {
     ...d,
     device: { ...d.device, platform: target },
-    nodes: d.nodes.map((x) => ({ ...x, lines: x.lines.map((l, j) => ({ ...l, start: lines.get(x.id)?.[j]?.[0] ?? null, end: lines.get(x.id)?.[j]?.[1] ?? null })) })),
+    // An element's lines (an inline box's fragments) have no own text: a device writes 0 and 0 (T058J3 E).
+    nodes: d.nodes.map((x) => ({ ...x, lines: x.lines.map((l, j) => (x.kind === 'text' ? { ...l, start: lines.get(x.id)?.[j]?.[0] ?? null, end: lines.get(x.id)?.[j]?.[1] ?? null } : { ...l, start: 0, end: 0 })) })),
     pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: size.width, height: size.height, sha256: 'a'.repeat(64), samples: readSamples(ref.pixels, ref.points) },
   };
 }
@@ -270,6 +272,23 @@ describe('the node and line split of (a) and (d)', () => {
 
 const trustCase = (n: NativeCase, dpr: number): TrustCase => ({ id: n.case.id, points: casePoints(n.programs.uikit, n.case.environment.viewport, dpr), size: rasterSize(n.case.environment.viewport, dpr) });
 
+describe('the paint plant verdict', () => {
+  const f = (lane: DeviceCheckLane, kind: FailureKind, node: string | null) => ({ lane, case: 'radius-basic', dpr: 3, node, kind, detail: 'x' });
+  const radius = PLANT_RULES['radius-square'];
+  const hit = f('device-pixels', 'pixel', 'radius:r1:top-left:0');
+  it('caught: a pixel failure on a probe rule with frames and lines clean and the host finished', () => {
+    expect(plantVerdict([hit], null, radius)).toMatchObject({ caught: true, pixels: 1, inked: 1 });
+  });
+  it('not caught: the host did not finish, only other rules failed, a non-pixel kind, or frames or lines failed too', () => {
+    expect(plantVerdict([hit], 'timed out', radius).caught).toBe(false);
+    expect(plantVerdict([f('device-pixels', 'pixel', 'edge:w1:bottom')], null, radius).caught).toBe(false);
+    expect(plantVerdict([f('device-pixels', 'raster-size', 'radius:r1:top-left:0')], null, radius).caught).toBe(false);
+    expect(plantVerdict([hit, f('device-frames', 'frame-engine', 'w1')], null, radius).caught).toBe(false);
+    expect(plantVerdict([hit, f('device-lines', 'break-mismatch', 'w1:text0')], null, radius).caught).toBe(false);
+    expect(plantVerdict([], null, radius).caught).toBe(false);
+  });
+});
+
 describe('capture trust', () => {
   it('in-app samples equal the OS screenshot at the root offset; a one-row offset error is caught', () => {
     const dir = join(nativeOut('ios'), 'test-trust');
@@ -309,6 +328,52 @@ describe('capture trust', () => {
     writeFileSync(dumpFile(dir, n.case.id, 3), JSON.stringify({ ...d, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), width: 1199 } }));
     expect(captureTrust(dir, [tc], 3, [0, 0])[0]?.mismatches).toEqual(['the in-app capture is 1199x900, the raster rule 1200x900']);
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('device dump element lines (T058J3 E): an inline box fragment has no own text, so start and end are 0', () => {
+  const n = cases.find((c) => c.case.id === 'inline-tags') as NativeCase;
+  const ref = caseReference('ios', n, 3);
+  const d = perfectDump('ios', 3, n, ref, relabelledReferenceDumps('ios', 3));
+  const box = d.nodes.findIndex((x) => x.id === 't2s');
+  const withLine = (dump: NativeDump, i: number, line: Partial<NativeDump['nodes'][number]['lines'][number]>): unknown =>
+    JSON.parse(JSON.stringify({ ...dump, nodes: dump.nodes.map((x, k) => (k === i ? { ...x, lines: x.lines.map((l, j) => (j === 0 ? { ...l, ...line } : l)) } : x)) }));
+  it('the perfect dump validates, and its inline box t2s has two element lines with 0 and 0', () => {
+    expect(validateNativeDump(d).ok).toBe(true);
+    expect(d.nodes[box]?.kind).toBe('element');
+    expect(d.nodes[box]?.lines.map((l) => [l.start, l.end])).toEqual([[0, 0], [0, 0]]);
+  });
+  it('a null start fails a device dump, and a non-zero start or end fails it as out-of-range', () => {
+    const nul = validateNativeDump(withLine(d, box, { start: null }));
+    expect(nul.ok || nul.errors.map((e) => `${e.path} ${e.code}`)).toEqual([`nodes[${box}].lines[0].start null-not-allowed`]);
+    for (const bad of [{ start: 1 }, { end: 2 }]) {
+      const v = validateNativeDump(withLine(d, box, bad));
+      expect(v.ok || v.errors.map((e) => `${e.path} ${e.code} ${e.detail}`), JSON.stringify(bad)).toEqual([`nodes[${box}].lines[0] out-of-range t2s:line0 has no own text; start and end are 0`]);
+    }
+  });
+  it('a reference dump with null element line offsets passes', () => {
+    const r = relabelledReferenceDumps('ios', 3).find((x) => x.case.id === 'inline-tags') as NativeDump;
+    const reference = withLine({ ...r, lane: REFERENCE_LANE, case: { ...r.case, expectedDigest: null } }, box, { start: null, end: null });
+    const v = validateNativeDump(reference);
+    expect(v.ok || v.errors).toBe(true);
+    expect(v.ok && v.dump.nodes[box]?.lines[0]).toMatchObject({ start: null, end: null });
+  });
+  it('break-shifted on a text leaf inside an inline box (t2s:text0) is still caught by the break check', () => {
+    const inner = d.nodes.findIndex((x) => x.id === 't2s:text0');
+    expect(d.nodes[inner]?.lines.length).toBeGreaterThanOrEqual(2);
+    // Only t2s:text0 keeps two lines, so the plant must pick it.
+    const only: NativeDump = { ...d, nodes: d.nodes.map((x, i) => (i === inner || x.kind !== 'text' ? x : { ...x, lines: x.lines.slice(0, 1) })) };
+    const planted = plantDumpFault('break-shifted', only, { engine: ref.engine, passingSamples: [] });
+    expect(planted?.nodes[inner]?.lines[0]?.end).toBe((only.nodes[inner]?.lines[0]?.end as number) - 1);
+    const got = evaluateCase('ios', n, 3, planted, ref).failures;
+    expect(got.some((f) => f.lane === 'device-lines' && f.kind === 'break-mismatch' && f.detail.startsWith('t2s:text0: device lines')), JSON.stringify(got.slice(0, 3))).toBe(true);
+  });
+  it.each([['ios', 3], ['ios', 2], ['android', 2], ['android', 3], ['android', 2.625]] as const)('every existing case\'s perfect %s dump at DPR %s validates', (target, dpr) => {
+    const all = relabelledReferenceDumps(target, dpr);
+    for (const c of cases) {
+      const v = validateNativeDump(perfectDump(target, dpr, c, caseReference(target, c, dpr), all));
+      expect(v.ok || v.errors.slice(0, 3), c.case.id).toBe(true);
+    }
   });
 });
 

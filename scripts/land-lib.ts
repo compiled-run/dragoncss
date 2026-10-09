@@ -1,8 +1,9 @@
 // The checked parts of land.ts: queue and argument parsing, retries of network calls, the CI verdict, the Claude review gate and
 // the queue loop that records a failed PR and continues. The git and device judgements come from merge-train-lib.ts.
 import { spawn, spawnSync } from 'node:child_process';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, constants as fsConstants, lstatSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync, writeSync } from 'node:fs';
 import { type CheckRun, CI_CHECK } from './pr-review-vouch.ts';
+import { type DeviceEvidence, modelChanges } from './merge-train-lib.ts';
 
 const fail = (what: string): never => {
   throw new Error(`land: ${what}`);
@@ -25,7 +26,8 @@ export const parseEntry = (line: string): Entry => {
   return { branch, pr: Number(pr), clean };
 };
 
-export const parseQueue = (text: string): Entry[] => {
+// `allowEmpty` (land.yml, LAND_QUEUE_EMPTY_OK=1): an empty queue is nothing to land rather than a mistake.
+export const parseQueue = (text: string, o: { allowEmpty?: boolean } = {}): Entry[] => {
   const entries: Entry[] = [];
   for (const raw of text.split('\n')) {
     const line = raw.replace(/#.*/, '').trim();
@@ -33,7 +35,7 @@ export const parseQueue = (text: string): Entry[] => {
     if (/^train\b/.test(line)) return fail(`"${line}": trains are gone; the queue is a plain list of <branch>:<pr>:<clean-head> lines`);
     entries.push(parseEntry(line));
   }
-  if (entries.length === 0) return fail('the queue has no entries');
+  if (entries.length === 0 && o.allowEmpty !== true) return fail('the queue has no entries');
   for (const key of ['branch', 'pr'] as const) {
     if (new Set(entries.map((e) => e[key])).size !== entries.length) fail(`two queue entries share a ${key}`);
   }
@@ -52,8 +54,24 @@ export const LAND_USAGE = `usage: pnpm land <queue-file> [--dry-run]
   LAND_WORKTREE_NEXT, default /tmp/dragon-land-next, while a batch publishes), LAND_DEVICES (local, the default: the device lanes
   under /tmp/device-lease.sh; ci: device-lanes.yml on GitHub runners for each position's tree; the local run until master has
   device-lanes.yml), LAND_DEVICES_WAIT (seconds, 9000), LAND_TEST (local, the default: pnpm test here; ci: full-test.yml on GitHub
-  runners for each proved tree; the local test until master has full-test.yml), LAND_TEST_WAIT (seconds, 22500), LAND_CI_START (seconds a
-  CI run may go without starting a job before the step runs locally instead, default 900)`;
+  runners for each proved tree; the local test until master has full-test.yml), LAND_TEST_WAIT (seconds, 22500), LAND_REGEN (local,
+  the default: pnpm regen here; ci: regen-on-ci.yml in patch mode), LAND_REGEN_WAIT (seconds, default past regen-on-ci.yml's chain of round timeouts). Each of LAND_DEVICES,
+  LAND_TEST and LAND_REGEN may also be ci-only: the step never runs here, and when GitHub Actions does not run it the driver stops
+  as a CI outage, failing no PR and leaving the rest of the queue queued. LAND_CI=only sets all three to ci-only (the setting for a
+  host that is not this Mac): no lease, quiet-machine or priority file, and no /tmp helper script is used. LAND_CI_START (seconds
+  a CI run may go without starting a job, with none waiting for a runner, before GitHub Actions counts as not running it, default
+  900), LAND_CI_QUEUE_WAIT (seconds a run whose jobs wait for a runner, as behind the macOS concurrency cap, is waited for before
+  that counts as not running it, default 10800), LAND_CI_MAX_INFLIGHT (positions of a batch whose CI regens are dispatched at once,
+  1 to 8, default 2; the positions above are built one by one). For a host with no state of its own (land.yml): LAND_REVIEW_SOURCE=comment
+  (the default reviewer reads the review from a PR comment, pnpm land:post-review), LAND_STOP_ISSUE
+  (an issue whose land-stop label stops the driver after its batch, as the stop file does), LAND_MAX_BATCHES (batches this run
+  lands; the rest goes to LAND_HANDOFF for the next run), LAND_LOG_DIR (the status, logs, reviews and run directory, instead of /tmp),
+  LAND_QUEUE_EMPTY_OK=1 (an empty queue is nothing to land). Reviewers are matched by user id (LAND_REVIEWER_IDS, or LAND_REVIEWERS
+  ids or logins), and the token's own identity (GET user, or LAND_TOKEN_USER_ID for an App token) may not be one. Every run reads and
+  writes master's land/proof commit status, trusting only statuses by that identity or LAND_PROOF_WRITERS ids. Under LAND_CI=only
+  each run records on each PR's head (land/outage) whether it ended with a verdict about the PR or an outage in a step that ran its
+  tree (or was killed); LAND_OUTAGE_EJECT such runs in a row (default 2) eject the PR at admission, and a PR with any is built alone
+  until it gets a verdict. pnpm land:clear-outage <pr> ends a streak after a real outage.`;
 export const parseLandArgs = (argv: string[]): LandArgs => {
   let queue: string | undefined;
   let dryRun = false;
@@ -131,13 +149,14 @@ export const ciState = (runs: CheckRun[]): CiState => {
 // One poll of a CI wait. GitHub runs no pull_request CI on a PR that is CONFLICTING with its base, so before the build
 // (`conflicting` is passed only there) a conflicting PR whose clean head has no CI run proceeds; the landing commit, which contains
 // master, must still pass CI before the merge. A failed run always fails; a missing run past `appearS` fails otherwise.
-export type CiStep = 'success' | 'wait' | 'skip' | { fail: string };
+// `outage`: GitHub Actions ran no verdict (no run appeared, or it never finished), as opposed to a run that did not succeed.
+export type CiStep = 'success' | 'wait' | 'skip' | { fail: string; outage?: true };
 export const ciStep = (s: CiState, waitedS: number, limits: { appearS: number; waitS: number }, conflicting = false): CiStep => {
   if (s.state === 'success') return 'success';
   if (s.state === 'failure') return { fail: `did not succeed: ${s.conclusions.join('; ')}` };
   if (s.state === 'none' && conflicting) return 'skip';
-  if (s.state === 'none' && waitedS >= limits.appearS) return { fail: `has no CI checks run after ${limits.appearS}s` };
-  if (waitedS >= limits.waitS) return { fail: `CI checks still ${s.state} after ${limits.waitS}s` };
+  if (s.state === 'none' && waitedS >= limits.appearS) return { fail: `has no CI checks run after ${limits.appearS}s`, outage: true };
+  if (waitedS >= limits.waitS) return { fail: `CI checks still ${s.state} after ${limits.waitS}s`, outage: true };
   return 'wait';
 };
 
@@ -396,6 +415,96 @@ export const findingsComment = (pr: number, head: string, findings: readonly Fin
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
+// LAND_TRUSTED (land.yml): the job that holds the landing token runs no code of a PR or a merged tree. Its own commands run only in
+// its trusted checkout (MAIN, master at dispatch time), and git's merge drivers, which git runs inside the landing worktree, are
+// the trusted checkout's scripts by absolute path, never the tree's own scripts/.
+
+/** pnpm setup:git's config with each `node scripts/<x>` driver pointed at the trusted checkout's copy. */
+export const trustedGitConfig = (entries: readonly (readonly [string, string])[], main: string): [string, string][] => {
+  if (!main.startsWith('/') || /['"\\$`\s]/.test(main)) throw new Error(`land: the trusted checkout ${JSON.stringify(main)} must be an absolute path with no quotes, spaces or shell characters`);
+  const out = entries.map(([k, v]): [string, string] => [k, v.replace(/^node scripts\//, `node '${main}/scripts/`).replace(/^(node '[^']+\.ts)( |$)/, "$1'$2")]);
+  // Every driver is a no-op or the trusted checkout's script; anything else would run code from the tree being merged.
+  for (const [k, v] of out) if (k.endsWith('.driver') && v !== 'true' && !v.startsWith(`node '${main}/scripts/`)) throw new Error(`land: the merge driver ${k} = ${JSON.stringify(v)} is not the trusted checkout's script`);
+  return out;
+};
+/** Why a command may not run in `cwd` under LAND_TRUSTED (any directory but the trusted checkout holds a tree's code), or null. */
+// A package manager runs package.json commands, which review does not read as code, so none runs anywhere in the token job.
+const PACKAGE_MANAGERS = new Set(['pnpm', 'npx', 'npm', 'yarn', 'pnpx', 'corepack']);
+export const treeCodeRefusal = (argv: readonly string[], cwd: string, main: string, resolve: (p: string) => string): string | null => {
+  const bin = (argv[0] ?? '').split('/').at(-1)!;
+  if (PACKAGE_MANAGERS.has(bin)) return `LAND_TRUSTED: refusing to run ${argv.join(' ')}: in the job that holds the landing token no package manager runs (its scripts are package.json commands); run the script with node`;
+  return resolve(cwd) === resolve(main) ? null : `LAND_TRUSTED: refusing to run ${argv.join(' ')} in ${cwd}: in the job that holds the landing token only the trusted checkout's own commands run; a tree's commands run in land-checks.yml`;
+};
+
+/**
+ * Writes a file inside a tree's worktree without following a symlink anywhere on its path (a tree can plant one, pointing at the
+ * trusted checkout): every directory on the way must be a real directory, and the file is opened with O_NOFOLLOW.
+ */
+// The directories on the way to `rel`, each a real directory (created when `create`), never a symlink.
+const realParents = (root: string, rel: string, create: boolean, what: string): void => {
+  const parts = rel.split('/');
+  if (rel === '' || rel.startsWith('/') || parts.some((x) => x === '' || x === '.' || x === '..')) throw new Error(`land: ${JSON.stringify(rel)} is not a plain relative path`);
+  let at = root;
+  for (const part of parts.slice(0, -1)) {
+    at = `${at}/${part}`;
+    const st = lstatSync(at, { throwIfNoEntry: false });
+    if (st === undefined && create) mkdirSync(at);
+    else if (st === undefined) return;
+    else if (!st.isDirectory()) throw new Error(`land: ${at} is ${st.isSymbolicLink() ? 'a symlink' : 'not a directory'}; refusing to ${what} ${rel} through it`);
+  }
+};
+const noFollow = (path: string, flags: number, what: string): number => {
+  try {
+    return openSync(path, flags | fsConstants.O_NOFOLLOW, 0o644);
+  } catch (error) {
+    if ((error as { code?: unknown }).code === 'ELOOP') throw new Error(`land: ${path} is a symlink; refusing to ${what} it`);
+    throw error;
+  }
+};
+export const writeInTree = (root: string, rel: string, data: string | Buffer): void => {
+  realParents(root, rel, true, 'write');
+  const fd = noFollow(`${root}/${rel}`, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC, 'write');
+  try {
+    writeSync(fd, typeof data === 'string' ? Buffer.from(data) : data);
+  } finally {
+    closeSync(fd);
+  }
+};
+/** Reads a file inside a tree's worktree without following a symlink (a tree's link could name any file the runner can read). */
+export const readInTree = (root: string, rel: string): string => {
+  realParents(root, rel, false, 'read');
+  const fd = noFollow(`${root}/${rel}`, fsConstants.O_RDONLY, 'read');
+  try {
+    return readFileSync(fd, 'utf8');
+  } finally {
+    closeSync(fd);
+  }
+};
+/** Removes a file inside a tree's worktree; a symlinked directory on its way is refused, and a symlink itself is removed, not its target. */
+export const removeInTree = (root: string, rel: string): void => {
+  realParents(root, rel, false, 'remove');
+  rmSync(`${root}/${rel}`, { force: true });
+};
+/** `git ls-tree` or `git ls-files -s` output: the paths that are symlinks (mode 120000). */
+export const symlinkEntries = (lsOutput: string): string[] =>
+  lsOutput.split(/\0|\n/).flatMap((l) => {
+    const m = /^120000 [0-9a-f]+(?: \d+)?\t(.*)$/.exec(l);
+    return m ? [m[1]!] : [];
+  });
+/** A git patch that creates or keeps a symlink (mode 120000). A regen's outputs are never symlinks. */
+// Line ends are normalised first: git apply takes a CRLF patch, so a "mode 120000\r" line must not slip past.
+export const patchHasSymlink = (patch: string): boolean => /^(?:new file mode|new mode|old mode|deleted file mode)[ \t]+120000[ \t]*$|^index [0-9a-f]+\.\.[0-9a-f]+[ \t]+120000[ \t]*$/m.test(patch.replace(/\r/g, ''));
+
+/** The marker line of a precomputed review comment (land-review-lookup.ts reads it, pnpm land:post-review writes it). */
+export const REVIEW_MARKER = '<!-- dragon-land-review v1 -->';
+/**
+ * A comment body the driver posts, made unreadable as a review: no HTML comment can open (so no marker line), and no code fence
+ * is a json block. The driver posts log tails and finding texts a PR controls, under an identity a reviewer allowlist must not hold.
+ */
+export const defangReview = (body: string): string =>
+  body.replaceAll('<!--', '&lt;!--').replace(/^([ \t]*)(`{3,}|~{3,})([ \t]*)json\b/gim, '$1$2$3text');
+
+// ---------------------------------------------------------------------------------------------------------------------
 // After a merge: GitHub closes, rather than retargets, an open PR whose base branch is deleted. So every open PR based on the
 // merged branch is moved to master first, the list is read again, and the branch is deleted last, only when none is left.
 
@@ -545,6 +654,169 @@ export class LandFailure extends Error {
   }
 }
 export class Fatal extends Error {}
+/**
+ * A CI step GitHub Actions did not run under ci-only (no run, jobs that never started or waited past LAND_CI_QUEUE_WAIT, setup
+ * failures): nothing was judged and nothing may run locally instead, so the driver stops. No PR is failed for it, and every PR
+ * not landed yet stays queued (runBatches' `stopped`).
+ */
+export class CiOutage extends Fatal {
+  /**
+   * `prs`: every PR whose code the step ran (attribute), so the outage counts against them (land-state.ts outageLedger); an
+   * empty list for a step that ran no PR's code (master's own proof, a workflow missing from master). Required, so no CI step
+   * can stop the driver without saying whose tree it ran.
+   */
+  readonly prs: readonly number[];
+  constructor(message: string, prs: readonly number[]) {
+    super(message);
+    this.prs = prs;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The CI stages of a landing run: each dispatches or waits on a CI run that runs PR code, and an outage there counts against the
+// PRs `attribute` names. Every call site in land.ts takes its PRs from attribute (land-trusted.test.ts checks every site, and
+// injects an outage at each stage through runBatches).
+export const CI_STAGES = ['admission-ci', 'prepared-regen', 'regen', 'tree-checks', 'devices', 'full-test', 'publish-ci'] as const;
+export type CiStage = (typeof CI_STAGES)[number];
+/** The PRs merged into each position's tree, by the position's head (master and anything not built: none). */
+export class Trees {
+  readonly #of = new Map<string, readonly number[]>();
+  of(head: string): readonly number[] {
+    return this.#of.get(head) ?? [];
+  }
+  /** Position `head`, built on `prev` with `pr` merged. */
+  add(head: string, prev: string, pr: number): void {
+    this.#of.set(head, [...this.of(prev), pr]);
+  }
+}
+/**
+ * The PRs whose code a CI stage runs:
+ * - admission-ci: the PR head's own ci.yml run: that PR;
+ * - regen, tree-checks, devices: the tree of the position being built, `prev` with `pr` merged: prev's PRs and that PR;
+ * - prepared-regen: a prepared position k, master with the batch's first k PRs merged: those PRs;
+ * - full-test (the batch top, a bisect prefix, master) and publish-ci (ci.yml on the landing commit): the PRs in that tree.
+ */
+export const attribute = (stage: CiStage, c: { trees: Trees; pr?: number; prev?: string; head?: string; batch?: readonly number[]; k?: number }): number[] => {
+  const need = <V>(v: V | undefined, what: string): V => {
+    if (v === undefined) throw new Error(`attribute ${stage}: no ${what}`);
+    return v;
+  };
+  switch (stage) {
+    case 'admission-ci':
+      return [need(c.pr, 'pr')];
+    case 'regen':
+    case 'tree-checks':
+    case 'devices':
+      return [...c.trees.of(need(c.prev, 'prev')), need(c.pr, 'pr')];
+    case 'prepared-regen':
+      return need(c.batch, 'batch').slice(0, need(c.k, 'k'));
+    case 'full-test':
+    case 'publish-ci':
+      return [...c.trees.of(need(c.head, 'head'))];
+  }
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Where each heavy step runs: LAND_DEVICES, LAND_TEST and LAND_REGEN, each local (here), ci (on GitHub runners, falling back to a
+// local run when GitHub Actions does not run it) or ci-only (on GitHub runners, never here: a CI outage stops the driver).
+// LAND_CI=only sets all three to ci-only; with it set, any of them set to anything else is refused.
+
+export type CiMode = 'local' | 'ci' | 'ci-only';
+export type LandModes = { devices: CiMode; test: CiMode; regen: CiMode; ciOnly: boolean };
+const MODES: readonly CiMode[] = ['local', 'ci', 'ci-only'];
+export const parseLandModes = (env: Readonly<Record<string, string | undefined>>): LandModes => {
+  const all = env['LAND_CI'];
+  if (all !== undefined && all !== 'only') return fail(`LAND_CI must be only (or unset), not ${JSON.stringify(all)}`);
+  const one = (name: string): CiMode => {
+    const v = env[name];
+    if (v === undefined) return all === 'only' ? 'ci-only' : 'local';
+    if (!(MODES as readonly string[]).includes(v)) return fail(`${name} must be local, ci or ci-only, not ${JSON.stringify(v)}`);
+    if (all === 'only' && v !== 'ci-only') return fail(`LAND_CI=only runs every step on CI only, but ${name} is ${JSON.stringify(v)}`);
+    return v as CiMode;
+  };
+  const devices = one('LAND_DEVICES');
+  const test = one('LAND_TEST');
+  const regen = one('LAND_REGEN');
+  return { devices, test, regen, ciOnly: devices === 'ci-only' && test === 'ci-only' && regen === 'ci-only' };
+};
+/** LAND_CI_MAX_INFLIGHT: how many positions of a batch have a CI regen dispatched at once, 1 to MAX_BATCH (default 2). */
+export const parseMaxInflight = (v: string | undefined): number => {
+  if (v === undefined) return 2;
+  if (!/^[1-9]\d*$/.test(v) || Number(v) > MAX_BATCH) return fail(`LAND_CI_MAX_INFLIGHT must be a whole number from 1 to ${MAX_BATCH}, not ${JSON.stringify(v)}`);
+  return Number(v);
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The Android image ABI of device records (R3 of the cloud migration's parity proof). CI's Android emulator is x86_64 and this
+// Mac's arm64, and merge-train-lib's modelChanges binds each lane to master's device model, so the first device run on CI after
+// records made here differs in architecture only. Under LAND_DEVICES=ci or ci-only that one transition is an automatic
+// architecture rebaseline (ciArchRebaseline); any other model change still needs LAND_ARCH_REBASELINE.
+
+/** An Android ABI (or a process.arch), with arm64-v8a and aarch64 read as arm64 and x64 as x86_64. */
+export const normalAbi = (abi: string): string => (/^(arm64-v8a|aarch64)$/.test(abi) ? 'arm64' : abi === 'x64' ? 'x86_64' : abi);
+/** The Android emulator ABI a host runs (process.arch), as normalAbi names it. */
+export const hostAbi = (arch: string): string => normalAbi(arch);
+const ANDROID_MODEL = /^(.*\bbuilt for )(\S+)(.*)$/;
+
+/** The Android ABIs a position's device records ran on: each device set's model and each vectors run's toolchain. */
+export const androidAbis = (e: DeviceEvidence): Set<string> => {
+  const out = new Set<string>();
+  for (const t of e.targets.values()) {
+    for (const sets of t.runs.values()) for (const s of sets) {
+      const m = s.model === null ? null : ANDROID_MODEL.exec(s.model);
+      if (m !== null) out.add(normalAbi(m[2]!));
+    }
+    for (const v of t.vectorsArch?.values() ?? []) out.add(normalAbi(v.abi));
+  }
+  return out;
+};
+
+/**
+ * Every model change of `run` against `base`, as modelChanges finds them, split into Android ABI changes (the same model and
+ * device but for the image ABI) and anything else. A count that differs from modelChanges' is reported under `other`, so a
+ * change this split does not see is never let through.
+ */
+export const archChanges = (base: DeviceEvidence, run: DeviceEvidence): { abi: string[]; other: string[] } => {
+  const abi: string[] = [];
+  const other: string[] = [];
+  let expected = 0;
+  for (const [target, b] of base.targets) {
+    const r = run.targets.get(target);
+    if (r === undefined) continue;
+    expected += modelChanges(b, r, target).length;
+    for (const [lane, sets] of r.runs) {
+      const was = b.runs.get(lane);
+      if (was === undefined) continue;
+      for (const s of sets) {
+        const x = was.find((y) => y.dpr === s.dpr && y.device === s.device);
+        if (x === undefined || x.model === null || s.model === null || x.model === s.model) continue;
+        const [m, n] = [ANDROID_MODEL.exec(x.model), ANDROID_MODEL.exec(s.model)];
+        const what = `${target} ${lane}: ${s.device} at DPR ${s.dpr} "${x.model}" -> "${s.model}"`;
+        if (m !== null && n !== null && m[1] === n[1] && m[3] === n[3] && normalAbi(m[2]!) !== normalAbi(n[2]!)) abi.push(what);
+        else other.push(what);
+      }
+    }
+    for (const [lane, now] of r.vectorsArch ?? []) {
+      const was = b.vectorsArch?.get(lane);
+      if (was === undefined || (was.abi === now.abi && was.device === now.device)) continue;
+      const what = `${target} ${lane}: vectors on ${was.device} (${was.abi}) -> ${now.device} (${now.abi})`;
+      if (was.device === now.device && normalAbi(was.abi) !== normalAbi(now.abi)) abi.push(what);
+      else other.push(what);
+    }
+  }
+  if (abi.length + other.length !== expected) other.push(`${expected} model change(s), of which ${abi.length + other.length} were classified`);
+  return { abi, other };
+};
+
+/**
+ * Whether a CI device run's records may replace the previous position's as an architecture rebaseline: every model change is
+ * an Android image ABI change, and there is at least one. The verdicts are judged by deviceRunProblems with rebaseline, which
+ * requires each changed lane to keep the previous state and exactly the previous failures.
+ */
+export const ciArchRebaseline = (base: DeviceEvidence, run: DeviceEvidence): { rebaseline: boolean; changes: string[] } => {
+  const c = archChanges(base, run);
+  return c.abi.length > 0 && c.other.length === 0 ? { rebaseline: true, changes: c.abi } : { rebaseline: false, changes: [] };
+};
 
 export type Outcome = { entry: Entry; result: 'landed' | 'merged before' | 'failed'; step?: string; detail: string };
 export const runQueue = (
@@ -593,12 +865,26 @@ export type BatchOps<T, P extends { head: string }> = {
   base: () => string;
   /** Builds the position of `e` on `prev`. Throws LandFailure to eject `e`; the chain continues on `prev`. */
   build: (prev: string, e: Entry, ticket: T, k: number) => P;
+  /**
+   * Builds the positions of a batch at once (parallel position builds): the same results, in the same order, as `build` on each
+   * in turn, each slot a position or the error that ejects its PR. Absent, or returning null, the positions build one by one.
+   * `failed` is called with each ejection as it happens (its slot index), so the PR is reported then (FAILED, label, comment), as
+   * the one-by-one build reports it, not only once the whole batch has built.
+   */
+  buildAll?: (base: string, items: readonly { entry: Entry; ticket: T }[], failed: (index: number, error: unknown) => void) => readonly ({ position: P } | { error: unknown })[] | null;
   /** Checks the built chain is exactly the positions it claims to be; any error is fatal. */
   verify: (built: readonly { entry: Entry; ticket: T; position: P }[]) => void;
   /** Proves the tree of one position (the full test). Throws LandFailure at step "test" when the test fails. */
   prove: (position: P, e: Entry) => void;
-  /** True when the PM asked for a graceful stop (STOP_FILE or SIGUSR1): no new batch starts. */
+  /** True when the PM asked for a graceful stop (STOP_FILE, SIGUSR1 or the land-stop label): no new batch starts. */
   stopRequested?: () => boolean;
+  /** At most this many batches that built a position (LAND_MAX_BATCHES; land.yml runs one per job): the rest stays queued. */
+  maxBatches?: number;
+  /**
+   * True for a PR that must be built and proved alone (a batch of 1), asked before its admission: one whose earlier build or
+   * proof ended without a verdict, which a batch could not pin on one PR. It starts a batch of its own, never joins one.
+   */
+  solo?: (e: Entry) => boolean;
   /** Proves master's own tree, before a bisect blames the first PR of a batch. Throws LandFailure at step "test" when it fails. */
   proveMaster: (master: string) => void;
   /** Pushes, reviews and merges one PR at its position. Throws LandFailure (that PR fails) or Fatal. */
@@ -606,6 +892,120 @@ export type BatchOps<T, P extends { head: string }> = {
   onFail: (e: Entry, f: LandFailure) => void;
   onOutcome: (outcomes: readonly Outcome[]) => void;
   log: (line: string) => void;
+};
+
+/**
+ * Parallel position builds. Position k's sources are master with the PRs 1..k merged, whatever the builds of the positions below
+ * it do, so each is prepared at once in its own worktree (the merges, the install and a regen to its fixed point, under the heavy
+ * lease's slots): `speculate`. Then, in order, each position is assembled on the actual position below it (`assemble`: the same
+ * merge the one-by-one build makes, its tree the prepared one, then the device step and the checks), so its commit is exactly
+ * the chain's. When a position is ejected, every prepared position above it included that PR, so they are abandoned and built
+ * one by one on the chain without it (`sequential`); so are positions whose preparation failed. The device runs, on the device
+ * lease, take turns in order while the later preparations run.
+ */
+export type ParallelHooks<T, P, H> = {
+  /** Starts preparing position k (1-based) from the first k items; a throw marks it unprepared. */
+  speculate: (k: number, items: readonly { entry: Entry; ticket: T }[]) => H;
+  /** Waits for a preparation; a throw (its regen failed) builds that position one by one, and only that build's failure ejects
+   * the PR: the prepared run's failure may be the parallel load's (disk, a capture timing out), not the PR's. */
+  await: (handle: H) => void;
+  /** Assembles position k on `prev` from its preparation. */
+  assemble: (prev: string, item: { entry: Entry; ticket: T }, k: number, handle: H) => P;
+  /** The one-by-one build of position k on `prev`. */
+  sequential: (prev: string, item: { entry: Entry; ticket: T }, k: number) => P;
+  /** Stops a preparation that will not be used. */
+  abandon: (handle: H) => void;
+  log: (line: string) => void;
+};
+
+export const buildPositionsParallel = <T, P extends { head: string }, H>(
+  base: string,
+  items: readonly { entry: Entry; ticket: T }[],
+  hooks: ParallelHooks<T, P, H>,
+  failed: (index: number, error: unknown) => void = () => {},
+): ({ position: P } | { error: unknown })[] => {
+  const handles: ({ ok: H } | { failed: unknown })[] = items.map((_, i) => {
+    try {
+      return { ok: hooks.speculate(i + 1, items.slice(0, i + 1)) };
+    } catch (error) {
+      return { failed: error };
+    }
+  });
+  const slots: ({ position: P } | { error: unknown })[] = [];
+  let prev = base;
+  let k = 0;
+  // Speculation holds while every position below built from its preparation: the prepared sources are the chain's.
+  let speculating = true;
+  for (const [i, item] of items.entries()) {
+    const h = handles[i]!;
+    try {
+      let position: P;
+      if (speculating && 'ok' in h) {
+        let prepared = true;
+        try {
+          hooks.await(h.ok);
+        } catch (error) {
+          if (error instanceof Fatal) throw error;
+          hooks.log(`parallel build: #${item.entry.pr}'s prepared regen failed (${error instanceof Error ? error.message.split('\n')[0] : String(error)}); building its position one by one`);
+          prepared = false;
+        }
+        // A one-by-one rebuild leaves the chain the preparations above were made for (the same PRs), so they still hold.
+        position = prepared ? hooks.assemble(prev, item, k + 1, h.ok) : hooks.sequential(prev, item, k + 1);
+      } else {
+        if (speculating) {
+          hooks.log(`parallel build: #${item.entry.pr}'s preparation failed (${'failed' in h ? (h.failed instanceof Error ? h.failed.message : String(h.failed)) : ''}); building it and the positions above it one by one`);
+          speculating = false;
+        }
+        position = hooks.sequential(prev, item, k + 1);
+      }
+      slots.push({ position });
+      prev = position.head;
+      k++;
+    } catch (error) {
+      if (error instanceof Fatal) throw error;
+      slots.push({ error });
+      failed(i, error);
+      if (speculating) hooks.log(`parallel build: #${item.entry.pr} is ejected; the positions above it are built one by one without it`);
+      speculating = false;
+    }
+    // Once speculation ends, the preparations above are of chains that are not the actual one.
+    if (!speculating) for (const later of handles.slice(i + 1)) if ('ok' in later) hooks.abandon(later.ok);
+    if (!speculating) for (let j = i + 1; j < handles.length; j++) handles[j] = { failed: 'abandoned' };
+  }
+  return slots;
+};
+
+/** The paths where a prepared tree differs from the merge it is assembled on, split by what may differ there. `outputs` (a regen
+ * step's declared outputs) are the prepared regen's to set; `records` (the device records, written by device runs and carried by
+ * the merge from the position below) are taken from the merge, and the tree regenerated on them; anything else (`sources`: code,
+ * package.json, the lockfile, a .d.ts, vendor) means the preparation was not of this merge's sources. */
+export const preparedDifference = (paths: readonly string[], isOutput: (p: string) => boolean, isRecord: (p: string) => boolean): { sources: string[]; records: string[] } => ({
+  sources: paths.filter((p) => !isOutput(p) && !isRecord(p)),
+  records: paths.filter((p) => isRecord(p)),
+});
+
+/** Whether a prepared position's worktrees fit the disk: `freeGb` must stay at least `floorGb` after `missing` new worktrees of
+ * `perGb` each. */
+export const preparedFits = (freeGb: number, missing: number, o: { floorGb: number; perGb: number }): boolean => freeGb - missing * o.perGb >= o.floorGb;
+
+/** Stops the process group led by `pid` (SIGTERM, then SIGKILL after 30s) and waits for it to exit; returns whether it is gone, so
+ * the worktree it ran in can be reused. A leader that is another process now (its start time differs) means the pid was reused:
+ * that group is not ours, and nothing is signalled. A leader that is gone keeps its group id reserved while any member lives, so
+ * the group signal reaches only ours. */
+export const stopProcessGroup = (
+  pid: number,
+  start: string | null,
+  o: { startOf: (pid: number) => string | null; members: (pgid: number) => readonly number[]; signal: (sig: 'SIGTERM' | 'SIGKILL') => void; sleep: (ms: number) => void },
+): boolean => {
+  const now = o.startOf(pid);
+  if (now !== null && start !== null && now !== start) return true;
+  if (o.members(pid).length === 0) return true;
+  o.signal('SIGTERM');
+  for (let i = 0; i < 120 && o.members(pid).length > 0; i++) o.sleep(250);
+  if (o.members(pid).length === 0) return true;
+  o.signal('SIGKILL');
+  for (let i = 0; i < 40 && o.members(pid).length > 0; i++) o.sleep(250);
+  return o.members(pid).length === 0;
 };
 
 export const MAX_BATCH = 8;
@@ -675,7 +1075,7 @@ export type Prepared<T, P> = {
   proven: number[];
   culprit: { index: number; failure: LandFailure } | null;
 };
-export type PrepareOps<T, P extends { head: string }> = Pick<BatchOps<T, P>, 'admit' | 'build' | 'verify' | 'prove' | 'proveMaster' | 'log'>;
+export type PrepareOps<T, P extends { head: string }> = Pick<BatchOps<T, P>, 'admit' | 'build' | 'buildAll' | 'verify' | 'prove' | 'proveMaster' | 'log' | 'solo'>;
 
 export const prepareRound = <T, P extends { head: string }>(
   queue: Entry[],
@@ -694,18 +1094,27 @@ export const prepareRound = <T, P extends { head: string }>(
     result({ entry: e, failure: asFailure(error) });
   };
   const admitted: { entry: Entry; ticket: T }[] = [];
-  while (admitted.length < size && queue.length > 0) {
-    const e = queue.shift()!;
+  let alone = false;
+  while (admitted.length < size && queue.length > 0 && !alone) {
+    const e = queue[0]!;
+    const solo = ops.solo?.(e) === true;
+    // A PR that must be alone waits for the next batch when this one already has a PR.
+    if (solo && admitted.length > 0) break;
+    queue.shift();
     consumed.push(e);
     at(e);
     try {
       const a = ops.admit(e, [...(o.earlier ?? []), ...admitted.map((x) => x.entry)]);
       if ('merged' in a) result({ entry: e, merged: a.merged });
-      else admitted.push({ entry: e, ticket: a.ticket });
+      else {
+        admitted.push({ entry: e, ticket: a.ticket });
+        alone = solo;
+      }
     } catch (error) {
       failure(e, error);
     }
   }
+  if (alone) ops.log(`batch: #${admitted[0]!.entry.pr} is built and proved alone (an earlier build or proof of it ended without a verdict)`);
   const none = (b: string): Prepared<T, P> => ({ base: b, consumed, results, built: [], good: 0, proven: [], culprit: null });
   if (admitted.length === 0) return none('');
   let b: string;
@@ -716,14 +1125,36 @@ export const prepareRound = <T, P extends { head: string }>(
   }
   let prev = b;
   const built: { entry: Entry; ticket: T; position: P }[] = [];
-  for (const m of admitted) {
+  // An ejection in the parallel build is reported as it happens; the slots then skip it.
+  const reported = new Set<number>();
+  const failedNow = (i: number, error: unknown): void => {
+    const m = admitted[i];
+    if (m === undefined || reported.has(i)) return;
+    reported.add(i);
     at(m.entry);
-    try {
-      const position = ops.build(prev, m.entry, m.ticket, built.length + 1);
-      built.push({ ...m, position });
-      prev = position.head;
-    } catch (error) {
-      failure(m.entry, error);
+    failure(m.entry, error);
+  };
+  const all = admitted.length > 1 && ops.buildAll !== undefined ? ops.buildAll(b, admitted, failedNow) : null;
+  if (all !== null) {
+    if (all.length !== admitted.length) throw new Fatal(`the parallel build returned ${all.length} slots for ${admitted.length} PRs`);
+    for (const [i, m] of admitted.entries()) {
+      at(m.entry);
+      const slot = all[i]!;
+      if ('position' in slot) {
+        built.push({ ...m, position: slot.position });
+        prev = slot.position.head;
+      } else if (!reported.has(i)) failedNow(i, slot.error);
+    }
+  } else {
+    for (const m of admitted) {
+      at(m.entry);
+      try {
+        const position = ops.build(prev, m.entry, m.ticket, built.length + 1);
+        built.push({ ...m, position });
+        prev = position.head;
+      } catch (error) {
+        failure(m.entry, error);
+      }
     }
   }
   if (built.length === 0) return none(b);
@@ -781,6 +1212,8 @@ export type NextRound<T, P> = {
   cancel: () => void;
 };
 
+/** A builder's Fatal as JSON (parsePrepared reads it back): a CiOutage stays one. */
+export const serializeFatal = (error: Fatal): string => JSON.stringify({ fatal: error.message, outage: error instanceof CiOutage, ...(error instanceof CiOutage ? { prs: error.prs } : {}) });
 // A builder's round as JSON, and back. LandFailures keep their step, message and comment; anything malformed is an error.
 export const serializePrepared = <T, P>(p: Prepared<T, P>): string =>
   JSON.stringify({
@@ -793,9 +1226,14 @@ const toFailure = (v: unknown): LandFailure => {
   if (!isObject(v) || typeof v.step !== 'string' || typeof v.message !== 'string' || !(v.comment === null || typeof v.comment === 'string')) return fail(`a prepared failure is malformed: ${JSON.stringify(v)?.slice(0, 200)}`);
   return new LandFailure(v.step, v.message, v.comment ?? undefined);
 };
-export const parsePrepared = <T, P extends { head: string }>(text: string): Prepared<T, P> | { fatal: string } => {
+export const parsePrepared = <T, P extends { head: string }>(text: string): Prepared<T, P> | { fatal: string; outage: boolean; prs: number[] } => {
   const v: unknown = JSON.parse(text);
-  if (isObject(v) && typeof v.fatal === 'string') return { fatal: v.fatal };
+  if (isObject(v) && typeof v.fatal === 'string') {
+    if (v.outage !== undefined && typeof v.outage !== 'boolean') return fail(`a prepared round's outage is not a boolean: ${text.slice(0, 200)}`);
+    const prs = v.prs ?? [];
+    if (!Array.isArray(prs) || !prs.every((x) => Number.isSafeInteger(x) && (x as number) > 0)) return fail(`a prepared round's outage PRs are malformed: ${text.slice(0, 200)}`);
+    return { fatal: v.fatal, outage: v.outage === true, prs: prs as number[] };
+  }
   if (!isObject(v) || typeof v.base !== 'string' || !Array.isArray(v.consumed) || !v.consumed.every(isEntry) || !Array.isArray(v.results) || !Array.isArray(v.built) || !Array.isArray(v.proven)) {
     return fail(`a prepared round is malformed: ${text.slice(0, 200)}`);
   }
@@ -822,11 +1260,17 @@ export const runBatches = <T, P extends { head: string }>(
   entries: readonly Entry[],
   size: number,
   ops: BatchOps<T, P> & { next?: NextRound<T, P> },
-): { outcomes: Outcome[]; fatal: string | null; exit: 0 | 1; stopped: Entry[] } => {
+): { outcomes: Outcome[]; fatal: string | null; outage: string | null; outagePrs: readonly number[]; exit: 0 | 1; stopped: Entry[]; stopAsked: boolean; limited: boolean } => {
   if (!Number.isInteger(size) || size < 1) return fail(`batch size ${size}`);
+  const max = ops.maxBatches ?? Infinity;
+  if (max !== Infinity && (!Number.isInteger(max) || max < 1)) return fail(`batch limit ${max}`);
+  let batches = 0;
+  let limited = false;
   const queue = [...entries];
   const outcomes: Outcome[] = [];
   let fatal: string | null = null;
+  let outage: string | null = null;
+  let outagePrs: readonly number[] = [];
   const done = (o: Outcome): void => {
     outcomes.push(o);
     ops.onOutcome(outcomes);
@@ -860,6 +1304,11 @@ export const runBatches = <T, P extends { head: string }>(
         ops.log(`stop requested: not starting ${prs(queue)}`);
         break;
       }
+      if (batches >= max) {
+        limited = true;
+        ops.log(`batch limit (${max}) reached: ${prs(queue)} stay queued for the next run`);
+        break;
+      }
       let round: Prepared<T, P>;
       if (pending && usable) {
         pending = false;
@@ -889,10 +1338,11 @@ export const runBatches = <T, P extends { head: string }>(
       }
       const { built, good, culprit } = round;
       if (built.length === 0) continue;
+      batches++;
       const proven = new Set(round.proven);
 
       // The whole batch is proven and the queue has more: start preparing the next batch on this top while this one publishes.
-      if (ops.next !== undefined && good === built.length && queue.length > 0 && !stopping()) {
+      if (ops.next !== undefined && good === built.length && queue.length > 0 && batches < max && !stopping()) {
         ops.next.start(built.at(-1)!.position.head, [...queue], built.map((b) => b.entry), size);
         pending = true;
         usable = false;
@@ -939,14 +1389,18 @@ export const runBatches = <T, P extends { head: string }>(
     }
   } catch (error) {
     if (!(error instanceof Fatal)) throw error;
-    fatal = error.message;
-    if (at !== null) outcomes.push({ entry: at, result: 'failed', step: 'fatal', detail: fatal });
+    if (error instanceof CiOutage) [outage, outagePrs] = [error.message, error.prs];
+    else {
+      fatal = error.message;
+      if (at !== null) outcomes.push({ entry: at, result: 'failed', step: 'fatal', detail: fatal });
+    }
     ops.onOutcome(outcomes);
   } finally {
     cancel();
   }
-  const stopped = fatal === null ? queue : [];
-  return { outcomes, fatal, exit: fatal === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1, stopped };
+  // After an outage every PR with no outcome stays queued (those of the batch it hit included), in queue order.
+  const stopped = outage !== null ? entries.filter((e) => !outcomes.some((o) => o.entry.pr === e.pr)) : fatal === null ? queue : [];
+  return { outcomes, fatal, outage, outagePrs, exit: fatal === null && outage === null && outcomes.every((o) => o.result !== 'failed') ? 0 : 1, stopped, stopAsked, limited };
 };
 
 export const statusText = (o: {
@@ -956,13 +1410,20 @@ export const statusText = (o: {
   running: Entry | null;
   outcomes: readonly Outcome[];
   fatal: string | null;
+  outage?: string | null;
   total: number;
   done: boolean;
   stopped?: readonly Entry[];
+  /** The run ended at its batch limit (LAND_MAX_BATCHES), not on a stop request: `stopped` goes to the next run. */
+  limited?: boolean;
 }): string => {
-  const asked = o.done && !o.fatal && (o.stopped?.length ?? 0) > 0;
-  const lines = [`land ${o.done ? (o.fatal ? 'STOPPED' : asked ? 'STOPPED ON REQUEST' : 'DONE') : 'RUNNING'} ${o.now} (started ${o.startedAt}) queue ${o.queue}: ${o.outcomes.length} of ${o.total} handled`];
+  const outage = o.done && !o.fatal && typeof o.outage === 'string';
+  const rest = o.done && !o.fatal && !outage && (o.stopped?.length ?? 0) > 0;
+  const handOff = rest && o.limited === true;
+  const asked = rest && !handOff;
+  const lines = [`land ${o.done ? (o.fatal ? 'STOPPED' : outage ? 'STOPPED BY A CI OUTAGE' : asked ? 'STOPPED ON REQUEST' : handOff ? 'BATCH DONE' : 'DONE') : 'RUNNING'} ${o.now} (started ${o.startedAt}) queue ${o.queue}: ${o.outcomes.length} of ${o.total} handled`];
   if (o.fatal) lines.push(`fatal: ${o.fatal}`);
+  if (outage) lines.push(`CI outage: ${o.outage}`, `no PR was failed for it; still queued, not landed: ${(o.stopped ?? []).map((e) => `#${e.pr}`).join(' ') || 'none'}`);
   if (o.running) lines.push(`landing now: #${o.running.pr} ${o.running.branch}`);
   for (const r of o.outcomes) {
     const id = `#${r.entry.pr} ${r.entry.branch}`;
@@ -970,7 +1431,8 @@ export const statusText = (o: {
   }
   const failed = o.outcomes.filter((r) => r.result === 'failed').length;
   if (asked) lines.push(`stop requested: not started ${o.stopped!.map((e) => `#${e.pr}`).join(' ')} (no PR failed for it)`);
-  if (o.done) lines.push(failed === 0 && !o.fatal ? (asked ? 'every PR handled landed' : 'every PR landed') : `${failed} PR(s) failed; each has the landing-failed label and a comment naming the step`);
+  if (handOff) lines.push(`batch limit reached: the next run gets ${o.stopped!.map((e) => `#${e.pr}`).join(' ')} (no PR failed for it)`);
+  if (o.done) lines.push(failed === 0 && !o.fatal ? (rest || outage ? 'every PR handled landed' : 'every PR landed') : `${failed} PR(s) failed; each has the landing-failed label and a comment naming the step`);
   return `${lines.join('\n')}\n`;
 };
 
@@ -1103,6 +1565,8 @@ export const proveRestingMaster = (unproved: { pr: number; head: string } | null
   try {
     v = proofVerdict(`master (left on #${unproved.pr}'s position by an interrupted run)`, prove);
   } catch (error) {
+    // A CI outage stops the driver here as anywhere else: the batch's own proofs could not run either.
+    if (error instanceof CiOutage) throw error;
     log(`!!! could not prove master: ${error instanceof Error ? error.message : String(error)}; carrying on, the next passing proof that contains it clears the record`);
     return false;
   }

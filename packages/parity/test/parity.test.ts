@@ -3,7 +3,7 @@ import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromeDeviations, NO_ENGINE_FAULTS, platformRules } from '@dragon/layout';
 import type { Assignment, ProfileRow } from 'dragon';
-import { CATALOGUE, iosProfile, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
+import { CATALOGUE, iosLayoutProjection, iosProfile, MEDIA_CONTEXT, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
 import type { Longhand } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { captureFixture, captureJson } from '../src/capture.ts';
@@ -27,7 +27,8 @@ import { DETERMINISM_CHUNKS, determinismChunk, shuffled } from './determinism.ts
 // T065: the row checks here are about rows proven by layout cases. Animation rows (context animation) are proven by frame cases
 // against frame captures, and anim-frames.test.ts gives them the same checks: exactly the passing cases that use the key, every
 // used key has a row, exactly what profile:rows derives, the context and lane shape, and every proof case a passing frame case.
-const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT);
+// MQ-R1: media rows (context media) are proven by resize cases against resize captures, and media-runtime-resize.test.ts does the same.
+const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT && r.context !== MEDIA_CONTEXT);
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
@@ -328,10 +329,22 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   it('planted fault dropInheritedText: text font-size reverts to its initial value and the multi-line fixture fails the layout lane', async () => {
     const faulty = await runFixture(specFor('text-wrap-spaces'), browser, { authored: recorded, faults: { ...NO_FAULTS, dropInheritedText: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
     const c = faulty.cases[0] as CaseOutcome;
+    // INL1a: the reverted leaf font no longer equals its container's strut (the element's own, inherited font), so the validator
+    // rejects the layout input (leaf-font) before the layout lane could lay out the wrong size; the fault still fails the case.
     expect(faulty.status).toBe('fail');
-    expect(c.lanes['linux-dragon-layout']).toBe('fail');
-    expect(c.lanes['chrome-dual']).toBe('pass');
-    expect(c.comparison?.problems.some((p) => /^w1:text0:line0: /.test(p))).toBe(true);
+    expect(c.status).toBe('fail');
+    expect(c.reason).toMatch(/^layout input rejected: .*children\[\d+\] leaf-font/);
+    // Every rejected path is a text leaf, and w1's is one of them.
+    const { compiled } = compileFixture(specFor('text-wrap-spaces'), { ...NO_FAULTS, dropInheritedText: true }, 'enforce', c.direction);
+    const p = iosLayoutProjection(compiled, ENVIRONMENT, c.assignment);
+    if (p.kind !== 'ready') throw new Error('the faulted projection is blocked');
+    const at = (path: string): unknown => [...path.matchAll(/\.(\w+)|\[(\d+)\]/g)].reduce<unknown>((v, m) => (v as Record<string, unknown>)[(m[1] ?? m[2]) as string], p.input);
+    const leaves = [...(c.reason as string).matchAll(/(\$[^ ;]*) leaf-font/g)].map((m) => at((m[1] as string).slice(1)) as { kind: string; id: string });
+    expect(leaves.length).toBeGreaterThan(0);
+    for (const l of leaves) expect(l.kind, l.id).toBe('text');
+    expect(leaves.map((l) => l.id)).toContain('w1:text0');
+    // The dual lane passes whenever it runs; here the rejected input leaves both lanes not run.
+    expect(['pass', 'not-run']).toContain(c.lanes['chrome-dual']);
     expect(outcomes.get('text-wrap-spaces')?.status).toBe('pass');
   });
 
@@ -425,7 +438,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
 
   it('paint classification comes from PROPERTY_ASPECTS (M8): no iOS paint row is exact, border-*-style:solid included', () => {
     const aspects = (row: ProfileRow) => PROPERTY_ASPECTS[row.feature.slice(0, row.feature.indexOf(':')) as Longhand];
-    for (const row of iosProfile.rows) {
+    for (const row of layoutRows(iosProfile.rows)) {
       const a = aspects(row);
       expect(a, row.feature).toBeDefined();
       if (a.paint) {
@@ -436,7 +449,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       }
       if (a.layout) expect(row.proofs.some((p) => p.aspect === 'layout' && p.lane === 'linux-dragon-layout'), row.feature).toBe(true);
     }
-    expect(iosProfile.rows.filter((r) => r.status === 'exact' && aspects(r).paint)).toEqual([]);
+    expect(layoutRows(iosProfile.rows).filter((r) => r.status === 'exact' && aspects(r).paint)).toEqual([]);
     // iOS clipping is a paint aspect: overflow rows carry a layout proof and stay caveat.
     const overflow = iosProfile.rows.filter((r) => /^overflow-[xy]:/.test(r.feature));
     expect(overflow.length).toBeGreaterThan(0);
@@ -454,7 +467,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
 
   it('row keys carry the formatting context (M2, M3, C7, S4b): <length-px>; every context has a direction facet, flex text contexts a main-axis facet, positioned item contexts the scheme, paint rows only @paint/<dir>', () => {
     const directions = ['ltr', 'rtl'];
-    const textContexts = directions.flatMap((d) => ['text-in-block/' + d, 'text-in-anonymous-block/' + d, 'text-in-flex-item/row/' + d, 'text-in-flex-item/column/' + d, 'text-as-anonymous-flex-item/row/' + d, 'text-as-anonymous-flex-item/column/' + d]);
+    const textContexts = directions.flatMap((d) => ['text-in-block/' + d, 'text-in-anonymous-block/' + d, 'text-in-flex-item/row/' + d, 'text-in-flex-item/column/' + d, 'text-as-anonymous-flex-item/row/' + d, 'text-as-anonymous-flex-item/column/' + d, 'text-in-inline/' + d, 'text-beside-inline/' + d]);
     const boxContexts = /^(root|block|flex-row|flex-column|display-none|flex-row-single-line|flex-row-multi-line|flex-column-single-line|flex-column-multi-line|not-flex-container)\/(ltr|rtl)$/;
     const itemBases = '(root|block|flex-row|flex-column|display-none)';
     const positioned = new RegExp('^(relative-in-' + itemBases + '/(ltr|rtl)|absolute-in-' + itemBases + '/(ltr|rtl)/cb-(ltr|rtl))$');

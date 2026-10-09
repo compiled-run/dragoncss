@@ -3,7 +3,7 @@
 // caught with its own message; lane states are honest; and the committed out/lanes.json matches the configuration.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { iosLayoutProjection, nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from '../src/compare.ts';
 import { atDpr, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from '../src/dpr.ts';
@@ -12,6 +12,8 @@ import type { HostRun, KotlinLookup, LaneFault } from '../src/lanes.ts';
 import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
 import { HIT_LANE, scriptCases, STATE_LANE } from '../src/device-lanes.ts';
 import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
+import { INLINE_OUT, INLINE_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
+import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
@@ -146,7 +148,7 @@ describe('lane parity check', () => {
 describe('lane states', () => {
   const notFound: KotlinLookup = { javaHomeEnv: null, javaHomeCommand: '/nonexistent/java_home', jdkHomes: [], kotlincs: [] };
   it('with the Kotlin lookup injected as not found, android layout-vectors-host is blocked (owner tooling), never pass, and --require-all fails', async () => {
-    const run = await runHostLane(android, { kotlinLookup: notFound });
+    const run = await runHostLane(android, { kotlinLookup: notFound, requireNative: false });
     expect(run.state).toBe('blocked (owner tooling)');
     expect(run.suites.every((s) => s.total === null && s.pass === null)).toBe(true);
     const f = lanesFile(targets, [], new Map<NativeTarget, HostRun>([['android', run]]), null);
@@ -154,6 +156,17 @@ describe('lane states', () => {
     expect(host?.state).toBe('blocked (owner tooling)');
     expect(notPassed(f)).toContainEqual(expect.stringMatching(/^android layout-vectors-host: blocked \(owner tooling\)/));
     expect(notPassed(f).length).toBe(2 * LANES.length);
+  });
+  it('with DRAGON_REQUIRE_NATIVE=1 (or requireNative), a missing Kotlin toolchain fails the host lane, naming it, instead of reading blocked', async () => {
+    await expect(runHostLane(android, { kotlinLookup: notFound, requireNative: true })).rejects.toThrow(/^DRAGON_REQUIRE_NATIVE=1 and native:kotlin has no toolchain: no JDK 17\+ or kotlinc was found/);
+    vi.stubEnv('DRAGON_REQUIRE_NATIVE', '1');
+    try {
+      await expect(runHostLane(android, { kotlinLookup: notFound })).rejects.toThrow(/native:kotlin has no toolchain/);
+      vi.stubEnv('DRAGON_REQUIRE_NATIVE', undefined);
+      expect((await runHostLane(android, { kotlinLookup: notFound })).state).toBe('blocked (owner tooling)');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
   it('device lanes are not run (never pass, never blocked) until P5', () => {
     const f = lanesFile(targets, [], new Map(), null);
@@ -216,10 +229,18 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
-  it('device-hit runs exactly the hit cases: every layout case but those the hit lane refuses by name, the PNT2 transform cases (T146)', () => {
-    const refused = hitRefusedCases().map((r) => r.id);
+  it('device-hit runs exactly the hit cases: every layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the radius cases (PNT1) and the INL1a inline cases', () => {
+    const refusals = hitRefusedCases();
+    const refused = refusals.map((r) => r.id);
     expect(refused.length).toBeGreaterThan(0);
-    for (const id of refused) expect(id, id).toMatch(/^transform-/);
+    // Exactly the union: every radius and every INL1a inline case is refused with its reason, and every other refusal is a transform- case with its reason.
+    expect(refused.filter((id) => RADIUS_OUT.includes(id)).sort()).toEqual([...RADIUS_OUT].sort());
+    expect(refused.filter((id) => INLINE_OUT.includes(id)).sort()).toEqual([...INLINE_OUT].sort());
+    for (const r of refusals) {
+      if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
+      else if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
+      else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^transform-/), expect.stringMatching(TRANSFORM_REASON)]);
+    }
     expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...ids].sort());
     expect(hitCaseCount()).toBe(ids.length - refused.length);
     // The declared device-hit sets hold exactly those cases (targets.ts hitCaseIds), in layout order, at every device DPR.

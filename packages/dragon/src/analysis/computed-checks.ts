@@ -15,7 +15,9 @@ import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
+import { PAINT_VALUES } from './paint-values/index.ts';
 import { environmentOf, valueToString } from './resolve.ts';
+import { usedColors } from '../lower/paint/colors.ts';
 import { checkTransformContexts } from './paint-values/transform.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
@@ -23,45 +25,140 @@ const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.
 /** UAX #9: in an rtl paragraph only these keep logical order (strong L letters, space, U+200B not at the end). */
 const RTL_SAFE = /^[A-Za-z \u200b]*$/u;
 
-// css-overflow-3 §3.1 and §3.3: only overflow hidden on both axes is supported. A computed auto, scroll or clip (including auto
-// computed from visible beside hidden) and any overflow on html or body (which propagates to the viewport) are refused.
+// css-overflow-3 §3.1: clip beside visible on the other axis keeps both, and clips one axis only, which native views do not draw
+// yet (OVFL-c). Every other computed pair is supported, html and body included: the lowering resolves viewport propagation (§3.3).
 function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const axes: Longhand[] = ['overflow-x', 'overflow-y'];
   const values = axes.map((p) => el.props.get(p) as ResolvedValue);
-  const declared = values.find((v) => v.declaration !== null);
-  const tag = el.element.tag;
-  for (const [i, v] of values.entries()) {
-    const k = keywordOf(v);
-    const onRoot = (tag === 'html' || tag === 'body') && k !== 'visible';
-    const unsupportedValue = k === 'auto' || k === 'scroll' || k === 'clip';
-    if (!onRoot && !unsupportedValue) continue;
-    // A value the author wrote and no profile row supports is already DRAGON_UNSUPPORTED_VALUE from the profile check.
-    if (!onRoot && v.declared !== null && v.declared.kind === 'keyword' && v.declared.value === k) continue;
-    const source = v.declaration !== null ? v : declared;
-    if (source === undefined || source.declaration === null) continue;
-    const span = source.declaration.valueSpan;
-    const property = axes[i] as Longhand;
-    const message = onRoot
-      ? `${property}: ${k} on <${tag}> ${el.element.address} propagates to the viewport (css-overflow-3 §3.3), which milestone 1 does not lay out`
-      : `${property} computes to ${k} on ${el.element.address} (css-overflow-3 §3.1: visible beside a non-visible axis computes to auto); only overflow: hidden on both axes is supported`;
+  const keys = values.map(keywordOf);
+  const oneAxisClip = (keys[0] === 'clip') !== (keys[1] === 'clip') && (keys[0] === 'visible' || keys[1] === 'visible');
+  if (!oneAxisClip) return;
+  const i = keys[0] === 'clip' ? 0 : 1;
+  const v = values[i] as ResolvedValue;
+  const source = v.declaration !== null ? v : values.find((x) => x.declaration !== null);
+  if (source === undefined || source.declaration === null) return;
+  const span = source.declaration.valueSpan;
+  const property = axes[i] as Longhand;
+  const message = `${property}: clip beside ${axes[1 - i] as Longhand}: visible on ${el.element.address} clips one axis only, which needs OVFL-c (css-overflow-3 §3.1)`;
+  for (const t of targets) {
+    const id = `${t}|${span.source.uri}|${span.start}|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), target: t, message, manual: 'Use overflow: clip on both axes, or hidden.', basis: 'computed-value' }));
+  }
+}
+
+const isScrollKeyword = (k: string): boolean => k === 'hidden' || k === 'auto' || k === 'scroll';
+
+/**
+ * T078 R14: an axis whose used overflow is auto or scroll is a box the user scrolls, and the native outputs have no scroll views
+ * until OVFL-B, so it is refused on each native target (nativeScrollPending), at the axis's own declaration or, for a value
+ * computed from its partner (css-overflow-3 §3.1), at the partner's. The element the viewport takes its overflow from uses
+ * visible (§3.3) and is not refused. The parity lanes skip this check: they prove the layout at scroll offset 0.
+ */
+export function checkNativeScroll(root: ResolvedElement, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (nativeTargets.length === 0) return;
+  const propagated = propagatedFrom(root);
+  const axes: Longhand[] = ['overflow-x', 'overflow-y'];
+  const walk = (el: ResolvedElement): void => {
+    if (keywordOf(el.props.get('display') as ResolvedValue) === 'none') return;
+    if (el !== propagated) {
+      const values = axes.map((p) => el.props.get(p) as ResolvedValue);
+      for (const [i, v] of values.entries()) {
+        const k = keywordOf(v);
+        if (k !== 'auto' && k !== 'scroll') continue;
+        const partner = values[1 - i] as ResolvedValue;
+        const source = v.declaration !== null ? v : partner.declaration !== null ? partner : null;
+        const origin = source === null || source.declaration === null ? el.element.node.origin : authored(source.declaration.valueSpan);
+        const property = axes[i] as Longhand;
+        const how = v.declaration !== null ? `is ${k}` : `computes to ${k} beside ${axes[1 - i] as Longhand}: ${keywordOf(partner)} (css-overflow-3 §3.1)`;
+        for (const t of nativeTargets) {
+          const id = `${t}|ovfl-b|${property}|${JSON.stringify(origin)}`;
+          if (reported.has(id)) continue;
+          reported.add(id);
+          const message = `${property} ${how} on ${el.element.address}, a box the user scrolls; ${t} has no native scroll views until OVFL-B`;
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Use overflow: hidden or clip on both axes for native, or wait for OVFL-B.', basis: 'computed-value' }));
+        }
+      }
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c);
+  };
+  walk(root);
+}
+const hasPercentage = (v: ResolvedValue): boolean => v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
+
+/** css-overflow-3 §3.3: the element whose overflow the viewport takes (html when not visible, else body), which uses visible. */
+function propagatedFrom(root: ResolvedElement): ResolvedElement | null {
+  const visible = (el: ResolvedElement): boolean => keywordOf(el.props.get('overflow-x') as ResolvedValue) === 'visible' && keywordOf(el.props.get('overflow-y') as ResolvedValue) === 'visible';
+  if (!visible(root)) return root;
+  const body = root.children.find((c): c is ResolvedElement => c.kind === 'element' && c.element.tag === 'body');
+  return body !== undefined && !visible(body) ? body : null;
+}
+
+// OVFL-p: the engine's scrollable overflow (packages/layout/src/overflow.ts) does not decide a relative offset with a percentage
+// top or bottom inside a scroll container or on the root, so it is refused here, on every target as the other overflow refusals are.
+function checkPercentRelative(el: ResolvedElement, where: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (where === null || keywordOf(el.props.get('position') as ResolvedValue) !== 'relative') return;
+  for (const p of ['top', 'bottom'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (!hasPercentage(v)) continue;
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    const message = `position: relative with a percentage ${p} on ${el.element.address} ${where}: the scrollable overflow does not decide its basis yet (OVFL-p)`;
     for (const t of targets) {
-      const id = `${t}|${span.source.uri}|${span.start}|${el.element.address}`;
+      const id = `${t}|ovfl-p|${JSON.stringify(origin)}|${el.element.address}`;
       if (reported.has(id)) continue;
       reported.add(id);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), target: t, message, manual: 'Use overflow: hidden on both axes, on an element other than html and body.', basis: 'computed-value' }));
+      diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin, target: t, message, manual: `Use a length for ${p} here, or move the offset outside the scroll container.` }));
     }
   }
 }
 
-// UAX #9 and css-writing-modes-4 §2.4: the text of an rtl block container may hold only strong-L letters, spaces and U+200B, and
-// U+200B may not end its inline formatting context; anything else would be reordered, and it is refused for every target.
-function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>): void {
-  if (keywordOf(el.props.get('direction') as ResolvedValue) !== 'rtl') return;
-  const runs: ResolvedText[][] = [[]];
+const displayKeyword = (el: ResolvedElement): string => keywordOf(el.props.get('display') as ResolvedValue);
+const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline';
+
+/** One item of an inline formatting context in tree order: a text, the open or close of an inline box, or a <br> (CSS2 §9.2.2). */
+type IfcItem = { readonly kind: 'text'; readonly text: ResolvedText } | { readonly kind: 'open' | 'close' | 'br'; readonly el: ResolvedElement };
+
+/**
+ * The inline formatting contexts whose block container is el (el is not itself an inline box): its maximal runs of inline-level
+ * children, flattened through inline boxes. A block-level child ends a run (CSS2 §9.2.1.1); display: none children generate no box.
+ * blockInInline receives each block-level box inside an inline box, which Dragon does not lay out.
+ */
+function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElement, box: ResolvedElement) => void): IfcItem[][] {
+  const runs: IfcItem[][] = [[]];
+  const flatten = (box: ResolvedElement, out: IfcItem[]): void => {
+    for (const c of box.children) {
+      if (c.kind === 'text') out.push({ kind: 'text', text: c });
+      else if (displayKeyword(c) === 'none') continue;
+      else if (!isInlineBox(c)) blockInInline(c, box);
+      else if (c.element.tag === 'br') out.push({ kind: 'br', el: c });
+      else {
+        out.push({ kind: 'open', el: c });
+        flatten(c, out);
+        out.push({ kind: 'close', el: c });
+      }
+    }
+  };
   for (const c of el.children) {
-    if (c.kind === 'text') (runs[runs.length - 1] as ResolvedText[]).push(c);
-    else if (keywordOf(c.props.get('display') as ResolvedValue) !== 'none') runs.push([]);
+    const run = runs[runs.length - 1] as IfcItem[];
+    if (c.kind === 'text') run.push({ kind: 'text', text: c });
+    else if (displayKeyword(c) === 'none') continue;
+    else if (!isInlineBox(c)) runs.push([]);
+    else if (c.element.tag === 'br') run.push({ kind: 'br', el: c });
+    else {
+      run.push({ kind: 'open', el: c });
+      flatten(c, run);
+      run.push({ kind: 'close', el: c });
+    }
   }
+  return runs.filter((r) => r.length > 0);
+}
+
+// UAX #9 and css-writing-modes-4 §2.4: the text of an rtl inline formatting context may hold only strong-L letters, spaces and
+// U+200B, and U+200B may not be in the white space that ends a paragraph (at a <br>, bidi class B, or at the end, L1); anything else
+// would be reordered, and it is refused for every target. The text of an inline box belongs to its block container's context.
+function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (isInlineBox(el) || keywordOf(el.props.get('direction') as ResolvedValue) !== 'rtl') return;
   const report = (t: ResolvedText, message: string): void => {
     const origin = t.node.node.origin;
     const id = `${t.node.address}|${JSON.stringify(origin)}`;
@@ -69,10 +166,82 @@ function checkBidi(el: ResolvedElement, diagnostics: Diagnostic[], reported: Set
     reported.add(id);
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_BIDI', { origin, message }));
   };
+  for (const run of inlineContexts(el, () => {})) {
+    // The texts of each paragraph: the context split at its <br>s.
+    const paragraphs: ResolvedText[][] = [[]];
+    for (const it of run) {
+      if (it.kind === 'br') paragraphs.push([]);
+      else if (it.kind === 'text') (paragraphs[paragraphs.length - 1] as ResolvedText[]).push(it.text);
+    }
+    for (const texts of paragraphs) {
+      for (const t of texts) if (!RTL_SAFE.test(t.text)) report(t, `text ${JSON.stringify(t.text)} of ${t.node.address} holds a character other than A-Z, a-z, space and U+200B in the rtl block ${el.element.address}`);
+      // The white space (spaces and U+200B) that ends the paragraph, walked back across its texts.
+      let zwsp: ResolvedText | null = null;
+      end: for (let i = texts.length - 1; i >= 0; i--) {
+        const t = texts[i] as ResolvedText;
+        for (let k = t.text.length - 1; k >= 0; k--) {
+          const ch = t.text[k] as string;
+          if (ch === '\u200b') zwsp = t;
+          else if (ch !== ' ') break end;
+        }
+      }
+      if (zwsp !== null) report(zwsp, `U+200B ends the rtl inline content of ${el.element.address} (${zwsp.node.address}) and would take the paragraph direction (UAX #9 L1)`);
+    }
+  }
+}
+
+// CSS2 §9.2.1.1, §9.4.2 and css-text-4 §5.1: what the inline formatting core does not lay out, refused for every target at the
+// element: a block-level box inside an inline box (block-in-inline), an inline box on the empty line after a context's last <br>,
+// and runs with different text-wrap-mode in one formatting context.
+function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (isInlineBox(el)) return;
+  const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets, at, what, message, manual);
+  const refuseFor = (on: readonly string[], at: ResolvedElement, what: string, message: string, manual: string): void => {
+    for (const t of on) {
+      const id = `${t}|inline-${what}|${at.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: at.element.node.origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const refuseNative = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets.filter((t) => t === 'ios' || t === 'android'), at, what, message, manual);
+  const runs = inlineContexts(el, (child, box) =>
+    refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`),
+  );
   for (const run of runs) {
-    for (const t of run) if (!RTL_SAFE.test(t.text)) report(t, `text ${JSON.stringify(t.text)} of ${t.node.address} holds a character other than A-Z, a-z, space and U+200B in the rtl block ${el.element.address}`);
-    const last = run[run.length - 1];
-    if (last !== undefined && last.text.endsWith('\u200b')) report(last, `U+200B ends the rtl inline content of ${el.element.address} (${last.node.address}) and would take the paragraph direction (UAX #9 L1)`);
+    const lastBr = run.map((it) => it.kind).lastIndexOf('br');
+    if (lastBr >= 0) {
+      const after = run.slice(lastBr + 1);
+      const open = after.find((it) => it.kind === 'open');
+      if (open !== undefined && open.kind === 'open' && !after.some((it) => it.kind === 'text' && it.text.text.trim() !== '')) {
+        refuse(open.el, 'empty-line', `inline box <${open.el.element.tag}> ${open.el.element.address} starts the empty line after the last <br> of ${el.element.address} (CSS2 §9.4.2), which Dragon does not lay out`, `Remove the empty <${open.el.element.tag}> ${open.el.element.address} after the last <br>, or give it text.`);
+      }
+    }
+    // resolve.ts collapses the white space of a context with inline boxes or <br>s across them (collapseInlineContext), which is
+    // right only for white-space-collapse: collapse (css-text-4 §4.1.1).
+    for (const it of run) {
+      if (it.kind !== 'open' && it.kind !== 'br') continue;
+      // The native runtime places inline box views unpainted (their decorations are INL1b), so a paint an inline box would draw
+      // is refused on native rather than dropped. Of the paint longhands, only background-color paints an inline box without a
+      // border width (which the inline/ltr context refuses); transform, overflow and will-change do not apply to inline boxes.
+      if (it.kind === 'open' && usedColors(it.el)['background-color'].alpha !== 0) {
+        const bg = valueToString((it.el.props.get('background-color') as ResolvedValue).value);
+        refuseNative(it.el, 'background', `background-color: ${bg} on the inline box <${it.el.element.tag}> ${it.el.element.address}: the native runtime does not paint inline boxes until INL1b (inline box decorations), so the background would be dropped`, `Move the background to a block, or remove it from <${it.el.element.tag}> ${it.el.element.address}, until INL1b.`);
+      }
+      const collapse = keywordOf(it.el.props.get('white-space-collapse') as ResolvedValue);
+      if (collapse !== 'collapse') refuse(it.el, 'white-space', `white-space-collapse: ${collapse} on the inline box <${it.el.element.tag}> ${it.el.element.address} (css-text-4 §4.1.1), which Dragon does not lay out`, `Remove the white-space declaration of ${it.el.element.address}, or make ${it.el.element.address} a block.`);
+    }
+    const preserved = run.some((it) => it.kind !== 'text') ? run.find((it) => it.kind === 'text' && keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse') : undefined;
+    if (preserved !== undefined && preserved.kind === 'text') {
+      refuse(el, 'white-space', `white-space-collapse: ${keywordOf(preserved.text.props.get('white-space-collapse') as ResolvedValue)} on ${preserved.text.node.address} in an inline formatting context of ${el.element.address} with inline boxes or <br>s (css-text-4 §4.1.1), which Dragon does not lay out`, `Remove the white-space declaration of ${el.element.address}.`);
+    }
+    const texts = run.flatMap((it) => (it.kind === 'text' ? [it.text] : []));
+    const wrapOf = (t: ResolvedText): string => keywordOf(t.props.get('text-wrap-mode') as ResolvedValue);
+    const first = texts[0];
+    const other = first === undefined ? undefined : texts.find((t) => wrapOf(t) !== wrapOf(first));
+    if (first !== undefined && other !== undefined) {
+      refuse(el, 'mixed-wrap', `text-wrap-mode ${wrapOf(first)} (${first.node.address}) and ${wrapOf(other)} (${other.node.address}) in one inline formatting context of ${el.element.address} (css-text-4 §5.1), which Dragon does not lay out`, `Give all the text of ${el.element.address} the same white-space.`);
+    }
   }
 }
 
@@ -93,7 +262,8 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
     }
   };
   if (isRoot && keywordOf(el.props.get('position') as ResolvedValue) === 'absolute') refuse(el, `position: absolute on the root element ${el.element.address} is not supported in milestone 1`);
-  if (!el.children.some((c) => c.kind === 'text')) return;
+  // Inline content: text, or an inline box (INL1a), beside which the box would take a static position in the formatting context.
+  if (!el.children.some((c) => c.kind === 'text' || (displayKeyword(c) === 'inline'))) return;
   for (const c of el.children) {
     if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
     if (keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute') continue;
@@ -277,18 +447,28 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
 }
 
 export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext): void {
-  const walk = (el: ResolvedElement, hidden: boolean): void => {
+  const propagated = propagatedFrom(root);
+  // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
+    if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
-    else if (!here) checkInlineLevel(el, targets, diagnostics, reported);
-    for (const c of el.children) if (c.kind === 'element') walk(c, here);
+    else if (!here) {
+      checkInlineLevel(el, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported);
+    }
+    // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
+    if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported);
+    const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
+    const inner = el === root ? own : (own ?? scroller);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner);
   };
-  walk(root, false);
+  walk(root, false, 'viewport');
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);

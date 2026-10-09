@@ -479,6 +479,23 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/parser/css_parser_impl.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "fba42196ac93233eacc60fdf8d234103f64f23150fbc6c984521e98922df0ce7",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "895-898", "symbol": null, "source": "cited" },
+        { "lines": "1531-1581", "symbol": "CSSParserImpl::ConsumeKeyframesRule", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/at-rules/keyframes.ts", "symbol": "KeyframesRule", "use": "reference" },
+        { "file": "packages/dragon/test/aliases.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -511,6 +528,7 @@
         { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/grid-values.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/css/math.ts", "symbol": "MathGrammar", "use": "port" },
+        { "file": "packages/dragon/src/css/shorthands/radius.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "isInvalidFontFamily", "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "parseFamilyList", "use": "port" },
@@ -575,6 +593,27 @@
       "dragon": [
         { "file": "packages/dragon/src/analysis/match.ts", "symbol": "isEmpty", "use": "reference" },
         { "file": "packages/parity/src/compiler-deviations.ts", "symbol": "compilerChromeDeviations", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/dom/element.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "CSSOM View §4 (scrollWidth, scrollHeight, clientWidth, clientHeight) and Chrome observation (two rounding formulas)",
+        "proof": [
+          "packages/parity/test/ovfl-metrics.test.ts#Blink integer conversions"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012, 2013 Apple Inc.",
+      "fileSha256": "8246d1d6996ce777b7f3d557551fe8321954fac953f7e50e3557b311b077c4a6",
+      "headerSha256": "ed55e617785b61f79196c68e539589529f5d351f974e0d26e9e82509e500e59a",
+      "ranges": [
+        { "lines": "2593-2935", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/parity/src/scroll-metrics.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -724,6 +763,27 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/adjust_for_absolute_zoom.h",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "CSSOM View §4 and Chrome observation (two rounding formulas)",
+        "proof": [
+          "packages/parity/test/ovfl-metrics.test.ts#Blink integer conversions"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2000 Lars Knoll (knoll@kde.org); Copyright (C) 2003, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All; Copyright (C) 2006 Graham Dennis (graham.dennis@gmail.com)",
+      "fileSha256": "89b4a63b863604b0dac7416843e9f9b9590363f389d75971d2ae937db3ebf5f9",
+      "headerSha256": "efcda54144b7f80aeac0ea2b8441812ee1603c4a5609b9e7cd2c493f44a66444",
+      "ranges": [
+        { "lines": "44-57", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/parity/src/scroll-metrics.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/block_layout_algorithm_utils.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -794,6 +854,21 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/box_fragment_builder.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "afafce938439bdf772b40da828dd43f52d847309be84687a8130d199982bcc85",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "241-366", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/overflow.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -848,6 +923,29 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/grid/grid_line_resolver.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2022 The Chromium Authors",
+      "fileSha256": "bfdfba4acbc27da65ec1fc22a06c778e9f3701a5c60fe031e8c7f9f54f9ed294",
+      "headerSha256": "92d2eeedf6b379a7a4915a6328828c4152ebc772d3b4463657eabf539567fa33",
+      "ranges": [
+        { "lines": "439-463", "symbol": "LookAheadForNamedGridLine", "source": "located" },
+        { "lines": "465-488", "symbol": "LookBackForNamedGridLine", "source": "located" },
+        { "lines": "490-509", "symbol": "DefiniteGridSpanWithNamedSpanAgainstOpposite", "source": "located" },
+        { "lines": "594-632", "symbol": "ResolveNamedGridLinePositionAgainstOppositePosition", "source": "located" },
+        { "lines": "688-712", "symbol": "ResolveGridPositionAgainstOppositePosition", "source": "located" },
+        { "lines": "714-729", "symbol": "SpanSizeFromPositions", "source": "located" },
+        { "lines": "731-755", "symbol": "ResolveNamedGridLinePosition", "source": "located" },
+        { "lines": "757-822", "symbol": "ResolveGridPosition", "source": "located" },
+        { "lines": "824-874", "symbol": "ResolveGridPositionsFromStyle", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/grid-layout.ts", "symbol": null, "use": "port" }
       ]
     },
     {
@@ -1070,6 +1168,37 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/scrollable_overflow_calculator.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "ecd5297897cc627341d3f135083db7e1419c4800a6262d361f640a937b1b9924",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "1-323", "symbol": null, "source": "whole-file" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/overflow.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/scrollable_overflow_calculator.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "6eb14649337a60418790968385bfdd1aad40267738b8e2bca10c59e0e3faffff",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "44-52", "symbol": "AddChild", "source": "located" },
+        { "lines": "72-80", "symbol": "AddOverflow", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/overflow.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/paint/box_border_painter.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -1095,6 +1224,7 @@
         { "lines": "2006-2437", "symbol": "ClipBorderSidePolygon", "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": "checkRoundedElement", "use": "reference" },
         { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
       ]
@@ -1163,12 +1293,14 @@
       "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
       "ranges": [
         { "lines": "207-231", "symbol": "PixelSnappedContouredInnerBorder", "source": "cited" },
-        { "lines": "187-193", "symbol": "ContouredBorder", "source": "located" }
+        { "lines": "187-193", "symbol": "ContouredBorder", "source": "located" },
+        { "lines": "178-185", "symbol": "PixelSnappedContouredBorder", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-dash.ts", "symbol": "innerBorderRect", "use": "port" },
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/paint-radius.ts", "symbol": null, "use": "port" }
       ]
     },
     {
@@ -1191,6 +1323,28 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "css-overflow-3 §2.2 (the scrollport is part of the scrollable overflow) and Chrome observation (one unite with the client size)",
+        "proof": [
+          "packages/layout/test/overflow.test.ts",
+          "packages/parity/test/ovfl-metrics.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Lesser General Public License",
+      "copyright": "Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc. All rights; Portions are Copyright (C) 1998 Netscape Communications Corporation.",
+      "fileSha256": "8d9666a054ecb1ec2acae2d6f5ef5e6d7f6c0f0f82da50e9e49f44de1bba3d89",
+      "headerSha256": "e90c3f9b59e22d2cea011aeca45ae8fc107991725f0d70453339ea6588cfd06d",
+      "ranges": [
+        { "lines": "968-982", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/overflow.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -1271,6 +1425,22 @@
       "dragon": [
         { "file": "packages/layout/src/units.ts", "symbol": "MAX_FONT_SIZE", "use": "reference" },
         { "file": "packages/layout/src/paint-dash.ts", "symbol": "styleRank", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/style/grid_area.h",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2013 Google Inc. All rights reserved.",
+      "fileSha256": "98d24711cb87a00f969548fd121826a9c785df9e2868a5bb7ce6515958c7e920",
+      "headerSha256": "7fce36fb20afb48e663abb598bae0bc2a92175288d8b927abfb0fb4ba1d369b1",
+      "ranges": [
+        { "lines": "48-48", "symbol": "kGridMaxTracks", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/lower/grid-layout.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/validate.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

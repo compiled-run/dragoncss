@@ -232,6 +232,19 @@ describe('animation analysis', () => {
     expect(compile('.a, .b { animation: k 1s infinite; } @keyframes k { to { width: 2em } }')).toEqual([]);
   });
 
+  it('refuses an animation or a transition on an inline box by name (INL1a: the runtimes patch no inline box per frame), and not on a block', () => {
+    const inline = (ds: readonly Diagnostic[]): string[] => ds.filter((d) => d.message.includes('animates an inline box')).map((d) => `${d.code} ${d.message.split(',')[0]}`);
+    // Chrome slides the text of a <span>-like inline box whose padding-left animates; the device would not move it.
+    const keyframes = '.b { display: inline; animation: k 1s linear infinite; } @keyframes k { from { padding-left: 0px } to { padding-left: 20px } }';
+    expect(inline(compile(keyframes))).toEqual(['DRAGON_UNSUPPORTED_VALUE animation k on <div> b animates an inline box']);
+    expect(compile(keyframes.replace('display: inline', 'display: block'))).toEqual([]);
+    const transition = '.a { display: inline; color: rgb(0, 0, 0); transition: color 1s; } .a.on { color: rgb(9, 9, 9); }';
+    expect(inline(compile(transition))).toEqual(['DRAGON_UNSUPPORTED_VALUE a transition of color on <div> a animates an inline box']);
+    expect(compile(transition.replace('display: inline', 'display: block'))).toEqual([]);
+    // Inline in one reachable state only: the transition still runs on an inline box.
+    expect(inline(compile('.a { color: rgb(0, 0, 0); transition: color 1s; } .a.on { color: rgb(9, 9, 9); display: inline; }'))).toEqual(['DRAGON_UNSUPPORTED_VALUE a transition of color on <div> a animates an inline box']);
+  });
+
   it('warns, and compiles nothing, for a name without @keyframes and a transition-property that is not a property (M14)', () => {
     const ds = compile('.a { animation: nosuch 1s; transition: foo 1s; }');
     expect(ds.map((d) => [d.code, d.severity, d.message.split(',')[0]])).toEqual([
@@ -252,9 +265,10 @@ describe('animation analysis', () => {
 describe('animation analysis audit', () => {
   it('gates a declaration in an @media band the native output is not resolved in, for web', () => {
     const ds = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' })
-      .compile(stated('@media (min-width: 9999px) { .a { transition: color 1s ease-in-out; } }')).diagnostics;
-    // ease-in-out has no web frame lane row (the other features of the declaration do, so they pass).
-    expect(ds.filter((d) => d.profile?.context === 'animation').map((d) => [d.target, d.profile?.feature])).toEqual([['web', 'transition-timing-function:ease-in-out']]);
+      .compile(stated('@media (min-width: 9999px) { .a { transition: color 1s; transition-delay: inherit; } }')).diagnostics;
+    // A CSS-wide keyword has no web frame lane row (ANIM-b2 proved ease-in-out, the feature this used before; the other features
+    // of the declarations have rows, so they pass).
+    expect(ds.filter((d) => d.profile?.context === 'animation').map((d) => [d.target, d.profile?.feature])).toEqual([['web', 'transition-delay:inherit']]);
   });
 
   it('refuses a computed font size that is not px instead of assuming 16px', () => {

@@ -138,8 +138,15 @@
     "textAlign": "start",
     "aspectRatio": {
      "kind": "auto"
-    }
+    },
+    "verticalAlign": {
+     "kind": "keyword",
+     "value": "baseline"
+    },
+    "grid": null,
+    "gridItem": null
    },
+   "strut": null,
    "children": [
     {
      "kind": "box",
@@ -251,8 +258,15 @@
       "textAlign": "start",
       "aspectRatio": {
        "kind": "auto"
-      }
+      },
+      "verticalAlign": {
+       "kind": "keyword",
+       "value": "baseline"
+      },
+      "grid": null,
+      "gridItem": null
      },
+     "strut": null,
      "children": [
       {
        "kind": "box",
@@ -365,8 +379,15 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
-        }
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        },
+        "grid": null,
+        "gridItem": null
        },
+       "strut": null,
        "children": [
         {
          "kind": "replaced",
@@ -477,7 +498,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -606,7 +633,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -735,7 +768,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -864,7 +903,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -993,7 +1038,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -1122,7 +1173,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -1255,8 +1312,15 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
-        }
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        },
+        "grid": null,
+        "gridItem": null
        },
+       "strut": null,
        "children": [
         {
          "kind": "replaced",
@@ -1368,7 +1432,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -1497,7 +1567,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -1627,7 +1703,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -1759,8 +1841,15 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
-        }
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        },
+        "grid": null,
+        "gridItem": null
        },
+       "strut": null,
        "children": [
         {
          "kind": "replaced",
@@ -1873,7 +1962,13 @@
            "kind": "ratio",
            "width": 64,
            "height": 64
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -2001,7 +2096,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -2130,7 +2231,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -2257,7 +2364,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -2384,7 +2497,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -2514,7 +2633,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -2646,8 +2771,15 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
-        }
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        },
+        "grid": null,
+        "gridItem": null
        },
+       "strut": null,
        "children": [
         {
          "kind": "replaced",
@@ -2758,7 +2890,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "none"
@@ -2885,7 +3023,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "none"
@@ -3013,7 +3157,13 @@
            "kind": "auto-ratio",
            "width": 128,
            "height": 64
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "none"
@@ -3140,7 +3290,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "none"
@@ -3267,7 +3423,13 @@
            "kind": "ratio",
            "width": 64,
            "height": 64
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "none"
@@ -3397,8 +3559,15 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
-        }
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        },
+        "grid": null,
+        "gridItem": null
        },
+       "strut": null,
        "children": [
         {
          "kind": "replaced",
@@ -3510,7 +3679,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -3642,7 +3817,13 @@
            "kind": "auto-ratio",
            "width": 5760,
            "height": 1920
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -3771,7 +3952,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -3901,7 +4088,13 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "none"
@@ -4031,7 +4224,13 @@
            "kind": "auto-ratio",
            "width": 1920,
            "height": 1920
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",

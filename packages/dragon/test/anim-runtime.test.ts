@@ -101,6 +101,11 @@ describe('ANIM-b1: the state machine runs the animator', () => {
       expect(t, lang).toContain('animator?.patch(i)');
       expect(t, lang).toContain('dragonAnimatedSides(animator, n.id, ');
       expect(t, lang).toContain('animator?.color(n.id, "background-color")');
+      // The frame colour goes through the paint writer (PNT1-radius rounded fill), never straight to the platform property.
+      expect(t, lang).toMatch(lang === 'swift'
+        ? /case \.background\(let c\): dragonBackground\(v, animator\?\.color\(n\.id, "background-color"\) \?\? c\)/
+        : /is DragonStateWrite\.Background -> dragonBackground\(v, animator\?\.color\(n\.id, "background-color"\) \?: w\.c\)/);
+      expect(t, lang).not.toMatch(/backgroundColor = dragonUIColor\(animator|setBackgroundColor\(.*animator/);
     }
   });
 

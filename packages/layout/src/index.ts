@@ -34,7 +34,7 @@ export type { Edges } from './box.ts';
 export { resolveBorder } from './box.ts';
 export { platformFontSize, snapEdge, zoomFontSize } from './units.ts';
 export type { LinePiece, PlacedLine } from './inline.ts';
-export { placeLines } from './inline.ts';
+export { inlineBoxes, inlineBreaks, inlineLeaves, placeLines } from './inline.ts';
 export type { Ctx } from './block.ts';
 export { resolvePadding } from './box.ts';
 export type { DprPlatformRule, DprPlatformRuleNode } from './platform-rules.ts';
@@ -42,6 +42,8 @@ export { dprPlatformRules } from './platform-rules.ts';
 export type { CalcClamp, CalcExpr, CalcInvert, CalcMax, CalcMin, CalcProduct, CalcSum, EmLength, LengthCalc, PixelsAndPercent, ViewportLength } from './input.ts';
 export { applyEnvironment } from './environment.ts';
 export type { BoxShape } from './paint.ts';
+export type { RadiusFaults, RadiusLength } from './paint-radius.ts';
+export { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from './paint-radius.ts';
 export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';
 export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';
 export type { EnvLength, FontCalc, FontMetricLength, FontPercent, FontSpec, LineHeightCalc, LineHeightLength, RootFontLength, SafeAreaInsets, SafeAreaSide, TextFont, ViewportSize, ViewportUnitSizes } from './input.ts';
@@ -59,6 +61,8 @@ export * as rtAnimations from './rt-animations.ts';
 // ANIM-b1 3b (T065 R16): the runtime animator, one implementation for the TypeScript reference and the generated runtimes.
 export * as rtAnimator from './rt-animator.ts';
 export type { AnimTables, EasingCode, EntryCode, ValueCode } from './rt-animator.ts';
+// MQ-R1 (T067 R4): the @media band lookup a native root runs on a size change.
+export * as rtBand from './rt-band.ts';
 export type { OriginPoint, TransformOrigin } from './paint-transform.ts';
 export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';
 export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';

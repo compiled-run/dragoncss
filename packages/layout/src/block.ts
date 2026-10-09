@@ -1,5 +1,5 @@
 // Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
-import type { Direction, LayoutBox, LayoutNode, LayoutStyle, TextLeaf } from './input.ts';
+import type { Direction, LayoutBox, LayoutNode, LayoutStyle } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, divInt, max, min, sub, ZERO } from './units.ts';
 import type { Edges, Frag, HeightBasis, MarginResolved, OutOfFlow, Placed, Point } from './box.ts';
@@ -24,6 +24,7 @@ import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './posit
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
 import type { TextMeasurer } from './text.ts';
+import { unsupported } from './unsupported.ts';
 
 /** Seeded engine errors, so the parity harness can prove it fails (docs/api.md §7). The product runs with NO_ENGINE_FAULTS. */
 export type EngineFaults = {
@@ -95,10 +96,24 @@ export type EngineFaults = {
   readonly breakAfterSolidus: boolean;
   /** No break between '-' and a digit, as UAX #14 LB25 does (linebreak.ts noHyphenDigitBreak). */
   readonly noHyphenDigitBreak: boolean;
+  /** The line box height comes from the strut only: inline boxes add no ascent or descent (CSS2 §10.8.1). */
+  readonly lineHeightIgnoresInlineBoxes: boolean;
+  /** An inline box's half-leading is not floored to a whole px (Chrome deviation half-leading-floor off for inline boxes only). */
+  readonly halfLeadingUnflooredPerBox: boolean;
+  /** A <br> forces no break. */
+  readonly brIgnored: boolean;
+  /** Every inline box boundary inside text is a soft wrap opportunity. */
+  readonly breakAtBoxBoundary: boolean;
+  /** A leaf's content area starts at its line top instead of the baseline minus its ascent. */
+  readonly fragmentFromLineTop: boolean;
   /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
   readonly orderUnclamped: boolean;
+  /** A scroll container reserves a classic 15px scrollbar gutter at its inline end and block end (overflow.ts). */
+  readonly gutterReserved: boolean;
+  /** A scroll container's scrollable overflow leaves out its end padding after the in-flow content (overflow.ts). */
+  readonly overflowIgnoresPadding: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -136,8 +151,15 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   fitWithoutEpsilon: false,
   breakAfterSolidus: false,
   noHyphenDigitBreak: false,
+  lineHeightIgnoresInlineBoxes: false,
+  halfLeadingUnflooredPerBox: false,
+  brIgnored: false,
+  breakAtBoxBoundary: false,
+  fragmentFromLineTop: false,
   orderHalfEven: false,
   orderUnclamped: false,
+  gutterReserved: false,
+  overflowIgnoresPadding: false,
 };
 
 export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults };
@@ -234,6 +256,9 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
     const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow };
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
   }
+
+  // The grid engine (grid.ts) lands in the next GRID G1a package; the compiler has no profile row for display: grid until then.
+  if (s.display === 'grid') unsupported('grid-layout', box.id, 'css-grid-2 §12', 'grid layout (the grid engine is not in this build)');
 
   const canCollapseTop = !a.formattingContextRoot && bor.top === 0 && pad.top === 0;
   const r = layoutBlockFlow(ctx, box, {
@@ -418,13 +443,13 @@ type FlowResult = {
 // baseline is the first line box's, or the first in-flow child's that has one.
 function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   const kids = box.children;
-  const texts = kids.filter((k): k is TextLeaf => k.kind === 'text');
-  if (texts.length > 0) {
-    // CSS2 §9.2.1.1: the compiler wraps text beside block boxes in anonymous boxes; validateLayoutInput rejects anything else.
-    if (texts.length !== kids.length) throw new Error(`${box.id} mixes text and boxes; validateLayoutInput rejects this input`);
-    const r = layoutInline(ctx, box, texts, a.contentWidth, a.origin);
-    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: true, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [] };
+  if (box.strut !== null) {
+    // CSS2 §9.2.1.1: the compiler wraps inline content beside block boxes in anonymous boxes; validateLayoutInput rejects anything else.
+    const r = layoutInline(ctx, box, a.contentWidth, a.origin);
+    // CSS2 §9.4.2: a formatting context with no line boxes (only empty inline boxes) is empty, so margins collapse through it.
+    return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: r.firstBaseline === null ? null : add(a.origin.y, r.firstBaseline), outOfFlow: [] };
   }
+  if (kids.some((k) => k.kind !== 'box' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
   const direction = directionOf(ctx, box);
   const placed: Placed[] = [];
   let strut = EMPTY_STRUT;
@@ -434,7 +459,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   let baseline: LU | null = null;
   const outOfFlow: OutOfFlow[] = [];
   for (const kid of kids) {
-    if (kid.kind === 'text') continue;
+    if (kid.kind !== 'box' && kid.kind !== 'replaced') continue;
     if (kid.kind === 'box' && isOutOfFlow(ctx, kid)) {
       // CSS2 §10.3.7 static position (Blink HandleOutOfFlowPositioned): the parent's content start edge in its direction, at the
       // flow position, which includes the pending margins once the parent's block offset is fixed (measured).

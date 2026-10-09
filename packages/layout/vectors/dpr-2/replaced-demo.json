@@ -138,8 +138,15 @@
     "textAlign": "start",
     "aspectRatio": {
      "kind": "auto"
-    }
+    },
+    "verticalAlign": {
+     "kind": "keyword",
+     "value": "baseline"
+    },
+    "grid": null,
+    "gridItem": null
    },
+   "strut": null,
    "children": [
     {
      "kind": "box",
@@ -251,8 +258,15 @@
       "textAlign": "start",
       "aspectRatio": {
        "kind": "auto"
-      }
+      },
+      "verticalAlign": {
+       "kind": "keyword",
+       "value": "baseline"
+      },
+      "grid": null,
+      "gridItem": null
      },
+     "strut": null,
      "children": [
       {
        "kind": "box",
@@ -366,8 +380,15 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
-        }
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        },
+        "grid": null,
+        "gridItem": null
        },
+       "strut": null,
        "children": [
         {
          "kind": "box",
@@ -483,8 +504,15 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
+         "strut": null,
          "children": [
           {
            "kind": "replaced",
@@ -597,7 +625,13 @@
             "textAlign": "start",
             "aspectRatio": {
              "kind": "auto"
-            }
+            },
+            "verticalAlign": {
+             "kind": "keyword",
+             "value": "baseline"
+            },
+            "grid": null,
+            "gridItem": null
            },
            "natural": {
             "kind": "image",
@@ -731,8 +765,15 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "auto"
-        }
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        },
+        "grid": null,
+        "gridItem": null
        },
+       "strut": null,
        "children": [
         {
          "kind": "replaced",
@@ -846,7 +887,13 @@
            "kind": "ratio",
            "width": 1024,
            "height": 576
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
          "natural": {
           "kind": "image",
@@ -975,6 +1022,26 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
+         },
+         "strut": {
+          "font": {
+           "family": "Ahem",
+           "size": 10,
+           "specifiedSize": {
+            "kind": "px",
+            "value": 10
+           },
+           "absoluteSize": true
+          },
+          "lineHeight": {
+           "kind": "normal"
           }
          },
          "children": [
@@ -1114,8 +1181,15 @@
          "kind": "ratio",
          "width": 1024,
          "height": 576
-        }
+        },
+        "verticalAlign": {
+         "kind": "keyword",
+         "value": "baseline"
+        },
+        "grid": null,
+        "gridItem": null
        },
+       "strut": null,
        "children": [
         {
          "kind": "box",
@@ -1229,8 +1303,15 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto"
-          }
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "grid": null,
+          "gridItem": null
          },
+         "strut": null,
          "children": [
           {
            "kind": "replaced",
@@ -1343,7 +1424,13 @@
             "textAlign": "start",
             "aspectRatio": {
              "kind": "auto"
-            }
+            },
+            "verticalAlign": {
+             "kind": "keyword",
+             "value": "baseline"
+            },
+            "grid": null,
+            "gridItem": null
            },
            "natural": {
             "kind": "none"

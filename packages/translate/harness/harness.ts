@@ -17,6 +17,12 @@ import type {
   FlexWrap,
   FontSpec,
   GapValue,
+  InlineBox,
+  InlineChild,
+  GridContainerStyle,
+  GridItemStyle,
+  GridSelfAlign,
+  GridSpan,
   InsetValue,
   JustifyContent,
   LayoutBox,
@@ -24,7 +30,9 @@ import type {
   LayoutStyle,
   LengthCalc,
   LineHeightCalc,
+  LineBreak,
   LineHeightValue,
+  LineStrut,
   MarginValue,
   NaturalSizeValue,
   ObjectFit,
@@ -40,13 +48,21 @@ import type {
   TextAlign,
   TextLeaf,
   TextWrapMode,
+  VerticalAlignKeyword,
+  VerticalAlignValue,
   ViewportLength,
   ViewportSize,
   Viewport,
+  TrackBreadth,
+  TrackRepeater,
+  TrackSize,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
 import { measurerFor } from '../../layout/src/platform.ts';
+import type { TextMeasurer } from '../../layout/src/text.ts';
+import type { ScrollMetrics } from '../../layout/src/overflow.ts';
+import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
@@ -106,6 +122,8 @@ import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColo
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
 import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
+import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
+import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
 export class HarnessError extends Error {
@@ -583,8 +601,102 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'grid', 'gridItem',
 ];
+
+function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
+  const k = kindOf(v, path);
+  if (k === 'calc') return lengthCalc(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'keyword') {
+    const o = obj(v, ['kind', 'value'], path);
+    return { kind: 'keyword', value: lit(field(o, 'value', path), ['baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom'], `${path}.value`) as VerticalAlignKeyword };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+const GRID_SELF_ALIGN: readonly string[] = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'];
+
+function trackBreadth(v: JsonValue, path: string): TrackBreadth {
+  const k = kindOf(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'fr') return { kind: 'fr', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  obj(v, ['kind'], path);
+  if (k === 'auto') return { kind: 'auto' };
+  if (k === 'min-content') return { kind: 'min-content' };
+  if (k === 'max-content') return { kind: 'max-content' };
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function trackSize(v: JsonValue, path: string): TrackSize {
+  const k = kindOf(v, path);
+  if (k === 'breadth') return { kind: 'breadth', breadth: trackBreadth(field(obj(v, ['kind', 'breadth'], path), 'breadth', path), `${path}.breadth`) };
+  if (k === 'minmax') {
+    const o = obj(v, ['kind', 'min', 'max'], path);
+    return { kind: 'minmax', min: trackBreadth(field(o, 'min', path), `${path}.min`), max: trackBreadth(field(o, 'max', path), `${path}.max`) };
+  }
+  if (k === 'fit-content') {
+    const limit = field(obj(v, ['kind', 'limit'], path), 'limit', path);
+    const lk = kindOf(limit, `${path}.limit`);
+    const value = numField(obj(limit, ['kind', 'value'], `${path}.limit`), 'value', `${path}.limit`);
+    if (lk === 'px') return { kind: 'fit-content', limit: { kind: 'px', value } };
+    if (lk === 'percent') return { kind: 'fit-content', limit: { kind: 'percent', value } };
+    return fail(`${path}.limit: unknown kind ${lk}`);
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function trackSizes(v: JsonValue, path: string): TrackSize[] {
+  return arr(v, path).map((t, i) => trackSize(t, `${path}[${i}]`));
+}
+
+function repeaters(v: JsonValue, path: string): TrackRepeater[] {
+  return arr(v, path).map((r, i): TrackRepeater => {
+    const at = `${path}[${i}]`;
+    const o = obj(r, ['count', 'sizes'], at);
+    return { count: numField(o, 'count', at), sizes: trackSizes(field(o, 'sizes', at), `${at}.sizes`) };
+  });
+}
+
+function gridSpan(v: JsonValue, path: string): GridSpan {
+  const k = kindOf(v, path);
+  if (k === 'definite') {
+    const o = obj(v, ['kind', 'start', 'end'], path);
+    return { kind: 'definite', start: numField(o, 'start', path), end: numField(o, 'end', path) };
+  }
+  if (k === 'auto') return { kind: 'auto', span: numField(obj(v, ['kind', 'span'], path), 'span', path) };
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function decodeGrid(v: JsonValue, path: string): GridContainerStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['templateColumns', 'templateRows', 'autoColumns', 'autoRows', 'explicitColumnCount', 'explicitRowCount', 'autoFlow', 'dense', 'justifyItems'], path);
+  const f = (k: string): JsonValue => field(o, k, path);
+  return {
+    templateColumns: repeaters(f('templateColumns'), `${path}.templateColumns`),
+    templateRows: repeaters(f('templateRows'), `${path}.templateRows`),
+    autoColumns: trackSizes(f('autoColumns'), `${path}.autoColumns`),
+    autoRows: trackSizes(f('autoRows'), `${path}.autoRows`),
+    explicitColumnCount: num(f('explicitColumnCount'), `${path}.explicitColumnCount`),
+    explicitRowCount: num(f('explicitRowCount'), `${path}.explicitRowCount`),
+    autoFlow: lit(f('autoFlow'), ['row', 'column'], `${path}.autoFlow`) === 'column' ? 'column' : 'row',
+    dense: bool(f('dense'), `${path}.dense`),
+    justifyItems: lit(f('justifyItems'), GRID_SELF_ALIGN, `${path}.justifyItems`) as GridSelfAlign,
+  };
+}
+
+function decodeGridItem(v: JsonValue, path: string): GridItemStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['column', 'row', 'justifySelf'], path);
+  const self = str(field(o, 'justifySelf', path), `${path}.justifySelf`);
+  return {
+    column: gridSpan(field(o, 'column', path), `${path}.column`),
+    row: gridSpan(field(o, 'row', path), `${path}.row`),
+    justifySelf: self === 'auto' ? 'auto' : (lit(field(o, 'justifySelf', path), GRID_SELF_ALIGN, `${path}.justifySelf`) as GridSelfAlign),
+  };
+}
 
 const ALIGN_ITEMS: readonly string[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
 
@@ -593,14 +705,14 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const f = (k: string): JsonValue => field(o, k, path);
   const p = (k: string): string => `${path}.${k}`;
   return {
-    display: lit(f('display'), ['block', 'flex'], p('display')) as Display,
+    display: lit(f('display'), ['block', 'flex', 'grid', 'inline'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
     bottom: sizeValue(f('bottom'), p('bottom')) as InsetValue,
     left: sizeValue(f('left'), p('left')) as InsetValue,
-    overflowX: lit(f('overflowX'), ['visible', 'hidden'], p('overflowX')) as Overflow,
-    overflowY: lit(f('overflowY'), ['visible', 'hidden'], p('overflowY')) as Overflow,
+    overflowX: lit(f('overflowX'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowX')) as Overflow,
+    overflowY: lit(f('overflowY'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowY')) as Overflow,
     direction: lit(f('direction'), ['ltr', 'rtl'], p('direction')) as Direction,
     boxSizing: lit(f('boxSizing'), ['content-box', 'border-box'], p('boxSizing')) as BoxSizing,
     width: sizeValue(f('width'), p('width')),
@@ -635,6 +747,9 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     columnGap: gapValue(f('columnGap'), p('columnGap')),
     textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
+    verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
+    grid: decodeGrid(f('grid'), p('grid')),
+    gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
 }
 
@@ -688,27 +803,63 @@ function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
 }
 
 function decodeBox(o: JsonObj, path: string): LayoutBox {
-  obj(o, ['kind', 'id', 'boxType', 'style', 'children'], path);
-  const children: (LayoutBox | TextLeaf | ReplacedLeaf)[] = [];
+  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'children'], path);
+  const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
+  const strut = field(o, 'strut', path);
   return {
     kind: 'box',
     id: str(field(o, 'id', path), `${path}.id`),
     boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
     style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    strut: strut.kind === 'null' ? null : decodeStrut(strut, `${path}.strut`),
     children,
   };
 }
 
-function decodeNode(v: JsonValue, path: string): LayoutBox | TextLeaf | ReplacedLeaf {
+function decodeStrut(v: JsonValue, path: string): LineStrut {
+  const o = obj(v, ['font', 'lineHeight'], path);
+  return { font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+}
+
+function decodeInline(o: JsonObj, path: string): InlineBox {
+  obj(o, ['kind', 'id', 'style', 'font', 'lineHeight', 'children'], path);
+  const children: InlineChild[] = [];
+  arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
+    children.push(decodeInlineChild(c, `${path}.children[${i}]`));
+  });
+  return {
+    kind: 'inline',
+    id: str(field(o, 'id', path), `${path}.id`),
+    style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    font: fontSpec(field(o, 'font', path), `${path}.font`),
+    lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
+    children,
+  };
+}
+
+function decodeBreak(o: JsonObj, path: string): LineBreak {
+  obj(o, ['kind', 'id', 'font', 'lineHeight'], path);
+  return { kind: 'br', id: str(field(o, 'id', path), `${path}.id`), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+}
+
+function decodeInlineChild(v: JsonValue, path: string): InlineChild {
+  if (v.kind !== 'obj') return fail(`${path}: expected an inline-level node`);
+  const k = kindOf(v, path);
+  if (k === 'text') return decodeText(v, path);
+  if (k === 'inline') return decodeInline(v, path);
+  if (k === 'br') return decodeBreak(v, path);
+  return fail(`${path}: unknown inline-level node kind ${k}`);
+}
+
+function decodeNode(v: JsonValue, path: string): LayoutBox | ReplacedLeaf | InlineChild {
   if (v.kind !== 'obj') return fail(`${path}: expected a node`);
   const k = kindOf(v, path);
   if (k === 'box') return decodeBox(v, path);
-  if (k === 'text') return decodeText(v, path);
   if (k === 'replaced') return decodeReplaced(v, path);
-  return fail(`${path}: unknown node kind ${k}`);
+  return decodeInlineChild(v, path);
 }
 
 function decodeViewport(v: JsonValue, path: string): Viewport {
@@ -742,8 +893,9 @@ const FAULT_KEYS: readonly string[] = [
   'wrapReverseBaselineSpec', 'initialLineWidthZoomed', 'calcPercentPlainOrder', 'calcDoubleEval', 'calcNoNonNegClamp',
   'calcPercentIndefiniteAsLength', 'clampMaxWins', 'divideDirect', 'calcLeafUnzoomed', 'viewportUnitsUnceiled', 'lhUnsnapped',
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
-  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak',
-  'orderHalfEven', 'orderUnclamped',
+  'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes',
+  'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
+  'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -784,8 +936,15 @@ function decodeFaults(v: JsonValue): EngineFaults {
     fitWithoutEpsilon: b('fitWithoutEpsilon'),
     breakAfterSolidus: b('breakAfterSolidus'),
     noHyphenDigitBreak: b('noHyphenDigitBreak'),
+    lineHeightIgnoresInlineBoxes: b('lineHeightIgnoresInlineBoxes'),
+    halfLeadingUnflooredPerBox: b('halfLeadingUnflooredPerBox'),
+    brIgnored: b('brIgnored'),
+    breakAtBoxBoundary: b('breakAtBoxBoundary'),
+    fragmentFromLineTop: b('fragmentFromLineTop'),
     orderHalfEven: b('orderHalfEven'),
     orderUnclamped: b('orderUnclamped'),
+    gutterReserved: b('gutterReserved'),
+    overflowIgnoresPadding: b('overflowIgnoresPadding'),
   };
 }
 
@@ -809,10 +968,33 @@ function h(x: number): string {
   return `"${bitsHex(x)}"`;
 }
 
+/** A scroll metrics record: the id, the client size and the scroll rect (overflow.ts). */
+function scrollRecord(s: ScrollMetrics): string {
+  return `[${q(s.id)},${h(s.clientWidth)},${h(s.clientHeight)},${h(s.scrollRect.x)},${h(s.scrollRect.y)},${h(s.scrollRect.width)},${h(s.scrollRect.height)}]`;
+}
+
+/**
+ * A line with a viewportDirection key (the engine-overflow suite) also runs scrollMetrics and appends its result; every other line
+ * keeps its output byte for byte.
+ */
+function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: string, faults: EngineFaults): string {
+  const r = scrollMetricsWithFaults(input, measurer, direction === 'rtl' ? 'rtl' : 'ltr', faults);
+  if (r.kind === 'refused') return `,["refused",${q(r.nodeId)},${q(r.detail)}]`;
+  let out = `,["ok",${scrollRecord(r.viewport)},[`;
+  r.containers.forEach((c, i) => {
+    if (i > 0) out += ',';
+    out += scrollRecord(c);
+  });
+  return `${out}]]`;
+}
+
 /** One engine case: {"platform", "faults", "input"} in, the layout result with every LU as bits out. */
 export function runEngineCase(line: string): string {
   try {
-    const o = obj(parseJson(line), ['platform', 'faults', 'input'], '$');
+    const parsed = parseJson(line);
+    const scroll = parsed.kind === 'obj' && parsed.values.has('viewportDirection');
+    const o = obj(parsed, scroll ? ['platform', 'faults', 'input', 'viewportDirection'] : ['platform', 'faults', 'input'], '$');
+    const direction = scroll ? lit(field(o, 'viewportDirection', '$'), ['ltr', 'rtl'], '$.viewportDirection') : 'ltr';
     const platform = str(field(o, 'platform', '$'), '$.platform');
     const faults = decodeFaults(field(o, 'faults', '$'));
     const input = decodeInput(field(o, 'input', '$'));
@@ -835,7 +1017,7 @@ export function runEngineCase(line: string): string {
       first = false;
       out += `[${q(id)},${h(rect.x)},${h(rect.y)},${h(rect.width)},${h(rect.height)}]`;
     }
-    return `${out}]]`;
+    return `${out}]${scroll ? scrollSuffix(input, m.measurer, direction, faults) : ''}]`;
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -927,6 +1109,42 @@ function unitsResult(name: string, a: readonly JsonValue[]): number {
 
 // ---------------------------------------------------------------- paint suites (EMS)
 
+/** count doubles from argument i on. */
+function argList(a: readonly JsonValue[], i: number, count: number): number[] {
+  const out: number[] = [];
+  for (let k = 0; k < count; k++) out.push(arg(a, i + k));
+  return out;
+}
+
+/** A result list of doubles as bits. */
+function numList(xs: readonly number[]): string {
+  let out = '["ok",[';
+  for (let k = 0; k < xs.length; k++) {
+    if (k > 0) out += ',';
+    out += h(xs[k] as number);
+  }
+  return `${out}]]`;
+}
+
+/** One radius length from arguments i (percent flag, 0 or 1) and i + 1 (value). */
+function radiusLength(a: readonly JsonValue[], i: number): RadiusLength {
+  const flag = arg(a, i);
+  if (flag !== 0 && flag !== 1) return fail(`radius length flag ${flag} is not 0 or 1`);
+  return { percent: flag === 1, value: arg(a, i + 1) };
+}
+
+/** Eight radius lengths from argument i on. */
+function radiusLengths(a: readonly JsonValue[], i: number): RadiusLength[] {
+  const out: RadiusLength[] = [];
+  for (let k = 0; k < 8; k++) out.push(radiusLength(a, i + 2 * k));
+  return out;
+}
+
+/** The radius faults from arguments i (radiusUnclamped) and i + 1 (innerRadiusNotReduced), each 0 or 1. */
+function radiusFaults(a: readonly JsonValue[], i: number): RadiusFaults {
+  return { radiusUnclamped: arg(a, i) !== 0, innerRadiusNotReduced: arg(a, i + 1) !== 0 };
+}
+
 /**
  * One paint case, run through the units mode: ["paint:<feature>:<function>", arg...] in, the whole result line out; null for any
  * other name. Registration point (RT-13 style): each paint package adds one case per root; its vectors are
@@ -954,6 +1172,13 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const p = mapPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
     return `["ok",[${h(p.x)},${h(p.y)}]]`;
   }
+  if (name === 'paint:radius:radiusComponent') return `["ok",${h(radiusComponent(radiusLength(a, 1), arg(a, 3), arg(a, 4)))}]`;
+  if (name === 'paint:radius:resolveCornerRadii') return numList(resolveCornerRadii(radiusLengths(a, 1), arg(a, 17), arg(a, 18), arg(a, 19)));
+  if (name === 'paint:radius:constrainCornerRadii') return numList(constrainCornerRadii(argList(a, 1, 8), arg(a, 9), arg(a, 10), radiusFaults(a, 11)));
+  if (name === 'paint:radius:radiiRenderable') return `["ok",${radiiRenderable(argList(a, 1, 8), arg(a, 9), arg(a, 10)) ? 'true' : 'false'}]`;
+  if (name === 'paint:radius:innerCornerRadii') return numList(innerCornerRadii(argList(a, 1, 8), argList(a, 9, 4), arg(a, 13), arg(a, 14), radiusFaults(a, 15)));
+  if (name === 'paint:radius:roundedShape') return numList(roundedShape(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), argList(a, 7, 4), radiusLengths(a, 11), arg(a, 27), radiusFaults(a, 28)));
+  if (name === 'paint:radius:hasRoundedCorner') return `["ok",${hasRoundedCorner(argList(a, 1, 8)) ? 'true' : 'false'}]`;
   const gradient = gradientResult(name, a);
   if (gradient !== null) return gradient;
   return null;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { committedFiles, runTarget } from '../src/check.ts';
 import { buildCorpus } from '../src/corpus.ts';
-import { describe as describeRun, swiftTool, writeReport } from '../src/native.ts';
+import { describe as describeRun, isBlocked, swiftTool, writeReport } from '../src/native.ts';
 
 describe('Swift host run (native:swift)', () => {
   it('the committed Swift engine reproduces the vectors, the units corpus, the engine corpus and the library corpus bit for bit', () => {
@@ -10,7 +10,7 @@ describe('Swift host run (native:swift)', () => {
     writeReport(r, c);
     console.log(describeRun(r, c));
     if (process.platform === 'darwin') expect(swiftTool(), 'swiftc is part of Xcode on the macOS reference machine').not.toBeNull();
-    if (r.status === 'blocked (owner tooling)') {
+    if (isBlocked(r)) {
       expect(swiftTool()).toBeNull();
       return;
     }
