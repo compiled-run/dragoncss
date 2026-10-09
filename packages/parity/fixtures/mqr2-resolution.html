@@ -7,7 +7,7 @@ body { margin: 0; }
 .b { width: 80px; height: 12px; background-color: #ccc; }
 .c { width: 80px; height: 12px; background-color: #ccc; }
 .d { width: 80px; height: 12px; background-color: #ccc; }
-@media (max-resolution: 1.5x) { .a { background-color: #c00; } }
+@media (resolution < 2x) { .a { background-color: #c00; } }
 @media (min-resolution: 2dppx) { .b { background-color: #0a0; } }
 @media (-webkit-min-device-pixel-ratio: 2.625) { .c { background-color: #00c; } }
 @media (min-resolution: 288dpi) { .d { background-color: #a0a; } }

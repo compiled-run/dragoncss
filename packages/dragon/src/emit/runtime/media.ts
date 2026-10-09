@@ -64,6 +64,11 @@ public struct DragonReadings: Equatable {
   public func pointing(touch: Bool) -> DragonReadings {
     return DragonReadings(pointer: touch ? "coarse" : "fine", hover: !touch, anyCoarse: touch, anyFine: !touch, anyHover: !touch, reducedMotion: reducedMotion)
   }
+  /// Every pointer and hover reading from env(2, bits) (emit/runtime/state.ts pointerBits), the motion setting kept.
+  public func pointers(_ bits: Int) -> DragonReadings {
+    let pointer = ["none", "coarse", "fine"][bits & 3]
+    return DragonReadings(pointer: pointer, hover: bits & 4 != 0, anyCoarse: bits & 8 != 0, anyFine: bits & 16 != 0, anyHover: bits & 32 != 0, reducedMotion: reducedMotion)
+  }
   /// The reduced-motion setting, the pointer readings kept.
   public func motion(reduce: Bool) -> DragonReadings {
     var r = self
@@ -175,6 +180,8 @@ data class DragonReadings(val pointer: String, val hover: Boolean, val anyCoarse
   fun pointing(touch: Boolean): DragonReadings = DragonReadings(if (touch) "coarse" else "fine", !touch, touch, !touch, !touch, reducedMotion)
   /** The reduced-motion setting, the pointer readings kept. */
   fun motion(reduce: Boolean): DragonReadings = copy(reducedMotion = reduce)
+  /** Every pointer and hover reading from env(2, bits) (emit/runtime/state.ts pointerBits), the motion setting kept. */
+  fun pointers(bits: Int): DragonReadings = DragonReadings(arrayOf("none", "coarse", "fine")[bits and 3], (bits and 4) != 0, (bits and 8) != 0, (bits and 16) != 0, (bits and 32) != 0, reducedMotion)
 
   companion object {
     /** Headless Chrome's desktop page: a mouse, no motion preference (a machine's readings until its mount reads the platform's). */

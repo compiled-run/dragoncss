@@ -31,7 +31,27 @@ export type ScriptStep =
    */
   | { readonly kind: 'env'; readonly reading: 'pointer'; readonly value: 'touch' | 'desktop' }
   | { readonly kind: 'env'; readonly reading: 'motion'; readonly value: 'reduce' | 'no-preference' }
+  /** Every pointer and hover reading at once (a touch screen with a mouse, no pointer at all...), as Chrome's --blink-settings set them. */
+  | { readonly kind: 'env'; readonly reading: 'pointers'; readonly value: PointerReadings }
   | { readonly kind: 'dump' };
+
+/** The pointer and hover readings of a device (media/evaluate.ts MediaDevice without the scale and motion setting). */
+export type PointerReadings = {
+  readonly pointer: 'none' | 'coarse' | 'fine';
+  readonly anyPointer: readonly ('coarse' | 'fine')[];
+  readonly hover: 'none' | 'hover';
+  readonly anyHover: 'none' | 'hover';
+};
+
+/** env(2, bits)'s bits: the primary pointer (0 none, 1 coarse, 2 fine), then hover, any coarse, any fine and any hover, one bit each. */
+export function pointerBits(p: PointerReadings): number {
+  const anyCoarse = p.anyPointer.includes('coarse');
+  const anyFine = p.anyPointer.includes('fine');
+  if (p.anyPointer.some((k) => k !== 'coarse' && k !== 'fine')) throw new StateEmitError(`pointer readings ${JSON.stringify(p)}: any-pointer is coarse and fine only`);
+  if (p.pointer === 'none' ? anyCoarse || anyFine : !p.anyPointer.includes(p.pointer)) throw new StateEmitError(`pointer readings ${JSON.stringify(p)}: the primary pointer is not one of the pointers present`);
+  if (p.hover === 'hover' && p.anyHover !== 'hover') throw new StateEmitError(`pointer readings ${JSON.stringify(p)}: the primary pointer hovers but no pointer does`);
+  return ({ none: 0, coarse: 1, fine: 2 } as const)[p.pointer] | (p.hover === 'hover' ? 4 : 0) | (anyCoarse ? 8 : 0) | (anyFine ? 16 : 0) | (p.anyHover === 'hover' ? 32 : 0);
+}
 
 /**
  * One case script as a device case: its id, steps and the expected-dump digests of the assignment it ends in. MQ-R1: start is the
@@ -99,8 +119,8 @@ public struct DragonStateDelta {
 }
 
 /// One case-script step: set state s to its v-th domain value, advance the virtual clock, resize the media root (CSS px), inject
-/// device readings (MQ-R2: env(0, v) the pointer, v 0 a desktop mouse and 1 a touch screen; env(1, v) reduced motion, v 1 reduce),
-/// or mark the dump.
+/// device readings (MQ-R2: env(0, v) the pointer, v 0 a desktop mouse and 1 a touch screen; env(1, v) reduced motion, v 1 reduce;
+/// env(2, bits) every pointer and hover reading, DragonReadings.pointers), or mark the dump.
 public enum DragonScriptStep {
   case set(Int, Int)
   case advance(Double)
@@ -398,7 +418,7 @@ public struct DragonStateScript {
       case .set(let a, let b): m.machine.set(a, b)
       case .advance(let ms): m.machine.advance(ms)
       case .resize(let w, let h): m.resize(w, h)
-      case .env(let reading, let v): m.inject(reading == 0 ? m.machine.readings.pointing(touch: v == 1) : m.machine.readings.motion(reduce: v == 1))
+      case .env(let reading, let v): m.inject(reading == 0 ? m.machine.readings.pointing(touch: v == 1) : reading == 1 ? m.machine.readings.motion(reduce: v == 1) : m.machine.readings.pointers(v))
       case .dump: break
       }
     }
@@ -449,7 +469,10 @@ sealed class DragonScriptStep {
   class Advance(val ms: Double) : DragonScriptStep()
   /** MQ-R1: the media root's new size in CSS px. */
   class Resize(val width: Double, val height: Double) : DragonScriptStep()
-  /** MQ-R2: inject device readings: reading 0 the pointer (v 0 a desktop mouse, 1 a touch screen), reading 1 reduced motion (v 1 reduce). */
+  /**
+   * MQ-R2: inject device readings: reading 0 the pointer (v 0 a desktop mouse, 1 a touch screen), reading 1 reduced motion (v 1
+   * reduce), reading 2 every pointer and hover reading (v the bits of DragonReadings.pointers).
+   */
   class Env(val reading: Int, val v: Int) : DragonScriptStep()
   object Dump : DragonScriptStep()
 }
@@ -766,7 +789,7 @@ class DragonStateScript(val dragonCase: DragonCase, val make: () -> DragonStateM
         is DragonScriptStep.Set -> m.machine.set(s.s, s.v)
         is DragonScriptStep.Advance -> m.machine.advance(s.ms)
         is DragonScriptStep.Resize -> m.resize(s.width, s.height)
-        is DragonScriptStep.Env -> m.inject(if (s.reading == 0) m.machine.readings.pointing(s.v == 1) else m.machine.readings.motion(s.v == 1))
+        is DragonScriptStep.Env -> m.inject(if (s.reading == 0) m.machine.readings.pointing(s.v == 1) else if (s.reading == 1) m.machine.readings.motion(s.v == 1) else m.machine.readings.pointers(s.v))
         is DragonScriptStep.Dump -> {}
       }
     }
@@ -899,6 +922,7 @@ function stepLit(lang: Lang, sp: StateProgram, id: string, step: ScriptStep): st
       if (![step.width, step.height].every((v) => Number.isFinite(v) && v > 0)) throw new StateEmitError(`${id}: resize(${step.width}, ${step.height}) is not a positive size`);
       return lang === 'swift' ? `.resize(${doubleLit(step.width)}, ${doubleLit(step.height)})` : `DragonScriptStep.Resize(${doubleLit(step.width)}, ${doubleLit(step.height)})`;
     case 'env': {
+      if (step.reading === 'pointers') return lang === 'swift' ? `.env(2, ${pointerBits(step.value)})` : `DragonScriptStep.Env(2, ${pointerBits(step.value)})`;
       const reading = step.reading === 'pointer' ? 0 : 1;
       const v = step.value === 'touch' || step.value === 'reduce' ? 1 : 0;
       return lang === 'swift' ? `.env(${reading}, ${v})` : `DragonScriptStep.Env(${reading}, ${v})`;

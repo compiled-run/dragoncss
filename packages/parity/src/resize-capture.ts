@@ -8,8 +8,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { absoluteRects, layout } from '@dragon/layout';
-import type { Assignment, BandRuntimeFaults, Compiled, MediaDevice, NativeBackend, NativeProgram, Rgba8, StateProgram } from 'dragon';
-import { DESKTOP_DEVICE, LONGHANDS, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, NO_BAND_RUNTIME_FAULTS, parseComputedColor, programInput, stateKey, webClassMap } from 'dragon';
+import type { Assignment, BandRuntimeFaults, Compiled, MediaDevice, NativeBackend, NativeProgram, PointerReadings, Rgba8, StateProgram } from 'dragon';
+import { DESKTOP_DEVICE, LONGHANDS, pointerBits, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, NO_BAND_RUNTIME_FAULTS, parseComputedColor, programInput, stateKey, webClassMap } from 'dragon';
 import type { CapturedNode } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { casesOf } from './cases.ts';
@@ -77,7 +77,42 @@ export function scriptProblem(s: ResizeScript): string | null {
     if (p !== null) return `${s.fixture}: ${p}`;
   }
   if (s.steps.length === 0) return `${s.fixture}: a script needs a step`;
+  // MQ-R2: Chrome takes a pointers step's readings at launch, on a new page, so the script carries no app state or touch emulation over it.
+  const pointers = s.steps.filter((x) => x.kind === 'env' && x.reading === 'pointers');
+  if (pointers.length > 0 && s.steps.some((x) => x.kind === 'set')) return `${s.fixture}: a script with a pointers step has no set steps (Chrome reopens its page)`;
+  const first = s.steps.findIndex((x) => x.kind === 'env' && x.reading === 'pointers');
+  if (first >= 0 && s.steps.slice(first).some((x) => x.kind === 'env' && x.reading === 'pointer')) return `${s.fixture}: a touch or desktop step follows a pointers step (touch emulation restores the launch's readings, not a desktop's)`;
+  for (const x of pointers) {
+    try {
+      if (x.kind === 'env' && x.reading === 'pointers') pointerBits(x.value);
+    } catch (e) {
+      return `${s.fixture}: ${(e as Error).message}`;
+    }
+  }
   return null;
+}
+
+/** Blink's pointer and hover type bits (ui/base/pointer/pointer_device.h PointerType and HoverType). */
+const POINTER_TYPE = { none: 1, coarse: 2, fine: 4 } as const;
+const HOVER_TYPE = { none: 1, hover: 2 } as const;
+
+/** The Chrome flag that sets every pointer and hover reading of a page (Blink's settings, which the media features read). */
+export function blinkPointerArgs(p: PointerReadings): string[] {
+  pointerBits(p);
+  const available = p.anyPointer.length === 0 ? POINTER_TYPE.none : p.anyPointer.reduce((a, k) => a | POINTER_TYPE[k], 0);
+  return [`--blink-settings=primaryPointerType=${POINTER_TYPE[p.pointer]},availablePointerTypes=${available},primaryHoverType=${HOVER_TYPE[p.hover]},availableHoverTypes=${HOVER_TYPE[p.anyHover]}`];
+}
+
+/** The media queries that read a device's pointer, hover and motion readings, and the answers the readings give them. */
+export function readingQueries(d: Omit<MediaDevice, 'dpr'>): [string, boolean][] {
+  const any: readonly string[] = d.anyPointer.length === 0 ? ['none'] : d.anyPointer;
+  return [
+    ...(['none', 'coarse', 'fine'] as const).map((k): [string, boolean] => [`(pointer: ${k})`, d.pointer === k]),
+    ...(['none', 'coarse', 'fine'] as const).map((k): [string, boolean] => [`(any-pointer: ${k})`, any.includes(k)]),
+    ...(['none', 'hover'] as const).map((k): [string, boolean] => [`(hover: ${k})`, d.hover === k]),
+    ...(['none', 'hover'] as const).map((k): [string, boolean] => [`(any-hover: ${k})`, d.anyHover === k]),
+    ...(['no-preference', 'reduce'] as const).map((k): [string, boolean] => [`(prefers-reduced-motion: ${k})`, d.reducedMotion === k]),
+  ];
 }
 
 let all: readonly ResizeCase[] | null = null;
@@ -124,6 +159,7 @@ const DESKTOP_READINGS = { pointer: 'fine', anyPointer: ['fine'], hover: 'hover'
 /** The readings after an env step. */
 export function readingsAfter(d: MediaDevice, s: ResizeStep & { kind: 'env' }): MediaDevice {
   if (s.reading === 'motion') return { ...d, reducedMotion: s.value };
+  if (s.reading === 'pointers') return { ...d, pointer: s.value.pointer, anyPointer: [...s.value.anyPointer], hover: s.value.hover, anyHover: s.value.anyHover };
   return { ...d, ...(s.value === 'touch' ? TOUCH_READINGS : DESKTOP_READINGS) };
 }
 
@@ -246,12 +282,14 @@ export function rendering(c: ResizeCase, a: Assignment, r: 'authored' | 'compile
 
 /**
  * Captures one resize case at one DPR in one rendering; the browser must be launched at that DPR (chrome.ts launchChrome). shot,
- * when given, takes Chrome's pixels after the start and every step (Page.captureScreenshot, the pixel lane's capture).
+ * when given, takes Chrome's pixels after the start and every step (Page.captureScreenshot, the pixel lane's capture). MQ-R2:
+ * browserFor gives a Chrome at that DPR launched with a pointers step's readings (blinkPointerArgs), where the step's page opens.
  */
-export async function captureResize(browser: Browser, c: ResizeCase, dpr: number, r: 'authored' | 'compiled' = 'authored', shot: ((step: number, png: Buffer) => void) | null = null): Promise<ResizeCapture> {
+export async function captureResize(browser: Browser, c: ResizeCase, dpr: number, r: 'authored' | 'compiled' = 'authored', shot: ((step: number, png: Buffer) => void) | null = null, browserFor: ((p: PointerReadings) => Promise<Browser>) | null = null): Promise<ResizeCapture> {
   const points = scriptPoints(c);
   const first = points[0] as ScriptPoint;
-  const page = await openPage(browser, rendering(c, first.assignment, r), { viewport: first.size, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' });
+  const open = (b: Browser, at: ScriptPoint) => openPage(b, rendering(c, at.assignment, r), { viewport: at.size, devicePixelRatio: dpr, direction: c.direction, rootFont: 'ahem' });
+  let page = await open(browser, first);
   const props = dpr === 1 ? [...LONGHANDS] : [...DPR_PROPERTIES];
   const settle = (): Promise<void> => page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
   try {
@@ -260,6 +298,12 @@ export async function captureResize(browser: Browser, c: ResizeCase, dpr: number
       const inner = await page.evaluate(() => [window.innerWidth, window.innerHeight]);
       if (inner[0] !== size.width || inner[1] !== size.height) throw new Error(`${c.id} DPR ${dpr}: the viewport is ${inner.join('x')}, the script's ${size.width}x${size.height}`);
       samples.push({ size, nodes: await page.evaluate(pageStep, { kind: 'dump', props } as PageStep) });
+      // MQ-R2: Chrome answers the readings the script says it emulates, or the capture is not of them.
+      const device = (points[samples.length - 1] as ScriptPoint).device;
+      const queries = readingQueries(device);
+      const got = await page.evaluate((qs) => qs.map((q) => matchMedia(q).matches), queries.map(([q]) => q));
+      const wrong = queries.filter(([, want], k) => got[k] !== want).map(([q, want]) => `${q} ${want ? 'does not match' : 'matches'}`);
+      if (wrong.length > 0) throw new Error(`${c.id} DPR ${dpr} step ${samples.length - 1}: Chrome's readings are not the script's: ${wrong.join(', ')}`);
       if (shot !== null) {
         // A resize can leave raster tiles Chrome does not repaint (a box edge of the previous size stays in about half the runs of
         // mqr-music-shape step 1 at DPR 2), so the pixels are taken after one whole-document repaint: the root hidden for a frame and
@@ -292,7 +336,7 @@ export async function captureResize(browser: Browser, c: ResizeCase, dpr: number
     // MQ-R2: an env step switches touch emulation (pointer and hover, M7) or emulates prefers-reduced-motion, on the live page. The
     // overrides belong to the CDP session that set them (a detached session's are cleared), so one session holds them to the end.
     let emulation: Awaited<ReturnType<ReturnType<typeof page.context>['newCDPSession']>> | null = null;
-    const emulate = async (s: ResizeStep & { kind: 'env' }): Promise<void> => {
+    const emulate = async (s: ResizeStep & { kind: 'env'; reading: 'pointer' | 'motion' }): Promise<void> => {
       emulation ??= await page.context().newCDPSession(page);
       if (s.reading === 'pointer') await emulation.send('Emulation.setTouchEmulationEnabled', s.value === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
       else await emulation.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: s.value }] });
@@ -302,7 +346,15 @@ export async function captureResize(browser: Browser, c: ResizeCase, dpr: number
       const s = c.script.steps[i] as ResizeStep;
       const at = points[i + 1] as ScriptPoint;
       if (s.kind === 'resize') await page.setViewportSize({ width: s.width, height: s.height });
-      else if (s.kind === 'env') await emulate(s);
+      else if (s.kind === 'env' && s.reading === 'pointers') {
+        // A new page at the step's size in a Chrome launched with its readings; the reduced-motion setting is emulated again there.
+        if (browserFor === null) throw new Error(`${c.id}: a pointers step needs browserFor`);
+        const next = await open(await browserFor(s.value), at);
+        await page.context().close();
+        page = next;
+        emulation = null;
+        if (at.device.reducedMotion === 'reduce') await emulate({ kind: 'env', reading: 'motion', value: 'reduce' });
+      } else if (s.kind === 'env') await emulate(s);
       else await page.evaluate(pageStep, { kind: 'morph', html: rendering(c, at.assignment, r) } as PageStep);
       await settle();
       await dump(at.size);

@@ -4,7 +4,7 @@
 // and 3. Every size is a multiple of 8 CSS px and at most 400x400, so it is whole device px at every DPR and every portrait stage
 // holds it (R7 (a)). mqr-orientation proves MQ-R0's ratio atoms; a transition a size change starts (R8) is refused on native only, so its reject is a compiler test
 // (packages/dragon/test/media-runtime.test.ts), not a fixture here, where a reject must block every output.
-import type { Scalar } from 'dragon';
+import type { PointerReadings, Scalar } from 'dragon';
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject, tree } from './define.ts';
 
@@ -28,13 +28,16 @@ export type Size = { readonly width: number; readonly height: number };
 
 /**
  * One step of a resize script: a root size change in CSS px, an app setter (a free state's key "<instance>#<state>"), or (MQ-R2)
- * new device readings: the pointer reading of a touch screen or a desktop's mouse, or the reduced-motion setting.
+ * new device readings: the pointer reading of a touch screen or a desktop's mouse, every pointer and hover reading, or the
+ * reduced-motion setting.
  */
 export type ResizeStep =
   | { readonly kind: 'resize'; readonly width: number; readonly height: number }
   | { readonly kind: 'set'; readonly state: string; readonly value: Scalar }
   | { readonly kind: 'env'; readonly reading: 'pointer'; readonly value: 'touch' | 'desktop' }
-  | { readonly kind: 'env'; readonly reading: 'motion'; readonly value: 'reduce' | 'no-preference' };
+  | { readonly kind: 'env'; readonly reading: 'motion'; readonly value: 'reduce' | 'no-preference' }
+  /** Every pointer and hover reading at once; Chrome takes them at launch (--blink-settings), so its capture opens a new page there. */
+  | { readonly kind: 'env'; readonly reading: 'pointers'; readonly value: PointerReadings };
 
 /** A fixture's resize script: the root size it starts at and its steps; a dump follows the start and every step. */
 export type ResizeScript = { readonly fixture: string; readonly start: Size; readonly steps: readonly ResizeStep[] };

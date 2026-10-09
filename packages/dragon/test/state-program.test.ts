@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import type { Assignment, NativeProgram, ProgramNode, ScriptCase, StateCase, StateEmit, StateProgram } from 'dragon';
-import { applyDelta, ClockError, deriveStateProgram, emitNativeSupport, emitStatePrograms, MAX_STATE_TABLE_ASSIGNMENTS, NO_FAULTS, programAt, stateKey, StateProgramError, StateRuntime, StateValueError, typedSetters, VirtualClock, webStateModule, webStateProgram } from 'dragon';
+import { applyDelta, ClockError, deriveStateProgram, emitNativeSupport, emitStatePrograms, MAX_STATE_TABLE_ASSIGNMENTS, NO_FAULTS, pointerBits, programAt, stateKey, StateProgramError, StateRuntime, StateValueError, typedSetters, VirtualClock, webStateModule, webStateProgram } from 'dragon';
 
 const px = (value: number) => ({ kind: 'px', value });
 const auto = { kind: 'auto' };
@@ -193,6 +193,26 @@ describe('the generated runtime', () => {
     expect(() => emitStatePrograms('uikit', [{ ...emit, scripts: [{ ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'advance', ms: -1 }] }] }])).toThrow(/finite, non-negative/);
     expect(() => emitStatePrograms('uikit', [{ ...emit, scripts: [{ ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'set', state: 'doc#open', value: 'x' }] }] }])).toThrow(/no value "x"/);
     expect(() => emitStatePrograms('uikit', [emit, emit])).toThrow(/share an id/);
+  });
+
+  it('MQ-R2: a pointers env step is env(2, bits), and both runtimes decode the bits into every pointer and hover reading', () => {
+    expect(pointerBits({ pointer: 'none', anyPointer: [], hover: 'none', anyHover: 'none' })).toBe(0);
+    expect(pointerBits({ pointer: 'coarse', anyPointer: ['coarse', 'fine'], hover: 'none', anyHover: 'hover' })).toBe(1 | 8 | 16 | 32);
+    expect(pointerBits({ pointer: 'fine', anyPointer: ['fine'], hover: 'hover', anyHover: 'hover' })).toBe(2 | 4 | 16 | 32);
+    // Readings no device gives are refused: a primary pointer that is not present, none with pointers present, hover without any.
+    expect(() => pointerBits({ pointer: 'fine', anyPointer: ['coarse'], hover: 'none', anyHover: 'none' })).toThrow(/primary pointer is not one of/);
+    expect(() => pointerBits({ pointer: 'none', anyPointer: ['coarse'], hover: 'none', anyHover: 'none' })).toThrow(/primary pointer is not one of/);
+    expect(() => pointerBits({ pointer: 'coarse', anyPointer: ['coarse'], hover: 'hover', anyHover: 'none' })).toThrow(/no pointer does/);
+    const value = { pointer: 'coarse', anyPointer: ['coarse', 'fine'], hover: 'hover', anyHover: 'hover' } as const;
+    const script = { ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'env', reading: 'pointers', value } as const, { kind: 'dump' } as const] };
+    expect(emitStatePrograms('uikit', [{ ...emit, scripts: [script] }]).map((f) => f.text).join('\n')).toContain(`.env(2, ${pointerBits(value)})`);
+    expect(emitStatePrograms('android-views', [{ ...emit, scripts: [script] }]).map((f) => f.text).join('\n')).toContain(`DragonScriptStep.Env(2, ${pointerBits(value)})`);
+    const sw = emitNativeSupport('uikit', null).map((f) => f.text).join('\n');
+    expect(sw).toContain(': m.machine.readings.pointers(v))');
+    expect(sw).toContain('return DragonReadings(pointer: pointer, hover: bits & 4 != 0, anyCoarse: bits & 8 != 0, anyFine: bits & 16 != 0, anyHover: bits & 32 != 0, reducedMotion: reducedMotion)');
+    const kt = emitNativeSupport('android-views', null).map((f) => f.text).join('\n');
+    expect(kt).toContain('else m.machine.readings.pointers(s.v))');
+    expect(kt).toContain('(bits and 4) != 0, (bits and 8) != 0, (bits and 16) != 0, (bits and 32) != 0, reducedMotion)');
   });
 
   it('emits an animated program with viewport-relative lengths and resize steps: a size change restyles the animator', () => {
