@@ -33,7 +33,8 @@ const FONT = ['12px x', 'italic bold 12px/30px Georgia, serif', 'bold italic 12p
   'oblique 20deg 12px x', 'oblique 12px x', 'oblique 14deg 600 12px x', 'oblique 91deg 12px x', 'oblique 2turn 12px x', '300 12px x', '1000 12px x', '0 12px x', 'bolder 12px x', 'lighter 12px x',
   '12px', 'x', '12px/normal x', '12px / 1.5 x', 'larger x', 'medium x', '2em x', '10% x', '12px/1.5em x', '12px/20% x', '12px "a b", c', '12px x y', '12px 100', 'italic italic 12px x',
   '400 bold 12px x', 'italic oblique 12px x', 'left 12px x', 'italic left 12px x', 'small-caps 12px x', 'condensed 12px x', 'normal small-caps 12px x', 'ultra-expanded 12px x', 'normal 100% 12px x',
-  'caption', 'menu', 'icon', 'message-box', 'small-caption', 'status-bar', '-webkit-small-control', 'inherit', 'initial', 'unset', 'Italic BOLD 12PX X', '12px/30px sans-serif', '700 1.5em/2 monospace'];
+  'caption', 'menu', 'icon', 'message-box', 'small-caption', 'status-bar', '-webkit-small-control', 'inherit', 'initial', 'unset', 'Italic BOLD 12PX X', '12px/30px sans-serif', '700 1.5em/2 monospace',
+  'calc(600) 12px x', 'italic calc(600) 12px/1 x', 'oblique calc(20deg) 12px x', 'calc(600) x'];
 const SYNTHESIS = ['none', 'weight', 'style', 'small-caps', 'position', 'weight style', 'style weight', 'weight style small-caps', 'small-caps weight', 'auto', 'weight weight', 'inherit', 'initial', 'unset', 'NONE'];
 const SYNTHESIS_LONGHANDS = [['font-synthesis-weight', 'auto'], ['font-synthesis-weight', 'none'], ['font-synthesis-style', 'oblique-only'], ['font-synthesis-style', 'none'], ['font-synthesis-small-caps', 'none'], ['font-synthesis-small-caps', 'auto']] as const;
 
@@ -118,7 +119,7 @@ describe('the font and font-synthesis shorthands expand as Chrome 145 expands th
       'DRAGON_UNSUPPORTED_VALUE font: oblique 2turn 12px x', 'DRAGON_UNSUPPORTED_VALUE font: small-caps 12px x',
       'DRAGON_UNSUPPORTED_VALUE font: condensed 12px x', 'DRAGON_UNSUPPORTED_VALUE font: normal small-caps 12px x', 'DRAGON_UNSUPPORTED_VALUE font: ultra-expanded 12px x',
       'DRAGON_UNSUPPORTED_VALUE font: caption', 'DRAGON_UNSUPPORTED_VALUE font: menu', 'DRAGON_UNSUPPORTED_VALUE font: icon', 'DRAGON_UNSUPPORTED_VALUE font: message-box',
-      'DRAGON_UNSUPPORTED_VALUE font: small-caption', 'DRAGON_UNSUPPORTED_VALUE font: status-bar',
+      'DRAGON_UNSUPPORTED_VALUE font: small-caption', 'DRAGON_UNSUPPORTED_VALUE font: status-bar', 'DRAGON_UNSUPPORTED_VALUE font: oblique calc(20deg) 12px x',
     ]);
   }, 300_000);
 });
