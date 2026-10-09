@@ -1630,6 +1630,7 @@
         { "file": "packages/layout/src/shaping.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/shaping.ts", "symbol": "HanKerningFontData", "use": "port" },
         { "file": "packages/layout/test/shaping-gate.test.ts", "symbol": "hanKerningData", "use": "reference" },
+        { "file": "packages/parity/src/text-shaper-host.ts", "symbol": "hanKerningOf", "use": "reference" },
         { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
         { "file": "packages/text-shaper/src/han-kerning.ts", "symbol": null, "use": "port" }
       ]
@@ -1730,6 +1731,7 @@
         { "lines": "1-704", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": "EngineFaults", "use": "reference" },
         { "file": "packages/layout/src/shaping.ts", "symbol": null, "use": "port" },
         { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
         { "file": "packages/text-shaper/src/blink.ts", "symbol": null, "use": "port" }
