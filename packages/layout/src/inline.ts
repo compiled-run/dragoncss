@@ -5,14 +5,18 @@
 // Rounding follows Blink 145 as INL-P measured it (docs/research/inline-spike/blink-notes.md §4, §5).
 import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeightValue, MarginValue, NormalValue, NumberValue, PaddingValue, Px, TextFont, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
-import { add, divInt, floorToWholePx, fromFloatRound, lineHeightFromNumber, max, min, sub, toPx, ZERO } from './units.ts';
+import { add, divInt, floorToWholePx, fromFloatRound, fromRaw, lineHeightFromNumber, max, min, sub, toPx, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
 import { resolveBorder } from './box.ts';
 import type { Ctx } from './block.ts';
 import { directionOf } from './block.ts';
 import type { LineBreakFaults } from './linebreak.ts';
 import { asciiPairBreaks } from './linebreak.ts';
-import { coveredIndex } from './text.ts';
+import type { FontMetrics } from './text.ts';
+import { AHEM_FACE_ID, coveredIndex } from './text.ts';
+import { scriptCode, scriptExtensions, USCRIPT_COMMON, USCRIPT_INHERITED, USCRIPT_LATIN } from './script-data.ts';
+import type { BreakItem, BreakResult, BrokenLine } from './shaping.ts';
+import { breakItemLines } from './shaping.ts';
 import type { FitFaults } from './linefit.ts';
 import { fitsAvailable, isHangingSpace } from './linefit.ts';
 import { unsupported } from './unsupported.ts';
@@ -49,10 +53,23 @@ export type Ifc = {
   readonly lastContent: readonly number[];
   readonly openAt: readonly number[];
   readonly closeAt: readonly number[];
+  /** Whether a leaf names a face other than Ahem: real-font lines come from LineBreaker (shaping.ts breakItemLines). */
+  readonly shaped: boolean;
+  /** For real-font text: the char items a line may start at (soft wrap opportunities), ascending. */
+  readonly opportunityItems: readonly number[];
 };
 
-/** A line: items [start, end); the characters before visibleEnd show, and the ones after it (spaces) hang. */
-type Line = { readonly start: number; readonly end: number; readonly visibleEnd: number };
+/**
+ * One text result of a real-font line: the char items [from, to) of one leaf, its inline size, and its inline size without a
+ * trailing space that hangs at the line end (visibleTo is where that space starts, else to).
+ */
+type ShapedPiece = { readonly from: number; readonly to: number; readonly visibleTo: number; readonly width: LU; readonly visibleWidth: LU };
+
+/**
+ * A line: items [start, end); the characters before visibleEnd show, and the ones after it (spaces) hang. A real-font line also
+ * carries its text results (pieces), whose inline sizes the line's widths sum; an Ahem line has none and is measured by width.
+ */
+type Line = { readonly start: number; readonly end: number; readonly visibleEnd: number; readonly pieces: readonly ShapedPiece[] };
 
 /**
  * What one leaf shows on one line. Code points [start, visibleEnd) of the leaf show; [start, end) adds the leaf's own spaces that
@@ -195,7 +212,7 @@ function resolvedLineHeight(id: string, lh: LineHeightValue): NormalValue | Numb
 // leading, and the descent side takes the rest. The planted spec reading of deviation half-leading-floor keeps the exact half,
 // and planted fault halfLeadingUnflooredPerBox keeps it for inline boxes only.
 function metricsOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: LineHeightValue, inlineBox: boolean): BoxMetrics {
-  const m = ctx.measurer.metrics(fontOf(font));
+  const m = fontMetricsOf(ctx, id, font);
   const glyphHeight = add(add(m.ascent, m.descent), m.lineGap);
   const lh = resolvedLineHeight(id, lineHeight);
   const height = lh.kind === 'normal' ? glyphHeight : lh.kind === 'number' ? lineHeightFromNumber(font.size, lh.value) : fromFloatRound(lh.value);
@@ -203,6 +220,12 @@ function metricsOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: LineHeightV
   const half = exact ? divInt(sub(height, glyphHeight), 2) : floorToWholePx(divInt(sub(height, glyphHeight), 2));
   const above = add(m.ascent, half);
   return { above, below: sub(height, above), ascent: m.ascent, descent: m.descent };
+}
+
+/** The rounded metrics of a node's font, or the text-glyph refusal for a face the measurer does not hold. */
+function fontMetricsOf(ctx: Ctx, id: string, font: FontSpec): FontMetrics {
+  if (!ctx.measurer.hasFace(font.family)) unsupported('text-glyph', id, 'css-fonts-4 §5', `${id} names the face ${font.family}, which the measurer does not hold`);
+  return ctx.measurer.metrics(fontOf(font));
 }
 
 /** Whether a margin or padding is zero: a zero px or percentage (a calculation counts as a decoration). */
@@ -298,29 +321,83 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   const items = flat.items;
   if (directionOf(ctx, box) === 'rtl') checkRtlText(box, flat.leaves, items);
   const first = flat.leaves[0];
+  let shaped = false;
+  for (const t of flat.leaves) if (t.font.family !== AHEM_FACE_ID) shaped = true;
+  if (shaped) checkShapedText(ctx, box, flat.leaves, items);
   for (const t of flat.leaves) {
     const m = ctx.measurer.measure(t.text, fontOf(t.font));
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    }
     if (first !== undefined && t.textWrapMode !== first.textWrapMode) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-4 §5.1', `text runs with different text-wrap-mode in one formatting context of ${box.id}`);
     }
   }
   const strut = box.strut;
   if (strut === null) throw new Error(`${box.id} has inline content and no strut; validateLayoutInput rejects this input`);
+  const starts: number[] = [];
+  const boundaries = boundariesOf(ctx, box, items, first === undefined || first.textWrapMode === 'wrap', shaped, starts);
   return {
     leaves: flat.leaves,
     boxes: flat.boxes,
     boxParent: flat.boxParent,
     brs: flat.brs,
     items,
-    boundaries: boundariesOf(ctx, box, items, first === undefined || first.textWrapMode === 'wrap'),
+    boundaries,
     strut: metricsOf(ctx, box.id, strut.font, strut.lineHeight, false),
     boxMetrics: flat.boxes.map((b) => metricsOf(ctx, b.id, b.font, b.lineHeight, true)),
     firstContent: flat.boxes.map((_, b) => contentIndex(items, flat.boxParent, b, false)),
     lastContent: flat.boxes.map((_, b) => contentIndex(items, flat.boxParent, b, true)),
     openAt: flat.boxes.map((_, b) => tagIndex(items, b, 'open')),
     closeAt: flat.boxes.map((_, b) => tagIndex(items, b, 'close')),
+    shaped,
+    opportunityItems: [...starts].sort((x, y) => x - y),
   };
+}
+
+/**
+ * Why text is outside real-font Latin scope, or '': R4 (shaping.ts latinScopedMeasurer, every face) plus, for a real face, Common
+ * or Inherited code points whose Script_Extensions exclude Latin, which Blink shapes in a run of their own.
+ */
+function latinScopeRefusal(text: string): string {
+  for (const ch of text) {
+    const cp = ch.codePointAt(0) as number;
+    const sc = scriptCode(cp);
+    if (sc === USCRIPT_LATIN) continue;
+    const at = `U+${cp.toString(16).toUpperCase()}`;
+    if (sc !== USCRIPT_COMMON && sc !== USCRIPT_INHERITED) return `${at} is outside Latin, Common and Inherited`;
+    const ext = scriptExtensions(cp);
+    let latin = false;
+    for (const e of ext) if (e === USCRIPT_LATIN) latin = true;
+    const plain = ext.length === 1 && ((ext[0] as number) === USCRIPT_COMMON || (ext[0] as number) === USCRIPT_INHERITED);
+    if (!latin && !plain) return `${at} is Common or Inherited, but its Script_Extensions exclude Latin, so Blink shapes it in a run of its own`;
+  }
+  return '';
+}
+
+/**
+ * TXT1a-1 scope for real-font text: R4's Latin scope (planted fault latinCheckSkipped skips it), and no two adjacent leaves in one
+ * face and size, which Blink shapes as one run (InlineNode::ShapeText) where Dragon shapes each leaf alone.
+ */
+function checkShapedText(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], items: readonly Item[]): void {
+  if (!ctx.faults.latinCheckSkipped) {
+    for (const t of leaves) {
+      const r = latinScopeRefusal(t.text);
+      if (r !== '') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', `${r}; real-font text is Latin only (TXT1c, TXT2)`);
+    }
+  }
+  let last = -1;
+  for (const it of items) {
+    if (it.kind === 'br') last = -1;
+    if (it.kind !== 'char' || it.leaf === last) continue;
+    const prev = last < 0 ? null : (leaves[last] as TextLeaf);
+    const t = leaves[it.leaf] as TextLeaf;
+    if (prev !== null && prev.font.family === t.font.family && prev.font.size === t.font.size) {
+      unsupported('text-shaping-run', t.id, 'css-text-3 §7.3 (boundary shaping)', `${prev.id} and ${t.id} are adjacent text in one face and size, which Blink shapes as one run`);
+    }
+    last = it.leaf;
+  }
 }
 
 /** The first item index after item i and the close tags that follow it: where a line that ends at item i ends. */
@@ -331,8 +408,11 @@ function afterCloses(items: readonly Item[], i: number): number {
 }
 
 /** Adds the soft boundaries of one run of text (the item indices of its characters) to out. */
-function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run: readonly number[], wrap: boolean, out: Boundary[]): void {
-  for (const p of opportunities(ctx, box, run.map((i) => (items[i] as Item).cp), wrap)) out.push({ at: afterCloses(items, run[p - 1] as number), forced: false });
+function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run: readonly number[], wrap: boolean, shaped: boolean, out: Boundary[], starts: number[]): void {
+  for (const p of opportunities(ctx, box, run.map((i) => (items[i] as Item).cp), wrap, shaped)) {
+    out.push({ at: afterCloses(items, run[p - 1] as number), forced: false });
+    starts.push(run[p] as number);
+  }
 }
 
 /**
@@ -342,24 +422,24 @@ function addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: readonly Item[], run
  * opportunity between two characters becomes a boundary after the close tags that follow the first (Blink moves a break before a
  * close tag after it) and before any open tag. A <br> forces a boundary after it and the close tags that follow it.
  */
-function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: boolean): Boundary[] {
+function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: boolean, shaped: boolean, starts: number[]): Boundary[] {
   const out: Boundary[] = [];
   let run: number[] = [];
   for (let i = 0; i < items.length; i++) {
     const it = items[i] as Item;
     if (it.kind === 'char') run.push(i);
     else if (it.kind === 'br' && !ctx.faults.brIgnored) {
-      addSoftBoundaries(ctx, box, items, run, wrap, out);
+      addSoftBoundaries(ctx, box, items, run, wrap, shaped, out, starts);
       run = [];
       out.push({ at: afterCloses(items, i), forced: true });
     } else if (ctx.faults.breakAtBoxBoundary && wrap && run.length > 0 && (it.kind === 'open' || it.kind === 'close')) {
       // Planted fault breakAtBoxBoundary: a soft wrap opportunity at every box boundary inside text.
-      addSoftBoundaries(ctx, box, items, run, wrap, out);
+      addSoftBoundaries(ctx, box, items, run, wrap, shaped, out, starts);
       run = [];
       out.push({ at: it.kind === 'open' ? i : afterCloses(items, i), forced: false });
     }
   }
-  addSoftBoundaries(ctx, box, items, run, wrap, out);
+  addSoftBoundaries(ctx, box, items, run, wrap, shaped, out, starts);
   // One boundary per place, in item order; a forced one wins over a soft one at the same place.
   const ordered = [...out].sort((x, y) => (x.at !== y.at ? x.at - y.at : x.forced === y.forced ? 0 : x.forced ? -1 : 1));
   const sorted: Boundary[] = [];
@@ -373,7 +453,7 @@ function boundariesOf(ctx: Ctx, box: LayoutBox, items: readonly Item[], wrap: bo
 }
 
 /** The soft wrap opportunities of one run of text: code point positions where a line may start (ahemOpportunities). */
-function opportunities(ctx: Ctx, box: LayoutBox, cps: readonly number[], wrap: boolean): number[] {
+function opportunities(ctx: Ctx, box: LayoutBox, cps: readonly number[], wrap: boolean, shaped: boolean): number[] {
   const out: number[] = [];
   if (cps.length === 0) return out;
   if (ctx.faults.spaceOnlyBreaks) {
@@ -385,7 +465,8 @@ function opportunities(ctx: Ctx, box: LayoutBox, cps: readonly number[], wrap: b
     }
     return out;
   }
-  return ahemOpportunities(box, cps, wrap, { breakAfterSolidus: ctx.faults.breakAfterSolidus, noHyphenDigitBreak: ctx.faults.noHyphenDigitBreak });
+  const faults: LineBreakFaults = { breakAfterSolidus: ctx.faults.breakAfterSolidus, noHyphenDigitBreak: ctx.faults.noHyphenDigitBreak };
+  return shaped ? latinOpportunities(box, cps, wrap, faults) : ahemOpportunities(box, cps, wrap, faults);
 }
 
 /**
@@ -425,6 +506,221 @@ export function ahemOpportunities(box: LayoutBox, cps: readonly number[], wrap: 
   return out;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------
+// R4 (TXT1a-1): soft wrap opportunities of real-font Latin text. linebreak-data.ts stays out of the translated engine (its tables do
+// not fit one JVM class initializer), so the classes of the Latin code points Dragon breaks are listed here and the UAX #14 rules
+// that reach them are applied; test/inline-latin.test.ts proves this equal to lineBreakOpportunitiesWith (linebreak.ts) on every
+// pair and triple of these code points and on generated runs. Any other code point is refused.
+
+const LC_AL = 0;
+const LC_SP = 1;
+const LC_EX = 2;
+const LC_QU = 3;
+const LC_QU_PI = 4;
+const LC_QU_PF = 5;
+const LC_PR = 6;
+const LC_PO = 7;
+const LC_OP = 8;
+const LC_CP = 9;
+const LC_CL = 10;
+const LC_IS = 11;
+const LC_HY = 12;
+const LC_SY = 13;
+const LC_NU = 14;
+const LC_BA = 15;
+const LC_BB = 16;
+const LC_GL = 17;
+const LC_B2 = 18;
+const LC_IN = 19;
+const LC_ZW = 20;
+
+/** Line_Break of U+0020..U+007E (UCD 16.0.0, AI resolved to AL by LB1). */
+const ASCII_CLASSES: readonly number[] = [
+  LC_SP, LC_EX, LC_QU, LC_AL, LC_PR, LC_PO, LC_AL, LC_QU, LC_OP, LC_CP, LC_AL, LC_PR, LC_IS, LC_HY, LC_IS, LC_SY,
+  LC_NU, LC_NU, LC_NU, LC_NU, LC_NU, LC_NU, LC_NU, LC_NU, LC_NU, LC_NU, LC_IS, LC_IS, LC_AL, LC_AL, LC_AL, LC_EX,
+  LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL,
+  LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_OP, LC_PR, LC_CP, LC_AL, LC_AL,
+  LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL,
+  LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_OP, LC_BA, LC_CL, LC_AL,
+];
+
+/** Line_Break of U+00A0..U+00FF (AI resolved to AL). */
+const LATIN1_CLASSES: readonly number[] = [
+  LC_GL, LC_OP, LC_PO, LC_PR, LC_PR, LC_PR, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_QU_PI, LC_AL, LC_BA, LC_AL, LC_AL,
+  LC_PO, LC_PR, LC_AL, LC_AL, LC_BB, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_QU_PF, LC_AL, LC_AL, LC_AL, LC_OP,
+  LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL,
+  LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL,
+  LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL,
+  LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL, LC_AL,
+];
+
+/** The resolved Line_Break class of a code point Dragon breaks in real-font text, or -1 when it is outside that set. */
+export function latinBreakClass(cp: number): number {
+  if (cp >= 0x20 && cp <= 0x7e) return ASCII_CLASSES[cp - 0x20] as number;
+  if (cp >= 0xa0 && cp <= 0xff) return LATIN1_CLASSES[cp - 0xa0] as number;
+  if (cp === 0x2010 || cp === 0x2012 || cp === 0x2013) return LC_BA;
+  if (cp === 0x2011) return LC_GL;
+  if (cp === 0x2014) return LC_B2;
+  if (cp === 0x2018 || cp === 0x201c) return LC_QU_PI;
+  if (cp === 0x2019 || cp === 0x201d) return LC_QU_PF;
+  if (cp === 0x2026) return LC_IN;
+  if (cp === ZWSP) return LC_ZW;
+  return -1;
+}
+
+function isQuote(c: number): boolean {
+  return c === LC_QU || c === LC_QU_PI || c === LC_QU_PF;
+}
+
+function latinClassAt(cls: readonly number[], k: number): number {
+  return k >= 0 && k < cls.length ? (cls[k] as number) : -1;
+}
+
+function spacesBack(cls: readonly number[], k: number): number {
+  let j = k;
+  while (j >= 0 && (cls[j] as number) === LC_SP) j--;
+  return j;
+}
+
+/**
+ * UAX #14 (revision 53) before unit k of the classes, restricted to the classes latinBreakClass gives: none of them is East Asian
+ * wide, combining, ideographic, Hangul, regional, emoji or Brahmic, so those rules never apply (linebreak.ts unitBreak).
+ */
+function latinUnitBreak(cls: readonly number[], cps: readonly number[], k: number): boolean {
+  const p = latinClassAt(cls, k - 1);
+  const c = latinClassAt(cls, k);
+  const n = latinClassAt(cls, k + 1);
+  // LB7
+  if (c === LC_SP || c === LC_ZW) return false;
+  // LB8
+  const beforeSpaces = spacesBack(cls, k - 1);
+  if (latinClassAt(cls, beforeSpaces) === LC_ZW) return true;
+  // LB12, LB12a
+  if (p === LC_GL) return false;
+  if (c === LC_GL && p !== LC_SP && p !== LC_BA && p !== LC_HY) return false;
+  // LB13
+  if (c === LC_CL || c === LC_CP || c === LC_EX || c === LC_SY) return false;
+  // LB14
+  if (latinClassAt(cls, beforeSpaces) === LC_OP) return false;
+  // LB15a
+  if (latinClassAt(cls, beforeSpaces) === LC_QU_PI) {
+    const b = latinClassAt(cls, beforeSpaces - 1);
+    if (beforeSpaces === 0 || b === LC_OP || isQuote(b) || b === LC_GL || b === LC_SP || b === LC_ZW) return false;
+  }
+  // LB15b
+  if (c === LC_QU_PF) {
+    if (k + 1 >= cls.length) return false;
+    if (n === LC_SP || n === LC_GL || n === LC_CL || isQuote(n) || n === LC_CP || n === LC_EX || n === LC_IS || n === LC_SY || n === LC_ZW) return false;
+  }
+  // LB15c, LB15d
+  if (p === LC_SP && c === LC_IS && n === LC_NU) return true;
+  if (c === LC_IS) return false;
+  // LB17
+  if (c === LC_B2 && latinClassAt(cls, beforeSpaces) === LC_B2) return false;
+  // LB18
+  if (p === LC_SP) return true;
+  // LB19, LB19a (no Latin quote neighbour is East Asian)
+  if (isQuote(c) || isQuote(p)) return false;
+  // LB20a
+  if ((p === LC_HY || (cps[k - 1] as number) === 0x2010) && c === LC_AL) {
+    const b = latinClassAt(cls, k - 2);
+    if (k - 2 < 0 || b === LC_SP || b === LC_ZW || b === LC_GL) return false;
+  }
+  // LB21
+  if (c === LC_BA || c === LC_HY || p === LC_BB) return false;
+  // LB22
+  if (c === LC_IN) return false;
+  // LB23
+  if (p === LC_AL && c === LC_NU) return false;
+  if (p === LC_NU && c === LC_AL) return false;
+  // LB24
+  if ((p === LC_PR || p === LC_PO) && c === LC_AL) return false;
+  if (p === LC_AL && (c === LC_PR || c === LC_PO)) return false;
+  // LB25
+  if (c === LC_PO || c === LC_PR) {
+    let j = k - 1;
+    if (latinClassAt(cls, j) === LC_CL || latinClassAt(cls, j) === LC_CP) j--;
+    while (latinClassAt(cls, j) === LC_SY || latinClassAt(cls, j) === LC_IS) j--;
+    if (latinClassAt(cls, j) === LC_NU) return false;
+  }
+  if (p === LC_PO || p === LC_PR) {
+    if (c === LC_NU) return false;
+    if (c === LC_OP && n === LC_NU) return false;
+    if (c === LC_OP && n === LC_IS && latinClassAt(cls, k + 2) === LC_NU) return false;
+  }
+  if ((p === LC_HY || p === LC_IS) && c === LC_NU) return false;
+  if (c === LC_NU) {
+    let j = k - 1;
+    while (latinClassAt(cls, j) === LC_SY || latinClassAt(cls, j) === LC_IS) j--;
+    if (latinClassAt(cls, j) === LC_NU) return false;
+  }
+  // LB28
+  if (p === LC_AL && c === LC_AL) return false;
+  // LB29
+  if (p === LC_IS && c === LC_AL) return false;
+  // LB30
+  if ((p === LC_AL || p === LC_NU) && c === LC_OP) return false;
+  if (p === LC_CP && (c === LC_AL || c === LC_NU)) return false;
+  // LB31
+  return true;
+}
+
+/** UAX #14 break permission before every unit of the run (index 0 never), as uax14BreakAllowed gives it. */
+function latinBreaksAllowed(cps: readonly number[]): boolean[] {
+  const cls: number[] = [];
+  for (const cp of cps) cls.push(latinBreakClass(cp));
+  const out: boolean[] = [];
+  for (let i = 0; i < cps.length; i++) out.push(i > 0 && latinUnitBreak(cls, cps, i));
+  return out;
+}
+
+/**
+ * lineBreakOpportunitiesWith (linebreak.ts) on the code points latinBreakClass covers: a space run breaks after its end; ASCII
+ * pairs read Blink's ASCII table with the hyphen-before-digit rule; Latin-1 pairs read ICU's rule on the pair alone
+ * (LineBreakData::FillFromIcu); any other pair reads UAX #14 over the whole run. Returns code point positions where a line may
+ * start; a code point outside the set is refused.
+ */
+export function latinOpportunities(box: LayoutBox, cps: readonly number[], wrap: boolean, faults: LineBreakFaults): number[] {
+  const out: number[] = [];
+  for (const cp of cps) if (latinBreakClass(cp) < 0) unsupported('line-break', box.id, 'css-text-3 §5', `U+${cp.toString(16).toUpperCase()} is outside the code points the line breaker decides`);
+  if (!wrap) return out;
+  let full: boolean[] = [];
+  let haveFull = false;
+  for (let i = 1; i < cps.length; i++) {
+    const cur = cps[i] as number;
+    const last = cps[i - 1] as number;
+    if (cur === SPACE) continue;
+    if (last === SPACE) {
+      out.push(i);
+      continue;
+    }
+    let decided = false;
+    let breaks = false;
+    if (last >= 0x21 && cur >= 0x21) {
+      if (last === HYPHEN_MINUS && cur <= 0x7f && cur >= 0x30 && cur <= 0x39) {
+        decided = true;
+        breaks = !faults.noHyphenDigitBreak && i >= 2 && isAsciiAlphanumeric(cps[i - 2] as number);
+      } else if (last <= 0xff && cur <= 0xff) {
+        decided = true;
+        if (last <= 0x7f && cur <= 0x7f) breaks = faults.breakAfterSolidus && last === SOLIDUS && isAsciiAlphanumeric(cur) ? true : asciiPairBreaks(last, cur);
+        else breaks = latinBreaksAllowed([last, cur])[1] as boolean;
+      }
+    } else {
+      decided = true;
+      breaks = false;
+    }
+    if (!decided) {
+      if (!haveFull) {
+        full = latinBreaksAllowed(cps);
+        haveFull = true;
+      }
+      breaks = full[i] as boolean;
+    }
+    if (breaks) out.push(i);
+  }
+  return out;
+}
+
 function isAsciiAlphanumeric(cp: number): boolean {
   return (cp >= 0x30 && cp <= 0x39) || (cp >= 0x41 && cp <= 0x5a) || (cp >= 0x61 && cp <= 0x7a);
 }
@@ -455,7 +751,10 @@ function width(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
     while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) text += (ifc.items[i++] as Item).ch;
     const t = ifc.leaves[it.leaf] as TextLeaf;
     const m = ctx.measurer.measure(text, fontOf(t.font));
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    }
     total = add(total, m.measure.width);
   }
   return total;
@@ -479,7 +778,10 @@ function cachedWidth(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
     while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === first.leaf) last = ifc.items[i++] as Item;
     const t = ifc.leaves[first.leaf] as TextLeaf;
     const m = ctx.measurer.measureRange(t.text, first.at, last.at + 1, fontOf(t.font));
-    if (!m.ok) unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+    }
     total = add(total, m.measure.width);
   }
   return total;
@@ -535,10 +837,153 @@ function breakLines(ctx: Ctx, ifc: Ifc, available: LU): Line[] {
       forced = next.forced;
       k++;
     }
-    lines.push({ start, end, visibleEnd: visibleEndOf(ifc, start, end) });
+    lines.push({ start, end, visibleEnd: visibleEndOf(ifc, start, end), pieces: [] });
     start = end;
   }
   return lines;
+}
+
+/** Whether ShapeLine must reshape a line end at a space (LineInfo::ComputeNeedsAccurateEndPosition): text-align off the start side. */
+function needsAccurateEnd(ctx: Ctx, box: LayoutBox): boolean {
+  const a = box.style.textAlign;
+  const rtl = directionOf(ctx, box) === 'rtl';
+  return a === 'end' || a === 'center' || a === 'justify' || (a === 'left' && rtl) || (a === 'right' && !rtl);
+}
+
+/** The next char after item i (skipping tags), or -1 at a <br> or the end. */
+function nextCharAfter(ifc: Ifc, i: number): number {
+  for (let j = i + 1; j < ifc.items.length; j++) {
+    const it = ifc.items[j] as Item;
+    if (it.kind === 'char') return j;
+    if (it.kind === 'br') return -1;
+  }
+  return -1;
+}
+
+function prevCharBefore(ifc: Ifc, i: number): number {
+  for (let j = i - 1; j >= 0; j--) {
+    const it = ifc.items[j] as Item;
+    if (it.kind === 'char') return j;
+    if (it.kind === 'br') return -1;
+  }
+  return -1;
+}
+
+function opportunityAt(ifc: Ifc, i: number): boolean {
+  for (const o of ifc.opportunityItems) if (o === i) return true;
+  return false;
+}
+
+/** The formatting context as LineBreaker items (shaping.ts BreakItem): one text item per leaf, its tags and <br>s; and their first item indices. */
+type ShapedItems = { readonly items: readonly BreakItem[]; readonly firstItem: readonly number[] };
+
+function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
+  const items: BreakItem[] = [];
+  const firstItem: number[] = [];
+  let offset = 0;
+  let i = 0;
+  while (i < ifc.items.length) {
+    const it = ifc.items[i] as Item;
+    if (it.kind === 'char') {
+      const first = i;
+      while (i < ifc.items.length && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) i++;
+      const t = ifc.leaves[it.leaf] as TextLeaf;
+      const s = ctx.measurer.shaped(t.text, fontOf(t.font));
+      if (!s.ok) {
+        if (s.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', s.reason);
+        unsupported('text-glyph', t.id, 'css-fonts-4 §5', s.reason);
+      }
+      if (s.result.end !== i - first) unsupported('text-glyph', t.id, 'css-fonts-4 §5', `${t.id} holds a code point outside the Basic Multilingual Plane`);
+      const opps: number[] = [];
+      for (let o = 1; o < i - first; o++) if (opportunityAt(ifc, first + o)) opps.push(o);
+      // CanBreakAfter: an opportunity before the next char; none before a <br> (UAX #14 LB6); the end of the text is one.
+      const next = nextCharAfter(ifc, i - 1);
+      let atEnd = next >= 0 ? opportunityAt(ifc, next) : true;
+      if (next < 0) for (let j = i; j < ifc.items.length && (ifc.items[j] as Item).kind !== 'char'; j++) if ((ifc.items[j] as Item).kind === 'br') atEnd = false;
+      items.push({ kind: 'text', item: s.item, result: s.result, opportunities: opps, atEnd, offset });
+      firstItem.push(first);
+      offset = offset + (i - first);
+      continue;
+    }
+    if (it.kind === 'open') items.push({ kind: 'open', offset });
+    else if (it.kind === 'close') {
+      const before = prevCharBefore(ifc, i);
+      const after = nextCharAfter(ifc, i);
+      items.push({ kind: 'close', offset, spaceBefore: before >= 0 && (ifc.items[before] as Item).cp === SPACE, spaceAfter: after >= 0 && (ifc.items[after] as Item).cp === SPACE });
+    } else {
+      items.push({ kind: 'br', offset });
+      offset++;
+    }
+    firstItem.push(i);
+    i++;
+  }
+  return { items, firstItem };
+}
+
+/** The item index of a LineBreaker position. */
+function itemIndexOf(ifc: Ifc, s: ShapedItems, index: number, offset: number): number {
+  if (index >= s.items.length) return ifc.items.length;
+  return (s.firstItem[index] as number) + ((s.items[index] as BreakItem).kind === 'text' ? offset : 0);
+}
+
+// css-text-3 §5 for real-font text: Blink's LineBreaker over the shaped leaves (shaping.ts breakItemLines), with its fit test
+// (one LayoutUnit of epsilon; planted fault fitWithoutEpsilon drops it) and ShapeLine's reshaping at line edges. A line's text
+// results keep their inline sizes, which place the pieces.
+function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): Line[] {
+  const firstLeaf = ifc.leaves[0];
+  let slack = ZERO;
+  if (ctx.faults.breakOffByOne && firstLeaf !== undefined) {
+    const glyph = ctx.measurer.measure('X', fontOf(firstLeaf.font));
+    if (glyph.ok) slack = glyph.measure.width;
+  }
+  const s = shapedItemsOf(ctx, ifc);
+  const wrap = firstLeaf === undefined || firstLeaf.textWrapMode === 'wrap';
+  const r = breakItemLines(s.items, add(available, slack), wrap, needsAccurateEnd(ctx, box), !ctx.faults.fitWithoutEpsilon);
+  if (!r.ok) unsupported('line-break', box.id, 'css-text-3 §5', r.reason);
+  const lines: Line[] = [];
+  let start = 0;
+  for (const bl of r.lines) {
+    if (!hasContent(ifc, start, ifc.items.length)) break;
+    const end = itemIndexOf(ifc, s, bl.nextItem, bl.nextOffset);
+    lines.push({ start, end, visibleEnd: visibleEndOf(ifc, start, end), pieces: piecesOf(ifc, s, bl) });
+    start = end;
+  }
+  for (let i = start; i < ifc.items.length && lines.length > 0; i++) {
+    const it = ifc.items[i] as Item;
+    if (it.kind === 'open') unsupported('inline-empty-line', (ifc.boxes[it.box] as InlineBox).id, 'CSS2 §9.4.2', `inline box ${(ifc.boxes[it.box] as InlineBox).id} starts on an empty line after the last line break`);
+  }
+  return lines;
+}
+
+function piecesOf(ifc: Ifc, s: ShapedItems, bl: BrokenLine): ShapedPiece[] {
+  const out: ShapedPiece[] = [];
+  for (let k = 0; k < bl.results.length; k++) {
+    const res = bl.results[k] as BreakResult;
+    const it = s.items[res.index] as BreakItem;
+    if (it.kind !== 'text' || res.end === res.start) continue;
+    const from = (s.firstItem[res.index] as number) + res.start;
+    const to = (s.firstItem[res.index] as number) + res.end;
+    const visibleWidth = bl.visibleWidths[k] as LU;
+    const hangs = visibleWidth !== res.width && (ifc.items[to - 1] as Item).cp === SPACE;
+    out.push({ from, to, visibleTo: hangs ? to - 1 : to, width: res.width, visibleWidth });
+  }
+  return out;
+}
+
+/**
+ * The advance of items [start, end) of a line: an Ahem line measures its leaf pieces (width); a real-font line sums the inline
+ * sizes of its text results there, a result cut at its hanging trailing space taking its size without it.
+ */
+function spanWidth(ctx: Ctx, ifc: Ifc, line: Line, start: number, end: number): LU {
+  if (!ifc.shaped) return width(ctx, ifc, start, end);
+  let total = ZERO;
+  for (const p of line.pieces) {
+    if (p.from < start || p.from >= end) continue;
+    if (end >= p.to) total = add(total, p.width);
+    else if (end >= p.visibleTo) total = add(total, p.visibleWidth);
+    else throw new Error(`a span of items [${start}, ${end}) cuts the text result [${p.from}, ${p.to})`);
+  }
+  return total;
 }
 
 // css-text-3 §7.1 (Blink LineOffsetForTextAlign): the line-left offset of a line with free space free. start and end map through
@@ -568,7 +1013,7 @@ function boxOnLine(ifc: Ifc, b: number, start: number, end: number): boolean {
 
 /** The x of the pen before item i of a line, from the content-box left: tags and hanging spaces advance nothing. */
 function penAt(ctx: Ctx, ifc: Ifc, line: Line, offset: LU, i: number): LU {
-  return add(offset, width(ctx, ifc, line.start, i < line.visibleEnd ? i : line.visibleEnd));
+  return add(offset, spanWidth(ctx, ifc, line, line.start, i < line.visibleEnd ? i : line.visibleEnd));
 }
 
 /**
@@ -602,12 +1047,12 @@ export function placeLines(ctx: Ctx, box: LayoutBox, available: LU): PlacedLine[
 }
 
 export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): PlacedLine[] {
-  const lines = breakLines(ctx, ifc, available);
+  const lines = ifc.shaped ? breakShapedLines(ctx, box, ifc, available) : breakLines(ctx, ifc, available);
   const rtl = directionOf(ctx, box) === 'rtl';
   const out: PlacedLine[] = [];
   let top = ZERO;
   for (const line of lines) {
-    const offset = alignOffset(ctx, box, sub(available, width(ctx, ifc, line.start, line.visibleEnd)));
+    const offset = alignOffset(ctx, box, sub(available, spanWidth(ctx, ifc, line, line.start, line.visibleEnd)));
     const on: number[] = [];
     for (let b = 0; b < ifc.boxes.length; b++) if (boxOnLine(ifc, b, line.start, line.end)) on.push(b);
     // CSS2 §10.8.1 with baseline alignment: the strut and every inline box on the line add their ascent and descent with their
@@ -636,10 +1081,10 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
       let through = i;
       while (through < line.end && (ifc.items[through] as Item).kind === 'char' && (ifc.items[through] as Item).leaf === it.leaf) through++;
       const t = ifc.leaves[it.leaf] as TextLeaf;
-      const m = ctx.measurer.metrics(fontOf(t.font));
+      const m = fontMetricsOf(ctx, t.id, t.font);
       // Planted fault fragmentFromLineTop: the leaf's content area starts at the line top instead of its baseline minus its ascent.
       const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(baseline, m.ascent);
-      pieces.push({ leaf: it.leaf, start: it.at, visibleEnd: it.at + (i - from), end: it.at + (through - from), x: penAt(ctx, ifc, line, offset, from), width: width(ctx, ifc, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent });
+      pieces.push({ leaf: it.leaf, start: it.at, visibleEnd: it.at + (i - from), end: it.at + (through - from), x: penAt(ctx, ifc, line, offset, from), width: spanWidth(ctx, ifc, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent });
     }
     // A <br>'s content area is its parent box's (Blink places the control item with the parent's text top and height).
     const breaks: number[] = [];
@@ -774,12 +1219,46 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, available: LU, origin: Po
 // boundary, so it is the widest segment. Each is measured without its hanging spaces, min-content by cached positions (R4).
 export function inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max'): LU {
   const ifc = buildIfc(ctx, box);
+  if (ifc.shaped) return shapedIntrinsicSize(ctx, box, ifc, kind);
   let widest = ZERO;
   let start = 0;
   for (const b of endsOf(ifc)) {
     if (kind === 'max' && !b.forced) continue;
     const visible = visibleEndOf(ifc, start, b.at);
     widest = max(widest, kind === 'max' ? width(ctx, ifc, start, visible) : cachedWidth(ctx, ifc, start, visible));
+    start = b.at;
+  }
+  return widest;
+}
+
+/** LayoutUnit::NearlyMax: the max-content available width (LineBreakerMode::kMaxContent). */
+const NEARLY_MAX_RAW = 2147483646;
+
+/**
+ * Real-font intrinsic sizes. max-content is LineBreaker's widest line at an unlimited width, so lines end only at <br>s; min-content
+ * is the widest segment between soft wrap opportunities by cached positions (HandleTextForFastMinContent), with the generated
+ * hyphen of a segment that ends at a soft hyphen.
+ */
+function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | 'max'): LU {
+  let widest = ZERO;
+  if (kind === 'max') {
+    const lines = breakShapedLines(ctx, box, ifc, fromRaw(NEARLY_MAX_RAW));
+    for (const line of lines) widest = max(widest, spanWidth(ctx, ifc, line, line.start, line.visibleEnd));
+    return widest;
+  }
+  let start = 0;
+  for (const b of endsOf(ifc)) {
+    const visible = visibleEndOf(ifc, start, b.at);
+    let w = cachedWidth(ctx, ifc, start, visible);
+    const lastChar = visible > start ? (ifc.items[visible - 1] as Item) : null;
+    if (lastChar !== null && lastChar.kind === 'char' && lastChar.cp === 0xad && !b.forced && !ctx.faults.softHyphenWidthMissing) {
+      const t = ifc.leaves[lastChar.leaf] as TextLeaf;
+      const h = ctx.measurer.measure('\u2010', fontOf(t.font));
+      const hyphen = h.ok ? h : ctx.measurer.measure('-', fontOf(t.font));
+      if (!hyphen.ok) unsupported('text-glyph', t.id, 'css-text-3 §6.1', hyphen.reason);
+      w = add(w, hyphen.measure.width);
+    }
+    widest = max(widest, w);
     start = b.at;
   }
   return widest;

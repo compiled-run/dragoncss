@@ -124,8 +124,11 @@ export type AspectRatioValue =
 export type Display = 'block' | 'flex' | 'grid' | 'inline';
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
-/** css-overflow-3 §3: hidden makes a scroll container; the validator requires both axes to be equal (the §3.1 computed pair). */
-export type Overflow = 'visible' | 'hidden';
+/**
+ * css-overflow-3 §3: hidden, auto and scroll make a scroll container; clip clips without one. The validator requires a §3.1
+ * computed pair: both axes in visible and clip, or both in hidden, auto and scroll.
+ */
+export type Overflow = 'visible' | 'hidden' | 'clip' | 'auto' | 'scroll';
 export type Direction = 'ltr' | 'rtl';
 export type BoxSizing = 'content-box' | 'border-box';
 export type FlexDirection = 'row' | 'row-reverse' | 'column' | 'column-reverse';
@@ -287,8 +290,11 @@ export type LayoutStyle = {
   readonly gridItem: GridItemStyle | null;
 };
 
-/** The font a measurer reads: the family and the computed font size in zoomed px. */
-export type TextFont = { readonly family: 'Ahem'; readonly size: number };
+/**
+ * The font a measurer reads: the face and the computed font size in zoomed px. family names the bundled face (text.ts
+ * AHEM_FACE_ID for the bundled Ahem, else sha256:<hex> of its bytes, as the font manifest names a face).
+ */
+export type TextFont = { readonly family: string; readonly size: number };
 
 /**
  * A text run's font (css-fonts-4 §2). specifiedSize is the specified font size (css-fonts-4 §2.5) as an expression in CSS px at
@@ -297,7 +303,7 @@ export type TextFont = { readonly family: 'Ahem'; readonly size: number };
  * or % from a keyword size, which Chrome's minimum logical font size (6px) applies to. size is the computed size in px: the
  * compiler writes it at its reference environment (text scale 1, DPR 1) and the environment pass rewrites it from specifiedSize.
  */
-export type FontSpec = { readonly family: 'Ahem'; readonly size: number; readonly specifiedSize: CalcExpr; readonly absoluteSize: boolean };
+export type FontSpec = { readonly family: string; readonly size: number; readonly specifiedSize: CalcExpr; readonly absoluteSize: boolean };
 
 /** css-text-4 §3.1 white-space-collapse: only collapse is supported; the compiler has already applied phase I collapsing. */
 export type WhiteSpaceCollapse = 'collapse';

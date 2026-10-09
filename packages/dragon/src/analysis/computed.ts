@@ -2,6 +2,7 @@
 // substitution hook (its work is in variables.ts), and value serialization.
 import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
+import type { Registrations } from '../css/at-rules/property.ts';
 import { parseColorNode, serializeColor } from '../css/color.ts';
 import { absolutizeGridText, GRID_TRACK_LONGHANDS } from '../css/grid-values.ts';
 import { properties as grammar } from '../css/grammar.generated.ts';
@@ -10,6 +11,7 @@ import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
 import { positionOffsetText, positionValue, ratioValue } from '../css/values.ts';
+import type { GenBFaults } from '../faults/gen-b.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import type { Span } from '../types.ts';
@@ -28,7 +30,8 @@ export type Origin = 'author' | 'presentational-hint' | 'inherited' | 'user-agen
  * UA dataset of the reference platform. rootFont 'ahem' is the parity fixture environment (docs/api.md §10.1); 'ua-default'
  * leaves the root font-family at the dataset's value.
  */
-export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl'; readonly rootFont: RootFont; readonly ua: UaDataset };
+/** registered: the document's @property registrations (css/at-rules/property.ts); none when absent. */
+export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl'; readonly rootFont: RootFont; readonly ua: UaDataset; readonly registered?: Registrations };
 
 export type RootFont = 'ahem' | 'ua-default';
 
@@ -135,6 +138,20 @@ export function defaultOrigin(tag: UaKey, property: Longhand, isRoot: boolean, u
 export type SubstitutionHook = (winner: Candidate, property: Longhand, el: LinkedElement, scope: VarScope) => Candidate;
 
 export const substituteVariables: SubstitutionHook = (winner, property, _el, scope) => substituteWinner(winner, property, scope);
+
+/**
+ * css-content-3 §2: on an element, content: none computes to normal (Blink stores it and treats it as normal, display_style.h
+ * ContentBehavesAsNormal; probe family1 on-element). The list-style shorthand's none sets list-style-type too (css-lists-3 §3.4),
+ * which the planted listStyleNoneSetsImageOnly undoes.
+ */
+export function computeLists(props: Map<Longhand, ResolvedValue>, faults: GenBFaults): void {
+  const content = props.get('content') as ResolvedValue;
+  if (!faults.contentNoneOnElementKept && content.value.kind === 'keyword' && content.value.value === 'none') props.set('content', { ...content, value: { kind: 'keyword', value: 'normal' } });
+  const type = props.get('list-style-type') as ResolvedValue;
+  if (faults.listStyleNoneSetsImageOnly && type.origin === 'author' && type.declaration?.property === 'list-style' && type.value.kind === 'keyword' && type.value.value === 'none') {
+    props.set('list-style-type', { ...type, value: { kind: 'keyword', value: 'disc' } });
+  }
+}
 
 // css-overflow-3 §3.1: when one axis is neither visible nor clip, visible computes to auto and clip to hidden on the other axis.
 export function computeOverflowPair(props: Map<Longhand, ResolvedValue>): void {

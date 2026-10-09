@@ -144,36 +144,50 @@ describe('hitTableOf hit-tests a replaced element as a childless box', () => {
   });
 });
 
-// FORM-a: a form control is hit as the box it is laid out as, with its contents: a point on a button's text targets the button,
-// one on an element inside it targets that element, and activation resolves to the button. In a flex container it is an item.
-describe('hitTableOf hit-tests a form control and its contents', () => {
-  const setup = async (display: 'block' | 'flex') => {
-    const { hitTableOf } = await import('../src/rt-hit.ts');
-    const { ahemMeasurer } = await import('../src/index.ts');
+// FORM-a: a form control is refused by name, never hit as its parts: Chrome retargets a hit on a control's UA shadow parts to the
+// control element, which the hit table does not model, and no Chrome hit capture covers a control. Inputs without one are unaffected.
+describe('hitTableOf and hitRefusal refuse a form control by name', () => {
+  const setup = async (display: 'block' | 'flex', withControl: boolean, kind: 'button' | 'range') => {
     const { box, control, neutralEnvironment, px, text } = await import('./helpers.ts');
-    const button = control('btn', { kind: 'button-block' }, { width: px(60), paddingTop: px(4), paddingBottom: px(4) }, [box('label', {}, [text('t', 'XX')]), box('icon', { width: px(10), height: px(10) })]);
-    const parent = { ...box('p', { display, width: px(100) }), children: [button, box('after', { width: px(20), height: px(10) })] };
+    const { SLIDER_DEFAULT_TRACK_LENGTH } = await import('../src/index.ts');
+    const inner = [box('label', {}, [text('t', 'XX')]), box('icon', { width: px(10), height: px(10) })];
+    const thumb = control('thumb', { kind: 'slider-thumb', ratio: 0.5 }, { width: px(10), height: px(10) });
+    const track = box('track', { width: px(60) }, [thumb]);
+    const ctl = kind === 'button'
+      ? control('btn', { kind: 'button-block' }, { width: px(60), paddingTop: px(4), paddingBottom: px(4) }, inner)
+      : control('btn', { kind: 'range', defaultInlineSize: SLIDER_DEFAULT_TRACK_LENGTH }, { display: 'flex' }, [box('container', { display: 'flex' }, [track])]);
+    const first = withControl ? ctl : box('btn', { width: px(60), paddingTop: px(4), paddingBottom: px(4) }, inner);
+    // The control sits one box deep, so the refusal must walk past the plain boxes above it.
+    const parent = { ...box('p', { display, width: px(100) }), children: [box('wrap', {}, [first]), box('after', { width: px(20), height: px(10) })] };
     const root = { ...box('html', { width: px(100) }), children: [parent] };
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
     const fact = (activation: boolean) => ({ pointerEvents: 'auto', inherited: true, activation }) as const;
-    const facts = new Map([['html', fact(false)], ['p', fact(false)], ['btn', fact(true)], ['label', fact(false)], ['icon', fact(false)], ['after', fact(false)]]);
-    return hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+    const ids = ['html', 'p', 'wrap', 'btn', 'label', 'icon', 'after', 'container', 'track', 'thumb'];
+    return { input, facts: new Map(ids.map((id) => [id, fact(id === 'btn')] as const)) };
   };
+  const REASON = 'btn is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)';
 
-  it('lists the control and its contents, answers points inside them, and activates the button from its contents', async () => {
+  it('throws the named HitError for a block button and a range, in block and flex parents', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer, validateLayoutInput } = await import('../src/index.ts');
+    for (const kind of ['button', 'range'] as const) {
+      for (const display of ['block', 'flex'] as const) {
+        const { input, facts } = await setup(display, true, kind);
+        expect(validateLayoutInput(JSON.parse(JSON.stringify(input))).ok, `${kind} ${display}`).toBe(true);
+        expect(hitRefusal(input), `${kind} ${display}`).toBe(REASON);
+        expect(() => hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS), `${kind} ${display}`).toThrow(new HitError(REASON));
+      }
+    }
+  });
+
+  it('leaves the same tree with a plain box in the control\'s place unaffected', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
     for (const display of ['block', 'flex'] as const) {
-      const t = await setup(display);
-      expect(t.ids.filter((id) => !id.includes(':')), display).toEqual(['html', 'p', 'btn', 'label', 'icon', 'after']);
-      const node = (id: string): HitNode => t.nodes[t.ids.indexOf(id)] as HitNode;
-      const hit = (n: HitNode, dx: number, dy: number): number => hitTest(t.nodes, n.x + dx * PX, n.y + dy * PX, NO_HIT_FAULTS);
-      const btn = node('btn');
-      expect([btn.kind, btn.width / PX, btn.atomic], display).toEqual(['box', 60, display === 'flex']);
-      // The padding is the button's own; the label's text targets the label's element, the icon itself.
-      expect(t.ids[hit(btn, 1, 1)], display).toBe('btn');
-      const label = node('label');
-      expect(t.ids[t.nodes[hit(label, 1, 1)]?.target as number], display).toBe('label');
-      expect(t.ids[hit(node('icon'), 5, 5)], display).toBe('icon');
-      expect(t.ids[activationTarget(t.nodes, t.activation, hit(node('icon'), 5, 5))], display).toBe('btn');
+      const { input, facts } = await setup(display, false, 'button');
+      expect(hitRefusal(input), display).toBeNull();
+      const t = hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+      expect(t.ids.filter((id) => !id.includes(':')), display).toEqual(['html', 'p', 'wrap', 'btn', 'label', 'icon', 'after']);
     }
   });
 });
@@ -294,5 +308,29 @@ describe('hitTableOf stacks positioned flex children in order-modified document 
     expect(await answer('row-reverse', [['i1', rel], ['i2', { ...rel, marginRight: len(-30) }]], 155, 20)).toBe('i2');
     expect(await answer('column-reverse', [['j1', { ...rel, marginTop: len(-20) }], ['j2', rel]], 30, 170)).toBe('j2');
     expect(await answer('row-reverse', [['s1', { marginLeft: len(-30) }], ['s2', {}]], 155, 20)).toBe('s1');
+  });
+});
+
+// OVFL: a scroll container (hidden, auto or scroll, at rest) and clip on both axes clip hits to the padding box; visible does not.
+describe('hitTableOf clips every clipping overflow', () => {
+  it('marks hidden, auto, scroll and clip boxes as clipping, and visible ones not; a point past an auto box falls outside it', async () => {
+    const { hitTableOf, hitTest } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { box, neutralEnvironment, px } = await import('./helpers.ts');
+    const at = (o: 'visible' | 'hidden' | 'auto' | 'scroll' | 'clip') => {
+      const c = box('c', { overflowX: o, overflowY: o, width: px(20), height: px(20) }, [box('k', { width: px(60), height: px(10) })]);
+      const root = box('html', { width: px(100) }, [c]);
+      const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
+      const fact = { pointerEvents: 'auto', inherited: true, activation: false } as const;
+      return hitTableOf(input, ahemMeasurer, new Map([['html', fact], ['c', fact], ['k', fact]]), NO_HIT_TABLE_FAULTS);
+    };
+    for (const o of ['hidden', 'auto', 'scroll', 'clip'] as const) {
+      const t = at(o);
+      expect(t.nodes[1]?.clips, o).toBe(true);
+      expect(t.ids[hitTest(t.nodes, 40 * PX, 5 * PX, NO_HIT_FAULTS)], o).toBe('html');
+    }
+    const v = at('visible');
+    expect(v.nodes[1]?.clips).toBe(false);
+    expect(v.ids[hitTest(v.nodes, 40 * PX, 5 * PX, NO_HIT_FAULTS)]).toBe('k');
   });
 });

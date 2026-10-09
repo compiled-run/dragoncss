@@ -25,6 +25,7 @@ type TranslateCauses = {
   readonly suiteCause: (r: { status: number | null; signal: NodeJS.Signals | null; error?: Error; stderr?: string }, timeoutMs: number) => string | null;
   readonly outputCause: (written: boolean, lines: number, cases: number) => string | null;
   readonly kotlinTool: () => unknown;
+  readonly missingToolchain: (subject: string, missing: string) => string;
 };
 // packages/parity does not depend on packages/translate, so its cause wording is loaded at run time, as lanes.ts loads its tools.
 const translate = async (): Promise<TranslateCauses> => (await import(pathToFileURL(repoPath('packages/translate/src/native.ts')).href)) as TranslateCauses;
@@ -69,7 +70,10 @@ describe('T132: suite causes reach the host lane verdict', () => {
   it('a host CLI that crashes before its final line records its signal and stderr tail; an exit against the printed status is a problem', async () => {
     const t = await translate();
     // Without a JDK and kotlinc the lane is blocked before any command runs, which is its own tested path (lanes.test.ts).
-    if (t.kotlinTool() === null) return expect((await runHostLane(android, { command: ['-e', 'process.exit(9)'] })).state).toBe('blocked (owner tooling)');
+    if (t.kotlinTool() === null) {
+      console.log(t.missingToolchain('lanes-host-errors', 'no JDK 17+ or kotlinc'));
+      return expect((await runHostLane(android, { command: ['-e', 'process.exit(9)'] })).state).toBe('blocked (owner tooling)');
+    }
     const crashed = await runHostLane(android, { command: ['-e', "console.log('native:kotlin: kotlinc');console.error('Error: boom');process.kill(process.pid,'SIGKILL')"] });
     expect(crashed).toMatchObject({ state: 'fail', reason: 'native:kotlin output could not be parsed; exit -, signal SIGKILL; stderr tail: Error: boom' });
     const file = join(scr.dir(), 'pass.txt');
@@ -82,7 +86,10 @@ describe('T132: suite causes reach the host lane verdict', () => {
   it('a host lane with a killed Kotlin suite (fake harness) records the cause in its lanes.json reason', async () => {
     const t = await translate();
     // Without a JDK and kotlinc the lane is blocked before any command runs, which is its own tested path (lanes.test.ts).
-    if (t.kotlinTool() === null) return expect((await runHostLane(android, { command: ['-e', 'process.exit(9)'] })).state).toBe('blocked (owner tooling)');
+    if (t.kotlinTool() === null) {
+      console.log(t.missingToolchain('lanes-host-errors', 'no JDK 17+ or kotlinc'));
+      return expect((await runHostLane(android, { command: ['-e', 'process.exit(9)'] })).state).toBe('blocked (owner tooling)');
+    }
     const dir = scr.dir();
     scr.remove(repoPath('packages/translate/out/results/test-t132-host-lane'));
     scr.remove(repoPath('packages/translate/out/corpus/t132-fake-host-l'));

@@ -18,6 +18,7 @@ and ids, and the at-rule refusals as they were before it.
 | `properties.ts` | The aggregate of `properties/<family>.ts`: `LONGHANDS`, `SHORTHANDS`, `INHERITED`, `PROPERTY_ASPECTS`, `PROPERTY_ROLE`. |
 | `properties/<family>.ts` | Each family's longhands, shorthands, aspects, inherited set and role memberships. |
 | `color.ts`, `lexer.ts`, `grammar.generated.ts` | Colour parsing and serialization, the webref lexer, and the generated grammar (`pnpm run grammar:gen`). |
+| `chrome-number.ts` | `chromeNumber`: a registered `@property` number, length or percentage as Chrome 145 serialises it (six significant digits). The only rounding outside `color.ts` and the ports, exempted by path in `ua.test.ts` and `s4b.test.ts`. |
 
 ## Where a new feature goes
 
@@ -45,7 +46,8 @@ and ids, and the at-rule refusals as they were before it.
   the per-longhand cascade (below). The cascade orders by importance, specificity and order, and also picks each element's custom property winners.
   `var()` substitution runs through the `substituteVariables` hook in `analysis/computed.ts`; the work is in
   `analysis/variables.ts` (custom property computation with cycle detection, substitution, invalid at computed-value time).
-  `@property` and `@layer` are still refused (`at-rules.ts`).
+  `@property` registers through `at-rules/property.ts` and `analysis/registered.ts`, and `computeCustoms` applies it; `@layer` is
+  ordered by `at-rules/layer.ts` (`layerRanks`) and compared in `beats` (`analysis/cascade.ts`).
 - **A flow-relative property.** It is a shorthand of `properties/logical.ts` with a handler in `shorthands/logical.ts`: in
   horizontal-tb it expands to the physical longhands it maps to, an inline mapping once per direction with that direction on
   the `LonghandValue`. `analysis/logical.ts` computes each element's own direction and narrows every declaration to it

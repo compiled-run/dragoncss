@@ -9,13 +9,14 @@
 // hit_test_location.cc or paint_layer.cc. Every length is in LU (1/64 px), absolute to the root.
 import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
-import { resolveBorder } from './box.ts';
+import { isScrollContainer, resolveBorder } from './box.ts';
 import { controlAsBox } from './controls.ts';
 import { placeLines } from './inline.ts';
 import { fromRaw } from './units.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
 import type { LayoutRect } from './layout.ts';
-import { absoluteRects, layout, zoomInput } from './layout.ts';
+import { absoluteRects, layout, resolvedInput } from './layout.ts';
+import { UnsupportedSignal } from './unsupported.ts';
 import { floorOf, roundOf } from './rt-easing.ts';
 import type { TextMeasurer } from './text.ts';
 
@@ -585,7 +586,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   const border = resolveBorder(zoomedBox(s, b.id).style, s.ctx.devicePixelRatio);
   const order = orders === null ? undefined : orders.get(b.id);
   pushNode(s, {
-    kind: 'box', parent, target: own, x: r.x, y: r.y, width: r.width, height: r.height, clips: b.style.overflowX === 'hidden',
+    kind: 'box', parent, target: own, x: r.x, y: r.y, width: r.width, height: r.height, clips: clipsBothAxes(b.style),
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: b.style.position !== 'static',
     absolute: b.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order,
     layerOrder: orders !== null && b.style.position !== 'absolute' ? b.style.order : 0, line: -1,
@@ -603,11 +604,14 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : null;
   for (const c of b.children) {
     if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe);
-    // A form control is hit as the box it is laid out as, and so are its contents (Blink hit-tests a button's or a range's
-    // children like any block's; an anonymous part targets the control element).
-    else if (c.kind === 'control') boxNodes(s, controlAsBox(c), i, childOrders, own, pe);
+    else if (c.kind === 'control') throw new HitError(controlRefusal(c.id));
     else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders);
   }
+}
+
+/** css-overflow-3 §3: a scroll container (at rest) and clip on both axes clip hits to the padding box. */
+function clipsBothAxes(style: LayoutStyle): boolean {
+  return isScrollContainer(style) || (style.overflowX === 'clip' && style.overflowY === 'clip');
 }
 
 /**
@@ -637,27 +641,49 @@ function inlineRefusal(id: string, kind: 'inline' | 'br'): string {
   return `${id} is ${kind === 'br' ? 'a <br>' : 'an inline box'}, which the hit table does not model yet (INL1a; no Chrome hit capture)`;
 }
 
+/**
+ * FORM-a: Chrome retargets a hit on a control's UA shadow parts (a range's thumb and track, a button's contents) to the control
+ * element, which the hit table does not model, and no Chrome hit capture covers a control.
+ */
+function controlRefusal(id: string): string {
+  return `${id} is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)`;
+}
+
 function boxHitRefusal(b: LayoutBox): string | null {
   for (const c of b.children) {
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
-    if (c.kind === 'box' || c.kind === 'control') {
-      const r = boxHitRefusal(c.kind === 'control' ? controlAsBox(c) : c);
+    if (c.kind === 'control') return controlRefusal(c.id);
+    if (c.kind === 'box') {
+      const r = boxHitRefusal(c);
       if (r !== null) return r;
     }
   }
   return null;
 }
 
-/** Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a) has no hit model yet. */
+/**
+ * Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a) and a form control (FORM-a)
+ * have no hit model yet.
+ */
 export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);
+}
+
+/** The input as layout resolved it, with the caller's measurer; a refusal there is a HitError, as the layout's own is. */
+function hitZoomed(input: LayoutInput, measurer: TextMeasurer): LayoutInput {
+  try {
+    return resolvedInput(input, measurer, NO_ENGINE_FAULTS);
+  } catch (e) {
+    if (e instanceof UnsupportedSignal) throw new HitError(`the engine refused the input (${e.unsupported.code} at ${e.unsupported.nodeId})`);
+    throw e;
+  }
 }
 
 /** The hit table of an engine input at its device scale, from the engine's own layout of it and the compiler's hit facts. */
 export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: ReadonlyMap<string, HitFact>, faults: HitTableFaults): HitTable {
   const out = layout(input, measurer);
   if (out.kind !== 'ok') throw new HitError(`the engine refused the input (${out.unsupported.code} at ${out.unsupported.nodeId})`);
-  const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
+  const zoomed = hitZoomed(input, measurer);
   const zmap = new Map<string, LayoutBox>();
   const rmap = new Map<string, LayoutStyle>();
   indexZoomed(zmap, rmap, zoomed.root);

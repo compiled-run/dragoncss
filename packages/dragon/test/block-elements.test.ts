@@ -116,9 +116,11 @@ describe('refusals of UA defaults Dragon does not model', () => {
   it('headings without text compile on every target', () => {
     expect(codes(inputFor(FONT, (r) => [el(r, 'h1', 'h1'), el(r, 'h6', 'h6'), el(r, 'p', 'p', [], [text(r, 't', 'XX')])]))).toEqual([]);
   });
-  it('display: list-item from the UA sheet is refused on every target; an authored display: block is not', () => {
+  // GEN-b (T151 R13): the UA list item keeps its disc marker and stays refused; list-style: none leaves it no marker box.
+  it('display: list-item from the UA sheet with its disc marker is refused on every target; an authored display: block or list-style: none is not', () => {
     expect(codes(inputFor(FONT, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li')])]))).toEqual(['DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web']);
     expect(codes(inputFor(`${FONT} .b { display: block; }`, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li', ['b'])])]))).toEqual([]);
+    expect(codes(inputFor(`${FONT} .n { list-style: none; }`, (r) => [el(r, 'ul', 'ul', ['n'], [el(r, 'li', 'li')])]))).toEqual([]);
   });
   it('hr: the UA inset border is refused; an authored border-style is not', () => {
     expect(codes(inputFor(FONT, (r) => [el(r, 'hr', 'hr')]))).toEqual(['DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web']);
