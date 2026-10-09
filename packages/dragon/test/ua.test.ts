@@ -53,7 +53,8 @@ describe('UA versus initial origin, per tag and longhand', () => {
       main: ['display'],
       aside: ['display'],
       ul: ['display', 'margin-bottom', 'margin-top', 'padding-left'],
-      ol: ['display', 'margin-bottom', 'margin-top', 'padding-left'],
+      // GEN-b (T151 R13): ol's list-style-type: decimal is a modelled UA value now that list-style-type is a longhand.
+      ol: ['display', 'list-style-type', 'margin-bottom', 'margin-top', 'padding-left'],
       li: ['display'],
       blockquote: ['display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
       figure: ['display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],

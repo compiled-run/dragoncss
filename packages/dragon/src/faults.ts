@@ -6,6 +6,7 @@ import { CASC_FAULTS } from './faults/casc.ts';
 import { CASCADE_VAR_FAULTS } from './faults/cascade-var.ts';
 import { ENV_SAFE_FAULTS } from './faults/env-safe.ts';
 import { FONTS_FAULTS } from './faults/fonts.ts';
+import { GEN_B_FAULTS } from './faults/gen-b.ts';
 import { INL1A_FAULTS } from './faults/inl1a.ts';
 import { INL2A_FAULTS } from './faults/inl2a.ts';
 import { MEDIA_FAULTS } from './faults/media.ts';
@@ -23,6 +24,7 @@ export const FAULT_GROUPS = {
   'cascade-var': CASCADE_VAR_FAULTS,
   'env-safe': ENV_SAFE_FAULTS,
   fonts: FONTS_FAULTS,
+  'gen-b': GEN_B_FAULTS,
   inl1a: INL1A_FAULTS,
   inl2a: INL2A_FAULTS,
   media: MEDIA_FAULTS,

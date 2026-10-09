@@ -98,6 +98,10 @@
         "transform": "none",
         "transform-origin": "200px 103px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -189,6 +193,10 @@
         "transform": "none",
         "transform-origin": "200px 101.5px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -280,6 +288,10 @@
         "transform": "none",
         "transform-origin": "63px 75px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -371,6 +383,10 @@
         "transform": "none",
         "transform-origin": "35px 10px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -492,6 +508,10 @@
         "transform": "none",
         "transform-origin": "35px 10px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -613,6 +633,10 @@
         "transform": "none",
         "transform-origin": "35px 10px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -734,6 +758,10 @@
         "transform": "none",
         "transform-origin": "35px 10px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -855,6 +883,10 @@
         "transform": "none",
         "transform-origin": "35px 10px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -976,6 +1008,10 @@
         "transform": "none",
         "transform-origin": "35px 10px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1097,6 +1133,10 @@
         "transform": "none",
         "transform-origin": "35px 5px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1208,6 +1248,10 @@
         "transform": "none",
         "transform-origin": "63px 25px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1299,6 +1343,10 @@
         "transform": "none",
         "transform-origin": "35px 10px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1420,6 +1468,10 @@
         "transform": "none",
         "transform-origin": "35px 10px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "writing-mode": "horizontal-tb"
       }
     },

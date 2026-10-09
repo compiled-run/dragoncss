@@ -20,6 +20,7 @@ import type { Selector } from './selectors.ts';
 import { parseSelectorList } from './selectors.ts';
 import { markNotApplicable } from './not-applicable.ts';
 import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
+import { LISTS_VALUE_PROPERTIES, parseListsValue } from './properties/lists.ts';
 import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
@@ -548,6 +549,8 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     }
     return { kind: 'ok', longhands: [{ property, value: ratio, explicit: true }] };
   }
+  // css-content-3 §2 and css-lists-3 §3: content, list-style-type and list-style-image (properties/lists.ts).
+  if (!wide && LISTS_VALUE_PROPERTIES.has(property)) return parseListsValue(property as Longhand, tokens, base);
   // Chrome 145's legacy display keywords (display-legacy.ts).
   const legacy = !wide && property === 'display' ? legacyDisplay(tokens, base) : null;
   if (legacy !== null) return legacy.kind === 'refused' ? legacy : { kind: 'ok', longhands: [{ property: 'display', value: legacy.value, explicit: true }] };

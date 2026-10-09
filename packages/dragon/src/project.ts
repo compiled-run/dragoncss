@@ -663,7 +663,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua };
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
-    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys);
+    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, options.faults);
     // T078 R14: outside the parity lanes, native refuses overflow auto and scroll until OVFL-B; the lanes prove their layout at rest.
     if (!options.interactionLanes) checkNativeScroll(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
