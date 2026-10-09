@@ -15,6 +15,7 @@ import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { ENV } from './fixture-groups/env.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
+import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
 import { INLINE } from './fixture-groups/inline.ts';
@@ -106,6 +107,7 @@ export const GROUPS = {
   'display-legacy': DISPLAY_LEGACY,
   env: ENV,
   fonts: FONTS,
+  gradients: GRADIENTS,
   grid: GRID,
   'inherit-contexts': INHERIT_CONTEXTS,
   inline: INLINE,
