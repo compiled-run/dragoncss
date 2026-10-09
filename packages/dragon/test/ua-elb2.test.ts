@@ -33,13 +33,21 @@ describe('element keys (ELB-2)', () => {
   });
   it('list the UA-set properties no longhand models, and the forced longhands', () => {
     // FORM-a A2: appearance is a longhand, so the controls' UA appearance: auto is a declared value, not an unmodelled one.
-    expect(light.userAgentUnmodelled['button']?.ltr).toEqual({ cursor: 'default' });
-    expect(light.userAgentUnmodelled['input']?.ltr).toEqual({ cursor: 'text' });
+    // #78 review: html.css's control rules (font: -webkit-small-control and the reset list) reset these inherited properties to their
+    // defaults, which the capture finds under a parent with non-default values (capture-ua-defaults.ts UNMODELLED_SKEW).
+    const controlResets = { 'font-kerning': 'auto', 'font-optical-sizing': 'auto', 'font-stretch': '100%', 'font-style': 'normal', 'font-variant': 'normal', 'font-variant-caps': 'normal', 'font-variant-east-asian': 'normal', 'font-variant-ligatures': 'normal', 'font-variant-numeric': 'normal', 'font-weight': '400', 'letter-spacing': 'normal', 'text-indent': '0px', 'text-rendering': 'auto', 'text-shadow': 'none', 'text-transform': 'none', 'word-spacing': '0px' };
+    for (const dir of ['ltr', 'rtl'] as const) {
+      expect(light.userAgentUnmodelled['button']?.[dir], dir).toEqual({ cursor: 'default', ...controlResets });
+      expect(light.userAgentUnmodelled['input']?.[dir], dir).toEqual({ cursor: 'text', ...controlResets });
+    }
     for (const key of ['button', 'input', 'input[type=range]'] as const) for (const dir of ['ltr', 'rtl'] as const) expect(light.elementKeyDeclared[key][dir]['appearance'], `${key} ${dir}`).toBe('auto');
     expect(light.userAgentUnmodelled['a[href]']?.ltr).toMatchObject({ cursor: 'pointer', 'text-decoration-line': 'underline' });
     // GEN-b (T151 R13): list-style-type is a longhand now, so ol's decimal is a declared UA value, no longer unmodelled.
     expect(light.userAgentUnmodelled['ol']?.ltr).toEqual({ 'unicode-bidi': 'isolate' });
     expect(light.userAgentDeclared['ol']?.ltr).toMatchObject({ 'list-style-type': 'decimal' });
+    // #78 review: ul's list-style-type: disc equals the initial value, so only the skewed-parent capture finds it; a ul under an
+    // ancestor with another list-style-type gives its items disc in Chrome.
+    for (const dir of ['ltr', 'rtl'] as const) expect(light.userAgentDeclared['ul']?.[dir]['list-style-type'], dir).toBe('disc');
     expect(light.userAgentUnmodelled['span']).toEqual({ ltr: {}, rtl: {} });
     expect(light.userAgentForced['input']?.ltr).toEqual({ display: 'inline-block', 'overflow-x': 'clip', 'overflow-y': 'clip' });
     expect(light.userAgentForced['button']?.ltr).toEqual({ display: 'inline-block' });
