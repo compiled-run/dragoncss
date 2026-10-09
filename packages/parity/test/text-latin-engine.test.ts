@@ -6,6 +6,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults, FontSpec, GlyphShaper, InlineBox, InlineChild, LayoutBox, LayoutInput, LayoutResult, TextLeaf } from '@dragon/layout';
 import { intrinsicContentInlineSize } from '../../layout/src/intrinsic.ts';
+import { scrollMetrics } from '../../layout/src/overflow.ts';
+import { HitError, hitTableOf, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
 import { layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, shapedMeasurerFor, validateLayoutInput } from '@dragon/layout';
 import { repoPath } from '../src/paths.ts';
 import { launchChrome } from '../src/chrome.ts';
@@ -351,4 +353,41 @@ describe('TXT1a-1 phase B: real-font intrinsic sizes', () => {
     const planted = { ...NO_ENGINE_FAULTS, softHyphenWidthMissing: true };
     expect(minCases.filter((c, i) => intrinsicOf(c, 'min', planted) !== (chrome[i] as { min: number }).min).length).toBeGreaterThan(0);
   }, 300_000);
+});
+
+describe('TXT1a-1 phase B: post-layout passes resolve a real-font input with the caller\'s measurer', () => {
+  const latoFont = fontOf(latoId, 16);
+  // ex and lh of a real face in widths, beside real-font text: the layout reads them through the shaped measurer.
+  const input = pageOf([
+    { kind: 'box', id: 'q', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'font-metric', value: 2, metric: 'ex', font: latoFont }, range: 'non-negative' } }, strut: null, children: [] },
+    { kind: 'box', id: 'r', boxType: 'element', style: { ...style, width: { kind: 'calc', expr: { kind: 'lh', value: 3, font: latoFont, lineHeight: { kind: 'normal' } }, range: 'non-negative' } }, strut: null, children: [] },
+    { kind: 'box', id: 'p', boxType: 'element', style: { ...style, overflowX: 'hidden', overflowY: 'hidden' }, strut: { font: latoFont, lineHeight: { kind: 'normal' } }, children: [leaf('t', 'Real text', latoId, 16)] },
+  ]);
+  const shaped = (): ReturnType<typeof referenceShapedMeasurer> => referenceShapedMeasurer(NO_ENGINE_FAULTS, [lato]);
+
+  it('scrollMetrics lays out and measures it, and refuses a measurer without the face with text-glyph', () => {
+    expect(layout(input, shaped()).kind).toBe('ok');
+    const r = scrollMetrics(input, shaped(), 'ltr');
+    expect(r.kind).toBe('ok');
+    expect(r.kind === 'ok' && r.containers.map((c) => c.id)).toEqual(['p']);
+    const refused = scrollMetrics(input, referenceShapedMeasurer(), 'ltr');
+    expect(refused.kind === 'refused' && [refused.nodeId, refused.detail.slice(0, 11)]).toEqual(['q', 'text-glyph:']);
+  });
+
+  it('hitTableOf builds its table, and refuses a measurer without the face with a HitError', () => {
+    const facts = new Map(['html', 'body', 'q', 'r', 'p'].map((id) => [id, { pointerEvents: 'auto', inherited: false, activation: false }] as const));
+    const t = hitTableOf(input, shaped(), facts, NO_HIT_TABLE_FAULTS);
+    expect(t.ids).toEqual(expect.arrayContaining(['q', 'r', 'p']));
+    expect(() => hitTableOf(input, referenceShapedMeasurer(), facts, NO_HIT_TABLE_FAULTS)).toThrow(HitError);
+  });
+
+  it('the harness runs a line with a shape transcript and a viewport direction to its scroll suffix, equal to the host', () => {
+    const host = hostRun(input, NO_ENGINE_FAULTS);
+    const out = JSON.parse(runEngineCase(JSON.stringify({ platform: REFERENCE_PLATFORM, faults: NO_ENGINE_FAULTS, input, shaping: host.shaping, viewportDirection: 'ltr' }))) as unknown[];
+    expect(out[0]).toBe('ok');
+    const scroll = out[4] as unknown[];
+    expect(scroll[0]).toBe('ok');
+    const want = scrollMetrics(input, shaped(), 'ltr');
+    expect(want.kind === 'ok' && (scroll[2] as [string][]).map((c) => c[0])).toEqual(want.kind === 'ok' && want.containers.map((c) => c.id));
+  });
 });

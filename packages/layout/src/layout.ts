@@ -40,11 +40,9 @@ type Placement = { readonly boxes: LayoutRect[]; readonly absolute: Map<string, 
 
 /** layout with seeded engine errors; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
 export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): LayoutResult {
-  // Planted platform-rule faults replace the Ahem measurer's two macOS rules (platform-rules.ts).
-  const m = faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
-  // ex, ch and cap read the measurer's faces; a planted platform rule reads the Ahem font data, as zoomInput (the device's) does.
+  const m = layoutMeasurer(measurer, faults);
   try {
-    const input = faults.metricHalfUp || faults.untruncatedFontSize ? zoomInput(given, faults) : resolveEnvironment(given, faults, m);
+    const input = resolvedInput(given, measurer, faults);
     const root = input.root;
     const icbWidth = fromCssPx(input.viewport.width);
     const icbHeight = fromCssPx(input.viewport.height);
@@ -117,6 +115,20 @@ function containingBlock(ctx: Ctx, box: LayoutBox, parentOf: Map<string, LayoutB
     height: sub(sub(r.height, top), bottom),
     direction: directionOf(ctx, at),
   };
+}
+
+/** The measurer a layout reads: planted platform-rule faults replace the Ahem measurer's two macOS rules (platform-rules.ts). */
+export function layoutMeasurer(measurer: TextMeasurer, faults: EngineFaults): TextMeasurer {
+  return faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
+}
+
+/**
+ * The input resolved for its environment as layoutWithFaults lays it out: ex, ch, cap and lh read the measurer's faces; a planted
+ * platform rule reads the Ahem font data, as zoomInput (the device's) does. Post-layout passes (scroll metrics, the hit table)
+ * resolve with it too. A face the measurer does not hold throws the text-glyph UnsupportedSignal.
+ */
+export function resolvedInput(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): LayoutInput {
+  return faults.metricHalfUp || faults.untruncatedFontSize ? zoomInput(given, faults) : resolveEnvironment(given, faults, layoutMeasurer(measurer, faults));
 }
 
 /** Places each pending absolutely positioned box in order; boxes found inside one are queued after it. */
