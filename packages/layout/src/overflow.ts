@@ -10,6 +10,7 @@ import type { Edges } from './box.ts';
 import { blockMinMaxWith, hasPercent, INDEFINITE, isScrollContainer, resolveBorder, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
 import type { Ctx, EngineFaults, Strut } from './block.ts';
 import { directionOf, EMPTY_STRUT, NO_ENGINE_FAULTS } from './block.ts';
+import { NO_GRID_FAULTS } from './grid.ts';
 import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layoutWithFaults, zoomInput } from './layout.ts';
 import { placeLines } from './inline.ts';
@@ -84,7 +85,7 @@ export function scrollMetricsWithFaults(given: LayoutInput, measurer: TextMeasur
   if (r.kind !== 'ok') return { kind: 'refused', nodeId: r.unsupported.nodeId, detail: `${r.unsupported.code}: ${r.unsupported.detail}` };
   const m = faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
   const input = zoomInput(given, faults);
-  const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults };
+  const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults: NO_GRID_FAULTS };
   try {
     const ix = indexOf(ctx, input, absoluteRects(r.boxes));
     const containers: ScrollMetrics[] = [];
@@ -277,6 +278,8 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
   const c: Calc = { overflow: paddingRect, inflow: null, paddingRect, scrollContainer: sc, leftOverflow: sides.left, topOverflow: sides.top };
   // A replaced leaf (CSS 2.2 §10.3.2) has no children: its scrollable overflow is its own padding box.
   if (b.kind === 'replaced') return resultOf(ix, c, n.padding);
+  // A grid container's scrollable overflow also takes its grid area (css-grid-2 §5.3), which this port does not compute.
+  if (b.style.display === 'grid') throw new OverflowRefusal(b.id, 'a grid container: its scrollable overflow (with its grid area) is not decided here');
   if (hasInlineContent(b)) {
     refuseLineLevelBoxes(b);
     addLines(ix, n, b, c);
