@@ -6,7 +6,7 @@ import { INITIAL_FONT_SIZE, resolveLength } from './length.ts';
 import { featuresOfList } from './parse.ts';
 import type { Comparison, MediaCondition, MediaFeature, MediaQuery, MediaQueryList, MediaValue } from './parse.ts';
 import { serialiseFeature } from './parse.ts';
-import { wholePx } from './viewport.ts';
+import { clampToFloat, twoDecimals, wholePx } from './viewport.ts';
 import { DEVICE_FEATURES } from './features.ts';
 
 /**
@@ -94,17 +94,10 @@ export function ratioSize(env: MediaEnvironment, untruncated: boolean): { readon
   return untruncated ? env : { width: wholePx(env.width), height: wholePx(env.height) };
 }
 
-/** Chrome's float of a double (ClampTo<float>): a value past the float range clamps to the largest float. */
-export function clampToFloat(x: number): number {
-  const MAX = 3.4028234663852886e38;
-  return Math.fround(x > MAX ? MAX : x < -MAX ? -MAX : x);
-}
 
 /** dppx per authored unit, as Blink's canonical-unit factors (1 / CSS px per inch, 1 / CSS px per cm). */
 const DPPX_PER: Readonly<Record<string, number>> = { dppx: 1, x: 1, dpi: 1 / 96, dpcm: 1 / (96 / 2.54) };
 
-/** Two decimals in float, as Chrome compares dpcm with the device's dppx (floorf(0.5 + 100 x) / 100). */
-const twoDecimals = (x: number): number => Math.fround(Math.floor(Math.fround(0.5 + Math.fround(100 * x))) / 100);
 
 /** A comparison of the device scale with a query value, exact (Chrome's CompareValue, measured with its EvalResolution). */
 function compareExact(actual: number, op: Comparison, query: number): boolean {

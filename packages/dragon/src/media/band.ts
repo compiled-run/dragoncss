@@ -1,7 +1,7 @@
 // The band partition (notes/T067 R4): the width and height atoms of a sheet split each axis into groups, and the orientation and
 // aspect-ratio atoms add a ratio factor. A band is one reachable assignment of truth values to all atoms; its condition text is
 // written only with the authored atoms and their negations.
-import { clampToFloat, compareMedia, comparisonsOf, DESKTOP_DEVICE, evaluateFeature, evaluateWithOracle, MEDIA_EPSILON } from './evaluate.ts';
+import { compareMedia, comparisonsOf, DESKTOP_DEVICE, evaluateFeature, evaluateWithOracle, MEDIA_EPSILON } from './evaluate.ts';
 import type { MediaDevice, MediaResult } from './evaluate.ts';
 import { DEVICE_FEATURES } from './features.ts';
 import type { MediaFaults } from './faults.ts';
@@ -9,7 +9,7 @@ import { NO_MEDIA_FAULTS } from './faults.ts';
 import { INITIAL_FONT_SIZE, resolveLength } from './length.ts';
 import { featuresOfList, serialiseFeature } from './parse.ts';
 import type { Comparison, MediaFeature, MediaQueryList, MediaValue } from './parse.ts';
-import { wholeAtOrAbove, wholeAtOrBelow } from './viewport.ts';
+import { clampToFloat, twoDecimals, wholeAtOrAbove, wholeAtOrBelow } from './viewport.ts';
 
 export const MAX_BANDS = 16;
 /** The band count stops being counted past this many (the sheet is refused either way). */
@@ -319,7 +319,7 @@ function scaleCandidates(atoms: readonly MediaAtom[]): number[] {
       points.push(...around(dppx));
       // A dpcm comparison rounds both sides to two decimals, so it changes half a hundredth from the rounded value.
       if (value.unit === 'dpcm') {
-        const t = Math.round(dppx * 100) / 100;
+        const t = twoDecimals(dppx);
         for (const e of [t - 0.005, t + 0.005, t - 0.015, t + 0.015]) points.push(...around(clampToFloat(e)));
       }
     }
