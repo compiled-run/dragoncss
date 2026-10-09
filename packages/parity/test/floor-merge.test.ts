@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { floorRegressions, isFloorFile } from '../../../scripts/land-lib.ts';
 import { format, mergeFloorFile, Refuse, SETUP_GIT_CONFIG } from '../../../scripts/floor-merge.ts';
 import { repoPath } from '../src/paths.ts';
@@ -122,8 +122,8 @@ describe('the floor merge driver never lowers a floor', () => {
 });
 
 describe('the floor merge driver in git', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'floor-merge-'));
-  temps.push(dir);
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let dir = '';
   const git = (...args: string[]): string =>
     execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', ...args], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const path = 'packages/x/test/a-floor.json';
@@ -131,18 +131,22 @@ describe('the floor merge driver in git', () => {
     execFileSync('mkdir', ['-p', join(dir, 'packages/x/test')]);
     writeFileSync(join(dir, path), j(v));
   };
-  git('init', '-q', '-b', 'master');
-  git('config', 'merge.dragon-floor.driver', `node ${repoPath('scripts/floor-merge.ts')} %O %A %B %P`);
-  writeFileSync(join(dir, '.gitattributes'), 'packages/*/test/*-floor.json merge=dragon-floor\n');
-  write({ names: ['a', 'b'], x: 1, y: 1 });
-  git('add', '-A');
-  git('commit', '-q', '-m', 'base');
-  git('checkout', '-q', '-b', 'one');
-  write({ names: ['a', 'b', 'c'], x: 4, y: 1 });
-  git('commit', '-qam', 'one');
-  git('checkout', '-q', 'master');
-  write({ names: ['a', 'b', 'd'], x: 2, y: 3 });
-  git('commit', '-qam', 'two');
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'floor-merge-'));
+    temps.push(dir);
+    git('init', '-q', '-b', 'master');
+    git('config', 'merge.dragon-floor.driver', `node ${repoPath('scripts/floor-merge.ts')} %O %A %B %P`);
+    writeFileSync(join(dir, '.gitattributes'), 'packages/*/test/*-floor.json merge=dragon-floor\n');
+    write({ names: ['a', 'b'], x: 1, y: 1 });
+    git('add', '-A');
+    git('commit', '-q', '-m', 'base');
+    git('checkout', '-q', '-b', 'one');
+    write({ names: ['a', 'b', 'c'], x: 4, y: 1 });
+    git('commit', '-qam', 'one');
+    git('checkout', '-q', 'master');
+    write({ names: ['a', 'b', 'd'], x: 2, y: 3 });
+    git('commit', '-qam', 'two');
+  });
 
   it('merges two PRs that raised the same floor, with no conflict, where a text merge conflicts', () => {
     git('merge', '-q', '--no-edit', 'one');
@@ -164,8 +168,11 @@ describe('the floor merge driver in git', () => {
 });
 
 describe('the floor merge driver as git runs it', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'floor-merge-cli-'));
-  temps.push(dir);
+  let dir = '';
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'floor-merge-cli-'));
+    temps.push(dir);
+  });
   const run = (o: unknown, a: unknown, b: unknown): { status: number | null; ours: string; left: string[] } => {
     for (const [n, v] of [['O', o], ['A', a], ['B', b]] as const) writeFileSync(join(dir, n), j(v));
     const r = spawnSync(process.execPath, [repoPath('scripts/floor-merge.ts'), join(dir, 'O'), join(dir, 'A'), join(dir, 'B'), 'packages/x/test/a-floor.json'], { encoding: 'utf8' });

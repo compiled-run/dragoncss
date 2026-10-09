@@ -289,9 +289,11 @@ function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: numb
  */
 export function glyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): GlyphLine[] {
   const input = programInput(p, viewport, dpr);
+  const sizes = cssFontSizes(input.root);
+  // The glyph rule's own refusal comes first: the engine's font-data measurer refuses a face other than Ahem too (TXT1a-1).
+  for (const [id, css] of sizes) if (css.family !== 'Ahem') throw new Error(`${id}: the glyph rule refuses the font family ${css.family}; glyph boxes are known for Ahem only`);
   const m = referenceMeasurer();
   const texts = engineTextLines(input, m);
-  const sizes = cssFontSizes(input.root);
   const boxes = ahemGlyphBoxes();
   const upem = AHEM_FONT_DATA.unitsPerEm;
   const out: GlyphLine[] = [];

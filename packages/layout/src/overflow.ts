@@ -11,11 +11,11 @@ import { blockMinMaxWith, hasPercent, INDEFINITE, isScrollContainer, resolveBord
 import type { Ctx, EngineFaults, Strut } from './block.ts';
 import { directionOf, EMPTY_STRUT, NO_ENGINE_FAULTS } from './block.ts';
 import type { LayoutRect } from './layout.ts';
-import { absoluteRects, layoutWithFaults, zoomInput } from './layout.ts';
+import { absoluteRects, layoutMeasurer, layoutWithFaults, resolvedInput } from './layout.ts';
+import { UnsupportedSignal } from './unsupported.ts';
 import { placeLines } from './inline.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import type { TextMeasurer } from './text.ts';
-import { ahemMeasurerWith } from './text.ts';
 
 /** A rectangle in LU relative to a box's border-box top-left. */
 export type OverflowRect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
@@ -82,10 +82,11 @@ type Index = {
 export function scrollMetricsWithFaults(given: LayoutInput, measurer: TextMeasurer, viewportDirection: Direction, faults: EngineFaults): ScrollMetricsResult {
   const r = layoutWithFaults(given, measurer, faults);
   if (r.kind !== 'ok') return { kind: 'refused', nodeId: r.unsupported.nodeId, detail: `${r.unsupported.code}: ${r.unsupported.detail}` };
-  const m = faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
-  const input = zoomInput(given, faults);
-  const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults };
+  const m = layoutMeasurer(measurer, faults);
   try {
+    // The input as the layout above resolved it, with the caller's measurer.
+    const input = resolvedInput(given, measurer, faults);
+    const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults };
     const ix = indexOf(ctx, input, absoluteRects(r.boxes));
     const containers: ScrollMetrics[] = [];
     for (const b of ix.order) {
@@ -97,6 +98,7 @@ export function scrollMetricsWithFaults(given: LayoutInput, measurer: TextMeasur
     return { kind: 'ok', viewport: viewportMetrics(ix, input, viewportDirection), containers };
   } catch (e) {
     if (e instanceof OverflowRefusal) return { kind: 'refused', nodeId: e.nodeId, detail: e.detail };
+    if (e instanceof UnsupportedSignal) return { kind: 'refused', nodeId: e.unsupported.nodeId, detail: `${e.unsupported.code}: ${e.unsupported.detail}` };
     throw e;
   }
 }
