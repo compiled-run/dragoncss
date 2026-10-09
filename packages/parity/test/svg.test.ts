@@ -9,6 +9,11 @@ import { iosLayoutProjection, svgScenes } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { committedAuthored } from '../src/committed.ts';
 import { SVG } from '../src/fixture-groups/svg.ts';
+import { DPRS } from '../src/dpr.ts';
+import { pixelAt } from '../src/native-compare.ts';
+import { nativeCases } from '../src/native-host.ts';
+import { casePoints, committedPixels } from '../src/pixel-reference.ts';
+import { svgOutline } from '../src/paint-samples/image.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import type { SvgFaults } from '../src/svg-compare.ts';
 import { chromeViewBoxTransform, compareSvg, NO_SVG_FAULTS, shapeClientRect } from '../src/svg-compare.ts';
@@ -118,5 +123,55 @@ describe('the svg fixtures against their committed Chrome captures', () => {
     for (const k of Object.keys(NO_SVG_FAULTS) as (keyof SvgFaults)[]) {
       expect((await problems({ ...NO_SVG_FAULTS, [k]: true })).length, k).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('the svg sample points (SVG-a2) against the committed Chrome pixels', () => {
+  const svgCases = nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'svg-shapes')));
+  it('the outline closes a subpath for the fill always, and for the stroke only at a closepath', () => {
+    const id = (x: number, y: number) => ({ x, y });
+    const open = svgOutline([0, 0, 0, 1, 10, 0, 1, 10, 10], id);
+    expect(open.fill.length).toBe(3);
+    expect(open.stroke.length).toBe(2);
+    const closed = svgOutline([0, 0, 0, 1, 10, 0, 1, 10, 10, 4], id);
+    expect(closed.fill.length).toBe(3);
+    expect(closed.stroke.length).toBe(3);
+    expect(closed.vertices).toEqual([id(0, 0), id(10, 0), id(10, 10)]);
+  });
+  it('every svg point at every DPR sits in one solid colour in Chrome: its 3x3 neighbourhood is one pixel value', () => {
+    expect(svgCases.length).toBe(8);
+    for (const n of svgCases) {
+      for (const dpr of DPRS) {
+        const img = committedPixels(n.case.id, dpr);
+        if (img === null) throw new Error(`${n.case.id}@${dpr}: no committed Chrome pixels`);
+        const pts = casePoints(n.programs.uikit, n.case.environment.viewport, dpr).filter((p) => p.rule.startsWith('svg:'));
+        expect(pts.length, `${n.case.id}@${dpr}`).toBeGreaterThan(0);
+        for (const p of pts) {
+          const at = pixelAt(img, p.x, p.y).join();
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const x = p.x + dx;
+              const y = p.y + dy;
+              if (x < 0 || y < 0 || x >= img.width || y >= img.height) continue;
+              expect(pixelAt(img, x, y).join(), `${n.case.id}@${dpr} ${p.rule} (${p.x}, ${p.y}) neighbour ${dx},${dy}`).toBe(at);
+            }
+          }
+        }
+      }
+    }
+  });
+  it("each wide stroke's colour (4 user units or more) shows at an svg point at every DPR, so a stroke under the fill or swapped is seen", () => {
+    let wide = 0;
+    for (const n of svgCases) {
+      const strokes = n.programs.uikit.nodes.flatMap((x) => x.writes.flatMap((w) => (w.kind === 'svg-shapes' ? w.shapes.flatMap((sh) => (sh.stroke !== null && sh.stroke.alpha === 255 && sh.width >= 4 ? [sh.stroke] : [])) : [])));
+      wide += strokes.length;
+      for (const dpr of DPRS) {
+        const img = committedPixels(n.case.id, dpr);
+        if (img === null) throw new Error(`${n.case.id}@${dpr}: no committed Chrome pixels`);
+        const seen = new Set(casePoints(n.programs.uikit, n.case.environment.viewport, dpr).filter((p) => p.rule.startsWith('svg:')).map((p) => pixelAt(img, p.x, p.y).slice(0, 3).join()));
+        for (const k of strokes) expect(seen.has([k.r, k.g, k.b].join()), `${n.case.id}@${dpr} stroke ${[k.r, k.g, k.b].join()}`).toBe(true);
+      }
+    }
+    expect(wide).toBeGreaterThan(0);
   });
 });

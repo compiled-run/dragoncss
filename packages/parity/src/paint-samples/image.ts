@@ -321,7 +321,8 @@ export function svgPointsOf(ctx: PaintSampleContext): SamplePoint[] {
     const corners: { readonly at: Pt; readonly reach: number }[] = [];
     for (const sh of w.shapes) {
       const o = svgOutline(sh.path, map);
-      edges.push({ segments: o.fill, offset: 0 });
+      // A shape with fill: none paints no fill boundary, so its stroke band is one colour across the centreline.
+      if (sh.fill !== null) edges.push({ segments: o.fill, offset: 0 });
       if (sh.stroke !== null && sh.width > 0) {
         const half = (sh.width * m.a * dpr) / 2;
         edges.push({ segments: o.stroke, offset: half });
@@ -346,8 +347,8 @@ export function svgPointsOf(ctx: PaintSampleContext): SamplePoint[] {
     for (let gy = 1; gy < SVG_GRID; gy++) {
       for (let gx = 1; gx < SVG_GRID; gx++) tryPixel(Math.floor(c.x + (c.width * gx) / SVG_GRID), Math.floor(c.y + (c.height * gy) / SVG_GRID));
     }
-    // Inside each wide stroke band: a point a quarter width either side of the centreline (inside and outside the fill), where the
-    // stroke's colour shows unless it is drawn under the fill, swapped or at another width.
+    // Inside each wide stroke band: a point a quarter width either side of the centreline (inside and outside the fill), and on the
+    // centreline of an unfilled shape, where the stroke's colour shows unless it is drawn under the fill, swapped or at another width.
     for (const sh of w.shapes) {
       if (sh.stroke === null || !(sh.width > 0)) continue;
       const half = (sh.width * m.a * dpr) / 2;
@@ -358,7 +359,7 @@ export function svgPointsOf(ctx: PaintSampleContext): SamplePoint[] {
         if (len === 0) continue;
         const [nx, ny] = [-(z.y - a.y) / len, (z.x - a.x) / len];
         const mid = { x: (a.x + z.x) / 2, y: (a.y + z.y) / 2 };
-        for (const side of [1, -1]) tryPixel(Math.floor(mid.x + side * nx * (half / 2) - 0.5), Math.floor(mid.y + side * ny * (half / 2) - 0.5));
+        for (const side of sh.fill === null ? [1, 0, -1] : [1, -1]) tryPixel(Math.floor(mid.x + side * nx * (half / 2) - 0.5), Math.floor(mid.y + side * ny * (half / 2) - 0.5));
       }
     }
   }
