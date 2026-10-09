@@ -127,9 +127,11 @@ describe('legacy aliases parse as their property', () => {
     expect(parsed('margin-block-start: foo').diagnostics).toEqual([['DRAGON_CSS_INVALID_VALUE', '"foo" is not a valid value for margin-block-start (@webref/css grammar)']]);
   });
   it('aliases Chrome parses with legacy rules, and non-aliases, stay refused as unknown properties', () => {
-    for (const name of ['-webkit-transform', '-webkit-transform-origin', '-webkit-border-radius', '-webkit-writing-mode', '-webkit-user-select', '-webkit-box-orient', '-webkit-box-flex']) {
+    for (const name of ['-webkit-transform', '-webkit-transform-origin', '-webkit-writing-mode', '-webkit-user-select', '-webkit-box-orient', '-webkit-box-flex']) {
       expect(parse(`${name}: none`).diagnostics.map((d) => d.code), name).toEqual(['DRAGON_UNSUPPORTED_PROPERTY']);
     }
+    // PNT1-radius: -webkit-border-radius is the radius family's own shorthand with Chrome's legacy two-value parsing, not an alias.
+    expect(parse('-webkit-border-radius: 4px 8px').diagnostics).toEqual([]);
   });
   it('an alias in a keyframe block sets its property', () => {
     const frames = (body: string) => {
@@ -210,8 +212,9 @@ describe('profile diagnostics name the alias as written', () => {
     return [...new Set(c.diagnostics.map((d) => `${d.code} ${d.message}`))];
   };
   it('an unsupported value says which alias set it', () => {
-    expect(messages('body { margin: 0 } .a { -webkit-box-sizing: inherit }', 'ltr', (r) => [div(r, 'a', ['a'])])).toEqual([
-      'DRAGON_UNSUPPORTED_VALUE box-sizing: inherit (set by -webkit-box-sizing: inherit) is unsupported (support profile m1-s5); in block/ltr use border-box or content-box',
+    expect(messages('body { margin: 0 } .a { -webkit-box-sizing: unset }', 'ltr', (r) => [div(r, 'a', ['a'])])).toEqual([
+      // ctx-proof-inherit proves box-sizing: inherit, so unset is the alias value still without a row.
+      'DRAGON_UNSUPPORTED_VALUE box-sizing: unset (set by -webkit-box-sizing: unset) is unsupported (support profile m1-s5); in block/ltr use border-box, content-box or inherit',
     ]);
   });
   it('an unproven context names the alias shorthand that set the longhand', () => {

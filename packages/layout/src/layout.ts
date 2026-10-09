@@ -6,7 +6,7 @@ import { add, fromCssPx, sub, ZERO } from './units.ts';
 import type { Frag, OutOfFlow, StaticAxis } from './box.ts';
 import { resolveBorder } from './box.ts';
 import type { EnvironmentDependencies } from './environment.ts';
-import { applyEnvironment, environmentDependencies } from './environment.ts';
+import { applyEnvironment, environmentDependencies, resolveEnvironment } from './environment.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import { blockLevelInlineSize, directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
 import type { GridFaults } from './grid.ts';
@@ -49,7 +49,8 @@ export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, fau
 export function layoutWithGridFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults, gridFaults: GridFaults): LayoutResult {
   // Planted platform-rule faults replace the Ahem measurer's two macOS rules (platform-rules.ts).
   const m = faults.metricHalfUp || faults.untruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }) : measurer;
-  const input = zoomInput(given, faults);
+  // ex, ch and cap read the measurer's faces; a planted platform rule reads the Ahem font data, as zoomInput (the device's) does.
+  const input = faults.metricHalfUp || faults.untruncatedFontSize ? zoomInput(given, faults) : resolveEnvironment(given, faults, m);
   const root = input.root;
   const icbWidth = fromCssPx(input.viewport.width);
   const icbHeight = fromCssPx(input.viewport.height);

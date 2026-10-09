@@ -169,6 +169,13 @@ describe('engine refusals for text', () => {
   it('a code point Ahem does not cover returns text-glyph', () => {
     const r = run(block(30, [text('t', 'Xé')]));
     expect(r.kind === 'unsupported' && r.unsupported.code).toBe('text-glyph');
+    expect(r.kind === 'unsupported' && r.unsupported.specSection).toBe('css-fonts-4 §5');
+  });
+  it("a measurer's text-script refusal (R4) reaches the result with its own code and section", () => {
+    const refuse = { ok: false, code: 'text-script', reason: 'U+3A9 is outside Latin, Common and Inherited (R4)' } as const;
+    const measurer = { ...ahemMeasurer, measure: () => refuse };
+    const r = layout({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root: block(30, [text('t', 'XX XX')]) }, measurer);
+    expect(r.kind === 'unsupported' && r.unsupported).toEqual({ code: 'text-script', nodeId: 't', specSection: 'notes/T056-txt1a-spec.md R4', detail: refuse.reason });
   });
 });
 
