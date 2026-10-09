@@ -6,6 +6,7 @@ import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
+import { CASC_LAYER } from './fixture-groups/casc-layer.ts';
 import { CASC_PROPERTY } from './fixture-groups/casc-property.ts';
 import { CASC } from './fixture-groups/casc.ts';
 import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
@@ -99,6 +100,7 @@ export const GROUPS = {
   'block-elements': BLOCK_ELEMENTS,
   'border-paint': BORDER_PAINT,
   casc: CASC,
+  'casc-layer': CASC_LAYER,
   'casc-property': CASC_PROPERTY,
   'cascade-var': CASCADE_VAR,
   charset: CHARSET,

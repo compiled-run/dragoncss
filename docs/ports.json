@@ -188,6 +188,40 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/counter_style.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "105e462dc1e7f3cd5dec057aab9fa3cf77f4e738806bcaedc8e6a7d03d1ad3da",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "121-219", "symbol": null, "source": "cited" },
+        { "lines": "832-1012", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "COUNTER_LENGTH_LIMIT", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/counter_style.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "1da65aaa6bbbf46dc91c1c776e1fcbd33d583f78241d9494fb35f852b399db3d",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "180-180", "symbol": "CounterStyle::fallback_name_", "source": "located" },
+        { "lines": "203-210", "symbol": "CounterStyle", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "style", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/css_font_face_src_value.cc",
       "licence": "bsd-apple",
       "noticeText": "header-bsd-2",
@@ -614,6 +648,25 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/ua_counter_style_map.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "a5adf91ca159eee33f45f1f8c9011a2f070871555f6d82383caa024b58ea53c3",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "33-41", "symbol": null, "source": "cited" },
+        { "lines": "170-180", "symbol": null, "source": "cited" },
+        { "lines": "208-224", "symbol": null, "source": "cited" },
+        { "lines": "267-285", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "COUNTER_STYLES", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/dom/element.cc",
       "licence": "lgpl",
       "ruling": {
@@ -762,6 +815,29 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/match.ts", "symbol": "HTML_CASE_INSENSITIVE_ATTRIBUTES", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/html/list_item_ordinal.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "bb33cb1a15ef941da6f875eabab50f8ece5a6d3adccd7ec6e31a441693cda18b",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "21-29", "symbol": null, "source": "cited" },
+        { "lines": "70-84", "symbol": null, "source": "cited" },
+        { "lines": "92-117", "symbol": null, "source": "cited" },
+        { "lines": "122-161", "symbol": null, "source": "cited" },
+        { "lines": "181-225", "symbol": null, "source": "cited" },
+        { "lines": "311-323", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/ordinals.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/analysis/markers.ts", "symbol": "ordinalTreeOf", "use": "reference" },
+        { "file": "packages/dragon/src/faults/gen-c.ts", "symbol": "GenCFaults", "use": "reference" },
+        { "file": "packages/dragon/test/markers-text.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -2580,11 +2656,14 @@
       "fileSha256": "29b66745fcf8b1582d26ecaae84df686012a4662762c2938183d691f1bbb0113",
       "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
       "ranges": [
-        { "lines": "174-176", "symbol": "ListMarker::MarkerText", "source": "located" },
+        { "lines": "159-215", "symbol": "ListMarker::MarkerText", "source": "located" },
         { "lines": "407-409", "symbol": "ListMarker::InlineMarginsForOutside", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "listMarkerOf", "use": "reference" }
+        { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "listMarkerOf", "use": "reference" },
+        { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "COUNTER_STYLES", "use": "reference" },
+        { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "markerText", "use": "port" },
+        { "file": "packages/dragon/src/analysis/markers.ts", "symbol": "ListItemMarker", "use": "reference" }
       ]
     },
     {
