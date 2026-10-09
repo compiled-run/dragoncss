@@ -161,11 +161,11 @@ public func scriptData_isExtendedPictographic(_ cp: Double) throws -> Bool {
 public func scriptData_isLatinText(_ text: JsString) throws -> Bool {
   // ts: packages/layout/src/script-data.ts:552
   do {
-    let _a160 = jsCodePoints(text)
-    var _i160 = 0
-    while _i160 < _a160.items.count {
-      let ch: JsString = _a160.items[_i160]
-      _i160 += 1
+    let _a189 = jsCodePoints(text)
+    var _i189 = 0
+    while _i189 < _a189.items.count {
+      let ch: JsString = _a189.items[_i189]
+      _i189 += 1
       let s: Double = try scriptData_scriptCode(jsUnwrap(jsCodePointAt0(ch)))
       // ts: packages/layout/src/script-data.ts:554
       if (((s != scriptData_USCRIPT_LATIN) && (s != scriptData_USCRIPT_COMMON)) && (s != scriptData_USCRIPT_INHERITED)) {
