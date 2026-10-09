@@ -54,6 +54,7 @@ import { calcHasPercent, evaluateCalc, resolveCalc } from './calc.ts';
 import { zoomTrackLength } from './controls.ts';
 import type { FontLengths, TextMeasurer } from './text.ts';
 import { AHEM_FONT_DATA, ahemMeasurerWith } from './text.ts';
+import { unsupported } from './unsupported.ts';
 import {
   clampLengthFloat,
   clampNonNegativeDouble,
@@ -110,6 +111,8 @@ type Env = {
   readonly rootFontSize: number;
   readonly measurer: TextMeasurer;
   readonly faults: EngineFaults;
+  /** The node being resolved, which a refusal names. */
+  readonly node: string;
 };
 
 /** Blink's initial font size (medium), which planted fault rootFontSizeIgnored reads for rem. */
@@ -145,6 +148,7 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
     rootFontSize: faults.rootFontSizeIgnored ? INITIAL_FONT_SIZE : input.rootFontSize,
     measurer,
     faults,
+    node: input.root.id,
   };
   const viewport = z === 1 ? input.viewport : { width: zoomViewportPx(input.viewport.width, z), height: zoomViewportPx(input.viewport.height, z) };
   return { viewport, devicePixelRatio: 1, viewportUnits: input.viewportUnits, safeArea: input.safeArea, rootFontSize: input.rootFontSize, root: resolveBox(input.root, env) };
@@ -208,7 +212,8 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
   return false;
 }
 
-function resolveBox(b: LayoutBox, env: Env): LayoutBox {
+function resolveBox(b: LayoutBox, parent: Env): LayoutBox {
+  const env: Env = { ...parent, node: b.id };
   return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
 }
 
@@ -221,14 +226,16 @@ function resolveChildren(children: readonly (LayoutBox | ControlBox | ReplacedLe
 }
 
 /** A control box in zoomed px: a range's default track length is zoomed in float as Blink does (controls.ts zoomTrackLength). */
-function resolveControl(b: ControlBox, env: Env): ControlBox {
+function resolveControl(b: ControlBox, parent: Env): ControlBox {
+  const env: Env = { ...parent, node: b.id };
   const c = b.control;
   const control: ControlKind = c.kind === 'range' ? { kind: 'range', defaultInlineSize: zoomTrackLength(c.defaultInlineSize, env.zoom) } : c;
   return { kind: 'control', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), control, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
 }
 
-function resolveInline(c: InlineChild, env: Env): InlineChild {
-  if (c.kind === 'text') return resolveText(c, env);
+function resolveInline(c: InlineChild, parent: Env): InlineChild {
+  if (c.kind === 'text') return resolveText(c, parent);
+  const env: Env = { ...parent, node: c.id };
   const size = computedSize(c.font, env);
   const font: FontSpec = { family: c.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true };
   const lineHeight = resolveLineHeightValue(c.lineHeight, size, env);
@@ -243,7 +250,8 @@ function resolveStrut(s: LineStrut, env: Env): LineStrut {
 }
 
 /** A replaced leaf in zoomed px: its style, natural size, default object size (Blink ComputeDefaultNaturalSize scales it by the zoom) and px object-position. */
-function resolveReplaced(r: ReplacedLeaf, env: Env): ReplacedLeaf {
+function resolveReplaced(r: ReplacedLeaf, parent: Env): ReplacedLeaf {
+  const env: Env = { ...parent, node: r.id };
   const z = env.zoom;
   const natural: ReplacedLeaf['natural'] = r.natural.kind === 'image' ? { kind: 'image', width: zoomCssPx(r.natural.width, z), height: zoomCssPx(r.natural.height, z) } : { kind: 'none' };
   const position = (v: ReplacedLeaf['objectPositionX']): ReplacedLeaf['objectPositionX'] => (v.kind === 'px' ? lengthPx(v, z) : v);
@@ -264,7 +272,8 @@ function resolveReplaced(r: ReplacedLeaf, env: Env): ReplacedLeaf {
  * A text run at its computed font size, which the pass writes back as an absolute px size so a resolved input resolves to itself,
  * with a percentage or calculated line height as px at the zoom (Blink ConvertLineHeight).
  */
-function resolveText(t: TextLeaf, env: Env): TextLeaf {
+function resolveText(t: TextLeaf, parent: Env): TextLeaf {
+  const env: Env = { ...parent, node: t.id };
   const size = computedSize(t.font, env);
   const font: FontSpec = { family: t.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true };
   return { kind: 'text', id: t.id, text: t.text, font, lineHeight: resolveLineHeightValue(t.lineHeight, size, env), whiteSpaceCollapse: t.whiteSpaceCollapse, textWrapMode: t.textWrapMode };
@@ -429,7 +438,13 @@ function computedSize(font: FontSpec, env: Env): number {
 function fontLengths(font: FontSpec, env: Env): FontLengths {
   const size = computedSize(font, env);
   const m = env.faults.exUntruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: env.faults.metricHalfUp, untruncatedFontSize: true }) : env.measurer;
+  refuseUnknownFace(m, font, env);
   return m.lengths({ family: font.family, size });
+}
+
+/** A face the measurer does not hold is refused with text-glyph, at the node whose font or length names it. */
+function refuseUnknownFace(m: TextMeasurer, font: FontSpec, env: Env): void {
+  if (!m.hasFace(font.family)) unsupported('text-glyph', env.node, 'css-fonts-4 §5', `${env.node} names the face ${font.family}, which the measurer does not hold`);
 }
 
 /** ex, ch or cap in zoomed px at the conversion zoom (CSSToLengthConversionData::FontSizes); no x-height is em / 2, unzoomed. */
@@ -454,6 +469,7 @@ function computedLineHeightPx(lh: LineHeightValue, font: FontSpec, env: Env): nu
         const d = AHEM_FONT_DATA;
         return floatAdd(floatAdd(fontMetricPx(i, d.unitsPerEm, d.ascent), fontMetricPx(i, d.unitsPerEm, d.descent)), fontMetricPx(i, d.unitsPerEm, d.lineGap));
       }
+      refuseUnknownFace(env.measurer, font, env);
       const m = env.measurer.metrics({ family: font.family, size });
       return toPx(add(add(m.ascent, m.descent), m.lineGap));
     }
