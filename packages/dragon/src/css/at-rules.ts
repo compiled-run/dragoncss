@@ -1,6 +1,7 @@
-// The at-rule handler registry. @font-face is accepted (fonts/wire.ts), @media is conditional (MQ-a) and @supports is decided at
-// build time (CASC); every other at-rule is refused: each registered name, and any name not registered, gets the same
-// DRAGON_UNSUPPORTED_AT_RULE diagnostic, and the parse driver (stylesheet.ts) then analyses the rules inside the at-rule's block for diagnostics only (T005 rec 3).
+// The at-rule handler registry. @font-face is accepted (fonts/wire.ts), @media is conditional (MQ-a), @supports is decided at
+// build time (CASC), and @keyframes, @property and @layer have handlers in at-rules/ (ANIM-b1, CASC 2, CASC 3); every other
+// at-rule is refused: each registered name, and any name not registered, gets the same DRAGON_UNSUPPORTED_AT_RULE diagnostic, and
+// the parse driver (stylesheet.ts) then analyses the rules inside the at-rule's block for diagnostics only (T005 rec 3).
 import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
@@ -10,6 +11,7 @@ import type { Diagnostic, Span } from '../types.ts';
 import { asciiLower } from './escapes.ts';
 import { charsetAtRule } from './at-rules/charset.ts';
 import { keyframesAtRule } from './at-rules/keyframes.ts';
+import { layerAtRule } from './at-rules/layer.ts';
 import { propertyAtRule } from './at-rules/property.ts';
 import { supportsAtRule } from './at-rules/supports.ts';
 
@@ -43,6 +45,8 @@ export type AtRuleOutcome =
   | { readonly kind: 'keyframes'; readonly context: AtRuleContext }
   /** @property at the top level: collected for css/at-rules/property.ts parsePropertyRules (CASC 2). */
   | { readonly kind: 'property'; readonly context: AtRuleContext }
+  /** @layer (CASC 3): the names a statement declares, or a block's one name (none: anonymous); the driver places them. */
+  | { readonly kind: 'layer'; readonly names: readonly (readonly string[])[]; readonly block: boolean }
   | { readonly kind: 'conditional'; readonly condition: RuleCondition }
   /** @supports, decided at build time (at-rules/supports.ts): holds true keeps the block's rules as plain rules, false drops them. */
   | { readonly kind: 'supports'; readonly holds: boolean; readonly text: string }
@@ -115,7 +119,7 @@ export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
   'font-palette-values': refuseAtRule,
   import: refuseAtRule,
   keyframes: keyframesAtRule,
-  layer: refuseAtRule,
+  layer: layerAtRule,
   media: mediaAtRule,
   namespace: refuseAtRule,
   page: refuseAtRule,
