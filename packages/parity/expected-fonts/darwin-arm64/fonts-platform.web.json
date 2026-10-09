@@ -98,6 +98,10 @@
         "transform": "none",
         "transform-origin": "200px 17px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px"
@@ -191,6 +195,10 @@
         "transform": "none",
         "transform-origin": "192px 9px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px"
@@ -284,6 +292,10 @@
         "transform": "none",
         "transform-origin": "192px 9px",
         "will-change": "auto",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none",
         "fill": "rgb(0, 0, 0)",
         "stroke": "none",
         "stroke-width": "1px"
