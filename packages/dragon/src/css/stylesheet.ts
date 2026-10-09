@@ -34,6 +34,7 @@ import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
 import type { AnimationDeclValue } from './properties/animation.ts';
 import type { KeyframesSource } from './at-rules/keyframes.ts';
+import type { PropertySource } from './at-rules/property.ts';
 import type { CascFaults } from '../faults/casc.ts';
 import { CASC_FAULTS } from '../faults/casc.ts';
 import { isAnimationProperty, parseAnimationDeclaration } from './properties/animation.ts';
@@ -90,7 +91,7 @@ export type SheetUse = { readonly id: string; readonly owner: string; readonly s
  */
 export type EnclosedRules = { readonly atRule: Diagnostic; readonly span: Span; readonly rules: readonly Rule[]; readonly diagnostics: readonly Diagnostic[] };
 
-type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[]; readonly faults: CascFaults };
+type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[]; readonly properties: PropertySource[]; readonly faults: CascFaults };
 
 /**
  * Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block.
@@ -99,8 +100,8 @@ type ParseState = { order: number; readonly base: Span; readonly text: string; r
 type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top'; readonly conditions: readonly RuleCondition[] };
 
 /** fontFaces: collects the accepted @font-face rules, in document order, for the fonts module; keyframes the @keyframes (T065). */
-/** faults: CASC's planted parse faults (faults/casc.ts). */
-export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = [], keyframes: KeyframesSource[] = [], faults: CascFaults = CASC_FAULTS): Rule[] {
+/** properties: the accepted top-level @property rules (CASC 2); faults: CASC's planted parse faults (faults/casc.ts). */
+export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = [], keyframes: KeyframesSource[] = [], properties: PropertySource[] = [], faults: CascFaults = CASC_FAULTS): Rule[] {
   const text = preprocessInput(authoredText);
   // Chrome 145 reads a literal U+0000 as U+FFFD inside a name but not where it would start a hash or follow a leading "-" (probed),
   // so Dragon reports it rather than guess which reading applies.
@@ -130,7 +131,7 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
   }
   const rules: Rule[] = [];
-  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes, faults };
+  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes, properties, faults };
   parseTopLevel(list(ast, 'children'), st, { label: 'the stylesheet', selectors: 'top', conditions: [] }, diagnostics, enclosed, rules);
   return rules;
 }
@@ -197,6 +198,10 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
     }
     if (outcome.kind === 'keyframes') {
       st.keyframes.push({ context: outcome.context, base: st.base, text: st.text, use: st.use });
+      return;
+    }
+    if (outcome.kind === 'property') {
+      st.properties.push({ context: outcome.context, base: st.base, text: st.text });
       return;
     }
     const block = node['block'] as CssNode | null | undefined;
