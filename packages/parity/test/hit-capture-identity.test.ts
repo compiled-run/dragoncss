@@ -96,6 +96,22 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(() => withoutPointerEvents('a.png', '')).toThrow(/only .json captures and .css outputs/);
   });
 
+  it("removes GEN-b's four longhands, added after the base, only at their neutral values (decimal only in block-elements-defaults)", () => {
+    const json = (type: string, image = 'none'): string => `{\n  "will-change": "auto",\n  "content": "normal",\n  "list-style-type": "${type}",\n  "list-style-position": "outside",\n  "list-style-image": "${image}"\n}`;
+    const base = '{\n  "will-change": "auto"\n}';
+    expect(withoutPointerEvents('x/a.web.json', json('disc'))).toBe(base);
+    expect(withoutPointerEvents('x/block-elements-defaults-rtl.web.json', json('decimal'))).toBe(base);
+    expect(withoutPointerEvents('x/a.web.json', json('decimal'))).not.toBe(base);
+    expect(withoutPointerEvents('x/a.web.json', json('square'))).not.toBe(base);
+    expect(withoutPointerEvents('x/a.web.json', json('disc', 'url("a.png")'))).not.toBe(base);
+    const css = (type: string, position = 'outside'): string => `.d {\n  will-change: auto;\n  content: normal;\n  list-style-type: ${type};\n  list-style-position: ${position};\n  list-style-image: none;\n}\n`;
+    const cssBase = '.d {\n  will-change: auto;\n}\n';
+    expect(withoutPointerEvents('e/a.css', css('disc'))).toBe(cssBase);
+    expect(withoutPointerEvents('e/block-elements-defaults.css', css('decimal'))).toBe(cssBase);
+    expect(withoutPointerEvents('e/a.css', css('decimal'))).not.toBe(cssBase);
+    expect(withoutPointerEvents('e/a.css', css('disc', 'inside'))).not.toBe(cssBase);
+  });
+
   it('removes the PNT1 corner radii added since the base, and nothing else', () => {
     const json = '{\n  "x": "1",\n  "border-top-left-radius": "10px 20px",\n  "border-bottom-left-radius": "50%",\n  "pointer-events": "auto"\n}';
     expect(withoutPointerEvents('a.json', json)).toBe('{\n  "x": "1"\n}');

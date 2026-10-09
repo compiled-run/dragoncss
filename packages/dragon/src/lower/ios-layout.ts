@@ -205,6 +205,13 @@ export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDa
 
 const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
 
+// css-lists-3 §3: a list item without a marker is a block (Blink LayoutListItem is a LayoutBlockFlow); computed-checks.ts refuses the rest.
+function displayOfStyle(id: string, get: Get): Display {
+  const v = get('display');
+  if (v.kind === 'keyword' && v.value === 'list-item') return 'block';
+  return keyword<Display>(id, get, 'display', ['block', 'flex', 'grid', 'inline']);
+}
+
 /**
  * css-overflow-3 §3.3 viewport propagation, resolved by the compiler so the engine never sees tags. source is the address of the
  * element whose overflow the viewport takes: html when either axis is not visible, otherwise html's first body child when either
@@ -246,7 +253,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
-    display: keyword<Display>(id, get, 'display', ['block', 'flex', 'grid', 'inline']),
+    display: displayOfStyle(id, get),
     position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute']),
     top: inset(id, get, 'top', l),
     right: inset(id, get, 'right', l),
