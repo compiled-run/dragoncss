@@ -75,13 +75,9 @@ export function containedNeedles(text: string, needles: Iterable<string>): Set<s
   return found;
 }
 
-/**
- * Every maximal run of [\w-] that follows a '.' which is a selector token, not prose: one not after a word character or a '.' ("e.g."
- * in a text literal is not the class .g, TXT1a-2 text-latin-punct). So new RegExp(`(?<![\\w.])\\.${name}(?![\\w-])`).test(text) is
- * dotNames(text).has(name).
- */
+/** Every maximal run of [\w-] that follows a '.', so new RegExp(`\\.${name}(?![\\w-])`).test(text) is dotNames(text).has(name). */
 export function dotNames(text: string): Set<string> {
   const names = new Set<string>();
-  for (const m of text.matchAll(/(?<![\w.])\.([\w-]*)/g)) names.add(m[1] as string);
+  for (const m of text.matchAll(/\.([\w-]*)/g)) names.add(m[1] as string);
   return names;
 }

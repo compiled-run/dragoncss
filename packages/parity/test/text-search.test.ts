@@ -48,7 +48,7 @@ describe('containedNeedles', () => {
 });
 
 describe('dotNames', () => {
-  it('holds name exactly when /(?<![\\w.])\\.name(?![\\w-])/ matches, over 3000 random texts', () => {
+  it('holds name exactly when /\\.name(?![\\w-])/ matches, over 3000 random texts', () => {
     const r = random(2);
     let hits = 0;
     for (let k = 0; k < 3000; k++) {
@@ -56,14 +56,14 @@ describe('dotNames', () => {
       const names = dotNames(text);
       for (let j = 0; j < 8; j++) {
         const name = ['a', 'b', '_'][Math.floor(r() * 3)] + draw(random(k * 8 + j), 3).replace(/[^\w-]/g, '');
-        const want = new RegExp(`(?<![\\w.])\\.${name}(?![\\w-])`).test(text);
+        const want = new RegExp(`\\.${name}(?![\\w-])`).test(text);
         expect(names.has(name), JSON.stringify({ text, name })).toBe(want);
         if (want) hits++;
       }
     }
     expect(hits).toBeGreaterThan(200);
   });
-  it('skips a dot after a word character or a dot: prose, not a selector', () => {
-    expect([...dotNames('e.g. .a x..b -.c')].sort()).toEqual(['a', 'c']);
+  it('names the class of a compound selector, after a word character or a dot too', () => {
+    expect([...dotNames('div.box li.item .a.b')].sort()).toEqual(['a', 'b', 'box', 'item']);
   });
 });

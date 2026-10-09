@@ -1279,8 +1279,11 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const lowerings = (bandCases[k] as { cases: CaseResult[] }).cases.flatMap((c) => (c.resolved === null ? [] : [{ key: c.key, resolved: c.resolved }, ...c.interaction.map((i) => ({ key: interactionKey(c.key, i.value), resolved: i.resolved }))]));
       for (const c of lowerings) {
         try {
-          const real = realFacesOf(c.resolved, fonts, options.ua);
-          lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} resolves to no real bundled face` } }));
+          // Off by default (InternalOptions.nativeRealFaces): every non-Ahem face is refused natively until phase R, since the device
+          // runtime measures only Ahem; an element's own font (its strut) counts, not only its text.
+          const real = options.nativeRealFaces ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
+          const refused = options.nativeRealFaces ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until TXT1a-2 phase R';
+          lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } }));
         } catch (e) {
           if (!(e instanceof LoweringError)) throw e;
           const id = `${e.nodeId}|${e.property}|${e.message}`;
