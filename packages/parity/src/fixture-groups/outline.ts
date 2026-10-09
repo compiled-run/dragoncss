@@ -1,6 +1,6 @@
 // Fixture group outline (PNT1, css-ui-4 §3): the outline shorthand and longhands in every style, px, em, keyword and zero widths,
 // positive and negative offsets, colours (currentcolor, hex, rgba, transparent), inherit and var() (outline-values, painting nothing);
-// solid outlines (offsets, a thin and a negative one, one over a later flow sibling, one over its parent's outline), double ones
+// solid outlines (offsets, a thin and a negative one, one over a later flow sibling, a parent's over its child's), double ones
 // (the thirds, the width-2 solid fallback) and outlines that follow the border radius (rounded, round, elliptical, one-corner and
 // bordered boxes, positive and negative offsets), in both environment directions. A system colour and a viewport unit are refused.
 // The native-only refusals (other styles, inline boxes, an outline under an overflow clip or in a case with a positioned or

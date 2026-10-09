@@ -65,8 +65,8 @@ const clips = (el: ResolvedElement): boolean => CLIPPING.includes(keywordOf(el, 
 
 /**
  * Where the native outline paints. Without stacking order (lower/paint/stacking.ts is still a seam), Dragon draws every solid or
- * double outline in the root view after all the case's content, in tree order: Chrome's order for the root stacking context's
- * outline phase (Blink PaintLayerPainter paints a layer's outlines after its foreground). Two cases would differ, so the native
+ * double outline in the root view after all the case's content, each box's descendants' outlines before its own: Chrome's order for
+ * the root stacking context's outline phase (Blink PaintLayerPainter paints a layer's outlines after its foreground). Two cases would differ, so the native
  * targets refuse them at the outline: an outline under an overflow clip or scroller (the root view is outside it, so the clip
  * would not apply), and an outline in a case with a positioned or transformed box (Chrome paints those boxes above every outline
  * of their stacking context; native views paint in tree order). propagated is the element whose overflow the viewport takes

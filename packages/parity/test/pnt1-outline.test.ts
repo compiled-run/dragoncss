@@ -1,16 +1,18 @@
 // PNT1 outline on the host (T046 §2): the outline fixtures' points against the committed Chrome PNGs at every device DPR. The paint
 // model of pnt1-radius (boxes in tree order, rounded borders and clips, Skia's 8-bit source-over) paints every solid or double
-// outline last, in tree order, as the rings of the TS paint-radius.ts outlineRings: what the device draws in the root view. Every
+// outline last, each box's descendants' outlines before its own (Blink's BoxFragmentPainter paints kDescendantOutlinesOnly, then
+// kSelfOutlineOnly), as the rings of the TS paint-radius.ts outlineRings: what the device draws in the root view. Every
 // outline, kept base and radius colour point must equal Chrome exactly. This proves the ring geometry (Blink's snapped width and
 // truncated offset, the half-size clamp of a negative offset, the outset radii, double bands of round(width / 3)) and the paint
-// order (an outline over a later flow sibling, an outline over its parent's) before any device runs; outline-rounded must have points
-// on rounded rings. A model with the rings one
-// device px to the right (the outline-offset-1 raster plant) must fail.
+// order (an outline over a later flow sibling, a parent's outline over its child's) before any device runs; every fixture but
+// outline-values must have outline points. In the plant's cases (device-run.ts PLANT_CASES), a model with the rings one device px to
+// the right (the outline-offset-1 raster plant) must fail.
 import { describe, expect, it } from 'vitest';
 import { outlineOffsetPx, outlineRings, outlineWidthPx } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { nativePrograms } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
+import { PLANT_CASES } from '../src/device-run.ts';
 import { DPRS } from '../src/dpr.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { nativeCompile } from '../src/native-host.ts';
@@ -24,10 +26,25 @@ const OUTLINE_FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtur
 
 type Rings = { readonly box: Box; readonly rings: readonly number[]; readonly color: Rgba };
 
-/** Every outline of a program at a DPR in tree order (the order the case builds them), its rings shifted right by shift device px. */
+/** The boxes in Blink's outline-phase order: each box after its descendants, siblings in tree order. */
+function outlineOrder(list: readonly Box[]): Box[] {
+  const ids = new Set(list.map((b) => b.node.id));
+  const children = new Map<string, Box[]>();
+  for (const b of list) if (b.node.parent !== null && ids.has(b.node.parent)) children.set(b.node.parent, [...(children.get(b.node.parent) ?? []), b]);
+  const out: Box[] = [];
+  const visit = (b: Box): void => {
+    for (const c of children.get(b.node.id) ?? []) visit(c);
+    out.push(b);
+  };
+  for (const b of list) if (b.node.parent === null || !ids.has(b.node.parent)) visit(b);
+  if (out.length !== list.length) throw new Error(`outline order holds ${out.length} of ${list.length} boxes`);
+  return out;
+}
+
+/** Every outline of a program at a DPR in outline-phase order, its rings shifted right by shift device px. */
 function outlines(p: NativeProgram, list: readonly Box[], dpr: number, shift: number): Rings[] {
   const out: Rings[] = [];
-  for (const b of list) {
+  for (const b of outlineOrder(list)) {
     const w = outlineWrite({ program: p } as never, b.node.id);
     if (w === null) continue;
     const full = b.node.writes.find((x) => x.kind === 'outline');
@@ -39,7 +56,7 @@ function outlines(p: NativeProgram, list: readonly Box[], dpr: number, shift: nu
   return out;
 }
 
-/** The model's colour at pixel (x, y): the boxes (modelAt), then every outline ring holding the pixel centre, in tree order. */
+/** The model's colour at pixel (x, y): the boxes (modelAt), then every outline ring holding the pixel centre, in outline-phase order. */
 function outlineModelAt(list: readonly Box[], rings: readonly Rings[], x: number, y: number): Rgba {
   let colour = modelAt(list, x, y);
   const cx = x + 0.5;
@@ -57,6 +74,11 @@ function outlineModelAt(list: readonly Box[], rings: readonly Rings[], x: number
 describe('PNT1 outline: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the four outline fixtures in both directions', () => {
     expect(OUTLINE_FIXTURES.map((f) => f.id)).toEqual(['outline-values', 'outline-solid', 'outline-double', 'outline-rounded']);
+    expect(PLANT_CASES['outline-offset-1']).toEqual(['outline-solid']);
+  });
+  it('orders a parent outline after its descendants, and siblings in tree order', () => {
+    const box = (id: string, parent: string | null): Box => ({ node: { id, parent } as Box['node'], l: 0, t: 0, r: 0, b: 0, border: [], radii: null });
+    expect(outlineOrder([box('a', null), box('b', 'a'), box('c', 'b'), box('d', 'a'), box('e', null)]).map((b) => b.node.id)).toEqual(['c', 'b', 'd', 'a', 'e']);
   });
   for (const spec of OUTLINE_FIXTURES) {
     for (const c of casesOf(spec, fixtureInput(spec))) {
@@ -93,7 +115,8 @@ describe('PNT1 outline: the paint model at every sample point equals the committ
           expect(outlinePoints).toBe(0);
         } else {
           expect(outlinePoints, 'outline points').toBeGreaterThan(0);
-          expect(caught, 'the outline-offset-1 model fault').toBeGreaterThan(0);
+          // The plant runs on its cases only; elsewhere a mid-ring sample point need not move under a 1 device px shift.
+          if (PLANT_CASES['outline-offset-1'].includes(spec.id)) expect(caught, 'the outline-offset-1 model fault').toBeGreaterThan(0);
         }
       });
     }

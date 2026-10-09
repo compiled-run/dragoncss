@@ -1,6 +1,7 @@
 // Outlines (css-ui-4 §3): Dragon drawing (T046 §1). A solid or double outline is one write with the computed width and offset (css
 // px at zoom 1), its colour and the box's radius lengths (the outline follows the border radius). The device paints it in a view of
-// its own in the root view, after all the case's content and in tree order: Chrome's outline phase of the root stacking context.
+// its own in the root view, after all the case's content, each box's descendants' outlines before its own: Chrome's outline phase of
+// the root stacking context.
 // analysis/paint-values/outline.ts refuses what that order cannot match without stacking (an overflow clip around the outline, a
 // positioned or transformed box in the case), and every other style. The device resolves the rings with the translated
 // paint-radius.ts outlineRings at its scale. An outline that paints nothing (style none, a zero width, a transparent colour) has no
@@ -27,7 +28,7 @@ export type OutlineWrite = {
   readonly radii: readonly RadiusLengthValue[] | null;
 };
 
-const OUTLINE_PAINT = "Dragon draws a solid or double outline in a view of its own in the root view, after the case's content and in tree order (the root stacking context's outline phase); its rings come from the translated paint-radius.ts outlineRings: Blink 145's snapped width and truncated offset, the radii outset, double bands of round(width / 3)";
+const OUTLINE_PAINT = "Dragon draws a solid or double outline in a view of its own in the root view, after the case's content, a box's descendants' outlines before its own (the root stacking context's outline phase); its rings come from the translated paint-radius.ts outlineRings: Blink 145's snapped width and truncated offset, the radii outset, double bands of round(width / 3)";
 
 const px = (v: ResolvedValue | undefined, what: string, address: string): number => {
   if (v === undefined || v.value.kind !== 'length' || v.value.unit !== 'px' || !Number.isFinite(v.value.value)) throw new ProgramError(`${address}: ${what} did not compute to px`);

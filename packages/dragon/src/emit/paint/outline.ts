@@ -1,8 +1,8 @@
 // Outlines on the native tree (T046 §1, lower/paint/outline.ts): the case code writes a box's solid or double outline through
 // dragonSetOutline, which puts a DragonOutlineView in the tree's root view. After every layout the translated paint-radius.ts
 // outlineRings gives the rings at the device scale (Blink's snapped width and truncated offset, the radii outset), and the view draws
-// them with an even-odd fill. The root view's outline views stay after its content, in the order the case built them (tree order),
-// so they paint as Chrome's root stacking context paints its outline phase. The readback is every ring's outer and inner rect in
+// them with an even-odd fill. The root view's outline views stay after its content in Blink's outline-phase order (each box's
+// descendants' outlines, then its own; boxes in tree order), so they paint as Chrome's root stacking context paints its outline phase. The readback is every ring's outer and inner rect in
 // device px from the root, from the view's live frame, or null when the view is not after the root's content.
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT, rgbaLit } from './types.ts';
@@ -58,9 +58,14 @@ public final class DragonOutlineView: UIView {
   }
 }
 
-/// Moves every outline view of the root after the root's other views, keeping their order (the order the case built them).
+/// Moves every outline view of the root after the root's other views, in Blink's outline-phase order: a box paints its
+/// descendants' outlines before its own (BoxFragmentPainter, kDescendantOutlinesOnly then kSelfOutlineOnly), boxes in tree order.
 public func dragonRaiseOutlines(_ root: UIView) {
-  for case let o as DragonOutlineView in root.subviews { root.bringSubviewToFront(o) }
+  func visit(_ view: UIView) {
+    for child in view.subviews where !(child is DragonOutlineView) { visit(child) }
+    if let b = view as? DragonBoxView, let o = b.dragonOutlineView, o.superview === root { root.bringSubviewToFront(o) }
+  }
+  visit(root)
 }
 
 /// The outline write of a box (runtime writer): its style, width and offset in css px and colour. The first write puts the view
@@ -144,6 +149,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.view.View
 import android.view.ViewGroup
 import dev.dragon.dump.DumpJson
 import dev.dragon.layout.JsArray
@@ -178,10 +184,17 @@ class DragonOutlineView(ctx: Context) : DragonGroup(ctx) {
   }
 }
 
-/** Moves every outline view of the root after the root's other views, keeping their order (the order the case built them). */
+/**
+ * Moves every outline view of the root after the root's other views, in Blink's outline-phase order: a box paints its descendants'
+ * outlines before its own (BoxFragmentPainter, kDescendantOutlinesOnly then kSelfOutlineOnly), boxes in tree order.
+ */
 fun dragonRaiseOutlines(root: ViewGroup) {
-  val outlines = (0 until root.childCount).map { root.getChildAt(it) }.filterIsInstance<DragonOutlineView>()
-  for (o in outlines) root.bringChildToFront(o)
+  fun visit(view: View) {
+    if (view is ViewGroup) for (child in (0 until view.childCount).map { view.getChildAt(it) }) if (child !is DragonOutlineView) visit(child)
+    val o = (view as? DragonBoxView)?.dragonOutlineView
+    if (o != null && o.parent === root) root.bringChildToFront(o)
+  }
+  visit(root)
 }
 
 /**
