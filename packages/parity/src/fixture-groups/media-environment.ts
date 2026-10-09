@@ -10,6 +10,7 @@ import { both } from './define.ts';
 import type { ResizeScript, ResizeStep } from './media-runtime.ts';
 
 export const MEDIA_ENVIRONMENT_FIXTURES: readonly FixtureSpec[] = [
+  both('mqr2-any-hover'),
   both('mqr2-pointer-hover'),
   both('mqr2-reduced-motion'),
   both('mqr2-resolution'),
@@ -20,6 +21,8 @@ const pointer = (value: 'touch' | 'desktop'): ResizeStep => ({ kind: 'env', read
 const motion = (value: 'reduce' | 'no-preference'): ResizeStep => ({ kind: 'env', reading: 'motion', value });
 
 export const ENV_SCRIPTS: readonly ResizeScript[] = [
+  // any-hover on its own (with mqr2-pointer-hover's atoms it would split 24 bands): touch, back, touch at a narrower root.
+  { fixture: 'mqr2-any-hover', start: { width: 400, height: 304 }, steps: [pointer('touch'), pointer('desktop'), r(352, 304), pointer('touch')] },
   // Touch and back, a resize across max-width 360 (any-pointer: fine with it), touch at the narrow size.
   { fixture: 'mqr2-pointer-hover', start: { width: 400, height: 304 }, steps: [pointer('touch'), pointer('desktop'), r(352, 304), pointer('touch'), r(400, 304)] },
   // Reduce and back, across max-width 360 in both settings.
