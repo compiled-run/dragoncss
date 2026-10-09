@@ -498,7 +498,7 @@ public func environment_fontLengths(_ font: FontSpec, _ env: Env) throws -> Font
 public func environment_refuseUnknownFace(_ m: TextMeasurer, _ font: FontSpec, _ env: Env) throws -> Void {
   // ts: packages/layout/src/environment.ts:429
   if try (!m.hasFace(font.family)) {
-    try unsupported_unsupported(S.s_text_glyph, env.node, S.s416, jsConcat(env.node, S.s47, font.family, S.s74))
+    try unsupported_unsupported(S.s_text_glyph, env.node, S.s446, jsConcat(env.node, S.s62, font.family, S.s92))
   }
 }
 
@@ -633,7 +633,7 @@ public func environment_leafPx(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_C
   case S.s_env:
     return try units_zoomCssPx(((e as! EnvLength).value * environment_safeAreaInset((e as! EnvLength).side, env)), z)
   case S.s_font_percent, S.s_font_calc:
-    throw JsError(message: jsConcat(S.s338, (e as! any U_FontCalc_FontPercent).kind, S.s48))
+    throw JsError(message: jsConcat(S.s366, (e as! any U_FontCalc_FontPercent).kind, S.s63))
   default:
     return nil
   }

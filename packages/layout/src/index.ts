@@ -44,6 +44,8 @@ export { applyEnvironment } from './environment.ts';
 export type { BoxShape } from './paint.ts';
 export type { RadiusFaults, RadiusLength } from './paint-radius.ts';
 export { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from './paint-radius.ts';
+export type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from './paint-shadow.ts';
+export { insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver } from './paint-shadow.ts';
 export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';
 export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';
 export type { EnvLength, FontCalc, FontMetricLength, FontPercent, FontSpec, LineHeightCalc, LineHeightLength, RootFontLength, SafeAreaInsets, SafeAreaSide, TextFont, ViewportSize, ViewportUnitSizes } from './input.ts';

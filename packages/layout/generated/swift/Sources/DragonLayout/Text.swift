@@ -200,27 +200,27 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
   return TextMeasurer({ (font: TextFont) throws -> FontMetrics in
     // ts: packages/layout/src/text.ts:120
     if (font.family != text_AHEM_FACE_ID) {
-      throw JsError(message: jsConcat(S.s656, font.family))
+      throw JsError(message: jsConcat(S.s714, font.family))
     }
     return try FontMetrics(round(units_fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.ascent)), round(units_fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.descent)), ((data.lineGap == 0.0) ? units_ZERO : round(units_fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.lineGap))))
 }, { (text: JsString, font: TextFont) throws -> any U_MeasureResult_okFalse_MeasureResult_okTrue in
     // ts: packages/layout/src/text.ts:129
     if (font.family != text_AHEM_FACE_ID) {
-      return MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s656, font.family))
+      return MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s714, font.family))
     }
     var glyphs: Double = 0.0
     // ts: packages/layout/src/text.ts:131
     do {
-      let _a187 = jsCodePoints(text)
-      var _i187 = 0
-      while _i187 < _a187.items.count {
-        let ch: JsString = _a187.items[_i187]
-        _i187 += 1
+      let _a218 = jsCodePoints(text)
+      var _i218 = 0
+      while _i218 < _a218.items.count {
+        let ch: JsString = _a218.items[_i218]
+        _i218 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:134
         if (advance < 0.0) {
-          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s313, jsToUpperCase(jsToStringRadix16(cp)), S.s34))
+          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s341, jsToUpperCase(jsToStringRadix16(cp)), S.s45))
         }
         glyphs += advance
       }
@@ -229,23 +229,23 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
 }, { (text: JsString, start: Double, end: Double, font: TextFont) throws -> any U_MeasureResult_okFalse_MeasureResult_okTrue in
     // ts: packages/layout/src/text.ts:141
     if (font.family != text_AHEM_FACE_ID) {
-      return MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s656, font.family))
+      return MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s714, font.family))
     }
     var k: Double = 0.0
     var before: Double = 0.0
     var through: Double = 0.0
     // ts: packages/layout/src/text.ts:145
     do {
-      let _a188 = jsCodePoints(text)
-      var _i188 = 0
-      while _i188 < _a188.items.count {
-        let ch: JsString = _a188.items[_i188]
-        _i188 += 1
+      let _a219 = jsCodePoints(text)
+      var _i219 = 0
+      while _i219 < _a219.items.count {
+        let ch: JsString = _a219.items[_i219]
+        _i219 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:148
         if (advance < 0.0) {
-          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s313, jsToUpperCase(jsToStringRadix16(cp)), S.s34))
+          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s341, jsToUpperCase(jsToStringRadix16(cp)), S.s45))
         }
         // ts: packages/layout/src/text.ts:149
         if (k < start) {
@@ -262,11 +262,11 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
 }, { (font: TextFont) throws -> FontLengths in
     // ts: packages/layout/src/text.ts:156
     if (font.family != text_AHEM_FACE_ID) {
-      throw JsError(message: jsConcat(S.s656, font.family))
+      throw JsError(message: jsConcat(S.s714, font.family))
     }
     return try text_fontMetricLengths(data, instanceSize(font.size))
 }, { (text: JsString, font: TextFont) throws -> any U_ShapedItem_okFalse_ShapedItem_okTrue in
-    return ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s655, font.family, S.s108))
+    return ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s713, font.family, S.s126))
 }, { (family: JsString) throws -> Bool in
     return (family == text_AHEM_FACE_ID)
 })

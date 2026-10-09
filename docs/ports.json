@@ -1933,10 +1933,12 @@
       "fileSha256": "d9bbdbeef344adb2570a9b4f7c5912e3206e6abda4ac82351f2f7bb7b8071875",
       "headerSha256": "0e15d36c5dc6fe5be91e97a60bc1322478c65295d11b3910862cc6d8b940c656",
       "ranges": [
+        { "lines": "172-187", "symbol": "AdjustedRadiusDimension", "source": "located" },
         { "lines": "276-334", "symbol": "IntersectsQuad", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/paint-shadow.ts", "symbol": "adjustedRadius", "use": "port" }
       ]
     },
     {
@@ -2206,6 +2208,22 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/core/SkBlitter_A8.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "4a0dd8065eaa98dd44615f82b8311630fa5b11bf36aa06503702821000f44ea4",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "116-116", "symbol": "srcover_p", "source": "located" },
+        { "lines": "126-138", "symbol": "A8_row_aa", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-aa.ts", "symbol": "blend", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/core/SkBlurMask.cpp",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",
@@ -2378,6 +2396,21 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/core/SkRegion.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "6541f4eda2866878b430aa9a0cc45c675d2d51288af16dd2e1e90e52959ab192",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "1429-1464", "symbol": "Cliperator", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-shadow.ts", "symbol": "regionPiece", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/core/SkScan_AAAPath.cpp",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",
@@ -2407,6 +2440,25 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-aa.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkScan_Antihair.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2011 The Android Open Source Project",
+      "fileSha256": "6afc8b13dc9771f7d94178b53fc4a771b83fbe4cf6c4ec48e18889c582314ab8",
+      "headerSha256": "570eb1ebbf7dc03defef1e83d2a174da79a15913801fe9905add02a604e1b0b1",
+      "ranges": [
+        { "lines": "625-629", "symbol": "SkFixedToFDot8", "source": "located" },
+        { "lines": "631-655", "symbol": "do_scanline", "source": "located" },
+        { "lines": "657-705", "symbol": "antifilldot8", "source": "located" },
+        { "lines": "784-820", "symbol": "AntiFillRect", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-shadow.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/paint-shadow.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
