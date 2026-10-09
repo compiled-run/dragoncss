@@ -163,6 +163,24 @@ describe('CASC 2: refusals', () => {
       expect(registered.size, css).toBe(0);
     }
   });
+  it('a CSS-wide initial-value is read by token, as Chrome tokenizes it: escaped, commented or cased, every keyword drops the rule', () => {
+    // Chrome 145 (CASC 2's probe): a CSS-wide keyword is never a valid initial-value, so the rule is ignored and var(--x) is
+    // invalid at computed-value time. A raw text comparison let "r\65vert-layer" and "revert-layer/**/" register.
+    const escaped = (k: string): string => `\\${k.charCodeAt(0).toString(16)} ${k.slice(1)}`;
+    for (const k of ['initial', 'inherit', 'unset', 'revert', 'revert-layer']) {
+      for (const written of [k, escaped(k), `${k}/**/`, `${k} /* c */ /**/`, k.toUpperCase(), `\\${k}`]) {
+        const css = `@property --x { syntax: "*"; inherits: false; initial-value: ${written}; }`;
+        const { diagnostics, registered } = parse(css);
+        expect(diagnostics.map((d) => `${d.code}: ${d.message}`), css).toEqual([`DRAGON_UNSUPPORTED_AT_RULE: @property --x is not supported: the initial-value ${written} is a CSS-wide keyword, which no syntax accepts, so Chrome ignores the rule`]);
+        expect(registered.size, css).toBe(0);
+      }
+    }
+    // Not a lone keyword: a longer token sequence, a string or a longer name registers as written.
+    for (const v of ['revert-layer x', '"revert"', 'unsets']) expect(parse(`@property --x { syntax: "*"; inherits: false; initial-value: ${v}; }`).registered.size, v).toBe(1);
+    // An escaped var() and a comment-only value are refused too, as their raw-text checks would miss them.
+    expect(parse('@property --x { syntax: "*"; inherits: false; initial-value: v\\61r(--y); }').diagnostics.map((d) => d.message)).toEqual(['@property --x is not supported: the initial-value holds var(), which is not computationally independent, so Chrome ignores the rule']);
+    expect(parse('@property --x { syntax: "*"; inherits: false; initial-value: /**/; }').diagnostics.map((d) => d.message)).toEqual(['@property --x is not supported: an empty initial-value is not supported (for "*" it is an empty value, not the guaranteed-invalid value)']);
+  });
   it('refuses @property outside the top level, and a typed value or transition Dragon does not compute', () => {
     expect(messages('.a { @property --x { syntax: "*"; inherits: true; } }')).toEqual(['DRAGON_UNSUPPORTED_AT_RULE: @property in a rule block is not supported; register custom properties at the top level of a stylesheet']);
     expect(messages('@property --x { syntax: "<length>"; inherits: false; initial-value: 1px; } .a { --x: 2em; } .b { --x: 3px; transition: all 1s; } .c { transition-property: --x; } .d { transition-property: width; }')).toEqual([
