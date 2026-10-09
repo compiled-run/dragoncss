@@ -1,11 +1,10 @@
-// MQ-R2 (notes/T067 R9, §4): the pointer suite's vectors, Chromium's own Java rule over every input device set (a JDK through
-// JAVA_HOME, which the heavy lease exports), run beside the band suite's vectors and before native-gen reads them.
-import { ENGINE_SOURCES, pnpm, type RegenFeature } from './step.ts';
+// MQ-R2 (notes/T067 R9, §4): the pointer suite's vectors are Chromium's own Java rule over every input device set. They need a JDK,
+// which regen-on-ci's Chrome-side round has none of, so they are a MANUAL output: written by parity:pointer-vectors and held to the
+// rule by pointer-vectors.test.ts (the port) and the translate corpus's pointer suite (Swift and Kotlin).
+import type { RegenFeature } from './step.ts';
 
 export const MQ_R2: RegenFeature = {
-  steps: [
-    { after: 'band-vectors', step: { name: 'pointer-vectors', argv: pnpm('parity:pointer-vectors'), outputs: ['packages/layout/rt-vectors/pointer/**'], reads: ['packages/parity/java/**', ...ENGINE_SOURCES] } },
-  ],
+  steps: [],
   outputs: {},
-  manual: [],
+  manual: [{ command: 'JAVA_HOME=<a JDK> pnpm run parity:pointer-vectors', outputs: ['packages/layout/rt-vectors/pointer/**'] }],
 };
