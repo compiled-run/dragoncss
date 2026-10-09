@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   commitRegen,
   archOf,
@@ -85,10 +85,15 @@ const train = (r: ReturnType<typeof scratch>) => {
 };
 
 describe('a train position on a scratch repository', () => {
-  const r = scratch();
-  afterAll(r.cleanup);
-  const t = train(r);
-  const { git } = t;
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let r: ReturnType<typeof scratch> | undefined;
+  afterAll(() => r?.cleanup());
+  let t!: ReturnType<typeof train>;
+  const git: Git = (args, input) => t.git(args, input);
+  beforeAll(() => {
+    r = scratch();
+    t = train(r);
+  });
 
   it('(a) merge plus regen-only commit has the clean head patch id over reviewed paths, and the skip is vouched', () => {
     const plan = planPositions(git, [t.A, t.B], [t.p1, t.p2]);
@@ -197,12 +202,19 @@ describe('a train position on a scratch repository', () => {
 });
 
 describe('treeMatches', () => {
-  const r = scratch();
-  afterAll(r.cleanup);
-  r.git(['init', '-q', '-b', 'master']);
-  const x = r.commit({ 'src/a.ts': 'a\n', 'docs/goals/board.md': 'b\n', 'docs/other.md': 'o\n' }, 'x');
-  const board = r.commit({ 'docs/goals/board.md': 'b2\n', 'docs/goals/notes/n.md': 'n\n' }, 'board only');
-  const code = r.commit({ 'src/a.ts': 'a2\n' }, 'code');
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let r!: ReturnType<typeof scratch>;
+  afterAll(() => r?.cleanup());
+  let x = '';
+  let board = '';
+  let code = '';
+  beforeAll(() => {
+    r = scratch();
+    r.git(['init', '-q', '-b', 'master']);
+    x = r.commit({ 'src/a.ts': 'a\n', 'docs/goals/board.md': 'b\n', 'docs/other.md': 'o\n' }, 'x');
+    board = r.commit({ 'docs/goals/board.md': 'b2\n', 'docs/goals/notes/n.md': 'n\n' }, 'board only');
+    code = r.commit({ 'src/a.ts': 'a2\n' }, 'code');
+  });
 
   it('(e) passes on a docs/goals-only difference and fails on any other', () => {
     expect(treeMatches(r.git, x, board)).toEqual({ ok: true });
@@ -294,12 +306,18 @@ describe('merge-train input checks', () => {
 // Train 1 (2026-10-02): #59's PR head was position 1 of a build whose land stopped; master then moved, so the next build must
 // merge that head, keep the patch id of the clean head, and push a fast-forward of it.
 describe('a member whose PR head is a position from an earlier build', () => {
-  const r = scratch();
-  afterAll(r.cleanup);
-  const t = train(r);
-  const { git } = t;
-  git(['checkout', '-q', 'master']);
-  const moved = t.commit({ 'scripts/tool.ts': 'export const fixed = true;\n' }, 'tooling lands on master');
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let r: ReturnType<typeof scratch> | undefined;
+  afterAll(() => r?.cleanup());
+  let t!: ReturnType<typeof train>;
+  const git: Git = (args, input) => t.git(args, input);
+  let moved = '';
+  beforeAll(() => {
+    r = scratch();
+    t = train(r);
+    git(['checkout', '-q', 'master']);
+    moved = t.commit({ 'scripts/tool.ts': 'export const fixed = true;\n' }, 'tooling lands on master');
+  });
 
   it('builds the new position on the old one, which it fast-forwards, with the clean head\'s patch id', () => {
     expect(memberTip(git, t.A, t.p1)).toBe(t.p1);
