@@ -158,7 +158,7 @@ export function substituteDeclaration(d: Declaration, customs: CustomProperties)
   const pending = d.pending as NonNullable<Declaration['pending']>;
   const text = substitute(pending.parts, customs);
   const make = (longhands: readonly LonghandValue[], refusal: string | null, isInvalid = false): SubstitutedDeclaration => ({
-    declaration: { property: d.property, text: d.text, span: d.span, valueSpan: d.valueSpan, longhands, order: d.order, ...(d.important === true ? { important: true as const } : {}) },
+    declaration: { property: d.property, text: d.text, span: d.span, valueSpan: d.valueSpan, longhands, order: d.order, ...(d.important === true ? { important: true as const } : {}), ...(d.layer === undefined ? {} : { layer: d.layer }) },
     substitution: { source: d, text, invalid: isInvalid, refusal },
   });
   const invalid = pending.longhands.map(unset);
