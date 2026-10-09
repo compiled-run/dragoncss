@@ -1234,6 +1234,7 @@
         { "lines": "839-898", "symbol": "DrawSolidBoxSide", "source": "cited" },
         { "lines": "900-956", "symbol": "DrawLineForBoxSide", "source": "cited" },
         { "lines": "1145-1215", "symbol": "ComplexBorderInfo", "source": "cited" },
+        { "lines": "1359-1393", "symbol": null, "source": "cited" },
         { "lines": "1523-1567", "symbol": "PaintOpacityGroup", "source": "cited" },
         { "lines": "1569-1649", "symbol": "PaintSide", "source": "cited" },
         { "lines": "1651-1680", "symbol": "ComputeMiter", "source": "cited" },
@@ -1244,6 +1245,7 @@
       "dragon": [
         { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": "checkRoundedElement", "use": "reference" },
         { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-radius.ts", "symbol": "outlineRings", "use": "port" },
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
       ]
     },
@@ -1319,6 +1321,23 @@
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/paint-radius.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/outline_painter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "3ef5c7b2d13123569f364470eaa17510fc6654dac1d98a8c7f2d21dab70f67b8",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "74-80", "symbol": "AdjustedOutlineOffset", "source": "cited" },
+        { "lines": "448-449", "symbol": null, "source": "cited" },
+        { "lines": "518-536", "symbol": "PaintDoubleOutline", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-radius.ts", "symbol": "outlineRings", "use": "port" }
       ]
     },
     {
@@ -1854,9 +1873,11 @@
       "fileSha256": "d9bbdbeef344adb2570a9b4f7c5912e3206e6abda4ac82351f2f7bb7b8071875",
       "headerSha256": "0e15d36c5dc6fe5be91e97a60bc1322478c65295d11b3910862cc6d8b940c656",
       "ranges": [
+        { "lines": "115-132", "symbol": "FloatRoundedRect::Radii::Outset", "source": "cited" },
         { "lines": "276-334", "symbol": "IntersectsQuad", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/paint-radius.ts", "symbol": "outsetRadii", "use": "port" },
         { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" }
       ]
     },

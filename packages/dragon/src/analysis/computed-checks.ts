@@ -20,6 +20,7 @@ import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts'
 import { PAINT_VALUES } from './paint-values/index.ts';
 import { environmentOf, valueToString } from './resolve.ts';
 import { usedColors } from '../lower/paint/colors.ts';
+import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts } from './paint-values/transform.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
@@ -490,5 +491,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
+  // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
+  checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
 }
 

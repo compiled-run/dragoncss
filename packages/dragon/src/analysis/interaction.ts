@@ -445,6 +445,7 @@ export function interactionCapRefusal(caseLabel: string, over: NonNullable<Inter
 }
 
 const all = (): boolean => true;
+const zeroLength = (v: CssValue): boolean => v.kind === 'length' && v.value === 0;
 // OVFL: rt-hit clips hidden, auto, scroll and clip at the padding box. That is the hit at scroll offset 0, and native views do not
 // scroll until OVFL Phase B, which adds the offsets to the hit test.
 const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip', 'auto', 'scroll']);
@@ -470,6 +471,11 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['overflow-x', overflowAtRest],
   ['overflow-y', overflowAtRest],
   ['transform-origin', all],
+  // PNT1: the outline longhands at their computed initial values (the webref initial auto and medium compute to currentcolor and 0px).
+  ['outline-color', (v) => v.kind === 'keyword' && v.value === 'currentcolor'],
+  ['outline-style', (v) => v.kind === 'keyword' && v.value === 'none'],
+  ['outline-width', zeroLength],
+  ['outline-offset', zeroLength],
 ]);
 
 /** R13: the first paint fact of a resolved tree the hit test does not model and that compiles, in preorder and longhand order, or null. */

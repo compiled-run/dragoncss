@@ -123,7 +123,7 @@ import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientIma
 import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
-import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
+import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
 export class HarnessError extends Error {
@@ -1206,6 +1206,9 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
   if (name === 'paint:radius:radiiRenderable') return `["ok",${radiiRenderable(argList(a, 1, 8), arg(a, 9), arg(a, 10)) ? 'true' : 'false'}]`;
   if (name === 'paint:radius:innerCornerRadii') return numList(innerCornerRadii(argList(a, 1, 8), argList(a, 9, 4), arg(a, 13), arg(a, 14), radiusFaults(a, 15)));
   if (name === 'paint:radius:roundedShape') return numList(roundedShape(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), argList(a, 7, 4), radiusLengths(a, 11), arg(a, 27), radiusFaults(a, 28)));
+  if (name === 'paint:radius:outlineWidthPx') return `["ok",${h(outlineWidthPx(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:radius:outlineOffsetPx') return `["ok",${h(outlineOffsetPx(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:radius:outlineRings') return numList(outlineRings(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13), arg(a, 14), arg(a, 15) !== 0));
   if (name === 'paint:radius:hasRoundedCorner') return `["ok",${hasRoundedCorner(argList(a, 1, 8)) ? 'true' : 'false'}]`;
   const gradient = gradientResult(name, a);
   if (gradient !== null) return gradient;

@@ -43,7 +43,7 @@ export type { CalcClamp, CalcExpr, CalcInvert, CalcMax, CalcMin, CalcProduct, Ca
 export { applyEnvironment } from './environment.ts';
 export type { BoxShape } from './paint.ts';
 export type { RadiusFaults, RadiusLength } from './paint-radius.ts';
-export { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from './paint-radius.ts';
+export { hasRoundedCorner, NO_RADIUS_FAULTS, outlineOffsetPx, outlineRings, outlineWidthPx, roundedShape } from './paint-radius.ts';
 export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';
 export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';
 export type { EnvLength, FontCalc, FontMetricLength, FontPercent, FontSpec, LineHeightCalc, LineHeightLength, RootFontLength, SafeAreaInsets, SafeAreaSide, TextFont, ViewportSize, ViewportUnitSizes } from './input.ts';

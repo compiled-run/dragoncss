@@ -1,5 +1,5 @@
 // pnpm run native:devices [-- --target ios|android] [-- --plant glyph-offset-1|glyph-offset-y-1|dash-phase-1|dash-gap-unfitted|
-// transform-origin-ignored|translate-percent-of-parent|image-offset-1|radius-square|single-run-baseline]
+// transform-origin-ignored|translate-percent-of-parent|image-offset-1|radius-square|outline-offset-1|single-run-baseline]
 // (notes/T015-p4-review-p5-plan.md section 4 items 1 and 5; T093 ruling A and addendum). Without --plant: provisions and verifies
 // the device matrix, one device at a time: boots it headless (emulators by serial), runs the app once, and prints the model, OS and
 // build, the scale from the device profile and from the app, the window and stage in device px, the root's window offset and the
@@ -8,7 +8,7 @@
 // right, or down), and judges the plant against the clean run (judgeGlyphPlant): both hosts finished; the clean run has no
 // device-pixels failure; on the plant's axis every line's glyph position (the x centre, or the bottom edge) fails the position
 // check by PLANT_MARGIN_DEVICE_PX or more and moved PLANT_SHIFT_DEVICE_PX within the spread; and device-frames and device-lines
-// pass in both runs. A paint plant (P6a dash, PNT1 radius) runs its cases (PLANT_CASES) once with the planted app: device-pixels must fail on its
+// pass in both runs. A paint plant (P6a dash, PNT1 radius and outline) runs its cases (PLANT_CASES) once with the planted app: device-pixels must fail on its
 // sample rules (PLANT_RULES) while device-frames and device-lines pass (plantVerdict).
 // --plant single-run-baseline (INL1a) runs LINE_PLANT_CASE and judges with judgeLinePlant: every line of a text view after the
 // first takes its first line's baseline offset, and the pixel lane must see each moved line's glyph bottom edge move with it.

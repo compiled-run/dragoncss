@@ -8,6 +8,7 @@ import { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from '@dragon/layout
 import type { NativeProgram } from 'dragon';
 import type { SampleBox, SamplePoint } from '../samples.ts';
 import { ruleKind, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
+import { nearRing } from './outline.ts';
 import type { PaintSampleContext, PaintSamples } from './types.ts';
 
 const CORNERS = ['top-left', 'top-right', 'bottom-right', 'bottom-left'] as const;
@@ -204,7 +205,8 @@ export const RADIUS_SAMPLES: PaintSamples = {
     const push = (pair: readonly SamplePoint[] | null, rule: string): void => {
       if (pair === null) return;
       // Each point must also be clear of every other arc of the case, so its colour is exact on both sides.
-      if (!pair.every((p) => inImage(ctx, p.x, p.y) && !nearAnyArc(ctx, p.x, p.y))) return;
+      // Each point must also be clear of every outline ring's edges and rounded corners (PNT1 outline).
+      if (!pair.every((p) => inImage(ctx, p.x, p.y) && !nearAnyArc(ctx, p.x, p.y) && !nearRing(ctx, p.x, p.y))) return;
       for (const p of pair) out.push({ x: p.x, y: p.y, rule });
     };
     for (const rb of roundedBoxes(ctx)) {

@@ -664,12 +664,14 @@ export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or
 // aspect-ratio: each <ratio> part is a <number [0,∞]> (css-sizing-4 §5.1), so a math function in it resolves to a number.
 const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio']);
 const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex']);
+/** Properties whose syntax is a plain <length> without being a line width (css-ui-4 §3.4 outline-offset). */
+const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset']);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
 export function mathGrammarFor(property: string): MathGrammar {
   if (NUMBER_GRAMMAR.has(property)) return 'number';
   if (NUMBER_OR_LENGTH_GRAMMAR.has(property)) return 'number-or-length-percentage';
-  if (LINE_WIDTH.test(property)) return 'length';
+  if (LINE_WIDTH.test(property) || LENGTH_GRAMMAR.has(property)) return 'length';
   return 'length-percentage';
 }
 
