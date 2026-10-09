@@ -8,11 +8,12 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { LayoutInput, TextMeasurer } from '@dragon/layout';
 import { NO_ENGINE_FAULTS, resolveEnvironment, rtAnimations, rtAnimator, rtEasing, rtInterpolate, rtTiming, rtTransition } from '@dragon/layout';
-import type { AnimProgram, Compiled, NativeProgram, ProgramNode, Rgba8, Scalar, StateProgram } from 'dragon';
+import type { AnimProgram, Compiled, NativeBackend, NativeProgram, ProgramNode, Rgba8, Scalar, StateEmit, StateProgram } from 'dragon';
 import { animProgramOf, animTablesOf, compiledCases, deriveStateProgram, nativePrograms, programAt, stateKey, StateRuntime } from 'dragon';
 import { tree } from './fixture-groups/define.ts';
 import type { FixtureSpec } from './fixtures.ts';
-import { nativeCompile, referenceMeasurer } from './native-host.ts';
+import { BACKEND_OF, nativeCompile, referenceMeasurer } from './native-host.ts';
+import type { NativeTarget } from './targets.ts';
 import { compileFixture, webCssOf } from './pipeline.ts';
 import { repoPath } from './paths.ts';
 
@@ -101,6 +102,39 @@ export function animCasesOf(fx: AnimFixture): AnimCase[] {
     const webCss = webCssOf(webCompiled);
     return fx.frames.viewports.map((viewport) => ({ id: `${fx.id}${direction === 'rtl' ? '-rtl' : ''}@${viewport.width}x${viewport.height}`, fixture: fx, direction, viewport, compiled: c, webCompiled, webCss, sp, ap }));
   });
+}
+
+/** A frame case's state program for a backend (the uikit one is c.sp), from the same compile and assignment order. */
+export function frameStateProgram(c: AnimCase, backend: NativeBackend): StateProgram {
+  if (backend === 'uikit') return c.sp;
+  return deriveStateProgram(backend, compiledCases(c.compiled).map((a, i) => {
+    const p = nativePrograms(c.compiled, a.assignment);
+    if (p.kind !== 'ready') throw new Error(`${c.id}: no native programs for case ${i}: ${p.reason}`);
+    return { assignment: a.assignment, isInitial: a.isInitial, program: p.programs[backend] };
+  }));
+}
+
+const frameEmitCache = new Map<NativeTarget, StateEmit[]>();
+
+/**
+ * ANIM-b1: every frame case's state program for a target, with its animation tables, as the host apps carry it (the native animator
+ * runs over these). They hold no case scripts; the device-anim lane adds the frame scripts.
+ */
+export function frameEmits(target: NativeTarget): StateEmit[] {
+  const cached = frameEmitCache.get(target);
+  if (cached !== undefined) return cached;
+  const out = animFixtures().flatMap(animCasesOf).map((c): StateEmit => ({
+    id: c.id,
+    fixture: c.fixture.id,
+    direction: c.direction,
+    compilerDigest: c.compiled.digest,
+    viewport: c.viewport,
+    program: frameStateProgram(c, BACKEND_OF[target]),
+    scripts: [],
+    anim: animTablesOf(c.ap),
+  }));
+  frameEmitCache.set(target, out);
+  return out;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

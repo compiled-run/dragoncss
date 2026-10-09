@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   ALREADY_REVIEWED,
   CI_CHECK,
@@ -321,24 +321,34 @@ const scratch = (hostile: boolean) => {
   };
   return { dir, git, commit, ignoreOf, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 };
+type Scratch = ReturnType<typeof scratch>;
 const IGNORE_MD = '---\nignoreTests: false\n---\n**/out/**\n**/vectors/**\n';
 const PNG = (n: number) => Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, n]);
 
 describe('patchIdOver on a scratch repository', () => {
-  const r = scratch(false);
-  afterAll(r.cleanup);
-  const { git, commit } = r;
-  git(['init', '-q', '-b', 'master']);
-  commit({ '.macroscope/ignore.md': IGNORE_MD, 'src/a.ts': 'a\n', 'src/m.ts': 'm\n', 'out/x.json': '1\n' }, 'base');
-  git(['checkout', '-q', '-b', 'pr']);
-  const reviewedCommit = commit({ 'src/a.ts': 'a2\n', 'pkg/vectors/v.json': '1\n' }, 'pr change');
-  git(['checkout', '-q', 'master']);
-  commit({ 'src/m.ts': 'm2\n', 'out/x.json': '2\n' }, 'master moves');
-  git(['checkout', '-q', 'pr']);
-  git(['merge', '-q', '--no-edit', 'master']);
-  const regen = commit({ 'pkg/vectors/v.json': '2\n', 'out/x.json': '3\n' }, 'regen');
-  const touched = commit({ 'src/a.ts': 'a3\n' }, 'reviewed code changes');
-  const head = r.ignoreOf(regen);
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let r!: Scratch;
+  afterAll(() => r?.cleanup());
+  const git: Git = (args, input) => r.git(args, input);
+  const commit: Scratch['commit'] = (files, msg) => r.commit(files, msg);
+  let reviewedCommit = '';
+  let regen = '';
+  let touched = '';
+  let head!: Ignore;
+  beforeAll(() => {
+    r = scratch(false);
+    git(['init', '-q', '-b', 'master']);
+    commit({ '.macroscope/ignore.md': IGNORE_MD, 'src/a.ts': 'a\n', 'src/m.ts': 'm\n', 'out/x.json': '1\n' }, 'base');
+    git(['checkout', '-q', '-b', 'pr']);
+    reviewedCommit = commit({ 'src/a.ts': 'a2\n', 'pkg/vectors/v.json': '1\n' }, 'pr change');
+    git(['checkout', '-q', 'master']);
+    commit({ 'src/m.ts': 'm2\n', 'out/x.json': '2\n' }, 'master moves');
+    git(['checkout', '-q', 'pr']);
+    git(['merge', '-q', '--no-edit', 'master']);
+    regen = commit({ 'pkg/vectors/v.json': '2\n', 'out/x.json': '3\n' }, 'regen');
+    touched = commit({ 'src/a.ts': 'a3\n' }, 'reviewed code changes');
+    head = r.ignoreOf(regen);
+  });
 
   it('vouches for a merge-plus-regen push: reviewed paths identical, generated ones not', () => {
     const before = patchIdOver(git, reviewedCommit, 'master', 'reviewed paths', head);
@@ -368,30 +378,39 @@ describe('patchIdOver on a scratch repository', () => {
 
 describe('patchIdOver under git config that hides or reshapes diffs', () => {
   for (const hostile of [false, true]) {
-    const r = scratch(hostile);
-    afterAll(r.cleanup);
-    const { git, commit } = r;
-    git(['init', '-q', '-b', 'master']);
-    commit({ '.macroscope/ignore.md': IGNORE_MD, '.gitattributes': 'src/opaque.ts -diff\n', 'src/a.ts': 'a\n', 'src/opaque.ts': 'o\n', 'src/latin.txt': Buffer.from([0x61, 0xe9, 0x0a]), 'img/logo.png': PNG(0) }, 'base');
-    git(['checkout', '-q', '-b', 'pr']);
-    const reviewedCommit = commit({ 'src/a.ts': 'a2\n' }, 'pr change');
-    const ignore = r.ignoreOf(reviewedCommit);
+    // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+    let r!: Scratch;
+    afterAll(() => r?.cleanup());
+    const git: Git = (args, input) => r.git(args, input);
+    const commit: Scratch['commit'] = (files, msg) => r.commit(files, msg);
+    let reviewedCommit = '';
+    let ignore!: Ignore;
+    let sub = '';
+    let subMoved = '';
     const id = (c: string) => patchIdOver(git, c, 'master', 'reviewed paths', ignore);
     const at = (files: Record<string, string | Buffer>, msg: string) => {
       git(['checkout', '-q', '--detach', reviewedCommit]);
       return commit(files, msg);
     };
-    const sub = (() => {
-      git(['checkout', '-q', '--detach', reviewedCommit]);
-      git(['update-index', '--add', '--cacheinfo', `160000,${sha('c')},lib/sub`]);
-      git(['commit', '-q', '-m', 'add submodule']);
-      return git(['rev-parse', 'HEAD']).toString().trim();
-    })();
-    const subMoved = (() => {
-      git(['update-index', '--cacheinfo', `160000,${sha('d')},lib/sub`]);
-      git(['commit', '-q', '-m', 'move submodule']);
-      return git(['rev-parse', 'HEAD']).toString().trim();
-    })();
+    beforeAll(() => {
+      r = scratch(hostile);
+      git(['init', '-q', '-b', 'master']);
+      commit({ '.macroscope/ignore.md': IGNORE_MD, '.gitattributes': 'src/opaque.ts -diff\n', 'src/a.ts': 'a\n', 'src/opaque.ts': 'o\n', 'src/latin.txt': Buffer.from([0x61, 0xe9, 0x0a]), 'img/logo.png': PNG(0) }, 'base');
+      git(['checkout', '-q', '-b', 'pr']);
+      reviewedCommit = commit({ 'src/a.ts': 'a2\n' }, 'pr change');
+      ignore = r.ignoreOf(reviewedCommit);
+      sub = (() => {
+        git(['checkout', '-q', '--detach', reviewedCommit]);
+        git(['update-index', '--add', '--cacheinfo', `160000,${sha('c')},lib/sub`]);
+        git(['commit', '-q', '-m', 'add submodule']);
+        return git(['rev-parse', 'HEAD']).toString().trim();
+      })();
+      subMoved = (() => {
+        git(['update-index', '--cacheinfo', `160000,${sha('d')},lib/sub`]);
+        git(['commit', '-q', '-m', 'move submodule']);
+        return git(['rev-parse', 'HEAD']).toString().trim();
+      })();
+    });
     const label = hostile ? 'with hostile config' : 'with default config';
 
     it(`counts a submodule pointer change as a reviewed change (${label})`, () => {
@@ -424,14 +443,21 @@ describe('patchIdOver under git config that hides or reshapes diffs', () => {
 });
 
 describe('regenOnlyProblems on a scratch repository', () => {
-  const r = scratch(false);
-  afterAll(r.cleanup);
-  const { git, commit } = r;
-  git(['init', '-q', '-b', 'master']);
-  commit({ '.macroscope/ignore.md': IGNORE_MD, 'src/a.ts': 'a\n', 'out/x.json': '1\n', 'img/logo.png': PNG(0) }, 'base');
-  git(['checkout', '-q', '-b', 'pr']);
-  const reviewedCommit = commit({ 'src/a.ts': 'a2\n' }, 'pr change');
-  const ignore = r.ignoreOf(reviewedCommit);
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let r!: Scratch;
+  afterAll(() => r?.cleanup());
+  const git: Git = (args, input) => r.git(args, input);
+  const commit: Scratch['commit'] = (files, msg) => r.commit(files, msg);
+  let reviewedCommit = '';
+  let ignore!: Ignore;
+  beforeAll(() => {
+    r = scratch(false);
+    git(['init', '-q', '-b', 'master']);
+    commit({ '.macroscope/ignore.md': IGNORE_MD, 'src/a.ts': 'a\n', 'out/x.json': '1\n', 'img/logo.png': PNG(0) }, 'base');
+    git(['checkout', '-q', '-b', 'pr']);
+    reviewedCommit = commit({ 'src/a.ts': 'a2\n' }, 'pr change');
+    ignore = r.ignoreOf(reviewedCommit);
+  });
   const at = (files: Record<string, string | Buffer>, msg: string) => {
     git(['checkout', '-q', '--detach', reviewedCommit]);
     return commit(files, msg);
