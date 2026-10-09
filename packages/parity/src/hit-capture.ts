@@ -121,13 +121,17 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
 /**
  * Why the hit lane leaves a layout case out, or null when it covers it. The hit test models box geometry, overflow clips, positioned
  * layers and pointer-events (T064 R13); a case whose program writes a transform is refused by name until SELD-R2b (T146) models
- * hit testing through transforms, so it is never silently mis-hit; one holding an inline box or a <br> (INL1a) is refused as rt-hit.ts
- * hitRefusal names it, since the hit table does not model them yet.
+ * hit testing through transforms, and one whose program rounds a corner until the hit test models rounded borders (Blink clips a
+ * hit to the rounded border box), so it is never silently mis-hit; one holding an inline box or a <br> (INL1a) or a form control
+ * (FORM-a) is refused as rt-hit.ts hitRefusal names it, since the hit table does not model them yet.
  */
 export function hitRefusal(n: NativeCase): string | null {
   const moved = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
-  // INL1a: hitTableOf refuses an inline box or a <br> by name (rt-hit.ts), so such a case is left out with that reason.
+  // PNT1-radius: Blink clips a hit to the rounded border box, which the hit test does not model yet.
+  const rounded = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'border-radius')).map((x) => x.id);
+  if (rounded.length > 0) return `border-radius on ${rounded.join(', ')}: hit testing through rounded corners is not modelled yet (PNT1)`;
+  // INL1a and FORM-a: hitTableOf refuses an inline box, a <br> or a form control by name (rt-hit.ts), so such a case is left out with that reason.
   return inputHitRefusal(programInput(n.programs.uikit, n.case.environment.viewport, 1));
 }
 
@@ -189,10 +193,10 @@ export const IDENTITY_ROOTS: readonly string[] = ['packages/parity/expected', 'p
 export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.json';
 /**
  * Files that are new since the identity base: SELD-R1b's fixtures (hit-*, reject-pointer-events-*), SELD-R2a's (interaction-*,
- * reject-interaction-*), the fixtures of PNT2's transforms group (transform-*, reject-transform-*) and CTX-PROOF's (ctx-proof-*),
- * which landed after it.
+ * reject-interaction-*), the fixtures of PNT2's transforms group (transform-*, reject-transform-*), CTX-PROOF's (ctx-proof-*) and
+ * PNT1's radius group (radius-*, reject-radius-*), which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-)[^/]*$/;
 /** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
@@ -200,13 +204,43 @@ export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; 
 };
 
 /**
- * A committed output with the pointer-events key removed: the "pointer-events" computed value of every captured element, and the
- * pointer-events declaration of every emitted rule; an emitted file's compilation digest (its first line) is masked, since every
- * compilation digest moves with the compiler input.
+ * The longhands added since the identity base, beside pointer-events: PNT1's four corner radii, which every capture and emitted rule
+ * gained after the base was written, so the base files must differ from it by exactly these keys and pointer-events.
+ */
+const KEYS_SINCE_BASE = ['pointer-events', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'];
+const JSON_KEYS = new RegExp(`,\\n[ ]*"(${KEYS_SINCE_BASE.join('|')})": "[^"]*"`, 'g');
+const CSS_KEYS = new RegExp(`^[ ]*(${KEYS_SINCE_BASE.join('|')}): [^;\\n]*;\\n`, 'gm');
+
+/**
+ * GEN-b's longhands (content, list-style-type, -position, -image), also added after the identity base, at their neutral values in
+ * LONGHANDS order (docs/decisions.md, "Adding engine fields and CSS longhands"). list-style-type is decimal only where Chrome's UA
+ * ol rule sets it, in GEN_B_DECIMAL_FIXTURES; any other value stays in the text, so the file no longer hashes to the base.
+ */
+const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
+const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
+
+/**
+ * FORM-a A2's appearance longhand, also added after the identity base, removed only at its initial value none (the UA's auto on a
+ * control stays in the text, so such a file no longer hashes to the base).
+ */
+const APPEARANCE_JSON = /,\n[ ]*"appearance": "none"(?=,\n|\n)/g;
+const APPEARANCE_CSS = /^[ ]*appearance: none;\n/gm;
+
+/**
+ * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, GEN-b's and FORM-a's neutral longhands) removed: the computed
+ * value of every captured element, and the declaration of every emitted rule; an emitted file's compilation digest (its first line)
+ * is masked, since every compilation digest moves with the compiler input.
  */
 export function withoutPointerEvents(path: string, text: string): string {
-  if (path.endsWith('.json')) return text.replace(/,\n[ ]*"pointer-events": "[a-z-]+"/g, '');
-  if (path.endsWith('.css')) return text.replace(/^[ ]*pointer-events: [a-z-]+;\n/gm, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+  const type = genBType(path);
+  if (path.endsWith('.json')) {
+    const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
+    return text.replace(JSON_KEYS, '').replace(genB, '').replace(APPEARANCE_JSON, '');
+  }
+  if (path.endsWith('.css')) {
+    const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
+    return text.replace(CSS_KEYS, '').replace(genB, '').replace(APPEARANCE_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+  }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }
 
