@@ -64,15 +64,17 @@ export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[])
 
 /**
  * T065: the animation rows (context `animation`) from the frame cases that pass the host frame lanes (anim-report): exact on web
- * through chrome-dual at every sample. On iOS and Android (ANIM-b1 part 2) the same cases prove caveat rows: the device runs the
- * translated animator (the p1 animator suite proves it bit for bit) through the native runtime, and the device-anim lane, which gates
- * a native output's readiness with every other lane (native-lanes.ts), checks its frames; as for every native paint row, no lane
- * decides the status, which is capped at caveat.
+ * through chrome-dual at every sample. On iOS and Android (ANIM-b1 part 2) the same cases prove caveat rows, except a case the
+ * native compiler refuses (anim-cases.ts nativeRefusals), which proves nothing there: the device runs the translated animator (the
+ * p1 animator suite proves it bit for bit) through the native runtime, and the device-anim lane, which gates a native output's
+ * readiness with every other lane (native-lanes.ts), checks its frames; as for every native paint row, no lane decides the status,
+ * which is capped at caveat.
  */
 /** T065: the context of every animation row; its proofs are frame cases (anim-frames.test.ts), not layout cases (parity.test.ts). */
 export const ANIMATION_CONTEXT = 'animation';
 
-export function deriveAnimationRows(target: ProfileTarget, passing: readonly { readonly id: string; readonly features: readonly string[] }[]): ProfileRow[] {
+export function deriveAnimationRows(target: ProfileTarget, all: readonly { readonly id: string; readonly features: readonly string[]; readonly nativeRefused: boolean }[]): ProfileRow[] {
+  const passing = target === 'web' ? all : all.filter((c) => !c.nativeRefused);
   const features = [...new Set(passing.flatMap((c) => c.features))].sort();
   return features.map((feature) => {
     const ids = passing.filter((c) => c.features.includes(feature)).map((c) => c.id);

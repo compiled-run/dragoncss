@@ -44,11 +44,11 @@ export const nativeOut = (target: NativeTarget): string => repoPath(`packages/pa
 
 // ---------------------------------------------------------------- the native generation compile
 
-/** The lane compile (item 9): ios and android together, derive mode, one per fixture and direction. */
-export function nativeCompile(spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'android'> {
+/** The lane compile (item 9): ios and android together, derive mode (enforce for a refusal check), one per fixture and direction. */
+export function nativeCompile(spec: FixtureSpec, direction: Environment['direction'], profiles: 'derive' | 'enforce' = 'derive'): Compiled<'ios' | 'android'> {
   if (spec.kind !== 'layout') throw new Error(`${spec.id} is not a layout fixture`);
   // MQ-a: every native case runs in the parity environment's viewport, so its @media band is the one holding it.
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport, interactionLanes: true });
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles, direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport, interactionLanes: true });
   return project.compile(fixtureInput(spec));
 }
 

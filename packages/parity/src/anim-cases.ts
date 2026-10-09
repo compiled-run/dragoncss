@@ -114,6 +114,23 @@ export function frameStateProgram(c: AnimCase, backend: NativeBackend): StatePro
   }));
 }
 
+const refusals = new Map<string, readonly string[]>();
+
+/**
+ * The native refusals of a frame case that no profile row lifts (MQ-Rt's transitions started by a size change, say): the errors of
+ * the enforced native compile that carry no profile key. A case the compiler refuses on native proves no native row (profile-rows.ts).
+ */
+export function nativeRefusals(c: AnimCase): readonly string[] {
+  const key = `${c.fixture.id} ${c.direction}`;
+  const hit = refusals.get(key);
+  if (hit !== undefined) return hit;
+  const out = nativeCompile(c.fixture.spec, c.direction, 'enforce').diagnostics
+    .filter((d) => d.severity === 'error' && (d.target === 'ios' || d.target === 'android') && (d.profile === undefined || d.profile === null))
+    .map((d) => `${d.target} ${d.code} ${d.message}`);
+  refusals.set(key, out);
+  return out;
+}
+
 const frameEmitCache = new Map<NativeTarget, StateEmit[]>();
 
 /**

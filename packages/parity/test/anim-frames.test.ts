@@ -9,7 +9,7 @@ import type { SlotListing } from 'dragon';
 import type { AnimFaults } from '../src/anim-cases.ts';
 import { NO_ANIM_FAULTS } from '../src/anim-cases.ts';
 import type { AnimCase } from '../src/anim-cases.ts';
-import { animCasesOf, animFixtures, frameScript, parseFrames, runFrameScript, simulator } from '../src/anim-cases.ts';
+import { animCasesOf, animFixtures, frameScript, nativeRefusals, parseFrames, runFrameScript, simulator } from '../src/anim-cases.ts';
 import { animCaseReport, animReport, committedFrames } from '../src/frame-capture.ts';
 import { canonicalJsonText } from '../src/state-cases.ts';
 import { ANIMATION_CONTEXT, deriveAnimationRows } from '../src/profile-rows.ts';
@@ -148,19 +148,26 @@ describe('host frame lanes (R18)', () => {
 // checks the layout rows only (its layoutRows), so each check it applies to a layout row is applied here to an animation row.
 describe('animation rows (profile:rows from the frame lanes)', () => {
   const report = animReport();
-  const passing = cases.filter((c) => report.passingCases.includes(c.id)).map((c) => ({ id: c.id, features: animationFeatures(c.compiled) }));
+  const passing = cases.filter((c) => report.passingCases.includes(c.id)).map((c) => ({ id: c.id, features: animationFeatures(c.compiled), nativeRefused: nativeRefusals(c).length > 0 }));
   const rowsOf = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context === ANIMATION_CONTEXT);
 
   it('are exactly what profile:rows derives from the passing frame cases, per target: exact on web, caveat on iOS and Android (ANIM-b1 part 2)', () => {
     expect(rowsOf(webProfile.rows)).toEqual(deriveAnimationRows('web', passing));
     expect(rowsOf(iosProfile.rows)).toEqual(deriveAnimationRows('ios', passing));
     expect(rowsOf(androidProfile.rows)).toEqual(deriveAnimationRows('android', passing));
-    // The same keys and proofs on every target; the native rows are capped at caveat, as every native paint row is.
+    // The web rows from the cases the native compiler accepts, capped at caveat as every native paint row is: a case it refuses
+    // (anim-layout-margin: MQ-Rt's transitions started by a size change) proves no native row, so a key only it proves has none.
+    const accepted = passing.filter((c) => !c.nativeRefused);
+    expect(passing.filter((c) => c.nativeRefused).map((c) => c.id).sort()).toEqual(['anim-layout-margin-rtl@393x852', 'anim-layout-margin-rtl@412x915', 'anim-layout-margin@393x852', 'anim-layout-margin@412x915']);
+    for (const c of passing.filter((x) => x.nativeRefused)) expect(nativeRefusals(cases.find((x) => x.id === c.id) as AnimCase).every((m) => m.includes('(package MQ-Rt)')), c.id).toBe(true);
+    const web = deriveAnimationRows('web', accepted);
     for (const native of [iosProfile.rows, androidProfile.rows]) {
-      expect(rowsOf(native).map((r) => ({ ...r, status: 'exact' }))).toEqual(rowsOf(webProfile.rows));
+      expect(rowsOf(native).map((r) => ({ ...r, status: 'exact' }))).toEqual(web);
       expect(rowsOf(native).every((r) => r.status === 'caveat')).toBe(true);
+      for (const r of rowsOf(native)) for (const p of r.proofs) for (const id of p.cases) expect(accepted.some((c) => c.id === id), `${r.feature} ${id}`).toBe(true);
     }
     expect(rowsOf(iosProfile.rows).length).toBeGreaterThan(0);
+    expect(rowsOf(iosProfile.rows).some((r) => r.feature === 'animatable:margin-right')).toBe(false);
   }, 600_000);
 
   it('name exactly the passing frame cases that use their key, and every key a passing frame case uses has a row (M1)', () => {
