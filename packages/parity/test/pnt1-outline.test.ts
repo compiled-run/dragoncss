@@ -97,15 +97,22 @@ describe('PNT1 outline: the paint model at every sample point equals the committ
           const shifted = outlines(p, list, dpr, 1);
           for (const pt of casePoints(p, c.environment.viewport, dpr)) {
             const kind = ruleKind(pt.rule);
-            if (kind === 'edge' || kind === 'glyph') continue;
             const outline = pt.rule.includes(':outline-');
-            if (outline) outlinePoints++;
             const i = (pt.y * chrome.width + pt.x) * 4;
             const got = [chrome.data[i], chrome.data[i + 1], chrome.data[i + 2], chrome.data[i + 3]];
+            const differs = (m: Rgba): boolean => got.some((v, k) => v !== m[k]);
             const want = outlineModelAt(list, rings, pt.x, pt.y);
-            if (got.some((v, k) => v !== want[k])) problems.push(`${pt.rule} at ${pt.x},${pt.y} @${dpr}: Chrome ${JSON.stringify(got)}, model ${JSON.stringify(want)}`);
             const planted = outlineModelAt(list, shifted, pt.x, pt.y);
-            if (got.some((v, k) => v !== planted[k])) caught++;
+            if (kind === 'edge' || kind === 'glyph') {
+              // An edge scanline across a ring's outer edge is where the device plant shows (PLANT_RULES takes edge rules). The
+              // model is not judged there (an antialiased edge), but a point it gets right that the shifted rings get wrong
+              // catches the shift.
+              if (kind === 'edge' && outline && !differs(want) && differs(planted)) caught++;
+              continue;
+            }
+            if (outline) outlinePoints++;
+            if (differs(want)) problems.push(`${pt.rule} at ${pt.x},${pt.y} @${dpr}: Chrome ${JSON.stringify(got)}, model ${JSON.stringify(want)}`);
+            if (differs(planted)) caught++;
           }
         }
         expect(problems).toEqual([]);
