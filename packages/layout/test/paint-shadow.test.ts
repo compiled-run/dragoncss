@@ -47,6 +47,49 @@ describe('paint-shadow: shapes', () => {
   });
 });
 
+describe('paint-shadow: an unblurred rect is SkScan::AntiFillRect (SkScan_Antihair.cpp antifilldot8)', () => {
+  const BIG = { left: -1e4, top: -1e4, right: 1e4, bottom: 1e4 };
+  const cov = (left: number, top: number, right: number, bottom: number, x: number, y: number, clip = BIG): number => {
+    const m = blurredCoverage({ left, top, right, bottom, radii: SQUARE }, 0, clip);
+    if (x < m.bounds.left || x >= m.bounds.right || y < m.bounds.top || y >= m.bounds.bottom) return 0;
+    return m.data[(y - m.bounds.top) * (m.bounds.right - m.bounds.left) + (x - m.bounds.left)] as number;
+  };
+  it('gives a fractional left edge 256 - (frac16 >> 8), not the path fill\'s level below it', () => {
+    expect(cov(1.375, 1, 40, 30, 1, 5)).toBe(160);
+    expect(cov(1.25, 1, 40, 30, 1, 5)).toBe(192);
+    expect(cov(1.125, 1, 40, 30, 1, 5)).toBe(224);
+    expect(cov(1.0625, 1, 40, 30, 1, 5)).toBe(240);
+    expect(cov(1.375, 1, 40, 30, 2, 5)).toBe(255);
+  });
+  it('gives right and bottom edges their fraction, corners SkAlphaMul of both, and thin rects R - L - 1', () => {
+    expect(cov(1, 1, 7.25, 30, 7, 5)).toBe(64);
+    expect(cov(1, 1, 7, 6.5, 3, 6)).toBe(128);
+    // Top-left corner pixel: do_scanline at alpha 256 - 64 = 192, edge 256 - 96 = 160: (192 * 160) >> 8 = 120.
+    expect(cov(1.375, 1.25, 7, 6, 1, 1)).toBe(120);
+    // One pixel wide (2.25 to 2.75): R - L - 1 = 127 on the middle rows; one scanline high (3.25 to 3.875): B - T - 1 = 159.
+    expect(cov(2.25, 1, 2.75, 9, 2, 4)).toBe(127);
+    expect(cov(1, 3.25, 9, 3.875, 4, 3)).toBe(159);
+  });
+  it('intersects the rect with its clip first, so a clip edge is a whole-pixel edge', () => {
+    expect(cov(1.375, 1, 12.5, 8, 4, 4, { left: 0, top: 0, right: 5, bottom: 6 })).toBe(255);
+    expect(cov(1.375, 1, 12.5, 8, 5, 4, { left: 0, top: 0, right: 5, bottom: 6 })).toBe(0);
+    expect(cov(1.375, 1, 12.5, 8, 1, 4, { left: 0, top: 0, right: 5, bottom: 6 })).toBe(160);
+    // A one-pixel-wide remainder after the clip takes antifilldot8's thin branch: 4.5 to 5 gives R - L - 1 = 127.
+    expect(cov(4.5, 1, 12.5, 8, 4, 4, { left: 0, top: 0, right: 5, bottom: 6 })).toBe(127);
+  });
+  it('carries into the outer layer: a red spread-free offset shadow at dpr 2.625', () => {
+    // Box 4..16 by 4..12 offset by 1 css px = 2.625 device px: the shadow spans 6.625..18.625 by 6.625..14.625. Its bottom-edge
+    // pixel row 14 covers B & 0xFF = 160 (the path fill gave 159), as does its right-edge column 18; their corner gets
+    // SkAlphaMul(160, 160) = 100. The left and top edges are inside the clipped-out border box.
+    const l = outerShadowLayer(4, 4, 16, 12, SQUARE, false, [shadow({ x: 1, y: 1, r: 255 })], 2.625, NO_SHADOW_FAULTS);
+    const blit = (c: number): number[] => [Math.floor((255 * (c + 1)) / 256), 0, 0, Math.floor((255 * (c + 1)) / 256)];
+    expect(px(l, 17, 14)).toEqual(blit(160));
+    expect(px(l, 18, 10)).toEqual(blit(160));
+    expect(px(l, 18, 14)).toEqual(blit(100));
+    expect(px(l, 10, 10)).toEqual([0, 0, 0, 0]);
+  });
+});
+
 describe('paint-shadow: layers', () => {
   it('blits a colour through the coverage as Chrome 145 does (SkOpts blit_mask_d32_a8_general, measured exact)', () => {
     // A 1 px blur of a 20 x 20 box: a black shadow at alpha 128 over coverage c gives premultiplied alpha (128 (c + 1)) >> 8.

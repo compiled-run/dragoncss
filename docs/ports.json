@@ -2428,6 +2428,25 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/core/SkScan_Antihair.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2011 The Android Open Source Project",
+      "fileSha256": "6afc8b13dc9771f7d94178b53fc4a771b83fbe4cf6c4ec48e18889c582314ab8",
+      "headerSha256": "570eb1ebbf7dc03defef1e83d2a174da79a15913801fe9905add02a604e1b0b1",
+      "ranges": [
+        { "lines": "625-629", "symbol": "SkFixedToFDot8", "source": "located" },
+        { "lines": "631-655", "symbol": "do_scanline", "source": "located" },
+        { "lines": "657-705", "symbol": "antifilldot8", "source": "located" },
+        { "lines": "784-820", "symbol": "AntiFillRect", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-shadow.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/paint-shadow.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/core/SkStrikeSpec.cpp",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",

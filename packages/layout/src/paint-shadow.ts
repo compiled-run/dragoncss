@@ -1,12 +1,13 @@
 // box-shadow as Blink 145 and Skia 2ab8add5 paint it (css-backgrounds-3 §7.1): each shadow's shape (the border box outset by the
 // spread, radii adjusted by ComputeOutsetAdjustedBorderRadius, ShadowContourFollowsBorder being stable at 145, then
 // ConstrainRadii), translated by the offset and blurred with sigma = blur / 2 in device px (paint-blur.ts shadowSigma), through the
-// path Skia's SkBlurMaskFilterImpl picks: the analytic BlurRect nine-patch of a rect (paint-blur.ts rectShadowCoverage), the
-// nine-patch of a small blurred rrect (filterRRectToNine) for a simple, nine-patch or complex rrect whose middle stretches, and
-// otherwise the whole shape drawn into an A8 mask (SkDraw compute_mask_bounds, trimmed to the raster clip at most 128 px past it;
-// draw_into_mask fills it in the mask's own coordinates through SkA8_Blitter, edges crossing it clipped by SkEdgeClipper) and
-// box-blurred (paint-blur.ts boxBlur). Each cc tile is rastered on its own with its bitmap origin subtracted (the canvas translate,
-// to which the looper adds the offset). Outer shadows are clipped out of the border box (inset 1 device px when the background is
+// path Skia picks: at blur 0 a rect is SkScan::AntiFillRect's coverage (antiFillRectCoverage); otherwise SkBlurMaskFilterImpl's,
+// the analytic BlurRect nine-patch of a rect (paint-blur.ts rectShadowCoverage), the nine-patch of a small blurred rrect
+// (filterRRectToNine) for a simple, nine-patch or complex rrect whose middle stretches, and otherwise the whole shape drawn into
+// an A8 mask (SkDraw compute_mask_bounds, trimmed to the raster clip at most 128 px past it; draw_into_mask fills it in the
+// mask's own coordinates through SkA8_Blitter, edges crossing it clipped by SkEdgeClipper) and box-blurred (paint-blur.ts
+// boxBlur). Each cc tile is rastered on its own with its bitmap origin subtracted (the canvas translate, to which the looper
+// adds the offset). Outer shadows are clipped out of the border box (inset 1 device px when the background is
 // opaque, BoxPainterBase ClipToBorderEdge); inset shadows are the blurred rect-with-hole of AreaCastingShadowInHole clipped to the
 // padding box. Each layer is premultiplied RGBA8 composited with Skia's 8-bit source-over in reverse list order, so the first
 // shadow is on top. Every exported function is a translated engine root (translate/src/generate.ts), proven TS = Swift = Kotlin by
@@ -28,7 +29,7 @@ import type { AaPath, Device, IRect as AaIRect, Radius, SkRRect } from './paint-
 import { a8Device, aaRoute, antiFillPath, devicePixels, drrectPath, NO_AA_FAULTS, ovalPath, rrectPath, setRectRadii, translatePath, whiteDevice } from './paint-aa.ts';
 import { ccTileEnd, ccTileIndex, ccTileStart } from './paint-dither.ts';
 import { constrainCornerRadii, hasRoundedCorner } from './paint-radius.ts';
-import { floorOf, froundOf } from './rt-easing.ts';
+import { floorOf, froundOf, truncOf } from './rt-easing.ts';
 
 /** Planted faults (T046 §5.2); the paint vectors and the pixel lanes must catch each one. */
 export type ShadowFaults = {
@@ -340,6 +341,96 @@ function rasterMask(path: AaPath, s: ShadowShape, hole: ShadowShape | null, b: I
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+// An unblurred rect: Draw::drawRect's kFill rect type (no mask filter, the looper adds no blur at sigma 0), drawn with
+// SkScan::AntiFillRect. Ported from third_party/skia/src/core/SkScan_Antihair.cpp (Skia 2ab8add5, BSD, Copyright 2011 The
+// Android Open Source Project): antifillrect, antifilldot8 and do_scanline, as one pixel's coverage.
+
+/** SkScalarToFixed then SkFixedToFDot8: (trunc(x * 65536) + 0x80) >> 8, the edge in 24.8 fixed point. */
+function fdot8(x: number): number {
+  return floorOf((truncOf(f32(x * 65536)) + 128) / 256);
+}
+
+/** An FDot8's whole pixel (v >> 8) and its fraction (v & 0xFF). */
+function dot8Int(v: number): number {
+  return floorOf(v / 256);
+}
+
+function dot8Frac(v: number): number {
+  return v - 256 * dot8Int(v);
+}
+
+/** SkAlphaMul(value, alpha256): (value * alpha256) >> 8. */
+function alphaMul(value: number, alpha256: number): number {
+  return floorOf((value * alpha256) / 256);
+}
+
+/** do_scanline's coverage of pixel x on a scanline of alpha between FDot8 edges l and r. */
+function scanlineAlpha(l: number, r: number, alpha: number, x: number): number {
+  if (dot8Int(l) === dot8Int(r - 1)) return x === dot8Int(l) ? alphaMul(alpha, r - l) : 0;
+  let left = dot8Int(l);
+  if (dot8Frac(l) !== 0) {
+    if (x === left) return alphaMul(alpha, 256 - dot8Frac(l));
+    left += 1;
+  }
+  const rite = dot8Int(r);
+  if (x >= left && x < rite) return alpha;
+  if (dot8Frac(r) !== 0 && x === rite) return alphaMul(alpha, dot8Frac(r));
+  return 0;
+}
+
+/** antifilldot8's coverage of pixel (x, y) by the FDot8 rect l, t, r, b (fillInner: the inside is blitRect, 255). */
+function antiFillRectAlpha(l: number, t: number, r: number, b: number, x: number, y: number): number {
+  if (l >= r || t >= b) return 0;
+  let top = dot8Int(t);
+  if (top === dot8Int(b - 1)) return y === top ? scanlineAlpha(l, r, b - t - 1, x) : 0;
+  if (dot8Frac(t) !== 0) {
+    if (y === top) return scanlineAlpha(l, r, 256 - dot8Frac(t), x);
+    top += 1;
+  }
+  const bot = dot8Int(b);
+  if (y >= top && y < bot) {
+    let left = dot8Int(l);
+    if (left === dot8Int(r - 1)) return x === left ? r - l - 1 : 0;
+    if (dot8Frac(l) !== 0) {
+      if (x === left) return 256 - dot8Frac(l);
+      left += 1;
+    }
+    const rite = dot8Int(r);
+    if (x >= left && x < rite) return 255;
+    if (dot8Frac(r) !== 0 && x === rite) return dot8Frac(r);
+    return 0;
+  }
+  if (dot8Frac(b) !== 0 && y === bot) return scanlineAlpha(l, r, dot8Frac(b), x);
+  return 0;
+}
+
+/** Whether a device rect fits SkFixed (SkRectPriv::FitsInFixed); Draw::drawRect takes the path otherwise. */
+function fitsInFixed(s: ShadowShape): boolean {
+  const m = 32767;
+  return s.left >= -m && s.left <= m && s.top >= -m && s.top <= m && s.right >= -m && s.right <= m && s.bottom >= -m && s.bottom <= m;
+}
+
+/**
+ * SkScan::AntiFillRect of a device rect within a rect clip: the rect is first intersected with the clip in float (so a clip edge
+ * becomes the rect's edge), then each pixel of its rounded-out bounds takes antifilldot8's coverage.
+ */
+function antiFillRectCoverage(s: ShadowShape, clip: IRect): A8Mask {
+  const b = roundOut(s.left, s.top, s.right, s.bottom);
+  const l = maxNum(s.left, clip.left);
+  const t = maxNum(s.top, clip.top);
+  const r = minNum(s.right, clip.right);
+  const bt = minNum(s.bottom, clip.bottom);
+  const data: number[] = [];
+  const empty = !(l < r && t < bt);
+  const fl = fdot8(l);
+  const ft = fdot8(t);
+  const fr = fdot8(r);
+  const fb = fdot8(bt);
+  for (let y = b.top; y < b.bottom; y++) for (let x = b.left; x < b.right; x++) data.push(empty ? 0 : antiFillRectAlpha(fl, ft, fr, fb, x, y));
+  return { bounds: b, data };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 // Skia's blur paths.
 
 /** SkRRect types as SkRRect::computeType classifies a shape (empty, rect, oval, simple, nine-patch, complex). */
@@ -425,6 +516,8 @@ function coverageOf(s: ShadowShape, dx: number, dy: number, sigma: number, clip:
   const type = shapeType(s);
   if (type === 'empty') return { bounds: { left: 0, top: 0, right: 0, bottom: 0 }, data: [] };
   const ds = offsetShape(s, dx, dy);
+  // At sigma 0 the looper sets no mask filter, so a rect is Draw::drawRect's kFill: SkScan::AntiFillRect.
+  if (!(sigma > 0) && type === 'rect' && fitsInFixed(ds)) return antiFillRectCoverage(ds, clip);
   if (!(sigma > 0) || hasNoBlur(sigma)) {
     // Drawn with no blur: its antialiased coverage over its rounded-out bounds.
     const b = roundOut(ds.left, ds.top, ds.right, ds.bottom);
