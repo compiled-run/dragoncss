@@ -181,12 +181,15 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
   return out;
 }
 
-/** SVG-a1: the scene of every <svg> of a case, in document order (analysis/elements/svg.ts). */
+/** SVG-a1: the scene of every rendered <svg> of a case, in document order (analysis/elements/svg.ts). */
 export function svgScenes(compiled: object, assignment: Assignment): readonly SvgScene[] | null {
   const c = caseOf(compiled, assignment);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out: SvgScene[] = [];
   const walk = (el: ResolvedElement): void => {
+    // An element with display: none lays out no box, so an <svg> in it (or that is it) draws nothing.
+    const display = el.props.get('display')?.value;
+    if (display !== undefined && display.kind === 'keyword' && display.value === 'none') return;
     const scene = svgSceneOf(el);
     if (scene !== null) out.push(scene);
     else for (const ch of el.children) if (ch.kind === 'element') walk(ch);

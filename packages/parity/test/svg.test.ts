@@ -90,7 +90,7 @@ describe('the svg fixtures against their committed Chrome captures', () => {
     return out;
   };
   it('every shape of every case equals Chrome as doubles', async () => {
-    expect(runs.length).toBe(8);
+    expect(runs.length).toBe(10);
     expect(await problems(NO_SVG_FAULTS)).toEqual([]);
   });
   it('no SVG shape records inline line fragments: its computed display is inline, but SVG lays it out (capture.ts)', async () => {
@@ -118,6 +118,25 @@ describe('the svg fixtures against their committed Chrome captures', () => {
     const nulls = await problems(NO_SVG_FAULTS, () => null);
     expect(nulls.length).toBe(runs.length);
     for (const m of nulls) expect(m).toMatch(/: Dragon resolved no svg scenes for this case, but Chrome captured the shapes [a-z0-9, ]+$/);
+  });
+  it('a shape in Dragon\'s scene that Chrome did not lay out fails the differential (display: none, or no such shape)', async () => {
+    const ghost = (sc: Scenes): Scenes => (sc === null ? null : sc.map((x, i) => (i === 0 && x.shapes[0] !== undefined ? { ...x, shapes: [...x.shapes, { ...x.shapes[0], address: 'ghost' }] } : x)));
+    const extra = await problems(NO_SVG_FAULTS, ghost);
+    expect(extra.filter((m) => /^\S+: ghost: a Dragon svg scene has a shape that Chrome did not lay out$/.test(m)).length).toBe(runs.length);
+    // A captured shape with no client rect (Chrome's display: none) is not laid out, so a scene that keeps it fails.
+    const { spec, c } = runs[0] as (typeof runs)[number];
+    const capture = await committedAuthored(c);
+    const first = capture.nodes.find((n) => n.svg !== undefined);
+    if (first === undefined) throw new Error('no captured shape');
+    const unrendered = { ...capture, nodes: capture.nodes.map((n) => (n === first ? { ...n, hasBox: false } : n)) };
+    const { compiled } = compileFixture(spec, undefined, 'enforce', c.environment.direction);
+    const p = iosLayoutProjection(compiled, c.environment, c.assignment);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const v = validateLayoutInput(JSON.parse(JSON.stringify(p.input)));
+    if (!v.ok) throw new Error('layout input rejected');
+    const r = layoutWithFaults(v.input, measurer(), NO_ENGINE_FAULTS);
+    if (r.kind !== 'ok') throw new Error(r.unsupported.detail);
+    expect(compareSvg(unrendered, svgScenes(compiled, c.assignment), absoluteRects(r.boxes), v.input)).toEqual([`${first.id}: a Dragon svg scene has a shape that Chrome did not lay out`]);
   });
   it('each planted fault fails the differential', async () => {
     for (const k of Object.keys(NO_SVG_FAULTS) as (keyof SvgFaults)[]) {
@@ -149,7 +168,7 @@ describe('the svg sample points (SVG-a2) against the committed Chrome pixels', (
     expect(() => casePoints(broken, n.case.environment.viewport, 2)).toThrow(/^wrap: an svg-shapes write on a box with no replaced paint geometry at DPR 2$/);
   });
   it('every svg point at every DPR sits in one solid colour in Chrome: its 3x3 neighbourhood is one pixel value', () => {
-    expect(svgCases.length).toBe(8);
+    expect(svgCases.length).toBe(10);
     for (const n of svgCases) {
       for (const dpr of DPRS) {
         const img = committedPixels(n.case.id, dpr);

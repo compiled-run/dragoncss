@@ -1136,9 +1136,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       diagnostics.splice(valuesAt, 0, ...values);
     }
   }
-  // SVG-a2: a native row of the svg family comes only from the device run of the svg fixtures, so in an enforced parity-lanes compile
-  // the family's unproven native values are lane-only (their cases prove no native row) and the lanes still lower the shapes; a
-  // compile outside the lanes refuses them until the rows exist.
+  // SVG-a2: a native row of the svg family is derived from the parity run (chrome-dual computed values, capped at caveat as every
+  // native paint row is; device-pixels judges the drawing). In an enforced parity-lanes compile a value with no row yet is lane-only,
+  // so the lanes still lower the shapes; a compile outside the lanes refuses it until its row exists.
   if (options.interactionLanes) {
     const svgNative = diagnostics.filter((d) => d.target !== null && (NATIVE_TARGETS as readonly string[]).includes(d.target) && d.profile !== undefined && d.profile !== null && SVG_PROFILE_FEATURE.test(d.profile.feature));
     if (svgNative.length > 0) {

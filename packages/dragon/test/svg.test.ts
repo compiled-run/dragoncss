@@ -5,8 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import { objectBoundingBox } from '@dragon/layout';
 import { parsePathData, parseSvgLength, parseViewBox } from '../src/analysis/elements/svg-path.ts';
-import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints } from '../src/analysis/elements/svg.ts';
-import { createProjectWith, NO_FAULTS, svgScenes } from '../src/internal.ts';
+import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints, svgShapeEmpty } from '../src/analysis/elements/svg.ts';
+import { createProjectWith, nativePrograms, NO_FAULTS, svgScenes } from '../src/internal.ts';
 import { svgShapePath } from '../src/lower/paint/image.ts';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/types.ts';
 import { div, inputFor, staticClass, DOC } from './helpers.ts';
@@ -123,6 +123,35 @@ describe('the svg model in a compile', () => {
     expect(errors(user)).toEqual([]);
     expect([user.targets.ios, user.targets.android, user.targets.web].every((t) => t !== 'blocked')).toBe(true);
     expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1 })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
+  });
+  it("draws no shape Chrome renders nothing for: a zero-size rect or circle, an empty path, and a shape with display: none", () => {
+    expect([svgShapeEmpty({ kind: 'rect', x: 4, y: 2, width: 0, height: 10 }), svgShapeEmpty({ kind: 'rect', x: 0, y: 0, width: 3, height: 0 }), svgShapeEmpty({ kind: 'circle', cx: 1, cy: 1, r: 0 }), svgShapeEmpty({ kind: 'path', segments: [] })]).toEqual([true, true, true, true]);
+    expect([svgShapeEmpty({ kind: 'rect', x: 0, y: 0, width: 1, height: 1 }), svgShapeEmpty({ kind: 'circle', cx: 0, cy: 0, r: 1 })]).toEqual([false, false]);
+    const input = svgTree('.hide { display: none; }', (_r, o) => [
+      shape(o, 'z', 'rect', [['x', '4'], ['y', '2'], ['height', '10'], ['stroke', 'red'], ['stroke-width', '2']]),
+      { ...shape(o, 'h', 'rect', [['width', '10'], ['height', '10']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'hide' }, o)] },
+      shape(o, 'o', 'circle', [['cx', '3'], ['cy', '3'], ['r', '0'], ['stroke', 'red']]),
+      shape(o, 'e', 'path', [['stroke', 'red']]),
+      shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '4']]),
+    ]);
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    // The hidden rect has no box, so it is in no scene; the empty shapes keep their box and bbox (the differential compares them).
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => x.address)).toEqual(['z', 'o', 'e', 'c']);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const writes = p.programs[backend].nodes.flatMap((n) => n.writes).filter((w) => w.kind === 'svg-shapes');
+      expect(writes.length, backend).toBe(1);
+      expect(writes[0]?.kind === 'svg-shapes' ? writes[0].shapes.map((x) => x.path) : null, backend).toEqual([[5, 12, 12, 4]]);
+    }
+    // An svg inside a display: none element has no scene at all.
+    const hidden = svgTree('.w { display: none; }', (_r, o) => [shape(o, 'c', 'circle', [['r', '4']])]);
+    expect(svgScenes(compile(hidden, true), [])).toEqual([]);
+  });
+  it('refuses visibility on a shape by name: it is not a supported property, and Chrome would hide the shape', () => {
+    const input = svgTree('circle { visibility: hidden; }', (_r, o) => [shape(o, 'c', 'circle', [['r', '4']])]);
+    expect(errors(compile(input, false)).some((m) => m.includes('visibility'))).toBe(true);
   });
   it('refuses a group, text, a nested svg and a shape with children (SVG-b)', () => {
     const input = svgTree('', (r, o) => [shape(o, 'g', 'g', []), { kind: 'text', id: 't', text: 'hi', origin: o }, shape(o, 'p', 'path', [['d', 'M0 0']], [shape(o, 'q', 'rect', [])]), shape(o, 'n', 'svg', [])]);

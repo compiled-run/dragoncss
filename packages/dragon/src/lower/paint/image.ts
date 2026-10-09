@@ -6,7 +6,7 @@
 // contentMode and ImageView ScaleType are not used: neither expresses object-position.
 import type { ObjectFit } from '@dragon/layout';
 import type { Rgba8 } from '../../css/color.ts';
-import { svgSceneOf } from '../../analysis/elements/svg.ts';
+import { svgSceneOf, svgShapeEmpty } from '../../analysis/elements/svg.ts';
 import type { SvgPaint, SvgShapeScene } from '../../analysis/elements/svg.ts';
 import { base64Encode } from '../../images/compile.ts';
 import type { PaintLowering } from './types.ts';
@@ -70,9 +70,10 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
   lower: ({ box, el, images, transformMoves }) => {
     if (box.kind === 'replaced' && el !== null && el.element.tag === 'svg') {
       const scene = svgSceneOf(el);
+      // A shape Chrome renders nothing for (svgShapeEmpty) is not drawn: a zero-size rect's closed outline would stroke as a line.
       if (scene === null) throw new ProgramError(`${box.id}: an svg leaf without a scene`);
       const v = scene.viewBox;
-      return [{ kind: 'svg-shapes', viewBox: v === null ? null : [v.x, v.y, v.width, v.height], shapes: scene.shapes.map((sh) => ({ path: svgShapePath(sh), fill: paintColor(sh.fill), stroke: paintColor(sh.stroke), width: sh.strokeWidth })) }];
+      return [{ kind: 'svg-shapes', viewBox: v === null ? null : [v.x, v.y, v.width, v.height], shapes: scene.shapes.filter((sh) => !svgShapeEmpty(sh.shape)).map((sh) => ({ path: svgShapePath(sh), fill: paintColor(sh.fill), stroke: paintColor(sh.stroke), width: sh.strokeWidth })) }];
     }
     if (box.kind !== 'replaced' || el === null || el.element.tag !== 'img') return [];
     if (box.natural.kind !== 'image') throw new ProgramError(`${box.id}: an img leaf without a natural size`);

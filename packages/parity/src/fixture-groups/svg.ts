@@ -27,6 +27,7 @@ export const SVG: readonly FixtureSpec[] = [
   both('svg-viewbox'),
   both('svg-paint'),
   both('svg-flex'),
+  both('svg-hidden'),
   reject('reject-svg-inline', 'DRAGON_UNSUPPORTED_VALUE', element('reject-svg-inline', 'a', 'svg'), 'display: inline on <svg> a makes it an inline-level replaced box'),
   reject('reject-svg-ratio', 'DRAGON_UNSUPPORTED_VALUE', element('reject-svg-ratio', 'a', 'svg'), '<svg> a has a viewBox and width and height auto'),
   reject('reject-svg-arc', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-svg-arc', 'p'), 'attribute d="M2 12 A10 10 0 0 1 22 12" on p is not supported: elliptical arc commands are not built yet (package SVG-arc)'),
