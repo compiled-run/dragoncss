@@ -895,6 +895,8 @@ const FAULT_KEYS: readonly string[] = [
   'exUntruncatedFontSize', 'rootFontSizeIgnored', 'safeAreaIgnored', 'lhNormalUnrounded', 'viewportSizeKindIgnored', 'minimumFontSizeIgnored',
   'spaceOnlyBreaks', 'fitWithoutEpsilon', 'breakAfterSolidus', 'noHyphenDigitBreak', 'lineHeightIgnoresInlineBoxes',
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
+  'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
+  'metricRoundingSwapped', 'latinCheckSkipped',
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding',
 ];
 
@@ -941,6 +943,14 @@ function decodeFaults(v: JsonValue): EngineFaults {
     brIgnored: b('brIgnored'),
     breakAtBoxBoundary: b('breakAtBoxBoundary'),
     fragmentFromLineTop: b('fragmentFromLineTop'),
+    advanceNot16_16: b('advanceNot16_16'),
+    doubleAccumulation: b('doubleAccumulation'),
+    noReshapeAtBreak: b('noReshapeAtBreak'),
+    kerningDropped: b('kerningDropped'),
+    wholePixelPositions: b('wholePixelPositions'),
+    softHyphenWidthMissing: b('softHyphenWidthMissing'),
+    metricRoundingSwapped: b('metricRoundingSwapped'),
+    latinCheckSkipped: b('latinCheckSkipped'),
     orderHalfEven: b('orderHalfEven'),
     orderUnclamped: b('orderUnclamped'),
     gutterReserved: b('gutterReserved'),
@@ -988,6 +998,22 @@ function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: str
   return `${out}]]`;
 }
 
+/**
+ * The first shaping plant set in faults, or ''. The shaping plants act only through the shaped measurer (platform.ts
+ * shapedMeasurerFor), and the harness lays out with measurerFor's Ahem measurer, so it refuses them rather than run them inert.
+ */
+function shapingPlantOf(f: EngineFaults): string {
+  if (f.advanceNot16_16) return 'advanceNot16_16';
+  if (f.doubleAccumulation) return 'doubleAccumulation';
+  if (f.noReshapeAtBreak) return 'noReshapeAtBreak';
+  if (f.kerningDropped) return 'kerningDropped';
+  if (f.wholePixelPositions) return 'wholePixelPositions';
+  if (f.softHyphenWidthMissing) return 'softHyphenWidthMissing';
+  if (f.metricRoundingSwapped) return 'metricRoundingSwapped';
+  if (f.latinCheckSkipped) return 'latinCheckSkipped';
+  return '';
+}
+
 /** One engine case: {"platform", "faults", "input"} in, the layout result with every LU as bits out. */
 export function runEngineCase(line: string): string {
   try {
@@ -997,6 +1023,8 @@ export function runEngineCase(line: string): string {
     const direction = scroll ? lit(field(o, 'viewportDirection', '$'), ['ltr', 'rtl'], '$.viewportDirection') : 'ltr';
     const platform = str(field(o, 'platform', '$'), '$.platform');
     const faults = decodeFaults(field(o, 'faults', '$'));
+    const plant = shapingPlantOf(faults);
+    if (plant !== '') fail(`$.faults.${plant} is a shaping plant, which acts only through the shaped measurer; the harness has only measurerFor's Ahem measurer`);
     const input = decodeInput(field(o, 'input', '$'));
     const m = measurerFor(platform);
     if (m.kind !== 'ok') return `["refused",${q(m.code)}]`;
