@@ -138,6 +138,16 @@ describe('the svg sample points (SVG-a2) against the committed Chrome pixels', (
     expect(closed.stroke.length).toBe(3);
     expect(closed.vertices).toEqual([id(0, 0), id(10, 0), id(10, 10)]);
   });
+  it('an svg-shapes write on a box with no replaced geometry throws instead of sampling nothing', () => {
+    const n = svgCases[0];
+    if (n === undefined) throw new Error('no svg case');
+    const p = n.programs.uikit;
+    const svgWrite = p.nodes.flatMap((x) => x.writes).find((w) => w.kind === 'svg-shapes');
+    const plain = p.nodes.find((x) => x.id === 'wrap');
+    if (svgWrite === undefined || plain === undefined) throw new Error('no svg write or wrap node');
+    const broken = { ...p, nodes: p.nodes.map((x) => (x === plain ? { ...x, writes: [...x.writes, svgWrite] } : x)) };
+    expect(() => casePoints(broken, n.case.environment.viewport, 2)).toThrow(/^wrap: an svg-shapes write on a box with no replaced paint geometry at DPR 2$/);
+  });
   it('every svg point at every DPR sits in one solid colour in Chrome: its 3x3 neighbourhood is one pixel value', () => {
     expect(svgCases.length).toBe(8);
     for (const n of svgCases) {

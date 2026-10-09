@@ -311,7 +311,8 @@ export function svgPointsOf(ctx: PaintSampleContext): SamplePoint[] {
   for (const n of ctx.program.nodes) {
     const w = n.writes.find((x) => x.kind === 'svg-shapes');
     const b = boxes.get(n.id);
-    if (w === undefined || w.kind !== 'svg-shapes' || b === undefined) continue;
+    if (w === undefined || w.kind !== 'svg-shapes') continue;
+    if (b === undefined) throw new Error(`${n.id}: an svg-shapes write on a box with no replaced paint geometry at DPR ${ctx.dpr}`);
     const c = b.paint.content;
     // User units are CSS px: the viewBox maps into the content box in CSS px, and the DPR takes that to device px.
     const dpr = ctx.dpr;
