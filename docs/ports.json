@@ -2396,6 +2396,21 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/core/SkRegion.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "6541f4eda2866878b430aa9a0cc45c675d2d51288af16dd2e1e90e52959ab192",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "1429-1464", "symbol": "Cliperator", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-shadow.ts", "symbol": "regionPiece", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/core/SkScan_AAAPath.cpp",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",

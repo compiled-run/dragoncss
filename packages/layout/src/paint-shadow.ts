@@ -410,23 +410,51 @@ function fitsInFixed(s: ShadowShape): boolean {
   return s.left >= -m && s.left <= m && s.top >= -m && s.top <= m && s.right >= -m && s.right <= m && s.bottom >= -m && s.bottom <= m;
 }
 
+/** antifillrect of rect s intersected (in float) with the whole-pixel rect piece, at pixel (x, y); 0 when they do not meet. */
+function pieceAlpha(s: ShadowShape, piece: IRect, x: number, y: number): number {
+  const l = maxNum(s.left, piece.left);
+  const t = maxNum(s.top, piece.top);
+  const r = minNum(s.right, piece.right);
+  const b = minNum(s.bottom, piece.bottom);
+  if (!(l < r && t < b)) return 0;
+  return antiFillRectAlpha(fdot8(l), fdot8(t), fdot8(r), fdot8(b), x, y);
+}
+
 /**
- * SkScan::AntiFillRect of a device rect within a rect clip: the rect is first intersected with the clip in float (so a clip edge
- * becomes the rect's edge), then each pixel of its rounded-out bounds takes antifilldot8's coverage.
+ * The rect of a BW clip region holding pixel (x, y), or null outside it: the clip rect, or with a hole (ClipToBorderEdge's
+ * non-AA clip-out) the region SkRegion builds, Y-banded: the band above the hole, the band beside it as a left and a right rect,
+ * the band below. SkRegion::Cliperator (third_party/skia/src/core/SkRegion.cpp) visits these rects, each pixel in at most one.
  */
-function antiFillRectCoverage(s: ShadowShape, clip: IRect): A8Mask {
+function regionPiece(clip: IRect, hole: IRect | null, x: number, y: number): IRect | null {
+  if (x < clip.left || x >= clip.right || y < clip.top || y >= clip.bottom) return null;
+  if (hole === null) return clip;
+  const hl = maxNum(hole.left, clip.left);
+  const ht = maxNum(hole.top, clip.top);
+  const hr = minNum(hole.right, clip.right);
+  const hb = minNum(hole.bottom, clip.bottom);
+  if (!(hl < hr && ht < hb)) return clip;
+  if (y < ht) return { left: clip.left, top: clip.top, right: clip.right, bottom: ht };
+  if (y >= hb) return { left: clip.left, top: hb, right: clip.right, bottom: clip.bottom };
+  if (x < hl) return { left: clip.left, top: ht, right: hl, bottom: hb };
+  if (x >= hr) return { left: hr, top: ht, right: clip.right, bottom: hb };
+  return null;
+}
+
+/**
+ * SkScan::AntiFillRect(const SkRect&, const SkRegion*, SkBlitter*) of a device rect in a BW clip (a rect clip, minus an optional
+ * whole-pixel hole): antifillrect runs on each region rect intersected with the rect in float, so a clip edge becomes that
+ * piece's edge (and a piece cut to one pixel or one scanline takes antifilldot8's R - L - 1 or B - T - 1); pixels in the hole
+ * get none.
+ */
+function antiFillRectCoverage(s: ShadowShape, clip: IRect, hole: IRect | null): A8Mask {
   const b = roundOut(s.left, s.top, s.right, s.bottom);
-  const l = maxNum(s.left, clip.left);
-  const t = maxNum(s.top, clip.top);
-  const r = minNum(s.right, clip.right);
-  const bt = minNum(s.bottom, clip.bottom);
   const data: number[] = [];
-  const empty = !(l < r && t < bt);
-  const fl = fdot8(l);
-  const ft = fdot8(t);
-  const fr = fdot8(r);
-  const fb = fdot8(bt);
-  for (let y = b.top; y < b.bottom; y++) for (let x = b.left; x < b.right; x++) data.push(empty ? 0 : antiFillRectAlpha(fl, ft, fr, fb, x, y));
+  for (let y = b.top; y < b.bottom; y++) {
+    for (let x = b.left; x < b.right; x++) {
+      const piece = regionPiece(clip, hole, x, y);
+      data.push(piece === null ? 0 : pieceAlpha(s, piece, x, y));
+    }
+  }
   return { bounds: b, data };
 }
 
@@ -505,19 +533,20 @@ function pathBlur(s: ShadowShape, hole: ShadowShape | null, dx: number, dy: numb
 /** The coverage of a filled shape drawn with a normal blur of sigma, through the path Skia picks, rastered into a tile at clip. */
 export function blurredCoverage(s: ShadowShape, sigma: number, clip: IRect): A8Mask {
   if (!isFiniteNum(sigma) || sigma < 0) throw new Error(`paint-shadow: sigma ${sigma} is not a non-negative finite number`);
-  return coverageOf(s, 0, 0, sigma, clip);
+  return coverageOf(s, 0, 0, sigma, clip, null);
 }
 
 /**
  * blurredCoverage of a shape in the canvas's coordinates under a canvas translate (dx, dy): a rect or rrect is mapped to the device
  * (SkMatrix::mapRect, SkRRect::transform), a path is built first and its points moved (SkPath::transform).
  */
-function coverageOf(s: ShadowShape, dx: number, dy: number, sigma: number, clip: IRect): A8Mask {
+function coverageOf(s: ShadowShape, dx: number, dy: number, sigma: number, clip: IRect, hole: IRect | null): A8Mask {
   const type = shapeType(s);
   if (type === 'empty') return { bounds: { left: 0, top: 0, right: 0, bottom: 0 }, data: [] };
   const ds = offsetShape(s, dx, dy);
   // At sigma 0 the looper sets no mask filter, so a rect is Draw::drawRect's kFill: SkScan::AntiFillRect.
-  if (!(sigma > 0) && type === 'rect' && fitsInFixed(ds)) return antiFillRectCoverage(ds, clip);
+  // hole is the BW clip's whole-pixel hole in these coordinates (a square box's clip-out), applied as Skia's region does.
+  if (!(sigma > 0) && type === 'rect' && fitsInFixed(ds)) return antiFillRectCoverage(ds, clip, hole);
   if (!(sigma > 0) || hasNoBlur(sigma)) {
     // Drawn with no blur: its antialiased coverage over its rounded-out bounds.
     const b = roundOut(ds.left, ds.top, ds.right, ds.bottom);
@@ -732,13 +761,14 @@ function localClip(i: number, j: number): IRect {
  * (a canvas translate the looper's offset is added to in float), so the shape is placed in the tile's coordinates as Skia maps
  * it, f32(edge + f32(offset - origin)), which decides the float rounding of the path, and the mask is moved back.
  */
-function tileMaskAt(cache: TileMask[], spread: ShadowShape, ox: number, oy: number, sigma: number, x: number, y: number): A8Mask {
+function tileMaskAt(cache: TileMask[], spread: ShadowShape, ox: number, oy: number, sigma: number, hole: IRect | null, x: number, y: number): A8Mask {
   const i = ccTileIndex(x, TILE);
   const j = ccTileIndex(y, TILE);
   for (const t of cache) if (t.i === i && t.j === j) return t.mask;
   const x0 = ccTileStart(i, TILE);
   const y0 = ccTileStart(j, TILE);
-  const mask = moveMask(coverageOf(spread, f32(ox - x0), f32(oy - y0), sigma, localClip(i, j)), x0, y0);
+  const localHole: IRect | null = hole === null ? null : { left: hole.left - x0, top: hole.top - y0, right: hole.right - x0, bottom: hole.bottom - y0 };
+  const mask = moveMask(coverageOf(spread, f32(ox - x0), f32(oy - y0), sigma, localClip(i, j), localHole), x0, y0);
   cache.push({ i, j, mask });
   return mask;
 }
@@ -787,6 +817,10 @@ function outerLayer(left: number, top: number, right: number, bottom: number, ra
   // ClipToBorderEdge: the border box, inset by one device px when the background is opaque, clipped out.
   const inset = opaqueBackground ? 1 : 0;
   const clipOut = spreadShape(left, top, right, bottom, border.radii, -inset, NO_SHADOW_FAULTS);
+  // A square box clips out with a non-AA clipRect (GraphicsContext::ClipOut), so the raster clip is a BW region whose hole is
+  // the clip-out rect rounded to whole pixels (SkScalarRoundToInt); Blink skips an empty one.
+  const holeRect: IRect = { left: floorOf(clipOut.left + 0.5), top: floorOf(clipOut.top + 0.5), right: floorOf(clipOut.right + 0.5), bottom: floorOf(clipOut.bottom + 0.5) };
+  const hole: IRect | null = rounded || faults.shadowNotClippedOut || !(clipOut.left < clipOut.right && clipOut.top < clipOut.bottom) ? null : holeRect;
   for (let k = shadows.length - 1; k >= 0; k--) {
     const sh = shadows[k] as ShadowInput;
     const shape = shapes[k] as ShadowShape;
@@ -797,10 +831,10 @@ function outerLayer(left: number, top: number, right: number, bottom: number, ra
     const oy = at(offsets, 2 * k + 1);
     const cache: TileMask[] = [];
     compositeOnto(layer, over, b, sh, (x, y) => {
-      const m = tileMaskAt(cache, spread, ox, oy, sigma, x, y);
+      const m = tileMaskAt(cache, spread, ox, oy, sigma, hole, x, y);
       const c = maskAt(m, x, y);
       if (c === 0 || faults.shadowNotClippedOut) return c;
-      if (!rounded) return x >= clipOut.left && x < clipOut.right && y >= clipOut.top && y < clipOut.bottom ? 0 : c;
+      if (!rounded) return hole !== null && x >= hole.left && x < hole.right && y >= hole.top && y < hole.bottom ? 0 : c;
       return mulDiv255Round(c, 255 - shapeCoverage(clipOut, x, y));
     });
   }

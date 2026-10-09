@@ -90,6 +90,28 @@ describe('paint-shadow: an unblurred rect is SkScan::AntiFillRect (SkScan_Antiha
   });
 });
 
+describe('paint-shadow: an unblurred rect in a square box\'s BW clip region (SkScan::AntiFillRect over SkRegion::Cliperator)', () => {
+  const red = (x: number, y: number) => shadow({ x, y, r: 255 });
+  const blit = (c: number): number[] => [Math.floor((255 * (c + 1)) / 256), 0, 0, Math.floor((255 * (c + 1)) / 256)];
+  it('fills the band right of the hole as its own rect: 16..16.5 is one pixel wide, R - L - 1 = 127', () => {
+    const l = outerShadowLayer(4, 4, 16, 12, SQUARE, false, [red(0.5, 0)], 1, NO_SHADOW_FAULTS);
+    for (let y = 4; y < 12; y++) expect(px(l, 16, y), `16,${y}`).toEqual(blit(127));
+    expect(px(l, 15, 6)).toEqual([0, 0, 0, 0]);
+  });
+  it('fills the band above the hole as its own rect: 3.5..4 is one scanline, B - T - 1 = 127', () => {
+    const l = outerShadowLayer(4, 4, 16, 12, SQUARE, false, [red(0, -0.5)], 1, NO_SHADOW_FAULTS);
+    for (let x = 4; x < 16; x++) expect(px(l, x, 3), `${x},3`).toEqual(blit(127));
+  });
+  it('uses the opaque background\'s inset hole (5..15 x 5..11): row 11 below it is one scanline, 11..11.5', () => {
+    const l = outerShadowLayer(4, 4, 16, 12, SQUARE, true, [red(0, -0.5)], 1, NO_SHADOW_FAULTS);
+    for (let x = 5; x < 15; x++) expect(px(l, x, 11), `${x},11`).toEqual(blit(127));
+    // Here the top band runs to the hole's top at 5, so row 3 is an ordinary top edge, 256 - 128; column 4 beside the hole is
+    // a one-pixel-wide piece 4..5, R - L - 1 = 255.
+    expect(px(l, 8, 3)).toEqual(blit(128));
+    expect(px(l, 4, 8)).toEqual(blit(255));
+  });
+});
+
 describe('paint-shadow: layers', () => {
   it('blits a colour through the coverage as Chrome 145 does (SkOpts blit_mask_d32_a8_general, measured exact)', () => {
     // A 1 px blur of a 20 x 20 box: a black shadow at alpha 128 over coverage c gives premultiplied alpha (128 (c + 1)) >> 8.

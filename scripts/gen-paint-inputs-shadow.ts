@@ -86,6 +86,11 @@ for (const [radii, opaque] of [[SQUARE, 1], [ROUND, 0]] as const) {
 }
 out.push(line('outerShadowLayerOver', [4, 4, 16, 12, ...SQUARE, 1, 2, ...two, 2.625, ...NO, 0]));
 out.push(line('outerShadowLayer', [4, 4, 16, 12, ...SQUARE, 0, 1, ...shadow(false, 1, 1, 0, 0, 255, 0, 0, 255), 2.625, ...NO]));
+// Unblurred rects in the BW clip region around a square box's hole: a one-pixel-wide right band, a one-scanline top band, and the
+// opaque background's inset hole.
+out.push(line('outerShadowLayer', [4, 4, 16, 12, ...SQUARE, 0, 1, ...shadow(false, 0.5, 0, 0, 0, 255, 0, 0, 255), 1, ...NO]));
+out.push(line('outerShadowLayer', [4, 4, 16, 12, ...SQUARE, 0, 1, ...shadow(false, 0, -0.5, 0, 0, 255, 0, 0, 255), 1, ...NO]));
+out.push(line('outerShadowLayer', [4, 4, 16, 12, ...SQUARE, 1, 1, ...shadow(false, 0, -0.5, 0, 0, 255, 0, 0, 255), 1, ...NO]));
 out.push(line('outerShadowLayerOver', [4, 4, 16, 12, ...SQUARE, 1, 1, ...one, 2, 0, 1, 0, 1, ...stage]));
 out.push(line('insetShadowLayerOver', [2, 2, 16, 12, 1, 2, 1, 2, ...SQUARE, 2, ...ins, 2, ...NO, 2, ...stage, ...fill(2, 2, 16, 12, SQUARE, 58, 110, 165, 255)]));
 out.push(line('insetShadowLayerOver', [2, 2, 26, 20, 1, 1, 1, 1, 5, 3, 5, 3, 4, 2, 4, 2, 1, ...shadow(true, 1, 1, 3, 0.5, 0, 0, 0, 180), 2.625, ...NO, 1, ...fill(2, 2, 26, 20, [6, 4, 6, 4, 5, 3, 5, 3], 58, 110, 165, 200)]));
