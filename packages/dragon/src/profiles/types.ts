@@ -35,6 +35,15 @@ export const PROFILE_NOTES = {
 export type ProfileNote = keyof typeof PROFILE_NOTES;
 
 /**
+ * PNT1 outline: the native targets draw solid and double outlines only, and refuse every other painted style by name
+ * (analysis/paint-values/outline.ts checkOutline). A zero-width outline in such a style paints nothing and compiles, but that proves
+ * no paint, so a native target claims no row for these styles and the value check leaves them to checkOutline.
+ */
+export function nativeOutlinePending(feature: string): boolean {
+  return /^outline-style:(dotted|dashed|groove|ridge|inset|outset|auto)$/.test(feature);
+}
+
+/**
  * T078 R14: overflow auto and scroll make a box the user scrolls, and the native outputs have no scroll views until OVFL-B, so a
  * native target claims no row for them: outside the parity lanes the compiler refuses them on native, naming OVFL-B.
  */

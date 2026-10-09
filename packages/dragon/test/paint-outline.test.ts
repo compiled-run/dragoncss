@@ -4,7 +4,7 @@
 // outline would paint out of Chrome's order), and the native write and its emission.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
-import { createProjectWith, HIT_MODELLED, NO_FAULTS, nativePrograms } from '../src/internal.ts';
+import { androidProfile, createProjectWith, HIT_MODELLED, iosProfile, NO_FAULTS, nativeOutlinePending, nativePrograms } from '../src/internal.ts';
 import { OUTLINE_EMITTER } from '../src/emit/paint/outline.ts';
 import { outlineOffsetPx, outlineRings, outlineWidthPx, roundedShape } from '@dragon/layout';
 import type { Declaration } from '../src/css/stylesheet.ts';
@@ -139,6 +139,14 @@ describe('outline: the native targets draw solid and double outlines', () => {
   it('each refusal is reported once per element and target, on both native targets', () => {
     const c = tree('.b { height: 5px; outline: 2px solid red; } .q { position: relative; } .r { position: relative; }', (r) => [div(r, 'b', ['b']), div(r, 'q', ['q']), div(r, 'r', ['r'])], { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
     expect(errors(c).filter((d) => d.message.includes('outline')).map((d) => d.target).sort()).toEqual(['android', 'ios']);
+  });
+  it('native claims no row for an outline style it refuses wherever it paints, and a zero-width one still compiles there', () => {
+    for (const style of ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset', 'auto']) expect(nativeOutlinePending(`outline-style:${style}`), style).toBe(true);
+    for (const style of ['solid', 'double', 'none', 'inherit']) expect(nativeOutlinePending(`outline-style:${style}`), style).toBe(false);
+    expect(nativeOutlinePending('border-top-style:dashed')).toBe(false);
+    // A zero-width dotted outline (outline-values proves its computed value) proves no paint, so no native row may claim the style.
+    for (const r of [...iosProfile.rows, ...androidProfile.rows]) expect(nativeOutlinePending(r.feature), `${r.feature}@${r.context}`).toBe(false);
+    for (const css of ['outline: 0 dashed', 'outline: #abc 0 dotted', 'outline-width: 0; outline-style: groove']) expect(errors(compile(`.a { height: 10px; ${css}; }`, targets)), css).toEqual([]);
   });
 });
 
