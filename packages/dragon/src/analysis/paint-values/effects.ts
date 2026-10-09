@@ -51,4 +51,6 @@ export const EFFECTS_VALUES: PaintValues = {
     if (n === null) return;
     props.set('opacity', { ...v, value: { kind: 'number', value: n } });
   },
+  // The fractional-opacity refusal is lane-gated, so project.ts runs checkTranslucent itself, not checkComputed.
+  check: null,
 };

@@ -234,7 +234,7 @@ describe('stacking: lowering and emission', () => {
     if (w === undefined || w.kind !== 'paint-order') throw new Error('no paint-order write');
     expect(STACKING_EMITTER.lines.uikit('v3', z as never, w)).toEqual(['  dragonSetPaintOrder(t, v3, "html", 2, 0)']);
     expect(STACKING_EMITTER.lines['android-views']('v3', z as never, w)).toEqual(['  dragonSetPaintOrder(t, v3, "html", 2, 0)']);
-    expect(STACKING_EMITTER.applied({} as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box: {} as never, fontSize: null, replaced: null })).toEqual(['html', w.index]);
+    expect(STACKING_EMITTER.applied({} as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box: {} as never, size: [0, 0], fontSize: null, replaced: null })).toEqual(['html', w.index]);
   });
   it('refuses a box of another tree than the case it computed, even when its id matches', () => {
     const p = programs('.a { height: 10px; }', (r) => [div(r, 'a', ['a'])]);

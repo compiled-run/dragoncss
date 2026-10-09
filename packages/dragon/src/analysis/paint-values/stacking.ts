@@ -88,4 +88,4 @@ export function checkStackingClips(el: ResolvedElement, propagated: ResolvedElem
   }
 }
 
-export const STACKING_VALUES: PaintValues = { name: 'stacking', compute: () => {} };
+export const STACKING_VALUES: PaintValues = { name: 'stacking', compute: () => {}, check: null };
