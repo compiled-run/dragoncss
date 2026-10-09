@@ -7,7 +7,7 @@ import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { describe, expect, it } from 'vitest';
 import type { BoxWidths, ElementLayer, LayerGeometrySpec } from '../src/analysis/paint-values/gradient.ts';
-import { colourClipRefusal, commaItems, elementLayers, GRADIENT_VALUES, gradient, gradientLayerOf, imageItem, linearSlope, obscuresOf, position, positionAxisItem, repeatItem, tilingRefusal, transformsSubtree, translucencyRefusal, valueItems } from '../src/analysis/paint-values/gradient.ts';
+import { colourClipRefusal, commaItems, elementLayers, GRADIENT_VALUES, gradient, imageItem, linearSlope, obscuresOf, position, positionAxisItem, repeatItem, tilingRefusal, transformsSubtree, translucencyRefusal, valueItems } from '../src/analysis/paint-values/gradient.ts';
 import type { Diagnostic } from '../src/types.ts';
 import type { CssValue } from '../src/css/values.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
@@ -178,6 +178,18 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
     expect(compile('background: linear-gradient(110deg, red, blue);')).toEqual([]);
     expect(compile('background: linear-gradient(12.34deg, red, blue), red;')).toEqual([]);
   });
+  it('R4: refuses on ios and android a gradient box under will-change: transform or opacity, which rasters in its own layer', () => {
+    for (const wc of ['transform', 'opacity']) {
+      const out = compile(`will-change: ${wc}; background: linear-gradient(110deg, red, blue);`);
+      expect(out.filter((m) => m.includes('composited layer')).map((m) => m.split(' ').slice(0, 2).join(' ')), wc).toEqual(['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios']);
+      expect(compile(`will-change: ${wc}; background: linear-gradient(110deg, red, blue);`, { web: {} }), wc).toEqual([]);
+    }
+    // An ancestor's layer holds its descendants' gradients.
+    const css = 'body { margin: 0; } .p { will-change: transform; } .a { width: 40px; height: 20px; background: linear-gradient(110deg, red, blue); }';
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])]));
+    expect(c.diagnostics.filter((d) => d.message.includes('composited layer of p')).map((d) => d.target).sort()).toEqual(['android', 'ios']);
+    expect(compile('will-change: auto; background: linear-gradient(110deg, red, blue);')).toEqual([]);
+  });
   it('refuses an angle off the 0.01deg grid and a corner on ios and android only (BG2b)', () => {
     const off = compile('background: linear-gradient(1rad, red, blue);');
     expect(off.map((m) => m.split(' ').slice(0, 2).join(' '))).toEqual(['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios']);
@@ -222,10 +234,12 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
   it('R13 (BG2-x): refuses every gradient in a subtree whose transform is not the identity, on the native targets', () => {
     const v = (value: CssValue) => ({ value, origin: { kind: 'synthetic' }, span: null, declaration: null, declared: null, losing: [] });
     const at = (address: string) => ({ address, tag: 'div', node: { origin: { kind: 'synthetic' } } });
-    const layered = (image: string) => [['background-image', v({ kind: 'other', text: image } as CssValue)], ['background-position-x', v({ kind: 'percentage', value: 0 } as CssValue)], ['background-position-y', v({ kind: 'percentage', value: 0 } as CssValue)], ['background-size', v({ kind: 'keyword', value: 'auto' } as CssValue)], ['background-repeat', v({ kind: 'keyword', value: 'repeat' } as CssValue)], ['background-origin', v({ kind: 'keyword', value: 'padding-box' } as CssValue)], ['background-clip', v({ kind: 'keyword', value: 'border-box' } as CssValue)]] as const;
+    // Every resolved element carries every longhand; the R4 check reads will-change.
+    const auto = ['will-change', v({ kind: 'keyword', value: 'auto' } as CssValue)] as const;
+    const layered = (image: string) => [['background-image', v({ kind: 'other', text: image } as CssValue)], ['background-position-x', v({ kind: 'percentage', value: 0 } as CssValue)], ['background-position-y', v({ kind: 'percentage', value: 0 } as CssValue)], ['background-size', v({ kind: 'keyword', value: 'auto' } as CssValue)], ['background-repeat', v({ kind: 'keyword', value: 'repeat' } as CssValue)], ['background-origin', v({ kind: 'keyword', value: 'padding-box' } as CssValue)], ['background-clip', v({ kind: 'keyword', value: 'border-box' } as CssValue)], auto] as const;
     const leaf = { kind: 'element', element: at('t/g'), props: new Map(layered('linear-gradient(red,blue)')), children: [] };
     const plain = { kind: 'element', element: at('t/p'), props: new Map(layered('none')), children: [] };
-    const tree = (transform: CssValue | null) => ({ kind: 'element', element: at('t'), props: new Map(transform === null ? [] : [['transform', v(transform)]]), children: [{ kind: 'element', element: at('t/m'), props: new Map(), children: [leaf, plain] }] });
+    const tree = (transform: CssValue | null) => ({ kind: 'element', element: at('t'), props: new Map(transform === null ? [auto] : [auto, ['transform', v(transform)]]), children: [{ kind: 'element', element: at('t/m'), props: new Map([auto]), children: [leaf, plain] }] });
     const run = (transform: CssValue | null): string[] => {
       const out: Diagnostic[] = [];
       const check = GRADIENT_VALUES.check;
@@ -299,9 +313,6 @@ describe('R3: the linear slope from the measured table', () => {
   it('the libmTableIgnored plant takes fdlibm everywhere, which differs on the table\'s angles', () => {
     expect(linearSlope(35, { libmTableIgnored: true })).toBe(Math.fround(Math.tan(input(35))));
     expect(linearSlope(35, { libmTableIgnored: true })).not.toBe(linearSlope(35));
-  });
-  it('R4: every compiled box rasters in the root layer', () => {
-    expect(gradientLayerOf({} as never)).toEqual({ kind: 'root' });
   });
 });
 

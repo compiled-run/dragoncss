@@ -3,7 +3,7 @@
 // each linear slope folded from the measured libm table, R3), top first, and the origin of the composited layer it rasters in
 // (R4); the device rasterises them with the translated paint-gradient.ts at every layout. Nothing on the device parses CSS.
 import type { BoxItem, GradientSpec, LayerGeometrySpec, Obscures } from '../../analysis/paint-values/gradient.ts';
-import { bleedAvoidanceOf, gradientLayerOf, linearSlope, obscuresOf, resolvedLayers } from '../../analysis/paint-values/gradient.ts';
+import { bleedAvoidanceOf, compositesSubtree, linearSlope, obscuresOf, resolvedLayers } from '../../analysis/paint-values/gradient.ts';
 import type { ResolvedValue } from '../../analysis/resolve.ts';
 import type { Rgba8 } from '../../css/color.ts';
 import type { ColorLonghand, Longhand } from '../../css/properties.ts';
@@ -71,7 +71,7 @@ export const GRADIENT_LOWERING: PaintLowering<GradientWrite> = {
       const v = (el.props.get(`border-${side}-style` as Longhand) as ResolvedValue).value;
       return obscuresOf(v.kind === 'keyword' ? v.value : '', colors[`border-${side}-color` as ColorLonghand]);
     });
-    if (gradientLayerOf(el).kind !== 'root') throw new ProgramError(`${id}: a gradient box in a composited layer the native check refuses (BG2c)`);
+    if (compositesSubtree(el)) throw new ProgramError(`${id}: a gradient box in a composited layer the native check refuses (BG2c)`);
     const bleed = bleedAvoidanceOf(el);
     if (bleed === 'layer') throw new ProgramError(`${id}: a rounded box whose background Chrome paints into a bleed-avoidance layer, which the native check refuses (BG2c)`);
     return [{ kind: 'background-layers', color: colors['background-color'], colorClip: bottom.geometry.clip, obscures, layers: lowered, lastIsBottom: bottom.image.kind === 'gradient' && bleed !== 'shrink', layerOrigin: [0, 0] }];

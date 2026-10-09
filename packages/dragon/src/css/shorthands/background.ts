@@ -110,24 +110,23 @@ function splitPosition(tokens: readonly CssNode[]): { readonly x: CssNode[]; rea
     const swapped = (ka !== null && VERTICAL.has(ka)) || (kb !== null && HORIZONTAL.has(kb));
     return swapped ? { x: [b], y: [a] } : { x: [a], y: [b] };
   }
-  // Three or four values: keywords, each optionally followed by its offset.
+  // Three or four values: keywords, each optionally followed by its offset, in either order. An edge keyword names its axis;
+  // center takes whichever axis the other group leaves (center right 10px is x right 10px, y center).
+  const groups: CssNode[][] = [];
+  for (const t of tokens) {
+    if (ident(t) !== null || groups.length === 0) groups.push([t]);
+    else (groups[groups.length - 1] as CssNode[]).push(t);
+  }
   const x: CssNode[] = [];
   const y: CssNode[] = [];
-  let pending: CssNode[] = [];
-  const flush = (): void => {
-    if (pending.length === 0) return;
-    const k = ident(pending[0]);
-    if (k !== null && HORIZONTAL.has(k)) x.push(...pending);
-    else if (k !== null && VERTICAL.has(k)) y.push(...pending);
-    else if (x.length === 0) x.push(...pending);
-    else y.push(...pending);
-    pending = [];
-  };
-  for (const t of tokens) {
-    if (ident(t) !== null) flush();
-    pending.push(t);
+  const rest: CssNode[][] = [];
+  for (const g of groups) {
+    const k = ident(g[0]);
+    if (k !== null && HORIZONTAL.has(k)) x.push(...g);
+    else if (k !== null && VERTICAL.has(k)) y.push(...g);
+    else rest.push(g);
   }
-  flush();
+  for (const g of rest) (x.length === 0 ? x : y).push(...g);
   return { x, y };
 }
 

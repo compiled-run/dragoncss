@@ -4,9 +4,9 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4287 (18.4%) | 18998 (81.6%) | 1 | 0 | 0 |
-| ios | 4260 (18.3%) | 18987 (81.5%) | 1 | 0 | 38 |
-| android | 4260 (18.3%) | 18987 (81.5%) | 1 | 0 | 38 |
+| web | 4294 (18.4%) | 18991 (81.6%) | 1 | 0 | 0 |
+| ios | 4267 (18.3%) | 18980 (81.5%) | 1 | 0 | 38 |
+| android | 4267 (18.3%) | 18980 (81.5%) | 1 | 0 | 38 |
 
 As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
 
@@ -20,7 +20,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | sizing | 1015 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 |
 | typography | 261 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 |
 | colours | 14842 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 |
-| backgrounds | 151 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 |
+| backgrounds | 151 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 |
 | borders | 250 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 |
 | effects | 1178 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
@@ -38,7 +38,7 @@ As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 an
 | `property mask-image` | 6280 | 6280 | 6280 | 38 |
 | `value oklch()` | 4004 | 4004 | 4004 | 14 |
 | `property box-shadow` | 1489 | 1489 | 1489 | 8 |
-| `property background-image` | 964 | 964 | 964 | 8 |
+| `value background-image: conic-gradient(var(--tw-gradient-stops)) substitutes to "conic` | 937 | 937 | 937 | 4 |
 | `property scrollbar-color` | 582 | 582 | 582 | 2 |
 | `property translate` | 444 | 444 | 444 | 24 |
 | `property filter` | 351 | 351 | 351 | 10 |

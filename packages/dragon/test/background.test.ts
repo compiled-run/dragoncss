@@ -74,6 +74,10 @@ describe('background shorthand: parse and expansion', () => {
     ['top red', { 'background-position-x': { kind: 'keyword', value: 'center' }, 'background-position-y': { kind: 'keyword', value: 'top' } }],
     ['10px 25% red', { 'background-position-x': { kind: 'length', value: 10, unit: 'px' }, 'background-position-y': { kind: 'percentage', value: 25 } }],
     ['left 5px top 3px red', { 'background-position-x': { kind: 'other', type: 'position-x', text: 'left 5px' }, 'background-position-y': { kind: 'other', type: 'position-y', text: 'top 3px' } }],
+    // A center first takes the axis the edge group leaves, whichever edge that is.
+    ['center right 10px red', { 'background-position-x': { kind: 'other', type: 'position-x', text: 'right 10px' }, 'background-position-y': { kind: 'keyword', value: 'center' } }],
+    ['center bottom 10px red', { 'background-position-x': { kind: 'keyword', value: 'center' }, 'background-position-y': { kind: 'other', type: 'position-y', text: 'bottom 10px' } }],
+    ['right 10px center red', { 'background-position-x': { kind: 'other', type: 'position-x', text: 'right 10px' }, 'background-position-y': { kind: 'keyword', value: 'center' } }],
     ['0% 0% / cover red', { 'background-position-x': { kind: 'percentage', value: 0 }, 'background-position-y': { kind: 'percentage', value: 0 }, 'background-size': { kind: 'keyword', value: 'cover' } }],
     ['0 0 / 10px auto red', { 'background-position-x': { kind: 'length', value: 0, unit: 'px' }, 'background-position-y': { kind: 'length', value: 0, unit: 'px' }, 'background-size': { kind: 'other', type: 'size', text: '10px auto' } }],
     ['no-repeat red', { 'background-repeat': { kind: 'keyword', value: 'no-repeat' } }],
