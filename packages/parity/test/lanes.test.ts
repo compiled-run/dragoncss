@@ -238,7 +238,7 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
-  it('device-hit runs exactly the hit cases: every layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the radius cases (PNT1) and the INL1a inline cases', () => {
+  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the radius cases (PNT1) and the INL1a inline cases', () => {
     const refusals = hitRefusedCases();
     const refused = refusals.map((r) => r.id);
     expect(refused.length).toBeGreaterThan(0);
@@ -250,8 +250,10 @@ describe('committed out/lanes.json', () => {
       else if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
       else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^transform-/), expect.stringMatching(TRANSFORM_REASON)]);
     }
-    expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...ids].sort());
-    expect(hitCaseCount()).toBe(ids.length - refused.length);
+    // TXT1a-2: over the device cases (targets.ts vectorCaseIds), every layout case but the shaped ones the runtime draws from phase R.
+    const device = vectorCaseIds();
+    expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...device].sort());
+    expect(hitCaseCount()).toBe(device.length - refused.length);
     // The declared device-hit sets hold exactly those cases (targets.ts hitCaseIds), in layout order, at every device DPR.
     expect(hitCaseIds()).toEqual(hitCases().map((n) => n.case.id));
     for (const t of nativeTargets()) {
