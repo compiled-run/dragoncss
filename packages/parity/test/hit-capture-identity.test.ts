@@ -96,6 +96,17 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(() => withoutPointerEvents('a.png', '')).toThrow(/only .json captures and .css outputs/);
   });
 
+  it("removes PNT1's opacity and z-index, added after the base, only at their neutral values (opacity 1, z-index auto)", () => {
+    const json = (opacity: string, z: string): string => `{\n  "x": "1",\n  "opacity": "${opacity}",\n  "z-index": "${z}"\n}`;
+    const css = (opacity: string, z: string): string => `.d {\n  color: red;\n  opacity: ${opacity};\n  z-index: ${z};\n}\n`;
+    expect(withoutPointerEvents('a.json', json('1', 'auto'))).toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('a.css', css('1', 'auto'))).toBe('.d {\n  color: red;\n}\n');
+    for (const [o, z] of [['0.5', 'auto'], ['0', 'auto'], ['1', '3'], ['1', '0'], ['1', '-1']]) {
+      expect(withoutPointerEvents('a.json', json(o as string, z as string)), `${o} ${z}`).not.toBe('{\n  "x": "1"\n}');
+      expect(withoutPointerEvents('a.css', css(o as string, z as string)), `${o} ${z}`).not.toBe('.d {\n  color: red;\n}\n');
+    }
+  });
+
   it("removes T150a's visibility, added after the base, only at its initial value", () => {
     expect(withoutPointerEvents('x/a.web.json', '{\n  "x": "1",\n  "visibility": "visible"\n}')).toBe('{\n  "x": "1"\n}');
     expect(withoutPointerEvents('x/a.web.json', '{\n  "x": "1",\n  "visibility": "hidden"\n}')).not.toBe('{\n  "x": "1"\n}');
@@ -117,6 +128,16 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(withoutPointerEvents('e/block-elements-defaults.css', css('decimal'))).toBe(cssBase);
     expect(withoutPointerEvents('e/a.css', css('decimal'))).not.toBe(cssBase);
     expect(withoutPointerEvents('e/a.css', css('disc', 'inside'))).not.toBe(cssBase);
+  });
+
+  it("removes BG2's eight background longhands, added after the base, only at their initial values", () => {
+    const pairs = (image: string): [string, string][] => [['background-image', image], ['background-position-x', '0%'], ['background-position-y', '0%'], ['background-size', 'auto'], ['background-repeat', 'repeat'], ['background-attachment', 'scroll'], ['background-origin', 'padding-box'], ['background-clip', 'border-box']];
+    const json = (image = 'none'): string => `{\n  "will-change": "auto"${pairs(image).map(([k, v]) => `,\n  "${k}": "${v}"`).join('')}\n}`;
+    expect(withoutPointerEvents('x/a.web.json', json())).toBe('{\n  "will-change": "auto"\n}');
+    expect(withoutPointerEvents('x/a.web.json', json('linear-gradient(red, blue)'))).not.toBe('{\n  "will-change": "auto"\n}');
+    const css = (image = 'none'): string => `.d {\n  will-change: auto;\n${pairs(image).map(([k, v]) => `  ${k}: ${v};\n`).join('')}}\n`;
+    expect(withoutPointerEvents('e/a.css', css())).toBe('.d {\n  will-change: auto;\n}\n');
+    expect(withoutPointerEvents('e/a.css', css('url("a.png")'))).not.toBe('.d {\n  will-change: auto;\n}\n');
   });
 
   it('removes the PNT1 corner radii added since the base, and nothing else', () => {

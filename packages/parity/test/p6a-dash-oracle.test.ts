@@ -100,6 +100,12 @@ function crispSide(ops: readonly BorderOp[], x: number, y: number): number | nul
 const writeOf = <K extends ProgramWrite['kind']>(p: NativeProgram, id: string, kind: K): (ProgramWrite & { kind: K }) | undefined =>
   p.nodes.find((n) => n.id === id)?.writes.find((w) => w.kind === kind) as (ProgramWrite & { kind: K }) | undefined;
 
+/** Whether the node or one of its ancestors has an opacity write (an opacity below 1). */
+function inOpacityGroup(p: NativeProgram, id: string): boolean {
+  for (let at: string | null = id; at !== null; at = p.nodes.find((n) => n.id === at)?.parent ?? null) if (writeOf(p, at, 'opacity') !== undefined) return true;
+  return false;
+}
+
 /** T150a: whether a box paints no decorations of its own (a visibility write); the canvas background of html and body still paints. */
 function hiddenOwn(p: NativeProgram, id: string, background = false): boolean {
   const v = writeOf(p, id, 'visibility');
@@ -278,6 +284,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     const w = [...(borders.get(n.id) ?? [0, 0, 0, 0])];
     const colors = co.colors.flatMap((c) => [c.r, c.g, c.b, c.alpha]);
     if (!borderNeedsSidePainter(w, st.styles, colors)) continue;
+    // A border inside an opacity group (an opacity write on the box or an ancestor) is composited with the group's alpha, which this
+    // reference does not model; pnt1-effects.test compares those pixels against Chrome.
+    if (inOpacityGroup(p, n.id)) continue;
     // A rounded box is drawn by PNT1's rounded border painter, never by the side painter this file judges (paint-dash.ts models no
     // radii); the radius oracle compares those borders.
     if (writeOf(p, n.id, 'border-radius') !== undefined) continue;

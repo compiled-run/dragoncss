@@ -189,7 +189,8 @@ describe('PNT2: lowering and emission', () => {
     const b = node(r, 'b');
     expect(b.uikit.writes.some((x) => x.kind === 'transform')).toBe(false);
     expect(b.uikit.facts['transform']).toMatchObject({ ops: [], willChange: ['opacity'] });
-    expect(node(r, 'body').uikit.facts).toEqual({});
+    // body has no transform facts; every box carries PNT1's stacking facts (rt-hit.ts reads them), and nothing else.
+    expect(Object.keys(node(r, 'body').uikit.facts)).toEqual(['stacking']);
   });
   it('calls the view\'s transform writer with engine constructors on both backends', () => {
     const n = node(r, 'a');

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/properties/grid.ts';
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
+import { EFFECTS_LONGHANDS } from '../packages/dragon/src/css/properties/effects.ts';
 import { RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 
@@ -51,6 +52,8 @@ const SUBSET = [
   'border-radius', '-webkit-border-radius',
   // Transforms (PNT2), after grid, as LONGHANDS registers them.
   ...TRANSFORM_LONGHANDS,
+  // opacity and z-index (PNT1), after transforms.
+  ...EFFECTS_LONGHANDS,
   // GEN-b: content and list-style (css-content-3, css-lists-3), as LONGHANDS registers them.
   'content', 'list-style', 'list-style-type', 'list-style-position', 'list-style-image',
   // Background layers (BG2), as LONGHANDS registers them, then background-position.
