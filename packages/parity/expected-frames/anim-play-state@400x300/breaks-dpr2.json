@@ -1,0 +1,20 @@
+{
+ "schema": "dragon-frame-breaks/1",
+ "case": "anim-play-state@400x300",
+ "chrome": "145.0.7632.6",
+ "dpr": 2,
+ "samples": [
+  {"at": 0, "texts": []},
+  {"at": 1000, "texts": []},
+  {"at": 1000, "texts": []},
+  {"at": 1001, "texts": []},
+  {"at": 6000, "texts": []},
+  {"at": 6000, "texts": []},
+  {"at": 7000, "texts": []},
+  {"at": 7000, "texts": []},
+  {"at": 8000, "texts": []},
+  {"at": 8000, "texts": []},
+  {"at": 8500, "texts": []},
+  {"at": 8501, "texts": []}
+ ]
+}

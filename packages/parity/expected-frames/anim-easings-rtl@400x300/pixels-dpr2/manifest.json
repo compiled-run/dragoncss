@@ -1,0 +1,26 @@
+{
+ "schema": "dragon-frame-pixels/1",
+ "case": "anim-easings-rtl@400x300",
+ "chrome": "145.0.7632.6",
+ "capture": "CDP Page.captureScreenshot {format: png}, the viewport at the forced device scale factor",
+ "rasterRule": "ceil(viewport css px x DPR) in each dimension; 400x300 at 2.625 is 1050x788",
+ "dpr": 2,
+ "flags": ["--force-device-scale-factor=2","--force-color-profile=srgb","--font-render-hinting=none","--disable-lcd-text","--hide-scrollbars"],
+ "raster": {"rasterization":"disabled_software","gpu_compositing":"disabled_software"},
+ "samples": [
+  {"k":0,"at":0,"width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
+  {"k":1,"at":0,"width":800,"height":600,"sha256":"37a1f7cabc59761eea5cfdebbae154e525350fd5ae60e3481ee4afc56b10aa30"},
+  {"k":3,"at":1,"width":800,"height":600,"sha256":"37a1f7cabc59761eea5cfdebbae154e525350fd5ae60e3481ee4afc56b10aa30"},
+  {"k":6,"at":201,"width":800,"height":600,"sha256":"6d0adafddc86aaec0d69748722936d2e7af5a6700741b14bfc25f5922d59ed39"},
+  {"k":7,"at":500,"width":800,"height":600,"sha256":"87698384175e0cfffb5891269e4e5e018b6e0ecc2796e6386c37c9e715ea97e2"},
+  {"k":10,"at":801,"width":800,"height":600,"sha256":"e0eca3303ab02b7071833056a24686eb5c06d071078867d80adea6f28129ff68"},
+  {"k":14,"at":1001,"width":800,"height":600,"sha256":"5342f49b500d1e1a2455eca0c7a401578e7edb721390b7fc3e1725377cc7427f"},
+  {"k":16,"at":1100,"width":800,"height":600,"sha256":"4811bf210758a73365cb4cf95c58285818c56448b4a951483ee9123113939e30"},
+  {"k":18,"at":1101,"width":800,"height":600,"sha256":"4811bf210758a73365cb4cf95c58285818c56448b4a951483ee9123113939e30"},
+  {"k":21,"at":1301,"width":800,"height":600,"sha256":"fcc90332cac2cad005643ea0e3f7578b616105d2c8c11b8fd2e22a1764d7d9b6"},
+  {"k":22,"at":1600,"width":800,"height":600,"sha256":"3982f5e9db6d79ca454cd9c39748bea84fa24e6133233f12e8831b88419860db"},
+  {"k":25,"at":1901,"width":800,"height":600,"sha256":"8b600446d92fd4ce49eadf2069e1da7159a2338604875ff7cbb0893431413adc"},
+  {"k":29,"at":2101,"width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"},
+  {"k":31,"at":2201,"width":800,"height":600,"sha256":"16f534c3de235367cd9b1182657145621a00412439f25b34833b345c7544b4a7"}
+ ]
+}

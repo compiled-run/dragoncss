@@ -742,8 +742,14 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   out.push(lang === 'swift'
     ? `/// The typed state API of ${commentText(e.id)}.\npublic final class ${cls} {\n  public let machine = ${p}Machine()\n  public init() {}\n${body.join('\n')}\n}`
     : `/** The typed state API of ${commentText(e.id)}. */\nclass ${cls} {\n  val machine = ${p}Machine()\n${body.join('\n')}\n}`);
+  // ANIM-b1 3b: a frame program's scripts are prefixes of its longest one (one per sample), so they slice one shared step table.
+  const lits = e.scripts.map((sc) => sc.steps.map((st) => stepLit(lang, sp, sc.id, st)));
+  const longest = lits.reduce<string[]>((a, b) => (b.length > a.length ? b : a), []);
+  const shared = e.anim !== undefined && lits.length > 1 && lits.every((l) => l.every((x, i) => x === longest[i]));
+  if (shared) out.push(decl(`${p}Steps`, kt ? 'List<DragonScriptStep>' : '[DragonScriptStep]', list(lang, longest)));
   e.scripts.forEach((sc, j) => {
-    const steps = list(lang, sc.steps.map((st) => stepLit(lang, sp, sc.id, st)));
+    const n = (lits[j] as string[]).length;
+    const steps = !shared ? list(lang, lits[j] as string[]) : kt ? `${p}Steps.take(${n})` : `Array(${p}Steps.prefix(${n}))`;
     if (lang === 'swift') {
       const digests = sc.expectedDigests.map((d) => `${doubleLit(d.dpr)}: ${q(d.sha256)}`).join(', ');
       out.push(`let ${p}Script${j} = dragonStateScriptCase(id: ${q(sc.id)}, fixture: ${q(e.fixture)}, direction: ${q(e.direction)}, compilerDigest: ${q(e.compilerDigest)}, viewport: (width: ${doubleLit(e.viewport.width)}, height: ${doubleLit(e.viewport.height)}), expectedDigests: [${digests}], make: ${p}Machine, steps: ${steps})`);
