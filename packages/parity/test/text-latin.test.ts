@@ -142,8 +142,8 @@ describe('TXT1a-1 phase A: Ahem through HarfBuzz', () => {
 
   // These three cannot act through the engine's measurer on Ahem: kerningDropped and noReshapeAtBreak change only what GSUB, GPOS
   // or kern data shapes, which Ahem has none of (every offset is safe to break); noReshapeAtBreak and softHyphenWidthMissing act
-  // only in ShapedText.line, which TextMeasurer does not expose; and no committed vector has a soft hyphen, which the Ahem
-  // measurer refuses. shaping-gate.test.ts catches all three on the real-font gate.
+  // only on real-font lines (inline.ts breakShapedLines), which Ahem text does not take; and no committed vector has a soft
+  // hyphen, which the Ahem measurer refuses. shaping-gate.test.ts and text-latin-engine.test.ts catch all three on real faces.
   it('pins kerningDropped, noReshapeAtBreak and softHyphenWidthMissing inert on every committed Ahem vector, for the reasons above', () => {
     const tags = tableTags(new Uint8Array(readFileSync(repoPath('vendor/fonts/Ahem.ttf'))));
     expect(tags).toContain('glyf');

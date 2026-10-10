@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MERGE_DRIVERS } from '../../../scripts/floor-merge.ts';
 import { lineKey, mergeSortedFile, Refuse, SORTED_MERGE_DRIVER, SORTED_REGISTRIES } from '../../../scripts/sorted-merge.ts';
 import { repoPath } from '../src/paths.ts';
@@ -119,26 +119,30 @@ describe('mergeSortedFile', () => {
 });
 
 describe('the sorted merge driver in git', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'sorted-merge-'));
-  temps.push(dir);
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let dir = '';
   const git = (...args: string[]): string =>
     execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', ...args], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const write = (text: string): void => {
     mkdirSync(join(dir, dirname(FIX)), { recursive: true });
     writeFileSync(join(dir, FIX), text);
   };
-  git('init', '-q', '-b', 'master');
-  git('config', 'merge.dragon-sorted.driver', `node ${repoPath('scripts/sorted-merge.ts')} %O %A %B %P`);
-  writeFileSync(join(dir, '.gitattributes'), `${FIX} merge=dragon-sorted\n`);
-  write(BASE);
-  git('add', '-A');
-  git('commit', '-q', '-m', 'base');
-  git('checkout', '-q', '-b', 'ctx');
-  write(add(['ctx-proof', 'CTX_PROOF']));
-  git('commit', '-qam', 'ctx');
-  git('checkout', '-q', 'master');
-  write(add(['env', 'ENV']));
-  git('commit', '-qam', 'env');
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'sorted-merge-'));
+    temps.push(dir);
+    git('init', '-q', '-b', 'master');
+    git('config', 'merge.dragon-sorted.driver', `node ${repoPath('scripts/sorted-merge.ts')} %O %A %B %P`);
+    writeFileSync(join(dir, '.gitattributes'), `${FIX} merge=dragon-sorted\n`);
+    write(BASE);
+    git('add', '-A');
+    git('commit', '-q', '-m', 'base');
+    git('checkout', '-q', '-b', 'ctx');
+    write(add(['ctx-proof', 'CTX_PROOF']));
+    git('commit', '-qam', 'ctx');
+    git('checkout', '-q', 'master');
+    write(add(['env', 'ENV']));
+    git('commit', '-qam', 'env');
+  });
 
   it('merges two PRs that each add a group at the same sorted place, where a text merge conflicts', () => {
     git('merge', '-q', '--no-edit', 'ctx');
@@ -160,8 +164,11 @@ describe('the sorted merge driver in git', () => {
 });
 
 describe('the sorted merge driver as git runs it', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'sorted-merge-cli-'));
-  temps.push(dir);
+  let dir = '';
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'sorted-merge-cli-'));
+    temps.push(dir);
+  });
   const run = (o: string, a: string, b: string, path = FIX): { status: number | null; ours: string; left: string[] } => {
     for (const [n, v] of [['O', o], ['A', a], ['B', b]] as const) writeFileSync(join(dir, n), v);
     const r = spawnSync(process.execPath, [repoPath('scripts/sorted-merge.ts'), join(dir, 'O'), join(dir, 'A'), join(dir, 'B'), path], { encoding: 'utf8' });
