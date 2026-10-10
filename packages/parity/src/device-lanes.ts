@@ -35,7 +35,7 @@ import type { AnimSample } from './anim-samples.ts';
 import { animSamples } from './anim-samples.ts';
 import { frameScript, pixelSamples } from './anim-cases.ts';
 import { committedFrameBreaks, committedFramePixels, committedFrames, framePixelSamples } from './frame-capture.ts';
-import { casePoints, checkCasePixels, committedPixels, decodePng, rasterSize, runFileText } from './pixel-reference.ts';
+import { casePoints, checkCasePixels, committedPixels, decodePng, devicePoints, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
 import type { LaneId, NativeTarget, TargetConfig } from './targets.ts';
@@ -114,7 +114,7 @@ export function caseReference(target: NativeTarget, n: CheckedCase, dpr: number)
     chrome: committedDprCapture(n.case.id, dpr),
     breaks: readBreakVector(n.case.id, dpr),
     chromeBreaks: readChromeBreaks(n.case.id, dpr),
-    points: casePoints(program, viewport, dpr),
+    points: devicePoints(program, viewport, dpr),
     pixels: committedPixels(n.case.id, dpr),
   };
 }
@@ -599,7 +599,7 @@ export function animReference(target: NativeTarget, s: AnimSample, dpr: number, 
     chrome: { fixture: s.id, chrome: cap.chrome, browser: '', platform: '', viewport, devicePixelRatio: dpr, direction: s.case.direction, nodes: sample.nodes },
     breaks: breakVector(s.id, dpr, engineTextLines(programInput(s.program, viewport, dpr), m.measurer)),
     chromeBreaks: chromeBreaks === null ? null : { ...chromeBreaks, case: s.id },
-    points: compared ? casePoints(s.program, viewport, dpr) : [],
+    points: compared ? devicePoints(s.program, viewport, dpr) : [],
     pixels: compared ? committedFramePixels(s.case.id, dpr, s.index) : null,
     pixelsCompared: compared,
   };
@@ -716,7 +716,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const prof = deviceProfile(h);
     const dpr = prof.profileScale;
     if (!t.dprs.includes(dpr)) throw new Error(`${spec.name}: profile scale ${dpr} is not a ${t.target} device DPR`);
-    const runFile = runFileText(cases.map((n) => ({ id: n.case.id, points: casePoints(n.programs[backend], n.case.environment.viewport, dpr) })), false);
+    const runFile = runFileText(cases.map((n) => ({ id: n.case.id, points: devicePoints(n.programs[backend], n.case.environment.viewport, dpr) })), false);
     const outDir = join(nativeOut(t.target), 'lanes', spec.name);
     const t0 = Date.now();
     const r = await runApp(h, artifact, { runFile, caseCount: cases.length, outDir });
@@ -739,7 +739,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const scripts = scriptCases(t.target);
     const statesDir = join(nativeOut(t.target), 'lanes', `${spec.name}-states`);
     const s0 = Date.now();
-    const sr = await runApp(h, artifact, { runFile: runFileText(scripts.map((s) => ({ id: s.script.case.id, points: casePoints(s.end.programs[backend], s.end.case.environment.viewport, dpr) })), false), caseCount: scripts.length, outDir: statesDir });
+    const sr = await runApp(h, artifact, { runFile: runFileText(scripts.map((s) => ({ id: s.script.case.id, points: devicePoints(s.end.programs[backend], s.end.case.environment.viewport, dpr) })), false), caseCount: scripts.length, outDir: statesDir });
     const stateExtra: LaneFailure[] = sr.error === null ? [] : [{ lane: STATE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the scripts: ${sr.error}` }];
     const states = evaluateStates(t.target, dpr, statesDir, rec, scripts, stateExtra);
     log(`${spec.name}: device-states ${states.dumps}/${states.cases} dumps in ${((Date.now() - s0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(states.failures))}`);
@@ -748,7 +748,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const subsets = animPixelSubsets(anim);
     const animDir = join(nativeOut(t.target), 'lanes', `${spec.name}-anim`);
     const a0 = Date.now();
-    const ar = await runApp(h, artifact, { runFile: runFileText(anim.flat().map((s) => ({ id: s.id, points: subsets.get(s.case.id)?.has(s.index) === true ? casePoints(s.program, s.case.viewport, dpr) : [] })), false), caseCount: anim.reduce((n, xs) => n + xs.length, 0), outDir: animDir });
+    const ar = await runApp(h, artifact, { runFile: runFileText(anim.flat().map((s) => ({ id: s.id, points: subsets.get(s.case.id)?.has(s.index) === true ? devicePoints(s.program, s.case.viewport, dpr) : [] })), false), caseCount: anim.reduce((n, xs) => n + xs.length, 0), outDir: animDir });
     const animExtra: LaneFailure[] = ar.error === null ? [] : [{ lane: ANIM_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the frame samples: ${ar.error}` }];
     const animSet = evaluateAnim(t.target, dpr, animDir, rec, anim, animExtra);
     log(`${spec.name}: device-anim ${animSet.dumps}/${animSet.cases} dumps in ${((Date.now() - a0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(animSet.failures))}`);
