@@ -625,6 +625,9 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'background-layers':
         // BG2-a: a state record holds no gradient write; the layers are painted from the static program only.
         throw new StateEmitError(`${n.id}: background layers in a state program have no state-node write (BG2 writes them on the static program only)`);
+      case 'visibility':
+        // T150a: a state record holds no visibility write; T150b adds the setter on the device-states lane.
+        throw new StateEmitError(`${n.id}: visibility ${w.value} in a state program has no state-node write (T150b adds it)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;

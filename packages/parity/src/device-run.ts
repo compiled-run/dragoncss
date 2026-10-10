@@ -86,6 +86,10 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // Dormant (DORMANT_PLANTS): gradient-backdrop's stacks are the ones a translucent raster would come from once R6(b) or R6(c) returns.
   'gradient-unpremultiplied-upload': ['gradient-backdrop'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
+  // T150a: visibility-basic's hidden boxes (ids hid-*) paint their backgrounds when the writer is ignored; its visible children
+  // (kid-*) vanish when the writer hides the box view itself.
+  'visibility-ignored': ['visibility-basic'],
+  'visibility-subtree': ['visibility-basic'],
 };
 /** The sample rules a paint plant's device-pixels failures must name: border bands and edges, radius or shadow points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
@@ -103,6 +107,8 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'gradient-offset-1': /^gradient:/,
   'gradient-unpremultiplied-upload': /^gradient:/,
   'image-offset-1': /^(image-flat:|edge:)/,
+  'visibility-ignored': /^interior:hid-/,
+  'visibility-subtree': /^interior:kid-/,
 };
 /**
  * Plants kept in the registry but not run, each with why no check can observe it now. bg2-reference.test.ts proves the reason
