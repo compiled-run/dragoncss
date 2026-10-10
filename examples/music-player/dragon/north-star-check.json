@@ -133,13 +133,13 @@
   "contextProbe": {
    "rounds": 2,
    "blankedRules": 4,
-   "blankedDeclarations": 32,
+   "blankedDeclarations": 23,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 254,
-  "errors": 249,
+  "diagnostics": 255,
+  "errors": 250,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -151,13 +151,13 @@
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
    "DRAGON_UNSUPPORTED_FONT [ios]": 34,
-   "DRAGON_UNSUPPORTED_PROPERTY": 29,
+   "DRAGON_UNSUPPORTED_PROPERTY": 20,
    "DRAGON_UNSUPPORTED_PROPERTY [web]": 2,
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 4,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 40,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 40,
+   "DRAGON_UNSUPPORTED_VALUE [android]": 45,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 45,
    "DRAGON_UNSUPPORTED_VALUE [web]": 24
   },
   "perTarget": {
@@ -166,7 +166,7 @@
      "DRAGON_UNPROVEN_CONTEXT": 4,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_PROPERTY": 31,
+     "DRAGON_UNSUPPORTED_PROPERTY": 22,
      "DRAGON_UNSUPPORTED_SELECTOR": 4,
      "DRAGON_UNSUPPORTED_VALUE": 24
     },
@@ -181,9 +181,9 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 29,
+     "DRAGON_UNSUPPORTED_PROPERTY": 20,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 40
+     "DRAGON_UNSUPPORTED_VALUE": 45
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -198,9 +198,9 @@
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_FONT": 34,
-     "DRAGON_UNSUPPORTED_PROPERTY": 29,
+     "DRAGON_UNSUPPORTED_PROPERTY": 20,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 40
+     "DRAGON_UNSUPPORTED_VALUE": 45
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -215,11 +215,11 @@
   "notApplicableIos": 2,
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
-  "supportedBothTargets": 234,
-  "supportedWeb": 245,
-  "supportedIos": 234,
-  "supportedAndroid": 234,
-  "supportPercent": 81,
+  "supportedBothTargets": 238,
+  "supportedWeb": 254,
+  "supportedIos": 238,
+  "supportedAndroid": 238,
+  "supportPercent": 82.4,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -302,9 +302,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 112,
-   "B-unwrapped": 112,
-   "C-context": 157
+   "A-authored": 103,
+   "B-unwrapped": 103,
+   "C-context": 167
   }
  },
  "features": {
@@ -1047,11 +1047,11 @@
    "atRule": null,
    "property": "z-index",
    "value": "40",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1295,12 +1295,10 @@
    "atRule": null,
    "property": "z-index",
    "value": "20",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 70,
@@ -1693,11 +1691,11 @@
    "atRule": null,
    "property": "opacity",
    "value": "0.9",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1745,11 +1743,11 @@
    "atRule": null,
    "property": "opacity",
    "value": "0.46",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1879,11 +1877,11 @@
    "atRule": null,
    "property": "opacity",
    "value": "0.5",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -1905,11 +1903,11 @@
    "atRule": null,
    "property": "opacity",
    "value": "0.28",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
+    "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
   {
@@ -2942,12 +2940,10 @@
    "atRule": null,
    "property": "opacity",
    "value": "0",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 203,
@@ -3042,12 +3038,10 @@
    "atRule": null,
    "property": "z-index",
    "value": "30",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 211,
@@ -3372,12 +3366,10 @@
    "atRule": null,
    "property": "opacity",
    "value": "1",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 238,
@@ -4229,26 +4221,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@1605-1616|z-index is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 1605,
-    "end": 1616,
-    "line": 98,
-    "column": 2,
-    "text": "z-index: 40"
-   },
-   "message": "z-index is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_SELECTOR|android|css@1646-1677|:hover is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
@@ -4364,26 +4336,6 @@
     "text": "fixed"
    },
    "message": "position: fixed is unsupported (support profile m1-s5); supported position values: absolute, relative or static",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@2182-2193|z-index is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 2182,
-    "end": 2193,
-    "line": 127,
-    "column": 2,
-    "text": "z-index: 20"
-   },
-   "message": "z-index is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4911,26 +4863,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3410-3422|opacity is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3410,
-    "end": 3422,
-    "line": 187,
-    "column": 2,
-    "text": "opacity: 0.9"
-   },
-   "message": "opacity is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3470-3603|background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -4984,66 +4916,6 @@
     "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
    },
    "message": "background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3617-3630|opacity is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3617,
-    "end": 3630,
-    "line": 200,
-    "column": 2,
-    "text": "opacity: 0.46"
-   },
-   "message": "opacity is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3904-3916|opacity is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3904,
-    "end": 3916,
-    "line": 217,
-    "column": 2,
-    "text": "opacity: 0.5"
-   },
-   "message": "opacity is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@3986-3999|opacity is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 3986,
-    "end": 3999,
-    "line": 222,
-    "column": 2,
-    "text": "opacity: 0.28"
-   },
-   "message": "opacity is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5377,26 +5249,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6433-6443|opacity is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6433,
-    "end": 6443,
-    "line": 367,
-    "column": 2,
-    "text": "opacity: 0"
-   },
-   "message": "opacity is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6473-6478|position: fixed is unsupported (support profile m1-s5); supported position values: absolute, relative or static",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -5457,26 +5309,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@6618-6629|z-index is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 6618,
-    "end": 6629,
-    "line": 377,
-    "column": 2,
-    "text": "z-index: 30"
-   },
-   "message": "z-index is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_SELECTOR|android|css@7057-7090|:hover is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4",
    "code": "DRAGON_UNSUPPORTED_SELECTOR",
    "severity": "error",
@@ -5516,26 +5348,6 @@
     "A-authored",
     "B-unwrapped",
     "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@7380-7390|opacity is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 7380,
-    "end": 7390,
-    "line": 434,
-    "column": 2,
-    "text": "opacity: 1"
-   },
-   "message": "opacity is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
    ]
   },
   {
@@ -6375,6 +6187,44 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@1614-1616|page/nav-call/library-button paints in a stacking context outside page/app, whose overflow clip applies to it, and Chrome paints it after content android would paint above it under that clip; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 1614,
+    "end": 1616,
+    "line": 98,
+    "column": 11,
+    "text": "40"
+   },
+   "message": "page/nav-call/library-button paints in a stacking context outside page/app, whose overflow clip applies to it, and Chrome paints it after content android would paint above it under that clip; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@1614-1616|page/nav-call/library-button paints in a stacking context outside page/app, whose overflow clip applies to it, and Chrome paints it after content ios would paint above it under that clip; ios would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 1614,
+    "end": 1616,
+    "line": 98,
+    "column": 11,
+    "text": "40"
+   },
+   "message": "page/nav-call/library-button paints in a stacking context outside page/app, whose overflow clip applies to it, and Chrome paints it after content ios would paint above it under that clip; ios would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2125-2130|position: fixed is unsupported (support profile m1-s5); in flex-column/ltr use static",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -7040,6 +6890,44 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3419-3422|page/song-call/record-cover has opacity 0.9; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3419,
+    "end": 3422,
+    "line": 187,
+    "column": 11,
+    "text": "0.9"
+   },
+   "message": "page/song-call/record-cover has opacity 0.9; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3419-3422|page/song-call/record-cover has opacity 0.9; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3419,
+    "end": 3422,
+    "line": 187,
+    "column": 11,
+    "text": "0.9"
+   },
+   "message": "page/song-call/record-cover has opacity 0.9; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3470-3603|background-image on page/song-call/record-shine: the gradient layers are not opaque over every pixel they paint, and the native targets composite them over a backdrop they do not draw; give the box an opaque background-color or an opaque repeating gradient layer beneath (BG2c)",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -7129,6 +7017,120 @@
     "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
    },
    "message": "background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3626-3630|page/song-call/record-shine has opacity 0.46; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3626,
+    "end": 3630,
+    "line": 200,
+    "column": 11,
+    "text": "0.46"
+   },
+   "message": "page/song-call/record-shine has opacity 0.46; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3626-3630|page/song-call/record-shine has opacity 0.46; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3626,
+    "end": 3630,
+    "line": 200,
+    "column": 11,
+    "text": "0.46"
+   },
+   "message": "page/song-call/record-shine has opacity 0.46; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3913-3916|page/song-call/record-marker-one has opacity 0.5; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3913,
+    "end": 3916,
+    "line": 217,
+    "column": 11,
+    "text": "0.5"
+   },
+   "message": "page/song-call/record-marker-one has opacity 0.5; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3913-3916|page/song-call/record-marker-one has opacity 0.5; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3913,
+    "end": 3916,
+    "line": 217,
+    "column": 11,
+    "text": "0.5"
+   },
+   "message": "page/song-call/record-marker-one has opacity 0.5; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3995-3999|page/song-call/record-marker-two has opacity 0.28; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3995,
+    "end": 3999,
+    "line": 222,
+    "column": 11,
+    "text": "0.28"
+   },
+   "message": "page/song-call/record-marker-two has opacity 0.28; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3995-3999|page/song-call/record-marker-two has opacity 0.28; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3995,
+    "end": 3999,
+    "line": 222,
+    "column": 11,
+    "text": "0.28"
+   },
+   "message": "page/song-call/record-marker-two has opacity 0.28; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest",
    "viaRelated": false,
    "passes": [
     "C-context"
