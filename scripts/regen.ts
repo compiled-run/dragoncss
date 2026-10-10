@@ -26,6 +26,7 @@ import { MQ_R1 } from './regen-steps/mq-r1.ts';
 import { OVFL } from './regen-steps/ovfl.ts';
 import { PNT1 } from './regen-steps/pnt1.ts';
 import { PNT2 } from './regen-steps/pnt2.ts';
+import { SELD_R2 } from './regen-steps/seld-r2.ts';
 import { ENGINE_SOURCES, FIXTURES, FONTS, type ManualOutput, placeSteps, pnpm, type RegenFeature, type Step } from './regen-steps/step.ts';
 
 // The device evidence stamp (device-evidence.ts EVIDENCE_CODE) digests these as files without importing them: the CI device code.
@@ -113,6 +114,7 @@ export const REGEN_FEATURES: { readonly [feature: string]: RegenFeature } = {
   ovfl: OVFL,
   pnt1: PNT1,
   pnt2: PNT2,
+  'seld-r2': SELD_R2,
   tdec: TDEC,
   txt1a: TXT1A,
   txt2: TXT2,

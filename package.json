@@ -65,6 +65,8 @@
     "tw:sweep": "node --conditions=dragon-internal packages/tailwind-sweep/src/cli/sweep.ts",
     "parity:hit-capture": "node --conditions=dragon-internal packages/parity/src/cli/hit-capture.ts",
     "parity:hit-report": "node --conditions=dragon-internal packages/parity/src/cli/hit-report.ts",
+    "parity:trace-capture": "node --conditions=dragon-internal packages/parity/src/cli/trace-capture.ts",
+    "parity:trace-report": "node --conditions=dragon-internal packages/parity/src/cli/trace-report.ts",
     "parity:anim-capture": "node --conditions=dragon-internal packages/parity/src/cli/anim-capture.ts",
     "parity:anim-report": "node --conditions=dragon-internal packages/parity/src/cli/anim-report.ts",
     "parity:anim-vectors": "node --conditions=dragon-internal packages/parity/src/cli/anim-vectors.ts",
