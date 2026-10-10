@@ -4,28 +4,28 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4339 (18.6%) | 18946 (81.4%) | 1 | 0 | 0 |
-| ios | 4290 (18.4%) | 18955 (81.4%) | 1 | 0 | 40 |
-| android | 4290 (18.4%) | 18955 (81.4%) | 1 | 0 | 40 |
+| web | 4427 (19.0%) | 18858 (81.0%) | 1 | 0 | 0 |
+| ios | 4365 (18.7%) | 18880 (81.1%) | 1 | 0 | 40 |
+| android | 4365 (18.7%) | 18880 (81.1%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4103, ios 4112 and android 4112 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4141, ios 4142 and android 4142 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 1435 / 116 / 0 / 0 / 0 | 1435 / 116 / 0 / 0 / 0 | 1435 / 116 / 0 / 0 / 0 |
-| flexbox-grid | 513 | 365 / 147 / 1 / 0 / 0 | 365 / 147 / 1 / 0 / 0 | 365 / 147 / 1 / 0 / 0 |
+| layout | 1551 | 1439 / 112 / 0 / 0 / 0 | 1439 / 112 / 0 / 0 / 0 | 1439 / 112 / 0 / 0 / 0 |
+| flexbox-grid | 513 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 |
 | typography | 261 | 37 / 224 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 |
-| colours | 14842 | 71 / 14771 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 |
-| backgrounds | 151 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 |
-| borders | 250 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 |
-| effects | 1178 | 21 / 1157 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 |
+| colours | 14842 | 88 / 14754 / 0 / 0 / 0 | 87 / 14755 / 0 / 0 / 0 | 87 / 14755 / 0 / 0 / 0 |
+| backgrounds | 151 | 19 / 132 / 0 / 0 / 0 | 19 / 132 / 0 / 0 / 0 | 19 / 132 / 0 / 0 / 0 |
+| borders | 250 | 172 / 78 / 0 / 0 / 0 | 170 / 80 / 0 / 0 / 0 | 170 / 80 / 0 / 0 / 0 |
+| effects | 1178 | 48 / 1130 / 0 / 0 / 0 | 29 / 1149 / 0 / 0 / 0 | 29 / 1149 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 |
-| transitions-animation | 36 | 19 / 17 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 |
+| transitions-animation | 36 | 30 / 6 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 |
 | transforms | 680 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 |
 | interactivity | 1246 | 4 / 1242 / 0 / 0 / 0 | 4 / 1204 / 0 / 0 / 38 | 4 / 1204 / 0 / 0 / 38 |
 | svg | 6 | 0 / 6 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 |
@@ -36,18 +36,18 @@ As published (before the shell pre-pass), the sheet compiles for web 4103, ios 4
 | blocked by | web | ios | android | families (web) |
 |---|---:|---:|---:|---:|
 | `property mask-image` | 6280 | 6280 | 6280 | 38 |
-| `value oklch()` | 4004 | 4004 | 4004 | 14 |
-| `property box-shadow` | 1489 | 1489 | 1489 | 8 |
+| `value oklch()` | 4862 | 4862 | 4862 | 17 |
 | `value background-image: conic-gradient(var(--tw-gradient-stops)) substitutes to "conic` | 937 | 937 | 937 | 4 |
+| `at-rule @supports` | 612 | 612 | 612 | 4 |
 | `property scrollbar-color` | 582 | 582 | 582 | 2 |
 | `property translate` | 444 | 444 | 444 | 24 |
 | `property filter` | 351 | 351 | 351 | 10 |
 | `property text-shadow` | 298 | 298 | 298 | 2 |
+| `value box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-o` | 298 | 298 | 298 | 2 |
 | `property accent-color` | 292 | 292 | 292 | 2 |
 | `property fill` | 292 | 292 | 292 | 2 |
 | `property stroke` | 292 | 292 | 292 | 2 |
 | `property caret-color` | 291 | 291 | 291 | 1 |
-| `property outline-color` | 291 | 291 | 291 | 1 |
 | `property text-decoration-color` | 291 | 291 | 291 | 1 |
 | `selector pseudo-element ::placeholder` | 291 | 291 | 291 | 1 |
 | `property border-spacing` | 105 | 105 | 105 | 6 |

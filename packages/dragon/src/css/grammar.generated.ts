@@ -3,7 +3,7 @@
 export const webrefVersion = "8.7.5";
 
 /** Longhands and shorthands the compiler reads, with their webref initial and inherited fields. */
-export const subset: readonly string[] = ["-webkit-border-radius","align-content","align-items","align-self","aspect-ratio","background","background-attachment","background-clip","background-color","background-image","background-origin","background-position","background-position-x","background-position-y","background-repeat","background-size","block-size","border","border-block","border-block-color","border-block-end","border-block-end-color","border-block-end-style","border-block-end-width","border-block-start","border-block-start-color","border-block-start-style","border-block-start-width","border-block-style","border-block-width","border-bottom","border-bottom-color","border-bottom-left-radius","border-bottom-right-radius","border-bottom-style","border-bottom-width","border-color","border-inline","border-inline-color","border-inline-end","border-inline-end-color","border-inline-end-style","border-inline-end-width","border-inline-start","border-inline-start-color","border-inline-start-style","border-inline-start-width","border-inline-style","border-inline-width","border-left","border-left-color","border-left-style","border-left-width","border-radius","border-right","border-right-color","border-right-style","border-right-width","border-style","border-top","border-top-color","border-top-left-radius","border-top-right-radius","border-top-style","border-top-width","border-width","bottom","box-sizing","color","column-gap","content","direction","display","flex","flex-basis","flex-direction","flex-flow","flex-grow","flex-shrink","flex-wrap","font-family","font-size","font-style","font-weight","gap","grid","grid-area","grid-auto-columns","grid-auto-flow","grid-auto-rows","grid-column","grid-column-end","grid-column-gap","grid-column-start","grid-gap","grid-row","grid-row-end","grid-row-gap","grid-row-start","grid-template","grid-template-areas","grid-template-columns","grid-template-rows","height","inline-size","inset","inset-block","inset-block-end","inset-block-start","inset-inline","inset-inline-end","inset-inline-start","justify-content","justify-items","justify-self","left","line-height","list-style","list-style-image","list-style-position","list-style-type","margin","margin-block","margin-block-end","margin-block-start","margin-bottom","margin-inline","margin-inline-end","margin-inline-start","margin-left","margin-right","margin-top","max-block-size","max-height","max-inline-size","max-width","min-block-size","min-height","min-inline-size","min-width","object-fit","object-position","opacity","order","overflow","overflow-x","overflow-y","padding","padding-block","padding-block-end","padding-block-start","padding-bottom","padding-inline","padding-inline-end","padding-inline-start","padding-left","padding-right","padding-top","pointer-events","position","right","row-gap","text-align","text-combine-upright","text-orientation","text-wrap-mode","top","transform","transform-origin","white-space","white-space-collapse","width","will-change","writing-mode","z-index"];
+export const subset: readonly string[] = ["-webkit-border-radius","align-content","align-items","align-self","aspect-ratio","background","background-attachment","background-clip","background-color","background-image","background-origin","background-position","background-position-x","background-position-y","background-repeat","background-size","block-size","border","border-block","border-block-color","border-block-end","border-block-end-color","border-block-end-style","border-block-end-width","border-block-start","border-block-start-color","border-block-start-style","border-block-start-width","border-block-style","border-block-width","border-bottom","border-bottom-color","border-bottom-left-radius","border-bottom-right-radius","border-bottom-style","border-bottom-width","border-color","border-inline","border-inline-color","border-inline-end","border-inline-end-color","border-inline-end-style","border-inline-end-width","border-inline-start","border-inline-start-color","border-inline-start-style","border-inline-start-width","border-inline-style","border-inline-width","border-left","border-left-color","border-left-style","border-left-width","border-radius","border-right","border-right-color","border-right-style","border-right-width","border-style","border-top","border-top-color","border-top-left-radius","border-top-right-radius","border-top-style","border-top-width","border-width","bottom","box-shadow","box-sizing","color","column-gap","content","direction","display","flex","flex-basis","flex-direction","flex-flow","flex-grow","flex-shrink","flex-wrap","font-family","font-size","font-style","font-weight","gap","grid","grid-area","grid-auto-columns","grid-auto-flow","grid-auto-rows","grid-column","grid-column-end","grid-column-gap","grid-column-start","grid-gap","grid-row","grid-row-end","grid-row-gap","grid-row-start","grid-template","grid-template-areas","grid-template-columns","grid-template-rows","height","inline-size","inset","inset-block","inset-block-end","inset-block-start","inset-inline","inset-inline-end","inset-inline-start","justify-content","justify-items","justify-self","left","line-height","list-style","list-style-image","list-style-position","list-style-type","margin","margin-block","margin-block-end","margin-block-start","margin-bottom","margin-inline","margin-inline-end","margin-inline-start","margin-left","margin-right","margin-top","max-block-size","max-height","max-inline-size","max-width","min-block-size","min-height","min-inline-size","min-width","object-fit","object-position","opacity","order","outline","outline-color","outline-offset","outline-style","outline-width","overflow","overflow-x","overflow-y","padding","padding-block","padding-block-end","padding-block-start","padding-bottom","padding-inline","padding-inline-end","padding-inline-start","padding-left","padding-right","padding-top","place-content","place-items","place-self","pointer-events","position","right","row-gap","text-align","text-combine-upright","text-orientation","text-wrap-mode","top","transform","transform-origin","visibility","white-space","white-space-collapse","width","will-change","writing-mode","z-index"];
 
 export type PropertyGrammar = { readonly syntax: string; readonly initial: string; readonly inherited: string };
 
@@ -75,6 +75,11 @@ export const properties: { readonly [name: string]: PropertyGrammar } = {
   "border-top-width": { syntax: "<line-width>", initial: "medium", inherited: "no" },
   "border-width": { syntax: "<'border-top-width'>{1,4}", initial: "see individual properties", inherited: "see individual properties" },
   "bottom": { syntax: "auto | <length-percentage> | <anchor()> | <anchor-size()>", initial: "auto", inherited: "no" },
+  "box-shadow": { syntax: "<spread-shadow>#", initial: "none", inherited: "no" },
+  "box-shadow-blur": { syntax: "<length [0,∞]>#", initial: "0", inherited: "no" },
+  "box-shadow-color": { syntax: "<color>#", initial: "currentcolor", inherited: "no" },
+  "box-shadow-position": { syntax: "[ outset | inset ]#", initial: "outset", inherited: "no" },
+  "box-shadow-spread": { syntax: "<length>#", initial: "0", inherited: "no" },
   "box-sizing": { syntax: "content-box | border-box", initial: "content-box", inherited: "no" },
   "color": { syntax: "<color>", initial: "CanvasText", inherited: "yes" },
   "column-gap": { syntax: "normal | <length-percentage [0,∞]> | <line-width>", initial: "normal", inherited: "no" },
@@ -152,6 +157,11 @@ export const properties: { readonly [name: string]: PropertyGrammar } = {
   "object-position": { syntax: "<position>", initial: "50% 50%", inherited: "no" },
   "opacity": { syntax: "<opacity-value>", initial: "1", inherited: "no" },
   "order": { syntax: "<integer>", initial: "0", inherited: "no" },
+  "outline": { syntax: "<'outline-width'> || <'outline-style'> || <'outline-color'>", initial: "see individual properties", inherited: "no" },
+  "outline-color": { syntax: "auto | <'border-top-color'>", initial: "auto", inherited: "no" },
+  "outline-offset": { syntax: "<length>", initial: "0", inherited: "no" },
+  "outline-style": { syntax: "auto | <outline-line-style>", initial: "none", inherited: "no" },
+  "outline-width": { syntax: "<line-width>", initial: "medium", inherited: "no" },
   "overflow": { syntax: "<'overflow-block'>{1,2}", initial: "visible", inherited: "no" },
   "overflow-block": { syntax: "visible | hidden | clip | scroll | auto", initial: "visible", inherited: "no" },
   "overflow-x": { syntax: "visible | hidden | clip | scroll | auto", initial: "visible", inherited: "no" },
@@ -167,6 +177,9 @@ export const properties: { readonly [name: string]: PropertyGrammar } = {
   "padding-left": { syntax: "<length-percentage [0,∞]>", initial: "0", inherited: "no" },
   "padding-right": { syntax: "<length-percentage [0,∞]>", initial: "0", inherited: "no" },
   "padding-top": { syntax: "<length-percentage [0,∞]>", initial: "0", inherited: "no" },
+  "place-content": { syntax: "<'align-content'> <'justify-content'>?", initial: "normal", inherited: "no" },
+  "place-items": { syntax: "<'align-items'> <'justify-items'>?", initial: "see individual properties", inherited: "no" },
+  "place-self": { syntax: "<'align-self'> <'justify-self'>?", initial: "auto", inherited: "no" },
   "pointer-events": { syntax: "auto | bounding-box | visiblePainted | visibleFill | visibleStroke | visible | painted | fill | stroke | all | none", initial: "auto", inherited: "yes" },
   "position": { syntax: "static | relative | absolute | sticky | fixed | <running()>", initial: "static", inherited: "no" },
   "right": { syntax: "auto | <length-percentage> | <anchor()> | <anchor-size()>", initial: "auto", inherited: "no" },
@@ -178,6 +191,7 @@ export const properties: { readonly [name: string]: PropertyGrammar } = {
   "top": { syntax: "auto | <length-percentage> | <anchor()> | <anchor-size()>", initial: "auto", inherited: "no" },
   "transform": { syntax: "none | <transform-list>", initial: "none", inherited: "no" },
   "transform-origin": { syntax: "[ left | center | right | top | bottom | <length-percentage> ] | [ left | center | right | <length-percentage> ] [ top | center | bottom | <length-percentage> ] <length>? | [ [ center | left | right ] && [ center | top | bottom ] ] <length>?", initial: "50% 50%", inherited: "no" },
+  "visibility": { syntax: "visible | hidden | force-hidden | collapse", initial: "visible", inherited: "yes" },
   "white-space": { syntax: "normal | pre | pre-wrap | pre-line | <'white-space-collapse'> || <'text-wrap-mode'> || <'white-space-trim'>", initial: "normal", inherited: "see individual properties" },
   "white-space-collapse": { syntax: "collapse | discard | preserve | preserve-breaks | preserve-spaces | break-spaces", initial: "collapse", inherited: "yes" },
   "white-space-trim": { syntax: "none | discard-before || discard-after || discard-inner", initial: "none", inherited: "no" },
@@ -319,6 +333,7 @@ export const types: { readonly [name: string]: string } = {
   "oklab()": "oklab([from <color>]? [<percentage> | <number> | none] [<percentage> | <number> | none] [<percentage> | <number> | none] [ / [<alpha-value> | none] ]? )",
   "oklch()": "oklch([from <color>]? [<percentage> | <number> | none] [<percentage> | <number> | none] [<hue> | none] [ / [<alpha-value> | none] ]? )",
   "opacity-value": "<number> | <percentage>",
+  "outline-line-style": "none | auto | dotted | dashed | solid | double | groove | ridge | inset | outset",
   "overflow-position": "unsafe | safe",
   "perspective()": "perspective( [ <length [0,∞]> | none ] )",
   "polar-color-space": "hsl | hwb | lch | oklch",
@@ -362,6 +377,7 @@ export const types: { readonly [name: string]: string } = {
   "skewX()": "skewX( [ <angle> | <zero> ] )",
   "skewY()": "skewY( [ <angle> | <zero> ] )",
   "slash-separated-border-radius-syntax": "<length-percentage [0,∞]> [ / <length-percentage [0,∞]> ]?",
+  "spread-shadow": "<'box-shadow-color'>? && [ [ none | <length>{2} ] [ <'box-shadow-blur'> <'box-shadow-spread'>? ]? ] && <'box-shadow-position'>?",
   "string()": "string( <custom-ident> , [ first | start | last | first-except ]? )",
   "stripes()": "stripes( <color-stripe># )",
   "symbolic-counter-style": "disc | circle | square | disclosure-open | disclosure-closed",
