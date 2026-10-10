@@ -196,12 +196,12 @@ describe('build reuse', () => {
     // The engine and the runtime support stay at -O; only generated case code is at -Onone.
     expect(m.core.every((p) => p.startsWith('DragonLayout/') || p.startsWith('Support/'))).toBe(true);
     expect(m.core.filter((p) => p.startsWith('DragonLayout/')).length).toBeGreaterThan(0);
-    expect(m.cases.every((p) => /^Cases\/Dragon(Cases|States)\d+\.swift$/.test(p))).toBe(true);
-    expect(m.host).toEqual(expect.arrayContaining(['Host/main.swift', 'Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift']));
+    expect(m.cases.every((p) => /^Cases\/Dragon(Cases|States|Interactions)\d+\.swift$/.test(p))).toBe(true);
+    expect(m.host).toEqual(expect.arrayContaining(['Host/main.swift', 'Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift', 'Cases/DragonInteractionCaseTable.swift']));
     // A planted host file builds in DragonHost, where swiftc's availability check still sees it.
     expect(iosModules([...paths, 'Host/DragonPlanted.swift']).host).toContain('Host/DragonPlanted.swift');
     expect(() => iosModules(paths.filter((p) => p !== 'Cases/DragonCaseTable.swift'))).toThrow(/no Cases\/DragonCaseTable.swift/);
-    expect(() => iosModules(paths.filter((p) => !/^Cases\/DragonCases\d/.test(p) && !/^Cases\/DragonStates\d/.test(p)))).toThrow(/do not split/);
+    expect(() => iosModules(paths.filter((p) => !/^Cases\/Dragon(Cases|States|Interactions)\d/.test(p)))).toThrow(/do not split/);
   });
   it('the app cache key hashes every command argument and the module assignment, not a label', () => {
     const paths = hostSources('ios', 'x').map((f) => f.path);
