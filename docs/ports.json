@@ -25,6 +25,21 @@
       ]
     },
     {
+      "upstream": "cc/paint/paint_op_buffer_iterator.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "f4b4142ce5d6a4655c7c47ebd7b6884a812b318cb65c8e6d5251afbda073d24d",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "13-146", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "cc/trees/layer_tree_settings.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -2177,6 +2192,21 @@
       ]
     },
     {
+      "upstream": "third_party/skia/include/core/SkPaint.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "5bf75aeedd6bee93605847ec7f5e2d86e969808442c54387878f51bea226bbef",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "264-266", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint.ts", "symbol": "opacityAlpha8", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/base/SkTSort.h",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",
@@ -2209,6 +2239,21 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/core/SkBlitRow_D32.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2011 Google Inc.",
+      "fileSha256": "01f45b560a4345a6d51624e5e4367710de7220c159162626ada09cd4c0c4ffcb",
+      "headerSha256": "622b7f15f4ca99db5c6f8699ec00094accecc7c41c7f967a2b66bab3136702e7",
+      "ranges": [
+        { "lines": "204-301", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/core/SkBlurMask.cpp",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",
@@ -2237,6 +2282,21 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-blur.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkColorData.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "ea6f4d7033caffe6b0678c0938504994a27bebf4a8b245b6804b685ac2e2f4b1",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "134-137", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -2440,6 +2500,21 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-aa.ts", "symbol": "RESULT_SPLIT", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/opts/SkBlitRow_opts.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 Google Inc.",
+      "fileSha256": "3dd90c97d2fd94d3ae9130ecb6b5715e0b1b9cb2824105ffaf7cfa541b52521a",
+      "headerSha256": "4c66cc21a1f800a4dc2688173a1eb7c2a17eb9af43681961c51429b749c43f26",
+      "ranges": [
+        { "lines": "243-270", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

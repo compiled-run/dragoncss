@@ -4,17 +4,17 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4294 (18.4%) | 18991 (81.6%) | 1 | 0 | 0 |
-| ios | 4275 (18.4%) | 18970 (81.5%) | 1 | 0 | 40 |
-| android | 4275 (18.4%) | 18970 (81.5%) | 1 | 0 | 40 |
+| web | 4328 (18.6%) | 18957 (81.4%) | 1 | 0 | 0 |
+| ios | 4290 (18.4%) | 18955 (81.4%) | 1 | 0 | 40 |
+| android | 4290 (18.4%) | 18955 (81.4%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4067, ios 4097 and android 4097 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4101, ios 4112 and android 4112 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 1422 / 129 / 0 / 0 / 0 | 1422 / 129 / 0 / 0 / 0 | 1422 / 129 / 0 / 0 / 0 |
+| layout | 1551 | 1435 / 116 / 0 / 0 / 0 | 1435 / 116 / 0 / 0 / 0 | 1435 / 116 / 0 / 0 / 0 |
 | flexbox-grid | 513 | 365 / 147 / 1 / 0 / 0 | 365 / 147 / 1 / 0 / 0 | 365 / 147 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 |
@@ -22,7 +22,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4067, ios 4
 | colours | 14842 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 |
 | backgrounds | 151 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 |
 | borders | 250 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 |
-| effects | 1178 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 |
+| effects | 1178 | 21 / 1157 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
 | tables | 111 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 |
 | transitions-animation | 36 | 19 / 17 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 | 0 / 36 / 0 / 0 / 0 |

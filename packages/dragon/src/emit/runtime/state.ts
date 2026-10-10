@@ -56,6 +56,7 @@ public enum DragonStateWrite {
   case borderStyles([String])
   case borderColors([DragonRGBA8])
   case clip
+  case paintOrder(String, Int, Int)
   case text(String, String, DragonRGBA8)
 }
 
@@ -189,6 +190,7 @@ public final class DragonStateMachine {
         case .borderStyles(let s): v.dragonBorderStyles = s
         case .borderColors(let c): v.dragonBorderColors = dragonAnimatedSides(animator, n.id, c)
         case .clip: v.dragonEnableClip()
+        case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)
         case .text: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
@@ -320,6 +322,7 @@ sealed class DragonStateWrite {
   class BorderStyles(val s: Array<String>) : DragonStateWrite()
   class BorderColors(val c: Array<DragonRGBA8>) : DragonStateWrite()
   object Clip : DragonStateWrite()
+  class PaintOrder(val host: String, val bucket: Int, val rank: Int) : DragonStateWrite()
   class Text(val text: String, val family: String, val color: DragonRGBA8) : DragonStateWrite()
 }
 
@@ -447,6 +450,7 @@ class DragonStateMachine(
           is DragonStateWrite.BorderStyles -> v.dragonBorderStyles = w.s
           is DragonStateWrite.BorderColors -> v.dragonBorderColors = dragonAnimatedSides(animator, n.id, w.c)
           is DragonStateWrite.Clip -> v.dragonEnableClip()
+          is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)
           is DragonStateWrite.Text -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
@@ -585,6 +589,11 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'padding-box-clip':
         writes.push(lang === 'swift' ? '.clip' : 'DragonStateWrite.Clip');
         break;
+      case 'paint-order': {
+        if (!Number.isInteger(w.bucket) || !Number.isInteger(w.rank)) throw new StateEmitError(`${n.id}: paint order bucket ${w.bucket} or rank ${w.rank} is not an integer`);
+        writes.push(lang === 'swift' ? `.paintOrder(${q(w.host)}, ${w.bucket}, ${w.rank})` : `DragonStateWrite.PaintOrder(${q(w.host)}, ${w.bucket}, ${w.rank})`);
+        break;
+      }
       case 'font': {
         const color = n.writes.find((x) => x.kind === 'text-color');
         if (color === undefined || color.kind !== 'text-color') throw new StateEmitError(`${n.id}: a text run without a colour`);
@@ -597,6 +606,9 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'transform':
         // PNT2 integration: a state record holds no transform write; a transformed node of a state program is refused here, by name.
         throw new StateEmitError(`${n.id}: a transform in a state program has no state-node write (PNT2 writes transforms on the static program only)`);
+      case 'opacity':
+        // PNT1 writes opacity on the static program only; the state runtime has no opacity writer yet.
+        throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       case 'scroll-container':
         // OVFL-B: the state runtime rebuilds clip views only; a scroll view under component states is refused here, by name.
         throw new StateEmitError(`${n.id}: a scroll container in a state program is not supported yet (OVFL-B scroll views under SELD-R states)`);

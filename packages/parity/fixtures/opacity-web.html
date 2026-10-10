@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
+.stage { display: flex; flex-direction: column; row-gap: 12px; padding: 8px 16px; background-color: rgb(40, 60, 80); }
+.row { display: flex; }
+.c { width: 32px; height: 32px; }
+.s16 { width: 16px; }
+.s8 { width: 8px; }
+.fold { background-color: rgb(230, 80, 40); opacity: 0.3; }
+.pct { background-color: rgb(40, 200, 120); opacity: 45%; }
+.group { background-color: rgb(250, 220, 60); opacity: 0.6; }
+.kid { width: 16px; height: 32px; background-color: rgb(60, 90, 230); }
+.parent { background-color: rgb(250, 245, 230); opacity: 0.5; }
+.inherit { width: 16px; height: 16px; background-color: rgb(200, 20, 20); opacity: inherit; }
+.text { background-color: rgb(240, 240, 240); color: rgb(200, 30, 90); opacity: 0.5; }
+.border { box-sizing: border-box; background-color: rgb(90, 200, 230); border: 4px solid rgb(30, 30, 30); opacity: 0.7; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="row1" class="row"><div data-dragon-id="ow-fold" class="c fold"></div><div data-dragon-id="sp1a" class="s16"></div><div data-dragon-id="ow-pct" class="c pct"></div><div data-dragon-id="sp1b" class="s8"></div><div data-dragon-id="ow-group" class="c group"><div data-dragon-id="ow-group-kid" class="kid"></div></div></div>
+<div data-dragon-id="row2" class="row"><div data-dragon-id="ow-parent" class="c parent"><div data-dragon-id="ow-inherit" class="inherit"></div></div><div data-dragon-id="sp2a" class="s16"></div><div data-dragon-id="ow-text" class="c text">X</div><div data-dragon-id="sp2b" class="s8"></div><div data-dragon-id="ow-border" class="c border"></div></div>
+</div>
+</body>
+</html>

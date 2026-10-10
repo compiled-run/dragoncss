@@ -24,7 +24,7 @@ export { snapEdges, snapRect } from './snap.ts';
 export type { BorderPadding, InlineAutoBehavior, NaturalSizing, ObjectFit, ObjectPosition, ObjectRect, PixelRect, ReplacedSize, ReplacedSizeMode, ReplacedSpace } from './replaced.ts';
 export { blockFlowSpace, drawnObjectRect, objectFitRect, pixelSnappedRect, replacedAspectRatio, replacedSize } from './replaced.ts';
 export type { ReplacedPaint } from './paint.ts';
-export { replacedPaint } from './paint.ts';
+export { opacityAlpha8, replacedPaint } from './paint.ts';
 export type { DprChromeDeviation, DprDeviationControl, DprDeviationFault, DprDeviationNode } from './chrome-deviations-dpr.ts';
 export { dprChromeDeviations } from './chrome-deviations-dpr.ts';
 export type { AhemRuleFaults, FontData } from './text.ts';
