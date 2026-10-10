@@ -1911,7 +1911,10 @@ function trackSizeValue(lang: Lang, t: TrackSizeInput, str: (s: string) => strin
 }
 
 function gridSpanValue(lang: Lang, s: GridSpanInput, str: (s: string) => string): string {
-  return s.kind === 'definite' ? `GridSpan_definite(${str('definite')}, ${doubleLit(s.start)}, ${doubleLit(s.end)})` : `GridSpan_auto(${str('auto')}, ${doubleLit(s.span)})`;
+  if (s.kind === 'definite') return `GridSpan_definite(${str('definite')}, ${doubleLit(s.start)}, ${doubleLit(s.end)})`;
+  if (s.kind === 'start-line') return `GridSpan_startLine(${str('start-line')}, ${doubleLit(s.line)})`;
+  if (s.kind === 'end-line') return `GridSpan_endLine(${str('end-line')}, ${doubleLit(s.line)})`;
+  return `GridSpan_auto(${str('auto')}, ${doubleLit(s.span)})`;
 }
 
 /** The grid and gridItem fields of a LayoutStyle (css-grid-2; input.ts GridContainerStyle and GridItemStyle), or null. */

@@ -679,6 +679,8 @@ function gridSpan(v: JsonValue, path: string): GridSpan {
     return { kind: 'definite', start: numField(o, 'start', path), end: numField(o, 'end', path) };
   }
   if (k === 'auto') return { kind: 'auto', span: numField(obj(v, ['kind', 'span'], path), 'span', path) };
+  if (k === 'start-line') return { kind: 'start-line', line: numField(obj(v, ['kind', 'line'], path), 'line', path) };
+  if (k === 'end-line') return { kind: 'end-line', line: numField(obj(v, ['kind', 'line'], path), 'line', path) };
   return fail(`${path}: unknown kind ${k}`);
 }
 

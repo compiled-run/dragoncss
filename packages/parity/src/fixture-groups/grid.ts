@@ -1,4 +1,4 @@
-// Fixture group grid (GRID G0, G1a): the grid longhands and shorthands, justify-items and justify-self, compiled and computed like
+// Fixture group grid (GRID G0, G1a, G4): the grid longhands and shorthands, justify-items and justify-self, compiled and computed like
 // Chrome. G0's inert fixtures put placement and template values on block and flex boxes, where Chrome ignores them, and prove
 // justify-self only on flex items (block children and absolutely positioned boxes align by it). G1a's fixtures lay out display:
 // grid: placement, named lines and areas, fr, intrinsic tracks, alignment, sizing and nesting. The rejects are inline-grid, subgrid,
@@ -25,6 +25,9 @@ export const GRID: readonly FixtureSpec[] = [
   both('grid-self-values'),
   both('grid-place'),
   both('grid-template-shorthands'),
+  // GRID G4: absolutely positioned children in their grid areas (lines inside a set, auto lines, lines beyond the grid, named
+  // lines, content alignment) and their static positions, in a positioned grid and in a static one.
+  both('grid-abspos'),
   reject('reject-grid-inline-grid', 'DRAGON_UNSUPPORTED_VALUE', 'inline-grid'),
   reject('reject-grid-subgrid', 'DRAGON_UNSUPPORTED_VALUE', 'subgrid', 'grid-template-columns: subgrid is unsupported: subgrid needs the grid engine'),
   reject('reject-grid-masonry', 'DRAGON_CSS_INVALID_VALUE', 'masonry'),

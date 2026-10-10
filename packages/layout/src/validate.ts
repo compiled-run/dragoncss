@@ -96,7 +96,7 @@ const alignItemsValues = [
 const breadth = tagged({ ...px(0), ...percent(0), fr: { value: num(0) }, ...auto, 'min-content': {}, 'max-content': {} });
 const trackSize = tagged({ breadth: { breadth }, minmax: { min: breadth, max: breadth }, 'fit-content': { limit: tagged({ ...px(0), ...percent(0) }) } });
 const repeater = obj({ count, sizes: arr(trackSize, 1) });
-const gridSpan = tagged({ definite: { start: int, end: int }, auto: { span: count } });
+const gridSpan = tagged({ definite: { start: int, end: int }, auto: { span: count }, 'start-line': { line: int }, 'end-line': { line: int } });
 const gridSelfAlignValues = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'] as const;
 const gridContainer = obj({
   templateColumns: arr(repeater, 0),
@@ -535,8 +535,9 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
 /** Blink kGridMaxTracks (core/style/grid_area.h): the most tracks a grid axis has, and the largest line magnitude. */
 const GRID_MAX_TRACKS = 10000000;
 
-// css-grid-2 §7 and §8: a grid style only on a grid container, a placement on each in-flow child of one and nowhere else, no
-// flexible minimum, definite lines in order and within Blink's track limit, and explicit counts that cover the template.
+// css-grid-2 §7, §8 and §9: a grid style only on a grid container, a placement on each child of one and nowhere else (a single
+// line only on an absolutely positioned child), no flexible minimum, lines in order and within Blink's track limit, and explicit
+// counts that cover the template.
 function checkGrid(style: Record<string, unknown>, children: readonly unknown[], path: string, errors: ValidationError[]): void {
   const bad = (at: string, message: string): void => {
     errors.push({ path: at, code: 'grid-shape', message });
@@ -565,14 +566,20 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
     if (!isRecord(child) || (child['kind'] !== 'box' && child['kind'] !== 'replaced') || !isRecord(child['style'])) return;
     const cs = child['style'];
     const item = cs['gridItem'];
-    const inFlowItem = isGrid && cs['position'] !== 'absolute';
+    const outOfFlow = cs['position'] === 'absolute';
     const at = `${path}.children[${i}].style.gridItem`;
-    if (inFlowItem !== (item !== null && item !== undefined)) bad(at, 'a grid placement is written for each in-flow child of a grid container and only there');
+    if (isGrid !== (item !== null && item !== undefined)) bad(at, 'a grid placement is written for each child of a grid container and only there');
     if (!isRecord(item)) return;
     for (const axis of ['column', 'row'] as const) {
       const span = item[axis];
       if (!isRecord(span)) continue;
-      if (span['kind'] === 'definite') {
+      const line = span['line'];
+      if (span['kind'] === 'start-line' || span['kind'] === 'end-line') {
+        if (!outOfFlow) bad(`${at}.${axis}`, `${span['kind']} is written for an absolutely positioned child only`);
+        const lo = span['kind'] === 'start-line' ? -GRID_MAX_TRACKS : 1 - GRID_MAX_TRACKS;
+        const hi = span['kind'] === 'start-line' ? GRID_MAX_TRACKS - 1 : GRID_MAX_TRACKS;
+        if (typeof line === 'number' && (line < lo || line > hi)) bad(`${at}.${axis}`, `a ${span['kind']} is within [${lo}, ${hi}]`);
+      } else if (span['kind'] === 'definite') {
         const start = span['start'];
         const end = span['end'];
         if (typeof start === 'number' && typeof end === 'number' && (start >= end || start < -GRID_MAX_TRACKS || end > GRID_MAX_TRACKS)) bad(`${at}.${axis}`, `definite lines need start < end within ±${GRID_MAX_TRACKS}`);

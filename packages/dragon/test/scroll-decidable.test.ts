@@ -45,6 +45,8 @@ const sc = (o: Overflow, extra: Partial<LayoutStyle> = {}): Partial<LayoutStyle>
 
 const GRID = { templateColumns: [], templateRows: [], autoColumns: [{ kind: 'breadth', breadth: { kind: 'auto' } }], autoRows: [{ kind: 'breadth', breadth: { kind: 'auto' } }], explicitColumnCount: 0, explicitRowCount: 0, autoFlow: 'row', dense: false, justifyItems: 'normal' } as const;
 
+const ITEM = { column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' } as const;
+
 type Kid = (id: string) => Child;
 /** Child shapes covering each engine refusal and its near misses. */
 const KIDS: Record<string, Kid> = {
@@ -62,6 +64,11 @@ const KIDS: Record<string, Kid> = {
   nestedScroll: (id) => box(id, sc('auto', { width: px(50), height: px(20) }), [leaf(`${id}t`, 'XX'), br(`${id}b`)]),
   flexSpan: (id) => box(id, { display: 'flex' }, [box(`${id}i`, {}, [leaf(`${id}t`, 'XX'), span(`${id}s`, [leaf(`${id}st`, 'YY')])])]),
   grid: (id) => box(id, { display: 'grid', grid: GRID }),
+  // A percentage padding against a grid area: a scrolling grid item, an abspos child of a positioned grid, and the near miss of
+  // an abspos child of a static grid (its containing block is an ancestor's padding box).
+  gridItemPct: (id) => box(id, { display: 'grid', grid: GRID }, [box(`${id}i`, sc('auto', { paddingLeft: pct(10), gridItem: ITEM }), [box(`${id}k`, { paddingTop: pct(5), height: px(90) })])]),
+  gridAbsPct: (id) => box(id, { display: 'grid', grid: GRID, position: 'relative' }, [box(`${id}a`, sc('auto', { position: 'absolute', paddingTop: pct(5), gridItem: ITEM }), [box(`${id}k`, { height: px(90) })])]),
+  gridAbsStaticPct: (id) => box(id, { display: 'grid', grid: GRID }, [box(`${id}a`, sc('auto', { position: 'absolute', paddingTop: pct(5), gridItem: ITEM }), [box(`${id}k`, { height: px(90) })])]),
   abs: (id) => box(id, { position: 'absolute', width: px(20), height: px(20) }, [leaf(`${id}t`, 'XX'), span(`${id}s`, [leaf(`${id}st`, 'YY')])]),
 };
 
@@ -119,6 +126,10 @@ describe('OVFL-B: undecidedScrollContainers against the engine', () => {
     expect(reasons([box('p', { height: pct(50) }, [box('k', { height: px(10), marginBottom: px(5) })])])).toEqual(['c p: a percentage height on a box whose end margins may collapse through it: its basis is not decided here']);
     expect(reasons([box('g', { display: 'grid', grid: GRID })])).toEqual(['c g: a grid container: its scrollable overflow (with its grid area) is not decided here']);
     expect(reasons([box('p', {}, [leaf('t', 'XX')]), box('q', { height: px(10) })])).toEqual([]);
+    expect(reasons([box('g', { display: 'grid', grid: GRID, position: 'relative' }, [box('a', sc('auto', { position: 'absolute', paddingTop: pct(5), gridItem: ITEM }))])])).toEqual([
+      'c g: a grid container: its scrollable overflow (with its grid area) is not decided here',
+      'a a: a percentage padding against a grid area: its basis is not decided here',
+    ]);
   });
 });
 

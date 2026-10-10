@@ -68,6 +68,8 @@ type Node = {
   readonly padding: Edges;
   /** The inline size the box's percentage margins and padding resolve against. */
   readonly cbInline: LU;
+  /** False when a percentage padding resolves against a grid area or a content box this port does not know (paddingDecided). */
+  readonly paddingKnown: boolean;
 };
 
 type Index = {
@@ -183,12 +185,13 @@ function nodeOf(ix: Index, id: string): Node {
 function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>): Index {
   const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map() };
   const icbWidth = fromCssPx(input.viewport.width);
-  const walk = (b: LayoutNode, parent: LayoutBox | null, cbInline: LU, positioned: LayoutNode | null): void => {
+  const walk = (b: LayoutNode, parent: LayoutBox | null, cbInline: LU, positioned: LayoutNode | null, basisKnown: boolean): void => {
     const rect = abs.get(b.id);
     if (rect === undefined) throw new Error(`no laid-out box ${b.id}`);
     const border = resolveBorder(b.style, ctx.devicePixelRatio);
     const padding = resolvePaddingWith(b.style, cbInline, ctx.faults);
-    ix.nodes.set(b.id, { box: b, parent, rect, border, padding, cbInline });
+    const paddingKnown = basisKnown || !hasPercentPadding(b);
+    ix.nodes.set(b.id, { box: b, parent, rect, border, padding, cbInline, paddingKnown });
     ix.order.push(b);
     const content = clampNegativeToZero(sub(rect.width, sumEdges(border.left, border.right, padding.left, padding.right)));
     const paddingBoxWidth = clampNegativeToZero(sub(rect.width, add(border.left, border.right)));
@@ -204,14 +207,22 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>): In
         const list = ix.oofByCb.get(key);
         if (list === undefined) ix.oofByCb.set(key, [k]);
         else list.push(k);
-        walk(k, b, cb === null ? icbWidth : cb === b ? paddingBoxWidth : paddingBoxWidthOf(ix, cb), nextPositioned);
+        // css-grid-2 §9.1: a positioned grid parent resolves the child's percentages against its grid area.
+        walk(k, b, cb === null ? icbWidth : cb === b ? paddingBoxWidth : paddingBoxWidthOf(ix, cb), nextPositioned, cb === null || cb.id !== b.id || b.style.display !== 'grid');
       } else {
-        walk(k, b, content, nextPositioned);
+        // A grid item's percentages resolve against its grid area (grid.ts layoutItem).
+        walk(k, b, content, nextPositioned, paddingKnown && b.style.display !== 'grid');
       }
     }
   };
-  walk(input.root, null, icbWidth, null);
+  walk(input.root, null, icbWidth, null, true);
   return ix;
+}
+
+/** A padding that may resolve against a percentage basis (a calculation is taken to, conservatively). */
+function hasPercentPadding(b: LayoutNode): boolean {
+  const s = b.style;
+  return [s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft].some((v) => v.kind === 'percent' || v.kind === 'calc');
 }
 
 function paddingBoxWidthOf(ix: Index, b: LayoutNode): LU {
@@ -350,6 +361,7 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
   const c: Calc = { overflow: paddingRect, inflow: null, paddingRect, scrollContainer: sc, leftOverflow: sides.left, topOverflow: sides.top };
   // A replaced leaf (CSS 2.2 §10.3.2) has no children: its scrollable overflow is its own padding box.
   if (b.kind === 'replaced') return resultOf(ix, c, n.padding);
+  if (!n.paddingKnown) throw new OverflowRefusal(b.id, 'a percentage padding against a grid area: its basis is not decided here');
   // A grid container's scrollable overflow also takes its grid area (css-grid-2 §5.3), which this port does not compute.
   if (b.style.display === 'grid') throw new OverflowRefusal(b.id, 'a grid container: its scrollable overflow (with its grid area) is not decided here');
   if (hasInlineContent(b)) {

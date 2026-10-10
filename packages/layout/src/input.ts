@@ -200,10 +200,14 @@ export type TrackRepeater = { readonly count: number; readonly sizes: readonly T
 /**
  * An item's lines in one axis, resolved by the compiler (Blink GridLineResolver::ResolveGridPositionsFromStyle): definite lines
  * as 0-based indices from the explicit grid's start line, which are negative before it; or an automatic position of span lines.
+ * An absolutely positioned child also takes start-line or end-line when only that side is not auto (css-grid-2 §9.1: an auto line
+ * is the padding edge); its auto span means both lines are auto.
  */
 export type GridSpan =
   | { readonly kind: 'definite'; readonly start: number; readonly end: number }
-  | { readonly kind: 'auto'; readonly span: number };
+  | { readonly kind: 'auto'; readonly span: number }
+  | { readonly kind: 'start-line'; readonly line: number }
+  | { readonly kind: 'end-line'; readonly line: number };
 /** css-align-3 §6.1 self positions in a grid container; normal and stretch stretch an auto size. */
 export type GridSelfAlign =
   | 'normal'
@@ -286,7 +290,7 @@ export type LayoutStyle = {
   readonly verticalAlign: VerticalAlignValue;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
-  /** Written for the in-flow children of a grid container only; null otherwise. */
+  /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
   readonly gridItem: GridItemStyle | null;
 };
 
