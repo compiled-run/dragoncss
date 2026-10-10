@@ -60,7 +60,11 @@ import type {
 import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
 import { measurerFor } from '../../layout/src/platform.ts';
-import type { TextMeasurer } from '../../layout/src/text.ts';
+import type { GlyphShaper, HanKerningFontData, ShapedItem, ShapeResult, ShapingFaults } from '../../layout/src/shaping.ts';
+import { GLYPH_STRIDE, latinScopedMeasurer, makeItem, shapeItem, viewSnappedWidth, wholeView } from '../../layout/src/shaping.ts';
+import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from '../../layout/src/text.ts';
+import { fontMetricLengths } from '../../layout/src/text.ts';
+import type { TextFont } from '../../layout/src/input.ts';
 import type { ScrollMetrics } from '../../layout/src/overflow.ts';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
@@ -85,13 +89,19 @@ import {
   fromFloatRound,
   fromPxCeil,
   fromPxRound,
+  fontMetricPx,
+  fromRaw,
   growShare,
+  inlineToFloat,
   lineHeightFromNumber,
   percentOf,
   pixelsAndPercentAt,
   platformFontSize,
+  roundCoreTextMetricToWholePx,
+  roundFontMetricHalfUpToWholePx,
   roundFontMetricToWholePx,
   shrinkShare,
+  sub,
   snapBorderWidth,
   snapEdge,
   textAdvance,
@@ -100,6 +110,7 @@ import {
   zoomCssPx,
   zoomFontSize,
   zoomViewportPx,
+  ZERO,
 } from '../../layout/src/units.ts';
 import type { AnimationEntry, AnimationState, KeyframesRule } from '../../layout/src/rt-animations.ts';
 import { runAnimationScript } from '../../layout/src/rt-animations.ts';
@@ -119,6 +130,8 @@ import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
 import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
 import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors } from '../../layout/src/rt-animator.ts';
+import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTables } from '../../layout/src/rt-interaction.ts';
+import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, forcePseudo, hoverExitStarted, hoverMatches, interactionCombo, interactionFrame, interactionStart, interactionState, keyboardFocused, keyPressed, layoutChanged, mousePressed, mouseReleased, pointerExited, pointerMoved, remapPointer, touchCancelled, touchPressed, touchReleased } from '../../layout/src/rt-interaction.ts';
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
 import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
@@ -480,8 +493,7 @@ function safeAreaSide(v: JsonValue, path: string): SafeAreaSide {
 /** A FontSpec {family, size, specifiedSize, absoluteSize}. */
 function fontSpec(v: JsonValue, path: string): FontSpec {
   const o = obj(v, ['family', 'size', 'specifiedSize', 'absoluteSize'], path);
-  lit(field(o, 'family', path), ['Ahem'], `${path}.family`);
-  return { family: 'Ahem', size: numField(o, 'size', path), specifiedSize: calcExpr(field(o, 'specifiedSize', path), `${path}.specifiedSize`), absoluteSize: bool(field(o, 'absoluteSize', path), `${path}.absoluteSize`) };
+  return { family: str(field(o, 'family', path), `${path}.family`), size: numField(o, 'size', path), specifiedSize: calcExpr(field(o, 'specifiedSize', path), `${path}.specifiedSize`), absoluteSize: bool(field(o, 'absoluteSize', path), `${path}.absoluteSize`) };
 }
 
 /** A LengthCalc {kind: calc, expr, range}. */
@@ -978,6 +990,167 @@ function h(x: number): string {
   return `"${bitsHex(x)}"`;
 }
 
+/** One recorded GlyphShaper call of a shape transcript (R3) and its integer glyph records. */
+type ReplayCall = {
+  readonly face: string;
+  readonly size: number;
+  readonly text: string;
+  readonly start: number;
+  readonly end: number;
+  readonly script: string;
+  readonly rtl: boolean;
+  readonly language: string;
+  readonly features: readonly number[];
+  readonly glyphs: readonly number[];
+};
+
+/** A face of a transcript: its FontData and HanKerning data, as the host read them from the bundled bytes. */
+type ReplayFace = { readonly data: FontData; readonly hanKerning: HanKerningFontData };
+
+type Shaping = { readonly language: string; readonly faces: Map<string, ReplayFace>; readonly calls: readonly ReplayCall[] };
+
+function numbers(v: JsonValue, path: string): number[] {
+  const out: number[] = [];
+  arr(v, path).forEach((x, i) => {
+    out.push(num(x, `${path}[${i}]`));
+  });
+  return out;
+}
+
+function fontData(v: JsonValue, path: string): FontData {
+  const o = obj(v, ['unitsPerEm', 'ascent', 'descent', 'lineGap', 'advances', 'xHeight', 'capHeight', 'zeroAdvance'], path);
+  return {
+    unitsPerEm: numField(o, 'unitsPerEm', path), ascent: numField(o, 'ascent', path), descent: numField(o, 'descent', path), lineGap: numField(o, 'lineGap', path),
+    advances: numbers(field(o, 'advances', path), `${path}.advances`), xHeight: numField(o, 'xHeight', path), capHeight: numField(o, 'capHeight', path), zeroAdvance: numField(o, 'zeroAdvance', path),
+  };
+}
+
+function hanKerning(v: JsonValue, path: string): HanKerningFontData {
+  const o = obj(v, ['hasAlternateSpacing', 'hasContextualSpacing', 'typeForDot', 'typeForColon', 'typeForSemicolon', 'isQuoteFullwidth'], path);
+  return {
+    hasAlternateSpacing: bool(field(o, 'hasAlternateSpacing', path), `${path}.hasAlternateSpacing`),
+    hasContextualSpacing: bool(field(o, 'hasContextualSpacing', path), `${path}.hasContextualSpacing`),
+    typeForDot: numField(o, 'typeForDot', path), typeForColon: numField(o, 'typeForColon', path), typeForSemicolon: numField(o, 'typeForSemicolon', path),
+    isQuoteFullwidth: bool(field(o, 'isQuoteFullwidth', path), `${path}.isQuoteFullwidth`),
+  };
+}
+
+/** A shape transcript: {language, faces: [{id, data, hanKerning}], calls: [[face, size, text, start, end, script, rtl, language, features, glyphs]]}. */
+function decodeShaping(v: JsonValue, path: string): Shaping {
+  const o = obj(v, ['language', 'faces', 'calls'], path);
+  const faces = new Map<string, ReplayFace>();
+  arr(field(o, 'faces', path), `${path}.faces`).forEach((f, i) => {
+    const at = `${path}.faces[${i}]`;
+    const fo = obj(f, ['id', 'data', 'hanKerning'], at);
+    const id = str(field(fo, 'id', at), `${at}.id`);
+    if (faces.has(id)) fail(`${at}.id: face ${id} is listed twice`);
+    faces.set(id, { data: fontData(field(fo, 'data', at), `${at}.data`), hanKerning: hanKerning(field(fo, 'hanKerning', at), `${at}.hanKerning`) });
+  });
+  const calls: ReplayCall[] = [];
+  arr(field(o, 'calls', path), `${path}.calls`).forEach((c, i) => {
+    const at = `${path}.calls[${i}]`;
+    const a = arr(c, at);
+    if (a.length !== 10) fail(`${at}: expected 10 fields, got ${a.length}`);
+    const item = (k: number): JsonValue => a[k] as JsonValue;
+    const features = numbers(item(8), `${at}[8]`);
+    const glyphs = numbers(item(9), `${at}[9]`);
+    // A call's features must equal the engine's request exactly (replayShaper), so only the glyphs it returns need checking.
+    if (!Number.isInteger(glyphs.length / GLYPH_STRIDE)) fail(`${at}[9]: ${glyphs.length} integers are not whole glyph records of ${GLYPH_STRIDE}`);
+    calls.push({
+      face: str(item(0), `${at}[0]`), size: num(item(1), `${at}[1]`), text: str(item(2), `${at}[2]`), start: num(item(3), `${at}[3]`), end: num(item(4), `${at}[4]`),
+      script: str(item(5), `${at}[5]`), rtl: bool(item(6), `${at}[6]`), language: str(item(7), `${at}[7]`), features, glyphs,
+    });
+  });
+  return { language: str(field(o, 'language', path), `${path}.language`), faces, calls };
+}
+
+function sameNumbers(a: readonly number[], b: readonly number[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if ((a[i] as number) !== (b[i] as number)) return false;
+  return true;
+}
+
+/** R3: a GlyphShaper that replays a transcript; a call the transcript does not hold is a harness error. */
+function replayShaper(calls: readonly ReplayCall[]): GlyphShaper {
+  return {
+    shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
+      for (const c of calls) {
+        if (c.face === face && c.size === size && c.text === text && c.start === start && c.end === end && c.script === script && c.rtl === rtl && c.language === language && sameNumbers(c.features, features)) return c.glyphs;
+      }
+      return fail(`the shape transcript holds no call ${face} ${size} [${start}, ${end}) of ${text}`);
+    },
+  };
+}
+
+/**
+ * The shaped measurer of a transcript from the engine's shaping primitives (shaping.ts makeItem, shapeItem and the view widths the
+ * line breaker reads), as layout/src/shaping.ts shapedText composes them: the translated engine's roots do not reach shapedText,
+ * and a host builds its measurer this way. runEngineCase scopes it to R4 as shapedMeasurerFor does; text-latin-engine.test.ts
+ * proves its layouts equal the Node host's.
+ */
+function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
+  const shaper = replayShaper(s.calls);
+  const sf: ShapingFaults = {
+    advanceNot16_16: faults.advanceNot16_16, doubleAccumulation: faults.doubleAccumulation, noReshapeAtBreak: faults.noReshapeAtBreak, kerningDropped: faults.kerningDropped,
+    wholePixelPositions: faults.wholePixelPositions, softHyphenWidthMissing: faults.softHyphenWidthMissing, metricRoundingSwapped: faults.metricRoundingSwapped,
+  };
+  const faceOf = (family: string): ReplayFace => {
+    const f = s.faces.get(family);
+    if (f === undefined) return fail(`the shape transcript has no face ${family}`);
+    return f;
+  };
+  const itemFor = (text: string, font: TextFont): ShapedItem => {
+    const f = s.faces.get(font.family);
+    if (f === undefined) return { ok: false, code: 'text-glyph', reason: `no bundled face ${font.family}` };
+    const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, faults: sf });
+    if (!made.ok) return { ok: false, code: 'text-glyph', reason: made.reason };
+    const result = shapeItem(made.item);
+    if (result.missing >= 0) return { ok: false, code: 'text-glyph', reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` };
+    return { ok: true, item: made.item, result };
+  };
+  /** A code point index as the UTF-16 offset of the item. */
+  const offsetOf = (units: readonly number[], codePoint: number): number => {
+    let k = 0;
+    for (let i = 0; i < units.length; i++) {
+      if ((units[i] as number) < 0) continue;
+      if (k === codePoint) return i;
+      k++;
+    }
+    return units.length;
+  };
+  const position = (r: ShapeResult, offset: number): LU => {
+    const i = offset - r.start;
+    return i < r.positions.length ? fromRaw(r.positions[i] as number) : fromPxCeil(inlineToFloat(r.total));
+  };
+  return {
+    metrics(font: TextFont): FontMetrics {
+      const d = faceOf(font.family).data;
+      const size = platformFontSize(font.size);
+      const round = (units: number): LU => (sf.metricRoundingSwapped ? roundFontMetricHalfUpToWholePx(fontMetricPx(size, d.unitsPerEm, units)) : roundCoreTextMetricToWholePx(units, d.unitsPerEm, size));
+      return { ascent: round(d.ascent), descent: round(d.descent), lineGap: d.lineGap === 0 ? ZERO : round(d.lineGap) };
+    },
+    measure(text: string, font: TextFont): MeasureResult {
+      const r = itemFor(text, font);
+      if (!r.ok) return { ok: false, code: r.code, reason: r.reason };
+      return { ok: true, measure: { width: viewSnappedWidth(r.item, wholeView(r.result)) } };
+    },
+    measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
+      const r = itemFor(text, font);
+      if (!r.ok) return { ok: false, code: r.code, reason: r.reason };
+      return { ok: true, measure: { width: sub(position(r.result, offsetOf(r.item.units, end)), position(r.result, offsetOf(r.item.units, start))) } };
+    },
+    lengths(font: TextFont): FontLengths {
+      return fontMetricLengths(faceOf(font.family).data, platformFontSize(font.size));
+    },
+    shaped(text: string, font: TextFont): ShapedItem {
+      return itemFor(text, font);
+    },
+    hasFace(family: string): boolean {
+      return s.faces.has(family);
+    },
+  };
+}
+
 /** A scroll metrics record: the id, the client size and the scroll rect (overflow.ts). */
 function scrollRecord(s: ScrollMetrics): string {
   return `[${q(s.id)},${h(s.clientWidth)},${h(s.clientHeight)},${h(s.scrollRect.x)},${h(s.scrollRect.y)},${h(s.scrollRect.width)},${h(s.scrollRect.height)}]`;
@@ -999,8 +1172,9 @@ function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: str
 }
 
 /**
- * The first shaping plant set in faults, or ''. The shaping plants act only through the shaped measurer (platform.ts
- * shapedMeasurerFor), and the harness lays out with measurerFor's Ahem measurer, so it refuses them rather than run them inert.
+ * The first shaping plant set in faults, or ''. The shaping plants act only through a shaped measurer (platform.ts
+ * shapedMeasurerFor, or replayMeasurer here), so a case without a shape transcript, which measurerFor's Ahem measurer lays out,
+ * refuses them rather than run them inert.
  */
 function shapingPlantOf(f: EngineFaults): string {
   if (f.advanceNot16_16) return 'advanceNot16_16';
@@ -1014,19 +1188,27 @@ function shapingPlantOf(f: EngineFaults): string {
   return '';
 }
 
-/** One engine case: {"platform", "faults", "input"} in, the layout result with every LU as bits out. */
+/** One engine case: {platform, faults, input} in, the layout (and its absolute rects) out; with shaping, a replayed HarfBuzz measures. */
 export function runEngineCase(line: string): string {
   try {
     const parsed = parseJson(line);
+    const shaped = parsed.kind === 'obj' && parsed.values.has('shaping');
     const scroll = parsed.kind === 'obj' && parsed.values.has('viewportDirection');
-    const o = obj(parsed, scroll ? ['platform', 'faults', 'input', 'viewportDirection'] : ['platform', 'faults', 'input'], '$');
+    const keys: string[] = ['platform', 'faults', 'input'];
+    if (shaped) keys.push('shaping');
+    if (scroll) keys.push('viewportDirection');
+    const o = obj(parsed, keys, '$');
     const direction = scroll ? lit(field(o, 'viewportDirection', '$'), ['ltr', 'rtl'], '$.viewportDirection') : 'ltr';
     const platform = str(field(o, 'platform', '$'), '$.platform');
     const faults = decodeFaults(field(o, 'faults', '$'));
     const plant = shapingPlantOf(faults);
-    if (plant !== '') fail(`$.faults.${plant} is a shaping plant, which acts only through the shaped measurer; the harness has only measurerFor's Ahem measurer`);
+    if (plant !== '' && !shaped) fail(`$.faults.${plant} is a shaping plant, which acts only through the shaped measurer; the harness has only measurerFor's Ahem measurer`);
     const input = decodeInput(field(o, 'input', '$'));
-    const m = measurerFor(platform);
+    let m = measurerFor(platform);
+    if (shaped && m.kind === 'ok') {
+      const s = decodeShaping(field(o, 'shaping', '$'), '$.shaping');
+      m = { kind: 'ok', platform, key: `shaped/${platform}`, measurer: latinScopedMeasurer(replayMeasurer(s, faults), faults.latinCheckSkipped), rules: m.rules };
+    }
     if (m.kind !== 'ok') return `["refused",${q(m.code)}]`;
     const r = layoutWithFaults(input, m.measurer, faults);
     if (r.kind !== 'ok') {
@@ -1589,6 +1771,9 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
     // animator suite (ANIM-b1 3b, T065 R16): the runtime animator over a frame case's tables and script.
     case 'rt-animator':
       return rtAnimatorResult(a);
+    // interaction suite (SELD-R2, T064 R12): the interaction runtime over synthetic tables and an event script.
+    case 'rt-interaction':
+      return rtInteractionResult(a);
     default:
       return fail(`unknown operation ${op}`);
   }
@@ -2187,6 +2372,114 @@ function rtAnimatorResult(a: readonly JsonValue[]): string {
       for (const c of frameColors(frame, t, AN_NO_FAULTS)) colors += `${colors === '' ? '' : ','}[${q(c.node)},${q(c.property)},${h(c.rgba.r)},${h(c.rgba.g)},${h(c.rgba.b)},${h(c.rgba.alpha)}]`;
       out += `${out === '' ? '' : ','}[[${values}],[${colors}]]`;
     } else fail(`${path}: unknown step ${op}`);
+  });
+  return `[${out}]`;
+}
+
+// ---------------------------------------------------------------- interaction suite (SELD-R2, T064 R12)
+
+/** The interaction runtime runs with no planted fault: the plants are proven by the host trace check and the device traces. */
+const IA_NO_FAULTS: InteractionFaults = {
+  tapSetsHover: false,
+  hoverWithoutAncestors: false,
+  forcedSetsAncestors: false,
+  focusOnNonFocusable: false,
+  focusVisibleOnPointer: false,
+  activeWithoutAncestors: false,
+  activeStaysAfterRelease: false,
+  focusAtTouchPress: false,
+  rangeTapFocuses: false,
+  hoverNotRecomputedAfterLayout: false,
+  hoverExitOnPress: false,
+};
+
+function iaInt(v: JsonValue, path: string): number {
+  const n = num(v, path);
+  if (!Number.isInteger(n)) return fail(`${path}: ${bitsHex(n)} is not an integer`);
+  return n;
+}
+
+function iaInts(o: JsonObj, k: string, path: string): number[] {
+  return arr(field(o, k, path), `${path}.${k}`).map((x, i): number => iaInt(x, `${path}.${k}[${i}]`));
+}
+
+function iaBools(o: JsonObj, k: string, path: string): boolean[] {
+  return arr(field(o, k, path), `${path}.${k}`).map((x, i): boolean => bool(x, `${path}.${k}[${i}]`));
+}
+
+function iaTables(v: JsonValue, path: string): InteractionTables {
+  const o = obj(v, ['parent', 'focusable', 'touchConsumesTap', 'keyboardInput', 'chainOf', 'activeChainOf', 'pointerFocusOf', 'keyboardFocusOf', 'forcedHoverOf', 'forcedActiveOf', 'forcedFocusOf', 'forcedFocusVisibleOf', 'hoverValues', 'activeValues', 'focusValues', 'combos'], path);
+  return {
+    parent: iaInts(o, 'parent', path),
+    focusable: iaBools(o, 'focusable', path),
+    touchConsumesTap: iaBools(o, 'touchConsumesTap', path),
+    keyboardInput: iaBools(o, 'keyboardInput', path),
+    chainOf: iaInts(o, 'chainOf', path),
+    activeChainOf: iaInts(o, 'activeChainOf', path),
+    pointerFocusOf: iaInts(o, 'pointerFocusOf', path),
+    keyboardFocusOf: iaInts(o, 'keyboardFocusOf', path),
+    forcedHoverOf: iaInts(o, 'forcedHoverOf', path),
+    forcedActiveOf: iaInts(o, 'forcedActiveOf', path),
+    forcedFocusOf: iaInts(o, 'forcedFocusOf', path),
+    forcedFocusVisibleOf: iaInts(o, 'forcedFocusVisibleOf', path),
+    hoverValues: iaInt(field(o, 'hoverValues', path), `${path}.hoverValues`),
+    activeValues: iaInt(field(o, 'activeValues', path), `${path}.activeValues`),
+    focusValues: iaInt(field(o, 'focusValues', path), `${path}.focusValues`),
+    combos: iaInts(o, 'combos', path),
+  };
+}
+
+function iaForced(v: JsonValue, path: string): ForcedKind {
+  const k = lit(v, ['none', 'hover', 'active', 'focus', 'focus-visible'], path);
+  if (k === 'hover') return 'hover';
+  if (k === 'active') return 'active';
+  if (k === 'focus') return 'focus';
+  if (k === 'focus-visible') return 'focus-visible';
+  return 'none';
+}
+
+function iaElements(xs: readonly number[]): string {
+  let out = '';
+  for (const x of xs) out += `${out === '' ? '' : ','}${h(x)}`;
+  return `[${out}]`;
+}
+
+/** One step of an interaction script: [kind, ...arguments]; each kind takes exactly its own arguments. */
+function iaStep(t: InteractionTables, s: InteractionPointer, g: readonly JsonValue[], path: string): InteractionPointer {
+  const op = str(item(g, 0, path), path);
+  const want = op === 'move' || op === 'mouse-down' || op === 'touch-down' || op === 'touch-up' || op === 'key' || op === 'key-focus' || op === 'remap' || op === 'layout' ? 2 : op === 'force' ? 3 : 1;
+  if (g.length !== want) return fail(`${path}: step ${op} expects ${want} items, got ${g.length}`);
+  if (op === 'move') return pointerMoved(t, s, iaInt(item(g, 1, path), path));
+  if (op === 'exit') return pointerExited(t, s);
+  if (op === 'exit-start') return hoverExitStarted(t, s);
+  if (op === 'frame') return interactionFrame(t, s);
+  if (op === 'mouse-down') return mousePressed(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'mouse-up') return mouseReleased(t, s, IA_NO_FAULTS);
+  if (op === 'touch-down') return touchPressed(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'touch-up') return touchReleased(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'touch-cancel') return touchCancelled(t, s, IA_NO_FAULTS);
+  if (op === 'key') return keyPressed(t, s, bool(item(g, 1, path), path));
+  if (op === 'key-focus') return keyboardFocused(t, s, iaInt(item(g, 1, path), path));
+  if (op === 'remap') return remapPointer(t, s, arr(item(g, 1, path), path).map((x, i): number => iaInt(x, `${path}[1][${i}]`)));
+  if (op === 'layout') return layoutChanged(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'force') return forcePseudo(t, s, iaForced(item(g, 1, path), path), iaInt(item(g, 2, path), path));
+  return fail(`${path}: unknown step ${op}`);
+}
+
+/**
+ * An interaction script: [op, tables, states, steps]. After each step the record is [hover matches, active matches, focus match,
+ * focus-visible match, combination, state], every element index and number as bits.
+ */
+function rtInteractionResult(a: readonly JsonValue[]): string {
+  if (a.length !== 4) return fail('rt-interaction: expected [op, tables, states, steps]');
+  const t = iaTables(item(a, 1, '$'), '$[1]');
+  checkInteractionTables(t, iaInt(item(a, 2, '$'), '$[2]'));
+  let s: InteractionPointer = interactionStart();
+  let out = '';
+  arr(item(a, 3, '$'), '$[3]').forEach((step, i) => {
+    const path = `$[3][${i.toString(16)}]`;
+    s = iaStep(t, s, arr(step, path), path);
+    out += `${out === '' ? '' : ','}[${iaElements(hoverMatches(t, s, IA_NO_FAULTS))},${iaElements(activeMatches(t, s, IA_NO_FAULTS))},${h(focusMatch(s))},${h(focusVisibleMatch(s))},${h(interactionCombo(t, s))},${h(interactionState(t, s))}]`;
   });
   return `[${out}]`;
 }

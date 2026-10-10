@@ -70,6 +70,8 @@ export type Declaration = {
   readonly animation?: AnimationDeclValue;
   /** The legacy alias the declaration was written with (aliases.ts); property is the property it stands for. */
   readonly alias?: string;
+  /** CASC 3: the cascade rank of the declaration's layer (layerRanks); absent when unlayered, which ranks above every layer. */
+  readonly layer?: number;
 };
 
 /** A class selector in this rule matches only class symbols with this owner and sheet (docs/api.md §3.1). */
@@ -80,6 +82,8 @@ export type Rule = {
   readonly declarations: readonly Declaration[];
   /** MQ-a: the rule applies only where every condition holds (nested @media conjoin); absent on a rule outside @media. */
   readonly condition?: readonly RuleCondition[];
+  /** CASC 3: the key of the cascade layer the rule is in (css/at-rules/layer.ts); absent on an unlayered rule. */
+  readonly layer?: string;
 };
 
 /** One stylesheet use: its id, the owner its class symbols belong to, and whether it is component-scoped. */
@@ -91,17 +95,20 @@ export type SheetUse = { readonly id: string; readonly owner: string; readonly s
  */
 export type EnclosedRules = { readonly atRule: Diagnostic; readonly span: Span; readonly rules: readonly Rule[]; readonly diagnostics: readonly Diagnostic[] };
 
-type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[]; readonly properties: PropertySource[]; readonly faults: CascFaults };
+type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[]; readonly properties: PropertySource[]; readonly faults: CascFaults; readonly layers: string[] };
 
 /**
  * Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block.
  * conditions: the enclosing @media conditions of a top-level node.
  */
-type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top'; readonly conditions: readonly RuleCondition[] };
+type Where = { readonly label: string; readonly selectors: readonly Selector[] | null | 'top'; readonly conditions: readonly RuleCondition[]; readonly layer: string | null };
 
 /** fontFaces: collects the accepted @font-face rules, in document order, for the fonts module; keyframes the @keyframes (T065). */
-/** properties: the accepted top-level @property rules (CASC 2); faults: CASC's planted parse faults (faults/casc.ts). */
-export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = [], keyframes: KeyframesSource[] = [], properties: PropertySource[] = [], faults: CascFaults = CASC_FAULTS): Rule[] {
+/**
+ * properties: the accepted top-level @property rules (CASC 2); faults: CASC's planted parse faults (faults/casc.ts); layers: the
+ * cascade layer keys in order of first declaration, shared by every sheet of the document (CASC 3).
+ */
+export function parseStylesheet(authoredText: string, base: Span, use: SheetUse, orderStart: number, diagnostics: Diagnostic[], enclosed: EnclosedRules[] = [], fontFaces: AtRuleContext[] = [], keyframes: KeyframesSource[] = [], properties: PropertySource[] = [], faults: CascFaults = CASC_FAULTS, layers: string[] = []): Rule[] {
   const text = preprocessInput(authoredText);
   // Chrome 145 reads a literal U+0000 as U+FFFD inside a name but not where it would start a hash or follow a leading "-" (probed),
   // so Dragon reports it rather than guess which reading applies.
@@ -131,8 +138,8 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
   }
   const rules: Rule[] = [];
-  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes, properties, faults };
-  parseTopLevel(list(ast, 'children'), st, { label: 'the stylesheet', selectors: 'top', conditions: [] }, diagnostics, enclosed, rules);
+  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes, properties, faults, layers };
+  parseTopLevel(list(ast, 'children'), st, { label: 'the stylesheet', selectors: 'top', conditions: [], layer: null }, diagnostics, enclosed, rules);
   return rules;
 }
 
@@ -143,12 +150,12 @@ function parseTopLevel(nodes: readonly CssNode[], st: ParseState, at: Where, dia
       refuseNode(node, st, at, diagnostics, enclosed, rules);
       continue;
     }
-    const rule = parseRule(node, st, diagnostics, enclosed, at.conditions);
+    const rule = parseRule(node, st, diagnostics, enclosed, at.conditions, at.layer);
     if (rule !== null) rules.push(rule);
   }
 }
 
-function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[], conditions: readonly RuleCondition[]): Rule | null {
+function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[], conditions: readonly RuleCondition[], layer: string | null): Rule | null {
   const before = diagnostics.length;
   const selectors = parseSelectorList(node['prelude'] as CssNode, st.base, st.use, diagnostics);
   // Chrome never parses the block of a rule it drops, so neither do its diagnostics count.
@@ -157,14 +164,14 @@ function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enc
   const declarations: Declaration[] = [];
   for (const d of list(node['block'] as CssNode, 'children')) {
     if (d.type !== 'Declaration') {
-      refuseNode(d, st, { label: 'a rule block', selectors, conditions }, blockDiagnostics, dropped ? [] : enclosed, []);
+      refuseNode(d, st, { label: 'a rule block', selectors, conditions, layer }, blockDiagnostics, dropped ? [] : enclosed, []);
       continue;
     }
     const parsed = parseDeclaration(d, st.base, st.text, st.order++, blockDiagnostics);
     if (parsed !== null) declarations.push(parsed);
   }
   if (selectors === null) return null;
-  return { sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }) };
+  return { sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(layer === null ? {} : { layer }) };
 }
 
 /** css-syntax-3 §5.4: an empty declaration (a lone ";") and the <!-- --> tokens produce no rule or declaration in the CSSOM. */
@@ -205,17 +212,34 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
       return;
     }
     const block = node['block'] as CssNode | null | undefined;
+    let layerRefusal: Diagnostic | null = null;
+    if (outcome.kind === 'layer' && at.selectors === 'top') {
+      const key = (n: string): string => (at.layer === null ? n : `${at.layer}.${n}`);
+      // An anonymous layer gets a key no author name can spell, unique in the document.
+      const keys = outcome.block && outcome.names.length === 0 ? [key(`#anon${st.layers.length}`)] : outcome.names.map((n) => key(n.join('.')));
+      const fresh = [...new Set(keys.flatMap((k) => k.split('.').map((_, i, parts) => parts.slice(0, i + 1).join('.'))))].filter((k) => !st.layers.includes(k));
+      if (fresh.length > 0 && at.conditions.length > 0) {
+        layerRefusal = diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
+          origin: authored(span),
+          message: `@${String(node['name'])} ${context.prelude} in ${where} first declares ${fresh.join(', ')} inside a condition, where Chrome counts it only while the condition holds; declare the layer order at the top level first`,
+        });
+      } else {
+        st.layers.push(...fresh);
+        if (block !== null && block !== undefined) parseTopLevel(list(block, 'children'), st, { label: `@${String(node['name'])}`, selectors: 'top', conditions: at.conditions, layer: keys[0] as string }, diagnostics, enclosed, accepted);
+        return;
+      }
+    }
     // CASC: a true @supports keeps its rules as plain rules (under any enclosing @media); Chrome never applies a false one's.
     if (outcome.kind === 'supports' && at.selectors === 'top' && block !== null && block !== undefined) {
-      if (outcome.holds || st.faults.supportsConditionIgnored) parseTopLevel(list(block, 'children'), st, { label: '@supports', selectors: 'top', conditions: at.conditions }, diagnostics, enclosed, accepted);
+      if (outcome.holds || st.faults.supportsConditionIgnored) parseTopLevel(list(block, 'children'), st, { label: '@supports', selectors: 'top', conditions: at.conditions, layer: at.layer }, diagnostics, enclosed, accepted);
       return;
     }
     if (outcome.kind === 'conditional' && at.selectors === 'top' && block !== null && block !== undefined) {
-      const inner = { label: `@${String(node['name'])}`, selectors: 'top' as const, conditions: [...at.conditions, outcome.condition] };
+      const inner = { label: `@${String(node['name'])}`, selectors: 'top' as const, conditions: [...at.conditions, outcome.condition], layer: at.layer };
       parseTopLevel(list(block, 'children'), st, inner, diagnostics, enclosed, accepted);
       return;
     }
-    const refusal = outcome.kind === 'refuse' ? outcome.diagnostic : refuseAtRule(context).diagnostic;
+    const refusal = outcome.kind === 'refuse' ? outcome.diagnostic : layerRefusal ?? refuseAtRule(context).diagnostic;
     diagnostics.push(refusal);
     if (block === null || block === undefined) return;
     // T005 rec 3: the enclosed rules are parsed with the block unwrapped, for analysis only.
@@ -225,15 +249,15 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
     if (at.selectors === 'top') {
       for (const c of list(block, 'children')) {
         if (c.type === 'Rule') {
-          const r = parseRule(c, st, inner, enclosed, at.conditions);
+          const r = parseRule(c, st, inner, enclosed, at.conditions, at.layer);
           if (r !== null) rules.push(r);
-        } else if (c.type !== 'Declaration') refuseNode(c, st, { label, selectors: 'top', conditions: at.conditions }, inner, enclosed, rules);
+        } else if (c.type !== 'Declaration') refuseNode(c, st, { label, selectors: 'top', conditions: at.conditions, layer: at.layer }, inner, enclosed, rules);
       }
     } else {
       const declarations: Declaration[] = [];
       for (const c of list(block, 'children')) {
         if (c.type !== 'Declaration') {
-          refuseNode(c, st, { label, selectors: at.selectors, conditions: at.conditions }, inner, enclosed, []);
+          refuseNode(c, st, { label, selectors: at.selectors, conditions: at.conditions, layer: at.layer }, inner, enclosed, []);
           continue;
         }
         const parsed = parseDeclaration(c, base, text, st.order++, inner);

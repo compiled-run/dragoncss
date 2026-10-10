@@ -133,7 +133,7 @@ describe('opacity: lowering and emission', () => {
     const engine = { float32: Math.fround, opacityAlpha8 } as never;
     // Skia's getAlpha of the float 0.3 is 77 (76.5000030 rounds up), as the Chrome capture shows (pnt1-effects.test.ts).
     expect(opacityAlpha8(0.3)).toBe(77);
-    expect(EFFECTS_EMITTER.applied(engine, 'uikit', w, 2, { border: [0, 0, 0, 0], box: {} as never, size: [0, 0], fontSize: null, replaced: null })).toBe(Math.fround(77 / 255));
+    expect(EFFECTS_EMITTER.applied(engine, 'uikit', w, 2, { border: [0, 0, 0, 0], box: {} as never, size: [0, 0], fontSize: null, replaced: null, scroll: null })).toBe(Math.fround(77 / 255));
   });
 
   it('refuses an opacity literal outside [0, 1) in the writer line', () => {

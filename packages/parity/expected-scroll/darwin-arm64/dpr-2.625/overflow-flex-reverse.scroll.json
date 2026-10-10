@@ -63,5 +63,56 @@
    "clientWidth": 68,
    "clientHeight": 52
   }
+ ],
+ "extents": [
+  {
+   "id": "a1",
+   "minLeft": -89.9047622680664,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a2",
+   "minLeft": -138.6666717529297,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a3",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": -49.904762268066406,
+   "maxTop": 0
+  },
+  {
+   "id": "a4",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": -83.80952453613281,
+   "maxTop": 0
+  },
+  {
+   "id": "a5",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": -57.904762268066406,
+   "maxTop": 0
+  },
+  {
+   "id": "a6",
+   "minLeft": -58.66666793823242,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a7",
+   "minLeft": -89.9047622680664,
+   "maxLeft": 0,
+   "minTop": -77.71428680419922,
+   "maxTop": 0
+  }
  ]
 }
