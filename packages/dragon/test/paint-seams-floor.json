@@ -23,6 +23,8 @@
     "border-styles",
     "border-colors",
     "padding-box-clip",
+    "opacity",
+    "paint-order",
     "transform",
     "replaced-image",
     "foreign-view"
@@ -30,6 +32,8 @@
   "paintPlants": [
     "border:dash-phase-1",
     "border:dash-gap-unfitted",
+    "effects:alpha-ignored",
+    "stacking:order-swap",
     "transform:transform-origin-ignored",
     "transform:translate-percent-of-parent",
     "image:image-offset-1"
@@ -39,6 +43,8 @@
     "glyph-offset-y-1",
     "dash-phase-1",
     "dash-gap-unfitted",
+    "alpha-ignored",
+    "order-swap",
     "transform-origin-ignored",
     "translate-percent-of-parent",
     "image-offset-1"
@@ -53,6 +59,8 @@
     "Support/Paint/DragonPaintBackground.swift",
     "Support/Paint/DragonPaintBorder.swift",
     "Support/Paint/DragonPaintClip.swift",
+    "Support/Paint/DragonPaintEffects.swift",
+    "Support/Paint/DragonPaintStacking.swift",
     "Support/Paint/DragonPaintTransform.swift",
     "Support/Paint/DragonPaintImage.swift",
     "Support/Paint/DragonPaintForeignView.swift",
@@ -69,6 +77,8 @@
     "kotlin/dev/dragon/views/paint/DragonPaintBackground.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintBorder.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintClip.kt",
+    "kotlin/dev/dragon/views/paint/DragonPaintEffects.kt",
+    "kotlin/dev/dragon/views/paint/DragonPaintStacking.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintTransform.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintImage.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintForeignView.kt",
@@ -79,8 +89,10 @@
     "background",
     "border",
     "clip",
+    "effects",
     "foreign-view",
     "image",
+    "stacking",
     "transform"
   ]
 }

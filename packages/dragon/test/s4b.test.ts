@@ -56,8 +56,9 @@ describe("rec1 colour_rows: the 'paint' role", () => {
     expect(floorProblems(new URL('./seams-floor.json', import.meta.url), 'role:paint', paint, true)).toEqual([]);
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
-    // Two values of each paint longhand: two colours, or for the PNT2 and BG2 longhands two values of their own syntax.
-    const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'],
+    // Two values of each paint longhand: two colours, or for the PNT2 and BG2 longhands two values of their own syntax, and for
+    // PNT1's two opacities and z-indexes.
+    const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'], opacity: ['0', '100%'], 'z-index': ['3', '-1'],
       // BG2's layer longhands, each with two values of its own syntax that paint no image.
       'background-image': ['none', 'none, none'], 'background-position-x': ['0%', 'right 4px'], 'background-position-y': ['0%', '25%'], 'background-size': ['auto', 'cover'], 'background-repeat': ['repeat', 'no-repeat'], 'background-attachment': ['scroll', 'scroll, scroll'], 'background-origin': ['padding-box', 'content-box'], 'background-clip': ['border-box', 'padding-box'] };
     for (const p of paint) {

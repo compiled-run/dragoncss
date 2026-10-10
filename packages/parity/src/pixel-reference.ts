@@ -369,6 +369,36 @@ export function caseSamples(p: NativeProgram, viewport: { readonly width: number
   return { points, dropped: [...box.dropped, ...glyph.dropped], rescued: box.rescued };
 }
 
+/**
+ * The points the device pixel lanes compare: casePoints, without those a translucent group (an opacity write strictly between 0 and
+ * 1) paints. Native refuses such a group (dragon analysis/paint-values/effects.ts, PNT1-opacity-b), and only a lane-only case reaches
+ * a device with one: its pixels are proven against Chrome on the host (pnt1-effects.test), and the platforms composite it with
+ * their own rounding. A point is the group's when its rule names a node of the group's subtree or it lies in a snapped box of one.
+ */
+export function devicePoints(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): SamplePoint[] {
+  const points = casePoints(p, viewport, dpr);
+  const groups = p.nodes.filter((n) => n.writes.some((w) => w.kind === 'opacity' && w.opacity > 0 && w.opacity < 1));
+  if (groups.length === 0) return points;
+  const children = new Map<string, string[]>();
+  for (const n of p.nodes) if (n.parent !== null) children.set(n.parent, [...(children.get(n.parent) ?? []), n.id]);
+  const inside = new Set<string>();
+  const add = (id: string): void => {
+    inside.add(id);
+    for (const c of children.get(id) ?? []) add(c);
+  };
+  for (const g of groups) add(g.id);
+  const out = expectedEngine().layout(programInput(p, viewport, dpr), referenceMeasurer());
+  if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${dpr}`);
+  const snapped = snapEdges(out.boxes);
+  const rects = out.boxes.flatMap((r, i) => (inside.has(r.id) ? [snapped[i] as { left: number; top: number; right: number; bottom: number }] : []));
+  const ids = [...inside];
+  return points.filter((q) => {
+    const named = q.rule.slice(q.rule.indexOf(':') + 1);
+    if (ids.some((id) => named === id || named.startsWith(`${id}:`))) return false;
+    return !rects.some((r) => q.x + 1 > r.left && q.x < r.right && q.y + 1 > r.top && q.y < r.bottom);
+  });
+}
+
 /** Per target, device DPR and case: [lines with a glyph-bottom scanline, lines with glyphs] (T093 addendum F1), in corpus order. */
 export type BottomScanlines = { readonly [target: string]: { readonly [dpr: string]: { readonly [caseId: string]: readonly [number, number] } } };
 export const BOTTOM_SCANLINES_PATH = (): string => repoPath('packages/parity/expected-glyphs/bottom-scanlines.json');

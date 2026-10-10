@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; --o: 0; }
+.stage { display: flex; flex-direction: column; row-gap: 12px; padding: 8px 16px; background-color: rgb(250, 245, 230); }
+.row { display: flex; }
+.c { width: 32px; height: 32px; background-color: rgb(20, 40, 160); }
+.s16 { width: 16px; }
+.s8 { width: 8px; }
+.parent { opacity: 0; }
+.inherit { width: 16px; height: 16px; background-color: rgb(200, 20, 20); opacity: inherit; }
+.var { opacity: var(--o); }
+.calc { opacity: calc(0.5 * 2); }
+.neg { opacity: -0.3; }
+.big { opacity: 500%; }
+.initial { opacity: 0; }
+.initial.reset { opacity: initial; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="row1" class="row"><div data-dragon-id="op-parent" class="c parent"><div data-dragon-id="op-inherit" class="inherit"></div></div><div data-dragon-id="sp1a" class="s16"></div><div data-dragon-id="op-var" class="c var"></div><div data-dragon-id="sp1b" class="s8"></div><div data-dragon-id="op-calc" class="c calc"></div></div>
+<div data-dragon-id="row2" class="row"><div data-dragon-id="op-neg" class="c neg"></div><div data-dragon-id="sp2a" class="s16"></div><div data-dragon-id="op-big" class="c big"></div><div data-dragon-id="sp2b" class="s8"></div><div data-dragon-id="op-initial" class="c initial reset"></div></div>
+</div>
+</body>
+</html>
