@@ -588,7 +588,7 @@ export type PercentRefusal = { readonly reason: string; readonly fix: string };
 /** What a property takes: a length (with a percentage, or with the refusal a percentage meets) or a number (css-values-4 §10.9 type checking). */
 export type MathContext = { readonly type: 'length'; readonly percent: true | PercentRefusal } | { readonly type: 'number' };
 
-const NUMBER_PROPERTIES: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order']);
+const NUMBER_PROPERTIES: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'font-weight']);
 const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font-size', 'line-height', 'font']);
 /**
  * Border, outline and column-rule widths are a <line-width>, which has no percentage (css-backgrounds-3 §3.3, css-ui-4 §3.2,
@@ -659,16 +659,19 @@ export function parseMath(text: string, context: MathContext): ParsedMath {
  * 145.0.7632.6): ConsumeLength takes kCalcLength only (a <line-width>), ConsumeLengthOrPercent a length, a percentage or a mix
  * (kCalcLengthFunction), ConsumeNumber and ConsumeInteger a number, and ConsumeLineHeight or the flex shorthand either.
  */
-export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or-length-percentage';
+export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or-length-percentage' | 'angle';
 
 // aspect-ratio: each <ratio> part is a <number [0,∞]> (css-sizing-4 §5.1), so a math function in it resolves to a number.
-const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index']);
+// font-weight: Chrome's ConsumeFontWeight takes ConsumeNumber; font-style: its oblique angle is ConsumeAngle (css-fonts-4 §2.2, §2.3).
+const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight']);
+const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style']);
 /** opacity is <number> | <percentage> (css-color-4 §3.2); Chrome resolves a calculation in it as a number or a percentage. */
 const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity']);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
 export function mathGrammarFor(property: string): MathGrammar {
   if (NUMBER_GRAMMAR.has(property)) return 'number';
+  if (ANGLE_GRAMMAR.has(property)) return 'angle';
   if (NUMBER_OR_LENGTH_GRAMMAR.has(property)) return 'number-or-length-percentage';
   if (LINE_WIDTH.test(property)) return 'length';
   return 'length-percentage';
@@ -1061,12 +1064,14 @@ const GRAMMAR_ACCEPTS: { readonly [g in MathGrammar]: readonly VCategory[] } = {
   'length-percentage': ['length', 'percent', 'length-function'],
   number: ['number'],
   'number-or-length-percentage': ['number', 'length', 'percent', 'length-function'],
+  angle: ['angle'],
 };
 const GRAMMAR_NAMES: { readonly [g in MathGrammar]: string } = {
   length: 'a length without a percentage (a <line-width> takes no percentage, css-backgrounds-3 §3.3)',
   'length-percentage': 'a length or a percentage',
   number: 'a number',
   'number-or-length-percentage': 'a number, a length or a percentage',
+  angle: 'an angle',
 };
 
 /**

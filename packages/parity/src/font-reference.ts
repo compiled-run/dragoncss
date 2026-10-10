@@ -169,3 +169,15 @@ export async function platformFonts(page: Page, selectors: readonly string[]): P
     await cdp.detach();
   }
 }
+
+/** The stated reference of a font map as a page step: its pinned faces as data: URLs, and its pinned generics rewritten. */
+export function fontReferencePrepare(map: FontMap): (page: Page) => Promise<void> {
+  const css = pinnedFaceCss(map, (src) => {
+    if (!src.startsWith(VENDOR_FONTS)) throw new Error(`the reference map's face ${src} is not a vendored font`);
+    return fontDataUrl(vendorFontBytes(src.slice(VENDOR_FONTS.length)));
+  });
+  const pinned = pinnedGenerics(map);
+  return async (page) => {
+    await applyFontReference(page, css, pinned);
+  };
+}

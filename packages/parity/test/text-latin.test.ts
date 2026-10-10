@@ -1,25 +1,32 @@
-// TXT1a-1 (notes/T056-txt1a-spec.md §3, amended by notes/T083-txt1a-1.md). Phase A: Ahem through HarfBuzz. The Node host's
+// TXT1a-1 and TXT1a-2 (notes/T056-txt1a-spec.md §3, amended by notes/T083-txt1a-1.md and notes/T084-txt1a-2.md). Phase A: Ahem through HarfBuzz. The Node host's
 // shaped measurer must lay out every committed vector exactly as measurerFor's Ahem measurer does, equal Chrome on T082's 1,680
 // Ahem runs, read the bundled Ahem's font data as the engine's constants, and refuse text outside Latin, Common and Inherited
 // (R4). Each shaping plant that acts on Ahem through the engine's measurer must change a committed vector or T082's committed
 // Chrome runs; the three that cannot act there are pinned inert on every committed vector, each with its reason.
-import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutInput, LayoutResult } from '@dragon/layout';
-import { AHEM_FACE_ID, AHEM_FONT_DATA, layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
+import { absoluteRects, AHEM_FACE_ID, AHEM_FONT_DATA, layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import * as dragon from 'dragon';
-import { fixtureInput } from '../src/cases.ts';
+import type { ParityCase } from '../src/cases.ts';
+import { casesOf, fixtureInput } from '../src/cases.ts';
 import { launchChrome } from '../src/chrome.ts';
-import { atDpr, layoutCases } from '../src/dpr.ts';
+import { compareLayout } from '../src/compare.ts';
+import { atDpr, committedDprCapture, layoutCases, runDprCase } from '../src/dpr.ts';
 import { layout as layoutFixture } from '../src/fixture-groups/define.ts';
-import { TEXT_LATIN_FIXTURES } from '../src/fixture-groups/text-latin.ts';
-import { FIXTURES } from '../src/fixtures.ts';
+import { fontMapOf, withFontMapAssets } from '../src/fixture-groups/fonts.ts';
+import type { FixtureSpec } from '../src/fixtures.ts';
+import { ENVIRONMENT, FIXTURES } from '../src/fixtures.ts';
+import { authoredFontHtml } from '../src/fonts-run.ts';
+import { readChromeBreaks } from '../src/line-breaks.ts';
+import { expectedFacesOf, shapedCaseIds } from '../src/text-latin-run.ts';
 import { FONT_REFERENCE_MAP } from '../src/font-reference.ts';
 import { compileFixture } from '../src/pipeline.ts';
+import { NO_FAULTS } from 'dragon';
 import * as tl from '../src/text-latin-run.ts';
+import { vectorCaseIds } from '../src/targets.ts';
 import { repoPath } from '../src/paths.ts';
 import { ahemFaceId, faceIdOf, fontDataOf, hostShaper, referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 
@@ -200,100 +207,152 @@ describe('TXT1a-1 phase A: Ahem through HarfBuzz', () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// Phase B: the text-latin registry (fixture-groups/text-latin.ts), notes/T083-txt1a-1.md.
+// Phase B, as TXT1a-2 phase F absorbs it (notes/T084-txt1a-2.md): the text-latin and text-calibration groups are FIXTURES groups,
+// every lane runs them, and a shaped case (text-latin-run.ts isShapedInput) adds the hyphen-joined exact engine lane, the face
+// check and the DPR-1 break check in pipeline.ts runCase.
 
 const { runEngineCase } = (await import(pathToFileURL(repoPath('packages/translate/harness/harness.ts')).href)) as { runEngineCase: (line: string) => string };
 const { hexBits } = (await import(pathToFileURL(repoPath('packages/translate/harness/host.ts')).href)) as { hexBits: (s: string) => number };
 
-const textLatinOf = (id: string) => {
-  const f = TEXT_LATIN_FIXTURES.find((x) => x.spec.id === id);
-  if (f === undefined) throw new Error(`no text-latin fixture ${id}`);
+const NEW_IDS = [
+  'text-latin-lato', 'text-latin-punct', 'text-latin-faces', 'text-latin-flex', 'text-latin-words', 'text-latin-words-rtl', 'text-latin-metrics', 'text-ahem-fractional',
+  'text-calibration-lato', 'text-calibration-sans', 'text-calibration-mono',
+];
+/** T133 (fixture-groups/inline-tags.ts): b, strong, em and i over real faces, appended after the TXT1a-2 cases. */
+const TAG_IDS = ['inline-tags-faces', 'inline-tags-faces-rtl',
+  // TXT-W1 (fixture-groups/text-weight.ts), appended after them.
+  ...['numeric', 'relative', 'styles', 'nested-bold', 'nested-italic', 'contexts'].flatMap((n) => [`text-weight-${n}`, `text-weight-${n}-rtl`])];
+
+const specOf = (id: string): FixtureSpec => {
+  const f = FIXTURES.find((x) => x.id === id);
+  if (f === undefined) throw new Error(`no fixture ${id}`);
   return f;
 };
-const asTextLatin = (id: string) => ({ spec: layoutFixture(id, ['ltr'], 'ahem'), map: FONT_REFERENCE_MAP, faces: {} });
+const caseOf = (id: string, direction: 'ltr' | 'rtl' = 'ltr'): ParityCase => {
+  const spec = specOf(id);
+  const c = casesOf(spec, compileFixture(spec).input).find((x) => x.environment.direction === direction);
+  if (c === undefined) throw new Error(`no ${direction} case of ${id}`);
+  return c;
+};
+const derived = (id: string, direction: 'ltr' | 'rtl' = 'ltr') => compileFixture(specOf(id), NO_FAULTS, 'derive', direction).compiled;
+const probe = (id: string) => {
+  const spec = layoutFixture(id, ['ltr'], 'ahem');
+  const input = withFontMapAssets(fixtureInput(spec), FONT_REFERENCE_MAP);
+  const project = dragon.createProjectWith({ projectId: 'dragon-parity', fonts: FONT_REFERENCE_MAP, targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ahem', foldViewport: { width: 400, height: 300 } });
+  return { input, compiled: (i: typeof input) => project.compile(i) };
+};
 
-describe('TXT1a-1 phase B: the text-latin registry', () => {
-  it('admits every case of every registry fixture, none of which is a FIXTURES fixture', () => {
-    expect(TEXT_LATIN_FIXTURES.length).toBe(6);
-    const ids = TEXT_LATIN_FIXTURES.map((f) => f.spec.id);
-    expect(new Set(ids).size).toBe(ids.length);
-    for (const f of TEXT_LATIN_FIXTURES) {
-      expect(FIXTURES.some((x) => x.id === f.spec.id), f.spec.id).toBe(false);
-      for (const c of tl.textLatinCases(f)) expect(tl.admissionProblems(f, tl.compileTextLatin(f, c.environment.direction).compiled, c), c.id).toEqual([]);
-    }
-  });
-
-  it('refuses an Ahem FIXTURES case placed in the registry (its native projection is ready)', () => {
-    const f = asTextLatin('text-fractional-font-size');
-    const c = tl.textLatinCases(f)[0] as ParityCaseT;
-    expect(() => tl.requireAdmitted(f, tl.compileTextLatin(f, 'ltr').compiled, c)).toThrow(/native projection is ready/);
-  });
-
-  it('refuses a Lato case with one error that is not a font refusal', () => {
-    const f = asTextLatin('text-latin-negative');
-    const c = tl.textLatinCases(f)[0] as ParityCaseT;
-    expect(() => tl.requireAdmitted(f, tl.compileTextLatin(f, 'ltr').compiled, c)).toThrow(/not a text-latin case/);
-  });
-
+describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
   const BASE_LAYOUT_CASES = 733;
-  it('keeps every FIXTURES layout case (and so every native and device case) as it was at BASE', () => {
+  const ADDED = [...NEW_IDS, ...TAG_IDS];
+  it('keeps every BASE layout case in order, and adds exactly the text-latin, Ahem fractional and calibration cases and the T133 tag cases', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
-    // BASE is master at 1137788a1e plus #251, #236, #250 and #255 (landing with this change in #258), whose FIXTURES hold 733 layout cases.
-    expect(ids.length).toBe(BASE_LAYOUT_CASES);
-    expect(createHash('sha256').update(ids.join('\n')).digest('hex')).toBe('812a71e08a4aa266c23d420d7d3b93490c47bbbb4debe36b7fedd51d07bba462');
+    // BASE is master at ef96e1c079 (#258: #103, #251, #236, #250 and #255 on 1137788a1e), whose FIXTURES hold 733 layout cases.
+    // Groups added after the per-feature split run in id order after the legacy ones (fixtures.ts), so the text groups sit among them.
+    const base = ids.filter((id) => !ADDED.includes(id));
+    expect(base.length).toBe(BASE_LAYOUT_CASES);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('812a71e08a4aa266c23d420d7d3b93490c47bbbb4debe36b7fedd51d07bba462');
+    expect(ids.filter((id) => ADDED.includes(id)).sort()).toEqual([...ADDED].sort());
+    expect(ids.length).toBe(BASE_LAYOUT_CASES + ADDED.length);
   });
 
-  it('gives every FIXTURES case the native projection as its engine projection, at every DPR', () => {
+  it('derives the shaped cases from the compiled input alone: every new case, and no BASE case', () => {
+    expect([...shapedCaseIds()].sort()).toEqual([...ADDED].sort());
+  });
+
+  it('compiles each new case with the reference map, captures it under its stated reference, and lists its expected faces', () => {
+    for (const id of [...NEW_IDS, ...TAG_IDS]) {
+      const fixture = id.replace(/-rtl$/, '');
+      expect(fontMapOf(fixture), id).toBe(FONT_REFERENCE_MAP);
+      const c = caseOf(fixture, id.endsWith('-rtl') ? 'rtl' : 'ltr');
+      expect(c.authoredPrepare, id).not.toBeNull();
+      // The authored documents need no font URL inlining (fonts-run.ts authoredFontHtml is the identity on them).
+      expect(authoredFontHtml(c.authoredHtml), id).toBe(c.authoredHtml);
+      if (fixture !== 'text-ahem-fractional') expect(expectedFacesOf(fixture), id).not.toBeNull();
+    }
+    expect(expectedFacesOf('text-ahem-fractional')).toBeNull();
+    for (const f of FIXTURES) if (![...NEW_IDS, ...TAG_IDS].includes(f.id) && f.kind === 'layout') expect(caseOf(f.id, f.environments[0]).authoredPrepare, f.id).toBeNull();
+  });
+
+  it('makes the Ahem fractional case shaped because the Ahem measurer misses Chrome there, and HarfBuzz does not', () => {
+    const p = dragon.iosLayoutProjection(derived('text-ahem-fractional'), caseOf('text-ahem-fractional').environment, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    expect([...tl.inputFaces(p.input)]).toEqual([AHEM_FACE_ID]);
+    expect(boxesOf(layout(p.input, reference.measurer))).not.toEqual(boxesOf(layout(p.input, referenceShapedMeasurer())));
+  });
+
+  it('refuses every new real-face case on ios and android until TXT1a-2 phase R, and lowers it for the engine lane', () => {
+    // The device runtime measures and draws only the bundled Ahem (emit/native-support.ts DragonBridge.measurer), so native keeps
+    // TXT1a-1's deferred font refusal and the engine lane lowers the case in engine mode; the Ahem fractional case lowers natively
+    // but is shaped, so it is no device case either (targets.ts vectorCaseIds).
+    for (const id of [...NEW_IDS, ...TAG_IDS]) {
+      const direction = id.endsWith('-rtl') ? 'rtl' : 'ltr';
+      const c = derived(id.replace(/-rtl$/, ''), direction);
+      const env = caseOf(id.replace(/-rtl$/, ''), direction).environment;
+      expect(dragon.engineLayoutProjection(c, env, []).kind, id).toBe('ready');
+      if (id === 'text-ahem-fractional') {
+        expect(c.outputs.ios.kind, id).toBe('analysis-only');
+        continue;
+      }
+      expect(c.diagnostics.filter((d) => d.severity === 'error' && d.target !== 'web').map((d) => `${d.target} ${d.code}`).filter((x) => !/^(ios|android) DRAGON_UNSUPPORTED_(FONT|VALUE)$/.test(x)), id).toEqual([]);
+      expect([c.outputs.ios.kind, dragon.nativeLayoutProjection(c, env, []).kind], id).toEqual(['blocked', 'blocked']);
+    }
+    const device = new Set(vectorCaseIds());
+    expect([...NEW_IDS, ...TAG_IDS].filter((id) => device.has(id))).toEqual([]);
+  });
+
+  it('gives every FIXTURES case native lowers the native projection as its engine projection, at every DPR', () => {
     let compared = 0;
+    let engineOnly = 0;
     for (const { spec, cases } of layoutCases()) {
       const byDirection = new Map<string, ReturnType<typeof compileFixture>['compiled']>();
       for (const c of cases) {
         let compiled = byDirection.get(c.environment.direction);
         if (compiled === undefined) {
-          compiled = compileFixture(spec, undefined, 'enforce', c.environment.direction).compiled;
+          compiled = compileFixture(spec, undefined, 'derive', c.environment.direction).compiled;
           byDirection.set(c.environment.direction, compiled);
         }
         for (const dpr of [1, 2, 3, 2.625]) {
           const env = atDpr(c.environment, dpr);
-          expect(dragon.engineLayoutProjection(compiled, env, c.assignment), `${c.id} at DPR ${dpr}`).toEqual(dragon.nativeLayoutProjection(compiled, env, c.assignment));
+          const native = dragon.nativeLayoutProjection(compiled, env, c.assignment);
+          if (native.kind === 'blocked') {
+            engineOnly++;
+            expect([...NEW_IDS, ...TAG_IDS], c.id).toContain(c.id);
+            expect(dragon.engineLayoutProjection(compiled, env, c.assignment).kind, `${c.id} at DPR ${dpr}`).toBe('ready');
+            continue;
+          }
+          expect(dragon.engineLayoutProjection(compiled, env, c.assignment), `${c.id} at DPR ${dpr}`).toEqual(native);
           compared++;
         }
       }
     }
-    expect(compared).toBe(BASE_LAYOUT_CASES * 4);
+    // The 10 real-face cases and T133's 2 are native-refused (engine only); every other case, the Ahem fractional one too, lowers natively.
+    expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + 1) * 4, (NEW_IDS.length - 1 + TAG_IDS.length) * 4]);
   });
 
-  it('keeps native refusing Lato and Inter with the existing message, and DRAGON_SYNTHETIC_FONT_STYLE fires on no FIXTURES case', () => {
-    const lato = tl.compileTextLatin(textLatinOf('text-latin-lato'), 'ltr').compiled;
-    expect(lato.diagnostics.some((d) => d.code === 'DRAGON_UNSUPPORTED_FONT' && d.target === 'ios' && /^font-family: Lato on .* has no layout mapping \(expected Ahem \(the milestone-1 layout font\)\)$/.test(d.message))).toBe(true);
-    const sans = tl.compileTextLatin(textLatinOf('text-latin-words'), 'ltr').compiled;
-    expect(sans.diagnostics.some((d) => d.code === 'DRAGON_UNSUPPORTED_FONT' && d.target === 'ios' && /^font-family: sans-serif on c:text0 has no layout mapping/.test(d.message))).toBe(true);
+  it('DRAGON_SYNTHETIC_FONT_STYLE fires on no FIXTURES case', () => {
     for (const spec of FIXTURES) {
       const directions = spec.kind === 'layout' ? spec.environments : ['ltr' as const];
       for (const d of directions) expect(compileFixture(spec, undefined, 'enforce', d).compiled.diagnostics.filter((x) => x.code === 'DRAGON_SYNTHETIC_FONT_STYLE').map((x) => x.message), spec.id).toEqual([]);
     }
   });
 
-  it('refuses synthetic styles and variable faces in engine mode, and names the synthetic style for native', () => {
-    const syn = asTextLatin('text-latin-synthetic');
-    const sc = tl.textLatinCases(syn)[0] as ParityCaseT;
-    const compiled = tl.compileTextLatin(syn, 'ltr').compiled;
+  it('refuses synthetic styles and variable faces in engine mode and on native, and names the synthetic style for native', () => {
+    const syn = probe('text-latin-synthetic');
+    const compiled = syn.compiled(syn.input);
     expect(compiled.diagnostics.filter((d) => d.code === 'DRAGON_SYNTHETIC_FONT_STYLE').map((d) => [d.target, d.message])).toEqual([['ios', 'text t:text0 in Lato at font-weight 400 and font-style italic would be drawn in synthetic oblique: no bundled Lato face has that style, and ios cannot reproduce Skia\'s synthetic style']]);
-    expect(dragon.engineLayoutProjection(compiled, sc.environment, sc.assignment)).toMatchObject({ kind: 'blocked', reason: expect.stringMatching(/more than deferred font refusals/) });
-    const vf = asTextLatin('text-latin-variable');
-    const vc = tl.textLatinCases(vf)[0] as ParityCaseT;
-    const input = fixtureInput(vf.spec);
+    expect(dragon.engineLayoutProjection(compiled, ENVIRONMENT, [])).toMatchObject({ kind: 'blocked', reason: expect.stringMatching(/more than deferred font refusals/) });
+    expect(dragon.nativeLayoutProjection(compiled, ENVIRONMENT, []).kind).toBe('blocked');
+    const vf = probe('text-latin-variable');
     const bytes = new Uint8Array(readFileSync(repoPath('docs/research/text-spike/fonts/Inter-VF.ttf')));
-    const swapped = { ...input, snapshot: { ...input.snapshot, assets: input.snapshot.assets.map((a) => (a.id === 'vendor/fonts/Inter/Inter-Regular.ttf' ? { ...a, bytes, hash: `sha256:${createHash('sha256').update(bytes).digest('hex')}` } : a)) } };
-    const project = dragon.createProjectWith({ projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ahem', foldViewport: { width: 400, height: 300 } });
-    const vcompiled = project.compile(swapped);
-    expect(dragon.engineLayoutProjection(vcompiled, vc.environment, vc.assignment)).toMatchObject({ kind: 'blocked', reason: expect.stringMatching(/variable face/) });
+    const swapped = { ...vf.input, snapshot: { ...vf.input.snapshot, assets: vf.input.snapshot.assets.map((a) => (a.id === 'vendor/fonts/Inter/Inter-Regular.ttf' ? { ...a, bytes, hash: `sha256:${createHash('sha256').update(bytes).digest('hex')}` } : a)) } };
+    const vcompiled = vf.compiled(swapped);
+    expect(dragon.engineLayoutProjection(vcompiled, ENVIRONMENT, [])).toMatchObject({ kind: 'blocked', reason: expect.stringMatching(/variable face/) });
+    expect(dragon.nativeLayoutProjection(vcompiled, ENVIRONMENT, []).kind).toBe('blocked');
   });
 
   it('refuses text outside the Latin scope with a typed code, which planted fault latinCheckSkipped changes', () => {
-    const f = textLatinOf('text-latin-words');
-    const c = tl.textLatinCases(f)[0] as ParityCaseT;
-    const p = dragon.engineLayoutProjection(tl.compileTextLatin(f, 'ltr').compiled, c.environment, c.assignment);
+    const p = dragon.engineLayoutProjection(derived('text-latin-words'), ENVIRONMENT, []);
     if (p.kind !== 'ready') throw new Error(p.reason);
     const greek = JSON.parse(JSON.stringify(p.input).replace('Waves and wind over the quiet harbour', 'Κύματα και άνεμος')) as LayoutInput;
     const r = layout(greek, referenceShapedMeasurer());
@@ -304,43 +363,9 @@ describe('TXT1a-1 phase B: the text-latin registry', () => {
   });
 });
 
-type ParityCaseT = ReturnType<typeof tl.textLatinCases>[number];
-
-describe('TXT1a-1 phase B: text-latin against Chrome 145 at every DPR', () => {
-  it('passes the engine lane exactly, chrome-dual, the face check and the break check at DPR 1', async () => {
-    const browser = await launchChrome();
-    try {
-      const failed: string[] = [];
-      let cases = 0;
-      for (const f of TEXT_LATIN_FIXTURES) {
-        for (const o of await tl.runTextLatinFixture(f, browser, tl.committedTextLatinOptions)) {
-          cases++;
-          if (o.status !== 'pass') failed.push(`${o.id}: ${o.reason}`);
-        }
-      }
-      expect(failed).toEqual([]);
-      expect(cases).toBe(7);
-    } finally {
-      await browser.close();
-    }
-  }, 600_000);
-
-  it('passes the DPR lane in exact zoomed LU, with Chrome\'s breaks, at DPR 2, 3 and 2.625', async () => {
-    const failed: string[] = [];
-    let cases = 0;
-    for (const f of TEXT_LATIN_FIXTURES) {
-      for (const dpr of [2, 3, 2.625]) {
-        for (const o of await tl.runTextLatinDpr(f, dpr, tl.committedTextLatinOptions)) {
-          cases++;
-          if (o.status !== 'pass' || o.breakProblems.length > 0 || o.exact !== o.nodes) failed.push(`${o.id} at DPR ${dpr}: ${o.reason ?? ''} ${o.breakProblems.join('; ')}`);
-        }
-      }
-    }
-    expect(failed).toEqual([]);
-    expect(cases).toBe(21);
-  }, 600_000);
-
-  // Each planted shaping fault must make the engine differ from Chrome on a named text-latin case (engine lane or breaks).
+describe('TXT1a-2 phase F: the shaped checks catch every shaping plant', () => {
+  // Each planted shaping fault must make the engine differ from Chrome on a named text-latin case: at DPR 1 the engine lane
+  // (hyphen-joined, exact) or the live DPR-1 breaks; at a DPR set the DPR lane or the committed break captures.
   const plants: readonly { readonly fault: keyof EngineFaults; readonly fixture: string; readonly dpr: number }[] = [
     { fault: 'advanceNot16_16', fixture: 'text-latin-lato', dpr: 1 },
     { fault: 'doubleAccumulation', fixture: 'text-latin-lato', dpr: 3 },
@@ -350,34 +375,47 @@ describe('TXT1a-1 phase B: text-latin against Chrome 145 at every DPR', () => {
     { fault: 'softHyphenWidthMissing', fixture: 'text-latin-punct', dpr: 1 },
     { fault: 'metricRoundingSwapped', fixture: 'text-latin-metrics', dpr: 2 },
   ];
+  let browser: Awaited<ReturnType<typeof launchChrome>> | null = null;
+  const chrome = async () => {
+    if (browser === null) browser = await launchChrome();
+    return browser;
+  };
+  afterAll(async () => {
+    if (browser !== null) await (browser as Awaited<ReturnType<typeof launchChrome>>).close();
+  });
+  const differs = async (fixture: string, dpr: number, ef: EngineFaults): Promise<boolean> => {
+    const c = caseOf(fixture);
+    const compiled = derived(fixture);
+    if (dpr !== 1) {
+      const r = runDprCase(c, compiled, dpr, committedDprCapture(c.id, dpr), ef);
+      if (r.status !== 'pass' || r.vector === null) return true;
+      const b = readChromeBreaks(c.id, dpr);
+      if (b === null) throw new Error(`no committed breaks of ${c.id} at DPR ${dpr}`);
+      return tl.breakProblems(c.id, dpr, r.vector.input, b, ef).problems.length > 0;
+    }
+    const p = dragon.engineLayoutProjection(compiled, c.environment, c.assignment);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const out = layoutWithFaults(p.input, referenceShapedMeasurer(ef), ef);
+    if (out.kind !== 'ok') return true;
+    const cmp = compareLayout(tl.joinHyphenRects(committedDprCapture(c.id, 1)), absoluteRects(out.boxes), p.input, c.environment);
+    if (!cmp.pass || cmp.nodes.some((n) => n.dragon !== null && !n.exactLu)) return true;
+    return tl.breakProblems(c.id, 1, p.input, await tl.liveChromeBreaks(await chrome(), c, 1), ef).problems.length > 0;
+  };
   for (const p of plants) {
     it(`catches the planted fault ${p.fault} on ${p.fixture} at DPR ${p.dpr}`, async () => {
-      const f = textLatinOf(p.fixture);
-      const faults = { ...NO_ENGINE_FAULTS, [p.fault]: true };
-      if (p.dpr !== 1) {
-        expect((await tl.runTextLatinDpr(f, p.dpr, tl.committedTextLatinOptions)).every((r) => r.status === 'pass' && r.breakProblems.length === 0), 'unfaulted').toBe(true);
-        const planted = await tl.runTextLatinDpr(f, p.dpr, { ...tl.committedTextLatinOptions, engineFaults: faults });
-        expect(planted.some((r) => r.status !== 'pass' || r.breakProblems.length > 0)).toBe(true);
-        return;
-      }
-      const differs = (ef: EngineFaults): boolean => tl.textLatinCases(f).some((c) => {
-        const lane = tl.engineLane(c, tl.compileTextLatin(f, c.environment.direction).compiled, tl.joinHyphenRects(tl.committedTextLatinCapture(c, 1)), ef);
-        if (!lane.pass || lane.vector === null) return true;
-        return tl.breakProblems(c.id, 1, lane.vector.input, tl.committedTextLatinBreaks(c, 1), ef).problems.length > 0;
-      });
-      expect(differs(NO_ENGINE_FAULTS), 'unfaulted').toBe(false);
-      expect(differs(faults)).toBe(true);
+      expect(await differs(p.fixture, p.dpr, NO_ENGINE_FAULTS), 'unfaulted').toBe(false);
+      expect(await differs(p.fixture, p.dpr, { ...NO_ENGINE_FAULTS, [p.fault]: true })).toBe(true);
     }, 600_000);
   }
 });
 
-describe('TXT1a-1 phase B: text-latin vectors replay in the translated engine (R3)', () => {
+describe('TXT1a-2 phase F: text-latin vectors replay in the translated engine (R3)', () => {
   const dirs = [1, 2, 3, 2.625].map((d) => ({ dpr: d, dir: repoPath(`packages/layout/vectors/text-latin/dpr-${d}`) }));
   const vecs = dirs.flatMap(({ dpr, dir }) => readdirSync(dir).filter((x) => x.endsWith('.json')).map((x) => ({ dpr, file: `${dir}/${x}`, v: JSON.parse(readFileSync(`${dir}/${x}`, 'utf8')) as ReturnType<typeof tl.textLatinVector> })));
   const lineOf = (v: ReturnType<typeof tl.textLatinVector>, faults: EngineFaults = NO_ENGINE_FAULTS): string => JSON.stringify({ platform: v.platform, faults, input: v.input, shaping: { language: v.language, faces: v.faces, calls: v.calls } });
 
   it('has a vector for every case at every DPR, each written from the committed captures', () => {
-    expect(vecs.length).toBe(28);
+    expect(vecs.length).toBe((NEW_IDS.length + TAG_IDS.length) * 4);
     for (const { file, v } of vecs) expect(readFileSync(file, 'utf8'), file).toBe(tl.textLatinVectorText(tl.textLatinVector(v.input)));
   });
 
@@ -397,12 +435,4 @@ describe('TXT1a-1 phase B: text-latin vectors replay in the translated engine (R
     expect(out).toMatch(/^\["harness-error","the shape transcript holds no call/);
   });
   // The Swift and Kotlin replays of these vectors run on the native shards: text-latin-native.test.ts.
-});
-
-describe('the text-latin capture CLI', () => {
-  it('refuses an unknown argument with exit 2 before it cleans or captures anything', () => {
-    // A mistyped --vectors would otherwise run the live capture, which first deletes the committed captures.
-    const r = spawnSync(process.execPath, ['--conditions=dragon-internal', repoPath('packages/parity/src/cli/text-latin-capture.ts'), '--vector'], { encoding: 'utf8' });
-    expect([r.status, r.stderr.trim()]).toEqual([2, 'unknown argument --vector; usage: text-latin-capture.ts [--vectors]']);
-  });
 });

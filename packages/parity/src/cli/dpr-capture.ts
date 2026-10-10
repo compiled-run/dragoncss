@@ -41,7 +41,7 @@ for (const dpr of DPRS) {
     // Each case in its own context (captureFixture), CHROME_PAGES at a time.
     const n = (
       await inOrder(all.flatMap((f) => f.cases), CHROME_PAGES, async (c) => {
-        const capture = await captureFixture(browser, c.id, c.authoredHtml, atDpr(c.environment, dpr));
+        const capture = await captureFixture(browser, c.id, c.authoredHtml, atDpr(c.environment, dpr), [], c.authoredPrepare ?? undefined);
         if (capture.devicePixelRatio !== dpr) throw new Error(`${c.id}: captured at DPR ${capture.devicePixelRatio}, not ${dpr}`);
         writeFileSync(expectedDprPath(c.id, dpr, platform), captureJson(capture));
       })

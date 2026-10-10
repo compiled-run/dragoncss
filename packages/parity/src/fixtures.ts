@@ -20,6 +20,7 @@ import { FONTS } from './fixture-groups/fonts.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
+import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LIST_ITEMS } from './fixture-groups/list-items.ts';
@@ -37,7 +38,9 @@ import { SHADOW } from './fixture-groups/shadow.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
+import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
+import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
@@ -117,6 +120,7 @@ export const GROUPS = {
   grid: GRID,
   'inherit-contexts': INHERIT_CONTEXTS,
   inline: INLINE,
+  'inline-tags': INLINE_TAGS,
   interaction: INTERACTION,
   'list-items': LIST_ITEMS,
   'logical-props': LOGICAL_PROPS,
@@ -133,7 +137,9 @@ export const GROUPS = {
   showcase: SHOWCASE,
   'sizing-ratio': SIZING,
   states: STATES,
+  'text-calibration': TEXT_CALIBRATION,
   'text-latin': TEXT_LATIN,
+  'text-weight': TEXT_WEIGHT,
   transforms: TRANSFORMS,
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,

@@ -19,6 +19,8 @@ import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
+import { isRefusedMath, textFontOfProps } from './computed.ts';
+import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
 import { environmentOf, valueToString } from './resolve.ts';
@@ -358,9 +360,10 @@ function listMarkerOf(el: ResolvedElement): string | null {
 }
 
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
-// (nested lists), display: list-item with a marker (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
-// minimum logical font size clamps, and text that inherits a UA font-weight or font-style no longhand models (headings, address).
-function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, faults: GenBFaults): void {
+// (nested lists), display: list-item (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
+// minimum logical font size clamps, and text without a real bundled face whose computed font-weight or font-style Chrome draws
+// synthesized (Ahem under a heading, b, strong, em, i or address, or an author weight of 600 and up).
+function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults): void {
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
     reported.add(id);
@@ -371,7 +374,7 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     for (const t of targets) once(`${t}|ua-${what}|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' })));
   };
   // Chrome's FontSize::GetComputedSizeFromSpecifiedSize: the clamp applies unless an authored px size is in the chain.
-  const walk = (el: ResolvedElement, ancestors: readonly ResolvedElement[], parentAbsolute: boolean, fontTag: ResolvedElement | null, hidden: boolean): void => {
+  const walk = (el: ResolvedElement, ancestors: readonly ResolvedElement[], parentAbsolute: boolean, hidden: boolean): void => {
     const tag = el.element.tag;
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     const size = el.props.get('font-size') as ResolvedValue;
@@ -405,26 +408,58 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
         perTarget(el, 'font-size', `font-size: ${valueToString(size.value)} on <${tag}> ${el.element.address} comes from Chrome's user-agent stylesheet and is below Chrome's minimum logical font size (${ua.minimumLogicalFontSize}px), which Chrome clamps depending on the device pixel ratio`, `Set a px font-size on <${tag}> ${el.element.address} or one of its ancestors.`);
       }
     }
-    const fonts = Object.keys(uaRows(ua, uaTagOf(tag)).textFonts).length > 0 ? el : fontTag;
-    if (!here && fonts !== null) {
-      const row = uaRows(ua, uaTagOf(fonts.element.tag)).textFonts;
-      const set = Object.entries(row).map(([p, v]) => `${p}: ${v}`).join('; ');
-      for (const c of el.children) {
-        if (c.kind !== 'text') continue;
-        // Web draws the UA weight and style itself; every configured native target draws the regular face.
+    if (!here) {
+      for (const property of ['font-weight', 'font-style'] as const) {
+        const v = el.props.get(property) as ResolvedValue;
+        if (v.origin === 'inherited' || !isRefusedMath(v.value)) continue;
+        // Web hands the calculation to Chrome; native targets need its computed value to pick and measure the face.
         for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
-          once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
-            origin: c.node.node.origin,
+          once(`${t}|font-math|${property}|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+            origin: el.element.node.origin,
             target: t,
-            message: `text ${c.node.address} inherits ${set} from Chrome's user-agent stylesheet on <${fonts.element.tag}> ${fonts.element.address}; Dragon has no font-weight or font-style, so ${t} would draw it in the regular face (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`,
-            manual: `Put the text in a div outside <${fonts.element.tag}> ${fonts.element.address}; font-weight and font-style need the real-font text support.`,
+            message: `${property}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is a calculation Dragon does not compute, and ${t} needs the computed ${property} to choose and measure the face`,
+            manual: `Write ${property} on <${tag}> ${el.element.address} as a keyword or a number.`,
+            basis: 'computed-value',
           })));
         }
       }
     }
-    for (const c of el.children) if (c.kind === 'element') walk(c, [...ancestors, el], absolute, fonts, here);
+    const synthetic = here ? [] : syntheticTextFont(el);
+    if (synthetic.length > 0) {
+      const chain = [...ancestors, el];
+      const sources = synthetic.map(({ property, text }) => {
+        const setter = [...chain].reverse().find((a) => (a.props.get(property) as ResolvedValue).origin !== 'inherited') ?? (chain[0] as ResolvedElement);
+        const origin = (setter.props.get(property) as ResolvedValue).origin;
+        const where = origin === 'user-agent' ? "Chrome's user-agent stylesheet" : origin === 'author' ? 'the author\'s style' : `its ${origin} value`;
+        return `${property}: ${text} from ${where} on <${setter.element.tag}> ${setter.element.address}`;
+      });
+      for (const c of el.children) {
+        // TXT1a-2: a real bundled face at the computed weight and style draws it (synthesis is refused as DRAGON_SYNTHETIC_FONT_STYLE).
+        if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
+        // Web synthesizes the bold or oblique itself; every configured native target draws the regular face.
+        for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+          once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
+            origin: c.node.node.origin,
+            target: t,
+            message: `text ${c.node.address} inherits ${sources.join(', and ')}; ${t} draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`,
+            manual: `Give ${c.node.address} a font-weight below 600 and a font-style below oblique 14deg, or a font family with a bundled face of that weight and style.`,
+          })));
+        }
+      }
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c, [...ancestors, el], absolute, here);
   };
-  walk(root, [], false, null, false);
+  walk(root, [], false, false);
+}
+
+/** The computed font-weight and font-style of an element that Chrome synthesizes over a single regular face (600 and up, slope 14 and up). */
+function syntheticTextFont(el: ResolvedElement): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
+  const out: { property: 'font-weight' | 'font-style'; text: string }[] = [];
+  const font = textFontOfProps(el.props);
+  if (font.weight >= 600) out.push({ property: 'font-weight', text: serializeFontWeight(font.weight) });
+  const slope = font.style.kind === 'italic' ? 14 : font.style.kind === 'oblique' ? font.style.degrees : 0;
+  if (slope >= 14) out.push({ property: 'font-style', text: serializeFontStyle(font.style) });
+  return out;
 }
 
 /** The support profile each target is checked against, or null when the profiles are not enforced. */
@@ -499,7 +534,7 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, faults: GenBFaults = GEN_B_FAULTS): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, faults: GenBFaults = GEN_B_FAULTS): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -524,7 +559,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     for (const c of el.children) if (c.kind === 'element') walk(c, here, inner);
   };
   walk(root, false, 'viewport');
-  checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, faults);
+  checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
 }

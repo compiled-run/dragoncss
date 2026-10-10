@@ -13,7 +13,7 @@ import { uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeGridLengths, computeJustifyItems, computeLengths, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeJustifyItems, computeLengths, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
 import { presentationalHints } from './elements/replaced.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
@@ -169,7 +169,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const tag = uaTagOf(el.tag);
     const none = { declaration: null, declared: null, losing: [] } as const;
     const fromParent = (p: Longhand): ResolvedValue => {
-      if (parent === null) return { value: parseValueText(p, environment.ua.computed.html[p] as string), origin: 'initial', span: null, ...none };
+      // The UA capture has no font-weight or font-style (datasets.ts TEXT_FONT_LONGHANDS); the root takes their initial value.
+      const rootValue = environment.ua.computed.html[p];
+      if (parent === null) return { value: rootValue === undefined ? initialValue(p, environment.ua) : parseValueText(p, rootValue), origin: 'initial', span: null, ...none };
       const pv = parent.props.get(p) as ResolvedValue;
       return { value: pv.value, origin: 'inherited', span: pv.span, ...none };
     };
@@ -235,6 +237,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent, revertedProps);
     // A replaced key's forced values (iframe overflow: clip) hold whatever the cascade says (ELB-2 userAgentForced).
     applyForcedUserAgent(tag, props, environment.ua);
+    computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {

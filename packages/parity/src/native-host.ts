@@ -7,11 +7,11 @@ import { createHash } from 'node:crypto';
 import { existsSync, linkSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
-import type { LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
+import type { LayoutBox, LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
 import type { LU } from '@dragon/layout';
 import { deviceShapedMeasurer, layout, LU_PER_PX, NO_ENGINE_FAULTS, opacityAlpha8, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
-import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
+import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, engineLayoutProjection, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
 import { stateEmits } from './state-cases.ts';
 import { animEmits } from './anim-samples.ts';
@@ -19,7 +19,8 @@ import { deviceHitSource } from './hit-capture.ts';
 import { deviceTraceSources } from './trace-lane.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
-import { layoutCases } from './dpr.ts';
+import { atDpr, layoutCases } from './dpr.ts';
+import { fontMapOf, withFontMapAssets } from './fixture-groups/fonts.ts';
 import { PROJECT_ID } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { ENVIRONMENT } from './fixtures.ts';
@@ -31,7 +32,8 @@ import { BUILD_CACHE, hit, publish, pruneCache, replace } from '../../translate/
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { NativeTarget } from './targets.ts';
-import { deviceDprs } from './targets.ts';
+import { referenceShapedMeasurer } from './text-shaper-host.ts';
+import { deviceDprs, vectorCaseIds } from './targets.ts';
 import { buildShim, SHIM_ANDROID_ABIS, SHIM_SWIFT_INCLUDE, shimModuleMapSha256, shimSources, shimToken } from './native-shim.ts';
 import { ahemFaceId, fontDataOf, hostShaper } from './text-shaper-host.ts';
 
@@ -47,11 +49,14 @@ export const nativeOut = (target: NativeTarget): string => repoPath(`packages/pa
 // ---------------------------------------------------------------- the native generation compile
 
 /** The lane compile (item 9): ios and android together, derive mode, one per fixture and direction. */
-export function nativeCompile(spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'android'> {
+/** nativeRealFaces: lower real bundled faces natively (TXT1a-2 phase C), off by default until phase R; tests of that lowering turn it on. */
+export function nativeCompile(spec: FixtureSpec, direction: Environment['direction'], nativeRealFaces = false): Compiled<'ios' | 'android'> {
   if (spec.kind !== 'layout') throw new Error(`${spec.id} is not a layout fixture`);
   // MQ-a: every native case runs in the parity environment's viewport, so its @media band is the one holding it.
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport, interactionLanes: true });
-  return project.compile(fixtureInput(spec));
+  // TXT1a-2: a real-font fixture compiles with its font map and the map's vendored faces as assets, as pipeline.ts compileFixture does.
+  const fonts = fontMapOf(spec.id);
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG }, ...(fonts === undefined ? {} : { fonts }) }, { faults: NO_FAULTS, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport, nativeRealFaces, interactionLanes: true });
+  return project.compile(fonts === undefined ? fixtureInput(spec) : withFontMapAssets(fixtureInput(spec), fonts));
 }
 
 export type NativeCase = {
@@ -63,13 +68,18 @@ export type NativeCase = {
 
 let records: readonly NativeCase[] | null = null;
 
-/** Every layout case (layoutCases()), each with the programs of its one native compile; a case that cannot be lowered throws. */
+/**
+ * Every device case (targets.ts vectorCaseIds: every layout case but the shaped ones, which the device runtime cannot draw until
+ * TXT1a-2 phase R), each with the programs of its one native compile; a case that cannot be lowered throws.
+ */
 export function nativeCases(): readonly NativeCase[] {
   if (records !== null) return records;
+  const device = new Set(vectorCaseIds());
   const out: NativeCase[] = [];
   for (const f of layoutCases()) {
     const byDirection = new Map<string, Compiled<'ios' | 'android'>>();
     for (const c of f.cases) {
+      if (!device.has(c.id)) continue;
       const d = c.environment.direction;
       let compiled = byDirection.get(d);
       if (compiled === undefined) {
@@ -82,6 +92,45 @@ export function nativeCases(): readonly NativeCase[] {
     }
   }
   records = out;
+  return out;
+}
+
+/** A layout case with the engine input tree the engine lane lays it out from (the break vectors and break captures read these). */
+export type EngineCase = { readonly case: ParityCase; readonly root: LayoutBox; readonly inputAt: (dpr: number) => LayoutInput };
+
+let engineRecords: readonly EngineCase[] | null = null;
+
+/**
+ * Every layout case in layoutCases() order: a device case through its native programs (both backends hold one engine input tree),
+ * and a shaped case, which native refuses until TXT1a-2 phase R, through engineLayoutProjection of its derive compile.
+ */
+export function engineCases(): readonly EngineCase[] {
+  if (engineRecords !== null) return engineRecords;
+  const native = new Map(nativeCases().map((n) => [n.case.id, n]));
+  const out: EngineCase[] = [];
+  for (const f of layoutCases()) {
+    const byDirection = new Map<string, Compiled<'ios' | 'android'>>();
+    for (const c of f.cases) {
+      const n = native.get(c.id);
+      if (n !== undefined) {
+        if (JSON.stringify(n.programs.uikit.root) !== JSON.stringify(n.programs['android-views'].root)) throw new Error(`${c.id}: the uikit and android-views programs hold different engine inputs`);
+        out.push({ case: c, root: n.programs.uikit.root, inputAt: (dpr) => programInput(n.programs.uikit, c.environment.viewport, dpr) });
+        continue;
+      }
+      let compiled = byDirection.get(c.environment.direction);
+      if (compiled === undefined) {
+        compiled = nativeCompile(f.spec, c.environment.direction);
+        byDirection.set(c.environment.direction, compiled);
+      }
+      const at = (dpr: number): LayoutInput => {
+        const p = engineLayoutProjection(compiled, atDpr(c.environment, dpr), c.assignment);
+        if (p.kind !== 'ready') throw new Error(`${c.id} at DPR ${dpr}: no engine projection: ${p.reason}`);
+        return p.input;
+      };
+      out.push({ case: c, root: at(1).root, inputAt: at });
+    }
+  }
+  engineRecords = out;
   return out;
 }
 
