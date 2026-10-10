@@ -1530,16 +1530,6 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     return lineWidth(shaped.item, shaped.result, start, breakOffset, available, isBreakable);
   };
   const itemFor = (text: string, font: TextFont): ShapedItem => item(text, font.family, platformFontSize(font.size));
-  /** A code point index as the UTF-16 offset of the item. */
-  const offsetOf = (units: readonly number[], codePoint: number): number => {
-    let k = 0;
-    for (let i = 0; i < units.length; i++) {
-      if ((units[i] as number) < 0) continue;
-      if (k === codePoint) return i;
-      k++;
-    }
-    return units.length;
-  };
   const measurer: TextMeasurer = {
     // R5: SimpleFontData's rounded ascent and descent of the platform-size font; a zero line gap stays ZERO.
     metrics(font: TextFont): FontMetrics {
@@ -1560,8 +1550,8 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
       const s = itemFor(text, font);
       if (!s.ok) return { ok: false, code: s.code, reason: s.reason };
-      const a = cachedPositionForOffset(s.result, offsetOf(s.item.units, start));
-      const b = cachedPositionForOffset(s.result, offsetOf(s.item.units, end));
+      const a = cachedPositionForOffset(s.result, offsetOfCodePoint(s.item.units, start));
+      const b = cachedPositionForOffset(s.result, offsetOfCodePoint(s.item.units, end));
       return { ok: true, measure: { width: sub(fromRaw(b), fromRaw(a)) } };
     },
     // The float metrics of the face at the platform size (V2 of the value model); a face that is not bundled has none.
@@ -1578,6 +1568,44 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     },
   };
   return { measurer, item, line };
+}
+
+/** A code point index as the UTF-16 offset of an item's units (utf16Units). */
+function offsetOfCodePoint(units: readonly number[], codePoint: number): number {
+  let k = 0;
+  for (let i = 0; i < units.length; i++) {
+    if ((units[i] as number) < 0) continue;
+    if (k === codePoint) return i;
+    k++;
+  }
+  return units.length;
+}
+
+/**
+ * A line piece as a device draws it: the glyph ids of the shaped item whose clusters fall in the piece, left to right, and each
+ * glyph's pen x in px from the piece's left, its HarfBuzz 16.16 advances summed exactly as the cached positions sum them.
+ */
+export type PieceGlyphs = { readonly ok: true; readonly glyphs: readonly number[]; readonly xs: readonly number[] } | { readonly ok: false; readonly reason: string };
+
+/** The glyphs of code points [start, end) of text as the measurer shapes it (TextMeasurer.shaped); x and y offsets are not read yet. */
+export function pieceGlyphs(measurer: TextMeasurer, text: string, font: TextFont, start: number, end: number): PieceGlyphs {
+  const s = measurer.shaped(text, font);
+  if (!s.ok) return { ok: false, reason: s.reason };
+  const from = offsetOfCodePoint(s.item.units, start);
+  const to = offsetOfCodePoint(s.item.units, end);
+  const glyphs: number[] = [];
+  const xs: number[] = [];
+  let pen = 0;
+  for (const run of s.result.runs) {
+    for (const g of run.glyphs) {
+      const at = run.start + g.ci;
+      if (at < from || at >= to) continue;
+      glyphs.push(g.glyph);
+      xs.push(pen / 65536);
+      pen = pen + g.advance;
+    }
+  }
+  return { ok: true, glyphs, xs };
 }
 
 /** R2: the measurer over bundled faces and the host's HarfBuzz. */

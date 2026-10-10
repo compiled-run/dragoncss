@@ -36,8 +36,22 @@ export function kotlinNum(v: number): string {
 export class KotlinEmitter {
   private readonly unions: ReadonlyMap<string, UnionDecl>;
   private tmp = 0;
+  /** Each function body being emitted: its local names, true for a local function, which a value reference names as ::f. */
+  private readonly scopes: Map<string, boolean>[] = [];
   constructor(unions: ReadonlyMap<string, UnionDecl>) {
     this.unions = unions;
+  }
+
+  private declareLocal(name: string, isFunc: boolean): void {
+    this.scopes[this.scopes.length - 1]?.set(name, isFunc);
+  }
+
+  private isLocalFunc(name: string): boolean {
+    for (let i = this.scopes.length - 1; i >= 0; i--) {
+      const v = this.scopes[i]?.get(name);
+      if (v !== undefined) return v;
+    }
+    return false;
   }
 
   fileHeader(): string {
@@ -118,8 +132,13 @@ export class KotlinEmitter {
   private body(params: readonly Param[], stmts: readonly Stmt[], ret: Ty, depth: number): string[] {
     const assigned = assignedLocals(stmts);
     const out: string[] = [];
-    for (const p of params) if (assigned.has(p.name)) out.push(`${pad(depth)}var ${kotlinId(p.name)} = ${kotlinId(p.name)}`);
-    out.push(...this.stmts(stmts, depth));
+    this.scopes.push(new Map(params.map((p) => [p.name, false] as const)));
+    try {
+      for (const p of params) if (assigned.has(p.name)) out.push(`${pad(depth)}var ${kotlinId(p.name)} = ${kotlinId(p.name)}`);
+      out.push(...this.stmts(stmts, depth));
+    } finally {
+      this.scopes.pop();
+    }
     if (ret.k !== 'void' && !terminates(stmts)) out.push(`${pad(depth)}jsUnreachable()`);
     return out;
   }
@@ -135,9 +154,11 @@ export class KotlinEmitter {
     const src = `${p}// ts: ${s.loc.file}:${s.loc.line}`;
     switch (s.s) {
       case 'let':
+        this.declareLocal(s.name, false);
         if (s.init === null) return [`${p}var ${kotlinId(s.name)}: ${this.ty(s.ty)}`];
         return [`${p}${s.mutable ? 'var' : 'val'} ${kotlinId(s.name)}: ${this.ty(s.ty)} = ${this.ex(s.init)}`];
       case 'localFunc':
+        this.declareLocal(s.name, true);
         return [src, `${p}fun ${kotlinId(s.name)}(${this.params(s.params)}): ${this.ty(s.ret)} {`, ...this.body(s.params, s.body, s.ret, d + 1), `${p}}`];
       case 'expr':
         return [`${p}${this.ex(s.e)}`];
@@ -159,6 +180,7 @@ export class KotlinEmitter {
         return out;
       }
       case 'forOf': {
+        this.declareLocal(s.name, false);
         const n = ++this.tmp;
         return [
           src,
@@ -174,12 +196,15 @@ export class KotlinEmitter {
         ];
       }
       case 'forOfMap':
+        this.declareLocal(s.key, false);
+        this.declareLocal(s.value, false);
         return [src, `${p}for ((${kotlinId(s.key)}, ${kotlinId(s.value)}) in ${this.ex(s.map)}.entries()) {`, ...this.stmts(s.body, d + 1), `${p}}`];
       case 'return':
         return [s.e === null ? `${p}return` : `${p}return ${this.ex(s.e)}`];
       case 'throw':
         return [`${p}throw ${this.ex(s.e)}`];
       case 'try':
+        this.declareLocal(s.name, false);
         return [src, `${p}try {`, ...this.stmts(s.body, d + 1), `${p}} catch (${kotlinId(s.name)}: Throwable) {`, ...this.stmts(s.handler, d + 1), `${p}}`];
       case 'switch': {
         const out = [src, `${p}when (${this.ex(s.subject)}) {`];
@@ -225,7 +250,7 @@ export class KotlinEmitter {
       case 'null':
         return 'null';
       case 'local':
-        return kotlinId(e.name);
+        return this.isLocalFunc(e.name) ? `::${kotlinId(e.name)}` : kotlinId(e.name);
       case 'global':
         return e.ty.k === 'fn' ? `::${e.name}` : e.name;
       case 'field':
