@@ -4,11 +4,11 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4326 (18.6%) | 18959 (81.4%) | 1 | 0 | 0 |
-| ios | 4307 (18.5%) | 18938 (81.3%) | 1 | 0 | 40 |
-| android | 4307 (18.5%) | 18938 (81.3%) | 1 | 0 | 40 |
+| web | 4333 (18.6%) | 18952 (81.4%) | 1 | 0 | 0 |
+| ios | 4314 (18.5%) | 18931 (81.3%) | 1 | 0 | 40 |
+| android | 4314 (18.5%) | 18931 (81.3%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4060, ios 4090 and android 4090 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4067, ios 4097 and android 4097 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
@@ -20,7 +20,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4060, ios 4
 | sizing | 1015 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 |
 | typography | 261 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 |
 | colours | 14842 | 82 / 14760 / 0 / 0 / 0 | 82 / 14760 / 0 / 0 / 0 | 82 / 14760 / 0 / 0 / 0 |
-| backgrounds | 151 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 |
+| backgrounds | 151 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 |
 | borders | 250 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 |
 | effects | 1178 | 27 / 1151 / 0 / 0 / 0 | 27 / 1151 / 0 / 0 / 0 | 27 / 1151 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
@@ -37,7 +37,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4060, ios 4
 |---|---:|---:|---:|---:|
 | `property mask-image` | 6280 | 6280 | 6280 | 38 |
 | `value oklch()` | 4576 | 4576 | 4576 | 16 |
-| `property background-image` | 964 | 964 | 964 | 8 |
+| `value background-image: conic-gradient(var(--tw-gradient-stops)) substitutes to "conic` | 937 | 937 | 937 | 4 |
 | `at-rule @supports` | 612 | 612 | 612 | 4 |
 | `property scrollbar-color` | 582 | 582 | 582 | 2 |
 | `property translate` | 444 | 444 | 444 | 24 |

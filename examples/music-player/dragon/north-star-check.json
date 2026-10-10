@@ -133,13 +133,13 @@
   "contextProbe": {
    "rounds": 2,
    "blankedRules": 4,
-   "blankedDeclarations": 30,
+   "blankedDeclarations": 27,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 196,
-  "errors": 191,
+  "diagnostics": 259,
+  "errors": 254,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
@@ -156,10 +156,9 @@
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 4,
-   "DRAGON_UNSUPPORTED_VALUE": 3,
-   "DRAGON_UNSUPPORTED_VALUE [android]": 22,
-   "DRAGON_UNSUPPORTED_VALUE [ios]": 22,
-   "DRAGON_UNSUPPORTED_VALUE [web]": 4
+   "DRAGON_UNSUPPORTED_VALUE [android]": 45,
+   "DRAGON_UNSUPPORTED_VALUE [ios]": 45,
+   "DRAGON_UNSUPPORTED_VALUE [web]": 24
   },
   "perTarget": {
    "web": {
@@ -169,7 +168,7 @@
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_PROPERTY": 26,
      "DRAGON_UNSUPPORTED_SELECTOR": 4,
-     "DRAGON_UNSUPPORTED_VALUE": 7
+     "DRAGON_UNSUPPORTED_VALUE": 24
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -184,7 +183,7 @@
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 24,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 25
+     "DRAGON_UNSUPPORTED_VALUE": 45
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -201,7 +200,7 @@
      "DRAGON_UNSUPPORTED_FONT": 34,
      "DRAGON_UNSUPPORTED_PROPERTY": 24,
      "DRAGON_UNSUPPORTED_SELECTOR": 8,
-     "DRAGON_UNSUPPORTED_VALUE": 25
+     "DRAGON_UNSUPPORTED_VALUE": 45
     },
     "warnings": {
      "DRAGON_SELECTOR_DROPPED": 1
@@ -303,9 +302,9 @@
    }
   },
   "rawDiagnosticsPerPass": {
-   "A-authored": 80,
-   "B-unwrapped": 80,
-   "C-context": 131
+   "A-authored": 107,
+   "B-unwrapped": 107,
+   "C-context": 167
   }
  },
  "features": {
@@ -4372,10 +4371,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@2514-2678|background: \"radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)\" has 2 layers, which set background-image (initial none), background-position-x (initial 0%), background-position-y (initial 0%), background-size (initial auto), background-repeat (initial repeat), background-attachment (initial scroll), background-origin (initial padding-box), background-clip (initial border-box) to 2-item lists. Dragon supports one layer, where every longhand except background-color keeps its initial value",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-attachment: scroll, scroll (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-attachment values: inherit, initial or scroll",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 2514,
@@ -4384,7 +4383,467 @@
     "column": 3,
     "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
    },
-   "message": "background: \"radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)\" has 2 layers, which set background-image (initial none), background-position-x (initial 0%), background-position-y (initial 0%), background-size (initial auto), background-repeat (initial repeat), background-attachment (initial scroll), background-origin (initial padding-box), background-clip (initial border-box) to 2-item lists. Dragon supports one layer, where every longhand except background-color keeps its initial value",
+   "message": "background-attachment: scroll, scroll (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-attachment values: inherit, initial or scroll",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-clip: border-box, border-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-clip values: border-box, inherit or initial",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-clip: border-box, border-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-clip values: border-box, inherit or initial",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-image: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px) (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-image: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px) (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-origin: padding-box, padding-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-origin values: inherit, initial or padding-box",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-origin: padding-box, padding-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-origin values: inherit, initial or padding-box",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-position-x: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-position-x values: <percentage>, <position-x>, inherit, initial or left",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-position-x: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-position-x values: <percentage>, <position-x>, inherit, initial or left",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-position-y: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-position-y values: <percentage>, <position-y>, inherit, initial or top",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-position-y: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-position-y values: <percentage>, <position-y>, inherit, initial or top",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-repeat: repeat, repeat (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-repeat values: <repeat>, inherit, initial or repeat",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-repeat: repeat, repeat (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-repeat values: <repeat>, inherit, initial or repeat",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-size: auto, auto (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-size values: <size>, auto, inherit or initial",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-size: auto, auto (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-size values: <size>, auto, inherit or initial",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-attachment: scroll, scroll (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-attachment values: inherit, initial or scroll",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-attachment: scroll, scroll (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-attachment values: inherit, initial or scroll",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-clip: border-box, border-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-clip values: border-box, inherit or initial",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-clip: border-box, border-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-clip values: border-box, inherit or initial",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-image: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px) (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-image: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px) (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-origin: padding-box, padding-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-origin values: inherit, initial or padding-box",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-origin: padding-box, padding-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-origin values: inherit, initial or padding-box",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-position-x: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-position-x values: <percentage>, <position-x>, inherit, initial or left",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-position-x: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-position-x values: <percentage>, <position-x>, inherit, initial or left",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-position-y: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-position-y values: <percentage>, <position-y>, inherit, initial or top",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-position-y: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-position-y values: <percentage>, <position-y>, inherit, initial or top",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-repeat: repeat, repeat (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-repeat values: <repeat>, inherit, initial or repeat",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-repeat: repeat, repeat (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-repeat values: <repeat>, inherit, initial or repeat",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-size: auto, auto (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-size values: <size>, auto, inherit or initial",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-size: auto, auto (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-size values: <size>, auto, inherit or initial",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-attachment: scroll, scroll (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-attachment values: inherit, initial or scroll",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-attachment: scroll, scroll (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-attachment values: inherit, initial or scroll",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-clip: border-box, border-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-clip values: border-box, inherit or initial",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-clip: border-box, border-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-clip values: border-box, inherit or initial",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-image: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px) (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-image: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px) (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-origin: padding-box, padding-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-origin values: inherit, initial or padding-box",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-origin: padding-box, padding-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-origin values: inherit, initial or padding-box",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-position-x: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-position-x values: <percentage>, <position-x>, inherit, initial or left",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-position-x: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-position-x values: <percentage>, <position-x>, inherit, initial or left",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-position-y: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-position-y values: <percentage>, <position-y>, inherit, initial or top",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-position-y: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-position-y values: <percentage>, <position-y>, inherit, initial or top",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-repeat: repeat, repeat (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-repeat values: <repeat>, inherit, initial or repeat",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-repeat: repeat, repeat (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-repeat values: <repeat>, inherit, initial or repeat",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-size: auto, auto (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-size values: <size>, auto, inherit or initial",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-size: auto, auto (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); supported background-size values: <size>, auto, inherit or initial",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4412,10 +4871,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@3470-3603|background: \"linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)\" sets background-image (initial none) to a non-initial value. Dragon supports background only when every longhand except background-color keeps its initial value",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3470-3603|background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 3470,
@@ -4424,7 +4883,47 @@
     "column": 14,
     "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
    },
-   "message": "background: \"linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)\" sets background-image (initial none) to a non-initial value. Dragon supports background only when every longhand except background-color keeps its initial value",
+   "message": "background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3470-3603|background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3470,
+    "end": 3603,
+    "line": 192,
+    "column": 14,
+    "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
+   },
+   "message": "background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3470-3603|background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 3470,
+    "end": 3603,
+    "line": 192,
+    "column": 14,
+    "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
+   },
+   "message": "background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4595,10 +5094,10 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|*|css@5017-5060|background: \"linear-gradient(to right, #2f4f66, #a57c5b)\" sets background-image (initial none) to a non-initial value. Dragon supports background only when every longhand except background-color keeps its initial value",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5017-5060|background-image: linear-gradient(to right,#2f4f66,#a57c5b) (set by background: linear-gradient(to right,#2f4f66,#a57c5b)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
-   "target": null,
+   "target": "android",
    "location": {
     "kind": "css",
     "start": 5017,
@@ -4607,7 +5106,47 @@
     "column": 14,
     "text": "linear-gradient(to right, #2f4f66, #a57c5b)"
    },
-   "message": "background: \"linear-gradient(to right, #2f4f66, #a57c5b)\" sets background-image (initial none) to a non-initial value. Dragon supports background only when every longhand except background-color keeps its initial value",
+   "message": "background-image: linear-gradient(to right,#2f4f66,#a57c5b) (set by background: linear-gradient(to right,#2f4f66,#a57c5b)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5017-5060|background-image: linear-gradient(to right,#2f4f66,#a57c5b) (set by background: linear-gradient(to right,#2f4f66,#a57c5b)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 5017,
+    "end": 5060,
+    "line": 283,
+    "column": 14,
+    "text": "linear-gradient(to right, #2f4f66, #a57c5b)"
+   },
+   "message": "background-image: linear-gradient(to right,#2f4f66,#a57c5b) (set by background: linear-gradient(to right,#2f4f66,#a57c5b)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5017-5060|background-image: linear-gradient(to right,#2f4f66,#a57c5b) (set by background: linear-gradient(to right,#2f4f66,#a57c5b)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 5017,
+    "end": 5060,
+    "line": 283,
+    "column": 14,
+    "text": "linear-gradient(to right, #2f4f66, #a57c5b)"
+   },
+   "message": "background-image: linear-gradient(to right,#2f4f66,#a57c5b) (set by background: linear-gradient(to right,#2f4f66,#a57c5b)) is unsupported (support profile m1-s5); supported background-image values: inherit, initial or none",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -5907,6 +6446,500 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-attachment: scroll, scroll (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or scroll",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-attachment: scroll, scroll (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or scroll",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-clip: border-box, border-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use border-box, inherit or initial",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-clip: border-box, border-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use border-box, inherit or initial",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-image on page/song-call/record: the native targets draw gradient layers from BG2-a3 on",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-image on page/song-call/record: the native targets draw gradient layers from BG2-a3 on",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-image: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px) (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-image: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px) (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-origin: padding-box, padding-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or padding-box",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-origin: padding-box, padding-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or padding-box",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-position-x: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <percentage>, <position-x>, inherit, initial or left",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-position-x: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <percentage>, <position-x>, inherit, initial or left",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-position-y: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <percentage>, <position-y>, inherit, initial or top",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-position-y: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <percentage>, <position-y>, inherit, initial or top",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-repeat: repeat, repeat (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <repeat>, inherit, initial or repeat",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-repeat: repeat, repeat (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <repeat>, inherit, initial or repeat",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2514-2678|background-size: auto, auto (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <size>, auto, inherit or initial",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-size: auto, auto (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <size>, auto, inherit or initial",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-attachment: scroll, scroll (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or scroll",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-attachment: scroll, scroll (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or scroll",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-clip: border-box, border-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use border-box, inherit or initial",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-clip: border-box, border-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use border-box, inherit or initial",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-image on page/song-call/record: the native targets draw gradient layers from BG2-a3 on",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-image on page/song-call/record: the native targets draw gradient layers from BG2-a3 on",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-image: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px) (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-image: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px) (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-origin: padding-box, padding-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or padding-box",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-origin: padding-box, padding-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or padding-box",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-position-x: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <percentage>, <position-x>, inherit, initial or left",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-position-x: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <percentage>, <position-x>, inherit, initial or left",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-position-y: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <percentage>, <position-y>, inherit, initial or top",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-position-y: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <percentage>, <position-y>, inherit, initial or top",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-repeat: repeat, repeat (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <repeat>, inherit, initial or repeat",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-repeat: repeat, repeat (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <repeat>, inherit, initial or repeat",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2514-2678|background-size: auto, auto (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <size>, auto, inherit or initial",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-size: auto, auto (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <size>, auto, inherit or initial",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-attachment: scroll, scroll (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or scroll",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-attachment: scroll, scroll (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or scroll",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-clip: border-box, border-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use border-box, inherit or initial",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-clip: border-box, border-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use border-box, inherit or initial",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-image: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px) (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-image: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%), repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px) (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-origin: padding-box, padding-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or padding-box",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-origin: padding-box, padding-box (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or padding-box",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-position-x: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <percentage>, <position-x>, inherit, initial or left",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-position-x: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <percentage>, <position-x>, inherit, initial or left",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-position-y: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <percentage>, <position-y>, inherit, initial or top",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-position-y: 0%, 0% (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <percentage>, <position-y>, inherit, initial or top",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-repeat: repeat, repeat (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <repeat>, inherit, initial or repeat",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-repeat: repeat, repeat (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <repeat>, inherit, initial or repeat",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@2514-2678|background-size: auto, auto (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <size>, auto, inherit or initial",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 2514,
+    "end": 2678,
+    "line": 149,
+    "column": 3,
+    "text": "radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%),\n\t\trepeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px)"
+   },
+   "message": "background-size: auto, auto (set by background: radial-gradient(circle at center,#343b47 0 8%,#0b0d12 8.5% 12%,transparent 12.5%),repeating-radial-gradient(circle at center,#141820 0 7px,#080a0e 8px 12px)) is unsupported (support profile m1-s5); in paint/ltr use <size>, auto, inherit or initial",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2716-2842|page/song-call/record has a box-shadow and position: relative; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -6021,6 +7054,101 @@
    ]
   },
   {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3470-3603|background-image on page/song-call/record-shine: the gradient layers are not opaque over every pixel they paint, and the native targets composite them over a backdrop they do not draw; give the box an opaque background-color or an opaque repeating gradient layer beneath (BG2c)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3470,
+    "end": 3603,
+    "line": 192,
+    "column": 14,
+    "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
+   },
+   "message": "background-image on page/song-call/record-shine: the gradient layers are not opaque over every pixel they paint, and the native targets composite them over a backdrop they do not draw; give the box an opaque background-color or an opaque repeating gradient layer beneath (BG2c)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3470-3603|background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 3470,
+    "end": 3603,
+    "line": 192,
+    "column": 14,
+    "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
+   },
+   "message": "background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3470-3603|background-image on page/song-call/record-shine: the gradient layers are not opaque over every pixel they paint, and the native targets composite them over a backdrop they do not draw; give the box an opaque background-color or an opaque repeating gradient layer beneath (BG2c)",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3470,
+    "end": 3603,
+    "line": 192,
+    "column": 14,
+    "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
+   },
+   "message": "background-image on page/song-call/record-shine: the gradient layers are not opaque over every pixel they paint, and the native targets composite them over a backdrop they do not draw; give the box an opaque background-color or an opaque repeating gradient layer beneath (BG2c)",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3470-3603|background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 3470,
+    "end": 3603,
+    "line": 192,
+    "column": 14,
+    "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
+   },
+   "message": "background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@3470-3603|background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 3470,
+    "end": 3603,
+    "line": 192,
+    "column": 14,
+    "text": "linear-gradient(\n\t\t110deg,\n\t\ttransparent 0 34%,\n\t\trgba(255, 255, 255, 0.2) 42%,\n\t\trgba(255, 255, 255, 0.04) 52%,\n\t\ttransparent 64%\n\t)"
+   },
+   "message": "background-image: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%) (set by background: linear-gradient(110deg,transparent 0 34%,rgba(255,255,255,0.2) 42%,rgba(255,255,255,0.04) 52%,transparent 64%)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
    "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4186-4260|page/song-call/record-center has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
@@ -6053,6 +7181,101 @@
     "text": "0 0 0 0.2rem rgba(255, 255, 255, 0.18),\n\t\t0 0.3rem 1rem rgba(0, 0, 0, 0.5)"
    },
    "message": "page/song-call/record-center has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and ios keeps its shadow at its tree place until the stacking sort lands",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5017-5060|background-image on page/player-call/track: the native targets draw gradient layers from BG2-a3 on",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5017,
+    "end": 5060,
+    "line": 283,
+    "column": 14,
+    "text": "linear-gradient(to right, #2f4f66, #a57c5b)"
+   },
+   "message": "background-image on page/player-call/track: the native targets draw gradient layers from BG2-a3 on",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@5017-5060|background-image: linear-gradient(to right,#2f4f66,#a57c5b) (set by background: linear-gradient(to right,#2f4f66,#a57c5b)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 5017,
+    "end": 5060,
+    "line": 283,
+    "column": 14,
+    "text": "linear-gradient(to right, #2f4f66, #a57c5b)"
+   },
+   "message": "background-image: linear-gradient(to right,#2f4f66,#a57c5b) (set by background: linear-gradient(to right,#2f4f66,#a57c5b)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5017-5060|background-image on page/player-call/track: the native targets draw gradient layers from BG2-a3 on",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 5017,
+    "end": 5060,
+    "line": 283,
+    "column": 14,
+    "text": "linear-gradient(to right, #2f4f66, #a57c5b)"
+   },
+   "message": "background-image on page/player-call/track: the native targets draw gradient layers from BG2-a3 on",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@5017-5060|background-image: linear-gradient(to right,#2f4f66,#a57c5b) (set by background: linear-gradient(to right,#2f4f66,#a57c5b)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 5017,
+    "end": 5060,
+    "line": 283,
+    "column": 14,
+    "text": "linear-gradient(to right, #2f4f66, #a57c5b)"
+   },
+   "message": "background-image: linear-gradient(to right,#2f4f66,#a57c5b) (set by background: linear-gradient(to right,#2f4f66,#a57c5b)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "viaRelated": false,
+   "passes": [
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_VALUE|web|css@5017-5060|background-image: linear-gradient(to right,#2f4f66,#a57c5b) (set by background: linear-gradient(to right,#2f4f66,#a57c5b)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "location": {
+    "kind": "css",
+    "start": 5017,
+    "end": 5060,
+    "line": 283,
+    "column": 14,
+    "text": "linear-gradient(to right, #2f4f66, #a57c5b)"
+   },
+   "message": "background-image: linear-gradient(to right,#2f4f66,#a57c5b) (set by background: linear-gradient(to right,#2f4f66,#a57c5b)) is unsupported (support profile m1-s5); in paint/ltr use inherit, initial or none",
    "viaRelated": false,
    "passes": [
     "C-context"
