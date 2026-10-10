@@ -3,10 +3,11 @@ import type { SupportStatus, Target } from '../types.ts';
 /**
  * What a proof covers (docs/api.md §4.1, §7). layout on linux-dragon-layout: Dragon's engine against Chrome's authored boxes.
  * layout or computed-value on chrome-dual: compiled web CSS against authored CSS in Chrome, boxes and getComputedStyle values,
- * plus Dragon's resolved colour channels against Chrome's. No lane proves native paint in milestone 1.
+ * plus Dragon's resolved colour channels against Chrome's. computed-value on device-anim (T065 R18): every frame sample's device
+ * dump against Chrome's frame capture through the four device checks. No other lane proves native paint in milestone 1.
  */
 export type ProofAspect = 'layout' | 'computed-value';
-export type ProofLane = 'linux-dragon-layout' | 'chrome-dual';
+export type ProofLane = 'linux-dragon-layout' | 'chrome-dual' | 'device-anim';
 
 /** docs/api.md §6.3: a proof names its value subset, context and the parity cases that passed its lane in the same run. */
 export type Proof = {

@@ -584,6 +584,32 @@
           "run": null,
           "device": null,
           "evidence": null
+        },
+        {
+          "lane": "device-anim",
+          "where": "device",
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 924
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 924
+            }
+          ],
+          "corpora": [],
+          "caseListSha256": "8782c1a78d947ff7052f59f4bcfa00c1465712bef56f9d8c2e0f610cea9cce5f",
+          "totalCases": 1848,
+          "run": null,
+          "device": null,
+          "evidence": null
         }
       ],
       "referenceProof": [
@@ -615,43 +641,43 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
@@ -676,43 +702,43 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
@@ -1312,6 +1338,38 @@
           "run": null,
           "device": null,
           "evidence": null
+        },
+        {
+          "lane": "device-anim",
+          "where": "device",
+          "state": "not run",
+          "reason": "run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked",
+          "sets": [
+            {
+              "dpr": 2,
+              "role": "shared",
+              "extra": null,
+              "cases": 924
+            },
+            {
+              "dpr": 3,
+              "role": "shared",
+              "extra": null,
+              "cases": 924
+            },
+            {
+              "dpr": 2.625,
+              "role": "extra",
+              "extra": "android-extra-420dpi",
+              "cases": 924
+            }
+          ],
+          "corpora": [],
+          "caseListSha256": "64eef8af6a2c0a8cb35fa1d18fec9ddd2cd410dc584f39fd06ecb70137193750",
+          "totalCases": 2772,
+          "run": null,
+          "device": null,
+          "evidence": null
         }
       ],
       "referenceProof": [
@@ -1353,43 +1411,43 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
@@ -1414,50 +1472,50 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 655,
-              "caught": 655,
+              "applicable": 657,
+              "caught": 657,
               "uncaught": []
             },
             {
@@ -1475,43 +1533,43 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 664,
-              "caught": 664,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
