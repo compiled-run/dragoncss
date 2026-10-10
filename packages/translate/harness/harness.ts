@@ -709,6 +709,8 @@ function gridSpan(v: JsonValue, path: string): GridSpan {
     const o = obj(v, ['kind', 'start', 'end'], path);
     return { kind: 'lines', start: gridLine(field(o, 'start', path), `${path}.start`), end: gridLine(field(o, 'end', path), `${path}.end`) };
   }
+  if (k === 'start-line') return { kind: 'start-line', line: numField(obj(v, ['kind', 'line'], path), 'line', path) };
+  if (k === 'end-line') return { kind: 'end-line', line: numField(obj(v, ['kind', 'line'], path), 'line', path) };
   return fail(`${path}: unknown kind ${k}`);
 }
 

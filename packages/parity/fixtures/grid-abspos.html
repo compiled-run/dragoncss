@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.g { display: grid; position: relative; width: 121.3px; grid-template-columns: [a] 20px [b] 30.3px [c] 25px [d]; grid-template-rows: 11px 13.7px; column-gap: 3.5px; row-gap: 2px; padding: 4px 6px 5px 7px; border: 2px solid #000; margin-bottom: 3px; }
+.m { display: grid; position: relative; width: 101.7px; height: 14px; grid-template-columns: repeat(7, 1fr); column-gap: 1.3px; margin-bottom: 3px; }
+.jc { display: grid; position: relative; width: 100.3px; height: 12px; grid-template-columns: 20px 20px; justify-content: center; align-content: end; grid-template-rows: 5px; margin-bottom: 3px; }
+.w { position: relative; width: 140px; height: 50px; padding: 3px; border: 1px solid #000; margin-bottom: 3px; }
+.s { display: grid; width: 90.5px; height: 31px; grid-template-columns: 30px 30px; padding: 2px 4px 6px 8px; justify-items: center; align-items: end; }
+.i { height: 6px; background-color: #ccc; }
+.a { position: absolute; background-color: #c00; }
+.fill { top: 0; right: 0; bottom: 0; left: 0; }
+.box { width: 8px; height: 5px; }
+.a1 { grid-column: 2 / 4; grid-row: 1 / 2; }
+.a2 { grid-area: 2 / 1; justify-self: center; align-self: end; }
+.a3 { grid-column: auto / 2; grid-row: 2; left: 10%; top: 1px; width: 6px; height: 4px; }
+.a4 { grid-column: 3; grid-row: 1 / 9; }
+.a5 { grid-column: span 2; top: 2px; right: 2px; bottom: 2px; left: 2px; }
+.a6 { grid-area: 1 / 3 / 3 / 4; justify-self: end; align-self: center; margin: 1px 2px 3px 4px; }
+.a7 { grid-column: b / d; grid-row: 2; justify-self: start; align-self: start; margin-left: 3px; }
+.a8 { grid-column: a / nope; grid-row: 1 / -1; inset: 1px 3px 2px 5%; }
+.m1 { grid-column: 2 / 3; }
+.m2 { grid-column: 3 / 6; }
+.m3 { grid-column: 6 / 8; }
+.j1 { grid-column: 2; }
+.j2 { grid-column: 1 / 3; grid-row: 1; }
+.j3 { grid-row: 1 / 2; grid-column: 1; justify-self: end; align-self: center; }
+.s1 { justify-self: auto; align-self: auto; }
+.s2 { justify-self: end; align-self: start; grid-column: 2; }
+.s3 { justify-self: start; align-self: center; top: 4px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="g" class="g"><div data-dragon-id="g1" class="i"></div><div data-dragon-id="g2" class="i"></div><div data-dragon-id="a1" class="a fill a1"></div><div data-dragon-id="a2" class="a box a2"></div><div data-dragon-id="a3" class="a a3"></div><div data-dragon-id="a4" class="a fill a4"></div><div data-dragon-id="a5" class="a a5"></div><div data-dragon-id="a6" class="a box a6"></div><div data-dragon-id="a7" class="a box a7"></div><div data-dragon-id="a8" class="a a8"></div><div data-dragon-id="g3" class="i"></div></div>
+<div data-dragon-id="m" class="m"><div data-dragon-id="m1" class="a fill m1"></div><div data-dragon-id="m2" class="a fill m2"></div><div data-dragon-id="m3" class="a fill m3"></div></div>
+<div data-dragon-id="j" class="jc"><div data-dragon-id="j1" class="a fill j1"></div><div data-dragon-id="j2" class="a fill j2"></div><div data-dragon-id="j3" class="a box j3"></div></div>
+<div data-dragon-id="w" class="w"><div data-dragon-id="s" class="s"><div data-dragon-id="s0" class="i"></div><div data-dragon-id="s1" class="a box s1"></div><div data-dragon-id="s2" class="a box s2"></div><div data-dragon-id="s3" class="a box s3"></div></div></div>
+</body>
+</html>
