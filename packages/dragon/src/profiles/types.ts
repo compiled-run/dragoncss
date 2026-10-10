@@ -3,10 +3,11 @@ import type { SupportStatus, Target } from '../types.ts';
 /**
  * What a proof covers (docs/api.md §4.1, §7). layout on linux-dragon-layout: Dragon's engine against Chrome's authored boxes.
  * layout or computed-value on chrome-dual: compiled web CSS against authored CSS in Chrome, boxes and getComputedStyle values,
- * plus Dragon's resolved colour channels against Chrome's. No lane proves native paint in milestone 1.
+ * plus Dragon's resolved colour channels against Chrome's. computed-value on device-anim (T065 R18): every frame sample's device
+ * dump against Chrome's frame capture through the four device checks. No other lane proves native paint in milestone 1.
  */
 export type ProofAspect = 'layout' | 'computed-value';
-export type ProofLane = 'linux-dragon-layout' | 'chrome-dual';
+export type ProofLane = 'linux-dragon-layout' | 'chrome-dual' | 'device-anim';
 
 /** docs/api.md §6.3: a proof names its value subset, context and the parity cases that passed its lane in the same run. */
 export type Proof = {
@@ -41,14 +42,6 @@ export type ProfileNote = keyof typeof PROFILE_NOTES;
  */
 export function nativeOutlinePending(feature: string): boolean {
   return /^outline-style:(dotted|dashed|groove|ridge|inset|outset|auto)$/.test(feature);
-}
-
-/**
- * T078 R14: overflow auto and scroll make a box the user scrolls, and the native outputs have no scroll views until OVFL-B, so a
- * native target claims no row for them: outside the parity lanes the compiler refuses them on native, naming OVFL-B.
- */
-export function nativeScrollPending(feature: string): boolean {
-  return /^overflow-[xy]:(auto|scroll)$/.test(feature);
 }
 
 /** The note a target's row for a feature carries, or null: web overflow auto and scroll depend on the scrollbar environment (R3). */

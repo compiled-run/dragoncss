@@ -1,0 +1,12 @@
+{
+  "case": "text-latin-words",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"a:text0","data":"Keep these words together while the small type wraps at narrow widths","lines":4,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3],"blank":[16,35,55]},
+    {"id":"b:text0","data":"AVATAR Wave To Ty Yo office affine waffle fjord flight","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2],"blank":[20,47]},
+    {"id":"c:text0","data":"Waves and wind over the quiet harbour","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[19]},
+    {"id":"d:text0","data":"Centered lines of Lato text wrap here and there","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[41]},
+    {"id":"e:text0","data":"End aligned lines of Lato text wrap here too","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],"blank":[40]}
+  ]
+}

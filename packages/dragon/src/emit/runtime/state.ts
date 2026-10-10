@@ -56,6 +56,7 @@ public enum DragonStateWrite {
   case borderStyles([String])
   case borderColors([DragonRGBA8])
   case clip
+  case paintOrder(String, Int, Int)
   case text(String, String, DragonRGBA8)
 }
 
@@ -189,6 +190,7 @@ public final class DragonStateMachine {
         case .borderStyles(let s): v.dragonBorderStyles = s
         case .borderColors(let c): v.dragonBorderColors = dragonAnimatedSides(animator, n.id, c)
         case .clip: v.dragonEnableClip()
+        case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)
         case .text: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
@@ -259,11 +261,12 @@ public final class DragonStateMount {
 
   private func render() {
     stale = false
+    // A fresh layout measurer per render, so a shaped one's cache never outlives a layout.
     let t = DragonTree()
     machine.build(t)
     stage.addSubview(t.root)
     do {
-      try t.apply(machine.input(scale), measurer: measurer, scale: scale, bridge: bridge)
+      try t.apply(machine.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
     } catch {
       fatalError("dragon: the state mount could not lay out assignment \(machine.current): \(error)")
     }
@@ -320,6 +323,7 @@ sealed class DragonStateWrite {
   class BorderStyles(val s: Array<String>) : DragonStateWrite()
   class BorderColors(val c: Array<DragonRGBA8>) : DragonStateWrite()
   object Clip : DragonStateWrite()
+  class PaintOrder(val host: String, val bucket: Int, val rank: Int) : DragonStateWrite()
   class Text(val text: String, val family: String, val color: DragonRGBA8) : DragonStateWrite()
 }
 
@@ -447,6 +451,7 @@ class DragonStateMachine(
           is DragonStateWrite.BorderStyles -> v.dragonBorderStyles = w.s
           is DragonStateWrite.BorderColors -> v.dragonBorderColors = dragonAnimatedSides(animator, n.id, w.c)
           is DragonStateWrite.Clip -> v.dragonEnableClip()
+          is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)
           is DragonStateWrite.Text -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
@@ -518,9 +523,10 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
 
   private fun render() {
     stale = false
+    // A fresh layout measurer per render, so a shaped one's cache never outlives a layout.
     val t = DragonTree(stage.context)
     machine.build(t)
-    t.apply(machine.input(scale), measurer, scale, bridge)
+    t.apply(machine.input(scale), bridge.measurer, scale, bridge)
     stage.addView(t.root, ViewGroup.LayoutParams(t.root.dragonFrame[2], t.root.dragonFrame[3]))
     stage.removeView(shown.root)
     shown = t
@@ -567,7 +573,8 @@ type Lang = 'swift' | 'kotlin';
 
 const rgba = (c: Rgba8): string => `DragonRGBA8(${c.r}, ${c.g}, ${c.b}, ${c.alpha})`;
 
-function nodeLit(lang: Lang, n: ProgramNode): string {
+/** A node record as a DragonStateNode literal (the interaction runtime emits its deltas with it too). */
+export function nodeLit(lang: Lang, n: ProgramNode): string {
   const q = (s: string): string => stringLit(lang, s);
   const writes: string[] = [];
   for (const w of n.writes) {
@@ -584,6 +591,11 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'padding-box-clip':
         writes.push(lang === 'swift' ? '.clip' : 'DragonStateWrite.Clip');
         break;
+      case 'paint-order': {
+        if (!Number.isInteger(w.bucket) || !Number.isInteger(w.rank)) throw new StateEmitError(`${n.id}: paint order bucket ${w.bucket} or rank ${w.rank} is not an integer`);
+        writes.push(lang === 'swift' ? `.paintOrder(${q(w.host)}, ${w.bucket}, ${w.rank})` : `DragonStateWrite.PaintOrder(${q(w.host)}, ${w.bucket}, ${w.rank})`);
+        break;
+      }
       case 'font': {
         const color = n.writes.find((x) => x.kind === 'text-color');
         if (color === undefined || color.kind !== 'text-color') throw new StateEmitError(`${n.id}: a text run without a colour`);
@@ -596,14 +608,24 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'transform':
         // PNT2 integration: a state record holds no transform write; a transformed node of a state program is refused here, by name.
         throw new StateEmitError(`${n.id}: a transform in a state program has no state-node write (PNT2 writes transforms on the static program only)`);
+      case 'opacity':
+        // PNT1 writes opacity on the static program only; the state runtime has no opacity writer yet.
+        throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
+      case 'scroll-container':
+        // OVFL-B: the state runtime rebuilds clip views only; a scroll view under component states is refused here, by name.
+        throw new StateEmitError(`${n.id}: a scroll container in a state program is not supported yet (OVFL-B scroll views under SELD-R states)`);
       case 'replaced-image':
       case 'foreign-view':
         // REPL-a draws an image or hosts a web view from its own paint stage; the state runtime does not rebuild either yet.
         throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
       case 'border-radius':
+      case 'box-shadow':
       case 'outline':
         // The state runtime has no writer for these yet (PNT1 paints them from the program); a case script would drop them.
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
+      case 'background-layers':
+        // BG2-a: a state record holds no gradient write; the layers are painted from the static program only.
+        throw new StateEmitError(`${n.id}: background layers in a state program have no state-node write (BG2 writes them on the static program only)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;
@@ -618,7 +640,8 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
 
 const list = (lang: Lang, items: readonly string[]): string => (lang === 'swift' ? `[${items.join(', ')}]` : `listOf(${items.join(', ')})`);
 
-function deltaLit(lang: Lang, d: StateDelta): string {
+/** A delta as a DragonStateDelta literal. */
+export function deltaLit(lang: Lang, d: StateDelta): string {
   const q = (s: string): string => stringLit(lang, s);
   const order = d.order === null ? (lang === 'swift' ? 'nil' : 'null') : list(lang, d.order.map(q));
   const removed = d.removed.length === 0 && lang === 'kotlin' ? 'emptyList()' : list(lang, d.removed.map(q));
@@ -627,7 +650,7 @@ function deltaLit(lang: Lang, d: StateDelta): string {
 }
 
 /** A state key as doc-comment text: one line, and never the end of a block comment. */
-const commentText = (s: string): string => s.replace(/[\r\n\u2028\u2029]/g, ' ').replace(/\*\//g, '* /');
+export const commentText = (s: string): string => s.replace(/[\r\n\u2028\u2029]/g, ' ').replace(/\*\//g, '* /');
 
 /** An identifier from any text: letters, digits and _, never a keyword (every name carries a prefix). */
 const ident = (s: string): string => s.replace(/[^A-Za-z0-9]/g, '_');
@@ -739,8 +762,14 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   out.push(lang === 'swift'
     ? `/// The typed state API of ${commentText(e.id)}.\npublic final class ${cls} {\n  public let machine = ${p}Machine()\n  public init() {}\n${body.join('\n')}\n}`
     : `/** The typed state API of ${commentText(e.id)}. */\nclass ${cls} {\n  val machine = ${p}Machine()\n${body.join('\n')}\n}`);
+  // ANIM-b1 3b: a frame program's scripts are prefixes of its longest one (one per sample), so they slice one shared step table.
+  const lits = e.scripts.map((sc) => sc.steps.map((st) => stepLit(lang, sp, sc.id, st)));
+  const longest = lits.reduce<string[]>((a, b) => (b.length > a.length ? b : a), []);
+  const shared = e.anim !== undefined && lits.length > 1 && lits.every((l) => l.every((x, i) => x === longest[i]));
+  if (shared) out.push(decl(`${p}Steps`, kt ? 'List<DragonScriptStep>' : '[DragonScriptStep]', list(lang, longest)));
   e.scripts.forEach((sc, j) => {
-    const steps = list(lang, sc.steps.map((st) => stepLit(lang, sp, sc.id, st)));
+    const n = (lits[j] as string[]).length;
+    const steps = !shared ? list(lang, lits[j] as string[]) : kt ? `${p}Steps.take(${n})` : `Array(${p}Steps.prefix(${n}))`;
     if (lang === 'swift') {
       const digests = sc.expectedDigests.map((d) => `${doubleLit(d.dpr)}: ${q(d.sha256)}`).join(', ');
       out.push(`let ${p}Script${j} = dragonStateScriptCase(id: ${q(sc.id)}, fixture: ${q(e.fixture)}, direction: ${q(e.direction)}, compilerDigest: ${q(e.compilerDigest)}, viewport: (width: ${doubleLit(e.viewport.width)}, height: ${doubleLit(e.viewport.height)}), expectedDigests: [${digests}], make: ${p}Machine, steps: ${steps})`);

@@ -2,17 +2,17 @@
 // the emitted Swift and Kotlin (typed engine constructors, no CSS, selector, class name or JSON decoding), and the checked int
 // conversion, which traps on 1.5 and on 2^31 in both languages on the host.
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it, onTestFinished } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { checkedConversionSource, inputFunctions, STYLE_FIELDS } from '../src/emit/native-support.ts';
 import type { EmitCase, NativeProgram } from '../src/internal.ts';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, nativeLayoutProjection, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
 import { movingTransforms } from '../src/lower/native-program.ts';
+import { scrollDragKotlinSource } from '../src/emit/paint/scroll.ts';
 import { internalRecord } from '../src/project.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -89,6 +89,20 @@ describe('the emitted Swift and Kotlin', () => {
     }
     for (const src of [swift, kotlin]) for (const cls of ['a', 'b', 'c']) expect(src).not.toMatch(new RegExp(`\\.${cls}(?![\\w-])`));
   });
+  it('construct the engine Ctx with every parameter of the translated Ctx, so the support compiles against the current engine', () => {
+    // Only the device build compiles the support, so a field added to Ctx (gridFaults) is caught here on the host.
+    const gen = join(root, 'packages', 'layout', 'generated');
+    const swiftInit = /public final class Ctx \{[^]*?public init\(([^)]*)\)/.exec(readFileSync(join(gen, 'swift', 'Sources', 'DragonLayout', 'Block.swift'), 'utf8'))?.[1];
+    const kotlinInit = /\nclass Ctx\(([^)]*)\)/.exec(readFileSync(join(gen, 'kotlin', 'src', 'main', 'kotlin', 'dev', 'dragon', 'layout', 'Block.kt'), 'utf8'))?.[1];
+    for (const [backend, params] of [['uikit', swiftInit], ['android-views', kotlinInit]] as const) {
+      if (params === undefined) throw new Error(`no Ctx constructor in the generated ${backend} engine`);
+      const arity = params.split(',').filter((x) => x.trim() !== '').length;
+      const calls = emitNativeSupport(backend).flatMap((f) => [...f.text.matchAll(/\bCtx\(([^()]*)\)/g)].map((m) => m[1] as string));
+      expect(calls.length, backend).toBeGreaterThan(0);
+      for (const args of calls) expect(args.split(',').length, `${backend}: Ctx(${args})`).toBe(arity);
+    }
+    expect(emitNativeSupport('android-views').some((f) => f.text.includes('import dev.dragon.layout.grid_NO_GRID_FAULTS'))).toBe(true);
+  });
 });
 
 describe('the LayoutStyle constructor arguments', () => {
@@ -153,6 +167,43 @@ function trapRun(lang: 'swift' | 'kotlin', dir: string, native: Native): Outcome
   if (c.status !== 0) throw new Error(`kotlinc failed: ${c.stderr ?? ''}${c.error ?? ''}`);
   return args.map((arg) => { const r = spawnSync(join(tool.javaHome, 'bin', 'java'), ['-cp', jar, 'dev.dragon.views.MainKt', arg], { encoding: 'utf8', env }); return { arg, status: r.status ?? -1, out: `${r.stdout}${r.stderr}` }; });
 }
+
+// OVFL-B: the Android scroll view's drag arithmetic (DragonDragAxis), driven as onTouchEvent drives it: the slop is crossed, then
+// every move steps. Prints the summed scroll delta, the delta of the move that started the drag, and the largest delta of one move.
+const DRAG_MAIN = 'package dev.dragon.views\n\nfun main(args: Array<String>) {\n  val slop = args[0].toInt()\n  val down = args[1].toFloat()\n  val move = args[2].toFloat()\n  val n = args[3].toInt()\n  val a = DragonDragAxis(slop)\n  a.down(down)\n  var dragging = false\n  var total = 0\n  var first = 0\n  var most = 0\n  for (k in 1..n) {\n    val pos = down + move * k\n    var start = false\n    if (!dragging && a.pastSlop(pos)) {\n      dragging = true\n      start = true\n    }\n    if (dragging) {\n      val d = a.step(pos, start)\n      if (start) first = d\n      total += d\n      most = maxOf(most, kotlin.math.abs(d))\n    }\n  }\n  println("" + total + " " + first + " " + most)\n}\n';
+
+describe('OVFL-B: the Android scroll view drag (DragonDragAxis on the JVM)', () => {
+  it('sub-pixel moves add up to the finger\'s whole-px displacement less the slop, and the drag starts without jumping by the slop', async () => {
+    const native = await translateNative();
+    const tool = native.kotlinTool();
+    if (tool === null) {
+      console.log(native.missingToolchain('drag axis kotlin', 'no JDK 17+ or kotlinc'));
+      return;
+    }
+    const dir = join(tmpdir(), `dragon-ovflb-drag-${process.pid}`);
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
+    onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'Drag.kt'), scrollDragKotlinSource());
+    writeFileSync(join(dir, 'Main.kt'), DRAG_MAIN);
+    const jar = join(dir, 'drag.jar');
+    const env = { ...process.env, JAVA_HOME: tool.javaHome, PATH: `${join(tool.javaHome, 'bin')}:${process.env['PATH'] ?? ''}` };
+    const c = spawnSync(tool.kotlinc, ['-include-runtime', '-d', jar, join(dir, 'Drag.kt'), join(dir, 'Main.kt')], { encoding: 'utf8', env });
+    if (c.status !== 0) throw new Error(`kotlinc failed: ${c.stderr ?? ''}${c.error ?? ''}`);
+    const run = (...args: string[]): number[] => {
+      const r = spawnSync(join(tool.javaHome, 'bin', 'java'), ['-cp', jar, 'dev.dragon.views.MainKt', ...args], { encoding: 'utf8', env });
+      if (r.status !== 0) throw new Error(`drag run failed: ${r.stdout}${r.stderr}`);
+      return r.stdout.trim().split(' ').map(Number);
+    };
+    // 100 moves of 0.3 px up from 100.5 (to 70.5): 30 whole px less the 8 px slop; no move scrolls more than 1 px.
+    expect(run('8', '100.5', '-0.3', '100')).toEqual([22, 1, 1]);
+    // 20 moves of 2.7 px down from 10.2 (to 64.2): 54 whole px less the slop, the other way; the start moves at most one move's worth.
+    const [total, first, most] = run('8', '10.2', '2.7', '20');
+    expect(total).toBe(-46);
+    expect(Math.abs(first as number)).toBeLessThanOrEqual(3);
+    expect(most).toBeLessThanOrEqual(3);
+  }, 180_000);
+});
 
 describe('the checked int conversion (View.layout ints)', () => {
   for (const lang of ['swift', 'kotlin'] as const) {

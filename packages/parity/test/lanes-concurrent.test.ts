@@ -39,6 +39,8 @@ describe('devices of a target at once', () => {
     // SELD-R1b: the script and hit sets travel with the batch set.
     states: { dpr: set.dpr, device: { ...set.device, name: device }, cases: 126, dumps: 126, compared: set.compared, dumpsSha256: 's', failures: [], faults: [] } as unknown as DeviceSet,
     hits: { dpr: set.dpr, device: { ...set.device, name: device }, cases: set.cases, dumps: set.cases, compared: set.compared, dumpsSha256: 'h', failures: [], faults: [] } as unknown as DeviceSet,
+    // SELD-R2: and the trace set.
+    traces: { dpr: set.dpr, device: { ...set.device, name: device }, cases: 3, dumps: 3, compared: { a: 0, b: 9, c: 0, d: 0, breaks: 0 }, dumpsSha256: 't', failures: [], faults: [] } as unknown as DeviceSet,
     trust: { device, dpr: set.dpr, rows: [] },
     vectors: null,
     blocked: null,
@@ -48,15 +50,16 @@ describe('devices of a target at once', () => {
     const o = outcome('iPhone 17');
     expect(parseOutcome(JSON.stringify(o), 'iPhone 17')).toEqual(o);
     expect(() => parseOutcome('{', 'iPhone 17')).toThrow(/wrote no outcome JSON/);
-    expect(() => parseOutcome(JSON.stringify(o), 'iPad (A16)')).toThrow(/malformed device outcome: device "iPhone 17"; set.device is not this device; states.device is not this device; hits.device is not this device; trust is not/);
+    expect(() => parseOutcome(JSON.stringify(o), 'iPad (A16)')).toThrow(/malformed device outcome: device "iPhone 17"; set.device is not this device; states.device is not this device; hits.device is not this device; traces.device is not this device; trust is not/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: { ...o.set, failures: 'none' } }), 'iPhone 17')).toThrow(/set.failures is not a failure list/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: null }), 'iPhone 17')).toThrow(/neither a set nor a blocked reason/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: { ...o.set, faults: [{ caught: 1 }] } }), 'iPhone 17')).toThrow(/set.faults is not a fault row list/);
     expect(() => parseOutcome(JSON.stringify({ ...o, set: { ...o.set, compared: { a: 1 } } }), 'iPhone 17')).toThrow(/set.compared is not the five check counts/);
     expect(() => parseOutcome(JSON.stringify({ ...o, trust: { ...o.trust, rows: [{ case: 'x', points: 'many', mismatches: [] }] } }), 'iPhone 17')).toThrow(/trust is not this device's trust rows/);
     expect(() => parseOutcome(JSON.stringify({ ...o, trust: null }), 'iPhone 17')).toThrow(/a set without its capture-trust rows/);
-    expect(parseOutcome(JSON.stringify({ ...o, set: null, states: null, hits: null, trust: null, blocked: 'did not boot' }), 'iPhone 17').blocked).toBe('did not boot');
+    expect(parseOutcome(JSON.stringify({ ...o, set: null, states: null, hits: null, traces: null, trust: null, blocked: 'did not boot' }), 'iPhone 17').blocked).toBe('did not boot');
     expect(() => parseOutcome(JSON.stringify({ ...o, states: undefined }), 'iPhone 17')).toThrow(/a set without its states set/);
+    expect(() => parseOutcome(JSON.stringify({ ...o, traces: undefined }), 'iPhone 17')).toThrow(/a set without its traces set/);
     expect(() => parseOutcome(JSON.stringify({ ...o, hits: { ...o.hits, failures: 'none' } }), 'iPhone 17')).toThrow(/hits.failures is not a failure list/);
     expect(() => parseOutcome(JSON.stringify({ ...o, states: { ...o.states, device: { name: 'other' } } }), 'iPhone 17')).toThrow(/states.device is not this device/);
   });

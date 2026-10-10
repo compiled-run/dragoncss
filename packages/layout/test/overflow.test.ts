@@ -7,7 +7,7 @@ import type { LayoutBox, LayoutInput, LayoutStyle, Overflow, ReplacedLeaf } from
 import { isScrollContainer } from '../src/box.ts';
 import type { PlacedLine } from '../src/inline.ts';
 import { ZERO } from '../src/units.ts';
-import { OverflowRefusal, PLACED_LINE_FIELDS, refuseLineLevelBoxes, scrollMetrics, scrollMetricsWithFaults } from '../src/overflow.ts';
+import { OverflowRefusal, PLACED_LINE_FIELDS, refuseLineLevelBoxes, scrollMetrics, scrollMetricsWithFaults, scrollRanges } from '../src/overflow.ts';
 import { box, br, divStyle, neutralEnvironment, pct, px, span, text } from './helpers.ts';
 
 const input = (children: (LayoutBox | ReplacedLeaf)[], html: Partial<LayoutStyle> = {}): LayoutInput => ({
@@ -110,6 +110,20 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
     expect(p.kind === 'ok' ? p.containers[0]?.scrollRect.width : null).toBe(lu(310));
   });
 
+  it('a grid container is refused, whether it scrolls or sits in a scroll container or the viewport, never measured as a block', () => {
+    const g = (style: Partial<LayoutStyle>): LayoutBox => {
+      const item = box('a', { height: px(150), gridItem: { column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' } });
+      const grid = { templateColumns: [], templateRows: [], autoColumns: [{ kind: 'breadth' as const, breadth: { kind: 'auto' as const } }], autoRows: [{ kind: 'breadth' as const, breadth: { kind: 'auto' as const } }], explicitColumnCount: 0, explicitRowCount: 0, autoFlow: 'row' as const, dense: false, justifyItems: 'normal' as const };
+      return box('g', { display: 'grid', grid, ...style }, [item]);
+    };
+    for (const i of [input([g(sc('auto'))]), input([box('s', sc('auto'), [g({})])]), input([g({})])]) {
+      expect(validateLayoutInput(JSON.parse(JSON.stringify(i))).ok).toBe(true);
+      expect(layout(i, ahemMeasurer).kind).toBe('ok');
+      const r = scrollMetrics(i, ahemMeasurer, 'ltr');
+      expect(r.kind === 'refused' ? [r.nodeId, r.detail] : r.kind).toEqual(['g', expect.stringContaining('a grid container')]);
+    }
+  });
+
   it('a relative offset with a percentage top inside a scroll container is refused, not guessed', () => {
     const r = scrollMetrics(input([box('s', sc('auto'), [box('k', { position: 'relative', top: pct(10), height: px(10) })])]), ahemMeasurer, 'ltr');
     expect(r.kind).toBe('refused');
@@ -157,6 +171,20 @@ describe('replaced leaves and line-level boxes (pre-landing review of #96)', () 
     expect(() => refuseLineLevelBoxes(onlySpan)).toThrow(OverflowRefusal);
     const withBr = box('s', sc('auto'), [text('t', 'XX'), br('b'), text('v', 'YY')]);
     expect(() => refuseLineLevelBoxes(withBr)).toThrow('a <br> in the inline formatting context of s');
+  });
+
+  it('scrollRanges decides each scroll container on its own: an undecided one is listed refused, the others and the viewport do not refuse', () => {
+    // An inline box outside every scroll container: scrollMetrics refuses (the viewport reads it), scrollRanges gives every range.
+    const outside = input([box('p', {}, [text('t', 'XX'), span('i', [text('u', 'YY')])]), box('a', sc('auto'), [box('c', { width: px(300), height: px(10) })])]);
+    expect(scrollMetrics(outside, ahemMeasurer, 'ltr').kind).toBe('refused');
+    const r = scrollRanges(outside, ahemMeasurer);
+    expect(r).toEqual({ kind: 'ok', ranges: [{ id: 'a', minX: 0, maxX: 200, minY: 0, maxY: 0 }], refused: [] });
+    // An inline box inside one scroll container: that one is refused, naming the node and the rule; the other keeps its range.
+    const inside = input([box('s', sc('auto'), [text('t', 'XX'), span('i', [text('u', 'YY')])]), box('a', sc('hidden'), [box('c', { width: px(10), height: px(300) })])]);
+    const q = scrollRanges(inside, ahemMeasurer);
+    if (q.kind !== 'ok') throw new Error(q.detail);
+    expect(q.ranges).toEqual([{ id: 'a', minX: 0, maxX: 0, minY: 0, maxY: 200 }]);
+    expect(q.refused).toEqual([{ id: 's', nodeId: 'i', detail: expect.stringContaining('(R16, INL1a)') }]);
   });
 });
 

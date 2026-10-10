@@ -1,5 +1,221 @@
-// Seam (EMS): the gradient module's sample points; none until its package fills it.
-import type { PaintSamples } from './types.ts';
-import { stubPaintSamples } from './types.ts';
+// BG2 gradient samples (notes/T074-bg2-spec.md §7): for every box with gradient layers, a grid of points the TS reference
+// (paint-gradient.ts) rasterises exactly, inside a layer and two device px clear of every edge of the painted area, with rule
+// gradient:<box>. Check (c) compares the device capture with Chrome's pixels there at GRADIENT_CHANNEL_DELTA. The reference
+// equals Chrome at every such pixel (bg2-reference.test.ts), and the device runs the same code translated, so a device pixel
+// that differs is a device fault. backgroundPlans is the same plan the device builds, for the host reference test. Both keep to the
+// pixels the background alone decides (backgroundOnly): the raster runs under borders and past rounded corners, where the border
+// stage and the rounded clip decide the pixel.
+import type { BackgroundLayer, BackgroundPaint, BackgroundPlan, GradientFaults, GradientImage, LayoutBox, LayoutRect } from '@dragon/layout';
+import { absoluteRects, backgroundPixelExact, LU_PER_PX, backgroundRow, fromCssPx, layout, measurerFor, NO_ENGINE_FAULTS, NO_GRADIENT_FAULTS, planBackground, referenceTileSize, resolveBorder, resolvePadding, zoomInput } from '@dragon/layout';
+import type { NativeProgram } from 'dragon';
+import { programInput } from 'dragon';
+import { REFERENCE_PLATFORM } from '../platform.ts';
+import type { SampleBox, SamplePoint } from '../samples.ts';
+import { boxRadii, clearInside, nearArc, rectArcs } from './radius.ts';
+import type { PaintSampleContext, PaintSamples } from './types.ts';
 
-export const GRADIENT_SAMPLES: PaintSamples = stubPaintSamples('gradient');
+type Rgba = { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number };
+type LoweredLayer = {
+  readonly geometry: BackgroundLayer['geometry'];
+  readonly gradient: Omit<GradientImage, 'stops'> & { readonly stops: readonly { readonly color: Rgba; readonly unit: 'auto' | 'percent' | 'px'; readonly value: number }[] };
+};
+/** The gradient module's write, as the program holds it (dragon lower/paint/gradient.ts GradientWrite). */
+type GradientWrite = { readonly kind: 'background-layers'; readonly color: Rgba; readonly colorClip: BackgroundPaint['colorClip']; readonly obscures: readonly string[]; readonly layers: readonly LoweredLayer[]; readonly lastIsBottom: boolean; readonly layerOrigin: readonly [number, number] };
+
+const stopColor = (c: Rgba): BackgroundPaint['color'] => ({ r: c.r, g: c.g, b: c.b, alpha: c.alpha });
+
+/** One node's background plan at a DPR: the node id and the plan the device builds from the same write and engine geometry. */
+export type NodePlan = { readonly id: string; readonly plan: BackgroundPlan };
+
+/**
+ * The paddings of every box of the zoomed engine input in LU (top, right, bottom, left), each against its containing block's
+ * width, as the engine resolves them and DragonTree.apply does on the device: an in-flow box's parent's content width; an
+ * absolutely positioned box's containing block (CSS2 §10.1), the padding box of its nearest positioned ancestor or the initial
+ * containing block (layout.ts containingBlock, position.ts layoutAbsolute).
+ */
+export function paddings(root: LayoutBox, rects: ReadonlyMap<string, LayoutRect>, viewportWidth: number, dpr: number): Map<string, readonly number[]> {
+  const out = new Map<string, readonly number[]>();
+  const icb = fromCssPx(viewportWidth);
+  const walk = (b: LayoutBox, cb: number, positioned: number): void => {
+    const r = rects.get(b.id);
+    const basis = b.style.position === 'absolute' ? positioned : cb;
+    const pad = resolvePadding(b.style, basis as never);
+    out.set(b.id, [pad.top, pad.right, pad.bottom, pad.left]);
+    const bor = resolveBorder(b.style, dpr);
+    const content = r === undefined ? cb : r.width - bor.left - bor.right - pad.left - pad.right;
+    const paddingBox = r === undefined ? positioned : r.width - bor.left - bor.right;
+    for (const c of b.children) if (c.kind === 'box') walk(c, content, b.style.position === 'static' ? positioned : paddingBox);
+  };
+  walk(root, icb, icb);
+  return out;
+}
+
+/**
+ * R4: where the root scroller's scrolling contents layer starts, in page LU on the x axis (0, or negative). Chrome puts it at the
+ * scroll origin: in a right-to-left document whose content overflows to the left, at the left edge of that overflow, which is the
+ * leftmost border box or line box no clipping box holds (a box whose overflow clips contributes its border box only; html and body
+ * never clip here, as their overflow propagates to the viewport). A left-to-right document cannot scroll to content on its left,
+ * so its origin is 0. DragonTree.apply computes the same on the device from the same engine output.
+ */
+export function rootScrollX(boxes: readonly LayoutRect[], abs: ReadonlyMap<string, LayoutRect>, clips: (id: string) => boolean, rtl: boolean): number {
+  if (!rtl) return 0;
+  const parent = new Map(boxes.map((b) => [b.id, b.parent] as const));
+  const depth = (id: string): number => {
+    let d = 0;
+    for (let p = parent.get(id) ?? null; p !== null; p = parent.get(p) ?? null) d++;
+    return d;
+  };
+  let min = 0;
+  for (const b of boxes) {
+    let held = false;
+    for (let p = b.parent; p !== null && !held; p = parent.get(p) ?? null) if (depth(p) >= 2 && clips(p)) held = true;
+    const a = abs.get(b.id);
+    if (a === undefined) throw new Error(`${b.id}: no absolute rect for the root scroll origin`);
+    if (!held && a.x < min) min = a.x;
+  }
+  return min;
+}
+
+/**
+ * rootScrollX of a laid-out program in whole device px, with the program's clipping boxes. Chrome's scroll origin is a whole
+ * point, the floor of the overflow's offset negated (PaintLayerScrollableArea::UpdateScrollOrigin, ToFlooredPoint), so the
+ * contents layer starts at the ceiling of the overflow's left edge.
+ */
+function programRootX(p: NativeProgram, boxes: readonly LayoutRect[], abs: ReadonlyMap<string, LayoutRect>, rtl: boolean): number {
+  const clipping = new Set(p.nodes.filter((n) => n.clips).map((n) => n.id));
+  return Math.ceil(rootScrollX(boxes, abs, (id) => clipping.has(id), rtl) / LU_PER_PX) + 0;
+}
+
+/** The root scroller's contents origin of a program at a DPR, in page device px on the x axis (rootScrollX), as the device has it. */
+export function caseRootX(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): number {
+  const m = measurerFor(REFERENCE_PLATFORM);
+  if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
+  const input = programInput(p, viewport, dpr);
+  const out = layout(input, m.measurer);
+  if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${dpr}`);
+  return programRootX(p, out.boxes, absoluteRects(out.boxes), zoomInput(input, NO_ENGINE_FAULTS).root.style.direction === 'rtl');
+}
+
+/**
+ * The background plans of every box of a program with gradient layers, at a DPR: the engine lays the program out, and each box's
+ * unsnapped border box, device-px borders (as box.ts resolves them), paddings and the write's layers and layer origin (moved to
+ * the root scroll origin, rootScrollX) give BackgroundPaint, as DragonPaintGradient does on the device.
+ */
+export function backgroundPlans(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, borders: ReadonlyMap<string, readonly [number, number, number, number]>, faults: GradientFaults = NO_GRADIENT_FAULTS): NodePlan[] {
+  const writes = p.nodes.flatMap((n) => n.writes.filter((w) => w.kind === 'background-layers').map((w) => ({ id: n.id, w: w as unknown as GradientWrite })));
+  if (writes.length === 0) return [];
+  const m = measurerFor(REFERENCE_PLATFORM);
+  if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
+  const input = programInput(p, viewport, dpr);
+  const out = layout(input, m.measurer);
+  if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${dpr}`);
+  const abs = absoluteRects(out.boxes);
+  const rects = new Map(out.boxes.map((r) => [r.id, r] as const));
+  const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
+  const pads = paddings(zoomed.root, rects, zoomed.viewport.width, zoomed.devicePixelRatio);
+  const rootX = programRootX(p, out.boxes, abs, zoomed.root.style.direction === 'rtl');
+  return writes.map(({ id, w }) => {
+    const r = abs.get(id) as LayoutRect | undefined;
+    const b = borders.get(id);
+    const pad = pads.get(id);
+    if (r === undefined || b === undefined || pad === undefined) throw new Error(`${id}: no engine geometry for a gradient box`);
+    const obscures = w.obscures.map((o, k) => o === 'always' || (o === 'double' && (b[k] as number) < 3));
+    const paint: BackgroundPaint = {
+      box: { x: r.x, y: r.y, width: r.width, height: r.height, borders: b.map((v) => v * 64), padding: pad, obscures },
+      color: stopColor(w.color),
+      colorClip: w.colorClip,
+      layers: w.layers.map((l) => ({ geometry: l.geometry, image: { ...l.gradient, stops: l.gradient.stops.map((s) => ({ color: stopColor(s.color), unit: s.unit, value: s.value })) } })),
+      lastIsBottom: w.lastIsBottom,
+      zoom: dpr,
+      tileSize: referenceTileSize(dpr),
+      layerX: w.layerOrigin[0] + rootX,
+      layerY: w.layerOrigin[1],
+    };
+    const plan = planBackground(paint, faults);
+    // The checks refuse every background the plan does not model, so one here is a compiler fault, never an empty draw (a
+    // planted fault may leave a layer unmodelled on purpose).
+    if (!plan.modelled && !Object.values(faults).some((v) => v === true)) throw new Error(`${id}: the background plan at ${dpr}x is not modelled (layer origin ${paint.layerX}, ${paint.layerY})`);
+    return { id, plan };
+  });
+}
+
+/**
+ * Whether Chrome's pixel at (x, y) is the background of box id alone: inside the box's inner border edge (the border paints over
+ * the background under it), at least one device px clear inside each of its rounded corners' arcs, outer and padding-edge (the
+ * rounded clip is antialiased there), and clear of every other rounded box's arcs.
+ */
+export function backgroundOnly(program: NativeProgram, boxes: readonly SampleBox[], dpr: number): (id: string, x: number, y: number) => boolean {
+  const byId = new Map(boxes.map((b) => [b.id, b] as const));
+  const rounded = boxes.flatMap((b) => {
+    const r = boxRadii(program, b, dpr);
+    if (r === null) return [];
+    const il = b.left + b.border.left;
+    const it = b.top + b.border.top;
+    const ir = Math.max(il, b.right - b.border.right);
+    const ib = Math.max(it, b.bottom - b.border.bottom);
+    return [{ id: b.id, arcs: [...rectArcs(b.left, b.top, b.right, b.bottom, r.slice(0, 8)), ...rectArcs(il, it, ir, ib, r.slice(8, 16))] }];
+  });
+  return (id, x, y) => {
+    const b = byId.get(id);
+    if (b === undefined) return false;
+    if (x < b.left + b.border.left || x >= b.right - b.border.right || y < b.top + b.border.top || y >= b.bottom - b.border.bottom) return false;
+    for (const rb of rounded) for (const a of rb.arcs) if (rb.id === id ? !clearInside(a, x, y, 1) : nearArc(a, x, y, 1)) return false;
+    return true;
+  };
+}
+
+/** Columns and rows of the candidate grid in each gradient box. */
+const GRID = [5, 3] as const;
+/** Sample geometry, as samples.ts SAMPLE_INSET_DEVICE_PX: a point stays this far from any edge of the painted area. */
+const INSET = 2;
+
+/** The gradient points of a case: per gradient box, the grid points whose (2 * INSET + 1)^2 neighbourhood the layers paint exactly. */
+export function gradientPoints(ctx: PaintSampleContext): SamplePoint[] {
+  const borders = new Map(ctx.boxes.map((b) => [b.id, [b.border.top, b.border.right, b.border.bottom, b.border.left] as [number, number, number, number]]));
+  const out: SamplePoint[] = [];
+  const only = backgroundOnly(ctx.program, ctx.boxes, ctx.dpr);
+  for (const { id, plan } of backgroundPlans(ctx.program, ctx.viewport, ctx.dpr, borders)) {
+    const rows = new Map<number, readonly number[]>();
+    const row = (y: number): readonly number[] => {
+      const hit = rows.get(y);
+      if (hit !== undefined) return hit;
+      const r = backgroundRow(plan, y, NO_GRADIENT_FAULTS);
+      rows.set(y, r);
+      return r;
+    };
+    const painted = (x: number, y: number): boolean => x >= plan.left && x < plan.right && y >= plan.top && y < plan.bottom && row(y)[(x - plan.left) * 4 + 3] === 255 && backgroundPixelExact(plan, x, y) && only(id, x, y);
+    const [cols, rowsN] = GRID;
+    for (let j = 0; j < rowsN; j++) {
+      for (let i = 0; i < cols; i++) {
+        const x = Math.floor(plan.left + ((plan.right - plan.left) * (2 * i + 1)) / (2 * cols));
+        const y = Math.floor(plan.top + ((plan.bottom - plan.top) * (2 * j + 1)) / (2 * rowsN));
+        if (x < 0 || y < 0 || x >= ctx.size.width || y >= ctx.size.height) continue;
+        let clear = true;
+        for (let dy = -INSET; dy <= INSET && clear; dy++) for (let dx = -INSET; dx <= INSET && clear; dx++) if (!painted(x + dx, y + dy)) clear = false;
+        if (clear) out.push({ x, y, rule: `gradient:${id}` });
+      }
+    }
+    // A small layer the grid misses (a no-repeat tile): the middle of each layer's drawn area, when its neighbourhood is exact.
+    if (!out.some((q) => q.rule === `gradient:${id}`)) {
+      for (const l of plan.layers) {
+        const p = l.placement;
+        const left = Math.max(Math.ceil(p.destX / 64), p.clipLeft);
+        const right = Math.min(Math.floor((p.destX + p.destWidth) / 64), p.clipRight);
+        const top = Math.max(Math.ceil(p.destY / 64), p.clipTop);
+        const bottom = Math.min(Math.floor((p.destY + p.destHeight) / 64), p.clipBottom);
+        const x = plan.originX + Math.floor((left + right) / 2);
+        const y = plan.originY + Math.floor((top + bottom) / 2);
+        if (right - left < 2 * INSET + 1 || bottom - top < 2 * INSET + 1 || x < 0 || y < 0 || x >= ctx.size.width || y >= ctx.size.height) continue;
+        let clear = true;
+        for (let dy = -INSET; dy <= INSET && clear; dy++) for (let dx = -INSET; dx <= INSET && clear; dx++) if (!painted(x + dx, y + dy)) clear = false;
+        if (clear) {
+          out.push({ x, y, rule: `gradient:${id}` });
+          break;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+export const GRADIENT_SAMPLES: PaintSamples = { name: 'gradient', keep: () => true, points: gradientPoints };

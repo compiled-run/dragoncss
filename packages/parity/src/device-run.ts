@@ -72,26 +72,51 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
   'radius-square': ['radius-basic'],
+  // calib-shadow-blur's small blurs change the sampled shadow pixels under a 1 device px shift.
+  'shadow-offset-1': ['calib-shadow-blur'],
+  // PNT1: opacity-basic's translucent boxes paint opaque when the writer ignores the alpha; stacking-basic samples the interiors of
+  // overlapping boxes, whose colours swap when the layer items sort beneath the flow.
+  'alpha-ignored': ['opacity-basic'],
+  'order-swap': ['stacking-basic'],
   // PNT1: outline-solid's ring points and scanlines (rules border:<id>:outline-* and edge:<id>:outline-*) see a 1 device px shift.
   'outline-offset-1': ['outline-solid'],
   // PNT2: each transform plant runs on the case its paint moves.
   'transform-origin-ignored': ['transform-origin'],
   'translate-percent-of-parent': ['transform-translate'],
+  // gradient-linear's gradient points (rule gradient:<id>) see a 1 device px shift of every raster.
+  'gradient-offset-1': ['gradient-linear'],
+  // Dormant (DORMANT_PLANTS): gradient-backdrop's stacks are the ones a translucent raster would come from once R6(b) or R6(c) returns.
+  'gradient-unpremultiplied-upload': ['gradient-backdrop'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
 };
-/** The sample rules a paint plant's device-pixels failures must name: border bands and edges, or radius points. */
+/** The sample rules a paint plant's device-pixels failures must name: border bands and edges, radius or shadow points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
   // Square corners paint the box's colour where Chrome's rounded corner shows the backdrop: the radius rule catches it.
   'radius-square': /^radius:/,
+  // A shadow drawn 1 device px off moves the sampled shadow pixels: the shadow rule catches it.
+  'shadow-offset-1': /^shadow:/,
+  'alpha-ignored': /^interior:/,
+  'order-swap': /^interior:/,
   // A shifted ring moves its band and its outer edge: the outline points catch it.
   'outline-offset-1': /^(border|edge):[^:]+:outline-/,
   // A transform moves every pixel of the box, so any colour rule may catch it.
   'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'translate-percent-of-parent': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
+  'gradient-offset-1': /^gradient:/,
+  'gradient-unpremultiplied-upload': /^gradient:/,
   'image-offset-1': /^(image-flat:|edge:)/,
 };
+/**
+ * Plants kept in the registry but not run, each with why no check can observe it now. bg2-reference.test.ts proves the reason
+ * (the plant's output equals the unplanted output on every case) and fails once the refusals that make it true are lifted while
+ * the plant is still listed here, so a dormant plant cannot stay dormant silently.
+ */
+export const DORMANT_PLANTS: { readonly [P in PaintPlant]?: string } = {
+  'gradient-unpremultiplied-upload': 'unobservable while R6(b) and R6(c) are refused: every supported raster pixel has alpha 0 or 255',
+};
+
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };
 /** The axis each raster plant moves every glyph along, by PLANT_SHIFT_DEVICE_PX. */

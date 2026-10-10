@@ -169,10 +169,12 @@ describe('border-radius: lowering and emission', () => {
       { percent: false, value: 16 }, { percent: false, value: 2 }, { percent: false, value: 16 }, { percent: false, value: 2 },
     ];
     expect(a?.writes.filter((w) => w.kind === 'border-radius')).toEqual([expect.objectContaining({ kind: 'border-radius', key: 'dragonRadius.radiiPx', technique: 'dragon-owned-paint', lengths })]);
-    expect(a?.facts).toEqual({ radius: { lengths } });
+    // PNT1 stacking publishes its facts on every box too (rt-hit reads them); the radius facts are a's own.
+    expect(Object.keys(a?.facts ?? {}).sort()).toEqual(['radius', 'stacking']);
+    expect(a?.facts['radius']).toEqual({ lengths });
     const b = p['android-views'].nodes.find((n) => n.id === 'b');
     expect(b?.writes.some((w) => w.kind === 'border-radius')).toBe(false);
-    expect(b?.facts).toEqual({});
+    expect(Object.keys(b?.facts ?? {})).toEqual(['stacking']);
   });
 
   it('emits the runtime writer on both backends and expects the clamped outer radii in device px', () => {
@@ -183,7 +185,7 @@ describe('border-radius: lowering and emission', () => {
     expect(RADIUS_EMITTER.lines.uikit('v0', a as never, w)).toEqual(['  dragonSetRadii(v0, [RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0)])']);
     expect(RADIUS_EMITTER.lines['android-views']('v0', a as never, w)[0]).toMatch(/^ {2}dragonSetRadii\(v0, arrayOf\(RadiusLength\(false, 60\.0\)/);
     const box = { left: 0, top: 0, right: 200, bottom: 80, width: 200, height: 80 } as never;
-    const applied = RADIUS_EMITTER.applied({ paint: { roundedShape } } as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box, size: [200, 80], fontSize: null, replaced: null });
+    const applied = RADIUS_EMITTER.applied({ paint: { roundedShape } } as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box, size: [200, 80], fontSize: null, replaced: null, scroll: null });
     // 120 + 120 device px over an 80 px side: the §5.5 factor 80 / 240 scales every radius to 40.
     expect(applied).toEqual([40, 40, 40, 40, 40, 40, 40, 40]);
   });

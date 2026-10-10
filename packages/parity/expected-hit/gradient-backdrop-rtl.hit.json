@@ -1,0 +1,19 @@
+{
+  "case": "gradient-backdrop-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 256,
+  "gridSha256": "df4c552b32fc1eabd6da06859a30232f341b909d770da4b0f6c1ffbfa7f4fd46",
+  "ids": [
+    "beneath",
+    "colour",
+    "html",
+    "stage"
+  ],
+  "runs": [[3,48],[0,6],[3,5],[1,6],[3,5],[0,6],[3,5],[1,6],[3,5],[0,6],[3,5],[1,6],[3,7],[0,6],[3,5],[1,6],[3,5],[0,6],[3,5],[1,6],[3,5],[0,6],[3,5],[1,6],[3,73],[2,6]]
+}

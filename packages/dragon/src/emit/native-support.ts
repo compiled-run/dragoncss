@@ -1,7 +1,7 @@
 // Support code emitted with the native output (docs/api.md 4.4; notes/T013-p3-review-p4-plan.md section 2 items 2 and 3): the
 // checked conversions, the Dragon views (box, clip and the text view that places every glyph itself), the tree that applies the translated
-// engine's snapped frames at the device scale, the font-data measurer bridge with its Ahem self-check, and the dump reader. It is
-// emitted source, never a hand-written file and never a runtime package. Line boxes, baselines, border widths and the text
+// engine's snapped frames at the device scale, the measurer bridge (shaped over a host HarfBuzz, else font data) with its Ahem
+// self-check, and the dump reader. It is emitted source, never a hand-written file and never a runtime package. Line boxes, baselines, border widths and the text
 // instance size come from the translated engine; nothing is recomputed from UIFont or FontMetrics.
 import { sha256Hex } from '../digest.ts';
 import type { GeneratedFile } from '../types.ts';
@@ -207,14 +207,20 @@ public final class DragonClipView: UIView {
 /// The box geometry every paint stage and after-layout hook receives: the snapped border-box edges (left, top, right, bottom) and
 /// the border widths (top, right, bottom, left) in device px, the eight corner radii in device px (horizontal then vertical,
 /// top-left first), zero until the radius module fills them (PNT1), and the layout border-box size (width, height) in device px
-/// before snapping, which percentage radii resolve against.
+/// before snapping, which percentage radii resolve against. lu is the unsnapped absolute border box (x, y, width, height) and padding
+/// the padding widths (top, right, bottom, left), both in LU at the device scale, which Blink's background geometry reads (BG2).
+/// rootX is where the root scroller's scrolling contents start on the x axis, in page LU (0, or negative at Chrome's scroll
+/// origin in a right-to-left document overflowing to the left), which starts the cc tiles of the root layer (BG2 R4).
 public struct DragonBoxShape {
   public var edges: [Double]
   public var borders: [Double]
   public var radii: [Double]
   public var size: [Double]
-  public init(edges: [Double], borders: [Double], radii: [Double] = [0, 0, 0, 0, 0, 0, 0, 0], size: [Double] = [0, 0]) {
-    self.edges = edges; self.borders = borders; self.radii = radii; self.size = size
+  public var lu: [Double]
+  public var padding: [Double]
+  public var rootX: Double
+  public init(edges: [Double], borders: [Double], radii: [Double] = [0, 0, 0, 0, 0, 0, 0, 0], size: [Double] = [0, 0], lu: [Double] = [0, 0, 0, 0], padding: [Double] = [0, 0, 0, 0], rootX: Double = 0) {
+    self.edges = edges; self.borders = borders; self.radii = radii; self.size = size; self.lu = lu; self.padding = padding; self.rootX = rootX
   }
 }
 
@@ -400,15 +406,26 @@ const SWIFT_BRIDGE = String.raw`import UIKit
 import CoreText
 import CryptoKit
 
-/// The measurer bridge (R4): raw data read from the bundled Ahem's tables through Core Text (head, hhea, cmap, hmtx), fed to the translated font-data measurer with
-/// the darwin-arm64 platform rules. It never uses the platform's rounded line metrics.
+/// The measurer bridge (R4): raw data read from the bundled Ahem's tables through Core Text (head, hhea, cmap, hmtx), fed to the translated
+/// measurer with the darwin-arm64 platform rules. It never uses the platform's rounded line metrics. With a host HarfBuzz (shaper) the
+/// measurer is the translated shaped measurer and text views draw its glyphs; without one, the font-data measurer and cmap and hmtx.
 public final class DragonBridge {
+  /// The host's HarfBuzz (T056 R1), set before the bridge is first used; the bridge reads it once.
+  public static var shaper: GlyphShaper? = nil
   public static let shared = DragonBridge()
   public let postScriptName: String
   public let fontSha256: String
   public let data: FontData
   public let selfCheck: [String]
-  public let measurer: TextMeasurer
+  private let layoutShaper: GlyphShaper?
+  private let fontDataMeasurer: TextMeasurer
+  /// The measurer of one layout. Shaped, a fresh one per read: its shaped items are cached per layout, as the host's are.
+  public var measurer: TextMeasurer {
+    guard let s = layoutShaper else { return fontDataMeasurer }
+    return try! platform_deviceShapedMeasurer(JsStringMap([(text_AHEM_FACE_ID, data)]), s)
+  }
+  /// Whether measurer shapes with the host's HarfBuzz, so a text view draws the shaped glyph ids (shaping_pieceGlyphs).
+  public var shaped: Bool { return layoutShaper != nil }
   private let descriptor: CTFontDescriptor
   private let cmapTable: [UInt8]
   private let hheaTable: [UInt8]
@@ -445,7 +462,8 @@ public final class DragonBridge {
     let units = dragonMetricUnits(head: [UInt8](headData), hhea: hhea, hmtx: hmtx, cmap: cmap, os2: [UInt8](os2Data), loca: [UInt8](locaData), glyf: [UInt8](glyfData))
     data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: advances, xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance)
     selfCheck = dragonSelfCheck(data)
-    measurer = try! text_fontDataMeasurer(data, AhemRuleFaults(false, false))
+    layoutShaper = DragonBridge.shaper
+    fontDataMeasurer = try! text_fontDataMeasurer(data, AhemRuleFaults(false, false))
   }
   /// The glyph id of a code point (cmap); 0 when the font does not map it.
   public func glyph(_ cp: Int) -> Int { return dragonGlyph(cmap: cmapTable, cp) }
@@ -588,13 +606,69 @@ public final class DragonTree {
       }
     }
     walk(zoomed.root)
+    // OVFL-B: each scroll container's offset range in device px, from the translated engine, for the scroll module's hook.
+    var scrollRanges: [String: [Double]] = [:]
+    let sr = try overflow_scrollRanges(input, measurer)
+    if let no = sr as? ScrollRangesResult_refused { fatalError("dragon: the engine refused the scroll ranges at \(no.nodeId): \(no.detail)") }
+    guard let srOk = sr as? ScrollRangesResult_ok else { fatalError("dragon: the engine gave no scroll ranges") }
+    for g in srOk.ranges.items { scrollRanges[g.id.description] = [g.minX, g.maxX, g.minY, g.maxY] }
+    var scrollRefusals: [String: String] = [:]
+    for g in srOk.refused.items { scrollRefusals[g.id.description] = "the engine refused its scroll range at " + g.nodeId.description + ": " + g.detail.description }
     let lu = units_LU_PER_PX
     let s = scale
     let cg = CGFloat(scale)
+    // BG2 R4: the root scroller's scrolling contents start at Chrome's scroll origin. In a right-to-left document that is the left
+    // edge of the content overflowing to the left: the leftmost box or line no clipping box holds (html and body never clip here,
+    // as their overflow propagates to the viewport); 0 otherwise (paint-samples/gradient.ts rootScrollX on the host).
+    var rootX = 0.0
+    if zoomed.root.style.direction.description == "rtl" {
+      var parentOf: [String: String] = [:]
+      for r in boxes { if let p = r.parent { parentOf[r.id.description] = p.description } }
+      func depth(_ id: String) -> Int { var d = 0; var p = parentOf[id]; while let q = p { d += 1; p = parentOf[q] }; return d }
+      for r in boxes {
+        var held = false
+        var p = parentOf[r.id.description]
+        while let q = p, !held {
+          if depth(q) >= 2, let bv = views[q] as? DragonBoxView, bv.dragonClipView != nil { held = true }
+          p = parentOf[q]
+        }
+        if !held, let a = abs.get(r.id), a.x < rootX { rootX = a.x }
+      }
+      // Chrome's scroll origin is a whole point (ToFlooredPoint of the overflow's offset negated): the layer starts at the ceiling.
+      rootX = (rootX / lu).rounded(.up) * lu + 0
+    }
     root.frame = CGRect(x: 0, y: 0, width: CGFloat(input.viewport.width), height: CGFloat(input.viewport.height))
     var edges: [String: [Double]] = [:]
     var borders: [String: [Double]] = [:]
     var rects: [String: LayoutRect] = [:]
+    // Content widths in LU, for the text breaking width: the border box minus borders and paddings (percentages of the parent's).
+    var contentCache: [String: Double] = [:]
+    // BG2: an absolutely positioned box's containing block width (CSS2 §10.1), the padding box of its nearest positioned ancestor
+    // or the initial containing block (layout.ts containingBlock); nil for an in-flow box.
+    func absoluteBasis(_ id: String) throws -> Double? {
+      guard let z = zStyles[id] else { fatalError("dragon: no zoomed box \(id)") }
+      if z.position.description != "absolute" { return nil }
+      var at = zParent[id]
+      while let a = at, let st = zStyles[a], st.position.description == "static" { at = zParent[a] }
+      guard let a = at else { return units_fromCssPx(zoomed.viewport.width) }
+      guard let st = zStyles[a], let r = rects[a] else { fatalError("dragon: the containing block \(a) of \(id) is not placed") }
+      let bor = try box_resolveBorder(st, zoomed.devicePixelRatio)
+      return r.width - bor.left - bor.right
+    }
+    // What a box's percentage paddings resolve against, as the engine does: its absoluteBasis, or its parent's content width.
+    func contentWidth(_ id: String) throws -> Double {
+      if let c = contentCache[id] { return c }
+      guard let z = zBoxes[id], let r = rects[id] else { fatalError("dragon: no box \(id)") }
+      let pad = try box_resolvePadding(z.style, try paddingBasis(id))
+      let bor = try box_resolveBorder(z.style, zoomed.devicePixelRatio)
+      let w = r.width - bor.left - bor.right - pad.left - pad.right
+      contentCache[id] = w
+      return w
+    }
+    func paddingBasis(_ id: String) throws -> Double {
+      if let b = try absoluteBasis(id) { return b }
+      return try zParent[id].map { try contentWidth($0) } ?? units_fromCssPx(zoomed.viewport.width)
+    }
     for (i, r) in boxes.enumerated() {
       if DragonTree.isLine(r) { continue }
       let id = r.id.description
@@ -620,31 +694,28 @@ public final class DragonTree {
       container.addSubview(v)
       v.frame = frame
       if let bv = v as? DragonBoxView {
-        // An inline box or <br> view is unpainted and has no borders (the compiler refuses inline box borders until INL1b).
+        // An inline box or <br> view is unpainted and has no borders (the compiler refuses inline box borders until INL1b) and no
+        // paddings a background reads (the compiler refuses gradients on inline boxes).
         let px: [Double]
-        if inlineIds.contains(id) { px = [0, 0, 0, 0] } else {
+        let padding: [Double]
+        if inlineIds.contains(id) { px = [0, 0, 0, 0]; padding = [0, 0, 0, 0] } else {
           guard let zs = zStyles[id] else { fatalError("dragon: no zoomed box \(id)") }
           let be = try box_resolveBorder(zs, zoomed.devicePixelRatio)
           px = [be.top / lu, be.right / lu, be.bottom / lu, be.left / lu]
+          // BG2: the paddings (percentages of the containing block's content width), in LU.
+          let pad = try box_resolvePadding(zs, try paddingBasis(id))
+          padding = [pad.top, pad.right, pad.bottom, pad.left]
         }
         borders[id] = px
         bv.dragonScale = s
-        bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px, size: [r.width / lu, r.height / lu])
+        // BG2: the unsnapped border box in LU.
+        guard let a = abs.get(r.id) else { fatalError("dragon: no absolute rect for \(id)") }
+        bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px, size: [r.width / lu, r.height / lu], lu: [a.x, a.y, a.width, a.height], padding: padding, rootX: rootX)
+        bv.dragonScrollRange = scrollRanges[id]
+        bv.dragonScrollRefusal = scrollRefusals[id]
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
-    }
-    // Content widths in LU, for the text breaking width: the border box minus borders and paddings (percentages of the parent's).
-    var contentCache: [String: Double] = [:]
-    func contentWidth(_ id: String) throws -> Double {
-      if let c = contentCache[id] { return c }
-      guard let z = zBoxes[id], let r = rects[id] else { fatalError("dragon: no box \(id)") }
-      let cb = try zParent[id].map { try contentWidth($0) } ?? units_fromCssPx(zoomed.viewport.width)
-      let pad = try box_resolvePadding(z.style, cb)
-      let bor = try box_resolveBorder(z.style, zoomed.devicePixelRatio)
-      let w = r.width - bor.left - bor.right - pad.left - pad.right
-      contentCache[id] = w
-      return w
     }
     // REPL-a: each replaced box's paint rects from its content box (border box less borders and padding against the parent's
     // content width), through the translated engine; the paint modules read them in their after-layout hooks and stages.
@@ -666,7 +737,7 @@ public final class DragonTree {
       guard let pId = zParent[id], let p = zBoxes[pId], let e = edges[id] else { fatalError("dragon: text \(id) has no container") }
       // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
       // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
-      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
       let ifc = try inline_buildIfc(ctx, p)
       let leaves = ifc.leaves.items
       guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("dragon: no leaf \(id)") }
@@ -694,18 +765,28 @@ public final class DragonTree {
         var baseline = snapped[i].top + piece.ascent / lu
         // The single-run-baseline plant: every line takes the first line's baseline below its line top.
         if let f = firstBaselineOffset, dragonSingleRunBaselinePlant != 0 { baseline = top + f } else if firstBaselineOffset == nil { firstBaselineOffset = baseline - top }
-        // Dragon places every glyph: the pen starts at the engine's run left and advances by the engine's per-glyph advance
-        // (the instance size times the font-unit advance / unitsPerEm, summed in float as textAdvanceAt does).
+        // Dragon places every glyph: the pen starts at the engine's run left. Shaped, the glyph ids and advances are HarfBuzz's for
+        // the piece (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit advance /
+        // unitsPerEm, summed in float as textAdvanceAt does.
         let xLU = a.x - e[0] * lu
         let shown = Array(scalars[Int(piece.start)..<Int(piece.visibleEnd)])
         var glyphs: [CGGlyph] = []
         var xs: [Double] = []
-        var pen: Float = 0
-        for sc in shown {
-          let gid = bridge.glyph(Int(sc.value))
-          glyphs.append(CGGlyph(gid))
-          xs.append(xLU / lu + Double(pen))
-          pen = pen + Float(size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm)
+        if bridge.shaped {
+          let pg = try shaping_pieceGlyphs(measurer, leaves[li].text, try inline_fontOf(leaves[li].font), piece.start, piece.visibleEnd)
+          guard let g = pg as? PieceGlyphs_okTrue else { fatalError("dragon: \(id) line \(k): the shaped measurer refused its text: \((pg as! PieceGlyphs_okFalse).reason)") }
+          for (j, gid) in g.glyphs.items.enumerated() {
+            glyphs.append(CGGlyph(dragonCheckedInt(gid, "\(id) glyph id")))
+            xs.append(xLU / lu + g.xs.items[j])
+          }
+        } else {
+          var pen: Float = 0
+          for sc in shown {
+            let gid = bridge.glyph(Int(sc.value))
+            glyphs.append(CGGlyph(gid))
+            xs.append(xLU / lu + Double(pen))
+            pen = pen + Float(size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm)
+          }
         }
         specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: glyphs, xs: xs, xLU: xLU, widthLU: piece.width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end))))
       }
@@ -721,7 +802,7 @@ public final class DragonTree {
     }
     for (bId, idx) in fragments {
       guard let pId = zParent[bId], let p = zBoxes[pId], let be = edges[bId] else { fatalError("dragon: inline box \(bId) has no container") }
-      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
       let ifc = try inline_buildIfc(ctx, p)
       guard let b = ifc.boxes.items.firstIndex(where: { $0.id.description == bId }) else { fatalError("dragon: no inline box \(bId) in \(pId)") }
       var offsets: [Double] = []
@@ -1042,7 +1123,7 @@ class DragonRootView(ctx: Context) : DragonGroup(ctx) {
 }
 
 /** css-overflow-3 §3: the padding box of an overflow: hidden node; its children are clipped to its bounds (clipBounds). */
-class DragonClipView(ctx: Context) : DragonGroup(ctx) {
+open class DragonClipView(ctx: Context) : DragonGroup(ctx) {
   override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
     clipBounds = Rect(0, 0, r - l, b - t)
     super.onLayout(changed, l, t, r, b)
@@ -1055,7 +1136,7 @@ class DragonClipView(ctx: Context) : DragonGroup(ctx) {
  * top-left first), zero until the radius module fills them (PNT1), and the layout border-box size (width, height) in device px
  * before snapping, which percentage radii resolve against.
  */
-class DragonBoxShape(val edges: DoubleArray, val borders: DoubleArray, val radii: DoubleArray = DoubleArray(8), val size: DoubleArray = DoubleArray(2))
+class DragonBoxShape(val edges: DoubleArray, val borders: DoubleArray, val radii: DoubleArray = DoubleArray(8), val size: DoubleArray = DoubleArray(2), val lu: DoubleArray = DoubleArray(4), val padding: DoubleArray = DoubleArray(4), val rootX: Double = 0.0)
 
 /** A box: the background is a native ColorDrawable; every other paint is a paint module's (views/paint), drawn in CSS stage order. */
 class DragonBoxView(ctx: Context, override val dragonId: String, override val dragonKind: String, override val dragonParent: String?) : DragonGroup(ctx), DragonNodeView {
@@ -1159,20 +1240,35 @@ import android.graphics.fonts.FontFamily
 import dev.dragon.dump.DumpJsonWriter
 import dev.dragon.layout.AhemRuleFaults
 import dev.dragon.layout.FontData
+import dev.dragon.layout.GlyphShaper
+import dev.dragon.layout.JsStringMap
 import dev.dragon.layout.TextMeasurer
+import dev.dragon.layout.platform_deviceShapedMeasurer
+import dev.dragon.layout.text_AHEM_FACE_ID
 import dev.dragon.layout.text_coveredCodePoints
 import dev.dragon.layout.text_fontDataMeasurer
 import java.security.MessageDigest
 
 /**
  * The measurer bridge (R4): raw data read from the bundled Ahem's tables in the android.graphics.fonts.Font buffer (head, hhea, cmap, hmtx), fed to the
- * translated font-data measurer with the darwin-arm64 platform rules. It never uses the platform's rounded line metrics.
+ * translated measurer with the darwin-arm64 platform rules. It never uses the platform's rounded line metrics. With a host HarfBuzz
+ * (shaper) the measurer is the translated shaped measurer and text views draw its glyphs; without one, the font-data measurer and cmap and hmtx.
  */
 class DragonBridge private constructor(ctx: Context) {
   val fontSha256: String
   val data: FontData
   val selfCheck: List<String>
+  private val layoutShaper: GlyphShaper?
+  private val fontDataMeasurer: TextMeasurer
+  /** The measurer of one layout. Shaped, a fresh one per read: its shaped items are cached per layout, as the host's are. */
   val measurer: TextMeasurer
+    get() {
+      val s = layoutShaper ?: return fontDataMeasurer
+      return platform_deviceShapedMeasurer(JsStringMap(listOf(Pair(text_AHEM_FACE_ID, data))), s)
+    }
+  /** Whether measurer shapes with the host's HarfBuzz, so a text view draws the shaped glyph ids (shaping_pieceGlyphs). */
+  val shaped: Boolean
+    get() = layoutShaper != null
   /** The Ahem typeface under the Dragon id dragon:Ahem, and its Font (the drawGlyphs font). */
   val typeface: Typeface
   val font: Font
@@ -1205,7 +1301,8 @@ class DragonBridge private constructor(ctx: Context) {
     val units = dragonMetricUnits(dragonSfntTable(raw, "head"), hhea, hmtx, cmap, dragonSfntTable(raw, "OS/2"), dragonSfntTable(raw, "loca"), dragonSfntTable(raw, "glyf"))
     data = dragonFontData(header[0], header[1], header[2], header[3], advances, units[0], units[1], units[2])
     selfCheck = dragonSelfCheck(data)
-    measurer = text_fontDataMeasurer(data, AhemRuleFaults(false, false))
+    layoutShaper = shaper
+    fontDataMeasurer = text_fontDataMeasurer(data, AhemRuleFaults(false, false))
   }
   /** The glyph id of a code point (cmap); 0 when the font does not map it. */
   fun glyph(cp: Int): Int = dragonGlyph(cmapTable, cp)
@@ -1242,6 +1339,8 @@ class DragonBridge private constructor(ctx: Context) {
   companion object {
     /** Text sizes of the evidence-only advance probe written beside the self-check. */
     val PROBE_SIZES = listOf(10.0, 26.25, 100.0, 256.0, 257.0, 512.0, 1000.0, 2048.0)
+    /** The host's HarfBuzz (T056 R1), set before the bridge is first used; the bridge reads it once. */
+    @Volatile var shaper: GlyphShaper? = null
     @Volatile private var instance: DragonBridge? = null
     fun shared(ctx: Context): DragonBridge = instance ?: synchronized(this) { instance ?: DragonBridge(ctx.applicationContext).also { instance = it } }
   }
@@ -1272,6 +1371,8 @@ import dev.dragon.layout.LayoutRect
 import dev.dragon.layout.LayoutResult_ok
 import dev.dragon.layout.LayoutStyle
 import dev.dragon.layout.ObjectRect
+import dev.dragon.layout.PieceGlyphs_okFalse
+import dev.dragon.layout.PieceGlyphs_okTrue
 import dev.dragon.layout.PixelRect
 import dev.dragon.layout.ReplacedLeaf
 import dev.dragon.layout.paint_replacedPaint
@@ -1284,10 +1385,16 @@ import dev.dragon.layout.InlineBox
 import dev.dragon.layout.LineBreak
 import dev.dragon.layout.U_InlineBox_LineBreak_TextLeaf
 import dev.dragon.layout.inline_buildIfc
+import dev.dragon.layout.inline_fontOf
 import dev.dragon.layout.inline_placeIfcLines
+import dev.dragon.layout.grid_NO_GRID_FAULTS
 import dev.dragon.layout.layout_absoluteRects
 import dev.dragon.layout.layout_layout
 import dev.dragon.layout.layout_zoomInput
+import dev.dragon.layout.overflow_scrollRanges
+import dev.dragon.layout.ScrollRangesResult_ok
+import dev.dragon.layout.ScrollRangesResult_refused
+import dev.dragon.layout.shaping_pieceGlyphs
 import dev.dragon.layout.snap_snapEdges
 import dev.dragon.layout.units_LU_PER_PX
 import dev.dragon.layout.units_fromCssPx
@@ -1391,11 +1498,74 @@ class DragonTree(val context: Context) {
       }
     }
     walk(zoomed.root)
+    // OVFL-B: each scroll container's offset range in device px, from the translated engine, for the scroll module's hook.
+    val scrollRanges = HashMap<String, IntArray>()
+    val sr = overflow_scrollRanges(input, measurer)
+    val srNo = sr as? ScrollRangesResult_refused
+    if (srNo != null) throw IllegalStateException("dragon: the engine refused the scroll ranges at " + srNo.nodeId + ": " + srNo.detail)
+    val srOk = sr as? ScrollRangesResult_ok ?: throw IllegalStateException("dragon: the engine gave no scroll ranges")
+    for (g in srOk.ranges) scrollRanges[g.id] = intArrayOf(dragonCheckedInt(g.minX, g.id + " scroll minX"), dragonCheckedInt(g.maxX, g.id + " scroll maxX"), dragonCheckedInt(g.minY, g.id + " scroll minY"), dragonCheckedInt(g.maxY, g.id + " scroll maxY"))
+    val scrollRefusals = HashMap<String, String>()
+    for (g in srOk.refused) scrollRefusals[g.id] = "the engine refused its scroll range at " + g.nodeId + ": " + g.detail
     val lu = units_LU_PER_PX
+    // BG2 R4: the root scroller's scrolling contents start at Chrome's scroll origin. In a right-to-left document that is the left
+    // edge of the content overflowing to the left: the leftmost box or line no clipping box holds (html and body never clip here,
+    // as their overflow propagates to the viewport); 0 otherwise (paint-samples/gradient.ts rootScrollX on the host).
+    var rootX = 0.0
+    if (zoomed.root.style.direction == "rtl") {
+      val parentOf = HashMap<String, String>()
+      for (r in boxes) { val p = r.parent; if (p != null) parentOf[r.id] = p }
+      fun depth(id: String): Int { var d = 0; var p = parentOf[id]; while (p != null) { d++; p = parentOf[p] }; return d }
+      for (r in boxes) {
+        var held = false
+        var p = parentOf[r.id]
+        while (p != null && !held) {
+          val bv = views[p] as? DragonBoxView
+          if (depth(p) >= 2 && bv != null && bv.dragonClipView != null) held = true
+          p = parentOf[p]
+        }
+        val a = abs.get(r.id)
+        if (!held && a != null && a.x < rootX) rootX = a.x
+      }
+      // Chrome's scroll origin is a whole point (ToFlooredPoint of the overflow's offset negated): the layer starts at the ceiling.
+      rootX = kotlin.math.ceil(rootX / lu) * lu + 0.0
+    }
     setFrame(root.dragonFrame, 0.0, 0.0, kotlin.math.ceil(input.viewport.width * scale), kotlin.math.ceil(input.viewport.height * scale), "root")
     val edges = HashMap<String, DoubleArray>()
     val borders = HashMap<String, DoubleArray>()
     val rects = HashMap<String, LayoutRect>()
+    val contentCache = HashMap<String, Double>()
+    // BG2: an absolutely positioned box's containing block width (CSS2 §10.1), the padding box of its nearest positioned ancestor
+    // or the initial containing block (layout.ts containingBlock); null for an in-flow box.
+    fun absoluteBasis(id: String): Double? {
+      val z = zStyles[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
+      if (z.position != "absolute") return null
+      var at = zParent[id]
+      while (at != null && zStyles[at]?.position == "static") at = zParent[at]
+      if (at == null) return units_fromCssPx(zoomed.viewport.width)
+      val st = zStyles[at] ?: throw IllegalStateException("dragon: no zoomed box " + at)
+      val r = rects[at] ?: throw IllegalStateException("dragon: the containing block " + at + " of " + id + " is not placed")
+      val bor = box_resolveBorder(st, zoomed.devicePixelRatio)
+      return r.width - bor.left - bor.right
+    }
+    // What a box's percentage paddings resolve against, as the engine does: its absoluteBasis, or its parent's content width.
+    fun contentWidth(id: String): Double {
+      val cached = contentCache[id]
+      if (cached != null) return cached
+      val z = zBoxes[id] ?: throw IllegalStateException("dragon: no box " + id)
+      val r = rects[id] ?: throw IllegalStateException("dragon: no rect " + id)
+      val parent = zParent[id]
+      val cb = absoluteBasis(id) ?: if (parent != null) contentWidth(parent) else units_fromCssPx(zoomed.viewport.width)
+      val pad = box_resolvePadding(z.style, cb)
+      val bor = box_resolveBorder(z.style, zoomed.devicePixelRatio)
+      val w = r.width - bor.left - bor.right - pad.left - pad.right
+      contentCache[id] = w
+      return w
+    }
+    fun paddingBasis(id: String): Double {
+      val p = zParent[id]
+      return absoluteBasis(id) ?: if (p != null) contentWidth(p) else units_fromCssPx(zoomed.viewport.width)
+    }
     for (i in boxes.indices) {
       val r = boxes[i]
       if (isLine(r)) continue
@@ -1426,31 +1596,24 @@ class DragonTree(val context: Context) {
       container.addView(v as android.view.View)
       setFrame(dragonFrameOf(v), e.left - ox, e.top - oy, e.right - ox, e.bottom - oy, id)
       if (v is DragonBoxView) {
-        // An inline box or <br> view is unpainted and has no borders (the compiler refuses inline box borders until INL1b).
-        val px = if (inlineIds.contains(id)) doubleArrayOf(0.0, 0.0, 0.0, 0.0) else {
-          val zs = zStyles[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
+        // An inline box or <br> view is unpainted and has no borders (the compiler refuses inline box borders until INL1b) and no
+        // paddings a background reads (the compiler refuses gradients on inline boxes).
+        val inline = inlineIds.contains(id)
+        val zs = if (inline) null else zStyles[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
+        val px = if (zs == null) doubleArrayOf(0.0, 0.0, 0.0, 0.0) else {
           val be = box_resolveBorder(zs, zoomed.devicePixelRatio)
           doubleArrayOf(be.top / lu, be.right / lu, be.bottom / lu, be.left / lu)
         }
         borders[id] = px
-        v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px, DoubleArray(8), doubleArrayOf(r.width / lu, r.height / lu))
+        // BG2: the unsnapped border box and the paddings (percentages of the containing block's content width), in LU.
+        val a = abs.get(r.id) ?: throw IllegalStateException("dragon: no absolute rect for " + id)
+        val padding = if (zs == null) DoubleArray(4) else { val pad = box_resolvePadding(zs, paddingBasis(id)); doubleArrayOf(pad.top, pad.right, pad.bottom, pad.left) }
+        v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px, DoubleArray(8), doubleArrayOf(r.width / lu, r.height / lu), doubleArrayOf(a.x, a.y, a.width, a.height), padding, rootX)
+        v.dragonScrollRange = scrollRanges[id]
+        v.dragonScrollRefusal = scrollRefusals[id]
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }
-    }
-    val contentCache = HashMap<String, Double>()
-    fun contentWidth(id: String): Double {
-      val cached = contentCache[id]
-      if (cached != null) return cached
-      val z = zBoxes[id] ?: throw IllegalStateException("dragon: no box " + id)
-      val r = rects[id] ?: throw IllegalStateException("dragon: no rect " + id)
-      val parent = zParent[id]
-      val cb = if (parent != null) contentWidth(parent) else units_fromCssPx(zoomed.viewport.width)
-      val pad = box_resolvePadding(z.style, cb)
-      val bor = box_resolveBorder(z.style, zoomed.devicePixelRatio)
-      val w = r.width - bor.left - bor.right - pad.left - pad.right
-      contentCache[id] = w
-      return w
     }
     // REPL-a: each replaced box's paint rects from its content box (border box less borders and padding against the parent's
     // content width), through the translated engine; the paint modules read them in their after-layout hooks and stages.
@@ -1478,7 +1641,7 @@ class DragonTree(val context: Context) {
       val e = edges[id] ?: throw IllegalStateException("dragon: text " + id + " is not placed")
       // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
       // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
-      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
       val ifc = inline_buildIfc(ctx, p)
       val leaves = ifc.leaves
       val li = leaves.indexOfFirst { it.id == id }
@@ -1509,20 +1672,30 @@ class DragonTree(val context: Context) {
         // The single-run-baseline plant: every line takes the first line's baseline below its line top.
         val f = firstBaselineOffset
         if (f != null && DRAGON_SINGLE_RUN_BASELINE_PLANT != 0.0) baseline = top + f else if (f == null) firstBaselineOffset = baseline - top
-        // Dragon places every glyph: the pen starts at the engine's run left and advances by the engine's per-glyph advance
-        // (the instance size times the font-unit advance / unitsPerEm, summed in float as textAdvanceAt does).
+        // Dragon places every glyph: the pen starts at the engine's run left. Shaped, the glyph ids and advances are HarfBuzz's for
+        // the piece (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit advance /
+        // unitsPerEm, summed in float as textAdvanceAt does.
         val xLU = a.x - e[0] * lu
         val from = utf16(piece.start.toInt())
         val text = leafText.substring(from, utf16(piece.visibleEnd.toInt()))
-        val cps = text.codePoints().toArray()
-        val glyphs = IntArray(cps.size)
-        val xs = DoubleArray(cps.size)
-        var pen = 0f
-        for ((n, cp) in cps.withIndex()) {
-          val gid = bridge.glyph(cp)
-          glyphs[n] = gid
-          xs[n] = xLU / lu + pen.toDouble()
-          pen = pen + (size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat()
+        val glyphs: IntArray
+        val xs: DoubleArray
+        if (bridge.shaped) {
+          val pg = shaping_pieceGlyphs(measurer, leafText, inline_fontOf(leaves[li].font), piece.start, piece.visibleEnd)
+          val g = pg as? PieceGlyphs_okTrue ?: throw IllegalStateException("dragon: " + id + " line " + k + ": the shaped measurer refused its text: " + (pg as PieceGlyphs_okFalse).reason)
+          glyphs = IntArray(g.glyphs.size) { dragonCheckedInt(g.glyphs[it], id + " glyph id") }
+          xs = DoubleArray(g.xs.size) { xLU / lu + g.xs[it] }
+        } else {
+          val cps = text.codePoints().toArray()
+          glyphs = IntArray(cps.size)
+          xs = DoubleArray(cps.size)
+          var pen = 0f
+          for ((n, cp) in cps.withIndex()) {
+            val gid = bridge.glyph(cp)
+            glyphs[n] = gid
+            xs[n] = xLU / lu + pen.toDouble()
+            pen = pen + (size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat()
+          }
         }
         specs.add(DragonLineSpec(text, glyphs, xs, xLU, piece.width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt())))
       }
@@ -1543,7 +1716,7 @@ class DragonTree(val context: Context) {
       val pId = zParent[bId] ?: throw IllegalStateException("dragon: inline box " + bId + " has no container")
       val p = zBoxes[pId] ?: throw IllegalStateException("dragon: no container " + pId)
       val be = edges[bId] ?: throw IllegalStateException("dragon: inline box " + bId + " is not placed")
-      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
       val ifc = inline_buildIfc(ctx, p)
       val b = ifc.boxes.indexOfFirst { it.id == bId }
       if (b < 0) throw IllegalStateException("dragon: no inline box " + bId + " in " + pId)
@@ -1792,7 +1965,7 @@ function supportFiles(backend: NativeBackend): GeneratedFile[] {
       { path: 'Support/DragonChecked.swift', text: header('//', 'checked conversions') + SWIFT_CHECKED },
       { path: 'Support/DragonFontTables.swift', text: header('//', 'font table reads and the bridge self-check') + SWIFT_FONT_TABLES },
       { path: 'Support/DragonViews.swift', text: header('//', 'the Dragon views and the glyph-placing text view') + swiftViews() },
-      { path: 'Support/DragonBridge.swift', text: header('//', 'the font-data measurer bridge') + SWIFT_BRIDGE },
+      { path: 'Support/DragonBridge.swift', text: header('//', 'the measurer bridge') + SWIFT_BRIDGE },
       { path: 'Support/DragonTree.swift', text: header('//', 'the native tree, engine application and dump readback') + SWIFT_TREE },
       { path: 'Support/DragonPaintStages.swift', text: header('//', 'the paint registration points') + paintStagesSource(backend) },
       ...paint.map((m) => ({ path: `Support/Paint/${m.stem}.swift`, text: header('//', `the ${m.name} paint module`) + m.text })),
@@ -1803,7 +1976,7 @@ function supportFiles(backend: NativeBackend): GeneratedFile[] {
     { path: 'kotlin/dev/dragon/views/DragonChecked.kt', text: header('//', 'checked conversions') + KOTLIN_CHECKED },
     { path: 'kotlin/dev/dragon/views/DragonFontTables.kt', text: header('//', 'font table reads and the bridge self-check') + KOTLIN_FONT_TABLES },
     { path: 'kotlin/dev/dragon/views/DragonViews.kt', text: header('//', 'the Dragon views and the glyph-placing text view') + kotlinViews() },
-    { path: 'kotlin/dev/dragon/views/DragonBridge.kt', text: header('//', 'the font-data measurer bridge') + KOTLIN_BRIDGE },
+    { path: 'kotlin/dev/dragon/views/DragonBridge.kt', text: header('//', 'the measurer bridge') + KOTLIN_BRIDGE },
     { path: 'kotlin/dev/dragon/views/DragonTree.kt', text: header('//', 'the native tree, engine application and dump readback') + KOTLIN_TREE },
     { path: 'kotlin/dev/dragon/views/DragonPaintStages.kt', text: header('//', 'the paint registration points') + paintStagesSource(backend) },
     // Paint module files sit under views/paint and keep package dev.dragon.views, so the case code needs no new import.

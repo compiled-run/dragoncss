@@ -115,7 +115,7 @@ describe('outline: the native targets draw solid and double outlines', () => {
     for (const overflow of ['hidden', 'clip', 'auto']) {
       const c = tree(`.p { height: 20px; overflow: ${overflow}; } .b { height: 5px; outline: 2px solid red; }`, (r) => [div(r, 'p', ['p'], [div(r, 'b', ['b'])])]);
       const outline = errors(c).filter((d) => d.message.includes('outline'));
-      expect(outline.map((d) => [d.target, d.message]), overflow).toEqual([['ios', 'b has an outline inside the overflow clip of p, and Dragon draws native outlines in the root view, outside that clip, until it models stacking order; ios draws solid and double outlines only (PNT1)']]);
+      expect(outline.map((d) => [d.target, d.message]), overflow).toEqual([['ios', 'b has an outline inside the overflow clip of p, and Dragon draws native outlines in the root view, outside that clip, until it hosts them in their stacking context; ios draws solid and double outlines only (PNT1)']]);
       expect(outline[0]?.origin.kind, overflow).toBe('authored');
       expectCatalogued(outline);
     }
@@ -123,13 +123,26 @@ describe('outline: the native targets draw solid and double outlines', () => {
     const propagated = tree('body { overflow: hidden; } .b { height: 5px; outline: 2px solid red; }', (r) => [div(r, 'b', ['b'])]);
     expect(errors(propagated)).toEqual([]);
   });
-  it('an outline in a case with a positioned or transformed box is refused on ios (Chrome paints those above every outline); web compiles', () => {
-    for (const [css, what] of [['.q { position: relative; top: 2px; height: 5px; }', 'q has position: relative'], ['.q { position: absolute; width: 5px; height: 5px; }', 'q has position: absolute'], ['.q { height: 5px; transform: translateX(2px); }', 'q has a transform']] as const) {
+  it('an outline in a case with a layer item of the stacking tree is refused on ios (Chrome paints its layer above the outlines); web compiles', () => {
+    const layers = [
+      ['.q { position: relative; top: 2px; height: 5px; }', 'q has position: relative'],
+      ['.q { position: absolute; width: 5px; height: 5px; }', 'q has position: absolute'],
+      ['.q { height: 5px; transform: translateX(2px); }', 'q has a transform'],
+      // Master's stacking tree (lower/paint/stacking.ts) also makes these layer items: opacity below 1, will-change: opacity, and
+      // a z-index on a flex item.
+      ['.q { height: 5px; opacity: 0.5; }', 'q has opacity: 0.5'],
+      ['.q { height: 5px; will-change: opacity; }', 'q has will-change: opacity'],
+      ['body { display: flex; } .q { height: 5px; z-index: 2; }', 'q has z-index: 2 on a flex item'],
+    ] as const;
+    for (const [css, what] of layers) {
       const c = tree(`.b { height: 5px; outline: 2px solid red; } ${css}`, (r) => [div(r, 'b', ['b']), div(r, 'q', ['q'])]);
       const outline = errors(c).filter((d) => d.message.includes('outline'));
-      expect(outline.map((d) => [d.target, d.message]), css).toEqual([['ios', `b has an outline, and ${what}, which Chrome paints above every outline of its stacking context (CSS2 Appendix E); Dragon draws native outlines after all the content until it models stacking order; ios draws solid and double outlines only (PNT1)`]]);
+      expect(outline.map((d) => [d.target, d.message]), css).toEqual([['ios', `b has an outline, and ${what}, which Chrome paints in a layer of its own, above the outlines of its stacking context (CSS2 Appendix E); Dragon draws native outlines after all the content until it hosts them in their stacking context; ios draws solid and double outlines only (PNT1)`]]);
       expectCatalogued(outline);
     }
+    // A z-index on a static box outside a flex container makes no layer (CSS2 §9.9.1), so the outline stays in the root's flow.
+    const flat = tree('.b { height: 5px; outline: 2px solid red; } .q { height: 5px; z-index: 2; }', (r) => [div(r, 'b', ['b']), div(r, 'q', ['q'])]);
+    expect(errors(flat).filter((d) => d.message.includes('outline'))).toEqual([]);
     // A positioned box leaves a case alone when no outline paints: none, a zero width, or a style of none.
     for (const b of ['.b { height: 5px; }', '.b { height: 5px; outline: 0 solid red; }', '.b { height: 5px; outline: 2px none red; }']) {
       const c = tree(`${b} .q { position: relative; top: 2px; height: 5px; }`, (r) => [div(r, 'b', ['b']), div(r, 'q', ['q'])]);

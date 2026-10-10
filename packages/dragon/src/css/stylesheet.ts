@@ -6,7 +6,7 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
-import { resolveAlias } from './aliases.ts';
+import { legacyAliasRefusal, resolveAlias } from './aliases.ts';
 import { legacyDisplay } from './display-legacy.ts';
 import type { AtRuleContext, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
@@ -14,6 +14,8 @@ import { PAINT_VALUE_PARSERS } from './paint-parsers.ts';
 import { asciiLower, canonicalizeEscapes, decodeName, preprocessInput, trimValue } from './escapes.ts';
 import { GRID_VALUE_PROPERTIES, parseGridValue } from './grid-values.ts';
 import { webrefLexer } from './lexer.ts';
+import type { PlaceShorthand } from './place.ts';
+import { isPlaceShorthand, PLACE_SHORTHANDS, splitPlace } from './place.ts';
 import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
 import type { Selector } from './selectors.ts';
@@ -38,6 +40,8 @@ import type { PropertySource } from './at-rules/property.ts';
 import type { CascFaults } from '../faults/casc.ts';
 import { CASC_FAULTS } from '../faults/casc.ts';
 import { isAnimationProperty, parseAnimationDeclaration } from './properties/animation.ts';
+import { layerLonghandValue } from './shorthands/background.ts';
+import { isBackgroundLayerLonghand } from './properties/background-layers.ts';
 
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
@@ -286,6 +290,12 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   // A legacy alias is its property (aliases.ts); its diagnostics name the alias as written too.
   const property = resolveAlias(name);
   if (property === name) return parseResolved(d, property, base, sheetText, order, diagnostics);
+  const valueSpan = spanOf(d['value'] as CssNode, base);
+  const legacy = legacyAliasRefusal(name, sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start));
+  if (legacy !== null) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `${name}: ${generate(d['value'] as CssNode)} is unsupported: ${legacy}`, manual: `Write ${property} instead of ${name}.` }));
+    return null;
+  }
   const from = diagnostics.length;
   const declaration = parseResolved(d, property, base, sheetText, order, diagnostics);
   for (let i = from; i < diagnostics.length; i++) {
@@ -583,6 +593,8 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   // Chrome 145's legacy display keywords (display-legacy.ts).
   const legacy = !wide && property === 'display' ? legacyDisplay(tokens, base) : null;
   if (legacy !== null) return legacy.kind === 'refused' ? legacy : { kind: 'ok', longhands: [{ property: 'display', value: legacy.value, explicit: true }] };
+  // css-align-3 place-*: each part parses as its own longhand (place.ts).
+  if (!wide && isPlaceShorthand(property)) return parsePlaceValue(property, tokens, base);
   // css-grid-2 and justify-*: multi-token values, with the checks Chrome makes beyond the grammar (grid-values.ts).
   if (!wide && GRID_VALUE_PROPERTIES.has(property)) return parseGridValue(property, tokens, base);
   // css-images-3 §5.6: object-position is one <position> of up to four tokens (values.ts positionValue).
@@ -596,11 +608,18 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   }
   // css-transforms-1 (PNT2): multi-token transform, transform-origin and will-change values (properties/transform.ts).
   if (!wide && TRANSFORM_VALUE_PROPERTIES.has(property)) return parseTransformValue(property, tokens, base);
-  // Paint families (PNT1): multi-token paint values, with the checks Chrome makes beyond the grammar (css/paint-parsers.ts).
+  // css-backgrounds-3 §2.2: a background layer longhand holds one comma-separated item per layer (BG2).
+  if (!wide && isBackgroundLayerLonghand(property)) return layerLonghandValue(property, tokens, base, sheetText);
+  // Paint families (PNT1): multi-token paint values, with the checks Chrome makes beyond the grammar (css/paint-parsers.ts), opacity
+  // and z-index among them (properties/effects.ts: Chrome's clamps and whole-number calculations).
   const paint = wide ? undefined : PAINT_VALUE_PARSERS.get(property);
   if (paint !== undefined) return paint(tokens, base);
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
   const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
+  // Chrome 145 parses align-content's baseline with ConsumeFirstBaseline (css_parsing_utils.cc), which takes first but not last.
+  if (property === 'align-content' && baseline !== null && baseline.kind === 'keyword' && baseline.value === 'last baseline') {
+    return { kind: 'invalid', reason: 'Chrome takes only baseline or first baseline here (css_parsing_utils.cc ConsumeFirstBaseline)' };
+  }
   const values: CssValue[] = baseline === null ? [] : [baseline];
   for (const t of baseline === null ? tokens : []) {
     const unitRefused = t.type === 'Dimension' ? unitRefusal(normalizeUnit(String(t['unit']))) : t.type === 'Function' ? mathFunctionRefusal(String(t['name'])) : null;
@@ -620,6 +639,32 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
       ? [{ property, value: property === 'font-family' ? familyValue(tokens) : (values[0] as CssValue), explicit: true }]
       : shorthandHandler(property).expand(values, tokens);
   if (isLonghand(property) && !wide && values.length !== 1 && property !== 'font-family') return { kind: 'multi' };
+  return { kind: 'ok', longhands };
+}
+
+/**
+ * A place-* value as Chrome 145 parses it: the words split into the align and justify parts (place.ts splitPlace), each parsed as
+ * its longhand, so the longhand's own grammar, Chrome checks and refusals apply. A part's refusal points at the part's words.
+ */
+function parsePlaceValue(property: PlaceShorthand, tokens: readonly CssNode[], base: Span): ParsedValue {
+  if (!tokens.every((t) => t.type === 'Identifier')) return { kind: 'invalid' };
+  const split = splitPlace(property, tokens.map((t) => asciiLower(decodeName(String(t['name'])))));
+  if (split === null) return { kind: 'invalid' };
+  const [alignProperty, justifyProperty] = PLACE_SHORTHANDS[property];
+  const span = (from: number, to: number): Span => ({ ...spanOf(tokens[from] as CssNode, base), end: spanOf(tokens[to - 1] as CssNode, base).end });
+  const alignSpan = span(0, split.align.length);
+  const justifySpan = tokens.length === split.align.length ? alignSpan : span(split.align.length, tokens.length);
+  const longhands: LonghandValue[] = [];
+  for (const [longhand, words, at] of [[alignProperty, split.align, alignSpan], [justifyProperty, split.justify, justifySpan]] as const) {
+    const text = words.join(' ');
+    const parsed = parseSubstitutedValue(longhand, text, at);
+    if (parsed.kind === 'invalid') return parsed;
+    if (parsed.kind !== 'ok') {
+      const reason = parsed.kind === 'refused' ? parsed.diagnostic.message : parsed.kind === 'token' ? parsed.reason : `${longhand} takes one keyword here`;
+      return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(at), message: `${property}: its ${longhand} part "${text}" is unsupported: ${reason}`, manual: `Write a ${longhand} value Dragon supports, or set ${alignProperty} and ${justifyProperty} separately.` }) };
+    }
+    longhands.push(...parsed.longhands);
+  }
   return { kind: 'ok', longhands };
 }
 

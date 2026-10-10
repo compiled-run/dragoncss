@@ -6,7 +6,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutBox, LayoutRect } from '@dragon/layout';
-import { absoluteRects, inlineLeaves, layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, placeLines, zoomInput } from '@dragon/layout';
+import { absoluteRects, inlineLeaves, layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, zoomInput } from '@dragon/layout';
 import type { CompilerFaults } from 'dragon';
 import { collapseInlineContext, collapseInlineRun, NO_FAULTS, programInput } from 'dragon';
 import { CHROME_VERSION, launchChrome } from '../src/chrome.ts';
@@ -246,7 +246,7 @@ describe('the host side of the single-run-baseline plant (T058J3 F)', () => {
       const box = find(zoomed.root);
       const out = layout(input, m.measurer);
       if (box === null || out.kind !== 'ok') throw new Error(`b1 is not laid out at ${dpr}`);
-      const ctx = { measurer: m.measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS };
+      const ctx = { measurer: m.measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
       const leaf = inlineLeaves(box).findIndex((t) => t.id === 'b1:text1');
       const lines = placeLines(ctx, box, (absoluteRects(out.boxes).get('b1') as LayoutRect).width).filter((l) => l.pieces.some((p) => p.leaf === leaf));
       expect(lines.length, `${dpr}`).toBe(2);

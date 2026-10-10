@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { Readable, Writable } from 'node:stream';
 import type { DeviceOutcome, HostSource, RunLog } from './device-lanes.ts';
-import { afterRelease, DEVICE_CHECK_LANES, HIT_LANE, isBlockReason, STATE_LANE } from './device-lanes.ts';
+import { afterRelease, ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, isBlockReason, STATE_LANE, TRACE_LANE } from './device-lanes.ts';
 import type { DeviceHandle, DeviceSpec } from './device-run.ts';
 import { spawnChild } from './device-exec.ts';
 import { boot, DEVICE_MATRIX, DeviceLeftRunning, release } from './device-run.ts';
@@ -71,9 +71,10 @@ export function parseOutcome(text: string, device: string): DeviceOutcome {
   const problems: string[] = [];
   if (!isObj(v)) throw new Error(`${device}: the device outcome is not an object`);
   if (v['device'] !== device) problems.push(`device ${JSON.stringify(v['device'])}`);
-  // The batch set, and SELD-R1b's script (device-states) and hit (device-hit) sets: each checked the same way.
+  // The batch set, SELD-R1b's script (device-states) and hit (device-hit) sets, ANIM-b1's frame samples (device-anim) and SELD-R2's
+  // trace set (device-traces): each checked the same way.
   // Each set's failures belong to its own lanes: a lane record counts only its lane's failures, so a stray one would go uncounted.
-  const lanesOf: { readonly [name: string]: readonly string[] } = { set: DEVICE_CHECK_LANES, states: [STATE_LANE], hits: [HIT_LANE] };
+  const lanesOf: { readonly [name: string]: readonly string[] } = { set: DEVICE_CHECK_LANES, states: [STATE_LANE], hits: [HIT_LANE], anim: [ANIM_LANE], traces: [TRACE_LANE] };
   const checkSet = (name: string, set: unknown): void => {
     if (set === null) return;
     if (!isObj(set)) {
@@ -96,7 +97,7 @@ export function parseOutcome(text: string, device: string): DeviceOutcome {
   };
   const set = v['set'];
   checkSet('set', set);
-  for (const k of ['states', 'hits']) {
+  for (const k of ['states', 'hits', 'anim', 'traces']) {
     if (set !== null && v[k] === undefined) problems.push(`a set without its ${k} set`);
     else checkSet(k, v[k] === undefined ? null : v[k]);
   }

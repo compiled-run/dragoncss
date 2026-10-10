@@ -19,6 +19,7 @@ import type { FixtureSpec } from './fixtures.ts';
 import { FIXTURES } from './fixtures.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
+import type { Projection } from './pipeline.ts';
 import { enforcedCompile, fixtureCompileInput } from './pipeline.ts';
 
 /** The pixel ratios both native platforms run at (owner decision, Native lanes, milestone 2). */
@@ -106,10 +107,10 @@ function referenceMeasurer() {
  * The DPR lane of one case: projection at the DPR, validator, engine, then the 1 device px gate against the DPR capture. faults are
  * planted engine faults; only the DPR deviation registry check passes anything but NO_ENGINE_FAULTS.
  */
-export function runDprCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, dpr: number, capture: WebCapture, faults: EngineFaults = NO_ENGINE_FAULTS): DprCaseOutcome {
+export function runDprCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, dpr: number, capture: WebCapture, faults: EngineFaults = NO_ENGINE_FAULTS, projectionOf: Projection | null = null): DprCaseOutcome {
   const env = atDpr(c.environment, dpr);
   const base = { id: c.id, dpr, comparison: null, exact: 0, nodes: 0, vector: null };
-  const projection = iosLayoutProjection(compiled, env, c.assignment);
+  const projection = (projectionOf ?? iosLayoutProjection)(compiled, env, c.assignment);
   if (projection.kind === 'blocked') return { ...base, status: 'fail', reason: `ios projection blocked: ${projection.reason}` };
   const validated = validateLayoutInput(JSON.parse(JSON.stringify(projection.input)));
   if (!validated.ok) return { ...base, status: 'fail', reason: `layout input rejected: ${validated.errors.map((e) => `${e.path} ${e.code}`).join('; ')}` };

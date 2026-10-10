@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { join } from 'node:path';
 import type { Page } from 'playwright';
 import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, fromCssPx, layout, inlineLeaves, NO_ENGINE_FAULTS, placeLines, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
+import { absoluteRects, fromCssPx, layout, inlineLeaves, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
@@ -35,7 +35,8 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
   const abs = absoluteRects(boxes);
   const snappedList = snapEdges(boxes);
   const snapped = new Map(boxes.map((b, i) => [b.id, snappedList[i] as EngineLine['snapped']]));
-  const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
+  // Resolved with the layout's own measurer (layout.ts resolvedInput), so ex, ch, cap and lh of a real face read that face.
+  const zoomed = resolvedInput(input, measurer, NO_ENGINE_FAULTS);
   const zBoxes = new Map<string, LayoutBox>();
   const zParent = new Map<string, string>();
   // A text leaf's container is the block container of its inline formatting context, through any inline boxes.
@@ -78,7 +79,7 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
     cache.set(id, w);
     return w;
   };
-  const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS };
+  const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
   const out: EngineText[] = [];
   for (const r of boxes) {
     if (isLine(r)) continue;
@@ -405,7 +406,7 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
       fatalError("rect \(id) is not a node of the layout input")
     }
     guard let pId = zParent[id], let p = zBoxes[pId] else { fatalError("text \(id) has no container") }
-    let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+    let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
     let ifc = try inline_buildIfc(ctx, p)
     let leaves = ifc.leaves.items
     guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("no leaf \(id)") }
@@ -498,7 +499,7 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
     }
     val pId = zParent[id] ?: throw IllegalStateException("text " + id + " has no container")
     val p = zBoxes[pId] ?: throw IllegalStateException("no container " + pId)
-    val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+    val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
     val ifc = inline_buildIfc(ctx, p)
     val leaves = ifc.leaves
     val li = leaves.indexOfFirst { it.id == id }

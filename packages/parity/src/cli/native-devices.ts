@@ -8,7 +8,7 @@
 // right, or down), and judges the plant against the clean run (judgeGlyphPlant): both hosts finished; the clean run has no
 // device-pixels failure; on the plant's axis every line's glyph position (the x centre, or the bottom edge) fails the position
 // check by PLANT_MARGIN_DEVICE_PX or more and moved PLANT_SHIFT_DEVICE_PX within the spread; and device-frames and device-lines
-// pass in both runs. A paint plant (P6a dash, PNT1 radius and outline) runs its cases (PLANT_CASES) once with the planted app: device-pixels must fail on its
+// pass in both runs. A paint plant (P6a dash, PNT1 radius, shadow and outline) runs its cases (PLANT_CASES) once with the planted app: device-pixels must fail on its
 // sample rules (PLANT_RULES) while device-frames and device-lines pass (plantVerdict).
 // --plant single-run-baseline (INL1a) runs LINE_PLANT_CASE and judges with judgeLinePlant: every line of a text view after the
 // first takes its first line's baseline offset, and the pixel lane must see each moved line's glyph bottom edge move with it.
@@ -17,13 +17,13 @@ import type { SupportPlant } from 'dragon';
 import { GATE_GLYPH_POSITION_DEVICE_PX } from '../compare.ts';
 import { caseReference, dumpFile, evaluateCase, plantVerdict, readDump } from '../device-lanes.ts';
 import type { DeviceSpec } from '../device-run.ts';
-import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, isGlyphPlant, isPaintPlant, judgeGlyphPlant, judgeLinePlant, LINE_PLANT_CASE, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
+import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, DORMANT_PLANTS, iosProfileScale, isGlyphPlant, isPaintPlant, judgeGlyphPlant, judgeLinePlant, LINE_PLANT_CASE, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
 import { glyphPositions } from '../native-compare.ts';
 import { validateNativeDump } from '../native-dump.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BACKEND_OF, buildAndroid, buildIos, nativeCases, nativeOut } from '../native-host.ts';
-import { casePoints, rasterSize, runFileText } from '../pixel-reference.ts';
+import { devicePoints, rasterSize, runFileText } from '../pixel-reference.ts';
 import type { NativeTarget } from '../targets.ts';
 
 const args = process.argv.slice(2);
@@ -74,6 +74,12 @@ if (plant === null) {
   process.exit(failures === 0 ? 0 : 1);
 }
 
+// A dormant plant (DORMANT_PLANTS) has nothing a device can observe; it is reported and not run.
+if (isPaintPlant(plant) && DORMANT_PLANTS[plant] !== undefined) {
+  log(`plant ${plant}: dormant, not run (${DORMANT_PLANTS[plant]})`);
+  process.exit(0);
+}
+
 // A paint plant (P6a): pixels must see what (d) cannot, on the plant's cases (PLANT_CASES) and sample rules (PLANT_RULES).
 if (isPaintPlant(plant)) {
   for (const target of targets) {
@@ -89,7 +95,7 @@ if (isPaintPlant(plant)) {
     try {
       const dpr = deviceProfile(h).profileScale;
       const dir = join(nativeOut(target), 'devices', `${spec.name}-${plant}`);
-      const r = await runApp(h, build.artifact, { runFile: runFileText(ns.map((n) => ({ id: n.case.id, points: casePoints(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr) })), false), caseCount: ns.length, outDir: dir });
+      const r = await runApp(h, build.artifact, { runFile: runFileText(ns.map((n) => ({ id: n.case.id, points: devicePoints(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr) })), false), caseCount: ns.length, outDir: dir });
       if (r.error !== null) log(`${target} ${spec.name} @${dpr} ${plant}: FAIL the host did not finish: ${r.error}`);
       const all = ns.flatMap((n) => {
         const read = readDump(dumpFile(dir, n.case.id, dpr));

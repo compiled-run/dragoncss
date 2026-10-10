@@ -151,7 +151,7 @@ describe('differential corpus (native-strategy.md 1.7)', () => {
     expect(c.digest).toBe(lockedDigest());
     const n = Object.fromEntries(c.suites.map((s) => [s.name, s.lines.length]));
     // PIN-DERIVE: p1-floor.json holds every P1 suite in order at no fewer cases than it had (rt-vectors.test reads it too); the
-    // four P1 suites keep their exact sizes, and any later suite (ANIM-a2 rt, SELD-R1b hit, ANIM-b1 3b animator) only grows.
+    // four P1 suites keep their exact sizes, and any later suite (ANIM-a2 rt, SELD-R1b hit, ANIM-b1 3b animator, SELD-R2 interaction) only grows.
     expect(suiteFloorProblems(new URL('./p1-floor.json', import.meta.url), 'p1', c.suites.map((s) => ({ name: s.name, count: s.lines.length })))).toEqual([]);
     expect([n['vectors'], n['units'], n['engine'], n['library']]).toEqual([258, 320000, 20258, 22000]);
     expect(c.engineSplit.ok / 20258).toBeGreaterThanOrEqual(0.5);

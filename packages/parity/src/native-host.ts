@@ -7,15 +7,16 @@ import { createHash } from 'node:crypto';
 import { existsSync, linkSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
-import type { LayoutInput, LayoutRect } from '@dragon/layout';
+import type { LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
 import type { LU } from '@dragon/layout';
-import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import { deviceShapedMeasurer, layout, LU_PER_PX, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
 import { stateEmits } from './state-cases.ts';
-import { frameEmits } from './anim-cases.ts';
+import { animEmits } from './anim-samples.ts';
 import { deviceHitSource } from './hit-capture.ts';
+import { deviceTraceSources } from './trace-lane.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
 import { layoutCases } from './dpr.ts';
@@ -31,6 +32,8 @@ import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { NativeTarget } from './targets.ts';
 import { deviceDprs } from './targets.ts';
+import { buildShim, SHIM_ANDROID_ABIS, SHIM_SWIFT_INCLUDE, shimModuleMapSha256, shimSources, shimToken } from './native-shim.ts';
+import { ahemFaceId, fontDataOf, hostShaper } from './text-shaper-host.ts';
 
 export const BACKEND_OF: { readonly [T in NativeTarget]: NativeBackend } = { ios: 'uikit', android: 'android-views' };
 export const NATIVE_CONFIG = { ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
@@ -82,15 +85,18 @@ export function nativeCases(): readonly NativeCase[] {
   return out;
 }
 
-export function referenceMeasurer() {
-  const m = measurerFor(REFERENCE_PLATFORM);
-  if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
-  return m.measurer;
+/**
+ * The device apps' measurer on the host (TXT1a-2 phase R): deviceShapedMeasurer over the bundled Ahem's FontData and the WASM
+ * HarfBuzz, as each app's bridge composes it over its own shim. A fresh measurer per call: its shaped items are cached per layout.
+ */
+export function referenceMeasurer(): TextMeasurer {
+  const ahem = ahemFaceId();
+  return deviceShapedMeasurer(new Map([[ahem, fontDataOf(ahem)]]), hostShaper);
 }
 
 /** The TS engine the expected dumps are projected with: the helpers the device runs translated, and the float a platform stores. */
 export function expectedEngine(): ExpectedEngine {
-  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround, paint: { roundedShape, outlineRings, outlineWidthPx, outlineOffsetPx } };
+  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, opacityAlpha8, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround, scrollRanges, paint: { roundedShape, outlineRings, outlineWidthPx, outlineOffsetPx } };
 }
 
 const emitted = new Map<NativeTarget, EmitCase[]>();
@@ -177,7 +183,11 @@ func dragonRun(window: UIWindow, host: UIView) {
   // --dragon-cases wins over a run file left in the container by an earlier run.
   var run = DragonRun()
   if let listed = dragonArgument("--dragon-cases") { run.ids = listed.split(separator: ",").map(String.init) } else { run = dragonReadRun(NSHomeDirectory() + "/Documents/dragon-run.tsv") ?? DragonRun() }
+  // The shim is checked against the host's WASM shim first; the bridge then measures and draws every text through it.
+  dragonCheckShim()
+  DragonBridge.shaper = dragonGlyphShaper()
   let bridge = DragonBridge.shared
+  if !bridge.shaped { fatalError("dragon host: the bridge does not shape with the shim") }
   dragonWrite(out + "/bridge-ios.json", bridge.record(platform: "ios"))
   let scale = Double(window.screen.scale)
   if Double(window.traitCollection.displayScale) != scale { fatalError("dragon host: traitCollection.displayScale differs from UIScreen.scale") }
@@ -238,6 +248,15 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   let script = dragonStateCaseTable[id]
   let layoutCase = DragonHost.dragonCaseTable[id]
   if script != nil && layoutCase != nil { fatalError("dragon host: \(id) is both a layout case and a case script") }
+  // SELD-R2 (T064 R14): an interaction script runs on an interaction mount through the machine's entry points and writes its trace.
+  if let interaction = dragonInteractionCaseTable[id] {
+    if script != nil || layoutCase != nil { fatalError("dragon host: \(id) is both an interaction script and another case") }
+    let mount = DragonInteractionMount(machine: interaction.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge)
+    dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".trace", interaction.run(mount.machine, pointer: DragonMachinePointer(mount.machine)).map { $0 + "\n" }.joined())
+    mount.unmount()
+    DispatchQueue.main.async { dragonCase(k + 1, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge) }
+    return
+  }
   guard let c = script?.dragonCase ?? layoutCase else { fatalError("dragon host: no case \(id)") }
   let t0: CFTimeInterval
   let tree: DragonTree
@@ -302,6 +321,7 @@ function iosInfoPlist(): string {
   <key>MinimumOSVersion</key><string>15.0</string>
   <key>UIDeviceFamily</key><array><integer>1</integer><integer>2</integer></array>
   <key>UILaunchScreen</key><dict/>
+  <key>UIApplicationSupportsIndirectInputEvents</key><true/>
   <key>UIApplicationSceneManifest</key>
   <dict>
     <key>UIApplicationSupportsMultipleScenes</key><false/>
@@ -338,6 +358,9 @@ import dev.dragon.dump.DumpPixels
 import dev.dragon.dump.DumpTiming
 import dev.dragon.dump.dumpJson
 import dev.dragon.views.DragonBridge
+import dev.dragon.views.DragonInteractionMount
+import dev.dragon.views.DragonInteractionScript
+import dev.dragon.views.DragonMachinePointer
 import dev.dragon.views.DragonRun
 import dev.dragon.views.DragonStateMount
 import dev.dragon.views.DragonTree
@@ -380,7 +403,11 @@ class DragonActivity : Activity() {
     // The dragon.cases extra wins over a run file left in the files dir by an earlier run.
     val listed = intent.getStringExtra("dragon.cases")
     run = if (listed != null) DragonRun(listed.split(",").filter { it.isNotEmpty() }, emptyMap(), false) else dragonReadRun(File(out, "dragon-run.tsv")) ?: DragonRun(emptyList(), emptyMap(), false)
+    // The shim is checked against the host's WASM shim first; the bridge then measures and draws every text through it.
+    dragonCheckShim(this)
+    DragonBridge.shaper = dragonGlyphShaper(this)
     bridge = DragonBridge.shared(this)
+    check(bridge.shaped) { "dragon host: the bridge does not shape with the shim" }
     File(out, "bridge-android.json").writeText(bridge.record("android"))
     scale = resources.displayMetrics.density.toDouble()
     val os = "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ", " + Build.ID + ")"
@@ -408,6 +435,24 @@ class DragonActivity : Activity() {
     File(out, "device-android.json").writeText("{\"platform\":\"android\",\"model\":" + q(device.model) + ",\"os\":" + q(device.os) + ",\"build\":" + q(Build.DISPLAY) + ",\"scale\":" + f(scale) + ",\"densityDpi\":" + resources.displayMetrics.densityDpi + ",\"windowPx\":[" + d.width + "," + d.height + "],\"stagePx\":[" + (frame.width - frame.paddingLeft - frame.paddingRight) + "," + (frame.height - frame.paddingTop - frame.paddingBottom) + "],\"rootOriginPx\":[" + at[0] + "," + at[1] + "],\"textScale\":\"" + resources.configuration.fontScale + "\"}")
   }
 
+  private fun traceText(lines: List<String>): String = lines.joinToString("") { it + "\n" }
+
+  /**
+   * SELD-R2 (T064 R14, Android twice): an interaction script runs on an interaction mount through the machine's entry points, then
+   * on a fresh mount through real MotionEvents dispatched on its root (DragonMotionInput); each writes its trace, which must agree.
+   */
+  private fun runInteraction(k: Int, id: String, script: DragonInteractionScript) {
+    val s = DumpJsonWriter.format(scale)
+    val direct = DragonInteractionMount(script.make(), frame, bridge.measurer, scale, bridge)
+    deviceRecord(direct.tree)
+    File(out, id + "@" + s + ".trace").writeText(traceText(script.run(direct.machine, DragonMachinePointer(direct.machine))))
+    direct.unmount()
+    val injected = DragonInteractionMount(script.make(), frame, bridge.measurer, scale, bridge)
+    File(out, id + "@" + s + ".motion.trace").writeText(traceText(script.run(injected.machine, DragonMotionInput(injected.root, scale))))
+    injected.unmount()
+    frame.post { runCase(k + 1) }
+  }
+
   private fun runCase(k: Int) {
     if (k >= run.ids.size) {
       File(out, "done-android").writeText("ok")
@@ -420,6 +465,12 @@ class DragonActivity : Activity() {
     val script = dev.dragon.cases.dragonStateCaseTable[id]
     val layoutCase = dev.dragon.cases.dragonCaseTable[id]
     if (script != null && layoutCase != null) throw IllegalStateException("dragon host: " + id + " is both a layout case and a case script")
+    val interaction = dev.dragon.cases.dragonInteractionCaseTable[id]
+    if (interaction != null) {
+      if (script != null || layoutCase != null) throw IllegalStateException("dragon host: " + id + " is both an interaction script and another case")
+      runInteraction(k, id, interaction)
+      return
+    }
     val c = script?.dragonCase ?: layoutCase ?: throw IllegalStateException("dragon host: no case " + id)
     val t0: Long
     val tree: DragonTree
@@ -525,6 +576,121 @@ class DragonActivity : Activity() {
 }
 `;
 
+/**
+ * SELD-R2 (T064 R14 and R15): the MotionEvent runner. Each pointer step of a script becomes the events the platform sends, dispatched
+ * on the mount's root, so the trace goes through the root's event glue: touch through dispatchTouchEvent (SOURCE_TOUCHSCREEN,
+ * TOOL_TYPE_FINGER); mouse hover through dispatchGenericMotionEvent (ACTION_HOVER_*, SOURCE_MOUSE), with the HOVER_EXIT Android
+ * sends before a mouse DOWN and the HOVER_ENTER after its UP; mouse buttons and pressed moves through dispatchTouchEvent
+ * (SOURCE_MOUSE, TOOL_TYPE_MOUSE). A frame step is the next frame, run at once, so the script stays synchronous.
+ */
+const ANDROID_MOTION_INPUT = String.raw`package dev.dragon.host
+
+import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
+import dev.dragon.views.DragonInteractionRoot
+import dev.dragon.views.DragonPointerInput
+
+class DragonMotionInput(private val root: DragonInteractionRoot, private val scale: Double) : DragonPointerInput {
+  private var hovering = false
+  private var mouseDown = false
+  private var hoveredAtPress = false
+  private var downTime = 0L
+  private var lastX = 0f
+  private var lastY = 0f
+
+  private fun send(action: Int, x: Double, y: Double, source: Int, tool: Int, buttons: Int) {
+    val px = (x * scale).toFloat()
+    val py = (y * scale).toFloat()
+    // A step point that does not survive the trip through float device px would give the glue another point than the entry points.
+    if (px.toDouble() / scale != x || py.toDouble() / scale != y) throw IllegalStateException("dragon host: the point " + x + "," + y + " is not exact in float device px at scale " + scale)
+    sendPx(action, px, py, source, tool, buttons)
+  }
+
+  private fun sendPx(action: Int, px: Float, py: Float, source: Int, tool: Int, buttons: Int) {
+    val now = SystemClock.uptimeMillis()
+    if (action == MotionEvent.ACTION_DOWN) downTime = now
+    val props = MotionEvent.PointerProperties()
+    props.id = 0
+    props.toolType = tool
+    val coords = MotionEvent.PointerCoords()
+    coords.x = px
+    coords.y = py
+    val hover = action == MotionEvent.ACTION_HOVER_ENTER || action == MotionEvent.ACTION_HOVER_MOVE || action == MotionEvent.ACTION_HOVER_EXIT
+    coords.pressure = if (hover) 0f else 1f
+    coords.size = 1f
+    val ev = MotionEvent.obtain(if (hover) now else downTime, now, action, 1, arrayOf(props), arrayOf(coords), 0, buttons, 1f, 1f, 0, 0, source, 0)
+    try {
+      if (hover) root.dispatchGenericMotionEvent(ev) else root.dispatchTouchEvent(ev)
+    } finally {
+      ev.recycle()
+    }
+    lastX = px
+    lastY = py
+  }
+
+  private fun exitHover() {
+    if (!hovering) return
+    hovering = false
+    sendPx(MotionEvent.ACTION_HOVER_EXIT, lastX, lastY, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, 0)
+  }
+
+  override fun pointerMoved(x: Double, y: Double) {
+    if (mouseDown) {
+      send(MotionEvent.ACTION_MOVE, x, y, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, MotionEvent.BUTTON_PRIMARY)
+      return
+    }
+    send(if (hovering) MotionEvent.ACTION_HOVER_MOVE else MotionEvent.ACTION_HOVER_ENTER, x, y, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, 0)
+    hovering = true
+  }
+
+  override fun pointerExited() {
+    // Always sent: after a press that cancelled a hover exit the pointer is still in (R15), with no hover of the runner's own.
+    hovering = false
+    sendPx(MotionEvent.ACTION_HOVER_EXIT, lastX, lastY, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, 0)
+    root.frameNow()
+  }
+
+  override fun hoverExitStarted() {
+    exitHover()
+  }
+
+  override fun frame() {
+    root.frameNow()
+  }
+
+  override fun mousePressed(x: Double, y: Double) {
+    // R15: the platform ends the hover before it sends the button down.
+    hoveredAtPress = hovering
+    exitHover()
+    send(MotionEvent.ACTION_DOWN, x, y, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, MotionEvent.BUTTON_PRIMARY)
+    mouseDown = true
+  }
+
+  override fun mouseReleased() {
+    sendPx(MotionEvent.ACTION_UP, lastX, lastY, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, 0)
+    mouseDown = false
+    // R15: and hovers again once the button is up.
+    if (hoveredAtPress) {
+      sendPx(MotionEvent.ACTION_HOVER_ENTER, lastX, lastY, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, 0)
+      hovering = true
+    }
+  }
+
+  override fun touchPressed(x: Double, y: Double) {
+    send(MotionEvent.ACTION_DOWN, x, y, InputDevice.SOURCE_TOUCHSCREEN, MotionEvent.TOOL_TYPE_FINGER, 0)
+  }
+
+  override fun touchReleased(x: Double, y: Double) {
+    send(MotionEvent.ACTION_UP, x, y, InputDevice.SOURCE_TOUCHSCREEN, MotionEvent.TOOL_TYPE_FINGER, 0)
+  }
+
+  override fun touchCancelled() {
+    sendPx(MotionEvent.ACTION_CANCEL, lastX, lastY, InputDevice.SOURCE_TOUCHSCREEN, MotionEvent.TOOL_TYPE_FINGER, 0)
+  }
+}
+`;
+
 function androidManifest(): string {
   return `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="${HOST_BUNDLE}" android:versionCode="1" android:versionName="1.0">
@@ -566,17 +732,22 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
     for (const f of readdirSync(engine).filter((x) => x.endsWith('.kt')).sort()) files.push({ path: `kotlin/dev/dragon/layout/${f}`, text: readFileSync(join(engine, f), 'utf8') });
     files.push({ path: 'kotlin/dev/dragon/dump/DragonDump.kt', text: encoderSource('kotlin') });
     files.push({ path: 'kotlin/dev/dragon/host/DragonActivity.kt', text: `// GENERATED by @dragon/parity native-host.ts. Do not edit.\n${ANDROID_ACTIVITY}` });
+    files.push({ path: 'kotlin/dev/dragon/host/DragonMotionInput.kt', text: `// GENERATED by @dragon/parity native-host.ts. Do not edit.\n${ANDROID_MOTION_INPUT}` });
     files.push({ path: 'kotlin/dev/dragon/host/DragonToolchain.kt', text: `// GENERATED by @dragon/parity native-host.ts. Do not edit.\npackage dev.dragon.host\n\nconst val DRAGON_TOOLCHAIN = ${JSON.stringify(toolchain)}\n` });
     files.push({ path: 'AndroidManifest.xml', text: androidManifest() });
   }
   const supportPlant = plant !== null && (SUPPORT_PLANTS as readonly string[]).includes(plant) ? (plant as SupportPlant) : null;
   files.push(...emitNativeSupport(backend, supportPlant));
   files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
-  // SELD-R1a: the state programs and their case scripts; ANIM-b1: the frame cases' state programs with their animation tables.
-  files.push(...emitStatePrograms(backend, [...stateEmits(target), ...frameEmits(target)]));
+  // SELD-R1a: the state programs and their case scripts; ANIM-b1: the frame cases' state programs, animation tables and sample scripts.
+  files.push(...emitStatePrograms(backend, [...stateEmits(target), ...animEmits(target)]));
   // SELD-R1b: the device-hit facts and runner.
   files.push(deviceHitSource(target));
+  // SELD-R2 (T064 R14): the interaction programs and their device-traces scripts.
+  files.push(...deviceTraceSources(target));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);
+  // TXT1a-2 phase R: the HarfBuzz shim's wrapper, the host DragonShaper and the probe it is checked with.
+  files.push(...shimSources(target));
   return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 
@@ -681,6 +852,9 @@ export function appCacheKey(sourceSha256: string, commands: readonly AppCommand[
 
 const fileSha = (path: string): string => createHash('sha256').update(readFileSync(path)).digest('hex');
 
+/** The built shim libraries' sha256 as cache-key inputs, so a rebuilt shim forces a rebuilt app. */
+const shimInputs = (sha256: Readonly<Record<string, string>>): Record<string, string> => Object.fromEntries(Object.entries(sha256).map(([t, s]) => [`shim ${t}`, s]));
+
 /**
  * Builds an app into the machine-wide cache (#158's, kind ios-app or apk) unless its key is there: in a work directory beside the
  * entry, published by one rename, so a hit is always a whole build, shared by every worktree; the sources and intermediates are
@@ -709,7 +883,7 @@ function cachedApp(kind: 'ios-app' | 'apk', key: string, artifact: string, compl
 }
 
 /** The case tables stay in DragonHost: main.swift reads DragonHost.dragonCaseTable. */
-const IOS_TABLES = ['Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift'];
+const IOS_TABLES = ['Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift', 'Cases/DragonInteractionCaseTable.swift'];
 
 /**
  * The Swift files of each iOS module, by path; every file in exactly one, and none of the three empty (else a thrown error). The
@@ -744,7 +918,8 @@ export function casesCodeProblems(path: string, text: string): string[] {
 export function iosCommands(paths: readonly string[]): AppCommand[] {
   const mods = iosModules(paths);
   const src = (ps: readonly string[]): string[] => ps.map((p) => `$W/src/${p}`);
-  const swiftc = ['xcrun', '-sdk', 'iphonesimulator', 'swiftc', '-target', IOS_TARGET, '-j', '$CORES'];
+  // -I: DragonCore's shim wrapper imports CDragonHB, a module map over dragon_hb.h, which every module importing DragonCore must find.
+  const swiftc = ['xcrun', '-sdk', 'iphonesimulator', 'swiftc', '-target', IOS_TARGET, '-j', '$CORES', '-I', '$SHIM_SWIFT_INCLUDE'];
   const implicit = (flag: string, mod: string): string[] => ['-Xfrontend', flag, '-Xfrontend', mod];
   const library = (name: string, opt: string, extra: readonly string[], sources: readonly string[]): string[] => [...swiftc, opt, ...extra, '-parse-as-library', '-module-name', name, '-I', '$W/modules', '-emit-module', '-emit-module-path', `$W/modules/${name}.swiftmodule`, '-emit-library', '-static', '-o', `$W/modules/lib${name}.a`, ...src(sources)];
   // -force_load links every object of both libraries, as one module did, whether or not the host names it.
@@ -753,7 +928,7 @@ export function iosCommands(paths: readonly string[]): AppCommand[] {
     library('DragonCore', '-O', [], mods.core),
     // -enable-testing: DragonHost's case tables read the cases' internal declarations through a testable import.
     library('DragonCases', '-Onone', ['-enable-testing', ...implicit('-import-module', 'DragonCore')], mods.cases),
-    [...swiftc, '-O', '-module-name', 'DragonHost', '-I', '$W/modules', ...implicit('-import-module', 'DragonCore'), ...implicit('-testable-import-module', 'DragonCases'), ...load('DragonCore'), ...load('DragonCases'), '-o', '$W/DragonHost.app/DragonHost', ...src(mods.host)],
+    [...swiftc, '-O', '-module-name', 'DragonHost', '-I', '$W/modules', ...implicit('-import-module', 'DragonCore'), ...implicit('-testable-import-module', 'DragonCases'), ...load('DragonCore'), ...load('DragonCases'), '-L', '$SHIM_IOS_LIB', '-ldragon_hb', '-lc++', '-o', '$W/DragonHost.app/DragonHost', ...src(mods.host)],
     ['cp', '$W/src/Info.plist', '$W/DragonHost.app/Info.plist'],
     ['cp', '$AHEM', '$W/DragonHost.app/Ahem.ttf'],
     ['codesign', '--force', '--sign', '-', '--timestamp=none', '$W/DragonHost.app'],
@@ -772,13 +947,14 @@ export function buildIos(opts: BuildOptions = {}): BuildResult {
   const notConstruction = files.filter((f) => cases.has(f.path)).flatMap((f) => casesCodeProblems(f.path, f.text));
   if (notConstruction.length > 0) throw new Error(`the iOS case code is built at -Onone, so it must be construction code only:\n  ${notConstruction.slice(0, 20).join('\n  ')}`);
   // The Xcode version is in the sources (DragonToolchain.swift); the simulator SDK and swiftc are named here.
-  const inputs = { sdk: must(run('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-version']), 'xcrun --show-sdk-version').trim(), swiftc: must(run('xcrun', ['-sdk', 'iphonesimulator', 'swiftc', '-version']), 'swiftc -version').trim() };
+  const shim = buildShim('ios');
+  const inputs = { sdk: must(run('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-version']), 'xcrun --show-sdk-version').trim(), swiftc: must(run('xcrun', ['-sdk', 'iphonesimulator', 'swiftc', '-version']), 'swiftc -version').trim(), ...shimInputs(shim.sha256), 'shim module map': shimModuleMapSha256() };
   const key = appCacheKey(sha, commands, inputs);
   const { dir, log } = cachedApp('ios-app', key, 'DragonHost.app/DragonHost', (d) => existsSync(join(d, 'DragonHost.app', 'Info.plist')), opts.reuse === true, (work, out) => {
     writeSources(work, files);
     mkdirSync(join(work, 'modules'), { recursive: true });
     mkdirSync(join(work, 'DragonHost.app'), { recursive: true });
-    const values = { W: work, CORES: String(availableParallelism()), AHEM: repoPath('vendor/fonts/Ahem.ttf') };
+    const values = { W: work, CORES: String(availableParallelism()), AHEM: repoPath('vendor/fonts/Ahem.ttf'), SHIM_SWIFT_INCLUDE, ...shim.files };
     const names = ['swiftc DragonCore -O', 'swiftc DragonCases -Onone', 'swiftc DragonHost -O', 'Info.plist', 'Ahem.ttf', 'codesign --sign - (ad hoc)'];
     for (const [i, c] of commands.entries()) {
       const t0 = Date.now();
@@ -787,19 +963,22 @@ export function buildIos(opts: BuildOptions = {}): BuildResult {
       out.push(`${names[i]}: ${ms(t0)} s`);
     }
   }, ['DragonHost.app']);
-  return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: join(dir, 'DragonHost.app'), log };
+  return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: join(dir, 'DragonHost.app'), log: [shim.log, ...log] };
 }
 
 /** The Android APK's build commands for its Kotlin source paths (tokens: the SDK tools, the jars, the keystore and Ahem). */
 export function androidCommands(ktPaths: readonly string[]): AppCommand[] {
   return [
-    ['mkdir', '-p', '$W/assets/fonts', '$W/dex'],
+    ['mkdir', '-p', '$W/assets/fonts', '$W/dex', ...SHIM_ANDROID_ABIS.map((abi) => `$W/lib/${abi}`)],
     ['cp', '$AHEM', '$W/assets/fonts/Ahem.ttf'],
+    ...SHIM_ANDROID_ABIS.map((abi) => ['cp', `$${shimToken(abi)}`, `$W/lib/${abi}/libdragon_hb.so`]),
     ['$BT/aapt2', 'link', '--manifest', '$W/src/AndroidManifest.xml', '-I', '$ANDROID_JAR', '-A', '$W/assets', '--min-sdk-version', String(NATIVE_CONFIG.android.minSdk), '--target-sdk-version', String(ANDROID_TARGET_SDK), '-o', '$W/base.apk'],
     ['$KOTLINC', '-J-Xmx8g', '-cp', '$ANDROID_JAR', '-jvm-target', '1.8', '-nowarn', '-d', '$W/classes.jar', ...ktPaths.map((p) => `$W/src/${p}`)],
     ['$BT/d8', '--release', '--min-api', String(NATIVE_CONFIG.android.minSdk), '--lib', '$ANDROID_JAR', '--output', '$W/dex', '$W/classes.jar', '$KOTLIN_STDLIB'],
     // The dex files in name order (C locale), added at the APK's root.
     ['sh', '-c', 'cd "$W/dex" && LC_ALL=C zip -q -j ../base.apk classes*.dex'],
+    // The shim per ABI, stored uncompressed under lib/<abi>/ (zipalign -p page-aligns it), loaded by System.loadLibrary.
+    ['sh', '-c', `cd "$W" && zip -q -0 base.apk ${SHIM_ANDROID_ABIS.map((abi) => `lib/${abi}/libdragon_hb.so`).join(' ')}`],
     ['$BT/zipalign', '-p', '-f', '4', '$W/base.apk', '$W/aligned.apk'],
     ['$BT/apksigner', 'sign', '--ks', '$KEYSTORE', '--ks-pass', 'pass:android', '--key-pass', 'pass:android', '--ks-key-alias', 'dragondebug', '--out', '$W/DragonHost.apk', '$W/aligned.apk'],
   ];
@@ -834,13 +1013,14 @@ export function buildAndroid(opts: BuildOptions = {}): BuildResult & { readonly 
   const keystore = debugKeystore(tools, env);
   const commands = androidCommands(files.filter((f) => f.path.endsWith('.kt')).map((f) => f.path));
   // kotlinc, the build tools and android.jar's level are in the sources (DragonToolchain.kt); the bytes each token stands for are here.
-  const inputs = { buildTools: tools.buildTools.split('/').pop() ?? '', androidJar: fileSha(tools.androidJar), kotlinStdlib: fileSha(tools.kotlinStdlib), keystore: fileSha(keystore), java: must(run(join(tools.javaHome, 'bin', 'java'), ['-version']), 'java -version').trim() };
+  const shim = buildShim('android');
+  const inputs = { buildTools: tools.buildTools.split('/').pop() ?? '', androidJar: fileSha(tools.androidJar), kotlinStdlib: fileSha(tools.kotlinStdlib), keystore: fileSha(keystore), java: must(run(join(tools.javaHome, 'bin', 'java'), ['-version']), 'java -version').trim(), ...shimInputs(shim.sha256) };
   const key = appCacheKey(sha, commands, inputs);
   const dexesOf = (d: string): string[] => (existsSync(join(d, 'dex')) ? readdirSync(join(d, 'dex')).filter((f) => /^classes\d*\.dex$/.test(f)).sort().map((x) => join(d, 'dex', x)) : []);
   const { dir, log } = cachedApp('apk', key, 'DragonHost.apk', (d) => dexesOf(d).length > 0, opts.reuse === true, (work, out) => {
     writeSources(work, files);
-    const values = { W: work, AHEM: repoPath('vendor/fonts/Ahem.ttf'), BT: tools.buildTools, ANDROID_JAR: tools.androidJar, KOTLINC: tools.kotlinc, KOTLIN_STDLIB: tools.kotlinStdlib, KEYSTORE: keystore };
-    const names = ['mkdir', 'Ahem.ttf', 'aapt2 link', 'kotlinc', 'd8', 'zip classes.dex', 'zipalign', 'apksigner sign'];
+    const values = { W: work, AHEM: repoPath('vendor/fonts/Ahem.ttf'), BT: tools.buildTools, ANDROID_JAR: tools.androidJar, KOTLINC: tools.kotlinc, KOTLIN_STDLIB: tools.kotlinStdlib, KEYSTORE: keystore, ...shim.files };
+    const names = ['mkdir', 'Ahem.ttf', ...SHIM_ANDROID_ABIS.map((abi) => `libdragon_hb.so (${abi})`), 'aapt2 link', 'kotlinc', 'd8', 'zip classes.dex', 'zip libdragon_hb.so', 'zipalign', 'apksigner sign'];
     for (const [i, c] of commands.entries()) {
       const t0 = Date.now();
       const [cmd, ...args] = expand(c, values);
@@ -848,7 +1028,7 @@ export function buildAndroid(opts: BuildOptions = {}): BuildResult & { readonly 
       out.push(`${names[i]}: ${ms(t0)} s`);
     }
   }, ['DragonHost.apk', 'dex']);
-  return { target: 'android', cases: emitCases('android').length, sourceSha256: sha, artifact: join(dir, 'DragonHost.apk'), log, dexes: dexesOf(dir), tools };
+  return { target: 'android', cases: emitCases('android').length, sourceSha256: sha, artifact: join(dir, 'DragonHost.apk'), log: [shim.log, ...log], dexes: dexesOf(dir), tools };
 }
 
 // ---------------------------------------------------------------- dump encoders on the host
@@ -860,32 +1040,33 @@ export function buildAndroid(opts: BuildOptions = {}): BuildResult & { readonly 
  */
 export function relabelledReferenceDumps(target: NativeTarget, dpr: number): NativeDump[] {
   const backend = BACKEND_OF[target];
-  const m = expectedEngine();
-  return nativeCases().map((n) => {
-    const program = n.programs[backend];
-    const viewport = n.case.environment.viewport;
-    const input = programInput(program, viewport, dpr);
-    const engine = engineBoxes(program, viewport, dpr);
-    const ref = referenceDump({ platform: target, caseId: n.case.id, fixture: n.spec.id, dpr, direction: n.case.environment.direction, compilerDigest: n.compiled.digest, input, engine });
-    const e = expectedDump(program, n.case.id, viewport, dpr, m);
-    const applied = new Map(e.nodes.map((x) => [x.id, x.applied]));
-    const sha = createHash('sha256').update(n.case.id).digest('hex');
-    return {
-      ...ref,
-      lane: target === 'ios' ? 'ios-sim' : 'android-emu',
-      case: { ...ref.case, expectedDigest: expectedDigest(e) },
-      device: { platform: target, os: 'host encoder test', model: 'none', abi: 'host', scale: dpr, toolchain: 'host', renderer: 'none' },
-      nodes: ref.nodes.map((x) => ({
-        ...x,
-        native: e.nodes.find((y) => y.id === x.id)?.native ?? x.native,
-        applied: applied.get(x.id) ?? {},
-        // A text line's offsets are made up; an element line (an inline box fragment) has no own text, so a device writes 0 and 0.
-        lines: x.lines.map((l, j) => ({ ...l, baseline: l.frame.height * 0.8, start: x.kind === 'text' ? 3 * j : 0, end: x.kind === 'text' ? 3 * j + 2 : 0 })),
-      })),
-      pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: Math.ceil(viewport.width * dpr), height: Math.ceil(viewport.height * dpr), sha256: sha, samples: [{ x: 1, y: 2, rgba: [255, 255, 255, 255], rule: `interior:${ref.nodes[0]?.id ?? 'root'}` }] },
-      timing: { settleMs: 1.25, dumpMs: 0.5 },
-    } as NativeDump;
-  });
+  return nativeCases().map((n) => relabelledReferenceDump(target, { id: n.case.id, fixture: n.spec.id, direction: n.case.environment.direction, compilerDigest: n.compiled.digest, viewport: n.case.environment.viewport, program: n.programs[backend] }, dpr));
+}
+
+/** One program's relabelled reference dump (relabelledReferenceDumps) under a case id: a layout case's, or a frame sample's (device-anim). */
+export function relabelledReferenceDump(target: NativeTarget, c: { readonly id: string; readonly fixture: string; readonly direction: 'ltr' | 'rtl'; readonly compilerDigest: string; readonly viewport: { readonly width: number; readonly height: number }; readonly program: NativeProgram }, dpr: number): NativeDump {
+  const { program, viewport } = c;
+  const input = programInput(program, viewport, dpr);
+  const engine = engineBoxes(program, viewport, dpr);
+  const ref = referenceDump({ platform: target, caseId: c.id, fixture: c.fixture, dpr, direction: c.direction, compilerDigest: c.compilerDigest, input, engine });
+  const e = expectedDump(program, c.id, viewport, dpr, expectedEngine());
+  const applied = new Map(e.nodes.map((x) => [x.id, x.applied]));
+  const sha = createHash('sha256').update(c.id).digest('hex');
+  return {
+    ...ref,
+    lane: target === 'ios' ? 'ios-sim' : 'android-emu',
+    case: { ...ref.case, expectedDigest: expectedDigest(e) },
+    device: { platform: target, os: 'host encoder test', model: 'none', abi: 'host', scale: dpr, toolchain: 'host', renderer: 'none' },
+    nodes: ref.nodes.map((x) => ({
+      ...x,
+      native: e.nodes.find((y) => y.id === x.id)?.native ?? x.native,
+      applied: applied.get(x.id) ?? {},
+      // A text line's offsets are made up; an element line (an inline box fragment) has no own text, so a device writes 0 and 0.
+      lines: x.lines.map((l, j) => ({ ...l, baseline: l.frame.height * 0.8, start: x.kind === 'text' ? 3 * j : 0, end: x.kind === 'text' ? 3 * j + 2 : 0 })),
+    })),
+    pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: Math.ceil(viewport.width * dpr), height: Math.ceil(viewport.height * dpr), sha256: sha, samples: [{ x: 1, y: 2, rgba: [255, 255, 255, 255], rule: `interior:${ref.nodes[0]?.id ?? 'root'}` }] },
+    timing: { settleMs: 1.25, dumpMs: 0.5 },
+  } as NativeDump;
 }
 
 /** Compiles the encoder with a program that builds the dumps by typed constructors and prints each as one JSON line; returns the lines. */

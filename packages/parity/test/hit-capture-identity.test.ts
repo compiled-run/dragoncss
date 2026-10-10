@@ -96,6 +96,17 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(() => withoutPointerEvents('a.png', '')).toThrow(/only .json captures and .css outputs/);
   });
 
+  it("removes PNT1's opacity and z-index, added after the base, only at their neutral values (opacity 1, z-index auto)", () => {
+    const json = (opacity: string, z: string): string => `{\n  "x": "1",\n  "opacity": "${opacity}",\n  "z-index": "${z}"\n}`;
+    const css = (opacity: string, z: string): string => `.d {\n  color: red;\n  opacity: ${opacity};\n  z-index: ${z};\n}\n`;
+    expect(withoutPointerEvents('a.json', json('1', 'auto'))).toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('a.css', css('1', 'auto'))).toBe('.d {\n  color: red;\n}\n');
+    for (const [o, z] of [['0.5', 'auto'], ['0', 'auto'], ['1', '3'], ['1', '0'], ['1', '-1']]) {
+      expect(withoutPointerEvents('a.json', json(o as string, z as string)), `${o} ${z}`).not.toBe('{\n  "x": "1"\n}');
+      expect(withoutPointerEvents('a.css', css(o as string, z as string)), `${o} ${z}`).not.toBe('.d {\n  color: red;\n}\n');
+    }
+  });
+
   it("removes GEN-b's four longhands, added after the base, only at their neutral values (decimal only in block-elements-defaults)", () => {
     const json = (type: string, image = 'none'): string => `{\n  "will-change": "auto",\n  "content": "normal",\n  "list-style-type": "${type}",\n  "list-style-position": "outside",\n  "list-style-image": "${image}"\n}`;
     const base = '{\n  "will-change": "auto"\n}';
@@ -112,6 +123,16 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(withoutPointerEvents('e/a.css', css('disc', 'inside'))).not.toBe(cssBase);
   });
 
+  it("removes BG2's eight background longhands, added after the base, only at their initial values", () => {
+    const pairs = (image: string): [string, string][] => [['background-image', image], ['background-position-x', '0%'], ['background-position-y', '0%'], ['background-size', 'auto'], ['background-repeat', 'repeat'], ['background-attachment', 'scroll'], ['background-origin', 'padding-box'], ['background-clip', 'border-box']];
+    const json = (image = 'none'): string => `{\n  "will-change": "auto"${pairs(image).map(([k, v]) => `,\n  "${k}": "${v}"`).join('')}\n}`;
+    expect(withoutPointerEvents('x/a.web.json', json())).toBe('{\n  "will-change": "auto"\n}');
+    expect(withoutPointerEvents('x/a.web.json', json('linear-gradient(red, blue)'))).not.toBe('{\n  "will-change": "auto"\n}');
+    const css = (image = 'none'): string => `.d {\n  will-change: auto;\n${pairs(image).map(([k, v]) => `  ${k}: ${v};\n`).join('')}}\n`;
+    expect(withoutPointerEvents('e/a.css', css())).toBe('.d {\n  will-change: auto;\n}\n');
+    expect(withoutPointerEvents('e/a.css', css('url("a.png")'))).not.toBe('.d {\n  will-change: auto;\n}\n');
+  });
+
   it('removes the PNT1 corner radii added since the base, and nothing else', () => {
     const json = '{\n  "x": "1",\n  "border-top-left-radius": "10px 20px",\n  "border-bottom-left-radius": "50%",\n  "pointer-events": "auto"\n}';
     expect(withoutPointerEvents('a.json', json)).toBe('{\n  "x": "1"\n}');
@@ -119,6 +140,13 @@ describe('pointer-events changes the captures and emitted files only by its own 
     // Another radius-like key, or a changed value beside the stripped ones, still differs.
     expect(withoutPointerEvents('a.json', '{\n  "x": "1",\n  "border-start-start-radius": "0px"\n}')).not.toBe('{\n  "x": "1"\n}');
     expect(withoutPointerEvents('a.css', '.d {\n  border-top-left-radius: 1px;\n  color: blue;\n}\n')).not.toBe(withoutPointerEvents('a.css', '.d {\n  color: red;\n}\n'));
+  });
+
+  it('removes PNT1-shadow\'s box-shadow added since the base, whatever its list, and nothing else', () => {
+    expect(withoutPointerEvents('a.json', '{\n  "x": "1",\n  "box-shadow": "rgb(0, 0, 0) 1px 2px 3px 0px, rgb(255, 0, 0) 0px 0px 4px 1px inset"\n}')).toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('a.css', '.d {\n  box-shadow: none;\n  color: red;\n}\n')).toBe('.d {\n  color: red;\n}\n');
+    // A shadow-like key that is not box-shadow still differs.
+    expect(withoutPointerEvents('a.css', '.d {\n  text-shadow: none;\n  color: red;\n}\n')).not.toBe('.d {\n  color: red;\n}\n');
   });
 
   it('removes the PNT1 outline longhands added since the base, and nothing else', () => {

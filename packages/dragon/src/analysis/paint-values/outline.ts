@@ -5,7 +5,10 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
-import { transformsDescendants } from './transform.ts';
+import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
+import { stackingOf } from '../../lower/paint/stacking.ts';
+import { resolvedStackTree } from './stacking.ts';
+import { elementWillChange, transformsDescendants } from './transform.ts';
 import type { PaintCheck, PaintValues } from './types.ts';
 
 const keywordOf = (el: ResolvedElement, p: string): string => {
@@ -57,40 +60,60 @@ const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
   if (keywordOf(el, 'display') === 'inline') refuse(el, 'inline', 'has an outline on an inline box, which Blink draws around each line fragment', 'Outline a block or flex box, or give the element display: inline-block.', targets, diagnostics, reported);
 };
 
-/** Whether Chrome paints a box after its stacking context's outlines (CSS2 Appendix E step 8): a positioned or transformed box. */
-const paintsAfterOutlines = (el: ResolvedElement): boolean => ['relative', 'absolute', 'fixed', 'sticky'].includes(keywordOf(el, 'position')) || transformsDescendants(el);
+/**
+ * Why a layer item of the stacking tree (lower/paint/stacking.ts: a positioned box, a flex item with a z-index, a box with opacity
+ * below 1, a transform, or will-change: transform or opacity) paints in a layer of its own rather than in its context's flow.
+ */
+function layerReason(el: ResolvedElement): string {
+  const position = keywordOf(el, 'position');
+  if (['relative', 'absolute', 'fixed', 'sticky'].includes(position)) return `position: ${position}`;
+  const opacity = opacityOf((el.props.get('opacity') as ResolvedValue).value);
+  if (opacity !== null && opacity < 1) return `opacity: ${opacity}`;
+  if (transformsDescendants(el)) return 'a transform';
+  if (elementWillChange(el).includes('opacity')) return 'will-change: opacity';
+  // A static box's z-index makes it a layer item only as a flex item (resolvedStackTree), the one reason left.
+  const z = zIndexOf((el.props.get('z-index') as ResolvedValue).value);
+  if (z !== null) return `z-index: ${z} on a flex item`;
+  throw new Error(`${el.element.address}: a layer item with no reason to be one`);
+}
 
 const CLIPPING = ['hidden', 'clip', 'scroll', 'auto'];
 const clips = (el: ResolvedElement): boolean => CLIPPING.includes(keywordOf(el, 'overflow-x')) || CLIPPING.includes(keywordOf(el, 'overflow-y'));
 
 /**
- * Where the native outline paints. Without stacking order (lower/paint/stacking.ts is still a seam), Dragon draws every solid or
- * double outline in the root view after all the case's content, each box's descendants' outlines before its own: Chrome's order for
- * the root stacking context's outline phase (Blink PaintLayerPainter paints a layer's outlines after its foreground). Two cases would differ, so the native
- * targets refuse them at the outline: an outline under an overflow clip or scroller (the root view is outside it, so the clip
- * would not apply), and an outline in a case with a positioned or transformed box (Chrome paints those boxes above every outline
- * of their stacking context; native views paint in tree order). propagated is the element whose overflow the viewport takes
- * (css-overflow-3 §3.3), which does not clip.
+ * Where the native outline paints. Dragon draws every solid or double outline in the root view after all the case's content, each
+ * box's descendants' outlines before its own: Chrome's order for the root stacking context's outline phase when every box paints in
+ * that context's flow (Blink PaintLayerPainter paints a layer's outlines after its foreground). Two cases would differ, so the
+ * native targets refuse them at the outline: an outline under an overflow clip or scroller (the root view is outside it, so the
+ * clip would not apply), and an outline in a case with a layer item of the stacking tree (lower/paint/stacking.ts), which Chrome
+ * paints in a layer above the outlines of its stacking context, or whose own layer holds the outlines inside it (with its opacity).
+ * propagated is the element whose overflow the viewport takes (css-overflow-3 §3.3), which does not clip.
  */
 export function checkOutlinePlacement(root: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const outlined: { readonly el: ResolvedElement; readonly clip: ResolvedElement | null }[] = [];
-  let later: ResolvedElement | null = null;
+  const boxes: ResolvedElement[] = [];
   const walk = (el: ResolvedElement, clip: ResolvedElement | null): void => {
     if (keywordOf(el, 'display') === 'none') return;
     const style = paintedOutlineStyle(el);
     if (style === 'solid' || style === 'double') outlined.push({ el, clip });
-    if (later === null && el !== root && paintsAfterOutlines(el)) later = el;
+    if (el !== root) boxes.push(el);
     const inner = el !== root && el !== propagated && clips(el) ? el : clip;
     for (const c of el.children) if (c.kind === 'element') walk(c, inner);
   };
   walk(root, null);
-  const stacked = later as ResolvedElement | null;
+  if (outlined.length === 0) return;
+  // The first layer item in tree order (the stacking tree is built only for a case with a painting outline).
+  const facts = stackingOf(resolvedStackTree(root, propagated)).facts;
+  const stacked = boxes.find((el) => {
+    const f = facts.get(el.element.address);
+    if (f === undefined) throw new Error(`${el.element.address} is not in the stacking tree`);
+    return f.layer !== 'flow';
+  });
   for (const { el, clip } of outlined) {
     if (clip !== null) {
-      refuse(el, 'clip', `has an outline inside the overflow clip of ${clip.element.address}, and Dragon draws native outlines in the root view, outside that clip, until it models stacking order`, `Move the outline to a box outside ${clip.element.address}, or let ${clip.element.address} overflow visibly.`, targets, diagnostics, reported);
-    } else if (stacked !== null) {
-      const what = keywordOf(stacked, 'position') !== 'static' ? `position: ${keywordOf(stacked, 'position')}` : 'a transform';
-      refuse(el, 'stacking', `has an outline, and ${stacked.element.address} has ${what}, which Chrome paints above every outline of its stacking context (CSS2 Appendix E); Dragon draws native outlines after all the content until it models stacking order`, 'Use outlines in a view without positioned or transformed boxes, or outline: none.', targets, diagnostics, reported);
+      refuse(el, 'clip', `has an outline inside the overflow clip of ${clip.element.address}, and Dragon draws native outlines in the root view, outside that clip, until it hosts them in their stacking context`, `Move the outline to a box outside ${clip.element.address}, or let ${clip.element.address} overflow visibly.`, targets, diagnostics, reported);
+    } else if (stacked !== undefined) {
+      refuse(el, 'stacking', `has an outline, and ${stacked.element.address} has ${layerReason(stacked)}, which Chrome paints in a layer of its own, above the outlines of its stacking context (CSS2 Appendix E); Dragon draws native outlines after all the content until it hosts them in their stacking context`, 'Use outlines in a view without positioned, translucent or transformed boxes, or outline: none.', targets, diagnostics, reported);
     }
   }
 }
