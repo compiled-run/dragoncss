@@ -119,10 +119,10 @@ const checkOwnViews: PaintCheck = (el, targets, diagnostics, reported) => {
 
 export const VISIBILITY_VALUES: PaintValues = {
   name: 'visibility',
-  check: (el, targets, diagnostics, reported) => {
-    checkInlineVisibility(el, targets, diagnostics, reported);
-    checkBodyBackground(el, targets, diagnostics, reported);
-    checkOwnViews(el, targets, diagnostics, reported);
+  check: (el, targets, diagnostics, reported, propagated) => {
+    checkInlineVisibility(el, targets, diagnostics, reported, propagated);
+    checkBodyBackground(el, targets, diagnostics, reported, propagated);
+    checkOwnViews(el, targets, diagnostics, reported, propagated);
   },
   compute: () => {},
 };

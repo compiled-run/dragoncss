@@ -15,8 +15,9 @@ type VectorFile = { platform: string; measurer: string; input: { devicePixelRati
 
 describe('DPR vectors', () => {
   it('the DPR folders hold exactly the DPR sets 2, 3 and 2.625 (the Android extra), each with a snap folder', () => {
-    // V1 adds the calc goldens (vectors/calc), one engine vector per (verify) point of the value model.
-    expect(readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort()).toEqual(['calc', 'dpr-2', 'dpr-2.625', 'dpr-3']);
+    // V1 adds the calc goldens (vectors/calc), one engine vector per (verify) point of the value model. TXT1a-1 adds the text-latin
+    // vectors (vectors/text-latin/dpr-<d>, DPR 1 included, each with its shape transcript), checked by packages/parity/test/text-latin.test.ts.
+    expect(readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort()).toEqual(['calc', 'dpr-2', 'dpr-2.625', 'dpr-3', 'text-latin']);
     for (const d of DPRS) expect(readdirSync(join(dir, `dpr-${d}`), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)).toEqual(['snap']);
   });
 

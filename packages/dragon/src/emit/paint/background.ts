@@ -10,10 +10,12 @@ const SWIFT_MEMBERS = String.raw`  /// The background colour the case or a runti
 
 const SWIFT = String.raw`import UIKit
 
-/// The background write of a box (runtime writer): the colour, then the native-or-rounded choice for the current shape.
+/// The background write of a box (runtime writer): the colour, then the native-or-rounded choice for the current shape, then the
+/// shadows whose backdrop it is (the shadow module).
 public func dragonBackground(_ v: DragonBoxView, _ c: DragonRGBA8) {
   v.dragonBackgroundColor = c
   dragonSyncBackground(v)
+  dragonShadowBackdropChanged(v)
 }
 
 /// A square box keeps UIView.backgroundColor; a rounded box turns it off and the background stage fills the rounded border box. A
@@ -62,11 +64,13 @@ import android.graphics.drawable.ColorDrawable
 import dev.dragon.dump.DumpJson
 
 /**
- * The background write of a box (runtime writer): the colour, then the native-or-rounded choice for the current shape.
+ * The background write of a box (runtime writer): the colour, then the native-or-rounded choice for the current shape, then the
+ * shadows whose backdrop it is (the shadow module).
  */
 fun dragonBackground(v: DragonBoxView, c: DragonRGBA8) {
   v.dragonBackgroundColor = c
   dragonSyncBackground(v)
+  dragonShadowBackdropChanged(v)
 }
 
 /**

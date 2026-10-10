@@ -1,4 +1,4 @@
-// The host paint model of the PNT1 tests (pnt1-radius): boxes in tree order, each filling its rounded border box,
+// The host paint model of the PNT1 tests (pnt1-radius, pnt1-shadow): boxes in tree order, each filling its rounded border box,
 // borders between the rounded border-box and padding-edge shapes (a corner's side by the outer-to-inner diagonal), rounded overflow
 // clips of ancestors, and Skia's 8-bit source-over. It predicts the colour of a sample pixel from the program and the TS
 // paint-radius.ts geometry, for comparison with the committed Chrome PNGs.

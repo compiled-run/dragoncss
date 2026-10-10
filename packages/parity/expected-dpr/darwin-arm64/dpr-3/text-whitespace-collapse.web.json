@@ -95,6 +95,7 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "box-shadow": "none",
         "opacity": "1",
         "z-index": "auto",
         "transform": "none",
@@ -111,8 +112,7 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none",
-        "visibility": "visible"
+        "list-style-image": "none"
       }
     },
     {
@@ -200,6 +200,7 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "box-shadow": "none",
         "opacity": "1",
         "z-index": "auto",
         "transform": "none",
@@ -216,8 +217,7 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none",
-        "visibility": "visible"
+        "list-style-image": "none"
       }
     },
     {
@@ -305,6 +305,7 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "box-shadow": "none",
         "opacity": "1",
         "z-index": "auto",
         "transform": "none",
@@ -321,8 +322,7 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none",
-        "visibility": "visible"
+        "list-style-image": "none"
       }
     },
     {
@@ -460,6 +460,7 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "box-shadow": "none",
         "opacity": "1",
         "z-index": "auto",
         "transform": "none",
@@ -476,8 +477,7 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none",
-        "visibility": "visible"
+        "list-style-image": "none"
       }
     },
     {
@@ -595,6 +595,7 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "box-shadow": "none",
         "opacity": "1",
         "z-index": "auto",
         "transform": "none",
@@ -611,8 +612,7 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none",
-        "visibility": "visible"
+        "list-style-image": "none"
       }
     },
     {
@@ -740,6 +740,7 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "box-shadow": "none",
         "opacity": "1",
         "z-index": "auto",
         "transform": "none",
@@ -756,8 +757,7 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none",
-        "visibility": "visible"
+        "list-style-image": "none"
       }
     },
     {
@@ -875,6 +875,7 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "box-shadow": "none",
         "opacity": "1",
         "z-index": "auto",
         "transform": "none",
@@ -891,8 +892,7 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none",
-        "visibility": "visible"
+        "list-style-image": "none"
       }
     },
     {
@@ -980,6 +980,7 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "box-shadow": "none",
         "opacity": "1",
         "z-index": "auto",
         "transform": "none",
@@ -996,8 +997,7 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none",
-        "visibility": "visible"
+        "list-style-image": "none"
       }
     },
     {
@@ -1105,6 +1105,7 @@
         "border-top-right-radius": "0px",
         "border-bottom-right-radius": "0px",
         "border-bottom-left-radius": "0px",
+        "box-shadow": "none",
         "opacity": "1",
         "z-index": "auto",
         "transform": "none",
@@ -1121,8 +1122,7 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none",
-        "visibility": "visible"
+        "list-style-image": "none"
       }
     },
     {

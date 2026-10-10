@@ -196,12 +196,12 @@ describe('build reuse', () => {
     // The engine and the runtime support stay at -O; only generated case code is at -Onone.
     expect(m.core.every((p) => p.startsWith('DragonLayout/') || p.startsWith('Support/'))).toBe(true);
     expect(m.core.filter((p) => p.startsWith('DragonLayout/')).length).toBeGreaterThan(0);
-    expect(m.cases.every((p) => /^Cases\/Dragon(Cases|States)\d+\.swift$/.test(p))).toBe(true);
-    expect(m.host).toEqual(expect.arrayContaining(['Host/main.swift', 'Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift']));
+    expect(m.cases.every((p) => /^Cases\/Dragon(Cases|States|Interactions)\d+\.swift$/.test(p))).toBe(true);
+    expect(m.host).toEqual(expect.arrayContaining(['Host/main.swift', 'Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift', 'Cases/DragonInteractionCaseTable.swift']));
     // A planted host file builds in DragonHost, where swiftc's availability check still sees it.
     expect(iosModules([...paths, 'Host/DragonPlanted.swift']).host).toContain('Host/DragonPlanted.swift');
     expect(() => iosModules(paths.filter((p) => p !== 'Cases/DragonCaseTable.swift'))).toThrow(/no Cases\/DragonCaseTable.swift/);
-    expect(() => iosModules(paths.filter((p) => !/^Cases\/DragonCases\d/.test(p) && !/^Cases\/DragonStates\d/.test(p)))).toThrow(/do not split/);
+    expect(() => iosModules(paths.filter((p) => !/^Cases\/Dragon(Cases|States|Interactions)\d/.test(p)))).toThrow(/do not split/);
   });
   it('the app cache key hashes every command argument and the module assignment, not a label', () => {
     const paths = hostSources('ios', 'x').map((f) => f.path);
@@ -273,19 +273,22 @@ describe('the node and line split of (a) and (d)', () => {
 const trustCase = (n: NativeCase, dpr: number): TrustCase => ({ id: n.case.id, points: casePoints(n.programs.uikit, n.case.environment.viewport, dpr), size: rasterSize(n.case.environment.viewport, dpr) });
 
 describe('the paint plant verdict', () => {
-  const f = (lane: DeviceCheckLane, kind: FailureKind, node: string | null) => ({ lane, case: 'radius-basic', dpr: 3, node, kind, detail: 'x' });
+  const f = (lane: DeviceCheckLane, kind: FailureKind, node: string | null) => ({ lane, case: 'calib-shadow-blur', dpr: 3, node, kind, detail: 'x' });
+  const shadow = PLANT_RULES['shadow-offset-1'];
   const radius = PLANT_RULES['radius-square'];
-  const hit = f('device-pixels', 'pixel', 'radius:r1:top-left:0');
+  const hit = f('device-pixels', 'pixel', 'shadow:s1:0');
   it('caught: a pixel failure on a probe rule with frames and lines clean and the host finished', () => {
-    expect(plantVerdict([hit], null, radius)).toMatchObject({ caught: true, pixels: 1, inked: 1 });
+    expect(plantVerdict([hit], null, shadow)).toMatchObject({ caught: true, pixels: 1, inked: 1 });
+    expect(plantVerdict([f('device-pixels', 'pixel', 'radius:r1:top-left:0')], null, radius).caught).toBe(true);
   });
   it('not caught: the host did not finish, only other rules failed, a non-pixel kind, or frames or lines failed too', () => {
-    expect(plantVerdict([hit], 'timed out', radius).caught).toBe(false);
-    expect(plantVerdict([f('device-pixels', 'pixel', 'edge:w1:bottom')], null, radius).caught).toBe(false);
-    expect(plantVerdict([f('device-pixels', 'raster-size', 'radius:r1:top-left:0')], null, radius).caught).toBe(false);
-    expect(plantVerdict([hit, f('device-frames', 'frame-engine', 'w1')], null, radius).caught).toBe(false);
-    expect(plantVerdict([hit, f('device-lines', 'break-mismatch', 'w1:text0')], null, radius).caught).toBe(false);
-    expect(plantVerdict([], null, radius).caught).toBe(false);
+    expect(plantVerdict([hit], 'timed out', shadow).caught).toBe(false);
+    expect(plantVerdict([hit], null, radius).caught).toBe(false);
+    expect(plantVerdict([f('device-pixels', 'pixel', 'edge:w1:bottom')], null, shadow).caught).toBe(false);
+    expect(plantVerdict([f('device-pixels', 'raster-size', 'shadow:s1:0')], null, shadow).caught).toBe(false);
+    expect(plantVerdict([hit, f('device-frames', 'frame-engine', 'w1')], null, shadow).caught).toBe(false);
+    expect(plantVerdict([hit, f('device-lines', 'break-mismatch', 'w1:text0')], null, shadow).caught).toBe(false);
+    expect(plantVerdict([], null, shadow).caught).toBe(false);
   });
 });
 

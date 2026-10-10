@@ -149,6 +149,13 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(withoutPointerEvents('a.css', '.d {\n  border-top-left-radius: 1px;\n  color: blue;\n}\n')).not.toBe(withoutPointerEvents('a.css', '.d {\n  color: red;\n}\n'));
   });
 
+  it('removes PNT1-shadow\'s box-shadow added since the base, whatever its list, and nothing else', () => {
+    expect(withoutPointerEvents('a.json', '{\n  "x": "1",\n  "box-shadow": "rgb(0, 0, 0) 1px 2px 3px 0px, rgb(255, 0, 0) 0px 0px 4px 1px inset"\n}')).toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('a.css', '.d {\n  box-shadow: none;\n  color: red;\n}\n')).toBe('.d {\n  color: red;\n}\n');
+    // A shadow-like key that is not box-shadow still differs.
+    expect(withoutPointerEvents('a.css', '.d {\n  text-shadow: none;\n  color: red;\n}\n')).not.toBe('.d {\n  color: red;\n}\n');
+  });
+
   it('parity:hit-capture takes --vectors, --identity-base <rev> or nothing, and refuses anything else', () => {
     expect(parseHitCaptureArgs([])).toEqual({ mode: 'capture' });
     expect(parseHitCaptureArgs(['--'])).toEqual({ mode: 'capture' });

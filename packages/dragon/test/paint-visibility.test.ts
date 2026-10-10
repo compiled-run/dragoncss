@@ -208,6 +208,12 @@ describe('visibility: emission', () => {
       expect(vis).toContain('dragonSyncBackground(v)');
       expect(vis).not.toMatch(/Shadow|Outline/);
     });
+    it(`${backend}: leaves a hidden ancestor's background out of a visible box's shadow backdrop (the canvas's stays)`, () => {
+      const shadow = files.find((f) => f.path.endsWith(`DragonPaintShadow.${ios ? 'swift' : 'kt'}`))?.text ?? '';
+      expect(shadow).toContain(ios ? 'if c.a == 0 || (!b.dragonVisible && !b.dragonVisibilityCanvas) { continue }' : 'if (c.a == 0 || (!b.dragonVisible && !b.dragonVisibilityCanvas)) continue');
+      // The background sync a visibility write runs recomputes the shadows below it.
+      expect(all).toContain('dragonShadowBackdropChanged(v)');
+    });
     it(`${backend}: each plant replaces exactly one line`, () => {
       for (const plant of VISIBILITY_EMITTER.plants) {
         const [from, to] = plant.replace[backend];

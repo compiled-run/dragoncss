@@ -17,6 +17,7 @@ import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
+import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
 import { INLINE } from './fixture-groups/inline.ts';
@@ -32,9 +33,11 @@ import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
+import { SHADOW } from './fixture-groups/shadow.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
+import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
@@ -111,6 +114,7 @@ export const GROUPS = {
   effects: EFFECTS,
   env: ENV,
   fonts: FONTS,
+  gradients: GRADIENTS,
   grid: GRID,
   'inherit-contexts': INHERIT_CONTEXTS,
   inline: INLINE,
@@ -126,9 +130,11 @@ export const GROUPS = {
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
   selectors: SELECTORS,
+  shadow: SHADOW,
   showcase: SHOWCASE,
   'sizing-ratio': SIZING,
   states: STATES,
+  'text-latin': TEXT_LATIN,
   transforms: TRANSFORMS,
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,
