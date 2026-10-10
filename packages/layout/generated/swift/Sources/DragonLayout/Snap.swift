@@ -34,15 +34,15 @@ public func snap_snapEdges(_ boxes: JsArray<LayoutRect>) throws -> JsArray<Snapp
   let out: JsArray<SnappedRect> = JsArray<SnappedRect>([])
   // ts: packages/layout/src/snap.ts:32
   do {
-    let _a188 = boxes
-    var _i188 = 0
-    while _i188 < _a188.items.count {
-      let b: LayoutRect = _a188.items[_i188]
-      _i188 += 1
+    let _a217 = boxes
+    var _i217 = 0
+    while _i217 < _a217.items.count {
+      let b: LayoutRect = _a217.items[_i217]
+      _i217 += 1
       let r: LayoutRect? = abs.get(b.id)
       // ts: packages/layout/src/snap.ts:34
       if (r == nil) {
-        throw JsError(message: jsConcat(S.s573, b.id))
+        throw JsError(message: jsConcat(S.s604, b.id))
       }
       _ = try jsPush(out, snap_snapRect(jsUnwrap(r)))
     }
