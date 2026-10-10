@@ -26,7 +26,7 @@ export { iosProfile } from './profiles/ios.ts';
 export { webProfile } from './profiles/web.ts';
 export { androidProfile } from './profiles/android.ts';
 export type { Proof, ProofAspect, ProofLane, ProfileRow, SupportProfile } from './profiles/types.ts';
-export { nativeScrollPending, PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
+export { PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
 export type { ProfileNote } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
 export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';
@@ -105,7 +105,7 @@ export function interactionPartitionOf(compiled: object, assignment: Assignment)
   return typeof c === 'string' ? null : c.partition;
 }
 
-/** SELD-R2 and T078 R14: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
+/** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
 export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
   return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
 }
@@ -458,3 +458,48 @@ export type { InteractionState } from './analysis/match.ts';
 export { NO_INTERACTION } from './analysis/match.ts';
 export type { InteractionCondition, WebInteraction } from './emit/web-css.ts';
 export { conditionsExclusive, gatedConditions, HOVER_MEDIA, interactionCondition, NO_HOVER_MEDIA } from './emit/web-css.ts';
+
+// SELD-R2 PR 3 (notes/T064-seld-r2-spec.md R7, R12, R16): the interaction program and the interaction runtime's reference.
+export type { InteractionLevel, InteractionLevelInput, InteractionProgram } from './lower/interaction-program.ts';
+export { deriveInteractionProgram, INTERACTION_PROGRAM_VERSION, interactionDelta, interactionProgramAt, interactionTables } from './lower/interaction-program.ts';
+import type { InteractionLevelInput as LevelInput } from './lower/interaction-program.ts';
+
+/** HTML text fields (input types whose element may show a virtual keyboard, R8, P6): pointer focus on them is focus-visible. */
+const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'search', 'url', 'tel', 'email', 'password', 'number']);
+
+/**
+ * The interaction level input of one app assignment for one backend: its partition, each partition state's per-case program, and
+ * per element whether its control consumes a touch (input type=range, P7) and whether pointer focus on it is focus-visible (R8).
+ */
+export function interactionLevelInput(compiled: object, assignment: Assignment, backend: NativeBackend): LevelInput | string {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string') return c;
+  if (c.partition === null || c.resolved === null) return 'the case did not resolve';
+  const elements = new Map<string, ResolvedElement>();
+  const walk = (el: ResolvedElement): void => {
+    elements.set(el.element.address, el);
+    for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+  };
+  walk(c.resolved);
+  const programs: NativeProgram[] = [];
+  for (const i of c.interaction) {
+    const p = nativePrograms(compiled, assignment, i.value.key);
+    if (p.kind === 'blocked') return `interaction state ${i.value.key}: ${p.reason}`;
+    programs.push(p.programs[backend]);
+  }
+  const typeOf = (address: string): string | null => {
+    const el = elements.get(address)?.element;
+    if (el === undefined) return null;
+    if (el.tag === 'textarea') return 'textarea';
+    return el.tag === 'input' ? (el.attributes.get('type')?.trim().toLowerCase() || 'text') : null;
+  };
+  return {
+    partition: c.partition,
+    programs,
+    touchConsumesTap: (address) => typeOf(address) === 'range',
+    keyboardInput: (address) => {
+      const type = typeOf(address);
+      return type === 'textarea' || (type !== null && TEXT_FIELD_TYPES.has(type));
+    },
+  };
+}

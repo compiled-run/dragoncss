@@ -4,7 +4,7 @@ import type { Longhand, ProfileNote, ProfileRow, Proof } from 'dragon';
 import { MEDIA_CONTEXT, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
-import { DEVICE_CHECK_LANES } from './device-lanes.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE } from './device-lanes.ts';
 import type { LanesFile } from './lanes.ts';
 import { readLanesFile, staleEvidence, staleLanes } from './lanes.ts';
 import { repoPath } from './paths.ts';
@@ -62,21 +62,38 @@ export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[])
   return rows;
 }
 
-/**
- * T065: the animation rows (context `animation`) from the frame cases that pass the host frame lanes (anim-report), web only:
- * exact through chrome-dual at every sample. iOS and Android rows wait for the native animator and its device-anim lane, so
- * no native output claims motion it does not run.
- */
 /** T065: the context of every animation row; its proofs are frame cases (anim-frames.test.ts), not layout cases (parity.test.ts). */
 export const ANIMATION_CONTEXT = 'animation';
 
-export function deriveAnimationRows(target: ProfileTarget, passing: readonly { readonly id: string; readonly features: readonly string[] }[]): ProfileRow[] {
-  if (target !== 'web') return [];
-  const features = [...new Set(passing.flatMap((c) => c.features))].sort();
+/** A frame case that passes the host frame lanes (anim-report): its features and, per native target, its device-anim sample ids. */
+export type PassingFrameCase = { readonly id: string; readonly features: readonly string[]; readonly samples?: { readonly [T in NativeTarget]?: readonly string[] } };
+
+/** Why a frame case is not device-proven on a target, or null when every one of its samples passes device-anim at every DPR (pure). */
+export function animDeviceBlocker(ev: DeviceEvidence, samples: readonly string[]): string | null {
+  if (ev.unavailable !== null) return ev.unavailable;
+  if (samples.length === 0) return 'no frame samples';
+  const l = ev.lanes.find((x) => x.lane === ANIM_LANE);
+  if (l === undefined) return `${ev.target} has no ${ANIM_LANE} lane`;
+  for (const id of samples) {
+    if (!l.cases.has(id)) return `${id} is not run by ${ev.target} ${ANIM_LANE} at every DPR`;
+    if (l.failing.has(id)) return `${id} fails ${ev.target} ${ANIM_LANE}`;
+  }
+  return null;
+}
+
+/**
+ * T065: the animation rows (context `animation`) from the frame cases that pass the host frame lanes (anim-report). Web: exact
+ * through chrome-dual at every sample. iOS and Android (R18): exact through device-anim, only for the frame cases every one of
+ * whose samples passes that target's committed device-anim lane at every DPR, so no native output claims motion it does not run.
+ */
+export function deriveAnimationRows(target: ProfileTarget, passing: readonly PassingFrameCase[], device: DeviceEvidence | null = null): ProfileRow[] {
+  const proven = target === 'web' ? passing : device === null ? [] : passing.filter((c) => animDeviceBlocker(device, c.samples?.[target] ?? []) === null);
+  const lane = target === 'web' ? 'chrome-dual' : 'device-anim';
+  const features = [...new Set(proven.flatMap((c) => c.features))].sort();
   return features.map((feature) => {
-    const ids = passing.filter((c) => c.features.includes(feature)).map((c) => c.id);
+    const ids = proven.filter((c) => c.features.includes(feature)).map((c) => c.id);
     const valueSubset = feature.slice(feature.indexOf(':') + 1);
-    return { feature, context: ANIMATION_CONTEXT, status: 'exact', proofs: [{ aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context: ANIMATION_CONTEXT, cases: ids }] };
+    return { feature, context: ANIMATION_CONTEXT, status: 'exact', proofs: [{ aspect: 'computed-value', lane, valueSubset, context: ANIMATION_CONTEXT, cases: ids }] };
   });
 }
 
@@ -277,7 +294,8 @@ export function checkedFailures(v: unknown, what: string): LaneFailure[] {
     };
     if (!isObject(f)) bad('not an object');
     const o = f as Record<string, unknown>;
-    if (!(DEVICE_CHECK_LANES as readonly unknown[]).includes(o['lane'])) bad(`lane ${JSON.stringify(o['lane'])} is not a device check lane`);
+    // allRunFailures writes every device lane's failures, the script, hit and frame sample lanes' too.
+    if (![...DEVICE_CHECK_LANES, STATE_LANE, HIT_LANE, ANIM_LANE].includes(o['lane'] as string)) bad(`lane ${JSON.stringify(o['lane'])} is not a device lane`);
     if (typeof o['case'] !== 'string' || o['case'] === '') bad('case is not a non-empty string');
     if (typeof o['dpr'] !== 'number' || !(o['dpr'] > 0)) bad('dpr is not a positive number');
     if (o['node'] !== null && typeof o['node'] !== 'string') bad('node is neither null nor a string');

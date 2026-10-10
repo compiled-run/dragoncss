@@ -2,6 +2,9 @@
 // (the css-overflow-3 §3.1 pair rule, Chrome's user-agent defaults), on where a declaration applies (html and body), or on the
 // text and its direction (UAX #9).
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
+import { radiusLengths, roundsAnyCorner } from '../lower/paint/radius.ts';
+import { ProgramError } from '../lower/paint/types.ts';
+import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import { exactLayoutRatio, featureOf } from '../css/values.ts';
@@ -53,44 +56,67 @@ function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnost
 const isScrollKeyword = (k: string): boolean => k === 'hidden' || k === 'auto' || k === 'scroll';
 
 /**
- * T078 R14: an axis whose used overflow is auto or scroll is a box the user scrolls, and the native outputs have no scroll views
- * until OVFL-B, so it is refused on each native target (nativeScrollPending), at the axis's own declaration or, for a value
- * computed from its partner (css-overflow-3 §3.1), at the partner's. The element the viewport takes its overflow from uses
- * visible (§3.3) and is not refused. The parity lanes skip this check: they prove the layout at scroll offset 0.
+ * OVFL-B: Chrome 145 paints a user-scrollable box's solid background in its scrolling contents (LayoutBox::
+ * ComputeBackgroundPaintLocation), over the scrollable overflow rect plus borders at the contents paint offset
+ * (BoxFragmentPainter::PaintBoxDecorationBackground), which places it by the scroll origin's whole device px. A scroll container
+ * whose overflow may extend past its start (any rtl one, and a reversed flex container: row-reverse, column-reverse or
+ * wrap-reverse) has a scroll origin, and where that is a fraction of a device px its background stops up to one device px short
+ * of the padding box's end edge (measured: overflow-flex-reverse a2 at DPR 2.625, x 180). The native scroll views paint the
+ * background over the whole padding box, so a painted background there is refused on ios and android until it is drawn so.
  */
-export function checkNativeScroll(root: ResolvedElement, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  if (nativeTargets.length === 0) return;
-  const propagated = propagatedFrom(root);
-  const axes: Longhand[] = ['overflow-x', 'overflow-y'];
-  const walk = (el: ResolvedElement): void => {
-    if (keywordOf(el.props.get('display') as ResolvedValue) === 'none') return;
-    if (el !== propagated) {
-      const values = axes.map((p) => el.props.get(p) as ResolvedValue);
-      for (const [i, v] of values.entries()) {
-        const k = keywordOf(v);
-        if (k !== 'auto' && k !== 'scroll') continue;
-        const partner = values[1 - i] as ResolvedValue;
-        const source = v.declaration !== null ? v : partner.declaration !== null ? partner : null;
-        const origin = source === null || source.declaration === null ? el.element.node.origin : authored(source.declaration.valueSpan);
-        const property = axes[i] as Longhand;
-        const how = v.declaration !== null ? `is ${k}` : `computes to ${k} beside ${axes[1 - i] as Longhand}: ${keywordOf(partner)} (css-overflow-3 §3.1)`;
-        for (const t of nativeTargets) {
-          const id = `${t}|ovfl-b|${property}|${JSON.stringify(origin)}`;
-          if (reported.has(id)) continue;
-          reported.add(id);
-          const message = `${property} ${how} on ${el.element.address}, a box the user scrolls; ${t} has no native scroll views until OVFL-B`;
-          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Use overflow: hidden or clip on both axes for native, or wait for OVFL-B.', basis: 'computed-value' }));
-        }
-      }
-    }
-    for (const c of el.children) if (c.kind === 'element') walk(c);
-  };
-  walk(root);
+function checkStartOverflowBackground(el: ResolvedElement, propagated: ResolvedElement | null, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (nativeTargets.length === 0 || el === propagated) return;
+  const kw = (p: Longhand): string => keywordOf(el.props.get(p) as ResolvedValue);
+  const reversed = kw('display') === 'flex' && (kw('flex-direction').endsWith('-reverse') || kw('flex-wrap') === 'wrap-reverse');
+  const rtl = kw('direction') === 'rtl';
+  const scrolls = (['overflow-x', 'overflow-y'] as const).some((p) => kw(p) === 'auto' || kw(p) === 'scroll');
+  const bg = el.props.get('background-color') as ResolvedValue;
+  const painted = bg.value.kind === 'color' ? bg.value.value.alpha > 0 : !(bg.value.kind === 'keyword' && bg.value.value === 'transparent');
+  if (!(reversed || rtl) || !scrolls || !painted) return;
+  const origin = bg.declaration === null ? el.element.node.origin : authored(bg.declaration.valueSpan);
+  const shape = reversed ? `a reversed flex scroll container (${kw('flex-direction')}, ${kw('flex-wrap')}${rtl ? ', rtl' : ''})` : 'an rtl scroll container';
+  const message = `background-color on ${el.element.address}, ${shape} whose overflow may extend past its start: Chrome paints it in the scrolling contents, offset by the scroll origin's whole device px, which the native scroll view does not draw yet (OVFL-B)`;
+  for (const t of nativeTargets) {
+    const id = `${t}|ovfl-b-bg|${JSON.stringify(origin)}|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin, target: t, message, manual: 'Move the background to a wrapper outside the scroll container, or use overflow: hidden.' }));
+  }
 }
+
+/**
+ * OVFL-B with PNT1 (#198): a rounded overflow clip masks the clip view (iOS layer mask, Android outline or overlay mask) in its own
+ * coordinates, which a scroll view moves with its scroll offset, and no fixture compares a rounded scroll container with Chrome.
+ * So border-radius on an auto or scroll container is refused on ios and android until it is drawn and proven.
+ */
+function checkRoundedScrollContainer(el: ResolvedElement, propagated: ResolvedElement | null, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (nativeTargets.length === 0 || el === propagated) return;
+  const kw = (p: Longhand): string => keywordOf(el.props.get(p) as ResolvedValue);
+  if (!(['overflow-x', 'overflow-y'] as const).some((p) => kw(p) === 'auto' || kw(p) === 'scroll')) return;
+  let rounded: boolean;
+  try {
+    rounded = roundsAnyCorner(radiusLengths(el.props, el.element.address));
+  } catch (e) {
+    // A radius that does not compute to px or a percentage is refused by the radius lowering itself.
+    if (e instanceof ProgramError) return;
+    throw e;
+  }
+  if (!rounded) return;
+  const decl = RADIUS_LONGHANDS.map((p) => el.props.get(p) as ResolvedValue).find((v) => v.declaration !== null);
+  const origin = decl === undefined || decl.declaration === null ? el.element.node.origin : authored(decl.declaration.valueSpan);
+  const message = `border-radius on ${el.element.address}, a scroll container: the rounded clip of a native scroll view is not drawn or proven yet (OVFL-B with PNT1)`;
+  for (const t of nativeTargets) {
+    const id = `${t}|ovfl-b-radius|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin, target: t, message, manual: 'Round a wrapper outside the scroll container, or use overflow: hidden.' }));
+  }
+}
+
 const hasPercentage = (v: ResolvedValue): boolean => v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
 
 /** css-overflow-3 §3.3: the element whose overflow the viewport takes (html when not visible, else body), which uses visible. */
-function propagatedFrom(root: ResolvedElement): ResolvedElement | null {
+export function propagatedFrom(root: ResolvedElement): ResolvedElement | null {
   const visible = (el: ResolvedElement): boolean => keywordOf(el.props.get('overflow-x') as ResolvedValue) === 'visible' && keywordOf(el.props.get('overflow-y') as ResolvedValue) === 'visible';
   if (!visible(root)) return root;
   const body = root.children.find((c): c is ResolvedElement => c.kind === 'element' && c.element.tag === 'body');
@@ -471,6 +497,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
     checkOverflow(el, targets, diagnostics, reported);
+    if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     if (!here) checkBidi(el, diagnostics, reported);

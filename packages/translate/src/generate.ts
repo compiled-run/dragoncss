@@ -61,6 +61,8 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     // OVFL: scroll containers' client sizes and scrollable overflow, which the native scroll views are sized by.
     { file: at('overflow.ts'), name: 'scrollMetrics' },
     { file: at('overflow.ts'), name: 'scrollMetricsWithFaults' },
+    // OVFL-B: each scroll container's offset range in device px, which the native scroll views clamp to.
+    { file: at('overflow.ts'), name: 'scrollRanges' },
   ];
   const program = createProgram(files);
   const units = program.getSourceFile(at('units.ts')) as ts.SourceFile;
@@ -88,6 +90,11 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
   const hit = program.getSourceFile(at('rt-hit.ts')) as ts.SourceFile;
   for (const st of hit.statements) {
     if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('rt-hit.ts'), name: st.name.text });
+  }
+  // SELD-R2 (T064 R12): the interaction runtime.
+  const interaction = program.getSourceFile(at('rt-interaction.ts')) as ts.SourceFile;
+  for (const st of interaction.statements) {
+    if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('rt-interaction.ts'), name: st.name.text });
   }
   return roots;
 }

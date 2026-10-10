@@ -24,7 +24,7 @@ import { isShapedInput, joinHyphenRects } from './text-latin-run.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './device-lanes.ts';
 import type { DeviceLaneId } from './device-lanes.ts';
-import { DEVICE_CHECK_LANES, failuresByKind, HIT_LANE, laneFailures, STATE_LANE } from './device-lanes.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, failuresByKind, HIT_LANE, laneFailures, STATE_LANE } from './device-lanes.ts';
 import type { DeviceEvidence } from './device-evidence.ts';
 import { deviceEvidence, evidenceProblems } from './device-evidence.ts';
 import type { DeviceRecord } from './device-run.ts';
@@ -455,6 +455,8 @@ export type DeviceRun = {
   /** SELD-R1b: the case scripts' sets (device-states) and the hit records' sets (device-hit), one per device; absent before them. */
   readonly states?: readonly DeviceSet[];
   readonly hits?: readonly DeviceSet[];
+  /** ANIM-b1 3b: the frame samples' sets (device-anim), one per device; absent before it. */
+  readonly anims?: readonly DeviceSet[];
   readonly trust: readonly { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] }[];
   /** A tooling fault that stopped the run (a device that failed to boot twice, a device that cannot hold the root). */
   readonly blocked: string | null;
@@ -588,6 +590,7 @@ function lanesFileOf(targets: readonly TargetConfig[], problems: readonly string
           };
           if (l.lane === STATE_LANE) return hosts(deviceLaneRecord(l, d, d.states ?? []));
           if (l.lane === HIT_LANE) return hosts(deviceLaneRecord(l, d, d.hits ?? []));
+          if (l.lane === ANIM_LANE) return hosts(deviceLaneRecord(l, d, d.anims ?? []));
           if (l.lane !== 'layout-vectors-device') return hosts(deviceLaneRecord(l, d));
           if (d.vectors === null) return hosts(laneRecord(l, d.blocked === null ? 'not run' : 'blocked (owner tooling)', d.blocked ?? DEVICE_NOT_RUN, null));
           return hosts(laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests }, null, d.evidence));

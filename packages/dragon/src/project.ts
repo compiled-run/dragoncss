@@ -16,7 +16,7 @@ import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import { splitNotApplicable } from './css/not-applicable.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
-import { checkComputed, checkNativeScroll } from './analysis/computed-checks.ts';
+import { checkComputed } from './analysis/computed-checks.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
@@ -56,6 +56,7 @@ import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
 import type { EngineFace } from './lower/ios-layout.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
+import { undecidedScrollContainers } from './lower/scroll-decidable.ts';
 import { PROGRAM_VERSIONS } from './lower/native-program.ts';
 import type { BandAnalysis } from './lower/band-program.ts';
 import { bandTableOf, refuseBandedNativeAnimations, refuseBandedStateSpace, refuseSizeTransitions } from './lower/band-program.ts';
@@ -65,7 +66,7 @@ import { band, bandAt, evaluateInBand, featuresOfList, holdsWholePx } from './me
 import { androidProfile } from './profiles/android.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
-import { nativeScrollPending, provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
+import { provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
 import { webProfile } from './profiles/web.ts';
 import type { UaDataset } from './ua/datasets.ts';
 import { REFERENCE_PLATFORM, ReferencePlatformUnavailable, uaDatasetFor } from './ua/datasets.ts';
@@ -399,8 +400,6 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
         for (const t of ruleTargets) {
           const profile = profileFor(profiles, t);
           if (provenContexts(profile, feature).length > 0) continue;
-          // checkNativeScroll refuses these on native outside the lanes (naming OVFL-B), and the lanes run them on purpose.
-          if (t !== 'web' && nativeScrollPending(feature)) continue;
           const values = supportedValuesFor(profile, lh.property);
           const contexts = [...new Set((typeof used === 'function' ? used(t) : used).filter((u) => u.declaration === d && u.property === lh.property).map((u) => u.context))].sort();
           const alternatives = contexts.length > 0
@@ -800,8 +799,6 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, options.faults);
     // The UA font-weight and font-style refusal is native-only: the engine resolves those faces (engine mode refuses synthesis).
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
-    // T078 R14: outside the parity lanes, native refuses overflow auto and scroll until OVFL-B; the lanes prove their layout at rest.
-    if (!options.interactionLanes) checkNativeScroll(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals, realFaceAt);
     if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkSyntheticStyles(resolved, projectFonts, options.ua, t, diagnostics, fonts);
@@ -1197,14 +1194,6 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         diagnostics.splice(valuesAt, 0, ...values);
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
-      // T078 R14: the lanes lower overflow auto and scroll on native, but a user's compile refuses them there until OVFL-B, so a
-      // document that uses them is lane-only on native and proves no native row (pipeline.ts).
-      if (options.interactionLanes) {
-        const pending: Diagnostic[] = [];
-        const native = NATIVE_TARGETS.filter((t) => targets.includes(t));
-        for (const c of cases) for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) if (r !== null) checkNativeScroll(r, native, pending, new Set());
-        laneOnlyNative = native.filter((t) => laneOnlyNative.includes(t) || pending.some((d) => d.target === t));
-      }
       // T005 rec 3: the rules inside each unsupported at-rule are analysed with the block unwrapped, in a scratch pass whose
       // diagnostics located inside the at-rule become its related entries. Nothing from this pass is resolved into an output.
       if (enclosed.length > 0) {
@@ -1283,7 +1272,17 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
           // runtime measures only Ahem; an element's own font (its strut) counts, not only its text.
           const real = options.nativeRealFaces ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
           const refused = options.nativeRealFaces ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until TXT1a-2 phase R';
-          lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } }));
+          const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
+          lowered.set(c.key, tree);
+          // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
+          // may refuse is refused here, naming the engine's reason.
+          for (const u of undecidedScrollContainers(tree)) {
+            const id = `ovfl-b-range|${u.containerId}|${u.nodeId}`;
+            if (reported.has(id)) continue;
+            reported.add(id);
+            const message = `overflow auto or scroll on ${u.containerId}: the native scroll view's range is not decided at ${u.nodeId}: ${u.detail} (OVFL-B)`;
+            for (const t of lowerFor) diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin: originOfAddress(c.resolved, u.containerId), message, target: t, manual: 'Use overflow: hidden or clip, or keep inline boxes, <br>s and inline-level boxes out of the scroll container (wrap the text in a block).' }));
+          }
         } catch (e) {
           if (!(e instanceof LoweringError)) throw e;
           const id = `${e.nodeId}|${e.property}|${e.message}`;
