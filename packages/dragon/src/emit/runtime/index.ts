@@ -4,6 +4,7 @@ import type { NativeBackend } from '../../lower/native-program.ts';
 import type { GeneratedFile } from '../../types.ts';
 import { animSupport } from './anim.ts';
 import { clockSupport } from './clock.ts';
+import { interactionSupport } from './interaction.ts';
 import { stateSupport } from './state.ts';
 
 /** The registered runtime modules, in support-file order. */
@@ -11,6 +12,7 @@ export const RUNTIME_MODULES: readonly { readonly id: string; readonly support: 
   { id: 'clock', support: clockSupport },
   { id: 'state', support: stateSupport },
   { id: 'anim', support: animSupport },
+  { id: 'interaction', support: interactionSupport },
 ];
 
 /** The runtime support files of a backend. */
