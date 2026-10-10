@@ -50,7 +50,11 @@ import type { DeclaredFace, FontFaceIssue } from './fonts/font-face.ts';
 import { GENERIC_KEYS, validateFontMap } from './fonts/font-map.ts';
 import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
 import type { FontSelectionRequest } from './fonts/selection.ts';
-import { foldFamily, kBoldThreshold, kItalicThreshold, selectionRequest } from './fonts/selection.ts';
+import { foldFamily } from './fonts/selection.ts';
+import { synthesisTraits } from './fonts/metrics.ts';
+import type { TextFontValue } from './fonts/weight.ts';
+import { requestOf, serializeFontStyle, serializeFontWeight, synthesisOf } from './fonts/weight.ts';
+import { textFontOfProps } from './analysis/computed.ts';
 import { fenceVariableInstance } from './fonts/variable-fence.ts';
 import type { VariableFontRefusal } from './fonts/variable-fence.ts';
 import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
@@ -451,31 +455,34 @@ function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: 
   walk(root);
 }
 
-/** The text font of an element: the UA's font-weight and font-style, inherited (Dragon has no author longhand for either). */
-type UaTextFont = { readonly weight: number; readonly style: 'normal' | 'italic' };
+/** The text font of an element: its computed font-weight and font-style (analysis/computed.ts, fonts/weight.ts). */
+type TextFont = TextFontValue;
 
-function uaTextFontOf(el: ResolvedElement, inherited: UaTextFont, ua: UaDataset): UaTextFont {
-  const tf = (ua.userAgentTextFonts as { readonly [tag: string]: { readonly [p: string]: string } | undefined })[el.element.tag] ?? {};
-  const weight = tf['font-weight'] === undefined ? inherited.weight : Number(tf['font-weight']);
-  return { weight: Number.isFinite(weight) ? weight : inherited.weight, style: tf['font-style'] === undefined ? inherited.style : tf['font-style'] === 'italic' ? 'italic' : 'normal' };
-}
+const textFontOf = (el: ResolvedElement): TextFont => textFontOfProps(el.props);
 
-/** Why a face Chrome would draw is synthetic (CSSSegmentedFontFace: bold at weight 600 and up over a face below it; italic over an upright face), or null. */
+const describeFont = (font: TextFont): string => `font-weight ${serializeFontWeight(font.weight)} and font-style ${serializeFontStyle(font.style)}`;
+
+/**
+ * Why Chrome would draw a face synthesized (fonts/weight.ts synthesisOf), or null. Where the face file has the bold or italic trait,
+ * Chrome suppresses that synthesis (font_custom_platform_data.cc:286-287); no Chrome case proves what it then draws, so it is refused.
+ */
 function syntheticStyle(face: DeclaredFace, request: FontSelectionRequest): string | null {
-  if (request.weight.raw >= kBoldThreshold.raw && face.capabilities.weight.maximum.raw < kBoldThreshold.raw) return 'synthetic bold';
-  if (request.slope.raw >= kItalicThreshold.raw && face.capabilities.slope.maximum.raw < kItalicThreshold.raw) return 'synthetic oblique';
-  return null;
+  const synthetic = synthesisOf(face.capabilities, request);
+  if (synthetic === null || face.source === null) return synthetic;
+  const traits = synthesisTraits(face.source.font);
+  if (synthetic === 'synthetic bold' ? traits.bold : traits.italic) return `${synthetic} that Chrome suppresses because the face file has the ${synthetic === 'synthetic bold' ? 'bold' : 'italic'} trait, which Dragon does not model`;
+  return synthetic;
 }
 
 /** The bundled faces of a compilation: every declared face and every pinned face. */
 const bundledFaces = (fonts: ProjectFonts): DeclaredFace[] => [...fonts.declaredFaces, ...fonts.projected.pinned.flatMap((p) => (p.result.face === null ? [] : [p.result.face]))];
 
 /** The one face Chrome draws a text with at a UA font, or why the engine cannot lay it out (engine mode, notes/T083-txt1a-1.md). */
-function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string, font: UaTextFont): EngineFace {
+function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string, font: TextFont): EngineFace {
   const listText = familyListText(family.value);
   const support = listText === null ? null : familySupport(listText, fonts.keys.map, fonts.keys.declared);
   if (support === null || support.kind !== 'resolved') return { kind: 'refused', reason: 'the family list does not resolve to bundled faces' };
-  const request = selectionRequest(font.weight, 100, { kind: font.style });
+  const request = requestOf(font.weight, font.style);
   const rendered = renderedFaces(bundledFaces(fonts), support.resolutions, text, request);
   if (rendered.length !== 1) return { kind: 'refused', reason: rendered.length === 0 ? 'no bundled face draws it' : `Chrome draws it with ${rendered.length} faces (font fallback), and the engine lays out one face per text` };
   const face = (rendered[0] as { face: DeclaredFace }).face;
@@ -487,33 +494,33 @@ function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string,
 }
 
 /** Engine mode's faces of a case, by address: each element's primary font (the strut, U+0020) and each laid-out text node's text. */
-function engineFacesOf(root: ResolvedElement, fonts: ProjectFonts, ua: UaDataset): Map<string, EngineFace> {
+function engineFacesOf(root: ResolvedElement, fonts: ProjectFonts): Map<string, EngineFace> {
   const out = new Map<string, EngineFace>();
-  const walk = (el: ResolvedElement, inherited: UaTextFont): void => {
-    const own = uaTextFontOf(el, inherited, ua);
+  const walk = (el: ResolvedElement): void => {
+    const own = textFontOf(el);
     const family = el.props.get('font-family') as ResolvedValue;
     out.set(el.element.address, engineFaceFor(fonts, family, ' ', own));
     for (const c of el.children) {
-      if (c.kind === 'element') walk(c, own);
+      if (c.kind === 'element') walk(c);
       else out.set(c.node.address, engineFaceFor(fonts, c.props.get('font-family') as ResolvedValue, c.text, own));
     }
   };
-  walk(root, { weight: 400, style: 'normal' });
+  walk(root);
   return out;
 }
 
 /**
  * R7 (notes/T056-txt1a-spec.md): text a native target would draw in a synthetic bold or oblique style from a bundled face is refused
- * with its own code; native has no proof of Skia's synthetic paint. Ahem's UA bold and italic keep their existing refusal.
+ * with its own code; native has no proof of Skia's synthetic paint (TXT-W3). Ahem keeps its own refusal (computed-checks.ts).
  */
-function checkSyntheticStyles(root: ResolvedElement, fonts: ProjectFonts, ua: UaDataset, target: 'ios' | 'android', diagnostics: Diagnostic[], reported: Set<string>): void {
-  const walk = (el: ResolvedElement, inherited: UaTextFont, hidden: boolean): void => {
-    const own = uaTextFontOf(el, inherited, ua);
+function checkSyntheticStyles(root: ResolvedElement, fonts: ProjectFonts, target: 'ios' | 'android', diagnostics: Diagnostic[], reported: Set<string>): void {
+  const walk = (el: ResolvedElement, hidden: boolean): void => {
+    const own = textFontOf(el);
     const display = (el.props.get('display') as ResolvedValue).value;
     const here = hidden || (display.kind === 'keyword' && display.value === 'none');
     for (const c of el.children) {
       if (c.kind === 'element') {
-        walk(c, own, here);
+        walk(c, here);
         continue;
       }
       if (here || textFontProblem(c) === null) continue;
@@ -521,19 +528,21 @@ function checkSyntheticStyles(root: ResolvedElement, fonts: ProjectFonts, ua: Ua
       const listText = familyListText(family.value);
       const support = listText === null ? null : familySupport(listText, fonts.keys.map, fonts.keys.declared);
       if (support === null || support.kind !== 'resolved') continue;
-      const request = selectionRequest(own.weight, 100, { kind: own.style });
+      const request = requestOf(own.weight, own.style);
       for (const { family: name, face } of renderedFaces(bundledFaces(fonts), support.resolutions, c.text, request)) {
         const synthetic = syntheticStyle(face, request);
         if (synthetic === null) continue;
-        const message = `text ${c.node.address} in ${name} at font-weight ${own.weight} and font-style ${own.style} would be drawn in ${synthetic}: no bundled ${name} face has that ${synthetic === 'synthetic bold' ? 'weight' : 'style'}, and ${target} cannot reproduce Skia's synthetic style`;
-        const id = `${target}|synthetic|${c.node.address}|${message}`;
+        const text = synthetic === 'synthetic bold' || synthetic === 'synthetic oblique'
+          ? `text ${c.node.address} in ${name} at ${describeFont(own)} would be drawn in ${synthetic}: no bundled ${name} face has that ${synthetic === 'synthetic bold' ? 'weight' : 'style'}, and ${target} cannot reproduce Skia's synthetic style`
+          : `text ${c.node.address} in ${name} at ${describeFont(own)} would be drawn in ${synthetic}`;
+        const id = `${target}|synthetic|${c.node.address}|${text}`;
         if (reported.has(id)) continue;
         reported.add(id);
-        diagnostics.push(diagnostic('DRAGON_SYNTHETIC_FONT_STYLE', { origin: c.node.node.origin, message, target }));
+        diagnostics.push(diagnostic('DRAGON_SYNTHETIC_FONT_STYLE', { origin: c.node.node.origin, message: text, target }));
       }
     }
   };
-  walk(root, { weight: 400, style: 'normal' }, false);
+  walk(root, false);
 }
 
 /** The fonts of one compilation: the projected map and manifest, the declared faces and the context feature keys resolve against. */
@@ -693,16 +702,14 @@ function unmappedDiagnostics(resolutions: readonly EntryResolution[], text: stri
   }
 }
 
-type TextFont = { readonly weight: number; readonly style: 'normal' | 'italic' };
-
 /**
  * Per case, on every text node: a font-family value that holds var() is checked after substitution like checkFamilies checks the
  * others, and the variable-font fence (T028) runs at style resolution on the faces Chrome draws the text with (renderedFaces).
- * No author longhand sets font-weight or font-style, so they are the UA's, inherited (userAgentTextFonts: h1 to h6 bold, address italic).
+ * The request is each element's computed font-weight and font-style.
  * Text in a display: none subtree is never drawn, so Chrome selects no face for it and the fence skips it, as checkFonts does; the
  * substitution check is per declaration, like checkFamilies, and runs everywhere.
  */
-function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: CompilerFaults, ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: CompilerFaults, diagnostics: Diagnostic[], reported: Set<string>): void {
   const faces = [...fonts.declaredFaces, ...fonts.projected.pinned.flatMap((p) => (p.result.face === null ? [] : [p.result.face]))];
   const fence = faces.some((f) => f.source?.font.variable === true);
   const once = (id: string): boolean => {
@@ -710,12 +717,10 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
     reported.add(id);
     return true;
   };
-  const walk = (el: ResolvedElement, inherited: TextFont, hiddenAbove: boolean): void => {
+  const walk = (el: ResolvedElement, hiddenAbove: boolean): void => {
     const display = (el.props.get('display') as ResolvedValue).value;
     const hidden = hiddenAbove || (display.kind === 'keyword' && display.value === 'none');
-    const tf = (ua.userAgentTextFonts as { readonly [tag: string]: { readonly [p: string]: string } | undefined })[el.element.tag] ?? {};
-    const weight = tf['font-weight'] === undefined ? inherited.weight : Number(tf['font-weight']);
-    const own: TextFont = { weight: Number.isFinite(weight) ? weight : inherited.weight, style: tf['font-style'] === undefined ? inherited.style : tf['font-style'] === 'italic' ? 'italic' : 'normal' };
+    const own = textFontOf(el);
     const declared = el.props.get('font-family') as ResolvedValue;
     const sub = declared.substitution;
     const subText = sub === undefined ? null : familyListText(declared.value);
@@ -726,7 +731,7 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
     }
     for (const c of el.children) {
       if (c.kind === 'element') {
-        walk(c, own, hidden);
+        walk(c, hidden);
         continue;
       }
       if (hidden) continue;
@@ -736,9 +741,9 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
       if (support === null) continue;
       const size = (c.props.get('font-size') as ResolvedValue).value;
       if (!fence || support.kind !== 'resolved' || size.kind !== 'length' || size.unit !== 'px') continue;
-      const request = selectionRequest(own.weight, 100, { kind: own.style });
+      const request = requestOf(own.weight, own.style);
       for (const { family: name, face } of renderedFaces(faces, support.resolutions, c.text, request)) {
-        const refused = fenceVariableInstance(face, { weight: own.weight, stretch: 100, style: { kind: own.style }, specifiedSize: size.value, opticalSizing: 'auto' });
+        const refused = fenceVariableInstance(face, { weight: own.weight, stretch: 100, style: own.style, specifiedSize: size.value, opticalSizing: 'auto' });
         if (refused === null) continue;
         const origin = family.declaration === null ? c.node.node.origin : authored(family.declaration.valueSpan);
         const message = `font-family ${name} at ${size.value}px on ${c.node.address}: ${variableMessage(refused)}`;
@@ -746,7 +751,7 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
       }
     }
   };
-  walk(root, { weight: 400, style: 'normal' }, false);
+  walk(root, false);
 }
 
 /** One interaction state of a case, resolved and checked like the case (SELD-R2). */
@@ -763,7 +768,7 @@ const allUsed = (c: CaseResult): UsedKey[] => [...c.used, ...c.interaction.flatM
 function realFacesOf(root: ResolvedElement, fonts: ProjectFonts | null, ua: UaDataset): Map<string, EngineFace> {
   const out = new Map<string, EngineFace>();
   if (fonts === null) return out;
-  for (const [address, face] of engineFacesOf(root, fonts, ua)) if (face.kind === 'face') out.set(address, face);
+  for (const [address, face] of engineFacesOf(root, fonts)) if (face.kind === 'face') out.set(address, face);
   return out;
 }
 
@@ -777,10 +782,14 @@ const freshReported = (fontDeferrals: Set<string> = new Set()): Reported => ({ c
  */
 const deferralKey = (d: Diagnostic): string => JSON.stringify(d);
 
-/** A native profile refusal of a font-family feature: no native font row is proven until TXT1a-2, so the engine lane defers it too. */
+/**
+ * A native profile refusal of a font-family, font-weight or font-style feature: they choose the face, and only a shaped case
+ * (real faces) proves one beyond Ahem, which proves no native row until TXT1a-2 phase R, so the engine lane defers them too.
+ */
+const FACE_FEATURES = ['font-family:', 'font-weight:', 'font-style:'] as const;
 const isFontProfileRefusal = (d: Diagnostic): boolean =>
   d.target !== null && (NATIVE_TARGETS as readonly string[]).includes(d.target) && (d.code === 'DRAGON_UNSUPPORTED_VALUE' || d.code === 'DRAGON_UNPROVEN_CONTEXT')
-  && d.profile !== null && d.profile.feature.startsWith('font-family:');
+  && d.profile !== null && FACE_FEATURES.some((f) => d.profile?.feature.startsWith(f) === true);
 
 /**
  * Resolves and checks every case: computed-value refusals, fonts, then (when enforcing) the contextual check, where a feature
@@ -809,8 +818,8 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals, realFaceAt);
-    if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkSyntheticStyles(resolved, projectFonts, options.ua, t, diagnostics, fonts);
-    if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
+    if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkSyntheticStyles(resolved, projectFonts, t, diagnostics, fonts);
+    if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
     if (options.profiles !== 'derive') checkContexts(used);
     return used;
@@ -1338,7 +1347,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const engineFonts = fonts;
     for (const c of cases) {
       if (c.resolved === null) continue;
-      const faces = engineFacesOf(c.resolved, engineFonts, options.ua);
+      const faces = engineFacesOf(c.resolved, engineFonts);
       try {
         engineLowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'engine', faceOf: (address) => faces.get(address) ?? { kind: 'refused', reason: `${address} has no resolved font` } }));
       } catch (e) {

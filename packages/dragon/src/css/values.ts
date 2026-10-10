@@ -32,7 +32,7 @@ export const CSS_WIDE: ReadonlySet<string> = new Set(['inherit', 'initial', 'uns
 export const LINE_STYLES: ReadonlySet<string> = new Set(['none', 'hidden', 'dotted', 'dashed', 'solid', 'double', 'groove', 'ridge', 'inset', 'outset']);
 export const LINE_WIDTH_KEYWORDS: ReadonlySet<string> = new Set(['thin', 'medium', 'thick', 'hairline']);
 /** Properties whose unitless numbers stay numbers; elsewhere a unitless zero is a length. */
-const NUMBER_PROPERTIES: ReadonlySet<string> = new Set<string>(['flex-grow', 'flex-shrink', 'order', 'line-height']);
+const NUMBER_PROPERTIES: ReadonlySet<string> = new Set<string>(['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight']);
 
 export const kw = (value: string): CssValue => ({ kind: 'keyword', value });
 
@@ -141,6 +141,43 @@ function mathValue(node: CssNode, name: string, property: string): CssValue {
 
 /** The properties whose value may be a two-keyword <baseline-position>. */
 export const BASELINE_PROPERTIES: ReadonlySet<string> = new Set<string>(['align-items', 'align-self', 'align-content']);
+
+/** The properties one of whose single values spans two tokens: <baseline-position>, and font-style's oblique <angle>. */
+export const PAIR_VALUE_PROPERTIES: ReadonlySet<string> = new Set<string>([...BASELINE_PROPERTIES, 'font-style']);
+
+/** A two-token value, why Chrome's parser drops it (invalid), why Dragon cannot express it (refused), or null when it is not one. */
+export type PairValue = CssValue | { readonly invalid: string } | { readonly refused: string } | null;
+
+export function pairValue(property: string, tokens: readonly CssNode[]): PairValue {
+  return property === 'font-style' ? fontStyleValue(tokens) : baselinePosition(tokens);
+}
+
+/** The angle units of an oblique angle, in degrees per unit (css-values-4 §7.1). */
+export const ANGLE_DEGREES: { readonly [unit: string]: number } = { deg: 1, grad: 0.9, rad: 180 / Math.PI, turn: 360 };
+
+/** The declared value type of font-style: oblique <angle>; its text is "oblique <number><unit>". */
+export const OBLIQUE_ANGLE_TYPE = 'oblique-angle';
+
+/**
+ * css-fonts-4 §2.3 as Chrome 145 parses font-style (css_parsing_utils.cc ConsumeFontStyle): left and right are not values, and the
+ * oblique angle's number must lie in [-90,90] whatever its unit, so 1.6rad parses (91.5deg) and 100grad does not. An angle beyond
+ * 90deg after conversion is refused: no Chrome case shows how it is drawn.
+ */
+function fontStyleValue(tokens: readonly CssNode[]): PairValue {
+  const head = tokens[0];
+  const name = head?.type === 'Identifier' ? asciiLower(String(head['name'])) : '';
+  if (tokens.length === 1 && (name === 'left' || name === 'right')) return { invalid: `Chrome 145 does not parse font-style: ${name}` };
+  if (tokens.length !== 2 || name !== 'oblique') return null;
+  const angle = tokens[1] as CssNode;
+  if (angle.type !== 'Dimension') return { refused: `the oblique angle ${generate(angle)} is a calculation, which Dragon does not compute` };
+  const unit = asciiLower(String(angle['unit']));
+  const value = Number(angle['value']);
+  const perUnit = ANGLE_DEGREES[unit];
+  if (perUnit === undefined) return null;
+  if (Math.abs(value) > 90) return { invalid: `Chrome parses an oblique angle only when its number is in [-90, 90] (${value}${unit})` };
+  if (Math.abs(value * perUnit) > 90) return { refused: `the oblique angle ${value}${unit} is ${value * perUnit}deg, beyond 90deg, which no Chrome case proves` };
+  return { kind: 'other', type: OBLIQUE_ANGLE_TYPE, text: `oblique ${value}${unit}` };
+}
 
 /** css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline. */
 export function baselinePosition(tokens: readonly CssNode[]): CssValue | null {

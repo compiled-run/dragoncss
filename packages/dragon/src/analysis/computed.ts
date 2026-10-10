@@ -10,10 +10,12 @@ import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
-import { positionOffsetText, positionValue, ratioValue } from '../css/values.ts';
+import { positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
-import { uaRows } from '../ua/datasets.ts';
+import { textFontsOf, uaRows } from '../ua/datasets.ts';
+import type { TextFontValue } from '../fonts/weight.ts';
+import { computeFontStyle, computeTextFont, fontStyleCssValue, INITIAL_TEXT_FONT } from '../fonts/weight.ts';
 import type { Span } from '../types.ts';
 import type { Candidate } from './cascade.ts';
 import type { LinkedElement } from './link.ts';
@@ -72,7 +74,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   else if (only.type === 'Percentage') v = { kind: 'percentage', value: Number(only['value']) };
   else if (only.type === 'Number') {
     const n = Number(only['value']);
-    v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height'].includes(property) ? { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT } : { kind: 'number', value: n };
+    v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight'].includes(property) ? { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT } : { kind: 'number', value: n };
   } else v = { kind: 'other', type: only.type, text };
   valueCache.set(key, v);
   return v;
@@ -225,6 +227,48 @@ export function computeJustifyItems(props: Map<Longhand, ResolvedValue>, parent:
   const inherited = parent === null ? null : (parent.get('justify-items') as ResolvedValue).value;
   const legacy = inherited !== null && inherited.kind === 'keyword' && inherited.value.startsWith('legacy ');
   props.set('justify-items', { ...v, value: legacy ? inherited : { kind: 'keyword', value: 'normal' } });
+}
+
+/**
+ * css-fonts-4 §2.2, §2.3 as Blink computes them (fonts/weight.ts): a font-weight or font-style no author declaration set takes the
+ * tag's specified html.css value (userAgentTextFonts: bold, bolder, italic) or else its parent's; then font-weight computes to a
+ * number (bolder and lighter against the parent's computed weight) and font-style to normal, italic or oblique <n>deg.
+ */
+export function computeFontStyleLonghands(tag: string, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, parent: ReadonlyMap<Longhand, ResolvedValue> | null, ua: UaDataset, reverted: ReadonlySet<Longhand>): void {
+  const none = { span: null, declaration: null, declared: null, losing: [] } as const;
+  const row = textFontsOf(ua, tag);
+  for (const p of ['font-weight', 'font-style'] as const) {
+    const text = row[p];
+    // A reverted longhand keeps its author declaration (its profile row and losing list); only the value is the UA's.
+    if (defaulted.has(p) && text !== undefined) props.set(p, { ...(reverted.has(p) ? (props.get(p) as ResolvedValue) : none), value: parseValueText(p, text), origin: 'user-agent' });
+  }
+  const w = props.get('font-weight') as ResolvedValue;
+  const st = props.get('font-style') as ResolvedValue;
+  const specified = (v: ResolvedValue): CssValue | null => (v.origin === 'inherited' && parent !== null ? null : v.value);
+  const parentFont = parent === null ? INITIAL_TEXT_FONT : textFontOfProps(parent);
+  // A calculation Dragon refuses keeps its refused value, which no profile row supports, so every target refuses the declaration.
+  const known = (v: ResolvedValue): CssValue | null => (isRefusedMath(v.value) ? null : specified(v));
+  const font = computeTextFont({ weight: known(w), style: known(st) }, parentFont);
+  if (font === null) throw new Error(`font-weight ${valueToString(w.value)} or font-style ${valueToString(st.value)} has no computed value`);
+  if (!isRefusedMath(w.value)) props.set('font-weight', { ...w, value: { kind: 'number', value: font.weight } });
+  if (!isRefusedMath(st.value)) props.set('font-style', { ...st, value: fontStyleCssValue(font.style) });
+}
+
+export const isRefusedMath = (v: CssValue): boolean => v.kind === 'other' && v.type.startsWith(REFUSED_MATH_PREFIX);
+
+/** The computed text font of resolved properties; a refused calculation counts as the initial value, since its declaration is refused. */
+export function textFontOfProps(props: ReadonlyMap<Longhand, ResolvedValue>): TextFontValue {
+  const v = (props.get('font-style') as ResolvedValue).value;
+  const style = isRefusedMath(v) ? INITIAL_TEXT_FONT.style : computeFontStyle(v);
+  if (style === null) throw new Error('font-style is not computed');
+  return { weight: weightOf(props.get('font-weight') as ResolvedValue), style };
+}
+
+/** A computed font-weight's number; a refused calculation counts as the initial weight, since its declaration is refused. */
+export function weightOf(v: ResolvedValue): number {
+  if (isRefusedMath(v.value)) return INITIAL_TEXT_FONT.weight;
+  if (v.value.kind !== 'number') throw new Error(`font-weight ${valueToString(v.value)} is not computed`);
+  return v.value.value;
 }
 
 // css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).

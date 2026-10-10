@@ -38,7 +38,7 @@ const SUBSET = [
   'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
   'flex', 'flex-flow', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
   'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap',
-  'font-size', 'font-family', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
+  'font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
   ...LOGICAL_SHORTHANDS,
   ...WRITING_MODE_SHORTHANDS,
 

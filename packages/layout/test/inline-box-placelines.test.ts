@@ -101,8 +101,8 @@ describe('placeLines is exactly placeIfcLines(buildIfc(...)) (T058J2 (F))', () =
       n += compare(label, v.input as LayoutInput, NO_ENGINE_FAULTS, measurer);
     }
     expect(n).toBeGreaterThan(1000);
-    // The text-latin vectors (vectors/text-latin/dpr-<d>, TXT1a-2's 11 shaped cases and INL1a-tags' 2 at DPR 1, 2, 3 and 2.625) are the shaped ones.
+    // The text-latin vectors (vectors/text-latin/dpr-<d>, TXT1a-2's 11 shaped cases, INL1a-tags' 2 and TXT-W1's 12 text-weight cases at DPR 1, 2, 3 and 2.625) are the shaped ones.
     expect(shaped).toBe(files.filter((f) => f.slice(VECTORS.length).startsWith('text-latin/')).length);
-    expect(shaped).toBe((11 + 2) * 4);
+    expect(shaped).toBe((11 + 2 + 12) * 4);
   });
 });

@@ -40,6 +40,7 @@ import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
+import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
@@ -138,6 +139,7 @@ export const GROUPS = {
   states: STATES,
   'text-calibration': TEXT_CALIBRATION,
   'text-latin': TEXT_LATIN,
+  'text-weight': TEXT_WEIGHT,
   transforms: TRANSFORMS,
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,

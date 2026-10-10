@@ -430,6 +430,23 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/css/css_segmented_font_face.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2008 Apple Inc. All rights reserved.",
+      "fileSha256": "bd55453e8d658a86487cc1e34f2311c4f04fc360b0143d446de0ab73d7425e87",
+      "headerSha256": "02ae0a5b33694d783423f39600bef4fa9ef6648c18c43dfcf35c58f814630a82",
+      "ranges": [
+        { "lines": "115-122", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/weight.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/fonts/weight.ts", "symbol": "synthesisOf", "use": "port" },
+        { "file": "packages/dragon/test/font-weight.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/css/css_to_length_conversion_data.cc",
       "licence": "bsd-google",
       "noticeText": "header-bsd-1",
@@ -590,7 +607,8 @@
         { "lines": "5989-6010", "symbol": "ConsumeFontFamily", "source": "located" },
         { "lines": "4265-4300", "symbol": "ConsumeContentDistributionOverflowPosition", "source": "located" },
         { "lines": "6031-6033", "symbol": "ConsumeGenericFamily", "source": "located" },
-        { "lines": "3640-3688", "symbol": "ConsumeImage", "source": "located" }
+        { "lines": "3640-3688", "symbol": "ConsumeImage", "source": "located" },
+        { "lines": "6102-6158", "symbol": "ConsumeFontStyle", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
@@ -598,6 +616,7 @@
         { "file": "packages/dragon/src/css/math.ts", "symbol": "MathGrammar", "use": "port" },
         { "file": "packages/dragon/src/css/shorthands/radius.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/stylesheet.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/css/values.ts", "symbol": "fontStyleValue", "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "isInvalidFontFamily", "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "parseFamilyList", "use": "port" },
@@ -656,9 +675,11 @@
       "fileSha256": "fbcaab58dff20fe59a784f851858ac5943db7a0f76548ac45d589440e2333bec",
       "headerSha256": "8344006ca2b0ef81dcc0bb8f77b6545e0d86cb9b232146f5ad5966ed7dd3de6c",
       "ranges": [
-        { "lines": "1961-1994", "symbol": null, "source": "cited" }
+        { "lines": "1961-1994", "symbol": null, "source": "cited" },
+        { "lines": "1107-1185", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/fonts/weight.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/chrome-deviations-dpr.ts", "symbol": "dprChromeDeviations", "use": "reference" }
       ]
     },
@@ -1706,6 +1727,8 @@
         { "lines": "1-342", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "synthesisTraits", "use": "reference" },
+        { "file": "packages/dragon/src/project.ts", "symbol": "syntheticStyle", "use": "reference" },
         { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
         { "file": "packages/text-shaper/src/dragon_hb.zig", "symbol": null, "use": "port" }
       ]
@@ -1719,9 +1742,13 @@
       "fileSha256": "23aba4a23205793ecb0aa522a0f6ff0f467cf9aee6d30e8c71f82182bbc3085e",
       "headerSha256": "dcfdfba8b1fa8ad948b1e5a99351360cac40df3b4f00bf86e279215a61048e0a",
       "ranges": [
-        { "lines": "268-279", "symbol": null, "source": "cited" }
+        { "lines": "268-279", "symbol": null, "source": "cited" },
+        { "lines": "158-187", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/fonts/weight.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/fonts/weight.ts", "symbol": "bolderWeight", "use": "port" },
+        { "file": "packages/dragon/src/fonts/weight.ts", "symbol": "lighterWeight", "use": "port" },
         { "file": "packages/layout/src/platform-rules.ts", "symbol": "platformRules", "use": "port" }
       ]
     },

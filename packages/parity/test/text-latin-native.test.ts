@@ -20,8 +20,9 @@ const lines = vecs.map((v) => JSON.stringify({ platform: v.platform, faults: NO_
 
 describe('TXT1a-1 phase B and TXT1a-2 phase F: text-latin vectors replay in the generated native engines (R3)', () => {
   it('reads every text-latin vector, each laid out by the TypeScript harness', () => {
-    // TXT1a-2: the 11 shaped FIXTURES cases (text-latin.test.ts NEW_IDS) and INL1a-tags' 2 (TAG_IDS) at DPR 1, 2, 3 and 2.625.
-    expect(vecs.length).toBe((11 + 2) * 4);
+    // TXT1a-2: the 11 shaped FIXTURES cases (text-latin.test.ts NEW_IDS), INL1a-tags' 2 (TAG_IDS) and TXT-W1's 12 text-weight cases
+    // at DPR 1, 2, 3 and 2.625.
+    expect(vecs.length).toBe((11 + 2 + 12) * 4);
     for (const line of lines) expect(JSON.parse(runEngineCase(line))[0]).toBe('ok');
   });
 
