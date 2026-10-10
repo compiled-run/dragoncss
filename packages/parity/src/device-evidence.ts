@@ -32,6 +32,7 @@ export const EVIDENCE_CODE: readonly string[] = [
   'packages/parity/src/pixel-reference.ts',
   'packages/parity/src/samples.ts',
   'packages/parity/src/targets.ts',
+  'packages/parity/src/trace-lane.ts',
 ];
 
 /** The committed reference data the device lanes are judged against. */
