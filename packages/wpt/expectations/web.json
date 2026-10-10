@@ -33674,7 +33674,7 @@
     "css/css-variables/var-ident-function.html": {"missing":"kind:testharness-other","status":"not-runnable"},
     "css/css-variables/var-parsing.html": {"missing":"kind:testharness-other","status":"not-runnable"},
     "css/css-variables/variable-animation-from-to.html": {"missing":"kind:testharness-other","status":"not-runnable"},
-    "css/css-variables/variable-animation-guaranteed-invalid.html": {"missing":"DRAGON_UNSUPPORTED_VALUE:calc(var(--at) * -1s)","status":"not-runnable"},
+    "css/css-variables/variable-animation-guaranteed-invalid.html": {"missing":"DRAGON_UNSUPPORTED_SELECTOR:::before","status":"not-runnable"},
     "css/css-variables/variable-animation-over-transition.html": {"missing":"kind:testharness-other","status":"not-runnable"},
     "css/css-variables/variable-animation-substitute-into-keyframe-shorthand.html": {"missing":"kind:testharness-other","status":"not-runnable"},
     "css/css-variables/variable-animation-substitute-into-keyframe-transform.html": {"missing":"kind:testharness-other","status":"not-runnable"},

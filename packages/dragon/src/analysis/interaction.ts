@@ -9,6 +9,7 @@ import { isAnimationProperty } from '../css/properties/animation.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { Compound, InteractionPseudo, PseudoClass, Selector } from '../css/selectors.ts';
 import type { Rule } from '../css/stylesheet.ts';
+import type { VarPart } from '../css/variables.ts';
 import type { CssValue } from '../css/values.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { UaDataset } from '../ua/datasets.ts';
@@ -383,9 +384,20 @@ export function firstInteractionPseudo(r: Rule): InteractionPseudo | null {
  */
 export function interactionRefusals(rules: readonly Rule[]): Diagnostic[] {
   const out: Diagnostic[] = [];
+  // ANIM-v: the custom properties a transition or animation value reads through var(), which an interaction rule may not set either.
+  const names = (parts: readonly VarPart[]): string[] => parts.flatMap((p) => (p.kind === 'var' ? [p.name, ...names(p.fallback ?? [])] : []));
+  const animVars = new Set(rules.flatMap((r) => r.declarations.flatMap((d) => names(d.animation?.pending?.parts ?? []))));
   for (const r of rules) {
     if (!ruleIsInteractive(r)) continue;
     for (const d of r.declarations) {
+      if (d.custom !== undefined && animVars.has(d.custom.name)) {
+        out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
+          origin: authored(d.span),
+          message: `${d.property} in a rule that tests :hover, :active, :focus or :focus-visible is not supported: a transition or animation value reads it through var(), and those values are resolved without the interaction states (a later SELD-R2 package)`,
+          manual: `Set ${d.property} in a rule without :hover, :active, :focus or :focus-visible, or write the transition or animation value without var(${d.property}).`,
+        }));
+        continue;
+      }
       if (d.animation !== undefined || isAnimationProperty(d.property)) {
         out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
           origin: authored(d.span),
