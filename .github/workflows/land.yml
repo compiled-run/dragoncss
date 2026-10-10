@@ -14,7 +14,9 @@
 #   device-lanes.yml), with no secrets; the driver reads their results as data;
 # - LAND_TOKEN is only in the driver step's environment; the driver takes it out of its own and hands it only to git push and to
 #   its own gh calls, per call. GITHUB_TOKEN (read-only here) serves every other read.
-# LAND_TOKEN lives in the `land` environment, which the owner restricts to master. LAND_GLOBAL_LOCK takes refs/tags/land-lock, so a
+# LAND_TOKEN, or a GitHub App's LAND_APP_PRIVATE_KEY with vars.LAND_APP_ID (preferred: the driver mints an hour-long installation
+# token as it needs one, scripts/land-app-token.ts, and merges as the App, never as the reviewer), lives in the `land` environment,
+# which the owner restricts to master. LAND_GLOBAL_LOCK takes refs/tags/land-lock, so a
 # Mac driver (run with LAND_GLOBAL_LOCK=1) and this one never land at once.
 # One batch per job (LAND_MAX_BATCHES=1), for the 6-hour job limit: the redispatch job dispatches the rest of the queue when the
 # batch ended normally and no stop is set. A new run reconciles from GitHub (skips merged PRs, proves an unproved master first).
@@ -57,8 +59,10 @@ jobs:
       LAND_PIPELINE: '0'
       LAND_QUEUE_EMPTY_OK: '1'
       LAND_REVIEW_SOURCE: comment
-      LAND_REVIEWERS: ${{ vars.LAND_REVIEWERS }}
-      LAND_STOP_ISSUE: ${{ vars.LAND_STOP_ISSUE }}
+      # Defaults when the variables are unset: the owner's account, which posts the precomputed Claude reviews (pnpm land:post-review
+      # from a cloud session), and the stop-switch issue #244.
+      LAND_REVIEWERS: ${{ vars.LAND_REVIEWERS || '104264123' }}
+      LAND_STOP_ISSUE: ${{ vars.LAND_STOP_ISSUE || '244' }}
       LAND_TOKEN_USER_ID: ${{ vars.LAND_TOKEN_USER_ID }}
       LAND_PROOF_WRITERS: ${{ vars.LAND_PROOF_WRITERS }}
     steps:
@@ -66,15 +70,15 @@ jobs:
       - name: Check the token and the ref
         env:
           QUEUE: ${{ inputs.queue }}
-          HAS_LAND_TOKEN: ${{ secrets.LAND_TOKEN != '' }}
-          STOP_ISSUE: ${{ vars.LAND_STOP_ISSUE }}
+          HAS_LAND_TOKEN: ${{ secrets.LAND_TOKEN != '' || (secrets.LAND_APP_PRIVATE_KEY != '' && vars.LAND_APP_ID != '') }}
+          STOP_ISSUE: ${{ vars.LAND_STOP_ISSUE || '244' }}
         run: |
           if [ -z "$(printf '%s' "$QUEUE" | tr -d '[:space:]')" ]; then
-            [ "$HAS_LAND_TOKEN" = true ] || echo "::warning::LAND_TOKEN is not set in the land environment; the queue is empty, so this run only proves the start-up. A queue would fail here."
+            [ "$HAS_LAND_TOKEN" = true ] || echo "::warning::Neither LAND_TOKEN nor the App's LAND_APP_PRIVATE_KEY and LAND_APP_ID is set in the land environment; the queue is empty, so this run only proves the start-up. A queue would fail here."
             exit 0
           fi
           if [ "$HAS_LAND_TOKEN" != true ]; then
-            echo "::error::LAND_TOKEN is not set in the land environment. Add a GitHub App token or fine-grained PAT with contents, pull-requests, actions and statuses write: pushes and merges made with GITHUB_TOKEN start no CI, so the driver would wait forever."
+            echo "::error::Neither LAND_TOKEN nor the App's LAND_APP_PRIVATE_KEY secret and LAND_APP_ID variable is set in the land environment. Add a GitHub App (contents, pull requests, issues, actions and commit statuses write) or a fine-grained PAT: pushes and merges made with GITHUB_TOKEN start no CI, so the driver would wait forever."
             exit 1
           fi
           if [ "$GITHUB_REF_NAME" != master ]; then
@@ -148,6 +152,8 @@ jobs:
       - name: Land one batch
         env:
           LAND_TOKEN: ${{ secrets.LAND_TOKEN }}
+          LAND_APP_ID: ${{ vars.LAND_APP_ID }}
+          LAND_APP_PRIVATE_KEY: ${{ secrets.LAND_APP_PRIVATE_KEY }}
         run: node scripts/land.ts "$LAND_QUEUE_FILE"
       - name: Upload the driver's logs and status
         if: always()
@@ -169,7 +175,7 @@ jobs:
       actions: write
     env:
       GH_TOKEN: ${{ github.token }}
-      LAND_STOP_ISSUE: ${{ vars.LAND_STOP_ISSUE }}
+      LAND_STOP_ISSUE: ${{ vars.LAND_STOP_ISSUE || '244' }}
     steps:
       - name: Check out this workflow's commit (trusted)
         uses: actions/checkout@v4
