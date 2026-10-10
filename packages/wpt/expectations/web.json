@@ -16895,7 +16895,7 @@
     "css/css-flexbox/percentage-heights-008.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/percentage-heights-009.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-flexbox/percentage-heights-010.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},
-    "css/css-flexbox/percentage-heights-011.html": {"interop":["interop-2021-flexbox"],"missing":"layout-projection:DRAGON_UNSUPPORTED_VALUE:auto","status":"not-runnable"},
+    "css/css-flexbox/percentage-heights-011.html": {"interop":["interop-2021-flexbox"],"missing":"layout-projection:DRAGON_UNPROVEN_CONTEXT:<div data-dragon-id=\"n10\" class=\"flex-one wpt-inline-2\"> <div data-dragon-id=\"n1","status":"not-runnable"},
     "css/css-flexbox/percentage-heights-012.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNSUPPORTED_VALUE:vertical-rl","status":"not-runnable"},
     "css/css-flexbox/percentage-heights-013.html": {"interop":["interop-2021-flexbox"],"missing":"DRAGON_UNSUPPORTED_PROPERTY:outline: 5px solid black","status":"not-runnable"},
     "css/css-flexbox/percentage-heights-014.html": {"interop":["interop-2021-flexbox"],"missing":"kind:reftest","status":"not-runnable"},

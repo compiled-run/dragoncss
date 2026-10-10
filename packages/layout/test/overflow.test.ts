@@ -7,7 +7,7 @@ import type { LayoutBox, LayoutInput, LayoutStyle, Overflow, ReplacedLeaf } from
 import { isScrollContainer } from '../src/box.ts';
 import type { PlacedLine } from '../src/inline.ts';
 import { ZERO } from '../src/units.ts';
-import { OverflowRefusal, PLACED_LINE_FIELDS, refuseLineLevelBoxes, scrollMetrics, scrollMetricsWithFaults } from '../src/overflow.ts';
+import { OverflowRefusal, PLACED_LINE_FIELDS, refuseLineLevelBoxes, scrollMetrics, scrollMetricsWithFaults, scrollRanges } from '../src/overflow.ts';
 import { box, br, divStyle, neutralEnvironment, pct, px, span, text } from './helpers.ts';
 
 const input = (children: (LayoutBox | ReplacedLeaf)[], html: Partial<LayoutStyle> = {}): LayoutInput => ({
@@ -157,6 +157,20 @@ describe('replaced leaves and line-level boxes (pre-landing review of #96)', () 
     expect(() => refuseLineLevelBoxes(onlySpan)).toThrow(OverflowRefusal);
     const withBr = box('s', sc('auto'), [text('t', 'XX'), br('b'), text('v', 'YY')]);
     expect(() => refuseLineLevelBoxes(withBr)).toThrow('a <br> in the inline formatting context of s');
+  });
+
+  it('scrollRanges decides each scroll container on its own: an undecided one is listed refused, the others and the viewport do not refuse', () => {
+    // An inline box outside every scroll container: scrollMetrics refuses (the viewport reads it), scrollRanges gives every range.
+    const outside = input([box('p', {}, [text('t', 'XX'), span('i', [text('u', 'YY')])]), box('a', sc('auto'), [box('c', { width: px(300), height: px(10) })])]);
+    expect(scrollMetrics(outside, ahemMeasurer, 'ltr').kind).toBe('refused');
+    const r = scrollRanges(outside, ahemMeasurer);
+    expect(r).toEqual({ kind: 'ok', ranges: [{ id: 'a', minX: 0, maxX: 200, minY: 0, maxY: 0 }], refused: [] });
+    // An inline box inside one scroll container: that one is refused, naming the node and the rule; the other keeps its range.
+    const inside = input([box('s', sc('auto'), [text('t', 'XX'), span('i', [text('u', 'YY')])]), box('a', sc('hidden'), [box('c', { width: px(10), height: px(300) })])]);
+    const q = scrollRanges(inside, ahemMeasurer);
+    if (q.kind !== 'ok') throw new Error(q.detail);
+    expect(q.ranges).toEqual([{ id: 'a', minX: 0, maxX: 0, minY: 0, maxY: 200 }]);
+    expect(q.refused).toEqual([{ id: 's', nodeId: 'i', detail: expect.stringContaining('(R16, INL1a)') }]);
   });
 });
 

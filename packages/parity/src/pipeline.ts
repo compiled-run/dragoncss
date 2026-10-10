@@ -296,8 +296,7 @@ export function topologyProblems(declared: TreeExpectation, input: FrontEndResul
 
 async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss: string | null, browser: Browser, opts: RunOptions): Promise<CaseOutcome> {
   // SELD-R2: a case only the lanes compile on native (a user's compile refuses it there) proves no native row; web rows only.
-  // SELD-R2 and T078 R14 (overflow auto and scroll until OVFL-B): a case only the lanes compile on native (a user's compile refuses
-  // it there) proves no native row; web rows only.
+  // SELD-R2: a case only the lanes compile on native (a user's compile refuses it there) proves no native row; web rows only.
   const features = { ios: laneOnlyNative(compiled, 'ios') ? [] : compiledFeatures(compiled, 'ios', c.assignment), web: compiledFeatures(compiled, 'web', c.assignment) };
   const topology = textTopology(compiled, c.assignment);
   const base = { id: c.id, fixture: c.fixture, index: c.index, direction: c.environment.direction, assignment: c.assignment, isInitial: c.isInitial, features, unsupported: null, comparison: null, dual: null, vector: null, topology, textLines: [] };
