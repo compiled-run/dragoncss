@@ -6,12 +6,18 @@ import { join } from 'node:path';
 import type { InteractionFaults } from '@dragon/layout';
 import { rtInteraction } from '@dragon/layout';
 import { emitNativeSupport, TRACE_LINE } from 'dragon';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { deviceTraceSources, evaluateTraces, MAX_TRACE_STEPS, traceFile, traceReference, traceReferenceFor, traceScriptCuts, traceScriptIds } from '../src/trace-lane.ts';
 
 const plant = (name: keyof InteractionFaults): InteractionFaults => ({ ...rtInteraction.NO_INTERACTION_FAULTS, [name]: true });
-const dir = mkdtempSync(join(tmpdir(), 'dragon-traces-'));
-afterAll(() => rmSync(dir, { recursive: true, force: true }));
+// Made in beforeAll: `vitest list` runs module scope but no hooks, so a module-scope folder would leak.
+let dir = '';
+beforeAll(() => {
+  dir = mkdtempSync(join(tmpdir(), 'dragon-traces-'));
+});
+afterAll(() => {
+  if (dir !== '') rmSync(dir, { recursive: true, force: true });
+});
 
 /** Writes a fake device record of every script at a scale, lines from lineOf. */
 function writeRecords(scale: number, lineOf: (id: string) => readonly string[]): void {
