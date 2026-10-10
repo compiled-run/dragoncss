@@ -19,6 +19,7 @@ export const GRID: readonly FixtureSpec[] = [
   both('grid-alignment'),
   both('grid-sizing'),
   both('grid-nested'),
+  both('grid-aspect-ratio'),
   reject('reject-grid-inline-grid', 'DRAGON_UNSUPPORTED_VALUE', 'inline-grid'),
   reject('reject-grid-subgrid', 'DRAGON_UNSUPPORTED_VALUE', 'subgrid', 'grid-template-columns: subgrid is unsupported: subgrid needs the grid engine'),
   reject('reject-grid-masonry', 'DRAGON_CSS_INVALID_VALUE', 'masonry'),
