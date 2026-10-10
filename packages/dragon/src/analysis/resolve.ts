@@ -143,13 +143,23 @@ const displayOf = (el: ResolvedElement): string => {
   return v.kind === 'keyword' ? v.value : '';
 };
 
+/** css-variables-1 §2: every resolved element's computed custom properties (ANIM-v substitutes transition and animation values with them). */
+const RESOLVED_CUSTOMS = new WeakMap<ResolvedElement, CustomProperties>();
+
+/** The computed custom properties of an element resolveTree returned; a compiler error for any other element. */
+export function resolvedCustoms(el: ResolvedElement): CustomProperties {
+  const c = RESOLVED_CUSTOMS.get(el);
+  if (c === undefined) throw new Error(`${el.element.address} was not resolved by resolveTree`);
+  return c;
+}
+
 // css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand. interaction:
 // the hovered and focused elements the selectors match against (SELD-R2a); none by default.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
 export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState = NO_INTERACTION): ResolvedElement {
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
-  const customsOf = new WeakMap<ResolvedElement, CustomProperties>();
+  const customsOf = RESOLVED_CUSTOMS;
   // The children of each inline box, waiting for its block container's inline formatting context to collapse their text.
   const pendingInline = new Map<ResolvedElement, readonly (ResolvedElement | LinkedText)[]>();
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {

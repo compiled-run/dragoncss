@@ -1,0 +1,10 @@
+.d { width: 10px; height: 10px; background-color: rgb(0, 0, 0); }
+.d.on { width: 90px; background-color: rgb(200, 100, 50); }
+.whole { --t: width 0.5s linear; transition: var(--t); }
+.part { --dur: 0.6s; transition: background-color var(--dur) ease-in; }
+.fallback { transition-property: var(--prop, width); transition-duration: 0.4s; transition-timing-function: linear; }
+.stated { --dur: 0.2s; transition: width var(--dur) linear; }
+.stated.on { --dur: 0.8s; }
+.missing { transition: var(--none); }
+.spin { --k: slide; animation: var(--k) 1s linear infinite; }
+@keyframes slide { from { margin-left: 0px; } to { margin-left: 40px; } }
