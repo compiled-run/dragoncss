@@ -120,6 +120,8 @@ describe('dependency boundaries', () => {
       // CSSOM string serialization for family names (PR #28 round 2); no parsing or matching.
       "import { serializeString } from '../css/escapes.ts';",
       "import { LONGHANDS } from '../css/properties.ts';",
+      // PNT1 outline: the outline longhand names, to leave unauthored outlines to Chrome's UA :focus-visible rule.
+      "import { OUTLINE_LONGHANDS } from '../css/properties/outline.ts';",
       "import type { CssValue } from '../css/stylesheet.ts';",
       // TXT1-C: the font-family rewrite through the font map, from the resolved value alone.
       "import { familyListText } from '../css/values.ts';",

@@ -57,8 +57,10 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
     // Two values of each paint longhand: two colours, or for the PNT2 and BG2 longhands two values of their own syntax, and for
-    // PNT1's two opacities and z-indexes, and two box-shadow lists, on static boxes (ios refuses a shadow on a positioned box).
+    // PNT1's two opacities and z-indexes, and two box-shadow lists, on static boxes (ios refuses a shadow on a positioned box), and
+    // for PNT1's outline longhands two values that paint nothing natively (.x is positioned, which a painting outline refuses).
     const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'], opacity: ['0', '100%'], 'z-index': ['3', '-1'], 'box-shadow': ['1px 2px #102030', 'inset 0 0 4px 1px rgba(200, 100, 50, 0.5)'],
+      'outline-style': ['none', 'solid; outline-width: 0'], 'outline-width': ['0', '4px'], 'outline-offset': ['0', '3px'],
       // BG2's layer longhands, each with two values of its own syntax that paint no image.
       'background-image': ['none', 'none, none'], 'background-position-x': ['0%', 'right 4px'], 'background-position-y': ['0%', '25%'], 'background-size': ['auto', 'cover'], 'background-repeat': ['repeat', 'no-repeat'], 'background-attachment': ['scroll', 'scroll, scroll'], 'background-origin': ['padding-box', 'content-box'], 'background-clip': ['border-box', 'padding-box'] };
     for (const p of paint) {

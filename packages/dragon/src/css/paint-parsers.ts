@@ -5,6 +5,7 @@
 import type { CssNode } from 'css-tree';
 import type { Span } from '../types.ts';
 import { EFFECTS_VALUE_PARSERS } from './properties/effects.ts';
+import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
 import { RADIUS_VALUE_PARSERS } from './properties/radius.ts';
 import { parseBoxShadow } from './properties/shadow.ts';
 import { parseBorderRadius, parseWebkitBorderRadius } from './shorthands/radius.ts';
@@ -19,4 +20,5 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ['-webkit-border-radius', parseWebkitBorderRadius],
   ...Object.entries(EFFECTS_VALUE_PARSERS),
   ['box-shadow', parseBoxShadow],
+  ...Object.entries(OUTLINE_VALUE_PARSERS),
 ]);

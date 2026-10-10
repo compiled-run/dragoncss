@@ -667,13 +667,15 @@ const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink',
 const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style']);
 /** opacity is <number> | <percentage> (css-color-4 §3.2); Chrome resolves a calculation in it as a number or a percentage. */
 const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity']);
+/** Properties whose syntax is a plain <length> without being a line width (css-ui-4 §3.4 outline-offset). */
+const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset']);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
 export function mathGrammarFor(property: string): MathGrammar {
   if (NUMBER_GRAMMAR.has(property)) return 'number';
   if (ANGLE_GRAMMAR.has(property)) return 'angle';
   if (NUMBER_OR_LENGTH_GRAMMAR.has(property)) return 'number-or-length-percentage';
-  if (LINE_WIDTH.test(property)) return 'length';
+  if (LINE_WIDTH.test(property) || LENGTH_GRAMMAR.has(property)) return 'length';
   return 'length-percentage';
 }
 
