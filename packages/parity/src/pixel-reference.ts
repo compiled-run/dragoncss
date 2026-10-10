@@ -336,6 +336,19 @@ export function casePoints(p: NativeProgram, viewport: { readonly width: number;
  * before the glyph clearance and the vertical glyph-edge scanlines, to read failure lists of runs from before them.
  */
 export function caseSamples(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, clearance = true): SampleResult {
+  const boxes = caseBoxes(p, viewport, dpr);
+  const size = rasterSize(viewport, dpr);
+  const lines = glyphLines(p, viewport, dpr);
+  const box = sampleBoxes(boxes, size, clearance ? lines.flatMap((l) => l.glyphs) : []);
+  const glyph = sampleGlyphs(lines, size, SAMPLE_INSET_DEVICE_PX, clearance);
+  const base = [...box.points, ...glyph.points];
+  // The paint modules' points follow the base points; a module may suppress base points its paint replaces (paint-samples/).
+  const points = withPaintSamples({ program: p, viewport, dpr, size, boxes, base });
+  return { points, dropped: [...box.dropped, ...glyph.dropped], rescued: box.rescued };
+}
+
+/** The sample boxes of a case at a DPR: every element box's snapped device-px edges and device-px borders, from the engine. */
+export function caseBoxes(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): SampleBox[] {
   const input = programInput(p, viewport, dpr);
   const engine = expectedEngine();
   const out = engine.layout(input, engine.measurer);
@@ -352,14 +365,7 @@ export function caseSamples(p: NativeProgram, viewport: { readonly width: number
     const b = borders.get(r.id) ?? [0, 0, 0, 0];
     boxes.push({ id: r.id, left: s.left, top: s.top, right: s.right, bottom: s.bottom, border: { top: b[0], right: b[1], bottom: b[2], left: b[3] }, radius: 0, clips: n.clips, size: [r.width / LU_PER_PX, r.height / LU_PER_PX] });
   });
-  const size = rasterSize(viewport, dpr);
-  const lines = glyphLines(p, viewport, dpr);
-  const box = sampleBoxes(boxes, size, clearance ? lines.flatMap((l) => l.glyphs) : []);
-  const glyph = sampleGlyphs(lines, size, SAMPLE_INSET_DEVICE_PX, clearance);
-  const base = [...box.points, ...glyph.points];
-  // The paint modules' points follow the base points; a module may suppress base points its paint replaces (paint-samples/).
-  const points = withPaintSamples({ program: p, viewport, dpr, size, boxes, base });
-  return { points, dropped: [...box.dropped, ...glyph.dropped], rescued: box.rescued };
+  return boxes;
 }
 
 /**

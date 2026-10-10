@@ -620,6 +620,9 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'box-shadow':
         // The state runtime has no writer for these yet (PNT1 paints them from the program); a case script would drop them.
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
+      case 'background-layers':
+        // BG2-a: a state record holds no gradient write; the layers are painted from the static program only.
+        throw new StateEmitError(`${n.id}: background layers in a state program have no state-node write (BG2 writes them on the static program only)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;

@@ -82,6 +82,14 @@
     "transform",
     "transform-origin",
     "will-change",
+    "background-image",
+    "background-position-x",
+    "background-position-y",
+    "background-size",
+    "background-repeat",
+    "background-attachment",
+    "background-origin",
+    "background-clip",
     "content",
     "list-style-type",
     "list-style-position",
@@ -166,6 +174,7 @@
     "grid-column-gap",
     "border-radius",
     "-webkit-border-radius",
+    "background-position",
     "list-style"
   ],
   "inherited": [
@@ -225,7 +234,15 @@
     "z-index",
     "transform",
     "transform-origin",
-    "will-change"
+    "will-change",
+    "background-image",
+    "background-position-x",
+    "background-position-y",
+    "background-size",
+    "background-repeat",
+    "background-attachment",
+    "background-origin",
+    "background-clip"
   ],
   "role:item": [
     "display",

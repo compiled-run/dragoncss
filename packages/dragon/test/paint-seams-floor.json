@@ -28,6 +28,8 @@
     "opacity",
     "paint-order",
     "transform",
+    "background-layers",
+    "scroll-container",
     "replaced-image",
     "foreign-view"
   ],
@@ -40,6 +42,8 @@
     "stacking:order-swap",
     "transform:transform-origin-ignored",
     "transform:translate-percent-of-parent",
+    "gradient:gradient-offset-1",
+    "gradient:gradient-unpremultiplied-upload",
     "image:image-offset-1"
   ],
   "supportPlants": [
@@ -53,6 +57,8 @@
     "order-swap",
     "transform-origin-ignored",
     "translate-percent-of-parent",
+    "gradient-offset-1",
+    "gradient-unpremultiplied-upload",
     "image-offset-1",
     "single-run-baseline"
   ],
@@ -71,10 +77,13 @@
     "Support/Paint/DragonPaintEffects.swift",
     "Support/Paint/DragonPaintStacking.swift",
     "Support/Paint/DragonPaintTransform.swift",
+    "Support/Paint/DragonPaintGradient.swift",
+    "Support/Paint/DragonPaintScroll.swift",
     "Support/Paint/DragonPaintImage.swift",
     "Support/Paint/DragonPaintForeignView.swift",
     "Support/DragonClock.swift",
-    "Support/DragonState.swift"
+    "Support/DragonState.swift",
+    "Support/DragonAnim.swift"
   ],
   "supportFiles:android-views": [
     "kotlin/dev/dragon/views/DragonChecked.kt",
@@ -91,10 +100,13 @@
     "kotlin/dev/dragon/views/paint/DragonPaintEffects.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintStacking.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintTransform.kt",
+    "kotlin/dev/dragon/views/paint/DragonPaintGradient.kt",
+    "kotlin/dev/dragon/views/paint/DragonPaintScroll.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintImage.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintForeignView.kt",
     "kotlin/dev/dragon/views/DragonClock.kt",
-    "kotlin/dev/dragon/views/DragonState.kt"
+    "kotlin/dev/dragon/views/DragonState.kt",
+    "kotlin/dev/dragon/views/DragonAnim.kt"
   ],
   "filledPaintModules": [
     "background",
@@ -102,8 +114,10 @@
     "clip",
     "effects",
     "foreign-view",
+    "gradient",
     "image",
     "radius",
+    "scroll",
     "shadow",
     "stacking",
     "transform"
