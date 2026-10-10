@@ -170,6 +170,11 @@ describe('grid lowering', () => {
     expect(refusal('.g { display: grid; } .i { justify-self: baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-self: baseline'))).toBe(true);
     expect(refusal('.g { display: grid; justify-items: safe center; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-items: safe center'))).toBe(true);
     expect(refusal('.g { display: grid; grid-template-columns: 20px 30px; }')).toEqual([]);
+    for (const p of ['height: 50%', 'min-height: 10%', 'max-height: calc(10px + 5%)']) {
+      expect(refusal(`.g { display: grid; grid-template-rows: repeat(auto-fill, 20px); ${p}; }`).some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('beside repeat(auto-fill) or repeat(auto-fit) rows')), p).toBe(true);
+      expect(refusal(`.g { display: grid; grid-template-columns: repeat(auto-fill, 20px); ${p}; }`).some((m) => m.includes('beside repeat(auto-fill)')), p).toBe(false);
+    }
+    expect(refusal('.g { display: grid; grid-template-rows: repeat(auto-fill, 20px); height: 100px; max-height: none; }')).toEqual([]);
   });
 
   it('refuses malformed computed values it is handed instead of lowering them: a zero line, a zero span, ragged areas', () => {

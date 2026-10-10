@@ -266,6 +266,11 @@ export function lowerGridContainer(get: Get): GridContainer {
   const implicitRows = implicitAreaLines(areas, 'rows');
   const autoColumns = autoRepeatOf(columns, implicitColumns);
   const autoRows = autoRepeatOf(rows, implicitRows);
+  // The engine's intrinsic inline size counts auto rows from px block sizes only (gridIntrinsicContentInlineSize).
+  if (autoRows !== null) for (const p of ['height', 'min-height', 'max-height'] as const) {
+    const v = get(p);
+    if (v.kind !== 'keyword' && v.kind !== 'length') refuse(p, v, 'a percentage or calculated block size beside repeat(auto-fill) or repeat(auto-fit) rows is not supported yet');
+  }
   return {
     style: {
       templateColumns: columns.repeaters,
