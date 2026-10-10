@@ -1100,6 +1100,21 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/grid/grid_layout_utils.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2025 The Chromium Authors",
+      "fileSha256": "0b031dc4989c610e4a0e9487289beee03c19a064a41d77f47539a259dc8a39c7",
+      "headerSha256": "f0becbc6a99a89f1949bdbdac5e4f383c5c94c1c7a235ff46564eb41cd5c0ae7",
+      "ranges": [
+        { "lines": "68-183", "symbol": "CalculateAutomaticRepetitions", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": "autoRepetitions", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/grid/grid_line_resolver.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
