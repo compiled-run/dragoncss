@@ -27,6 +27,7 @@ import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
+import { OUTLINE } from './fixture-groups/outline.ts';
 import { OVERFLOW } from './fixture-groups/overflow.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { RADIUS } from './fixture-groups/radius.ts';
@@ -123,6 +124,7 @@ export const GROUPS = {
   media: MEDIA,
   'media-runtime': MEDIA_RUNTIME,
   'milestone-1': MILESTONE_1,
+  outline: OUTLINE,
   overflow: OVERFLOW,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
   radius: RADIUS,

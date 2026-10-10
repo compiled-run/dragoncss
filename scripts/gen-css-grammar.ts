@@ -52,6 +52,8 @@ const SUBSET = [
   'border-radius', '-webkit-border-radius',
   // Box shadows (PNT1), after the radii.
   'box-shadow',
+  // Outlines (PNT1), after the radius family, as LONGHANDS registers them, then their shorthand.
+  'outline-color', 'outline-style', 'outline-width', 'outline-offset', 'outline',
   // Transforms (PNT2), after grid, as LONGHANDS registers them.
   ...TRANSFORM_LONGHANDS,
   // opacity and z-index (PNT1), after transforms.

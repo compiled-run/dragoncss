@@ -1,7 +1,7 @@
 // Profile rows derived from a parity run (M1): the single definition used by scripts/gen-profile-rows.ts and by the
 // committed profile-proof test in parity.test.ts.
 import type { Longhand, ProfileNote, ProfileRow, Proof } from 'dragon';
-import { MEDIA_CONTEXT, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
+import { MEDIA_CONTEXT, nativeOutlinePending, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
 import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE } from './device-lanes.ts';
@@ -39,6 +39,8 @@ export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[])
     const proof = (aspect: Proof['aspect'], lane: Lane, ids: readonly string[]): Proof => ({ aspect, lane, valueSubset, context, cases: ids });
     const proofs: Proof[] = [];
     if (target !== 'web') {
+      // A zero-width outline in a style native refuses wherever it paints compiles but proves no paint (nativeOutlinePending).
+      if (nativeOutlinePending(feature)) continue;
       const layout = passing('linux-dragon-layout');
       const dual = passing('chrome-dual');
       if (aspects.layout && layout.length === 0) continue;

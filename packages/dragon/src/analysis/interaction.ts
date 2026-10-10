@@ -446,6 +446,7 @@ export function interactionCapRefusal(caseLabel: string, over: NonNullable<Inter
 }
 
 const all = (): boolean => true;
+const zeroLength = (v: CssValue): boolean => v.kind === 'length' && v.value === 0;
 // OVFL: rt-hit clips hidden and clip at the padding box. auto and scroll are native scroll views (OVFL-B) the user scrolls, and the
 // hit test does not read scroll offsets yet (OVFL-B2), so they are unmodelled facts.
 const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip']);
@@ -471,6 +472,11 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['overflow-x', overflowAtRest],
   ['overflow-y', overflowAtRest],
   ['transform-origin', all],
+  // PNT1: the outline longhands at their computed initial values (the webref initial auto and medium compute to currentcolor and 0px).
+  ['outline-color', (v) => v.kind === 'keyword' && v.value === 'currentcolor'],
+  ['outline-style', (v) => v.kind === 'keyword' && v.value === 'none'],
+  ['outline-width', zeroLength],
+  ['outline-offset', zeroLength],
 ]);
 
 /**

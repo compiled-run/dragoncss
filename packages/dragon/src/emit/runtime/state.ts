@@ -620,6 +620,7 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
         throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
       case 'border-radius':
       case 'box-shadow':
+      case 'outline':
         // The state runtime has no writer for these yet (PNT1 paints them from the program); a case script would drop them.
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       case 'background-layers':

@@ -3,7 +3,7 @@ import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromeDeviations, NO_ENGINE_FAULTS, platformRules } from '@dragon/layout';
 import type { Assignment, ProfileRow } from 'dragon';
-import { CATALOGUE, iosLayoutProjection, iosProfile, MEDIA_CONTEXT, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
+import { CATALOGUE, iosLayoutProjection, iosProfile, MEDIA_CONTEXT, nativeOutlinePending, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
 import type { Longhand } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { captureFixture, captureJson } from '../src/capture.ts';
@@ -459,7 +459,11 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
         }
       }
       const keys = new Set(profile.rows.map((r) => `${r.feature}@${r.context}`));
-      for (const c of cases) for (const k of c.features[target]) expect(keys.has(k), `${target} ${k} used by ${c.id} has no row`).toBe(true);
+      // A zero-width outline in a style native refuses wherever it paints proves no native paint, so it has no native row
+      // (profile-rows.ts deriveRows); every other used key has one.
+      const rowless = (k: string): boolean => target !== 'web' && nativeOutlinePending(k.slice(0, k.lastIndexOf('@')));
+      for (const c of cases) for (const k of c.features[target]) expect(keys.has(k) || rowless(k), `${target} ${k} used by ${c.id} has no row`).toBe(true);
+      for (const k of keys) expect(rowless(k), `${target} ${k} has a row`).toBe(false);
       expect(layoutRows(profile.rows), `${target} rows must be exactly what pnpm run profile:rows derives from this run`).toEqual(deriveRows(target, cases));
     }
   });

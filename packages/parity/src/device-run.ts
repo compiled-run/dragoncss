@@ -66,7 +66,7 @@ export const isLinePlant = (p: SupportPlant): p is LinePlant => p === 'single-ru
 export const isPaintPlant = (p: SupportPlant): p is PaintPlant => !isGlyphPlant(p) && !isLinePlant(p);
 /**
  * The cases each paint plant runs on: the dash plants (P6a) run on the border-paint fixtures, the image plant (REPL-a) on the
- * replaced fixtures whose images are drawn, the radius plant (PNT1) on a rounded case of its own group.
+ * replaced fixtures whose images are drawn, the radius plant (PNT1) on a rounded case of its own group, the outline plant (PNT1) on a solid outline case.
  */
 export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
@@ -78,6 +78,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // overlapping boxes, whose colours swap when the layer items sort beneath the flow.
   'alpha-ignored': ['opacity-basic'],
   'order-swap': ['stacking-basic'],
+  // PNT1: outline-solid's ring points and scanlines (rules border:<id>:outline-* and edge:<id>:outline-*) see a 1 device px shift.
+  'outline-offset-1': ['outline-solid'],
   // PNT2: each transform plant runs on the case its paint moves.
   'transform-origin-ignored': ['transform-origin'],
   'translate-percent-of-parent': ['transform-translate'],
@@ -97,6 +99,8 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'shadow-offset-1': /^shadow:/,
   'alpha-ignored': /^interior:/,
   'order-swap': /^interior:/,
+  // A shifted ring moves its band and its outer edge: the outline points catch it.
+  'outline-offset-1': /^(border|edge):[^:]+:outline-/,
   // A transform moves every pixel of the box, so any colour rule may catch it.
   'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'translate-percent-of-parent': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
