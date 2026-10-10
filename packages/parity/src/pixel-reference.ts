@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import type { LayoutBox, LayoutRect } from '@dragon/layout';
-import { AHEM_FONT_DATA, coveredIndex, LU_PER_PX, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
+import { AHEM_FONT_DATA, coveredIndex, LU_PER_PX, pieceGlyphs, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { borderDevicePx, programInput } from 'dragon';
 import { chromeArgsAt, CHROME_VERSION } from './chrome.ts';
@@ -265,11 +265,11 @@ export function ahemGlyphBoxes(): ReadonlyMap<number, FontBox | null> {
 
 const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(`${r.parent}:line`);
 
-function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: number }> {
-  const out = new Map<string, { family: string; size: number }>();
+function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: number; text: string }> {
+  const out = new Map<string, { family: string; size: number; text: string }>();
   // Text leaves sit in their block container or, through any depth of inline boxes, inside it (INL1a).
   const inline = (c: Exclude<LayoutBox['children'][number], LayoutBox>): void => {
-    if (c.kind === 'text') out.set(c.id, { family: c.font.family, size: c.font.size });
+    if (c.kind === 'text') out.set(c.id, { family: c.font.family, size: c.font.size, text: c.text });
     else if (c.kind === 'inline') for (const k of c.children) inline(k);
   };
   const walk = (b: LayoutBox): void => {
@@ -283,9 +283,9 @@ function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: numb
 }
 
 /**
- * The glyph lines of a program at a DPR, as the device places them: the pen starts at the line's absolute x and advances by
- * float32(size x advance / unitsPerEm) with size = platformFontSize(zoomFontSize(css size, DPR)); the baseline is the snapped line
- * top plus the engine's ascent. Each glyph's box is its font box scaled by size / unitsPerEm. Only Ahem is accepted.
+ * The glyph lines of a program at a DPR, as the device places them: each glyph at the line's absolute x plus its pen position from
+ * the shaped item (pieceGlyphs, HarfBuzz's 16.16 advances), with size = platformFontSize(zoomFontSize(css size, DPR)); the baseline
+ * is the snapped line top plus the engine's ascent. Each glyph's box is its font box scaled by size / unitsPerEm. Only Ahem is accepted.
  */
 export function glyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): GlyphLine[] {
   const input = programInput(p, viewport, dpr);
@@ -305,16 +305,18 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
     const metrics = m.metrics(t.font);
     for (const [j, line] of t.lines.entries()) {
       const baseline = line.snapped.top + metrics.ascent / 64;
-      let pen = 0;
+      // The piece's code points: the leaf's code points before its UTF-16 start, then the shown ones.
+      const start = [...css.text.slice(0, line.start)].length;
+      const shaped = pieceGlyphs(m, css.text, t.font, start, start + line.cps.length);
+      if (!shaped.ok) throw new Error(`${t.id} line ${j}: ${shaped.reason}`);
+      // Ahem shapes one glyph per code point, so each glyph's box is its code point's.
+      if (shaped.xs.length !== line.cps.length) throw new Error(`${t.id} line ${j}: ${shaped.xs.length} glyphs for ${line.cps.length} code points`);
       const glyphs: GlyphBox[] = [];
-      for (const cp of line.cps) {
-        const k = coveredIndex(cp);
-        const adv = k < 0 ? undefined : AHEM_FONT_DATA.advances[k];
-        if (adv === undefined) throw new Error(`${t.id}: U+${cp.toString(16)} is not covered by Ahem`);
+      for (const [n, cp] of line.cps.entries()) {
+        if (coveredIndex(cp) < 0) throw new Error(`${t.id}: U+${cp.toString(16)} is not covered by Ahem`);
         const b = boxes.get(cp);
-        const x = line.rect.x / 64 + pen;
+        const x = line.rect.x / 64 + (shaped.xs[n] as number);
         if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * size) / upem, right: x + (b.xMax * size) / upem, top: baseline - (b.yMax * size) / upem, bottom: baseline - (b.yMin * size) / upem });
-        pen = Math.fround(pen + Math.fround((size * adv) / upem));
       }
       out.push({ id: `${t.id}:line${j}`, glyphs });
     }

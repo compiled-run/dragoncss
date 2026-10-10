@@ -33,17 +33,23 @@ const source = (target: 'ios' | 'android', path: string): string => {
 
 describe('the emitted bridge', () => {
   for (const [backend, file] of [['uikit', 'Support/DragonBridge.swift'], ['android-views', 'kotlin/dev/dragon/views/DragonBridge.kt']] as const) {
-    it(`${backend}: measures with the translated shaped measurer over the host's shaper, and with font data only without one`, () => {
+    it(`${backend}: measures each layout with a fresh translated shaped measurer over the host's shaper, and with font data without one`, () => {
       const text = emitNativeSupport(backend).find((f) => f.path === file)?.text ?? '';
       expect(text).toMatch(/var shaper: GlyphShaper\? = nil|var shaper: GlyphShaper\? = null/);
-      const shaped = text.indexOf('platform_deviceShapedMeasurer(');
-      const fallback = text.indexOf('text_fontDataMeasurer(');
-      expect(shaped).toBeGreaterThan(0);
-      expect(fallback).toBeGreaterThan(shaped);
-      expect(text.slice(shaped, fallback)).toContain('shaped = true');
-      expect(text.slice(fallback)).toMatch(/shaped = false/);
+      // The measurer is computed per read: a shaped one is built anew, so its shaped-item cache lives for one layout only.
+      const at = text.indexOf(backend === 'uikit' ? 'public var measurer: TextMeasurer {' : 'val measurer: TextMeasurer\n    get() {');
+      expect(at).toBeGreaterThan(0);
+      const body = text.slice(at, at + 300);
+      expect(body).toContain('return fontDataMeasurer');
+      expect(body).toContain('platform_deviceShapedMeasurer(JsStringMap(');
+      expect(text).toMatch(/fontDataMeasurer = (try! )?text_fontDataMeasurer\(data, AhemRuleFaults\(false, false\)\)/);
+      expect(text).toMatch(/shaped: Bool(ean)?\n?\s*(\{ return|get\(\) =) layoutShaper != (nil|null)/);
       // Product code: the bridge never names the parity host's shim.
       expect(text).not.toMatch(/DragonShaper|DragonHB/);
+    });
+    it(`${backend}: a state mount lays out every render with a fresh bridge measurer`, () => {
+      const text = emitNativeSupport(backend).map((f) => f.text).join('\n');
+      expect(text).toContain(backend === 'uikit' ? 'try t.apply(machine.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)' : 't.apply(machine.input(scale), bridge.measurer, scale, bridge)');
     });
   }
   for (const [backend, file] of [['uikit', 'Support/DragonTree.swift'], ['android-views', 'kotlin/dev/dragon/views/DragonTree.kt']] as const) {

@@ -411,9 +411,15 @@ public final class DragonBridge {
   public let fontSha256: String
   public let data: FontData
   public let selfCheck: [String]
-  public let measurer: TextMeasurer
+  private let layoutShaper: GlyphShaper?
+  private let fontDataMeasurer: TextMeasurer
+  /// The measurer of one layout. Shaped, a fresh one per read: its shaped items are cached per layout, as the host's are.
+  public var measurer: TextMeasurer {
+    guard let s = layoutShaper else { return fontDataMeasurer }
+    return try! platform_deviceShapedMeasurer(JsStringMap([(text_AHEM_FACE_ID, data)]), s)
+  }
   /// Whether measurer shapes with the host's HarfBuzz, so a text view draws the shaped glyph ids (shaping_pieceGlyphs).
-  public let shaped: Bool
+  public var shaped: Bool { return layoutShaper != nil }
   private let descriptor: CTFontDescriptor
   private let cmapTable: [UInt8]
   private let hheaTable: [UInt8]
@@ -450,13 +456,8 @@ public final class DragonBridge {
     let units = dragonMetricUnits(head: [UInt8](headData), hhea: hhea, hmtx: hmtx, cmap: cmap, os2: [UInt8](os2Data), loca: [UInt8](locaData), glyf: [UInt8](glyfData))
     data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: advances, xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance)
     selfCheck = dragonSelfCheck(data)
-    if let shaper = DragonBridge.shaper {
-      measurer = try! platform_deviceShapedMeasurer(JsStringMap([(text_AHEM_FACE_ID, data)]), shaper)
-      shaped = true
-    } else {
-      measurer = try! text_fontDataMeasurer(data, AhemRuleFaults(false, false))
-      shaped = false
-    }
+    layoutShaper = DragonBridge.shaper
+    fontDataMeasurer = try! text_fontDataMeasurer(data, AhemRuleFaults(false, false))
   }
   /// The glyph id of a code point (cmap); 0 when the font does not map it.
   public func glyph(_ cp: Int) -> Int { return dragonGlyph(cmap: cmapTable, cp) }
@@ -1208,9 +1209,17 @@ class DragonBridge private constructor(ctx: Context) {
   val fontSha256: String
   val data: FontData
   val selfCheck: List<String>
+  private val layoutShaper: GlyphShaper?
+  private val fontDataMeasurer: TextMeasurer
+  /** The measurer of one layout. Shaped, a fresh one per read: its shaped items are cached per layout, as the host's are. */
   val measurer: TextMeasurer
+    get() {
+      val s = layoutShaper ?: return fontDataMeasurer
+      return platform_deviceShapedMeasurer(JsStringMap(listOf(Pair(text_AHEM_FACE_ID, data))), s)
+    }
   /** Whether measurer shapes with the host's HarfBuzz, so a text view draws the shaped glyph ids (shaping_pieceGlyphs). */
   val shaped: Boolean
+    get() = layoutShaper != null
   /** The Ahem typeface under the Dragon id dragon:Ahem, and its Font (the drawGlyphs font). */
   val typeface: Typeface
   val font: Font
@@ -1243,14 +1252,8 @@ class DragonBridge private constructor(ctx: Context) {
     val units = dragonMetricUnits(dragonSfntTable(raw, "head"), hhea, hmtx, cmap, dragonSfntTable(raw, "OS/2"), dragonSfntTable(raw, "loca"), dragonSfntTable(raw, "glyf"))
     data = dragonFontData(header[0], header[1], header[2], header[3], advances, units[0], units[1], units[2])
     selfCheck = dragonSelfCheck(data)
-    val host = shaper
-    if (host != null) {
-      measurer = platform_deviceShapedMeasurer(JsStringMap(listOf(Pair(text_AHEM_FACE_ID, data))), host)
-      shaped = true
-    } else {
-      measurer = text_fontDataMeasurer(data, AhemRuleFaults(false, false))
-      shaped = false
-    }
+    layoutShaper = shaper
+    fontDataMeasurer = text_fontDataMeasurer(data, AhemRuleFaults(false, false))
   }
   /** The glyph id of a code point (cmap); 0 when the font does not map it. */
   fun glyph(cp: Int): Int = dragonGlyph(cmapTable, cp)

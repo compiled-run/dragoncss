@@ -1587,7 +1587,10 @@ function offsetOfCodePoint(units: readonly number[], codePoint: number): number 
  */
 export type PieceGlyphs = { readonly ok: true; readonly glyphs: readonly number[]; readonly xs: readonly number[] } | { readonly ok: false; readonly reason: string };
 
-/** The glyphs of code points [start, end) of text as the measurer shapes it (TextMeasurer.shaped); x and y offsets are not read yet. */
+/**
+ * The glyphs of code points [start, end) of text as the measurer shapes it (TextMeasurer.shaped): the whole item's shaping, not
+ * ShapeLine's reshaping at line edges, and no glyph x or y offsets. Both are exact for Ahem; the real-face slice adds them.
+ */
 export function pieceGlyphs(measurer: TextMeasurer, text: string, font: TextFont, start: number, end: number): PieceGlyphs {
   const s = measurer.shaped(text, font);
   if (!s.ok) return { ok: false, reason: s.reason };
