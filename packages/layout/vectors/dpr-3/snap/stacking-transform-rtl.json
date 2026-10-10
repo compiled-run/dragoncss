@@ -1,0 +1,161 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 47616
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 47616
+  },
+  {
+   "id": "stage",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 47616
+  },
+  {
+   "id": "t-t1",
+   "parent": "stage",
+   "x": 61440,
+   "y": 1536,
+   "width": 15360,
+   "height": 7680
+  },
+  {
+   "id": "t-after",
+   "parent": "stage",
+   "x": 61440,
+   "y": 3456,
+   "width": 15360,
+   "height": 7680
+  },
+  {
+   "id": "t-r",
+   "parent": "stage",
+   "x": 61440,
+   "y": 14208,
+   "width": 15360,
+   "height": 7680
+  },
+  {
+   "id": "t-w",
+   "parent": "stage",
+   "x": 55680,
+   "y": 16128,
+   "width": 15360,
+   "height": 7680
+  },
+  {
+   "id": "t-r2",
+   "parent": "stage",
+   "x": 61440,
+   "y": 26880,
+   "width": 15360,
+   "height": 7680
+  },
+  {
+   "id": "t-t2",
+   "parent": "stage",
+   "x": 55680,
+   "y": 28800,
+   "width": 15360,
+   "height": 7680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 744,
+   "width": 1200,
+   "height": 744
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 744,
+   "width": 1200,
+   "height": 744
+  },
+  {
+   "id": "stage",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 744,
+   "width": 1200,
+   "height": 744
+  },
+  {
+   "id": "t-t1",
+   "left": 960,
+   "top": 24,
+   "right": 1200,
+   "bottom": 144,
+   "width": 240,
+   "height": 120
+  },
+  {
+   "id": "t-after",
+   "left": 960,
+   "top": 54,
+   "right": 1200,
+   "bottom": 174,
+   "width": 240,
+   "height": 120
+  },
+  {
+   "id": "t-r",
+   "left": 960,
+   "top": 222,
+   "right": 1200,
+   "bottom": 342,
+   "width": 240,
+   "height": 120
+  },
+  {
+   "id": "t-w",
+   "left": 870,
+   "top": 252,
+   "right": 1110,
+   "bottom": 372,
+   "width": 240,
+   "height": 120
+  },
+  {
+   "id": "t-r2",
+   "left": 960,
+   "top": 420,
+   "right": 1200,
+   "bottom": 540,
+   "width": 240,
+   "height": 120
+  },
+  {
+   "id": "t-t2",
+   "left": 870,
+   "top": 450,
+   "right": 1110,
+   "bottom": 570,
+   "width": 240,
+   "height": 120
+  }
+ ]
+}
