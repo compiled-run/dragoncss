@@ -39,6 +39,8 @@ export type ExpectedEngine = {
   /** REPL-a: padding against a containing block's content width, and a replaced box's paint rects (layout paint.ts). */
   readonly resolvePadding: (style: LayoutStyle, cbInline: number) => Edges;
   readonly replacedPaint: (leaf: ReplacedLeaf, content: ObjectRect) => ReplacedPaint;
+  /** PNT1: Skia's paint alpha byte of an opacity (layout paint.ts), which the device's opacity writer sets. */
+  readonly opacityAlpha8: (opacity: number) => number;
   readonly luPerPx: number;
   readonly platformFontSize: (px: number) => number;
   readonly zoomFontSize: (px: number, zoom: number) => number;

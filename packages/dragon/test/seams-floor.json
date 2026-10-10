@@ -77,6 +77,8 @@
     "border-bottom-right-radius",
     "border-bottom-left-radius",
     "box-shadow",
+    "opacity",
+    "z-index",
     "transform",
     "transform-origin",
     "will-change",
@@ -219,6 +221,8 @@
     "border-bottom-right-radius",
     "border-bottom-left-radius",
     "box-shadow",
+    "opacity",
+    "z-index",
     "transform",
     "transform-origin",
     "will-change"
