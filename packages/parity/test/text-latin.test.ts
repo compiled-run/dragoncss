@@ -235,12 +235,12 @@ describe('TXT1a-1 phase B: the text-latin registry', () => {
     expect(() => tl.requireAdmitted(f, tl.compileTextLatin(f, 'ltr').compiled, c)).toThrow(/not a text-latin case/);
   });
 
-  const BASE_LAYOUT_CASES = 667;
+  const BASE_LAYOUT_CASES = 733;
   it('keeps every FIXTURES layout case (and so every native and device case) as it was at BASE', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
-    // BASE is master at 03ba583dff (b97cf50c62's 666, plus #231 OVFL-B's overflow-background), whose FIXTURES hold 667 layout cases.
+    // BASE is master at 1137788a1e plus #251, #236, #250 and #255 (landing with this change in #258), whose FIXTURES hold 733 layout cases.
     expect(ids.length).toBe(BASE_LAYOUT_CASES);
-    expect(createHash('sha256').update(ids.join('\n')).digest('hex')).toBe('def7a6b1be2fd43cd8890ac95b104c3a7752b13ce4cea0cc0e1e5ae0cac8279b');
+    expect(createHash('sha256').update(ids.join('\n')).digest('hex')).toBe('812a71e08a4aa266c23d420d7d3b93490c47bbbb4debe36b7fedd51d07bba462');
   });
 
   it('gives every FIXTURES case the native projection as its engine projection, at every DPR', () => {
