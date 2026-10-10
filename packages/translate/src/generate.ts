@@ -61,6 +61,8 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     // OVFL: scroll containers' client sizes and scrollable overflow, which the native scroll views are sized by.
     { file: at('overflow.ts'), name: 'scrollMetrics' },
     { file: at('overflow.ts'), name: 'scrollMetricsWithFaults' },
+    // OVFL-B: each scroll container's offset range in device px, which the native scroll views clamp to.
+    { file: at('overflow.ts'), name: 'scrollRanges' },
   ];
   const program = createProgram(files);
   const units = program.getSourceFile(at('units.ts')) as ts.SourceFile;

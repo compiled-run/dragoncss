@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import type { FrontEndResult } from '../src/index.ts';
-import { androidProfile, createProjectWith, iosLayoutProjection, iosProfile, nativeScrollPending, NO_FAULTS, PROFILE_NOTES, querySupport, webProfile } from '../src/internal.ts';
+import { androidProfile, createProjectWith, iosLayoutProjection, iosProfile, nativePrograms, NO_FAULTS, PROFILE_NOTES, querySupport, webProfile } from '../src/internal.ts';
 import type { Diagnostic } from '../src/index.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import { DOC, div, inputFor, spanTextOf, text } from './helpers.ts';
@@ -12,8 +12,7 @@ import { DOC, div, inputFor, spanTextOf, text } from './helpers.ts';
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
 const errorsOf = (c: { readonly diagnostics: readonly Diagnostic[] }): string[] => c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.target}: ${d.message}`);
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, rootFont: 'ua-default', direction: 'ltr' } as const;
-// lanes: compile as the parity lanes do (interactionLanes), which lower overflow auto and scroll on native to prove their layout at
-// scroll offset 0; a user's compile refuses them there until OVFL-B (T078 R14).
+// lanes: compile as the parity lanes do (interactionLanes).
 const compile = (input: FrontEndResult, faults: CompilerFaults = NO_FAULTS, lanes = false) =>
   createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults, profiles: 'derive', direction: 'ltr', interactionLanes: lanes }).compile(input);
 const one = (css: string): FrontEndResult => inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])])]);
@@ -131,45 +130,105 @@ describe('R3: the web overflow claims carry the overlay-scrollbar environment li
   });
 });
 
-describe('T078 R14: native refuses overflow auto and scroll until OVFL-B (no native scroll views yet)', () => {
+describe('OVFL-B: native scroll views for overflow auto and scroll', () => {
   const NATIVE = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } as const;
-  const run = (css: string, lanes = false) =>
-    createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: lanes }).compile(inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])])]));
-  const ovflB = (css: string, lanes = false) => run(css, lanes).diagnostics.filter((d) => d.message.includes('OVFL-B'));
+  const run = (css: string) =>
+    createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])])]));
+  const writesOf = (css: string, id: string) => {
+    const p = nativePrograms(run(css), []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const n = p.programs.uikit.nodes.find((x) => x.id === id);
+    if (n === undefined) throw new Error(`no node ${id}`);
+    return n.writes.filter((w) => w.key.startsWith('dragonClip') || w.key.startsWith('dragonScroll')).map((w) => (w.kind === 'scroll-container' ? `${w.key} ${w.x} ${w.y}` : w.key));
+  };
 
-  it('auto and scroll, declared or computed beside hidden, are DRAGON_UNSUPPORTED_VALUE on ios and android only, located at the declaration', () => {
-    for (const [css, span] of [['.a { overflow: auto; }', 'auto'], ['.a { overflow-y: scroll; }', 'scroll'], ['.a { overflow-x: hidden; }', 'hidden'], ['.a { overflow: hidden auto; }', 'hidden auto']] as const) {
-      const input = inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])])]);
-      const c = createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
-      const ds = c.diagnostics.filter((d) => d.message.includes('OVFL-B'));
-      expect(ds.length, css).toBeGreaterThan(0);
-      expect([...new Set(ds.map((d) => d.target))].sort(), css).toEqual(['android', 'ios']);
-      for (const d of ds) {
-        expect(d.code, css).toBe('DRAGON_UNSUPPORTED_VALUE');
-        expect(spanTextOf(input, d), css).toBe(span);
+  it('auto and scroll compile on native; each axis that is auto or scroll scrolls, a hidden axis is locked', () => {
+    for (const css of ['.a { overflow: auto; }', '.a { overflow: scroll; }', '.a { overflow-x: hidden; }', 'html { overflow-x: hidden; }']) expect(errorsOf(run(css)), css).toEqual([]);
+    expect(writesOf('.a { overflow: auto; }', 'a')).toEqual(['dragonClip.frame', 'dragonScroll.range true true']);
+    expect(writesOf('.a { overflow-x: hidden; }', 'a')).toEqual(['dragonClip.frame', 'dragonScroll.range false true']);
+    expect(writesOf('.a { overflow-x: scroll; overflow-y: hidden; }', 'a')).toEqual(['dragonClip.frame', 'dragonScroll.range true false']);
+    expect(writesOf('.a { overflow: hidden; }', 'a')).toEqual(['dragonClip.frame']);
+    expect(writesOf('.a { overflow: clip; }', 'a')).toEqual(['dragonClip.frame']);
+  });
+
+  it('the native auto and scroll rows exist for the contexts the fixtures prove', () => {
+    for (const prof of [iosProfile, androidProfile]) {
+      expect(prof.rows.some((r) => r.feature === 'overflow-y:auto' && r.context === 'block/ltr'), prof.target).toBe(true);
+      expect(prof.rows.some((r) => r.feature === 'overflow-x:scroll' && r.context === 'block/rtl'), prof.target).toBe(true);
+    }
+  });
+});
+
+describe('OVFL-B: a scroll container whose overflow may extend past its start (rtl or reversed flex) with a background is refused on native (Chrome paints it in the scrolling contents)', () => {
+  const NATIVE = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } as const;
+  const refusals = (css: string): string[] => {
+    const input = inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])])]);
+    const c = createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+    return c.diagnostics.filter((d) => d.message.includes('whose overflow may extend past its start')).map((d) => `${d.code} ${d.target} ${spanTextOf(input, d)}`);
+  };
+
+  it('row-reverse, column-reverse and wrap-reverse with auto or scroll and a background are DRAGON_UNPROVEN_CONTEXT on ios and android only, at the background', () => {
+    for (const shape of ['flex-direction: row-reverse', 'flex-direction: column-reverse', 'flex-wrap: wrap-reverse']) {
+      for (const o of ['auto', 'scroll']) {
+        expect(refusals(`.a { display: flex; ${shape}; overflow: ${o}; background-color: #eee; }`), `${shape} ${o}`).toEqual(['DRAGON_UNPROVEN_CONTEXT android #eee', 'DRAGON_UNPROVEN_CONTEXT ios #eee']);
       }
-      expect([c.outputs.ios.kind, c.outputs.android.kind, c.outputs.web.kind], css).toEqual(['blocked', 'blocked', 'ready']);
-    }
-    expect(ovflB('.a { overflow-x: hidden; }')[0]?.message).toBe('overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on a, a box the user scrolls; ios has no native scroll views until OVFL-B');
-  });
-
-  it('hidden and clip on both axes, the element the viewport took its overflow from, and display: none compile on native', () => {
-    for (const css of ['.a { overflow: hidden; }', '.a { overflow: clip; }', 'html { overflow-x: hidden; }', 'body { overflow: auto; }', 'html { overflow: scroll; }', '.a { display: none; overflow: auto; }']) {
-      expect(ovflB(css), css).toEqual([]);
-      expect(errorsOf(run(css)), css).toEqual([]);
     }
   });
 
-  it('the parity lanes lower auto and scroll on native, to prove their layout at scroll offset 0', () => {
-    const c = run('.a { overflow: auto; }', true);
-    expect(errorsOf(c)).toEqual([]);
-    expect(iosLayoutProjection(c, ENV, []).kind).toBe('ready');
-    expect(iosLayoutProjection(run('.a { overflow: auto; }'), ENV, []).kind).toBe('blocked');
+  it('an rtl scroll container with a background, declared or inherited, block or flex, is refused the same way (its scroll origin may be a fraction of a device px)', () => {
+    for (const css of [
+      '.a { overflow: auto; background-color: #eee; direction: rtl; }',
+      '.a { overflow-y: scroll; background-color: #eee; direction: rtl; }',
+      '.a { display: flex; overflow: auto; background-color: #eee; direction: rtl; }',
+      'body { direction: rtl; } .a { overflow: auto; background-color: #eee; }',
+    ]) expect(refusals(css), css).toEqual(['DRAGON_UNPROVEN_CONTEXT android #eee', 'DRAGON_UNPROVEN_CONTEXT ios #eee']);
   });
 
-  it('no native profile row claims auto or scroll', () => {
-    for (const r of [...iosProfile.rows, ...androidProfile.rows]) expect(nativeScrollPending(r.feature), `${r.feature}@${r.context}`).toBe(false);
-    expect(iosProfile.rows.some((r) => r.feature === 'overflow-x:clip')).toBe(true);
-    expect(webProfile.rows.some((r) => r.feature === 'overflow-y:auto')).toBe(true);
+  it('no background, a transparent one, overflow hidden, a forward ltr flex container and an ltr block compile', () => {
+    for (const css of [
+      '.a { display: flex; flex-direction: row-reverse; overflow: auto; }',
+      '.a { display: flex; flex-direction: row-reverse; overflow: auto; background-color: transparent; }',
+      '.a { display: flex; flex-direction: row-reverse; overflow: auto; background-color: rgba(0, 0, 0, 0); }',
+      '.a { display: flex; flex-direction: row-reverse; overflow: hidden; background-color: #eee; }',
+      '.a { display: flex; overflow: auto; background-color: #eee; }',
+      '.a { overflow: auto; background-color: #eee; }',
+      '.a { overflow: auto; direction: rtl; }',
+      '.a { overflow: hidden; background-color: #eee; direction: rtl; }',
+    ]) expect(refusals(css), css).toEqual([]);
+  });
+});
+
+describe('OVFL-B with PNT1: border-radius on a native scroll container is refused (its rounded clip mask would scroll with the content)', () => {
+  const NATIVE = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } as const;
+  const compile = (css: string) => {
+    const input = inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 't', 'XX')])])]);
+    return { input, c: createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input) };
+  };
+  const errors = (css: string): string[] => {
+    const { input, c } = compile(css);
+    return c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.target} ${spanTextOf(input, d)} ${d.message.includes('border-radius') ? 'radius' : d.message.includes('past its start') ? 'start-background' : d.message}`).sort();
+  };
+
+  it('auto or scroll with a rounded corner is DRAGON_UNPROVEN_CONTEXT on ios and android only, at the radius; web compiles', () => {
+    for (const css of ['.a { overflow: auto; border-radius: 8px; }', '.a { overflow-y: scroll; border-top-left-radius: 10% 6px; }', '.a { overflow-x: hidden; border-radius: 4px; }']) {
+      const e = errors(css);
+      expect(e.length, css).toBe(2);
+      expect(e.every((x) => x.startsWith('DRAGON_UNPROVEN_CONTEXT') && x.endsWith(' radius')), css).toBe(true);
+      expect(compile(css).c.outputs.web.kind, css).toBe('ready');
+    }
+    expect(errors('.a { overflow: auto; border-radius: 8px; }')).toEqual(['DRAGON_UNPROVEN_CONTEXT android 8px radius', 'DRAGON_UNPROVEN_CONTEXT ios 8px radius']);
+  });
+
+  it('the radius and start-overflow background refusals both fire on one rtl rounded scroll container with a background', () => {
+    expect(errors('.a { overflow: auto; border-radius: 8px; background-color: #eee; direction: rtl; }')).toEqual([
+      'DRAGON_UNPROVEN_CONTEXT android #eee start-background',
+      'DRAGON_UNPROVEN_CONTEXT android 8px radius',
+      'DRAGON_UNPROVEN_CONTEXT ios #eee start-background',
+      'DRAGON_UNPROVEN_CONTEXT ios 8px radius',
+    ]);
+  });
+
+  it('a rounded overflow: hidden or clip box, square corners on a scroll container, and a corner with a zero component compile', () => {
+    for (const css of ['.a { overflow: hidden; border-radius: 8px; }', '.a { overflow: auto; border-radius: 0; }', '.a { overflow: auto; border-top-left-radius: 8px 0; }']) expect(errors(css), css).toEqual([]);
   });
 });
