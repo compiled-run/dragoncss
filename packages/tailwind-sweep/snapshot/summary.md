@@ -4,23 +4,23 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4288 (18.4%) | 18997 (81.6%) | 1 | 0 | 0 |
-| ios | 4261 (18.3%) | 18986 (81.5%) | 1 | 0 | 38 |
-| android | 4261 (18.3%) | 18986 (81.5%) | 1 | 0 | 38 |
+| web | 4295 (18.4%) | 18990 (81.6%) | 1 | 0 | 0 |
+| ios | 4276 (18.4%) | 18969 (81.5%) | 1 | 0 | 40 |
+| android | 4276 (18.4%) | 18969 (81.5%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4061, ios 4081 and android 4081 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4068, ios 4098 and android 4098 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 1423 / 128 / 0 / 0 / 0 | 1415 / 136 / 0 / 0 / 0 | 1415 / 136 / 0 / 0 / 0 |
+| layout | 1551 | 1423 / 128 / 0 / 0 / 0 | 1423 / 128 / 0 / 0 / 0 | 1423 / 128 / 0 / 0 / 0 |
 | flexbox-grid | 513 | 365 / 147 / 1 / 0 / 0 | 365 / 147 / 1 / 0 / 0 | 365 / 147 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 |
 | typography | 261 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 |
 | colours | 14842 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 |
-| backgrounds | 151 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 |
+| backgrounds | 151 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 |
 | borders | 250 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 |
 | effects | 1178 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 | 0 / 1178 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
@@ -29,7 +29,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4061, ios 4
 | transforms | 680 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 |
 | interactivity | 1246 | 4 / 1242 / 0 / 0 / 0 | 4 / 1204 / 0 / 0 / 38 | 4 / 1204 / 0 / 0 / 38 |
 | svg | 6 | 0 / 6 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 |
-| accessibility | 4 | 0 / 4 / 0 / 0 / 0 | 0 / 4 / 0 / 0 / 0 | 0 / 4 / 0 / 0 / 0 |
+| accessibility | 4 | 0 / 4 / 0 / 0 / 0 | 0 / 2 / 0 / 0 / 2 | 0 / 2 / 0 / 0 / 2 |
 
 ## Largest refusal groups (first blocking diagnostic)
 
@@ -38,7 +38,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4061, ios 4
 | `property mask-image` | 6280 | 6280 | 6280 | 38 |
 | `value oklch()` | 4004 | 4004 | 4004 | 14 |
 | `property box-shadow` | 1489 | 1489 | 1489 | 8 |
-| `property background-image` | 964 | 964 | 964 | 8 |
+| `value background-image: conic-gradient(var(--tw-gradient-stops)) substitutes to "conic` | 937 | 937 | 937 | 4 |
 | `property scrollbar-color` | 582 | 582 | 582 | 2 |
 | `property translate` | 444 | 444 | 444 | 24 |
 | `property filter` | 351 | 351 | 351 | 10 |
