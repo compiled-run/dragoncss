@@ -2740,8 +2740,10 @@
         "../include/dragon_hb.h",
         "../../../include/dragon_hb.h"
       ],
-      "source": "Dragon's own C header (packages/text-shaper/include/dragon_hb.h), named in the Swift package manifest, the module map and the JNI glue",
+      "source": "Dragon's own C header (packages/text-shaper/include/dragon_hb.h), named in the Swift package manifest, the module map, the JNI glue and the device host builds (native-host.ts, native-shim.ts)",
       "files": [
+        "packages/parity/src/native-host.ts",
+        "packages/parity/src/native-shim.ts",
         "packages/text-shaper/src/dragon_hb_jni.zig",
         "packages/text-shaper/swift/Package.swift",
         "packages/text-shaper/swift/Sources/CDragonHB/module.modulemap"
@@ -2780,9 +2782,23 @@
       "cited": [
         "stdint.h"
       ],
-      "source": "the C standard library header, included by Dragon's C header",
+      "source": "the C standard library header, included by Dragon's C header and the libm probe",
       "files": [
-        "packages/text-shaper/include/dragon_hb.h"
+        "packages/text-shaper/include/dragon_hb.h",
+        "scripts/capture-libm.ts"
+      ]
+    },
+    {
+      "cited": [
+        "math.h",
+        "stdio.h",
+        "string.h",
+        "mach-o/dyld.h",
+        "mach-o/loader.h"
+      ],
+      "source": "the C standard library and macOS dyld headers, included by the libm probe scripts/capture-libm.ts compiles on the capture host",
+      "files": [
+        "scripts/capture-libm.ts"
       ]
     }
   ],

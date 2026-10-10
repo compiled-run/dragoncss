@@ -1,0 +1,26 @@
+{
+ "schema": "dragon-frame-pixels/1",
+ "case": "anim-easings@400x300",
+ "chrome": "145.0.7632.6",
+ "capture": "CDP Page.captureScreenshot {format: png}, the viewport at the forced device scale factor",
+ "rasterRule": "ceil(viewport css px x DPR) in each dimension; 400x300 at 2.625 is 1050x788",
+ "dpr": 3,
+ "flags": ["--force-device-scale-factor=3","--force-color-profile=srgb","--font-render-hinting=none","--disable-lcd-text","--hide-scrollbars"],
+ "raster": {"rasterization":"disabled_software","gpu_compositing":"disabled_software"},
+ "samples": [
+  {"k":0,"at":0,"width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
+  {"k":1,"at":0,"width":1200,"height":900,"sha256":"0451c7751e7430665fd58ea09285954b5cadf62965ef3fe9919f5caa74e4f74a"},
+  {"k":3,"at":1,"width":1200,"height":900,"sha256":"16e3c7b478acf45b13997a8d72380787e267f501d7957b90904a8508385b54f8"},
+  {"k":6,"at":201,"width":1200,"height":900,"sha256":"0ed45bb78cac0864e2c3b5bae23602047c7ebf1a90f3d9fd076cd8cc6dab70b8"},
+  {"k":7,"at":500,"width":1200,"height":900,"sha256":"977fcb223a216eacb324452764ff3d8b5438e5d78d45070ae0454c06f38cbe61"},
+  {"k":10,"at":801,"width":1200,"height":900,"sha256":"dad3c07bbabe7abb1dab4da3d564a34f47936dab8bdc0b1a83890c3ad288292a"},
+  {"k":14,"at":1001,"width":1200,"height":900,"sha256":"0917013520c585cf8f565bcc5504844e967ad0e6014d2b9f851eb0b8478e1c78"},
+  {"k":16,"at":1100,"width":1200,"height":900,"sha256":"f105dc5328996af652ac3a33819cb5dd5ad415698f6620e17f24ee5ebfdfbd66"},
+  {"k":18,"at":1101,"width":1200,"height":900,"sha256":"bfce17ad4af78c832bdd65eca7269a393e934849468e64adc0dcd4067c775c41"},
+  {"k":21,"at":1301,"width":1200,"height":900,"sha256":"d5f13e12a78c4203819f8a09e820e40b2b0c2d34065361a0fe11bb908f8c182e"},
+  {"k":22,"at":1600,"width":1200,"height":900,"sha256":"37ab1fa034631a308a46a7d7de5aa6aecd40e6cf145a5743ccb0f3d3219620e1"},
+  {"k":25,"at":1901,"width":1200,"height":900,"sha256":"f054c64387440522844ec650a0bf4a261f0b1e6f955b31da8abc818a3640ba23"},
+  {"k":29,"at":2101,"width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"},
+  {"k":31,"at":2201,"width":1200,"height":900,"sha256":"28807710310a1cbf4eaf00b7b64494f8120ccdce40caa1ecf876df1b454f907e"}
+ ]
+}

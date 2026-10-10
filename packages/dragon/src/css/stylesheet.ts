@@ -38,6 +38,8 @@ import type { PropertySource } from './at-rules/property.ts';
 import type { CascFaults } from '../faults/casc.ts';
 import { CASC_FAULTS } from '../faults/casc.ts';
 import { isAnimationProperty, parseAnimationDeclaration } from './properties/animation.ts';
+import { layerLonghandValue } from './shorthands/background.ts';
+import { isBackgroundLayerLonghand } from './properties/background-layers.ts';
 
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
@@ -603,6 +605,8 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   // css-transforms-1 (PNT2): multi-token transform, transform-origin and will-change values (properties/transform.ts).
   if (!wide && TRANSFORM_VALUE_PROPERTIES.has(property)) return parseTransformValue(property, tokens, base);
   // Paint families (PNT1): multi-token paint values, with the checks Chrome makes beyond the grammar (css/paint-parsers.ts).
+  // css-backgrounds-3 §2.2: a background layer longhand holds one comma-separated item per layer (BG2).
+  if (!wide && isBackgroundLayerLonghand(property)) return layerLonghandValue(property, tokens, base, sheetText);
   const paint = wide ? undefined : PAINT_VALUE_PARSERS.get(property);
   if (paint !== undefined) return paint(tokens, base);
   // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
