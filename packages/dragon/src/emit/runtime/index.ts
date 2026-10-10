@@ -5,6 +5,7 @@ import type { GeneratedFile } from '../../types.ts';
 import { animSupport } from './anim.ts';
 import { clockSupport } from './clock.ts';
 import { interactionSupport } from './interaction.ts';
+import { interactionGlueSupport } from './interaction-glue.ts';
 import { stateSupport } from './state.ts';
 
 /** The registered runtime modules, in support-file order. */
@@ -13,6 +14,7 @@ export const RUNTIME_MODULES: readonly { readonly id: string; readonly support: 
   { id: 'state', support: stateSupport },
   { id: 'anim', support: animSupport },
   { id: 'interaction', support: interactionSupport },
+  { id: 'interaction-glue', support: interactionGlueSupport },
 ];
 
 /** The runtime support files of a backend. */

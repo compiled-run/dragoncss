@@ -171,6 +171,8 @@ public final class DragonInteractionMount {
 
   public init(machine: DragonInteractionMachine, stage: UIView, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
     self.machine = machine; self.measurer = measurer; self.scale = scale; self.bridge = bridge
+    // The machine's hit test lays out the live program with this measurer at this scale, before any step.
+    machine.attach(measurer, scale: scale)
     root = DragonInteractionRootView(machine: machine)
     stage.addSubview(root)
     render()
@@ -306,6 +308,8 @@ class DragonInteractionMount(val machine: DragonInteractionMachine, stage: ViewG
     get() = shown ?: throw IllegalStateException("dragon: the interaction mount has not rendered")
 
   init {
+    // The machine's hit test lays out the live program with this measurer at this scale, before any step.
+    machine.attach(measurer, scale)
     stage.addView(root, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     render()
     machine.onChange = { render() }
