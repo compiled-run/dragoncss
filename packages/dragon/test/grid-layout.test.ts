@@ -1,6 +1,6 @@
-// GRID G1a lowering (lower/grid-layout.ts): computed grid values to the engine's grid input, with every item line resolved by the
-// compiler as Blink's GridLineResolver does; the grid formatting contexts of the support profiles; and the refusals of the values
-// G1a does not lay out. Layout itself is proven against Chrome by packages/parity/test/grid-corpus-*.test.ts and the grid fixtures.
+// GRID G1a and G2 lowering (lower/grid-layout.ts): computed grid values to the engine's grid input, with every item line resolved
+// by the compiler as Blink's GridLineResolver does, or left to the engine in an axis with an automatic repeater; the grid
+// formatting contexts of the support profiles; and the refusals of the values the engine does not lay out. Layout itself is proven against Chrome by packages/parity/test/grid-corpus-*.test.ts and the grid fixtures.
 import { describe, expect, it } from 'vitest';
 import type { GridItemStyle, LayoutBox } from '@dragon/layout';
 import { compiledFeatures, createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
@@ -48,6 +48,8 @@ describe('grid lowering', () => {
       autoRows: [{ kind: 'breadth', breadth: { kind: 'px', value: 7 } }, { kind: 'breadth', breadth: { kind: 'min-content' } }],
       explicitColumnCount: 9,
       explicitRowCount: 1,
+      autoRepeatColumns: null,
+      autoRepeatRows: null,
       autoFlow: 'column',
       dense: true,
       justifyItems: 'center',
@@ -132,9 +134,39 @@ describe('grid lowering', () => {
     expect(keys).toContain('font-family:Ahem@text-as-anonymous-grid-item/ltr');
   });
 
-  it('refuses what G1a does not lay out: automatic repetition, baseline and safe self-alignment, and a flexible minimum never reaches it', () => {
+  it('lowers repeat(auto-fill) and repeat(auto-fit) with the line names of the axis by id, and leaves its item lines to the engine (G2)', () => {
+    const css = [
+      '.g { display: grid; grid-template-columns: [s] 10px repeat(auto-fill, [a] minmax(20px, 1fr) [b]) [e] 15px; grid-template-rows: repeat(auto-fit, 5px); grid-template-areas: "x"; }',
+      '.p1 { grid-column: a 2 / b -1; } .p2 { grid-column: x; grid-row: span 2; } .p3 { grid-column: span e / 4; }',
+    ].join(' ');
+    const m = boxes(css, (r) => [div(r, 'g', ['g'], ['p1', 'p2', 'p3', 'p4'].map((id) => div(r, id, [id])))]);
+    const g = m.get('g')?.style.grid;
+    const none = { explicit: [], repeat: [], implicit: [] };
+    expect(g?.templateColumns).toEqual([{ count: 1, sizes: [{ kind: 'breadth', breadth: { kind: 'px', value: 10 } }] }, { count: 1, sizes: [{ kind: 'breadth', breadth: { kind: 'px', value: 15 } }] }]);
+    expect(g?.explicitColumnCount).toBe(2);
+    // Names after the repeater are numbered as if it were one track: e is line 2 (Blink ConvertGridTrackList).
+    expect(g?.autoRepeatColumns).toEqual({
+      type: 'auto-fill',
+      index: 1,
+      sizes: [{ kind: 'minmax', min: { kind: 'px', value: 20 }, max: { kind: 'fr', value: 1 } }],
+      lineNames: [none, { ...none, repeat: [0] }, { ...none, repeat: [1] }, { ...none, explicit: [2] }, { ...none, explicit: [0] }, { ...none, implicit: [1] }, { ...none, implicit: [0] }],
+    });
+    expect(g?.templateRows).toEqual([]);
+    expect(g?.explicitRowCount).toBe(1);
+    expect(g?.autoRepeatRows).toEqual({ type: 'auto-fit', index: 0, sizes: [{ kind: 'breadth', breadth: { kind: 'px', value: 5 } }], lineNames: [none, { ...none, implicit: [1] }, { ...none, implicit: [0] }] });
+    expect(item(m, 'p1').column).toEqual({ kind: 'lines', start: { kind: 'named-line', n: 2, name: 1 }, end: { kind: 'named-line', n: -1, name: 2 } });
+    expect(item(m, 'p1').row).toEqual({ kind: 'auto', span: 1 });
+    // A lone name reads <name>-start or <name>-end first; x itself names no line, so it is id 0.
+    expect(item(m, 'p2').column).toEqual({ kind: 'lines', start: { kind: 'area', implicitName: 6, name: 0 }, end: { kind: 'area', implicitName: 5, name: 0 } });
+    expect(item(m, 'p2').row).toEqual({ kind: 'lines', start: { kind: 'span', n: 2 }, end: { kind: 'auto' } });
+    expect(item(m, 'p3').column).toEqual({ kind: 'lines', start: { kind: 'named-span', n: 1, name: 3 }, end: { kind: 'line', n: 4 } });
+    expect(item(m, 'p4').column).toEqual({ kind: 'auto', span: 1 });
+  });
+
+  it('refuses what the engine does not lay out: baseline and safe self-alignment; a flexible minimum never reaches it', () => {
     const refusal = (css: string): string[] => compile(css, (r) => [div(r, 'g', ['g'], [div(r, 'i', ['i'])])]).diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.message}`);
-    expect(refusal('.g { display: grid; grid-template-columns: repeat(auto-fill, 20px); }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('repeat(auto-fill) and repeat(auto-fit) are not supported yet'))).toBe(true);
+    expect(refusal('.g { display: grid; grid-template-columns: repeat(auto-fill, 20px); }')).toEqual([]);
+    expect(refusal('.g { display: grid; grid-template-rows: 5px repeat(auto-fit, [a] 1em 10%) [b]; }')).toEqual([]);
     expect(refusal('.g { display: grid; } .i { justify-self: baseline; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-self: baseline'))).toBe(true);
     expect(refusal('.g { display: grid; justify-items: safe center; }').some((m) => m.startsWith('DRAGON_LOWERING_FAILED') && m.includes('justify-items: safe center'))).toBe(true);
     expect(refusal('.g { display: grid; grid-template-columns: 20px 30px; }')).toEqual([]);

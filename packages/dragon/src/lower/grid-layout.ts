@@ -1,9 +1,11 @@
-// Grid lowering (GRID G1a): the computed grid values of a grid container and its items to the engine's grid input. Line names
+// Grid lowering (GRID G1a, G2): the computed grid values of a grid container and its items to the engine's grid input. Line names
 // and template areas are static, so the compiler resolves every item line here (Blink GridLineResolver, grid_line_resolver.cc at
-// Chrome 145.0.7632.6) and the engine sees only line numbers: css-grid-2 §8.3 placement, §7.3 implicit area names.
+// Chrome 145.0.7632.6) and the engine sees only line numbers: css-grid-2 §8.3 placement, §7.3 implicit area names. In an axis with
+// repeat(auto-fill) or repeat(auto-fit) the explicit grid depends on the container's size, so the engine resolves those lines from
+// the line names written here as integer ids.
 import type { CssNode } from 'css-tree';
 import { parse } from 'css-tree';
-import type { GridContainerStyle, GridItemStyle, GridSelfAlign, GridSpan, TrackBreadth, TrackRepeater, TrackSize } from '@dragon/layout';
+import type { GridAutoRepeat, GridContainerStyle, GridItemStyle, GridLine, GridLineName, GridSelfAlign, GridSpan, TrackBreadth, TrackRepeater, TrackSize } from '@dragon/layout';
 import { list } from '../css/ast.ts';
 import { decodeName, serializeIdentifier } from '../css/escapes.ts';
 import type { Longhand } from '../css/properties.ts';
@@ -99,15 +101,35 @@ function addName(names: NamedLines, name: string, line: number, p: Longhand, cou
 
 const namesIn = (n: CssNode): string[] => children(n).map((c) => serializeIdentifier(decodeName(String(c['name']))));
 
-type TrackList = { readonly repeaters: TrackRepeater[]; readonly names: NamedLines; readonly trackCount: number };
+/** A repeat(auto-fill) or repeat(auto-fit): before repeaters[index], with the lines it names within one repetition. */
+type AutoRepeatList = { readonly type: 'auto-fill' | 'auto-fit'; readonly index: number; readonly sizes: TrackSize[]; readonly names: NamedLines };
 
-/** A computed grid-template-columns or -rows value (none or a <track-list>); an automatic repetition is not supported yet. */
+/**
+ * A track list; trackCount leaves out an automatic repeater. names are the template's named lines: every line of an integer
+ * repeat(), and with an automatic repeater, numbered as if it were one track (Blink StyleBuilderConverter::ConvertGridTrackList).
+ */
+type TrackList = { readonly repeaters: TrackRepeater[]; readonly names: NamedLines; readonly trackCount: number; readonly auto: AutoRepeatList | null };
+
+/** A repeat()'s track sizes and the names at each offset within one repetition. */
+function repeatBody(p: Longhand, v: CssValue, inner: CssNode[]): { readonly sizes: TrackSize[]; readonly offsets: { name: string; at: number }[] } {
+  const sizes: TrackSize[] = [];
+  const offsets: { name: string; at: number }[] = [];
+  for (const c of inner) {
+    if (c.type === 'Brackets') for (const name of namesIn(c)) offsets.push({ name, at: sizes.length });
+    else sizes.push(trackSize(p, c));
+  }
+  if (sizes.length === 0) return refuse(p, v, 'repeat() holds no track size');
+  return { sizes, offsets };
+}
+
+/** A computed grid-template-columns or -rows value: none, a <track-list> or an <auto-track-list>. */
 function trackList(p: Longhand, v: CssValue): TrackList {
   const names: NamedLines = new Map();
-  if (v.kind === 'keyword' && v.value === 'none') return { repeaters: [], names, trackCount: 0 };
-  if (v.kind !== 'other' || v.type !== 'track-list') return refuse(p, v, v.kind === 'other' && v.type === 'auto-track-list' ? 'repeat(auto-fill) and repeat(auto-fit) are not supported yet' : 'expected none or a track list');
+  if (v.kind === 'keyword' && v.value === 'none') return { repeaters: [], names, trackCount: 0, auto: null };
+  if (v.kind !== 'other' || (v.type !== 'track-list' && v.type !== 'auto-track-list')) return refuse(p, v, 'expected none or a track list');
   const repeaters: TrackRepeater[] = [];
   const count = { n: 0 };
+  let auto: AutoRepeatList | null = null;
   let line = 0;
   for (const t of tokensOf(v.text)) {
     if (t.type === 'Brackets') {
@@ -116,15 +138,19 @@ function trackList(p: Longhand, v: CssValue): TrackList {
     }
     if (t.type === 'Function' && String(t['name']).toLowerCase() === 'repeat') {
       const [countArg, inner] = argsOf(t);
+      const keyword = countArg?.length === 1 && countArg[0]?.type === 'Identifier' ? String(countArg[0]['name']).toLowerCase() : null;
+      if (keyword === 'auto-fill' || keyword === 'auto-fit') {
+        if (auto !== null || inner === undefined || v.type !== 'auto-track-list') return refuse(p, v, 'expected one repeat(auto-fill) or repeat(auto-fit)');
+        const body = repeatBody(p, v, inner);
+        const repeated: NamedLines = new Map();
+        for (const o of body.offsets) addName(repeated, o.name, o.at, p, count);
+        auto = { type: keyword, index: repeaters.length, sizes: body.sizes, names: repeated };
+        line++;
+        continue;
+      }
       const repetitions = Number(countArg?.[0]?.['value']);
       if (countArg?.length !== 1 || !Number.isInteger(repetitions) || repetitions < 1 || inner === undefined) return refuse(p, v, 'expected repeat(<integer>, <track-list>)');
-      const sizes: TrackSize[] = [];
-      const offsets: { name: string; at: number }[] = [];
-      for (const c of inner) {
-        if (c.type === 'Brackets') for (const name of namesIn(c)) offsets.push({ name, at: sizes.length });
-        else sizes.push(trackSize(p, c));
-      }
-      if (sizes.length === 0) return refuse(p, v, 'repeat() holds no track size');
+      const { sizes, offsets } = repeatBody(p, v, inner);
       for (let k = 0; k < repetitions && offsets.length > 0; k++) for (const o of offsets) addName(names, o.name, line + k * sizes.length + o.at, p, count);
       repeaters.push({ count: repetitions, sizes });
       line += repetitions * sizes.length;
@@ -133,9 +159,29 @@ function trackList(p: Longhand, v: CssValue): TrackList {
     repeaters.push({ count: 1, sizes: [trackSize(p, t)] });
     line++;
   }
-  if (line > GRID_MAX_TRACKS) return refuse(p, v, `more than ${GRID_MAX_TRACKS} tracks`);
+  if ((v.type === 'auto-track-list') !== (auto !== null)) return refuse(p, v, 'expected one repeat(auto-fill) or repeat(auto-fit) in an auto track list');
+  const trackCount = auto === null ? line : line - 1;
+  if (trackCount + (auto === null ? 0 : auto.sizes.length) > GRID_MAX_TRACKS) return refuse(p, v, `more than ${GRID_MAX_TRACKS} tracks`);
   for (const lines of names.values()) lines.sort((a, b) => a - b);
-  return { repeaters, names, trackCount: line };
+  if (auto !== null) for (const lines of auto.names.values()) lines.sort((a, b) => a - b);
+  return { repeaters, names, trackCount, auto };
+}
+
+/**
+ * The engine's automatic repeater of an axis, with every line name the axis has by id. Id 0 has no lines: a placement naming a
+ * line the axis does not name reads it.
+ */
+function autoRepeatOf(list: TrackList, implicit: NamedLines): { readonly repeat: GridAutoRepeat; readonly ids: ReadonlyMap<string, number> } | null {
+  const auto = list.auto;
+  if (auto === null) return null;
+  const all = [...new Set([...list.names.keys(), ...auto.names.keys(), ...implicit.keys()])].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const ids = new Map<string, number>();
+  const lineNames: GridLineName[] = [{ explicit: [], repeat: [], implicit: [] }];
+  for (const name of all) {
+    ids.set(name, lineNames.length);
+    lineNames.push({ explicit: list.names.get(name) ?? [], repeat: auto.names.get(name) ?? [], implicit: implicit.get(name) ?? [] });
+  }
+  return { repeat: { type: auto.type, index: auto.index, sizes: auto.sizes, lineNames }, ids };
 }
 
 /** A computed grid-auto-columns or -rows value: one or more track sizes. */
@@ -184,8 +230,8 @@ function implicitAreaLines(areas: Areas, axis: 'columns' | 'rows'): NamedLines {
   return out;
 }
 
-/** One axis of a grid container's line resolver. */
-type AxisLines = { readonly explicitCount: number; readonly explicitNames: NamedLines; readonly implicitNames: NamedLines };
+/** One axis of a grid container's line resolver; ids are its line name ids when the engine resolves its lines. */
+type AxisLines = { readonly explicitCount: number; readonly explicitNames: NamedLines; readonly implicitNames: NamedLines; readonly ids: ReadonlyMap<string, number> | null };
 
 /** A grid container's resolved grid input and the line resolver its items use. */
 export type GridContainer = { readonly style: GridContainerStyle; readonly columns: AxisLines; readonly rows: AxisLines };
@@ -216,6 +262,10 @@ export function lowerGridContainer(get: Get): GridContainer {
   const justifyItems = selfAlign('justify-items', get('justify-items'), false) as GridSelfAlign;
   const explicitColumnCount = minOf(maxOf(columns.trackCount, areas.columns), GRID_MAX_TRACKS);
   const explicitRowCount = minOf(maxOf(rows.trackCount, areas.rows), GRID_MAX_TRACKS);
+  const implicitColumns = implicitAreaLines(areas, 'columns');
+  const implicitRows = implicitAreaLines(areas, 'rows');
+  const autoColumns = autoRepeatOf(columns, implicitColumns);
+  const autoRows = autoRepeatOf(rows, implicitRows);
   return {
     style: {
       templateColumns: columns.repeaters,
@@ -224,12 +274,14 @@ export function lowerGridContainer(get: Get): GridContainer {
       autoRows: autoTracks('grid-auto-rows', get('grid-auto-rows')),
       explicitColumnCount,
       explicitRowCount,
+      autoRepeatColumns: autoColumns === null ? null : autoColumns.repeat,
+      autoRepeatRows: autoRows === null ? null : autoRows.repeat,
       autoFlow: flow.value.startsWith('column') ? 'column' : 'row',
       dense: flow.value.endsWith('dense'),
       justifyItems,
     },
-    columns: { explicitCount: explicitColumnCount, explicitNames: columns.names, implicitNames: implicitAreaLines(areas, 'columns') },
-    rows: { explicitCount: explicitRowCount, explicitNames: rows.names, implicitNames: implicitAreaLines(areas, 'rows') },
+    columns: { explicitCount: explicitColumnCount, explicitNames: columns.names, implicitNames: implicitColumns, ids: autoColumns === null ? null : autoColumns.ids },
+    rows: { explicitCount: explicitRowCount, explicitNames: rows.names, implicitNames: implicitRows, ids: autoRows === null ? null : autoRows.ids },
   };
 }
 
@@ -340,10 +392,23 @@ function definite(start: number, end: number): GridSpan {
   return { kind: 'definite', start: s, end: clampLine(end, s + 1, GRID_MAX_TRACKS) };
 }
 
+/** A position as the engine's GridLine, its names as the axis's ids (0 for a name the axis does not have). */
+function engineLine(ids: ReadonlyMap<string, number>, pos: Position, start: boolean): GridLine {
+  const id = (name: string): number => ids.get(name) ?? 0;
+  if (pos.kind === 'auto') return { kind: 'auto' };
+  if (pos.kind === 'explicit') return pos.name === null ? { kind: 'line', n: pos.n } : { kind: 'named-line', n: pos.n, name: id(pos.name) };
+  if (pos.kind === 'span') return pos.name === null ? { kind: 'span', n: pos.n } : { kind: 'named-span', n: pos.n, name: id(pos.name) };
+  return { kind: 'area', implicitName: id(serializeIdentifier(`${decodeName(pos.name)}${start ? '-start' : '-end'}`)), name: id(pos.name) };
+}
+
 /** Blink GridLineResolver::ResolveGridPositionsFromStyle for one axis of an item. */
 function resolveAxis(axis: AxisLines, startProp: Longhand, endProp: Longhand, get: Get): GridSpan {
   let initial = positionOf(startProp, get(startProp));
   let final = positionOf(endProp, get(endProp));
+  if (axis.ids !== null) {
+    if (initial.kind === 'auto' && final.kind === 'auto') return { kind: 'auto', span: 1 };
+    return { kind: 'lines', start: engineLine(axis.ids, initial, true), end: engineLine(axis.ids, final, false) };
+  }
   if (initial.kind === 'span' && final.kind === 'span') final = { kind: 'auto' };
   if (initial.kind === 'auto' && final.kind === 'span' && final.name !== null) final = { kind: 'span', n: 1, name: null };
   if (final.kind === 'auto' && initial.kind === 'span' && initial.name !== null) initial = { kind: 'span', n: 1, name: null };
