@@ -1,7 +1,7 @@
 // Support code emitted with the native output (docs/api.md 4.4; notes/T013-p3-review-p4-plan.md section 2 items 2 and 3): the
 // checked conversions, the Dragon views (box, clip and the text view that places every glyph itself), the tree that applies the translated
-// engine's snapped frames at the device scale, the font-data measurer bridge with its Ahem self-check, and the dump reader. It is
-// emitted source, never a hand-written file and never a runtime package. Line boxes, baselines, border widths and the text
+// engine's snapped frames at the device scale, the measurer bridge (shaped over a host HarfBuzz, else font data) with its Ahem
+// self-check, and the dump reader. It is emitted source, never a hand-written file and never a runtime package. Line boxes, baselines, border widths and the text
 // instance size come from the translated engine; nothing is recomputed from UIFont or FontMetrics.
 import { sha256Hex } from '../digest.ts';
 import type { GeneratedFile } from '../types.ts';
@@ -406,15 +406,26 @@ const SWIFT_BRIDGE = String.raw`import UIKit
 import CoreText
 import CryptoKit
 
-/// The measurer bridge (R4): raw data read from the bundled Ahem's tables through Core Text (head, hhea, cmap, hmtx), fed to the translated font-data measurer with
-/// the darwin-arm64 platform rules. It never uses the platform's rounded line metrics.
+/// The measurer bridge (R4): raw data read from the bundled Ahem's tables through Core Text (head, hhea, cmap, hmtx), fed to the translated
+/// measurer with the darwin-arm64 platform rules. It never uses the platform's rounded line metrics. With a host HarfBuzz (shaper) the
+/// measurer is the translated shaped measurer and text views draw its glyphs; without one, the font-data measurer and cmap and hmtx.
 public final class DragonBridge {
+  /// The host's HarfBuzz (T056 R1), set before the bridge is first used; the bridge reads it once.
+  public static var shaper: GlyphShaper? = nil
   public static let shared = DragonBridge()
   public let postScriptName: String
   public let fontSha256: String
   public let data: FontData
   public let selfCheck: [String]
-  public let measurer: TextMeasurer
+  private let layoutShaper: GlyphShaper?
+  private let fontDataMeasurer: TextMeasurer
+  /// The measurer of one layout. Shaped, a fresh one per read: its shaped items are cached per layout, as the host's are.
+  public var measurer: TextMeasurer {
+    guard let s = layoutShaper else { return fontDataMeasurer }
+    return try! platform_deviceShapedMeasurer(JsStringMap([(text_AHEM_FACE_ID, data)]), s)
+  }
+  /// Whether measurer shapes with the host's HarfBuzz, so a text view draws the shaped glyph ids (shaping_pieceGlyphs).
+  public var shaped: Bool { return layoutShaper != nil }
   private let descriptor: CTFontDescriptor
   private let cmapTable: [UInt8]
   private let hheaTable: [UInt8]
@@ -451,7 +462,8 @@ public final class DragonBridge {
     let units = dragonMetricUnits(head: [UInt8](headData), hhea: hhea, hmtx: hmtx, cmap: cmap, os2: [UInt8](os2Data), loca: [UInt8](locaData), glyf: [UInt8](glyfData))
     data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: advances, xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance)
     selfCheck = dragonSelfCheck(data)
-    measurer = try! text_fontDataMeasurer(data, AhemRuleFaults(false, false))
+    layoutShaper = DragonBridge.shaper
+    fontDataMeasurer = try! text_fontDataMeasurer(data, AhemRuleFaults(false, false))
   }
   /// The glyph id of a code point (cmap); 0 when the font does not map it.
   public func glyph(_ cp: Int) -> Int { return dragonGlyph(cmap: cmapTable, cp) }
@@ -753,18 +765,28 @@ public final class DragonTree {
         var baseline = snapped[i].top + piece.ascent / lu
         // The single-run-baseline plant: every line takes the first line's baseline below its line top.
         if let f = firstBaselineOffset, dragonSingleRunBaselinePlant != 0 { baseline = top + f } else if firstBaselineOffset == nil { firstBaselineOffset = baseline - top }
-        // Dragon places every glyph: the pen starts at the engine's run left and advances by the engine's per-glyph advance
-        // (the instance size times the font-unit advance / unitsPerEm, summed in float as textAdvanceAt does).
+        // Dragon places every glyph: the pen starts at the engine's run left. Shaped, the glyph ids and advances are HarfBuzz's for
+        // the piece (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit advance /
+        // unitsPerEm, summed in float as textAdvanceAt does.
         let xLU = a.x - e[0] * lu
         let shown = Array(scalars[Int(piece.start)..<Int(piece.visibleEnd)])
         var glyphs: [CGGlyph] = []
         var xs: [Double] = []
-        var pen: Float = 0
-        for sc in shown {
-          let gid = bridge.glyph(Int(sc.value))
-          glyphs.append(CGGlyph(gid))
-          xs.append(xLU / lu + Double(pen))
-          pen = pen + Float(size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm)
+        if bridge.shaped {
+          let pg = try shaping_pieceGlyphs(measurer, leaves[li].text, try inline_fontOf(leaves[li].font), piece.start, piece.visibleEnd)
+          guard let g = pg as? PieceGlyphs_okTrue else { fatalError("dragon: \(id) line \(k): the shaped measurer refused its text: \((pg as! PieceGlyphs_okFalse).reason)") }
+          for (j, gid) in g.glyphs.items.enumerated() {
+            glyphs.append(CGGlyph(dragonCheckedInt(gid, "\(id) glyph id")))
+            xs.append(xLU / lu + g.xs.items[j])
+          }
+        } else {
+          var pen: Float = 0
+          for sc in shown {
+            let gid = bridge.glyph(Int(sc.value))
+            glyphs.append(CGGlyph(gid))
+            xs.append(xLU / lu + Double(pen))
+            pen = pen + Float(size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm)
+          }
         }
         specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: glyphs, xs: xs, xLU: xLU, widthLU: piece.width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end))))
       }
@@ -1218,20 +1240,35 @@ import android.graphics.fonts.FontFamily
 import dev.dragon.dump.DumpJsonWriter
 import dev.dragon.layout.AhemRuleFaults
 import dev.dragon.layout.FontData
+import dev.dragon.layout.GlyphShaper
+import dev.dragon.layout.JsStringMap
 import dev.dragon.layout.TextMeasurer
+import dev.dragon.layout.platform_deviceShapedMeasurer
+import dev.dragon.layout.text_AHEM_FACE_ID
 import dev.dragon.layout.text_coveredCodePoints
 import dev.dragon.layout.text_fontDataMeasurer
 import java.security.MessageDigest
 
 /**
  * The measurer bridge (R4): raw data read from the bundled Ahem's tables in the android.graphics.fonts.Font buffer (head, hhea, cmap, hmtx), fed to the
- * translated font-data measurer with the darwin-arm64 platform rules. It never uses the platform's rounded line metrics.
+ * translated measurer with the darwin-arm64 platform rules. It never uses the platform's rounded line metrics. With a host HarfBuzz
+ * (shaper) the measurer is the translated shaped measurer and text views draw its glyphs; without one, the font-data measurer and cmap and hmtx.
  */
 class DragonBridge private constructor(ctx: Context) {
   val fontSha256: String
   val data: FontData
   val selfCheck: List<String>
+  private val layoutShaper: GlyphShaper?
+  private val fontDataMeasurer: TextMeasurer
+  /** The measurer of one layout. Shaped, a fresh one per read: its shaped items are cached per layout, as the host's are. */
   val measurer: TextMeasurer
+    get() {
+      val s = layoutShaper ?: return fontDataMeasurer
+      return platform_deviceShapedMeasurer(JsStringMap(listOf(Pair(text_AHEM_FACE_ID, data))), s)
+    }
+  /** Whether measurer shapes with the host's HarfBuzz, so a text view draws the shaped glyph ids (shaping_pieceGlyphs). */
+  val shaped: Boolean
+    get() = layoutShaper != null
   /** The Ahem typeface under the Dragon id dragon:Ahem, and its Font (the drawGlyphs font). */
   val typeface: Typeface
   val font: Font
@@ -1264,7 +1301,8 @@ class DragonBridge private constructor(ctx: Context) {
     val units = dragonMetricUnits(dragonSfntTable(raw, "head"), hhea, hmtx, cmap, dragonSfntTable(raw, "OS/2"), dragonSfntTable(raw, "loca"), dragonSfntTable(raw, "glyf"))
     data = dragonFontData(header[0], header[1], header[2], header[3], advances, units[0], units[1], units[2])
     selfCheck = dragonSelfCheck(data)
-    measurer = text_fontDataMeasurer(data, AhemRuleFaults(false, false))
+    layoutShaper = shaper
+    fontDataMeasurer = text_fontDataMeasurer(data, AhemRuleFaults(false, false))
   }
   /** The glyph id of a code point (cmap); 0 when the font does not map it. */
   fun glyph(cp: Int): Int = dragonGlyph(cmapTable, cp)
@@ -1301,6 +1339,8 @@ class DragonBridge private constructor(ctx: Context) {
   companion object {
     /** Text sizes of the evidence-only advance probe written beside the self-check. */
     val PROBE_SIZES = listOf(10.0, 26.25, 100.0, 256.0, 257.0, 512.0, 1000.0, 2048.0)
+    /** The host's HarfBuzz (T056 R1), set before the bridge is first used; the bridge reads it once. */
+    @Volatile var shaper: GlyphShaper? = null
     @Volatile private var instance: DragonBridge? = null
     fun shared(ctx: Context): DragonBridge = instance ?: synchronized(this) { instance ?: DragonBridge(ctx.applicationContext).also { instance = it } }
   }
@@ -1331,6 +1371,8 @@ import dev.dragon.layout.LayoutRect
 import dev.dragon.layout.LayoutResult_ok
 import dev.dragon.layout.LayoutStyle
 import dev.dragon.layout.ObjectRect
+import dev.dragon.layout.PieceGlyphs_okFalse
+import dev.dragon.layout.PieceGlyphs_okTrue
 import dev.dragon.layout.PixelRect
 import dev.dragon.layout.ReplacedLeaf
 import dev.dragon.layout.paint_replacedPaint
@@ -1343,6 +1385,7 @@ import dev.dragon.layout.InlineBox
 import dev.dragon.layout.LineBreak
 import dev.dragon.layout.U_InlineBox_LineBreak_TextLeaf
 import dev.dragon.layout.inline_buildIfc
+import dev.dragon.layout.inline_fontOf
 import dev.dragon.layout.inline_placeIfcLines
 import dev.dragon.layout.grid_NO_GRID_FAULTS
 import dev.dragon.layout.layout_absoluteRects
@@ -1351,6 +1394,7 @@ import dev.dragon.layout.layout_zoomInput
 import dev.dragon.layout.overflow_scrollRanges
 import dev.dragon.layout.ScrollRangesResult_ok
 import dev.dragon.layout.ScrollRangesResult_refused
+import dev.dragon.layout.shaping_pieceGlyphs
 import dev.dragon.layout.snap_snapEdges
 import dev.dragon.layout.units_LU_PER_PX
 import dev.dragon.layout.units_fromCssPx
@@ -1628,20 +1672,30 @@ class DragonTree(val context: Context) {
         // The single-run-baseline plant: every line takes the first line's baseline below its line top.
         val f = firstBaselineOffset
         if (f != null && DRAGON_SINGLE_RUN_BASELINE_PLANT != 0.0) baseline = top + f else if (f == null) firstBaselineOffset = baseline - top
-        // Dragon places every glyph: the pen starts at the engine's run left and advances by the engine's per-glyph advance
-        // (the instance size times the font-unit advance / unitsPerEm, summed in float as textAdvanceAt does).
+        // Dragon places every glyph: the pen starts at the engine's run left. Shaped, the glyph ids and advances are HarfBuzz's for
+        // the piece (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit advance /
+        // unitsPerEm, summed in float as textAdvanceAt does.
         val xLU = a.x - e[0] * lu
         val from = utf16(piece.start.toInt())
         val text = leafText.substring(from, utf16(piece.visibleEnd.toInt()))
-        val cps = text.codePoints().toArray()
-        val glyphs = IntArray(cps.size)
-        val xs = DoubleArray(cps.size)
-        var pen = 0f
-        for ((n, cp) in cps.withIndex()) {
-          val gid = bridge.glyph(cp)
-          glyphs[n] = gid
-          xs[n] = xLU / lu + pen.toDouble()
-          pen = pen + (size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat()
+        val glyphs: IntArray
+        val xs: DoubleArray
+        if (bridge.shaped) {
+          val pg = shaping_pieceGlyphs(measurer, leafText, inline_fontOf(leaves[li].font), piece.start, piece.visibleEnd)
+          val g = pg as? PieceGlyphs_okTrue ?: throw IllegalStateException("dragon: " + id + " line " + k + ": the shaped measurer refused its text: " + (pg as PieceGlyphs_okFalse).reason)
+          glyphs = IntArray(g.glyphs.size) { dragonCheckedInt(g.glyphs[it], id + " glyph id") }
+          xs = DoubleArray(g.xs.size) { xLU / lu + g.xs[it] }
+        } else {
+          val cps = text.codePoints().toArray()
+          glyphs = IntArray(cps.size)
+          xs = DoubleArray(cps.size)
+          var pen = 0f
+          for ((n, cp) in cps.withIndex()) {
+            val gid = bridge.glyph(cp)
+            glyphs[n] = gid
+            xs[n] = xLU / lu + pen.toDouble()
+            pen = pen + (size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat()
+          }
         }
         specs.add(DragonLineSpec(text, glyphs, xs, xLU, piece.width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt())))
       }
@@ -1911,7 +1965,7 @@ function supportFiles(backend: NativeBackend): GeneratedFile[] {
       { path: 'Support/DragonChecked.swift', text: header('//', 'checked conversions') + SWIFT_CHECKED },
       { path: 'Support/DragonFontTables.swift', text: header('//', 'font table reads and the bridge self-check') + SWIFT_FONT_TABLES },
       { path: 'Support/DragonViews.swift', text: header('//', 'the Dragon views and the glyph-placing text view') + swiftViews() },
-      { path: 'Support/DragonBridge.swift', text: header('//', 'the font-data measurer bridge') + SWIFT_BRIDGE },
+      { path: 'Support/DragonBridge.swift', text: header('//', 'the measurer bridge') + SWIFT_BRIDGE },
       { path: 'Support/DragonTree.swift', text: header('//', 'the native tree, engine application and dump readback') + SWIFT_TREE },
       { path: 'Support/DragonPaintStages.swift', text: header('//', 'the paint registration points') + paintStagesSource(backend) },
       ...paint.map((m) => ({ path: `Support/Paint/${m.stem}.swift`, text: header('//', `the ${m.name} paint module`) + m.text })),
@@ -1922,7 +1976,7 @@ function supportFiles(backend: NativeBackend): GeneratedFile[] {
     { path: 'kotlin/dev/dragon/views/DragonChecked.kt', text: header('//', 'checked conversions') + KOTLIN_CHECKED },
     { path: 'kotlin/dev/dragon/views/DragonFontTables.kt', text: header('//', 'font table reads and the bridge self-check') + KOTLIN_FONT_TABLES },
     { path: 'kotlin/dev/dragon/views/DragonViews.kt', text: header('//', 'the Dragon views and the glyph-placing text view') + kotlinViews() },
-    { path: 'kotlin/dev/dragon/views/DragonBridge.kt', text: header('//', 'the font-data measurer bridge') + KOTLIN_BRIDGE },
+    { path: 'kotlin/dev/dragon/views/DragonBridge.kt', text: header('//', 'the measurer bridge') + KOTLIN_BRIDGE },
     { path: 'kotlin/dev/dragon/views/DragonTree.kt', text: header('//', 'the native tree, engine application and dump readback') + KOTLIN_TREE },
     { path: 'kotlin/dev/dragon/views/DragonPaintStages.kt', text: header('//', 'the paint registration points') + paintStagesSource(backend) },
     // Paint module files sit under views/paint and keep package dev.dragon.views, so the case code needs no new import.

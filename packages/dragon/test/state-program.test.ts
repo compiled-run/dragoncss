@@ -254,7 +254,7 @@ describe('the generated state mount (Macroscope 4157246848)', () => {
     const t = support('android-views');
     expect(t).toMatch(/current = to\n {4}\/\/ ANIM-b1 R4: one style change event per setter call\.\n {4}animator\?\.event\(to\)\n {4}onChange\?\.invoke\(\)\n {2}\}/);
     expect(t).toMatch(/machine\.onChange = \{\n {6}render\(\)\n/);
-    expect(t).toMatch(/val t = DragonTree\(stage\.context\)\n {4}machine\.build\(t\)\n {4}t\.apply\(machine\.input\(scale\), measurer, scale, bridge\)\n {4}stage\.addView\(t\.root/);
+    expect(t).toMatch(/val t = DragonTree\(stage\.context\)\n {4}machine\.build\(t\)\n {4}t\.apply\(machine\.input\(scale\), bridge\.measurer, scale, bridge\)\n {4}stage\.addView\(t\.root/);
     expect(t).toMatch(/stage\.removeView\(shown\.root\)\n {4}shown = t\n {4}renders\+\+/);
     expect(t).toContain('is DragonScriptStep.Set -> m.set(s.s, s.v)');
     expect(t).toContain('runs on a state mount, not as a layout case');

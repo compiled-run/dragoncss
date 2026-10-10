@@ -261,11 +261,12 @@ public final class DragonStateMount {
 
   private func render() {
     stale = false
+    // A fresh layout measurer per render, so a shaped one's cache never outlives a layout.
     let t = DragonTree()
     machine.build(t)
     stage.addSubview(t.root)
     do {
-      try t.apply(machine.input(scale), measurer: measurer, scale: scale, bridge: bridge)
+      try t.apply(machine.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
     } catch {
       fatalError("dragon: the state mount could not lay out assignment \(machine.current): \(error)")
     }
@@ -522,9 +523,10 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
 
   private fun render() {
     stale = false
+    // A fresh layout measurer per render, so a shaped one's cache never outlives a layout.
     val t = DragonTree(stage.context)
     machine.build(t)
-    t.apply(machine.input(scale), measurer, scale, bridge)
+    t.apply(machine.input(scale), bridge.measurer, scale, bridge)
     stage.addView(t.root, ViewGroup.LayoutParams(t.root.dragonFrame[2], t.root.dragonFrame[3]))
     stage.removeView(shown.root)
     shown = t
