@@ -5,16 +5,16 @@
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
 | web | 4326 (18.6%) | 18959 (81.4%) | 1 | 0 | 0 |
-| ios | 4299 (18.5%) | 18948 (81.4%) | 1 | 0 | 38 |
-| android | 4299 (18.5%) | 18948 (81.4%) | 1 | 0 | 38 |
+| ios | 4307 (18.5%) | 18938 (81.3%) | 1 | 0 | 40 |
+| android | 4307 (18.5%) | 18938 (81.3%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4060, ios 4080 and android 4080 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4060, ios 4090 and android 4090 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 1422 / 129 / 0 / 0 / 0 | 1414 / 137 / 0 / 0 / 0 | 1414 / 137 / 0 / 0 / 0 |
+| layout | 1551 | 1422 / 129 / 0 / 0 / 0 | 1422 / 129 / 0 / 0 / 0 | 1422 / 129 / 0 / 0 / 0 |
 | flexbox-grid | 513 | 365 / 147 / 1 / 0 / 0 | 365 / 147 / 1 / 0 / 0 | 365 / 147 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 |
@@ -29,7 +29,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4060, ios 4
 | transforms | 680 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 | 10 / 670 / 0 / 0 / 0 |
 | interactivity | 1246 | 4 / 1242 / 0 / 0 / 0 | 4 / 1204 / 0 / 0 / 38 | 4 / 1204 / 0 / 0 / 38 |
 | svg | 6 | 0 / 6 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 | 0 / 6 / 0 / 0 / 0 |
-| accessibility | 4 | 0 / 4 / 0 / 0 / 0 | 0 / 4 / 0 / 0 / 0 | 0 / 4 / 0 / 0 / 0 |
+| accessibility | 4 | 0 / 4 / 0 / 0 / 0 | 0 / 2 / 0 / 0 / 2 | 0 / 2 / 0 / 0 / 2 |
 
 ## Largest refusal groups (first blocking diagnostic)
 
