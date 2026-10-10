@@ -1,0 +1,337 @@
+# CI-OFFLOAD step 3-4: the device lanes of a commit on GitHub-hosted standard runners, one job per matrix device, in parallel.
+# iOS simulators run on xcode-27 (Xcode 27.0, the local Mac's) with the pinned iOS 26.5 (23F77) runtime; Android emulators run
+# on ubuntu-latest with KVM and the x86_64 android-36 image (device-run.ts androidImage). Each job writes its outcome with the
+# evidence stamp and host it ran on (packages/parity/src/cli/device-ci.ts one), uploaded together as device-outcomes. Every lane
+# runs here, android layout-vectors-device too (a NaN matches any NaN in the corpus comparison, #147). The merge job writes the
+# lane records (device-records) and fails when a lane judges differently from the records committed at that commit, which the
+# landing driver judges against its base instead. Nothing is committed or pushed.
+# Trigger: workflow_dispatch with a commit sha (the landing driver, LAND_DEVICES=ci), or the `devices` label on a pull request.
+name: device-lanes
+run-name: device lanes of ${{ inputs.sha || github.event.pull_request.head.sha }}
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit to run the device lanes of (it must be reachable from a branch of this repository)
+        required: true
+        type: string
+      judge:
+        description: Judge the lanes against the commit's own committed records (false only for the landing driver, which judges against its previous position)
+        required: false
+        default: true
+        type: boolean
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+concurrency:
+  group: device-lanes-${{ inputs.sha || github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+env:
+  # One device per runner: no other work shares its memory (device-run.ts memoryReserve).
+  DRAGON_DEVICE_RESERVE_GIB: '0'
+jobs:
+  resolve:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'devices'
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.r.outputs.sha }}
+    steps:
+      - id: r
+        env:
+          SHA: ${{ inputs.sha || github.event.pull_request.head.sha }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::not a full commit sha: $SHA"; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "device lanes of $SHA" >> "$GITHUB_STEP_SUMMARY"
+  ios:
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ['iPhone 17', 'iPad (A16)']
+    runs-on: xcode-27
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      # A registry or network hiccup is retried; three failures fail the step (setup: it judges nothing of the tree).
+      - name: pnpm install
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          retry pnpm install --frozen-lockfile
+      # dragon_hb, the HarfBuzz shim both apps link (packages/text-shaper, built by native-shim.ts buildShim): the pinned Zig, checked.
+      - name: Zig 0.16.0
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          case "$(uname -s)-$(uname -m)" in
+            Darwin-arm64) zig=zig-aarch64-macos-0.16.0; sha=b23d70deaa879b5c2d486ed3316f7eaa53e84acf6fc9cc747de152450d401489 ;;
+            Linux-x86_64) zig=zig-x86_64-linux-0.16.0; sha=70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00 ;;
+            *) echo "::error::no pinned Zig for $(uname -s)-$(uname -m)"; exit 1 ;;
+          esac
+          retry curl -sSfL -o "$RUNNER_TEMP/$zig.tar.xz" "https://ziglang.org/download/0.16.0/$zig.tar.xz"
+          echo "$sha  $RUNNER_TEMP/$zig.tar.xz" | shasum -a 256 -c -
+          tar xf "$RUNNER_TEMP/$zig.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/$zig" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/$zig/zig" version
+      - name: The pinned iOS 26.5 (23F77) simulator runtime
+        run: |
+          have() { xcrun simctl list runtimes -j | jq -e '.runtimes[] | select(.buildversion == "23F77" and .isAvailable)' >/dev/null; }
+          start=$(date +%s)
+          # "-buildVersion 26.5" fetches the 26.5 release candidate (23F73); the release the evidence was recorded on is 23F77.
+          # A download that fails is retried while the runtime is still missing, three attempts in all.
+          for i in 1 2 3; do have && break; xcodebuild -downloadPlatform iOS -buildVersion 23F77 || echo "::warning::xcodebuild -downloadPlatform failed (attempt $i of 3)"; done
+          have || { xcrun simctl list runtimes; echo "::error::iOS 26.5 (23F77) is not installed"; exit 1; }
+          echo "runtime ready in $(( $(date +%s) - start )) s"
+          # The host's OS, chip and GPU: the simulator composites transformed layers on the host GPU (raw pixel hashes follow it).
+          sw_vers
+          sysctl -n machdep.cpu.brand_string hw.model
+          system_profiler SPDisplaysDataType | grep -E 'Chipset Model|Type|Metal' || true
+      - name: Xcode 27.0 (27A266a) and the Swift the committed host lane records
+        run: |
+          xcodebuild -version
+          xcodebuild -version | grep -qx 'Build version 27A266a' || { echo "::error::Xcode is not 27.0 (27A266a), the Mac's"; exit 1; }
+          cat > "$RUNNER_TEMP/toolchain.mts" <<'EOF'
+          // The host toolchains the committed lanes.json records (layout-vectors-host): the CI apps must be built by the same ones.
+          import { readFileSync } from 'node:fs';
+          const target = process.argv[2] as 'ios' | 'android';
+          const { swiftTool, kotlinTool } = await import(`${process.env.GITHUB_WORKSPACE}/packages/translate/src/native.ts`);
+          const lanes = JSON.parse(readFileSync('packages/parity/out/lanes.json', 'utf8'));
+          const want = lanes.targets.find((t: any) => t.target === target)?.lanes.find((l: any) => l.lane === 'layout-vectors-host')?.run?.toolchain ?? null;
+          const have = target === 'ios' ? (swiftTool()?.version ?? null) : (kotlinTool()?.version ?? null);
+          console.log(`${target}: runner ${JSON.stringify(have)}, lanes.json ${JSON.stringify(want)}`);
+          if (have === null || have !== want) { console.error(`the runner's ${target} toolchain differs from the committed lanes.json host lane's`); process.exit(1); }
+          EOF
+          node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts" ios
+      # The step name marks the device run as a verdict step for the landing driver (land-devices-ci.ts VERDICT_STEP).
+      - name: Device run ${{ matrix.device }}
+        id: run
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/out" /tmp/dragon-device.lock
+          echo $$ > /tmp/dragon-device.lock/pid
+          slug=$(echo "$DEVICE" | tr -c 'A-Za-z0-9-' '_')
+          start=$(date +%s)
+          set +e
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts one ios "$DEVICE" "$RUNNER_TEMP/out/ios-$slug.json" 2>&1 | tee "$RUNNER_TEMP/out/ios-$slug.log"
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "ios $DEVICE: exit $code in $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+          # device-ci.ts TOOLING_EXIT: the tooling blocked the device (boot, settle, install); Device tooling fails the job instead.
+          if [ "$code" = 4 ]; then echo "tooling=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          exit "$code"
+      # Not a verdict step (land-devices-ci.ts TOOLING_STEP): a device the tooling blocked judged nothing of the tree.
+      - name: Device tooling
+        if: steps.run.outputs.tooling == 'true'
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          echo "::error::the device tooling blocked $DEVICE (a boot, settle or install fault; the Device run log says which), so this job judged nothing of the tree"
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: outcome-ios-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/out
+      # The raw dumps, hit records and trust screenshots, to compare with another host's case by case (the outcome's dumps hashes).
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dumps-ios-${{ strategy.job-index }}
+          path: packages/parity/out/native/ios/lanes
+          if-no-files-found: ignore
+          retention-days: 14
+  android:
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [dragon-320, dragon-smoke, dragon-480]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # device-run.ts reads and pins each AVD's config.ini under ~/.android/avd; newer avdmanager defaults elsewhere.
+      ANDROID_AVD_HOME: /home/runner/.android/avd
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      # A registry or network hiccup is retried; three failures fail the step (setup: it judges nothing of the tree).
+      - name: pnpm install
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          retry pnpm install --frozen-lockfile
+      # dragon_hb, the HarfBuzz shim both apps link (packages/text-shaper, built by native-shim.ts buildShim): the pinned Zig, checked.
+      - name: Zig 0.16.0
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          case "$(uname -s)-$(uname -m)" in
+            Darwin-arm64) zig=zig-aarch64-macos-0.16.0; sha=b23d70deaa879b5c2d486ed3316f7eaa53e84acf6fc9cc747de152450d401489 ;;
+            Linux-x86_64) zig=zig-x86_64-linux-0.16.0; sha=70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00 ;;
+            *) echo "::error::no pinned Zig for $(uname -s)-$(uname -m)"; exit 1 ;;
+          esac
+          retry curl -sSfL -o "$RUNNER_TEMP/$zig.tar.xz" "https://ziglang.org/download/0.16.0/$zig.tar.xz"
+          echo "$sha  $RUNNER_TEMP/$zig.tar.xz" | shasum -a 256 -c -
+          tar xf "$RUNNER_TEMP/$zig.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/$zig" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/$zig/zig" version
+      - name: KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+      # JDK 17 from Homebrew; kotlinc pinned to the JetBrains release the committed host lane records (Homebrew's kotlin moves
+      # to each new release, and a newer kotlinc fails the toolchain check below).
+      - name: JDK 17, kotlinc 2.4.20 and the Android SDK packages (the local Mac's versions)
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          retry brew install openjdk@17
+          echo "JAVA_HOME=$(brew --prefix openjdk@17)" >> "$GITHUB_ENV"
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+          retry curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+          # Added after brew's bin, so it comes first on PATH.
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdk" --licenses >/dev/null || true
+          # A download can fail transiently ("unknown archive"): sdkmanager is retried, three failures fail the step, and every
+          # package is then checked installed on its own.
+          # ndk;27.2.12479018: the sysroot dragon_hb links (native-shim.ts SHIM_NDK); the runner's own ANDROID_NDK_HOME is another NDK.
+          pkgs=(emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64' 'ndk;27.2.12479018')
+          # Its progress output goes to a log; a failed attempt prints the log's tail beside the retry warning.
+          sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }
+          retry sdk_install
+          installed=$("$sdk" --list_installed | awk -F'|' 'NF >= 3 { gsub(/ /, "", $1); print $1 }')
+          echo "$installed"
+          for p in "${pkgs[@]}"; do grep -qFx "$p" <<<"$installed" || { echo "::error::sdkmanager did not install $p"; exit 1; }; done
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - name: kotlinc and the JDK the committed host lane records
+        run: |
+          cat > "$RUNNER_TEMP/toolchain.mts" <<'EOF'
+          // The host toolchains the committed lanes.json records (layout-vectors-host): the CI apps must be built by the same ones.
+          import { readFileSync } from 'node:fs';
+          const target = process.argv[2] as 'ios' | 'android';
+          const { swiftTool, kotlinTool } = await import(`${process.env.GITHUB_WORKSPACE}/packages/translate/src/native.ts`);
+          const lanes = JSON.parse(readFileSync('packages/parity/out/lanes.json', 'utf8'));
+          const want = lanes.targets.find((t: any) => t.target === target)?.lanes.find((l: any) => l.lane === 'layout-vectors-host')?.run?.toolchain ?? null;
+          const have = target === 'ios' ? (swiftTool()?.version ?? null) : (kotlinTool()?.version ?? null);
+          console.log(`${target}: runner ${JSON.stringify(have)}, lanes.json ${JSON.stringify(want)}`);
+          if (have === null || have !== want) { console.error(`the runner's ${target} toolchain differs from the committed lanes.json host lane's`); process.exit(1); }
+          EOF
+          node --conditions=dragon-internal "$RUNNER_TEMP/toolchain.mts" android
+          # This avdmanager writes AVDs under ~/.config/.android whatever ANDROID_AVD_HOME says; one directory serves both.
+          mkdir -p "$HOME/.android/avd" "$HOME/.config"
+          ln -sfn "$HOME/.android" "$HOME/.config/.android"
+      # The step name marks the device run as a verdict step for the landing driver (land-devices-ci.ts VERDICT_STEP).
+      - name: Device run ${{ matrix.device }}
+        id: run
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          "$JAVA_HOME/bin/java" -version
+          kotlinc -version
+          mkdir -p "$RUNNER_TEMP/out" /tmp/dragon-device.lock
+          echo $$ > /tmp/dragon-device.lock/pid
+          start=$(date +%s)
+          set +e
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts one android "$DEVICE" "$RUNNER_TEMP/out/android-$DEVICE.json" 2>&1 | tee "$RUNNER_TEMP/out/android-$DEVICE.log"
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "android $DEVICE: exit $code in $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+          # device-ci.ts TOOLING_EXIT: the tooling blocked the device (boot, settle, install); Device tooling fails the job instead.
+          if [ "$code" = 4 ]; then echo "tooling=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          exit "$code"
+      # Not a verdict step (land-devices-ci.ts TOOLING_STEP): a device the tooling blocked judged nothing of the tree.
+      - name: Device tooling
+        if: steps.run.outputs.tooling == 'true'
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          echo "::error::the device tooling blocked $DEVICE (a boot, settle or install fault; the Device run log says which), so this job judged nothing of the tree"
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: outcome-android-${{ matrix.device }}
+          path: ${{ runner.temp }}/out
+      # The raw dumps, hit records and trust screenshots, to compare with another host's case by case (the outcome's dumps hashes).
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dumps-android-${{ matrix.device }}
+          path: packages/parity/out/native/android/lanes
+          if-no-files-found: ignore
+          retention-days: 14
+  merge:
+    needs: [resolve, ios, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      # A registry or network hiccup is retried; three failures fail the step (setup: it judges nothing of the tree).
+      - name: pnpm install
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          retry pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: outcome-*
+          path: ${{ runner.temp }}/outcomes
+          merge-multiple: true
+      # The outcomes are uploaded first, whatever the merge and the comparison say: the landing driver merges and judges them itself.
+      - name: Upload the device outcomes (the landing driver merges them itself)
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-outcomes
+          path: ${{ runner.temp }}/outcomes/*.json
+      - name: Keep the committed records to compare with
+        run: mkdir -p "$RUNNER_TEMP/committed" && cp packages/parity/out/lanes.json packages/parity/out/device-failures-*.json "$RUNNER_TEMP/committed/"
+      # A run for review (the `devices` label, or a manual dispatch) is judged here against the tested commit's records. A run the
+      # landing driver dispatches (judge=false) is not: its tree's records are the "not run" ones its regen wrote, and the driver
+      # judges it against the previous position, as a local run is judged; so the merge and the comparison only report there.
+      - name: Merge the device outcomes into the lane records
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && !inputs.judge }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/merge" && cp "$RUNNER_TEMP"/outcomes/*.json "$RUNNER_TEMP/merge/"
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts merge "$RUNNER_TEMP/merge"
+      - name: Compare every device lane with the committed records
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && !inputs.judge }}
+        env:
+          JUDGE: ${{ (github.event_name == 'pull_request' || inputs.judge) && '--judge' || '' }}
+        run: |
+          # shellcheck disable=SC2086
+          node --conditions=dragon-internal packages/parity/src/cli/device-ci.ts compare "$RUNNER_TEMP/committed" $JUDGE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: device-records
+          path: |
+            packages/parity/out/lanes.json
+            packages/parity/out/device-failures-ios.json
+            packages/parity/out/device-failures-android.json

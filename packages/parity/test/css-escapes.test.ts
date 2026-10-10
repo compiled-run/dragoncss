@@ -7,6 +7,7 @@
 //   an escaped exponent or percent sign); Dragon's accepted declarations must compute as Chrome's, and its invalid ones be dropped;
 // - selectors: Dragon's matches equal Chrome's Element.matches() on elements carrying the decoded names.
 // Planted faults at each gate must be caught.
+import { readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { LinkedElement } from '../../dragon/src/analysis/link.ts';
 import { selectorMatches } from '../../dragon/src/analysis/match.ts';
@@ -110,28 +111,43 @@ function reach(syntax: string, words: Set<string>, fns: Set<string>, seen: Set<s
 type Twin = { readonly decl: string; readonly plain: string; readonly written: string; readonly plainPart: string };
 const twin = (decl: string, plain: string, written: string, plainPart: string): Twin => ({ decl, plain, written, plainPart });
 
-function twinCases(): Twin[] {
+/** One spellings() call of twinCases: the name, its seed, and the escaped and plain spellings it returned. */
+type SpellCall = { readonly name: string; readonly seed: number; readonly spelled: readonly (readonly [string, string])[] };
+
+/** display keywords webref's grammar has and Chrome 145 drops (Dragon's display grammar is Chrome's): their twins must be invalid both ways. */
+const DISPLAY_DROPPED = ['grid-lanes', 'inline-grid-lanes', 'ruby-base', 'ruby-base-container', 'ruby-text-container', 'run-in'];
+/** Chrome 145's legacy display keywords, which reach() skips because they start with a hyphen. */
+const DISPLAY_LEGACY = ['-webkit-box', '-webkit-flex', '-webkit-inline-box', '-webkit-inline-flex'];
+
+function twinCases(calls: SpellCall[] = []): Twin[] {
   const out: Twin[] = [];
   let seed = 0;
+  const spell = (name: string): [string, string][] => {
+    const s = seed++;
+    const r = spellings(name, s);
+    calls.push({ name, seed: s, spelled: r });
+    return r;
+  };
   for (const p of subset) {
     const words = new Set<string>();
     reach((grammar as Record<string, { syntax: string }>)[p]?.syntax ?? '', words, new Set(), new Set());
-    for (const w of [...words].sort()) for (const [e, w0] of spellings(w, seed++)) out.push(twin(`${p}: ${e}`, `${p}: ${w0}`, e, w0));
-    for (const [e, p0] of spellings(p, seed++)) out.push(twin(`${e}: inherit`, `${p0}: inherit`, e, p0));
+    for (const w of [...words].sort()) for (const [e, w0] of spell(w)) out.push(twin(`${p}: ${e}`, `${p}: ${w0}`, e, w0));
+    for (const [e, p0] of spell(p)) out.push(twin(`${e}: inherit`, `${p0}: inherit`, e, p0));
   }
-  for (const w of ['inherit', 'initial', 'unset', 'revert', 'revert-layer']) for (const [e, w0] of spellings(w, seed++)) out.push(twin(`width: ${e}`, `width: ${w0}`, e, w0));
+  for (const w of ['inherit', 'initial', 'unset', 'revert', 'revert-layer']) for (const [e, w0] of spell(w)) out.push(twin(`width: ${e}`, `width: ${w0}`, e, w0));
   const functions: [string, string, string][] = [
     ['color', 'rgb', '(1, 2, 3)'], ['color', 'rgba', '(1, 2, 3, 0.5)'], ['color', 'hsl', '(120deg, 50%, 50%)'], ['color', 'hsla', '(120deg 50% 50% / 0.5)'],
     ['border-top-color', 'rgb', '(1 2 3)'], ['width', 'calc', '(10px + 5%)'], ['width', 'min', '(1px, 2px)'], ['width', 'max', '(1px, 2px)'],
     ['width', 'clamp', '(1px, 2px, 3px)'], ['width', 'fit-content', '(10px)'], ['grid-template-columns', 'repeat', '(2, 10px)'],
     ['grid-template-columns', 'minmax', '(10px, 1fr)'], ['grid-template-columns', 'fit-content', '(10px)'], ['grid-auto-rows', 'minmax', '(auto, 2fr)'],
   ];
-  for (const [p, f, args] of functions) for (const [e, f0] of spellings(f, seed++)) out.push(twin(`${p}: ${e}${args}`, `${p}: ${f0}${args}`, `${e}${args}`, `${f0}${args}`));
+  for (const [p, f, args] of functions) for (const [e, f0] of spell(f)) out.push(twin(`${p}: ${e}${args}`, `${p}: ${f0}${args}`, `${e}${args}`, `${f0}${args}`));
   const units: [string, string, string][] = [
     ...['px', 'em', 'rem', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'vw', 'vh', 'vmin', 'vmax', 'ex', 'ch', 'lh', 'cqw', 'PX', 'Em'].map((u) => ['width', '10', u] as [string, string, string]),
     ['grid-template-columns', '1', 'fr'], ['grid-auto-columns', '2.5', 'fr'], ['font-size', '1.5', 'em'], ['line-height', '2', 'px'], ['margin-left', '-3', 'px'],
   ];
-  for (const [p, n, u] of units) for (const [e, u0] of spellings(u, seed++)) out.push(twin(`${p}: ${n}${e}`, `${p}: ${n}${u0}`, `${n}${e}`, `${n}${u0}`));
+  for (const [p, n, u] of units) for (const [e, u0] of spell(u)) out.push(twin(`${p}: ${n}${e}`, `${p}: ${n}${u0}`, `${n}${e}`, `${n}${u0}`));
+  for (const w of [...DISPLAY_DROPPED, ...DISPLAY_LEGACY]) for (const [e, w0] of spell(w)) out.push(twin(`display: ${e}`, `display: ${w0}`, e, w0));
   for (const [e, plain] of [['#\\66 00', '#f00'], ['#\\46 00', '#F00'], ['#a\\62 c', '#abc'], ['#\\31 23', '#123'], ['#\\000031 23456', '#123456'], ['#f0\\30 f', '#f00f']]) {
     out.push(twin(`color: ${e as string}`, `color: ${plain as string}`, e as string, plain as string), twin(`background-color: ${e as string}`, `background-color: ${plain as string}`, e as string, plain as string));
   }
@@ -198,7 +214,7 @@ const SELECTORS: readonly SelectorCase[] = [
   { selector: '\\73 pan:\\6e ot(.\\78\\3a y)' }, { selector: ':\\72oot' }, { selector: 'div:\\66irst-child' }, { selector: ':n\\74h-child(\\6f dd)' },
   { selector: ':n\\74h-child(odd)' }, { selector: ':\\6e th-last-child(2 of .\\61)' }, { selector: ':\\77here(.\\31 a)' }, { selector: '.\\31 a:\\68 as(+ .\\31 a)' },
   { selector: ':\\69s(#\\31 a, .\\2d)' }, { selector: '.a\\', eof: true }, { selector: '#\\31', eof: true }, { selector: '[data-a=\\', eof: true },
-  { selector: '.\\31 a,' }, { selector: 'div:\\68over' }, { selector: '.a\\\n' }, { selector: '#\uD800' }, { selector: '.\uD800' }, { selector: '#\u0000' }, { selector: '.a\u0000' }, { selector: '.\u0000a' },
+  { selector: '.\\31 a,' }, { selector: 'div:\\68over' }, { selector: 'div:\\66 ocus-within' }, { selector: '.a\\\n' }, { selector: '#\uD800' }, { selector: '.\uD800' }, { selector: '#\u0000' }, { selector: '.a\u0000' }, { selector: '.\u0000a' },
 ];
 
 const toLinked = (el: El, children: LinkedElement[] = []): LinkedElement => ({
@@ -332,7 +348,7 @@ const judgeEdges = (items: readonly EdgeItem[], seen: readonly EdgeSeen[]): stri
 type SelectorSeen = { readonly c: SelectorCase; readonly dragon: boolean[] | 'invalid' | string; readonly chrome: boolean[] | 'invalid' };
 /** Selectors Chrome parses that Dragon refuses or reports, each with its reason; none is a wrong match. */
 const SELECTOR_REFUSALS: Record<string, string> = {
-  'div:\\68over': 'interactive state is runtime state, which a later package models',
+  'div:\\66 ocus-within': ':focus-within is runtime state Dragon does not model (SELD-R2 compiles :hover, :active, :focus and :focus-visible)',
   ':n\\74h-child(\\6f dd)': 'css-tree\'s An+B parser does not read escapes, so the argument stays Raw and is refused',
   '[data-a=\\': 'css-tree reports a block left open at the end of the input',
 };
@@ -344,9 +360,76 @@ const judgeSelectors = (seen: readonly SelectorSeen[]): string[] => seen.flatMap
   return JSON.stringify(s.dragon) === JSON.stringify(s.chrome) ? [] : [`${name}: Dragon ${JSON.stringify(s.dragon)}, Chrome ${JSON.stringify(s.chrome)}`];
 });
 
+/**
+ * PIN-DERIVE: the twin set's floor, per property, the number of distinct plain spellings it has twins for (case folded, so the
+ * seed that picks each escape form does not move it). css-escapes-floor.json may only rise: a property or word the grammar
+ * subset reaches can be added without a test edit, but losing one fails. DRAGON_FLOOR_WRITE=1 raises the floor when none is lost.
+ */
+const TWIN_FLOOR = new URL('./css-escapes-floor.json', import.meta.url);
+function twinFloorProblems(twins: readonly Twin[]): string[] {
+  const plains = new Map<string, Set<string>>();
+  for (const t of twins) {
+    const key = t.plain.slice(0, t.plain.indexOf(':')).toLowerCase();
+    plains.set(key, (plains.get(key) ?? new Set()).add(t.plain.toLowerCase()));
+  }
+  const floor = JSON.parse(readFileSync(TWIN_FLOOR, 'utf8')) as unknown;
+  if (typeof floor !== 'object' || floor === null || Array.isArray(floor) || Object.values(floor).some((n) => !Number.isInteger(n) || (n as number) < 1)) return ['css-escapes-floor.json is not an object of positive counts'];
+  const problems = Object.entries(floor as Record<string, number>).filter(([k, n]) => (plains.get(k)?.size ?? 0) < n).map(([k, n]) => `${k}: ${plains.get(k)?.size ?? 0} plain spellings with twins, the floor is ${n}`);
+  if (problems.length === 0 && process.env['DRAGON_FLOOR_WRITE'] === '1') {
+    const raised = Object.fromEntries([...plains].map(([k, v]) => [k, v.size]).sort(([a], [b]) => ((a as string) < (b as string) ? -1 : 1)));
+    writeFileSync(TWIN_FLOOR, `${JSON.stringify(raised, null, 2)}\n`);
+  }
+  return problems;
+}
+
+/** The twins twinCases writes outside spellings(): the six hex colours (on color and background-color) and the sixteen whole declarations. */
+const LITERAL_TWINS = 6 * 2 + 16;
+/** The escape forms each name must get, from the rule stated on spellings(), not from its code. */
+const formsOf = (name: string, seed: number): string[] => ['hex', ...(/[^0-9a-fA-F\n\r\f]/.test(name) ? ['identity'] : []), ...(seed % 3 === 0 && /^[a-z]/.test(name) ? ['uppercase'] : [])];
+/** The form an escaped spelling of `name` takes: one hex escape, one identity escape, or the uppercase form with a hex first letter. */
+function formOf(name: string, written: string, plain: string): string {
+  if (plain === name.toUpperCase() && plain !== name && /^\\[0-9a-fA-F]{1,6} /.test(written) && written.slice(written.indexOf(' ') + 1) === name.slice(1).toUpperCase()) return 'uppercase';
+  const at = written.indexOf('\\');
+  if (plain !== name || at < 0 || written.slice(0, at) !== name.slice(0, at)) return 'other';
+  const hex = /^\\([0-9a-fA-F]{1,6})(\r\n|[ \t\n\f])?/.exec(written.slice(at));
+  if (hex !== null && String.fromCodePoint(parseInt(hex[1] as string, 16)) === name[at] && written.slice(at + hex[0].length) === name.slice(at + 1)) return 'hex';
+  return written.slice(at + 1) === name.slice(at) && !/[0-9a-fA-F\n\r\f]/.test(name[at] as string) ? 'identity' : 'other';
+}
+/** Every spellings() call's problems: a missing, extra or malformed escape form. */
+const formProblems = (calls: readonly SpellCall[]): string[] => calls.flatMap((c) => {
+  const got = c.spelled.map(([w, p]) => formOf(c.name, w, p));
+  const want = formsOf(c.name, c.seed);
+  return JSON.stringify(got) === JSON.stringify(want) ? [] : [`${c.name} (seed ${c.seed}): forms ${JSON.stringify(got)}, the rule gives ${JSON.stringify(want)}`];
+});
+/** The twin count derived from the calls and the rule: what Chrome must have checked. */
+const expectedTwins = (calls: readonly SpellCall[]): number => calls.reduce((n, c) => n + formsOf(c.name, c.seed).length, 0) + LITERAL_TWINS;
+
+describe('CSS escapes: the twin set', () => {
+  it('has every escape form of every keyword, name, function and unit, a twin per keyword each subset property reaches, and never falls below its floor', () => {
+    const calls: SpellCall[] = [];
+    const twins = twinCases(calls);
+    expect(formProblems(calls)).toEqual([]);
+    expect(twins.length).toBe(expectedTwins(calls));
+    const plains = new Set(twins.map((t) => t.plain));
+    for (const p of subset) {
+      const words = new Set<string>();
+      reach((grammar as Record<string, { syntax: string }>)[p]?.syntax ?? '', words, new Set(), new Set());
+      for (const w of words) expect(plains.has(`${p}: ${w}`), `${p}: ${w}`).toBe(true);
+      expect(plains.has(`${p}: inherit`), `${p} name`).toBe(true);
+    }
+    expect(new Set(twins.map((t) => t.decl)).size).toBe(twins.length);
+    expect(twinFloorProblems(twins)).toEqual([]);
+    // The dropped display keywords are invalid in Dragon, escaped exactly as plain.
+    const dropped = twins.filter((t) => DISPLAY_DROPPED.includes(t.plainPart.toLowerCase()));
+    expect(dropped.length).toBeGreaterThanOrEqual(DISPLAY_DROPPED.length * 2);
+    for (const t of dropped) for (const d of [t.decl, t.plain]) expect(dragonSheet(sheetOf(d, false)).diagnostics.map((x) => x.code), d).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+  });
+});
+
 describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
   it('escaped twins read as their plain spelling, edge escapes compute like Chrome, selectors match like Chrome, and the plants are caught', async () => {
-    const twins = twinCases();
+    const calls: SpellCall[] = [];
+    const twins = twinCases(calls);
     const edges = EDGES.map(edgeItem);
     const { launchChrome } = await load<{ launchChrome: () => Promise<Browser> }>('chrome.ts');
     const browser = await launchChrome();
@@ -392,13 +475,14 @@ describe('CSS escapes: Dragon decodes as Chrome 145 does', () => {
       await browser.close();
     }
     expect(judgeTwins(twinSeen)).toEqual([]);
+    // Chrome drops the dropped display keywords' twins both ways, as Dragon calls them invalid.
+    expect(twinSeen.filter((s) => DISPLAY_DROPPED.includes(s.twin.plainPart.toLowerCase()) && (JSON.stringify(s.chrome) !== '[]' || JSON.stringify(s.chromePlain) !== '[]')).map((s) => s.twin.decl)).toEqual([]);
     expect(judgeEdges(edges, edgeSeen)).toEqual([]);
     expect(judgeSelectors(selectorSeen)).toEqual([]);
     for (const p of planted) expect(p.problems().length, p.name).toBeGreaterThan(0);
-    // SIZE-ar: aspect-ratio joins the grammar subset, so its keyword and name gain escaped twins (+4); SELD-R1b's pointer-events
-    // and the hit-* fixtures add 21. Every twin still reads as Chrome reads it. TXT-W1: the grammar subset gains font-weight and
-    // font-style, whose keywords and names add 27 twins (a word's spellings depend on its seed, which its place in the subset sets,
-    // so the count is this base's: 25 on the old inl1a-compiler base).
-    expect({ twins: twinSeen.length, edges: edges.length, selectors: selectorSeen.length }).toEqual({ twins: 13803 + 27, edges: 89, selectors: 59 });
+    // PIN-DERIVE: Chrome read every twin both ways (the twin set itself is floored above); the edge and selector lists are this file's.
+    expect(twinSeen.length).toBe(expectedTwins(calls));
+    expect(twinSeen.filter((s) => s.chrome === undefined || s.chromePlain === undefined).map((s) => s.twin.decl)).toEqual([]);
+    expect({ edges: edges.length, selectors: selectorSeen.length }).toEqual({ edges: 89, selectors: 60 });
   }, 300_000);
 });

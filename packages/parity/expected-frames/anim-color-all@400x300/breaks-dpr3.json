@@ -1,0 +1,74 @@
+{
+ "schema": "dragon-frame-breaks/1",
+ "case": "anim-color-all@400x300",
+ "chrome": "145.0.7632.6",
+ "dpr": 3,
+ "samples": [
+  {"at": 0, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 0, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 1, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 62.98667519999999, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 150, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 299, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 300, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 301, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 400, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 400, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 401, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 462.9866752, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 550, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 550, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 551, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 600.5407217720649, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 670.3605086589765, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 789.721017317953, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 790.721017317953, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 791.721017317953, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 950, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]},
+  {"at": 951, "texts": [
+   {"id":"label:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]}
+ ]
+}

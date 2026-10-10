@@ -1,0 +1,2 @@
+.toggle { width: 20px; height: 10px; border-top: 1px solid; transition: border-top-width 1s; }
+.on { border-top-width: 3px; }

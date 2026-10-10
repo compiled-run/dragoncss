@@ -1,0 +1,28 @@
+{
+ "schema": "dragon-frame-pixels/1",
+ "case": "anim-reverse@400x300",
+ "chrome": "145.0.7632.6",
+ "capture": "CDP Page.captureScreenshot {format: png}, the viewport at the forced device scale factor",
+ "rasterRule": "ceil(viewport css px x DPR) in each dimension; 400x300 at 2.625 is 1050x788",
+ "dpr": 3,
+ "flags": ["--force-device-scale-factor=3","--force-color-profile=srgb","--font-render-hinting=none","--disable-lcd-text","--hide-scrollbars"],
+ "raster": {"rasterization":"disabled_software","gpu_compositing":"disabled_software"},
+ "samples": [
+  {"k":0,"at":0,"width":1200,"height":900,"sha256":"cf5812477106bf3209b40f1afb3e9264e9009a6426208428e146dd7ee09014c2"},
+  {"k":1,"at":0,"width":1200,"height":900,"sha256":"cf5812477106bf3209b40f1afb3e9264e9009a6426208428e146dd7ee09014c2"},
+  {"k":2,"at":1,"width":1200,"height":900,"sha256":"cf5812477106bf3209b40f1afb3e9264e9009a6426208428e146dd7ee09014c2"},
+  {"k":5,"at":250,"width":1200,"height":900,"sha256":"90044e19c6d34b7aa410b9389bbb228a3f5cb45401e03985267e220e15aab9f3"},
+  {"k":6,"at":251,"width":1200,"height":900,"sha256":"d970d0b11cf8a5a8c6154245631e6fe9f5d4f6c39b80a8244bdf09f9f8651182"},
+  {"k":8,"at":454.2552956777686,"width":1200,"height":900,"sha256":"652cc167264d6083dd253baac9813e43f1b493dbb946c899d1717238cf7b3f1e"},
+  {"k":10,"at":550,"width":1200,"height":900,"sha256":"aa1465d992f003cb1980d8503eba7e99e492c9c3e6c74dea1fdc7fa57561fce0"},
+  {"k":11,"at":551,"width":1200,"height":900,"sha256":"aa1465d992f003cb1980d8503eba7e99e492c9c3e6c74dea1fdc7fa57561fce0"},
+  {"k":13,"at":750,"width":1200,"height":900,"sha256":"76747292b4af04e1d03bef4ff91a0550204fdeefa5e351df451d91fc68942dae"},
+  {"k":14,"at":751,"width":1200,"height":900,"sha256":"76747292b4af04e1d03bef4ff91a0550204fdeefa5e351df451d91fc68942dae"},
+  {"k":17,"at":1050,"width":1200,"height":900,"sha256":"fc493d91b614799a193a59877545d02c3dc278ecae6f0c8b040b8df94034a7eb"},
+  {"k":19,"at":1150,"width":1200,"height":900,"sha256":"fc493d91b614799a193a59877545d02c3dc278ecae6f0c8b040b8df94034a7eb"},
+  {"k":20,"at":1151,"width":1200,"height":900,"sha256":"fc493d91b614799a193a59877545d02c3dc278ecae6f0c8b040b8df94034a7eb"},
+  {"k":22,"at":1650,"width":1200,"height":900,"sha256":"982de59c0006d0e619a677a5fbbb9704f4af3e4ea9bdaf9e523d1e5e3a257492"},
+  {"k":25,"at":2151,"width":1200,"height":900,"sha256":"cf5812477106bf3209b40f1afb3e9264e9009a6426208428e146dd7ee09014c2"},
+  {"k":27,"at":2351,"width":1200,"height":900,"sha256":"cf5812477106bf3209b40f1afb3e9264e9009a6426208428e146dd7ee09014c2"}
+ ]
+}

@@ -45,6 +45,8 @@ export const divStyle: LayoutStyle = {
   textAlign: 'start',
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
+  grid: null,
+  gridItem: null,
 };
 
 type Child = LayoutBox | ReplacedLeaf | InlineChild;

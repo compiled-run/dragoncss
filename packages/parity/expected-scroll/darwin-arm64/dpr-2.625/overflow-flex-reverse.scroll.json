@@ -1,0 +1,118 @@
+{
+ "case": "overflow-flex-reverse",
+ "chrome": "145.0.7632.6",
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "direction": "ltr",
+ "scrollbars": "overlay",
+ "scrollbarArgs": "-AppleShowScrollBars WhenScrolling",
+ "records": [
+  {
+   "id": "viewport",
+   "scrollWidth": 400,
+   "scrollHeight": 402,
+   "clientWidth": 400,
+   "clientHeight": 300
+  },
+  {
+   "id": "a1",
+   "scrollWidth": 158,
+   "scrollHeight": 52,
+   "clientWidth": 68,
+   "clientHeight": 52
+  },
+  {
+   "id": "a2",
+   "scrollWidth": 207,
+   "scrollHeight": 52,
+   "clientWidth": 68,
+   "clientHeight": 52
+  },
+  {
+   "id": "a3",
+   "scrollWidth": 68,
+   "scrollHeight": 102,
+   "clientWidth": 68,
+   "clientHeight": 52
+  },
+  {
+   "id": "a4",
+   "scrollWidth": 68,
+   "scrollHeight": 136,
+   "clientWidth": 68,
+   "clientHeight": 52
+  },
+  {
+   "id": "a5",
+   "scrollWidth": 68,
+   "scrollHeight": 110,
+   "clientWidth": 68,
+   "clientHeight": 52
+  },
+  {
+   "id": "a6",
+   "scrollWidth": 127,
+   "scrollHeight": 52,
+   "clientWidth": 68,
+   "clientHeight": 52
+  },
+  {
+   "id": "a7",
+   "scrollWidth": 158,
+   "scrollHeight": 130,
+   "clientWidth": 68,
+   "clientHeight": 52
+  }
+ ],
+ "extents": [
+  {
+   "id": "a1",
+   "minLeft": -89.9047622680664,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a2",
+   "minLeft": -138.6666717529297,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a3",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": -49.904762268066406,
+   "maxTop": 0
+  },
+  {
+   "id": "a4",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": -83.80952453613281,
+   "maxTop": 0
+  },
+  {
+   "id": "a5",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": -57.904762268066406,
+   "maxTop": 0
+  },
+  {
+   "id": "a6",
+   "minLeft": -58.66666793823242,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a7",
+   "minLeft": -89.9047622680664,
+   "maxLeft": 0,
+   "minTop": -77.71428680419922,
+   "maxTop": 0
+  }
+ ]
+}

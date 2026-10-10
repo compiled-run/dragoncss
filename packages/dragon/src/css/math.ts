@@ -5,6 +5,8 @@
 // so a left-deep chain becomes one sum and every other shape keeps its nesting. What V1 does not support is refused with a reason.
 import type { CalcExpr, LengthCalc } from '@dragon/layout';
 import { mathFunctionRefusal, unitEntry } from './units.ts';
+import type { SafeAreaSide } from './env.ts';
+import { SAFE_AREA_NAMES } from './env.ts';
 
 export type Category = 'number' | 'length' | 'percent' | 'length-percent';
 
@@ -49,6 +51,19 @@ function pxPer(unit: string): number | null {
 }
 
 const V1_RELATIVE = new Set(['em', 'rem', 'vw', 'vh', 'vi', 'vb', 'vmin', 'vmax']);
+
+/**
+ * The unit of an env() leaf: a length of its own family with no double value, so no simplification folds it into a px literal
+ * (its value is known only on the device) and products by a number keep it as a leaf.
+ */
+const ENV_UNIT_PREFIX = 'env:';
+const envUnit = (side: SafeAreaSide): string => `${ENV_UNIT_PREFIX}${side}`;
+const envSideOf = (unit: string): SafeAreaSide | null => (unit.startsWith(ENV_UNIT_PREFIX) ? (unit.slice(ENV_UNIT_PREFIX.length) as SafeAreaSide) : null);
+
+/** Whether a calculation reads a safe-area inset. */
+export function mathHasEnv(n: MathNode): boolean {
+  return isLit(n) ? envSideOf(n.unit) !== null : n.args.some(mathHasEnv);
+}
 /** Blink HasDoubleValue: the unit types a literal may be combined in (vi and vb are not among them). */
 const DOUBLE_VALUED = new Set(['', '%', 'px', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'em', 'rem', 'vw', 'vh', 'vmin', 'vmax']);
 const FONT_METRIC = new Set(['ex', 'rex', 'ch', 'rch', 'cap', 'rcap', 'ic', 'ric']);
@@ -447,6 +462,7 @@ class Parser {
   }
   /** depth counts the enclosing parentheses and functions, so nested min() is bounded like nested calc(). */
   function(name: string, depth: number): MathNode {
+    if (name === 'env') return this.env();
     if (!V1_MATH_FUNCTIONS.has(name)) {
       const r = mathFunctionRefusal(name);
       if (r !== null) return refuse(r.reason, r.fix);
@@ -475,6 +491,31 @@ class Parser {
     }
     if (name === 'clamp' && args.length !== 3) this.invalid();
     return createComparison(args, name as 'min' | 'max' | 'clamp');
+  }
+  /**
+   * css-env-1: env(<safe-area name>[, <fallback>]) is a length leaf whose value the engine reads from its environment (a px token
+   * in Blink, substituted before the calculation is parsed). A safe-area name is always defined, so its fallback is skipped.
+   */
+  private env(): MathNode {
+    this.skipWs();
+    const t = this.peek();
+    const side = t?.k === 'ident' ? SAFE_AREA_NAMES.get(t.name) : undefined;
+    if (side === undefined) return refuse(`env(${t?.k === 'ident' ? t.name : ''}) is not a safe-area inset`, 'Write env(safe-area-inset-top), env(safe-area-inset-right), env(safe-area-inset-bottom) or env(safe-area-inset-left).');
+    this.i++;
+    this.skipWs();
+    const next = this.peek();
+    if (next?.k === 'comma') {
+      let depth = 0;
+      for (;;) {
+        const f = this.peek();
+        if (f === undefined) return this.invalid();
+        this.i++;
+        if (f.k === 'open' || f.k === 'func') depth++;
+        else if (f.k === 'close' && depth-- === 0) break;
+      }
+    } else if (next?.k === 'close') this.i++;
+    else return this.invalid();
+    return lit(1, envUnit(side));
   }
   /** One term: a nested calculation, a function or a value; ws reports whether whitespace follows it. */
   private term(depth: number): { node: MathNode; ws: boolean } {
@@ -622,9 +663,10 @@ export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or
 
 // aspect-ratio: each <ratio> part is a <number [0,∞]> (css-sizing-4 §5.1), so a math function in it resolves to a number.
 // font-weight: Chrome's ConsumeFontWeight takes ConsumeNumber; font-style: its oblique angle is ConsumeAngle (css-fonts-4 §2.2, §2.3).
-const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'font-weight']);
+const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight']);
 const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style']);
-const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex']);
+/** opacity is <number> | <percentage> (css-color-4 §3.2); Chrome resolves a calculation in it as a number or a percentage. */
+const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity']);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
 export function mathGrammarFor(property: string): MathGrammar {
@@ -1069,7 +1111,11 @@ export function fontUnitsIn(n: MathNode): { readonly em: boolean; readonly rem: 
   return { em: parts.some((x) => x.em), rem: parts.some((x) => x.rem) };
 }
 
-function lowerLeaf(n: MathLiteral, fonts: MathFonts): CalcExpr {
+const OPPOSITE: { readonly [S in SafeAreaSide]: SafeAreaSide } = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+
+function lowerLeaf(n: MathLiteral, fonts: MathFonts, faults: MathFaults): CalcExpr {
+  const side = envSideOf(n.unit);
+  if (side !== null) return { kind: 'env', value: n.value, side: faults.envSideSwapped ? OPPOSITE[side] : side };
   if (n.unit === '') return n.inverseOf === null ? { kind: 'number', value: n.value } : { kind: 'invert', term: { kind: 'number', value: n.inverseOf } };
   if (n.unit === '%') return { kind: 'percent', value: n.value };
   if (n.unit === 'em') return { kind: 'em', value: n.value, fontSize: { kind: 'px', value: fonts.em } };
@@ -1089,6 +1135,7 @@ function negate(e: CalcExpr): CalcExpr {
     case 'percent':
     case 'number':
     case 'viewport':
+    case 'env':
       return { ...e, value: -e.value };
     case 'em':
       return { kind: 'em', value: -e.value, fontSize: e.fontSize };
@@ -1097,10 +1144,10 @@ function negate(e: CalcExpr): CalcExpr {
   }
 }
 
-/** Compiler fault sumOrderSwapped reverses the terms of every sum; dropExplicitZeroPercent removes 0% terms. */
-export type MathFaults = { readonly sumOrderSwapped: boolean; readonly dropExplicitZeroPercent: boolean };
+/** Compiler fault sumOrderSwapped reverses the terms of every sum; dropExplicitZeroPercent removes 0% terms; envSideSwapped reads the opposite inset. */
+export type MathFaults = { readonly sumOrderSwapped: boolean; readonly dropExplicitZeroPercent: boolean; readonly envSideSwapped: boolean };
 
-export const NO_MATH_FAULTS: MathFaults = { sumOrderSwapped: false, dropExplicitZeroPercent: false };
+export const NO_MATH_FAULTS: MathFaults = { sumOrderSwapped: false, dropExplicitZeroPercent: false, envSideSwapped: false };
 
 /** The planted compiler faults, applied to a lowered calculation: every sum reversed, every explicit 0% term dropped. */
 function planted(e: CalcExpr, faults: MathFaults): CalcExpr {
@@ -1128,13 +1175,13 @@ function planted(e: CalcExpr, faults: MathFaults): CalcExpr {
 }
 
 export function lowerMathNode(n: MathNode, fonts: MathFonts, faults: MathFaults = NO_MATH_FAULTS): CalcExpr {
-  const e = lowerPlain(n, fonts);
+  const e = lowerPlain(n, fonts, faults);
   return faults.sumOrderSwapped || faults.dropExplicitZeroPercent ? planted(e, faults) : e;
 }
 
-function lowerPlain(n: MathNode, fonts: MathFonts): CalcExpr {
-  if (isLit(n)) return lowerLeaf(n, fonts);
-  const args = n.args.map((a) => lowerPlain(a, fonts));
+function lowerPlain(n: MathNode, fonts: MathFonts, faults: MathFaults): CalcExpr {
+  if (isLit(n)) return lowerLeaf(n, fonts, faults);
+  const args = n.args.map((a) => lowerPlain(a, fonts, faults));
   switch (n.op) {
     case 'add':
     case 'sub': {

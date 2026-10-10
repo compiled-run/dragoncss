@@ -2,10 +2,12 @@
 // captured dataset is refused; it never borrows another platform's values.
 import * as darwinArm64Dark from './chrome-145.darwin-arm64.dark.generated.ts';
 import * as darwinArm64 from './chrome-145.darwin-arm64.generated.ts';
-import type { CapturedTag } from './chrome-145.darwin-arm64.generated.ts';
+import type { CapturedTag, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
 import { UNSTYLED_TAGS } from '../analysis/elements.ts';
 
-export type { CapturedTag } from './chrome-145.darwin-arm64.generated.ts';
+export type { CapturedTag, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
+
+type DirRows = { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } };
 
 export type UaDataset = {
   readonly platform: string;
@@ -25,9 +27,43 @@ export type UaDataset = {
   readonly userAgentTextFonts: { readonly [T in CapturedTag]: TextFontRow } & { readonly [K in PhrasingKey]?: TextFontRow };
   /** Chrome's minimum logical font size in px, which clamps an em font size under the keyword-sized root. */
   readonly minimumLogicalFontSize: number;
+  /** REPL-0: the replaced keys (iframe, img with a src), in tables of their own; uaRows reads them. */
+  readonly replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [property: string]: string } };
+  readonly replacedKeyLonghands: { readonly [K in ReplacedKey]: readonly string[] };
+  readonly replacedKeyDeclared: { readonly [K in ReplacedKey]: DirRows };
+  readonly replacedKeyContexts: { readonly [K in ReplacedKey]: readonly string[] };
+  readonly replacedKeyTextFonts: { readonly [K in ReplacedKey]: { readonly [property: string]: string } };
+  readonly replacedKeyForced: { readonly [K in ReplacedKey]: DirRows };
 };
 
 type TextFontRow = { readonly [property: string]: string };
+
+/** A row key of the UA dataset: a captured tag, or a replaced key (REPL-0). */
+export type UaKey = CapturedTag | ReplacedKey;
+
+/** The UA rows of one key. forced: values Chrome forces whatever the cascade says (ELB-2 userAgentForced); none for a captured tag. */
+export type UaRows = {
+  readonly computed: { readonly [property: string]: string };
+  readonly longhands: readonly string[];
+  readonly declared: DirRows;
+  readonly contexts: readonly string[];
+  readonly textFonts: { readonly [property: string]: string };
+  readonly forced: DirRows;
+};
+
+const NO_FORCED: DirRows = { ltr: {}, rtl: {} };
+
+function isReplacedKey(key: UaKey): key is ReplacedKey {
+  return key === 'iframe' || key === 'img[src]';
+}
+
+/** The UA rows of a key, from the element tables or the replaced-key tables. */
+export function uaRows(ua: UaDataset, key: UaKey): UaRows {
+  if (isReplacedKey(key)) {
+    return { computed: ua.replacedKeyComputed[key], longhands: ua.replacedKeyLonghands[key], declared: ua.replacedKeyDeclared[key], contexts: ua.replacedKeyContexts[key], textFonts: ua.replacedKeyTextFonts[key], forced: ua.replacedKeyForced[key] };
+  }
+  return { computed: ua.computed[key], longhands: ua.userAgentLonghands[key], declared: ua.userAgentDeclared[key], contexts: ua.userAgentContexts[key], textFonts: ua.userAgentTextFonts[key], forced: NO_FORCED };
+}
 
 /** The platform the committed Chrome references and the UA dataset were captured on. */
 export const REFERENCE_PLATFORM = 'darwin-arm64';

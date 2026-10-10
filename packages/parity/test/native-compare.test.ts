@@ -2,38 +2,35 @@
 // every layout case at every device DPR of each target validate and pass (a) and (d); every planted dump fault fails its check.
 import { describe, expect, it } from 'vitest';
 import type { LayoutRect } from '@dragon/layout';
-import { layout } from '@dragon/layout';
-import { NO_FAULTS } from 'dragon';
+import { layout, measurerFor } from '@dragon/layout';
 import type { WebCapture } from '../src/capture.ts';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_POSITION_DEVICE_PX } from '../src/compare.ts';
 import { atDpr, committedDprCapture, layoutCases } from '../src/dpr.ts';
 import { declaredLayoutCaseCount } from '../src/case-count.ts';
+import type { ReferenceRow } from '../src/lanes.ts';
 import { referenceProof } from '../src/lanes.ts';
 import type { ExpectedApplied, ReferenceFaults, RgbaImage } from '../src/native-compare.ts';
 import { checkAgainstChrome, checkAgainstEngine, checkApplied, checkPixels, DUMP_FAULTS, glyphPositions, NO_REFERENCE_FAULTS, readSamples, referenceDump } from '../src/native-compare.ts';
 import type { DumpNode, NativeDump } from '../src/native-dump.ts';
 import { frameOf, validateNativeDump } from '../src/native-dump.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
-import { compileFixture } from '../src/pipeline.ts';
+import { enforcedCompile } from '../src/pipeline.ts';
 import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 import type { GlyphBox, SampleBox } from '../src/samples.ts';
 import { generateGlyphSamples, generateSamples } from '../src/samples.ts';
 import type { NativeTarget } from '../src/targets.ts';
-import { layoutCaseIds, nativeTargets } from '../src/targets.ts';
+import { nativeTargets, vectorCaseIds } from '../src/targets.ts';
+import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 const all = layoutCases();
 // TXT1a-2: the engine the device mirrors measures every face through HarfBuzz.
 const measurer = referenceShapedMeasurer();
 
-const compiledCache = new Map<string, ReturnType<typeof compileFixture>['compiled']>();
-
 function reference(caseId: string, dpr: number, platform: NativeTarget, faults: ReferenceFaults = NO_REFERENCE_FAULTS): { dump: NativeDump; engine: readonly LayoutRect[]; capture: WebCapture } {
   const f = all.find((x) => x.cases.some((c) => c.id === caseId));
   const c = f?.cases.find((x) => x.id === caseId);
   if (f === undefined || c === undefined) throw new Error(`no case ${caseId}`);
-  const key = `${f.spec.id} ${c.environment.direction}`;
-  const compiled = compiledCache.get(key) ?? compileFixture(f.spec, NO_FAULTS, 'enforce', c.environment.direction).compiled;
-  compiledCache.set(key, compiled);
+  const compiled = enforcedCompile(f.spec, c.environment.direction);
   const t = nativeTargets().find((x) => x.target === platform);
   const p = t?.projection(compiled, atDpr(c.environment, dpr), c.assignment);
   if (p === undefined || p.kind !== 'ready') throw new Error('projection blocked');
@@ -51,9 +48,40 @@ const moveRight = (n: DumpNode, px: number, scale: number): DumpNode => {
 };
 
 describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () => {
-  it('every layout case at 2 and 3 on ios and at 2, 3 and 2.625 on android', () => {
-    const proof = referenceProof(nativeTargets());
-    const cases = layoutCaseIds().length;
+  // Each fixture's proof runs in its own test, so the corpus's compiles and layouts are spread over tests; the corpus test sums them.
+  const proofs = new Map<string, ReturnType<typeof referenceProof>>();
+  const proofOf = (f: (typeof all)[number]): ReturnType<typeof referenceProof> => {
+    let p = proofs.get(f.spec.id);
+    if (p === undefined) {
+      p = referenceProof(nativeTargets(), [f]);
+      proofs.set(f.spec.id, p);
+    }
+    return p;
+  };
+  it.each(all.map((f) => [f.spec.id, f] as const))('%s at every device DPR of each target', (_id, f) => {
+    expect(proofOf(f).flatMap((p) => p.rows.flatMap((r) => r.failures))).toEqual([]);
+  });
+  it('every device case at 2 and 3 on ios and at 2, 3 and 2.625 on android', () => {
+    const sum = (rows: readonly (ReferenceRow | undefined)[]): ReferenceRow => {
+      const first = rows[0];
+      if (first === undefined || rows.some((r) => r?.dpr !== first.dpr || r.role !== first.role)) throw new Error('the fixture proofs do not share one DPR row order');
+      return sumOf(first, rows as readonly ReferenceRow[]);
+    };
+    const sumOf = (first: ReferenceRow, rows: readonly ReferenceRow[]): ReferenceRow => ({
+      dpr: first.dpr,
+      role: first.role,
+      cases: rows.reduce((n, r) => n + r.cases, 0),
+      valid: rows.reduce((n, r) => n + r.valid, 0),
+      chrome: rows.reduce((n, r) => n + r.chrome, 0),
+      engine: rows.reduce((n, r) => n + r.engine, 0),
+      chromeCompared: rows.reduce((n, r) => n + r.chromeCompared, 0),
+      engineCompared: rows.reduce((n, r) => n + r.engineCompared, 0),
+      failures: rows.flatMap((r) => r.failures),
+    });
+    const perFixture = all.map(proofOf);
+    const proof = nativeTargets().map((t, i) => ({ target: t.target, rows: t.dprs.map((_d, j) => sum(perFixture.map((p) => (p[i]?.target === t.target ? p[i]?.rows[j] : undefined)))) }));
+    // TXT1a-2: the device cases are every layout case but the shaped ones (no device case until phase R).
+    const cases = vectorCaseIds().length;
     expect(proof.map((p) => [p.target, p.rows.map((r) => r.dpr)])).toEqual([['ios', [2, 3]], ['android', [2, 3, 2.625]]]);
     for (const p of proof) {
       for (const r of p.rows) {
@@ -63,7 +91,7 @@ describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () =
         expect(r.chromeCompared).toBeGreaterThan(0);
       }
     }
-    expect(cases).toBe(declaredLayoutCaseCount());
+    expect(cases + shapedCaseIds().size).toBe(declaredLayoutCaseCount());
   });
 });
 
@@ -125,7 +153,7 @@ describe('negative checks', () => {
     let failing = 0;
     let checked = 0;
     for (const dprX of [2.625, 3]) {
-      for (const id of layoutCaseIds()) {
+      for (const id of vectorCaseIds()) {
         const off = reference(id, dprX, 'android', { snap: 'off' });
         expect(validateNativeDump(clone(off.dump)).ok).toBe(true);
         checked++;
@@ -147,7 +175,7 @@ describe('negative checks', () => {
 describe('(c) pixel samples against synthetic images', () => {
   const W = 60;
   const H = 40;
-  const box: SampleBox = { id: 'b', left: 10, top: 10, right: 50, bottom: 30, border: { top: 0, right: 0, bottom: 0, left: 0 }, radius: 0, clips: false };
+  const box: SampleBox = { id: 'b', left: 10, top: 10, right: 50, bottom: 30, border: { top: 0, right: 0, bottom: 0, left: 0 }, radius: 0, clips: false, size: [40, 20] };
   const BLUE = [51, 102, 255, 255];
   const WHITE = [255, 255, 255, 255];
   /** A white image with the blue box; coverage in [0, 1] of the left edge column when a fractional edge is drawn. */

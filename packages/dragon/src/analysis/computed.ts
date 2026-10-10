@@ -2,6 +2,7 @@
 // substitution hook (its work is in variables.ts), and value serialization.
 import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
+import type { Registrations } from '../css/at-rules/property.ts';
 import { parseColorNode, serializeColor } from '../css/color.ts';
 import { absolutizeGridText, GRID_TRACK_LONGHANDS } from '../css/grid-values.ts';
 import { properties as grammar } from '../css/grammar.generated.ts';
@@ -9,9 +10,10 @@ import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
-import { ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
-import type { CapturedTag, UaDataset } from '../ua/datasets.ts';
-import { textFontsOf } from '../ua/datasets.ts';
+import { positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
+import type { GenBFaults } from '../faults/gen-b.ts';
+import type { UaDataset, UaKey } from '../ua/datasets.ts';
+import { textFontsOf, uaRows } from '../ua/datasets.ts';
 import type { TextFontValue } from '../fonts/weight.ts';
 import { computeFontStyle, computeTextFont, fontStyleCssValue, INITIAL_TEXT_FONT } from '../fonts/weight.ts';
 import type { Span } from '../types.ts';
@@ -22,14 +24,16 @@ import { substituteWinner } from './variables.ts';
 import { computePaintValues } from './paint-values/index.ts';
 
 /** environment: the root's direction and font, seeded from the reference environment (docs/api.md §7), never from an author declaration. */
-export type Origin = 'author' | 'inherited' | 'user-agent' | 'initial' | 'environment';
+/** presentational-hint: an HTML attribute mapped to a property (HTML §15.4.5), below author rules (css-cascade-5 §6.1). */
+export type Origin = 'author' | 'presentational-hint' | 'inherited' | 'user-agent' | 'initial' | 'environment';
 
 /**
  * The environment facts resolution reads: the document's base direction and root font, given to the root element, and the Chrome
  * UA dataset of the reference platform. rootFont 'ahem' is the parity fixture environment (docs/api.md §10.1); 'ua-default'
  * leaves the root font-family at the dataset's value.
  */
-export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl'; readonly rootFont: RootFont; readonly ua: UaDataset };
+/** registered: the document's @property registrations (css/at-rules/property.ts); none when absent. */
+export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl'; readonly rootFont: RootFont; readonly ua: UaDataset; readonly registered?: Registrations };
 
 export type RootFont = 'ahem' | 'ua-default';
 
@@ -44,6 +48,8 @@ export type ResolvedValue = {
   readonly losing: readonly Declaration[];
   /** Present when the winning declaration held var(); declaration is then as substituted (analysis/variables.ts). */
   readonly substitution?: Substitution;
+  /** The author declaration that won the cascade and that a forced UA value then overrode (ELB-2 userAgentForced); it heads losing. */
+  readonly forcedOver?: Declaration;
 };
 
 const valueCache = new Map<string, CssValue>();
@@ -57,7 +63,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   const children = (node['children'] as { toArray(): CssNode[] }).toArray().filter((n) => n.type !== 'WhiteSpace');
   let v: CssValue;
   const only = children[0];
-  const ratio = property === 'aspect-ratio' ? ratioValue(children) : null;
+  const ratio = property === 'aspect-ratio' ? ratioValue(children) : property === 'object-position' ? positionValue(children) : null;
   const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property);
   const color = isColor && only !== undefined && children.length === 1 ? parseColorNode(only) : null;
   if (ratio !== null && ratio !== 'invalid' && !('token' in ratio)) v = ratio;
@@ -95,9 +101,10 @@ export function isInitialByProvenance(v: ResolvedValue, property: Longhand): boo
 }
 
 // css-cascade-5 §6.3 (user-agent origin): the captured table pins, per tag, the longhands a Chrome UA rule sets.
-export function userAgentValue(tag: CapturedTag, property: Longhand, ua: UaDataset): CssValue | null {
-  if (!ua.userAgentLonghands[tag].includes(property)) return null;
-  const own = ua.computed[tag][property];
+export function userAgentValue(tag: UaKey, property: Longhand, ua: UaDataset): CssValue | null {
+  const rows = uaRows(ua, tag);
+  if (!rows.longhands.includes(property)) return null;
+  const own = rows.computed[property];
   if (own === undefined) throw new Error(`no captured value for ${tag} ${property}`);
   return parseValueText(property, own);
 }
@@ -108,8 +115,8 @@ export function userAgentValue(tag: CapturedTag, property: Longhand, ua: UaDatas
  * computed font size otherwise (css-values-4 §6.1.1). A font size that is not a length (a value the profiles refuse) leaves the
  * value in em. Null when no UA rule sets it.
  */
-export function declaredUserAgentValue(tag: CapturedTag, property: Longhand, ua: UaDataset, direction: 'ltr' | 'rtl', ownFontSize: CssValue, parentFontSize: CssValue): CssValue | null {
-  const text = ua.userAgentDeclared[tag][direction][property];
+export function declaredUserAgentValue(tag: UaKey, property: Longhand, ua: UaDataset, direction: 'ltr' | 'rtl', ownFontSize: CssValue, parentFontSize: CssValue): CssValue | null {
+  const text = uaRows(ua, tag).declared[direction][property];
   if (text === undefined) return null;
   const em = /^(-?[0-9.]+)em$/.exec(text);
   if (em === null) return parseValueText(property, text);
@@ -119,7 +126,7 @@ export function declaredUserAgentValue(tag: CapturedTag, property: Longhand, ua:
 }
 
 /** Origin of every longhand on an element with no author rules, as the resolver decides it; pinned by ua.test.ts. */
-export function defaultOrigin(tag: CapturedTag, property: Longhand, isRoot: boolean, ua: UaDataset, rootFont: RootFont): Origin {
+export function defaultOrigin(tag: UaKey, property: Longhand, isRoot: boolean, ua: UaDataset, rootFont: RootFont): Origin {
   if (userAgentValue(tag, property, ua) !== null) return 'user-agent';
   if (isRoot && (property === 'direction' || (property === 'font-family' && rootFont === 'ahem'))) return 'environment';
   return INHERITED.has(property) && !isRoot ? 'inherited' : 'initial';
@@ -133,6 +140,20 @@ export function defaultOrigin(tag: CapturedTag, property: Longhand, isRoot: bool
 export type SubstitutionHook = (winner: Candidate, property: Longhand, el: LinkedElement, scope: VarScope) => Candidate;
 
 export const substituteVariables: SubstitutionHook = (winner, property, _el, scope) => substituteWinner(winner, property, scope);
+
+/**
+ * css-content-3 §2: on an element, content: none computes to normal (Blink stores it and treats it as normal, display_style.h
+ * ContentBehavesAsNormal; probe family1 on-element). The list-style shorthand's none sets list-style-type too (css-lists-3 §3.4),
+ * which the planted listStyleNoneSetsImageOnly undoes.
+ */
+export function computeLists(props: Map<Longhand, ResolvedValue>, faults: GenBFaults): void {
+  const content = props.get('content') as ResolvedValue;
+  if (!faults.contentNoneOnElementKept && content.value.kind === 'keyword' && content.value.value === 'none') props.set('content', { ...content, value: { kind: 'keyword', value: 'normal' } });
+  const type = props.get('list-style-type') as ResolvedValue;
+  if (faults.listStyleNoneSetsImageOnly && type.origin === 'author' && type.declaration?.property === 'list-style' && type.value.kind === 'keyword' && type.value.value === 'none') {
+    props.set('list-style-type', { ...type, value: { kind: 'keyword', value: 'disc' } });
+  }
+}
 
 // css-overflow-3 §3.1: when one axis is neither visible nor clip, visible computes to auto and clip to hidden on the other axis.
 export function computeOverflowPair(props: Map<Longhand, ResolvedValue>): void {
@@ -213,12 +234,13 @@ export function computeJustifyItems(props: Map<Longhand, ResolvedValue>, parent:
  * tag's specified html.css value (userAgentTextFonts: bold, bolder, italic) or else its parent's; then font-weight computes to a
  * number (bolder and lighter against the parent's computed weight) and font-style to normal, italic or oblique <n>deg.
  */
-export function computeFontStyleLonghands(tag: string, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, parent: ReadonlyMap<Longhand, ResolvedValue> | null, ua: UaDataset): void {
+export function computeFontStyleLonghands(tag: string, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, parent: ReadonlyMap<Longhand, ResolvedValue> | null, ua: UaDataset, reverted: ReadonlySet<Longhand>): void {
   const none = { span: null, declaration: null, declared: null, losing: [] } as const;
   const row = textFontsOf(ua, tag);
   for (const p of ['font-weight', 'font-style'] as const) {
     const text = row[p];
-    if (defaulted.has(p) && text !== undefined) props.set(p, { value: parseValueText(p, text), origin: 'user-agent', ...none });
+    // A reverted longhand keeps its author declaration (its profile row and losing list); only the value is the UA's.
+    if (defaulted.has(p) && text !== undefined) props.set(p, { ...(reverted.has(p) ? (props.get(p) as ResolvedValue) : none), value: parseValueText(p, text), origin: 'user-agent' });
   }
   const w = props.get('font-weight') as ResolvedValue;
   const st = props.get('font-style') as ResolvedValue;
@@ -269,6 +291,8 @@ export function valueToString(v: CssValue): string {
       return serializeColor(v.value);
     case 'ratio':
       return `${v.auto ? 'auto ' : ''}${v.width} / ${v.height}`;
+    case 'position':
+      return `${positionOffsetText(v.x)} ${positionOffsetText(v.y)}`;
     case 'other':
       return v.text;
   }

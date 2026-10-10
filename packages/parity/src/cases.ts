@@ -2,7 +2,7 @@
 // HTML fixtures have one case per declared environment direction, rendered from the file itself; tree fixtures are rendered by the
 // parity-owned renderer, once per assignment in each environment direction.
 import type { Page } from 'playwright';
-import type { Assignment, Environment, FrontEndResult } from 'dragon';
+import type { Assignment, Environment, ForcedPseudo, FrontEndResult, InteractionPartition } from 'dragon';
 import { fontMapOf } from './fixture-groups/fonts.ts';
 import { fontReferencePrepare } from './font-reference.ts';
 import { compiledFixtureHtml, readHtmlFixture } from './fixture-reader.ts';
@@ -29,7 +29,38 @@ export type ParityCase = {
    */
   readonly authoredPrepare: ((page: Page) => Promise<void>) | null;
   readonly compiledHtml: (css: string, classOf: ReadonlyMap<string, string>) => string;
+  /** SELD-R2a forced cases only: the interaction state key, and the elements both renderings force with CSS.forcePseudoState. */
+  readonly interaction?: string;
+  readonly forced?: readonly ForcedPseudo[];
 };
+
+/** One element forced into one interaction pseudo-class, by its data-dragon-id. */
+export type { ForcedPseudo } from 'dragon';
+
+/**
+ * What a forced case forces for partition state k (SELD-R2): a reachable state forces what the real pointer and focus give (every
+ * element of the hover and active chains, the focused element), a forced state its one element.
+ */
+export function forcedFor(p: InteractionPartition, k: number): readonly ForcedPseudo[] {
+  const v = p.states[k];
+  if (v === undefined) throw new Error(`no interaction state ${k}`);
+  if (v.force.length === 0) throw new Error(`interaction state ${v.key} forces nothing`);
+  return v.force;
+}
+
+/** Whether a case id is a forced case's ("<case>~ix<k>", then the direction suffix): one counted beside the reachable cases. */
+export const isForcedCaseId = (id: string): boolean => /~ix\d+(-rtl)?$/.test(id);
+
+/** The forced cases of one case: one per partition state but none, "<case>~ix<k>" with the direction suffix last. */
+export function forcedCasesOf(spec: FixtureSpec, c: ParityCase, p: InteractionPartition | null): ParityCase[] {
+  if (p === null) return [];
+  return p.states.map((v, k) => ({
+    ...c,
+    id: `${spec.id}${spec.format === 'tree' ? `#${c.index}` : ''}~ix${k}${directionSuffix(c.environment.direction)}`,
+    interaction: v.key,
+    forced: forcedFor(p, k),
+  }));
+}
 
 export function fixtureInput(spec: FixtureSpec): FrontEndResult {
   return spec.format === 'html' ? readHtmlFixture(spec.id).input : readTreeFixture(spec.id);

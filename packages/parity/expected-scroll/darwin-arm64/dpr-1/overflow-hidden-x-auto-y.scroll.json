@@ -1,0 +1,34 @@
+{
+ "case": "overflow-hidden-x-auto-y",
+ "chrome": "145.0.7632.6",
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 1,
+ "direction": "ltr",
+ "scrollbars": "overlay",
+ "scrollbarArgs": "-AppleShowScrollBars WhenScrolling",
+ "records": [
+  {
+   "id": "viewport",
+   "scrollWidth": 400,
+   "scrollHeight": 300,
+   "clientWidth": 400,
+   "clientHeight": 300
+  },
+  {
+   "id": "app",
+   "scrollWidth": 126,
+   "scrollHeight": 103,
+   "clientWidth": 86,
+   "clientHeight": 66
+  }
+ ],
+ "extents": [
+  {
+   "id": "app",
+   "minLeft": 0,
+   "maxLeft": 40,
+   "minTop": 0,
+   "maxTop": 37
+  }
+ ]
+}

@@ -10,7 +10,9 @@ import { PROGRAM_VERSIONS } from '../../lower/native-program.ts';
 import type { StateDelta, StateFaults, StateProgram } from '../../lower/state-program.ts';
 import { NO_STATE_FAULTS } from '../../lower/state-program.ts';
 import type { GeneratedFile, Scalar } from '../../types.ts';
+import type { AnimTables } from '@dragon/layout';
 import { doubleLit, environmentArgs, inputFunctions, stringLit } from '../native-support.ts';
+import { animTablesLit } from './anim.ts';
 
 export const STATE_RUNTIME_VERSION = 'dragon.runtime-state/1';
 
@@ -33,6 +35,8 @@ export type StateEmit = {
   readonly viewport: { readonly width: number; readonly height: number };
   readonly program: StateProgram;
   readonly scripts: readonly ScriptCase[];
+  /** ANIM-b1: the program's animation tables (lower/anim-program.ts animTablesOf), one entry per assignment; absent without animations. */
+  readonly anim?: AnimTables;
 };
 
 export class StateEmitError extends Error {}
@@ -52,6 +56,7 @@ public enum DragonStateWrite {
   case borderStyles([String])
   case borderColors([DragonRGBA8])
   case clip
+  case paintOrder(String, Int, Int)
   case text(String, String, DragonRGBA8)
 }
 
@@ -90,7 +95,13 @@ public final class DragonStateMachine {
   private let next: [[[Int]]]
   private let variants: [(Double) -> LayoutInput]
   private let skipRelayout: Bool
+  private let anim: AnimTables?
+  private let initialAssignment: Int
   public let clock = DragonVirtualClock()
+  /// ANIM-b1: the animator over the program's animation tables, started by the mount (nil without tables).
+  public private(set) var animator: DragonAnimator?
+  /// Called after every clock step that moved an animator; a DragonStateMount uses it to render the new frame.
+  public var onFrame: (() -> Void)?
   public private(set) var current: Int
   public private(set) var laidOut: Int
   /// Called after every committed setter; a DragonStateMount uses it to rebuild and lay out the views on screen.
@@ -98,8 +109,9 @@ public final class DragonStateMachine {
   private var nodes: [String: DragonStateNode] = [:]
   private var order: [String] = []
 
-  public init(states: [String], domains: [[String]], base: [DragonStateNode], deltas: [DragonStateDelta], next: [[[Int]]], initial: Int, variants: [(Double) -> LayoutInput], skipRelayout: Bool) {
+  public init(states: [String], domains: [[String]], base: [DragonStateNode], deltas: [DragonStateDelta], next: [[[Int]]], initial: Int, variants: [(Double) -> LayoutInput], skipRelayout: Bool, anim: AnimTables? = nil) {
     self.states = states; self.domains = domains; self.base = base; self.deltas = deltas; self.next = next; self.variants = variants; self.skipRelayout = skipRelayout
+    self.anim = anim; initialAssignment = initial
     current = initial
     laidOut = deltas[initial].variant
     for n in base { baseById[n.id] = n }
@@ -129,7 +141,26 @@ public final class DragonStateMachine {
     order = d.order ?? base.map { $0.id }.filter { nodes[$0] != nil }
     if !skipRelayout && d.variant != laidOut { laidOut = d.variant }
     current = to
+    // ANIM-b1 R4: one style change event per setter call.
+    animator?.event(to)
     onChange?()
+  }
+
+  /// ANIM-b1: starts the animator at the current assignment, with every assignment's input resolved at scale 1 by measurer (R14).
+  public func startAnimator(_ measurer: TextMeasurer) {
+    guard let t = anim, animator == nil else { return }
+    let inputs = deltas.map { d -> LayoutInput in
+      do { return try environment_resolveEnvironment(variants[d.variant](1), block_NO_ENGINE_FAULTS, measurer) } catch { fatalError("dragon: the animator inputs: \(error)") }
+    }
+    animator = DragonAnimator(tables: t, inputs: inputs, initial: initialAssignment, current: current)
+  }
+
+  /// The clock step (R2): the virtual clock and every running transition and animation move by ms.
+  public func advance(_ ms: Double) {
+    clock.advance(ms)
+    guard let a = animator else { return }
+    a.advance(ms)
+    onFrame?()
   }
 
   /// Sets a state by key to a domain value by key (the case scripts' untyped path); an unknown key fails.
@@ -147,25 +178,37 @@ public final class DragonStateMachine {
         let v = t.textNode(n.id, parent: n.parent, kind: n.kind)
         for w in n.writes {
           guard case let .text(s, family, color) = w else { fatalError("dragon: text \(n.id) holds a box write") }
-          v.dragonSetText(s, family: family, color: color)
+          // ANIM-b1 R9: a text run draws its element's animated colour.
+          v.dragonSetText(s, family: family, color: n.parent.flatMap { animator?.color($0, "color") } ?? color)
         }
         continue
       }
       let v = t.boxNode(n.id, parent: n.parent, kind: n.kind)
       for w in n.writes {
         switch w {
-        case .background(let c): v.backgroundColor = dragonUIColor(c)
+        case .background(let c): dragonBackground(v, animator?.color(n.id, "background-color") ?? c)
         case .borderStyles(let s): v.dragonBorderStyles = s
-        case .borderColors(let c): v.dragonBorderColors = c
+        case .borderColors(let c): v.dragonBorderColors = dragonAnimatedSides(animator, n.id, c)
         case .clip: v.dragonEnableClip()
+        case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)
         case .text: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
     }
   }
 
-  /// The engine input last laid out.
-  public func input(_ dpr: Double) -> LayoutInput { return variants[laidOut](dpr) }
+  /// The engine input last laid out, with the animator's frame lengths patched in (R16).
+  public func input(_ dpr: Double) -> LayoutInput {
+    let i = variants[laidOut](dpr)
+    return animator?.patch(i) ?? i
+  }
+}
+
+/// The border colours of a box with the animator's frame colours of its sides (R9 currentcolor sides included).
+func dragonAnimatedSides(_ a: DragonAnimator?, _ id: String, _ c: [DragonRGBA8]) -> [DragonRGBA8] {
+  guard let a = a else { return c }
+  let sides = ["border-top-color", "border-right-color", "border-bottom-color", "border-left-color"]
+  return c.enumerated().map { (i, x) in a.color(id, sides[i]) ?? x }
 }
 
 /// A state machine on screen: the Dragon views of its live records, laid out with the engine input it last laid out, in a stage.
@@ -173,20 +216,51 @@ public final class DragonStateMachine {
 /// setter call changes what is on screen.
 public final class DragonStateMount {
   public let machine: DragonStateMachine
-  public private(set) var tree = DragonTree()
+  private var shown = DragonTree()
   public private(set) var renders = 0
   private let stage: UIView
   private let measurer: TextMeasurer
   private let scale: Double
   private let bridge: DragonBridge
+  private var stale = false
+  private var driver: DragonDisplayDriver?
 
-  public init(machine: DragonStateMachine, stage: UIView, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
+  /// display: drive the animator from the display (CADisplayLink) while it is busy; off for the lanes, whose clock is the script's.
+  public init(machine: DragonStateMachine, stage: UIView, measurer: TextMeasurer, scale: Double, bridge: DragonBridge, display: Bool = false) {
     self.machine = machine; self.stage = stage; self.measurer = measurer; self.scale = scale; self.bridge = bridge
+    // ANIM-b1 R7: CSS animations start at first style, so the first render shows their t = 0 values.
+    machine.startAnimator(measurer)
     render()
-    machine.onChange = { [weak self] in self?.render() }
+    machine.onChange = { [weak self] in
+      self?.render()
+      self?.drive()
+    }
+    // A clock step renders when the tree is next read (a script's dump) or at once on the display driver's tick.
+    machine.onFrame = { [weak self] in self?.stale = true }
+    if display {
+      driver = DragonDisplayDriver(tick: { [weak self] dt in
+        guard let self = self, let a = self.machine.animator else { return false }
+        self.machine.advance(dt)
+        if self.stale { self.render() }
+        return a.busy
+      })
+      drive()
+    }
+  }
+
+  /// The views on screen, rendered for the current frame.
+  public var tree: DragonTree {
+    if stale { render() }
+    return shown
+  }
+
+  private func drive() {
+    guard let d = driver, let a = machine.animator, a.busy else { return }
+    d.start()
   }
 
   private func render() {
+    stale = false
     let t = DragonTree()
     machine.build(t)
     stage.addSubview(t.root)
@@ -195,8 +269,8 @@ public final class DragonStateMount {
     } catch {
       fatalError("dragon: the state mount could not lay out assignment \(machine.current): \(error)")
     }
-    tree.root.removeFromSuperview()
-    tree = t
+    shown.root.removeFromSuperview()
+    shown = t
     renders += 1
   }
 }
@@ -212,7 +286,7 @@ public struct DragonStateScript {
     for s in steps {
       switch s {
       case .set(let a, let b): m.set(a, b)
-      case .advance(let ms): m.clock.advance(ms)
+      case .advance(let ms): m.advance(ms)
       case .dump: break
       }
     }
@@ -236,8 +310,11 @@ function kotlinSupportText(): string {
   return String.raw`package dev.dragon.views
 
 import android.view.ViewGroup
+import dev.dragon.layout.AnimTables
 import dev.dragon.layout.LayoutInput
 import dev.dragon.layout.TextMeasurer
+import dev.dragon.layout.block_NO_ENGINE_FAULTS
+import dev.dragon.layout.environment_resolveEnvironment
 
 /** One write of a state node in Android vocabulary: exactly what the android-views case emitter writes for the program write. */
 sealed class DragonStateWrite {
@@ -245,6 +322,7 @@ sealed class DragonStateWrite {
   class BorderStyles(val s: Array<String>) : DragonStateWrite()
   class BorderColors(val c: Array<DragonRGBA8>) : DragonStateWrite()
   object Clip : DragonStateWrite()
+  class PaintOrder(val host: String, val bucket: Int, val rank: Int) : DragonStateWrite()
   class Text(val text: String, val family: String, val color: DragonRGBA8) : DragonStateWrite()
 }
 
@@ -271,9 +349,16 @@ class DragonStateMachine(
   initial: Int,
   private val variants: List<(Double) -> LayoutInput>,
   private val skipRelayout: Boolean,
+  private val anim: AnimTables? = null,
 ) {
   private val baseById = HashMap<String, DragonStateNode>()
+  private val initialAssignment = initial
   val clock = DragonVirtualClock()
+  /** ANIM-b1: the animator over the program's animation tables, started by the mount (null without tables). */
+  var animator: DragonAnimator? = null
+    private set
+  /** Called after every clock step that moved an animator; a DragonStateMount uses it to render the new frame. */
+  var onFrame: (() -> Unit)? = null
   var current: Int = initial
     private set
   var laidOut: Int = deltas[initial].variant
@@ -315,7 +400,25 @@ class DragonStateMachine(
     order = d.order ?: base.map { it.id }.filter { nodes.containsKey(it) }
     if (!skipRelayout && d.variant != laidOut) laidOut = d.variant
     current = to
+    // ANIM-b1 R4: one style change event per setter call.
+    animator?.event(to)
     onChange?.invoke()
+  }
+
+  /** ANIM-b1: starts the animator at the current assignment, with every assignment's input resolved at scale 1 by measurer (R14). */
+  fun startAnimator(measurer: TextMeasurer) {
+    val t = anim ?: return
+    if (animator != null) return
+    val inputs = deltas.map { environment_resolveEnvironment(variants[it.variant](1.0), block_NO_ENGINE_FAULTS, measurer) }
+    animator = DragonAnimator(t, inputs, initialAssignment, current)
+  }
+
+  /** The clock step (R2): the virtual clock and every running transition and animation move by ms. */
+  fun advance(ms: Double) {
+    clock.advance(ms)
+    val a = animator ?: return
+    a.advance(ms)
+    onFrame?.invoke()
   }
 
   /** Sets a state by key to a domain value by key (the case scripts' untyped path); an unknown key fails. */
@@ -335,25 +438,37 @@ class DragonStateMachine(
         val v = t.textNode(n.id, n.parent, n.kind)
         for (w in n.writes) {
           if (w !is DragonStateWrite.Text) throw IllegalStateException("dragon: text " + n.id + " holds a box write")
-          v.dragonSetText(w.text, w.family, w.color)
+          // ANIM-b1 R9: a text run draws its element's animated colour.
+          v.dragonSetText(w.text, w.family, n.parent?.let { animator?.color(it, "color") } ?: w.color)
         }
         continue
       }
       val v = t.boxNode(n.id, n.parent, n.kind)
       for (w in n.writes) {
         when (w) {
-          is DragonStateWrite.Background -> dragonBackground(v, w.c)
+          is DragonStateWrite.Background -> dragonBackground(v, animator?.color(n.id, "background-color") ?: w.c)
           is DragonStateWrite.BorderStyles -> v.dragonBorderStyles = w.s
-          is DragonStateWrite.BorderColors -> v.dragonBorderColors = w.c
+          is DragonStateWrite.BorderColors -> v.dragonBorderColors = dragonAnimatedSides(animator, n.id, w.c)
           is DragonStateWrite.Clip -> v.dragonEnableClip()
+          is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)
           is DragonStateWrite.Text -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
     }
   }
 
-  /** The engine input last laid out. */
-  fun input(dpr: Double): LayoutInput = variants[laidOut](dpr)
+  /** The engine input last laid out, with the animator's frame lengths patched in (R16). */
+  fun input(dpr: Double): LayoutInput {
+    val i = variants[laidOut](dpr)
+    return animator?.patch(i) ?: i
+  }
+}
+
+/** The border colours of a box with the animator's frame colours of its sides (R9 currentcolor sides included). */
+fun dragonAnimatedSides(a: DragonAnimator?, id: String, c: Array<DragonRGBA8>): Array<DragonRGBA8> {
+  if (a == null) return c
+  val sides = arrayOf("border-top-color", "border-right-color", "border-bottom-color", "border-left-color")
+  return Array(c.size) { a.color(id, sides[it]) ?: c[it] }
 }
 
 /**
@@ -361,24 +476,58 @@ class DragonStateMachine(
  * Every committed setter rebuilds the views from the records, lays them out and swaps them in for the previous ones, so a typed
  * setter call changes what is on screen.
  */
-class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewGroup, private val measurer: TextMeasurer, private val scale: Double, private val bridge: DragonBridge) {
-  var tree: DragonTree = DragonTree(stage.context)
-    private set
+class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewGroup, private val measurer: TextMeasurer, private val scale: Double, private val bridge: DragonBridge, display: Boolean = false) {
+  private var shown: DragonTree = DragonTree(stage.context)
   var renders = 0
     private set
+  private var stale = false
+  private var driver: DragonDisplayDriver? = null
+
+  /** The views on screen, rendered for the current frame. */
+  val tree: DragonTree
+    get() {
+      if (stale) render()
+      return shown
+    }
 
   init {
+    // ANIM-b1 R7: CSS animations start at first style, so the first render shows their t = 0 values.
+    machine.startAnimator(measurer)
     render()
-    machine.onChange = { render() }
+    machine.onChange = {
+      render()
+      drive()
+    }
+    // A clock step renders when the tree is next read (a script's dump) or at once on the display driver's tick.
+    machine.onFrame = { stale = true }
+    // display: drive the animator from the display (Choreographer) while it is busy; off for the lanes, whose clock is the script's.
+    if (display) {
+      driver = DragonDisplayDriver { dt ->
+        val a = machine.animator
+        if (a == null) false else {
+          machine.advance(dt)
+          if (stale) render()
+          a.busy
+        }
+      }
+      drive()
+    }
+  }
+
+  private fun drive() {
+    val d = driver ?: return
+    val a = machine.animator ?: return
+    if (a.busy) d.start()
   }
 
   private fun render() {
+    stale = false
     val t = DragonTree(stage.context)
     machine.build(t)
     t.apply(machine.input(scale), measurer, scale, bridge)
     stage.addView(t.root, ViewGroup.LayoutParams(t.root.dragonFrame[2], t.root.dragonFrame[3]))
-    stage.removeView(tree.root)
-    tree = t
+    stage.removeView(shown.root)
+    shown = t
     renders++
   }
 }
@@ -390,7 +539,7 @@ class DragonStateScript(val dragonCase: DragonCase, val make: () -> DragonStateM
     for (s in steps) {
       when (s) {
         is DragonScriptStep.Set -> m.set(s.s, s.v)
-        is DragonScriptStep.Advance -> m.clock.advance(s.ms)
+        is DragonScriptStep.Advance -> m.advance(s.ms)
         is DragonScriptStep.Dump -> {}
       }
     }
@@ -439,6 +588,11 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'padding-box-clip':
         writes.push(lang === 'swift' ? '.clip' : 'DragonStateWrite.Clip');
         break;
+      case 'paint-order': {
+        if (!Number.isInteger(w.bucket) || !Number.isInteger(w.rank)) throw new StateEmitError(`${n.id}: paint order bucket ${w.bucket} or rank ${w.rank} is not an integer`);
+        writes.push(lang === 'swift' ? `.paintOrder(${q(w.host)}, ${w.bucket}, ${w.rank})` : `DragonStateWrite.PaintOrder(${q(w.host)}, ${w.bucket}, ${w.rank})`);
+        break;
+      }
       case 'font': {
         const color = n.writes.find((x) => x.kind === 'text-color');
         if (color === undefined || color.kind !== 'text-color') throw new StateEmitError(`${n.id}: a text run without a colour`);
@@ -448,6 +602,22 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'border-widths':
       case 'text-color':
         break;
+      case 'transform':
+        // PNT2 integration: a state record holds no transform write; a transformed node of a state program is refused here, by name.
+        throw new StateEmitError(`${n.id}: a transform in a state program has no state-node write (PNT2 writes transforms on the static program only)`);
+      case 'opacity':
+        // PNT1 writes opacity on the static program only; the state runtime has no opacity writer yet.
+        throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
+      case 'scroll-container':
+        // OVFL-B: the state runtime rebuilds clip views only; a scroll view under component states is refused here, by name.
+        throw new StateEmitError(`${n.id}: a scroll container in a state program is not supported yet (OVFL-B scroll views under SELD-R states)`);
+      case 'replaced-image':
+      case 'foreign-view':
+        // REPL-a draws an image or hosts a web view from its own paint stage; the state runtime does not rebuild either yet.
+        throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
+      case 'border-radius':
+        // The state runtime has no writer for these yet (PNT1 paints them from the program); a case script would drop them.
+        throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;
@@ -542,12 +712,21 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   out.push(decl(`${p}Deltas`, kt ? 'List<DragonStateDelta>' : '[DragonStateDelta]', list(lang, sp.deltas.map((_, i) => `${p}Delta${i}`))));
   out.push(decl(`${p}Next`, kt ? 'List<List<List<Int>>>' : '[[[Int]]]', list(lang, sp.next.map((a) => list(lang, a.map((st) => list(lang, st.map(String))))))));
   const skip = faults.setterSkipsRelayout ? 'true' : 'false';
+  // ANIM-b1: the animation tables, one typed constant per table record.
+  let anim = '';
+  if (e.anim !== undefined) {
+    if (e.anim.assignments !== sp.assignments.length) throw new StateEmitError(`${e.id}: the animation tables hold ${e.anim.assignments} assignments, the state program ${sp.assignments.length}`);
+    const t = animTablesLit(lang, e.anim, `${p}Anim`);
+    out.push(...t.decls);
+    out.push(decl(`${p}AnimTables`, 'AnimTables', t.expr));
+    anim = lang === 'swift' ? `, anim: ${p}AnimTables` : `, ${p}AnimTables`;
+  }
   if (lang === 'swift') {
     out.push(`/// A fresh runtime of state program ${commentText(e.id)} at its initial assignment.`);
-    out.push(`public func ${p}Machine() -> DragonStateMachine {\n  return DragonStateMachine(states: ${p}States, domains: ${p}Domains, base: ${p}Base, deltas: ${p}Deltas, next: ${p}Next, initial: ${sp.initial}, variants: ${list(lang, variantFns)}, skipRelayout: ${skip})\n}`);
+    out.push(`public func ${p}Machine() -> DragonStateMachine {\n  return DragonStateMachine(states: ${p}States, domains: ${p}Domains, base: ${p}Base, deltas: ${p}Deltas, next: ${p}Next, initial: ${sp.initial}, variants: ${list(lang, variantFns)}, skipRelayout: ${skip}${anim})\n}`);
   } else {
     out.push(`/** A fresh runtime of state program ${commentText(e.id)} at its initial assignment. */`);
-    out.push(`fun ${p}Machine(): DragonStateMachine =\n  DragonStateMachine(${p}States, ${p}Domains, ${p}Base, ${p}Deltas, ${p}Next, ${sp.initial}, ${list(lang, variantFns)}, ${skip})`);
+    out.push(`fun ${p}Machine(): DragonStateMachine =\n  DragonStateMachine(${p}States, ${p}Domains, ${p}Base, ${p}Deltas, ${p}Next, ${sp.initial}, ${list(lang, variantFns)}, ${skip}${anim})`);
   }
   // The typed setters (decision 17): booleans for boolean domains, an enum per other domain.
   const setters = typedSetters(sp);
@@ -574,8 +753,14 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   out.push(lang === 'swift'
     ? `/// The typed state API of ${commentText(e.id)}.\npublic final class ${cls} {\n  public let machine = ${p}Machine()\n  public init() {}\n${body.join('\n')}\n}`
     : `/** The typed state API of ${commentText(e.id)}. */\nclass ${cls} {\n  val machine = ${p}Machine()\n${body.join('\n')}\n}`);
+  // ANIM-b1 3b: a frame program's scripts are prefixes of its longest one (one per sample), so they slice one shared step table.
+  const lits = e.scripts.map((sc) => sc.steps.map((st) => stepLit(lang, sp, sc.id, st)));
+  const longest = lits.reduce<string[]>((a, b) => (b.length > a.length ? b : a), []);
+  const shared = e.anim !== undefined && lits.length > 1 && lits.every((l) => l.every((x, i) => x === longest[i]));
+  if (shared) out.push(decl(`${p}Steps`, kt ? 'List<DragonScriptStep>' : '[DragonScriptStep]', list(lang, longest)));
   e.scripts.forEach((sc, j) => {
-    const steps = list(lang, sc.steps.map((st) => stepLit(lang, sp, sc.id, st)));
+    const n = (lits[j] as string[]).length;
+    const steps = !shared ? list(lang, lits[j] as string[]) : kt ? `${p}Steps.take(${n})` : `Array(${p}Steps.prefix(${n}))`;
     if (lang === 'swift') {
       const digests = sc.expectedDigests.map((d) => `${doubleLit(d.dpr)}: ${q(d.sha256)}`).join(', ');
       out.push(`let ${p}Script${j} = dragonStateScriptCase(id: ${q(sc.id)}, fixture: ${q(e.fixture)}, direction: ${q(e.direction)}, compilerDigest: ${q(e.compilerDigest)}, viewport: (width: ${doubleLit(e.viewport.width)}, height: ${doubleLit(e.viewport.height)}), expectedDigests: [${digests}], make: ${p}Machine, steps: ${steps})`);

@@ -205,14 +205,16 @@ public final class DragonClipView: UIView {
 }
 
 /// The box geometry every paint stage and after-layout hook receives: the snapped border-box edges (left, top, right, bottom) and
-/// the border widths (top, right, bottom, left) in device px, and the eight corner radii in device px (horizontal then vertical,
-/// top-left first), zero until the radius module fills them (PNT1).
+/// the border widths (top, right, bottom, left) in device px, the eight corner radii in device px (horizontal then vertical,
+/// top-left first), zero until the radius module fills them (PNT1), and the layout border-box size (width, height) in device px
+/// before snapping, which percentage radii resolve against.
 public struct DragonBoxShape {
   public var edges: [Double]
   public var borders: [Double]
   public var radii: [Double]
-  public init(edges: [Double], borders: [Double], radii: [Double] = [0, 0, 0, 0, 0, 0, 0, 0]) {
-    self.edges = edges; self.borders = borders; self.radii = radii
+  public var size: [Double]
+  public init(edges: [Double], borders: [Double], radii: [Double] = [0, 0, 0, 0, 0, 0, 0, 0], size: [Double] = [0, 0]) {
+    self.edges = edges; self.borders = borders; self.radii = radii; self.size = size
   }
 }
 
@@ -223,6 +225,11 @@ public final class DragonBoxView: UIView, DragonNodeView {
   public let dragonParent: String?
   /// The shape of the last layout, passed to every paint stage.
   public var dragonShape = DragonBoxShape(edges: [0, 0, 0, 0], borders: [0, 0, 0, 0])
+  /// REPL-a: a replaced box's content box, destination rect and drawn part in device px relative to the box ([x, y, width,
+  /// height]), from the translated engine after layout (paint.ts replacedPaint); nil for a box that is not replaced.
+  public var dragonReplacedContent: [Double]? = nil
+  public var dragonReplacedDest: [Double]? = nil
+  public var dragonReplacedDrawn: [Double]? = nil
 ${boxMembers('uikit')}  public init(dragonId: String, kind: String, parent: String?) {
     self.dragonId = dragonId
     self.dragonKind = kind
@@ -556,6 +563,7 @@ public final class DragonTree {
     let zoomed = try layout_zoomInput(input, block_NO_ENGINE_FAULTS)
     var zBoxes: [String: LayoutBox] = [:]
     var zStyles: [String: LayoutStyle] = [:]
+    var zLeaves: [(String, ReplacedLeaf)] = []
     var zParent: [String: String] = [:]
     // A text leaf's, inline box's or <br>'s container is the block container of its inline formatting context, through any
     // inline boxes.
@@ -574,12 +582,20 @@ public final class DragonTree {
       for c in b.children.items {
         if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
         else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
-        else if let rl = c as? ReplacedLeaf { zParent[rl.id.description] = b.id.description; zStyles[rl.id.description] = rl.style }
+        else if let rl = c as? ReplacedLeaf { zParent[rl.id.description] = b.id.description; zStyles[rl.id.description] = rl.style; zLeaves.append((rl.id.description, rl)) }
         else if let ib = c as? InlineBox { walkInline(ib, b.id.description) }
         else if let br = c as? LineBreak { walkInline(br, b.id.description) }
       }
     }
     walk(zoomed.root)
+    // OVFL-B: each scroll container's offset range in device px, from the translated engine, for the scroll module's hook.
+    var scrollRanges: [String: [Double]] = [:]
+    let sr = try overflow_scrollRanges(input, measurer)
+    if let no = sr as? ScrollRangesResult_refused { fatalError("dragon: the engine refused the scroll ranges at \(no.nodeId): \(no.detail)") }
+    guard let srOk = sr as? ScrollRangesResult_ok else { fatalError("dragon: the engine gave no scroll ranges") }
+    for g in srOk.ranges.items { scrollRanges[g.id.description] = [g.minX, g.maxX, g.minY, g.maxY] }
+    var scrollRefusals: [String: String] = [:]
+    for g in srOk.refused.items { scrollRefusals[g.id.description] = "the engine refused its scroll range at " + g.nodeId.description + ": " + g.detail.description }
     let lu = units_LU_PER_PX
     let s = scale
     let cg = CGFloat(scale)
@@ -621,7 +637,9 @@ public final class DragonTree {
         }
         borders[id] = px
         bv.dragonScale = s
-        bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px)
+        bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px, size: [r.width / lu, r.height / lu])
+        bv.dragonScrollRange = scrollRanges[id]
+        bv.dragonScrollRefusal = scrollRefusals[id]
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
@@ -637,6 +655,21 @@ public final class DragonTree {
       let w = r.width - bor.left - bor.right - pad.left - pad.right
       contentCache[id] = w
       return w
+    }
+    // REPL-a: each replaced box's paint rects from its content box (border box less borders and padding against the parent's
+    // content width), through the translated engine; the paint modules read them in their after-layout hooks and stages.
+    for (id, leaf) in zLeaves {
+      guard let bv = views[id] as? DragonBoxView, let e = edges[id], let a = abs.get(leaf.id), let pId = zParent[id] else { fatalError("dragon: replaced \(id) is not placed") }
+      let pad = try box_resolvePadding(leaf.style, try contentWidth(pId))
+      let bor = try box_resolveBorder(leaf.style, zoomed.devicePixelRatio)
+      let content = ObjectRect(a.x + bor.left + pad.left, a.y + bor.top + pad.top, max(0, a.width - bor.left - bor.right - pad.left - pad.right), max(0, a.height - bor.top - bor.bottom - pad.top - pad.bottom))
+      let p = try paint_replacedPaint(leaf, content)
+      func rel(_ r: PixelRect) -> [Double] { return [r.x - e[0], r.y - e[1], r.width, r.height] }
+      bv.dragonReplacedContent = rel(p.content)
+      bv.dragonReplacedDest = rel(p.dest)
+      bv.dragonReplacedDrawn = p.drawn.map(rel)
+      dragonAfterLayout(bv, bv.dragonShape, s)
+      bv.setNeedsDisplay()
     }
     for id in order {
       guard let tv = views[id] as? DragonTextView else { continue }
@@ -702,21 +735,25 @@ public final class DragonTree {
       let ifc = try inline_buildIfc(ctx, p)
       guard let b = ifc.boxes.items.firstIndex(where: { $0.id.description == bId }) else { fatalError("dragon: no inline box \(bId) in \(pId)") }
       var offsets: [Double] = []
-      for line in try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items {
+      let placedLines = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
+      for line in placedLines {
         for (k, x) in line.boxes.items.enumerated() where Int(x) == b { offsets.append(line.baseline - line.boxRects.items[k].y) }
       }
+      // A context with no line box gives each inline box one empty fragment at the content start (inline.ts collectFragments),
+      // on no line, so its baseline is its own top.
+      if placedLines.isEmpty { offsets = [0] }
       if offsets.count != idx.count { fatalError("dragon: \(bId): the engine's lines give \(offsets.count) fragments, its layout \(idx.count)") }
       inlineLines[bId] = zip(idx, offsets).map { (i, o) in (edges: [snapped[i].left - be[0], snapped[i].top - be[1], snapped[i].right - be[0], snapped[i].bottom - be[1]], baseline: o / lu) }
     }
   }
 
-  /// The dump read back from the live tree: frames via convert(bounds, to: root), applied values from the live objects.
+  /// The dump read back from the live tree: frames via dragonLayoutRect (transforms ignored), applied values from the live objects.
   public func dump(_ c: DragonCase, scale: Double, device: DumpDevice, pixels: DumpPixels, timing: DumpTiming) -> Dump {
     let s = scale
     var nodes: [DumpNodes] = []
     for id in order {
       guard let v = views[id] else { continue }
-      let r = v.convert(v.bounds, to: root)
+      let r = dragonLayoutRect(v, in: root)
       let l = dragonWholeDevicePx(Double(r.minX) * s, "\(id) left")
       let t = dragonWholeDevicePx(Double(r.minY) * s, "\(id) top")
       let rr = dragonWholeDevicePx(Double(r.maxX) * s, "\(id) right")
@@ -745,6 +782,22 @@ public final class DragonTree {
     }
     return Dump(lane: "ios-sim", case: DumpCase(id: c.id, fixture: c.fixture, dpr: s, viewport: DumpCaseViewport(width: c.viewport.width, height: c.viewport.height), direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: c.expectedDigest(scale: s)), device: device, nodes: nodes, pixels: pixels, timing: timing)
   }
+}
+
+/// A view's layout rect in root's coordinates with every layer transform ignored (PNT2): the dump's frames are the engine's
+/// untransformed boxes, and a transform is paint, proven by the pixel lane and Chrome's content quads. Without transforms it equals
+/// convert(bounds, to: root).
+public func dragonLayoutRect(_ v: UIView, in root: UIView) -> CGRect {
+  var x = v.center.x - v.bounds.width * v.layer.anchorPoint.x
+  var y = v.center.y - v.bounds.height * v.layer.anchorPoint.y
+  var s = v.superview
+  while let sv = s, sv !== root {
+    x += sv.center.x - sv.bounds.width * sv.layer.anchorPoint.x - sv.bounds.origin.x
+    y += sv.center.y - sv.bounds.height * sv.layer.anchorPoint.y - sv.bounds.origin.y
+    s = sv.superview
+  }
+  if s !== root { fatalError("dragon: a dumped view is not inside the root") }
+  return CGRect(x: x - root.bounds.origin.x, y: y - root.bounds.origin.y, width: v.bounds.width, height: v.bounds.height)
 }
 
 /// The compositor capture: drawHierarchy(afterScreenUpdates: true) of the fixture root into a declared sRGB RGBA8 CGContext
@@ -809,6 +862,9 @@ fun dragonCheckedInt(v: Double, what: String): Int {
 
 /** Round half up to whole device px (Blink LayoutUnit::Round), for a live text extent the native text engine measured. */
 fun dragonHalfUp(v: Double): Double = kotlin.math.floor(v + 0.5)
+
+/** The whole device px covering a rect given as x, y, width, height in device px: left, top, right, bottom. */
+fun dragonCoveringPx(r: DoubleArray): IntArray = intArrayOf(kotlin.math.floor(r[0]).toInt(), kotlin.math.floor(r[1]).toInt(), kotlin.math.ceil(r[0] + r[2]).toInt(), kotlin.math.ceil(r[1] + r[3]).toInt())
 `;
 
 const KOTLIN_FONT_TABLES = String.raw`package dev.dragon.views
@@ -996,7 +1052,7 @@ class DragonRootView(ctx: Context) : DragonGroup(ctx) {
 }
 
 /** css-overflow-3 §3: the padding box of an overflow: hidden node; its children are clipped to its bounds (clipBounds). */
-class DragonClipView(ctx: Context) : DragonGroup(ctx) {
+open class DragonClipView(ctx: Context) : DragonGroup(ctx) {
   override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
     clipBounds = Rect(0, 0, r - l, b - t)
     super.onLayout(changed, l, t, r, b)
@@ -1005,15 +1061,23 @@ class DragonClipView(ctx: Context) : DragonGroup(ctx) {
 
 /**
  * The box geometry every paint stage and after-layout hook receives: the snapped border-box edges (left, top, right, bottom) and
- * the border widths (top, right, bottom, left) in device px, and the eight corner radii in device px (horizontal then vertical,
- * top-left first), zero until the radius module fills them (PNT1).
+ * the border widths (top, right, bottom, left) in device px, the eight corner radii in device px (horizontal then vertical,
+ * top-left first), zero until the radius module fills them (PNT1), and the layout border-box size (width, height) in device px
+ * before snapping, which percentage radii resolve against.
  */
-class DragonBoxShape(val edges: DoubleArray, val borders: DoubleArray, val radii: DoubleArray = DoubleArray(8))
+class DragonBoxShape(val edges: DoubleArray, val borders: DoubleArray, val radii: DoubleArray = DoubleArray(8), val size: DoubleArray = DoubleArray(2))
 
 /** A box: the background is a native ColorDrawable; every other paint is a paint module's (views/paint), drawn in CSS stage order. */
 class DragonBoxView(ctx: Context, override val dragonId: String, override val dragonKind: String, override val dragonParent: String?) : DragonGroup(ctx), DragonNodeView {
   /** The shape of the last layout, passed to every paint stage. */
   var dragonShape = DragonBoxShape(DoubleArray(4), DoubleArray(4))
+  /**
+   * REPL-a: a replaced box's content box, destination rect and drawn part in device px relative to the box (x, y, width, height),
+   * from the translated engine after layout (paint.ts replacedPaint); null for a box that is not replaced.
+   */
+  var dragonReplacedContent: DoubleArray? = null
+  var dragonReplacedDest: DoubleArray? = null
+  var dragonReplacedDrawn: DoubleArray? = null
 ${boxMembers('android-views')}  val dragonContainer: ViewGroup get() = dragonClipView ?: this
   override fun onDraw(canvas: Canvas) {
     super.onDraw(canvas)
@@ -1217,7 +1281,10 @@ import dev.dragon.layout.LayoutInput
 import dev.dragon.layout.LayoutRect
 import dev.dragon.layout.LayoutResult_ok
 import dev.dragon.layout.LayoutStyle
+import dev.dragon.layout.ObjectRect
+import dev.dragon.layout.PixelRect
 import dev.dragon.layout.ReplacedLeaf
+import dev.dragon.layout.paint_replacedPaint
 import dev.dragon.layout.TextLeaf
 import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
@@ -1231,6 +1298,9 @@ import dev.dragon.layout.inline_placeIfcLines
 import dev.dragon.layout.layout_absoluteRects
 import dev.dragon.layout.layout_layout
 import dev.dragon.layout.layout_zoomInput
+import dev.dragon.layout.overflow_scrollRanges
+import dev.dragon.layout.ScrollRangesResult_ok
+import dev.dragon.layout.ScrollRangesResult_refused
 import dev.dragon.layout.snap_snapEdges
 import dev.dragon.layout.units_LU_PER_PX
 import dev.dragon.layout.units_fromCssPx
@@ -1310,6 +1380,7 @@ class DragonTree(val context: Context) {
     val zoomed = layout_zoomInput(input, block_NO_ENGINE_FAULTS)
     val zBoxes = HashMap<String, LayoutBox>()
     val zStyles = HashMap<String, LayoutStyle>()
+    val zLeaves = ArrayList<ReplacedLeaf>()
     val zParent = HashMap<String, String>()
     // A text leaf's, inline box's or <br>'s container is the block container of its inline formatting context, through any
     // inline boxes.
@@ -1327,12 +1398,21 @@ class DragonTree(val context: Context) {
       zStyles[b.id] = b.style
       for (c in b.children) {
         if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) } else if (c is TextLeaf) zParent[c.id] = b.id
-        else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style }
+        else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style; zLeaves.add(c) }
         else if (c is InlineBox) walkInline(c, b.id)
         else if (c is LineBreak) walkInline(c, b.id)
       }
     }
     walk(zoomed.root)
+    // OVFL-B: each scroll container's offset range in device px, from the translated engine, for the scroll module's hook.
+    val scrollRanges = HashMap<String, IntArray>()
+    val sr = overflow_scrollRanges(input, measurer)
+    val srNo = sr as? ScrollRangesResult_refused
+    if (srNo != null) throw IllegalStateException("dragon: the engine refused the scroll ranges at " + srNo.nodeId + ": " + srNo.detail)
+    val srOk = sr as? ScrollRangesResult_ok ?: throw IllegalStateException("dragon: the engine gave no scroll ranges")
+    for (g in srOk.ranges) scrollRanges[g.id] = intArrayOf(dragonCheckedInt(g.minX, g.id + " scroll minX"), dragonCheckedInt(g.maxX, g.id + " scroll maxX"), dragonCheckedInt(g.minY, g.id + " scroll minY"), dragonCheckedInt(g.maxY, g.id + " scroll maxY"))
+    val scrollRefusals = HashMap<String, String>()
+    for (g in srOk.refused) scrollRefusals[g.id] = "the engine refused its scroll range at " + g.nodeId + ": " + g.detail
     val lu = units_LU_PER_PX
     setFrame(root.dragonFrame, 0.0, 0.0, kotlin.math.ceil(input.viewport.width * scale), kotlin.math.ceil(input.viewport.height * scale), "root")
     val edges = HashMap<String, DoubleArray>()
@@ -1375,7 +1455,9 @@ class DragonTree(val context: Context) {
           doubleArrayOf(be.top / lu, be.right / lu, be.bottom / lu, be.left / lu)
         }
         borders[id] = px
-        v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px)
+        v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px, DoubleArray(8), doubleArrayOf(r.width / lu, r.height / lu))
+        v.dragonScrollRange = scrollRanges[id]
+        v.dragonScrollRefusal = scrollRefusals[id]
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }
@@ -1393,6 +1475,25 @@ class DragonTree(val context: Context) {
       val w = r.width - bor.left - bor.right - pad.left - pad.right
       contentCache[id] = w
       return w
+    }
+    // REPL-a: each replaced box's paint rects from its content box (border box less borders and padding against the parent's
+    // content width), through the translated engine; the paint modules read them in their after-layout hooks and stages.
+    for (leaf in zLeaves) {
+      val id = leaf.id
+      val bv = views[id] as? DragonBoxView ?: throw IllegalStateException("dragon: replaced " + id + " has no box view")
+      val e = edges[id] ?: throw IllegalStateException("dragon: replaced " + id + " is not placed")
+      val a = abs.get(id) ?: throw IllegalStateException("dragon: no absolute rect for " + id)
+      val pId = zParent[id] ?: throw IllegalStateException("dragon: replaced " + id + " has no parent")
+      val pad = box_resolvePadding(leaf.style, contentWidth(pId))
+      val bor = box_resolveBorder(leaf.style, zoomed.devicePixelRatio)
+      val content = ObjectRect(a.x + bor.left + pad.left, a.y + bor.top + pad.top, maxOf(0.0, a.width - bor.left - bor.right - pad.left - pad.right), maxOf(0.0, a.height - bor.top - bor.bottom - pad.top - pad.bottom))
+      val p = paint_replacedPaint(leaf, content)
+      fun rel(r: PixelRect): DoubleArray = doubleArrayOf(r.x - e[0], r.y - e[1], r.width, r.height)
+      bv.dragonReplacedContent = rel(p.content)
+      bv.dragonReplacedDest = rel(p.dest)
+      bv.dragonReplacedDrawn = p.drawn?.let { rel(it) }
+      dragonAfterLayout(bv, bv.dragonShape, scale)
+      bv.invalidate()
     }
     for (id in order) {
       val tv = views[id] as? DragonTextView ?: continue
@@ -1471,27 +1572,28 @@ class DragonTree(val context: Context) {
       val b = ifc.boxes.indexOfFirst { it.id == bId }
       if (b < 0) throw IllegalStateException("dragon: no inline box " + bId + " in " + pId)
       val offsets = ArrayList<Double>()
-      for (line in inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))) {
+      val placedLines = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
+      for (line in placedLines) {
         for (k in line.boxes.indices) if (line.boxes[k].toInt() == b) offsets.add(line.baseline - line.boxRects[k].y)
       }
+      // A context with no line box gives each inline box one empty fragment at the content start (inline.ts collectFragments),
+      // on no line, so its baseline is its own top.
+      if (placedLines.isEmpty()) offsets.add(0.0)
       if (offsets.size != idx.size) throw IllegalStateException("dragon: " + bId + ": the engine's lines give " + offsets.size + " fragments, its layout " + idx.size)
       inlineLines[bId] = idx.indices.map { j -> val e = snapped[idx[j]]; doubleArrayOf(e.left - be[0], e.top - be[1], e.right - be[0], e.bottom - be[1], offsets[j] / lu) }
     }
   }
 
-  /** The dump read back from the live tree: frames from getLocationInWindow minus the root's, divided by density. */
+  /** The dump read back from the live tree: frames from the layout positions up to the root (dragonLayoutOffset), divided by density. */
   fun dump(c: DragonCase, scale: Double, device: DumpDevice, pixels: DumpPixels, timing: DumpTiming): Dump {
     val s = scale
-    val rootAt = IntArray(2)
-    root.getLocationInWindow(rootAt)
     val nodes = ArrayList<DumpNodes>()
     for (id in order) {
       val v = views[id] ?: continue
       val view = v as android.view.View
-      val at = IntArray(2)
-      view.getLocationInWindow(at)
-      val l = (at[0] - rootAt[0]).toDouble()
-      val t = (at[1] - rootAt[1]).toDouble()
+      val at = dragonLayoutOffset(view, root)
+      val l = at[0].toDouble()
+      val t = at[1].toDouble()
       val rr = l + view.width
       val b = t + view.height
       val lines = ArrayList<DumpNodesLines>()
@@ -1518,6 +1620,24 @@ class DragonTree(val context: Context) {
     }
     return Dump("android-emu", DumpCase(c.id, c.fixture, s, DumpCaseViewport(c.viewportWidth, c.viewportHeight), c.direction, c.compilerDigest, c.expectedDigest(s)), device, nodes, pixels, timing)
   }
+}
+
+/**
+ * A view's layout position in root's coordinates with every view transform ignored (PNT2): the dump's frames are the engine's
+ * untransformed boxes, and a transform is paint, proven by the pixel lane and Chrome's content quads. Without transforms it equals
+ * getLocationInWindow(view) minus getLocationInWindow(root).
+ */
+fun dragonLayoutOffset(v: android.view.View, root: android.view.View): IntArray {
+  var x = 0
+  var y = 0
+  var c = v
+  while (c !== root) {
+    val p = c.parent as? android.view.View ?: throw IllegalStateException("dragon: a dumped view is not inside the root")
+    x += c.left - p.scrollX
+    y += c.top - p.scrollY
+    c = p
+  }
+  return intArrayOf(x, y)
 }
 
 /** Sets a Dragon frame (left, top, right, bottom in device px) through the checked conversion. */
@@ -1764,10 +1884,51 @@ export const STYLE_FIELDS = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height', 'minWidth', 'minHeight',
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
-  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign',
+  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'grid', 'gridItem',
 ] as const;
 
-const VALUE_CLASSES: Readonly<Record<string, string>> = { px: 'Px', percent: 'Percent', auto: 'Auto', none: 'NoneValue', content: 'ContentValue', normal: 'NormalValue', number: 'NumberValue', 'device-px': 'DevicePx' };
+const VALUE_CLASSES: Readonly<Record<string, string>> = {
+  px: 'Px', percent: 'Percent', auto: 'Auto', none: 'NoneValue', content: 'ContentValue', normal: 'NormalValue', number: 'NumberValue', 'device-px': 'DevicePx',
+  fr: 'Fr', 'min-content': 'MinContent', 'max-content': 'MaxContent',
+};
+
+/** The translated engine's union type of TrackSize (grid.ts input), the element type of a track-size array. */
+const TRACK_SIZE_UNION = 'U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax';
+
+/** A typed array of the translated engine: JsArray in Swift, jsArrayOf in Kotlin. */
+function engineArray(lang: Lang, elem: string, union: boolean, items: readonly string[]): string {
+  return lang === 'swift' ? `JsArray<${union ? 'any ' : ''}${elem}>([${items.join(', ')}])` : `jsArrayOf<${elem}>(${items.join(', ')})`;
+}
+
+type TrackSizeInput = import('@dragon/layout').TrackSize;
+type GridSpanInput = import('@dragon/layout').GridSpan;
+
+function trackSizeValue(lang: Lang, t: TrackSizeInput, str: (s: string) => string): string {
+  if (t.kind === 'breadth') return `TrackSize_breadth(${str('breadth')}, ${engineValue(lang, t.breadth)})`;
+  if (t.kind === 'minmax') return `TrackSize_minmax(${str('minmax')}, ${engineValue(lang, t.min)}, ${engineValue(lang, t.max)})`;
+  return `TrackSize_fitContent(${str('fit-content')}, ${engineValue(lang, t.limit)})`;
+}
+
+function gridSpanValue(lang: Lang, s: GridSpanInput, str: (s: string) => string): string {
+  return s.kind === 'definite' ? `GridSpan_definite(${str('definite')}, ${doubleLit(s.start)}, ${doubleLit(s.end)})` : `GridSpan_auto(${str('auto')}, ${doubleLit(s.span)})`;
+}
+
+/** The grid and gridItem fields of a LayoutStyle (css-grid-2; input.ts GridContainerStyle and GridItemStyle), or null. */
+function gridValue(lang: Lang, field: 'grid' | 'gridItem', v: unknown, str: (s: string) => string): string {
+  if (v === undefined) throw new Error(`LayoutStyle.${field} is missing; it is null where unused`);
+  if (v === null) return lang === 'swift' ? 'nil' : 'null';
+  if (field === 'gridItem') {
+    const g = v as import('@dragon/layout').GridItemStyle;
+    return `GridItemStyle(${gridSpanValue(lang, g.column, str)}, ${gridSpanValue(lang, g.row, str)}, ${str(g.justifySelf)})`;
+  }
+  const g = v as import('@dragon/layout').GridContainerStyle;
+  const sizes = (ts: readonly TrackSizeInput[]): string => engineArray(lang, TRACK_SIZE_UNION, true, ts.map((t) => trackSizeValue(lang, t, str)));
+  const reps = (rs: readonly import('@dragon/layout').TrackRepeater[]): string => engineArray(lang, 'TrackRepeater', false, rs.map((r) => `TrackRepeater(${doubleLit(r.count)}, ${sizes(r.sizes)})`));
+  return `GridContainerStyle(${[
+    reps(g.templateColumns), reps(g.templateRows), sizes(g.autoColumns), sizes(g.autoRows), doubleLit(g.explicitColumnCount), doubleLit(g.explicitRowCount),
+    str(g.autoFlow), g.dense ? 'true' : 'false', str(g.justifyItems),
+  ].join(', ')})`;
+}
 
 /** The translated union of CalcExpr (V2 of the value model): the element type of a calculation's operand list. */
 const CALC_UNION = 'U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength';
@@ -1868,7 +2029,11 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   const decls: string[] = [];
   let n = 0;
   const str = (s: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, s)})` : stringLit(lang, s));
-  const styleOf = (st: import('@dragon/layout').LayoutStyle): string => `LayoutStyle(${STYLE_FIELDS.map((f) => engineValue(lang, (st as unknown as Record<string, unknown>)[f])).join(', ')})`;
+  const fieldValue = (st: import('@dragon/layout').LayoutStyle, f: (typeof STYLE_FIELDS)[number]): string => {
+    const v = (st as unknown as Record<string, unknown>)[f];
+    return f === 'grid' || f === 'gridItem' ? gridValue(lang, f, v, str) : engineValue(lang, v);
+  };
+  const styleOf = (st: import('@dragon/layout').LayoutStyle): string => `LayoutStyle(${STYLE_FIELDS.map((f) => fieldValue(st, f)).join(', ')})`;
   // A replaced leaf (input.ts ReplacedLeaf): its natural size is NaturalSizeValue_image or NaturalSizeValue_none.
   const replaced = (c: import('@dragon/layout').ReplacedLeaf): string => {
     const natural = c.natural.kind === 'image' ? `NaturalSizeValue_image(${str('image')}, ${doubleLit(c.natural.width)}, ${doubleLit(c.natural.height)})` : `NaturalSizeValue_none(${str('none')})`;

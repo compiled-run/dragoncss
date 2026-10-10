@@ -2,14 +2,19 @@
 // with the TypeScript reference, byte for byte (every double is its IEEE bit pattern).
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Corpus, Split, Suite } from './corpus.ts';
-import { split } from './corpus.ts';
+import { canonicalNan, sameResult, split } from './corpus.ts';
 import type { Files } from './generate.ts';
 import { ROOT } from './generate.ts';
+import { BUILD_CACHE, hit, publish, pruneCache, touch } from './build-cache.ts';
+
+export { BUILD_CACHE, CACHE_MAX_BYTES, cacheMaxBytes, IN_USE_MS, publish, pruneCache } from './build-cache.ts';
 
 export const OUT = join(ROOT, 'packages/translate/out');
+
 
 export const SWIFT_FLAGS = ['-O', '-wmo', '-suppress-warnings', '-module-name', 'DragonHarness'];
 export const KOTLIN_FLAGS = ['-nowarn', '-include-runtime'];
@@ -29,6 +34,39 @@ export type RunResult = {
   readonly runSeconds: number;
 };
 
+/** Set to 1, a missing toolchain fails the run instead of reading blocked (owner tooling), as CI's "No native run was blocked" step does. */
+export const REQUIRE_NATIVE_ENV = 'DRAGON_REQUIRE_NATIVE';
+
+/** Whether DRAGON_REQUIRE_NATIVE is on: 1 is on, unset, empty or 0 is off, and any other value throws. */
+export function requireNative(env: NodeJS.ProcessEnv = process.env): boolean {
+  const v = env[REQUIRE_NATIVE_ENV];
+  if (v === undefined || v === '' || v === '0') return false;
+  if (v === '1') return true;
+  throw new Error(`${REQUIRE_NATIVE_ENV} is ${JSON.stringify(v)}; set it to 1 (a missing native toolchain fails) or 0`);
+}
+
+/**
+ * The one handler of a missing native toolchain (strict-native-guard.test.ts keeps it the only one): with require on, an error
+ * naming what is missing; off, the blocked (owner tooling) line the caller reports before it stops.
+ */
+export function missingToolchain(subject: string, missing: string, require: boolean = requireNative()): string {
+  if (require) throw new Error(`${REQUIRE_NATIVE_ENV}=1 and ${subject} has no toolchain: ${missing}; run it where the toolchain is installed (CI) instead`);
+  return `${subject}: blocked (owner tooling): ${missing}`;
+}
+
+/** A run whose toolchain is missing: blocked (owner tooling), or with require on, an error naming the missing tool. */
+export function blockedRun(target: 'swift' | 'kotlin', toolchain: string, reason: string, require: boolean): RunResult {
+  missingToolchain(`native:${target}`, `${toolchain} (${reason})`, require);
+  return { target, status: 'blocked (owner tooling)', toolchain, reason, suites: [], buildSeconds: 0, runSeconds: 0 };
+}
+
+/** Whether a run read blocked (owner tooling); with require on, a blocked run throws naming its tool instead of letting the caller stop early. */
+export function isBlocked(r: Pick<RunResult, 'target' | 'status' | 'toolchain' | 'reason'>, require: boolean = requireNative()): boolean {
+  if (r.status !== 'blocked (owner tooling)') return false;
+  missingToolchain(`native:${r.target}`, `${r.toolchain} (${r.reason ?? 'no reason given'})`, require);
+  return true;
+}
+
 export type SwiftTool = { readonly swiftc: string; readonly version: string };
 export type KotlinTool = { readonly kotlinc: string; readonly javaHome: string; readonly version: string };
 
@@ -37,8 +75,18 @@ function run(cmd: string, args: readonly string[], env?: NodeJS.ProcessEnv): { o
   return { ok: r.status === 0 && r.error === undefined, out: `${r.stdout ?? ''}${r.stderr ?? ''}` };
 }
 
+/** Runs use with a fresh TMPDIR, removed afterwards: swiftc leaves an empty TemporaryDirectory.* there on --version and -typecheck. */
+export function withToolTmp<T>(use: (env: NodeJS.ProcessEnv) => T): T {
+  const dir = mkdtempSync(join(tmpdir(), 'dragon-swiftc-'));
+  try {
+    return use({ ...process.env, TMPDIR: dir });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 export function swiftTool(): SwiftTool | null {
-  const v = run('swiftc', ['--version']);
+  const v = withToolTmp((env) => run('swiftc', ['--version'], env));
   if (!v.ok) return null;
   return { swiftc: 'swiftc', version: (v.out.split('\n').find((l) => l.includes('Swift version')) ?? v.out).trim() };
 }
@@ -86,15 +134,6 @@ function writeFiles(dir: string, files: Files): void {
   }
 }
 
-/** Moves a finished build into its cache directory; a concurrent build of the same key may have won, which is equivalent. */
-function publish(work: string, dir: string): void {
-  try {
-    renameSync(work, dir);
-  } catch {
-    rmSync(work, { recursive: true, force: true });
-  }
-}
-
 /** A failed build removes its work directory, then throws the compiler's output. */
 function failBuild(work: string, message: string): never {
   rmSync(work, { recursive: true, force: true });
@@ -103,10 +142,11 @@ function failBuild(work: string, message: string): never {
 
 /** Compiles the Swift harness; returns the binary. Cached on sources, flags and compiler version. */
 export function buildSwift(tool: SwiftTool, files: Files): { binary: string; seconds: number; cached: boolean } {
-  const key = filesKey(files, [...SWIFT_FLAGS, tool.version]);
-  const dir = join(OUT, 'swift', key);
+  // The version line names no target triple, and a binary runs only on the OS and architecture it was built for.
+  const key = filesKey(files, [...SWIFT_FLAGS, tool.version, `${process.platform}-${process.arch}`]);
+  const dir = join(BUILD_CACHE, 'swift', key);
   const binary = join(dir, 'harness');
-  if (existsSync(binary)) return { binary, seconds: 0, cached: true };
+  if (hit(dir, binary)) return { binary, seconds: 0, cached: true };
   const work = `${dir}.build-${process.pid}`;
   rmSync(work, { recursive: true, force: true });
   writeFiles(join(work, 'src'), files);
@@ -114,20 +154,23 @@ export function buildSwift(tool: SwiftTool, files: Files): { binary: string; sec
   const t = Date.now();
   // The engine module must compile on its own (no Foundation, nothing from the harness), as it does in the SwiftPM package.
   const engine = srcs.filter((f) => f.includes('/Sources/DragonLayout/'));
-  const alone = run(tool.swiftc, ['-typecheck', '-parse-as-library', '-module-name', 'DragonLayout', ...engine]);
-  if (!alone.ok) failBuild(work, `swiftc -typecheck of the engine module failed:\n${alone.out.slice(0, 4000)}`);
-  const r = run(tool.swiftc, [...SWIFT_FLAGS, ...srcs, '-o', join(work, 'harness')]);
-  if (!r.ok) failBuild(work, `swiftc failed:\n${r.out.slice(0, 4000)}`);
+  withToolTmp((env) => {
+    const alone = run(tool.swiftc, ['-typecheck', '-parse-as-library', '-module-name', 'DragonLayout', ...engine], env);
+    if (!alone.ok) failBuild(work, `swiftc -typecheck of the engine module failed:\n${alone.out.slice(0, 4000)}`);
+    const r = run(tool.swiftc, [...SWIFT_FLAGS, ...srcs, '-o', join(work, 'harness')], env);
+    if (!r.ok) failBuild(work, `swiftc failed:\n${r.out.slice(0, 4000)}`);
+  });
   publish(work, dir);
+  pruneCache(BUILD_CACHE, dir);
   return { binary, seconds: (Date.now() - t) / 1000, cached: false };
 }
 
 /** Compiles the Kotlin harness to a jar. Cached on sources, flags and compiler version. */
 export function buildKotlin(tool: KotlinTool, files: Files): { jar: string; seconds: number; cached: boolean } {
   const key = filesKey(files, [...KOTLIN_FLAGS, tool.version]);
-  const dir = join(OUT, 'kotlin', key);
+  const dir = join(BUILD_CACHE, 'kotlin', key);
   const jar = join(dir, 'harness.jar');
-  if (existsSync(jar)) return { jar, seconds: 0, cached: true };
+  if (hit(dir, jar)) return { jar, seconds: 0, cached: true };
   const work = `${dir}.build-${process.pid}`;
   rmSync(work, { recursive: true, force: true });
   writeFiles(join(work, 'src'), files);
@@ -137,6 +180,7 @@ export function buildKotlin(tool: KotlinTool, files: Files): { jar: string; seco
   const r = run(tool.kotlinc, [...KOTLIN_FLAGS, ...srcs, '-d', join(work, 'harness.jar')], env);
   if (!r.ok) failBuild(work, `kotlinc failed:\n${r.out.slice(0, 4000)}`);
   publish(work, dir);
+  pruneCache(BUILD_CACHE, dir);
   return { jar, seconds: (Date.now() - t) / 1000, cached: false };
 }
 
@@ -148,7 +192,8 @@ export function corpusFiles(c: Corpus): Map<string, string> {
     const p = join(dir, `${s.name}.jsonl`);
     if (!existsSync(p)) {
       mkdirSync(dir, { recursive: true });
-      writeFileSync(`${p}.${process.pid}`, `${s.lines.join('\n')}\n`);
+      // The inputs as the digest covers them: every NaN the one quiet NaN, whatever host generated them.
+      writeFileSync(`${p}.${process.pid}`, `${s.lines.map(canonicalNan).join('\n')}\n`);
       renameSync(`${p}.${process.pid}`, p);
     }
     paths.set(s.name, p);
@@ -186,7 +231,7 @@ function runSuite(c: Corpus, s: Suite, exec: Exec, inputs: Map<string, string>, 
   const mismatches: Mismatch[] = [];
   for (let i = 0; i < s.expected.length; i++) {
     const g = got[i] ?? '<missing>';
-    if (g === s.expected[i]) pass++;
+    if (sameResult(s.expected[i] as string, g)) pass++;
     else if (mismatches.length < 5) mismatches.push({ index: i, input: s.lines[i] as string, expected: s.expected[i] as string, got: g });
   }
   if (got.length !== s.expected.length && mismatches.length < 5) mismatches.push({ index: -1, input: '', expected: `${s.expected.length} lines`, got: `${got.length} lines` });
@@ -225,7 +270,10 @@ export function suiteCause(r: { readonly status: number | null; readonly signal:
 }
 
 export function swiftExec(binary: string): Exec {
-  return (mode, input, output) => execSuite(binary, [mode, input, output]);
+  return (mode, input, output) => {
+    touch(dirname(binary));
+    return execSuite(binary, [mode, input, output]);
+  };
 }
 
 /**
@@ -235,7 +283,10 @@ export function swiftExec(binary: string): Exec {
 export const KOTLIN_HEAP = '-Xmx2g';
 
 export function kotlinExec(tool: KotlinTool, jar: string): Exec {
-  return (mode, input, output) => execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', KOTLIN_HEAP, '-jar', jar, mode, input, output]);
+  return (mode, input, output) => {
+    touch(dirname(jar));
+    return execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', KOTLIN_HEAP, '-jar', jar, mode, input, output]);
+  };
 }
 
 /** Every case matched and every process accounted for its cases: a suite with a cause (say, extra lines) does not pass. */

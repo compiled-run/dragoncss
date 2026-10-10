@@ -4,6 +4,8 @@
 //   refused    a named diagnostic code, what it names, and its fix
 //   invalid    Dragon reports the value or selector invalid and Chrome drops it too: the utility does nothing in Chrome either
 //   mismatch   the target compiles but Chrome disagrees: a wrong acceptance, listed so it is fixed, never counted as support
+//   na-native  a native target compiles only because every declaration web refuses is not applicable on native (NA-NATIVE):
+//              Dragon leaves it out there, so Chrome has nothing to check; counted on its own, never as support
 // A utility whose rules set only custom properties (a modifier such as from-red-500 or ring-offset-2) does nothing alone; it is
 // judged on one element with its companions: the first utility of the class list (names without a leading "-" first) whose
 // standard declarations read one of the custom properties it sets; failing that, the first modifier whose custom declarations
@@ -24,7 +26,9 @@ export type Outcome =
   | { readonly status: 'supported' }
   | { readonly status: 'refused'; readonly code: string; readonly group: string; readonly at: string; readonly fix: string; readonly chromeParses?: true }
   | { readonly status: 'invalid'; readonly why: string }
-  | { readonly status: 'mismatch'; readonly problems: readonly string[] };
+  | { readonly status: 'mismatch'; readonly problems: readonly string[] }
+  /** NA-NATIVE: a native target compiles only because everything web refuses is not applicable on native; never counted as supported. */
+  | { readonly status: 'na-native'; readonly at: string };
 
 export type UtilityRecord = {
   readonly utility: string;
@@ -115,12 +119,14 @@ export function refusalGroup(b: Pick<Blocker, 'code' | 'at' | 'message'>): strin
   }
 }
 
-type Judged = { readonly dual: ReadonlyMap<string, readonly string[]>; readonly parses: ReadonlyMap<string, boolean> };
+export type Judged = { readonly dual: ReadonlyMap<string, readonly string[]>; readonly parses: ReadonlyMap<string, boolean> };
 
-function outcomeOf(t: Target, row: DragonRow, judged: Judged): Outcome {
+export function outcomeOf(t: Target, row: DragonRow, judged: Judged): Outcome {
   const r = row.result as NonNullable<DragonRow['result']>;
   const b = r.blockers[t];
   if (b === null) {
+    const na = r.notApplicable[t];
+    if (r.blockers.web !== null && t !== 'web' && na !== null) return { status: 'na-native', at: na };
     if (r.blockers.web !== null) throw new Error(`${row.key}: ${t} compiles but web does not, so Chrome cannot check it`);
     const problems = judged.dual.get(row.key);
     if (problems === undefined) throw new Error(`${row.key}: no Chrome verdict`);
@@ -158,16 +164,38 @@ export async function sweep(openChrome: () => Promise<ChromeSession>, log: (line
   const parses = new Map<string, boolean>();
   const chrome = await openChrome();
   try {
-    for (const u of list) {
+    // One check per utility at a time on each of the session's pages; the verdicts are keyed, so their order changes nothing.
+    const parseOf = new Map<string, Promise<boolean>>();
+    const check = async (u: (typeof list)[number]): Promise<void> => {
       const row = rowOf(u.name);
-      if (row.result === null) continue;
+      if (row.result === null) return;
       if (row.result.compiledHtml !== null) dual.set(u.name, await chrome.dual({ key: u.name, authoredHtml: row.result.authoredHtml, compiledHtml: row.result.compiledHtml }));
       for (const t of TARGETS) {
         const b = row.result.blockers[t];
         const cond = b !== null && INVALID_CODES.has(b.code) ? parseCondition(b) : null;
-        if (cond !== null && !parses.has(cond)) parses.set(cond, await chrome.supports(cond));
+        if (cond === null) continue;
+        let p = parseOf.get(cond);
+        if (p === undefined) {
+          p = chrome.supports(cond);
+          parseOf.set(cond, p);
+        }
+        parses.set(cond, await p);
       }
-    }
+    };
+    let next = 0;
+    let failed = false;
+    const lane = async (): Promise<void> => {
+      try {
+        while (next < list.length && !failed) await check(list[next++] as (typeof list)[number]);
+      } catch (e) {
+        // The other lanes stop at their next utility instead of running on against a browser about to close.
+        failed = true;
+        throw e;
+      }
+    };
+    // Every lane has stopped before the browser closes; the first failure is the one reported.
+    const failure = (await Promise.allSettled(Array.from({ length: chrome.pages }, lane))).find((r) => r.status === 'rejected');
+    if (failure !== undefined) throw failure.reason;
   } finally {
     await chrome.close();
   }
@@ -196,6 +224,8 @@ const brief = (o: Outcome): string => {
       return `invalid: ${o.why}`;
     case 'mismatch':
       return `mismatch: ${o.problems[0] ?? ''}`;
+    case 'na-native':
+      return `not applicable on native: ${o.at}`;
   }
 };
 

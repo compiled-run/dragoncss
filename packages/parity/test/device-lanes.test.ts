@@ -7,13 +7,13 @@ import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CaseReference, DeviceCheckLane, FailureKind, TrustCase } from '../src/device-lanes.ts';
-import { captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, isSampleRule, readDump, splitByLines, trustFailuresOf } from '../src/device-lanes.ts';
-import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
+import { blankCapture, captureTrust, caseReference, dumpFile, evaluateCase, evaluateSet, isSampleRule, plantVerdict, readDump, splitByLines, STAGE_RGBA, trustFailuresOf } from '../src/device-lanes.ts';import type { DumpFault, NamedCheck } from '../src/native-compare.ts';
 import { checkAgainstChrome, DUMP_FAULTS, FAULT_CHECK, plantDumpFault, readSamples } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
 import { REFERENCE_LANE, validateNativeDump } from '../src/native-dump.ts';
 import type { NativeCase } from '../src/native-host.ts';
-import { nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
+import { androidCommands, appCacheKey, casesCodeProblems, expand, hostSources, iosCommands, iosModules, nativeCases, nativeOut, relabelledReferenceDumps, reuseStamp } from '../src/native-host.ts';
+import { PLANT_RULES } from '../src/device-run.ts';
 import { repoPath } from '../src/paths.ts';
 import { casePoints, expectedPixelsPath, rasterSize } from '../src/pixel-reference.ts';
 import type { NativeTarget } from '../src/targets.ts';
@@ -145,6 +145,32 @@ describe('dump identity and malformed samples (round 6)', () => {
   it("the capture must be the target's compositor capture", () => {
     expect(kinds({ ...d, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), capture: 'PixelCopy' } })).toContain('capture-kind');
   });
+  // #72 landing device run: whole-window blank captures surfaced as hundreds of pixel mismatches; they are one harness failure.
+  it('a capture that is the bare stage where Chrome paints is one blank-capture failure of the case, not pixel mismatches', () => {
+    const px = d.pixels as NonNullable<typeof d.pixels>;
+    const blankDump = { ...d, pixels: { ...px, samples: px.samples.map((s) => ({ ...s, rgba: [...STAGE_RGBA] })) } };
+    const o = evaluateCase('ios', n, 3, blankDump, ref);
+    expect(o.failures.filter((f) => f.lane === 'device-pixels').map((f) => [f.kind, f.node])).toEqual([['blank-capture', 'capture']]);
+    expect(o.failures.find((f) => f.kind === 'blank-capture')?.detail).toMatch(new RegExp(`^blank capture: either a harness fault or nothing painted; the capture is the stage colour \\[255,255,255,255\\] at all ${px.samples.length} samples, where Chrome paints other colours at \\d+$`));
+    expect(o.passingSamples).toEqual([]);
+    // One sample that is not the stage makes the capture an ordinary one, judged sample by sample.
+    const painted = px.samples.findIndex((s) => s.rgba.some((v, k) => v !== STAGE_RGBA[k]));
+    expect(painted).toBeGreaterThan(-1);
+    const partial = { ...d, pixels: { ...px, samples: px.samples.map((s, i) => (i === painted ? s : { ...s, rgba: [...STAGE_RGBA] })) } };
+    const kindsOf = evaluateCase('ios', n, 3, partial, ref).failures.filter((f) => f.lane === 'device-pixels').map((f) => f.kind);
+    expect(kindsOf.length).toBeGreaterThan(0);
+    expect(kindsOf.every((k) => k === 'pixel')).toBe(true);
+  });
+  it('blankCapture: a stage-coloured capture is blank only where Chrome paints another colour at one of its samples', () => {
+    const img = (rgba: readonly number[]) => ({ width: 2, height: 1, data: new Uint8Array([...rgba, ...STAGE_RGBA]) });
+    const white = [{ x: 0, y: 0, rgba: [...STAGE_RGBA] }, { x: 1, y: 0, rgba: [...STAGE_RGBA] }];
+    expect(blankCapture(white, img([0, 0, 0, 255]))).toMatch(/at all 2 samples, where Chrome paints other colours at 1$/);
+    expect(blankCapture(white, img(STAGE_RGBA))).toBeNull();
+    expect(blankCapture([{ x: 0, y: 0, rgba: [254, 255, 255, 255] }, white[1] as (typeof white)[number]], img([0, 0, 0, 255]))).toBeNull();
+    expect(blankCapture([], img([0, 0, 0, 255]))).toBeNull();
+    // A sample outside the Chrome raster counts as no paint (checkCasePixels reports the point mismatch itself).
+    expect(blankCapture([{ x: 5, y: 0, rgba: [...STAGE_RGBA] }], img([0, 0, 0, 255]))).toBeNull();
+  });
   it('an unknown sample rule is a pixel failure, not a crash of the run', () => {
     const samples = (d.pixels as NonNullable<typeof d.pixels>).samples.map((s, i) => (i === 0 ? { ...s, rule: 'bogus:x' } : s));
     const o = evaluateCase('ios', n, 3, { ...d, pixels: { ...(d.pixels as NonNullable<typeof d.pixels>), samples } }, ref);
@@ -160,6 +186,68 @@ describe('build reuse', () => {
   it('the reuse stamp covers the bundled Ahem.ttf besides the source tree', () => {
     const ahem = createHash('sha256').update(readFileSync(repoPath('vendor/fonts/Ahem.ttf'))).digest('hex');
     expect(reuseStamp('abc')).toBe(`abc ahem ${ahem}`);
+  });
+  it('the iOS app splits into DragonCore (engine and support, -O), DragonCases (-Onone) and DragonHost (-O, main and the case tables)', () => {
+    const paths = hostSources('ios', 'x').map((f) => f.path);
+    const m = iosModules(paths);
+    // Every Swift file is in exactly one module.
+    expect([...m.core, ...m.cases, ...m.host].sort()).toEqual(paths.filter((p) => p.endsWith('.swift')).sort());
+    expect(new Set([...m.core, ...m.cases, ...m.host]).size).toBe(m.core.length + m.cases.length + m.host.length);
+    // The engine and the runtime support stay at -O; only generated case code is at -Onone.
+    expect(m.core.every((p) => p.startsWith('DragonLayout/') || p.startsWith('Support/'))).toBe(true);
+    expect(m.core.filter((p) => p.startsWith('DragonLayout/')).length).toBeGreaterThan(0);
+    expect(m.cases.every((p) => /^Cases\/Dragon(Cases|States)\d+\.swift$/.test(p))).toBe(true);
+    expect(m.host).toEqual(expect.arrayContaining(['Host/main.swift', 'Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift']));
+    // A planted host file builds in DragonHost, where swiftc's availability check still sees it.
+    expect(iosModules([...paths, 'Host/DragonPlanted.swift']).host).toContain('Host/DragonPlanted.swift');
+    expect(() => iosModules(paths.filter((p) => p !== 'Cases/DragonCaseTable.swift'))).toThrow(/no Cases\/DragonCaseTable.swift/);
+    expect(() => iosModules(paths.filter((p) => !/^Cases\/DragonCases\d/.test(p) && !/^Cases\/DragonStates\d/.test(p)))).toThrow(/do not split/);
+  });
+  it('the app cache key hashes every command argument and the module assignment, not a label', () => {
+    const paths = hostSources('ios', 'x').map((f) => f.path);
+    const cmds = iosCommands(paths);
+    const key = appCacheKey('abc', cmds, { sdk: '26.5' });
+    expect(appCacheKey('abc', iosCommands(paths), { sdk: '26.5' })).toBe(key);
+    // Each module's optimisation level and file list is in its command, so moving a file or changing a flag changes the key.
+    const flip = cmds.map((c) => c.map((a) => (a === '-Onone' ? '-O' : a)));
+    expect(appCacheKey('abc', flip, { sdk: '26.5' })).not.toBe(key);
+    const caseFile = iosModules(paths).cases[0] as string;
+    const moved = cmds.map((c, i) => (i === 0 ? [...c, `$W/src/${caseFile}`] : i === 1 ? c.filter((a) => a !== `$W/src/${caseFile}`) : c));
+    expect(appCacheKey('abc', moved, { sdk: '26.5' })).not.toBe(key);
+    expect(appCacheKey('abd', cmds, { sdk: '26.5' })).not.toBe(key);
+    expect(appCacheKey('abc', cmds, { sdk: '26.6' })).not.toBe(key);
+    // The commands name the modules' levels and files exactly.
+    const [core, cases, host] = cmds as [string[], string[], string[]];
+    expect(core).toContain('-O');
+    expect(cases).toEqual(expect.arrayContaining(['-Onone', '-enable-testing']));
+    expect(host).toContain('-O');
+    expect(cases.filter((a) => a.startsWith('$W/src/'))).toEqual(iosModules(paths).cases.map((p) => `$W/src/${p}`));
+    const kt = hostSources('android', 'x').filter((f) => f.path.endsWith('.kt')).map((f) => f.path);
+    const a = androidCommands(kt);
+    expect(appCacheKey('abc', a, { keystore: 'k1' })).not.toBe(appCacheKey('abc', a, { keystore: 'k2' }));
+    expect(appCacheKey('abc', a.map((c) => c.map((x) => (x === '-J-Xmx8g' ? '-J-Xmx4g' : x))), {})).not.toBe(appCacheKey('abc', a, {}));
+  });
+  it('commands run with their tokens expanded; an unknown token is an error, never a literal path', () => {
+    expect(expand(['cp', '$W/src/Info.plist', '$W/DragonHost.app/Info.plist'], { W: '/w' })).toEqual(['cp', '/w/src/Info.plist', '/w/DragonHost.app/Info.plist']);
+    expect(() => expand(['$BT/d8'], { W: '/w' })).toThrow(/no value for \$BT/);
+    // Every token the commands use has a value where they run.
+    const tokens = (cs: readonly (readonly string[])[]): string[] => [...new Set(cs.flatMap((c) => c.flatMap((x) => [...x.matchAll(/\$([A-Z_]+)/g)].map((m) => m[1] as string))))].sort();
+    expect(tokens(iosCommands(hostSources('ios', 'x').map((f) => f.path)))).toEqual(['AHEM', 'CORES', 'SHIM_IOS_LIB', 'SHIM_SWIFT_INCLUDE', 'W']);
+    expect(tokens(androidCommands(['a.kt']))).toEqual(['AHEM', 'ANDROID_JAR', 'BT', 'KEYSTORE', 'KOTLINC', 'KOTLIN_STDLIB', 'SHIM_ANDROID_ARM', 'SHIM_ANDROID_INTEL', 'W']);
+  });
+  it('the code built at -Onone is construction code only: no control flow, ternary, assert or precondition', () => {
+    const files = hostSources('ios', 'x');
+    const cases = new Set(iosModules(files.map((f) => f.path)).cases);
+    expect(files.filter((f) => cases.has(f.path)).flatMap((f) => casesCodeProblems(f.path, f.text))).toEqual([]);
+    for (const bad of ['if x { y() }', 'guard x else { return }', 'for i in a {}', 'switch v { default: break }', 'assert(x)', 'precondition(x)', 'fatalError()', 'let y = x > 0 ? a : b']) expect(casesCodeProblems('C.swift', bad), bad).not.toEqual([]);
+    // Words inside string literals and comments, an enum's cases and the setters' Bool encoding are not code.
+    for (const ok of ['JsString("if for while")', '// for every case', 'public enum E: Int { case v_0 = 0; case v_1 = 1 }', 'machine.set(0, v ? 1 : 0)', 'JsString("a \\" ? b : c")']) expect(casesCodeProblems('C.swift', ok), ok).toEqual([]);
+    // The setter's numbers follow the fixture's value order: a fixture whose first case sets a boolean true emits `v ? 0 : 1`,
+    // or any other pair of value indices. Each is the setter's Bool encoding, not control flow.
+    for (const [t, f] of [[0, 1], [1, 0], [3, 2], [12, 7]]) expect(casesCodeProblems('C.swift', `  /// doc/t#checked\n  public func set_doc_t_checked(_ v: Bool) { machine.set(${t}, v ? ${t} : ${f}) }`)).toEqual([]);
+    // The exemption is the emitter's exact shape (state.ts); any other ternary is still caught.
+    expect(readFileSync(repoPath('packages/dragon/src/emit/runtime/state.ts'), 'utf8')).toContain('(_ v: Bool) { machine.set(${i}, v ? ${t} : ${f}) }');
+    for (const bad of ['machine.set(0, v ? a : 1)', 'machine.set(0, w ? 1 : 0)', 'machine.set(0, v ? 1.5 : 0)']) expect(casesCodeProblems('C.swift', bad), bad).not.toEqual([]);
   });
 });
 
@@ -183,6 +271,23 @@ describe('the node and line split of (a) and (d)', () => {
 });
 
 const trustCase = (n: NativeCase, dpr: number): TrustCase => ({ id: n.case.id, points: casePoints(n.programs.uikit, n.case.environment.viewport, dpr), size: rasterSize(n.case.environment.viewport, dpr) });
+
+describe('the paint plant verdict', () => {
+  const f = (lane: DeviceCheckLane, kind: FailureKind, node: string | null) => ({ lane, case: 'radius-basic', dpr: 3, node, kind, detail: 'x' });
+  const radius = PLANT_RULES['radius-square'];
+  const hit = f('device-pixels', 'pixel', 'radius:r1:top-left:0');
+  it('caught: a pixel failure on a probe rule with frames and lines clean and the host finished', () => {
+    expect(plantVerdict([hit], null, radius)).toMatchObject({ caught: true, pixels: 1, inked: 1 });
+  });
+  it('not caught: the host did not finish, only other rules failed, a non-pixel kind, or frames or lines failed too', () => {
+    expect(plantVerdict([hit], 'timed out', radius).caught).toBe(false);
+    expect(plantVerdict([f('device-pixels', 'pixel', 'edge:w1:bottom')], null, radius).caught).toBe(false);
+    expect(plantVerdict([f('device-pixels', 'raster-size', 'radius:r1:top-left:0')], null, radius).caught).toBe(false);
+    expect(plantVerdict([hit, f('device-frames', 'frame-engine', 'w1')], null, radius).caught).toBe(false);
+    expect(plantVerdict([hit, f('device-lines', 'break-mismatch', 'w1:text0')], null, radius).caught).toBe(false);
+    expect(plantVerdict([], null, radius).caught).toBe(false);
+  });
+});
 
 describe('capture trust', () => {
   it('in-app samples equal the OS screenshot at the root offset; a one-row offset error is caught', () => {
@@ -269,5 +374,23 @@ describe('device dump element lines (T058J3 E): an inline box fragment has no ow
       const v = validateNativeDump(perfectDump(target, dpr, c, caseReference(target, c, dpr), all));
       expect(v.ok || v.errors.slice(0, 3), c.case.id).toBe(true);
     }
+  });
+});
+
+// #72 landing device run: an image sample failure must name its rule as its node, like every other sample kind, or the
+// device-failures file holds an entry the landing driver's strict parser refuses.
+describe('pixelProblemNode', () => {
+  it('names the rule of every sample kind, hyphenated ones included, and the glyph-position ones, and null for a case-level problem', async () => {
+    const { pixelProblemNode } = await import('../src/device-lanes.ts');
+    const { SAMPLE_RULES } = await import('../src/samples.ts');
+    expect(pixelProblemNode('image-flat:a1:0 at 80,40: native [255,255,255,255], Chrome [230,40,40,255] (channel delta limit 0)')).toBe('image-flat:a1:0');
+    expect(pixelProblemNode('edge:a1:image-left: Chrome shows an edge 3.000 device px along the scanline, the native capture none')).toBe('edge:a1:image-left');
+    expect(pixelProblemNode('interior:a1 at 72,22: native [238,238,238,255], Chrome [204,204,204,255] (channel delta limit 0)')).toBe('interior:a1');
+    for (const k of SAMPLE_RULES) expect(pixelProblemNode(`${k}:n3:1 at 1,2: native [0,0,0,255], Chrome [1,1,1,255]`), k).toBe(`${k}:n3:1`);
+    // Glyph-position problems (native-compare.ts) keep their node too; parity:glyph-b3 reads it from the failure list.
+    expect(pixelProblemNode('centre:t1:line0:x: glyph centre at 12.500 device px, Chrome 13.000; differs by more than 0.5 device px')).toBe('centre:t1:line0:x');
+    expect(pixelProblemNode('bottom:t1:line0:y: glyph bottom edge at 40.000 device px, Chrome 41.000; differs by more than 0.5 device px')).toBe('bottom:t1:line0:y');
+    expect(pixelProblemNode('the dump has no pixels')).toBeNull();
+    expect(pixelProblemNode('raster rule: 800x600, the capture 800x601')).toBeNull();
   });
 });

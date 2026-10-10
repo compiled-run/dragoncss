@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.row { display: flex; flex-wrap: wrap; width: 384px; padding: 8px; column-gap: 14px; row-gap: 14px; background-color: #eef3f7; }
+.clip { width: 80px; height: 60px; overflow: hidden; border-radius: 20px; background-color: #34495e; }
+.fill { width: 100px; height: 80px; background-color: #e67e22; }
+.bordered { border: 6px solid #16a085; border-radius: 24px; }
+.circle { width: 64px; height: 64px; border-radius: 50%; }
+.ellipse { border-radius: 40px / 18px; border-left: 10px solid #9b59b6; }
+.inner-square { border: 12px solid #2c3e50; border-radius: 8px; }
+.corner { border-radius: 0 30px 0 0; }
+.nested { width: 60px; height: 44px; margin: 4px; overflow: hidden; border-radius: 12px; background-color: #f1c40f; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row" class="row">
+<div data-dragon-id="c1" class="clip"><div data-dragon-id="f1" class="fill"></div></div>
+<div data-dragon-id="c2" class="clip bordered"><div data-dragon-id="f2" class="fill"></div></div>
+<div data-dragon-id="c3" class="clip circle"><div data-dragon-id="f3" class="fill"></div></div>
+<div data-dragon-id="c4" class="clip ellipse"><div data-dragon-id="f4" class="fill"></div></div>
+<div data-dragon-id="c5" class="clip inner-square"><div data-dragon-id="f5" class="fill"></div></div>
+<div data-dragon-id="c6" class="clip corner"><div data-dragon-id="f6" class="fill"></div></div>
+<div data-dragon-id="c7" class="clip"><div data-dragon-id="n7" class="nested"><div data-dragon-id="f7" class="fill"></div></div></div>
+</div>
+</body>
+</html>

@@ -1,10 +1,10 @@
 // Profile rows derived from a parity run (M1): the single definition used by scripts/gen-profile-rows.ts and by the
 // committed profile-proof test in parity.test.ts.
-import type { Longhand, ProfileRow, Proof } from 'dragon';
-import { PROPERTY_ASPECTS } from 'dragon';
+import type { Longhand, ProfileNote, ProfileRow, Proof } from 'dragon';
+import { MEDIA_CONTEXT, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
-import { DEVICE_CHECK_LANES } from './device-lanes.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE } from './device-lanes.ts';
 import type { LanesFile } from './lanes.ts';
 import { readLanesFile, staleEvidence, staleLanes } from './lanes.ts';
 import { repoPath } from './paths.ts';
@@ -53,22 +53,90 @@ export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[])
       if (aspects.layout) proofs.push(proof('layout', 'chrome-dual', dual));
       proofs.push(proof('computed-value', 'chrome-dual', dual));
       // A family left to the platform in the font map is caveat (fonts/font-map.ts supportOf): its face is the host's.
-      rows.push({ feature, context, status: feature === 'font-family:<platform>' ? 'caveat' : 'exact', proofs });
+      // A claim proven in the reference environment only carries its limit (PROFILE_NOTES, T078 R3); its status is unchanged.
+      const note = profileNoteFor('web', feature);
+      const status = feature === 'font-family:<platform>' ? 'caveat' : 'exact';
+      rows.push(note === null ? { feature, context, status, proofs } : { feature, context, status, proofs, note: PROFILE_NOTES[note] });
     }
   }
   return rows;
 }
+
+/** T065: the context of every animation row; its proofs are frame cases (anim-frames.test.ts), not layout cases (parity.test.ts). */
+export const ANIMATION_CONTEXT = 'animation';
+
+/** A frame case that passes the host frame lanes (anim-report): its features and, per native target, its device-anim sample ids. */
+export type PassingFrameCase = { readonly id: string; readonly features: readonly string[]; readonly samples?: { readonly [T in NativeTarget]?: readonly string[] } };
+
+/** Why a frame case is not device-proven on a target, or null when every one of its samples passes device-anim at every DPR (pure). */
+export function animDeviceBlocker(ev: DeviceEvidence, samples: readonly string[]): string | null {
+  if (ev.unavailable !== null) return ev.unavailable;
+  if (samples.length === 0) return 'no frame samples';
+  const l = ev.lanes.find((x) => x.lane === ANIM_LANE);
+  if (l === undefined) return `${ev.target} has no ${ANIM_LANE} lane`;
+  for (const id of samples) {
+    if (!l.cases.has(id)) return `${id} is not run by ${ev.target} ${ANIM_LANE} at every DPR`;
+    if (l.failing.has(id)) return `${id} fails ${ev.target} ${ANIM_LANE}`;
+  }
+  return null;
+}
+
+/**
+ * T065: the animation rows (context `animation`) from the frame cases that pass the host frame lanes (anim-report). Web: exact
+ * through chrome-dual at every sample. iOS and Android (R18): exact through device-anim, only for the frame cases every one of
+ * whose samples passes that target's committed device-anim lane at every DPR, so no native output claims motion it does not run.
+ */
+export function deriveAnimationRows(target: ProfileTarget, passing: readonly PassingFrameCase[], device: DeviceEvidence | null = null): ProfileRow[] {
+  const proven = target === 'web' ? passing : device === null ? [] : passing.filter((c) => animDeviceBlocker(device, c.samples?.[target] ?? []) === null);
+  const lane = target === 'web' ? 'chrome-dual' : 'device-anim';
+  const features = [...new Set(proven.flatMap((c) => c.features))].sort();
+  return features.map((feature) => {
+    const ids = proven.filter((c) => c.features.includes(feature)).map((c) => c.id);
+    const valueSubset = feature.slice(feature.indexOf(':') + 1);
+    return { feature, context: ANIMATION_CONTEXT, status: 'exact', proofs: [{ aspect: 'computed-value', lane, valueSubset, context: ANIMATION_CONTEXT, cases: ids }] };
+  });
+}
+
+/**
+ * MQ-R1 (notes/T067 R13): the media rows (context `media`) from the resize cases that pass the resize host lanes
+ * (resize-capture.ts resizeReport): native through the band runtime's engine frames and colours against Chrome after every step,
+ * web through chrome-dual after every step. A native target accepts @media only with these rows (project.ts gateMediaFeatures).
+ */
+export function deriveMediaRows(target: ProfileTarget, passing: readonly { readonly id: string; readonly features: readonly string[] }[]): ProfileRow[] {
+  const features = [...new Set(passing.flatMap((c) => c.features))].sort();
+  return features.map((feature) => {
+    const ids = passing.filter((c) => c.features.includes(feature)).map((c) => c.id);
+    const valueSubset = feature.slice(feature.indexOf(':') + 1);
+    const proof: Proof = target === 'web'
+      ? { aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context: MEDIA_CONTEXT, cases: ids }
+      : { aspect: 'layout', lane: 'linux-dragon-layout', valueSubset, context: MEDIA_CONTEXT, cases: ids };
+    return { feature, context: MEDIA_CONTEXT, status: 'exact', proofs: [proof] };
+  });
+}
+
+/** The PROFILE_NOTES key of a row's note, written by reference so the generated profile never restates the fact. */
+function noteKey(r: ProfileRow): ProfileNote | null {
+  if (r.note === undefined) return null;
+  const key = (Object.keys(PROFILE_NOTES) as ProfileNote[]).find((k) => PROFILE_NOTES[k] === r.note);
+  if (key === undefined) throw new Error(`${r.feature}@${r.context}: note is not a PROFILE_NOTES entry`);
+  return key;
+}
+
+const TYPES_SPECIFIER = "'./types.ts'";
 
 export function profileSource(target: ProfileTarget, rows: readonly ProfileRow[]): string {
   const name = `${target}Profile`;
   const q = (s: string): string => JSON.stringify(s);
   const lines = rows.map((r) => {
     const proofs = r.proofs.map((p) => `{ aspect: ${q(p.aspect)}, lane: ${q(p.lane)}, valueSubset: ${q(p.valueSubset)}, context: ${q(p.context)}, cases: [${p.cases.map(q).join(', ')}] }`);
-    return `    { feature: ${q(r.feature)}, context: ${q(r.context)}, status: ${q(r.status)}, proofs: [${proofs.join(', ')}] },`;
+    const note = noteKey(r);
+    return `    { feature: ${q(r.feature)}, context: ${q(r.context)}, status: ${q(r.status)}, proofs: [${proofs.join(', ')}]${note === null ? '' : `, note: PROFILE_NOTES.${note}`} },`;
   });
   return [
     '// Generated by scripts/gen-profile-rows.ts (pnpm run profile:rows) from the parity cases that passed each proof\'s lane',
     '// against the committed captures. Do not edit. Missing rows mean unsupported.',
+    // The specifier is spliced in so regen's import scanner does not take this generated line for an import of profile-rows.ts.
+    ...(rows.some((r) => noteKey(r) !== null) ? [`import { PROFILE_NOTES } from ${TYPES_SPECIFIER};`] : []),
     "import type { SupportProfile } from './types.ts';",
     '',
     `export const ${name}: SupportProfile = {`,
@@ -226,7 +294,8 @@ export function checkedFailures(v: unknown, what: string): LaneFailure[] {
     };
     if (!isObject(f)) bad('not an object');
     const o = f as Record<string, unknown>;
-    if (!(DEVICE_CHECK_LANES as readonly unknown[]).includes(o['lane'])) bad(`lane ${JSON.stringify(o['lane'])} is not a device check lane`);
+    // allRunFailures writes every device lane's failures, the script, hit and frame sample lanes' too.
+    if (![...DEVICE_CHECK_LANES, STATE_LANE, HIT_LANE, ANIM_LANE].includes(o['lane'] as string)) bad(`lane ${JSON.stringify(o['lane'])} is not a device lane`);
     if (typeof o['case'] !== 'string' || o['case'] === '') bad('case is not a non-empty string');
     if (typeof o['dpr'] !== 'number' || !(o['dpr'] > 0)) bad('dpr is not a positive number');
     if (o['node'] !== null && typeof o['node'] !== 'string') bad('node is neither null nor a string');
