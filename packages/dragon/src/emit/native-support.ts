@@ -594,6 +594,14 @@ public final class DragonTree {
       }
     }
     walk(zoomed.root)
+    // OVFL-B: each scroll container's offset range in device px, from the translated engine, for the scroll module's hook.
+    var scrollRanges: [String: [Double]] = [:]
+    let sr = try overflow_scrollRanges(input, measurer)
+    if let no = sr as? ScrollRangesResult_refused { fatalError("dragon: the engine refused the scroll ranges at \(no.nodeId): \(no.detail)") }
+    guard let srOk = sr as? ScrollRangesResult_ok else { fatalError("dragon: the engine gave no scroll ranges") }
+    for g in srOk.ranges.items { scrollRanges[g.id.description] = [g.minX, g.maxX, g.minY, g.maxY] }
+    var scrollRefusals: [String: String] = [:]
+    for g in srOk.refused.items { scrollRefusals[g.id.description] = "the engine refused its scroll range at " + g.nodeId.description + ": " + g.detail.description }
     let lu = units_LU_PER_PX
     let s = scale
     let cg = CGFloat(scale)
@@ -686,6 +694,8 @@ public final class DragonTree {
         // BG2: the unsnapped border box in LU.
         guard let a = abs.get(r.id) else { fatalError("dragon: no absolute rect for \(id)") }
         bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px, size: [r.width / lu, r.height / lu], lu: [a.x, a.y, a.width, a.height], padding: padding, rootX: rootX)
+        bv.dragonScrollRange = scrollRanges[id]
+        bv.dragonScrollRefusal = scrollRefusals[id]
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
@@ -1086,7 +1096,7 @@ class DragonRootView(ctx: Context) : DragonGroup(ctx) {
 }
 
 /** css-overflow-3 §3: the padding box of an overflow: hidden node; its children are clipped to its bounds (clipBounds). */
-class DragonClipView(ctx: Context) : DragonGroup(ctx) {
+open class DragonClipView(ctx: Context) : DragonGroup(ctx) {
   override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
     clipBounds = Rect(0, 0, r - l, b - t)
     super.onLayout(changed, l, t, r, b)
@@ -1332,6 +1342,9 @@ import dev.dragon.layout.inline_placeIfcLines
 import dev.dragon.layout.layout_absoluteRects
 import dev.dragon.layout.layout_layout
 import dev.dragon.layout.layout_zoomInput
+import dev.dragon.layout.overflow_scrollRanges
+import dev.dragon.layout.ScrollRangesResult_ok
+import dev.dragon.layout.ScrollRangesResult_refused
 import dev.dragon.layout.snap_snapEdges
 import dev.dragon.layout.units_LU_PER_PX
 import dev.dragon.layout.units_fromCssPx
@@ -1435,6 +1448,15 @@ class DragonTree(val context: Context) {
       }
     }
     walk(zoomed.root)
+    // OVFL-B: each scroll container's offset range in device px, from the translated engine, for the scroll module's hook.
+    val scrollRanges = HashMap<String, IntArray>()
+    val sr = overflow_scrollRanges(input, measurer)
+    val srNo = sr as? ScrollRangesResult_refused
+    if (srNo != null) throw IllegalStateException("dragon: the engine refused the scroll ranges at " + srNo.nodeId + ": " + srNo.detail)
+    val srOk = sr as? ScrollRangesResult_ok ?: throw IllegalStateException("dragon: the engine gave no scroll ranges")
+    for (g in srOk.ranges) scrollRanges[g.id] = intArrayOf(dragonCheckedInt(g.minX, g.id + " scroll minX"), dragonCheckedInt(g.maxX, g.id + " scroll maxX"), dragonCheckedInt(g.minY, g.id + " scroll minY"), dragonCheckedInt(g.maxY, g.id + " scroll maxY"))
+    val scrollRefusals = HashMap<String, String>()
+    for (g in srOk.refused) scrollRefusals[g.id] = "the engine refused its scroll range at " + g.nodeId + ": " + g.detail
     val lu = units_LU_PER_PX
     // BG2 R4: the root scroller's scrolling contents start at Chrome's scroll origin. In a right-to-left document that is the left
     // edge of the content overflowing to the left: the leftmost box or line no clipping box holds (html and body never clip here,
@@ -1531,6 +1553,8 @@ class DragonTree(val context: Context) {
         val a = abs.get(r.id) ?: throw IllegalStateException("dragon: no absolute rect for " + id)
         val padding = if (zs == null) DoubleArray(4) else { val pad = box_resolvePadding(zs, paddingBasis(id)); doubleArrayOf(pad.top, pad.right, pad.bottom, pad.left) }
         v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px, DoubleArray(8), doubleArrayOf(r.width / lu, r.height / lu), doubleArrayOf(a.x, a.y, a.width, a.height), padding, rootX)
+        v.dragonScrollRange = scrollRanges[id]
+        v.dragonScrollRefusal = scrollRefusals[id]
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }

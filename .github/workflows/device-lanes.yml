@@ -169,13 +169,19 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
           ls -l /dev/kvm
-      - name: JDK 17, kotlinc and the Android SDK packages (the local Mac's versions, from Homebrew)
+      # JDK 17 from Homebrew; kotlinc pinned to the JetBrains release the committed host lane records (Homebrew's kotlin moves
+      # to each new release, and a newer kotlinc fails the toolchain check below).
+      - name: JDK 17, kotlinc 2.4.20 and the Android SDK packages (the local Mac's versions)
         run: |
           retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          retry brew install openjdk@17 kotlin
+          retry brew install openjdk@17
           echo "JAVA_HOME=$(brew --prefix openjdk@17)" >> "$GITHUB_ENV"
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+          retry curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+          # Added after brew's bin, so it comes first on PATH.
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
           sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$sdk" --licenses >/dev/null || true
           # A download can fail transiently ("unknown archive"): sdkmanager is retried, three failures fail the step, and every

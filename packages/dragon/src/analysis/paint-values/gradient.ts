@@ -691,17 +691,22 @@ export function resolvedLayers(el: ResolvedElement): ElementLayer[] {
 /**
  * R4: Chrome rasters a gradient box in the root scroller's layer unless the box or an ancestor has a compositing reason; then the
  * layer's origin starts the cc tiles, the dither and the shader matrix, which Dragon does not model. will-change: transform or
- * opacity is the one such reason Dragon compiles (every other one is refused where it is parsed).
+ * opacity and a user-scrollable container are the reasons Dragon compiles (every other one is refused where it is parsed).
  */
 export function compositesSubtree(el: ResolvedElement): boolean {
-  return elementWillChange(el).some((f) => f === 'transform' || f === 'opacity');
+  if (elementWillChange(el).some((f) => f === 'transform' || f === 'opacity')) return true;
+  // OVFL-B: a user-scrollable container (overflow auto or scroll) scrolls its contents in a composited layer of its own.
+  return (['overflow-x', 'overflow-y'] as const).some((p) => {
+    const v = (el.props.get(p) as ResolvedValue).value;
+    return v.kind === 'keyword' && (v.value === 'auto' || v.value === 'scroll');
+  });
 }
 
 /** Refuses, on the native targets, every gradient box in the subtree of `root`, which rasters in its own composited layer (R4). */
 function refuseComposited(el: ResolvedElement, root: ResolvedElement, native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const image = el.props.get('background-image') as ResolvedValue | undefined;
   if (image !== undefined && resolvedLayers(el).some((l) => l.image.kind === 'gradient')) {
-    refuse(el, image, native, 'background-layers-layer', `background-image on ${el.element.address}: the box rasters in the composited layer of ${root.element.address} (will-change), which Dragon does not model (${BG2C})`, 'Remove will-change: transform and opacity from the gradient box and its ancestors.', diagnostics, reported);
+    refuse(el, image, native, 'background-layers-layer', `background-image on ${el.element.address}: the box rasters in the composited layer of ${root.element.address} (will-change, or a scroll container), which Dragon does not model (${BG2C})`, 'Remove will-change: transform and opacity, and overflow auto and scroll, from the gradient box and its ancestors.', diagnostics, reported);
   }
   for (const c of el.children) if (c.kind === 'element') refuseComposited(c, root, native, diagnostics, reported);
 }

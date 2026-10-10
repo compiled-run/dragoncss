@@ -49,5 +49,42 @@
    "clientWidth": 88,
    "clientHeight": 58
   }
+ ],
+ "extents": [
+  {
+   "id": "o1",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "i1",
+   "minLeft": 0,
+   "maxLeft": 90,
+   "minTop": 0,
+   "maxTop": 90
+  },
+  {
+   "id": "o2",
+   "minLeft": 0,
+   "maxLeft": 66,
+   "minTop": 0,
+   "maxTop": 66
+  },
+  {
+   "id": "o3",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "o4",
+   "minLeft": 0,
+   "maxLeft": 22,
+   "minTop": 0,
+   "maxTop": 42
+  }
  ]
 }

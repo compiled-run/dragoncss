@@ -189,6 +189,9 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
     const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])]));
     expect(c.diagnostics.filter((d) => d.message.includes('composited layer of p')).map((d) => d.target).sort()).toEqual(['android', 'ios']);
     expect(compile('will-change: auto; background: linear-gradient(110deg, red, blue);')).toEqual([]);
+    // OVFL-B: a scroll container scrolls its contents in its own layer; overflow: hidden is not user-scrollable.
+    for (const o of ['auto', 'scroll']) expect(compile(`overflow: ${o}; background: linear-gradient(110deg, red, blue);`).filter((m) => m.includes('composited layer')).length, o).toBe(2);
+    expect(compile('overflow: hidden; background: linear-gradient(110deg, red, blue);').filter((m) => m.includes('composited layer'))).toEqual([]);
   });
   it('refuses an angle off the 0.01deg grid and a corner on ios and android only (BG2b)', () => {
     const off = compile('background: linear-gradient(1rad, red, blue);');
@@ -234,12 +237,13 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
   it('R13 (BG2-x): refuses every gradient in a subtree whose transform is not the identity, on the native targets', () => {
     const v = (value: CssValue) => ({ value, origin: { kind: 'synthetic' }, span: null, declaration: null, declared: null, losing: [] });
     const at = (address: string) => ({ address, tag: 'div', node: { origin: { kind: 'synthetic' } } });
-    // Every resolved element carries every longhand; the R4 check reads will-change.
+    // Every resolved element carries every longhand; the R4 check reads will-change and overflow.
     const auto = ['will-change', v({ kind: 'keyword', value: 'auto' } as CssValue)] as const;
-    const layered = (image: string) => [['background-image', v({ kind: 'other', text: image } as CssValue)], ['background-position-x', v({ kind: 'percentage', value: 0 } as CssValue)], ['background-position-y', v({ kind: 'percentage', value: 0 } as CssValue)], ['background-size', v({ kind: 'keyword', value: 'auto' } as CssValue)], ['background-repeat', v({ kind: 'keyword', value: 'repeat' } as CssValue)], ['background-origin', v({ kind: 'keyword', value: 'padding-box' } as CssValue)], ['background-clip', v({ kind: 'keyword', value: 'border-box' } as CssValue)], auto] as const;
+    const visible = (p: 'overflow-x' | 'overflow-y') => [p, v({ kind: 'keyword', value: 'visible' } as CssValue)] as const;
+    const layered = (image: string) => [['background-image', v({ kind: 'other', text: image } as CssValue)], ['background-position-x', v({ kind: 'percentage', value: 0 } as CssValue)], ['background-position-y', v({ kind: 'percentage', value: 0 } as CssValue)], ['background-size', v({ kind: 'keyword', value: 'auto' } as CssValue)], ['background-repeat', v({ kind: 'keyword', value: 'repeat' } as CssValue)], ['background-origin', v({ kind: 'keyword', value: 'padding-box' } as CssValue)], ['background-clip', v({ kind: 'keyword', value: 'border-box' } as CssValue)], auto, visible('overflow-x'), visible('overflow-y')] as const;
     const leaf = { kind: 'element', element: at('t/g'), props: new Map(layered('linear-gradient(red,blue)')), children: [] };
     const plain = { kind: 'element', element: at('t/p'), props: new Map(layered('none')), children: [] };
-    const tree = (transform: CssValue | null) => ({ kind: 'element', element: at('t'), props: new Map(transform === null ? [auto] : [auto, ['transform', v(transform)]]), children: [{ kind: 'element', element: at('t/m'), props: new Map([auto]), children: [leaf, plain] }] });
+    const tree = (transform: CssValue | null) => ({ kind: 'element', element: at('t'), props: new Map(transform === null ? [auto, visible('overflow-x'), visible('overflow-y')] : [auto, visible('overflow-x'), visible('overflow-y'), ['transform', v(transform)]]), children: [{ kind: 'element', element: at('t/m'), props: new Map([auto, visible('overflow-x'), visible('overflow-y')]), children: [leaf, plain] }] });
     const run = (transform: CssValue | null): string[] => {
       const out: Diagnostic[] = [];
       const check = GRADIENT_VALUES.check;

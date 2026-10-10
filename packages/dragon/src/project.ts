@@ -16,7 +16,7 @@ import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import { splitNotApplicable } from './css/not-applicable.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
-import { checkComputed, checkNativeScroll } from './analysis/computed-checks.ts';
+import { checkComputed } from './analysis/computed-checks.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
@@ -33,6 +33,7 @@ import { parseKeyframesRules } from './css/at-rules/keyframes.ts';
 import type { PropertySource, Registrations } from './css/at-rules/property.ts';
 import { NO_REGISTRATIONS } from './css/at-rules/property.ts';
 import { registrationsOf } from './analysis/registered.ts';
+import { rankLayers, revertLayerInAtRules } from './analysis/layers.ts';
 import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
 import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
 import { emitNativeSupport, supportDigest } from './emit/native-support.ts';
@@ -52,6 +53,7 @@ import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, renderedF
 import type { FontWireProblem, ProjectedFonts } from './fonts/wire.ts';
 import type { CompilerFaults } from './faults.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
+import { undecidedScrollContainers } from './lower/scroll-decidable.ts';
 import { PROGRAM_VERSIONS } from './lower/native-program.ts';
 import type { BandAnalysis } from './lower/band-program.ts';
 import { bandTableOf, refuseBandedNativeAnimations, refuseBandedStateSpace, refuseSizeTransitions } from './lower/band-program.ts';
@@ -61,7 +63,7 @@ import { band, bandAt, evaluateInBand, featuresOfList, holdsWholePx } from './me
 import { androidProfile } from './profiles/android.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
-import { nativeScrollPending, provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
+import { provenContexts, statusOf, supportedValuesFor, supportedValuesIn } from './profiles/types.ts';
 import { webProfile } from './profiles/web.ts';
 import type { UaDataset } from './ua/datasets.ts';
 import { REFERENCE_PLATFORM, ReferencePlatformUnavailable, uaDatasetFor } from './ua/datasets.ts';
@@ -385,8 +387,6 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
         for (const t of ruleTargets) {
           const profile = profileFor(profiles, t);
           if (provenContexts(profile, feature).length > 0) continue;
-          // checkNativeScroll refuses these on native outside the lanes (naming OVFL-B), and the lanes run them on purpose.
-          if (t !== 'web' && nativeScrollPending(feature)) continue;
           const values = supportedValuesFor(profile, lh.property);
           const contexts = [...new Set((typeof used === 'function' ? used(t) : used).filter((u) => u.declaration === d && u.property === lh.property).map((u) => u.context))].sort();
           const alternatives = contexts.length > 0
@@ -667,8 +667,6 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, options.faults);
-    // T078 R14: outside the parity lanes, native refuses overflow auto and scroll until OVFL-B; the lanes prove their layout at rest.
-    if (!options.interactionLanes) checkNativeScroll(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
@@ -954,6 +952,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const fontFaces: AtRuleContext[] = [];
     const keyframeSources: KeyframesSource[] = [];
     const propertySources: PropertySource[] = [];
+    const layers: string[] = [];
     let order = 0;
     for (const useId of valid.document.styles) {
       const use = valid.styles.get(useId);
@@ -963,10 +962,14 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       dependencies.push({ kind: 'stylesheet', uri: src.ref.uri, hash: src.ref.hash });
       const sheet = { id: use.id, owner: valid.styleOwner.get(use.id) as string, scope: use.scope.kind };
       const before = enclosed.length;
-      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed, fontFaces, keyframeSources, propertySources, options.faults);
+      const parsed = parseStylesheet(src.text.slice(use.css.start, use.css.end), use.css, sheet, order, diagnostics, enclosed, fontFaces, keyframeSources, propertySources, options.faults, layers);
       for (const r of [...parsed, ...enclosed.slice(before).flatMap((e) => e.rules)]) for (const d of r.declarations) order = Math.max(order, d.order + 1);
       rules.push(...parsed);
     }
+    // CASC 3: every layered declaration takes its layer's rank, from the layer order of the whole document.
+    rules.splice(0, rules.length, ...rankLayers(rules, layers, options.faults, diagnostics));
+    enclosed.splice(0, enclosed.length, ...enclosed.map((e) => ({ ...e, rules: rankLayers(e.rules, layers, options.faults, null) })));
+    revertLayerInAtRules([...propertySources, ...keyframeSources].map((s) => s.context), layers, diagnostics);
     for (const s of [...valid.sources.values()].sort((a, b) => (a.ref.uri < b.ref.uri ? -1 : a.ref.uri > b.ref.uri ? 1 : 0))) dependencies.push({ kind: 'source', uri: s.ref.uri, hash: s.ref.hash });
     // T065: the @keyframes blocks parse with the stylesheet, so their refusals come whether or not the analysis runs.
     const keyframesRules = parseKeyframesRules(keyframeSources, diagnostics);
@@ -1057,14 +1060,6 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         diagnostics.splice(valuesAt, 0, ...values);
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
-      // T078 R14: the lanes lower overflow auto and scroll on native, but a user's compile refuses them there until OVFL-B, so a
-      // document that uses them is lane-only on native and proves no native row (pipeline.ts).
-      if (options.interactionLanes) {
-        const pending: Diagnostic[] = [];
-        const native = NATIVE_TARGETS.filter((t) => targets.includes(t));
-        for (const c of cases) for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) if (r !== null) checkNativeScroll(r, native, pending, new Set());
-        laneOnlyNative = native.filter((t) => laneOnlyNative.includes(t) || pending.some((d) => d.target === t));
-      }
       // T005 rec 3: the rules inside each unsupported at-rule are analysed with the block unwrapped, in a scratch pass whose
       // diagnostics located inside the at-rule become its related entries. Nothing from this pass is resolved into an output.
       if (enclosed.length > 0) {
@@ -1138,7 +1133,17 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const lowerings = (bandCases[k] as { cases: CaseResult[] }).cases.flatMap((c) => (c.resolved === null ? [] : [{ key: c.key, resolved: c.resolved }, ...c.interaction.map((i) => ({ key: interactionKey(c.key, i.value), resolved: i.resolved }))]));
       for (const c of lowerings) {
         try {
-          lowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals));
+          const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals);
+          lowered.set(c.key, tree);
+          // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
+          // may refuse is refused here, naming the engine's reason.
+          for (const u of undecidedScrollContainers(tree)) {
+            const id = `ovfl-b-range|${u.containerId}|${u.nodeId}`;
+            if (reported.has(id)) continue;
+            reported.add(id);
+            const message = `overflow auto or scroll on ${u.containerId}: the native scroll view's range is not decided at ${u.nodeId}: ${u.detail} (OVFL-B)`;
+            for (const t of lowerFor) diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin: originOfAddress(c.resolved, u.containerId), message, target: t, manual: 'Use overflow: hidden or clip, or keep inline boxes, <br>s and inline-level boxes out of the scroll container (wrap the text in a block).' }));
+          }
         } catch (e) {
           if (!(e instanceof LoweringError)) throw e;
           const id = `${e.nodeId}|${e.property}|${e.message}`;
