@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { LEGACY_BOX_PROPERTIES } from '../packages/dragon/src/css/properties/flex.ts';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/properties/grid.ts';
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
@@ -37,7 +38,7 @@ const SUBSET = [
   'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
   'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
   'flex', 'flex-flow', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
-  'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap',
+  'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap', ...LEGACY_BOX_PROPERTIES,
   'font-size', 'font-family', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
   ...LOGICAL_SHORTHANDS,
   ...WRITING_MODE_SHORTHANDS,
@@ -82,6 +83,14 @@ const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
  * packages/parity/test/display-parse.test.ts.
  */
 const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
+  // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
+  // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
+  '-webkit-box-align': 'stretch | start | center | end | baseline',
+  '-webkit-box-direction': 'normal | reverse',
+  '-webkit-box-flex': '<number>',
+  '-webkit-box-ordinal-group': '<integer [1,∞]>',
+  '-webkit-box-orient': 'horizontal | vertical | inline-axis | block-axis',
+  '-webkit-box-pack': 'start | center | end | justify',
   // Blink ListStyleType::ParseSingleValue (css/properties/longhands/longhands_custom.cc): none, a string or a counter-style name;
   // symbols() is parsed only in @counter-style, so webref's <symbols()> is dropped (pinned by packages/parity/test/list-style-parse.test.ts).
   'list-style-type': '<counter-style-name> | <string> | none',
@@ -110,10 +119,11 @@ while (queue.length > 0) {
   let syntax: string | undefined;
   if (next.kind === 'property') {
     if (properties.has(next.name)) continue;
-    const p = propsByName.get(next.name);
-    if (p === undefined || p.syntax === undefined) throw new Error(`webref has no syntax for property ${next.name}`);
+    // webref lists some legacy properties without a syntax, and -webkit-box-direction not at all; SYNTAX_OVERRIDES supplies those.
+    const p = propsByName.get(next.name) ?? (SYNTAX_OVERRIDES[next.name] === undefined ? undefined : { name: next.name });
+    if (p === undefined || (p.syntax === undefined && SYNTAX_OVERRIDES[next.name] === undefined)) throw new Error(`webref has no syntax for property ${next.name}`);
     const extension = SYNTAX_EXTENSIONS[next.name];
-    syntax = SYNTAX_OVERRIDES[next.name] ?? (extension === undefined ? p.syntax : `${p.syntax} | ${extension}`);
+    syntax = SYNTAX_OVERRIDES[next.name] ?? (extension === undefined ? (p.syntax as string) : `${p.syntax} | ${extension}`);
     properties.set(next.name, { ...p, syntax });
   } else {
     if (types.has(next.name) || CSS_TREE_GENERICS.has(next.name)) continue;

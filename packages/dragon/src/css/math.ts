@@ -662,7 +662,7 @@ export function parseMath(text: string, context: MathContext): ParsedMath {
 export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or-length-percentage';
 
 // aspect-ratio: each <ratio> part is a <number [0,∞]> (css-sizing-4 §5.1), so a math function in it resolves to a number.
-const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index']);
+const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', '-webkit-box-flex', '-webkit-box-ordinal-group']);
 /** opacity is <number> | <percentage> (css-color-4 §3.2); Chrome resolves a calculation in it as a number or a percentage. */
 const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity']);
 

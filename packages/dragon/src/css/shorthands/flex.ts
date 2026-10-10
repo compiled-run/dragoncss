@@ -37,8 +37,17 @@ const flexFlow: ShorthandHandler = {
   },
 };
 
+/** A legacy -webkit-box property outside a -webkit-box (properties/flex.ts LEGACY_BOX_PROPERTIES): accepted, and it sets nothing. */
+const legacyBox: ShorthandHandler = { longhands: [], expand: () => [], expandWide: () => [] };
+
 export const FLEX_SHORTHANDS = {
   flex,
   'flex-flow': flexFlow,
   gap: twoAxes(['row-gap', 'column-gap']),
+  '-webkit-box-align': legacyBox,
+  '-webkit-box-direction': legacyBox,
+  '-webkit-box-flex': legacyBox,
+  '-webkit-box-ordinal-group': legacyBox,
+  '-webkit-box-orient': legacyBox,
+  '-webkit-box-pack': legacyBox,
 } as const satisfies { readonly [s: string]: ShorthandHandler };

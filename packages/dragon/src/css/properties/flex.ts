@@ -1,11 +1,15 @@
 // Flex layout and box alignment (css-flexbox-1, css-align-3).
 import type { PropertyAspect } from '../properties.ts';
 
+// Chrome 145 reads these only under display -webkit-box and -webkit-inline-box (Blink ComputedStyle IsDeprecatedFlexbox), which
+// Dragon refuses (display-legacy.ts), so each is a surrogate shorthand that sets nothing (shorthands/flex.ts).
+export const LEGACY_BOX_PROPERTIES = ['-webkit-box-align', '-webkit-box-direction', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-box-orient', '-webkit-box-pack'] as const;
+
 export const FLEX_LONGHANDS = [
   'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
   'justify-content', 'align-items', 'align-self', 'align-content', 'row-gap', 'column-gap',
 ] as const;
-export const FLEX_SHORTHANDS = ['flex', 'flex-flow', 'gap'] as const;
+export const FLEX_SHORTHANDS = ['flex', 'flex-flow', 'gap', ...LEGACY_BOX_PROPERTIES] as const;
 export const FLEX_INHERITED: readonly (typeof FLEX_LONGHANDS)[number][] = [];
 export const FLEX_CONTAINER: readonly (typeof FLEX_LONGHANDS)[number][] = ['flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap'];
 export const FLEX_TEXT_ROLE: readonly (typeof FLEX_LONGHANDS)[number][] = [];
