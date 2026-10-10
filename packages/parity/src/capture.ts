@@ -9,6 +9,8 @@ import { LONGHANDS } from 'dragon';
 import { CHROME_VERSION, injectHarness, openPage } from './chrome.ts';
 import { BROWSER_FLAVOUR, hostPlatform } from './platform.ts';
 import { applyTransformTwin } from './transform-capture.ts';
+import { capturePseudoElements, NO_PSEUDO_CAPTURE_FAULTS, pageHasGeneratedContent } from './pseudo-capture.ts';
+import type { PseudoCaptureFaults } from './pseudo-capture.ts';
 
 export type CapturedNode = {
   readonly id: string;
@@ -79,13 +81,18 @@ const collectNodes = (props: string[]): CapturedNode[] => {
  * extra: properties captured after LONGHANDS (a fixture's computedExtra); none for every fixture that predates them. prepare: a
  * fixture's stated-reference transform (font-reference.ts), run on the loaded page before the capture; none for every other fixture.
  */
-export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>): Promise<WebCapture> {
+export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>, faults: PseudoCaptureFaults = NO_PSEUDO_CAPTURE_FAULTS): Promise<WebCapture> {
   const page = await openPage(browser, html, env);
   try {
     if (prepare !== undefined) await prepare(page);
     // PNT2 case-kind registration (RT-13 style): a page with a transformed element is captured through the transform twin.
     const twin = await applyTransformTwin(page, [...LONGHANDS, ...extra]);
     const nodes = await page.evaluate(collectNodes, [...LONGHANDS, ...extra]);
+    // GEN-a R9: the ::before and ::after boxes and their text, through CDP; a page without one opens no CDP session.
+    if (await pageHasGeneratedContent(page)) {
+      if (twin !== null) throw new Error(`${fixture}: a page with a transformed element and a generated box is not captured (the transform twin restyles the page)`);
+      nodes.push(...(await capturePseudoElements(page, [...LONGHANDS, ...extra], faults)));
+    }
     if (twin !== null) {
       for (const [i, n] of nodes.entries()) {
         if (n.kind !== 'element') continue;
@@ -140,6 +147,9 @@ export async function captureFixtureInFrame(browser: Browser, fixture: string, h
     if (failed.length > 0) throw new Error(`${fixture}: the ${frame.widthPx}x${frame.heightPx} device px frame at zoom ${frame.zoom} fails ${failed.join(', ')}`);
     const dpr = await child.evaluate(() => window.devicePixelRatio);
     if (dpr !== frame.zoom) throw new Error(`${fixture}: the frame's device pixel ratio is ${dpr}, not ${frame.zoom}`);
+    if (await child.evaluate(() => Array.from(document.querySelectorAll('*')).some((el) => ['::before', '::after'].some((p) => getComputedStyle(el, p).content !== 'none')))) {
+      throw new Error(`${fixture}: a zoomed frame with a generated box is not captured (GEN-a R9 reads generated boxes through the page's CDP session)`);
+    }
     const nodes = await child.evaluate(collectNodes, [...LONGHANDS]);
     return {
       fixture,
