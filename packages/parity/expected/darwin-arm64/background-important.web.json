@@ -100,10 +100,6 @@
         "transform": "none",
         "transform-origin": "200px 44px",
         "will-change": "auto",
-        "content": "normal",
-        "list-style-type": "disc",
-        "list-style-position": "outside",
-        "list-style-image": "none",
         "background-image": "none",
         "background-position-x": "0%",
         "background-position-y": "0%",
@@ -111,7 +107,11 @@
         "background-repeat": "repeat",
         "background-attachment": "scroll",
         "background-origin": "padding-box",
-        "background-clip": "border-box"
+        "background-clip": "border-box",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -204,10 +204,6 @@
         "transform": "none",
         "transform-origin": "200px 43px",
         "will-change": "auto",
-        "content": "normal",
-        "list-style-type": "disc",
-        "list-style-position": "outside",
-        "list-style-image": "none",
         "background-image": "none",
         "background-position-x": "0%",
         "background-position-y": "0%",
@@ -215,7 +211,11 @@
         "background-repeat": "repeat",
         "background-attachment": "scroll",
         "background-origin": "padding-box",
-        "background-clip": "border-box"
+        "background-clip": "border-box",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -308,10 +308,6 @@
         "transform": "none",
         "transform-origin": "200px 43px",
         "will-change": "auto",
-        "content": "normal",
-        "list-style-type": "disc",
-        "list-style-position": "outside",
-        "list-style-image": "none",
         "background-image": "none",
         "background-position-x": "0%",
         "background-position-y": "0%",
@@ -319,7 +315,11 @@
         "background-repeat": "repeat",
         "background-attachment": "scroll",
         "background-origin": "padding-box",
-        "background-clip": "border-box"
+        "background-clip": "border-box",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -412,10 +412,6 @@
         "transform": "none",
         "transform-origin": "10px 10px",
         "will-change": "auto",
-        "content": "normal",
-        "list-style-type": "disc",
-        "list-style-position": "outside",
-        "list-style-image": "none",
         "background-image": "none",
         "background-position-x": "0%",
         "background-position-y": "0%",
@@ -423,7 +419,11 @@
         "background-repeat": "repeat",
         "background-attachment": "scroll",
         "background-origin": "padding-box",
-        "background-clip": "border-box"
+        "background-clip": "border-box",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -516,10 +516,6 @@
         "transform": "none",
         "transform-origin": "10px 10px",
         "will-change": "auto",
-        "content": "normal",
-        "list-style-type": "disc",
-        "list-style-position": "outside",
-        "list-style-image": "none",
         "background-image": "none",
         "background-position-x": "0%",
         "background-position-y": "0%",
@@ -527,7 +523,11 @@
         "background-repeat": "repeat",
         "background-attachment": "scroll",
         "background-origin": "padding-box",
-        "background-clip": "border-box"
+        "background-clip": "border-box",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -620,10 +620,6 @@
         "transform": "none",
         "transform-origin": "10px 10px",
         "will-change": "auto",
-        "content": "normal",
-        "list-style-type": "disc",
-        "list-style-position": "outside",
-        "list-style-image": "none",
         "background-image": "none",
         "background-position-x": "0%",
         "background-position-y": "0%",
@@ -631,7 +627,11 @@
         "background-repeat": "repeat",
         "background-attachment": "scroll",
         "background-origin": "padding-box",
-        "background-clip": "border-box"
+        "background-clip": "border-box",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     },
     {
@@ -724,10 +724,6 @@
         "transform": "none",
         "transform-origin": "10px 10px",
         "will-change": "auto",
-        "content": "normal",
-        "list-style-type": "disc",
-        "list-style-position": "outside",
-        "list-style-image": "none",
         "background-image": "none",
         "background-position-x": "0%",
         "background-position-y": "0%",
@@ -735,7 +731,11 @@
         "background-repeat": "repeat",
         "background-attachment": "scroll",
         "background-origin": "padding-box",
-        "background-clip": "border-box"
+        "background-clip": "border-box",
+        "content": "normal",
+        "list-style-type": "disc",
+        "list-style-position": "outside",
+        "list-style-image": "none"
       }
     }
   ]

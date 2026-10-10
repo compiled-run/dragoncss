@@ -4,11 +4,11 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4321 (18.6%) | 18964 (81.4%) | 1 | 0 | 0 |
-| ios | 4283 (18.4%) | 18962 (81.4%) | 1 | 0 | 40 |
-| android | 4283 (18.4%) | 18962 (81.4%) | 1 | 0 | 40 |
+| web | 4328 (18.6%) | 18957 (81.4%) | 1 | 0 | 0 |
+| ios | 4290 (18.4%) | 18955 (81.4%) | 1 | 0 | 40 |
+| android | 4290 (18.4%) | 18955 (81.4%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4094, ios 4105 and android 4105 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4101, ios 4112 and android 4112 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
@@ -20,7 +20,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4094, ios 4
 | sizing | 1015 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 |
 | typography | 261 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 |
 | colours | 14842 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 |
-| backgrounds | 151 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 | 0 / 151 / 0 / 0 / 0 |
+| backgrounds | 151 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 |
 | borders | 250 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 |
 | effects | 1178 | 21 / 1157 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
@@ -38,7 +38,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4094, ios 4
 | `property mask-image` | 6280 | 6280 | 6280 | 38 |
 | `value oklch()` | 4004 | 4004 | 4004 | 14 |
 | `property box-shadow` | 1489 | 1489 | 1489 | 8 |
-| `property background-image` | 964 | 964 | 964 | 8 |
+| `value background-image: conic-gradient(var(--tw-gradient-stops)) substitutes to "conic` | 937 | 937 | 937 | 4 |
 | `property scrollbar-color` | 582 | 582 | 582 | 2 |
 | `property translate` | 444 | 444 | 444 | 24 |
 | `property filter` | 351 | 351 | 351 | 10 |
