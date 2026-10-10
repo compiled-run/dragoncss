@@ -1,0 +1,10 @@
+{
+  "case": "grid-alignment-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"s1a:text0","lines":[[0,1]]},
+    {"id":"s1b:text0","lines":[[0,2]]},
+    {"id":"s2a:text0","lines":[[0,3]]},
+    {"id":"p10:text0","lines":[[0,1]]}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "case": "grid-alignment-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"s1a:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"s1b:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"s2a:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"p10:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}
