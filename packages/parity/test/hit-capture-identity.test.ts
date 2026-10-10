@@ -123,6 +123,16 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(withoutPointerEvents('e/a.css', css('disc', 'inside'))).not.toBe(cssBase);
   });
 
+  it("removes BG2's eight background longhands, added after the base, only at their initial values", () => {
+    const pairs = (image: string): [string, string][] => [['background-image', image], ['background-position-x', '0%'], ['background-position-y', '0%'], ['background-size', 'auto'], ['background-repeat', 'repeat'], ['background-attachment', 'scroll'], ['background-origin', 'padding-box'], ['background-clip', 'border-box']];
+    const json = (image = 'none'): string => `{\n  "will-change": "auto"${pairs(image).map(([k, v]) => `,\n  "${k}": "${v}"`).join('')}\n}`;
+    expect(withoutPointerEvents('x/a.web.json', json())).toBe('{\n  "will-change": "auto"\n}');
+    expect(withoutPointerEvents('x/a.web.json', json('linear-gradient(red, blue)'))).not.toBe('{\n  "will-change": "auto"\n}');
+    const css = (image = 'none'): string => `.d {\n  will-change: auto;\n${pairs(image).map(([k, v]) => `  ${k}: ${v};\n`).join('')}}\n`;
+    expect(withoutPointerEvents('e/a.css', css())).toBe('.d {\n  will-change: auto;\n}\n');
+    expect(withoutPointerEvents('e/a.css', css('url("a.png")'))).not.toBe('.d {\n  will-change: auto;\n}\n');
+  });
+
   it('removes the PNT1 corner radii added since the base, and nothing else', () => {
     const json = '{\n  "x": "1",\n  "border-top-left-radius": "10px 20px",\n  "border-bottom-left-radius": "50%",\n  "pointer-events": "auto"\n}';
     expect(withoutPointerEvents('a.json', json)).toBe('{\n  "x": "1"\n}');

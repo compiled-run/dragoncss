@@ -207,6 +207,7 @@ export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|rej
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
   'packages/parity/emitted/media-range-rtl.css': { sha256: '281d321b2c05e0d1a2b7d810eafdb11b3f5e3c76baba447b983f23716ae4bd1f', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
+  'packages/parity/emitted/background-shorthand-colors.css': { sha256: 'e90b930ed6d4e52dd6ce50dc627d86c0a6f59ff34020814daf20ee2e11bc0fc9', ruling: 'BG2 (#235): the background shorthand emits its layer longhands as written' },
 };
 
 /**
@@ -232,7 +233,26 @@ const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
 const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
 
 /**
- * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and PNT1's and GEN-b's neutral longhands) removed: the computed
+ * BG2's eight background layer longhands, also added after the identity base, at their initial values in LONGHANDS order. Any other
+ * value stays in the text, so a file whose background moved no longer hashes to the base. The three captures in BG2_BASE_CAPTURES
+ * already held these keys at the base, so they keep them.
+ */
+const BG2_BASE_CAPTURES: readonly string[] = ['background-important', 'background-shorthand-cascade', 'background-shorthand-colors'].map((f) => `packages/parity/expected/darwin-arm64/${f}.web.json`);
+const BG2_LONGHANDS: readonly (readonly [string, string])[] = [
+  ['background-image', 'none'],
+  ['background-position-x', '0%'],
+  ['background-position-y', '0%'],
+  ['background-size', 'auto'],
+  ['background-repeat', 'repeat'],
+  ['background-attachment', 'scroll'],
+  ['background-origin', 'padding-box'],
+  ['background-clip', 'border-box'],
+];
+const JSON_BG2 = new RegExp(BG2_LONGHANDS.map(([k, v]) => `,\\n[ ]*"${k}": "${v}"`).join(''), 'g');
+const CSS_BG2 = new RegExp(BG2_LONGHANDS.map(([k, v]) => `^[ ]*${k}: ${v};\\n`).join(''), 'gm');
+
+/**
+ * A committed output with the pointer-events key (and the other KEYS_SINCE_BASE, and PNT1's, GEN-b's and BG2's neutral longhands) removed: the computed
  * value of every captured element, and the declaration of every emitted rule; an emitted file's compilation digest (its first line)
  * is masked, since every compilation digest moves with the compiler input.
  */
@@ -240,11 +260,12 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    return text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(genB, '');
+    const stripped = text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(genB, '');
+    return BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
-    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(genB, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(genB, '').replace(CSS_BG2, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }
