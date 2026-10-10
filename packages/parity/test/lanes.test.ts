@@ -3,19 +3,23 @@
 // caught with its own message; lane states are honest; and the committed out/lanes.json matches the configuration.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
-import { iosLayoutProjection, nativeLayoutProjection, NO_FAULTS } from 'dragon';
+import { describe, expect, it, vi } from 'vitest';
+import { iosLayoutProjection, nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from '../src/compare.ts';
 import { atDpr, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from '../src/dpr.ts';
 import { declaredLayoutCaseCount, groupFixtures, MILESTONE_1_LAYOUT_CASES } from '../src/case-count.ts';
 import type { HostRun, KotlinLookup, LaneFault } from '../src/lanes.ts';
 import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
+import { HIT_LANE, scriptCases, STATE_LANE } from '../src/device-lanes.ts';
+import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
+import { INLINE_OUT, INLINE_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
+import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
-import { compileFixture } from '../src/pipeline.ts';
+import { enforcedCompile } from '../src/pipeline.ts';
 import { SAMPLE_RULES } from '../src/samples.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
-import { corpusSuites, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
+import { corpusSuites, declaredSuites, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 const targets = nativeTargets();
@@ -24,12 +28,20 @@ const ios = targets.find((t) => t.target === 'ios') as TargetConfig;
 const android = targets.find((t) => t.target === 'android') as TargetConfig;
 const lane = (t: TargetConfig, id: string) => t.lanes.find((l) => l.lane === id);
 const ids = layoutCaseIds();
+let hitCount: number | null = null;
+/** The cases device-hit runs: hit-capture.ts hitCases, every layout case the hit lane does not refuse. */
+const hitCaseCount = (): number => (hitCount ??= hitCases().length);
+const stateCaseCount = (name: string): number => {
+  const t = targets.find((x) => x.target === name);
+  if (t === undefined) throw new Error(`no native target ${name}`);
+  return scriptCases(t.target).length;
+};
 
 describe('native targets', () => {
-  it('ios and android, each with the eight lanes in order', () => {
+  it('ios and android, each with the nine lanes in order', () => {
     expect(targets.map((t) => t.target)).toEqual(['ios', 'android']);
-    // SELD-R1b appends device-states and device-hit after the six P5 lanes.
-    expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels', 'device-states', 'device-hit']);
+    // SELD-R1b appends device-states and device-hit after the six P5 lanes; ANIM-b1 3b appends device-anim.
+    expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels', 'device-states', 'device-hit', 'device-anim']);
     for (const t of targets) expect(t.lanes.map((l) => l.lane)).toEqual([...LANES]);
   });
   it('case lists come from the constants: the declared top-level cases plus one set per DPR on both vectors lanes of both targets', () => {
@@ -90,24 +102,26 @@ describe('native targets', () => {
     expect(android.projection).toBe(nativeLayoutProjection);
     expect(ios.projection).toBe(android.projection);
   });
-  it('iosLayoutProjection output deep-equals nativeLayoutProjection output for every device case, at DPR 1 and every DPR', () => {
-    let n = 0;
+  // One test per fixture, so the corpus's compiles are spread over tests rather than held to one test's timeout. TXT1a-2: a shaped
+  // case is no device case (targets.ts vectorCaseIds), and a real-face one has no native projection, so only device cases compare.
+  describe('iosLayoutProjection output deep-equals nativeLayoutProjection output for every device case, at DPR 1 and every DPR', () => {
     const device = new Set(vectorCaseIds());
-    for (const f of layoutCases()) {
-      const compiled = new Map((['ltr', 'rtl'] as const).map((d) => [d, compileFixture(f.spec, NO_FAULTS, 'enforce', d).compiled]));
+    it('the fixture tests below cover every device case at DPR 1 and every DPR', () => {
+      expect(layoutCases().reduce((n, f) => n + f.cases.filter((c) => device.has(c.id)).length * (1 + DPRS.length), 0)).toBe(vectorCaseIds().length * (1 + DPRS.length));
+      expect(vectorCaseIds().length + shapedCaseIds().size).toBe(ids.length);
+    });
+    it.each(layoutCases().map((f) => [f.spec.id, f] as const))('%s', (_id, f) => {
       for (const c of f.cases) {
         if (!device.has(c.id)) continue;
-        const comp = compiled.get(c.environment.direction);
+        const comp = enforcedCompile(f.spec, c.environment.direction);
         for (const dpr of [1, ...DPRS]) {
           const env = atDpr(c.environment, dpr);
-          const native = nativeLayoutProjection(comp as object, env, c.assignment);
+          const native = nativeLayoutProjection(comp, env, c.assignment);
           expect(native.kind, c.id).toBe('ready');
-          expect(iosLayoutProjection(comp as object, env, c.assignment)).toEqual(native);
-          n++;
+          expect(iosLayoutProjection(comp, env, c.assignment)).toEqual(native);
         }
       }
-    }
-    expect(n).toBe(vectorCaseIds().length * (1 + DPRS.length));
+    });
   });
 });
 
@@ -143,7 +157,7 @@ describe('lane parity check', () => {
 describe('lane states', () => {
   const notFound: KotlinLookup = { javaHomeEnv: null, javaHomeCommand: '/nonexistent/java_home', jdkHomes: [], kotlincs: [] };
   it('with the Kotlin lookup injected as not found, android layout-vectors-host is blocked (owner tooling), never pass, and --require-all fails', async () => {
-    const run = await runHostLane(android, { kotlinLookup: notFound });
+    const run = await runHostLane(android, { kotlinLookup: notFound, requireNative: false });
     expect(run.state).toBe('blocked (owner tooling)');
     expect(run.suites.every((s) => s.total === null && s.pass === null)).toBe(true);
     const f = lanesFile(targets, [], new Map<NativeTarget, HostRun>([['android', run]]), null);
@@ -151,6 +165,17 @@ describe('lane states', () => {
     expect(host?.state).toBe('blocked (owner tooling)');
     expect(notPassed(f)).toContainEqual(expect.stringMatching(/^android layout-vectors-host: blocked \(owner tooling\)/));
     expect(notPassed(f).length).toBe(2 * LANES.length);
+  });
+  it('with DRAGON_REQUIRE_NATIVE=1 (or requireNative), a missing Kotlin toolchain fails the host lane, naming it, instead of reading blocked', async () => {
+    await expect(runHostLane(android, { kotlinLookup: notFound, requireNative: true })).rejects.toThrow(/^DRAGON_REQUIRE_NATIVE=1 and native:kotlin has no toolchain: no JDK 17\+ or kotlinc was found/);
+    vi.stubEnv('DRAGON_REQUIRE_NATIVE', '1');
+    try {
+      await expect(runHostLane(android, { kotlinLookup: notFound })).rejects.toThrow(/native:kotlin has no toolchain/);
+      vi.stubEnv('DRAGON_REQUIRE_NATIVE', undefined);
+      expect((await runHostLane(android, { kotlinLookup: notFound })).state).toBe('blocked (owner tooling)');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
   it('device lanes are not run (never pass, never blocked) until P5', () => {
     const f = lanesFile(targets, [], new Map(), null);
@@ -170,9 +195,11 @@ describe('lane states', () => {
     ].join('\n');
     expect(judgeHost(ios, parseNativeOutput(text(null, p1)))).toMatchObject({ state: 'pass', reason: null, toolchain: 'Swift version 6.4' });
     expect(judgeHost(ios, parseNativeOutput(text('snap', p1)))).toMatchObject({ state: 'fail', reason: expect.stringContaining('extended/snap -/-, declared') });
-    // The V1 suites are parsed and judged too: a dropped V1 suite line fails the host lane.
-    for (const v1 of ['snap-values', 'calc-goldens', 'engine-calc', 'units-calc', 'engine-inline']) {
-      expect(judgeHost(ios, parseNativeOutput(text(v1, p1))), v1).toMatchObject({ state: 'fail', reason: expect.stringContaining(`extended/${v1} -/-, declared`) });
+    // Every declared suite is parsed and judged (the V1 suites and any later one): a dropped suite line fails the host lane.
+    // PIN-DERIVE: the suites come from the manifest, not a list each new suite edits.
+    expect(suites.filter((s) => s.corpus === 'extended').map((s) => s.suite)).toEqual(expect.arrayContaining(['snap-values', 'calc-goldens', 'engine-calc', 'units-calc']));
+    for (const s of suites) {
+      expect(judgeHost(ios, parseNativeOutput(text(s.suite, p1))), s.suite).toMatchObject({ state: 'fail', reason: expect.stringContaining(`${s.corpus}/${s.suite} -/-, declared`) });
     }
     // The ANIM-a2 rt suite is parsed and judged too: a dropped rt line fails the host lane.
     expect(judgeHost(ios, parseNativeOutput(text('rt', p1)))).toMatchObject({ state: 'fail', reason: expect.stringContaining('p1/rt -/-, declared') });
@@ -211,6 +238,30 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
+  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the radius cases (PNT1) and the INL1a inline cases', () => {
+    const refusals = hitRefusedCases();
+    const refused = refusals.map((r) => r.id);
+    expect(refused.length).toBeGreaterThan(0);
+    // Exactly the union: every radius and every INL1a inline case is refused with its reason, and every other refusal is a transform- case with its reason.
+    expect(refused.filter((id) => RADIUS_OUT.includes(id)).sort()).toEqual([...RADIUS_OUT].sort());
+    expect(refused.filter((id) => INLINE_OUT.includes(id)).sort()).toEqual([...INLINE_OUT].sort());
+    for (const r of refusals) {
+      if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
+      else if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
+      else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^transform-/), expect.stringMatching(TRANSFORM_REASON)]);
+    }
+    // TXT1a-2: over the device cases (targets.ts vectorCaseIds), every layout case but the shaped ones the runtime draws from phase R.
+    const device = vectorCaseIds();
+    expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...device].sort());
+    expect(hitCaseCount()).toBe(device.length - refused.length);
+    // The declared device-hit sets hold exactly those cases (targets.ts hitCaseIds), in layout order, at every device DPR.
+    expect(hitCaseIds()).toEqual(hitCases().map((n) => n.case.id));
+    for (const t of nativeTargets()) {
+      const lane = t.lanes.find((l) => l.lane === HIT_LANE);
+      expect(lane?.sets.length, t.target).toBe(t.dprs.length);
+      for (const set of lane?.sets ?? []) expect(set.ids, `${t.target} ${set.dpr}`).toEqual(hitCaseIds());
+    }
+  });
   it('every device lane ran (P5): per DPR the device, OS, both scales, a dump per case and the counts compared; vectors equal the host lane; every dump fault caught; capture trust on every device', () => {
     if (f === null) return;
     for (const t of f.targets) {
@@ -224,10 +275,14 @@ describe('committed out/lanes.json', () => {
         if (l.lane === 'device-pixels') expect(['pass', 'fail'], `${t.target} ${l.lane}`).toContain(l.state);
         else expect(l.state, `${t.target} ${l.lane}`).toBe('pass');
         expect([...(l.device?.sets.map((s) => s.dpr) ?? [])].sort(), `${t.target} ${l.lane}`).toEqual(l.sets.map((s) => s.dpr).sort());
+        // SELD-R1b: device-states runs the state script cases, every check; device-hit runs every hit case (the layout cases but
+        // those the hit lane refuses by name, hit-capture.ts hitCases) and compares only hit points (b), the other counts exactly 0.
+        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : ids.length;
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
-          expect(s.cases).toBe(ids.length);
-          expect(s.compared.a > 0 && s.compared.b > 0 && s.compared.c > 0 && s.compared.d > 0 && s.compared.breaks > 0).toBe(true);
+          expect(s.cases, `${t.target} ${l.lane} ${s.dpr}`).toBe(cases);
+          if (l.lane === HIT_LANE) expect([s.compared.a, s.compared.b > 0, s.compared.c, s.compared.d, s.compared.breaks], `${t.target} ${l.lane} ${s.dpr}`).toEqual([0, true, 0, 0, 0]);
+          else expect(s.compared.a > 0 && s.compared.b > 0 && s.compared.c > 0 && s.compared.d > 0 && s.compared.breaks > 0, `${t.target} ${l.lane} ${s.dpr}`).toBe(true);
         }
         if (l.lane === 'device-pixels') {
           expect(l.device?.trust?.map((x) => [x.dpr, x.mismatches])).toEqual(l.device?.sets.map((s) => [s.dpr, 0]));
@@ -256,8 +311,9 @@ describe('host suite lines (T125)', () => {
   ].join('\n');
   it('a suite line the manifest does not declare is parsed and fails judgeHost, whatever its name', () => {
     expect(judgeHost(ios, parseNativeOutput(text([])))).toMatchObject({ state: 'pass', reason: null });
-    // engine-inline is declared since INL1a, so the undeclared names are made up.
+    // PIN-DERIVE: made-up names, checked undeclared, so a package that declares a suite needs no edit here.
     for (const name of ['engine-other', 'new suite 2', 'x']) {
+      expect(suites.map((s) => s.suite), name).not.toContain(name);
       const parsed = parseNativeOutput(text([`${name} 3000/3000`]));
       expect(parsed?.suites.some((s) => s.corpus === 'extended' && s.suite === name), name).toBe(true);
       expect(judgeHost(ios, parsed), name).toMatchObject({ state: 'fail', reason: expect.stringContaining(`extended/${name} is not a declared suite`) });

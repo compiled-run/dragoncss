@@ -5,20 +5,21 @@ import type { GlyphBox, SampleBox, SamplePoint } from '../src/samples.ts';
 import { ALONG_POSITIONS, CLEAR_SUFFIX, clearOfGlyphs, isScanlineRule, generateGlyphSamples, generateSamples, glyphClearance, ruleKind, SAMPLE_INSET_DEVICE_PX, SAMPLE_RULES, sampleBoxes, sampleGlyphs } from '../src/samples.ts';
 
 const SIZE = { width: 1200, height: 900 };
-const card: SampleBox = { id: 'n3', left: 60, top: 60, right: 420, bottom: 180, border: { top: 6, right: 6, bottom: 6, left: 6 }, radius: 24, clips: true };
-const plain: SampleBox = { id: 'n4', left: 500, top: 300, right: 540, bottom: 330, border: { top: 0, right: 0, bottom: 0, left: 0 }, radius: 0, clips: false };
+const card: SampleBox = { id: 'n3', left: 60, top: 60, right: 420, bottom: 180, border: { top: 6, right: 6, bottom: 6, left: 6 }, radius: 24, clips: true, size: [360, 120] };
+const plain: SampleBox = { id: 'n4', left: 500, top: 300, right: 540, bottom: 330, border: { top: 0, right: 0, bottom: 0, left: 0 }, radius: 0, clips: false, size: [40, 30] };
 const I = SAMPLE_INSET_DEVICE_PX;
 
 const clearOf = (v: number, e: number): boolean => v >= e + I || v + 1 <= e - I;
 
 describe('sample generator', () => {
   it('the six rules, in order, shared by both targets', () => {
-    expect(SAMPLE_RULES).toEqual(['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph', 'shadow', 'gradient']);
+    // REPL-a appends image-flat (R8): points on flat image content, added by the image paint module.
+    expect(SAMPLE_RULES).toEqual(['interior', 'border', 'outside', 'radius', 'clip', 'edge', 'glyph', 'shadow', 'gradient', 'image-flat']);
   });
   it('is deterministic and emits every rule for a bordered, rounded, clipping box', () => {
     const a = generateSamples([card, plain], SIZE);
     expect(generateSamples([card, plain], SIZE)).toEqual(a);
-    expect([...new Set(a.filter((p) => p.rule.includes(':n3')).map((p) => ruleKind(p.rule)))]).toEqual(SAMPLE_RULES.filter((r) => r !== 'glyph' && r !== 'shadow' && r !== 'gradient'));
+    expect([...new Set(a.filter((p) => p.rule.includes(':n3')).map((p) => ruleKind(p.rule)))]).toEqual(SAMPLE_RULES.filter((r) => r !== 'glyph' && r !== 'shadow' && r !== 'gradient' && r !== 'image-flat'));
     expect(a.filter((p) => ruleKind(p.rule) === 'radius' && p.rule.startsWith('radius:n3')).length).toBe(8);
     expect(a.filter((p) => p.rule === 'interior:n3')).toEqual([{ x: 240, y: 120, rule: 'interior:n3' }]);
     expect(a.filter((p) => p.rule === 'border:n3:top')).toEqual([{ x: 240, y: 62, rule: 'border:n3:top' }]);
@@ -61,7 +62,7 @@ describe('sample generator', () => {
     expect(pts.some((p) => ruleKind(p.rule) === 'border' || ruleKind(p.rule) === 'radius' || ruleKind(p.rule) === 'clip')).toBe(false);
   });
   it('skips points outside the image and boxes too small to hold a clear point', () => {
-    const tiny: SampleBox = { id: 't', left: 0, top: 0, right: 3, bottom: 3, border: { top: 1, right: 1, bottom: 1, left: 1 }, radius: 0, clips: true };
+    const tiny: SampleBox = { id: 't', left: 0, top: 0, right: 3, bottom: 3, border: { top: 1, right: 1, bottom: 1, left: 1 }, radius: 0, clips: true, size: [3, 3] };
     const pts = generateSamples([tiny], { width: 10, height: 10 });
     expect(pts.map((p) => p.rule)).toEqual(['outside:t']);
     expect(pts[0]).toEqual({ x: 5, y: 1, rule: 'outside:t' });
@@ -87,7 +88,7 @@ describe('glyph clearance (T093 ruling A)', () => {
   });
   it('box rules try the along-positions 1/2, 1/4, 3/4, 1/8, 7/8 in order and take the first clear one', () => {
     expect(ALONG_POSITIONS).toEqual([1 / 2, 1 / 4, 3 / 4, 1 / 8, 7 / 8]);
-    const b: SampleBox = { id: 'p', left: 100, top: 100, right: 300, bottom: 200, border: { top: 4, right: 4, bottom: 4, left: 4 }, radius: 0, clips: true };
+    const b: SampleBox = { id: 'p', left: 100, top: 100, right: 300, bottom: 200, border: { top: 4, right: 4, bottom: 4, left: 4 }, radius: 0, clips: true , size: [200, 100] };
     // A narrow glyph down the middle of the box, across its top and bottom edges: no pixel near it is clear.
     const glyph: GlyphBox = { left: 198.5, top: 90, right: 202.5, bottom: 210 };
     const plain = generateSamples([b], SIZE);
@@ -104,7 +105,7 @@ describe('glyph clearance (T093 ruling A)', () => {
     for (const p of r.points) expect(clearOfGlyphs(p.x, p.y, [glyph]), `${p.rule} at ${p.x},${p.y}`).toBe(true);
   });
   it('a point with no clear along-position is dropped and named; with no glyph boxes nothing is dropped and the points are unchanged', () => {
-    const b: SampleBox = { id: 'q', left: 100, top: 100, right: 160, bottom: 140, border: { top: 0, right: 0, bottom: 0, left: 0 }, radius: 0, clips: false };
+    const b: SampleBox = { id: 'q', left: 100, top: 100, right: 160, bottom: 140, border: { top: 0, right: 0, bottom: 0, left: 0 }, radius: 0, clips: false , size: [60, 40] };
     // A row of 3 device px glyphs over the box: every pixel there is within 1.5 device px of a glyph edge.
     const row: GlyphBox[] = Array.from({ length: 27 }, (_, k) => ({ left: 90.5 + 3 * k, top: 95, right: 93.5 + 3 * k, bottom: 145 }));
     const r = sampleBoxes([b], SIZE, row);
@@ -114,7 +115,7 @@ describe('glyph clearance (T093 ruling A)', () => {
   });
   it('a dropped edge scanline or border point keeps each pixel that is itself clear, as "<rule>:clear" (addendum F2)', () => {
     // position-absolute-out-of-flow@3: i2's bottom edge lies on the top edge of the Y glyph below it.
-    const i2: SampleBox = { id: 'i2', left: 63, top: 81, right: 75, bottom: 105, border: { top: 3, right: 3, bottom: 3, left: 3 }, radius: 0, clips: false };
+    const i2: SampleBox = { id: 'i2', left: 63, top: 81, right: 75, bottom: 105, border: { top: 3, right: 3, bottom: 3, left: 3 }, radius: 0, clips: false , size: [12, 24] };
     const y: GlyphBox = { left: 30, top: 105, right: 90, bottom: 165 };
     const r = sampleBoxes([i2], SIZE, [y]);
     expect(r.dropped).toEqual(['border:i2:bottom', 'edge:i2:bottom']);

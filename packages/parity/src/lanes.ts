@@ -8,11 +8,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { LayoutRect } from '@dragon/layout';
 import { layoutWithFaults, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
-import type { Compiled, Environment } from 'dragon';
-import { nativeLayoutProjection, NO_FAULTS } from 'dragon';
+import { nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { atDpr, committedDprCapture, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
-import type { FixtureSpec } from './fixtures.ts';
 import { spawnChild } from './device-exec.ts';
 import type { ExecResult } from './device-exec.ts';
 import { checkAgainstChrome, checkAgainstEngine, DUMP_FAULTS, referenceDump } from './native-compare.ts';
@@ -20,13 +18,13 @@ import { validateNativeDump } from './native-dump.ts';
 import { committedPixelManifestProblems } from './pixel-reference.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
-import { compileFixture } from './pipeline.ts';
+import { enforcedCompile } from './pipeline.ts';
 import { SAMPLE_RULES } from './samples.ts';
 import { isShapedInput, joinHyphenRects } from './text-latin-run.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './device-lanes.ts';
 import type { DeviceLaneId } from './device-lanes.ts';
-import { DEVICE_CHECK_LANES, failuresByKind, HIT_LANE, laneFailures, STATE_LANE } from './device-lanes.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, failuresByKind, HIT_LANE, laneFailures, STATE_LANE } from './device-lanes.ts';
 import type { DeviceEvidence } from './device-evidence.ts';
 import { deviceEvidence, evidenceProblems } from './device-evidence.ts';
 import type { DeviceRecord } from './device-run.ts';
@@ -221,6 +219,8 @@ type TranslateNative = {
   readonly swiftTool: () => { readonly version: string } | null;
   readonly kotlinTool: (lookup?: KotlinLookup) => { readonly javaHome: string; readonly version: string } | null;
   readonly defaultKotlinLookup: () => KotlinLookup;
+  readonly requireNative: () => boolean;
+  readonly missingToolchain: (subject: string, missing: string, require?: boolean) => string;
 };
 // packages/parity does not depend on packages/translate, so the tool lookups are loaded at run time from its source.
 const translateNative = async (): Promise<TranslateNative> => (await import(pathToFileURL(repoPath('packages/translate/src/native.ts')).href)) as TranslateNative;
@@ -295,6 +295,8 @@ export type HostOptions = {
   readonly kotlinLookup?: KotlinLookup;
   /** The node arguments run in place of packages/translate/src/cli/native.ts <target>; a test passes a fake host CLI. */
   readonly command?: readonly string[];
+  /** A missing toolchain throws instead of reading blocked (owner tooling); DRAGON_REQUIRE_NATIVE=1 by default. */
+  readonly requireNative?: boolean;
 };
 
 /** How the host CLI process ended: exit code, signal, start error and its stderr tail. */
@@ -309,14 +311,19 @@ export function hostEnd(e: HostEnd): string {
 /** Runs the target's generated engine on the host through its existing CLI; blocked (owner tooling) only when a tool lookup fails. */
 export async function runHostLane(t: TargetConfig, opts: HostOptions = {}): Promise<HostRun> {
   const native = await translateNative();
-  const blocked = (reason: string): HostRun => ({ state: 'blocked (owner tooling)', reason, toolchain: null, suites: unrun(t), digests: { p1: null, extended: null } });
+  const require = opts.requireNative ?? native.requireNative();
   let env: NodeJS.ProcessEnv = process.env;
+  let missing: string | null = null;
   if (t.hostCli === 'native:swift') {
-    if (native.swiftTool() === null) return blocked('swiftc was not found');
+    if (native.swiftTool() === null) missing = 'swiftc was not found';
   } else {
     const tool = native.kotlinTool(opts.kotlinLookup ?? native.defaultKotlinLookup());
-    if (tool === null) return blocked('no JDK 17+ or kotlinc was found (docs/decisions.md, Native lanes, milestone 2)');
-    env = { ...process.env, JAVA_HOME: tool.javaHome };
+    if (tool === null) missing = 'no JDK 17+ or kotlinc was found (docs/decisions.md, Native lanes, milestone 2)';
+    else env = { ...process.env, JAVA_HOME: tool.javaHome };
+  }
+  if (missing !== null) {
+    native.missingToolchain(t.hostCli, missing, require);
+    return { state: 'blocked (owner tooling)', reason: missing, toolchain: null, suites: unrun(t), digests: { p1: null, extended: null } };
   }
   const script = t.hostCli === 'native:swift' ? 'swift' : 'kotlin';
   // Awaited, not blocking, so parity:lanes runs the host lanes of both targets at once. The whole stdout is kept for the parse
@@ -334,23 +341,12 @@ export async function runHostLane(t: TargetConfig, opts: HostOptions = {}): Prom
 export type ReferenceRow = { readonly dpr: number; readonly role: 'shared' | 'extra'; readonly cases: number; readonly valid: number; readonly chrome: number; readonly engine: number; readonly chromeCompared: number; readonly engineCompared: number; readonly failures: readonly string[] };
 
 /**
- * For every device case at every device DPR of each target: the TS engine through the target's projection, snapped by snapRect
- * into a ts-reference dump, which must validate and pass (a) against Chrome at that DPR and (d) against the engine.
+ * For every device case (or those of the fixtures given) at every device DPR of each target: the TS engine through the target's
+ * projection, snapped by snapRect into a ts-reference dump, which must validate and pass (a) against Chrome at that DPR and (d) against the engine.
  */
-export function referenceProof(targets: readonly TargetConfig[]): { readonly target: NativeTarget; readonly rows: readonly ReferenceRow[] }[] {
+export function referenceProof(targets: readonly TargetConfig[], all: ReturnType<typeof layoutCases> = layoutCases()): { readonly target: NativeTarget; readonly rows: readonly ReferenceRow[] }[] {
   // TXT1a-2: the engine the device mirrors measures every face through HarfBuzz (native-host.ts referenceMeasurer).
   const measurer = referenceShapedMeasurer();
-  const compiled = new Map<string, Compiled<'ios' | 'web'>>();
-  const compiledFor = (spec: FixtureSpec, direction: Environment['direction']): Compiled<'ios' | 'web'> => {
-    const key = `${spec.id} ${direction}`;
-    let c = compiled.get(key);
-    if (c === undefined) {
-      c = compileFixture(spec, NO_FAULTS, 'enforce', direction).compiled;
-      compiled.set(key, c);
-    }
-    return c;
-  };
-  const all = layoutCases();
   // The device cases (targets.ts vectorCaseIds): a shaped case is not drawn on devices until TXT1a-2 phase R.
   const device = new Set(vectorCaseIds());
   return targets.map((t) => ({
@@ -367,7 +363,7 @@ export function referenceProof(targets: readonly TargetConfig[]): { readonly tar
         for (const c of f.cases) {
           if (!device.has(c.id)) continue;
           cases++;
-          const comp = compiledFor(f.spec, c.environment.direction);
+          const comp = enforcedCompile(f.spec, c.environment.direction);
           const env = atDpr(c.environment, dpr);
           const p = t.projection(comp, env, c.assignment);
           if (p.kind === 'blocked') {
@@ -427,6 +423,8 @@ export type LaneRecord = {
   readonly device: DeviceLaneRun | null;
   /** A device lane's evidence stamp, written by the device run (device-evidence.ts); null for host lanes and lanes not run. */
   readonly evidence: DeviceEvidence | null;
+  /** The hosts that produced a device lane merged from several (device-ci.ts); absent for a run made on one machine. */
+  readonly producedOn?: readonly string[];
 };
 
 /** One DPR set of a device lane run. */
@@ -457,11 +455,15 @@ export type DeviceRun = {
   /** SELD-R1b: the case scripts' sets (device-states) and the hit records' sets (device-hit), one per device; absent before them. */
   readonly states?: readonly DeviceSet[];
   readonly hits?: readonly DeviceSet[];
+  /** ANIM-b1 3b: the frame samples' sets (device-anim), one per device; absent before it. */
+  readonly anims?: readonly DeviceSet[];
   readonly trust: readonly { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] }[];
   /** A tooling fault that stopped the run (a device that failed to boot twice, a device that cannot hold the root). */
   readonly blocked: string | null;
   /** The evidence stamp of the code, reference data and app the run was made and judged with. */
   readonly evidence: DeviceEvidence;
+  /** A run merged from several hosts (device-ci.ts): the host of each device's outcome, and of the vectors run. */
+  readonly producedOn?: { readonly devices: Readonly<Record<string, string>>; readonly vectors: string | null };
 };
 
 /** The real-dump fault rows of a target, per DPR. */
@@ -580,11 +582,18 @@ function lanesFileOf(targets: readonly TargetConfig[], problems: readonly string
         }
         const d = device.get(t.target);
         if (d !== undefined) {
-          if (l.lane === STATE_LANE) return deviceLaneRecord(l, d, d.states ?? []);
-          if (l.lane === HIT_LANE) return deviceLaneRecord(l, d, d.hits ?? []);
-          if (l.lane !== 'layout-vectors-device') return deviceLaneRecord(l, d);
-          if (d.vectors === null) return laneRecord(l, d.blocked === null ? 'not run' : 'blocked (owner tooling)', d.blocked ?? DEVICE_NOT_RUN, null);
-          return laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests }, null, d.evidence);
+          // A merged run names the hosts of each lane: the devices whose sets it holds, or the vectors run's host.
+          const hosts = (r: LaneRecord): LaneRecord => {
+            if (d.producedOn === undefined) return r;
+            const of = r.lane === 'layout-vectors-device' ? (d.producedOn.vectors === null ? [] : [d.producedOn.vectors]) : (r.device?.sets ?? []).map((s) => d.producedOn!.devices[s.device.name] ?? `unknown host of ${s.device.name}`);
+            return { ...r, producedOn: [...new Set(of)].sort() };
+          };
+          if (l.lane === STATE_LANE) return hosts(deviceLaneRecord(l, d, d.states ?? []));
+          if (l.lane === HIT_LANE) return hosts(deviceLaneRecord(l, d, d.hits ?? []));
+          if (l.lane === ANIM_LANE) return hosts(deviceLaneRecord(l, d, d.anims ?? []));
+          if (l.lane !== 'layout-vectors-device') return hosts(deviceLaneRecord(l, d));
+          if (d.vectors === null) return hosts(laneRecord(l, d.blocked === null ? 'not run' : 'blocked (owner tooling)', d.blocked ?? DEVICE_NOT_RUN, null));
+          return hosts(laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests }, null, d.evidence));
         }
         // A device lane is carried only with the current evidence stamp: same lane code, reference data and app source.
         if (keep && evidenceProblems(kept.evidence, deviceEvidence(t.target)).length === 0) return { ...kept, device: kept.device ?? null };
@@ -651,6 +660,17 @@ export const lanesJsonText = (f: LanesFile): string => `${JSON.stringify(f, null
 export function writeLanesFile(f: LanesFile): void {
   mkdirSync(repoPath('packages/parity/out'), { recursive: true });
   writeFileSync(repoPath(LANES_JSON), lanesJsonText(f));
+}
+
+/**
+ * The committed host run of a target, which judges its device vectors lane, while it still describes the configuration; else null
+ * (the device run then reports the vectors lane without a host run to judge it against).
+ */
+export function committedHostRun(f: LanesFile | null, targets: readonly TargetConfig[], target: NativeTarget): HostRun | null {
+  if (f === null || staleLanes(f, targets).some((p) => staleCovers(p, target, 'layout-vectors-host'))) return null;
+  const l = f.targets.find((t) => t.target === target)?.lanes.find((x) => x.lane === 'layout-vectors-host');
+  if (l === undefined || l.run === null) return null;
+  return { state: l.state, reason: l.reason, toolchain: l.run.toolchain, suites: l.run.suites, digests: l.run.digests };
 }
 
 export function readLanesFile(): LanesFile | null {

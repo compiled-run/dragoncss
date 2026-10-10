@@ -3,14 +3,16 @@
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { NO_ENGINE_FAULTS } from '@dragon/layout';
-import { createProject, NO_FAULTS } from 'dragon';
+import { NO_FAULTS } from 'dragon';
+// createProject is the public entry's own (create-project.ts); the internal entry 'dragon' resolves to leaves it out.
+import { createProject } from '../../dragon/src/index.ts';
 import { band } from '../../dragon/src/media/index.ts';
 import { parseMediaQueryList } from '../../dragon/src/media/index.ts';
 import { CHROME_VERSION, launchChrome } from '../src/chrome.ts';
 import { committedAuthored } from '../src/committed.ts';
 import { readHtmlFixture } from '../src/fixture-reader.ts';
 import { ENVIRONMENT, FIXTURES } from '../src/fixtures.ts';
-import { checkRecords, mediaFixtures, partitionOf, recordPass, sampleViewports, sweepFixture } from '../src/media-sweep.ts';
+import { checkRecords, exactFrameChecks, FRAME_ZOOM, fractionalSamples, mediaFixtures, partitionOf, recordPass, sampleViewports, sweepFixture } from '../src/media-sweep.ts';
 import type { SweepRecord } from '../src/media-sweep.ts';
 import { runFixture } from '../src/pipeline.ts';
 import { hostPlatform, requireReferencePlatform } from '../src/platform.ts';
@@ -42,6 +44,25 @@ describe('media sweep samples', () => {
   it('a band no whole-px viewport lies in is reported, never skipped', () => {
     const p = partition('(max-width: 400px)', '(min-width: 400.5px)');
     expect(sampleViewports(p, ENVIRONMENT.viewport).unsampled).toEqual([1]);
+  });
+  it('MQ-R0: a band no whole px lies in is sampled in a frame of whole device px at zoom 128, inside the band', () => {
+    const p = partition('(max-width: 400px)', '(min-width: 400.5px)');
+    const { samples, unsampled } = fractionalSamples(p, ENVIRONMENT.viewport, [1]);
+    expect(unsampled).toEqual([]);
+    expect(samples.map((s) => [s.band, s.frame.zoom, s.width > 400.015625 && s.width < 400.484375])).toEqual([[1, FRAME_ZOOM, true]]);
+    expect(samples[0]?.frame.widthPx).toBe(Math.round((samples[0]?.width ?? 0) * FRAME_ZOOM));
+    expect(exactFrameChecks({ widthPx: 1, heightPx: 0, zoom: 128 })).toEqual(['(width > 0.00390625px) and (width < 0.01171875px)', '(height < 0.00390625px)']);
+  });
+  it('MQ-R0: a band narrower than a 1/128 px step stays unsampled, so the record fails', () => {
+    const p = partition('(max-width: 400px)', '(width > 400.016px)');
+    expect(sampleViewports(p, ENVIRONMENT.viewport).unsampled).toEqual([1]);
+    expect(fractionalSamples(p, ENVIRONMENT.viewport, [1]).unsampled).toEqual([1]);
+  });
+  it('MQ-R0: ratio bands are sampled across both axes', () => {
+    const p = partition('(orientation: landscape)', '(max-width: 250px)');
+    const { samples, unsampled } = sampleViewports(p, ENVIRONMENT.viewport);
+    expect(unsampled).toEqual([]);
+    expect(samples.some((s) => s.width <= 250 && s.width > s.height)).toBe(true);
   });
   it('height atoms are sampled at the fixture width', () => {
     const { samples } = sampleViewports(partition('(min-height: 200px)'), ENVIRONMENT.viewport);
@@ -101,6 +122,16 @@ describe.sequential('the web band sweep in Chrome', () => {
       expect(r.samples.filter((s) => !s.pass).map((s) => s.width), r.direction).toEqual([400, 401, 402, 501]);
     }
   }, 120_000);
+  it('MQ-R0: mediaFractionalBandDropped (the pre-MQ-R0 web output) fails exactly the fractional frames of media-range', async () => {
+    const spec = mediaFixtures().find((f) => f.id === 'media-range');
+    if (spec === undefined) throw new Error('media-range is not registered');
+    const clean = records.filter((r) => r.fixture === 'media-range');
+    expect(clean.map((r) => r.samples.filter((s) => s.frame !== undefined).length)).toEqual([3, 3]);
+    for (const r of await sweepFixture(spec, browser, { ...NO_FAULTS, mediaFractionalBandDropped: true })) {
+      expect(recordPass(r), r.direction).toBe(false);
+      expect(r.samples.filter((s) => !s.pass).map((s) => s.frame?.zoom), r.direction).toEqual([FRAME_ZOOM, FRAME_ZOOM, FRAME_ZOOM]);
+    }
+  }, 120_000);
   it('mediaBandOffByOne fails the sweep sample at each boundary width', async () => {
     const spec = mediaFixtures().find((f) => f.id === 'media-max-width');
     if (spec === undefined) throw new Error('media-max-width is not registered');
@@ -133,13 +164,12 @@ describe.sequential('MQ-a planted compiler faults through the parity pipeline', 
   }
 });
 
-describe('the native refusal through the public entry', () => {
-  it('media-overlap compiles for web; ios and android refuse both @media rules until MQ-R', () => {
+describe('native @media through the public entry (MQ-R1)', () => {
+  it('media-overlap compiles for web, and ios and android accept both @media rules: the media rows prove width', () => {
     const { input } = readHtmlFixture('media-overlap');
     const c = createProject({ projectId: 'dragon-parity', targets: { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } } }).compile(input);
     expect(c.outputs.web.kind).toBe('ready');
-    expect([c.outputs.ios.kind, c.outputs.android.kind]).toEqual(['blocked', 'blocked']);
-    const refusals = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
-    expect(refusals.map((d) => [d.target, d.message])).toEqual(['ios', 'android'].flatMap((t) => ['768px', '640px'].map((w) => [t, `@media screen and (max-width: ${w}) selects rules by the viewport width or height, which the ${t} output does not support until MQ-R`])));
+    expect(c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE')).toEqual([]);
+    expect([c.outputs.ios.kind, c.outputs.android.kind]).not.toContain('blocked');
   });
 });

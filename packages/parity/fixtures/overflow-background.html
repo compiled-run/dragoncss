@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.sc { overflow: auto; width: 60px; height: 40px; padding: 4px 6px 8px 2px; border: 1px solid #000; margin-bottom: 4px; background-color: #eee; }
+.scroll { overflow: scroll; }
+.app { overflow-x: hidden; overflow-y: auto; }
+.flex { display: flex; }
+.flex > div { flex: none; width: 30px; height: 20px; margin-right: 4px; background-color: #999; }
+.big { width: 90px; height: 50px; background-color: #ccc; }
+.fit { width: 60px; height: 40px; background-color: #ccc; }
+.row { height: 25px; margin-bottom: 4px; background-color: #ccc; }
+.wide { width: 120px; height: 10px; background-color: #999; }
+.outer { overflow: auto; width: 80px; height: 50px; padding: 4px; border: 1px solid #000; margin-bottom: 4px; }
+.inner { overflow: auto; width: 60px; height: 30px; padding: 3px; background-color: #ddd; }
+.huge { width: 150px; height: 120px; background-color: #ccc; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="b1" class="sc"><div data-dragon-id="b1a" class="big"></div></div>
+<div data-dragon-id="b2" class="sc scroll"><div data-dragon-id="b2a" class="big"></div></div>
+<div data-dragon-id="b3" class="sc"><div data-dragon-id="b3a" class="fit"></div></div>
+<div data-dragon-id="b4" class="sc flex"><div data-dragon-id="b4a"></div><div data-dragon-id="b4b"></div><div data-dragon-id="b4c"></div></div>
+<div data-dragon-id="b5" class="sc app"><div data-dragon-id="b5a" class="row"></div><div data-dragon-id="b5b" class="row"><div data-dragon-id="b5c" class="wide"></div></div></div>
+<div data-dragon-id="b6" class="outer"><div data-dragon-id="b6a" class="inner"><div data-dragon-id="b6b" class="huge"></div></div></div>
+</body>
+</html>

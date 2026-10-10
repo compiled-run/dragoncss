@@ -53,9 +53,16 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     { file: at('layout.ts'), name: 'absoluteRects' },
     { file: at('platform.ts'), name: 'measurerFor' },
     { file: at('text.ts'), name: 'ahemMeasurer' },
+    // R4: a host scopes its shaped measurer to Latin text as platform.ts shapedMeasurerFor does (the harness's replay included).
+    { file: at('shaping.ts'), name: 'latinScopedMeasurer' },
     // The one pixel-snap rule (native-strategy.md section 3.3): native lanes snap engine rects to device px with it.
     { file: at('snap.ts'), name: 'snapEdges' },
     { file: at('snap.ts'), name: 'snapRect' },
+    // OVFL: scroll containers' client sizes and scrollable overflow, which the native scroll views are sized by.
+    { file: at('overflow.ts'), name: 'scrollMetrics' },
+    { file: at('overflow.ts'), name: 'scrollMetricsWithFaults' },
+    // OVFL-B: each scroll container's offset range in device px, which the native scroll views clamp to.
+    { file: at('overflow.ts'), name: 'scrollRanges' },
   ];
   const program = createProgram(files);
   const units = program.getSourceFile(at('units.ts')) as ts.SourceFile;
@@ -71,10 +78,23 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
       if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at(f), name: st.name.text });
     }
   }
+  // ANIM-b1 (T065): the transition update, keyframe sampling and animation list ports, roots the same way.
+  for (const f of ['rt-keyframes.ts', 'rt-transition.ts', 'rt-animations.ts', 'rt-animator.ts']) {
+    const sf = program.getSourceFile(at(f));
+    if (sf === undefined) throw new Error(`the root file ${f} is not an engine file`);
+    for (const st of sf.statements) {
+      if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at(f), name: st.name.text });
+    }
+  }
   // SELD-R1b (T047 RT-9): the hit test and tap dispatch.
   const hit = program.getSourceFile(at('rt-hit.ts')) as ts.SourceFile;
   for (const st of hit.statements) {
     if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('rt-hit.ts'), name: st.name.text });
+  }
+  // SELD-R2 (T064 R12): the interaction runtime.
+  const interaction = program.getSourceFile(at('rt-interaction.ts')) as ts.SourceFile;
+  for (const st of interaction.statements) {
+    if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('rt-interaction.ts'), name: st.name.text });
   }
   return roots;
 }

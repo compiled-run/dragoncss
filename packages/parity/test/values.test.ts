@@ -14,7 +14,7 @@ import { casesOf, fixtureInput } from '../src/cases.ts';
 import { expectedPath } from '../src/committed.ts';
 import { exactInZoomedLu } from '../src/compare.ts';
 import { atDpr, committedDprCapture, runDprCase } from '../src/dpr.ts';
-import { FIXTURE_GROUPS, FIXTURES } from '../src/fixtures.ts';
+import { FIXTURE_GROUPS, FIXTURES, LEGACY_RUN_ORDER } from '../src/fixtures.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { repoPath } from '../src/paths.ts';
@@ -29,12 +29,12 @@ const spec = (id: string): FixtureSpec => FIXTURES.find((f) => f.id === id) as F
 const committed = (c: ParityCase, dpr: number): WebCapture => (dpr === 1 ? (JSON.parse(readFileSync(expectedPath(c.id), 'utf8')) as WebCapture) : committedDprCapture(c.id, dpr));
 
 describe('values group registration (fixture-groups/values.ts)', () => {
-  it('is the last group before SELD-R1b\'s states; every layout fixture runs in both directions and every id carries the values- prefix the corpus keys on', () => {
-    // TXT1a-2 and T133: the text groups and inline-tags come after states, and every case of theirs is shaped, so they add no plain
-    // vector after the others.
-    expect(FIXTURE_GROUPS.map((g) => g.id).slice(-5)).toEqual(['values', 'states', 'text-latin', 'text-calibration', 'inline-tags']);
+  it('is the last legacy group before SELD-R1b\'s states; every layout fixture runs in both directions and every id carries the values- prefix the corpus keys on', () => {
+    // Groups added after the per-feature split run after the legacy groups (fixtures.ts LEGACY_RUN_ORDER).
+    expect(FIXTURE_GROUPS.map((g) => g.id).slice(LEGACY_RUN_ORDER.length - 2, LEGACY_RUN_ORDER.length)).toEqual(['values', 'states']);
+    // TXT1a-2 and T133: every case of the text groups and inline-tags is shaped, so they add no plain vector to the corpus the values- prefix keys.
     const shaped = shapedCaseIds();
-    for (const g of FIXTURE_GROUPS.slice(-3)) for (const f of g.fixtures) for (const id of layoutCaseIds().filter((x) => x === f.id || x === `${f.id}-rtl`)) expect(shaped.has(id), id).toBe(true);
+    for (const g of FIXTURE_GROUPS.filter((x) => x.id === 'text-latin' || x.id === 'text-calibration' || x.id === 'inline-tags')) for (const f of g.fixtures) for (const id of layoutCaseIds().filter((x) => x === f.id || x === `${f.id}-rtl`)) expect(shaped.has(id), id).toBe(true);
     for (const f of VALUES) expect(f.id.startsWith('values-'), f.id).toBe(true);
     for (const f of LAYOUT) expect(f.kind === 'layout' && f.environments, f.id).toEqual(['ltr', 'rtl']);
     expect(LAYOUT.length).toBeGreaterThanOrEqual(25);

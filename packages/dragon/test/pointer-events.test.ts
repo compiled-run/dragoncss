@@ -6,6 +6,9 @@ import type { Diagnostic } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, POINTER_LONGHANDS, PROPERTY_ASPECTS } from '../src/css/properties.ts';
+import { GRID_LONGHANDS } from '../src/css/properties/grid.ts';
+import { RADIUS_LONGHANDS } from '../src/css/properties/radius.ts';
+import { TRANSFORM_LONGHANDS } from '../src/css/properties/transform.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { ACTIVATION_TAGS, hitFacts } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
@@ -20,9 +23,12 @@ function parse(value: string): Diagnostic[] {
 }
 
 describe('pointer-events: registry', () => {
-  it('is the last longhand, inherited, with no layout or paint aspect, and webref\'s grammar', () => {
+  it('follows grid before the paint families, inherited, with no layout or paint aspect, and webref\'s grammar', () => {
     expect([...POINTER_LONGHANDS]).toEqual(['pointer-events']);
-    expect(LONGHANDS[LONGHANDS.length - 1]).toBe('pointer-events');
+    // The paint families (PNT1's radius first, then PNT2's transform after it) register after it.
+    expect(LONGHANDS[LONGHANDS.indexOf('pointer-events') - 1]).toBe(GRID_LONGHANDS[GRID_LONGHANDS.length - 1]);
+    expect(LONGHANDS.indexOf(RADIUS_LONGHANDS[0])).toBe(LONGHANDS.indexOf('pointer-events') + 1);
+    expect(LONGHANDS.indexOf(TRANSFORM_LONGHANDS[0])).toBeGreaterThan(LONGHANDS.indexOf(RADIUS_LONGHANDS[3]));
     expect(INHERITED.has('pointer-events')).toBe(true);
     expect(PROPERTY_ASPECTS['pointer-events']).toEqual({ layout: false, paint: false });
     expect(grammar['pointer-events']?.initial).toBe('auto');
@@ -56,9 +62,12 @@ describe('pointer-events: compile and hit facts', () => {
     }
   });
 
-  it('keeps border-radius refused, so no rounded box reaches the hit table (which also refuses one loudly)', () => {
-    const c = project().compile(inputFor('.a { border-radius: 4px; }', tree));
-    expect(c.diagnostics.map((d) => d.code)).toContain('DRAGON_UNSUPPORTED_PROPERTY');
+  it('compiles border-radius (PNT1) and leaves the hit facts unchanged; the hit lane refuses a rounded case by name (parity hit-report.test)', () => {
+    const plain = project().compile(inputFor('.a { pointer-events: none; }', tree));
+    const c = project().compile(inputFor('.a { pointer-events: none; border-radius: 4px; }', tree));
+    expect(c.diagnostics.map((d) => d.code)).not.toContain('DRAGON_UNSUPPORTED_PROPERTY');
+    expect(c.outputs.web.kind).toBe('ready');
+    expect(hitFacts(c, [])).toEqual(hitFacts(plain, []));
   });
 
   it('carries the computed value, its inheritance and the activation handler', () => {

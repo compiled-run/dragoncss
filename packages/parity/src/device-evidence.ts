@@ -14,7 +14,11 @@ export type DeviceEvidence = { readonly laneCode: string; readonly referenceData
 
 /** The source files whose code decides a device lane verdict. */
 export const EVIDENCE_CODE: readonly string[] = [
+  'packages/parity/src/anim-cases.ts',
+  'packages/parity/src/anim-samples.ts',
   'packages/parity/src/compare.ts',
+  'packages/parity/src/device-ci.ts',
+  'packages/parity/src/cli/device-ci.ts',
   'packages/parity/src/device-evidence.ts',
   'packages/parity/src/device-exec.ts',
   'packages/parity/src/device-jobs.ts',
@@ -22,20 +26,30 @@ export const EVIDENCE_CODE: readonly string[] = [
   'packages/parity/src/device-run.ts',
   'packages/parity/src/device-vectors.ts',
   'packages/parity/src/dpr.ts',
+  'packages/parity/src/frame-capture.ts',
   'packages/parity/src/lanes.ts',
   'packages/parity/src/line-breaks.ts',
   'packages/parity/src/native-compare.ts',
   'packages/parity/src/native-dump.ts',
   'packages/parity/src/native-host.ts',
+  'packages/parity/src/native-shim.ts',
   'packages/parity/src/pixel-reference.ts',
   'packages/parity/src/samples.ts',
   'packages/parity/src/targets.ts',
+  // The HarfBuzz shim both apps link, which hostSources does not hold: its build, its C ABI and the HarfBuzz it compiles.
+  'packages/text-shaper/build.zig',
+  'packages/text-shaper/include',
+  'packages/text-shaper/src/dragon_hb.zig',
+  'packages/text-shaper/src/dragon_hb_jni.zig',
+  'packages/text-shaper/swift/Sources/CDragonHB/module.modulemap',
+  'vendor/harfbuzz/src',
 ];
 
 /** The committed reference data the device lanes are judged against. */
 export const EVIDENCE_DATA: readonly string[] = [
   'packages/parity/expected-dpr',
   'packages/parity/expected-breaks',
+  'packages/parity/expected-frames',
   'packages/parity/expected-pixels',
   'packages/layout/break-vectors',
   'vendor/fonts/Ahem.ttf',

@@ -1,0 +1,146 @@
+{
+ "case": "overflow-end-padding-rtl",
+ "chrome": "145.0.7632.6",
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "direction": "rtl",
+ "scrollbars": "overlay",
+ "scrollbarArgs": "-AppleShowScrollBars WhenScrolling",
+ "records": [
+  {
+   "id": "viewport",
+   "scrollWidth": 400,
+   "scrollHeight": 556,
+   "clientWidth": 400,
+   "clientHeight": 300
+  },
+  {
+   "id": "a1",
+   "scrollWidth": 100,
+   "scrollHeight": 84,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a2",
+   "scrollWidth": 115,
+   "scrollHeight": 103,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a3",
+   "scrollWidth": 70,
+   "scrollHeight": 75,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a4",
+   "scrollWidth": 70,
+   "scrollHeight": 54,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a5",
+   "scrollWidth": 124,
+   "scrollHeight": 54,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a6",
+   "scrollWidth": 70,
+   "scrollHeight": 54,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a7",
+   "scrollWidth": 70,
+   "scrollHeight": 54,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a8",
+   "scrollWidth": 100,
+   "scrollHeight": 73,
+   "clientWidth": 70,
+   "clientHeight": 54
+  },
+  {
+   "id": "a9",
+   "scrollWidth": 70,
+   "scrollHeight": 86,
+   "clientWidth": 70,
+   "clientHeight": 54
+  }
+ ],
+ "extents": [
+  {
+   "id": "a1",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 30.095237731933594
+  },
+  {
+   "id": "a2",
+   "minLeft": -44.9523811340332,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 48.761905670166016
+  },
+  {
+   "id": "a3",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 20.952381134033203
+  },
+  {
+   "id": "a4",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a5",
+   "minLeft": -53.71428680419922,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a6",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a7",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "a8",
+   "minLeft": -29.714284896850586,
+   "maxLeft": 0.380952388048172,
+   "minTop": 0,
+   "maxTop": 19.428571701049805
+  },
+  {
+   "id": "a9",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 32
+  }
+ ]
+}

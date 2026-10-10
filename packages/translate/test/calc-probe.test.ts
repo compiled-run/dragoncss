@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ClassDecl, FuncDecl, UnionDecl } from '../src/ir.ts';
 import { KotlinEmitter } from '../src/emit-kotlin.ts';
 import { stringNames, SwiftEmitter, swiftStringLiteral } from '../src/emit-swift.ts';
@@ -149,17 +149,29 @@ function sh(cmd: string, args: readonly string[], cwd: string): string {
 }
 
 describe('step 0: the recursive CalcExpr union translates (T009, notes/T006-value-model-spec.md §4)', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'dragon-calc-probe-'));
-  const file = join(dir, 'calc-probe.ts');
-  writeFileSync(file, PROBE);
-  const lowerer = new Lowerer(createProgram([file]), { files: [file], hostFile: null, root: dir, collect: true, roots: null });
-  const program = lowerer.lower();
-  const unions = program.decls.filter((d): d is UnionDecl => d.kind === 'union');
-  const classes = program.decls.filter((d): d is ClassDecl => d.kind === 'class');
-  const funcs = program.decls.filter((d): d is FuncDecl => d.kind === 'func');
-  const mainName = (funcs.find((f) => f.name.endsWith('probeMain')) as FuncDecl).name;
+  // Made in beforeAll: `vitest list` runs describe bodies but no hooks, so a folder made here would leak.
+  let dir = '';
+  let file = '';
+  let lowerer: Lowerer;
+  let program: ReturnType<Lowerer['lower']>;
+  let unions: UnionDecl[] = [];
+  let classes: ClassDecl[] = [];
+  let funcs: FuncDecl[] = [];
+  let mainName = '';
   let expected: string[] = [];
+  afterAll(() => {
+    if (dir !== '') rmSync(dir, { recursive: true, force: true });
+  });
   beforeAll(async () => {
+    dir = mkdtempSync(join(tmpdir(), 'dragon-calc-probe-'));
+    file = join(dir, 'calc-probe.ts');
+    writeFileSync(file, PROBE);
+    lowerer = new Lowerer(createProgram([file]), { files: [file], hostFile: null, root: dir, collect: true, roots: null });
+    program = lowerer.lower();
+    unions = program.decls.filter((d): d is UnionDecl => d.kind === 'union');
+    classes = program.decls.filter((d): d is ClassDecl => d.kind === 'class');
+    funcs = program.decls.filter((d): d is FuncDecl => d.kind === 'func');
+    mainName = (funcs.find((f) => f.name.endsWith('probeMain')) as FuncDecl).name;
     const mod = (await import(file)) as { probeMain: () => readonly number[] };
     expected = mod.probeMain().map(bits);
     expect(expected.length).toBe(40);
@@ -214,6 +226,5 @@ describe('step 0: the recursive CalcExpr union translates (T009, notes/T006-valu
     const run = spawnSync(join((tool as { javaHome: string }).javaHome, 'bin/java'), ['-jar', 'probe.jar'], { cwd: out, encoding: 'utf8', env });
     expect(run.status, run.stderr).toBe(0);
     expect(run.stdout.trim().split('\n')).toEqual(expected);
-    rmSync(dir, { recursive: true, force: true });
   }, 600_000);
 });

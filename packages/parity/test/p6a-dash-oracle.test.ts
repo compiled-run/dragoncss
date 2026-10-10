@@ -268,6 +268,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     const w = [...(borders.get(n.id) ?? [0, 0, 0, 0])];
     const colors = co.colors.flatMap((c) => [c.r, c.g, c.b, c.alpha]);
     if (!borderNeedsSidePainter(w, st.styles, colors)) continue;
+    // A rounded box is drawn by PNT1's rounded border painter, never by the side painter this file judges (paint-dash.ts models no
+    // radii); the radius oracle compares those borders.
+    if (writeOf(p, n.id, 'border-radius') !== undefined) continue;
     if (mode.preT116 && !st.styles.some((s, k) => (s === 'dashed' || s === 'dotted') && (w[k] as number) > 0 && co.colors[k]?.alpha !== 0)) continue;
     boxes++;
     const ops = borderPaintOps(b.left, b.top, b.right, b.bottom, w, st.styles, colors, faults);
@@ -311,9 +314,12 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
 
 const withStyle = (ok: (s: string) => boolean): NativeCase[] =>
   nativeCases().filter((nc) => nc.programs.uikit.nodes.some((n) => (n.writes.find((w) => w.kind === 'border-styles') as { styles?: readonly string[] } | undefined)?.styles?.some(ok)));
-const dashed = withStyle((s) => s === 'dashed' || s === 'dotted');
+// PNT2: the reference draws untransformed boxes, so a case with a transform write is left to the transform lanes (pnt2-quads and
+// pnt2-samples on the host, device-pixels on the devices); the test below pins exactly which cases that leaves out.
+const transformed = (nc: NativeCase): boolean => nc.programs.uikit.nodes.some((n) => n.writes.some((w) => w.kind === 'transform'));
+const dashed = withStyle((s) => s === 'dashed' || s === 'dotted').filter((nc) => !transformed(nc));
 // T116: boxes whose visible sides are all solid are drawn by the same reference; every case with a solid side is compared.
-const solid = withStyle((s) => s === 'solid').filter((nc) => !dashed.includes(nc));
+const solid = withStyle((s) => s === 'solid').filter((nc) => !dashed.includes(nc) && !transformed(nc));
 
 describe('the oracle\'s paint order (which boxes hide a border pixel)', () => {
   it('puts positioned boxes and their descendants over in-flow ones, orders each phase by tree order, and puts in-flow text over every in-flow border', () => {
@@ -378,6 +384,11 @@ describe('planted dash faults fail the Chrome comparison', () => {
 });
 
 describe('the solid border reference against Chrome 145 (T116: same-colour sides join with no miter)', () => {
+  it('leaves out only cases of the transforms group, each with a transform write', () => {
+    const out = withStyle((x) => x === 'solid' || x === 'dashed' || x === 'dotted').filter(transformed).map((nc) => nc.case.id);
+    expect(out.length).toBeGreaterThan(0);
+    for (const id of out) expect(id, id).toMatch(/^transform-/);
+  });
   it('covers the border-join fixture and the earlier solid-border cases', () => {
     expect(solid.map((nc) => nc.case.id)).toEqual(expect.arrayContaining(['border-join', 'tree-projected-text#3']));
   });

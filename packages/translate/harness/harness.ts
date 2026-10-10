@@ -19,6 +19,10 @@ import type {
   GapValue,
   InlineBox,
   InlineChild,
+  GridContainerStyle,
+  GridItemStyle,
+  GridSelfAlign,
+  GridSpan,
   InsetValue,
   JustifyContent,
   LayoutBox,
@@ -49,15 +53,20 @@ import type {
   ViewportLength,
   ViewportSize,
   Viewport,
+  TrackBreadth,
+  TrackRepeater,
+  TrackSize,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
 import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
 import { measurerFor } from '../../layout/src/platform.ts';
 import type { GlyphShaper, HanKerningFontData, ShapedItem, ShapeResult, ShapingFaults } from '../../layout/src/shaping.ts';
-import { makeItem, shapeItem, viewSnappedWidth, wholeView } from '../../layout/src/shaping.ts';
+import { GLYPH_STRIDE, latinScopedMeasurer, makeItem, shapeItem, viewSnappedWidth, wholeView } from '../../layout/src/shaping.ts';
 import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from '../../layout/src/text.ts';
 import { fontMetricLengths } from '../../layout/src/text.ts';
 import type { TextFont } from '../../layout/src/input.ts';
+import type { ScrollMetrics } from '../../layout/src/overflow.ts';
+import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
@@ -103,15 +112,31 @@ import {
   zoomViewportPx,
   ZERO,
 } from '../../layout/src/units.ts';
+import type { AnimationEntry, AnimationState, KeyframesRule } from '../../layout/src/rt-animations.ts';
+import { runAnimationScript } from '../../layout/src/rt-animations.ts';
 import type { EasingSpec, RtFaults, StepPosition } from '../../layout/src/rt-easing.ts';
-import { cubicBezier, easingFromSpec, solveBezier } from '../../layout/src/rt-easing.ts';
-import type { AnimatedValue, LegacyColor, LengthValue, TransformFn, TransformOp, Trig } from '../../layout/src/rt-interpolate.ts';
+import { cubicBezier, easingFromSpec, LINEAR, solveBezier } from '../../layout/src/rt-easing.ts';
+import type { TransformOrigin } from '../../layout/src/paint-transform.ts';
+import { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from '../../layout/src/paint-transform.ts';
+import type { AnimatedValue, LegacyColor, LengthValue, Matrix2D, TransformFn, TransformOp, Trig, ValueRange } from '../../layout/src/rt-interpolate.ts';
 import { interpolateValue, serializeValue } from '../../layout/src/rt-interpolate.ts';
-import type { EffectTimingSpec, FillMode, PlaybackDirection } from '../../layout/src/rt-timing.ts';
-import { computeTiming, currentTimeAt, seekPaused } from '../../layout/src/rt-timing.ts';
+import type { RuleKeyframe } from '../../layout/src/rt-keyframes.ts';
+import { groupFromRule, sampleKeyframeEffect } from '../../layout/src/rt-keyframes.ts';
+import type { EffectTimingSpec, FillMode, PlaybackDirection, SecondsTiming } from '../../layout/src/rt-timing.ts';
+import { advanceHeld, computeSecondsTiming, computeTiming, currentTimeAt, HELD_ZERO, seekPaused } from '../../layout/src/rt-timing.ts';
+import type { ScriptStep, TransitionListing, TransitionState } from '../../layout/src/rt-transition.ts';
+import { runTransitionScript } from '../../layout/src/rt-transition.ts';
 import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
+import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
+import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors } from '../../layout/src/rt-animator.ts';
+import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTables } from '../../layout/src/rt-interaction.ts';
+import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, forcePseudo, hoverExitStarted, hoverMatches, interactionCombo, interactionFrame, interactionStart, interactionState, keyboardFocused, keyPressed, layoutChanged, mousePressed, mouseReleased, pointerExited, pointerMoved, remapPointer, touchCancelled, touchPressed, touchReleased } from '../../layout/src/rt-interaction.ts';
+import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
+import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
+import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
+import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
 export class HarnessError extends Error {
@@ -588,7 +613,7 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -603,6 +628,88 @@ function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+const GRID_SELF_ALIGN: readonly string[] = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'];
+
+function trackBreadth(v: JsonValue, path: string): TrackBreadth {
+  const k = kindOf(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'fr') return { kind: 'fr', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  obj(v, ['kind'], path);
+  if (k === 'auto') return { kind: 'auto' };
+  if (k === 'min-content') return { kind: 'min-content' };
+  if (k === 'max-content') return { kind: 'max-content' };
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function trackSize(v: JsonValue, path: string): TrackSize {
+  const k = kindOf(v, path);
+  if (k === 'breadth') return { kind: 'breadth', breadth: trackBreadth(field(obj(v, ['kind', 'breadth'], path), 'breadth', path), `${path}.breadth`) };
+  if (k === 'minmax') {
+    const o = obj(v, ['kind', 'min', 'max'], path);
+    return { kind: 'minmax', min: trackBreadth(field(o, 'min', path), `${path}.min`), max: trackBreadth(field(o, 'max', path), `${path}.max`) };
+  }
+  if (k === 'fit-content') {
+    const limit = field(obj(v, ['kind', 'limit'], path), 'limit', path);
+    const lk = kindOf(limit, `${path}.limit`);
+    const value = numField(obj(limit, ['kind', 'value'], `${path}.limit`), 'value', `${path}.limit`);
+    if (lk === 'px') return { kind: 'fit-content', limit: { kind: 'px', value } };
+    if (lk === 'percent') return { kind: 'fit-content', limit: { kind: 'percent', value } };
+    return fail(`${path}.limit: unknown kind ${lk}`);
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function trackSizes(v: JsonValue, path: string): TrackSize[] {
+  return arr(v, path).map((t, i) => trackSize(t, `${path}[${i}]`));
+}
+
+function repeaters(v: JsonValue, path: string): TrackRepeater[] {
+  return arr(v, path).map((r, i): TrackRepeater => {
+    const at = `${path}[${i}]`;
+    const o = obj(r, ['count', 'sizes'], at);
+    return { count: numField(o, 'count', at), sizes: trackSizes(field(o, 'sizes', at), `${at}.sizes`) };
+  });
+}
+
+function gridSpan(v: JsonValue, path: string): GridSpan {
+  const k = kindOf(v, path);
+  if (k === 'definite') {
+    const o = obj(v, ['kind', 'start', 'end'], path);
+    return { kind: 'definite', start: numField(o, 'start', path), end: numField(o, 'end', path) };
+  }
+  if (k === 'auto') return { kind: 'auto', span: numField(obj(v, ['kind', 'span'], path), 'span', path) };
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function decodeGrid(v: JsonValue, path: string): GridContainerStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['templateColumns', 'templateRows', 'autoColumns', 'autoRows', 'explicitColumnCount', 'explicitRowCount', 'autoFlow', 'dense', 'justifyItems'], path);
+  const f = (k: string): JsonValue => field(o, k, path);
+  return {
+    templateColumns: repeaters(f('templateColumns'), `${path}.templateColumns`),
+    templateRows: repeaters(f('templateRows'), `${path}.templateRows`),
+    autoColumns: trackSizes(f('autoColumns'), `${path}.autoColumns`),
+    autoRows: trackSizes(f('autoRows'), `${path}.autoRows`),
+    explicitColumnCount: num(f('explicitColumnCount'), `${path}.explicitColumnCount`),
+    explicitRowCount: num(f('explicitRowCount'), `${path}.explicitRowCount`),
+    autoFlow: lit(f('autoFlow'), ['row', 'column'], `${path}.autoFlow`) === 'column' ? 'column' : 'row',
+    dense: bool(f('dense'), `${path}.dense`),
+    justifyItems: lit(f('justifyItems'), GRID_SELF_ALIGN, `${path}.justifyItems`) as GridSelfAlign,
+  };
+}
+
+function decodeGridItem(v: JsonValue, path: string): GridItemStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['column', 'row', 'justifySelf'], path);
+  const self = str(field(o, 'justifySelf', path), `${path}.justifySelf`);
+  return {
+    column: gridSpan(field(o, 'column', path), `${path}.column`),
+    row: gridSpan(field(o, 'row', path), `${path}.row`),
+    justifySelf: self === 'auto' ? 'auto' : (lit(field(o, 'justifySelf', path), GRID_SELF_ALIGN, `${path}.justifySelf`) as GridSelfAlign),
+  };
+}
+
 const ALIGN_ITEMS: readonly string[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];
 
 function decodeStyle(v: JsonValue, path: string): LayoutStyle {
@@ -610,14 +717,14 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const f = (k: string): JsonValue => field(o, k, path);
   const p = (k: string): string => `${path}.${k}`;
   return {
-    display: lit(f('display'), ['block', 'flex', 'inline'], p('display')) as Display,
+    display: lit(f('display'), ['block', 'flex', 'grid', 'inline'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
     bottom: sizeValue(f('bottom'), p('bottom')) as InsetValue,
     left: sizeValue(f('left'), p('left')) as InsetValue,
-    overflowX: lit(f('overflowX'), ['visible', 'hidden'], p('overflowX')) as Overflow,
-    overflowY: lit(f('overflowY'), ['visible', 'hidden'], p('overflowY')) as Overflow,
+    overflowX: lit(f('overflowX'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowX')) as Overflow,
+    overflowY: lit(f('overflowY'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowY')) as Overflow,
     direction: lit(f('direction'), ['ltr', 'rtl'], p('direction')) as Direction,
     boxSizing: lit(f('boxSizing'), ['content-box', 'border-box'], p('boxSizing')) as BoxSizing,
     width: sizeValue(f('width'), p('width')),
@@ -653,6 +760,8 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
     verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
+    grid: decodeGrid(f('grid'), p('grid')),
+    gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
 }
 
@@ -800,7 +909,7 @@ const FAULT_KEYS: readonly string[] = [
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
   'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
   'metricRoundingSwapped', 'latinCheckSkipped',
-  'orderHalfEven', 'orderUnclamped',
+  'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -856,6 +965,8 @@ function decodeFaults(v: JsonValue): EngineFaults {
     latinCheckSkipped: b('latinCheckSkipped'),
     orderHalfEven: b('orderHalfEven'),
     orderUnclamped: b('orderUnclamped'),
+    gutterReserved: b('gutterReserved'),
+    overflowIgnoresPadding: b('overflowIgnoresPadding'),
   };
 }
 
@@ -932,6 +1043,7 @@ function decodeShaping(v: JsonValue, path: string): Shaping {
     const at = `${path}.faces[${i}]`;
     const fo = obj(f, ['id', 'data', 'hanKerning'], at);
     const id = str(field(fo, 'id', at), `${at}.id`);
+    if (faces.has(id)) fail(`${at}.id: face ${id} is listed twice`);
     faces.set(id, { data: fontData(field(fo, 'data', at), `${at}.data`), hanKerning: hanKerning(field(fo, 'hanKerning', at), `${at}.hanKerning`) });
   });
   const calls: ReplayCall[] = [];
@@ -940,9 +1052,13 @@ function decodeShaping(v: JsonValue, path: string): Shaping {
     const a = arr(c, at);
     if (a.length !== 10) fail(`${at}: expected 10 fields, got ${a.length}`);
     const item = (k: number): JsonValue => a[k] as JsonValue;
+    const features = numbers(item(8), `${at}[8]`);
+    const glyphs = numbers(item(9), `${at}[9]`);
+    // A call's features must equal the engine's request exactly (replayShaper), so only the glyphs it returns need checking.
+    if (!Number.isInteger(glyphs.length / GLYPH_STRIDE)) fail(`${at}[9]: ${glyphs.length} integers are not whole glyph records of ${GLYPH_STRIDE}`);
     calls.push({
       face: str(item(0), `${at}[0]`), size: num(item(1), `${at}[1]`), text: str(item(2), `${at}[2]`), start: num(item(3), `${at}[3]`), end: num(item(4), `${at}[4]`),
-      script: str(item(5), `${at}[5]`), rtl: bool(item(6), `${at}[6]`), language: str(item(7), `${at}[7]`), features: numbers(item(8), `${at}[8]`), glyphs: numbers(item(9), `${at}[9]`),
+      script: str(item(5), `${at}[5]`), rtl: bool(item(6), `${at}[6]`), language: str(item(7), `${at}[7]`), features, glyphs,
     });
   });
   return { language: str(field(o, 'language', path), `${path}.language`), faces, calls };
@@ -969,7 +1085,8 @@ function replayShaper(calls: readonly ReplayCall[]): GlyphShaper {
 /**
  * The shaped measurer of a transcript from the engine's shaping primitives (shaping.ts makeItem, shapeItem and the view widths the
  * line breaker reads), as layout/src/shaping.ts shapedText composes them: the translated engine's roots do not reach shapedText,
- * and a host builds its measurer this way. text-latin.test.ts proves its layouts equal the vectors' outputs.
+ * and a host builds its measurer this way. runEngineCase scopes it to R4 as shapedMeasurerFor does; text-latin-engine.test.ts
+ * proves its layouts equal the Node host's.
  */
 function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
   const shaper = replayShaper(s.calls);
@@ -984,11 +1101,11 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
   };
   const itemFor = (text: string, font: TextFont): ShapedItem => {
     const f = s.faces.get(font.family);
-    if (f === undefined) return { ok: false, reason: `no bundled face ${font.family}` };
+    if (f === undefined) return { ok: false, code: 'text-glyph', reason: `no bundled face ${font.family}` };
     const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, faults: sf });
-    if (!made.ok) return { ok: false, reason: made.reason };
+    if (!made.ok) return { ok: false, code: 'text-glyph', reason: made.reason };
     const result = shapeItem(made.item);
-    if (result.missing >= 0) return { ok: false, reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` };
+    if (result.missing >= 0) return { ok: false, code: 'text-glyph', reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` };
     return { ok: true, item: made.item, result };
   };
   /** A code point index as the UTF-16 offset of the item. */
@@ -1014,12 +1131,12 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
     },
     measure(text: string, font: TextFont): MeasureResult {
       const r = itemFor(text, font);
-      if (!r.ok) return { ok: false, reason: r.reason };
+      if (!r.ok) return { ok: false, code: r.code, reason: r.reason };
       return { ok: true, measure: { width: viewSnappedWidth(r.item, wholeView(r.result)) } };
     },
     measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
       const r = itemFor(text, font);
-      if (!r.ok) return { ok: false, reason: r.reason };
+      if (!r.ok) return { ok: false, code: r.code, reason: r.reason };
       return { ok: true, measure: { width: sub(position(r.result, offsetOf(r.item.units, end)), position(r.result, offsetOf(r.item.units, start))) } };
     },
     lengths(font: TextFont): FontLengths {
@@ -1028,22 +1145,69 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
     shaped(text: string, font: TextFont): ShapedItem {
       return itemFor(text, font);
     },
+    hasFace(family: string): boolean {
+      return s.faces.has(family);
+    },
   };
+}
+
+/** A scroll metrics record: the id, the client size and the scroll rect (overflow.ts). */
+function scrollRecord(s: ScrollMetrics): string {
+  return `[${q(s.id)},${h(s.clientWidth)},${h(s.clientHeight)},${h(s.scrollRect.x)},${h(s.scrollRect.y)},${h(s.scrollRect.width)},${h(s.scrollRect.height)}]`;
+}
+
+/**
+ * A line with a viewportDirection key (the engine-overflow suite) also runs scrollMetrics and appends its result; every other line
+ * keeps its output byte for byte.
+ */
+function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: string, faults: EngineFaults): string {
+  const r = scrollMetricsWithFaults(input, measurer, direction === 'rtl' ? 'rtl' : 'ltr', faults);
+  if (r.kind === 'refused') return `,["refused",${q(r.nodeId)},${q(r.detail)}]`;
+  let out = `,["ok",${scrollRecord(r.viewport)},[`;
+  r.containers.forEach((c, i) => {
+    if (i > 0) out += ',';
+    out += scrollRecord(c);
+  });
+  return `${out}]]`;
+}
+
+/**
+ * The first shaping plant set in faults, or ''. The shaping plants act only through a shaped measurer (platform.ts
+ * shapedMeasurerFor, or replayMeasurer here), so a case without a shape transcript, which measurerFor's Ahem measurer lays out,
+ * refuses them rather than run them inert.
+ */
+function shapingPlantOf(f: EngineFaults): string {
+  if (f.advanceNot16_16) return 'advanceNot16_16';
+  if (f.doubleAccumulation) return 'doubleAccumulation';
+  if (f.noReshapeAtBreak) return 'noReshapeAtBreak';
+  if (f.kerningDropped) return 'kerningDropped';
+  if (f.wholePixelPositions) return 'wholePixelPositions';
+  if (f.softHyphenWidthMissing) return 'softHyphenWidthMissing';
+  if (f.metricRoundingSwapped) return 'metricRoundingSwapped';
+  if (f.latinCheckSkipped) return 'latinCheckSkipped';
+  return '';
 }
 
 /** One engine case: {platform, faults, input} in, the layout (and its absolute rects) out; with shaping, a replayed HarfBuzz measures. */
 export function runEngineCase(line: string): string {
   try {
-    const v = parseJson(line);
-    const shaped = v.kind === 'obj' && v.values.has('shaping');
-    const o = obj(v, shaped ? ['platform', 'faults', 'input', 'shaping'] : ['platform', 'faults', 'input'], '$');
+    const parsed = parseJson(line);
+    const shaped = parsed.kind === 'obj' && parsed.values.has('shaping');
+    const scroll = parsed.kind === 'obj' && parsed.values.has('viewportDirection');
+    const keys: string[] = ['platform', 'faults', 'input'];
+    if (shaped) keys.push('shaping');
+    if (scroll) keys.push('viewportDirection');
+    const o = obj(parsed, keys, '$');
+    const direction = scroll ? lit(field(o, 'viewportDirection', '$'), ['ltr', 'rtl'], '$.viewportDirection') : 'ltr';
     const platform = str(field(o, 'platform', '$'), '$.platform');
     const faults = decodeFaults(field(o, 'faults', '$'));
+    const plant = shapingPlantOf(faults);
+    if (plant !== '' && !shaped) fail(`$.faults.${plant} is a shaping plant, which acts only through the shaped measurer; the harness has only measurerFor's Ahem measurer`);
     const input = decodeInput(field(o, 'input', '$'));
     let m = measurerFor(platform);
     if (shaped && m.kind === 'ok') {
       const s = decodeShaping(field(o, 'shaping', '$'), '$.shaping');
-      m = { kind: 'ok', platform, key: `shaped/${platform}`, measurer: replayMeasurer(s, faults), rules: m.rules };
+      m = { kind: 'ok', platform, key: `shaped/${platform}`, measurer: latinScopedMeasurer(replayMeasurer(s, faults), faults.latinCheckSkipped), rules: m.rules };
     }
     if (m.kind !== 'ok') return `["refused",${q(m.code)}]`;
     const r = layoutWithFaults(input, m.measurer, faults);
@@ -1063,7 +1227,7 @@ export function runEngineCase(line: string): string {
       first = false;
       out += `[${q(id)},${h(rect.x)},${h(rect.y)},${h(rect.width)},${h(rect.height)}]`;
     }
-    return `${out}]]`;
+    return `${out}]${scroll ? scrollSuffix(input, m.measurer, direction, faults) : ''}]`;
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -1155,6 +1319,42 @@ function unitsResult(name: string, a: readonly JsonValue[]): number {
 
 // ---------------------------------------------------------------- paint suites (EMS)
 
+/** count doubles from argument i on. */
+function argList(a: readonly JsonValue[], i: number, count: number): number[] {
+  const out: number[] = [];
+  for (let k = 0; k < count; k++) out.push(arg(a, i + k));
+  return out;
+}
+
+/** A result list of doubles as bits. */
+function numList(xs: readonly number[]): string {
+  let out = '["ok",[';
+  for (let k = 0; k < xs.length; k++) {
+    if (k > 0) out += ',';
+    out += h(xs[k] as number);
+  }
+  return `${out}]]`;
+}
+
+/** One radius length from arguments i (percent flag, 0 or 1) and i + 1 (value). */
+function radiusLength(a: readonly JsonValue[], i: number): RadiusLength {
+  const flag = arg(a, i);
+  if (flag !== 0 && flag !== 1) return fail(`radius length flag ${flag} is not 0 or 1`);
+  return { percent: flag === 1, value: arg(a, i + 1) };
+}
+
+/** Eight radius lengths from argument i on. */
+function radiusLengths(a: readonly JsonValue[], i: number): RadiusLength[] {
+  const out: RadiusLength[] = [];
+  for (let k = 0; k < 8; k++) out.push(radiusLength(a, i + 2 * k));
+  return out;
+}
+
+/** The radius faults from arguments i (radiusUnclamped) and i + 1 (innerRadiusNotReduced), each 0 or 1. */
+function radiusFaults(a: readonly JsonValue[], i: number): RadiusFaults {
+  return { radiusUnclamped: arg(a, i) !== 0, innerRadiusNotReduced: arg(a, i + 1) !== 0 };
+}
+
 /**
  * One paint case, run through the units mode: ["paint:<feature>:<function>", arg...] in, the whole result line out; null for any
  * other name. Registration point (RT-13 style): each paint package adds one case per root; its vectors are
@@ -1168,6 +1368,29 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const faults: DashFaults = { phase1: flagAt(a, 8), gapUnfitted: flagAt(a, 9) };
     return `["ok",[${commaList(borderPaintOps(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), bitsList(a, 5), strList(a, 6), bitsList(a, 7), faults).map(borderOpJson))}]]`;
   }
+  // PNT2: paint-transform.ts.
+  if (name === 'paint:transform:resolveTransformOrigin') {
+    const o = resolveTransformOrigin(decodeOrigin(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
+    return `["ok",[${h(o.x)},${h(o.y)}]]`;
+  }
+  if (name === 'paint:transform:transformFunctionsMatrix') return `["ok",${matrixJson(transformFunctionsMatrix(decodeOps(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3), tableTrig(item(a, 4, '$'), '$[4]')))}]`;
+  if (name === 'paint:transform:paintTransformMatrix') {
+    return `["ok",${matrixJson(paintTransformMatrix(decodeOps(item(a, 1, '$'), '$[1]'), decodeOrigin(item(a, 2, '$'), '$[2]'), arg(a, 3), arg(a, 4), tableTrig(item(a, 5, '$'), '$[5]')))}]`;
+  }
+  if (name === 'paint:transform:transformAboutPoint') return `["ok",${matrixJson(transformAboutPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3)))}]`;
+  if (name === 'paint:transform:mapPoint') {
+    const p = mapPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
+    return `["ok",[${h(p.x)},${h(p.y)}]]`;
+  }
+  if (name === 'paint:radius:radiusComponent') return `["ok",${h(radiusComponent(radiusLength(a, 1), arg(a, 3), arg(a, 4)))}]`;
+  if (name === 'paint:radius:resolveCornerRadii') return numList(resolveCornerRadii(radiusLengths(a, 1), arg(a, 17), arg(a, 18), arg(a, 19)));
+  if (name === 'paint:radius:constrainCornerRadii') return numList(constrainCornerRadii(argList(a, 1, 8), arg(a, 9), arg(a, 10), radiusFaults(a, 11)));
+  if (name === 'paint:radius:radiiRenderable') return `["ok",${radiiRenderable(argList(a, 1, 8), arg(a, 9), arg(a, 10)) ? 'true' : 'false'}]`;
+  if (name === 'paint:radius:innerCornerRadii') return numList(innerCornerRadii(argList(a, 1, 8), argList(a, 9, 4), arg(a, 13), arg(a, 14), radiusFaults(a, 15)));
+  if (name === 'paint:radius:roundedShape') return numList(roundedShape(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), argList(a, 7, 4), radiusLengths(a, 11), arg(a, 27), radiusFaults(a, 28)));
+  if (name === 'paint:radius:hasRoundedCorner') return `["ok",${hasRoundedCorner(argList(a, 1, 8)) ? 'true' : 'false'}]`;
+  const gradient = gradientResult(name, a);
+  if (gradient !== null) return gradient;
   return null;
 }
 
@@ -1195,6 +1418,200 @@ function commaList(parts: readonly string[]): string {
   for (const x of parts) out = out === '' ? x : `${out},${x}`;
   return out;
 }
+
+// PNT2 decoders: a length is [kind, px bits, percent bits]; an op [fn, x, y, angle bits, sx bits, sy bits]; a matrix [full, a..f bits];
+// the trig table [[radians bits, sin bits, cos bits], ...] stands in for the platform's sin and cos, so every target reads the same values.
+function decodeLength(v: JsonValue, path: string): LengthValue {
+  const t = arr(v, path);
+  if (t.length !== 3) return fail(`${path}: expected [kind, px, percent]`);
+  const kind = lit(item(t, 0, path), ['px', 'percent', 'calc'], `${path}[0]`) as LengthValue['kind'];
+  return { kind, px: hexBits(str(item(t, 1, path), `${path}[1]`)), percent: hexBits(str(item(t, 2, path), `${path}[2]`)) };
+}
+
+function decodeOrigin(v: JsonValue, path: string): TransformOrigin {
+  const t = arr(v, path);
+  if (t.length !== 2) return fail(`${path}: expected [x, y]`);
+  return { x: decodeLength(item(t, 0, path), `${path}[0]`), y: decodeLength(item(t, 1, path), `${path}[1]`) };
+}
+
+function decodeOps(v: JsonValue, path: string): TransformOp[] {
+  const out: TransformOp[] = [];
+  arr(v, path).forEach((o, i) => {
+    const at = `${path}[${i}]`;
+    const t = arr(o, at);
+    if (t.length !== 6) fail(`${at}: expected [fn, x, y, angle, sx, sy]`);
+    const fn = lit(item(t, 0, at), ['translate', 'translateX', 'translateY', 'rotate', 'scale', 'scaleX', 'scaleY'], `${at}[0]`) as TransformFn;
+    out.push({ fn, x: decodeLength(item(t, 1, at), `${at}[1]`), y: decodeLength(item(t, 2, at), `${at}[2]`), angle: hexBits(str(item(t, 3, at), at)), sx: hexBits(str(item(t, 4, at), at)), sy: hexBits(str(item(t, 5, at), at)) });
+  });
+  return out;
+}
+
+function decodeMatrix(v: JsonValue, path: string): Matrix2D {
+  const t = arr(v, path);
+  if (t.length !== 7) return fail(`${path}: expected [full, a, b, c, d, e, f]`);
+  const n = (i: number): number => hexBits(str(item(t, i, path), `${path}[${i}]`));
+  return { full: bool(item(t, 0, path), `${path}[0]`), a: n(1), b: n(2), c: n(3), d: n(4), e: n(5), f: n(6) };
+}
+
+type TrigEntry = { readonly radians: number; readonly sin: number; readonly cos: number };
+
+function tableTrig(v: JsonValue, path: string): Trig {
+  const table: TrigEntry[] = [];
+  arr(v, path).forEach((e, i) => {
+    const at = `${path}[${i}]`;
+    const t = arr(e, at);
+    if (t.length !== 3) fail(`${at}: expected [radians, sin, cos]`);
+    table.push({ radians: hexBits(str(item(t, 0, at), at)), sin: hexBits(str(item(t, 1, at), at)), cos: hexBits(str(item(t, 2, at), at)) });
+  });
+  const find = (r: number): TrigEntry => {
+    for (const e of table) if (e.radians === r) return e;
+    return fail(`the trig table has no entry for ${bitsHex(r)}`);
+  };
+  return { sin: (r: number): number => find(r).sin, cos: (r: number): number => find(r).cos };
+}
+
+function matrixJson(m: Matrix2D): string {
+  return `[${m.full ? 'true' : 'false'},${h(m.a)},${h(m.b)},${h(m.c)},${h(m.d)},${h(m.e)},${h(m.f)}]`;
+}
+
+// ---------------------------------------------------------------- paint suite: gradient (BG2)
+
+function gradLength(v: JsonValue, path: string): LengthPct {
+  const o = obj(v, ['unit', 'value'], path);
+  return { unit: lit(field(o, 'unit', path), ['percent', 'px', 'end-percent', 'end-px'], `${path}.unit`) as LengthPct['unit'], value: numField(o, 'value', path) };
+}
+
+function gradColor(v: JsonValue, path: string): StopColor {
+  const o = obj(v, ['r', 'g', 'b', 'alpha'], path);
+  return { r: numField(o, 'r', path), g: numField(o, 'g', path), b: numField(o, 'b', path), alpha: numField(o, 'alpha', path) };
+}
+
+function gradStop(v: JsonValue, path: string): CssStop {
+  const o = obj(v, ['color', 'unit', 'value'], path);
+  return { color: gradColor(field(o, 'color', path), `${path}.color`), unit: lit(field(o, 'unit', path), ['auto', 'percent', 'px'], `${path}.unit`) as 'auto' | 'percent' | 'px', value: numField(o, 'value', path) };
+}
+
+const GRADIENT_KEYS: readonly string[] = ['radial', 'repeating', 'direction', 'angleDeg', 'slope', 'sideX', 'sideY', 'circle', 'extent', 'radiusX', 'radiusY', 'centerX', 'centerY', 'stops'];
+
+function gradImage(v: JsonValue, path: string): GradientImage {
+  const o = obj(v, GRADIENT_KEYS, path);
+  const stops: CssStop[] = [];
+  arr(field(o, 'stops', path), `${path}.stops`).forEach((s, i) => {
+    stops.push(gradStop(s, `${path}.stops[${i}]`));
+  });
+  if (stops.length < 2) fail(`${path}.stops: a gradient has at least two stops`);
+  return {
+    radial: bool(field(o, 'radial', path), `${path}.radial`),
+    repeating: bool(field(o, 'repeating', path), `${path}.repeating`),
+    direction: lit(field(o, 'direction', path), ['default', 'angle', 'side'], `${path}.direction`) as 'default' | 'angle' | 'side',
+    angleDeg: numField(o, 'angleDeg', path),
+    slope: numField(o, 'slope', path),
+    sideX: lit(field(o, 'sideX', path), ['none', 'left', 'right'], `${path}.sideX`) as 'none' | 'left' | 'right',
+    sideY: lit(field(o, 'sideY', path), ['none', 'top', 'bottom'], `${path}.sideY`) as 'none' | 'top' | 'bottom',
+    circle: bool(field(o, 'circle', path), `${path}.circle`),
+    extent: lit(field(o, 'extent', path), ['closest-side', 'closest-corner', 'farthest-side', 'farthest-corner', 'explicit'], `${path}.extent`) as 'closest-side' | 'closest-corner' | 'farthest-side' | 'farthest-corner' | 'explicit',
+    radiusX: gradLength(field(o, 'radiusX', path), `${path}.radiusX`),
+    radiusY: gradLength(field(o, 'radiusY', path), `${path}.radiusY`),
+    centerX: gradLength(field(o, 'centerX', path), `${path}.centerX`),
+    centerY: gradLength(field(o, 'centerY', path), `${path}.centerY`),
+    stops,
+  };
+}
+
+function gradSize(v: JsonValue, path: string): SizeComponent {
+  const o = obj(v, ['unit', 'value'], path);
+  return { unit: lit(field(o, 'unit', path), ['auto', 'percent', 'px'], `${path}.unit`) as 'auto' | 'percent' | 'px', value: numField(o, 'value', path) };
+}
+
+const BOXES: readonly string[] = ['border-box', 'padding-box', 'content-box'];
+
+function gradGeometry(v: JsonValue, path: string): LayerGeometry {
+  const o = obj(v, ['sizeKind', 'sizeX', 'sizeY', 'positionX', 'positionY', 'repeatX', 'repeatY', 'origin', 'clip'], path);
+  return {
+    sizeKind: lit(field(o, 'sizeKind', path), ['length', 'cover', 'contain'], `${path}.sizeKind`) as 'length' | 'cover' | 'contain',
+    sizeX: gradSize(field(o, 'sizeX', path), `${path}.sizeX`),
+    sizeY: gradSize(field(o, 'sizeY', path), `${path}.sizeY`),
+    positionX: gradLength(field(o, 'positionX', path), `${path}.positionX`),
+    positionY: gradLength(field(o, 'positionY', path), `${path}.positionY`),
+    repeatX: lit(field(o, 'repeatX', path), ['repeat', 'no-repeat'], `${path}.repeatX`) as RepeatKeyword,
+    repeatY: lit(field(o, 'repeatY', path), ['repeat', 'no-repeat'], `${path}.repeatY`) as RepeatKeyword,
+    origin: lit(field(o, 'origin', path), BOXES, `${path}.origin`) as BoxKeyword,
+    clip: lit(field(o, 'clip', path), BOXES, `${path}.clip`) as BoxKeyword,
+  };
+}
+
+function gradNumbers(v: JsonValue, n: number, path: string): number[] {
+  const out: number[] = [];
+  const items = arr(v, path);
+  if (items.length !== n) fail(`${path}: expected ${n} numbers`);
+  items.forEach((x, i) => {
+    out.push(num(x, `${path}[${i}]`));
+  });
+  return out;
+}
+
+function gradPaint(v: JsonValue, path: string): BackgroundPaint {
+  const o = obj(v, ['box', 'color', 'colorClip', 'layers', 'lastIsBottom', 'zoom', 'tileSize', 'layerX', 'layerY'], path);
+  const b = obj(field(o, 'box', path), ['x', 'y', 'width', 'height', 'borders', 'padding', 'obscures'], `${path}.box`);
+  const obscures: boolean[] = [];
+  arr(field(b, 'obscures', path), `${path}.box.obscures`).forEach((x, i) => {
+    obscures.push(bool(x, `${path}.box.obscures[${i}]`));
+  });
+  if (obscures.length !== 4) fail(`${path}.box.obscures: expected 4 flags`);
+  const layers: BackgroundLayer[] = [];
+  arr(field(o, 'layers', path), `${path}.layers`).forEach((l, i) => {
+    const lo = obj(l, ['geometry', 'image'], `${path}.layers[${i}]`);
+    layers.push({ geometry: gradGeometry(field(lo, 'geometry', path), `${path}.layers[${i}].geometry`), image: gradImage(field(lo, 'image', path), `${path}.layers[${i}].image`) });
+  });
+  return {
+    box: { x: numField(b, 'x', path), y: numField(b, 'y', path), width: numField(b, 'width', path), height: numField(b, 'height', path), borders: gradNumbers(field(b, 'borders', path), 4, `${path}.box.borders`), padding: gradNumbers(field(b, 'padding', path), 4, `${path}.box.padding`), obscures },
+    color: gradColor(field(o, 'color', path), `${path}.color`),
+    colorClip: lit(field(o, 'colorClip', path), BOXES, `${path}.colorClip`) as BoxKeyword,
+    layers,
+    lastIsBottom: bool(field(o, 'lastIsBottom', path), `${path}.lastIsBottom`),
+    zoom: numField(o, 'zoom', path),
+    tileSize: numField(o, 'tileSize', path),
+    layerX: numField(o, 'layerX', path),
+    layerY: numField(o, 'layerY', path),
+  };
+}
+
+/** The gradient suite: the exact arithmetic, Blink's gradient descriptor, and whole background rows; null for other names. */
+function gradientResult(name: string, a: readonly JsonValue[]): string | null {
+  switch (name) {
+    case 'paint:gradient:sqrtF64':
+      return `["ok",${h(sqrtF64(arg(a, 1)))}]`;
+    case 'paint:gradient:hypotF32':
+      return `["ok",${h(hypotF32(arg(a, 1), arg(a, 2)))}]`;
+    case 'paint:gradient:fma64':
+      return `["ok",${h(fma64(arg(a, 1), arg(a, 2), arg(a, 3)))}]`;
+    case 'paint:gradient:gradientDesc': {
+      const d = gradientDesc(gradImage(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3), arg(a, 4));
+      let out = `["ok",${d.modelled ? 'true' : 'false'},${h(d.p0x)},${h(d.p0y)},${h(d.p1x)},${h(d.p1y)},${h(d.r0)},${h(d.r1)},${h(d.aspect)},[`;
+      for (let i = 0; i < d.offsets.length; i++) {
+        const c = d.colors[i];
+        if (c === undefined) return fail('a stop without a colour');
+        out += `${i > 0 ? ',' : ''}[${h(d.offsets[i] as number)},${h(c.r)},${h(c.g)},${h(c.b)},${h(c.a)}]`;
+      }
+      return `${out}]]`;
+    }
+    case 'paint:gradient:backgroundRow': {
+      // The whole row, every value as two hex digits, so native runs are compared byte for byte.
+      const plan = planBackground(gradPaint(item(a, 1, '$'), '$[1]'), gradientFaults('none'));
+      const row = backgroundRow(plan, arg(a, 2), gradientFaults('none'));
+      let bytes = '';
+      for (let i = 0; i < row.length; i++) {
+        const x = row[i] as number;
+        if (!(x >= 0 && x <= 255 && Math.floor(x) === x)) return fail(`row value ${i} is not a byte`);
+        bytes += `${x < 16 ? '0' : ''}${x.toString(16)}`;
+      }
+      return `["ok",${plan.modelled ? 'true' : 'false'},${h(plan.left)},${h(plan.right)},${h(row.length)},${q(bytes)}]`;
+    }
+    default:
+      return null;
+  }
+}
+
 
 /** One units case: ["name", arg bits...] in, the result bits out. */
 export function runUnitsCase(line: string): string {
@@ -1339,9 +1756,24 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
       return rtTimingResult(rtOneIteration(rtEasing(item(a, 1, '$'), '$[1]')), rtFinite(a, 2, '$'), 0);
     case 'rt-interp':
       return rtInterpResult(a);
+    // ANIM-b (T065): held-time steps, keyframe samples, transition scripts and animation scripts.
+    case 'rt-advance':
+      return rtAdvanceResult(a);
+    case 'rt-keyframes':
+      return rtKeyframesResult(a);
+    case 'rt-transitions':
+      return rtTransitionsResult(a);
+    case 'rt-animations':
+      return rtAnimationsResult(a);
     // hit suite (SELD-R1b, T047 RT-9): the hit table, derived grid and answers of a layout vector's input.
     case 'rt-hit':
       return rtHitResult(a);
+    // animator suite (ANIM-b1 3b, T065 R16): the runtime animator over a frame case's tables and script.
+    case 'rt-animator':
+      return rtAnimatorResult(a);
+    // interaction suite (SELD-R2, T064 R12): the interaction runtime over synthetic tables and an event script.
+    case 'rt-interaction':
+      return rtInteractionResult(a);
     default:
       return fail(`unknown operation ${op}`);
   }
@@ -1376,6 +1808,13 @@ const RT_NO_FAULTS: RtFaults = {
   rotateViaMatrix: false,
   colorUnpremultiplied: false,
   holdTimeLost: false,
+  heldTimeShortcut: false,
+  noReversalShortening: false,
+  perKeyframeEasingIgnored: false,
+  nameChangeKeepsAnimation: false,
+  pauseLosesPhase: false,
+  pauseClockRuns: false,
+  nonNegativeUnclamped: false,
 };
 
 /**
@@ -1595,6 +2034,150 @@ function rtInterpResult(a: readonly JsonValue[]): string {
   return `[${rtBits(t.progress)},${q(v.refused ? 'refused' : serializeValue(v.value, rtFinite(a, 6, '$'), rtFinite(a, 7, '$'), RT_TRIG))}]`;
 }
 
+// ---------------------------------------------------------------- rt suite, ANIM-b (T065)
+
+function rtRange(v: JsonValue, path: string): ValueRange {
+  return lit(v, ['all', 'non-negative'], path) === 'all' ? 'all' : 'non-negative';
+}
+
+/** A seconds timing [delay, duration, iterations, direction, fill, easing], numbers as bits. */
+function rtSeconds(v: JsonValue, path: string): SecondsTiming {
+  const a = arr(v, path);
+  if (a.length !== 6) return fail(`${path}: expected [delay, duration, iterations, direction, fill, easing]`);
+  return { delay: rtFinite(a, 0, path), duration: rtFinite(a, 1, path), iterations: rtIterations(a, 2, path), direction: rtDirection(item(a, 3, path), `${path}[3]`), fill: rtFill(item(a, 4, path), `${path}[4]`), easing: easingFromSpec(rtEasing(item(a, 5, path), `${path}[5]`)) };
+}
+
+/** The value a block that does not set the property carries; groupFromRule never reads it. */
+const RT_UNSET: AnimatedValue = { kind: 'opacity', number: 0, length: { kind: 'px', px: 0, percent: 0 }, color: { r: 0, g: 0, b: 0, alpha: 0 }, ops: [] };
+
+/** An @keyframes rule's blocks [[offset, easing or null, value or null], ...]. */
+function rtRule(v: JsonValue, path: string): RuleKeyframe[] {
+  const out: RuleKeyframe[] = [];
+  arr(v, path).forEach((b, i) => {
+    const p = `${path}[${i}]`;
+    const k = arr(b, p);
+    if (k.length !== 3) fail(`${p}: expected [offset, easing, value]`);
+    const e = item(k, 1, p);
+    const value = item(k, 2, p);
+    out.push({ offset: rtFinite(k, 0, p), hasEasing: e.kind !== 'null', easing: e.kind === 'null' ? LINEAR : easingFromSpec(rtEasing(e, `${p}[1]`)), sets: value.kind !== 'null', value: value.kind === 'null' ? RT_UNSET : rtValue(value, `${p}[2]`) });
+  });
+  return out;
+}
+
+/** Script steps [['s', state] or ['a', deltaMs], ...]. */
+function rtSteps(v: JsonValue, path: string): ScriptStep[] {
+  const out: ScriptStep[] = [];
+  arr(v, path).forEach((s, i) => {
+    const p = `${path}[${i}]`;
+    const k = arr(s, p);
+    if (k.length !== 2) fail(`${p}: expected [kind, number]`);
+    const n = rtFinite(k, 1, p);
+    if (lit(item(k, 0, p), ['s', 'a'], p) === 's') out.push({ kind: 'state', state: n, deltaMs: 0 });
+    else out.push({ kind: 'advance', state: 0, deltaMs: n });
+  });
+  return out;
+}
+
+function rtShow(v: AnimatedValue, a: readonly JsonValue[], at: number): string {
+  return serializeValue(v, rtFinite(a, at, '$'), rtFinite(a, at + 1, '$'), RT_TRIG);
+}
+
+/** Held-time steps: [op, [deltaMs, ...]] -> the current time in ms after each step. */
+function rtAdvanceResult(a: readonly JsonValue[]): string {
+  if (a.length !== 2) return fail('rt-advance: expected [op, deltas]');
+  const deltas = arr(item(a, 1, '$'), '$[1]');
+  let held = HELD_ZERO;
+  let out = '';
+  for (let i = 0; i < deltas.length; i++) {
+    held = advanceHeld(held, rtFinite(deltas, i, '$[1]'), RT_NO_FAULTS);
+    out += `${i > 0 ? ',' : ''}${h(held.seconds * 1000)}`;
+  }
+  return `[${out}]`;
+}
+
+/** A keyframe sample: [op, range, underlying, rule, timing, timeMs, boxWidth, boxHeight] -> [progress, value]. */
+function rtKeyframesResult(a: readonly JsonValue[]): string {
+  if (a.length !== 8) return fail('rt-keyframes: expected [op, range, underlying, rule, timing, timeMs, boxWidth, boxHeight]');
+  const range = rtRange(item(a, 1, '$'), '$[1]');
+  const underlying = rtValue(item(a, 2, '$'), '$[2]');
+  const rule = rtRule(item(a, 3, '$'), '$[3]');
+  const timing = rtSeconds(item(a, 4, '$'), '$[4]');
+  const seconds = rtFinite(a, 5, '$') / 1000;
+  const t = computeSecondsTiming({ delay: timing.delay, duration: timing.duration, iterations: timing.iterations, direction: timing.direction, fill: timing.fill, easing: LINEAR }, seconds, RT_NO_FAULTS);
+  const v = sampleKeyframeEffect(timing, seconds, groupFromRule(rule, timing.easing), underlying, range, RT_NO_FAULTS);
+  const value = v === null ? rtShow(underlying, a, 6) : v.refused ? 'refused' : rtShow(v.value, a, 6);
+  return `[${rtBits(t.progress)},${q(value)}]`;
+}
+
+/** A transition script: [op, range, states [[value, [mode, delay, duration, easing]], ...], steps, boxWidth, boxHeight]. */
+function rtTransitionsResult(a: readonly JsonValue[]): string {
+  if (a.length !== 6) return fail('rt-transitions: expected [op, range, states, steps, boxWidth, boxHeight]');
+  const states: TransitionState[] = [];
+  arr(item(a, 2, '$'), '$[2]').forEach((s, i) => {
+    const p = `$[2][${i}]`;
+    const k = arr(s, p);
+    if (k.length !== 2) fail(`${p}: expected [value, listing]`);
+    const l = arr(item(k, 1, p), `${p}[1]`);
+    if (l.length !== 4) fail(`${p}[1]: expected [mode, delay, duration, easing]`);
+    const delay = rtFinite(l, 1, p);
+    const duration = rtFinite(l, 2, p);
+    const easing = easingFromSpec(rtEasing(item(l, 3, p), `${p}[1][3]`));
+    const mode = lit(item(l, 0, p), ['listed', 'unlisted', 'initial'], p);
+    let listing: TransitionListing = { mode: 'initial', delay, duration, easing };
+    if (mode === 'listed') listing = { mode: 'listed', delay, duration, easing };
+    else if (mode === 'unlisted') listing = { mode: 'unlisted', delay, duration, easing };
+    states.push({ value: rtValue(item(k, 0, p), `${p}[0]`), listing });
+  });
+  let out = '';
+  runTransitionScript(states, rtRange(item(a, 1, '$'), '$[1]'), rtSteps(item(a, 3, '$'), '$[3]'), RT_NO_FAULTS).forEach((r, i) => {
+    out += `${i > 0 ? ',' : ''}[${q(rtShow(r.value, a, 4))},${r.durationMs === null ? 'null' : h(r.durationMs)}]`;
+  });
+  return `[${out}]`;
+}
+
+/** An animation script: [op, range, rules [[name, rule], ...], states [[base, [[name, hasKeyframes, paused, timing], ...]], ...], steps, boxWidth, boxHeight]. */
+function rtAnimationsResult(a: readonly JsonValue[]): string {
+  if (a.length !== 7) return fail('rt-animations: expected [op, range, rules, states, steps, boxWidth, boxHeight]');
+  const rules: KeyframesRule[] = [];
+  arr(item(a, 2, '$'), '$[2]').forEach((r, i) => {
+    const p = `$[2][${i}]`;
+    const k = arr(r, p);
+    if (k.length !== 2) fail(`${p}: expected [name, rule]`);
+    rules.push({ name: str(item(k, 0, p), p), keyframes: rtRule(item(k, 1, p), `${p}[1]`) });
+  });
+  const states: AnimationState[] = [];
+  arr(item(a, 3, '$'), '$[3]').forEach((s, i) => {
+    const p = `$[3][${i}]`;
+    const k = arr(s, p);
+    if (k.length !== 2) fail(`${p}: expected [base, entries]`);
+    const entries: AnimationEntry[] = [];
+    arr(item(k, 1, p), `${p}[1]`).forEach((e, j) => {
+      const q2 = `${p}[1][${j}]`;
+      const x = arr(e, q2);
+      if (x.length !== 4) fail(`${q2}: expected [name, hasKeyframes, paused, timing]`);
+      entries.push({ name: str(item(x, 0, q2), q2), hasKeyframes: bool(item(x, 1, q2), q2), paused: bool(item(x, 2, q2), q2), timing: rtSeconds(item(x, 3, q2), `${q2}[3]`) });
+    });
+    states.push({ base: rtValue(item(k, 0, p), `${p}[0]`), entries });
+  });
+  let out = '';
+  runAnimationScript(states, rules, rtRange(item(a, 1, '$'), '$[1]'), rtSteps(item(a, 4, '$'), '$[4]'), RT_NO_FAULTS).forEach((r, i) => {
+    let names = '';
+    let times = '';
+    let plays = '';
+    r.names.forEach((n, j) => {
+      names += `${j > 0 ? ',' : ''}${q(n)}`;
+    });
+    r.currentTimesMs.forEach((t, j) => {
+      times += `${j > 0 ? ',' : ''}${h(t)}`;
+    });
+    r.playStates.forEach((ps, j) => {
+      plays += `${j > 0 ? ',' : ''}${q(ps)}`;
+    });
+    out += `${i > 0 ? ',' : ''}[[${names}],[${times}],[${plays}],${q(rtShow(r.value, a, 5))}]`;
+  });
+  return `[${out}]`;
+}
+
 // ---------------------------------------------------------------- hit suite (SELD-R1b, T047 RT-9)
 
 const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false };
@@ -1619,4 +2202,284 @@ function rtHitResult(a: readonly JsonValue[]): string {
   const t = hitTableOf(input, m.measurer, facts, HIT_TABLE_CLEAN);
   const zoom = input.devicePixelRatio * 64;
   return q(hitRuns(t, hitGrid(t, input.viewport.width * zoom, input.viewport.height * zoom), HIT_CLEAN));
+}
+
+// ---------------------------------------------------------------- animator suite (ANIM-b1 3b, T065 R16)
+
+/** The animator runs with no planted fault: the runtime plants are proven against Chrome in packages/parity anim-frames. */
+const AN_NO_FAULTS: AnimatorFaults = { transitionOnFirstStyle: false, displayNoneKeepsTransition: false, inheritedNotPropagated: false, neutralKeyframeStale: false };
+
+function anEasingKind(v: JsonValue, path: string): EasingKind {
+  const k = lit(v, ['linear', 'cubic-bezier', 'steps'], path);
+  if (k === 'cubic-bezier') return 'cubic-bezier';
+  if (k === 'steps') return 'steps';
+  return 'linear';
+}
+
+function anEasing(v: JsonValue, path: string): EasingCode {
+  const o = obj(v, ['kind', 'x1', 'y1', 'x2', 'y2', 'steps', 'position'], path);
+  return { kind: anEasingKind(field(o, 'kind', path), `${path}.kind`), x1: numField(o, 'x1', path), y1: numField(o, 'y1', path), x2: numField(o, 'x2', path), y2: numField(o, 'y2', path), steps: numField(o, 'steps', path), position: rtStepPosition(field(o, 'position', path), `${path}.position`) };
+}
+
+function anValueKind(v: JsonValue, path: string): ValueKind {
+  const k = lit(v, ['color', 'length', 'none'], path);
+  if (k === 'color') return 'color';
+  if (k === 'length') return 'length';
+  return 'none';
+}
+
+function anValue(v: JsonValue, path: string): ValueCode {
+  const o = obj(v, ['kind', 'r', 'g', 'b', 'alpha', 'px', 'percent', 'calc'], path);
+  return { kind: anValueKind(field(o, 'kind', path), `${path}.kind`), r: numField(o, 'r', path), g: numField(o, 'g', path), b: numField(o, 'b', path), alpha: numField(o, 'alpha', path), px: numField(o, 'px', path), percent: numField(o, 'percent', path), calc: bool(field(o, 'calc', path), `${path}.calc`) };
+}
+
+function anMode(v: JsonValue, path: string): ListingMode {
+  const k = lit(v, ['listed', 'unlisted', 'initial'], path);
+  if (k === 'listed') return 'listed';
+  if (k === 'unlisted') return 'unlisted';
+  return 'initial';
+}
+
+function anTrackKind(v: JsonValue, path: string): TrackKind {
+  return lit(v, ['length', 'color'], path) === 'length' ? 'length' : 'color';
+}
+
+function anRange(v: JsonValue, path: string): ValueRange {
+  return lit(v, ['all', 'non-negative'], path) === 'all' ? 'all' : 'non-negative';
+}
+
+function anListing(v: JsonValue, path: string): ListingCode {
+  const o = obj(v, ['present', 'mode', 'delay', 'duration', 'easing'], path);
+  return { present: bool(field(o, 'present', path), `${path}.present`), mode: anMode(field(o, 'mode', path), `${path}.mode`), delay: numField(o, 'delay', path), duration: numField(o, 'duration', path), easing: anEasing(field(o, 'easing', path), `${path}.easing`) };
+}
+
+function anSlot(v: JsonValue, path: string): SlotTable {
+  const o = obj(v, ['node', 'property', 'kind', 'range', 'values', 'listings'], path);
+  return {
+    node: str(field(o, 'node', path), `${path}.node`),
+    property: str(field(o, 'property', path), `${path}.property`),
+    kind: anTrackKind(field(o, 'kind', path), `${path}.kind`),
+    range: anRange(field(o, 'range', path), `${path}.range`),
+    values: arr(field(o, 'values', path), `${path}.values`).map((x, i): ValueCode => anValue(x, `${path}.values[${i}]`)),
+    listings: arr(field(o, 'listings', path), `${path}.listings`).map((x, i): ListingCode => anListing(x, `${path}.listings[${i}]`)),
+  };
+}
+
+function anEntry(v: JsonValue, path: string): EntryCode {
+  const o = obj(v, ['name', 'hasKeyframes', 'paused', 'delay', 'duration', 'iterations', 'direction', 'fill', 'easing'], path);
+  const iterations = field(o, 'iterations', path);
+  return {
+    name: str(field(o, 'name', path), `${path}.name`),
+    hasKeyframes: bool(field(o, 'hasKeyframes', path), `${path}.hasKeyframes`),
+    paused: bool(field(o, 'paused', path), `${path}.paused`),
+    delay: numField(o, 'delay', path),
+    duration: numField(o, 'duration', path),
+    // JSON has no infinity: an infinite iteration count is the string "infinite".
+    iterations: iterations.kind === 'str' ? (lit(iterations, ['infinite'], `${path}.iterations`) === 'infinite' ? 1 / 0 : 0) : num(iterations, `${path}.iterations`),
+    direction: rtDirection(field(o, 'direction', path), `${path}.direction`),
+    fill: rtFill(field(o, 'fill', path), `${path}.fill`),
+    easing: anEasing(field(o, 'easing', path), `${path}.easing`),
+  };
+}
+
+function anAnimation(v: JsonValue, path: string): AnimationTable {
+  const o = obj(v, ['node', 'lists'], path);
+  return { node: str(field(o, 'node', path), `${path}.node`), lists: arr(field(o, 'lists', path), `${path}.lists`).map((l, i): EntryCode[] => arr(l, `${path}.lists[${i}]`).map((e, j): EntryCode => anEntry(e, `${path}.lists[${i}][${j}]`))) };
+}
+
+function anKeyframeValue(v: JsonValue, path: string): KeyframeValue {
+  const o = obj(v, ['property', 'value'], path);
+  return { property: str(field(o, 'property', path), `${path}.property`), value: anValue(field(o, 'value', path), `${path}.value`) };
+}
+
+function anBlock(v: JsonValue, path: string): KeyframeBlock {
+  const o = obj(v, ['offsets', 'hasEasing', 'easing', 'values'], path);
+  return {
+    offsets: arr(field(o, 'offsets', path), `${path}.offsets`).map((x, i): number => num(x, `${path}.offsets[${i}]`)),
+    hasEasing: bool(field(o, 'hasEasing', path), `${path}.hasEasing`),
+    easing: anEasing(field(o, 'easing', path), `${path}.easing`),
+    values: arr(field(o, 'values', path), `${path}.values`).map((x, i): KeyframeValue => anKeyframeValue(x, `${path}.values[${i}]`)),
+  };
+}
+
+function anKeyframes(v: JsonValue, path: string): KeyframesTable {
+  const o = obj(v, ['name', 'blocks'], path);
+  return { name: str(field(o, 'name', path), `${path}.name`), blocks: arr(field(o, 'blocks', path), `${path}.blocks`).map((x, i): KeyframeBlock => anBlock(x, `${path}.blocks[${i}]`)) };
+}
+
+function anRendered(v: JsonValue, path: string): RenderedTable {
+  const o = obj(v, ['node', 'values'], path);
+  return { node: str(field(o, 'node', path), `${path}.node`), values: arr(field(o, 'values', path), `${path}.values`).map((x, i): boolean => bool(x, `${path}.values[${i}]`)) };
+}
+
+function anBase(v: JsonValue, path: string): BaseTable {
+  const o = obj(v, ['node', 'property', 'kind', 'range', 'values'], path);
+  return {
+    node: str(field(o, 'node', path), `${path}.node`),
+    property: str(field(o, 'property', path), `${path}.property`),
+    kind: anTrackKind(field(o, 'kind', path), `${path}.kind`),
+    range: anRange(field(o, 'range', path), `${path}.range`),
+    values: arr(field(o, 'values', path), `${path}.values`).map((x, i): ValueCode => anValue(x, `${path}.values[${i}]`)),
+  };
+}
+
+function anRef(v: JsonValue, path: string): TrackRef {
+  const o = obj(v, ['node', 'property'], path);
+  return { node: str(field(o, 'node', path), `${path}.node`), property: str(field(o, 'property', path), `${path}.property`) };
+}
+
+function anClosure(v: JsonValue, path: string): ClosureTable {
+  const o = obj(v, ['source', 'writes'], path);
+  return { source: anRef(field(o, 'source', path), `${path}.source`), writes: arr(field(o, 'writes', path), `${path}.writes`).map((x, i): TrackRef => anRef(x, `${path}.writes[${i}]`)) };
+}
+
+function anTables(v: JsonValue, path: string): AnimTables {
+  const o = obj(v, ['assignments', 'slots', 'animations', 'keyframes', 'rendered', 'bases', 'closure'], path);
+  return {
+    assignments: numField(o, 'assignments', path),
+    slots: arr(field(o, 'slots', path), `${path}.slots`).map((x, i): SlotTable => anSlot(x, `${path}.slots[${i}]`)),
+    animations: arr(field(o, 'animations', path), `${path}.animations`).map((x, i): AnimationTable => anAnimation(x, `${path}.animations[${i}]`)),
+    keyframes: arr(field(o, 'keyframes', path), `${path}.keyframes`).map((x, i): KeyframesTable => anKeyframes(x, `${path}.keyframes[${i}]`)),
+    rendered: arr(field(o, 'rendered', path), `${path}.rendered`).map((x, i): RenderedTable => anRendered(x, `${path}.rendered[${i}]`)),
+    bases: arr(field(o, 'bases', path), `${path}.bases`).map((x, i): BaseTable => anBase(x, `${path}.bases[${i}]`)),
+    closure: arr(field(o, 'closure', path), `${path}.closure`).map((x, i): ClosureTable => anClosure(x, `${path}.closure[${i}]`)),
+  };
+}
+
+/**
+ * An animator script: [op, tables, inputs, initial, steps]; inputs are every assignment's engine input resolved at DPR 1, steps
+ * ["event", assignment], ["advance", ms] or ["dump"]. Each dump gives the frame (node, property and the serialised value) and the
+ * colour writes with their closure as the device draws them.
+ */
+function rtAnimatorResult(a: readonly JsonValue[]): string {
+  if (a.length !== 5) return fail('rt-animator: expected [op, tables, inputs, initial, steps]');
+  const t = anTables(item(a, 1, '$'), '$[1]');
+  const inputs = arr(item(a, 2, '$'), '$[2]').map((x): LayoutInput => decodeInput(x));
+  const initial = num(item(a, 3, '$'), '$[3]');
+  let s: AnimatorState = animatorStart(t, inputs, initial, RT_NO_FAULTS, AN_NO_FAULTS);
+  let out = '';
+  arr(item(a, 4, '$'), '$[4]').forEach((step, i) => {
+    const path = `$[4][${i.toString(16)}]`;
+    const g = arr(step, path);
+    const op = str(item(g, 0, path), path);
+    if (op === 'event') s = animatorEvent(s, t, inputs, initial, num(item(g, 1, path), path), RT_NO_FAULTS, AN_NO_FAULTS);
+    else if (op === 'advance') s = animatorAdvance(s, t, inputs, initial, num(item(g, 1, path), path), RT_NO_FAULTS, AN_NO_FAULTS);
+    else if (op === 'dump') {
+      const frame = animatorFrame(s, t, RT_NO_FAULTS);
+      let values = '';
+      for (const e of frame) values += `${values === '' ? '' : ','}[${q(e.node)},${q(e.property)},${q(serializeValue(e.value, 0, 0, RT_TRIG))}]`;
+      let colors = '';
+      for (const c of frameColors(frame, t, AN_NO_FAULTS)) colors += `${colors === '' ? '' : ','}[${q(c.node)},${q(c.property)},${h(c.rgba.r)},${h(c.rgba.g)},${h(c.rgba.b)},${h(c.rgba.alpha)}]`;
+      out += `${out === '' ? '' : ','}[[${values}],[${colors}]]`;
+    } else fail(`${path}: unknown step ${op}`);
+  });
+  return `[${out}]`;
+}
+
+// ---------------------------------------------------------------- interaction suite (SELD-R2, T064 R12)
+
+/** The interaction runtime runs with no planted fault: the plants are proven by the host trace check and the device traces. */
+const IA_NO_FAULTS: InteractionFaults = {
+  tapSetsHover: false,
+  hoverWithoutAncestors: false,
+  forcedSetsAncestors: false,
+  focusOnNonFocusable: false,
+  focusVisibleOnPointer: false,
+  activeWithoutAncestors: false,
+  activeStaysAfterRelease: false,
+  focusAtTouchPress: false,
+  rangeTapFocuses: false,
+  hoverNotRecomputedAfterLayout: false,
+  hoverExitOnPress: false,
+};
+
+function iaInt(v: JsonValue, path: string): number {
+  const n = num(v, path);
+  if (!Number.isInteger(n)) return fail(`${path}: ${bitsHex(n)} is not an integer`);
+  return n;
+}
+
+function iaInts(o: JsonObj, k: string, path: string): number[] {
+  return arr(field(o, k, path), `${path}.${k}`).map((x, i): number => iaInt(x, `${path}.${k}[${i}]`));
+}
+
+function iaBools(o: JsonObj, k: string, path: string): boolean[] {
+  return arr(field(o, k, path), `${path}.${k}`).map((x, i): boolean => bool(x, `${path}.${k}[${i}]`));
+}
+
+function iaTables(v: JsonValue, path: string): InteractionTables {
+  const o = obj(v, ['parent', 'focusable', 'touchConsumesTap', 'keyboardInput', 'chainOf', 'activeChainOf', 'pointerFocusOf', 'keyboardFocusOf', 'forcedHoverOf', 'forcedActiveOf', 'forcedFocusOf', 'forcedFocusVisibleOf', 'hoverValues', 'activeValues', 'focusValues', 'combos'], path);
+  return {
+    parent: iaInts(o, 'parent', path),
+    focusable: iaBools(o, 'focusable', path),
+    touchConsumesTap: iaBools(o, 'touchConsumesTap', path),
+    keyboardInput: iaBools(o, 'keyboardInput', path),
+    chainOf: iaInts(o, 'chainOf', path),
+    activeChainOf: iaInts(o, 'activeChainOf', path),
+    pointerFocusOf: iaInts(o, 'pointerFocusOf', path),
+    keyboardFocusOf: iaInts(o, 'keyboardFocusOf', path),
+    forcedHoverOf: iaInts(o, 'forcedHoverOf', path),
+    forcedActiveOf: iaInts(o, 'forcedActiveOf', path),
+    forcedFocusOf: iaInts(o, 'forcedFocusOf', path),
+    forcedFocusVisibleOf: iaInts(o, 'forcedFocusVisibleOf', path),
+    hoverValues: iaInt(field(o, 'hoverValues', path), `${path}.hoverValues`),
+    activeValues: iaInt(field(o, 'activeValues', path), `${path}.activeValues`),
+    focusValues: iaInt(field(o, 'focusValues', path), `${path}.focusValues`),
+    combos: iaInts(o, 'combos', path),
+  };
+}
+
+function iaForced(v: JsonValue, path: string): ForcedKind {
+  const k = lit(v, ['none', 'hover', 'active', 'focus', 'focus-visible'], path);
+  if (k === 'hover') return 'hover';
+  if (k === 'active') return 'active';
+  if (k === 'focus') return 'focus';
+  if (k === 'focus-visible') return 'focus-visible';
+  return 'none';
+}
+
+function iaElements(xs: readonly number[]): string {
+  let out = '';
+  for (const x of xs) out += `${out === '' ? '' : ','}${h(x)}`;
+  return `[${out}]`;
+}
+
+/** One step of an interaction script: [kind, ...arguments]; each kind takes exactly its own arguments. */
+function iaStep(t: InteractionTables, s: InteractionPointer, g: readonly JsonValue[], path: string): InteractionPointer {
+  const op = str(item(g, 0, path), path);
+  const want = op === 'move' || op === 'mouse-down' || op === 'touch-down' || op === 'touch-up' || op === 'key' || op === 'key-focus' || op === 'remap' || op === 'layout' ? 2 : op === 'force' ? 3 : 1;
+  if (g.length !== want) return fail(`${path}: step ${op} expects ${want} items, got ${g.length}`);
+  if (op === 'move') return pointerMoved(t, s, iaInt(item(g, 1, path), path));
+  if (op === 'exit') return pointerExited(t, s);
+  if (op === 'exit-start') return hoverExitStarted(t, s);
+  if (op === 'frame') return interactionFrame(t, s);
+  if (op === 'mouse-down') return mousePressed(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'mouse-up') return mouseReleased(t, s, IA_NO_FAULTS);
+  if (op === 'touch-down') return touchPressed(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'touch-up') return touchReleased(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'touch-cancel') return touchCancelled(t, s, IA_NO_FAULTS);
+  if (op === 'key') return keyPressed(t, s, bool(item(g, 1, path), path));
+  if (op === 'key-focus') return keyboardFocused(t, s, iaInt(item(g, 1, path), path));
+  if (op === 'remap') return remapPointer(t, s, arr(item(g, 1, path), path).map((x, i): number => iaInt(x, `${path}[1][${i}]`)));
+  if (op === 'layout') return layoutChanged(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'force') return forcePseudo(t, s, iaForced(item(g, 1, path), path), iaInt(item(g, 2, path), path));
+  return fail(`${path}: unknown step ${op}`);
+}
+
+/**
+ * An interaction script: [op, tables, states, steps]. After each step the record is [hover matches, active matches, focus match,
+ * focus-visible match, combination, state], every element index and number as bits.
+ */
+function rtInteractionResult(a: readonly JsonValue[]): string {
+  if (a.length !== 4) return fail('rt-interaction: expected [op, tables, states, steps]');
+  const t = iaTables(item(a, 1, '$'), '$[1]');
+  checkInteractionTables(t, iaInt(item(a, 2, '$'), '$[2]'));
+  let s: InteractionPointer = interactionStart();
+  let out = '';
+  arr(item(a, 3, '$'), '$[3]').forEach((step, i) => {
+    const path = `$[3][${i.toString(16)}]`;
+    s = iaStep(t, s, arr(step, path), path);
+    out += `${out === '' ? '' : ','}[${iaElements(hoverMatches(t, s, IA_NO_FAULTS))},${iaElements(activeMatches(t, s, IA_NO_FAULTS))},${h(focusMatch(s))},${h(focusVisibleMatch(s))},${h(interactionCombo(t, s))},${h(interactionState(t, s))}]`;
+  });
+  return `[${out}]`;
 }

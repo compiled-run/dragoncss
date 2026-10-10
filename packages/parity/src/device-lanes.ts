@@ -9,19 +9,20 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { LayoutRect } from '@dragon/layout';
-import type { ExpectedDump } from 'dragon';
-import { expectedDigest, expectedDump } from 'dragon';
+import type { ExpectedDump, NativeBackend, NativeProgram } from 'dragon';
+import { expectedDigest, expectedDump, programInput } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA } from './compare.ts';
 import type { DeviceHandle, DeviceRecord, DeviceSpec } from './device-run.ts';
+import type { EarlyBoots } from './device-jobs.ts';
 import { runDevicesInChildren } from './device-jobs.ts';
-import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, recordProblems, release, runApp, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
+import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, MatrixMismatch, recordProblems, release, runApp, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
 import { deviceEvidence } from './device-evidence.ts';
 import { runDeviceVectors } from './device-vectors.ts';
 import type { DeviceRun, HostRun } from './lanes.ts';
 import { committedDprCapture } from './dpr.ts';
 import type { BreakVector, ChromeBreaks } from './line-breaks.ts';
-import { BREAK_MISMATCH, checkDumpBreaks, compareVectorWithChrome, leafTexts, readBreakVector, readChromeBreaks } from './line-breaks.ts';
+import { BREAK_MISMATCH, breakVector, checkDumpBreaks, compareVectorWithChrome, engineTextLines, leafTexts, readBreakVector, readChromeBreaks } from './line-breaks.ts';
 import type { CheckResult, DumpFault, ExpectedApplied, NamedCheck, RgbaImage } from './native-compare.ts';
 import { checkAgainstChrome, checkAgainstEngine, checkApplied, DUMP_FAULTS, FAULT_CHECK, pixelAt, plantDumpFault } from './native-compare.ts';
 import type { NativeDump } from './native-dump.ts';
@@ -30,6 +31,10 @@ import type { NativeCase } from './native-host.ts';
 import { BACKEND_OF, buildAndroid, buildIos, engineBoxes, expectedEngine, nativeCases, nativeOut } from './native-host.ts';
 import { expectedHitRuns, hitCases } from './hit-capture.ts';
 import { deriveScripts, stateEmits, stateGroups, stateProgramOf } from './state-cases.ts';
+import type { AnimSample } from './anim-samples.ts';
+import { animSamples } from './anim-samples.ts';
+import { frameScript, pixelSamples } from './anim-cases.ts';
+import { committedFrameBreaks, committedFramePixels, committedFrames, framePixelSamples } from './frame-capture.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
@@ -41,12 +46,16 @@ export type DeviceCheckLane = (typeof DEVICE_CHECK_LANES)[number];
 export type FailureKind =
   | 'dump-missing' | 'dump-invalid' | 'device-scale' | 'frame-chrome' | 'frame-engine' | 'applied' | 'native-class' | 'expected-digest'
   | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest' | 'case-identity' | 'capture-kind'
-  | 'hit-missing' | 'hit-mismatch';
+  | 'blank-capture'
+  | 'hit-missing' | 'hit-mismatch'
+  | 'frame-reference';
 
 /** SELD-R1b's device lanes: the case scripts' dumps (device-states) and the device hit test's answers (device-hit). */
 export const STATE_LANE = 'device-states';
 export const HIT_LANE = 'device-hit';
-export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE;
+/** ANIM-b1 3b (T065 R18): every frame sample's dump, checked by the four device checks against that sample's references. */
+export const ANIM_LANE = 'device-anim';
+export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE | typeof ANIM_LANE;
 
 /** One failure, named: lane, case, DPR, node (or sample rule), kind and the values. */
 export type LaneFailure = { readonly lane: DeviceLaneId; readonly case: string; readonly dpr: number; readonly node: string | null; readonly kind: FailureKind; readonly detail: string };
@@ -65,6 +74,24 @@ export function splitByLines(r: CheckResult, lineCompared: number): { readonly n
   return { nodes: { pass: nodes.length === 0, compared: r.compared - lineCompared, problems: nodes }, lines: { pass: lines.length === 0, compared: lineCompared, problems: lines } };
 }
 
+/**
+ * What the device checks read of a case: a layout case, a case script's end case under the script's id, or a frame sample
+ * (device-anim), which carries the program of its own target's backend only.
+ */
+export type CheckedCase = {
+  readonly spec: { readonly id: string };
+  readonly case: { readonly id: string; readonly environment: { readonly direction: 'ltr' | 'rtl'; readonly viewport: { readonly width: number; readonly height: number } } };
+  readonly compiled: { readonly digest: string };
+  readonly programs: { readonly [B in NativeBackend]?: NativeProgram };
+};
+
+/** A checked case's program for a target; a case without it is a harness fault. */
+export function programOf(n: CheckedCase, target: NativeTarget): NativeProgram {
+  const p = n.programs[BACKEND_OF[target]];
+  if (p === undefined) throw new Error(`${n.case.id}: no ${BACKEND_OF[target]} program`);
+  return p;
+}
+
 /** The references of one case at one DPR, computed on the host from committed data and the TS engine. */
 export type CaseReference = {
   readonly engine: readonly LayoutRect[];
@@ -74,10 +101,12 @@ export type CaseReference = {
   readonly chromeBreaks: ChromeBreaks | null;
   readonly points: readonly SamplePoint[];
   readonly pixels: RgbaImage | null;
+  /** False where the lane compares no pixels (a device-anim sample outside the R18 pixel subset); absent means compared. */
+  readonly pixelsCompared?: boolean;
 };
 
-export function caseReference(target: NativeTarget, n: NativeCase, dpr: number): CaseReference {
-  const program = n.programs[BACKEND_OF[target]];
+export function caseReference(target: NativeTarget, n: CheckedCase, dpr: number): CaseReference {
+  const program = programOf(n, target);
   const viewport = n.case.environment.viewport;
   return {
     engine: engineBoxes(program, viewport, dpr),
@@ -93,7 +122,7 @@ export function caseReference(target: NativeTarget, n: NativeCase, dpr: number):
 export type CaseOutcome = { readonly failures: readonly LaneFailure[]; readonly compared: Compared; readonly passingSamples: readonly number[] };
 
 /** Every device check of one case's dump (null when the device wrote none) at one DPR. */
-export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, raw: unknown | null, ref: CaseReference): CaseOutcome {
+export function evaluateCase(target: NativeTarget, n: CheckedCase, dpr: number, raw: unknown | null, ref: CaseReference): CaseOutcome {
   const id = n.case.id;
   const failures: LaneFailure[] = [];
   const compared = zero();
@@ -151,22 +180,25 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
   if (ref.breaks === null || ref.chromeBreaks === null) fail('device-lines', BREAK_MISMATCH, `no ${ref.breaks === null ? 'break vector (pnpm run layout:break-vectors)' : 'Chrome break capture (pnpm run parity:break-capture)'}`);
   else {
     const mine = checkDumpBreaks(dump, ref.breaks);
-    const chrome = compareVectorWithChrome(ref.breaks, ref.chromeBreaks, leafTexts(n.programs[BACKEND_OF[target]].root));
+    const chrome = compareVectorWithChrome(ref.breaks, ref.chromeBreaks, leafTexts(programOf(n, target).root));
     compared.breaks += mine.compared;
     for (const p of [...mine.problems, ...chrome.problems]) fail('device-lines', BREAK_MISMATCH, p.detail, p.text);
   }
 
   // (c) at the generated points against the committed Chrome PNG.
   let passingSamples: number[] = [];
+  if (ref.pixelsCompared === false) return { failures, compared, passingSamples };
   const captureKind = target === 'ios' ? 'drawHierarchy' : 'PixelCopy';
   if (dump.pixels !== null && dump.pixels.capture !== captureKind) fail('device-pixels', 'capture-kind', `capture ${dump.pixels.capture}, the ${target} compositor capture is ${captureKind}`);
+  const blank = dump.pixels === null || ref.pixels === null ? null : blankCapture(dump.pixels.samples, ref.pixels);
   if (dump.pixels === null) fail('device-pixels', 'pixel', 'the dump has no pixels');
   else if (ref.pixels === null) fail('device-pixels', 'pixel', 'no committed Chrome PNG (pnpm run parity:pixel-capture)');
+  else if (blank !== null) fail('device-pixels', 'blank-capture', blank, 'capture');
   else {
     const want = rasterSize(n.case.environment.viewport, dpr);
     const c = checkCasePixels(dump.pixels.samples, ref.points, ref.pixels, want, { width: dump.pixels.width, height: dump.pixels.height });
     compared.c += c.compared;
-    for (const p of c.problems) fail('device-pixels', /raster rule/.test(p) ? 'raster-size' : 'pixel', p, /^([a-z]+:\S+?)(?: at |: )/.exec(p)?.[1] ?? null);
+    for (const p of c.problems) fail('device-pixels', /raster rule/.test(p) ? 'raster-size' : 'pixel', p, pixelProblemNode(p));
     const img = ref.pixels;
     passingSamples = dump.pixels.samples.flatMap((s, i) => {
       // A rule no generator emits is already a (c) failure (the points do not match); it is never a passing sample.
@@ -176,6 +208,21 @@ export function evaluateCase(target: NativeTarget, n: NativeCase, dpr: number, r
     });
   }
   return { failures, compared, passingSamples };
+}
+
+/** The hosts' stage colour (native-host.ts: white on both), which a capture of the window with nothing drawn shows. */
+export const STAGE_RGBA: readonly number[] = [255, 255, 255, 255];
+
+/**
+ * A capture that is the bare stage at every sample where Chrome paints something else at one or more of them: a frame without the
+ * case's paint (a harness fault, or a tree that painted nothing), reported once for the case, not as a pixel mismatch per
+ * sample. Null otherwise.
+ */
+export function blankCapture(samples: readonly { readonly x: number; readonly y: number; readonly rgba: readonly number[] }[], chrome: RgbaImage): string | null {
+  if (samples.length === 0 || !samples.every((s) => s.rgba.length === 4 && s.rgba.every((v, k) => v === STAGE_RGBA[k]))) return null;
+  const painted = samples.filter((s) => Number.isInteger(s.x) && Number.isInteger(s.y) && s.x >= 0 && s.y >= 0 && s.x < chrome.width && s.y < chrome.height && pixelAt(chrome, s.x, s.y).some((v, k) => v !== STAGE_RGBA[k])).length;
+  if (painted === 0) return null;
+  return `blank capture: either a harness fault or nothing painted; the capture is the stage colour [${STAGE_RGBA.join(',')}] at all ${samples.length} samples, where Chrome paints other colours at ${painted}`;
 }
 
 // ---------------------------------------------------------------- a DPR set
@@ -207,7 +254,7 @@ export function readDump(file: string): { readonly kind: 'missing' } | { readonl
   }
 }
 
-function namedCheck(check: NamedCheck, dump: NativeDump, target: NativeTarget, n: NativeCase, dpr: number, ref: CaseReference): readonly string[] {
+function namedCheck(check: NamedCheck, dump: NativeDump, target: NativeTarget, n: CheckedCase, dpr: number, ref: CaseReference): readonly string[] {
   switch (check) {
     case 'a':
       return checkAgainstChrome(dump, ref.chrome).problems;
@@ -223,7 +270,7 @@ function namedCheck(check: NamedCheck, dump: NativeDump, target: NativeTarget, n
 }
 
 /** Every case of the set: the dumps in dir, checked; then every dump fault planted into every real dump it applies to. */
-export function evaluateSet(target: NativeTarget, dpr: number, dir: string, device: DeviceRecord, cases: readonly NativeCase[], extra: readonly LaneFailure[] = [], refOf: (n: NativeCase) => CaseReference = (n) => caseReference(target, n, dpr)): DeviceSet {
+export function evaluateSet<C extends CheckedCase>(target: NativeTarget, dpr: number, dir: string, device: DeviceRecord, cases: readonly C[], extra: readonly LaneFailure[] = [], refOf: (n: C) => CaseReference = (n) => caseReference(target, n, dpr)): DeviceSet {
   const failures: LaneFailure[] = [...extra];
   const compared = zero();
   const h = createHash('sha256');
@@ -346,6 +393,15 @@ export function plantVerdict(failures: readonly LaneFailure[], hostError: string
   return { caught: hostError === null && inked > 0 && frames === 0 && lines === 0, pixels: pixels.length, inked, frames, lines };
 }
 
+/**
+ * The node a pixel problem names: its rule ("image-flat:a1:0 at 80,40: ...", "edge:a1:right: ...") or glyph position
+ * ("centre:t1:line0:x: ...", native-compare.ts), any lower-case kind with hyphens; null for a case-level problem.
+ */
+const PROBLEM_RULE = /^([a-z]+(?:-[a-z]+)*:\S+?)(?: at |: )/;
+export function pixelProblemNode(problem: string): string | null {
+  return PROBLEM_RULE.exec(problem)?.[1] ?? null;
+}
+
 /** Whether a sample rule string names one of SAMPLE_RULES (ruleKind throws on any other). */
 export function isSampleRule(rule: string): boolean {
   const k = rule.indexOf(':');
@@ -374,6 +430,8 @@ export function failuresByKind(fs: readonly LaneFailure[]): Record<string, numbe
 // ---------------------------------------------------------------- a target's device run
 
 export type RunLog = (line: string) => void;
+/** The host run that judges a target's device vectors lane: known, or still running (parity:lanes overlaps the host lanes). */
+export type HostSource = HostRun | null | Promise<HostRun | null>;
 
 /** What one device of a target's matrix gives the run: its DPR set, capture-trust rows and vectors lane, or why it was blocked. */
 export type DeviceOutcome = {
@@ -382,10 +440,23 @@ export type DeviceOutcome = {
   /** SELD-R1b: the case scripts' set (device-states) and the hit records' set (device-hit); absent before them. */
   readonly states?: DeviceSet | null;
   readonly hits?: DeviceSet | null;
+  /** ANIM-b1 3b: the frame samples' set (device-anim); absent before it. */
+  readonly anim?: DeviceSet | null;
   readonly trust: { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] } | null;
   readonly vectors: (HostRun & { readonly device: string }) | null;
   readonly blocked: string | null;
+  /** Why it was blocked, one reason per cause (absent from an older outcome, empty when not blocked). */
+  readonly blockedBy?: readonly BlockReason[];
 };
+
+/**
+ * Why a device's run was blocked. The tooling's: a boot or settle that failed (not on a matrix mismatch), a device that could not
+ * be stopped, an install that kept failing transiently. The tree's: a booted device that is not the tree's matrix device, and a
+ * device record from an app that ran which does not fit (device fit), with whatever else its record got wrong.
+ */
+export const BLOCK_REASONS = { boot: 'tooling', stop: 'tooling', 'install-transient': 'tooling', 'matrix-mismatch': 'tree', 'device-record': 'tree' } as const;
+export type BlockReason = keyof typeof BLOCK_REASONS;
+export const isBlockReason = (x: unknown): x is BlockReason => typeof x === 'string' && Object.hasOwn(BLOCK_REASONS, x);
 
 /**
  * Runs a target on every device of the matrix: build (reused when the sources are unchanged), then per device boot, one batch
@@ -395,7 +466,7 @@ export type DeviceOutcome = {
  * so the run is the one a sequential run makes. A device that fails to boot twice, or cannot hold the root, is a tooling fault:
  * its DPR is recorded as not run, never as a pass.
  */
-export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, log: RunLog, opts: { readonly vectors?: boolean; readonly jobs?: number } = {}): Promise<DeviceRun> {
+export async function runTargetOnDevices(t: TargetConfig, host: HostSource, log: RunLog, opts: { readonly vectors?: boolean; readonly jobs?: number; readonly early?: EarlyBoots | null } = {}): Promise<DeviceRun> {
   // Stamped before any device work: the code, reference data and app sources this run is made and judged with.
   const evidence = deviceEvidence(t.target);
   const cases = nativeCases();
@@ -407,10 +478,13 @@ export async function runTargetOnDevices(t: TargetConfig, host: HostRun | null, 
   const specs = DEVICE_MATRIX.filter((d) => d.target === t.target);
   const vectors = opts.vectors !== false;
   const jobs = Math.min(opts.jobs ?? 1, specs.length);
+  const early = opts.early ?? null;
+  // Only the vectors device waits for a host run still running; the others are handed what is known now.
+  const hostOf = (spec: DeviceSpec): HostSource => (host instanceof Promise && !(vectors && spec.name === VECTOR_DEVICES[t.target]) ? null : host);
   const outcomes =
     jobs <= 1
-      ? await sequentially(specs, (spec) => runOneDevice(t, spec, host, build.artifact, () => cases, vectors, log))
-      : await runDevicesInChildren(t.target, specs, jobs, (spec) => ({ target: t.target, device: spec.name, artifact: build.artifact, host, vectors }), log);
+      ? await sequentially(specs, (spec) => runOneDevice(t, spec, hostOf(spec), build.artifact, () => cases, vectors, log, { boot: () => early?.take(spec, log) ?? boot(spec), release: (h) => release(h, log) }))
+      : await runDevicesInChildren(t.target, specs, jobs, (spec) => ({ target: t.target, device: spec.name, artifact: build.artifact, host: hostOf(spec), vectors }), log, early);
   return mergeOutcomes(outcomes, evidence);
 }
 
@@ -425,6 +499,7 @@ export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: Devi
   const sets: DeviceSet[] = [];
   const states: DeviceSet[] = [];
   const hits: DeviceSet[] = [];
+  const anims: DeviceSet[] = [];
   const trust: { device: string; dpr: number; rows: readonly TrustRow[] }[] = [];
   const blocked: string[] = [];
   let vectors: (HostRun & { device: string }) | null = null;
@@ -433,19 +508,23 @@ export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: Devi
     if (o.set !== null) sets.push(o.set);
     if (o.states !== undefined && o.states !== null) states.push(o.states);
     if (o.hits !== undefined && o.hits !== null) hits.push(o.hits);
+    if (o.anim !== undefined && o.anim !== null) anims.push(o.anim);
     if (o.trust !== null) trust.push(o.trust);
     if (o.vectors !== null) {
       if (vectors !== null) throw new Error(`two devices ran the vectors lane (${vectors.device}, ${o.vectors.device})`);
       vectors = o.vectors;
     }
   }
-  return { vectors, sets, states, hits, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
+  return { vectors, sets, states, hits, anims, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
 }
 
-/** Every failure of a target's run, the SELD-R1b lanes' too (the list written to out/device-failures-<target>.json). */
+/** Every failure of a target's run, the SELD-R1b lanes' and device-anim's too (the list written to out/device-failures-<target>.json). */
 export function allRunFailures(d: DeviceRun): LaneFailure[] {
-  return [...d.sets, ...(d.states ?? []), ...(d.hits ?? [])].flatMap((s) => s.failures);
+  return [...d.sets, ...(d.states ?? []), ...(d.hits ?? []), ...(d.anims ?? [])].flatMap((s) => s.failures);
 }
+
+/** The text of out/device-failures-<target>.json for a target's run. */
+export const deviceFailuresText = (d: DeviceRun): string => `${JSON.stringify(allRunFailures(d), null, 1)}\n`;
 
 // ---------------------------------------------------------------- device-states and device-hit (SELD-R1b)
 
@@ -492,6 +571,81 @@ export function evaluateStates(target: NativeTarget, dpr: number, dir: string, d
   return { ...set, failures };
 }
 
+// ---------------------------------------------------------------- device-anim (ANIM-b1 3b, T065 R18)
+
+/** A frame sample as a checked case: its frame case's fixture, environment and compile, under the sample's id. */
+export function sampleCase(target: NativeTarget, s: AnimSample): CheckedCase {
+  return { spec: { id: s.case.fixture.id }, case: { id: s.id, environment: { direction: s.case.direction, viewport: s.case.viewport } }, compiled: s.case.compiled, programs: { [BACKEND_OF[target]]: s.program } };
+}
+
+/**
+ * A frame sample's references at one DPR: the live program's expected dump, engine boxes, break vector and points, and Chrome's
+ * boxes, breaks and (in the R18 pixel subset only) pixels at the same sample of the frame capture; a string names a missing one.
+ */
+export function animReference(target: NativeTarget, s: AnimSample, dpr: number, pixelSubset: ReadonlySet<number>): CaseReference | string {
+  const viewport = s.case.viewport;
+  const cap = committedFrames(s.case.id, 'authored', dpr);
+  const sample = cap?.samples[s.index];
+  if (cap === null || sample === undefined) return `no committed frame capture of ${s.case.id} sample ${s.index} at DPR ${dpr} (pnpm run parity:anim-capture)`;
+  if (sample.at !== s.at || sample.settle !== s.settle) return `the frame capture's sample ${s.index} is at ${sample.at} ms${sample.settle ? ' (settle)' : ''}, the script's at ${s.at} ms${s.settle ? ' (settle)' : ''}`;
+  const chromeBreaks = committedFrameBreaks(s.case.id, dpr)?.[s.index] ?? null;
+  const committedSubset = framePixelSamples(s.case.id, dpr);
+  if (committedSubset !== null && committedSubset.join(',') !== [...pixelSubset].join(',')) return `the committed pixel samples of ${s.case.id} at DPR ${dpr} are [${committedSubset.join(', ')}], the derived R18 subset [${[...pixelSubset].join(', ')}]`;
+  const compared = pixelSubset.has(s.index);
+  const m = expectedEngine();
+  return {
+    engine: engineBoxes(s.program, viewport, dpr),
+    expected: expectedDump(s.program, s.id, viewport, dpr, m),
+    chrome: { fixture: s.id, chrome: cap.chrome, browser: '', platform: '', viewport, devicePixelRatio: dpr, direction: s.case.direction, nodes: sample.nodes },
+    breaks: breakVector(s.id, dpr, engineTextLines(programInput(s.program, viewport, dpr), m.measurer)),
+    chromeBreaks: chromeBreaks === null ? null : { ...chromeBreaks, case: s.id },
+    points: compared ? casePoints(s.program, viewport, dpr) : [],
+    pixels: compared ? committedFramePixels(s.case.id, dpr, s.index) : null,
+    pixelsCompared: compared,
+  };
+}
+
+/** The R18 pixel subset of every frame case, by case id: the dump indexes whose pixels device-anim compares. */
+export function animPixelSubsets(samples: readonly (readonly AnimSample[])[]): ReadonlyMap<string, ReadonlySet<number>> {
+  return new Map(samples.flatMap((xs) => {
+    const c = xs[0]?.case;
+    return c === undefined ? [] : [[c.id, new Set(pixelSamples(c, frameScript(c)))] as const];
+  }));
+}
+
+/** device-anim at one DPR: every frame sample's dump through the four device checks against its references, failures under device-anim. */
+export function evaluateAnim(target: NativeTarget, dpr: number, dir: string, device: DeviceRecord, samples: readonly (readonly AnimSample[])[], extra: readonly LaneFailure[] = []): DeviceSet {
+  const subsets = animPixelSubsets(samples);
+  const refs = new Map<string, CaseReference>();
+  const failures: LaneFailure[] = [...extra];
+  const checked: CheckedCase[] = [];
+  for (const s of samples.flat()) {
+    const ref = animReference(target, s, dpr, subsets.get(s.case.id) ?? new Set());
+    if (typeof ref === 'string') {
+      failures.push({ lane: ANIM_LANE, case: s.id, dpr, node: null, kind: 'frame-reference', detail: ref });
+      continue;
+    }
+    // The device-fit rule per sample (recordProblems: never cropped): a root the stage cannot hold has no trusted capture, so its
+    // pixels are not compared and the sample fails under device-record; its frames, applied values and lines are still judged.
+    const root = rasterSize(s.case.viewport, dpr);
+    if (ref.pixelsCompared !== false && (device.stagePx[0] < root.width || device.stagePx[1] < root.height)) {
+      failures.push({ lane: ANIM_LANE, case: s.id, dpr, node: null, kind: 'device-record', detail: `${device.name}: the stage ${device.stagePx[0]}x${device.stagePx[1]} device px cannot hold the ${root.width}x${root.height} root, so its pixels are not compared (device fit; never cropped)` });
+      refs.set(s.id, { ...ref, points: [], pixels: null, pixelsCompared: false });
+    } else refs.set(s.id, ref);
+    checked.push(sampleCase(target, s));
+  }
+  const set = evaluateSet(target, dpr, dir, device, checked, [], (n) => refs.get(n.case.id) as CaseReference);
+  // One failure per kind, case and detail: the four check lanes report a missing or invalid dump each.
+  const seen = new Set<string>();
+  for (const f of set.failures) {
+    const k = `${f.case}\0${f.node ?? ''}\0${f.kind}\0${f.detail}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    failures.push({ ...f, lane: ANIM_LANE });
+  }
+  return { ...set, cases: samples.reduce((n, xs) => n + xs.length, 0), failures };
+}
+
 export const hitFile = (dir: string, id: string, dpr: number): string => join(dir, `${id}@${dpr}.hit`);
 
 /** device-hit at one DPR: the device's hit answers of every layout case against the TS hit test's at that DPR. */
@@ -531,11 +685,11 @@ export type DeviceSource = { readonly boot: () => Promise<DeviceHandle>; readonl
  */
 export function afterRelease(o: DeviceOutcome, problem: string | null): DeviceOutcome {
   if (problem === null) return o;
-  return { device: o.device, set: null, trust: null, vectors: null, blocked: `${o.device}: the device could not be stopped after its run (tooling fault), so its results are not used: ${problem}${o.blocked === null ? '' : `; ${o.blocked}`}` };
+  return { device: o.device, set: null, trust: null, vectors: null, blocked: `${o.device}: the device could not be stopped after its run (tooling fault), so its results are not used: ${problem}${o.blocked === null ? '' : `; ${o.blocked}`}`, blockedBy: [...(o.blockedBy ?? []), 'stop'] };
 }
 
 /** One device of the matrix: boot, the batch launch and its checks, the capture-trust launch and, on the vectors device, the vectors lane. */
-export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostRun | null, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog, source: DeviceSource = { boot: () => boot(spec), release: (h) => release(h, log) }): Promise<DeviceOutcome> {
+export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: HostSource, artifact: string, casesOf: () => readonly NativeCase[], runVectors: boolean, log: RunLog, source: DeviceSource = { boot: () => boot(spec), release: (h) => release(h, log) }): Promise<DeviceOutcome> {
   const backend = BACKEND_OF[t.target];
   const none = { device: spec.name, set: null, trust: null, vectors: null };
   let h: DeviceHandle;
@@ -555,7 +709,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
   } catch (e) {
     const blocked = e instanceof Error ? e.message : String(e);
     log(`${spec.name}: ${blocked}`);
-    return { ...none, blocked };
+    return { ...none, blocked, blockedBy: [e instanceof MatrixMismatch ? 'matrix-mismatch' : 'boot'] };
   }
   log(`${spec.name}: booted (the cases computed meanwhile) in ${((Date.now() - b0) / 1000).toFixed(0)} s`);
   const work = async (): Promise<DeviceOutcome> => {
@@ -570,7 +724,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const root = rasterSize(cases[0]?.case.environment.viewport ?? { width: 0, height: 0 }, dpr);
     const recProblems = recordProblems(rec, root);
     log(`${spec.name}: ${rec.os}, build ${rec.build}; scale ${rec.profileScale} (profile) / ${rec.appScale} (app); window ${rec.windowPx.join('x')} px, stage ${rec.stagePx.join('x')} px at ${rec.rootOriginPx.join(',')}; text scale ${rec.textScale}; ${dumpedIds(outDir, dpr).length} dumps in ${((Date.now() - t0) / 1000).toFixed(0)} s${r.error === null ? '' : `; host error: ${r.error}`}`);
-    if (recProblems.some((p) => p.includes('device fit'))) return { ...none, blocked: recProblems.join('; ') };
+    if (recProblems.some((p) => p.includes('device fit'))) return { ...none, blocked: recProblems.join('; '), blockedBy: ['device-record'] };
     const extra: LaneFailure[] = [...recProblems, ...(r.error === null ? [] : [`the host did not finish: ${r.error}`])].flatMap((p) => DEVICE_CHECK_LANES.map((lane): LaneFailure => ({ lane, case: '-', dpr, node: null, kind: 'device-record', detail: p })));
     const e0 = Date.now();
     const set = evaluateSet(t.target, dpr, outDir, rec, cases, extra);
@@ -589,6 +743,15 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const stateExtra: LaneFailure[] = sr.error === null ? [] : [{ lane: STATE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the scripts: ${sr.error}` }];
     const states = evaluateStates(t.target, dpr, statesDir, rec, scripts, stateExtra);
     log(`${spec.name}: device-states ${states.dumps}/${states.cases} dumps in ${((Date.now() - s0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(states.failures))}`);
+    // ANIM-b1 3b: device-anim from a launch of the frame samples, pixels captured at the R18 subset only.
+    const anim = animSamples(t.target);
+    const subsets = animPixelSubsets(anim);
+    const animDir = join(nativeOut(t.target), 'lanes', `${spec.name}-anim`);
+    const a0 = Date.now();
+    const ar = await runApp(h, artifact, { runFile: runFileText(anim.flat().map((s) => ({ id: s.id, points: subsets.get(s.case.id)?.has(s.index) === true ? casePoints(s.program, s.case.viewport, dpr) : [] })), false), caseCount: anim.reduce((n, xs) => n + xs.length, 0), outDir: animDir });
+    const animExtra: LaneFailure[] = ar.error === null ? [] : [{ lane: ANIM_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the frame samples: ${ar.error}` }];
+    const animSet = evaluateAnim(t.target, dpr, animDir, rec, anim, animExtra);
+    log(`${spec.name}: device-anim ${animSet.dumps}/${animSet.cases} dumps in ${((Date.now() - a0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(animSet.failures))}`);
     const trustDir = join(nativeOut(t.target), 'lanes', `${spec.name}-trust`);
     const trustCases: TrustCase[] = TRUST_CASES.map((id) => {
       const tc = cases.find((c) => c.case.id === id);
@@ -607,7 +770,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
       vectors = await runDeviceVectors(h, t, host);
       log(`${spec.name}: layout-vectors-device ${vectors.state}${vectors.reason === null ? '' : ` (${vectors.reason})`}; ${vectors.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'}`).join(', ')}; digests ${vectors.digests.p1} ${vectors.digests.extended}; ${((Date.now() - v0) / 1000).toFixed(0)} s`);
     }
-    return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, states, hits, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
+    return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, states, hits, anim: animSet, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
   };
   const stop = source.release;
   if (stop === null) return work();

@@ -23,11 +23,13 @@ export { snapEdges, snapRect } from './snap.ts';
 // Replaced elements (REPL-a): sizing and the object-fit destination rect.
 export type { BorderPadding, InlineAutoBehavior, NaturalSizing, ObjectFit, ObjectPosition, ObjectRect, PixelRect, ReplacedSize, ReplacedSizeMode, ReplacedSpace } from './replaced.ts';
 export { blockFlowSpace, drawnObjectRect, objectFitRect, pixelSnappedRect, replacedAspectRatio, replacedSize } from './replaced.ts';
+export type { ReplacedPaint } from './paint.ts';
+export { replacedPaint } from './paint.ts';
 export type { DprChromeDeviation, DprDeviationControl, DprDeviationFault, DprDeviationNode } from './chrome-deviations-dpr.ts';
 export { dprChromeDeviations } from './chrome-deviations-dpr.ts';
 export type { AhemRuleFaults, FontData } from './text.ts';
 export { AHEM_FONT_DATA, ahemMeasurerWith, coveredCodePoints, coveredIndex, fontDataMeasurer } from './text.ts';
-export { zoomInput } from './layout.ts';
+export { resolvedInput, zoomInput } from './layout.ts';
 export type { Edges } from './box.ts';
 export { resolveBorder } from './box.ts';
 export { platformFontSize, snapEdge, zoomFontSize } from './units.ts';
@@ -40,6 +42,8 @@ export { dprPlatformRules } from './platform-rules.ts';
 export type { CalcClamp, CalcExpr, CalcInvert, CalcMax, CalcMin, CalcProduct, CalcSum, EmLength, LengthCalc, PixelsAndPercent, ViewportLength } from './input.ts';
 export { applyEnvironment } from './environment.ts';
 export type { BoxShape } from './paint.ts';
+export type { RadiusFaults, RadiusLength } from './paint-radius.ts';
+export { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from './paint-radius.ts';
 export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';
 export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, selectBestDashGap } from './paint-dash.ts';
 export type { EnvLength, FontCalc, FontMetricLength, FontPercent, FontSpec, LineHeightCalc, LineHeightLength, RootFontLength, SafeAreaInsets, SafeAreaSide, TextFont, ViewportSize, ViewportUnitSizes } from './input.ts';
@@ -51,3 +55,26 @@ export { AHEM_FACE_ID, AHEM_SHA256 } from './text.ts';
 export { shapedMeasurerFor, shapingFaultsOf } from './platform.ts';
 export type { GlyphShaper, HanKerningFontData, ShapedFace, ShapingFaults } from './shaping.ts';
 export { FEATURE_STRIDE, GLYPH_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_HAN_KERNING, NO_SHAPING_FAULTS } from './shaping.ts';
+// ANIM-b1 (T065): the rt roots the runtime animator's TypeScript reference runs (packages/parity/src/anim-cases.ts), namespaced.
+export * as rtEasing from './rt-easing.ts';
+export * as rtTiming from './rt-timing.ts';
+export * as rtInterpolate from './rt-interpolate.ts';
+export * as rtKeyframes from './rt-keyframes.ts';
+export * as rtTransition from './rt-transition.ts';
+export * as rtAnimations from './rt-animations.ts';
+// ANIM-b1 3b (T065 R16): the runtime animator, one implementation for the TypeScript reference and the generated runtimes.
+export * as rtAnimator from './rt-animator.ts';
+export type { AnimTables, EasingCode, EntryCode, ValueCode } from './rt-animator.ts';
+// MQ-R1 (T067 R4): the @media band lookup a native root runs on a size change.
+export * as rtBand from './rt-band.ts';
+// SELD-R2 (T064 R6, R12): the interaction runtime, one implementation for the TypeScript reference and the generated runtimes.
+export * as rtInteraction from './rt-interaction.ts';
+export type { InteractionFaults, InteractionPointer, InteractionTables } from './rt-interaction.ts';
+export type { OriginPoint, TransformOrigin } from './paint-transform.ts';
+export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';
+export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';
+export { serializeTransform } from './rt-interpolate.ts';
+export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';
+export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';
+export type { ScrollRange, ScrollRangeRefusal, ScrollRangesResult } from './overflow.ts';
+export { scrollRanges } from './overflow.ts';

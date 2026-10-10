@@ -1,7 +1,8 @@
 // TXT1a-1 and TXT1a-2 (notes/T056-txt1a-spec.md §3, amended by notes/T083-txt1a-1.md and notes/T084-txt1a-2.md). Phase A: Ahem through HarfBuzz. The Node host's
 // shaped measurer must lay out every committed vector exactly as measurerFor's Ahem measurer does, equal Chrome on T082's 1,680
-// Ahem runs, read the bundled Ahem's font data as the engine's constants, and every shaping plant that can act on Ahem must change
-// a committed vector.
+// Ahem runs, read the bundled Ahem's font data as the engine's constants, and refuse text outside Latin, Common and Inherited
+// (R4). Each shaping plant that acts on Ahem through the engine's measurer must change a committed vector or T082's committed
+// Chrome runs; the three that cannot act there are pinned inert on every committed vector, each with its reason.
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutInput, LayoutResult } from '@dragon/layout';
@@ -51,6 +52,33 @@ const all = vectors();
 const reference = measurerFor('darwin-arm64');
 if (reference.kind !== 'ok') throw new Error(reference.detail);
 const boxesOf = (r: LayoutResult): unknown => (r.kind === 'ok' ? r.boxes : r.unsupported);
+const vectorNamed = (file: string): Vector => {
+  const v = all.find((x) => x.file === file);
+  if (v === undefined) throw new Error(`no committed vector ${file}`);
+  return v;
+};
+/** The committed vectors whose layout a planted engine fault changes, through the shaped measurer with that fault. */
+const changedBy = (faults: EngineFaults): string[] => {
+  const m = referenceShapedMeasurer(faults);
+  return all.filter((v) => JSON.stringify(boxesOf(layoutWithFaults(v.input, m, faults))) !== JSON.stringify(v.output)).map((v) => v.file);
+};
+/** T082's committed Chrome widths of Ahem nowrap runs: X repeated 1 to N times at each size. */
+const ahemRuns = (): { font: { family: 'Ahem'; size: number }; text: string; lu: number }[] => {
+  const cap = JSON.parse(readFileSync(repoPath('docs/research/text-spike/metric-rounding/captures/ahem-advances.json'), 'utf8')) as { widthsLayoutUnits: Record<string, number[]> };
+  return Object.entries(cap.widthsLayoutUnits).flatMap(([size, widths]) => widths.map((lu, i) => ({ font: { family: 'Ahem' as const, size: Number(size) }, text: 'X'.repeat(i + 1), lu })));
+};
+/** The table tags of a TrueType file's table directory. */
+const tableTags = (bytes: Uint8Array): string[] => {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return Array.from({ length: view.getUint16(4) }, (_, i) => String.fromCharCode(...bytes.subarray(12 + 16 * i, 16 + 16 * i)));
+};
+/** The text of every text leaf of an input, in tree order. */
+const leafTexts = (node: unknown): string[] => {
+  if (node === null || typeof node !== 'object') return [];
+  const n = node as { kind?: unknown; text?: unknown; children?: unknown };
+  const own = n.kind === 'text' && typeof n.text === 'string' ? [n.text] : [];
+  return [...own, ...(Array.isArray(n.children) ? n.children.flatMap(leafTexts) : [])];
+};
 
 describe('TXT1a-1 phase A: Ahem through HarfBuzz', () => {
   it('reads the bundled Ahem as the engine names it and as its constants hold it', () => {
@@ -109,6 +137,73 @@ describe('TXT1a-1 phase A: Ahem through HarfBuzz', () => {
     expect(boxesOf(layoutWithFaults(v.input, referenceShapedMeasurer(), NO_ENGINE_FAULTS))).toEqual(v.output);
     expect(boxesOf(layoutWithFaults(v.input, referenceShapedMeasurer(faults), faults))).not.toEqual(v.output);
   });
+
+  // 12.5px Ahem advances 12.5px per glyph; whole-pixel positions round each advance.
+  it('catches wholePixelPositions on text-fractional-font-size', () => {
+    const faults: EngineFaults = { ...NO_ENGINE_FAULTS, wholePixelPositions: true };
+    const v = vectorNamed('packages/layout/vectors/text-fractional-font-size.json');
+    expect(boxesOf(layoutWithFaults(v.input, referenceShapedMeasurer(), NO_ENGINE_FAULTS))).toEqual(v.output);
+    expect(boxesOf(layoutWithFaults(v.input, referenceShapedMeasurer(faults), faults))).not.toEqual(v.output);
+  });
+
+  // No committed vector runs Ahem long enough at a size whose advance is inexact in float for these two to act; T082's committed
+  // Chrome runs do (7.77px, 93 and more glyphs), so they are caught against Chrome there.
+  it("catches advanceNot16_16 and doubleAccumulation against T082's committed Chrome runs", () => {
+    const runs = ahemRuns();
+    for (const plant of ['advanceNot16_16', 'doubleAccumulation'] as const) {
+      const m = referenceShapedMeasurer({ ...NO_ENGINE_FAULTS, [plant]: true });
+      const misses = runs.filter((r) => {
+        const got = m.measure(r.text, r.font);
+        return !got.ok || got.measure.width !== r.lu;
+      });
+      expect(misses.length, plant).toBeGreaterThan(0);
+    }
+  });
+
+  // These three cannot act through the engine's measurer on Ahem: kerningDropped and noReshapeAtBreak change only what GSUB, GPOS
+  // or kern data shapes, which Ahem has none of (every offset is safe to break); noReshapeAtBreak and softHyphenWidthMissing act
+  // only on real-font lines (inline.ts breakShapedLines), which Ahem text does not take; and no committed vector has a soft
+  // hyphen, which the Ahem measurer refuses. shaping-gate.test.ts and text-latin-engine.test.ts catch all three on real faces.
+  it('pins kerningDropped, noReshapeAtBreak and softHyphenWidthMissing inert on every committed Ahem vector, for the reasons above', () => {
+    const tags = tableTags(new Uint8Array(readFileSync(repoPath('vendor/fonts/Ahem.ttf'))));
+    expect(tags).toContain('glyf');
+    expect(tags.filter((t) => ['GSUB', 'GPOS', 'kern', 'morx', 'kerx'].includes(t))).toEqual([]);
+    expect(all.filter((v) => leafTexts((v.input as { root: unknown }).root).some((t) => t.includes('\u00ad'))).map((v) => v.file)).toEqual([]);
+    for (const plant of ['kerningDropped', 'noReshapeAtBreak', 'softHyphenWidthMissing'] as const) expect(changedBy({ ...NO_ENGINE_FAULTS, [plant]: true }), plant).toEqual([]);
+  });
+
+  // R4: shaped Ahem has glyphs for some Greek and Han code points (U+03A9, U+6C34), which the engine's measurer must still refuse.
+  it('refuses text outside Latin, Common and Inherited with text-script (R4), and latinCheckSkipped shapes it instead', () => {
+    const v = vectorNamed('packages/layout/vectors/text-fractional-font-size.json');
+    for (const foreign of ['X\u03a9X', '\u6c34']) {
+      const input = JSON.parse(JSON.stringify(v.input)) as LayoutInput;
+      let set = 0;
+      const walk = (n: { kind: string; text?: string; children?: unknown[] }): void => {
+        if (n.kind === 'text' && set === 0) {
+          n.text = foreign;
+          set++;
+        }
+        for (const c of n.children ?? []) walk(c as never);
+      };
+      walk(input.root as never);
+      expect(set).toBe(1);
+      const refused = layout(input, referenceShapedMeasurer());
+      expect(refused.kind === 'unsupported' && [refused.unsupported.code, refused.unsupported.specSection], foreign).toEqual(['text-script', 'notes/T056-txt1a-spec.md R4']);
+      // Skipped, the text is shaped and reaches the line breaker, whose ASCII pair table refuses it later.
+      const skipped: EngineFaults = { ...NO_ENGINE_FAULTS, latinCheckSkipped: true };
+      const shaped = layoutWithFaults(input, referenceShapedMeasurer(skipped), skipped);
+      expect(shaped.kind === 'unsupported' && shaped.unsupported.code, foreign).toBe('line-break');
+      expect(referenceShapedMeasurer(skipped).measure(foreign, { family: 'Ahem', size: 16 }).ok, foreign).toBe(true);
+    }
+    const m = referenceShapedMeasurer();
+    expect(m.measure('Xé X', { family: 'Ahem', size: 16 }).ok).toBe(true);
+    expect(m.measure('\u03a9', { family: 'Ahem', size: 16 })).toEqual({ ok: false, code: 'text-script', reason: 'U+3A9 is outside Latin, Common and Inherited (R4)' });
+    expect(m.measureRange('X\u03a9', 0, 1, { family: 'Ahem', size: 16 })).toMatchObject({ ok: false, code: 'text-script' });
+  });
+
+  it('pins latinCheckSkipped inert on every committed vector, which is all Latin, Common and Inherited text', () => {
+    expect(changedBy({ ...NO_ENGINE_FAULTS, latinCheckSkipped: true })).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------
@@ -146,16 +241,21 @@ const probe = (id: string) => {
 };
 
 describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
-  it('keeps every BASE layout case first and in order, and adds exactly the text-latin, Ahem fractional and calibration cases, then the T133 tag cases', () => {
+  const BASE_LAYOUT_CASES = 667;
+  const ADDED = [...NEW_IDS, ...TAG_IDS];
+  it('keeps every BASE layout case in order, and adds exactly the text-latin, Ahem fractional and calibration cases and the T133 tag cases', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
-    // BASE is INL1a part C2 with seld-lanes-v2 merged in (inl1a-lowering 2d04d5ca5), whose FIXTURES hold 520 layout cases.
-    expect(ids.length).toBe(520 + NEW_IDS.length + TAG_IDS.length);
-    expect(createHash('sha256').update(ids.slice(0, 520).join('\n')).digest('hex')).toBe('69e3e4bb4aac1f5ac426a74578b20aaa6c33de611b95734b5000dc85593cf91d');
-    expect(ids.slice(520)).toEqual([...NEW_IDS, ...TAG_IDS]);
+    // BASE is #103's head 6f8d87d6c7 (master at 03ba583dff: b97cf50c62's 666 plus #231 OVFL-B's overflow-background), whose FIXTURES hold 667 layout cases.
+    // Groups added after the per-feature split run in id order after the legacy ones (fixtures.ts), so the text groups sit among them.
+    const base = ids.filter((id) => !ADDED.includes(id));
+    expect(base.length).toBe(BASE_LAYOUT_CASES);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('def7a6b1be2fd43cd8890ac95b104c3a7752b13ce4cea0cc0e1e5ae0cac8279b');
+    expect(ids.filter((id) => ADDED.includes(id)).sort()).toEqual([...ADDED].sort());
+    expect(ids.length).toBe(BASE_LAYOUT_CASES + ADDED.length);
   });
 
   it('derives the shaped cases from the compiled input alone: every new case, and no BASE case', () => {
-    expect([...shapedCaseIds()]).toEqual([...NEW_IDS, ...TAG_IDS]);
+    expect([...shapedCaseIds()].sort()).toEqual([...ADDED].sort());
   });
 
   it('compiles each new case with the reference map, captures it under its stated reference, and lists its expected faces', () => {
@@ -225,7 +325,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
       }
     }
     // The 10 real-face cases and T133's 2 are native-refused (engine only); every other case, the Ahem fractional one too, lowers natively.
-    expect([compared, engineOnly]).toEqual([(520 + 1) * 4, (NEW_IDS.length - 1 + TAG_IDS.length) * 4]);
+    expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + 1) * 4, (NEW_IDS.length - 1 + TAG_IDS.length) * 4]);
   });
 
   it('DRAGON_SYNTHETIC_FONT_STYLE fires on no FIXTURES case', () => {
@@ -332,16 +432,5 @@ describe('TXT1a-2 phase F: text-latin vectors replay in the translated engine (R
     const out = runEngineCase(JSON.stringify({ platform: v.platform, faults: NO_ENGINE_FAULTS, input: v.input, shaping: { language: v.language, faces: v.faces, calls: v.calls.slice(1) } }));
     expect(out).toMatch(/^\["harness-error","the shape transcript holds no call/);
   });
-
-  for (const target of ['swift', 'kotlin'] as const) {
-    it(`replays every vector in the generated ${target} engine with the TypeScript results`, async () => {
-      const check = (await import(pathToFileURL(repoPath('packages/translate/src/check.ts')).href)) as { runTarget: (t: string, c: unknown, files: unknown, tag: string) => { status: string; suites: { name: string; failures?: unknown; mismatches?: unknown }[] }; committedFiles: (t: string) => unknown };
-      const lines = vecs.map(({ v }) => lineOf(v));
-      // native.ts corpusFiles keys the written inputs by the corpus digest, so the digest covers the lines.
-      const digest = createHash('sha256').update(lines.join('\n')).digest('hex');
-      const corpus = { suites: [{ name: 'text-latin', mode: 'engine', lines, expected: lines.map(runEngineCase) }], vectors: [], engineSplit: { ok: lines.length, unsupported: 0, refused: 0, threw: 0, harnessError: 0 }, digest, digests: {} };
-      const r = check.runTarget(target, corpus, check.committedFiles(target), `${target}-text-latin`);
-      expect(r.status, JSON.stringify(r.suites).slice(0, 2000)).toBe('pass');
-    }, 1_800_000);
-  }
+  // The Swift and Kotlin replays of these vectors run on the native shards: text-latin-native.test.ts.
 });

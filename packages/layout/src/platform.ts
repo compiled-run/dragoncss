@@ -4,7 +4,7 @@ import type { EngineFaults } from './block.ts';
 import type { PlatformRule } from './platform-rules.ts';
 import { PLATFORM_RULES } from './platform-rules.ts';
 import type { GlyphShaper, ShapedFace, ShapingFaults } from './shaping.ts';
-import { shapedMeasurer } from './shaping.ts';
+import { latinScopedMeasurer, shapedMeasurer } from './shaping.ts';
 import type { TextMeasurer } from './text.ts';
 import { ahemMeasurer } from './text.ts';
 
@@ -48,12 +48,13 @@ export function shapingFaultsOf(faults: EngineFaults): ShapingFaults {
 /**
  * R2 (notes/T056-txt1a-spec.md): the measurer over the host's bundled faces, keyed by face id, and its HarfBuzz, with the platform
  * rules of one capture platform, or a typed refusal. Ahem goes through it as every other face does. language is the BCP 47 tag
- * HarfBuzz shapes with: the content language, which is the browser's default locale when no lang attribute applies.
+ * HarfBuzz shapes with: the content language, which is the browser's default locale when no lang attribute applies. Text outside
+ * Latin, Common and Inherited is refused (R4, latinScopedMeasurer).
  */
 export function shapedMeasurerFor(platform: string, faces: ReadonlyMap<string, ShapedFace>, shaper: GlyphShaper, language: string, faults: EngineFaults): MeasurerChoice {
   const rules = PLATFORM_RULES.get(platform);
   if (!MEASURERS.has(platform) || rules === undefined) {
     return { kind: 'refused', code: 'no-platform-rules', platform, detail: `no platform rules are registered for ${platform}; its font metric rounding is unmeasured` };
   }
-  return { kind: 'ok', platform, key: `shaped/${platform}`, measurer: shapedMeasurer(faces, shaper, shapingFaultsOf(faults), language), rules };
+  return { kind: 'ok', platform, key: `shaped/${platform}`, measurer: latinScopedMeasurer(shapedMeasurer(faces, shaper, shapingFaultsOf(faults), language), faults.latinCheckSkipped), rules };
 }

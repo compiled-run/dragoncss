@@ -1,0 +1,146 @@
+{
+ "case": "overflow-hidden-flex-min-size",
+ "chrome": "145.0.7632.6",
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "direction": "ltr",
+ "scrollbars": "overlay",
+ "scrollbarArgs": "-AppleShowScrollBars WhenScrolling",
+ "records": [
+  {
+   "id": "viewport",
+   "scrollWidth": 400,
+   "scrollHeight": 300,
+   "clientWidth": 400,
+   "clientHeight": 300
+  },
+  {
+   "id": "r1a",
+   "scrollWidth": 80,
+   "scrollHeight": 10,
+   "clientWidth": 0,
+   "clientHeight": 10
+  },
+  {
+   "id": "r2a",
+   "scrollWidth": 46,
+   "scrollHeight": 20,
+   "clientWidth": 6,
+   "clientHeight": 20
+  },
+  {
+   "id": "r2b",
+   "scrollWidth": 50,
+   "scrollHeight": 20,
+   "clientWidth": 12,
+   "clientHeight": 20
+  },
+  {
+   "id": "r3a",
+   "scrollWidth": 60,
+   "scrollHeight": 30,
+   "clientWidth": 21,
+   "clientHeight": 30
+  },
+  {
+   "id": "r3b",
+   "scrollWidth": 29,
+   "scrollHeight": 30,
+   "clientWidth": 29,
+   "clientHeight": 30
+  },
+  {
+   "id": "c1a",
+   "scrollWidth": 50,
+   "scrollHeight": 40,
+   "clientWidth": 50,
+   "clientHeight": 0
+  },
+  {
+   "id": "c2a",
+   "scrollWidth": 50,
+   "scrollHeight": 40,
+   "clientWidth": 50,
+   "clientHeight": 24
+  },
+  {
+   "id": "c2b",
+   "scrollWidth": 50,
+   "scrollHeight": 10,
+   "clientWidth": 50,
+   "clientHeight": 6
+  },
+  {
+   "id": "r4a",
+   "scrollWidth": 120,
+   "scrollHeight": 10,
+   "clientWidth": 60,
+   "clientHeight": 10
+  }
+ ],
+ "extents": [
+  {
+   "id": "r1a",
+   "minLeft": 0,
+   "maxLeft": 80,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "r2a",
+   "minLeft": 0,
+   "maxLeft": 40,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "r2b",
+   "minLeft": 0,
+   "maxLeft": 38,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "r3a",
+   "minLeft": 0,
+   "maxLeft": 38.66666793823242,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "r3b",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "c1a",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 40
+  },
+  {
+   "id": "c2a",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 16
+  },
+  {
+   "id": "c2b",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 4
+  },
+  {
+   "id": "r4a",
+   "minLeft": 0,
+   "maxLeft": 60,
+   "minTop": 0,
+   "maxTop": 0
+  }
+ ]
+}

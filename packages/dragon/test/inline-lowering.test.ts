@@ -8,7 +8,7 @@ import { createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/intern
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
 
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
-const CSS = 'body { font-family: Ahem; font-size: 10px; } .f20 { font-size: 20px; } .blk { height: 10px; } .pre { white-space-collapse: preserve; } .nw { white-space: nowrap; }';
+const CSS = 'body { font-family: Ahem; font-size: 10px; } .f20 { font-size: 20px; } .blk { height: 10px; } .pre { white-space-collapse: preserve; } .nw { white-space: nowrap; } .g { display: grid; }';
 
 function el(ref: SourceRef, id: string, tag: string, classes: string[] = [], children: TreeNode[] = []): ElementNode {
   const origin: Origin = { kind: 'authored', span: { source: ref, start: 0, end: 0 } };
@@ -75,7 +75,63 @@ describe('inline boxes and <br>s in the engine input', () => {
   });
 });
 
+describe('inline content in a grid container (INL1a with GRID G1a)', () => {
+  // css-display-3 §2.7: a grid item is blockified, so a <span> child of a grid container is a block box with its placement, never an
+  // inline box; text directly in the container is an anonymous grid item (css-grid-2 §6), auto-placed.
+  const grid = (r: SourceRef) => [el(r, 'g', 'div', ['g'], [text(r, 't0', 'aa'), el(r, 's', 'span', ['f20'], [text(r, 't1', 'bb'), el(r, 'b', 'br')])])];
+  it('lowers a <span> grid item as a block box with its placement, and text beside it as an anonymous grid item', () => {
+    expect(shapeOf(grid, 'g')).toEqual({
+      strut: null,
+      children: [
+        { box: 'g:anon0', strut: 10, children: [{ text: 'g:text0', value: 'aa', size: 10 }] },
+        { box: 's', strut: 20, children: [{ text: 's:text0', value: 'bb', size: 20 }, { br: 'b', size: 20 }] },
+      ],
+    });
+    const p = iosLayoutProjection(compile(grid), ENV, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const g = p.input.root.children.flatMap((k) => (k.kind === 'box' ? k.children : [])).find((k) => k.id === 'g');
+    if (g === undefined || g.kind !== 'box') throw new Error('no grid box g');
+    expect(g.style.grid).not.toBeNull();
+    for (const k of g.children) {
+      if (k.kind !== 'box') throw new Error(`${k.id} is not a box`);
+      expect([k.id, k.style.display, k.style.gridItem === null]).toEqual([k.id, 'block', false]);
+    }
+  });
+});
+
+describe('replaced leaves and the line strut (REPL-a with INL1a)', () => {
+  // Review finding 3 on #91: a replaced leaf is a box of its own, not inline content, so it never gives its container a strut.
+  const css = `${CSS} iframe { display: block; border: 0; }`;
+  const shape = (tree: (r: SourceRef) => TreeNode[]): unknown => {
+    const p = iosLayoutProjection(project().compile(inputFor(css, tree)), ENV, []);
+    if (p.kind !== 'ready') throw new Error(`projection blocked: ${p.reason}`);
+    const d = p.input.root.children.flatMap((k) => (k.kind === 'box' ? k.children : [])).find((k) => k.kind === 'box' && k.id === 'd');
+    if (d === undefined || d.kind !== 'box') throw new Error('no box d');
+    return { strut: d.strut === null ? null : d.strut.font.size, children: d.children.map((k) => (k.kind === 'box' ? { box: k.id, strut: k.strut === null ? null : k.strut.font.size } : { [k.kind]: k.id })) };
+  };
+  it('a block holding only a replaced element has no line strut; text beside one goes into an anonymous box that has it', () => {
+    expect(shape((r) => [el(r, 'd', 'div', [], [el(r, 'f', 'iframe')])])).toEqual({ strut: null, children: [{ replaced: 'f' }] });
+    expect(shape((r) => [el(r, 'd', 'div', [], [text(r, 't0', 'a'), el(r, 'f', 'iframe')])])).toEqual({ strut: null, children: [{ box: 'd:anon0', strut: 10 }, { replaced: 'f' }] });
+  });
+});
+
 describe('refusals', () => {
+  it('a background on an inline box is refused on ios and android, naming INL1b, and painted on web; a transparent one is not refused', () => {
+    // The native runtime places inline box views unpainted until INL1b, so the review's highlighted span must not compile checked there.
+    const css = 'body { font-family: Ahem; font-size: 10px; } .x { background-color: red; } .t { background-color: transparent; }';
+    const tree = (cls: string) => (r: SourceRef) => [el(r, 'd', 'div', [], [el(r, 'p', 'p', [], [text(r, 't0', 'a '), el(r, 's', 'span', [cls], [text(r, 't1', 'b')]), text(r, 't2', ' c')])])];
+    const all = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' });
+    const red = all.compile(inputFor(css, tree('x')));
+    const refused = red.diagnostics.filter((d) => d.severity === 'error').map((d) => [d.code, d.target, d.message]).sort((a, b) => String(a[1]).localeCompare(String(b[1])));
+    expect(refused).toEqual([
+      ['DRAGON_UNSUPPORTED_VALUE', 'android', expect.stringMatching(/^background-color: .* on the inline box <span> s: the native runtime does not paint inline boxes until INL1b/)],
+      ['DRAGON_UNSUPPORTED_VALUE', 'ios', expect.stringMatching(/^background-color: .* on the inline box <span> s: the native runtime does not paint inline boxes until INL1b/)],
+    ]);
+    expect([red.outputs.ios.kind, red.outputs.android.kind, red.outputs.web.kind]).toEqual(['blocked', 'blocked', 'ready']);
+    const clear = all.compile(inputFor(css, tree('t')));
+    expect(clear.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+  });
+
   const refused = (tree: (r: SourceRef) => TreeNode[]) => compile(tree).diagnostics.map((d) => `${d.code} ${String(d.target)}`);
   it('an inline box whose white-space-collapse is not collapse is refused on every target', () => {
     const got = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', 'span', ['pre'], [text(r, 't1', 'b  c')])])]).diagnostics;

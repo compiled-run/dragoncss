@@ -1,5 +1,5 @@
 // The extended planted fault (notes/T010-p2-triage.md ruling 4): snap-truncating-division must fail at least one case of the
-// extended corpus on both targets. The P1 faults stay pinned by planted-swift.test.ts and planted-kotlin.test.ts; the CLI
+// extended corpus on both targets. The P1 faults stay pinned by planted-<target>-<fault>.test.ts (planted.ts); the CLI
 // (pnpm run native:planted) runs every EXTENDED_FAULTS fault on both corpora.
 import { describe, expect, it } from 'vitest';
 import { expectedFiles, runTarget } from '../src/check.ts';
@@ -7,7 +7,7 @@ import type { Target } from '../src/check.ts';
 import { buildExtendedCorpus } from '../src/corpus-dpr.ts';
 import { EXTENDED_FAULTS } from '../src/faults.ts';
 import { lowerAll } from '../src/generate.ts';
-import { failures, kotlinTool, swiftTool } from '../src/native.ts';
+import { failures, isBlocked, kotlinTool, swiftTool } from '../src/native.ts';
 
 describe('planted translator fault snap-truncating-division (native:planted)', () => {
   const l = lowerAll();
@@ -29,7 +29,7 @@ describe('planted translator fault snap-truncating-division (native:planted)', (
     it(`${target}: fails at least one extended corpus case`, () => {
       if (process.platform === 'darwin') expect(target === 'swift' ? swiftTool() : kotlinTool(), `${target} toolchain`).not.toBeNull();
       const r = runTarget(target, x, expectedFiles(target, l, 'snap-truncating-division'), `test-planted-${target}-snap`, true);
-      if (r.status === 'blocked (owner tooling)') {
+      if (isBlocked(r)) {
         expect(target === 'swift' ? swiftTool() : kotlinTool()).toBeNull();
         return;
       }

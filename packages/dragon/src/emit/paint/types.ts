@@ -28,12 +28,22 @@ export type NativePaint = {
   readonly container: string | null;
 };
 
+/**
+ * The TS paint references the host passes in with the engine (the compiler core imports the engine for types only): the same
+ * functions the device runs translated, for the expected applied values.
+ */
+export type PaintEngine = {
+  /** paint-radius.ts roundedShape: the outer then the padding-edge radii of a snapped border box and its layout size, in device px. */
+  readonly roundedShape: (left: number, top: number, right: number, bottom: number, layoutWidth: number, layoutHeight: number, borders: readonly number[], lengths: readonly { readonly percent: boolean; readonly value: number }[], dpr: number, faults: { readonly radiusUnclamped: boolean; readonly innerRadiusNotReduced: boolean }) => number[];
+};
+
 export const NO_NATIVE_PAINT: NativePaint = { boxMembers: '', file: null, stages: {}, afterLayout: null, applied: null, roundedPath: null, container: null };
 
 /** A raster plant a module declares: one text replacement in its support source per backend, proving a pixel lane sees it. */
-export type PaintPlant = { readonly name: string; readonly replace: { readonly [B in NativeBackend]: readonly [string, string] } };
+export type PaintPlant<P extends string = string> = { readonly name: P; readonly replace: { readonly [B in NativeBackend]: readonly [string, string] } };
 
-export type PaintEmitter<K extends string> = {
+/** K: the module's write kinds; P: the names of its raster plants. */
+export type PaintEmitter<K extends string, P extends string = never> = {
   readonly name: PaintModuleName;
   readonly kinds: readonly K[];
   /**
@@ -44,7 +54,7 @@ export type PaintEmitter<K extends string> = {
   /** The applied value of one write at a device scale, in the backend's units; the device reads back the same through native.applied. */
   readonly applied: (engine: ExpectedEngine, backend: NativeBackend, w: ProgramWrite & { readonly kind: K }, dpr: number, g: NodeGeometry) => JsonValue;
   readonly native: { readonly [B in NativeBackend]: NativePaint };
-  readonly plants: readonly PaintPlant[];
+  readonly plants: readonly PaintPlant<P>[];
 };
 
 /** A module with no writes and no native code yet: registered once in final order and filled by its package. */

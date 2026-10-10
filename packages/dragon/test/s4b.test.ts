@@ -10,6 +10,7 @@ import { initialValue } from '../src/analysis/resolve.ts';
 import { computed, userAgentLonghands } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
+import { floorProblems } from './floor.ts';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -51,11 +52,17 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   const paint = LONGHANDS.filter((p) => PROPERTY_ROLE[p] === 'paint');
   it('(i) paint holds exactly for the aspect-table longhands with a paint aspect and no layout aspect', () => {
     for (const p of LONGHANDS) expect(PROPERTY_ROLE[p] === 'paint', p).toBe(!PROPERTY_ASPECTS[p].layout && PROPERTY_ASPECTS[p].paint);
-    expect([...paint].sort()).toEqual(['background-color', 'border-bottom-color', 'border-left-color', 'border-right-color', 'border-top-color', 'color']);
+    // PIN-DERIVE: the seams floor keeps every longhand that had the paint role, in order; a new paint longhand needs no edit here.
+    expect(floorProblems(new URL('./seams-floor.json', import.meta.url), 'role:paint', paint, true)).toEqual([]);
   });
   it('(ii) a paint longhand never reaches the layout input: two elements that differ only in it lower to identical styles', () => {
+    // Two values of each paint longhand: two colours, or for the PNT2 and BG2 longhands two values of their own syntax.
+    const pair: { readonly [p: string]: readonly [string, string] } = { 'object-fit': ['cover', 'contain'], 'object-position': ['10px 20px', 'left top'], transform: ['rotate(30deg)', 'translate(5px, 10%) scale(2)'], 'transform-origin': ['0 0', 'right bottom'], 'will-change': ['transform', 'opacity'],
+      // BG2's layer longhands, each with two values of its own syntax that paint no image.
+      'background-image': ['none', 'none, none'], 'background-position-x': ['0%', 'right 4px'], 'background-position-y': ['0%', '25%'], 'background-size': ['auto', 'cover'], 'background-repeat': ['repeat', 'no-repeat'], 'background-attachment': ['scroll', 'scroll, scroll'], 'background-origin': ['padding-box', 'content-box'], 'background-clip': ['border-box', 'padding-box'] };
     for (const p of paint) {
-      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; } .a { ${p}: #102030; } .b { ${p}: rgba(200, 100, 50, 0.5); }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
+      const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
+      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: relative; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [text(r, 'at', 'XX XX')]), div(r, 'b', ['x', 'b'], [text(r, 'bt', 'XX XX')])]);
       const m = boxes(input);
       const [a, b] = [m.get('a') as LayoutBox, m.get('b') as LayoutBox];
       expect(a.style, p).toEqual(b.style);
@@ -69,6 +76,10 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       if (f.includes(`${join('src', 'fonts')}${sep}`)) continue;
       // The forms port Blink's Decimal and geometry math (LayoutUnit truncation), so src/forms/** is exempt by path.
       if (f.includes(`${join('src', 'forms')}${sep}`)) continue;
+      // MQ-R0: media/viewport.ts reproduces Chrome's measured media size (float32 size, device px, int orientation and aspect-ratio read); only that file.
+      if (f.endsWith(join('src', 'media', 'viewport.ts'))) continue;
+      // CASC 2: css/chrome-number.ts writes registered @property numbers as Chrome 145 serialises them (six significant digits, %g; probed in casc-property); only that file.
+      if (f.endsWith(join('src', 'css', 'chrome-number.ts'))) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });
@@ -159,7 +170,8 @@ describe('the web emitter and the inset longhands', () => {
 describe('rec4: the unsupported at-rule fix is manual and never deletes the enclosed rules', () => {
   it('DRAGON_UNSUPPORTED_AT_RULE carries a manual fix; applyFix changes no text', () => {
     expect(CATALOGUE.DRAGON_UNSUPPORTED_AT_RULE.fix.kind).toBe('manual');
-    const css = `${FONT} @media (min-width: 1px) { .a { width: 80px; } }`;
+    // A width @media is native too since MQ-R1, so the at-rule here is one every target refuses.
+    const css = `${FONT} @container (min-width: 1px) { .a { width: 80px; } }`;
     const input = inputFor(css, (r) => [div(r, 'a', ['a'])]);
     const d = project().compile(input).diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_AT_RULE');
     if (d === undefined || d.fix === null) throw new Error('no at-rule diagnostic');

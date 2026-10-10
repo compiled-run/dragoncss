@@ -9,6 +9,7 @@ import * as dragon from 'dragon';
 import type { LayoutInput } from '@dragon/layout';
 import { layout as engineLayout } from '@dragon/layout';
 import { fixtureInput } from '../src/cases.ts';
+import { fixtureToInput } from '../src/fixture-reader.ts';
 import { layout } from '../src/fixture-groups/define.ts';
 import { withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { FONT_REFERENCE_MAP } from '../src/font-reference.ts';
@@ -106,5 +107,41 @@ describe('TXT1a-2 phase C: native lowering of real bundled faces', () => {
     const greek = JSON.parse(JSON.stringify(input).replace('Waves and wind over the quiet harbour', 'Κύματα και άνεμος')) as LayoutInput;
     const r = engineLayout(greek, referenceShapedMeasurer());
     expect(r.kind === 'unsupported' ? r.unsupported.code : r.kind).toBe('text-script');
+  });
+});
+
+describe('TXT1a-2 phase C off by default: an element whose own font is a real face is refused natively, not only its text', () => {
+  // Review of #104: the strut of a block, a <br> or an inline box comes from the element's own font, so a Lato element holding only
+  // Ahem text must still be refused on ios and android while the device runtime measures only Ahem (DragonBridge.measurer).
+  const probe = (id: string, body: string): FrontEndResult => withFontMapAssets(fixtureToInput(id, `<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; }
+.lato { font-family: Lato; }
+.ahem { font-family: Ahem; }
+</style>
+</head>
+<body data-dragon-id="body">
+${body}
+</body>
+</html>
+`), FONT_REFERENCE_MAP);
+  const probes: readonly (readonly [string, string])[] = [
+    ['block', '<div data-dragon-id="d" class="lato"><span data-dragon-id="s" class="ahem">XX XX</span></div>'],
+    ['br', '<div data-dragon-id="d" class="lato"><span data-dragon-id="s" class="ahem">XX</span><br data-dragon-id="b"><span data-dragon-id="t" class="ahem">XX</span></div>'],
+    ['inline-box', '<div data-dragon-id="d"><span data-dragon-id="i" class="lato"><span data-dragon-id="s" class="ahem">XX XX</span></span></div>'],
+  ];
+  it.each(probes)('%s: refused with DRAGON_UNSUPPORTED_FONT on ios and android, and no native projection names Lato', (id, body) => {
+    const c = compile(probe(`txt1a-real-strut-${id}`, body), false);
+    const fonts = nativeErrors(c).filter((d) => d.code === 'DRAGON_UNSUPPORTED_FONT').map((d) => d.target);
+    expect(new Set(fonts)).toEqual(new Set(['ios', 'android']));
+    expect([c.outputs.ios.kind, c.outputs.android.kind]).toEqual(['blocked', 'blocked']);
+    expect(dragon.nativeLayoutProjection(c, ENVIRONMENT, []).kind).toBe('blocked');
+  });
+  it.each(probes)('%s: lowered natively with the Lato strut when phase C is on', (id, body) => {
+    const c = compile(probe(`txt1a-real-strut-${id}`, body), true);
+    expect(nativeErrors(c)).toEqual([]);
+    expect(families(nativeInput(c).root).has(LATO)).toBe(true);
   });
 });

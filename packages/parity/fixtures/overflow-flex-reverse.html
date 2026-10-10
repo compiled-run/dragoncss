@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.sc { display: flex; overflow: hidden; width: 60px; height: 40px; padding: 4px 6px 8px 2px; border: 1px solid #000; margin-bottom: 4px; background-color: #eee; }
+.auto { overflow: auto; background-color: transparent; }
+.rr { flex-direction: row-reverse; }
+.cr { flex-direction: column-reverse; }
+.col { flex-direction: column; }
+.wr { flex-wrap: wrap-reverse; }
+.sc > div { flex: none; background-color: #ccc; }
+.wide { width: 150px; height: 20px; }
+.tall { width: 20px; height: 90px; }
+.cell { width: 35px; height: 30px; }
+.m { margin: 3px 7px 5px 9px; }
+.neg { margin-left: -12px; margin-top: -6px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a1" class="sc rr"><div data-dragon-id="a1a" class="wide"></div></div>
+<div data-dragon-id="a2" class="sc rr auto"><div data-dragon-id="a2a" class="wide m"></div><div data-dragon-id="a2b" class="cell neg"></div></div>
+<div data-dragon-id="a3" class="sc cr"><div data-dragon-id="a3a" class="tall"></div></div>
+<div data-dragon-id="a4" class="sc cr auto"><div data-dragon-id="a4a" class="tall m"></div><div data-dragon-id="a4b" class="cell neg"></div></div>
+<div data-dragon-id="a5" class="sc wr"><div data-dragon-id="a5a" class="cell"></div><div data-dragon-id="a5b" class="cell m"></div><div data-dragon-id="a5c" class="cell"></div></div>
+<div data-dragon-id="a6" class="sc col wr auto"><div data-dragon-id="a6a" class="cell"></div><div data-dragon-id="a6b" class="cell m"></div><div data-dragon-id="a6c" class="cell neg"></div></div>
+<div data-dragon-id="a7" class="sc rr wr auto"><div data-dragon-id="a7a" class="cell"></div><div data-dragon-id="a7b" class="cell m"></div><div data-dragon-id="a7c" class="cell"></div><div data-dragon-id="a7d" class="wide"></div></div>
+</body>
+</html>

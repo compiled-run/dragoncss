@@ -4,15 +4,17 @@
 // and the zoom guard. Then the committed break vectors against these: equal on N/N, or every break-mismatch listed (exit 1).
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { CHROME_VERSION, launchChrome, openPage } from '../chrome.ts';
+import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { atDpr, DPRS, zoomGuard } from '../dpr.ts';
 import { chromeBreaksText, captureBreakTexts, compareVectorWithChrome, expectedBreaksDir, expectedBreaksPath, leafTexts, readBreakVector } from '../line-breaks.ts';
 import type { ChromeBreaks } from '../line-breaks.ts';
-import { nativeCases } from '../native-host.ts';
+import { engineCases } from '../native-host.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 
 const platform = hostPlatform();
 if (platform !== REFERENCE_PLATFORM) throw new Error(`break captures are taken on the reference platform ${REFERENCE_PLATFORM}, not ${platform}`);
-const cases = nativeCases();
+// TXT1a-2: every layout case, a shaped one (native refuses it until phase R) through its engine projection.
+const cases = engineCases();
 console.log(`parity:break-capture: ${cases.length} cases per DPR; DPRs ${DPRS.join(', ')}`);
 const captured = new Map<string, ChromeBreaks>();
 for (const dpr of DPRS) {
@@ -23,7 +25,8 @@ for (const dpr of DPRS) {
   try {
     await zoomGuard(browser, dpr);
     const t = Date.now();
-    for (const n of cases) {
+    // Each case in its own context, CHROME_PAGES at a time; captured is keyed, so finishing order changes nothing.
+    await inOrder(cases, CHROME_PAGES, async (n) => {
       const page = await openPage(browser, n.case.authoredHtml, atDpr(n.case.environment, dpr));
       try {
         if (n.case.authoredPrepare !== null) await n.case.authoredPrepare(page);
@@ -33,7 +36,7 @@ for (const dpr of DPRS) {
       } finally {
         await page.context().close();
       }
-    }
+    });
     await zoomGuard(browser, dpr);
     const written = readdirSync(dir).filter((f) => f.endsWith('.breaks.json')).length;
     if (written !== cases.length) throw new Error(`DPR ${dpr}: ${written} break captures written, ${cases.length} cases`);
@@ -54,7 +57,7 @@ for (const dpr of DPRS) {
       mismatches.push(`${n.case.id}@${dpr}: break-mismatch: ${v === null ? 'no break vector (pnpm run layout:break-vectors)' : 'no Chrome capture'}`);
       continue;
     }
-    const r = compareVectorWithChrome(v, c, leafTexts(n.programs.uikit.root));
+    const r = compareVectorWithChrome(v, c, leafTexts(n.root));
     texts += r.compared;
     if (r.problems.length === 0) equal++;
     for (const p of r.problems) mismatches.push(`${n.case.id}@${dpr}: ${p.kind}: ${p.detail}`);

@@ -1,66 +1,98 @@
 // E2 compiler seams (docs/research/coverage-roadmap.md §3): the split of css/stylesheet.ts, css/properties.ts,
 // analysis/resolve.ts and the parity FIXTURES list is behaviour-preserving. These pins were taken at 4c1331c, before the split.
 import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resolve.ts';
 import type { Candidate } from '../src/analysis/resolve.ts';
 import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
+import { keyframesAtRule } from '../src/css/at-rules/keyframes.ts';
+import { layerAtRule } from '../src/css/at-rules/layer.ts';
+import { propertyAtRule } from '../src/css/at-rules/property.ts';
+import { charsetAtRule } from '../src/css/at-rules/charset.ts';
+import { supportsAtRule } from '../src/css/at-rules/supports.ts';
 import type { AtRuleContext } from '../src/css/at-rules.ts';
-import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
-import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../src/css/properties/grid.ts';
-import { LOGICAL_SHORTHANDS } from '../src/css/properties/logical.ts';
+import { INHERITED, LONGHANDS, PROPERTY_ASPECTS, PROPERTY_ROLE, SHORTHANDS, SHORTHANDS_MOVED } from '../src/css/properties.ts';
+import type { Longhand } from '../src/css/properties.ts';
 import { SHORTHAND_HANDLERS } from '../src/css/shorthands/index.ts';
 import type { Declaration, EnclosedRules } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { lengthFeatureType, UNITS } from '../src/css/units.ts';
 import { featureOf } from '../src/css/values.ts';
 import type { Diagnostic } from '../src/types.ts';
+import { floorProblems } from './floor.ts';
 
 const SRC = { uri: 's.css', revision: 'r', hash: 'h' };
 const sha = (v: unknown): string => createHash('sha256').update(JSON.stringify(v)).digest('hex');
+const FLOOR = new URL('./seams-floor.json', import.meta.url);
+const PROPERTIES_DIR = new URL('../src/css/properties/', import.meta.url);
+const AGGREGATE = readFileSync(new URL('../src/css/properties.ts', import.meta.url), 'utf8');
+/** Every export of every properties/<family>.ts module. */
+const FAMILY_EXPORTS: Record<string, unknown> = Object.assign({}, ...(await Promise.all(readdirSync(PROPERTIES_DIR).filter((f) => f.endsWith('.ts')).map((f) => import(new URL(f, PROPERTIES_DIR).href)))) as Record<string, unknown>[]);
+/** What an aggregate block may spread: the family modules' exports and the aggregate's own. */
+const SPREADABLE: Record<string, unknown> = { ...FAMILY_EXPORTS, ...((await import('../src/css/properties.ts')) as Record<string, unknown>) };
+const BLOCKS = ['LONGHANDS = [', 'SHORTHANDS = [', 'INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([', 'PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {', 'CONTAINER_LONGHANDS: readonly Longhand[] = [', 'TEXT_ROLE_LONGHANDS: readonly Longhand[] = ['];
+const SUFFIX: Record<string, string> = { [BLOCKS[0] as string]: 'LONGHANDS', [BLOCKS[1] as string]: 'SHORTHANDS', [BLOCKS[2] as string]: 'INHERITED', [BLOCKS[3] as string]: 'ASPECTS', [BLOCKS[4] as string]: 'CONTAINER', [BLOCKS[5] as string]: 'TEXT_ROLE' };
+/** The lists properties.ts registers for an aggregate block, in table order: the block's column of each family(...) line of FAMILIES. */
+function spreads(block: string): string[] {
+  const column = BLOCKS.indexOf(block);
+  const start = AGGREGATE.indexOf('const FAMILIES = [');
+  if (column < 0 || start < 0) throw new Error(`no ${block} column or no FAMILIES block in properties.ts`);
+  const body = AGGREGATE.slice(start, AGGREGATE.indexOf('\n]', start));
+  const rows = [...body.matchAll(/^ {2}family\('([a-z-]+)', (.+)\),$/gm)].map((m) => ({ id: m[1] as string, args: (m[2] as string).split(', ') }));
+  if (rows.some((r) => r.args.length !== BLOCKS.length)) throw new Error('a family(...) line of properties.ts does not name six lists');
+  const moved = rows.filter((r) => r.id === SHORTHANDS_MOVED.family);
+  const ordered = column === 1 ? rows.filter((r) => r.id !== SHORTHANDS_MOVED.family).flatMap((r) => (r.id === SHORTHANDS_MOVED.after ? [r, ...moved] : [r])) : rows;
+  return ordered.map((r) => r.args[column] as string).filter((a) => a !== '[]');
+}
+/** The families an aggregate block spreads, in order. */
+const spreadOrder = (block: string): string[] => spreads(block).map((id) => id.replace(/_(?:LONGHANDS|SHORTHANDS|INHERITED|ASPECTS|CONTAINER|TEXT_ROLE)$/, ''));
+/** A registry list against its families: the concatenation of the lists it spreads, in order, every family module's list spread once. */
+function registryProblems(block: string, name: string, actual: readonly string[]): string[] {
+  const suffix = SUFFIX[block] as string;
+  const ids = spreads(block);
+  const lists = Object.entries(FAMILY_EXPORTS).filter(([k, v]) => k.endsWith(`_${suffix}`) && Array.isArray(v) && !/_RESET_/.test(k));
+  const problems = lists.map(([k]) => k).filter((k) => ids.filter((i) => i === k).length !== 1).map((k) => `${name}: ${k} is spread ${ids.filter((i) => i === k).length} times`);
+  const want = ids.flatMap((id) => (Array.isArray(SPREADABLE[id]) ? (SPREADABLE[id] as readonly string[]) : [`<${id} is not an exported list>`]));
+  if (JSON.stringify([...actual]) !== JSON.stringify(want)) problems.push(`${name} is not its families in spread order: ${JSON.stringify(actual)} vs ${JSON.stringify(want)}`);
+  return problems;
+}
 
 describe('E2 seams: the property registry', () => {
-  it('LONGHANDS keeps its order across the properties/<family>.ts aggregate', () => {
-    expect([...LONGHANDS]).toEqual([
-      'display', 'position', 'top', 'right', 'bottom', 'left', 'overflow-x', 'overflow-y', 'direction', 'box-sizing',
-      'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'aspect-ratio',
-      'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
-      'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
-      'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
-      'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
-      'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
-      'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
-      'justify-content', 'align-items', 'align-self', 'align-content', 'row-gap', 'column-gap',
-      'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'background-color',
-      // GRID G0 appends its family (test/grid.test.ts pins GRID_LONGHANDS).
-      ...GRID_LONGHANDS,
-      // SELD-R1b appends pointer-events (test/pointer-events.test.ts).
-      'pointer-events',
-    ]);
+  // PIN-DERIVE: the orders are derived from properties/<family>.ts and the aggregate's spread order, and seams-floor.json keeps
+  // every name these lists held (taken from the 4c1331c pins and every family since), in order: a family may add names anywhere,
+  // but dropping or reordering one fails.
+  it('LONGHANDS is its families spread in aggregate order, with every floor longhand kept in order', () => {
+    expect(registryProblems('LONGHANDS = [', 'LONGHANDS', LONGHANDS)).toEqual([]);
+    expect(floorProblems(FLOOR, 'longhands', LONGHANDS, true)).toEqual([]);
   });
-  it('SHORTHANDS keeps its order', () => {
-    expect([...SHORTHANDS]).toEqual([
-      'margin', 'padding', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left',
-      'border-width', 'border-style', 'border-color', 'flex', 'flex-flow', 'gap', 'overflow', 'white-space',
-      'background',
-      ...LOGICAL_SHORTHANDS,
-      'writing-mode', 'text-orientation', 'text-combine-upright',
-      ...GRID_SHORTHANDS,
-    ]);
+  it('SHORTHANDS is its families spread in aggregate order, with every floor shorthand kept in order', () => {
+    expect(registryProblems('SHORTHANDS = [', 'SHORTHANDS', SHORTHANDS)).toEqual([]);
+    expect(floorProblems(FLOOR, 'shorthands', SHORTHANDS, true)).toEqual([]);
   });
-  it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE are unchanged', () => {
+  it('PROPERTY_ASPECTS keys follow LONGHANDS, and INHERITED and PROPERTY_ROLE keep every floor entry in order', () => {
     expect(Object.keys(PROPERTY_ASPECTS)).toEqual([...LONGHANDS]);
-    expect([...INHERITED]).toEqual(['direction', 'font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'color', 'pointer-events']);
+    expect(registryProblems('INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([', 'INHERITED', [...INHERITED])).toEqual([]);
+    expect(floorProblems(FLOOR, 'inherited', [...INHERITED], true)).toEqual([]);
     const byRole = (r: string): string[] => LONGHANDS.filter((p) => PROPERTY_ROLE[p] === r);
-    expect(byRole('container')).toEqual(['direction', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap',
-      'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items']);
-    expect(byRole('text')).toEqual(['font-size', 'font-family', 'line-height', 'text-align', 'white-space-collapse', 'text-wrap-mode']);
-    expect(byRole('paint')).toEqual(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'color', 'background-color']);
+    for (const r of ['item', 'container', 'text', 'paint']) expect(floorProblems(FLOOR, `role:${r}`, byRole(r), true), r).toEqual([]);
+    // Exact for every floor longhand: it keeps the one role whose floor holds it, and is inherited exactly when the inherited
+    // floor holds it, so a longhand moving into a role or into INHERITED fails too; only a new longhand may take any.
+    const floors = JSON.parse(readFileSync(FLOOR, 'utf8')) as Record<string, readonly string[]>;
+    const moved = (floors['longhands'] ?? []).flatMap((p) => {
+      const roles = ['item', 'container', 'text', 'paint'].filter((r) => floors[`role:${r}`]?.includes(p));
+      const inherited = floors['inherited']?.includes(p) === true;
+      return [
+        ...(roles.length === 1 && roles[0] === PROPERTY_ROLE[p as Longhand] ? [] : [`${p}: role ${PROPERTY_ROLE[p as Longhand]}, the floor gives ${roles.join(', ') || 'none'}`]),
+        ...(INHERITED.has(p as Longhand) === inherited ? [] : [`${p}: ${inherited ? 'no longer' : 'now'} inherited`]),
+      ];
+    });
+    expect(moved).toEqual([]);
   });
   it('every shorthand has exactly one handler in shorthands/index.ts, and each sets only longhands', () => {
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());
     for (const s of SHORTHANDS) for (const l of SHORTHAND_HANDLERS[s].longhands) expect((LONGHANDS as readonly string[]).includes(l), `${s} -> ${l}`).toBe(true);
-    expect(SHORTHAND_HANDLERS.border.longhands).toEqual(LONGHANDS.filter((p) => p.startsWith('border-top-') || p.startsWith('border-right-') || p.startsWith('border-bottom-') || p.startsWith('border-left-')).sort((a, b) => ['top', 'right', 'bottom', 'left'].indexOf(a.split('-')[1] as string) - ['top', 'right', 'bottom', 'left'].indexOf(b.split('-')[1] as string)));
+    expect(SHORTHAND_HANDLERS.border.longhands).toEqual(LONGHANDS.filter((p) => (p.startsWith('border-top-') || p.startsWith('border-right-') || p.startsWith('border-bottom-') || p.startsWith('border-left-')) && !p.endsWith('-radius')).sort((a, b) => ['top', 'right', 'bottom', 'left'].indexOf(a.split('-')[1] as string) - ['top', 'right', 'bottom', 'left'].indexOf(b.split('-')[1] as string)));
   });
   it('the unit registry order is pinned, and unregistered units keep their <length-unit> feature key', () => {
     expect(UNITS.map((u) => u.unit)).toEqual(['px', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'em', 'rem', 'ex', 'rex', 'ch', 'rch', 'cap', 'rcap', 'ic', 'ric', 'lh', 'rlh', 'vw', 'vh', 'vi', 'vb', 'vmin', 'vmax', 'svw', 'svh', 'svi', 'svb', 'svmin', 'svmax', 'lvw', 'lvh', 'lvi', 'lvb', 'lvmin', 'lvmax', 'dvw', 'dvh', 'dvi', 'dvb', 'dvmin', 'dvmax', 'cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax']);
@@ -82,15 +114,21 @@ describe('E2 seams: FIXTURES', () => {
     expect(fixtures.slice(0, MILESTONE_1_IDS.length).map((f) => f.id)).toEqual(MILESTONE_1_IDS);
     expect(new Set(fixtures.map((f) => f.id)).size).toBe(fixtures.length);
   });
-  it('the milestone-1 specs are byte-identical to 4c1331c', async () => {
-    expect(sha((await load()).slice(0, MILESTONE_1_IDS.length))).toBe('48d8a64b9fc390f1ebaed1047756416eba71054719f7bba3986a588986751b98');
+  // OVFL retargeted reject-overflow-single-axis to clip and removed reject-overflow-body and reject-overflow-scroll (now layout
+  // fixtures in the overflow group); every other milestone-1 spec is unchanged.
+  it('the milestone-1 specs are byte-identical to 4c1331c but for the OVFL rejects', async () => {
+    expect(sha((await load()).slice(0, MILESTONE_1_IDS.length))).toBe('a336142203f67ef5287bfd48a891f5c542ebeb581f5ac720964e1563c1269389');
   });
 });
 
-describe('E2 seams: every at-rule but @media is still refused', () => {
-  // MQ-a made @media conditional; its own seam test follows.
-  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media'), 'Font-Face', 'unknown-thing', '-webkit-keyframes'];
-  const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@supports (display: flex) { @${n} z { .b { height: 3px; } } }`];
+describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, @charset and @layer is still refused', () => {
+  // MQ-a made @media conditional, ANIM-b1 accepted a top-level @keyframes (keyframes.test.ts), ANIM-b2 accepted @-webkit-keyframes
+  // as @keyframes (aliases.test.ts), CASC decides @supports (casc.test.ts), CASC 2 registers a top-level @property
+  // (casc-property.test.ts) and CASC 3 orders cascade layers (casc-layer.test.ts). The enclosing at-rule of the fourth sheet is
+  // @unknown-thing, which no handler will ever take. @charset has its own handler, which accepts only "utf-8" at the start of a sheet (charset.test.ts).
+  const KEYFRAMES = ['keyframes', '-webkit-keyframes'];
+  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'supports' && n !== 'property' && n !== 'charset' && n !== 'layer' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
+  const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@unknown-thing w { @${n} z { .b { height: 3px; } } }`];
   const run = (text: string): { text: string; diagnostics: Diagnostic[]; enclosed: EnclosedRules[]; rules: number } => {
     const diagnostics: Diagnostic[] = [];
     const enclosed: EnclosedRules[] = [];
@@ -98,8 +136,8 @@ describe('E2 seams: every at-rule but @media is still refused', () => {
     return { text, diagnostics, enclosed, rules: rules.length };
   };
   const atRules = (ds: readonly Diagnostic[]): [string, string][] => ds.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.code, d.message]);
-  it('every registered name but font-face and media is refused today', () => {
-    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : refuseAtRule);
+  it('every registered name but font-face, media, keyframes, supports, property, charset and layer is refused today', () => {
+    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : name === 'supports' ? supportsAtRule : name === 'property' ? propertyAtRule : name === 'charset' ? charsetAtRule : name === 'layer' ? layerAtRule : refuseAtRule);
     expect(atRuleHandler('MEDIA')).toBe(mediaAtRule);
     expect(atRuleHandler('no-such-rule')).toBe(refuseAtRule);
     expect(atRuleHandler('Font-Face')).toBe(acceptFontFace);
@@ -126,8 +164,8 @@ describe('E2 seams: every at-rule but @media is still refused', () => {
       expect([top.rules, top.diagnostics, top.enclosed], n).toEqual([1, [], []]);
       expect(atRules(statement.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
       expect(atRules(nested.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in a rule block is not supported in milestone 1`]]);
-      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@supports in the stylesheet is not supported in milestone 1']]);
-      // The @media inside the refused @supports is parsed into the enclosed rules, with its condition, for analysis only.
+      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@unknown-thing in the stylesheet is not supported in milestone 1']]);
+      // The @media inside the refused @unknown-thing is parsed into the enclosed rules, with its condition, for analysis only.
       expect(inner.enclosed.length, n).toBe(1);
       expect(inner.enclosed[0]?.rules.map((r) => r.condition?.map((c) => c.text)), n).toEqual([['z']]);
     }
@@ -139,13 +177,20 @@ describe('E2 seams: every at-rule but @media is still refused', () => {
       expect(atRules(top.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
       expect(atRules(statement.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
       expect(atRules(nested.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in a rule block is not supported in milestone 1`]]);
-      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@supports in the stylesheet is not supported in milestone 1']]);
+      expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@unknown-thing in the stylesheet is not supported in milestone 1']]);
       expect(inner.enclosed.length, n).toBe(2);
     }
   });
   it('the diagnostics and enclosed rules are byte-identical to 4c1331c', () => {
-    // media and MEDIA left the list with MQ-a. At cb1a4b2d this list gave 0a07dd1a…, and the full list gave the 4c1331c pin 4cfb6ef0….
-    const pinned = ['charset', 'color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'keyframes', 'layer', 'namespace', 'page', 'position-try', 'property', 'scope', 'starting-style', 'supports', 'view-transition', 'Font-Face', 'unknown-thing', '-webkit-keyframes'];
+    // media and MEDIA left the list with MQ-a, and keyframes with ANIM-b1 (T065): with keyframes it gave 0a07dd1a…, and without
+    // it the base before ANIM-b1 gives ba217ee5…, so every other at-rule is unchanged. At cb1a4b2d the full list gave 4cfb6ef0….
+    // CASC decides @supports, so supports left the list and the enclosing at-rule became @layer: c80b0487dc (before CASC) gives
+    // fca72903… for these runs too. -webkit-keyframes left with ANIM-b2 (a36ce22e09 gave a0302641… without it); casc-supports
+    // before taking ANIM-b2 (1b8eacfdf9) gives 48d27023… for this list too. charset left with its own handler: without it master
+    // before it (9b32f10e18) gives ecd10b0c… too. property left with CASC 2: without it master before CASC 2 (508db670c4) gives
+    // 1397573c… too. CASC 3 orders @layer, so layer left the list and the enclosing at-rule became @unknown-thing (never registered, so always refused): master before
+    // CASC 3 (8a91837674) gives 180df812… for these runs too, so every other at-rule is still unchanged.
+    const pinned = ['color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'namespace', 'page', 'position-try', 'scope', 'starting-style', 'view-transition', 'Font-Face', 'unknown-thing'];
     const runs = pinned.flatMap((n) => sheets(n).map((text) => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
@@ -160,7 +205,7 @@ describe('E2 seams: every at-rule but @media is still refused', () => {
       }
       return x;
     }));
-    expect(sha(strip(runs))).toBe('0a07dd1a2792ee5f25fe56b981852996a7e54cce342a294d1fd51880928560c7');
+    expect(sha(strip(runs))).toBe('180df812178562c5c4cde6b617b5ba74c2aa0f3565c8d39177a9d8717aed5b3e');
     expect(added.length).toBeGreaterThan(0);
     for (const x of added) expect([[], null, false]).toContainEqual(x);
   });
@@ -218,21 +263,18 @@ const MILESTONE_1_IDS: readonly string[] = [
   'reject-shorthand-filled', 'reject-unproven-context', 'reject-tree-alias-cycle', 'reject-tree-choice-overlap',
   'reject-tree-unknown-state', 'reject-tree-initial-domain', 'reject-tree-producer-error',
   'reject-tree-raw-html', 'reject-white-space-pre', 'reject-nesting-ampersand', 'reject-nested-media',
-  'reject-overflow-single-axis', 'reject-overflow-body', 'reject-overflow-scroll', 'reject-last-baseline',
+  'reject-overflow-single-axis', 'reject-last-baseline',
   'reject-bidi-neutral', 'reject-position-fixed', 'reject-position-sticky', 'reject-abspos-in-inline',
 ];
 
 describe('EMS seams: the paint families (notes/T046-paint-spec.md §3 item 4)', () => {
-  it('are spread into every aggregate after the grid family, empty, so the registry orders above hold', async () => {
-    const text = (await import('node:fs')).readFileSync(new URL('../src/css/properties.ts', import.meta.url), 'utf8');
-    for (const block of ['LONGHANDS = [', 'SHORTHANDS = [', 'INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([', 'PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {', 'CONTAINER_LONGHANDS: readonly Longhand[] = [', 'TEXT_ROLE_LONGHANDS: readonly Longhand[] = [']) {
-      const start = text.indexOf(block);
-      const body = text.slice(start, Math.min(...['\n]', '\n}'].map((e) => text.indexOf(e, start)).filter((i) => i > 0)));
-      const fams = [...body.matchAll(/\.\.\.([A-Z_]+?)_(?:LONGHANDS|SHORTHANDS|INHERITED|ASPECTS|CONTAINER|TEXT_ROLE),/g)].map((m) => m[1]);
-      // SELD-R1b's pointer-events family sits between grid and the paint families in the three tables it is in.
-      const pointer = ['LONGHANDS = [', 'INHERITED: ReadonlySet<Longhand> = new Set<Longhand>([', 'PROPERTY_ASPECTS: { readonly [P in Longhand]: PropertyAspect } = {'].includes(block) ? ['POINTER'] : [];
-      const want = ['GRID', ...pointer, 'RADIUS', 'SHADOW', 'EFFECTS', 'OUTLINE', 'TRANSFORM', 'BACKGROUND_LAYERS', 'SCROLLBAR'];
-      expect(fams.slice(-want.length), block).toEqual(want);
+  it('are spread into every aggregate after the grid family, in their registered order', () => {
+    // PIN-DERIVE: in every block the EMS paint families follow GRID in their registered order; a family added later may follow.
+    const ems = ['GRID', 'RADIUS', 'SHADOW', 'EFFECTS', 'OUTLINE', 'TRANSFORM', 'BACKGROUND_LAYERS', 'SCROLLBAR'];
+    for (const block of BLOCKS) {
+      const fams = spreadOrder(block);
+      const at = ems.map((f) => fams.indexOf(f));
+      expect(at.every((i, k) => i >= 0 && (k === 0 || i > (at[k - 1] as number))), `${block}: ${JSON.stringify(fams)}`).toBe(true);
     }
     expect(Object.keys(SHORTHAND_HANDLERS).sort()).toEqual([...SHORTHANDS].sort());
   });
