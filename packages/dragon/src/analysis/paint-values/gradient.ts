@@ -588,8 +588,9 @@ export function gradientOpaque(g: GradientSpec, current: Rgba8): boolean {
 /**
  * Why a box's background stack is translucent over a backdrop Dragon does not know, or null (R6). Dragon composites the colour and
  * every layer into one bitmap over transparent, which equals Chrome whatever lies behind only (a) where the stack is opaque: an
- * opaque colour, or an opaque gradient layer repeating on both axes, whose clip holds every gradient layer's clip. A box that
- * isolates its own paint (opacity below 1) waits for PNT1, which makes opacity a longhand. A single solid colour certified behind
+ * opaque colour, or an opaque gradient layer repeating on both axes, whose clip holds every gradient layer's clip. R6(b), a box
+ * that isolates its own paint (opacity below 1), is refused like any other translucent stack until a Chrome proof models the
+ * group over transparent (PNT1 made opacity a longhand; bg2-reference.test.ts holds the refusal). A single solid colour certified behind
  * every painted pixel is not offered: no program fact certifies it per pixel.
  */
 export function translucencyRefusal(layers: readonly ElementLayer[], color: Rgba8, current: Rgba8, w: BoxWidths): string | null {

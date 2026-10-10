@@ -126,9 +126,11 @@ describe('the dormant gradient-unpremultiplied-upload plant (DORMANT_PLANTS) is 
   const clear = { r: 0, g: 0, b: 0, alpha: 0 };
   const red = { r: 255, g: 0, b: 0, alpha: 255 };
   const widths = { borders: [0, 0, 0, 0], padding: [0, 0, 0, 0], obscures: [false, false, false, false] };
-  // R6(b): a translucent stack isolated by opacity below 1, which no box reaches while opacity is not a longhand (PNT1 makes it
-  // one; then translucencyRefusal must refuse or model it); R6(c): a translucent stack over a backdrop (here, no colour).
-  const r6bRefused = !isLonghand('opacity');
+  // R6(b): a translucent stack isolated by opacity below 1. PNT1 (#196) made opacity a longhand; translucencyRefusal takes no
+  // opacity, so an isolated translucent stack is refused like any other (paint-gradient.test.ts compiles it). Modelling R6(b)
+  // gives it an opacity input, and this guard then fails until the plant is run and caught. R6(c): a translucent stack over a
+  // backdrop (here, no colour).
+  const r6bRefused = isLonghand('opacity') && translucencyRefusal.length === 4;
   const r6cRefused = translucencyRefusal([layer('linear-gradient(red, transparent)')], clear, red, widths) !== null;
   it('is dormant exactly while both refusals are in force: lifting either one fails here until the plant is run and caught again', () => {
     expect(r6bRefused && r6cRefused).toBe(DORMANT_PLANTS['gradient-unpremultiplied-upload'] !== undefined);

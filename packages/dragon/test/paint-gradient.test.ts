@@ -215,6 +215,12 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
     expect(run(`@keyframes f { from { opacity: 0; } to { opacity: 1; } } ${gradient} .a { animation: f 1s infinite; }`)).toEqual([]);
     expect(run(`${gradient} .a { transition: background-color 1s; }`, { web: {} })).toEqual([]);
   });
+  it('R6(b): refuses a translucent stack under opacity below 1 on ios and android, and compiles an opaque one (BG2c)', () => {
+    const translucent = (rule: string): string[] => compile(rule).filter((m) => m.includes('not opaque over every pixel')).map((m) => m.split(' ').slice(0, 2).join(' '));
+    expect(translucent('opacity: 0.5; background: linear-gradient(red, transparent);')).toEqual(['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios']);
+    expect(translucent('opacity: 0.5; background: linear-gradient(red, blue) white;')).toEqual([]);
+    expect(compile('opacity: 0.5; background: linear-gradient(red, transparent);', { web: {} })).toEqual([]);
+  });
   it('refuses an angle off the 0.01deg grid and a corner on ios and android only (BG2b)', () => {
     const off = compile('background: linear-gradient(1rad, red, blue);');
     expect(off.map((m) => m.split(' ').slice(0, 2).join(' '))).toEqual(['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios']);
