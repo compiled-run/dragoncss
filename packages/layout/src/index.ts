@@ -73,3 +73,5 @@ export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp
 export { serializeTransform } from './rt-interpolate.ts';
 export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';
 export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';
+export type { ScrollRange, ScrollRangeRefusal, ScrollRangesResult } from './overflow.ts';
+export { scrollRanges } from './overflow.ts';
