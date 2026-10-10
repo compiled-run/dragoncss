@@ -2,8 +2,10 @@
 // bolder/lighter chains compute as Chrome computes them, the synthesis predicate says synthesized exactly where Chrome's pixels
 // change under font-synthesis, native refuses synthesized text, and each of the six plants is caught by one of these tests. The
 // pins check that BASE's outputs are unchanged but for the two computed keys.
-import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import type { Dirent } from 'node:fs';
 import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Compiled, FrontEndResult } from 'dragon';
 import * as dragon from 'dragon';
@@ -24,8 +26,9 @@ import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-re
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
-/** The commit this branch was cut from (inl1a-tags-v2, T133 on INL1a part C2); its outputs are BASE. */
-const BASE = '398c8bc16';
+/** The outputs of BASE (inl1a-tags-v2 at 53602e0247, #105 caught up with master d3c79509a3), as digests the BASE pins recompute. */
+const BASE_OUTPUTS = { files: 11044, digest: 'afc9d7d33f6e6551f715327c77b2162c62eb1f0adc7436b284bc869f182efe74' };
+const BASE_CAPTURES = { files: 2826, digest: 'd93a992a88fe4e6624b60fe3c68187239ec276d11a92c3d2acf6d31e5736a7db' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -194,41 +197,47 @@ describe('the native refusals', () => {
 });
 
 describe('BASE pins', () => {
-  const git = (...args: string[]): string => execFileSync('git', args, { cwd: repoPath('.'), encoding: 'utf8', maxBuffer: 1 << 28 });
-  it('the text-weight group is appended last and adds exactly its own layout cases', () => {
-    expect(FIXTURE_GROUPS[FIXTURE_GROUPS.length - 1]?.id).toBe('text-weight');
+  // The outputs of BASE that TXT-W1 must not change, pinned as digests (PIN-DERIVE: CI checks out the head alone, so the pins read
+  // no git history): each is the sha256 of "<path>\t<sha256 of its content>" lines in path order, over every file but TXT-W1's own
+  // (its text-weight cases and the fonts-weight-synthetic font fixture). Each digest was taken at BASE with git and equals this
+  // tree's; a merge that moves BASE retakes them there (git show BASE:<path>) and states why in its message.
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic)/.test(p);
+  const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
+    .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
+  const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
+    createHash('sha256').update(paths.map((p) => `${p}\t${createHash('sha256').update(content(p)).digest('hex')}\n`).join('')).digest('hex');
+  it('the text-weight group adds exactly its own layout cases and keeps every BASE case in order', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     const added = TEXT_WEIGHT.filter((f) => f.kind === 'layout').flatMap((f) => [f.id, `${f.id}-rtl`]);
-    expect(ids.slice(-added.length)).toEqual(added);
-    expect(ids.length).toBe(533 + added.length);
+    // Groups after the per-feature split run in id order (fixtures.ts), so the text-weight group sits between text-latin and transforms.
+    expect(ids.filter((id) => added.includes(id))).toEqual(added);
+    const base = ids.filter((id) => !added.includes(id));
+    // BASE is inl1a-tags-v2 at 53602e0247 (#105 on master d3c79509a3), whose FIXTURES hold 694 layout cases.
+    expect(base.length).toBe(694);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('2d5f0241e41c9adef768773254cc9a6b54a689edb6b408e59f66598c4f1cb485');
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
-    const changed = git('diff', '--name-status', BASE, '--', 'packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels')
-      .split('\n').filter((l) => l !== '' && !l.startsWith('A\t') && !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(l));
-    expect(changed).toEqual([]);
+    const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];
+    const paths = files(dirs, (p) => !/expected-pixels\/darwin-arm64\/manifest\.json$/.test(p));
+    expect({ files: paths.length, digest: digest(paths, (p) => readFileSync(repoPath(p))) }).toEqual(BASE_OUTPUTS);
   });
   it('every existing capture equals BASE once font-weight and font-style are removed from its computed values', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
-    const paths = git('ls-tree', '-r', '--name-only', BASE, '--', ...dirs).split('\n').filter((p) => p.endsWith('.json'));
+    const paths = files(dirs, (p) => p.endsWith('.json'));
     expect(paths.length).toBeGreaterThan(1500);
-    const strip = (json: unknown): unknown => {
-      const c = json as { nodes?: { computed: Record<string, string> | null }[] };
-      for (const n of c.nodes ?? []) if (n.computed !== null) { delete n.computed['font-weight']; delete n.computed['font-style']; }
-      return c;
+    const lacking: string[] = [];
+    const stripped = (p: string): string => {
+      const c = JSON.parse(readFileSync(repoPath(p), 'utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
+      for (const n of c.nodes ?? []) {
+        if (n.computed === null) continue;
+        if (n.computed['font-weight'] === undefined || n.computed['font-style'] === undefined) lacking.push(p);
+        delete n.computed['font-weight'];
+        delete n.computed['font-style'];
+      }
+      return JSON.stringify(c);
     };
-    const blobs = execFileSync('git', ['cat-file', '--batch'], { cwd: repoPath('.'), input: paths.map((p) => `${BASE}:${p}`).join('\n'), maxBuffer: 1 << 30 });
-    let at = 0;
-    const differ: string[] = [];
-    for (const p of paths) {
-      const nl = blobs.indexOf(10, at);
-      const size = Number(blobs.subarray(at, nl).toString('utf8').split(' ')[2]);
-      const before = JSON.parse(blobs.subarray(nl + 1, nl + 1 + size).toString('utf8')) as unknown;
-      at = nl + 1 + size + 1;
-      const now = JSON.parse(readFileSync(repoPath(p), 'utf8')) as { nodes?: { computed: Record<string, string> | null }[] };
-      for (const n of now.nodes ?? []) if (n.computed !== null && (n.computed['font-weight'] === undefined || n.computed['font-style'] === undefined)) differ.push(`${p}: a node lacks the two keys`);
-      if (JSON.stringify(strip(now)) !== JSON.stringify(strip(before))) differ.push(p);
-    }
-    expect(differ).toEqual([]);
+    expect({ files: paths.length, digest: digest(paths, stripped) }).toEqual(BASE_CAPTURES);
+    expect([...new Set(lacking)]).toEqual([]);
     expect(readdirSync(repoPath('packages/parity/expected/darwin-arm64')).some((f) => f.startsWith('text-weight-numeric'))).toBe(true);
   });
 });
