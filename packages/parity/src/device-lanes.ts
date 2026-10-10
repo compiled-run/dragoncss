@@ -35,6 +35,7 @@ import type { AnimSample } from './anim-samples.ts';
 import { animSamples } from './anim-samples.ts';
 import { frameScript, pixelSamples } from './anim-cases.ts';
 import { committedFrameBreaks, committedFramePixels, committedFrames, framePixelSamples } from './frame-capture.ts';
+import { evaluateTraces, traceScriptIds } from './trace-lane.ts';
 import { casePoints, checkCasePixels, committedPixels, decodePng, devicePoints, rasterSize, runFileText } from './pixel-reference.ts';
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
@@ -48,14 +49,17 @@ export type FailureKind =
   | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest' | 'case-identity' | 'capture-kind'
   | 'blank-capture'
   | 'hit-missing' | 'hit-mismatch'
-  | 'frame-reference';
+  | 'frame-reference'
+  | 'trace-missing' | 'trace-mismatch' | 'motion-mismatch';
 
 /** SELD-R1b's device lanes: the case scripts' dumps (device-states) and the device hit test's answers (device-hit). */
 export const STATE_LANE = 'device-states';
 export const HIT_LANE = 'device-hit';
 /** ANIM-b1 3b (T065 R18): every frame sample's dump, checked by the four device checks against that sample's references. */
 export const ANIM_LANE = 'device-anim';
-export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE | typeof ANIM_LANE;
+/** SELD-R2's device lane (T064 R14): the interaction scripts' traces against the TS interaction runtime's. */
+export const TRACE_LANE = 'device-traces';
+export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE | typeof ANIM_LANE | typeof TRACE_LANE;
 
 /** One failure, named: lane, case, DPR, node (or sample rule), kind and the values. */
 export type LaneFailure = { readonly lane: DeviceLaneId; readonly case: string; readonly dpr: number; readonly node: string | null; readonly kind: FailureKind; readonly detail: string };
@@ -442,6 +446,8 @@ export type DeviceOutcome = {
   readonly hits?: DeviceSet | null;
   /** ANIM-b1 3b: the frame samples' set (device-anim); absent before it. */
   readonly anim?: DeviceSet | null;
+  /** SELD-R2: the interaction scripts' trace set (device-traces); absent before it. */
+  readonly traces?: DeviceSet | null;
   readonly trust: { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] } | null;
   readonly vectors: (HostRun & { readonly device: string }) | null;
   readonly blocked: string | null;
@@ -500,6 +506,7 @@ export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: Devi
   const states: DeviceSet[] = [];
   const hits: DeviceSet[] = [];
   const anims: DeviceSet[] = [];
+  const traces: DeviceSet[] = [];
   const trust: { device: string; dpr: number; rows: readonly TrustRow[] }[] = [];
   const blocked: string[] = [];
   let vectors: (HostRun & { device: string }) | null = null;
@@ -509,18 +516,19 @@ export function mergeOutcomes(outcomes: readonly DeviceOutcome[], evidence: Devi
     if (o.states !== undefined && o.states !== null) states.push(o.states);
     if (o.hits !== undefined && o.hits !== null) hits.push(o.hits);
     if (o.anim !== undefined && o.anim !== null) anims.push(o.anim);
+    if (o.traces !== undefined && o.traces !== null) traces.push(o.traces);
     if (o.trust !== null) trust.push(o.trust);
     if (o.vectors !== null) {
       if (vectors !== null) throw new Error(`two devices ran the vectors lane (${vectors.device}, ${o.vectors.device})`);
       vectors = o.vectors;
     }
   }
-  return { vectors, sets, states, hits, anims, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
+  return { vectors, sets, states, hits, anims, traces, trust, blocked: blocked.length === 0 ? null : blocked.join('; '), evidence };
 }
 
-/** Every failure of a target's run, the SELD-R1b lanes' and device-anim's too (the list written to out/device-failures-<target>.json). */
+/** Every failure of a target's run, the SELD-R1b lanes', device-anim's and device-traces' too (the list written to out/device-failures-<target>.json). */
 export function allRunFailures(d: DeviceRun): LaneFailure[] {
-  return [...d.sets, ...(d.states ?? []), ...(d.hits ?? []), ...(d.anims ?? [])].flatMap((s) => s.failures);
+  return [...d.sets, ...(d.states ?? []), ...(d.hits ?? []), ...(d.anims ?? []), ...(d.traces ?? [])].flatMap((s) => s.failures);
 }
 
 /** The text of out/device-failures-<target>.json for a target's run. */
@@ -676,6 +684,65 @@ export function evaluateHits(dpr: number, dir: string, device: DeviceRecord, cas
   return { dpr, device, cases: cases.length, dumps: records, compared: { a: 0, b: compared, c: 0, d: 0, breaks: 0 }, dumpsSha256: h.digest('hex'), failures, faults: [] };
 }
 
+// ---------------------------------------------------------------- device-traces (SELD-R2)
+
+export const traceFile = (dir: string, id: string, dpr: number): string => join(dir, `${id}@${dpr}.trace`);
+export const motionTraceFile = (dir: string, id: string, dpr: number): string => join(dir, `${id}@${dpr}.motion.trace`);
+
+/** What trace-lane.ts evaluateTraces reports for a directory at a DPR. */
+export type TraceVerdict = { readonly passed: number; readonly failed: number; readonly details: readonly string[] };
+
+/**
+ * device-traces at one DPR: every script's trace record present, and evaluateTraces (the device's lines against the TS
+ * interaction runtime's) with nothing failed; with motion (Android, R14 "twice"), every script's MotionEvent trace present and
+ * byte-equal to its entry-point trace. compared.b counts the lines evaluateTraces compared and the scripts compared twice.
+ */
+export function evaluateTraceSet(dpr: number, dir: string, device: DeviceRecord, ids: readonly string[], motion: boolean, evaluate: (dir: string, dpr: number) => TraceVerdict = evaluateTraces, extra: readonly LaneFailure[] = []): DeviceSet {
+  const failures: LaneFailure[] = [...extra];
+  const fail = (id: string, kind: FailureKind, detail: string): void => void failures.push({ lane: TRACE_LANE, case: id, dpr, node: null, kind, detail });
+  const h = createHash('sha256');
+  let records = 0;
+  const missing = new Set<string>();
+  let compared = 0;
+  for (const id of ids) {
+    const file = traceFile(dir, id, dpr);
+    if (!existsSync(file)) {
+      fail(id, 'trace-missing', 'the device wrote no trace record');
+      missing.add(id);
+      continue;
+    }
+    const got = readFileSync(file, 'utf8');
+    records++;
+    h.update(id).update('\0').update(got).update('\0');
+    if (!motion) continue;
+    const mfile = motionTraceFile(dir, id, dpr);
+    if (!existsSync(mfile)) {
+      fail(id, 'trace-missing', 'the device wrote no MotionEvent trace record');
+      continue;
+    }
+    const viaMotion = readFileSync(mfile, 'utf8');
+    compared++;
+    if (viaMotion === got) continue;
+    const [a, b] = [got.split('\n'), viaMotion.split('\n')];
+    const at = a.findIndex((l, i) => l !== b[i]);
+    const k = at < 0 ? a.length : at;
+    fail(id, 'motion-mismatch', `line ${k}: entry points ${JSON.stringify(a[k] ?? '(none)')}, MotionEvents ${JSON.stringify(b[k] ?? '(none)')} (${a.length} and ${b.length} lines)`);
+  }
+  const v = evaluate(dir, dpr);
+  const known = new Set(ids);
+  // A detail names its script first when it is about one; anything else is filed under the set.
+  const caseOf = (d: string): string => {
+    const id = /^([^\s:@]+)/.exec(d)?.[1] ?? '';
+    return known.has(id) ? id : '-';
+  };
+  // A script whose record is missing already failed above; evaluateTraces' detail for it would count it twice.
+  for (const d of v.details) if (!missing.has(caseOf(d))) fail(caseOf(d), 'trace-mismatch', d);
+  if (v.failed > 0 && v.details.length === 0) fail('-', 'trace-mismatch', `evaluateTraces failed ${v.failed} without a detail`);
+  if (records > 0 && v.passed + v.failed === 0) fail('-', 'trace-mismatch', `evaluateTraces compared nothing in ${records} trace records`);
+  compared += v.passed + v.failed;
+  return { dpr, device, cases: ids.length, dumps: records, compared: { a: 0, b: compared, c: 0, d: 0, breaks: 0 }, dumpsSha256: h.digest('hex'), failures, faults: [] };
+}
+
 /** Where a device comes from: booted and stopped by this process, or handed by the parent that boots and stops it (release null). */
 export type DeviceSource = { readonly boot: () => Promise<DeviceHandle>; readonly release: ((h: DeviceHandle) => Promise<string | null>) | null };
 
@@ -752,6 +819,14 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
     const animExtra: LaneFailure[] = ar.error === null ? [] : [{ lane: ANIM_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the frame samples: ${ar.error}` }];
     const animSet = evaluateAnim(t.target, dpr, animDir, rec, anim, animExtra);
     log(`${spec.name}: device-anim ${animSet.dumps}/${animSet.cases} dumps in ${((Date.now() - a0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(animSet.failures))}`);
+    // SELD-R2: device-traces from a launch of the interaction scripts; the Android host also runs each through MotionEvents.
+    const traceIds = traceScriptIds();
+    const tracesDir = join(nativeOut(t.target), 'lanes', `${spec.name}-traces`);
+    const x0 = Date.now();
+    const xr = await runApp(h, artifact, { runFile: runFileText(traceIds.map((id) => ({ id, points: [] })), false), caseCount: traceIds.length, outDir: tracesDir });
+    const traceExtra: LaneFailure[] = xr.error === null ? [] : [{ lane: TRACE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the interaction scripts: ${xr.error}` }];
+    const traces = evaluateTraceSet(dpr, tracesDir, rec, traceIds, t.target === 'android', evaluateTraces, traceExtra);
+    log(`${spec.name}: device-traces ${traces.dumps}/${traces.cases} records, ${traces.compared.b} compared in ${((Date.now() - x0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(traces.failures))}`);
     const trustDir = join(nativeOut(t.target), 'lanes', `${spec.name}-trust`);
     const trustCases: TrustCase[] = TRUST_CASES.map((id) => {
       const tc = cases.find((c) => c.case.id === id);
@@ -770,7 +845,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
       vectors = await runDeviceVectors(h, t, host);
       log(`${spec.name}: layout-vectors-device ${vectors.state}${vectors.reason === null ? '' : ` (${vectors.reason})`}; ${vectors.suites.map((s) => `${s.corpus}/${s.suite} ${s.pass ?? '-'}/${s.total ?? '-'}`).join(', ')}; digests ${vectors.digests.p1} ${vectors.digests.extended}; ${((Date.now() - v0) / 1000).toFixed(0)} s`);
     }
-    return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, states, hits, anim: animSet, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
+    return { device: spec.name, set: trustFailures.length > 0 ? { ...set, failures: [...set.failures, ...trustFailures] } : set, states, hits, anim: animSet, traces, trust: { device: spec.name, dpr, rows }, vectors, blocked: null };
   };
   const stop = source.release;
   if (stop === null) return work();

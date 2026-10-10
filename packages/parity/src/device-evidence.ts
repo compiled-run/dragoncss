@@ -43,6 +43,7 @@ export const EVIDENCE_CODE: readonly string[] = [
   'packages/text-shaper/src/dragon_hb_jni.zig',
   'packages/text-shaper/swift/Sources/CDragonHB/module.modulemap',
   'vendor/harfbuzz/src',
+  'packages/parity/src/trace-lane.ts',
 ];
 
 /** The committed reference data the device lanes are judged against. */

@@ -571,7 +571,8 @@ type Lang = 'swift' | 'kotlin';
 
 const rgba = (c: Rgba8): string => `DragonRGBA8(${c.r}, ${c.g}, ${c.b}, ${c.alpha})`;
 
-function nodeLit(lang: Lang, n: ProgramNode): string {
+/** A node record as a DragonStateNode literal (the interaction runtime emits its deltas with it too). */
+export function nodeLit(lang: Lang, n: ProgramNode): string {
   const q = (s: string): string => stringLit(lang, s);
   const writes: string[] = [];
   for (const w of n.writes) {
@@ -632,7 +633,8 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
 
 const list = (lang: Lang, items: readonly string[]): string => (lang === 'swift' ? `[${items.join(', ')}]` : `listOf(${items.join(', ')})`);
 
-function deltaLit(lang: Lang, d: StateDelta): string {
+/** A delta as a DragonStateDelta literal. */
+export function deltaLit(lang: Lang, d: StateDelta): string {
   const q = (s: string): string => stringLit(lang, s);
   const order = d.order === null ? (lang === 'swift' ? 'nil' : 'null') : list(lang, d.order.map(q));
   const removed = d.removed.length === 0 && lang === 'kotlin' ? 'emptyList()' : list(lang, d.removed.map(q));
@@ -641,7 +643,7 @@ function deltaLit(lang: Lang, d: StateDelta): string {
 }
 
 /** A state key as doc-comment text: one line, and never the end of a block comment. */
-const commentText = (s: string): string => s.replace(/[\r\n\u2028\u2029]/g, ' ').replace(/\*\//g, '* /');
+export const commentText = (s: string): string => s.replace(/[\r\n\u2028\u2029]/g, ' ').replace(/\*\//g, '* /');
 
 /** An identifier from any text: letters, digits and _, never a keyword (every name carries a prefix). */
 const ident = (s: string): string => s.replace(/[^A-Za-z0-9]/g, '_');

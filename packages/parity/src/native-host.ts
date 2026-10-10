@@ -16,6 +16,7 @@ import { emitStatePrograms } from 'dragon';
 import { stateEmits } from './state-cases.ts';
 import { animEmits } from './anim-samples.ts';
 import { deviceHitSource } from './hit-capture.ts';
+import { deviceTraceSources } from './trace-lane.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
 import { layoutCases } from './dpr.ts';
@@ -240,6 +241,15 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   let script = dragonStateCaseTable[id]
   let layoutCase = DragonHost.dragonCaseTable[id]
   if script != nil && layoutCase != nil { fatalError("dragon host: \(id) is both a layout case and a case script") }
+  // SELD-R2 (T064 R14): an interaction script runs on an interaction mount through the machine's entry points and writes its trace.
+  if let interaction = dragonInteractionCaseTable[id] {
+    if script != nil || layoutCase != nil { fatalError("dragon host: \(id) is both an interaction script and another case") }
+    let mount = DragonInteractionMount(machine: interaction.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge)
+    dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".trace", interaction.run(mount.machine, pointer: DragonMachinePointer(mount.machine)).map { $0 + "\n" }.joined())
+    mount.unmount()
+    DispatchQueue.main.async { dragonCase(k + 1, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge) }
+    return
+  }
   guard let c = script?.dragonCase ?? layoutCase else { fatalError("dragon host: no case \(id)") }
   let t0: CFTimeInterval
   let tree: DragonTree
@@ -304,6 +314,7 @@ function iosInfoPlist(): string {
   <key>MinimumOSVersion</key><string>15.0</string>
   <key>UIDeviceFamily</key><array><integer>1</integer><integer>2</integer></array>
   <key>UILaunchScreen</key><dict/>
+  <key>UIApplicationSupportsIndirectInputEvents</key><true/>
   <key>UIApplicationSceneManifest</key>
   <dict>
     <key>UIApplicationSupportsMultipleScenes</key><false/>
@@ -340,6 +351,9 @@ import dev.dragon.dump.DumpPixels
 import dev.dragon.dump.DumpTiming
 import dev.dragon.dump.dumpJson
 import dev.dragon.views.DragonBridge
+import dev.dragon.views.DragonInteractionMount
+import dev.dragon.views.DragonInteractionScript
+import dev.dragon.views.DragonMachinePointer
 import dev.dragon.views.DragonRun
 import dev.dragon.views.DragonStateMount
 import dev.dragon.views.DragonTree
@@ -411,6 +425,24 @@ class DragonActivity : Activity() {
     File(out, "device-android.json").writeText("{\"platform\":\"android\",\"model\":" + q(device.model) + ",\"os\":" + q(device.os) + ",\"build\":" + q(Build.DISPLAY) + ",\"scale\":" + f(scale) + ",\"densityDpi\":" + resources.displayMetrics.densityDpi + ",\"windowPx\":[" + d.width + "," + d.height + "],\"stagePx\":[" + (frame.width - frame.paddingLeft - frame.paddingRight) + "," + (frame.height - frame.paddingTop - frame.paddingBottom) + "],\"rootOriginPx\":[" + at[0] + "," + at[1] + "],\"textScale\":\"" + resources.configuration.fontScale + "\"}")
   }
 
+  private fun traceText(lines: List<String>): String = lines.joinToString("") { it + "\n" }
+
+  /**
+   * SELD-R2 (T064 R14, Android twice): an interaction script runs on an interaction mount through the machine's entry points, then
+   * on a fresh mount through real MotionEvents dispatched on its root (DragonMotionInput); each writes its trace, which must agree.
+   */
+  private fun runInteraction(k: Int, id: String, script: DragonInteractionScript) {
+    val s = DumpJsonWriter.format(scale)
+    val direct = DragonInteractionMount(script.make(), frame, bridge.measurer, scale, bridge)
+    deviceRecord(direct.tree)
+    File(out, id + "@" + s + ".trace").writeText(traceText(script.run(direct.machine, DragonMachinePointer(direct.machine))))
+    direct.unmount()
+    val injected = DragonInteractionMount(script.make(), frame, bridge.measurer, scale, bridge)
+    File(out, id + "@" + s + ".motion.trace").writeText(traceText(script.run(injected.machine, DragonMotionInput(injected.root, scale))))
+    injected.unmount()
+    frame.post { runCase(k + 1) }
+  }
+
   private fun runCase(k: Int) {
     if (k >= run.ids.size) {
       File(out, "done-android").writeText("ok")
@@ -423,6 +455,12 @@ class DragonActivity : Activity() {
     val script = dev.dragon.cases.dragonStateCaseTable[id]
     val layoutCase = dev.dragon.cases.dragonCaseTable[id]
     if (script != null && layoutCase != null) throw IllegalStateException("dragon host: " + id + " is both a layout case and a case script")
+    val interaction = dev.dragon.cases.dragonInteractionCaseTable[id]
+    if (interaction != null) {
+      if (script != null || layoutCase != null) throw IllegalStateException("dragon host: " + id + " is both an interaction script and another case")
+      runInteraction(k, id, interaction)
+      return
+    }
     val c = script?.dragonCase ?: layoutCase ?: throw IllegalStateException("dragon host: no case " + id)
     val t0: Long
     val tree: DragonTree
@@ -528,6 +566,121 @@ class DragonActivity : Activity() {
 }
 `;
 
+/**
+ * SELD-R2 (T064 R14 and R15): the MotionEvent runner. Each pointer step of a script becomes the events the platform sends, dispatched
+ * on the mount's root, so the trace goes through the root's event glue: touch through dispatchTouchEvent (SOURCE_TOUCHSCREEN,
+ * TOOL_TYPE_FINGER); mouse hover through dispatchGenericMotionEvent (ACTION_HOVER_*, SOURCE_MOUSE), with the HOVER_EXIT Android
+ * sends before a mouse DOWN and the HOVER_ENTER after its UP; mouse buttons and pressed moves through dispatchTouchEvent
+ * (SOURCE_MOUSE, TOOL_TYPE_MOUSE). A frame step is the next frame, run at once, so the script stays synchronous.
+ */
+const ANDROID_MOTION_INPUT = String.raw`package dev.dragon.host
+
+import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
+import dev.dragon.views.DragonInteractionRoot
+import dev.dragon.views.DragonPointerInput
+
+class DragonMotionInput(private val root: DragonInteractionRoot, private val scale: Double) : DragonPointerInput {
+  private var hovering = false
+  private var mouseDown = false
+  private var hoveredAtPress = false
+  private var downTime = 0L
+  private var lastX = 0f
+  private var lastY = 0f
+
+  private fun send(action: Int, x: Double, y: Double, source: Int, tool: Int, buttons: Int) {
+    val px = (x * scale).toFloat()
+    val py = (y * scale).toFloat()
+    // A step point that does not survive the trip through float device px would give the glue another point than the entry points.
+    if (px.toDouble() / scale != x || py.toDouble() / scale != y) throw IllegalStateException("dragon host: the point " + x + "," + y + " is not exact in float device px at scale " + scale)
+    sendPx(action, px, py, source, tool, buttons)
+  }
+
+  private fun sendPx(action: Int, px: Float, py: Float, source: Int, tool: Int, buttons: Int) {
+    val now = SystemClock.uptimeMillis()
+    if (action == MotionEvent.ACTION_DOWN) downTime = now
+    val props = MotionEvent.PointerProperties()
+    props.id = 0
+    props.toolType = tool
+    val coords = MotionEvent.PointerCoords()
+    coords.x = px
+    coords.y = py
+    val hover = action == MotionEvent.ACTION_HOVER_ENTER || action == MotionEvent.ACTION_HOVER_MOVE || action == MotionEvent.ACTION_HOVER_EXIT
+    coords.pressure = if (hover) 0f else 1f
+    coords.size = 1f
+    val ev = MotionEvent.obtain(if (hover) now else downTime, now, action, 1, arrayOf(props), arrayOf(coords), 0, buttons, 1f, 1f, 0, 0, source, 0)
+    try {
+      if (hover) root.dispatchGenericMotionEvent(ev) else root.dispatchTouchEvent(ev)
+    } finally {
+      ev.recycle()
+    }
+    lastX = px
+    lastY = py
+  }
+
+  private fun exitHover() {
+    if (!hovering) return
+    hovering = false
+    sendPx(MotionEvent.ACTION_HOVER_EXIT, lastX, lastY, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, 0)
+  }
+
+  override fun pointerMoved(x: Double, y: Double) {
+    if (mouseDown) {
+      send(MotionEvent.ACTION_MOVE, x, y, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, MotionEvent.BUTTON_PRIMARY)
+      return
+    }
+    send(if (hovering) MotionEvent.ACTION_HOVER_MOVE else MotionEvent.ACTION_HOVER_ENTER, x, y, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, 0)
+    hovering = true
+  }
+
+  override fun pointerExited() {
+    // Always sent: after a press that cancelled a hover exit the pointer is still in (R15), with no hover of the runner's own.
+    hovering = false
+    sendPx(MotionEvent.ACTION_HOVER_EXIT, lastX, lastY, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, 0)
+    root.frameNow()
+  }
+
+  override fun hoverExitStarted() {
+    exitHover()
+  }
+
+  override fun frame() {
+    root.frameNow()
+  }
+
+  override fun mousePressed(x: Double, y: Double) {
+    // R15: the platform ends the hover before it sends the button down.
+    hoveredAtPress = hovering
+    exitHover()
+    send(MotionEvent.ACTION_DOWN, x, y, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, MotionEvent.BUTTON_PRIMARY)
+    mouseDown = true
+  }
+
+  override fun mouseReleased() {
+    sendPx(MotionEvent.ACTION_UP, lastX, lastY, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, 0)
+    mouseDown = false
+    // R15: and hovers again once the button is up.
+    if (hoveredAtPress) {
+      sendPx(MotionEvent.ACTION_HOVER_ENTER, lastX, lastY, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, 0)
+      hovering = true
+    }
+  }
+
+  override fun touchPressed(x: Double, y: Double) {
+    send(MotionEvent.ACTION_DOWN, x, y, InputDevice.SOURCE_TOUCHSCREEN, MotionEvent.TOOL_TYPE_FINGER, 0)
+  }
+
+  override fun touchReleased(x: Double, y: Double) {
+    send(MotionEvent.ACTION_UP, x, y, InputDevice.SOURCE_TOUCHSCREEN, MotionEvent.TOOL_TYPE_FINGER, 0)
+  }
+
+  override fun touchCancelled() {
+    sendPx(MotionEvent.ACTION_CANCEL, lastX, lastY, InputDevice.SOURCE_TOUCHSCREEN, MotionEvent.TOOL_TYPE_FINGER, 0)
+  }
+}
+`;
+
 function androidManifest(): string {
   return `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="${HOST_BUNDLE}" android:versionCode="1" android:versionName="1.0">
@@ -569,6 +722,7 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
     for (const f of readdirSync(engine).filter((x) => x.endsWith('.kt')).sort()) files.push({ path: `kotlin/dev/dragon/layout/${f}`, text: readFileSync(join(engine, f), 'utf8') });
     files.push({ path: 'kotlin/dev/dragon/dump/DragonDump.kt', text: encoderSource('kotlin') });
     files.push({ path: 'kotlin/dev/dragon/host/DragonActivity.kt', text: `// GENERATED by @dragon/parity native-host.ts. Do not edit.\n${ANDROID_ACTIVITY}` });
+    files.push({ path: 'kotlin/dev/dragon/host/DragonMotionInput.kt', text: `// GENERATED by @dragon/parity native-host.ts. Do not edit.\n${ANDROID_MOTION_INPUT}` });
     files.push({ path: 'kotlin/dev/dragon/host/DragonToolchain.kt', text: `// GENERATED by @dragon/parity native-host.ts. Do not edit.\npackage dev.dragon.host\n\nconst val DRAGON_TOOLCHAIN = ${JSON.stringify(toolchain)}\n` });
     files.push({ path: 'AndroidManifest.xml', text: androidManifest() });
   }
@@ -579,6 +733,8 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   files.push(...emitStatePrograms(backend, [...stateEmits(target), ...animEmits(target)]));
   // SELD-R1b: the device-hit facts and runner.
   files.push(deviceHitSource(target));
+  // SELD-R2 (T064 R14): the interaction programs and their device-traces scripts.
+  files.push(...deviceTraceSources(target));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);
   // TXT1a-2 phase R: the HarfBuzz shim's wrapper, the host DragonShaper and the probe it is checked with.
   files.push(...shimSources(target));
@@ -717,7 +873,7 @@ function cachedApp(kind: 'ios-app' | 'apk', key: string, artifact: string, compl
 }
 
 /** The case tables stay in DragonHost: main.swift reads DragonHost.dragonCaseTable. */
-const IOS_TABLES = ['Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift'];
+const IOS_TABLES = ['Cases/DragonCaseTable.swift', 'Cases/DragonStateCaseTable.swift', 'Cases/DragonInteractionCaseTable.swift'];
 
 /**
  * The Swift files of each iOS module, by path; every file in exactly one, and none of the three empty (else a thrown error). The
