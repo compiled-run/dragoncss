@@ -2058,8 +2058,27 @@ function trackSizeValue(lang: Lang, t: TrackSizeInput, str: (s: string) => strin
   return `TrackSize_fitContent(${str('fit-content')}, ${engineValue(lang, t.limit)})`;
 }
 
+function gridLineValue(s: import('@dragon/layout').GridLine, str: (s: string) => string): string {
+  switch (s.kind) {
+    case 'auto':
+      return `GridLine_auto(${str('auto')})`;
+    case 'line':
+      return `GridLine_line(${str('line')}, ${doubleLit(s.n)})`;
+    case 'named-line':
+      return `GridLine_namedLine(${str('named-line')}, ${doubleLit(s.n)}, ${doubleLit(s.name)})`;
+    case 'span':
+      return `GridLine_span(${str('span')}, ${doubleLit(s.n)})`;
+    case 'named-span':
+      return `GridLine_namedSpan(${str('named-span')}, ${doubleLit(s.n)}, ${doubleLit(s.name)})`;
+    case 'area':
+      return `GridLine_area(${str('area')}, ${doubleLit(s.implicitName)}, ${doubleLit(s.name)})`;
+  }
+}
+
 function gridSpanValue(lang: Lang, s: GridSpanInput, str: (s: string) => string): string {
-  return s.kind === 'definite' ? `GridSpan_definite(${str('definite')}, ${doubleLit(s.start)}, ${doubleLit(s.end)})` : `GridSpan_auto(${str('auto')}, ${doubleLit(s.span)})`;
+  if (s.kind === 'definite') return `GridSpan_definite(${str('definite')}, ${doubleLit(s.start)}, ${doubleLit(s.end)})`;
+  if (s.kind === 'auto') return `GridSpan_auto(${str('auto')}, ${doubleLit(s.span)})`;
+  return `GridSpan_lines(${str('lines')}, ${gridLineValue(s.start, str)}, ${gridLineValue(s.end, str)})`;
 }
 
 /** The grid and gridItem fields of a LayoutStyle (css-grid-2; input.ts GridContainerStyle and GridItemStyle), or null. */
@@ -2073,9 +2092,15 @@ function gridValue(lang: Lang, field: 'grid' | 'gridItem', v: unknown, str: (s: 
   const g = v as import('@dragon/layout').GridContainerStyle;
   const sizes = (ts: readonly TrackSizeInput[]): string => engineArray(lang, TRACK_SIZE_UNION, true, ts.map((t) => trackSizeValue(lang, t, str)));
   const reps = (rs: readonly import('@dragon/layout').TrackRepeater[]): string => engineArray(lang, 'TrackRepeater', false, rs.map((r) => `TrackRepeater(${doubleLit(r.count)}, ${sizes(r.sizes)})`));
+  const lines = (ls: readonly number[]): string => engineArray(lang, 'Double', false, ls.map(doubleLit));
+  const autoRepeat = (r: import('@dragon/layout').GridAutoRepeat | null): string => {
+    if (r === null) return lang === 'swift' ? 'nil' : 'null';
+    const names = engineArray(lang, 'GridLineName', false, r.lineNames.map((n) => `GridLineName(${lines(n.explicit)}, ${lines(n.repeat)}, ${lines(n.implicit)})`));
+    return `GridAutoRepeat(${str(r.type)}, ${doubleLit(r.index)}, ${sizes(r.sizes)}, ${names})`;
+  };
   return `GridContainerStyle(${[
     reps(g.templateColumns), reps(g.templateRows), sizes(g.autoColumns), sizes(g.autoRows), doubleLit(g.explicitColumnCount), doubleLit(g.explicitRowCount),
-    str(g.autoFlow), g.dense ? 'true' : 'false', str(g.justifyItems),
+    autoRepeat(g.autoRepeatColumns), autoRepeat(g.autoRepeatRows), str(g.autoFlow), g.dense ? 'true' : 'false', str(g.justifyItems),
   ].join(', ')})`;
 }
 

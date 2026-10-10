@@ -96,7 +96,10 @@ const alignItemsValues = [
 const breadth = tagged({ ...px(0), ...percent(0), fr: { value: num(0) }, ...auto, 'min-content': {}, 'max-content': {} });
 const trackSize = tagged({ breadth: { breadth }, minmax: { min: breadth, max: breadth }, 'fit-content': { limit: tagged({ ...px(0), ...percent(0) }) } });
 const repeater = obj({ count, sizes: arr(trackSize, 1) });
-const gridSpan = tagged({ definite: { start: int, end: int }, auto: { span: count } });
+const gridLine = tagged({ auto: {}, line: { n: int }, 'named-line': { n: int, name: count0 }, span: { n: count }, 'named-span': { n: count, name: count0 }, area: { implicitName: count0, name: count0 } });
+const gridSpan = tagged({ definite: { start: int, end: int }, auto: { span: count }, lines: { start: gridLine, end: gridLine } });
+const lineList = arr(count0, 0);
+const gridAutoRepeat = obj({ type: lit('auto-fill', 'auto-fit'), index: count0, sizes: arr(trackSize, 1), lineNames: arr(obj({ explicit: lineList, repeat: lineList, implicit: lineList }), 0) });
 const gridSelfAlignValues = ['normal', 'stretch', 'start', 'end', 'center', 'self-start', 'self-end', 'flex-start', 'flex-end', 'left', 'right'] as const;
 const gridContainer = obj({
   templateColumns: arr(repeater, 0),
@@ -105,6 +108,8 @@ const gridContainer = obj({
   autoRows: arr(trackSize, 1),
   explicitColumnCount: count0,
   explicitRowCount: count0,
+  autoRepeatColumns: nullable(gridAutoRepeat),
+  autoRepeatRows: nullable(gridAutoRepeat),
   autoFlow: lit('row', 'column'),
   dense: bool,
   justifyItems: lit(...gridSelfAlignValues),
@@ -557,7 +562,10 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
       const auto = grid[`auto${axis}`];
       if (Array.isArray(auto)) auto.forEach((t: unknown) => checkTrackSize(t, `${path}.style.grid.auto${axis}`, bad));
       const explicit = grid[`explicit${axis === 'Columns' ? 'Column' : 'Row'}Count`];
-      if (tracks > GRID_MAX_TRACKS) bad(`${path}.style.grid.template${axis}`, `a track list holds at most ${GRID_MAX_TRACKS} tracks`);
+      const repeat = grid[`autoRepeat${axis}`];
+      if (isRecord(repeat)) checkAutoRepeat(repeat, template, `${path}.style.grid.autoRepeat${axis}`, bad);
+      const repeated = isRecord(repeat) && Array.isArray(repeat['sizes']) ? repeat['sizes'].length : 0;
+      if (tracks + repeated > GRID_MAX_TRACKS) bad(`${path}.style.grid.template${axis}`, `a track list holds at most ${GRID_MAX_TRACKS} tracks`);
       if (typeof explicit === 'number' && (explicit < tracks || explicit > GRID_MAX_TRACKS)) bad(`${path}.style.grid`, `the explicit ${axis.toLowerCase()} count is at least the template's ${tracks} tracks and at most ${GRID_MAX_TRACKS}`);
     }
   }
@@ -572,6 +580,13 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
     for (const axis of ['column', 'row'] as const) {
       const span = item[axis];
       if (!isRecord(span)) continue;
+      if (span['kind'] === 'lines') {
+        const repeat = isRecord(grid) ? grid[axis === 'column' ? 'autoRepeatColumns' : 'autoRepeatRows'] : null;
+        const names = isRecord(repeat) && Array.isArray(repeat['lineNames']) ? repeat['lineNames'].length : 0;
+        if (!isRecord(repeat)) bad(`${at}.${axis}`, 'grid lines are resolved by the engine only in an axis with an automatic repeater');
+        for (const side of ['start', 'end'] as const) checkGridLine(span[side], names, `${at}.${axis}.${side}`, bad);
+        continue;
+      }
       if (span['kind'] === 'definite') {
         const start = span['start'];
         const end = span['end'];
@@ -582,6 +597,51 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
     }
     if (child['boxType'] === 'anonymous' && !sameValue(item, ANONYMOUS_GRID_ITEM)) bad(at, `an anonymous grid item is auto-placed with justify-self auto (${JSON.stringify(ANONYMOUS_GRID_ITEM)})`);
   });
+}
+
+const isFixedBreadth = (b: unknown): boolean => isRecord(b) && (b['kind'] === 'px' || b['kind'] === 'percent');
+
+/** css-grid-2 §7.2: <fixed-size>, a track size with a length or percentage minimum or maximum (never fit-content()). */
+function isFixedSize(t: unknown): boolean {
+  if (!isRecord(t)) return false;
+  if (t['kind'] === 'breadth') return isFixedBreadth(t['breadth']);
+  return t['kind'] === 'minmax' && (isFixedBreadth(t['min']) || isFixedBreadth(t['max']));
+}
+
+const ascending = (v: unknown): boolean => Array.isArray(v) && v.every((x: unknown, k: number) => k === 0 || (typeof x === 'number' && x >= (v[k - 1] as number)));
+
+/**
+ * css-grid-2 §7.2 <auto-track-list>: one automatic repeater among the template's repeaters, every track a <fixed-size>, and its
+ * line names in ascending lists, the repeated ones within one repetition.
+ */
+function checkAutoRepeat(repeat: Record<string, unknown>, template: unknown, at: string, bad: (at: string, message: string) => void): void {
+  const index = repeat['index'];
+  if (Array.isArray(template) && typeof index === 'number' && index > template.length) bad(at, `the automatic repeater stands at most after the template's ${template.length} repeaters`);
+  const sizes = repeat['sizes'];
+  const all: unknown[] = Array.isArray(sizes) ? [...sizes] : [];
+  if (Array.isArray(template)) for (const r of template) if (isRecord(r) && Array.isArray(r['sizes'])) all.push(...r['sizes']);
+  if (!all.every(isFixedSize)) bad(at, 'a track list with an automatic repeater holds only fixed sizes (a length or percentage minimum or maximum)');
+  const names = repeat['lineNames'];
+  if (!Array.isArray(names)) return;
+  const length = Array.isArray(sizes) ? sizes.length : 0;
+  names.forEach((n: unknown, i: number) => {
+    if (!isRecord(n)) return;
+    if (!ascending(n['explicit']) || !ascending(n['repeat']) || !ascending(n['implicit'])) bad(`${at}.lineNames[${i}]`, 'line name lists are ascending');
+    const r = n['repeat'];
+    if (Array.isArray(r) && r.some((x: unknown) => typeof x === 'number' && x > length)) bad(`${at}.lineNames[${i}]`, `a repeated line name is within one repetition (0 to ${length})`);
+  });
+}
+
+/** A GridLine position the engine resolves: a non-zero line within Blink's track limit, a span within it, and known name ids. */
+function checkGridLine(p: unknown, names: number, at: string, bad: (at: string, message: string) => void): void {
+  if (!isRecord(p)) return;
+  const n = p['n'];
+  if ((p['kind'] === 'line' || p['kind'] === 'named-line') && typeof n === 'number' && (n === 0 || n > GRID_MAX_TRACKS || n < -GRID_MAX_TRACKS)) bad(at, `a grid line is a non-zero integer within ±${GRID_MAX_TRACKS}`);
+  if ((p['kind'] === 'span' || p['kind'] === 'named-span') && typeof n === 'number' && n > GRID_MAX_TRACKS) bad(at, `a span is at most ${GRID_MAX_TRACKS}`);
+  for (const key of ['name', 'implicitName']) {
+    const id = p[key];
+    if (typeof id === 'number' && id >= names) bad(at, `a line name id is below the axis's ${names} line names`);
+  }
 }
 
 /** css-grid-2 §7.2.1: a flexible breadth is never a minimum; the compiler writes minmax(auto, <flex>) as the <flex>. */

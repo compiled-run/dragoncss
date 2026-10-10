@@ -19,8 +19,11 @@ import type {
   GapValue,
   InlineBox,
   InlineChild,
+  GridAutoRepeat,
   GridContainerStyle,
   GridItemStyle,
+  GridLine,
+  GridLineName,
   GridSelfAlign,
   GridSpan,
   InsetValue,
@@ -674,6 +677,29 @@ function repeaters(v: JsonValue, path: string): TrackRepeater[] {
   });
 }
 
+function gridLine(v: JsonValue, path: string): GridLine {
+  const k = kindOf(v, path);
+  if (k === 'auto') {
+    obj(v, ['kind'], path);
+    return { kind: 'auto' };
+  }
+  if (k === 'line') return { kind: 'line', n: numField(obj(v, ['kind', 'n'], path), 'n', path) };
+  if (k === 'span') return { kind: 'span', n: numField(obj(v, ['kind', 'n'], path), 'n', path) };
+  if (k === 'named-line') {
+    const o = obj(v, ['kind', 'n', 'name'], path);
+    return { kind: 'named-line', n: numField(o, 'n', path), name: numField(o, 'name', path) };
+  }
+  if (k === 'named-span') {
+    const o = obj(v, ['kind', 'n', 'name'], path);
+    return { kind: 'named-span', n: numField(o, 'n', path), name: numField(o, 'name', path) };
+  }
+  if (k === 'area') {
+    const o = obj(v, ['kind', 'implicitName', 'name'], path);
+    return { kind: 'area', implicitName: numField(o, 'implicitName', path), name: numField(o, 'name', path) };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
 function gridSpan(v: JsonValue, path: string): GridSpan {
   const k = kindOf(v, path);
   if (k === 'definite') {
@@ -681,12 +707,36 @@ function gridSpan(v: JsonValue, path: string): GridSpan {
     return { kind: 'definite', start: numField(o, 'start', path), end: numField(o, 'end', path) };
   }
   if (k === 'auto') return { kind: 'auto', span: numField(obj(v, ['kind', 'span'], path), 'span', path) };
+  if (k === 'lines') {
+    const o = obj(v, ['kind', 'start', 'end'], path);
+    return { kind: 'lines', start: gridLine(field(o, 'start', path), `${path}.start`), end: gridLine(field(o, 'end', path), `${path}.end`) };
+  }
   return fail(`${path}: unknown kind ${k}`);
+}
+
+function lineList(v: JsonValue, path: string): number[] {
+  return arr(v, path).map((x, i) => num(x, `${path}[${i}]`));
+}
+
+function gridAutoRepeat(v: JsonValue, path: string): GridAutoRepeat | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['type', 'index', 'sizes', 'lineNames'], path);
+  const names = arr(field(o, 'lineNames', path), `${path}.lineNames`).map((n, i): GridLineName => {
+    const at = `${path}.lineNames[${i}]`;
+    const l = obj(n, ['explicit', 'repeat', 'implicit'], at);
+    return { explicit: lineList(field(l, 'explicit', at), `${at}.explicit`), repeat: lineList(field(l, 'repeat', at), `${at}.repeat`), implicit: lineList(field(l, 'implicit', at), `${at}.implicit`) };
+  });
+  return {
+    type: lit(field(o, 'type', path), ['auto-fill', 'auto-fit'], `${path}.type`) === 'auto-fit' ? 'auto-fit' : 'auto-fill',
+    index: numField(o, 'index', path),
+    sizes: trackSizes(field(o, 'sizes', path), `${path}.sizes`),
+    lineNames: names,
+  };
 }
 
 function decodeGrid(v: JsonValue, path: string): GridContainerStyle | null {
   if (v.kind === 'null') return null;
-  const o = obj(v, ['templateColumns', 'templateRows', 'autoColumns', 'autoRows', 'explicitColumnCount', 'explicitRowCount', 'autoFlow', 'dense', 'justifyItems'], path);
+  const o = obj(v, ['templateColumns', 'templateRows', 'autoColumns', 'autoRows', 'explicitColumnCount', 'explicitRowCount', 'autoRepeatColumns', 'autoRepeatRows', 'autoFlow', 'dense', 'justifyItems'], path);
   const f = (k: string): JsonValue => field(o, k, path);
   return {
     templateColumns: repeaters(f('templateColumns'), `${path}.templateColumns`),
@@ -695,6 +745,8 @@ function decodeGrid(v: JsonValue, path: string): GridContainerStyle | null {
     autoRows: trackSizes(f('autoRows'), `${path}.autoRows`),
     explicitColumnCount: num(f('explicitColumnCount'), `${path}.explicitColumnCount`),
     explicitRowCount: num(f('explicitRowCount'), `${path}.explicitRowCount`),
+    autoRepeatColumns: gridAutoRepeat(f('autoRepeatColumns'), `${path}.autoRepeatColumns`),
+    autoRepeatRows: gridAutoRepeat(f('autoRepeatRows'), `${path}.autoRepeatRows`),
     autoFlow: lit(f('autoFlow'), ['row', 'column'], `${path}.autoFlow`) === 'column' ? 'column' : 'row',
     dense: bool(f('dense'), `${path}.dense`),
     justifyItems: lit(f('justifyItems'), GRID_SELF_ALIGN, `${path}.justifyItems`) as GridSelfAlign,

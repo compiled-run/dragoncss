@@ -14,9 +14,9 @@ const HAND = ['abspos', 'alignment', 'auto-repeat', 'baselines', 'fr', 'gutters'
 
 /** Pinned from the run that introduced the test; a change in any count is a regression or a newly supported case to review. */
 const PINNED = {
-  matched: 1272,
+  matched: 1368,
   known: [],
-  refused: { 'abspos-item': 88, 'auto-repeat': 96, 'baseline-alignment': 96, calc: 8, 'calc-percent-gap': 8, contain: 8, float: 16, 'grid-scroll-overflow': 16, 'inline-grid': 104, 'safe-alignment': 112, 'sizing-keyword': 24, subgrid: 64, 'writing-mode': 152 },
+  refused: { 'abspos-item': 88, 'baseline-alignment': 96, calc: 8, 'calc-percent-gap': 8, contain: 8, float: 16, 'grid-scroll-overflow': 16, 'inline-grid': 104, 'safe-alignment': 112, 'sizing-keyword': 24, subgrid: 64, 'writing-mode': 152 },
 };
 
 let cases: CorpusCase[] | null = null;
