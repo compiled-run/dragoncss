@@ -681,10 +681,13 @@
       "fileSha256": "8246d1d6996ce777b7f3d557551fe8321954fac953f7e50e3557b311b077c4a6",
       "headerSha256": "ed55e617785b61f79196c68e539589529f5d351f974e0d26e9e82509e500e59a",
       "ranges": [
-        { "lines": "2593-2935", "symbol": null, "source": "cited" }
+        { "lines": "2593-2935", "symbol": null, "source": "cited" },
+        { "lines": "8036-8058", "symbol": null, "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/parity/src/scroll-metrics.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/parity/src/scroll-metrics.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/rt-interaction.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/test/rt-interaction.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
