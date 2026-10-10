@@ -8,7 +8,7 @@
 | ios | 4260 (18.3%) | 18985 (81.5%) | 1 | 0 | 40 |
 | android | 4260 (18.3%) | 18985 (81.5%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 0, ios 0 and android 0 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4060, ios 4082 and android 4082 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
