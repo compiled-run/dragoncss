@@ -1,7 +1,8 @@
 // T150a visibility on the host: the visibility fixtures' points against the committed Chrome PNGs at every device DPR. The paint
 // model of pnt1-radius (paint-model.ts: boxes in tree order, rounded shapes, overflow clips of ancestors, Skia's source-over) skips the
 // background and border of a box with a visibility write, as the device's paint gate does, while its clips stay; an Ahem glyph's
-// interior point shows the text colour when the text view's element is visible and the backdrop when it is not, as the device's
+// interior point (and any other point inside an Ahem glyph's ink box) shows the text colour when the text view's element is visible and
+// the backdrop when it is not, as the device's
 // text views follow their element (DragonTree.textNode). Every colour and glyph point must equal Chrome exactly. Two model faults
 // must each disagree with Chrome somewhere in every case: visibility ignored (the device plant visibility-ignored) and a hidden box's
 // whole subtree hidden (visibility-subtree), so the points can see both.
@@ -12,7 +13,7 @@ import { casesOf, fixtureInput } from '../src/cases.ts';
 import { DPRS } from '../src/dpr.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { nativeCompile } from '../src/native-host.ts';
-import { casePoints, committedPixels } from '../src/pixel-reference.ts';
+import { casePoints, committedPixels, glyphLines } from '../src/pixel-reference.ts';
 import { ruleKind } from '../src/samples.ts';
 import type { Rgba } from './paint-model.ts';
 import { boxes, modelAt, over } from './paint-model.ts';
@@ -83,22 +84,19 @@ function judge(caseId: string, p: NativeProgram, viewport: { width: number; heig
     const chrome = committedPixels(caseId, dpr);
     if (chrome === null) throw new Error(`${caseId}@${dpr}: no committed Chrome PNG`);
     const list = boxes(model, viewport, dpr);
+    // Each glyph's ink box with its text node: an Ahem glyph's ink fills its box, so a point clear inside one is the text colour.
+    const inks = glyphLines(p, viewport, dpr).flatMap((l) => l.glyphs.map((g) => ({ g, text: l.id.slice(0, l.id.lastIndexOf(':line')) })));
     for (const pt of casePoints(p, viewport, dpr)) {
       const kind = ruleKind(pt.rule);
       if (kind === 'edge') continue;
-      let want: Rgba;
+      const backdrop = modelAt(list, pt.x, pt.y);
+      const ink = kind === 'glyph' ? { text: glyphText(pt.rule) } : inks.find(({ g }) => pt.x >= g.left && pt.x + 1 <= g.right && pt.y >= g.top && pt.y + 1 <= g.bottom);
+      const paints = ink !== undefined && textPaints(model, ink.text);
+      const want: Rgba = ink !== undefined && paints ? over(backdrop, textColour(model, ink.text)) : backdrop;
       if (kind === 'glyph') {
-        const text = glyphText(pt.rule);
-        const backdrop = modelAt(list, pt.x, pt.y);
-        if (textPaints(model, text)) {
-          want = over(backdrop, textColour(model, text));
-          visibleGlyphPoints++;
-        } else {
-          want = backdrop;
-          hiddenGlyphPoints++;
-        }
+        if (paints) visibleGlyphPoints++;
+        else hiddenGlyphPoints++;
       } else {
-        want = modelAt(list, pt.x, pt.y);
         const id = pt.rule.split(':')[1] ?? '';
         if (hiddenIds.has(id)) hiddenBoxPoints++;
       }
