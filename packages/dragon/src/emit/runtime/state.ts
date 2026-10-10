@@ -261,11 +261,12 @@ public final class DragonStateMount {
 
   private func render() {
     stale = false
+    // A fresh layout measurer per render, so a shaped one's cache never outlives a layout.
     let t = DragonTree()
     machine.build(t)
     stage.addSubview(t.root)
     do {
-      try t.apply(machine.input(scale), measurer: measurer, scale: scale, bridge: bridge)
+      try t.apply(machine.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
     } catch {
       fatalError("dragon: the state mount could not lay out assignment \(machine.current): \(error)")
     }
@@ -522,9 +523,10 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
 
   private fun render() {
     stale = false
+    // A fresh layout measurer per render, so a shaped one's cache never outlives a layout.
     val t = DragonTree(stage.context)
     machine.build(t)
-    t.apply(machine.input(scale), measurer, scale, bridge)
+    t.apply(machine.input(scale), bridge.measurer, scale, bridge)
     stage.addView(t.root, ViewGroup.LayoutParams(t.root.dragonFrame[2], t.root.dragonFrame[3]))
     stage.removeView(shown.root)
     shown = t
@@ -571,7 +573,8 @@ type Lang = 'swift' | 'kotlin';
 
 const rgba = (c: Rgba8): string => `DragonRGBA8(${c.r}, ${c.g}, ${c.b}, ${c.alpha})`;
 
-function nodeLit(lang: Lang, n: ProgramNode): string {
+/** A node record as a DragonStateNode literal (the interaction runtime emits its deltas with it too). */
+export function nodeLit(lang: Lang, n: ProgramNode): string {
   const q = (s: string): string => stringLit(lang, s);
   const writes: string[] = [];
   for (const w of n.writes) {
@@ -616,8 +619,12 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
         // REPL-a draws an image or hosts a web view from its own paint stage; the state runtime does not rebuild either yet.
         throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
       case 'border-radius':
+      case 'box-shadow':
         // The state runtime has no writer for these yet (PNT1 paints them from the program); a case script would drop them.
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
+      case 'background-layers':
+        // BG2-a: a state record holds no gradient write; the layers are painted from the static program only.
+        throw new StateEmitError(`${n.id}: background layers in a state program have no state-node write (BG2 writes them on the static program only)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;
@@ -632,7 +639,8 @@ function nodeLit(lang: Lang, n: ProgramNode): string {
 
 const list = (lang: Lang, items: readonly string[]): string => (lang === 'swift' ? `[${items.join(', ')}]` : `listOf(${items.join(', ')})`);
 
-function deltaLit(lang: Lang, d: StateDelta): string {
+/** A delta as a DragonStateDelta literal. */
+export function deltaLit(lang: Lang, d: StateDelta): string {
   const q = (s: string): string => stringLit(lang, s);
   const order = d.order === null ? (lang === 'swift' ? 'nil' : 'null') : list(lang, d.order.map(q));
   const removed = d.removed.length === 0 && lang === 'kotlin' ? 'emptyList()' : list(lang, d.removed.map(q));
@@ -641,7 +649,7 @@ function deltaLit(lang: Lang, d: StateDelta): string {
 }
 
 /** A state key as doc-comment text: one line, and never the end of a block comment. */
-const commentText = (s: string): string => s.replace(/[\r\n\u2028\u2029]/g, ' ').replace(/\*\//g, '* /');
+export const commentText = (s: string): string => s.replace(/[\r\n\u2028\u2029]/g, ' ').replace(/\*\//g, '* /');
 
 /** An identifier from any text: letters, digits and _, never a keyword (every name carries a prefix). */
 const ident = (s: string): string => s.replace(/[^A-Za-z0-9]/g, '_');

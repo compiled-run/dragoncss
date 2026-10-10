@@ -1,0 +1,195 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 17165
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 17165
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 1293,
+   "y": 554,
+   "width": 65520,
+   "height": 16611
+  },
+  {
+   "id": "a1",
+   "parent": "row",
+   "x": 0,
+   "y": 0,
+   "width": 15266,
+   "height": 5107
+  },
+  {
+   "id": "b1",
+   "parent": "row",
+   "x": 15820,
+   "y": 0,
+   "width": 15266,
+   "height": 5107
+  },
+  {
+   "id": "c1",
+   "parent": "row",
+   "x": 31640,
+   "y": 0,
+   "width": 15266,
+   "height": 5107
+  },
+  {
+   "id": "d1",
+   "parent": "row",
+   "x": 47460,
+   "y": 0,
+   "width": 15266,
+   "height": 5107
+  },
+  {
+   "id": "e1",
+   "parent": "row",
+   "x": 0,
+   "y": 5560,
+   "width": 15650,
+   "height": 5491
+  },
+  {
+   "id": "w1",
+   "parent": "row",
+   "x": 16204,
+   "y": 5560,
+   "width": 40425,
+   "height": 3544
+  },
+  {
+   "id": "a2",
+   "parent": "row",
+   "x": 0,
+   "y": 11504,
+   "width": 15266,
+   "height": 5107
+  },
+  {
+   "id": "c2",
+   "parent": "row",
+   "x": 15820,
+   "y": 11504,
+   "width": 15266,
+   "height": 5107
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 268,
+   "width": 1050,
+   "height": 268
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 268,
+   "width": 1050,
+   "height": 268
+  },
+  {
+   "id": "row",
+   "left": 20,
+   "top": 9,
+   "right": 1044,
+   "bottom": 268,
+   "width": 1024,
+   "height": 259
+  },
+  {
+   "id": "a1",
+   "left": 20,
+   "top": 9,
+   "right": 259,
+   "bottom": 88,
+   "width": 239,
+   "height": 79
+  },
+  {
+   "id": "b1",
+   "left": 267,
+   "top": 9,
+   "right": 506,
+   "bottom": 88,
+   "width": 239,
+   "height": 79
+  },
+  {
+   "id": "c1",
+   "left": 515,
+   "top": 9,
+   "right": 753,
+   "bottom": 88,
+   "width": 238,
+   "height": 79
+  },
+  {
+   "id": "d1",
+   "left": 762,
+   "top": 9,
+   "right": 1000,
+   "bottom": 88,
+   "width": 238,
+   "height": 79
+  },
+  {
+   "id": "e1",
+   "left": 20,
+   "top": 96,
+   "right": 265,
+   "bottom": 181,
+   "width": 245,
+   "height": 85
+  },
+  {
+   "id": "w1",
+   "left": 273,
+   "top": 96,
+   "right": 905,
+   "bottom": 151,
+   "width": 632,
+   "height": 55
+  },
+  {
+   "id": "a2",
+   "left": 20,
+   "top": 188,
+   "right": 259,
+   "bottom": 268,
+   "width": 239,
+   "height": 80
+  },
+  {
+   "id": "c2",
+   "left": 267,
+   "top": 188,
+   "right": 506,
+   "bottom": 268,
+   "width": 239,
+   "height": 80
+  }
+ ]
+}

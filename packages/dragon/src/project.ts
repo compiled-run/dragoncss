@@ -6,7 +6,7 @@ import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced
 import { compileImages, imageMapProblem } from './images/compile.ts';
 import type { CompiledImages } from './images/compile.ts';
 import type { ImageAssetMap } from './images/manifest.ts';
-import { CanonicalText, canonicalJson, sha256Hex } from './digest.ts';
+import { CanonicalText, canonicalJson, sha256Hex, sha256HexBytes } from './digest.ts';
 import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Longhand } from './css/properties.ts';
@@ -27,6 +27,7 @@ import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
+import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
 import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
@@ -48,12 +49,15 @@ import { familyListText } from './css/values.ts';
 import type { DeclaredFace, FontFaceIssue } from './fonts/font-face.ts';
 import { GENERIC_KEYS, validateFontMap } from './fonts/font-map.ts';
 import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
-import { foldFamily, selectionRequest } from './fonts/selection.ts';
+import type { FontSelectionRequest } from './fonts/selection.ts';
+import { foldFamily, kBoldThreshold, kItalicThreshold, selectionRequest } from './fonts/selection.ts';
 import { fenceVariableInstance } from './fonts/variable-fence.ts';
 import type { VariableFontRefusal } from './fonts/variable-fence.ts';
 import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
 import type { FontWireProblem, ProjectedFonts } from './fonts/wire.ts';
 import type { CompilerFaults } from './faults.ts';
+import { NO_FAULTS } from './faults.ts';
+import type { EngineFace } from './lower/ios-layout.ts';
 import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
 import { undecidedScrollContainers } from './lower/scroll-decidable.ts';
 import { PROGRAM_VERSIONS } from './lower/native-program.ts';
@@ -153,6 +157,10 @@ export type InternalCase = {
   readonly resolved: ResolvedElement | null;
   /** The native lowered layout tree (the ios lowering); border widths are computed CSS px, which the engine snaps for the environment's DPR. */
   readonly nativeLowered: LayoutBox | null;
+  /** The engine lane's tree: nativeLowered when a native target is checked, else an engine-mode lowering when only deferred font refusals block native. */
+  readonly engineLowered: LayoutBox | null;
+  /** Why the case has no engine lowering (the engine-mode lowering failure, or a native blocker that is not deferred), or null. */
+  readonly engineRefusal: string | null;
   readonly webClassOf: ReadonlyMap<string, string> | null;
   /** Profile row keys ("<feature>@<context>") this case uses, per target, sorted. */
   readonly features: ReadonlyMap<Target, readonly string[]>;
@@ -411,7 +419,7 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
 }
 
 /** The lowering's font refusal, reported for every laid-out text node of every case, whether or not another error blocks ios. */
-function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>, target: 'ios' | 'android', ahemDeclared: boolean): void {
+function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>, target: 'ios' | 'android', ahemDeclared: boolean, deferrals: Set<string>): void {
   const walk = (el: ResolvedElement): void => {
     const display = (el.props.get('display') as ResolvedValue).value;
     if (display.kind === 'keyword' && display.value === 'none') return;
@@ -421,15 +429,103 @@ function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: 
         continue;
       }
       // Native draws its bundled Ahem, so an @font-face that declares Ahem for web would make the targets disagree: it blocks native.
-      const message = textFontProblem(c) ?? (ahemDeclared ? `font-family Ahem on ${c.node.address} names the family an @font-face rule declares, while ${target} draws the bundled Ahem` : null);
+      const problem = textFontProblem(c);
+      const message = problem ?? (ahemDeclared ? `font-family Ahem on ${c.node.address} names the family an @font-face rule declares, while ${target} draws the bundled Ahem` : null);
       if (message === null) continue;
       const id = `${target}|${c.node.address}|font-family|${message}`;
       if (reported.has(id)) continue;
       reported.add(id);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', { origin: c.node.node.origin, message, target }));
+      const d = diagnostic('DRAGON_UNSUPPORTED_FONT', { origin: c.node.node.origin, message, target });
+      diagnostics.push(d);
+      if (problem !== null) deferrals.add(deferralKey(d));
     }
   };
   walk(root);
+}
+
+/** The text font of an element: the UA's font-weight and font-style, inherited (Dragon has no author longhand for either). */
+type UaTextFont = { readonly weight: number; readonly style: 'normal' | 'italic' };
+
+function uaTextFontOf(el: ResolvedElement, inherited: UaTextFont, ua: UaDataset): UaTextFont {
+  const tf = (ua.userAgentTextFonts as { readonly [tag: string]: { readonly [p: string]: string } | undefined })[el.element.tag] ?? {};
+  const weight = tf['font-weight'] === undefined ? inherited.weight : Number(tf['font-weight']);
+  return { weight: Number.isFinite(weight) ? weight : inherited.weight, style: tf['font-style'] === undefined ? inherited.style : tf['font-style'] === 'italic' ? 'italic' : 'normal' };
+}
+
+/** Why a face Chrome would draw is synthetic (CSSSegmentedFontFace: bold at weight 600 and up over a face below it; italic over an upright face), or null. */
+function syntheticStyle(face: DeclaredFace, request: FontSelectionRequest): string | null {
+  if (request.weight.raw >= kBoldThreshold.raw && face.capabilities.weight.maximum.raw < kBoldThreshold.raw) return 'synthetic bold';
+  if (request.slope.raw >= kItalicThreshold.raw && face.capabilities.slope.maximum.raw < kItalicThreshold.raw) return 'synthetic oblique';
+  return null;
+}
+
+/** The bundled faces of a compilation: every declared face and every pinned face. */
+const bundledFaces = (fonts: ProjectFonts): DeclaredFace[] => [...fonts.declaredFaces, ...fonts.projected.pinned.flatMap((p) => (p.result.face === null ? [] : [p.result.face]))];
+
+/** The one face Chrome draws a text with at a UA font, or why the engine cannot lay it out (engine mode, notes/T083-txt1a-1.md). */
+function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string, font: UaTextFont): EngineFace {
+  const listText = familyListText(family.value);
+  const support = listText === null ? null : familySupport(listText, fonts.keys.map, fonts.keys.declared);
+  if (support === null || support.kind !== 'resolved') return { kind: 'refused', reason: 'the family list does not resolve to bundled faces' };
+  const request = selectionRequest(font.weight, 100, { kind: font.style });
+  const rendered = renderedFaces(bundledFaces(fonts), support.resolutions, text, request);
+  if (rendered.length !== 1) return { kind: 'refused', reason: rendered.length === 0 ? 'no bundled face draws it' : `Chrome draws it with ${rendered.length} faces (font fallback), and the engine lays out one face per text` };
+  const face = (rendered[0] as { face: DeclaredFace }).face;
+  if (face.source === null) return { kind: 'refused', reason: 'its face has no bytes' };
+  if (face.source.font.variable) return { kind: 'refused', reason: 'it resolves to a variable face, which TXT1b proves' };
+  const synthetic = syntheticStyle(face, request);
+  if (synthetic !== null) return { kind: 'refused', reason: `Chrome would draw it in ${synthetic} (DRAGON_SYNTHETIC_FONT_STYLE)` };
+  return { kind: 'face', id: `sha256:${sha256HexBytes(face.source.bytes)}` };
+}
+
+/** Engine mode's faces of a case, by address: each element's primary font (the strut, U+0020) and each laid-out text node's text. */
+function engineFacesOf(root: ResolvedElement, fonts: ProjectFonts, ua: UaDataset): Map<string, EngineFace> {
+  const out = new Map<string, EngineFace>();
+  const walk = (el: ResolvedElement, inherited: UaTextFont): void => {
+    const own = uaTextFontOf(el, inherited, ua);
+    const family = el.props.get('font-family') as ResolvedValue;
+    out.set(el.element.address, engineFaceFor(fonts, family, ' ', own));
+    for (const c of el.children) {
+      if (c.kind === 'element') walk(c, own);
+      else out.set(c.node.address, engineFaceFor(fonts, c.props.get('font-family') as ResolvedValue, c.text, own));
+    }
+  };
+  walk(root, { weight: 400, style: 'normal' });
+  return out;
+}
+
+/**
+ * R7 (notes/T056-txt1a-spec.md): text a native target would draw in a synthetic bold or oblique style from a bundled face is refused
+ * with its own code; native has no proof of Skia's synthetic paint. Ahem's UA bold and italic keep their existing refusal.
+ */
+function checkSyntheticStyles(root: ResolvedElement, fonts: ProjectFonts, ua: UaDataset, target: 'ios' | 'android', diagnostics: Diagnostic[], reported: Set<string>): void {
+  const walk = (el: ResolvedElement, inherited: UaTextFont, hidden: boolean): void => {
+    const own = uaTextFontOf(el, inherited, ua);
+    const display = (el.props.get('display') as ResolvedValue).value;
+    const here = hidden || (display.kind === 'keyword' && display.value === 'none');
+    for (const c of el.children) {
+      if (c.kind === 'element') {
+        walk(c, own, here);
+        continue;
+      }
+      if (here || textFontProblem(c) === null) continue;
+      const family = c.props.get('font-family') as ResolvedValue;
+      const listText = familyListText(family.value);
+      const support = listText === null ? null : familySupport(listText, fonts.keys.map, fonts.keys.declared);
+      if (support === null || support.kind !== 'resolved') continue;
+      const request = selectionRequest(own.weight, 100, { kind: own.style });
+      for (const { family: name, face } of renderedFaces(bundledFaces(fonts), support.resolutions, c.text, request)) {
+        const synthetic = syntheticStyle(face, request);
+        if (synthetic === null) continue;
+        const message = `text ${c.node.address} in ${name} at font-weight ${own.weight} and font-style ${own.style} would be drawn in ${synthetic}: no bundled ${name} face has that ${synthetic === 'synthetic bold' ? 'weight' : 'style'}, and ${target} cannot reproduce Skia's synthetic style`;
+        const id = `${target}|synthetic|${c.node.address}|${message}`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        diagnostics.push(diagnostic('DRAGON_SYNTHETIC_FONT_STYLE', { origin: c.node.node.origin, message, target }));
+      }
+    }
+  };
+  walk(root, { weight: 400, style: 'normal' }, false);
 }
 
 /** The fonts of one compilation: the projected map and manifest, the declared faces and the context feature keys resolve against. */
@@ -653,8 +749,19 @@ type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; res
 const allUsed = (c: CaseResult): UsedKey[] => [...c.used, ...c.interaction.flatMap((i) => i.used)];
 
 /** What checkCases has reported, shared by every band's pass so a diagnostic is reported once. */
-type Reported = { readonly contextual: Set<string>; readonly refused: Set<string>; readonly fonts: Set<string>; readonly fenced: Set<string> };
-const freshReported = (): Reported => ({ contextual: new Set(), refused: new Set(), fonts: new Set(), fenced: new Set() });
+type Reported = { readonly contextual: Set<string>; readonly refused: Set<string>; readonly fonts: Set<string>; readonly fenced: Set<string>; readonly fontDeferrals: Set<string> };
+const freshReported = (fontDeferrals: Set<string> = new Set()): Reported => ({ contextual: new Set(), refused: new Set(), fonts: new Set(), fenced: new Set(), fontDeferrals });
+
+/**
+ * TXT1a-1 (notes/T083-txt1a-1.md): the native font refusals the engine lane defers, keyed by diagnostic. A native target blocked by
+ * nothing else is lowered for the engine in engine mode, which lays out the bundled static faces the native targets do not draw yet.
+ */
+const deferralKey = (d: Diagnostic): string => JSON.stringify(d);
+
+/** A native profile refusal of a font-family feature: no native font row is proven until TXT1a-2, so the engine lane defers it too. */
+const isFontProfileRefusal = (d: Diagnostic): boolean =>
+  d.target !== null && (NATIVE_TARGETS as readonly string[]).includes(d.target) && (d.code === 'DRAGON_UNSUPPORTED_VALUE' || d.code === 'DRAGON_UNPROVEN_CONTEXT')
+  && d.profile !== null && d.profile.feature.startsWith('font-family:');
 
 /**
  * Resolves and checks every case: computed-value refusals, fonts, then (when enforcing) the contextual check, where a feature
@@ -662,20 +769,24 @@ const freshReported = (): Reported => ({ contextual: new Set(), refused: new Set
  * shorthand-filled longhand, the shorthand and what to write instead (T005 rec 2).
  */
 function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[], projectFonts: ProjectFonts | null, seen: Reported = freshReported(), registered: Registrations = NO_REGISTRATIONS): CaseResult[] {
-  const { contextual: reported, refused, fonts, fenced } = seen;
+  const { contextual: reported, refused, fonts, fenced, fontDeferrals } = seen;
   const keys = projectFonts === null ? NO_FONTS : projectFonts.keys;
   const out: CaseResult[] = [];
   const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered };
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
+    const computedAt = diagnostics.length;
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, options.faults);
+    // The UA font-weight and font-style refusal is native-only: the engine resolves those faces (engine mode refuses synthesis).
+    for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
     // PNT1: outside the parity lanes, native refuses a fractional opacity (PNT1-opacity-b); the lanes run it to prove its web rows.
     if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     // PNT1: outside the parity lanes, native refuses a layer item whose re-hosting would leave or enter an overflow clip wrongly
     // (analysis/paint-values/stacking.ts); the lanes keep it under the clip, and the device pixels judge it.
     if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
-    for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared);
+    for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals);
+    if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkSyntheticStyles(resolved, projectFonts, options.ua, t, diagnostics, fonts);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
     if (options.profiles !== 'derive') checkContexts(used);
@@ -959,6 +1070,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   let laneOnlyNative: ('ios' | 'android')[] = [];
   let bands: Bands | null = null;
   let nativeBand = 0;
+  const fontDeferrals = new Set<string>();
   const valid = configDiagnostics.length === 0 ? validateInput(input, config.projectId, diagnostics) : null;
   if (valid !== null) {
     const rules: Rule[] = [];
@@ -1032,7 +1144,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const passes = bandList.map((b, k) => {
         const own: Diagnostic[] = [];
         const bandTargets = passTargets(k);
-        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(), registered) };
+        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(fontDeferrals), registered) };
         return { result, diagnostics: scopedTo(own, bandTargets, targets) };
       });
       bandCases = passes.map((p) => p.result);
@@ -1058,6 +1170,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const nativeTargets = NATIVE_TARGETS.filter((t) => targets.includes(t));
       // MQ-R1: per-band transition and animation lists are refused on native until MQ-Rt, as on web until ANIM-mq.
       refuseBandedNativeAnimations(rules, inEveryBand, nativeTargets, diagnostics);
+      // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused.
+      refuseAnimatedGradients(animation, cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])), nativeTargets, diagnostics);
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.
@@ -1162,7 +1276,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const lowerings = (bandCases[k] as { cases: CaseResult[] }).cases.flatMap((c) => (c.resolved === null ? [] : [{ key: c.key, resolved: c.resolved }, ...c.interaction.map((i) => ({ key: interactionKey(c.key, i.value), resolved: i.resolved }))]));
       for (const c of lowerings) {
         try {
-          const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals);
+          const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native' });
           lowered.set(c.key, tree);
           // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
           // may refuse is refused here, naming the engine's reason.
@@ -1185,6 +1299,26 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     }
   }
   const lowered = loweredByBand[nativeBand] ?? new Map<string, LayoutBox>();
+  // TXT1a-1: when every native blocker is a deferred font refusal, the engine lane gets an engine-mode lowering; when a native
+  // target is checked, the engine lowering is the native one.
+  const engineLowered = new Map<string, LayoutBox>();
+  const engineRefusals = new Map<string, string>();
+  const nativeTargets = NATIVE_TARGETS.filter((t) => targets.includes(t));
+  const deferredOnly = nativeTargets.length > 0 && lowerFor.length === 0 && fonts !== null
+    && nativeTargets.every((t) => diagnostics.filter((d) => blocksTarget(d, t)).every((d) => fontDeferrals.has(deferralKey(d)) || isFontProfileRefusal(d)));
+  if (deferredOnly && fonts !== null) {
+    const engineFonts = fonts;
+    for (const c of cases) {
+      if (c.resolved === null) continue;
+      const faces = engineFacesOf(c.resolved, engineFonts, options.ua);
+      try {
+        engineLowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'engine', faceOf: (address) => faces.get(address) ?? { kind: 'refused', reason: `${address} has no resolved font` } }));
+      } catch (e) {
+        if (!(e instanceof LoweringError)) throw e;
+        engineRefusals.set(c.key, `${e.nodeId} ${e.property}: ${e.message}`);
+      }
+    }
+  }
   const status = {} as { [P in K]: 'checked' | 'blocked' };
   const outputs = {} as { [P in K]: ArtifactState };
   let web: ReturnType<typeof emitWebCss> | null = null;
@@ -1244,6 +1378,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         isInitial: c.isInitial,
         resolved: c.resolved,
         nativeLowered: nativeChecked ? (lowered.get(c.key) ?? null) : null,
+        engineLowered: nativeChecked ? (lowered.get(c.key) ?? null) : (engineLowered.get(c.key) ?? null),
+        engineRefusal: nativeChecked ? null : (engineRefusals.get(c.key) ?? (deferredOnly ? null : 'native is blocked by more than deferred font refusals')),
         webClassOf: webClasses === null ? null : (webClasses.get(c.key) ?? null),
         features: new Map(targets.map((t) => [t, [...new Set(c.used.map((u) => u.key))].sort()])),
         partition: c.partition,
