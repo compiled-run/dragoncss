@@ -16,6 +16,7 @@ import { borderWrites } from './paint/border.ts';
 import { clipsChildren } from './paint/clip.ts';
 import type { PaintWrite } from './paint/registry.ts';
 import { lowerBoxPaint, paintVocabulary, paintWriteCss } from './paint/registry.ts';
+import { inlineStackingFacts } from './paint/stacking.ts';
 import type { NativeBackend, Technique, VocabularyEntry } from './paint/types.ts';
 import { ProgramError } from './paint/types.ts';
 
@@ -165,7 +166,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     const el = elements.get(c.id);
     if (el === undefined) throw new ProgramError(`${c.id}: no resolved element for the inline box`);
     const writes: PaintWrite[] = [{ kind: 'background-color', color: usedColors(el)['background-color'] }, ...borderWrites(c.id, el, TRANSPARENT)];
-    out.push({ id: c.id, parent: container, kind: 'element', clips: false, text: null, writes, facts: {} });
+    out.push({ id: c.id, parent: container, kind: 'element', clips: false, text: null, writes, facts: { stacking: inlineStackingFacts(c) } });
     if (c.kind === 'inline') for (const k of c.children) inline(k, container);
   };
   visit(root, null, TRANSPARENT, false);

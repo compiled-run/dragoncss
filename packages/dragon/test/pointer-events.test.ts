@@ -7,6 +7,7 @@ import { createProject } from '../src/index.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, POINTER_LONGHANDS, PROPERTY_ASPECTS } from '../src/css/properties.ts';
 import { GRID_LONGHANDS } from '../src/css/properties/grid.ts';
+import { EFFECTS_LONGHANDS } from '../src/css/properties/effects.ts';
 import { RADIUS_LONGHANDS } from '../src/css/properties/radius.ts';
 import { TRANSFORM_LONGHANDS } from '../src/css/properties/transform.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -25,10 +26,13 @@ function parse(value: string): Diagnostic[] {
 describe('pointer-events: registry', () => {
   it('follows grid before the paint families, inherited, with no layout or paint aspect, and webref\'s grammar', () => {
     expect([...POINTER_LONGHANDS]).toEqual(['pointer-events']);
-    // The paint families (PNT1's radius first, then PNT2's transform after it) register after it.
+    // The paint families register after it in registry order: PNT1's radius first (shadow is still empty), then PNT1's effects,
+    // then PNT2's transform.
     expect(LONGHANDS[LONGHANDS.indexOf('pointer-events') - 1]).toBe(GRID_LONGHANDS[GRID_LONGHANDS.length - 1]);
     expect(LONGHANDS.indexOf(RADIUS_LONGHANDS[0])).toBe(LONGHANDS.indexOf('pointer-events') + 1);
+    expect(LONGHANDS.indexOf(EFFECTS_LONGHANDS[0])).toBe(LONGHANDS.indexOf('pointer-events') + 1 + RADIUS_LONGHANDS.length);
     expect(LONGHANDS.indexOf(TRANSFORM_LONGHANDS[0])).toBeGreaterThan(LONGHANDS.indexOf(RADIUS_LONGHANDS[3]));
+    expect(LONGHANDS.indexOf(TRANSFORM_LONGHANDS[0])).toBe(LONGHANDS.indexOf(EFFECTS_LONGHANDS[0]) + EFFECTS_LONGHANDS.length);
     expect(INHERITED.has('pointer-events')).toBe(true);
     expect(PROPERTY_ASPECTS['pointer-events']).toEqual({ layout: false, paint: false });
     expect(grammar['pointer-events']?.initial).toBe('auto');
