@@ -1,0 +1,178 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 51456
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 51456
+  },
+  {
+   "id": "stage",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 51456
+  },
+  {
+   "id": "simple",
+   "parent": "stage",
+   "x": 3456,
+   "y": 3456,
+   "width": 14592,
+   "height": 9600
+  },
+  {
+   "id": "pill",
+   "parent": "stage",
+   "x": 24576,
+   "y": 3456,
+   "width": 14592,
+   "height": 9600
+  },
+  {
+   "id": "circle",
+   "parent": "stage",
+   "x": 45696,
+   "y": 3456,
+   "width": 10752,
+   "height": 10752
+  },
+  {
+   "id": "mixed",
+   "parent": "stage",
+   "x": 3456,
+   "y": 20736,
+   "width": 14592,
+   "height": 9600
+  },
+  {
+   "id": "spread",
+   "parent": "stage",
+   "x": 24576,
+   "y": 20736,
+   "width": 14592,
+   "height": 9600
+  },
+  {
+   "id": "ring",
+   "parent": "stage",
+   "x": 45696,
+   "y": 20736,
+   "width": 9600,
+   "height": 9600
+  },
+  {
+   "id": "bordered",
+   "parent": "stage",
+   "x": 3456,
+   "y": 36864,
+   "width": 16128,
+   "height": 11136
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 804,
+   "width": 1200,
+   "height": 804
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 804,
+   "width": 1200,
+   "height": 804
+  },
+  {
+   "id": "stage",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 804,
+   "width": 1200,
+   "height": 804
+  },
+  {
+   "id": "simple",
+   "left": 54,
+   "top": 54,
+   "right": 282,
+   "bottom": 204,
+   "width": 228,
+   "height": 150
+  },
+  {
+   "id": "pill",
+   "left": 384,
+   "top": 54,
+   "right": 612,
+   "bottom": 204,
+   "width": 228,
+   "height": 150
+  },
+  {
+   "id": "circle",
+   "left": 714,
+   "top": 54,
+   "right": 882,
+   "bottom": 222,
+   "width": 168,
+   "height": 168
+  },
+  {
+   "id": "mixed",
+   "left": 54,
+   "top": 324,
+   "right": 282,
+   "bottom": 474,
+   "width": 228,
+   "height": 150
+  },
+  {
+   "id": "spread",
+   "left": 384,
+   "top": 324,
+   "right": 612,
+   "bottom": 474,
+   "width": 228,
+   "height": 150
+  },
+  {
+   "id": "ring",
+   "left": 714,
+   "top": 324,
+   "right": 864,
+   "bottom": 474,
+   "width": 150,
+   "height": 150
+  },
+  {
+   "id": "bordered",
+   "left": 54,
+   "top": 576,
+   "right": 306,
+   "bottom": 750,
+   "width": 252,
+   "height": 174
+  }
+ ]
+}

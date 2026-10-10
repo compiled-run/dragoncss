@@ -8,7 +8,7 @@
 // right, or down), and judges the plant against the clean run (judgeGlyphPlant): both hosts finished; the clean run has no
 // device-pixels failure; on the plant's axis every line's glyph position (the x centre, or the bottom edge) fails the position
 // check by PLANT_MARGIN_DEVICE_PX or more and moved PLANT_SHIFT_DEVICE_PX within the spread; and device-frames and device-lines
-// pass in both runs. A paint plant (P6a dash, PNT1 radius) runs its cases (PLANT_CASES) once with the planted app: device-pixels must fail on its
+// pass in both runs. A paint plant (P6a dash, PNT1 radius and shadow) runs its cases (PLANT_CASES) once with the planted app: device-pixels must fail on its
 // sample rules (PLANT_RULES) while device-frames and device-lines pass (plantVerdict).
 // --plant single-run-baseline (INL1a) runs LINE_PLANT_CASE and judges with judgeLinePlant: every line of a text view after the
 // first takes its first line's baseline offset, and the pixel lane must see each moved line's glyph bottom edge move with it.
@@ -17,7 +17,7 @@ import type { SupportPlant } from 'dragon';
 import { GATE_GLYPH_POSITION_DEVICE_PX } from '../compare.ts';
 import { caseReference, dumpFile, evaluateCase, plantVerdict, readDump } from '../device-lanes.ts';
 import type { DeviceSpec } from '../device-run.ts';
-import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, iosProfileScale, isGlyphPlant, isPaintPlant, judgeGlyphPlant, judgeLinePlant, LINE_PLANT_CASE, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
+import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, DORMANT_PLANTS, iosProfileScale, isGlyphPlant, isPaintPlant, judgeGlyphPlant, judgeLinePlant, LINE_PLANT_CASE, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
 import { glyphPositions } from '../native-compare.ts';
 import { validateNativeDump } from '../native-dump.ts';
 import { existsSync, readFileSync } from 'node:fs';
@@ -72,6 +72,12 @@ if (plant === null) {
   }
   log(`status ${failures === 0 ? 'pass' : 'fail'} (${failures} problem(s))`);
   process.exit(failures === 0 ? 0 : 1);
+}
+
+// A dormant plant (DORMANT_PLANTS) has nothing a device can observe; it is reported and not run.
+if (isPaintPlant(plant) && DORMANT_PLANTS[plant] !== undefined) {
+  log(`plant ${plant}: dormant, not run (${DORMANT_PLANTS[plant]})`);
+  process.exit(0);
 }
 
 // A paint plant (P6a): pixels must see what (d) cannot, on the plant's cases (PLANT_CASES) and sample rules (PLANT_RULES).

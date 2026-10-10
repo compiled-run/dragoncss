@@ -4,8 +4,8 @@
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import type { AaFaults, BorderWidths, IRect, RoundedBoxSpec } from '../src/paint-aa.ts';
-import { backgroundRoute, borderRoundedRect, borderRoute, devicePixels, fixedMul, NO_AA_FAULTS, paintRoundedBackground, paintRoundedBorder, sqrt32, sqrt64, toSkRRect, whiteDevice } from '../src/paint-aa.ts';
+import type { AaFaults, AaPath, BorderWidths, IRect, RoundedBoxSpec } from '../src/paint-aa.ts';
+import { a8Device, antiFillPath, backgroundRoute, borderRoundedRect, borderRoute, devicePixels, drrectPath, fixedMul, NO_AA_FAULTS, ovalPath, paintRoundedBackground, paintRoundedBorder, setRectRadii, sqrt32, sqrt64, toSkRRect, whiteDevice } from '../src/paint-aa.ts';
 
 type AaCase = { readonly id: string; readonly family: 'fill' | 'border'; readonly dpr: number; readonly device: RoundedBoxSpec; readonly widths: BorderWidths | null; readonly crop: IRect; readonly file: string };
 type Manifest = { readonly chrome: string; readonly skia: string; readonly featureStatus: Record<string, Record<string, string>>; readonly cases: readonly AaCase[] };
@@ -207,5 +207,44 @@ describe('SKIA-AA arithmetic', () => {
     const spec: RoundedBoxSpec = { box: { left: 10, top: 10, right: 90, bottom: 70 }, radii: { topLeft: { x: 16, y: 16 }, topRight: { x: 16, y: 16 }, bottomRight: { x: 16, y: 16 }, bottomLeft: { x: 16, y: 16 } }, tileSize: 512 };
     const widths: BorderWidths = { top: 1, right: 1, bottom: 1, left: 1 };
     expect(() => paintRoundedBorder(whiteDevice({ left: 0, top: 0, right: 100, bottom: 80 }), spec, widths, NO_AA_FAULTS)).toThrow(/hairline/);
+  });
+});
+
+describe('SKIA-AA paths crossing their clip (SkEdgeClipper; measured against Chrome through pnt1-shadow.test.ts)', () => {
+  const full: IRect = { left: 0, top: 0, right: 120, bottom: 90 };
+  const fill = (path: AaPath, clip: IRect, a8: boolean): number[] => {
+    const d = a8 ? a8Device(full) : whiteDevice(full);
+    antiFillPath(d, path, clip, NO_AA_FAULTS);
+    return devicePixels(d);
+  };
+  const oval = ovalPath({ left: 10.25, top: 8.5, right: 101.75, bottom: 71.25 });
+  it('fills a contained path as before, and leaves every pixel outside a crossing clip untouched', () => {
+    const whole = fill(oval, full, true);
+    expect(fill(oval, { left: 10, top: 8, right: 102, bottom: 72 }, true)).toEqual(whole);
+    const clip: IRect = { left: 0, top: 0, right: 60, bottom: 40 };
+    const cut = fill(oval, clip, true);
+    let inside = 0;
+    for (let y = 0; y < 90; y++) {
+      for (let x = 0; x < 120; x++) {
+        const v = cut[y * 120 + x] as number;
+        if (x >= clip.right || y >= clip.bottom) expect(v, `${x},${y}`).toBe(0);
+        else if (v > 0) inside++;
+      }
+    }
+    expect(inside).toBeGreaterThan(1000);
+    // Far from the cut, the clipped fill covers what the whole fill covers.
+    for (let y = 12; y < 30; y++) for (let x = 40; x < 50; x++) expect(cut[y * 120 + x], `${x},${y}`).toBe(whole[y * 120 + x]);
+  });
+  it('clips a convex path to the right with vertical edges, and culls an even-odd one to the right', () => {
+    const inner = setRectRadii({ left: 30, top: 25, right: 80, bottom: 55 }, [{ x: 8, y: 8 }, { x: 8, y: 8 }, { x: 8, y: 8 }, { x: 8, y: 8 }], NO_AA_FAULTS);
+    const outer = setRectRadii({ left: 5.5, top: 5.5, right: 110.5, bottom: 80.5 }, [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }], NO_AA_FAULTS);
+    const ring = drrectPath(outer, inner);
+    const clip: IRect = { left: 20, top: 10, right: 70, bottom: 60 };
+    const cut = fill(ring, clip, false);
+    const whole = fill(ring, full, false);
+    // The hole stays a hole and the band left of it stays covered.
+    expect(cut[40 * 120 + 50]).toBe(255);
+    expect(cut[40 * 120 + 22]).toBe(whole[40 * 120 + 22]);
+    expect(cut[40 * 120 + 75]).toBe(255);
   });
 });
