@@ -9,7 +9,7 @@ export const GRID_LONGHANDS = [
   'justify-items', 'justify-self',
 ] as const;
 /** grid-gap, grid-row-gap and grid-column-gap are Chrome's legacy aliases of gap, row-gap and column-gap (css-align-3 §8.5). */
-export const GRID_SHORTHANDS = ['grid', 'grid-template', 'grid-row', 'grid-column', 'grid-area', 'grid-gap', 'grid-row-gap', 'grid-column-gap'] as const;
+export const GRID_SHORTHANDS = ['grid', 'grid-template', 'grid-row', 'grid-column', 'grid-area', 'grid-gap', 'grid-row-gap', 'grid-column-gap', 'place-content', 'place-items', 'place-self'] as const;
 export const GRID_INHERITED: readonly (typeof GRID_LONGHANDS)[number][] = [];
 export const GRID_CONTAINER: readonly (typeof GRID_LONGHANDS)[number][] = ['grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'justify-items'];
 export const GRID_TEXT_ROLE: readonly (typeof GRID_LONGHANDS)[number][] = [];

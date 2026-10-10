@@ -115,9 +115,12 @@ describe('E2 seams: FIXTURES', () => {
     expect(new Set(fixtures.map((f) => f.id)).size).toBe(fixtures.length);
   });
   // OVFL retargeted reject-overflow-single-axis to clip and removed reject-overflow-body and reject-overflow-scroll (now layout
-  // fixtures in the overflow group); every other milestone-1 spec is unchanged.
-  it('the milestone-1 specs are byte-identical to 4c1331c but for the OVFL rejects', async () => {
-    expect(sha((await load()).slice(0, MILESTONE_1_IDS.length))).toBe('a336142203f67ef5287bfd48a891f5c542ebeb581f5ac720964e1563c1269389');
+  // fixtures in the overflow group); GRID G1a retargeted reject-display-grid (display: grid is proven in block flow); every
+  // other milestone-1 spec is unchanged. Before G1a all specs hashed to a336142203f67ef5287bfd48a891f5c542ebeb581f5ac720964e1563c1269389.
+  it('the milestone-1 specs are byte-identical to 4c1331c but for the OVFL rejects and the retargeted reject-display-grid', async () => {
+    const m1 = (await load()).slice(0, MILESTONE_1_IDS.length);
+    expect(sha(m1.filter((f) => f.id !== 'reject-display-grid'))).toBe('7725fc41f20e78d69c61b30fa1cd836581aa707810b4bd472553678c8e25ba93');
+    expect(m1.find((f) => f.id === 'reject-display-grid')).toEqual({ id: 'reject-display-grid', format: 'html', kind: 'reject', expect: { code: 'DRAGON_UNPROVEN_CONTEXT', spanText: 'grid', messagePrefix: 'display:grid on grid is used in the flex-column/ltr context, which is not proven' } });
   });
 });
 

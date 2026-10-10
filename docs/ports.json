@@ -585,8 +585,10 @@
       "fileSha256": "f779a32927a4eddcbb5f917f841d260885393ef6d110a568ab4d90d3b5388cf7",
       "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
       "ranges": [
+        { "lines": "179-182", "symbol": "ConsumeFirstBaseline", "source": "located" },
         { "lines": "4174-4179", "symbol": "IsInvalidFontFamily", "source": "located" },
         { "lines": "5989-6010", "symbol": "ConsumeFontFamily", "source": "located" },
+        { "lines": "4265-4300", "symbol": "ConsumeContentDistributionOverflowPosition", "source": "located" },
         { "lines": "6031-6033", "symbol": "ConsumeGenericFamily", "source": "located" },
         { "lines": "3640-3688", "symbol": "ConsumeImage", "source": "located" }
       ],
@@ -595,12 +597,32 @@
         { "file": "packages/dragon/src/css/grid-values.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/css/math.ts", "symbol": "MathGrammar", "use": "port" },
         { "file": "packages/dragon/src/css/shorthands/radius.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/stylesheet.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "isInvalidFontFamily", "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "parseFamilyList", "use": "port" },
         { "file": "packages/dragon/src/fonts/font-face.ts", "symbol": null, "use": "port" },
         { "file": "packages/parity/src/font-reference.ts", "symbol": "PARSER_GENERICS", "use": "port" },
+        { "file": "packages/parity/test/place-computed.test.ts", "symbol": null, "use": "reference" },
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/properties/shorthands/shorthands_custom.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "d012d8a61585deb8606e4cb11c212cc943ea36ec2ff9c757a8ce48b716c9b5b2",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "3892-3944", "symbol": "PlaceContent::ParseShorthand", "source": "located" },
+        { "lines": "3956-4003", "symbol": "PlaceItems::ParseShorthand", "source": "located" },
+        { "lines": "4015-4062", "symbol": "PlaceSelf::ParseShorthand", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/place.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/css/place.ts", "symbol": "splitPlace", "use": "port" }
       ]
     },
     {
@@ -1038,6 +1060,25 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/grid/grid_layout_algorithm.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "f30967be05c68ca46b007512ea4d8e7cd8c913b927a26f7288d3740037e77a9d",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "270-326", "symbol": "GridLayoutAlgorithm::ComputeMinMaxSizes", "source": "located" },
+        { "lines": "587-743", "symbol": "ComputeGridGeometry", "source": "located" },
+        { "lines": "871-1101", "symbol": "GridLayoutAlgorithm::ContributionSizeForGridItem", "source": "located" },
+        { "lines": "1551-1617", "symbol": "CompleteTrackSizingAlgorithm", "source": "located" },
+        { "lines": "2178-2353", "symbol": "PlaceGridItems", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/grid/grid_line_resolver.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -1058,6 +1099,70 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/lower/grid-layout.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/grid/grid_placement.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "29ab3d600acfe08da8f2a478028b95f5271f21b547abe3d996107e9e9d4ec8b9",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "52-115", "symbol": "GridPlacement::RunAutoPlacementAlgorithm", "source": "located" },
+        { "lines": "318-335", "symbol": "PlaceGridItemAtCursor", "source": "located" },
+        { "lines": "435-528", "symbol": "AutoPlacementCursor::MoveCursorToFitGridSpan", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/grid/grid_track_collection.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "6e7a4e2091f84469c6a63908f30491c10d823d02af4fddde80309ceeab06e7ac",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "121-352", "symbol": "GridRangeBuilder::FinalizeRanges", "source": "located" },
+        { "lines": "433-436", "symbol": "GridSet::FlexFactor", "source": "located" },
+        { "lines": "597-599", "symbol": "GridLayoutTrackCollection::CalculateSetSpanSize", "source": "located" },
+        { "lines": "923-931", "symbol": "GridSizingTrackCollection::TotalTrackSize", "source": "located" },
+        { "lines": "1022-1037", "symbol": "GridSizingTrackCollection::BuildSets", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/grid/grid_track_sizing_algorithm.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2025 The Chromium Authors",
+      "fileSha256": "3367d5cbfd9e5a811b115d6f45216901f39e358c6ea74b0620a11b128a71818a",
+      "headerSha256": "796ca6a44d553d78da8bb82d1b905ef505d75c2968a9c872aa06077059a534f8",
+      "ranges": [
+        { "lines": "24-130", "symbol": "CacheGridItemsProperties", "source": "located" },
+        { "lines": "133-153", "symbol": "GridTrackSizingAlgorithm::CalculateGutterSize", "source": "located" },
+        { "lines": "157-280", "symbol": "ComputeFirstSetGeometry", "source": "located" },
+        { "lines": "282-324", "symbol": "GridTrackSizingAlgorithm::ComputeUsedTrackSizes", "source": "located" },
+        { "lines": "448-499", "symbol": "GrowthPotentialForSet", "source": "located" },
+        { "lines": "514-751", "symbol": "DistributeExtraSpaceToSets", "source": "located" },
+        { "lines": "775-885", "symbol": "IncreaseTrackSizesToAccommodateGridItems", "source": "located" },
+        { "lines": "888-998", "symbol": "ResolveIntrinsicTrackSizes", "source": "located" },
+        { "lines": "1001-1028", "symbol": "MaximizeTracks", "source": "located" },
+        { "lines": "1031-1084", "symbol": "StretchAutoTracks", "source": "located" },
+        { "lines": "1087-1276", "symbol": "ExpandFlexibleTracks", "source": "located" },
+        { "lines": "1280-1306", "symbol": "DetermineFreeSpace", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/units.ts", "symbol": null, "use": "port" },
+        { "file": "packages/parity/src/grid-corpus.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -1197,6 +1302,21 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/layout_utils.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 The Chromium Authors",
+      "fileSha256": "344f350ec877157be512afce07802060c684c28608bc4e6e5cffe1f4fa041cd9",
+      "headerSha256": "bb164409c6a3593ec3b8bb889d907af0efb2e323920ac00bd35aa1f81101ab72",
+      "ranges": [
+        { "lines": "631-657", "symbol": "AlignmentOffset", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": "alignmentOffset", "use": "port" }
       ]
     },
     {
@@ -1555,6 +1675,7 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/lower/grid-layout.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/validate.ts", "symbol": null, "use": "reference" }
       ]
     },

@@ -9,6 +9,8 @@ import type { EnvironmentDependencies } from './environment.ts';
 import { applyEnvironment, environmentDependencies, resolveEnvironment } from './environment.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import { blockLevelInlineSize, directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
+import type { GridFaults } from './grid.ts';
+import { NO_GRID_FAULTS } from './grid.ts';
 import type { ContainingBlock } from './position.ts';
 import { layoutAbsolute, relativeOffsetWith } from './position.ts';
 import type { TextMeasurer } from './text.ts';
@@ -40,13 +42,18 @@ type Placement = { readonly boxes: LayoutRect[]; readonly absolute: Map<string, 
 
 /** layout with seeded engine errors; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
 export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): LayoutResult {
+  return layoutWithGridFaults(given, measurer, faults, NO_GRID_FAULTS);
+}
+
+/** layoutWithFaults with seeded grid errors; only the G-P differential test passes anything but NO_GRID_FAULTS. */
+export function layoutWithGridFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults, gridFaults: GridFaults): LayoutResult {
   const m = layoutMeasurer(measurer, faults);
   try {
     const input = resolvedInput(given, measurer, faults);
     const root = input.root;
     const icbWidth = fromCssPx(input.viewport.width);
     const icbHeight = fromCssPx(input.viewport.height);
-    const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults };
+    const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults };
     const icbDirection = directionOf(ctx, root);
     // The root element establishes a block formatting context in the initial containing block.
     const inline = blockLevelInlineSize(ctx, root, icbWidth, icbDirection, { bfcLineOffset: ZERO, borderBoxWidth: icbWidth, lineLeft: ZERO, newFormattingContext: true });

@@ -225,12 +225,14 @@ const REMOVED_AFTER_BASE: Readonly<Record<string, string>> = {
 
 // BASE fixtures a later package retargeted on purpose (V1 of the value model supports vw and calc(), so its rejects moved to
 // svw and round(); SELD-R2a compiles :hover, so reject-selector-hover moved to :focus-within; CTX-PROOF proves margin-top: auto
-// in block flow, so reject-unproven-context moved it to an absolute box in a flex column), with their BASE text: the reader is still checked on
+// in block flow, so reject-unproven-context moved it to an absolute box in a flex column; GRID G1a proves display: grid in block
+// flow, so reject-display-grid puts the grid in a column flex container), with their BASE text: the reader is still checked on
 // that text, and each file must now differ from it. reject-overflow-single-axis: OVFL supports overflow-x: hidden alone (overflow-y
 // computes to auto), so the reject moved to overflow-x: clip beside visible (OVFL-c); its BASE text is the layout fixture
 // overflow-single-axis-hidden. BG2 draws gradients and several layers, so its background rejects moved to url() and a conic layer.
 // GEN-a generates ::before and ::after boxes, so reject-selector-pseudo-element moved to ::first-line (GEN-d).
 const RETARGETED_AFTER_BASE: Readonly<Record<string, string>> = {
+  'reject-display-grid': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.grid { display: grid; width: 100px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="grid" class="grid"><div data-dragon-id="cell"></div></div>\n</body>\n</html>\n',
   'reject-selector-pseudo-element': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n.a { width: 10px; }\n.a::before { width: 20px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
   'reject-overflow-single-axis': "<!DOCTYPE html>\n<html data-dragon-id=\"html\">\n<head>\n<style>\nbody { margin: 0; font-family: Ahem; font-size: 10px; }\n.a { width: 20px; height: 10px; overflow-x: hidden; }\n</style>\n</head>\n<body data-dragon-id=\"body\">\n<div data-dragon-id=\"a\" class=\"a\">XX XX</div>\n</body>\n</html>\n",
   'reject-selector-hover': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n.a { width: 10px; }\n.a:hover { width: 20px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',

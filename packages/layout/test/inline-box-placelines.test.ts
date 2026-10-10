@@ -6,7 +6,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { ahemMeasurer, fromCssPx, NO_ENGINE_FAULTS, placeLines, validateLayoutInput, zoomInput } from '../src/index.ts';
+import { ahemMeasurer, fromCssPx, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, validateLayoutInput, zoomInput } from '../src/index.ts';
 import type { EngineFaults, LayoutBox, LayoutInput, LU } from '../src/index.ts';
 import { buildIfc, placeIfcLines } from '../src/inline.ts';
 
@@ -40,7 +40,7 @@ function compare(label: string, raw: LayoutInput, faults: EngineFaults): number 
   const valid = validateLayoutInput(raw);
   if (!valid.ok) throw new Error(`${label}: invalid input ${JSON.stringify(valid.errors)}`);
   const zoomed = zoomInput(valid.input, faults);
-  const ctx = { measurer: ahemMeasurer, devicePixelRatio: zoomed.devicePixelRatio, faults };
+  const ctx = { measurer: ahemMeasurer, devicePixelRatio: zoomed.devicePixelRatio, faults, gridFaults: NO_GRID_FAULTS };
   let n = 0;
   for (const b of containers(zoomed.root, [])) {
     for (const w of [0 as LU, 1 as LU, fromCssPx(37.5), fromCssPx(zoomed.viewport.width)]) {
