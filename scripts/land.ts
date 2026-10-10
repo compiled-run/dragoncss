@@ -111,6 +111,7 @@ import {
   treeMatches,
 } from './merge-train-lib.ts';
 import { SETUP_GIT_CONFIG } from './floor-merge.ts';
+import { checkCredentials, type Minted, parseMinted, reusable } from './land-app-token.ts';
 import { reviewerIds } from './land-review-lookup.ts';
 import { recordOutage, OUTAGE_CONTEXT, type OutageLedger, outageLedger, parseOutageEject, readOutageStreak, writeOutage, checkLockFree, lockHolder, releaseLock, takeLock, checkNotReviewer, missingProof, parseIds, parseSelf, parseFirstParents, parseMaxBatches, parseStopIssue, proofCommits, readProof, reconcileQueue, serializeHandoff, statusSummary, stopLabelSet, type Unproved, writeProof } from './land-state.ts';
 import { checkSha, type Git, ignoreAt, parseCheckRunPages, parsePrHead, regenOnlyProblems } from './pr-review-vouch.ts';
@@ -133,10 +134,34 @@ const TRUSTED = env['LAND_TRUSTED'] === '1';
 // process's own gh calls get it, per call; without it, git and gh use the host's own login (a Mac).
 const TOKEN = env['LAND_TOKEN'] || null;
 delete env['LAND_TOKEN'];
-const withToken = (e: NodeJS.ProcessEnv): NodeJS.ProcessEnv => (TOKEN === null ? e : { ...e, LAND_TOKEN: TOKEN });
-const ghEnv = (): NodeJS.ProcessEnv => (TOKEN === null ? env : { ...env, GH_TOKEN: TOKEN });
-const pushEnv = (): NodeJS.ProcessEnv =>
-  TOKEN === null ? env : { ...env, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader', GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${TOKEN}`).toString('base64')}` };
+// Or a GitHub App (LAND_APP_ID and LAND_APP_PRIVATE_KEY, land.yml): its installation token lives an hour, so landToken mints a
+// fresh one (scripts/land-app-token.ts, the trusted checkout's) whenever the one held is near expiry. The credentials, like
+// LAND_TOKEN, leave the environment and reach only the supervised driver and the mint command, on stdin.
+const APP = TOKEN === null && (env['LAND_APP_ID'] ?? '') !== '' ? checkCredentials({ appId: env['LAND_APP_ID'], privateKey: env['LAND_APP_PRIVATE_KEY'] }) : null;
+delete env['LAND_APP_ID'];
+delete env['LAND_APP_PRIVATE_KEY'];
+let APP_TOKEN: Minted | null = null;
+const landToken = (): string | null => {
+  if (APP === null) return TOKEN;
+  APP_TOKEN = reusable(APP_TOKEN, Date.now());
+  if (APP_TOKEN === null) {
+    const repo = env['GITHUB_REPOSITORY'] ?? '';
+    const r = spawnSync(process.execPath, [join(dirname(import.meta.filename), 'land-app-token.ts'), 'mint', repo], { input: JSON.stringify(APP), encoding: 'utf8', env: { PATH: env['PATH'] ?? '' } });
+    if (r.status !== 0) throw new Error(`land: minting the App's installation token for ${JSON.stringify(repo)} failed: ${(r.stderr || String(r.error ?? '')).trim()}`);
+    APP_TOKEN = parseMinted(r.stdout);
+  }
+  return APP_TOKEN.token;
+};
+const withToken = (e: NodeJS.ProcessEnv): NodeJS.ProcessEnv =>
+  APP !== null ? { ...e, LAND_APP_ID: APP.appId, LAND_APP_PRIVATE_KEY: APP.privateKey } : TOKEN === null ? e : { ...e, LAND_TOKEN: TOKEN };
+const ghEnv = (): NodeJS.ProcessEnv => {
+  const t = landToken();
+  return t === null ? env : { ...env, GH_TOKEN: t };
+};
+const pushEnv = (): NodeJS.ProcessEnv => {
+  const t = landToken();
+  return t === null ? env : { ...env, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader', GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${t}`).toString('base64')}` };
+};
 // The driver's worktree. A position built in parallel is built in its own (posDir); WT and wtGit then name it while it builds.
 const WT_HOME = env['LAND_WORKTREE'] ?? '/tmp/dragon-land';
 let WT = WT_HOME;
@@ -1620,10 +1645,16 @@ const setUp = (): void => {
   // The identity this token acts as: the only writer whose land/proof statuses are trusted (with LAND_PROOF_WRITERS), and one
   // that may never be a reviewer, so the identity that merges can never also approve.
   let user: string | null = null;
-  try {
-    user = gh(['api', 'user']);
-  } catch (error) {
-    log(`GET user failed (${errorText(error).split('\n')[0]}); taking the token's identity from LAND_TOKEN_USER_ID`);
+  if (APP !== null) {
+    // An App's installation token cannot GET user; the mint names its bot user.
+    landToken();
+    user = JSON.stringify({ id: APP_TOKEN!.botId, login: APP_TOKEN!.botLogin });
+  } else {
+    try {
+      user = gh(['api', 'user']);
+    } catch (error) {
+      log(`GET user failed (${errorText(error).split('\n')[0]}); taking the token's identity from LAND_TOKEN_USER_ID`);
+    }
   }
   // In GitHub Actions with no LAND_TOKEN (an empty queue's start-up), gh acts as GITHUB_TOKEN: github-actions[bot], user 41898282.
   SELF = parseSelf(user, env['LAND_TOKEN_USER_ID'] || (TOKEN === null && env['GITHUB_ACTIONS'] === 'true' ? '41898282' : undefined));

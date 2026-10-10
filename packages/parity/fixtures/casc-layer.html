@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+@layer theme, base, components, utilities;
+@layer theme {
+  :root, :host { --pad: 3px; --w: 33px; }
+  .box { height: 6px; margin-bottom: 2px; width: 20px; background-color: #0000aa; }
+}
+@layer utilities {
+  .box { width: 30px; }
+  .imp { width: 70px !important; }
+  @media (min-width: 100px) { .m { width: 44px; } }
+}
+@layer components {
+  .box.box.box { width: 90px; background-color: #00aa00; }
+  .imp.imp { width: 80px !important; }
+  .n { height: 10px; }
+  @layer inner { .n.n.n { height: 20px; } }
+  .d { margin-left: 4px; }
+}
+@layer components.deep { .d.d.d { margin-left: 7px; height: 9px; } }
+@layer base {
+  .imp { width: 60px !important; }
+  .m.m { width: 55px; }
+  .d.d.d.d { height: 15px; margin-left: 9px; }
+}
+@layer base.x, utilities.y;
+@layer { .a { width: 11px; } }
+@layer { .a { width: 12px; } }
+.plain { width: 5px; }
+.plain-imp { width: 6px !important; }
+@layer utilities { .plain.plain { width: 50px; } .plain-imp.plain-imp { width: 66px !important; } }
+.p { padding-left: var(--pad); width: var(--w); }
+:host { height: 99px !important; }
+:host .box { width: 1px !important; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="b1" class="box"></div>
+<div data-dragon-id="imp" class="box imp"></div>
+<div data-dragon-id="m" class="box m"></div>
+<div data-dragon-id="n" class="box n"></div>
+<div data-dragon-id="d" class="box d"></div>
+<div data-dragon-id="a" class="box a"></div>
+<div data-dragon-id="plain" class="box plain"></div>
+<div data-dragon-id="pimp" class="box plain-imp"></div>
+<div data-dragon-id="p" class="box p"></div>
+</body>
+</html>

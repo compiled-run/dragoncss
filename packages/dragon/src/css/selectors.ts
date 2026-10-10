@@ -100,7 +100,8 @@ export function specificityOf(sel: Selector, firstArgumentOfIs = false, idAsClas
 
 type Refuse = (node: CssNode, message: string, manual?: string) => void;
 /** forgiving: inside an :is() or :where() argument list; drop: records a selector Chrome 145 does not parse. */
-type Context = { readonly insideHas: boolean; readonly forgiving: boolean; readonly drop: (node: CssNode, text: string) => void };
+/** inArgument: inside the selector argument of :is(), :where(), :not(), :has() or an "of S". */
+type Context = { readonly insideHas: boolean; readonly forgiving: boolean; readonly inArgument: boolean; readonly drop: (node: CssNode, text: string) => void };
 
 /**
  * A selector Chrome 145 does not parse (selector-validity.generated.ts). Outside :is() and :where() Chrome drops the whole rule,
@@ -157,6 +158,13 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
     return null;
   }
   if ((INTERACTION_PSEUDOS as readonly string[]).includes(name) && args === null) return { kind: 'interaction', pseudo: name as InteractionPseudo };
+  // css-scoping-1 §3.2.1: outside a shadow tree :host matches nothing, and Dragon's documents have no shadow trees, so it is :is().
+  // In a selector argument its specificity (0,1,0) could still count (Selectors-4 §17), which :is() would not give, so it is refused.
+  if (name === 'host' && args === null) {
+    if (!ctx.inArgument) return { kind: 'is', where: false, selectors: [] };
+    refuse(part, `${text} inside a selector argument is not supported: it matches nothing here, but its specificity would still count`);
+    return null;
+  }
   if (INTERACTIVE.has(name)) {
     refuse(part, `${text} depends on user interaction or document state, which a later package models as runtime state`, 'Model the state as a component state and select it with a class or a [ui-*] attribute.');
     return null;
@@ -176,7 +184,7 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
       refuse(part, `${text} is invalid: only :nth-child() and :nth-last-child() take "of S" (Selectors-4 §14.4)`);
       return null;
     }
-    const of = ofNode === null ? null : parseList(ofNode, null, ctx, refuse);
+    const of = ofNode === null ? null : parseList(ofNode, null, { ...ctx, inArgument: true }, refuse);
     if (of === undefined) return null;
     return { kind: 'nth', a: ab.a, b: ab.b, fromEnd: nth.fromEnd, ofType: nth.ofType, of };
   }
@@ -196,7 +204,7 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
       return null;
     }
     const forgiving = name === 'is' || name === 'where' ? true : ctx.forgiving;
-    const inner = parseList(argList, name === 'has' ? ' ' : null, { ...ctx, insideHas: ctx.insideHas || name === 'has', forgiving }, refuse);
+    const inner = parseList(argList, name === 'has' ? ' ' : null, { ...ctx, insideHas: ctx.insideHas || name === 'has', forgiving, inArgument: true }, refuse);
     if (inner === undefined) return null;
     if (name === 'has') return { kind: 'has', selectors: inner };
     if (name === 'not') return { kind: 'not', selectors: inner };
@@ -342,7 +350,7 @@ export function parseSelectorList(prelude: CssNode, base: Span, use: SheetUse, d
     ok = false;
     refusals.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin: authored(spanOf(node, base)), message, manual }));
   };
-  const ctx: Context = { insideHas: false, forgiving: false, drop: (node, text) => drops.push({ node, text }) };
+  const ctx: Context = { insideHas: false, forgiving: false, inArgument: false, drop: (node, text) => drops.push({ node, text }) };
   for (const sel of list(prelude, 'children')) {
     const s = parseComplex(sel, null, ctx, refuse);
     if (s === null) continue;
