@@ -229,7 +229,7 @@ const REMOVED_AFTER_BASE: Readonly<Record<string, string>> = {
 // flow, so reject-display-grid puts the grid in a column flex container), with their BASE text: the reader is still checked on
 // that text, and each file must now differ from it. reject-overflow-single-axis: OVFL supports overflow-x: hidden alone (overflow-y
 // computes to auto), so the reject moved to overflow-x: clip beside visible (OVFL-c); its BASE text is the layout fixture
-// overflow-single-axis-hidden.
+// overflow-single-axis-hidden. BG2 draws gradients and several layers, so its background rejects moved to url() and a conic layer.
 const RETARGETED_AFTER_BASE: Readonly<Record<string, string>> = {
   'reject-display-grid': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.grid { display: grid; width: 100px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="grid" class="grid"><div data-dragon-id="cell"></div></div>\n</body>\n</html>\n',
   'reject-overflow-single-axis': "<!DOCTYPE html>\n<html data-dragon-id=\"html\">\n<head>\n<style>\nbody { margin: 0; font-family: Ahem; font-size: 10px; }\n.a { width: 20px; height: 10px; overflow-x: hidden; }\n</style>\n</head>\n<body data-dragon-id=\"body\">\n<div data-dragon-id=\"a\" class=\"a\">XX XX</div>\n</body>\n</html>\n",
@@ -237,6 +237,8 @@ const RETARGETED_AFTER_BASE: Readonly<Record<string, string>> = {
   'reject-unit-calc': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.a { width: calc(10px + 2em); height: 10px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
   'reject-unit-vw': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.a { width: 50vw; height: 10px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
   'reject-unproven-context': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.a { width: 40px; height: 10px; margin-top: auto; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
+  'reject-background-image': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.swatch { width: 20px; height: 20px; background: linear-gradient(red, blue) red; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="swatch" class="swatch"></div>\n</body>\n</html>\n',
+  'reject-background-layers': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.swatch { width: 20px; height: 20px; background: none, red; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="swatch" class="swatch"></div>\n</body>\n</html>\n',
 };
 
 describe('fixture reader identity', () => {

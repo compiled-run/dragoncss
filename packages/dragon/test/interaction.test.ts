@@ -316,16 +316,16 @@ describe('interaction states: hit model (R13)', () => {
     const found = errors(compile({}, clip, body).diagnostics);
     expect(found.some((m) => m.includes('OVFL-c'))).toBe(true);
     expect(found.filter((m) => m.includes('needs Dragon hit testing'))).toEqual([]);
-    // OVFL: rt-hit clips every overflow at scroll offset 0 (the hit lane checks it against Chrome), so html's propagated
-    // overflow-x: hidden, the overflow-y: auto it computes, and auto, scroll and clip boxes are modelled facts in the lanes.
-    for (const extra of ['html { overflow-x: hidden; }', '.h { overflow: auto; }', '.h { overflow: scroll; }', '.h { overflow: clip; }', '.h { overflow-x: hidden; }']) {
+    // OVFL: rt-hit clips hidden and clip at the padding box, and html's propagated overflow-x: hidden leaves html and body
+    // visible, so those are modelled facts. auto and scroll (overflow-x: hidden alone computes overflow-y: auto) are native scroll
+    // views the user scrolls (OVFL-B), whose offsets the hit test does not read yet: unmodelled, so R13 refuses the hover on native.
+    for (const extra of ['html { overflow-x: hidden; }', '.h { overflow: clip; }', '.h { overflow: hidden; }']) {
       expect(errors(compile({}, `${BODY}${extra} .k:hover { background-color: #0c0; }`, body).diagnostics), extra).toEqual([]);
     }
-    // Outside the lanes, native refuses auto and scroll until OVFL-B (T078 R14), and the hit model adds no refusal beside it.
     for (const extra of ['.h { overflow: auto; }', '.h { overflow: scroll; }', '.h { overflow-x: hidden; }']) {
-      const outside = errors(compile({}, `${BODY}${extra}`, body, TARGETS, 'derive', false).diagnostics);
-      expect(outside.length, extra).toBeGreaterThan(0);
-      expect(outside.every((m) => m.includes('OVFL-B')), extra).toBe(true);
+      const found = errors(compile({}, `${BODY}${extra} .k:hover { background-color: #0c0; }`, body).diagnostics);
+      expect(found.filter((m) => m.includes('needs Dragon hit testing')).length, extra).toBe(2);
+      expect(found.every((m) => m.includes('needs Dragon hit testing')), extra).toBe(true);
     }
     // Outside the lanes the interaction rules are refused on native already, so R13 adds nothing.
     expect(otherErrors(compile({}, css, body, TARGETS, 'derive', false).diagnostics)).toEqual([

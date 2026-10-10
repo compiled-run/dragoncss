@@ -1,0 +1,24 @@
+{
+ "schema": "dragon-frame-pixels/1",
+ "case": "anim-overshoot@400x300",
+ "chrome": "145.0.7632.6",
+ "capture": "CDP Page.captureScreenshot {format: png}, the viewport at the forced device scale factor",
+ "rasterRule": "ceil(viewport css px x DPR) in each dimension; 400x300 at 2.625 is 1050x788",
+ "dpr": 3,
+ "flags": ["--force-device-scale-factor=3","--force-color-profile=srgb","--font-render-hinting=none","--disable-lcd-text","--hide-scrollbars"],
+ "raster": {"rasterization":"disabled_software","gpu_compositing":"disabled_software"},
+ "samples": [
+  {"k":0,"at":0,"width":1200,"height":900,"sha256":"1f8946234caa893fe7c0be7b465222c99f222f69318ef1564bf766e76228712b"},
+  {"k":1,"at":0,"width":1200,"height":900,"sha256":"1f8946234caa893fe7c0be7b465222c99f222f69318ef1564bf766e76228712b"},
+  {"k":2,"at":1,"width":1200,"height":900,"sha256":"c76c13c4664e547729a22ac0d03fb4a83ee4fcc90bcdf191892878021dca0b40"},
+  {"k":4,"at":500,"width":1200,"height":900,"sha256":"b11f8c7a657cd4264967a01c71a61ffab5a0c4dd2256033a092a8228fd56a624"},
+  {"k":8,"at":1001,"width":1200,"height":900,"sha256":"7f77e2bc6f5d67c47e50274235602ac656f31b593763f3bcfad2806d1dbef8f6"},
+  {"k":10,"at":1100,"width":1200,"height":900,"sha256":"7f77e2bc6f5d67c47e50274235602ac656f31b593763f3bcfad2806d1dbef8f6"},
+  {"k":11,"at":1101,"width":1200,"height":900,"sha256":"3175959615c5e6354ffdc8c3dce7c1d1e8e5d427eb37f34e417fea6eb622ddc1"},
+  {"k":14,"at":1500,"width":1200,"height":900,"sha256":"ddeacd3ecfd145835b29b0f2bcd8726f1978b833b90908ca44de8014dabc0bd8"},
+  {"k":15,"at":1501,"width":1200,"height":900,"sha256":"e56c332ac5c7679d2fd05d1d1c70730bcf113b52b061c4ed19744578a35d129c"},
+  {"k":17,"at":1563.297429084976,"width":1200,"height":900,"sha256":"8ba7fce8c17269dbdcbc1950ed45e465e216e09091bc0a2917f05ef672fda92e"},
+  {"k":21,"at":1627.5948581699522,"width":1200,"height":900,"sha256":"7f77e2bc6f5d67c47e50274235602ac656f31b593763f3bcfad2806d1dbef8f6"},
+  {"k":23,"at":2601,"width":1200,"height":900,"sha256":"7f77e2bc6f5d67c47e50274235602ac656f31b593763f3bcfad2806d1dbef8f6"}
+ ]
+}

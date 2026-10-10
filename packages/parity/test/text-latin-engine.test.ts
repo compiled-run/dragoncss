@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults, FontSpec, GlyphShaper, InlineBox, InlineChild, LayoutBox, LayoutInput, LayoutResult, TextLeaf } from '@dragon/layout';
 import { intrinsicContentInlineSize } from '../../layout/src/intrinsic.ts';
-import { scrollMetrics } from '../../layout/src/overflow.ts';
+import { scrollMetrics, scrollRanges } from '../../layout/src/overflow.ts';
 import { HitError, hitTableOf, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
 import { layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, NO_GRID_FAULTS, shapedMeasurerFor, validateLayoutInput } from '@dragon/layout';
 import { repoPath } from '../src/paths.ts';
@@ -371,6 +371,13 @@ describe('TXT1a-1 phase B: post-layout passes resolve a real-font input with the
     expect(r.kind).toBe('ok');
     expect(r.kind === 'ok' && r.containers.map((c) => c.id)).toEqual(['p']);
     const refused = scrollMetrics(input, referenceShapedMeasurer(), 'ltr');
+    expect(refused.kind === 'refused' && [refused.nodeId, refused.detail.slice(0, 11)]).toEqual(['q', 'text-glyph:']);
+  });
+
+  it('scrollRanges lays out and measures it, and refuses a measurer without the face with text-glyph', () => {
+    const r = scrollRanges(input, shaped());
+    expect(r.kind === 'ok' && [r.ranges.map((c) => c.id), r.refused]).toEqual([['p'], []]);
+    const refused = scrollRanges(input, referenceShapedMeasurer());
     expect(refused.kind === 'refused' && [refused.nodeId, refused.detail.slice(0, 11)]).toEqual(['q', 'text-glyph:']);
   });
 

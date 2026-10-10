@@ -43,7 +43,16 @@ export type ScrollCapture = {
   readonly scrollbarArgs: string;
   /** The viewport first, then every element that is a scroll container in document order. */
   readonly records: readonly ScrollRecord[];
+  /** OVFL-B: every element scroll container's scroll offset range as Chrome clamps it, in document order (no viewport). */
+  readonly extents: readonly ScrollExtent[];
 };
+
+/**
+ * An element scroll container's scroll offset range in CSS px as Chrome reports it after scrollTo far past each end (CSSOM View
+ * §4: scrollLeft and scrollTop clamp to the scrolling area; the start side is negative where the overflow extends past the
+ * start, as in rtl or a reversed flex container). Each is a whole number of device px divided by the DPR.
+ */
+export type ScrollExtent = { readonly id: string; readonly minLeft: number; readonly maxLeft: number; readonly minTop: number; readonly maxTop: number };
 
 export const expectedScrollDir = (dpr: number, platform: string = REFERENCE_PLATFORM): string => repoPath(`packages/parity/expected-scroll/${platform}/${dprLabel(dpr)}`);
 export const expectedScrollPath = (caseId: string, dpr: number, platform: string = REFERENCE_PLATFORM): string => `${expectedScrollDir(dpr, platform)}/${caseId}.scroll.json`;
@@ -85,7 +94,24 @@ export async function captureScrollMetrics(browser: Browser, caseId: string, htm
       }
       return out;
     });
-    return { case: caseId, chrome: CHROME_VERSION, platform: REFERENCE_PLATFORM, devicePixelRatio: env.devicePixelRatio, direction: env.direction, scrollbars: 'overlay', scrollbarArgs: SCROLLBAR_ARGS.join(' '), records };
+    // The element scroll containers are the records after the viewport, in document order.
+    const extents = await page.evaluate((ids: string[]) => {
+      const out: ScrollExtent[] = [];
+      for (const id of ids) {
+        const el = document.querySelector(`[data-dragon-id="${CSS.escape(id)}"]`);
+        if (el === null) throw new Error(`no element ${id}`);
+        el.scrollTo({ left: -1e7, top: -1e7, behavior: 'instant' });
+        const minLeft = el.scrollLeft;
+        const minTop = el.scrollTop;
+        el.scrollTo({ left: 1e7, top: 1e7, behavior: 'instant' });
+        const maxLeft = el.scrollLeft;
+        const maxTop = el.scrollTop;
+        el.scrollTo({ left: 0, top: 0, behavior: 'instant' });
+        out.push({ id, minLeft, maxLeft, minTop, maxTop });
+      }
+      return out;
+    }, records.slice(1).map((r) => r.id));
+    return { case: caseId, chrome: CHROME_VERSION, platform: REFERENCE_PLATFORM, devicePixelRatio: env.devicePixelRatio, direction: env.direction, scrollbars: 'overlay', scrollbarArgs: SCROLLBAR_ARGS.join(' '), records, extents };
   } finally {
     await page.context().close();
   }
@@ -108,6 +134,11 @@ export function parseScrollCapture(text: string, caseId: string, dpr: number, wh
   if (o['scrollbars'] !== 'overlay') throw new Error(`${where}: scrollbars is ${JSON.stringify(o['scrollbars'])}, not overlay (decisions.md, overlay-scrollbar rule)`);
   if (o['scrollbarArgs'] !== SCROLLBAR_ARGS.join(' ')) throw new Error(`${where}: scrollbarArgs is ${JSON.stringify(o['scrollbarArgs'])}, not ${JSON.stringify(SCROLLBAR_ARGS.join(' '))}`);
   if (o['records'][0]?.id !== 'viewport') throw new Error(`${caseId} at DPR ${dpr}: the first record is not the viewport`);
+  const extents = o['extents'];
+  const finite = (r: Record<string, unknown>): boolean => ['minLeft', 'maxLeft', 'minTop', 'maxTop'].every((k) => typeof r[k] === 'number' && Number.isFinite(r[k]));
+  if (!Array.isArray(extents) || !extents.every((r) => typeof r === 'object' && r !== null && typeof (r as Record<string, unknown>)['id'] === 'string' && finite(r as Record<string, unknown>))) throw new Error(`${where}: extents is not a list of scroll offset ranges`);
+  const ids = (rs: readonly { readonly id: string }[]): string => rs.map((r) => r.id).join(',');
+  if (ids(extents as ScrollExtent[]) !== ids((o['records'] as ScrollRecord[]).slice(1))) throw new Error(`${where}: extents [${ids(extents as ScrollExtent[])}] are not the element scroll containers [${ids((o['records'] as ScrollRecord[]).slice(1))}]`);
   return o as unknown as ScrollCapture;
 }
 

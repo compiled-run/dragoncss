@@ -69,9 +69,14 @@ export * as rtAnimator from './rt-animator.ts';
 export type { AnimTables, EasingCode, EntryCode, ValueCode } from './rt-animator.ts';
 // MQ-R1 (T067 R4): the @media band lookup a native root runs on a size change.
 export * as rtBand from './rt-band.ts';
+// SELD-R2 (T064 R6, R12): the interaction runtime, one implementation for the TypeScript reference and the generated runtimes.
+export * as rtInteraction from './rt-interaction.ts';
+export type { InteractionFaults, InteractionPointer, InteractionTables } from './rt-interaction.ts';
 export type { OriginPoint, TransformOrigin } from './paint-transform.ts';
 export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';
 export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';
 export { serializeTransform } from './rt-interpolate.ts';
 export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';
 export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';
+export type { ScrollRange, ScrollRangeRefusal, ScrollRangesResult } from './overflow.ts';
+export { scrollRanges } from './overflow.ts';
