@@ -1,0 +1,11 @@
+{
+  "case": "text-latin-flex",
+  "chrome": "145.0.7632.6",
+  "dpr": 1,
+  "texts": [
+    {"id":"row-a:text0","data":"Midnight City","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"row-b:text0","data":"The song plays on and on through the night","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"col-a:text0","data":"Waffle Fjord","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"col-b:text0","data":"A description that wraps across more than one line in the column","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[31]}
+  ]
+}

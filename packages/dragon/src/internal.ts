@@ -289,6 +289,32 @@ export { emitStatePrograms, STATE_RUNTIME_VERSION, StateEmitError, typedSetters,
 export { CLOCK_RUNTIME_VERSION, ClockError, VirtualClock } from './emit/runtime/clock.ts';
 export { RUNTIME_MODULES } from './emit/runtime/index.ts';
 
+/**
+ * TXT1a-1 (notes/T083-txt1a-1.md): the engine lane's layout projection of one case. It is the native projection when a native
+ * target is checked, and an engine-mode lowering (bundled static faces) when only deferred native font refusals block native.
+ */
+export function engineLayoutProjection(compiled: object, environment: Environment, assignment: Assignment): LayoutProjection {
+  const c = caseOf(compiled, assignment);
+  if (typeof c === 'string') return { kind: 'blocked', reason: c };
+  const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
+  if (record.direction !== environment.direction) return { kind: 'blocked', reason: `the result was resolved for direction ${record.direction}, not ${environment.direction}` };
+  if (record.rootFont !== environment.rootFont) return { kind: 'blocked', reason: `the result was resolved for root font ${record.rootFont}, not ${environment.rootFont}` };
+  if (c.engineLowered === null) return { kind: 'blocked', reason: `no engine lowering: ${c.engineRefusal ?? 'no native or engine lowering'}` };
+  if (c.resolved === null) return { kind: 'blocked', reason: 'the case did not resolve' };
+  const viewport = { width: environment.viewport.width, height: environment.viewport.height };
+  return {
+    kind: 'ready',
+    input: {
+      viewport,
+      devicePixelRatio: environment.devicePixelRatio,
+      viewportUnits: { small: viewport, large: viewport, dynamic: viewport },
+      safeArea: { top: 0, right: 0, bottom: 0, left: 0 },
+      rootFontSize: rootFontSizeOf(c.resolved),
+      root: c.engineLowered,
+    },
+  };
+}
+
 // SELD-R1b (notes/T047-runtime-spec.md RT-9): the hit table and each element's hit facts.
 export type { HitFact } from './emit/runtime/hit.ts';
 export { HIT_FACTS_VERSION } from './emit/runtime/hit.ts';
@@ -436,6 +462,8 @@ export { conditionsExclusive, gatedConditions, HOVER_MEDIA, interactionCondition
 // SELD-R2 PR 3 (notes/T064-seld-r2-spec.md R7, R12, R16): the interaction program and the interaction runtime's reference.
 export type { InteractionLevel, InteractionLevelInput, InteractionProgram } from './lower/interaction-program.ts';
 export { deriveInteractionProgram, INTERACTION_PROGRAM_VERSION, interactionDelta, interactionProgramAt, interactionTables } from './lower/interaction-program.ts';
+export type { InteractionEmit, InteractionScript, InteractionScriptStep } from './emit/runtime/interaction.ts';
+export { emitInteractionPrograms, INTERACTION_FAULT_FIELDS, INTERACTION_RUNTIME_VERSION, INTERACTION_TABLE_FIELDS, InteractionEmitError, interactionFaultsLit, interactionTablesLit, TRACE_LINE, traceLineOf } from './emit/runtime/interaction.ts';
 import type { InteractionLevelInput as LevelInput } from './lower/interaction-program.ts';
 
 /** HTML text fields (input types whose element may show a virtual keyboard, R8, P6): pointer focus on them is focus-visible. */
