@@ -32,9 +32,17 @@ export const EVIDENCE_CODE: readonly string[] = [
   'packages/parity/src/native-compare.ts',
   'packages/parity/src/native-dump.ts',
   'packages/parity/src/native-host.ts',
+  'packages/parity/src/native-shim.ts',
   'packages/parity/src/pixel-reference.ts',
   'packages/parity/src/samples.ts',
   'packages/parity/src/targets.ts',
+  // The HarfBuzz shim both apps link, which hostSources does not hold: its build, its C ABI and the HarfBuzz it compiles.
+  'packages/text-shaper/build.zig',
+  'packages/text-shaper/include',
+  'packages/text-shaper/src/dragon_hb.zig',
+  'packages/text-shaper/src/dragon_hb_jni.zig',
+  'packages/text-shaper/swift/Sources/CDragonHB/module.modulemap',
+  'vendor/harfbuzz/src',
 ];
 
 /** The committed reference data the device lanes are judged against. */
