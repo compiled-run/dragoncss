@@ -145,6 +145,9 @@ final class DragonShaper {
     }
   }
   func shape(face: String, size: Double, text: String, start: Int, end: Int, script: String, rtl: Bool, language: String, features: [Double]) -> [Double] {
+    return shape(face: face, size: size, units: Array(text.utf16), start: start, end: end, script: script, rtl: rtl, language: language, features: features)
+  }
+  func shape(face: String, size: Double, units: [UInt16], start: Int, end: Int, script: String, rtl: Bool, language: String, features: [Double]) -> [Double] {
     guard let fc = faces[face] else { fatalError("dragon shaper: no bundled face \(face)") }
     let key = face + " " + String(size.bitPattern)
     let font: DragonHBFont
@@ -152,7 +155,15 @@ final class DragonShaper {
       do { font = try DragonHBFont(face: fc, size: Float(size)) } catch { fatalError("dragon shaper: \(face) at \(size) px: \(error)") }
       fonts[key] = font
     }
-    do { return try shaper.shape(font: font, text: Array(text.utf16), start: start, end: end, script: script, rtl: rtl, language: language, featureRecords: features) } catch { fatalError("dragon shaper: \(error)") }
+    do { return try shaper.shape(font: font, text: units, start: start, end: end, script: script, rtl: rtl, language: language, featureRecords: features) } catch { fatalError("dragon shaper: \(error)") }
+  }
+}
+
+/// The engine's GlyphShaper over the shim (T056 R1): the bridge measures and draws every text through it (DragonBridge.shaper).
+func dragonGlyphShaper() -> GlyphShaper {
+  return GlyphShaper { face, size, text, start, end, script, rtl, language, features in
+    let got = DragonShaper.shared.shape(face: face.description, size: size, units: text.u, start: dragonCheckedInt(start, "shape start"), end: dragonCheckedInt(end, "shape end"), script: script.description, rtl: rtl, language: language.description, features: features.items)
+    return JsArray(got)
   }
 }
 
@@ -173,7 +184,9 @@ func dragonCheckShim() {
 const KOTLIN_SHAPER = String.raw`package dev.dragon.host
 
 import android.content.Context
+import dev.dragon.layout.GlyphShaper
 import dev.dragon.text.DragonHB
+import dev.dragon.views.dragonCheckedInt
 import java.security.MessageDigest
 
 /**
@@ -210,6 +223,23 @@ class DragonShaper private constructor(ctx: Context) {
   companion object {
     @Volatile private var instance: DragonShaper? = null
     fun shared(ctx: Context): DragonShaper = instance ?: synchronized(this) { instance ?: DragonShaper(ctx.applicationContext).also { instance = it } }
+  }
+}
+
+/** A feature integer (a tag, value or offset, each a uint32) as the JNI's int, wrapped; anything else stops the run. */
+fun dragonFeatureInt(v: Double): Int {
+  check(v == Math.floor(v) && v >= 0.0 && v <= 4294967295.0) { "dragon shaper: feature integer " + v + " is not a uint32" }
+  return v.toLong().toInt()
+}
+
+/** The engine's GlyphShaper over the shim (T056 R1): the bridge measures and draws every text through it (DragonBridge.shaper). */
+fun dragonGlyphShaper(ctx: Context): GlyphShaper {
+  val s = DragonShaper.shared(ctx)
+  return GlyphShaper { face, size, text, start, end, script, rtl, language, features ->
+    val got = s.shape(face, size, text, dragonCheckedInt(start, "shape start"), dragonCheckedInt(end, "shape end"), script, rtl, language, IntArray(features.size) { dragonFeatureInt(features[it]) })
+    val out = ArrayList<Double>(got.size)
+    for (x in got) out.add(x.toDouble())
+    out
   }
 }
 

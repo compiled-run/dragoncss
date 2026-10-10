@@ -22,6 +22,7 @@ import { elementWillChange } from './transform.ts';
 import { linearSlope } from '../../paint-data/libm.ts';
 import type { Diagnostic } from '../../types.ts';
 import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
+import type { AnimationAnalysis } from '../animations.ts';
 import type { ResolvedElement, ResolvedValue } from '../resolve.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
@@ -83,6 +84,7 @@ export const BG2_CONIC = 'BG2-c';
 export const BG2_URL = 'BG2-u';
 export const BG2_TILING = 'BG2-t';
 export const CALC_P = 'CALC-p';
+export const BG2_X = 'BG2-x';
 
 /** Splits the top-level tokens of a value into its comma-separated items (white space already removed). */
 export function commaItems(tokens: readonly CssNode[]): CssNode[][] {
@@ -586,8 +588,9 @@ export function gradientOpaque(g: GradientSpec, current: Rgba8): boolean {
 /**
  * Why a box's background stack is translucent over a backdrop Dragon does not know, or null (R6). Dragon composites the colour and
  * every layer into one bitmap over transparent, which equals Chrome whatever lies behind only (a) where the stack is opaque: an
- * opaque colour, or an opaque gradient layer repeating on both axes, whose clip holds every gradient layer's clip. A box that
- * isolates its own paint (opacity below 1) waits for PNT1, which makes opacity a longhand. A single solid colour certified behind
+ * opaque colour, or an opaque gradient layer repeating on both axes, whose clip holds every gradient layer's clip. R6(b), a box
+ * that isolates its own paint (opacity below 1), is refused like any other translucent stack until a Chrome proof models the
+ * group over transparent (PNT1 made opacity a longhand; bg2-reference.test.ts holds the refusal). A single solid colour certified behind
  * every painted pixel is not offered: no program fact certifies it per pixel.
  */
 export function translucencyRefusal(layers: readonly ElementLayer[], color: Rgba8, current: Rgba8, w: BoxWidths): string | null {
@@ -638,37 +641,100 @@ export function boxWidths(el: ResolvedElement): BoxWidths {
   return { borders, padding: SIDE_NAMES.map((s) => px(`padding-${s}`)), obscures };
 }
 
+/**
+ * Blink's bleed avoidance for a box's background (BoxDecorationData::ComputeBleedAvoidance), for a box with a background image that is neither html nor painted in contents space. 'layer'
+ * (kBackgroundBleedClipLayer) clips to the rounded border and paints the background into a saveLayer: Skia sizes that layer to
+ * the anti-aliased clip's coverage bounds in each cc tile, and its origin starts the dither and the shader matrix (Chrome's
+ * snapshot command log shows save, clipRRect, saveLayer, the layers' drawRects, restore). 'shrink'
+ * (kBackgroundBleedShrinkBackground) turns off PaintFastBottomLayer for image layers (CanUseBottomLayerFastPath).
+ * - A box with a border radius and a painted border (a side with a width and a style other than none or hidden): 'shrink' when
+ *   every side obscures the background edge (BorderEdge::ObscuresBackgroundEdge: an opaque colour and
+ *   a style other than hidden, dotted or dashed), else 'layer'.
+ * - A box with a border radius and no painted border: 'layer' when the background colour is not fully transparent or there is
+ *   more than one layer, since a gradient never occludes the layers under it (FillLayer::ImageIsOpaque needs an image size, and
+ *   StyleGeneratedImage::ImageSize returns the empty default object size).
+ * - Otherwise 'none'.
+ */
+export type BleedAvoidance = 'none' | 'shrink' | 'layer';
+export function bleedAvoidanceOf(el: ResolvedElement): BleedAvoidance {
+  const radius = RADIUS_LONGHANDS.some((p) => {
+    const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
+    return c !== null && (c[0].value !== 0 || c[1].value !== 0);
+  });
+  if (!radius) return 'none';
+  const colors = usedColors(el);
+  const styleOf = (s: string): string => {
+    const v = (el.props.get(`border-${s}-style` as never) as ResolvedValue).value;
+    return v.kind === 'keyword' ? v.value : '';
+  };
+  if (boxWidths(el).borders.some((b) => b !== 0)) {
+    const obscure = SIDE_NAMES.every((s) => colors[`border-${s}-color`].alpha === 255 && styleOf(s) !== 'hidden' && styleOf(s) !== 'dotted' && styleOf(s) !== 'dashed');
+    return obscure ? 'shrink' : 'layer';
+  }
+  return colors['background-color'].alpha !== 0 || resolvedLayers(el).length > 1 ? 'layer' : 'none';
+}
+
+/** The properties whose value other than none transforms a subtree (css-transforms-1 and -2). */
+export const TRANSFORM_PROPERTIES = ['transform', 'translate', 'rotate', 'scale'] as const;
+
+/** Whether an element transforms its subtree: one of TRANSFORM_PROPERTIES has a value other than none. */
+export function transformsSubtree(el: ResolvedElement): boolean {
+  return TRANSFORM_PROPERTIES.some((p) => {
+    const v = el.props.get(p as unknown as Longhand);
+    return v !== undefined && !(v.value.kind === 'keyword' && v.value.value === 'none');
+  });
+}
+
 /** The layers of a resolved element (elementLayers over its props). */
 export function resolvedLayers(el: ResolvedElement): ElementLayer[] {
   return elementLayers((p) => (el.props.get(p) as ResolvedValue).value);
 }
 
+/** Whether an element paints a gradient layer; one whose layers keep an unfolded length is refused (CALC-p) before it is read. */
+function paintsGradient(el: ResolvedElement): boolean {
+  if (el.props.get('background-image') === undefined) return false;
+  if (BACKGROUND_LAYERS_LONGHANDS.some((p) => {
+    const v = el.props.get(p as Longhand);
+    return v !== undefined && unfoldedLength(v.value) !== null;
+  })) return false;
+  return resolvedLayers(el).some((l) => l.image.kind === 'gradient');
+}
+
 /**
  * R4: Chrome rasters a gradient box in the root scroller's layer unless the box or an ancestor has a compositing reason; then the
  * layer's origin starts the cc tiles, the dither and the shader matrix, which Dragon does not model. will-change: transform or
- * opacity is the one such reason Dragon compiles (every other one is refused where it is parsed).
+ * opacity and a user-scrollable container are the reasons Dragon compiles (every other one is refused where it is parsed).
+ * propagated is the element whose overflow the viewport takes (css-overflow-3 §3.3): it is not a scroll container itself, and the
+ * viewport is the root scroller R4 models.
  */
-export function compositesSubtree(el: ResolvedElement): boolean {
-  return elementWillChange(el).some((f) => f === 'transform' || f === 'opacity');
+export function compositesSubtree(el: ResolvedElement, propagated: ResolvedElement | null = null): boolean {
+  if (elementWillChange(el).some((f) => f === 'transform' || f === 'opacity')) return true;
+  if (el === propagated) return false;
+  // OVFL-B: a user-scrollable container (overflow auto or scroll) scrolls its contents in a composited layer of its own.
+  return (['overflow-x', 'overflow-y'] as const).some((p) => {
+    const v = (el.props.get(p) as ResolvedValue).value;
+    return v.kind === 'keyword' && (v.value === 'auto' || v.value === 'scroll');
+  });
 }
 
 /** Refuses, on the native targets, every gradient box in the subtree of `root`, which rasters in its own composited layer (R4). */
 function refuseComposited(el: ResolvedElement, root: ResolvedElement, native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const image = el.props.get('background-image') as ResolvedValue | undefined;
-  if (image !== undefined && resolvedLayers(el).some((l) => l.image.kind === 'gradient')) {
-    refuse(el, image, native, 'background-layers-layer', `background-image on ${el.element.address}: the box rasters in the composited layer of ${root.element.address} (will-change), which Dragon does not model (${BG2C})`, 'Remove will-change: transform and opacity from the gradient box and its ancestors.', diagnostics, reported);
+  if (image !== undefined && paintsGradient(el)) {
+    refuse(el, image, native, 'background-layers-layer', `background-image on ${el.element.address}: the box rasters in the composited layer of ${root.element.address} (will-change, or a scroll container), which Dragon does not model (${BG2C})`, 'Remove will-change: transform and opacity, and overflow auto and scroll, from the gradient box and its ancestors.', diagnostics, reported);
   }
   for (const c of el.children) if (c.kind === 'element') refuseComposited(c, root, native, diagnostics, reported);
 }
 
 /** A located element refusal: at the declaration of `at`, for the targets given. */
-function refuse(el: ResolvedElement, at: ResolvedValue, targets: readonly string[], key: string, message: string, manual: string, diagnostics: Diagnostic[], reported: Set<string>): void {
+function refuse(el: ResolvedElement, at: ResolvedValue, targets: readonly string[], key: string, message: string, manual: string, diagnostics: Diagnostic[], reported: Set<string>, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNPROVEN_CONTEXT' = 'DRAGON_UNSUPPORTED_VALUE'): void {
   const origin = at.declaration === null ? el.element.node.origin : authored(at.declaration.valueSpan);
   for (const t of targets) {
     const id = `${t}|${key}|${el.element.address}`;
     if (reported.has(id)) continue;
     reported.add(id);
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    // An unproven context keeps the catalogue's why (its profile-row reason); only an unsupported value has a computed-value why.
+    diagnostics.push(code === 'DRAGON_UNSUPPORTED_VALUE' ? diagnostic(code, { origin, target: t, message, manual, basis: 'computed-value' }) : diagnostic(code, { origin, target: t, message, manual }));
   }
 }
 
@@ -676,7 +742,9 @@ function refuse(el: ResolvedElement, at: ResolvedValue, targets: readonly string
  * The element refusals of BG2. Every target: a gradient on html or body (it paints the canvas) or on an inline box (painted per
  * line fragment), which no target models yet (BG2c). The native targets only: a background colour clipped inside a border that
  * shows the backdrop (reported at background-clip); an angle off the measured grid or a corner (R3, BG2b); a layer Chrome would
- * tile (R8, BG2-t); a stack translucent over an unknown backdrop (R6, BG2c); a composited layer Dragon does not model (R4, BG2c).
+ * tile (R8, BG2-t); a rounded box whose background Chrome paints into a bleed-avoidance layer (BG2c); a stack translucent over
+ * an unknown backdrop (R6, BG2c); a composited layer Dragon does not model (R4, BG2c); a gradient in a transformed subtree (R13,
+ * BG2-x, refused for every gradient below an element whose transform is not the identity).
  */
 /**
  * The first length of a layer longhand's computed value that compute left unfolded (an em or rem whose font size is not known at
@@ -692,9 +760,10 @@ export function unfoldedLength(v: CssValue): string | null {
   return found;
 }
 
-const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) => {
+const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, propagated) => {
   const native = targets.filter((t) => t !== 'web');
-  if (compositesSubtree(el)) refuseComposited(el, el, native, diagnostics, reported);
+  if (transformsSubtree(el)) refuseTransformed(el, el, native, diagnostics, reported);
+  if (compositesSubtree(el, propagated)) refuseComposited(el, el, native, diagnostics, reported);
   for (const p of BACKGROUND_LAYERS_LONGHANDS) {
     const v = el.props.get(p as Longhand);
     const length = v === undefined ? null : unfoldedLength(v.value);
@@ -748,15 +817,80 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) =
     refuse(el, image, native, 'background-layers-rounded-clip', `background-image on ${el.element.address}: a rounded box clips a padding-box or content-box layer to its inner rounded box, and the native targets clip the layers to the rounded border box only (${BG2C})`, 'Clip the background to the border box on a rounded box.', diagnostics, reported);
     return;
   }
+  if (bleedAvoidanceOf(el) === 'layer') {
+    refuse(el, image, native, 'background-layers-bleed-layer', `background-image on ${el.element.address}: Chrome paints the background of this rounded box into a bleed-avoidance layer (kBackgroundBleedClipLayer: a border radius with a border not every side of which is opaque and solid, or with a background colour or more than one layer), whose origin in each cc tile is the anti-aliased clip's coverage bounds; that origin starts the dither and the shader matrix, and the native targets do not model it (${BG2C})`, 'On a rounded box, give the gradient one layer over a transparent background-color, or a border whose every side is opaque and neither dotted, dashed nor hidden.', diagnostics, reported, 'DRAGON_UNPROVEN_CONTEXT');
+    return;
+  }
   const colors = usedColors(el);
   const translucent = translucencyRefusal(layers, colors['background-color'], colors.color, boxWidths(el));
   if (translucent !== null) {
     refuse(el, image, native, 'background-layers-translucent', `background-image on ${el.element.address}: ${translucent}`, 'Give the box an opaque background-color or an opaque repeating gradient layer beneath.', diagnostics, reported);
     return;
   }
-  // Until BG2-a3's lowering, the native programs carry no gradient write, so nothing would draw the layers.
-  refuse(el, image, native, 'background-layers-native', `background-image on ${el.element.address}: the native targets draw gradient layers from BG2-a3 on`, 'Compile for web, or wait for BG2-a3.', diagnostics, reported);
 };
+
+/** The colours a gradient box bakes into its one raster: the layers' backdrop, currentcolor stops, and the borders that obscure it. */
+const RASTER_COLORS: readonly Longhand[] = ['background-color', 'color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];
+
+/**
+ * BG2c on the native targets: a gradient box rasters its layers, with its background colour, currentcolor stops and obscuring
+ * borders baked in, once per layout; the native animator patches those colours per frame without a layout, so the raster would
+ * keep the first frame's colours over the animated ones. An animation or transition of one of them on a gradient box is refused,
+ * at its animation-name or transition-property (a transition only where a reachable state changes the colour). roots are the
+ * resolved roots of the analysed cases, in the analysis's order.
+ */
+export function refuseAnimatedGradients(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[]): void {
+  if (nativeTargets.length === 0) return;
+  const reported = new Set<string>();
+  const trees = analysis.cases.map((_, i) => {
+    const byAddress = new Map<string, ResolvedElement>();
+    const walk = (el: ResolvedElement): void => {
+      byAddress.set(el.element.address, el);
+      for (const k of el.children) if (k.kind === 'element') walk(k);
+    };
+    const root = roots[i];
+    if (root !== undefined) walk(root);
+    return byAddress;
+  });
+  // A transition starts only where a reachable state changes the colour.
+  const changes = (address: string, p: Longhand): boolean => new Set(trees.map((t) => JSON.stringify(t.get(address)?.props.get(p)?.value ?? null))).size > 1;
+  analysis.cases.forEach((c, i) => {
+    const byAddress = trees[i] as Map<string, ResolvedElement>;
+    for (const ea of c.elements.values()) {
+      const el = byAddress.get(ea.address);
+      if (el === undefined) continue;
+      const animated = ea.animations.flatMap((a) => (a.name === 'none' || !a.hasKeyframes ? [] : (analysis.keyframes.get(a.name)?.blocks ?? []).flatMap((b) => b.values.map((v) => v.property)))).filter((p) => RASTER_COLORS.includes(p as Longhand));
+      const transitioned = RASTER_COLORS.filter((p) => {
+        const l = ea.listings.get(p);
+        return l !== undefined && l.mode === 'listed' && l.delay + l.duration > 0 && changes(ea.address, p);
+      });
+      if ((animated.length === 0 && transitioned.length === 0) || !paintsGradient(el)) continue;
+      for (const [p, what, longhand] of [...animated.map((x) => [x, 'an animation', 'animation-name'] as const), ...transitioned.map((x) => [x, 'a transition', 'transition-property'] as const)]) {
+        const d = ea.declarations.find((x) => x.animation?.longhands.has(longhand) === true) ?? ea.declarations[0];
+        const origin = d === undefined ? el.element.node.origin : authored(d.valueSpan);
+        for (const t of nativeTargets) {
+          const id = `${t}|${ea.address}|${p}`;
+          if (reported.has(id)) continue;
+          reported.add(id);
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${what} of ${p} on ${ea.address}: the gradient box rasters ${p} into its background once per layout, and the native animator changes it without one, so the raster would keep the first frame's colour (${BG2C})`, manual: `Animate ${p} on a box without a gradient background, or remove the ${longhand === 'animation-name' ? 'animation' : 'transition'}.` }));
+        }
+      }
+    }
+  });
+}
+
+/**
+ * R13 (BG2-x): Chrome rasterises a gradient under a transform with the transform in the shader matrix, and a native transform of a
+ * bitmap Dragon already rasterised resamples it; every gradient in a subtree whose transform is not the identity is refused on the
+ * native targets, at its background-image, until BG2-x rasterises such layers in device space.
+ */
+function refuseTransformed(el: ResolvedElement, root: ResolvedElement, native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const image = el.props.get('background-image') as ResolvedValue | undefined;
+  if (image !== undefined && paintsGradient(el)) {
+    refuse(el, image, native, 'background-layers-transformed', `background-image on ${el.element.address}: the gradient is inside ${root.element.address}, whose transform is not the identity; Chrome rasterises it with the transform in the shader matrix, and the native targets would resample a bitmap drawn untransformed (${BG2_X})`, 'Remove the transform from the gradient box and its ancestors.', diagnostics, reported, 'DRAGON_UNPROVEN_CONTEXT');
+  }
+  for (const c of el.children) if (c.kind === 'element') refuseTransformed(c, root, native, diagnostics, reported);
+}
 
 /**
  * The layer longhands' em and rem lengths as px (R7, as PNT1 radius.ts computeComponent folds radii), and the absolute lengths of

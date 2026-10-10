@@ -4,11 +4,13 @@
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { DPRS } from '../dpr.ts';
 import { breakVector, breakVectorDir, breakVectorPath, breakVectorText, engineTextLines } from '../line-breaks.ts';
-import { engineCases, referenceMeasurer } from '../native-host.ts';
+import { engineCases } from '../native-host.ts';
+import { referenceShapedMeasurer } from '../text-shaper-host.ts';
 
 // TXT1a-2: every layout case, a shaped one (native refuses it until phase R) through its engine projection.
 const cases = engineCases();
-const m = referenceMeasurer();
+// The shaped cases lay out in their real faces, which the device measurer (native-host.ts referenceMeasurer, Ahem) does not bundle.
+const m = referenceShapedMeasurer();
 let lines = 0;
 for (const dpr of DPRS) {
   const dir = breakVectorDir(dpr);

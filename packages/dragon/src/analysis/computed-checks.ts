@@ -519,7 +519,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkInline(el, targets, diagnostics, reported);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
-    if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported);
+    if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
     for (const c of el.children) if (c.kind === 'element') walk(c, here, inner);

@@ -10,12 +10,15 @@ import { DUMP_FAULTS } from './native-compare.ts';
 import { repoPath } from './paths.ts';
 import { SAMPLE_RULES } from './samples.ts';
 import { shapedCaseIds } from './text-latin-run.ts';
+import { traceScriptIds } from './trace-lane.ts';
 
 export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels',
   // SELD-R1b (notes/T047 §3.3 item 5): the case scripts' dumps, and the device hit test's answers.
   'device-states', 'device-hit',
   // ANIM-b1 3b (T065 R18): every frame sample's dump.
-  'device-anim'] as const;
+  'device-anim',
+  // SELD-R2 (T064 R14): the interaction scripts' traces, through the entry points (and on Android through MotionEvents too).
+  'device-traces'] as const;
 export type LaneId = (typeof LANES)[number];
 export type NativeTarget = 'ios' | 'android';
 export const NATIVE_TARGETS: readonly NativeTarget[] = ['ios', 'android'];
@@ -156,6 +159,7 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
   if (lane === 'device-anim') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, animSampleIds(target))), corpora: [] };
   // TXT1a-2: a shaped case is not a device case until phase R gives the device runtime its shaper (the device measures only Ahem).
   if (lane === 'device-hit') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, hitCaseIds())), corpora: [] };
+  if (lane === 'device-traces') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, traceScriptIds())), corpora: [] };
   return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, vectorCaseIds())), corpora: [] };
 }
 

@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import type { CompilerFaults, Diagnostic, FrontEndResult, InteractionPartition, InteractionState } from '../src/internal.ts';
 import { interactionPartition, isFocusable } from '../src/analysis/interaction.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
-import { comboIndex, conditionsExclusive, createProjectWith, gatedConditions, HIT_MODELLED, hitUnmodelledFact, interactionCondition, laneOnlyNative, LONGHANDS, NO_FAULTS, stateMembers } from '../src/internal.ts';
+import { comboIndex, conditionsExclusive, createProjectWith, gatedConditions, HIT_MODELLED, hitUnmodelledFact, hitUnmodelledGrid, interactionCondition, laneOnlyNative, LONGHANDS, NO_FAULTS, stateMembers } from '../src/internal.ts';
 import type { ResolvedElement } from '../src/analysis/resolve.ts';
 import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -332,6 +332,22 @@ describe('interaction states: hit model (R13)', () => {
       'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover is not supported on ios yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
       'DRAGON_UNSUPPORTED_SELECTOR [android] :hover is not supported on android yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4',
     ]);
+  });
+
+  // #212 review (Medium): rt-hit.ts refuses grid containers (atomic grid items in order-modified document order are not modelled).
+  it('refuses an interaction rule on native in a case with a grid container, and not on web or without the grid', () => {
+    const grid = BODY + '.g { display: grid; grid-template-columns: 50px 50px; } .i { height: 10px; } .k:hover { background-color: #0c0; }';
+    const gbody = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'g', ['g'], [div(r, 'i1', ['i']), div(r, 'i2', ['i'])]), div(r, 'k', ['k'])];
+    expect(otherErrors(compile({}, grid, gbody, TARGETS, 'derive').diagnostics)).toEqual([
+      'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover needs Dragon hit testing through the grid container g, which is not built yet (package GRID hit model)',
+      'DRAGON_UNSUPPORTED_SELECTOR [android] :hover needs Dragon hit testing through the grid container g, which is not built yet (package GRID hit model)',
+    ]);
+    expect(otherErrors(compile({}, grid, gbody, { web: {} }, 'derive').diagnostics)).toEqual([]);
+    expect(otherErrors(compile({}, grid.replace('display: grid; grid-template-columns: 50px 50px;', ''), gbody, TARGETS, 'derive').diagnostics)).toEqual([]);
+    const root = internalRecord(compile({}, grid, gbody, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement;
+    expect(hitUnmodelledGrid(root)).toBe('g');
+    expect(hitUnmodelledFact(root, referenceDataset())).toBeNull();
+    expect(otherErrors(compile({ hitUnmodelledNotRefused: true }, grid, gbody, TARGETS, 'derive').diagnostics)).toEqual([]);
   });
 
   it('catches the plant hitUnmodelledNotRefused', () => {

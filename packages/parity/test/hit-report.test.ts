@@ -11,19 +11,21 @@ import { nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
 import { hitCaseIds, nativeTargets } from '../src/targets.ts';
 import { INLINE_OUT, INLINE_REASON, STACKING_OUT, STACKING_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
+import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 
 const cases = hitCases();
 
 describe('the host hit lane', () => {
-  // The hit lane leaves out the union of four refusals (hit-refusals.ts, hit-refusals-radius.ts); taking any alone would bring the others' cases back.
+  // The hit lane leaves out the union of five refusals (hit-refusals.ts, hit-refusals-radius.ts, hit-refusals-grid.ts); taking any alone would bring the others' cases back.
   const transformed = (): string[] => nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform'))).map((n) => n.case.id);
-  it('leaves out exactly the union of the transform cases, the PNT1 stacking cases, the PNT1 radius fixtures and the INL1a inline-box and <br> fixtures, each with a named reason', () => {
+  it('leaves out exactly the union of the transform cases, the PNT1 stacking cases, the PNT1 radius fixtures, the INL1a inline-box and <br> fixtures and the GRID fixtures, each with a named reason', () => {
     const hit = new Set(cases.map((n) => n.case.id));
     const out = nativeCases().filter((n) => !hit.has(n.case.id));
-    const union = new Set([...transformed(), ...STACKING_OUT, ...RADIUS_OUT, ...INLINE_OUT]);
+    const union = new Set([...transformed(), ...STACKING_OUT, ...RADIUS_OUT, ...INLINE_OUT, ...GRID_OUT]);
     expect(out.map((n) => n.case.id)).toEqual(nativeCases().map((n) => n.case.id).filter((id) => union.has(id)));
     for (const n of out.filter((x) => INLINE_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(INLINE_REASON);
+    for (const n of out.filter((x) => GRID_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(GRID_REASON);
     // The device-hit lane declares exactly the hit cases at every device DPR (targets.ts hitCaseIds), so P5 counts them, not all.
     expect(hitCaseIds()).toEqual(cases.map((n) => n.case.id));
     for (const t of nativeTargets()) for (const s of t.lanes.find((l) => l.lane === 'device-hit')?.sets ?? []) expect(s.ids, `${t.target} ${s.dpr}`).toEqual(hitCaseIds());
@@ -40,16 +42,18 @@ describe('the host hit lane', () => {
     }
   });
 
-  it('refuses by name every case whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 stacking, PNT1 radius and INL1a inline cases with their own reasons', () => {
+  it('refuses by name every case whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 stacking, PNT1 radius, INL1a inline and GRID cases with their own reasons', () => {
     const refused = hitRefusedCases();
     const moved = new Set(transformed());
     expect(refused.filter((r) => moved.has(r.id)).map((r) => r.id)).toEqual(transformed());
     expect(refused.filter((r) => RADIUS_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...RADIUS_OUT].sort());
+    expect(refused.filter((r) => GRID_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...GRID_OUT].sort());
     expect(moved.size).toBeGreaterThan(0);
     for (const r of refused) {
       if (moved.has(r.id)) expect(r.reason, r.id).toMatch(TRANSFORM_REASON);
       else if (STACKING_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(STACKING_REASON);
       else if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
+      else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
       else expect([INLINE_OUT.includes(r.id), r.reason], r.id).toEqual([true, expect.stringMatching(INLINE_REASON)]);
     }
     const covered = new Set(cases.map((n) => n.case.id));

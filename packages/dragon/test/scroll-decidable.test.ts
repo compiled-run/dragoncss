@@ -43,6 +43,8 @@ const input = (children: LayoutBox[]): LayoutInput => ({
 });
 const sc = (o: Overflow, extra: Partial<LayoutStyle> = {}): Partial<LayoutStyle> => ({ overflowX: o, overflowY: o, width: px(100), height: px(60), ...extra });
 
+const GRID = { templateColumns: [], templateRows: [], autoColumns: [{ kind: 'breadth', breadth: { kind: 'auto' } }], autoRows: [{ kind: 'breadth', breadth: { kind: 'auto' } }], explicitColumnCount: 0, explicitRowCount: 0, autoFlow: 'row', dense: false, justifyItems: 'normal' } as const;
+
 type Kid = (id: string) => Child;
 /** Child shapes covering each engine refusal and its near misses. */
 const KIDS: Record<string, Kid> = {
@@ -59,6 +61,7 @@ const KIDS: Record<string, Kid> = {
   clipBoth: (id) => box(id, { overflowX: 'clip', overflowY: 'clip' }, [leaf(`${id}t`, 'XX'), span(`${id}s`, [leaf(`${id}st`, 'YY')])]),
   nestedScroll: (id) => box(id, sc('auto', { width: px(50), height: px(20) }), [leaf(`${id}t`, 'XX'), br(`${id}b`)]),
   flexSpan: (id) => box(id, { display: 'flex' }, [box(`${id}i`, {}, [leaf(`${id}t`, 'XX'), span(`${id}s`, [leaf(`${id}st`, 'YY')])])]),
+  grid: (id) => box(id, { display: 'grid', grid: GRID }),
   abs: (id) => box(id, { position: 'absolute', width: px(20), height: px(20) }, [leaf(`${id}t`, 'XX'), span(`${id}s`, [leaf(`${id}st`, 'YY')])]),
 };
 
@@ -114,6 +117,7 @@ describe('OVFL-B: undecidedScrollContainers against the engine', () => {
     expect(reasons([leaf('t', 'XX'), br('b'), leaf('v', 'YY')])).toEqual(['c b: a <br> in the inline formatting context of c: its scrollable overflow is not decided here (R16, INL1a)']);
     expect(reasons([leaf('t', 'XX'), box('k', { display: 'flex', width: px(10), height: px(10) })])).toEqual(['c k: an atomic inline in the inline formatting context of c: its scrollable overflow is not decided here (R16, INL2)']);
     expect(reasons([box('p', { height: pct(50) }, [box('k', { height: px(10), marginBottom: px(5) })])])).toEqual(['c p: a percentage height on a box whose end margins may collapse through it: its basis is not decided here']);
+    expect(reasons([box('g', { display: 'grid', grid: GRID })])).toEqual(['c g: a grid container: its scrollable overflow (with its grid area) is not decided here']);
     expect(reasons([box('p', {}, [leaf('t', 'XX')]), box('q', { height: px(10) })])).toEqual([]);
   });
 });

@@ -1,0 +1,26 @@
+{
+  "case": "grid-self-values-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"g0b:text0","lines":[[0,2]]},
+    {"id":"g1b:text0","lines":[[0,2]]},
+    {"id":"g2b:text0","lines":[[0,2]]},
+    {"id":"g3b:text0","lines":[[0,2]]},
+    {"id":"g4b:text0","lines":[[0,2]]},
+    {"id":"g5b:text0","lines":[[0,2]]},
+    {"id":"g6b:text0","lines":[[0,2]]},
+    {"id":"g7b:text0","lines":[[0,2]]},
+    {"id":"g8b:text0","lines":[[0,2]]},
+    {"id":"g9b:text0","lines":[[0,2]]},
+    {"id":"g10b:text0","lines":[[0,2]]},
+    {"id":"g11b:text0","lines":[[0,2]]},
+    {"id":"g12b:text0","lines":[[0,2]]},
+    {"id":"g13b:text0","lines":[[0,2]]},
+    {"id":"g14b:text0","lines":[[0,2]]},
+    {"id":"g15b:text0","lines":[[0,2]]},
+    {"id":"g16b:text0","lines":[[0,2]]},
+    {"id":"g17b:text0","lines":[[0,2]]},
+    {"id":"s3:text0","lines":[[0,1]]},
+    {"id":"s4:text0","lines":[[0,1]]}
+  ]
+}
