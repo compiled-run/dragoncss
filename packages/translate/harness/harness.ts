@@ -130,6 +130,8 @@ import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
 import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
 import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors } from '../../layout/src/rt-animator.ts';
+import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTables } from '../../layout/src/rt-interaction.ts';
+import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, forcePseudo, hoverExitStarted, hoverMatches, interactionCombo, interactionFrame, interactionStart, interactionState, keyboardFocused, keyPressed, layoutChanged, mousePressed, mouseReleased, pointerExited, pointerMoved, remapPointer, touchCancelled, touchPressed, touchReleased } from '../../layout/src/rt-interaction.ts';
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
 import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
@@ -1841,6 +1843,9 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
     // animator suite (ANIM-b1 3b, T065 R16): the runtime animator over a frame case's tables and script.
     case 'rt-animator':
       return rtAnimatorResult(a);
+    // interaction suite (SELD-R2, T064 R12): the interaction runtime over synthetic tables and an event script.
+    case 'rt-interaction':
+      return rtInteractionResult(a);
     default:
       return fail(`unknown operation ${op}`);
   }
@@ -2439,6 +2444,114 @@ function rtAnimatorResult(a: readonly JsonValue[]): string {
       for (const c of frameColors(frame, t, AN_NO_FAULTS)) colors += `${colors === '' ? '' : ','}[${q(c.node)},${q(c.property)},${h(c.rgba.r)},${h(c.rgba.g)},${h(c.rgba.b)},${h(c.rgba.alpha)}]`;
       out += `${out === '' ? '' : ','}[[${values}],[${colors}]]`;
     } else fail(`${path}: unknown step ${op}`);
+  });
+  return `[${out}]`;
+}
+
+// ---------------------------------------------------------------- interaction suite (SELD-R2, T064 R12)
+
+/** The interaction runtime runs with no planted fault: the plants are proven by the host trace check and the device traces. */
+const IA_NO_FAULTS: InteractionFaults = {
+  tapSetsHover: false,
+  hoverWithoutAncestors: false,
+  forcedSetsAncestors: false,
+  focusOnNonFocusable: false,
+  focusVisibleOnPointer: false,
+  activeWithoutAncestors: false,
+  activeStaysAfterRelease: false,
+  focusAtTouchPress: false,
+  rangeTapFocuses: false,
+  hoverNotRecomputedAfterLayout: false,
+  hoverExitOnPress: false,
+};
+
+function iaInt(v: JsonValue, path: string): number {
+  const n = num(v, path);
+  if (!Number.isInteger(n)) return fail(`${path}: ${bitsHex(n)} is not an integer`);
+  return n;
+}
+
+function iaInts(o: JsonObj, k: string, path: string): number[] {
+  return arr(field(o, k, path), `${path}.${k}`).map((x, i): number => iaInt(x, `${path}.${k}[${i}]`));
+}
+
+function iaBools(o: JsonObj, k: string, path: string): boolean[] {
+  return arr(field(o, k, path), `${path}.${k}`).map((x, i): boolean => bool(x, `${path}.${k}[${i}]`));
+}
+
+function iaTables(v: JsonValue, path: string): InteractionTables {
+  const o = obj(v, ['parent', 'focusable', 'touchConsumesTap', 'keyboardInput', 'chainOf', 'activeChainOf', 'pointerFocusOf', 'keyboardFocusOf', 'forcedHoverOf', 'forcedActiveOf', 'forcedFocusOf', 'forcedFocusVisibleOf', 'hoverValues', 'activeValues', 'focusValues', 'combos'], path);
+  return {
+    parent: iaInts(o, 'parent', path),
+    focusable: iaBools(o, 'focusable', path),
+    touchConsumesTap: iaBools(o, 'touchConsumesTap', path),
+    keyboardInput: iaBools(o, 'keyboardInput', path),
+    chainOf: iaInts(o, 'chainOf', path),
+    activeChainOf: iaInts(o, 'activeChainOf', path),
+    pointerFocusOf: iaInts(o, 'pointerFocusOf', path),
+    keyboardFocusOf: iaInts(o, 'keyboardFocusOf', path),
+    forcedHoverOf: iaInts(o, 'forcedHoverOf', path),
+    forcedActiveOf: iaInts(o, 'forcedActiveOf', path),
+    forcedFocusOf: iaInts(o, 'forcedFocusOf', path),
+    forcedFocusVisibleOf: iaInts(o, 'forcedFocusVisibleOf', path),
+    hoverValues: iaInt(field(o, 'hoverValues', path), `${path}.hoverValues`),
+    activeValues: iaInt(field(o, 'activeValues', path), `${path}.activeValues`),
+    focusValues: iaInt(field(o, 'focusValues', path), `${path}.focusValues`),
+    combos: iaInts(o, 'combos', path),
+  };
+}
+
+function iaForced(v: JsonValue, path: string): ForcedKind {
+  const k = lit(v, ['none', 'hover', 'active', 'focus', 'focus-visible'], path);
+  if (k === 'hover') return 'hover';
+  if (k === 'active') return 'active';
+  if (k === 'focus') return 'focus';
+  if (k === 'focus-visible') return 'focus-visible';
+  return 'none';
+}
+
+function iaElements(xs: readonly number[]): string {
+  let out = '';
+  for (const x of xs) out += `${out === '' ? '' : ','}${h(x)}`;
+  return `[${out}]`;
+}
+
+/** One step of an interaction script: [kind, ...arguments]; each kind takes exactly its own arguments. */
+function iaStep(t: InteractionTables, s: InteractionPointer, g: readonly JsonValue[], path: string): InteractionPointer {
+  const op = str(item(g, 0, path), path);
+  const want = op === 'move' || op === 'mouse-down' || op === 'touch-down' || op === 'touch-up' || op === 'key' || op === 'key-focus' || op === 'remap' || op === 'layout' ? 2 : op === 'force' ? 3 : 1;
+  if (g.length !== want) return fail(`${path}: step ${op} expects ${want} items, got ${g.length}`);
+  if (op === 'move') return pointerMoved(t, s, iaInt(item(g, 1, path), path));
+  if (op === 'exit') return pointerExited(t, s);
+  if (op === 'exit-start') return hoverExitStarted(t, s);
+  if (op === 'frame') return interactionFrame(t, s);
+  if (op === 'mouse-down') return mousePressed(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'mouse-up') return mouseReleased(t, s, IA_NO_FAULTS);
+  if (op === 'touch-down') return touchPressed(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'touch-up') return touchReleased(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'touch-cancel') return touchCancelled(t, s, IA_NO_FAULTS);
+  if (op === 'key') return keyPressed(t, s, bool(item(g, 1, path), path));
+  if (op === 'key-focus') return keyboardFocused(t, s, iaInt(item(g, 1, path), path));
+  if (op === 'remap') return remapPointer(t, s, arr(item(g, 1, path), path).map((x, i): number => iaInt(x, `${path}[1][${i}]`)));
+  if (op === 'layout') return layoutChanged(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'force') return forcePseudo(t, s, iaForced(item(g, 1, path), path), iaInt(item(g, 2, path), path));
+  return fail(`${path}: unknown step ${op}`);
+}
+
+/**
+ * An interaction script: [op, tables, states, steps]. After each step the record is [hover matches, active matches, focus match,
+ * focus-visible match, combination, state], every element index and number as bits.
+ */
+function rtInteractionResult(a: readonly JsonValue[]): string {
+  if (a.length !== 4) return fail('rt-interaction: expected [op, tables, states, steps]');
+  const t = iaTables(item(a, 1, '$'), '$[1]');
+  checkInteractionTables(t, iaInt(item(a, 2, '$'), '$[2]'));
+  let s: InteractionPointer = interactionStart();
+  let out = '';
+  arr(item(a, 3, '$'), '$[3]').forEach((step, i) => {
+    const path = `$[3][${i.toString(16)}]`;
+    s = iaStep(t, s, arr(step, path), path);
+    out += `${out === '' ? '' : ','}[${iaElements(hoverMatches(t, s, IA_NO_FAULTS))},${iaElements(activeMatches(t, s, IA_NO_FAULTS))},${h(focusMatch(s))},${h(focusVisibleMatch(s))},${h(interactionCombo(t, s))},${h(interactionState(t, s))}]`;
   });
   return `[${out}]`;
 }
