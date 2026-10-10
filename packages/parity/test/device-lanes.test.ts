@@ -232,8 +232,8 @@ describe('build reuse', () => {
     expect(() => expand(['$BT/d8'], { W: '/w' })).toThrow(/no value for \$BT/);
     // Every token the commands use has a value where they run.
     const tokens = (cs: readonly (readonly string[])[]): string[] => [...new Set(cs.flatMap((c) => c.flatMap((x) => [...x.matchAll(/\$([A-Z_]+)/g)].map((m) => m[1] as string))))].sort();
-    expect(tokens(iosCommands(hostSources('ios', 'x').map((f) => f.path)))).toEqual(['AHEM', 'CORES', 'W']);
-    expect(tokens(androidCommands(['a.kt']))).toEqual(['AHEM', 'ANDROID_JAR', 'BT', 'KEYSTORE', 'KOTLINC', 'KOTLIN_STDLIB', 'W']);
+    expect(tokens(iosCommands(hostSources('ios', 'x').map((f) => f.path)))).toEqual(['AHEM', 'CORES', 'SHIM_IOS_LIB', 'SHIM_SWIFT_INCLUDE', 'W']);
+    expect(tokens(androidCommands(['a.kt']))).toEqual(['AHEM', 'ANDROID_JAR', 'BT', 'KEYSTORE', 'KOTLINC', 'KOTLIN_STDLIB', 'SHIM_ANDROID_ARM', 'SHIM_ANDROID_INTEL', 'W']);
   });
   it('the code built at -Onone is construction code only: no control flow, ternary, assert or precondition', () => {
     const files = hostSources('ios', 'x');
