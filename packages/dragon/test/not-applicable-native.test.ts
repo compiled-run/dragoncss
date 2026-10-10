@@ -21,6 +21,14 @@ const NATIVE = { ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
 const CASES: Record<string, string> = {
   cursor: '.a { cursor: pointer; }',
   'scroll-behavior': '.a { scroll-behavior: smooth; }',
+  '-webkit-tap-highlight-color': '.a { -webkit-tap-highlight-color: rgba(0, 0, 0, 0); }',
+  '-webkit-font-smoothing': '.a { -webkit-font-smoothing: antialiased; }',
+  'text-size-adjust': '.a { text-size-adjust: 100%; }',
+  '-webkit-text-size-adjust': '.a { -webkit-text-size-adjust: none; }',
+  'forced-color-adjust': '.a { forced-color-adjust: none; }',
+  '-webkit-user-drag': '.a { -webkit-user-drag: none; }',
+  'print-color-adjust': '.a { print-color-adjust: exact; }',
+  '-webkit-print-color-adjust': '.a { -webkit-print-color-adjust: exact; }',
 };
 
 function compile(css: string, targets: object) {
@@ -49,7 +57,10 @@ describe('the not-applicable list', () => {
   it('has a test document for exactly the listed entries, each with a reason', () => {
     expect(NOT_APPLICABLE_NATIVE.map((e) => e.name).sort()).toEqual(Object.keys(CASES).sort());
     for (const e of NOT_APPLICABLE_NATIVE) expect(e.reason.length, e.name).toBeGreaterThan(20);
-    expect(NOT_APPLICABLE_NATIVE.map((e) => e.name)).toEqual(['cursor', 'scroll-behavior']);
+    expect(NOT_APPLICABLE_NATIVE.map((e) => e.name)).toEqual([
+      'cursor', 'scroll-behavior', '-webkit-tap-highlight-color', '-webkit-font-smoothing', 'text-size-adjust', '-webkit-text-size-adjust',
+      'forced-color-adjust', '-webkit-user-drag', 'print-color-adjust', '-webkit-print-color-adjust',
+    ]);
   });
 
   for (const [name, extra] of Object.entries(CASES)) {
@@ -108,6 +119,8 @@ describe('off the list, a declaration or rule is still refused on every target',
     'scrollbar-width (hides scroll indicators)': '.a { scrollbar-width: none; }',
     '-webkit-appearance (changes form controls)': '.a { -webkit-appearance: none; }',
     'color-scheme (changes the UA colours)': '.a { color-scheme: dark; }',
+    'text-rendering (optimizeSpeed turns off kerning and ligatures)': '.a { text-rendering: optimizeSpeed; }',
+    'break-inside (fragments columns, not only pages)': '.a { break-inside: avoid; }',
     '::-webkit-slider-thumb (decides how a range paints)': '.a::-webkit-slider-thumb { width: 16px; }',
     '::-webkit-scrollbar-corner (not listed)': '.a::-webkit-scrollbar-corner { background: red; }',
     'scrollbar-color (deferred: common forms hide the scrollbar)': '.a { scrollbar-color: red blue; }',
