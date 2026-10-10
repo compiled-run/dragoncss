@@ -183,7 +183,7 @@ describe('border-radius: lowering and emission', () => {
     expect(RADIUS_EMITTER.lines.uikit('v0', a as never, w)).toEqual(['  dragonSetRadii(v0, [RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0)])']);
     expect(RADIUS_EMITTER.lines['android-views']('v0', a as never, w)[0]).toMatch(/^ {2}dragonSetRadii\(v0, arrayOf\(RadiusLength\(false, 60\.0\)/);
     const box = { left: 0, top: 0, right: 200, bottom: 80, width: 200, height: 80 } as never;
-    const applied = RADIUS_EMITTER.applied({ paint: { roundedShape } } as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box, size: [200, 80], fontSize: null, replaced: null });
+    const applied = RADIUS_EMITTER.applied({ paint: { roundedShape } } as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box, size: [200, 80], fontSize: null, replaced: null, scroll: null });
     // 120 + 120 device px over an 80 px side: the §5.5 factor 80 / 240 scales every radius to 40.
     expect(applied).toEqual([40, 40, 40, 40, 40, 40, 40, 40]);
   });
