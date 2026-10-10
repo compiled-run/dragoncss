@@ -495,9 +495,9 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
 
   it('row keys carry the formatting context (M2, M3, C7, S4b): <length-px>; every context has a direction facet, flex text contexts a main-axis facet, positioned item contexts the scheme, paint rows only @paint/<dir>', () => {
     const directions = ['ltr', 'rtl'];
-    const textContexts = directions.flatMap((d) => ['text-in-block/' + d, 'text-in-anonymous-block/' + d, 'text-in-flex-item/row/' + d, 'text-in-flex-item/column/' + d, 'text-as-anonymous-flex-item/row/' + d, 'text-as-anonymous-flex-item/column/' + d, 'text-in-inline/' + d, 'text-beside-inline/' + d]);
-    const boxContexts = /^(root|block|flex-row|flex-column|display-none|flex-row-single-line|flex-row-multi-line|flex-column-single-line|flex-column-multi-line|not-flex-container)\/(ltr|rtl)$/;
-    const itemBases = '(root|block|flex-row|flex-column|display-none)';
+    const textContexts = directions.flatMap((d) => ['text-in-block/' + d, 'text-in-anonymous-block/' + d, 'text-in-flex-item/row/' + d, 'text-in-flex-item/column/' + d, 'text-as-anonymous-flex-item/row/' + d, 'text-as-anonymous-flex-item/column/' + d, 'text-in-grid-item/' + d, 'text-as-anonymous-grid-item/' + d, 'text-in-inline/' + d, 'text-beside-inline/' + d]);
+    const boxContexts = /^(root|block|flex-row|flex-column|display-none|flex-row-single-line|flex-row-multi-line|flex-column-single-line|flex-column-multi-line|not-flex-container|grid-container|grid)\/(ltr|rtl)$/;
+    const itemBases = '(root|block|flex-row|flex-column|display-none|grid)';
     const positioned = new RegExp('^(relative-in-' + itemBases + '/(ltr|rtl)|absolute-in-' + itemBases + '/(ltr|rtl)/cb-(ltr|rtl))$');
     const role = (feature: string) => PROPERTY_ROLE[feature.slice(0, feature.indexOf(':')) as Longhand];
     for (const profile of [iosProfile, webProfile]) {

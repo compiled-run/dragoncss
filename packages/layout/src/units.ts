@@ -307,6 +307,139 @@ export function distributedOffset(mode: DistributedMode, free: LU, n: number, k:
   return add(cumulativeShareTruncated(free, 1, n + 1), cumulativeShareRounded(free, k, n + 1));
 }
 
+/** C++ integer division of two integers, truncating toward zero (track counts and line numbers). */
+export function intDiv(a: number, b: number): number {
+  if (!Number.isInteger(a) || !Number.isInteger(b) || b === 0) throw new Error(`integer division needs integers and a non-zero divisor, got ${a} / ${b}`);
+  return Math.trunc(a / b);
+}
+
+/** C++ integer remainder, with the sign of the dividend. */
+export function intMod(a: number, b: number): number {
+  return a - intDiv(a, b) * b;
+}
+
+// Grid track sizing arithmetic (grid.ts; Blink grid_track_sizing_algorithm.cc). Blink keeps flex factors, fr sizes and leftovers in
+// float32 (float, base::ClampedNumeric<float>), and an equal share of extra space in unsigned 32-bit integers.
+
+const TWO_16 = 65536;
+const TWO_32 = 4294967296;
+
+/** A float32 result, clamped to the finite float range as base::ClampedNumeric<float> saturates. */
+export function clampedFloat(v: number): number {
+  if (Number.isNaN(v)) return 0;
+  const f = Math.fround(v);
+  if (f > FLOAT_MAX) return FLOAT_MAX;
+  if (f < -FLOAT_MAX) return -FLOAT_MAX;
+  return f;
+}
+
+/** Blink GridSet::FlexFactor: float(flex) * track_count, in float. */
+export function setFlexFactor(flex: number, trackCount: number): number {
+  return Math.fround(Math.fround(flex) * trackCount);
+}
+
+/** A float32 flex sum plus or minus one factor (ClampedFloat += / -=). */
+export function flexSumAdd(sum: number, factor: number): number {
+  return clampedFloat(sum + factor);
+}
+
+export function flexSumSub(sum: number, factor: number): number {
+  return clampedFloat(sum - factor);
+}
+
+/** Blink AreEqual<float>: |a - b| < FLT_EPSILON, computed in float. */
+export function floatNearlyEqual(a: number, b: number): boolean {
+  const d = Math.fround(a - b);
+  return (d < 0 ? -d : d) < FLOAT_EPSILON;
+}
+
+
+/** int * float in float: a raw LayoutUnit times a float factor (Blink RawValue() * FlexFactor()). */
+export function rawTimesFloat(v: LU, factor: number): number {
+  return Math.fround(Math.fround(v) * factor);
+}
+
+/** int / float in float: Blink leftover_space.RawValue() / flex_factor_sum, the fr size. */
+export function rawOverFloat(v: LU, divisor: number): number {
+  return clampedFloat(Math.fround(v) / divisor);
+}
+
+/** float / float in float, saturating (base::ClampedNumeric<float>). */
+export function clampedFloatDiv(a: number, b: number): number {
+  return clampedFloat(a / b);
+}
+
+/** float * float in float, saturating (base::ClampedNumeric<float>). */
+export function clampedFloatMul(a: number, b: number): number {
+  return clampedFloat(a * b);
+}
+
+/** Blink LayoutUnit::FromRawValue(float): the float converted to int, truncating toward zero and saturating. */
+export function fromRawFloat(v: number): LU {
+  return saturate(Math.trunc(v));
+}
+
+/** Blink ExpandFlexibleTracks: LayoutUnit::FromRawValue(fr_share + FLT_EPSILON), the sum in float. */
+export function frShareToLu(frShare: number): LU {
+  return fromRawFloat(clampedFloat(frShare + FLOAT_EPSILON));
+}
+
+/** Planted fault frFloat64: the fr size, the fr shares and the leftover in double instead of float. */
+export function doubleQuotient(v: LU, divisor: number): number {
+  return v / divisor;
+}
+
+export function doubleShare(fr: number, factor: number, leftover: number): number {
+  return fr * factor + leftover;
+}
+
+export function doubleShareToLu(share: number): LU {
+  return fromRawFloat(share + FLOAT_EPSILON);
+}
+
+export function doubleLeftover(share: number, expanded: LU): number {
+  const d = share - expanded;
+  return d > 0 ? d : 0;
+}
+
+/** Blink ClampMax(fr_share - expanded_size.RawValue(), 0): the float leftover carried to the next flexible set. */
+export function frLeftover(frShare: number, expanded: LU): number {
+  const d = clampedFloat(frShare - Math.fround(expanded));
+  return d > 0 ? d : 0;
+}
+
+/** True when a LayoutUnit is at either saturation bound (LayoutUnit::MightBeSaturated). */
+export function mightBeSaturated(v: LU): boolean {
+  return v === INT_MAX || v === INT_MIN;
+}
+
+/** x mod 2^32 for 0 <= x < 2^49, without the % operator. */
+function mod32(x: number): number {
+  return x - Math.floor(x / TWO_32) * TWO_32;
+}
+
+/**
+ * Blink DistributeExtraSpaceToSets for an equal distribution: FromRawValue((extra.RawValue() * set_track_count) /
+ * growable_track_count), where int * wtf_size_t is computed in unsigned 32-bit arithmetic and wraps, the quotient is unsigned
+ * integer division, and FromRawValue takes the unsigned result as an int.
+ */
+export function equalShare(extra: LU, setTrackCount: number, growableTrackCount: number): LU {
+  if (!Number.isInteger(setTrackCount) || !Number.isInteger(growableTrackCount) || growableTrackCount <= 0) {
+    throw new Error(`equalShare needs integer counts and a positive divisor, got ${setTrackCount} / ${growableTrackCount}`);
+  }
+  const a = mod32(extra);
+  const high = Math.floor(a / TWO_16);
+  const low = a - high * TWO_16;
+  const product = mod32(mod32(high * setTrackCount) * TWO_16 + low * setTrackCount);
+  const quotient = Math.floor(product / growableTrackCount);
+  return saturate(quotient > INT_MAX ? quotient - TWO_32 : quotient);
+}
+
+/** Blink DistributeExtraSpaceToSets for flex-weighted sets: FromRawValue((extra.RawValue() * ratio) / ratio_sum), in float. */
+export function weightedShare(extra: LU, ratio: number, ratioSum: number): LU {
+  return fromRawFloat(clampedFloat(rawTimesFloat(extra, ratio) / ratioSum));
+}
+
 // Shaping arithmetic (TXT1-S, shaping.ts): HarfBuzz positions are 16.16 fixed point, Blink's InlineLayoutUnit (FixedPoint<16, int64>).
 
 /** InlineLayoutUnit::ToFloat: static_cast<float>(raw) / 65536, in float. */

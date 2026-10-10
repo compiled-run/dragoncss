@@ -1,0 +1,15 @@
+{
+  "case": "grid-template-shorthands-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"t1a:text0","lines":[[0,1]]},
+    {"id":"t1b:text0","lines":[[0,2]]},
+    {"id":"t1d:text0","lines":[[0,3]]},
+    {"id":"t2b:text0","lines":[[0,1]]},
+    {"id":"t3b:text0","lines":[[0,2]]},
+    {"id":"t4a:text0","lines":[[0,1]]},
+    {"id":"t4c:text0","lines":[[0,2]]},
+    {"id":"t6b:text0","lines":[[0,1]]},
+    {"id":"t7b:text0","lines":[[0,1]]}
+  ]
+}

@@ -10,6 +10,7 @@ import type { Edges } from './box.ts';
 import { blockMinMaxWith, hasPercent, INDEFINITE, isScrollContainer, resolveBorder, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
 import type { Ctx, EngineFaults, Strut } from './block.ts';
 import { directionOf, EMPTY_STRUT, NO_ENGINE_FAULTS } from './block.ts';
+import { NO_GRID_FAULTS } from './grid.ts';
 import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layoutMeasurer, layoutWithFaults, resolvedInput } from './layout.ts';
 import { UnsupportedSignal } from './unsupported.ts';
@@ -86,7 +87,7 @@ export function scrollMetricsWithFaults(given: LayoutInput, measurer: TextMeasur
   try {
     // The input as the layout above resolved it, with the caller's measurer.
     const input = resolvedInput(given, measurer, faults);
-    const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults };
+    const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults: NO_GRID_FAULTS };
     const ix = indexOf(ctx, input, absoluteRects(r.boxes));
     const containers: ScrollMetrics[] = [];
     for (const b of ix.order) {
@@ -139,7 +140,7 @@ export function scrollRangesWithFaults(given: LayoutInput, measurer: TextMeasure
   try {
     // The input as the layout above resolved it, with the caller's measurer (as scrollMetricsWithFaults).
     const input = resolvedInput(given, measurer, faults);
-    const ctx: Ctx = { measurer: layoutMeasurer(measurer, faults), devicePixelRatio: input.devicePixelRatio, faults };
+    const ctx: Ctx = { measurer: layoutMeasurer(measurer, faults), devicePixelRatio: input.devicePixelRatio, faults, gridFaults: NO_GRID_FAULTS };
     ix = indexOf(ctx, input, absoluteRects(r.boxes));
   } catch (e) {
     if (e instanceof UnsupportedSignal) return { kind: 'refused', nodeId: e.unsupported.nodeId, detail: `${e.unsupported.code}: ${e.unsupported.detail}` };
@@ -349,6 +350,8 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
   const c: Calc = { overflow: paddingRect, inflow: null, paddingRect, scrollContainer: sc, leftOverflow: sides.left, topOverflow: sides.top };
   // A replaced leaf (CSS 2.2 §10.3.2) has no children: its scrollable overflow is its own padding box.
   if (b.kind === 'replaced') return resultOf(ix, c, n.padding);
+  // A grid container's scrollable overflow also takes its grid area (css-grid-2 §5.3), which this port does not compute.
+  if (b.style.display === 'grid') throw new OverflowRefusal(b.id, 'a grid container: its scrollable overflow (with its grid area) is not decided here');
   if (hasInlineContent(b)) {
     refuseLineLevelBoxes(b);
     addLines(ix, n, b, c);
