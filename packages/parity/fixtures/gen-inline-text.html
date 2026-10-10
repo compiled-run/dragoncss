@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w { width: 120px; }
+.w::before { content: 'ab  '; }
+.w::after { content: '  c' 'de'; }
+.q { width: 120px; }
+.q::before { content: 'x\A y'; }
+.q::after { content: "zz" ' '; }
+.s::before { content: 'k'; color: rgb(0, 0, 255); }
+.s::after { content: 'l ' 'mm'; }
+.n { width: 50px; }
+.n::before { content: 'ppp qqq '; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="w" class="w">  eeee ffff gggg hhhh iiii  </div>
+<div data-dragon-id="q" class="q">rr</div>
+<div data-dragon-id="s" class="s">tt uu vv</div>
+<div data-dragon-id="n" class="n">oo</div>
+</body>
+</html>
