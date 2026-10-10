@@ -632,7 +632,9 @@ class DragonMotionInput(private val root: DragonInteractionRoot, private val sca
   }
 
   override fun pointerExited() {
-    exitHover()
+    // Always sent: after a press that cancelled a hover exit the pointer is still in (R15), with no hover of the runner's own.
+    hovering = false
+    sendPx(MotionEvent.ACTION_HOVER_EXIT, lastX, lastY, InputDevice.SOURCE_MOUSE, MotionEvent.TOOL_TYPE_MOUSE, 0)
     root.frameNow()
   }
 

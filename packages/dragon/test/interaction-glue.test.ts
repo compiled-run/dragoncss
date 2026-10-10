@@ -36,8 +36,10 @@ describe('the interaction glue', () => {
     expect(r).toMatch(/case \.indirectPointer:\n\s+tracked = t; mouse = true\n\s+machine\.mousePressed\(x, y\)/);
     expect(r).toContain('machine.touchCancelled()');
     const hover = block(swift, 'final class DragonHoverTarget');
-    expect(hover).toMatch(/case \.began, \.changed:\n[^\n]*\n\s+machine\.pointerMoved/);
-    expect(hover).toMatch(/case \.ended, \.cancelled:\n\s+machine\.pointerExited\(\)/);
+    expect(hover).toMatch(/case \.began, \.changed:\n(?:[^\n]*\n){2}\s+machine\.pointerMoved/);
+    // A hover end during a pointer press is held until the release (P4), else it clears hover at once.
+    expect(hover).toContain('if press?.mouseDown == true { exitHeld = true } else { machine.pointerExited() }');
+    expect(r).toContain('if mouse { machine.mouseReleased(); onMouseReleased?() } else {');
   });
   it('reads Android touch without intercepting, hover only from a mouse or stylus, and defers the hover-exit clear to the next frame (R15)', () => {
     const root = block(kotlin, 'class DragonInteractionRoot');

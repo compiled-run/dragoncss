@@ -47,6 +47,11 @@ final class DragonPressRecognizer: UIGestureRecognizer, UIGestureRecognizerDeleg
   private let machine: DragonInteractionMachine
   private var tracked: UITouch?
   private var mouse = false
+  /// Called after a mouse release reaches the machine (the hover target settles a hover end it held through the press).
+  var onMouseReleased: (() -> Void)?
+
+  /// Whether a pointer button is down: the hover recognizer may end on a click, but Chrome keeps hover through a press (P4).
+  var mouseDown: Bool { tracked != nil && mouse }
 
   init(machine: DragonInteractionMachine) {
     self.machine = machine
@@ -93,7 +98,7 @@ final class DragonPressRecognizer: UIGestureRecognizer, UIGestureRecognizerDeleg
   override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
     if let t = tracked, touches.contains(t) {
       tracked = nil
-      if mouse { machine.mouseReleased() } else {
+      if mouse { machine.mouseReleased(); onMouseReleased?() } else {
         let (x, y) = at(t)
         machine.touchReleased(x, y)
       }
@@ -124,6 +129,9 @@ final class DragonPressRecognizer: UIGestureRecognizer, UIGestureRecognizerDeleg
 /// fires on iPhone, so an iPhone never hovers.
 final class DragonHoverTarget: NSObject, UIGestureRecognizerDelegate {
   private let machine: DragonInteractionMachine
+  weak var press: DragonPressRecognizer?
+  /// A hover end that came while a button was down: held until the release, then applied unless the hover began again.
+  private var exitHeld = false
   init(machine: DragonInteractionMachine) { self.machine = machine }
 
   func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
@@ -131,12 +139,24 @@ final class DragonHoverTarget: NSObject, UIGestureRecognizerDelegate {
   @objc func hover(_ g: UIHoverGestureRecognizer) {
     switch g.state {
     case .began, .changed:
+      exitHeld = false
       let p = g.location(in: g.view)
       machine.pointerMoved(Double(p.x), Double(p.y))
     case .ended, .cancelled:
-      machine.pointerExited()
+      // The iOS counterpart of R15: hover ends while a pointer button is down; Chrome keeps it through the press (P4).
+      if press?.mouseDown == true { exitHeld = true } else { machine.pointerExited() }
     default:
       break
+    }
+  }
+
+  /// After a release, a held hover end applies on the next main-queue turn unless the recognizer began again by then.
+  func released() {
+    guard exitHeld else { return }
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self, self.exitHeld else { return }
+      self.exitHeld = false
+      self.machine.pointerExited()
     }
   }
 }
@@ -149,7 +169,11 @@ public final class DragonInteractionRootView: UIView {
   public init(machine: DragonInteractionMachine) {
     hoverTarget = DragonHoverTarget(machine: machine)
     super.init(frame: .zero)
-    addGestureRecognizer(DragonPressRecognizer(machine: machine))
+    let press = DragonPressRecognizer(machine: machine)
+    let target = hoverTarget
+    target.press = press
+    press.onMouseReleased = { [weak target] in target?.released() }
+    addGestureRecognizer(press)
     let hover = UIHoverGestureRecognizer(target: hoverTarget, action: #selector(DragonHoverTarget.hover(_:)))
     hover.delegate = hoverTarget
     addGestureRecognizer(hover)

@@ -264,7 +264,8 @@ class TraceDriver {
       });
       this.saved = { context: this.context, mouse: this.mouse, focused: focused?.id ?? null, focusVisible: focused?.visible ?? false, matches };
       await this.setContext('mouse');
-      if (this.mouse !== null) await this.mouseEvent('mouseMoved', { x: -1, y: -1 });
+      // Always: a tap leaves Chrome's synthetic hover (P1), which this.mouse does not track.
+      await this.mouseEvent('mouseMoved', { x: -1, y: -1 });
       this.mouse = null;
       await this.page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     }

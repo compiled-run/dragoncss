@@ -595,11 +595,13 @@ export function evaluateTraceSet(dpr: number, dir: string, device: DeviceRecord,
   const fail = (id: string, kind: FailureKind, detail: string): void => void failures.push({ lane: TRACE_LANE, case: id, dpr, node: null, kind, detail });
   const h = createHash('sha256');
   let records = 0;
+  const missing = new Set<string>();
   let compared = 0;
   for (const id of ids) {
     const file = traceFile(dir, id, dpr);
     if (!existsSync(file)) {
       fail(id, 'trace-missing', 'the device wrote no trace record');
+      missing.add(id);
       continue;
     }
     const got = readFileSync(file, 'utf8');
@@ -623,10 +625,11 @@ export function evaluateTraceSet(dpr: number, dir: string, device: DeviceRecord,
   const known = new Set(ids);
   // A detail names its script first when it is about one; anything else is filed under the set.
   const caseOf = (d: string): string => {
-    const id = /^([^\s:]+)/.exec(d)?.[1] ?? '';
+    const id = /^([^\s:@]+)/.exec(d)?.[1] ?? '';
     return known.has(id) ? id : '-';
   };
-  for (const d of v.details) fail(caseOf(d), 'trace-mismatch', d);
+  // A script whose record is missing already failed above; evaluateTraces' detail for it would count it twice.
+  for (const d of v.details) if (!missing.has(caseOf(d))) fail(caseOf(d), 'trace-mismatch', d);
   if (v.failed > 0 && v.details.length === 0) fail('-', 'trace-mismatch', `evaluateTraces failed ${v.failed} without a detail`);
   if (records > 0 && v.passed + v.failed === 0) fail('-', 'trace-mismatch', `evaluateTraces compared nothing in ${records} trace records`);
   compared += v.passed + v.failed;

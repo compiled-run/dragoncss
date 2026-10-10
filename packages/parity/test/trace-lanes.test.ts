@@ -50,7 +50,8 @@ describe('device-traces on fake records', () => {
   });
   it('fails a missing record and every evaluateTraces failure, filed under its script when the detail names one', () => {
     const at = folder('fail', (id) => (id === ids[0] ? {} : { trace: text }));
-    const s = evaluateTraceSet(2, at, device, ids, false, () => ({ passed: 3, failed: 2, details: [`${ids[1]}: trace 1: device hover 0, host 0,2`, 'no reference for ix-z'] }));
+    // evaluateTraces names a script as <id>@<scale>; its detail for the missing record is not counted a second time.
+    const s = evaluateTraceSet(2, at, device, ids, false, () => ({ passed: 3, failed: 3, details: [`${ids[0]}@2: the device wrote no trace record`, `${ids[1]}@2: trace 1: device hover 0, host 0,2`, 'no reference for ix-z'] }));
     expect(s.failures.map((f) => [f.case, f.kind, f.lane])).toEqual([[ids[0], 'trace-missing', TRACE_LANE], [ids[1], 'trace-mismatch', TRACE_LANE], ['-', 'trace-mismatch', TRACE_LANE]]);
     expect(s.dumps).toBe(2);
   });
