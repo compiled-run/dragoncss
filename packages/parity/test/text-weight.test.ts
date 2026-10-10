@@ -26,9 +26,9 @@ import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-re
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
-/** The outputs of BASE (inl1a-tags-v2 at 53602e0247, #105 caught up with master d3c79509a3), as digests the BASE pins recompute. */
-const BASE_OUTPUTS = { files: 11044, digest: 'afc9d7d33f6e6551f715327c77b2162c62eb1f0adc7436b284bc869f182efe74' };
-const BASE_CAPTURES = { files: 2826, digest: 'd93a992a88fe4e6624b60fe3c68187239ec276d11a92c3d2acf6d31e5736a7db' };
+/** The outputs of BASE (inl1a-tags-v2 at 186dba301c, #105 caught up with master ef96e1c079), as digests the BASE pins recompute. */
+const BASE_OUTPUTS = { files: 11876, digest: '21e87f526a3882c196a399b59e878031f915ca8e50bb3cd353b96f60861447cb' };
+const BASE_CAPTURES = { files: 3034, digest: '269611b121d04c58dc91ccd59e36e01c6ccddad5ba79e53b65be4f5b5f3c2811' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -212,9 +212,9 @@ describe('BASE pins', () => {
     // Groups after the per-feature split run in id order (fixtures.ts), so the text-weight group sits between text-latin and transforms.
     expect(ids.filter((id) => added.includes(id))).toEqual(added);
     const base = ids.filter((id) => !added.includes(id));
-    // BASE is inl1a-tags-v2 at 53602e0247 (#105 on master d3c79509a3), whose FIXTURES hold 694 layout cases.
-    expect(base.length).toBe(694);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('2d5f0241e41c9adef768773254cc9a6b54a689edb6b408e59f66598c4f1cb485');
+    // BASE is inl1a-tags-v2 at 186dba301c (#105 on master ef96e1c079), whose FIXTURES hold 746 layout cases.
+    expect(base.length).toBe(746);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('bd41131645b5653ce8b9776df6aed56ebf5e88eb8ca03e6f130ad72a3747eee6');
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
     const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];
