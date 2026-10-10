@@ -10,26 +10,48 @@ Those files are under the licences below, with the copyright lines from their he
 ## Chromium: BSD 3-Clause (the Chromium LICENSE file) (chromium-bsd)
 
 - `cc/layers/tile_size_calculator.cc`: Copyright 2019 The Chromium Authors
+- `cc/paint/paint_op_buffer_iterator.cc`: Copyright 2017 The Chromium Authors
 - `cc/trees/layer_tree_settings.cc`: Copyright 2011 The Chromium Authors
+- `third_party/blink/renderer/core/animation/animation_time_delta.h`: Copyright 2018 The Chromium Authors
+- `third_party/blink/renderer/core/animation/css/css_keyframe_effect_model.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/animation/interpolation_effect.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/animation/timing_calculations.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/animation/timing.cc`: Copyright 2014 The Chromium Authors
+- `third_party/blink/renderer/core/css/counter_style.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/css/counter_style.h`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/css/css_length_resolver.cc`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/css/css_math_function_value.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.cc`: Copyright 2017 The Chromium Authors
+- `third_party/blink/renderer/core/css/parser/css_parser_impl.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/css_parsing_utils.cc`: Copyright 2017 The Chromium Authors
+- `third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc`: Copyright 2019 The Chromium Authors
+- `third_party/blink/renderer/core/css/property_registration.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/css/ua_counter_style_map.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/html/list_item_ordinal.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/absolute_utils.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/block_layout_algorithm_utils.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/layout/block_layout_algorithm.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/block_node.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/box_fragment_builder.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/line_flexer.cc`: Copyright 2024 The Chromium Authors
+- `third_party/blink/renderer/core/layout/geometry/writing_mode_converter.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/layout/grid/grid_line_resolver.cc`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/fragment_item.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/list/layout_list_item.h`: Copyright 2017 The Chromium Authors
+- `third_party/blink/renderer/core/layout/list/list_marker.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/layout/scrollable_overflow_calculator.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/layout/scrollable_overflow_calculator.h`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/paint/background_image_geometry.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_border_painter.cc`: Copyright 2015 The Chromium Authors
+- `third_party/blink/renderer/core/paint/box_fragment_painter.cc`: Copyright 2017 The Chromium Authors
+- `third_party/blink/renderer/core/paint/box_painter_base.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/contoured_border_geometry.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/style/border_edge.cc`: Copyright 2014 The Chromium Authors
+- `third_party/blink/renderer/core/style/display_style.h`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/script_run_iterator.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/font_features.cc`: Copyright 2021 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/han_kerning.cc`: Copyright 2023 The Chromium Authors
@@ -40,10 +62,14 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/fonts/web_font_typeface_factory.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/calculation_expression_node.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/calculation_value.cc`: Copyright 2019 The Chromium Authors
+- `third_party/blink/renderer/platform/geometry/contoured_rect.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/physical_size.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/platform/text/character_property_data_generator.cc`: Copyright 2016 The Chromium Authors
 - `ui/gfx/animation/keyframe/timing_function.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/cubic_bezier.cc`: Copyright 2014 The Chromium Authors
+- `ui/gfx/geometry/quad_f.cc`: Copyright 2012 The Chromium Authors
+- `ui/gfx/geometry/sin_cos_degrees.h`: Copyright 2023 The Chromium Authors
+- `ui/gfx/geometry/transform.cc`: Copyright 2012 The Chromium Authors
 
 ```
 Copyright 2015 The Chromium Authors
@@ -77,10 +103,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Skia: BSD 3-Clause (the Skia LICENSE file) (skia-bsd)
 
+- `third_party/skia/include/core/SkPaint.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/base/SkTSort.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkAnalyticEdge.cpp`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkBlitRow_D32.cpp`: Copyright 2011 Google Inc.
 - `third_party/skia/src/core/SkBlurMask.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkBlurMaskFilterImpl.cpp`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkColorData.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkDraw.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkEdgeBuilder.cpp`: Copyright 2011 Google Inc.
 - `third_party/skia/src/core/SkFont.cpp`: Copyright 2014 Google Inc.
@@ -88,12 +117,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkGeometry.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkMaskBlurFilter.cpp`: Copyright 2017 Google Inc.
 - `third_party/skia/src/core/SkMaskFilterBase.cpp`: Copyright 2025 Google LLC
+- `third_party/skia/src/core/SkMatrix.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkPathRawShapes.cpp`: Copyright 2025 Google LLC.
 - `third_party/skia/src/core/SkRRect.cpp`: Copyright 2012 Google Inc.
 - `third_party/skia/src/core/SkScan_AAAPath.cpp`: Copyright 2016 The Android Open Source Project
 - `third_party/skia/src/core/SkScan_AntiPath.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkStrikeSpec.cpp`: Copyright 2019 The Android Open Source Project
 - `third_party/skia/src/core/SkStroke.cpp`: Copyright 2008 The Android Open Source Project
+- `third_party/skia/src/opts/SkBlitRow_opts.h`: Copyright 2015 Google Inc.
 - `third_party/skia/src/opts/SkRasterPipeline_opts.h`: Copyright 2018 Google Inc.
 - `third_party/skia/src/ports/SkScalerContext_mac_ct.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/shaders/gradients/SkGradientBaseShader.cpp`: Copyright 2022 Google LLC
@@ -135,10 +166,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 - `third_party/blink/renderer/core/animation/animation_effect.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/animation/animation.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
+- `third_party/blink/renderer/core/animation/css/css_animations.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
+- `third_party/blink/renderer/core/animation/keyframe_effect_model.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/css_math_expression_node.cc`: Copyright (C) 2011, 2012 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/css_to_length_conversion_data.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/font_face.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/html/forms/range_input_type.cc`: Copyright (C) 2010 Google Inc. All rights reserved.; Copyright (C) 2011 Apple Inc. All rights reserved.
+- `third_party/blink/renderer/core/style/grid_area.h`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/font_custom_platform_data.cc`: Copyright (C) 2007 Apple Computer, Inc.; Copyright (c) 2007, 2008, 2009, Google Inc. All rights reserved.; Copyright (C) 2010 Company 100, Inc.
 - `third_party/blink/renderer/platform/fonts/shaping/harfbuzz_face.cc`: Copyright (c) 2012 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/shaping/harfbuzz_shaper.cc`: Copyright (c) 2012 Google Inc. All rights reserved.; Copyright (C) 2013 BlackBerry Limited. All rights reserved.
@@ -186,6 +220,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/core/css/font_face_cache.h`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/font_family.cc`: Copyright (C) 2004, 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/platform/graphics/gradient.cc`: Copyright (C) 2006, 2007, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2007 Alp Toker <alp@atoker.com>; Copyright (C) 2013 Google Inc. All rights reserved.
+- `third_party/blink/renderer/platform/wtf/math_extras.h`: Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
 
 ```
 Redistribution and use in source and binary forms, with or without
@@ -360,6 +395,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/platform/fonts/font_selection_algorithm.cc`: Copyright (C) 2017 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/font_selection_types.cc`: Copyright (C) 2017 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/font_selection_types.h`: Copyright (C) 2017 Apple Inc. All rights reserved.
+- `third_party/blink/renderer/platform/graphics/gradient_generated_image.cc`: Copyright (C) 2008, 2009, 2010, 2012 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/platform/graphics/graphics_context.cc`: Copyright (C) 2003, 2004, 2005, 2006, 2009 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.
 
 ```
@@ -383,6 +419,91 @@ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+## Chromium files with a BSD licence in their own header (header-bsd-9)
+
+- `third_party/blink/renderer/core/paint/clip_rect.cc`: Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc. All rights reserved.
+
+```
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+## Kimmo Kinnunen, Apple and Intel: BSD 2-Clause (kinnunen-bsd-2)
+
+- `third_party/blink/renderer/core/css/media_query_evaluator.cc`: Copyright (C) 2006 Kimmo Kinnunen <kimmo.t.kinnunen@nokia.com>.; Copyright (C) 2013 Apple Inc. All rights reserved.; Copyright (C) 2013 Intel Corporation. All rights reserved.
+
+```
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+## Adobe Systems: BSD 2-Clause (adobe-bsd-2)
+
+- `third_party/blink/renderer/platform/geometry/float_rounded_rect.cc`: Copyright (C) 2013 Adobe Systems Incorporated. All rights reserved.
+
+```
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above
+   copyright notice, this list of conditions and the following
+   disclaimer.
+2. Redistributions in binary form must reproduce the above
+   copyright notice, this list of conditions and the following
+   disclaimer in the documentation and/or other materials
+   provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
 ## rapidhash: BSD 2-Clause (rapidhash-bsd-2)
