@@ -21,6 +21,8 @@ import { checkTranslucent } from './analysis/paint-values/effects.ts';
 import { checkStackingClips } from './analysis/paint-values/stacking.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
+import { checkGeneratedIdentity, generatedRuleRefusals } from './analysis/generated.ts';
+import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
@@ -985,6 +987,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // NA-NATIVE: a refusal of a listed property or rule blocks only web; native gets an info (css/not-applicable.ts).
     diagnostics.splice(0, diagnostics.length, ...splitNotApplicable(diagnostics, targets));
     diagnostics.push(...interactionRefusals(rules));
+    diagnostics.push(...generatedRuleRefusals(rules));
     const nativeRefusals = nativeInteractionRefusals(rules, NATIVE_TARGETS.filter((t) => targets.includes(t)));
     if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
     else diagnostics.push(...nativeRefusals);
@@ -1004,6 +1007,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (options.profiles === 'enforce') gateMediaFeatures(conditions, targets, profiles, diagnostics);
     }
     for (const c of valid.components.values()) checkTemplates(c.root, diagnostics);
+    checkStaticEmptyHosts(rules, [...valid.components.values()].map((c) => c.root), options.faults, diagnostics);
     // MQ-a, MQ-R1: every band is checked for every target, since native switches bands at run time as web does; a rule-level check
     // reports a rule for the targets of the bands it applies in, so a rule in no band blocks nothing.
     const bandList = bands === null ? [null] : bands.partition.bands;
@@ -1030,6 +1034,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       });
       bandCases = passes.map((p) => p.result);
       diagnostics.push(...mergePasses(passes.map((p) => p.diagnostics)));
+      // GEN-a R12: a generated box and its text are the same in every reachable state, interaction state and band.
+      checkGeneratedIdentity(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), diagnostics);
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
       // REPL-a: the images every band's resolved cases reference, read once.
       const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));

@@ -5,6 +5,7 @@ import { LONGHANDS, PROPERTY_ROLE } from '../css/properties.ts';
 import type { Declaration } from '../css/stylesheet.ts';
 import { featureOf } from '../css/stylesheet.ts';
 import type { FamilyKeyContext } from '../css/values.ts';
+import { GENERATED_TAGS } from './elements.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 
 /** The direction facet (docs/api.md §10.1): a left-to-right proof never covers right-to-left. */
@@ -58,7 +59,23 @@ export type ItemBase = 'root' | 'block' | 'flex-row' | 'flex-column' | 'grid' | 
  * direction (its containing block); an absolute box the context and direction of its parent (which gives its static position)
  * and the direction of its containing block. Paint properties carry only the element's direction.
  */
+/**
+ * GEN-a (notes/T151-gen-spec.md R2, R8): the context of content on a ::before or ::after box, which decides how the box it
+ * generates is laid out: an inline box in its host's inline formatting context (empty or holding text, proven apart: an empty
+ * inline box in rtl is placed as Chrome does only where a fixture shows it), a block, a flex or grid item, or an absolutely
+ * positioned box; the facets are the host's direction and, for a flex item, its main axis.
+ */
+export type PseudoContext =
+  | `pseudo-inline-in-${'block' | 'inline'}/${DirectionFacet}`
+  | `pseudo-empty-inline-in-${'block' | 'inline'}/${DirectionFacet}`
+  | `pseudo-block/${DirectionFacet}`
+  | `pseudo-flex-item/${AxisFacet}/${DirectionFacet}`
+  | `pseudo-grid-item/${DirectionFacet}`
+  | `pseudo-abspos-in-${'block' | 'flex' | 'grid'}/${DirectionFacet}`
+  | `pseudo-in-display-none/${DirectionFacet}`;
+
 export type FormattingContext =
+  | PseudoContext
   | `${BoxContext}/${DirectionFacet}`
   | `relative-in-${ItemBase}/${DirectionFacet}`
   | `absolute-in-${ItemBase}/${DirectionFacet}/cb-${DirectionFacet}`
@@ -102,6 +119,23 @@ export function formattingContext(property: Longhand, el: ResolvedElement, ances
   if (position === 'relative') return `relative-in-${base}/${dir}`;
   if (position === 'absolute') return `absolute-in-${base}/${dir}/cb-${containingBlockDirection(el, ancestors)}`;
   return `${base}/${dir}`;
+}
+
+/** GEN-a: the context of content on a generated box el, whose host is the last of ancestors (PseudoContext). */
+export function pseudoContext(el: ResolvedElement, ancestors: readonly ResolvedElement[]): PseudoContext {
+  const host = ancestors[ancestors.length - 1];
+  if (host === undefined) throw new Error(`${el.element.address}: a generated box has no host`);
+  const dir = directionFacet(host);
+  if (ancestors.some((a) => keyword(a, 'display') === 'none')) return `pseudo-in-display-none/${dir}`;
+  const hostDisplay = keyword(host, 'display');
+  const container = hostDisplay === 'flex' ? 'flex' : hostDisplay === 'grid' ? 'grid' : 'block';
+  if (keyword(el, 'position') === 'absolute') return `pseudo-abspos-in-${container}/${dir}`;
+  if (hostDisplay === 'flex') return `pseudo-flex-item/${axisFacet(host)}/${dir}`;
+  if (hostDisplay === 'grid') return `pseudo-grid-item/${dir}`;
+  if (keyword(el, 'display') !== 'inline') return `pseudo-block/${dir}`;
+  const empty = !el.children.some((c) => c.kind === 'text');
+  const where = hostDisplay === 'inline' ? 'inline' : 'block';
+  return empty ? `pseudo-empty-inline-in-${where}/${dir}` : `pseudo-inline-in-${where}/${dir}`;
 }
 
 /** CSS2 §10.1: the nearest positioned ancestor, or the initial containing block, whose direction is the root's. */
@@ -160,7 +194,7 @@ export function usedKeys(root: ResolvedElement, fonts?: FamilyKeyContext): UsedK
       const v = el.props.get(p) as ResolvedValue;
       if (v.declaration === null || v.declared === null) continue;
       const feature = featureOf(p, v.declared);
-      const context = formattingContext(p, el, chain);
+      const context = p === 'content' && GENERATED_TAGS.has(el.element.tag) ? pseudoContext(el, chain) : formattingContext(p, el, chain);
       out.push({ key: rowKey(feature, context), feature, context, property: p, declaration: v.declaration, address: el.element.address });
     }
     for (const c of el.children) {

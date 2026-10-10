@@ -7,7 +7,10 @@ import { ENV_VALUE_TYPE } from '../css/values.ts';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
+import type { GeneratedPseudo } from '../css/selectors.ts';
+import { GENERATED_PSEUDOS } from '../css/selectors.ts';
 import type { CompilerFaults } from '../faults.ts';
+import { STRING_VALUE_TYPE } from '../css/properties/lists.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
@@ -15,7 +18,8 @@ import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { blockifyRoot, computeGridLengths, computeJustifyItems, computeLengths, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
-import { presentationalHints } from './elements/replaced.ts';
+import { generatedElement, generatedText, generatedTextNode, hostRefusal } from './generated.ts';
+import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
@@ -147,14 +151,21 @@ const displayOf = (el: ResolvedElement): string => {
 // the hovered and focused elements the selectors match against (SELD-R2a); none by default.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
 export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState = NO_INTERACTION): ResolvedElement {
+  // GEN-a: the generated pseudo-elements some rule selects; only these are cascaded on each element.
+  const selected = new Set(rules.flatMap((r) => r.selectors.flatMap((sel) => (sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' ? [sel.pseudoElement.name] : []))));
+  // A generated box cascades only the rules with a selector for its pseudo-element (cascade.ts matches no other selector on it).
+  const rulesOf = new Map(GENERATED_PSEUDOS.map((p) => [p, rules.filter((r) => r.selectors.some((sel) => sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' && sel.pseudoElement.name === p))] as const));
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
   const customsOf = new WeakMap<ResolvedElement, CustomProperties>();
   // The children of each inline box, waiting for its block container's inline formatting context to collapse their text.
   const pendingInline = new Map<ResolvedElement, readonly (ResolvedElement | LinkedText)[]>();
-  const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
-    const here = [...chain, el];
-    const { winners, matched, scope } = cascadeElement(rules, here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered);
+  // GEN-a (R2): pseudo is set for a host's ::before or ::after box, el is its element (generated.ts generatedElement) and chain
+  // ends with the host; the box cascades its pseudo-element's rules on the host's chain and inherits from parent, the host.
+  const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null, pseudo: GeneratedPseudo | null = null): ResolvedElement => {
+    const here = pseudo === null ? [...chain, el] : chain;
+    const cascadePseudo = pseudo === null ? null : { name: pseudo, direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
+    const { winners, matched, scope } = cascadeElement(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo);
     const props = new Map<Longhand, ResolvedValue>();
     const tag = uaTagOf(el.tag);
     const none = { declaration: null, declared: null, losing: [] } as const;
@@ -241,16 +252,43 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);
     computeGridLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
     computeJustifyItems(props, parent === null ? null : parent.props);
-    computeLists(props, faults);
+    if (pseudo === null) computeLists(props, faults);
+    else computePseudoContent(props, faults);
+    // R3: a generated box's one text child (none for an empty string); the element is built once its content is computed.
+    const content = pseudo === null ? null : generatedText(props.get('content') as ResolvedValue, (props.get('display') as ResolvedValue).value, faults);
+    const host = pseudo === null ? null : (chain[chain.length - 1] as LinkedElement);
+    const own = pseudo === null || host === null || content === null || content === '' ? el : generatedElement(host, pseudo, [generatedTextNode(host, pseudo, content, props.get('content') as ResolvedValue)]);
     const self: { kind: 'element'; element: LinkedElement; props: Map<Longhand, ResolvedValue>; children: (ResolvedElement | ResolvedText)[] } = {
       kind: 'element',
-      element: el,
+      element: own,
       props,
       children: [],
     };
     if (resolvedRoot === null) resolvedRoot = self;
     customsOf.set(self, scope.customs);
-    const kids: (ResolvedElement | LinkedText)[] = el.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
+    const kids: (ResolvedElement | LinkedText)[] = own.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
+    if (pseudo === null) {
+      // GEN-a (R2-R4): the host's ::before box is its first child and its ::after box its last. A box on a host R4 refuses is not
+      // built; it is recorded for the computed-value checks (refusedGenerationOf).
+      const boxParent = faults.pseudoInheritsFromHostParent && parent !== null ? parent : self;
+      // Planted fault pseudoOnReplacedGenerated: a replaced host generates its boxes.
+      const refusal = faults.pseudoOnReplacedGenerated && isReplacedTag(el.tag) ? null : hostRefusal(el.tag, parent === null);
+      for (const p of GENERATED_PSEUDOS) {
+        // No rule selects the pseudo-element: its content computes to none from normal, so it generates no box.
+        if (!selected.has(p) && !faults.pseudoContentNormalGenerates) continue;
+        const box = visit(generatedElement(el, p, []), here, boxParent, p);
+        const text = generatedText(box.props.get('content') as ResolvedValue, (box.props.get('display') as ResolvedValue).value, faults);
+        if (text === null) continue;
+        if (refusal !== null) {
+          refused.set(self, [...(refused.get(self) ?? []), { pseudo: p, content: box.props.get('content') as ResolvedValue, reason: refusal }]);
+          continue;
+        }
+        generated.set(box, { pseudo: p, host: self });
+        // Planted fault pseudoAfterFirst: the ::after box goes first too.
+        if (p === 'before' || faults.pseudoAfterFirst) kids.unshift(box);
+        else kids.push(box);
+      }
+    }
     // CSS2 §9.2.2: an inline box's content belongs to its block container's inline formatting context, which collapses it.
     if (parent !== null && isInlineBox(self)) {
       pendingInline.set(self, kids);
@@ -273,7 +311,11 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         else if (displayOf(kid) === 'none') continue;
         else if (isInlineBox(kid)) {
           if (kid.element.tag === 'br') run.push(null);
+          // Planted fault generatedTextCollapsedAlone: a generated box's text collapses as an inline formatting context of its own.
+          const alone = faults.generatedTextCollapsedAlone && generated.has(kid);
+          if (alone) flush();
           gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[]);
+          if (alone) flush();
         } else flush();
       }
     };
@@ -301,6 +343,33 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
 }
 
 const resolvedEnvironments = new WeakMap<ResolvedElement, ResolveEnvironment>();
+
+/** GEN-a: a generated box's pseudo-element and its host (R2). */
+export type GeneratedInfo = { readonly pseudo: GeneratedPseudo; readonly host: ResolvedElement };
+/** GEN-a: a box R4 refuses on its host, with its computed content and why. */
+export type RefusedGeneration = { readonly pseudo: GeneratedPseudo; readonly content: ResolvedValue; readonly reason: string };
+const generated = new WeakMap<ResolvedElement, GeneratedInfo>();
+const refused = new WeakMap<ResolvedElement, readonly RefusedGeneration[]>();
+
+/** The pseudo-element and host of a ::before or ::after box resolveTree built, or undefined for every other element. */
+export function generatedPseudoOf(el: ResolvedElement): GeneratedInfo | undefined {
+  return generated.get(el);
+}
+
+/** The ::before and ::after boxes a host would generate but R4 refuses on it (none for most hosts). */
+export function refusedGenerationOf(host: ResolvedElement): readonly RefusedGeneration[] {
+  return refused.get(host) ?? [];
+}
+
+/** css-content-3 §2: content: normal computes to none on ::before and ::after (an element's none computes to normal instead). */
+function computePseudoContent(props: Map<Longhand, ResolvedValue>, faults: CompilerFaults): void {
+  const content = props.get('content') as ResolvedValue;
+  // Planted fault pseudoContentNormalGenerates: normal computes to the empty string, which generates an empty box.
+  const normal: CssValue = faults.pseudoContentNormalGenerates ? { kind: 'other', type: STRING_VALUE_TYPE, text: '""' } : { kind: 'keyword', value: 'none' };
+  if (content.value.kind === 'keyword' && content.value.value === 'normal') props.set('content', { ...content, value: normal });
+}
+
+const keywordDirection = (v: ResolvedValue): Direction => (v.value.kind === 'keyword' && v.value.value === 'rtl' ? 'rtl' : 'ltr');
 
 /** The environment a root returned by resolveTree was resolved in; the computed-value checks read its UA dataset. */
 export function environmentOf(root: ResolvedElement): ResolveEnvironment {

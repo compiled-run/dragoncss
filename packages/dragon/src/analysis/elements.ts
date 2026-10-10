@@ -19,8 +19,15 @@ export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
  */
 export const UNSTYLED_TAGS: ReadonlySet<string> = new Set(['span', 'a', 'label', 'br']);
 
+/**
+ * The tags of the elements resolve.ts builds for ::before and ::after boxes (GEN-a, notes/T151-gen-spec.md R2). html.css has no
+ * ::before or ::after rule outside q (unsupported), so they take dragon-unstyled's defaults, as span does.
+ */
+export const GENERATED_TAGS: ReadonlySet<string> = new Set(['::before', '::after']);
+
 /** The UA dataset row an element's tag reads. */
 export function uaTagOf(tag: string): UaKey {
   if (Object.hasOwn(REPLACED_UA_KEYS, tag)) return REPLACED_UA_KEYS[tag] as UaKey;
+  if (GENERATED_TAGS.has(tag)) return 'dragon-unstyled';
   return (UNSTYLED_TAGS.has(tag) ? 'dragon-unstyled' : tag) as CapturedTag;
 }
