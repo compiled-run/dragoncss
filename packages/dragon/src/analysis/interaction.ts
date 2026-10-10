@@ -473,6 +473,21 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['transform-origin', all],
 ]);
 
+/**
+ * R13: the first grid container of a resolved tree whose display compiles, in preorder, or null. rt-hit.ts refuses grid containers
+ * (Blink paints grid items atomically in order-modified document order, which the hit table does not model yet).
+ */
+export function hitUnmodelledGrid(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): string | null {
+  const d = root.props.get('display');
+  if (d !== undefined && d.value.kind === 'keyword' && (d.value.value === 'grid' || d.value.value === 'inline-grid') && compiles(d)) return root.element.address;
+  for (const c of root.children) {
+    if (c.kind !== 'element') continue;
+    const found = hitUnmodelledGrid(c, compiles);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
 /** R13: the first paint fact of a resolved tree the hit test does not model and that compiles, in preorder and longhand order, or null. */
 export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles: (v: ResolvedValue) => boolean = () => true): { readonly property: Longhand; readonly address: string } | null {
   const initial = new Map<Longhand, string>();

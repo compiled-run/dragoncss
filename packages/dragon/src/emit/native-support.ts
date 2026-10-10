@@ -676,7 +676,7 @@ public final class DragonTree {
       guard let pId = zParent[id], let p = zBoxes[pId], let e = edges[id] else { fatalError("dragon: text \(id) has no container") }
       // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
       // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
-      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
       let ifc = try inline_buildIfc(ctx, p)
       let leaves = ifc.leaves.items
       guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("dragon: no leaf \(id)") }
@@ -731,7 +731,7 @@ public final class DragonTree {
     }
     for (bId, idx) in fragments {
       guard let pId = zParent[bId], let p = zBoxes[pId], let be = edges[bId] else { fatalError("dragon: inline box \(bId) has no container") }
-      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
       let ifc = try inline_buildIfc(ctx, p)
       guard let b = ifc.boxes.items.firstIndex(where: { $0.id.description == bId }) else { fatalError("dragon: no inline box \(bId) in \(pId)") }
       var offsets: [Double] = []
@@ -1295,6 +1295,7 @@ import dev.dragon.layout.LineBreak
 import dev.dragon.layout.U_InlineBox_LineBreak_TextLeaf
 import dev.dragon.layout.inline_buildIfc
 import dev.dragon.layout.inline_placeIfcLines
+import dev.dragon.layout.grid_NO_GRID_FAULTS
 import dev.dragon.layout.layout_absoluteRects
 import dev.dragon.layout.layout_layout
 import dev.dragon.layout.layout_zoomInput
@@ -1502,7 +1503,7 @@ class DragonTree(val context: Context) {
       val e = edges[id] ?: throw IllegalStateException("dragon: text " + id + " is not placed")
       // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
       // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
-      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
       val ifc = inline_buildIfc(ctx, p)
       val leaves = ifc.leaves
       val li = leaves.indexOfFirst { it.id == id }
@@ -1567,7 +1568,7 @@ class DragonTree(val context: Context) {
       val pId = zParent[bId] ?: throw IllegalStateException("dragon: inline box " + bId + " has no container")
       val p = zBoxes[pId] ?: throw IllegalStateException("dragon: no container " + pId)
       val be = edges[bId] ?: throw IllegalStateException("dragon: inline box " + bId + " is not placed")
-      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS)
+      val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
       val ifc = inline_buildIfc(ctx, p)
       val b = ifc.boxes.indexOfFirst { it.id == bId }
       if (b < 0) throw IllegalStateException("dragon: no inline box " + bId + " in " + pId)

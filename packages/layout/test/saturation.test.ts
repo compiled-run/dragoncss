@@ -2,7 +2,7 @@
 // (fixture values-length-saturation, captured at DPR 1, 2, 3 and 2.625 in both directions; probe matrix in the T129 receipt).
 import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, layout, NO_ENGINE_FAULTS, resolveEnvironment } from '../src/index.ts';
-import type { LayoutBox, LayoutRect, LayoutStyle, ReplacedLeaf } from '../src/index.ts';
+import type { GridContainerStyle, LayoutBox, LayoutRect, LayoutStyle, ReplacedLeaf, TrackSize } from '../src/index.ts';
 import { box, divStyle, neutralEnvironment, px, text } from './helpers.ts';
 
 const INT_MAX = 2147483647;
@@ -101,6 +101,22 @@ describe('px lengths are clamped to the CSS length range after zoom (ClampToCSSL
       const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: dpr, ...neutralEnvironment({ width: 400, height: 300 }), root: box('html', {}, [img(1e9, -1e9) as unknown as LayoutBox]) };
       const leaf = resolveEnvironment(input, NO_ENGINE_FAULTS, ahemMeasurer).root.children[0] as ReplacedLeaf;
       expect([leaf.objectPositionX, leaf.objectPositionY]).toEqual([px(33554429), px(-33554430)]);
+    }
+  });
+
+  it('grid track px sizes and fit-content() px limits clamp the same way, at DPR 1 and zoomed (review of #197)', () => {
+    const big: TrackSize = { kind: 'breadth', breadth: px(1e9) };
+    const g: GridContainerStyle = {
+      templateColumns: [{ count: 1, sizes: [big, { kind: 'minmax', min: px(0), max: px(1e9) }] }], templateRows: [{ count: 1, sizes: [{ kind: 'fit-content', limit: px(1e9) }] }],
+      autoColumns: [big], autoRows: [{ kind: 'breadth', breadth: { kind: 'auto' } }], explicitColumnCount: 2, explicitRowCount: 1, autoFlow: 'row', dense: false, justifyItems: 'normal',
+    };
+    for (const dpr of [1, 2]) {
+      const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: dpr, ...neutralEnvironment({ width: 400, height: 300 }), root: box('html', {}, [box('g', { display: 'grid', grid: g })]) };
+      const got = (resolveEnvironment(input, NO_ENGINE_FAULTS, ahemMeasurer).root.children[0] as LayoutBox).style.grid as GridContainerStyle;
+      const max: TrackSize = { kind: 'breadth', breadth: px(33554429) };
+      expect(got.templateColumns[0]?.sizes).toEqual([max, { kind: 'minmax', min: px(0), max: px(33554429) }]);
+      expect(got.templateRows[0]?.sizes).toEqual([{ kind: 'fit-content', limit: px(33554429) }]);
+      expect(got.autoColumns).toEqual([max]);
     }
   });
 });

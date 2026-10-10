@@ -76,7 +76,7 @@ public final class Point {
 }
 
 // ts: packages/layout/src/box.ts:40
-public final class HeightBasis_indefinite: U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, U_HeightBasis_flexDependent_HeightBasis_indefinite {
+public final class HeightBasis_indefinite: U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, U_HeightBasis_definite_HeightBasis_indefinite, U_HeightBasis_flexDependent_HeightBasis_indefinite {
   public let kind: JsString
   public init(_ kind: JsString) {
     self.kind = kind
@@ -84,7 +84,7 @@ public final class HeightBasis_indefinite: U_HeightBasis_definite_HeightBasis_fl
 }
 
 // ts: packages/layout/src/box.ts:41
-public final class HeightBasis_definite: U_HeightBasis_definite_HeightBasis_flexDependent, U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite {
+public final class HeightBasis_definite: U_HeightBasis_definite_HeightBasis_flexDependent, U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, U_HeightBasis_definite_HeightBasis_indefinite {
   public let kind: JsString
   public let value: Double
   public init(_ kind: JsString, _ value: Double) {
@@ -190,7 +190,7 @@ public func box_resolvePaddingWith(_ style: LayoutStyle, _ cbInline: Double, _ f
 public func box_borderWidthPx(_ v: any U_DevicePx_LengthCalc_Px) throws -> Double {
   // ts: packages/layout/src/box.ts:103
   if (v.kind == S.s_calc) {
-    throw JsError(message: S.s353)
+    throw JsError(message: S.s359)
   }
   return (v as! any U_DevicePx_Px).value
 }
@@ -198,6 +198,11 @@ public func box_borderWidthPx(_ v: any U_DevicePx_LengthCalc_Px) throws -> Doubl
 // ts: packages/layout/src/box.ts:108
 public func box_resolveBorder(_ style: LayoutStyle, _ devicePixelRatio: Double) throws -> Edges {
   return try Edges(units_snapBorderWidth(box_borderWidthPx(style.borderTopWidth), devicePixelRatio), units_snapBorderWidth(box_borderWidthPx(style.borderRightWidth), devicePixelRatio), units_snapBorderWidth(box_borderWidthPx(style.borderBottomWidth), devicePixelRatio), units_snapBorderWidth(box_borderWidthPx(style.borderLeftWidth), devicePixelRatio))
+}
+
+// ts: packages/layout/src/box.ts:120
+public func box_resolveMargin(_ v: any U_Auto_LengthCalc_Percent_Px, _ cbInline: Double) throws -> MarginResolved {
+  return try box_resolveMarginWith(v, cbInline, block_NO_ENGINE_FAULTS)
 }
 
 // ts: packages/layout/src/box.ts:125
@@ -221,6 +226,11 @@ public func box_borderBoxFromSpecified(_ value: Double, _ borderPadding: Double,
     return try units_add(units_clampNegativeToZero(value), borderPadding)
   }
   return try units_max(value, borderPadding)
+}
+
+// ts: packages/layout/src/box.ts:141
+public func box_resolveInlineLength(_ v: any U_Auto_LengthCalc_Percent_Px, _ basis: Double) throws -> Double? {
+  return try box_resolveInlineLengthWith(v, basis, block_NO_ENGINE_FAULTS)
 }
 
 // ts: packages/layout/src/box.ts:146
@@ -247,6 +257,11 @@ public func box_constrain(_ value: Double, _ mm: MinMax) throws -> Double {
   return try units_max(mm.min, capped)
 }
 
+// ts: packages/layout/src/box.ts:170
+public func box_inlineMinMax(_ style: LayoutStyle, _ cbInline: Double, _ borderPadding: Double) throws -> MinMax {
+  return try box_inlineMinMaxWith(style, cbInline, borderPadding, block_NO_ENGINE_FAULTS)
+}
+
 // ts: packages/layout/src/box.ts:175
 public func box_inlineMinMaxWith(_ style: LayoutStyle, _ cbInline: Double, _ borderPadding: Double, _ faults: EngineFaults) throws -> MinMax {
   let lo: Double? = try box_resolveInlineLengthWith(style.minWidth, cbInline, faults)
@@ -262,7 +277,7 @@ public func box_percentBlockBasis(_ box: LayoutBox, _ basis: any U_HeightBasis_d
   }
   // ts: packages/layout/src/box.ts:190
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s430, jsConcat(prop, S.s59))
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s442, jsConcat(prop, S.s65))
   }
   return nil
 }
@@ -286,6 +301,11 @@ public func box_specifiedBlockSizeWith(_ box: LayoutBox, _ basis: any U_HeightBa
 // ts: packages/layout/src/box.ts:218
 public func box_resolveMinLength(_ v: any U_LengthCalc_Percent_Px, _ basis: Double?, _ faults: EngineFaults) throws -> Double {
   return try box_resolveLength(v, ((basis == nil) ? units_ZERO : jsUnwrap(basis)), faults)
+}
+
+// ts: packages/layout/src/box.ts:223
+public func box_blockMinMax(_ box: LayoutBox, _ basis: any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, _ borderPadding: Double) throws -> MinMax {
+  return try box_blockMinMaxWith(box, basis, borderPadding, block_NO_ENGINE_FAULTS)
 }
 
 // ts: packages/layout/src/box.ts:228
