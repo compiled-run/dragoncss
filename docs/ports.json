@@ -2780,9 +2780,23 @@
       "cited": [
         "stdint.h"
       ],
-      "source": "the C standard library header, included by Dragon's C header",
+      "source": "the C standard library header, included by Dragon's C header and the libm probe",
       "files": [
-        "packages/text-shaper/include/dragon_hb.h"
+        "packages/text-shaper/include/dragon_hb.h",
+        "scripts/capture-libm.ts"
+      ]
+    },
+    {
+      "cited": [
+        "math.h",
+        "stdio.h",
+        "string.h",
+        "mach-o/dyld.h",
+        "mach-o/loader.h"
+      ],
+      "source": "the C standard library and macOS dyld headers, included by the libm probe scripts/capture-libm.ts compiles on the capture host",
+      "files": [
+        "scripts/capture-libm.ts"
       ]
     }
   ],
