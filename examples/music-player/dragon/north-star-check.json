@@ -138,15 +138,15 @@
   }
  },
  "summary": {
-  "diagnostics": 255,
-  "errors": 250,
+  "diagnostics": 253,
+  "errors": 248,
   "byCode": {
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 2,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 2,
-   "DRAGON_UNPROVEN_CONTEXT [web]": 4,
+   "DRAGON_UNPROVEN_CONTEXT [web]": 2,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
    "DRAGON_UNSUPPORTED_FONT [android]": 34,
@@ -163,7 +163,7 @@
   "perTarget": {
    "web": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 4,
+     "DRAGON_UNPROVEN_CONTEXT": 2,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 18,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
      "DRAGON_UNSUPPORTED_PROPERTY": 22,
@@ -216,7 +216,7 @@
   "notApplicableAndroid": 2,
   "applicableDeclarations": 289,
   "supportedBothTargets": 238,
-  "supportedWeb": 254,
+  "supportedWeb": 255,
   "supportedIos": 238,
   "supportedAndroid": 238,
   "supportPercent": 82.4,
@@ -304,7 +304,7 @@
   "rawDiagnosticsPerPass": {
    "A-authored": 103,
    "B-unwrapped": 103,
-   "C-context": 167
+   "C-context": 165
   }
  },
  "features": {
@@ -684,11 +684,10 @@
    "atRule": null,
    "property": "font-family",
    "value": "'Lato', sans-serif",
-   "web": "blocked",
+   "web": "supported",
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNPROVEN_CONTEXT",
     "DRAGON_UNSUPPORTED_VALUE"
    ]
   },
@@ -6032,44 +6031,6 @@
    "passes": [
     "A-authored",
     "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@594-612|font-family:<pinned> on page/nav-call/nav-title:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/row/ltr: Ahem",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 594,
-    "end": 612,
-    "line": 32,
-    "column": 15,
-    "text": "'Lato', sans-serif"
-   },
-   "message": "font-family:<pinned> on page/nav-call/nav-title:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/row/ltr: Ahem",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@594-612|font-family:<pinned> on page/song-call/song-title:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/column/ltr: Ahem",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 594,
-    "end": 612,
-    "line": 32,
-    "column": 15,
-    "text": "'Lato', sans-serif"
-   },
-   "message": "font-family:<pinned> on page/song-call/song-title:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/column/ltr: Ahem",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
    ]
   },
   {

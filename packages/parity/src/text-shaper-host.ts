@@ -3,7 +3,7 @@
 // font manifest names a face.
 // packages/text-shaper is loaded by path at run time, as packages/layout/test/shaping-gate.test.ts loads it (no package.json change).
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import type { EngineFaults, FontData, GlyphShaper, HanKerningFontData, ShapedFace, TextMeasurer } from '@dragon/layout';
 import { AHEM_FACE_ID, AHEM_SHA256, FEATURE_STRIDE, HK_CLOSE, HK_MIDDLE, HK_OPEN, HK_OTHER, NO_ENGINE_FAULTS, NO_HAN_KERNING, shapedMeasurerFor } from '@dragon/layout';
 import { repoPath } from './paths.ts';
@@ -192,12 +192,30 @@ export function ahemFaceId(): string {
   return registerFace(bytes);
 }
 
+/** Every vendored font file (vendor/fonts/<family>/<file>.ttf), the faces a fixture or the north star can bundle. */
+function vendoredFaceFiles(): string[] {
+  const root = repoPath('vendor/fonts');
+  const out: string[] = [];
+  for (const dir of readdirSync(root, { withFileTypes: true })) {
+    if (!dir.isDirectory()) continue;
+    for (const f of readdirSync(`${root}/${dir.name}`)) if (f.endsWith('.ttf')) out.push(`${root}/${dir.name}/${f}`);
+  }
+  return out.sort();
+}
+
+let vendoredIds: string[] | null = null;
+const vendoredFaceIds = (): string[] => {
+  if (vendoredIds === null) vendoredIds = vendoredFaceFiles().map((f) => registerFace(new Uint8Array(readFileSync(f))));
+  return vendoredIds;
+};
+
 /**
- * The reference measurer through HarfBuzz (shapedMeasurerFor): Ahem plus the given face bytes, at the reference platform and
- * language, with the engine's shaping plants. A fresh measurer per call: its shaped items are cached per layout.
+ * The reference measurer through HarfBuzz (shapedMeasurerFor): Ahem, every vendored face and the given face bytes, at the
+ * reference platform and language, with the engine's shaping plants. A fresh measurer per call: its shaped items are cached per
+ * layout. An input naming any other face is refused by the measurer (no bundled face).
  */
 export function referenceShapedMeasurer(faults: EngineFaults = NO_ENGINE_FAULTS, faces: readonly Uint8Array[] = []): TextMeasurer {
-  const ids = [ahemFaceId(), ...faces.map(registerFace)];
+  const ids = [ahemFaceId(), ...vendoredFaceIds(), ...faces.map(registerFace)];
   const map = new Map(ids.map((id) => [id, shapedFaceOf(id, REFERENCE_LANGUAGE)] as const));
   const m = shapedMeasurerFor(REFERENCE_PLATFORM, map, hostShaper, REFERENCE_LANGUAGE, faults);
   if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
