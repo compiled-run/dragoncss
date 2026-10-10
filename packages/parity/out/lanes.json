@@ -113,6 +113,11 @@
               "cases": 26
             },
             {
+              "corpus": "p1",
+              "suite": "interaction",
+              "cases": 21
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 2001
@@ -158,8 +163,8 @@
               "cases": 3000
             }
           ],
-          "caseListSha256": "5319484bd6fb8df63bd2108af4065f56bde81065ddf9743d8a774666405ae334",
-          "totalCases": 626849,
+          "caseListSha256": "9719c6fcdcb0a8a5b1f2f2ad0f12f4f6f0e52342d72cbb1b411ddc38f3ddea7d",
+          "totalCases": 626870,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
             "suites": [
@@ -211,6 +216,13 @@
                 "declared": 26,
                 "total": 26,
                 "pass": 26
+              },
+              {
+                "corpus": "p1",
+                "suite": "interaction",
+                "declared": 21,
+                "total": 21,
+                "pass": 21
               },
               {
                 "corpus": "extended",
@@ -291,7 +303,7 @@
               }
             ],
             "digests": {
-              "p1": "97e96ccc4a1ea7fc2aa3be67abee234db4de6833e3e48e893b265622cf1bb773",
+              "p1": "ddf5556b47a49c10dfb4e060007a497ae7eb7ffd662df8a781b7e9595b7d28f8",
               "extended": "b9ef38f9026d552441b1f03e6d1fbc5dcddf6c23da4f0d2d5ec87efd2d7a4c21"
             }
           },
@@ -361,6 +373,11 @@
               "cases": 26
             },
             {
+              "corpus": "p1",
+              "suite": "interaction",
+              "cases": 21
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 2001
@@ -406,8 +423,8 @@
               "cases": 3000
             }
           ],
-          "caseListSha256": "5319484bd6fb8df63bd2108af4065f56bde81065ddf9743d8a774666405ae334",
-          "totalCases": 626849,
+          "caseListSha256": "9719c6fcdcb0a8a5b1f2f2ad0f12f4f6f0e52342d72cbb1b411ddc38f3ddea7d",
+          "totalCases": 626870,
           "run": null,
           "device": null,
           "evidence": null
@@ -598,57 +615,57 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 171,
-              "caught": 171,
+              "applicable": 179,
+              "caught": 179,
               "uncaught": []
             },
             {
               "fault": "break-shifted",
               "check": "breaks",
-              "applicable": 123,
-              "caught": 123,
+              "applicable": 131,
+              "caught": 131,
               "uncaught": []
             }
           ]
@@ -659,57 +676,57 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 157,
-              "caught": 157,
+              "applicable": 165,
+              "caught": 165,
               "uncaught": []
             },
             {
               "fault": "break-shifted",
               "check": "breaks",
-              "applicable": 123,
-              "caught": 123,
+              "applicable": 131,
+              "caught": 131,
               "uncaught": []
             }
           ]
@@ -788,6 +805,11 @@
               "cases": 26
             },
             {
+              "corpus": "p1",
+              "suite": "interaction",
+              "cases": 21
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 2001
@@ -833,8 +855,8 @@
               "cases": 3000
             }
           ],
-          "caseListSha256": "5319484bd6fb8df63bd2108af4065f56bde81065ddf9743d8a774666405ae334",
-          "totalCases": 626849,
+          "caseListSha256": "9719c6fcdcb0a8a5b1f2f2ad0f12f4f6f0e52342d72cbb1b411ddc38f3ddea7d",
+          "totalCases": 626870,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
             "suites": [
@@ -886,6 +908,13 @@
                 "declared": 26,
                 "total": 26,
                 "pass": 26
+              },
+              {
+                "corpus": "p1",
+                "suite": "interaction",
+                "declared": 21,
+                "total": 21,
+                "pass": 21
               },
               {
                 "corpus": "extended",
@@ -966,7 +995,7 @@
               }
             ],
             "digests": {
-              "p1": "97e96ccc4a1ea7fc2aa3be67abee234db4de6833e3e48e893b265622cf1bb773",
+              "p1": "ddf5556b47a49c10dfb4e060007a497ae7eb7ffd662df8a781b7e9595b7d28f8",
               "extended": "b9ef38f9026d552441b1f03e6d1fbc5dcddf6c23da4f0d2d5ec87efd2d7a4c21"
             }
           },
@@ -1036,6 +1065,11 @@
               "cases": 26
             },
             {
+              "corpus": "p1",
+              "suite": "interaction",
+              "cases": 21
+            },
+            {
               "corpus": "extended",
               "suite": "engine-dpr",
               "cases": 2001
@@ -1081,8 +1115,8 @@
               "cases": 3000
             }
           ],
-          "caseListSha256": "5319484bd6fb8df63bd2108af4065f56bde81065ddf9743d8a774666405ae334",
-          "totalCases": 626849,
+          "caseListSha256": "9719c6fcdcb0a8a5b1f2f2ad0f12f4f6f0e52342d72cbb1b411ddc38f3ddea7d",
+          "totalCases": 626870,
           "run": null,
           "device": null,
           "evidence": null
@@ -1319,57 +1353,57 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 157,
-              "caught": 157,
+              "applicable": 165,
+              "caught": 165,
               "uncaught": []
             },
             {
               "fault": "break-shifted",
               "check": "breaks",
-              "applicable": 123,
-              "caught": 123,
+              "applicable": 131,
+              "caught": 131,
               "uncaught": []
             }
           ]
@@ -1380,57 +1414,57 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 612,
-              "caught": 612,
+              "applicable": 655,
+              "caught": 655,
               "uncaught": []
             },
             {
               "fault": "break-shifted",
               "check": "breaks",
-              "applicable": 123,
-              "caught": 123,
+              "applicable": 131,
+              "caught": 131,
               "uncaught": []
             }
           ]
@@ -1441,57 +1475,57 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 613,
-              "caught": 613,
+              "applicable": 664,
+              "caught": 664,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 171,
-              "caught": 171,
+              "applicable": 179,
+              "caught": 179,
               "uncaught": []
             },
             {
               "fault": "break-shifted",
               "check": "breaks",
-              "applicable": 123,
-              "caught": 123,
+              "applicable": 131,
+              "caught": 131,
               "uncaught": []
             }
           ]
