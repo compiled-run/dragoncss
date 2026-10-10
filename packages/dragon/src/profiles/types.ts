@@ -35,14 +35,6 @@ export const PROFILE_NOTES = {
 
 export type ProfileNote = keyof typeof PROFILE_NOTES;
 
-/**
- * T078 R14: overflow auto and scroll make a box the user scrolls, and the native outputs have no scroll views until OVFL-B, so a
- * native target claims no row for them: outside the parity lanes the compiler refuses them on native, naming OVFL-B.
- */
-export function nativeScrollPending(feature: string): boolean {
-  return /^overflow-[xy]:(auto|scroll)$/.test(feature);
-}
-
 /** The note a target's row for a feature carries, or null: web overflow auto and scroll depend on the scrollbar environment (R3). */
 export function profileNoteFor(target: Target, feature: string): ProfileNote | null {
   return target === 'web' && /^overflow-[xy]:(auto|scroll)$/.test(feature) ? 'overlayScrollbars' : null;

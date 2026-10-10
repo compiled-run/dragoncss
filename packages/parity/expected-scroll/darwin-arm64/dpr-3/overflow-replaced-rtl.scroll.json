@@ -49,5 +49,42 @@
    "clientWidth": 0,
    "clientHeight": 60
   }
+ ],
+ "extents": [
+  {
+   "id": "s1",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 150
+  },
+  {
+   "id": "s2",
+   "minLeft": -70,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 44
+  },
+  {
+   "id": "s3",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 132
+  },
+  {
+   "id": "s4",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 10
+  },
+  {
+   "id": "i6",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  }
  ]
 }
