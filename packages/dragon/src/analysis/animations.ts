@@ -11,8 +11,8 @@ import { resolveAlias } from '../css/aliases.ts';
 import { admitted, animationKind } from '../css/animation-kinds.ts';
 import type { Longhand } from '../css/properties.ts';
 import { isLonghand, isShorthand, LONGHANDS } from '../css/properties.ts';
-import type { AnimItem, AnimLonghand, AnimList, EasingValue } from '../css/properties/animation.ts';
-import { ANIM_INITIAL, ANIM_LIST_PROPERTIES } from '../css/properties/animation.ts';
+import type { AnimItem, AnimLonghand, AnimList, EasingValue, SubstitutedAnimation } from '../css/properties/animation.ts';
+import { ANIM_INITIAL, ANIM_LIST_PROPERTIES, substitutedAnimationValue } from '../css/properties/animation.ts';
 import { shorthandHandler } from '../css/shorthands/index.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
@@ -24,6 +24,9 @@ import type { ResolvedValue } from './computed.ts';
 import type { LinkedElement } from './link.ts';
 import { selectorMatches, specificityFor } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
+import { resolvedCustoms } from './resolve.ts';
+import type { CustomProperties } from './variables.ts';
+import { substituteVars } from './variables.ts';
 
 /** The most transition slots, and closure writes per frame, a program holds (R8, R9): a larger one is refused, never cut. */
 export const MAX_TRANSITION_SLOTS = 256;
@@ -64,6 +67,8 @@ export type ElementAnimation = {
   readonly lists: ReadonlyMap<AnimLonghand, readonly AnimItem[]>;
   /** The declarations that set its animation longhands, for diagnostics. */
   readonly declarations: readonly Declaration[];
+  /** ANIM-v: each winning declaration that holds var(), substituted with this element's custom properties. */
+  readonly substitutions: ReadonlyMap<Declaration, SubstitutedAnimation>;
 };
 
 export type AnimationCase = { readonly key: string; readonly elements: ReadonlyMap<string, ElementAnimation> };
@@ -98,6 +103,29 @@ function cascadeAnimations(rules: readonly Rule[], chain: readonly LinkedElement
   return out;
 }
 
+const UNSET: AnimList = { kind: 'wide', keyword: 'unset' };
+
+/**
+ * ANIM-v (css-variables-1 §3.1): each winner whose declaration holds var() takes the list its substitution with the element's
+ * custom properties parses to. An invalid substitution, or one Dragon refuses, sets every longhand of the declaration to unset,
+ * which is invalid at computed-value time in Chrome too (a refused value is also reported, so the unset only completes the case).
+ */
+function substituteWinners(winners: ReadonlyMap<AnimLonghand, Winner>, customs: CustomProperties): { winners: Map<AnimLonghand, Winner>; substitutions: Map<Declaration, SubstitutedAnimation> } {
+  const out = new Map(winners);
+  const substitutions = new Map<Declaration, SubstitutedAnimation>();
+  for (const [p, w] of winners) {
+    const pending = w.declaration.animation?.pending;
+    if (pending === undefined) continue;
+    let r = substitutions.get(w.declaration);
+    if (r === undefined) {
+      r = substitutedAnimationValue(w.declaration.property, substituteVars(pending.parts, customs), w.declaration.valueSpan);
+      substitutions.set(w.declaration, r);
+    }
+    out.set(p, { ...w, list: (r.kind === 'ok' ? r.value.longhands.get(p) : undefined) ?? UNSET });
+  }
+  return { winners: out, substitutions };
+}
+
 /** The computed lists: a winner's items, inherit from the parent, every other CSS-wide keyword the initial item. */
 function computedLists(winners: ReadonlyMap<AnimLonghand, Winner>, parent: ReadonlyMap<AnimLonghand, readonly AnimItem[]> | null): Map<AnimLonghand, readonly AnimItem[]> {
   const out = new Map<AnimLonghand, readonly AnimItem[]>();
@@ -130,7 +158,7 @@ function longhandsNamed(written: string): readonly Longhand[] | null {
 /** Chrome 145's property names that Dragon does not model; a transition naming one of them does nothing here either. */
 export type KnownProperty = (name: string) => boolean;
 
-function elementAnimation(address: string, lists: ReadonlyMap<AnimLonghand, readonly AnimItem[]>, winners: ReadonlyMap<AnimLonghand, Winner>, keyframes: ReadonlyMap<string, KeyframesRule>): ElementAnimation {
+function elementAnimation(address: string, lists: ReadonlyMap<AnimLonghand, readonly AnimItem[]>, winners: ReadonlyMap<AnimLonghand, Winner>, keyframes: ReadonlyMap<string, KeyframesRule>, substitutions: ReadonlyMap<Declaration, SubstitutedAnimation>): ElementAnimation {
   const list = (p: AnimLonghand): readonly AnimItem[] => lists.get(p) as readonly AnimItem[];
   const declared = [...winners.keys()].some((p) => p.startsWith('transition-'));
   const listings = new Map<Longhand, Listing>();
@@ -161,7 +189,7 @@ function elementAnimation(address: string, lists: ReadonlyMap<AnimLonghand, read
       easing: easingOf(repeated(list('animation-timing-function'), i)),
     };
   });
-  return { address, declared, otherwise: declared ? 'unlisted' : 'initial', listings, animations, lists, declarations: [...new Set([...winners.values()].map((w) => w.declaration))] };
+  return { address, declared, otherwise: declared ? 'unlisted' : 'initial', listings, animations, lists, declarations: [...new Set([...winners.values()].map((w) => w.declaration))], substitutions };
 }
 
 /** One case's element animations, walking the resolved tree with the linked chain the selectors match against. */
@@ -169,9 +197,9 @@ function caseAnimations(key: string, root: ResolvedElement, rules: readonly Rule
   const elements = new Map<string, ElementAnimation>();
   const walk = (el: ResolvedElement, chain: readonly LinkedElement[], parent: ReadonlyMap<AnimLonghand, readonly AnimItem[]> | null): void => {
     const here = [...chain, el.element];
-    const winners = cascadeAnimations(rules, here, faults);
+    const { winners, substitutions } = substituteWinners(cascadeAnimations(rules, here, faults), resolvedCustoms(el));
     const lists = computedLists(winners, parent);
-    elements.set(el.element.address, elementAnimation(el.element.address, lists, winners, keyframes));
+    elements.set(el.element.address, elementAnimation(el.element.address, lists, winners, keyframes, substitutions));
     for (const c of el.children) if (c.kind === 'element') walk(c, here, lists);
   };
   walk(root, [], null);
@@ -287,7 +315,10 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
   for (const rule of input.allRules) {
     if (rule.selectors.every((sel) => sel.dropped)) continue;
     for (const d of rule.declarations) {
-      for (const [p, list] of d.animation?.longhands ?? []) {
+      // ANIM-v: a value holding var() keys var() on every longhand it sets here, and its substituted items per element below.
+      const pending = d.animation?.pending;
+      if (pending !== undefined) for (const p of pending.targets) feature(`${p}:var()`, d.valueSpan);
+      else for (const [p, list] of d.animation?.longhands ?? []) {
         if (list.kind === 'wide') feature(`${p}:${list.keyword}`, d.valueSpan);
         else for (const item of list.items) feature(`${p}:${featureType(item)}`, d.valueSpan);
       }
@@ -318,6 +349,15 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
     const rootEl = [...tree.values()][0] as ResolvedElement;
     for (const ea of c.elements.values()) {
       const el = tree.get(ea.address) as ResolvedElement;
+      // ANIM-v: a substituted value is refused or keyed as a value written without var() would be, at the declaration.
+      for (const [d, r] of ea.substitutions) {
+        if (r.kind === 'refused') once(`var|${d.valueSpan.source.uri}|${d.valueSpan.start}|${r.diagnostic.message}`, r.diagnostic);
+        if (r.kind !== 'ok') continue;
+        for (const [p, list] of r.value.longhands) {
+          if (list.kind === 'wide') feature(`${p}:${list.keyword}`, d.valueSpan);
+          else for (const item of list.items) feature(`${p}:${featureType(item)}`, d.valueSpan);
+        }
+      }
       for (const a of ea.animations) {
         if (a.name === 'none') continue;
         if (!a.hasKeyframes) {

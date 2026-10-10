@@ -15,7 +15,7 @@ export const ANIMATIONS: readonly FixtureSpec[] = [
   reject('reject-anim-keyframe-currentcolor', 'DRAGON_UNSUPPORTED_VALUE', 'currentcolor', 'background-color: currentcolor in @keyframes k is unsupported'),
   reject('reject-anim-keyframe-unadmitted', 'DRAGON_UNSUPPORTED_VALUE', '2', 'flex-grow in @keyframes k cannot be animated yet'),
   reject('reject-anim-keyframes-per-element', 'DRAGON_UNSUPPORTED_VALUE', '2em', 'width: 2em is unsupported: one @keyframes resolves to different values'),
-  reject('reject-anim-var', 'DRAGON_UNSUPPORTED_VALUE', 'var(--t)', 'transition: var(--t) is unsupported'),
+  reject('reject-anim-var', 'DRAGON_UNSUPPORTED_VALUE', 'var(--t)', 'transition: substitutes to "color 1s linear(0, 1)"'),
   reject('reject-anim-calc-time', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1s + 1ms)', 'transition: calc(1s + 1ms) is unsupported'),
   rejectTree('reject-tree-anim-overlap', 'DRAGON_UNSUPPORTED_VALUE', 'color 1s'),
   rejectTree('reject-tree-anim-timing-change', 'DRAGON_UNSUPPORTED_VALUE', 'k 1s 2'),
