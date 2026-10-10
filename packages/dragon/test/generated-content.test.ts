@@ -8,6 +8,9 @@ import type { AttributeBinding, Compiled, ElementNode, FrontEndResult, Origin, S
 import { createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, WEB_CSS_PATH, webClassMap } from '../src/internal.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
+import { androidProfile } from '../src/profiles/android.ts';
+import { iosProfile } from '../src/profiles/ios.ts';
+import { webProfile } from '../src/profiles/web.ts';
 import type { Selector } from '../src/css/selectors.ts';
 import type { Diagnostic } from '../src/types.ts';
 import { always, DOC, eq, expectCatalogued, inputFor, spanTextOf, staticClass, text } from './helpers.ts';
@@ -199,9 +202,13 @@ describe('statically empty pseudo-elements (R5)', () => {
 
 describe('profile contexts (R10)', () => {
   it('content on a generated box is keyed in the pseudo contexts, with an empty inline apart', () => {
-    const m = messages(compile(".a::before { content: 'x'; } .a::after { content: ''; } .b::before { content: 'y'; display: block; }", (r) => [...host(r), el(r, 'e', 'div', ['b'], [text(r, 'u', 'v')])], NO_FAULTS, 'enforce'));
-    const contexts = [...new Set(m.flatMap((x) => /used in the (\S+) context/.exec(x)?.[1] ?? []))].sort();
-    expect(contexts).toEqual(['pseudo-block/ltr', 'pseudo-empty-inline-in-block/ltr', 'pseudo-inline-in-block/ltr']);
+    // The regen derives a content row per pseudo context from the fixtures (an element's own string content stays in its block
+    // context); the three this document uses are proven, so it compiles in enforce mode on every target.
+    for (const profile of [webProfile, iosProfile, androidProfile]) {
+      const contexts = profile.rows.filter((r) => r.feature === 'content:<string>').map((r) => r.context);
+      for (const c of ['pseudo-block/ltr', 'pseudo-empty-inline-in-block/ltr', 'pseudo-inline-in-block/ltr']) expect(contexts, `${profile.target} ${c}`).toContain(c);
+    }
+    expect(messages(compile(".a::before { content: 'x'; } .a::after { content: ''; } .b::before { content: 'y'; display: block; }", (r) => [...host(r), el(r, 'e', 'div', ['b'], [text(r, 'u', 'v')])], NO_FAULTS, 'enforce'))).toEqual([]);
   });
 });
 
