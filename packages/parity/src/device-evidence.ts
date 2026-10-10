@@ -36,6 +36,10 @@ export const EVIDENCE_CODE: readonly string[] = [
   'packages/parity/src/pixel-reference.ts',
   'packages/parity/src/samples.ts',
   'packages/parity/src/targets.ts',
+  // The host's HarfBuzz the reference measurer shapes with (native-host.ts referenceMeasurer), as the apps shape with the shim.
+  'packages/parity/src/text-shaper-host.ts',
+  'packages/text-shaper/src/wasm.ts',
+  'packages/text-shaper/wasm/dragon_hb.wasm',
   // The HarfBuzz shim both apps link, which hostSources does not hold: its build, its C ABI and the HarfBuzz it compiles.
   'packages/text-shaper/build.zig',
   'packages/text-shaper/include',

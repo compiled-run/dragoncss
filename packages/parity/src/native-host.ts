@@ -7,9 +7,9 @@ import { createHash } from 'node:crypto';
 import { existsSync, linkSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
-import type { LayoutInput, LayoutRect } from '@dragon/layout';
+import type { LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
 import type { LU } from '@dragon/layout';
-import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import { deviceShapedMeasurer, layout, LU_PER_PX, NO_ENGINE_FAULTS, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
@@ -32,6 +32,7 @@ import { REFERENCE_PLATFORM } from './platform.ts';
 import type { NativeTarget } from './targets.ts';
 import { deviceDprs } from './targets.ts';
 import { buildShim, SHIM_ANDROID_ABIS, SHIM_SWIFT_INCLUDE, shimModuleMapSha256, shimSources, shimToken } from './native-shim.ts';
+import { ahemFaceId, fontDataOf, hostShaper } from './text-shaper-host.ts';
 
 export const BACKEND_OF: { readonly [T in NativeTarget]: NativeBackend } = { ios: 'uikit', android: 'android-views' };
 export const NATIVE_CONFIG = { ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
@@ -83,10 +84,13 @@ export function nativeCases(): readonly NativeCase[] {
   return out;
 }
 
-export function referenceMeasurer() {
-  const m = measurerFor(REFERENCE_PLATFORM);
-  if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
-  return m.measurer;
+/**
+ * The device apps' measurer on the host (TXT1a-2 phase R): deviceShapedMeasurer over the bundled Ahem's FontData and the WASM
+ * HarfBuzz, as each app's bridge composes it over its own shim. A fresh measurer per call: its shaped items are cached per layout.
+ */
+export function referenceMeasurer(): TextMeasurer {
+  const ahem = ahemFaceId();
+  return deviceShapedMeasurer(new Map([[ahem, fontDataOf(ahem)]]), hostShaper);
 }
 
 /** The TS engine the expected dumps are projected with: the helpers the device runs translated, and the float a platform stores. */
@@ -178,9 +182,12 @@ func dragonRun(window: UIWindow, host: UIView) {
   // --dragon-cases wins over a run file left in the container by an earlier run.
   var run = DragonRun()
   if let listed = dragonArgument("--dragon-cases") { run.ids = listed.split(separator: ",").map(String.init) } else { run = dragonReadRun(NSHomeDirectory() + "/Documents/dragon-run.tsv") ?? DragonRun() }
-  let bridge = DragonBridge.shared
-  dragonWrite(out + "/bridge-ios.json", bridge.record(platform: "ios"))
+  // The shim is checked against the host's WASM shim first; the bridge then measures and draws every text through it.
   dragonCheckShim()
+  DragonBridge.shaper = dragonGlyphShaper()
+  let bridge = DragonBridge.shared
+  if !bridge.shaped { fatalError("dragon host: the bridge does not shape with the shim") }
+  dragonWrite(out + "/bridge-ios.json", bridge.record(platform: "ios"))
   let scale = Double(window.screen.scale)
   if Double(window.traitCollection.displayScale) != scale { fatalError("dragon host: traitCollection.displayScale differs from UIScreen.scale") }
   host.layoutIfNeeded()
@@ -382,9 +389,12 @@ class DragonActivity : Activity() {
     // The dragon.cases extra wins over a run file left in the files dir by an earlier run.
     val listed = intent.getStringExtra("dragon.cases")
     run = if (listed != null) DragonRun(listed.split(",").filter { it.isNotEmpty() }, emptyMap(), false) else dragonReadRun(File(out, "dragon-run.tsv")) ?: DragonRun(emptyList(), emptyMap(), false)
-    bridge = DragonBridge.shared(this)
-    File(out, "bridge-android.json").writeText(bridge.record("android"))
+    // The shim is checked against the host's WASM shim first; the bridge then measures and draws every text through it.
     dragonCheckShim(this)
+    DragonBridge.shaper = dragonGlyphShaper(this)
+    bridge = DragonBridge.shared(this)
+    check(bridge.shaped) { "dragon host: the bridge does not shape with the shim" }
+    File(out, "bridge-android.json").writeText(bridge.record("android"))
     scale = resources.displayMetrics.density.toDouble()
     val os = "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ", " + Build.ID + ")"
     val model = Build.MODEL + " / " + (intent.getStringExtra("dragon.model") ?: "unnamed")
