@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { join } from 'node:path';
 import type { Page } from 'playwright';
 import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, fromCssPx, layout, inlineLeaves, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
+import { absoluteRects, fromCssPx, layout, inlineLeaves, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
@@ -37,7 +37,8 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
   const abs = absoluteRects(boxes);
   const snappedList = snapEdges(boxes);
   const snapped = new Map(boxes.map((b, i) => [b.id, snappedList[i] as EngineLine['snapped']]));
-  const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
+  // Resolved with the layout's own measurer (layout.ts resolvedInput), so ex, ch, cap and lh of a real face read that face.
+  const zoomed = resolvedInput(input, measurer, NO_ENGINE_FAULTS);
   const zBoxes = new Map<string, LayoutBox>();
   const zParent = new Map<string, string>();
   // A text leaf's container is the block container of its inline formatting context, through any inline boxes.

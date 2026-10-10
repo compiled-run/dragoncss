@@ -14,6 +14,8 @@ import { FONT_FIXTURES } from '../packages/parity/src/fixture-groups/fonts.ts';
 import { committedFontAuthored, runFontFixture } from '../packages/parity/src/fonts-run.ts';
 import { ENV_FIXTURES } from '../packages/parity/src/fixture-groups/env.ts';
 import { committedEnvAuthored, runEnvFixture } from '../packages/parity/src/env-run.ts';
+import { TEXT_LATIN_FIXTURES } from '../packages/parity/src/fixture-groups/text-latin.ts';
+import { committedTextLatinOptions, runTextLatinFixture } from '../packages/parity/src/text-latin-run.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
 import type { CaseOutcome } from '../packages/parity/src/pipeline.ts';
 import { runFixture } from '../packages/parity/src/pipeline.ts';
@@ -36,6 +38,13 @@ try {
   // TXT1-C: the web-only fonts fixtures prove web rows through chrome-dual alone; their ios features are empty.
   for (const f of FONT_FIXTURES) {
     const outcomes = await runFontFixture(f, browser, { authored: committedFontAuthored, faults: NO_FAULTS, profiles: 'derive' });
+    cases.push(...outcomes);
+    for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
+  }
+  // TXT1a-1: the text-latin registry proves web font-family rows only (runTextLatinFixture keeps those keys; its ios features are
+  // empty, since native refuses these faces until TXT1a-2).
+  for (const f of TEXT_LATIN_FIXTURES) {
+    const outcomes = await runTextLatinFixture(f, browser, { ...committedTextLatinOptions, profiles: 'derive' });
     cases.push(...outcomes);
     for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }
