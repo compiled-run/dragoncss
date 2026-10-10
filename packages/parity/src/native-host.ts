@@ -14,7 +14,7 @@ import type { Compiled, EmitCase, Environment, ExpectedEngine, GeneratedFile, Na
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
 import { stateEmits } from './state-cases.ts';
-import { frameEmits } from './anim-cases.ts';
+import { animEmits } from './anim-samples.ts';
 import { deviceHitSource } from './hit-capture.ts';
 import type { ParityCase } from './cases.ts';
 import { fixtureInput } from './cases.ts';
@@ -575,8 +575,8 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   const supportPlant = plant !== null && (SUPPORT_PLANTS as readonly string[]).includes(plant) ? (plant as SupportPlant) : null;
   files.push(...emitNativeSupport(backend, supportPlant));
   files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
-  // SELD-R1a: the state programs and their case scripts; ANIM-b1: the frame cases' state programs with their animation tables.
-  files.push(...emitStatePrograms(backend, [...stateEmits(target), ...frameEmits(target)]));
+  // SELD-R1a: the state programs and their case scripts; ANIM-b1: the frame cases' state programs, animation tables and sample scripts.
+  files.push(...emitStatePrograms(backend, [...stateEmits(target), ...animEmits(target)]));
   // SELD-R1b: the device-hit facts and runner.
   files.push(deviceHitSource(target));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);
@@ -874,32 +874,33 @@ export function buildAndroid(opts: BuildOptions = {}): BuildResult & { readonly 
  */
 export function relabelledReferenceDumps(target: NativeTarget, dpr: number): NativeDump[] {
   const backend = BACKEND_OF[target];
-  const m = expectedEngine();
-  return nativeCases().map((n) => {
-    const program = n.programs[backend];
-    const viewport = n.case.environment.viewport;
-    const input = programInput(program, viewport, dpr);
-    const engine = engineBoxes(program, viewport, dpr);
-    const ref = referenceDump({ platform: target, caseId: n.case.id, fixture: n.spec.id, dpr, direction: n.case.environment.direction, compilerDigest: n.compiled.digest, input, engine });
-    const e = expectedDump(program, n.case.id, viewport, dpr, m);
-    const applied = new Map(e.nodes.map((x) => [x.id, x.applied]));
-    const sha = createHash('sha256').update(n.case.id).digest('hex');
-    return {
-      ...ref,
-      lane: target === 'ios' ? 'ios-sim' : 'android-emu',
-      case: { ...ref.case, expectedDigest: expectedDigest(e) },
-      device: { platform: target, os: 'host encoder test', model: 'none', abi: 'host', scale: dpr, toolchain: 'host', renderer: 'none' },
-      nodes: ref.nodes.map((x) => ({
-        ...x,
-        native: e.nodes.find((y) => y.id === x.id)?.native ?? x.native,
-        applied: applied.get(x.id) ?? {},
-        // A text line's offsets are made up; an element line (an inline box fragment) has no own text, so a device writes 0 and 0.
-        lines: x.lines.map((l, j) => ({ ...l, baseline: l.frame.height * 0.8, start: x.kind === 'text' ? 3 * j : 0, end: x.kind === 'text' ? 3 * j + 2 : 0 })),
-      })),
-      pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: Math.ceil(viewport.width * dpr), height: Math.ceil(viewport.height * dpr), sha256: sha, samples: [{ x: 1, y: 2, rgba: [255, 255, 255, 255], rule: `interior:${ref.nodes[0]?.id ?? 'root'}` }] },
-      timing: { settleMs: 1.25, dumpMs: 0.5 },
-    } as NativeDump;
-  });
+  return nativeCases().map((n) => relabelledReferenceDump(target, { id: n.case.id, fixture: n.spec.id, direction: n.case.environment.direction, compilerDigest: n.compiled.digest, viewport: n.case.environment.viewport, program: n.programs[backend] }, dpr));
+}
+
+/** One program's relabelled reference dump (relabelledReferenceDumps) under a case id: a layout case's, or a frame sample's (device-anim). */
+export function relabelledReferenceDump(target: NativeTarget, c: { readonly id: string; readonly fixture: string; readonly direction: 'ltr' | 'rtl'; readonly compilerDigest: string; readonly viewport: { readonly width: number; readonly height: number }; readonly program: NativeProgram }, dpr: number): NativeDump {
+  const { program, viewport } = c;
+  const input = programInput(program, viewport, dpr);
+  const engine = engineBoxes(program, viewport, dpr);
+  const ref = referenceDump({ platform: target, caseId: c.id, fixture: c.fixture, dpr, direction: c.direction, compilerDigest: c.compilerDigest, input, engine });
+  const e = expectedDump(program, c.id, viewport, dpr, expectedEngine());
+  const applied = new Map(e.nodes.map((x) => [x.id, x.applied]));
+  const sha = createHash('sha256').update(c.id).digest('hex');
+  return {
+    ...ref,
+    lane: target === 'ios' ? 'ios-sim' : 'android-emu',
+    case: { ...ref.case, expectedDigest: expectedDigest(e) },
+    device: { platform: target, os: 'host encoder test', model: 'none', abi: 'host', scale: dpr, toolchain: 'host', renderer: 'none' },
+    nodes: ref.nodes.map((x) => ({
+      ...x,
+      native: e.nodes.find((y) => y.id === x.id)?.native ?? x.native,
+      applied: applied.get(x.id) ?? {},
+      // A text line's offsets are made up; an element line (an inline box fragment) has no own text, so a device writes 0 and 0.
+      lines: x.lines.map((l, j) => ({ ...l, baseline: l.frame.height * 0.8, start: x.kind === 'text' ? 3 * j : 0, end: x.kind === 'text' ? 3 * j + 2 : 0 })),
+    })),
+    pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: Math.ceil(viewport.width * dpr), height: Math.ceil(viewport.height * dpr), sha256: sha, samples: [{ x: 1, y: 2, rgba: [255, 255, 255, 255], rule: `interior:${ref.nodes[0]?.id ?? 'root'}` }] },
+    timing: { settleMs: 1.25, dumpMs: 0.5 },
+  } as NativeDump;
 }
 
 /** Compiles the encoder with a program that builds the dumps by typed constructors and prints each as one JSON line; returns the lines. */
