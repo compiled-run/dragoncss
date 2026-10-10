@@ -110,7 +110,7 @@ describe('per-case dump hashes (raw equality across hosts)', () => {
     expect(rawDumpHash('{trunc')).toMatch(/^[0-9a-f]{64}$/);
     expect(rawDumpHash('[1]')).not.toBe(rawDumpHash('{"0":1}'));
   });
-  it('hashes each case of a device run\'s set, states and hit records at its DPR, and diffs two hosts case by case', () => {
+  it('hashes each case of a device run\'s set, states, hit and frame sample records at its DPR, and diffs two hosts case by case', () => {
     const root = mkdtempSync(join(tmpdir(), 'dragon-hashes-'));
     try {
       const lanes = join(root, 'lanes');
@@ -121,34 +121,38 @@ describe('per-case dump hashes (raw equality across hosts)', () => {
       writeFileSync(join(lanes, 'dragon-320', 'a@3.json'), dump('emu arm', 9, 5));
       writeFileSync(join(lanes, 'dragon-320', 'a@2.hit'), '0,0;1,1');
       writeFileSync(join(lanes, 'dragon-320-states', 's@2.json'), dump('emu arm', 4, 5));
+      mkdirSync(join(lanes, 'dragon-320-anim'), { recursive: true });
+      writeFileSync(join(lanes, 'dragon-320-anim', 'f@400x300~f0@2.json'), dump('emu arm', 6, 5));
       const h = caseDumpHashes('android', 'dragon-320', 2, root);
       expect(h).not.toBeNull();
       expect(Object.keys(h!.set)).toEqual(['a', 'b']);
       expect(Object.keys(h!.states)).toEqual(['s']);
       expect(Object.keys(h!.hits)).toEqual(['a']);
+      expect(Object.keys(h!.anim)).toEqual(['f@400x300~f0']);
       expect(caseDumpHashes('android', 'dragon-320', null, root)).toBeNull();
       writeFileSync(join(lanes, 'dragon-320-states', '__proto__@2.json'), dump('emu arm', 4, 5));
       expect(() => caseDumpHashes('android', 'dragon-320', 2, root)).toThrow('"__proto__" is not a case id');
       rmSync(join(lanes, 'dragon-320-states', '__proto__@2.json'));
-      expect(caseDumpHashes('android', 'dragon-480', 2, root)).toEqual({ dpr: 2, set: {}, states: {}, hits: {} });
+      expect(caseDumpHashes('android', 'dragon-480', 2, root)).toEqual({ dpr: 2, set: {}, states: {}, hits: {}, anim: {} });
       writeFileSync(join(lanes, 'dragon-320', 'b@2.json'), dump('emu x86', 3, 7));
-      expect(diffCaseHashes(h!, caseDumpHashes('android', 'dragon-320', 2, root)!)).toEqual({ set: [], states: [], hits: [] });
+      expect(diffCaseHashes(h!, caseDumpHashes('android', 'dragon-320', 2, root)!)).toEqual({ set: [], states: [], hits: [], anim: [] });
       writeFileSync(join(lanes, 'dragon-320', 'b@2.json'), dump('emu x86', 4, 7));
       rmSync(join(lanes, 'dragon-320-states', 's@2.json'));
-      expect(diffCaseHashes(h!, caseDumpHashes('android', 'dragon-320', 2, root)!)).toEqual({ set: ['b'], states: ['s'], hits: [] });
+      writeFileSync(join(lanes, 'dragon-320-anim', 'f@400x300~f0@2.json'), dump('emu arm', 7, 5));
+      expect(diffCaseHashes(h!, caseDumpHashes('android', 'dragon-320', 2, root)!)).toEqual({ set: ['b'], states: ['s'], hits: [], anim: ['f@400x300~f0'] });
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
   it('round-trips an outcome with its hashes, reads one without (older), and refuses malformed hashes', () => {
     const o = outcomeOf('ios', 'iPhone 17');
-    const dumps = { dpr: 3, set: { a: 'a'.repeat(64) }, states: {}, hits: { a: 'b'.repeat(64) } };
+    const dumps = { dpr: 3, set: { a: 'a'.repeat(64) }, states: {}, hits: { a: 'b'.repeat(64) }, anim: { 'f@400x300~f0': 'c'.repeat(64) } };
     expect(parseCiOutcome(ciOutcomeText({ ...o, dumps }), 'f.json')).toEqual({ ...o, dumps });
     expect(parseCiOutcome(ciOutcomeText({ ...o, dumps: null }), 'f.json')).toEqual({ ...o, dumps: null });
     expect(parseCiOutcome(ciOutcomeText(o), 'f.json')).toEqual(o);
-    const proto = JSON.parse(`{"dpr":3,"set":{"__proto__":"${'a'.repeat(64)}"},"states":{},"hits":{}}`) as unknown;
-    for (const bad of [{ ...dumps, dpr: '3' }, { ...dumps, set: { a: 'zz' } }, { ...dumps, hits: [] }, { dpr: 3, set: {}, states: {} }, 'x', proto, { ...dumps, states: { constructor: 'a'.repeat(64) } }]) {
-      expect(() => parseCaseHashes(bad, 'f.json')).toThrow('f.json: dumps is not a DPR and per-case sha256 maps of set, states and hits');
+    const proto = JSON.parse(`{"dpr":3,"set":{"__proto__":"${'a'.repeat(64)}"},"states":{},"hits":{},"anim":{}}`) as unknown;
+    for (const bad of [{ ...dumps, dpr: '3' }, { ...dumps, set: { a: 'zz' } }, { ...dumps, hits: [] }, { ...dumps, anim: [] }, { dpr: 3, set: {}, states: {}, hits: {} }, 'x', proto, { ...dumps, states: { constructor: 'a'.repeat(64) } }]) {
+      expect(() => parseCaseHashes(bad, 'f.json')).toThrow('f.json: dumps is not a DPR and per-case sha256 maps of set, states, hits and anim');
       expect(() => parseCiOutcome(JSON.stringify({ ...o, dumps: bad }), 'f.json')).toThrow('dumps is not');
     }
   });

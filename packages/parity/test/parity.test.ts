@@ -449,7 +449,10 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       for (const row of layoutRows(profile.rows)) {
         const key = `${row.feature}@${row.context}`;
         for (const proof of row.proofs) {
-          const expected = cases.filter((c) => c.lanes[proof.lane] === 'pass' && c.features[target].includes(key)).map((c) => c.id);
+          const lane = proof.lane;
+          // device-anim proves animation rows only (anim-frames.test.ts), never a layout case's row.
+          if (lane === 'device-anim') throw new Error(`${target} ${key}: a layout row with a device-anim proof`);
+          const expected = cases.filter((c) => c.lanes[lane] === 'pass' && c.features[target].includes(key)).map((c) => c.id);
           expect(proof.cases, `${target} ${key} ${proof.lane}`).toEqual(expected);
           expect(proof.cases.length, `${target} ${key}`).toBeGreaterThan(0);
           expect([proof.valueSubset, proof.context], key).toEqual([row.feature.slice(row.feature.indexOf(':') + 1), row.context]);
