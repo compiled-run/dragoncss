@@ -94,6 +94,16 @@ export function snapEdge(lu: LU): number {
   return Math.floor((lu + LU_PER_PX / 2) / LU_PER_PX);
 }
 
+/**
+ * Blink SnapSizeToPixel: the distance between the snapped edges of a size at a location (the whole px of the location cancel), at
+ * least one px for a size above 4 LU (4 LayoutUnit epsilons), so a box narrower than half a device px still paints one.
+ */
+export function snapSize(size: LU, location: LU): number {
+  const result = snapEdge(add(location, size)) - snapEdge(location);
+  if (result === 0 && (size > 4 || size < -4)) return size > 0 ? 1 : -1;
+  return result;
+}
+
 /** LayoutUnit::ToFloat. */
 export function toFloat(v: LU): number {
   return Math.fround(v / LU_PER_PX);
