@@ -81,14 +81,14 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
 })).map { $0 as! LayoutBox }
   // ts: packages/layout/src/position.ts:38
   do {
-    let _a92 = box.children
-    var _i92 = 0
-    while _i92 < _a92.items.count {
-      let k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a92.items[_i92]
-      _i92 += 1
+    let _a134 = box.children
+    var _i134 = 0
+    while _i134 < _a134.items.count {
+      let k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a134.items[_i134]
+      _i134 += 1
       // ts: packages/layout/src/position.ts:39
       if try ((k.kind == S.s_replaced) && position_isOutOfFlow(ctx, (k as! ReplacedLeaf))) {
-        try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s145, jsConcat(S.s367, (k as! ReplacedLeaf).id, S.s42))
+        try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s151, jsConcat(S.s375, (k as! ReplacedLeaf).id, S.s48))
       }
     }
   }
@@ -100,7 +100,7 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
   if try jsSome(box.children, { (k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return (((k.kind != S.s_box) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) || (((k as! any U_LayoutBox_ReplacedLeaf).kind == S.s_box) && ((k as! LayoutBox).boxType == S.s_anonymous)))
 }) {
-    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s148, jsConcat(S.s366, jsUnwrap(oof).id, S.s12, box.id, S.s70))
+    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s154, jsConcat(S.s374, jsUnwrap(oof).id, S.s13, box.id, S.s76))
   }
 }
 
@@ -129,9 +129,14 @@ public func position_blockInset(_ box: any U_LayoutBox_ReplacedLeaf, _ v: any U_
   }
   // ts: packages/layout/src/position.ts:57
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s430, S.s623)
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s442, S.s652)
   }
   return try box_resolveLengthOrNull((v as! any U_LengthCalc_Percent_Px), nil, faults)
+}
+
+// ts: packages/layout/src/position.ts:68
+public func position_relativeOffset(_ box: LayoutBox, _ cbInline: Double, _ cbBlock: any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, _ cbDirection: JsString) throws -> RelativeOffset {
+  return try position_relativeOffsetWith(box, cbInline, cbBlock, cbDirection, block_NO_ENGINE_FAULTS)
 }
 
 // ts: packages/layout/src/position.ts:73

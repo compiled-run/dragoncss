@@ -55,6 +55,7 @@ function oofsOf(b: LayoutNode): LayoutNode[] {
 /** overflowOf, without the scroll container's own flow (flow below). */
 function overflowOf(b: LayoutNode): void {
   if (b.kind === 'replaced') return;
+  if (b.style.display === 'grid') throw new Undecided(b.id, 'a grid container: its scrollable overflow (with its grid area) is not decided here');
   lineLevel(b);
   for (const k of b.children) if (isNode(k) && !outOfFlow(k)) propagated(k);
   for (const k of oofsOf(b)) propagated(k);
