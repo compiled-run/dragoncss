@@ -8,13 +8,15 @@ import { DPRS } from '../src/dpr.ts';
 import type { ChromeBreakText } from '../src/line-breaks.ts';
 import { alignUnits, BREAK_MISMATCH, breakVector, breakVectorDir, breakVectorPath, breakVectorText, checkDumpBreaks, chromeLines, compareVectorWithChrome, engineTextLines, expectedBreaksDir, hostBreakLine, leafTexts, parseHostBreaks, readBreakVector, readChromeBreaks, runHostBreaks } from '../src/line-breaks.ts';
 import { plantDumpFault } from '../src/native-compare.ts';
-import { engineCases, nativeCases, referenceMeasurer, relabelledReferenceDumps } from '../src/native-host.ts';
+import { engineCases, nativeCases, relabelledReferenceDumps } from '../src/native-host.ts';
+import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 import { shapingOf } from '../src/text-latin-run.ts';
 
 // TXT1a-2: the break vectors and Chrome breaks are of every layout case (cli/break-vectors.ts and break-capture.ts read engineCases),
 // a shaped case, which native refuses until phase R, through its engine projection.
 const cases = engineCases();
-const m = referenceMeasurer();
+// The shaped cases lay out in their real faces, which the device measurer (native-host.ts referenceMeasurer, Ahem) does not bundle.
+const m = referenceShapedMeasurer();
 const inputOf = (n: (typeof cases)[number], dpr: number) => n.inputAt(dpr);
 
 describe('break vectors', () => {

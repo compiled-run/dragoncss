@@ -209,6 +209,13 @@ describe('animation analysis', () => {
     expect(compile(css)).toEqual([]);
   });
 
+  it('refuses on ios a transition a state pair starts of a colour a gradient box rasters, and not one no state changes (BG2c)', () => {
+    const gradient = (ds: readonly Diagnostic[]): string[] => ds.filter((d) => d.message.includes('the native animator changes it')).map((d) => `${d.target} ${d.message.split(':')[0]}`);
+    const box = '.a { width: 40px; height: 20px; background: linear-gradient(110deg, red, blue) white; transition: background-color 1s; }';
+    expect(gradient(compile(`${box} .a.on { background-color: black; }`))).toEqual(['ios a transition of background-color on a']);
+    expect(gradient(compile(`${box} .a.on { width: 30px; }`))).toEqual([]);
+  });
+
   it('refuses a transition a state pair would start on a property without a writer, and not one that never changes (R13, ANIM-p)', () => {
     expect(packages(compile('.a { border-top-width: 1px; border-top-style: solid; transition: border-top-width 1s; } .a.on { border-top-width: 3px; }'))).toEqual(['ANIM-p']);
     expect(compile('.a { border-top-width: 1px; border-top-style: solid; transition: border-top-width 1s; } .a.on { width: 3px; }')).toEqual([]);

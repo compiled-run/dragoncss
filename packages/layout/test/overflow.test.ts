@@ -110,6 +110,20 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
     expect(p.kind === 'ok' ? p.containers[0]?.scrollRect.width : null).toBe(lu(310));
   });
 
+  it('a grid container is refused, whether it scrolls or sits in a scroll container or the viewport, never measured as a block', () => {
+    const g = (style: Partial<LayoutStyle>): LayoutBox => {
+      const item = box('a', { height: px(150), gridItem: { column: { kind: 'auto', span: 1 }, row: { kind: 'auto', span: 1 }, justifySelf: 'auto' } });
+      const grid = { templateColumns: [], templateRows: [], autoColumns: [{ kind: 'breadth' as const, breadth: { kind: 'auto' as const } }], autoRows: [{ kind: 'breadth' as const, breadth: { kind: 'auto' as const } }], explicitColumnCount: 0, explicitRowCount: 0, autoFlow: 'row' as const, dense: false, justifyItems: 'normal' as const };
+      return box('g', { display: 'grid', grid, ...style }, [item]);
+    };
+    for (const i of [input([g(sc('auto'))]), input([box('s', sc('auto'), [g({})])]), input([g({})])]) {
+      expect(validateLayoutInput(JSON.parse(JSON.stringify(i))).ok).toBe(true);
+      expect(layout(i, ahemMeasurer).kind).toBe('ok');
+      const r = scrollMetrics(i, ahemMeasurer, 'ltr');
+      expect(r.kind === 'refused' ? [r.nodeId, r.detail] : r.kind).toEqual(['g', expect.stringContaining('a grid container')]);
+    }
+  });
+
   it('a relative offset with a percentage top inside a scroll container is refused, not guessed', () => {
     const r = scrollMetrics(input([box('s', sc('auto'), [box('k', { position: 'relative', top: pct(10), height: px(10) })])]), ahemMeasurer, 'ltr');
     expect(r.kind).toBe('refused');

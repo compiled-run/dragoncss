@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.row { display: flex; flex-wrap: wrap; width: 400px; column-gap: 4px; row-gap: 4px; }
+.g { width: 60px; height: 36px; }
+.plain { background: radial-gradient(#e0a040, #204080); }
+.circle { background: radial-gradient(circle, #e0a040, #204080); }
+.cs { background: radial-gradient(closest-side at 30% 40%, #fa0, #05a 70%, #111); }
+.fs { background: radial-gradient(farthest-side at 20px 10px, #fa0, #05a); }
+.cc { background: radial-gradient(circle closest-corner at 25% 75%, #fa0, #05a); }
+.ecc { background: radial-gradient(ellipse closest-corner at 25% 75%, #fa0, #05a); }
+.fc { background: radial-gradient(ellipse farthest-corner at left top, #fa0, #05a); }
+.px { background: radial-gradient(circle 14px at 30px 18px, #fa0, #05a); }
+.el { background: radial-gradient(40% 12px at 50% 50%, #fa0, #05a); }
+.kw { background: radial-gradient(circle at right bottom, #fa0, #05a); }
+.edge { background: radial-gradient(circle at left 10px top 6px, #fa0, #05a); }
+.one { background: radial-gradient(circle at top, #fa0, #05a); }
+.hard { background: radial-gradient(circle at center, #343b47 0 20%, #0b0d12 20% 40%, #405060 40%); }
+.rep { background: repeating-radial-gradient(circle at center, #141820 0 3px, #080a0e 4px 6px); }
+.rep2 { background: repeating-radial-gradient(#fff 0, #000 4px, #fff 8px); }
+.repo { background: repeating-radial-gradient(circle, #222 20%, #d80 40%); }
+.clear { background: radial-gradient(circle, rgba(0, 0, 0, 0.5), transparent) #fc8; }
+.record { width: 120px; height: 120px; background: radial-gradient(circle at center, #343b47 0 8%, #0b0d12 8.5% 12%, transparent 12.5%), repeating-radial-gradient(circle at center, #141820 0 7px, #080a0e 8px 12px); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row" class="row">
+<div data-dragon-id="plain" class="g plain"></div>
+<div data-dragon-id="circle" class="g circle"></div>
+<div data-dragon-id="cs" class="g cs"></div>
+<div data-dragon-id="fs" class="g fs"></div>
+<div data-dragon-id="cc" class="g cc"></div>
+<div data-dragon-id="ecc" class="g ecc"></div>
+<div data-dragon-id="fc" class="g fc"></div>
+<div data-dragon-id="px" class="g px"></div>
+<div data-dragon-id="el" class="g el"></div>
+<div data-dragon-id="kw" class="g kw"></div>
+<div data-dragon-id="edge" class="g edge"></div>
+<div data-dragon-id="one" class="g one"></div>
+<div data-dragon-id="hard" class="g hard"></div>
+<div data-dragon-id="rep" class="g rep"></div>
+<div data-dragon-id="rep2" class="g rep2"></div>
+<div data-dragon-id="repo" class="g repo"></div>
+<div data-dragon-id="clear" class="g clear"></div>
+<div data-dragon-id="record" class="record"></div>
+</div>
+</body>
+</html>
