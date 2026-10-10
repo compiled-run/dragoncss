@@ -110,6 +110,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -213,6 +214,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -316,6 +318,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -419,6 +422,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -552,6 +556,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -685,6 +690,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -818,6 +824,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -951,6 +958,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1084,6 +1092,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1217,6 +1226,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1340,6 +1350,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1443,6 +1454,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1576,6 +1588,7 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "visibility": "visible",
         "writing-mode": "horizontal-tb"
       }
     },

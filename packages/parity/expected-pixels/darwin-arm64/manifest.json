@@ -674,7 +674,17 @@
         {"case":"transform-direction","width":800,"height":600,"sha256":"1df53991baceb2ca4f40b8364a522ce68b1cc569e3f63362ea098c558f0d03d2"},
         {"case":"transform-direction-rtl","width":800,"height":600,"sha256":"977807069e21dfcdd50a47b7bf8c804dd139922a8c218b8e36913a6b89f88754"},
         {"case":"ctx-proof-units","width":800,"height":600,"sha256":"72c536437f4394e8e8f4802e4834894f32fdc07683ff85201d7fa0d215535aba"},
-        {"case":"ctx-proof-units-rtl","width":800,"height":600,"sha256":"df57ce59b87745c0369d0d8aa556641213a9cdc11deee8f06867150f5bbc0af1"}
+        {"case":"ctx-proof-units-rtl","width":800,"height":600,"sha256":"df57ce59b87745c0369d0d8aa556641213a9cdc11deee8f06867150f5bbc0af1"},
+        {"case":"visibility-basic","width":800,"height":600,"sha256":"b039d7041d46d98d7ac622b717ff54b080095ab34017f9efbfcbfe48e481fc4e"},
+        {"case":"visibility-basic-rtl","width":800,"height":600,"sha256":"3eff715ee7c0f35bbf143eea817cdebd0f115ff4e5129448af198ee80ae54b39"},
+        {"case":"visibility-paint","width":800,"height":600,"sha256":"cb0560665a274695e685925f5ba2fa3027d702bda4b2932102881fac7b0d3a81"},
+        {"case":"visibility-paint-rtl","width":800,"height":600,"sha256":"97e0a52aa4c574a5b5b59360e105835e69219ff847c3d0a8a312b059f221149b"},
+        {"case":"visibility-flex","width":800,"height":600,"sha256":"415371d6c26ccf93d887aef3552c5761c2a0d4f21e1cf1a1cee95c95eadd1105"},
+        {"case":"visibility-flex-rtl","width":800,"height":600,"sha256":"968cb9b75e1ba0bc351bdc738b748ff29f7ddccbac40d87d6d07321bf2151c9e"},
+        {"case":"visibility-text","width":800,"height":600,"sha256":"c1bfe7950d18d9922437d655a5820a1bb532d18a760e6d961b600c3b4cd3cd6b"},
+        {"case":"visibility-text-rtl","width":800,"height":600,"sha256":"d5ca08862a0753d664e8e3c0728033a696246ad19d5788adfe03e65aa05fa466"},
+        {"case":"visibility-root","width":800,"height":600,"sha256":"85dca9e46caa376d6e73585cf6fec662d096c5077b074e716846c1c1ddf325db"},
+        {"case":"visibility-root-rtl","width":800,"height":600,"sha256":"1ad578fedc1407129e3a0fde33e52a9502aba75a65982695c97334d0b4eab128"}
       ]
     },
     {
@@ -1348,7 +1358,17 @@
         {"case":"transform-direction","width":1200,"height":900,"sha256":"6e8b57f7c1625aa0bfe945264346be821bc6112256d2319fb93ccf2b0b1bc2ab"},
         {"case":"transform-direction-rtl","width":1200,"height":900,"sha256":"13da5728a2d80884598e5748a5fb1e2ffa4a1c23bb064276bf7053d691e605f0"},
         {"case":"ctx-proof-units","width":1200,"height":900,"sha256":"2d37f66ef4780dd84d81b4bd950b68c60d18523cd8b0652c20c46277bc1959a8"},
-        {"case":"ctx-proof-units-rtl","width":1200,"height":900,"sha256":"eeb0bb170bb5503eab61b68bdf17c5ff82b51acb03285c5e8b6d7901ad7413c6"}
+        {"case":"ctx-proof-units-rtl","width":1200,"height":900,"sha256":"eeb0bb170bb5503eab61b68bdf17c5ff82b51acb03285c5e8b6d7901ad7413c6"},
+        {"case":"visibility-basic","width":1200,"height":900,"sha256":"efd4891ad4818ecc1fcf74f7645e963703fb52a469e9b80aaca1ae89133eec73"},
+        {"case":"visibility-basic-rtl","width":1200,"height":900,"sha256":"2f0d830f05964e2f8025ea48ab9cfa5ba3b382524e1f4f047a41d375f7c0dfc4"},
+        {"case":"visibility-paint","width":1200,"height":900,"sha256":"06dd5b733e8dddb744e54b526cda94adc932af5662da943369969c01e19db6a7"},
+        {"case":"visibility-paint-rtl","width":1200,"height":900,"sha256":"3867434d973ec70fd7422ff306bbb0be90e9526e11deb00cca74ed8c54b5b657"},
+        {"case":"visibility-flex","width":1200,"height":900,"sha256":"a443b33dc2afbf106ba0edf7b10474835dfda7ffa284ab513043fe07e2f60870"},
+        {"case":"visibility-flex-rtl","width":1200,"height":900,"sha256":"366c78bcc458af7e13f1bb98c3fdacfc28599ef7c8ec14748260e442962139ea"},
+        {"case":"visibility-text","width":1200,"height":900,"sha256":"60531967ab7ebe4885b9c0ead640a5b3a1afc283f28cd375cc7c409460c09342"},
+        {"case":"visibility-text-rtl","width":1200,"height":900,"sha256":"2f16f95466409a03bb24365173c8fd80d14c8683f644ef7dfd82566b05bdcde7"},
+        {"case":"visibility-root","width":1200,"height":900,"sha256":"9c86aa8fa1ec8279610aba16073d17ec0d4917bb9c43ac5a90816bc056960877"},
+        {"case":"visibility-root-rtl","width":1200,"height":900,"sha256":"57c97650dcee2e984751b42c9e5437cbb66edb60c44a4936cfa8bb1160228213"}
       ]
     },
     {
@@ -2022,7 +2042,17 @@
         {"case":"transform-direction","width":1050,"height":788,"sha256":"2d8e1d5efb042eb227d445eb592315166d9e3584e05efc7ea6a99d030216c2c0"},
         {"case":"transform-direction-rtl","width":1050,"height":788,"sha256":"9723f27365001714e75f2bab49c7861cf64300206954d5bb8d67bc3afa2bd4da"},
         {"case":"ctx-proof-units","width":1050,"height":788,"sha256":"48d87fcd34bcfed7e796f7fb0c5f68e742e779a8208af4ef889b11435e3eba5f"},
-        {"case":"ctx-proof-units-rtl","width":1050,"height":788,"sha256":"d21acf5542c968afdea5bf41064ded5845d8dc741b8f7f8b1dd35f928846b4ee"}
+        {"case":"ctx-proof-units-rtl","width":1050,"height":788,"sha256":"d21acf5542c968afdea5bf41064ded5845d8dc741b8f7f8b1dd35f928846b4ee"},
+        {"case":"visibility-basic","width":1050,"height":788,"sha256":"50dadbd522e5644f269f3b762989cf5947a5f6aac6788d29a3864afbfb59c044"},
+        {"case":"visibility-basic-rtl","width":1050,"height":788,"sha256":"d4b23a1ce1e42adfa8ad7a1746dc2ba7e504fa48283fe8b9967dcb392844f2fe"},
+        {"case":"visibility-paint","width":1050,"height":788,"sha256":"9636c83ccca2a1a4d50188b4fdb53d49d0add22d02fe56187ba262e5add09266"},
+        {"case":"visibility-paint-rtl","width":1050,"height":788,"sha256":"aac4257c926c79b8b23384c33399b7040c4a4fd8ab34e41e2092d19de8229e54"},
+        {"case":"visibility-flex","width":1050,"height":788,"sha256":"6e1dab17189f4cc1073c5842fc14cb266b58d12cdc9965ba06d1aa01dec33d5d"},
+        {"case":"visibility-flex-rtl","width":1050,"height":788,"sha256":"d3c5be9b57c46d84d7b6616c3093fd79b98ec2ae4564eab49668bf5a964af44b"},
+        {"case":"visibility-text","width":1050,"height":788,"sha256":"824268cec64155556fc1b057fb3eabbfd63a72711cb17d9fa3657481b9ad2d91"},
+        {"case":"visibility-text-rtl","width":1050,"height":788,"sha256":"a0a9095a68140faa3ee78ab55d438c2d102157fb40d6c918b8968f7f106c9acc"},
+        {"case":"visibility-root","width":1050,"height":788,"sha256":"9a3eab77ff090da1594c805ef08aef4826a795a4719911ba2ad5ae932ee39221"},
+        {"case":"visibility-root-rtl","width":1050,"height":788,"sha256":"2f6e8cb287fc1c7511232443d27674219c9547a41d0e158430c024dadd3f0ad4"}
       ]
     }
   ]

@@ -668,6 +668,16 @@
     "transform-will-change": "transform on a3, a4: hit testing through transforms is SELD-R2b (T146)",
     "transform-flex": "transform on i1, i2, i3, i4: hit testing through transforms is SELD-R2b (T146)",
     "transform-direction": "transform on a0, a1, a2, a3: hit testing through transforms is SELD-R2b (T146)",
-    "transform-direction-rtl": "transform on a0, a1, a2, a3: hit testing through transforms is SELD-R2b (T146)"
+    "transform-direction-rtl": "transform on a0, a1, a2, a3: hit testing through transforms is SELD-R2b (T146)",
+    "visibility-basic": "visibility on hid-a, hid-c, hid-v, hid-p, hid-inh, hid-explicit, hid-unset, hid-n1, hid-n3, hid-k: hit testing past a box that is not visible is not modelled yet (T150b)",
+    "visibility-basic-rtl": "visibility on hid-a, hid-c, hid-v, hid-p, hid-inh, hid-explicit, hid-unset, hid-n1, hid-n3, hid-k: hit testing past a box that is not visible is not modelled yet (T150b)",
+    "visibility-paint": "visibility on hid-deco, hid-clip, hid-round, hid-pad, hid-pad-kid: hit testing past a box that is not visible is not modelled yet (T150b)",
+    "visibility-paint-rtl": "visibility on hid-deco, hid-clip, hid-round, hid-pad, hid-pad-kid: hit testing past a box that is not visible is not modelled yet (T150b)",
+    "visibility-flex": "visibility on hid-b1, hid-b2, hid-b3, hid-r4, hid-b4: hit testing past a box that is not visible is not modelled yet (T150b)",
+    "visibility-flex-rtl": "visibility on hid-b1, hid-b2, hid-b3, hid-r4, hid-b4: hit testing past a box that is not visible is not modelled yet (T150b)",
+    "visibility-text": "visibility on hid-t1, hid-t2, hid-t2a, hid-t3, hid-f: hit testing past a box that is not visible is not modelled yet (T150b)",
+    "visibility-text-rtl": "visibility on hid-t1, hid-t2, hid-t2a, hid-t3, hid-f: hit testing past a box that is not visible is not modelled yet (T150b)",
+    "visibility-root": "visibility on html, body, hid-a: hit testing past a box that is not visible is not modelled yet (T150b)",
+    "visibility-root-rtl": "visibility on html, body, hid-a: hit testing past a box that is not visible is not modelled yet (T150b)"
   }
 }
