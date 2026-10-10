@@ -390,7 +390,7 @@ describe('TXT1a-1 phase B: post-layout passes resolve a real-font input with the
   it('scrollRanges lays out and measures it, and refuses a measurer without the face with text-glyph', () => {
     const r = scrollRanges(input, shaped());
     expect(r.kind === 'ok' && [r.ranges.map((c) => c.id), r.refused]).toEqual([['p'], []]);
-    const refused = scrollRanges(input, referenceShapedMeasurer());
+    const refused = scrollRanges(input, ahemShapedMeasurer());
     expect(refused.kind === 'refused' && [refused.nodeId, refused.detail.slice(0, 11)]).toEqual(['q', 'text-glyph:']);
   });
 
