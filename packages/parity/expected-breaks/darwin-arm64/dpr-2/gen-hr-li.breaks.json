@@ -1,0 +1,12 @@
+{
+  "case": "gen-hr-li",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"li1:text0","data":"cc","lines":1,"units":[0,0],"blank":[]},
+    {"id":"li2:text0","data":"dd","lines":1,"units":[0,0],"blank":[]},
+    {"id":"hr::before:text0","data":"a","lines":1,"units":[0],"blank":[]},
+    {"id":"li1::before:text0","data":"b","lines":1,"units":[0],"blank":[]},
+    {"id":"li2::before:text0","data":"b","lines":1,"units":[0],"blank":[]}
+  ]
+}

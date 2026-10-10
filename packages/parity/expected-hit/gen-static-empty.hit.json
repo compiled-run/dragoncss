@@ -1,0 +1,17 @@
+{
+  "case": "gen-static-empty",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 176,
+  "gridSha256": "9585120cd0ff837a417e3669699f5e917337e3f479aaa36fc8bb1b051c1add29",
+  "ids": [
+    "a",
+    "html"
+  ],
+  "runs": [[0,140],[1,36]]
+}

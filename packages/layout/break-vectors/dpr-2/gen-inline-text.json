@@ -1,0 +1,17 @@
+{
+  "case": "gen-inline-text",
+  "dpr": 2,
+  "texts": [
+    {"id":"w::before:text0","lines":[[0,3]]},
+    {"id":"w:text0","lines":[[0,10],[10,20],[20,25]]},
+    {"id":"w::after:text0","lines":[[0,3]]},
+    {"id":"q::before:text0","lines":[[0,3]]},
+    {"id":"q:text0","lines":[[0,2]]},
+    {"id":"q::after:text0","lines":[[0,2]]},
+    {"id":"s::before:text0","lines":[[0,1]]},
+    {"id":"s:text0","lines":[[0,8]]},
+    {"id":"s::after:text0","lines":[[0,4]]},
+    {"id":"n::before:text0","lines":[[0,4],[4,8]]},
+    {"id":"n:text0","lines":[[0,2]]}
+  ]
+}

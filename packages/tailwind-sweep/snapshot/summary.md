@@ -4,11 +4,11 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4328 (18.6%) | 18957 (81.4%) | 1 | 0 | 0 |
-| ios | 4290 (18.4%) | 18955 (81.4%) | 1 | 0 | 40 |
-| android | 4290 (18.4%) | 18955 (81.4%) | 1 | 0 | 40 |
+| web | 4619 (19.8%) | 18666 (80.2%) | 1 | 0 | 0 |
+| ios | 4581 (19.7%) | 18664 (80.2%) | 1 | 0 | 40 |
+| android | 4581 (19.7%) | 18664 (80.2%) | 1 | 0 | 40 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4101, ios 4112 and android 4112 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4392, ios 4403 and android 4403 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
@@ -19,7 +19,7 @@ As published (before the shell pre-pass), the sheet compiles for web 4101, ios 4
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 | 906 / 109 / 0 / 0 / 0 |
 | typography | 261 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 | 27 / 234 / 0 / 0 / 0 |
-| colours | 14842 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 | 70 / 14772 / 0 / 0 / 0 |
+| colours | 14842 | 361 / 14481 / 0 / 0 / 0 | 361 / 14481 / 0 / 0 / 0 | 361 / 14481 / 0 / 0 / 0 |
 | backgrounds | 151 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 | 7 / 144 / 0 / 0 / 0 |
 | borders | 250 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 | 156 / 94 / 0 / 0 / 0 |
 | effects | 1178 | 21 / 1157 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 | 2 / 1176 / 0 / 0 / 0 |
@@ -49,7 +49,6 @@ As published (before the shell pre-pass), the sheet compiles for web 4101, ios 4
 | `property caret-color` | 291 | 291 | 291 | 1 |
 | `property outline-color` | 291 | 291 | 291 | 1 |
 | `property text-decoration-color` | 291 | 291 | 291 | 1 |
-| `selector pseudo-element ::placeholder` | 291 | 291 | 291 | 1 |
 | `property border-spacing` | 105 | 105 | 105 | 6 |
 | `property scale` | 90 | 90 | 90 | 10 |
 | `value transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-` | 90 | 90 | 90 | 12 |
@@ -75,3 +74,4 @@ As published (before the shell pre-pass), the sheet compiles for web 4101, ios 4
 | `property scroll-padding-block-start` | 35 | 35 | 35 | 2 |
 | `property scroll-padding-bottom` | 35 | 35 | 35 | 2 |
 | `property scroll-padding-inline` | 35 | 35 | 35 | 2 |
+| `property scroll-padding-inline-end` | 35 | 35 | 35 | 2 |

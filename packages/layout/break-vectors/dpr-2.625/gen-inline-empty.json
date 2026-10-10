@@ -1,0 +1,8 @@
+{
+  "case": "gen-inline-empty",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"e:text0","lines":[[0,5]]},
+    {"id":"f:text0","lines":[[0,6],[6,8]]}
+  ]
+}
