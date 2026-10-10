@@ -304,7 +304,7 @@
             ],
             "digests": {
               "p1": "ddf5556b47a49c10dfb4e060007a497ae7eb7ffd662df8a781b7e9595b7d28f8",
-              "extended": "40f442d5ba7129caabc93c2604cad44dfe1322582b34a1214bab07eeff3f4ebe"
+              "extended": "15670672089e160dd4883077292cb62579ac5f32a7d8ba338f64109082d58866"
             }
           },
           "device": null,
@@ -641,57 +641,57 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 170,
-              "caught": 170,
+              "applicable": 179,
+              "caught": 179,
               "uncaught": []
             },
             {
               "fault": "break-shifted",
               "check": "breaks",
-              "applicable": 111,
-              "caught": 111,
+              "applicable": 131,
+              "caught": 131,
               "uncaught": []
             }
           ]
@@ -702,57 +702,57 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 155,
-              "caught": 155,
+              "applicable": 165,
+              "caught": 165,
               "uncaught": []
             },
             {
               "fault": "break-shifted",
               "check": "breaks",
-              "applicable": 111,
-              "caught": 111,
+              "applicable": 131,
+              "caught": 131,
               "uncaught": []
             }
           ]
@@ -1022,7 +1022,7 @@
             ],
             "digests": {
               "p1": "ddf5556b47a49c10dfb4e060007a497ae7eb7ffd662df8a781b7e9595b7d28f8",
-              "extended": "40f442d5ba7129caabc93c2604cad44dfe1322582b34a1214bab07eeff3f4ebe"
+              "extended": "15670672089e160dd4883077292cb62579ac5f32a7d8ba338f64109082d58866"
             }
           },
           "device": null,
@@ -1411,57 +1411,57 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 155,
-              "caught": 155,
+              "applicable": 165,
+              "caught": 165,
               "uncaught": []
             },
             {
               "fault": "break-shifted",
               "check": "breaks",
-              "applicable": 111,
-              "caught": 111,
+              "applicable": 131,
+              "caught": 131,
               "uncaught": []
             }
           ]
@@ -1472,57 +1472,57 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 541,
-              "caught": 541,
+              "applicable": 657,
+              "caught": 657,
               "uncaught": []
             },
             {
               "fault": "break-shifted",
               "check": "breaks",
-              "applicable": 111,
-              "caught": 111,
+              "applicable": 131,
+              "caught": 131,
               "uncaught": []
             }
           ]
@@ -1533,57 +1533,57 @@
             {
               "fault": "edge-plus-2-device-px",
               "check": "a",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "edge-plus-1-device-px",
               "check": "d",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-changed",
               "check": "b",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "applied-missing",
               "check": "b",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "channel-delta-1",
               "check": "c",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "missing-node",
               "check": "a",
-              "applicable": 542,
-              "caught": 542,
+              "applicable": 666,
+              "caught": 666,
               "uncaught": []
             },
             {
               "fault": "snap-disabled",
               "check": "d",
-              "applicable": 170,
-              "caught": 170,
+              "applicable": 179,
+              "caught": 179,
               "uncaught": []
             },
             {
               "fault": "break-shifted",
               "check": "breaks",
-              "applicable": 111,
-              "caught": 111,
+              "applicable": 131,
+              "caught": 131,
               "uncaught": []
             }
           ]
