@@ -1,0 +1,8 @@
+{
+  "case": "opacity-basic",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"op-text:text0","lines":[[0,1]]},
+    {"id":"op-textonly:text0","lines":[[0,1]]}
+  ]
+}
