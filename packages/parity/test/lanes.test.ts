@@ -10,9 +10,11 @@ import { atDpr, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from '../src/dpr.ts
 import { declaredLayoutCaseCount, groupFixtures, MILESTONE_1_LAYOUT_CASES } from '../src/case-count.ts';
 import type { HostRun, KotlinLookup, LaneFault } from '../src/lanes.ts';
 import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, lanesFile, lanesJsonText, laneSources, notPassed, parseNativeOutput, plantLaneFault, readLanesFile, runHostLane, staleLanes, toleranceLiterals } from '../src/lanes.ts';
-import { HIT_LANE, scriptCases, STATE_LANE } from '../src/device-lanes.ts';
+import { HIT_LANE, scriptCases, STATE_LANE, TRACE_LANE } from '../src/device-lanes.ts';
+import { traceScriptIds } from '../src/trace-lane.ts';
 import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
 import { INLINE_OUT, INLINE_REASON, STACKING_OUT, STACKING_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
+import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
@@ -38,10 +40,11 @@ const stateCaseCount = (name: string): number => {
 };
 
 describe('native targets', () => {
-  it('ios and android, each with the nine lanes in order', () => {
+  it('ios and android, each with the ten lanes in order', () => {
     expect(targets.map((t) => t.target)).toEqual(['ios', 'android']);
-    // SELD-R1b appends device-states and device-hit after the six P5 lanes; ANIM-b1 3b appends device-anim.
-    expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels', 'device-states', 'device-hit', 'device-anim']);
+    // SELD-R1b appends device-states and device-hit after the six P5 lanes; ANIM-b1 3b appends device-anim; SELD-R2 (T064 R14) device-traces.
+    expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels', 'device-states', 'device-hit', 'device-anim', 'device-traces']);
+    for (const t of targets) expect(lane(t, TRACE_LANE)?.sets.map((s) => [s.dpr, s.ids]), t.target).toEqual(t.dprs.map((d) => [d, traceScriptIds()]));
     for (const t of targets) expect(t.lanes.map((l) => l.lane)).toEqual([...LANES]);
   });
   it('case lists come from the constants: the declared top-level cases plus one set per DPR on both vectors lanes of both targets', () => {
@@ -238,19 +241,21 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
-  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the PNT1 stacking cases, the radius cases (PNT1) and the INL1a inline cases', () => {
+  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the PNT1 stacking cases, the radius cases (PNT1), the INL1a inline cases and the GRID cases', () => {
     const refusals = hitRefusedCases();
     const refused = refusals.map((r) => r.id);
     expect(refused.length).toBeGreaterThan(0);
-    // Exactly the union: every INL1a inline, PNT1 stacking and radius case is refused with its reason, and every other refusal is a
+    // Exactly the union: every INL1a inline, PNT1 stacking, radius and GRID case is refused with its reason, and every other refusal is a
     // transform- case (PNT2) or PNT1's stacking-transform with the transform reason.
     expect(refused.filter((id) => RADIUS_OUT.includes(id)).sort()).toEqual([...RADIUS_OUT].sort());
     expect(refused.filter((id) => INLINE_OUT.includes(id)).sort()).toEqual([...INLINE_OUT].sort());
     expect(refused.filter((id) => STACKING_OUT.includes(id)).sort()).toEqual([...STACKING_OUT].sort());
+    expect(refused.filter((id) => GRID_OUT.includes(id)).sort()).toEqual([...GRID_OUT].sort());
     for (const r of refusals) {
       if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
       else if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
       else if (STACKING_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(STACKING_REASON);
+      else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
       else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^(transform-|stacking-transform)/), expect.stringMatching(TRANSFORM_REASON)]);
     }
     // TXT1a-2: over the device cases (targets.ts vectorCaseIds), every layout case but the shaped ones the runtime draws from phase R.
@@ -280,11 +285,12 @@ describe('committed out/lanes.json', () => {
         expect([...(l.device?.sets.map((s) => s.dpr) ?? [])].sort(), `${t.target} ${l.lane}`).toEqual(l.sets.map((s) => s.dpr).sort());
         // SELD-R1b: device-states runs the state script cases, every check; device-hit runs every hit case (the layout cases but
         // those the hit lane refuses by name, hit-capture.ts hitCases) and compares only hit points (b), the other counts exactly 0.
-        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : ids.length;
+        // SELD-R2: device-traces runs every interaction script and compares only trace lines (b).
+        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : ids.length;
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
           expect(s.cases, `${t.target} ${l.lane} ${s.dpr}`).toBe(cases);
-          if (l.lane === HIT_LANE) expect([s.compared.a, s.compared.b > 0, s.compared.c, s.compared.d, s.compared.breaks], `${t.target} ${l.lane} ${s.dpr}`).toEqual([0, true, 0, 0, 0]);
+          if (l.lane === HIT_LANE || l.lane === TRACE_LANE) expect([s.compared.a, s.compared.b > 0, s.compared.c, s.compared.d, s.compared.breaks], `${t.target} ${l.lane} ${s.dpr}`).toEqual([0, true, 0, 0, 0]);
           else expect(s.compared.a > 0 && s.compared.b > 0 && s.compared.c > 0 && s.compared.d > 0 && s.compared.breaks > 0, `${t.target} ${l.lane} ${s.dpr}`).toBe(true);
         }
         if (l.lane === 'device-pixels') {

@@ -1,0 +1,93 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 9216
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 9216
+  },
+  {
+   "id": "player",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 63744,
+   "height": 9216
+  },
+  {
+   "id": "time",
+   "parent": "player",
+   "x": 3072,
+   "y": 3072,
+   "width": 57600,
+   "height": 3072
+  },
+  {
+   "id": "track",
+   "parent": "time",
+   "x": 0,
+   "y": 0,
+   "width": 57600,
+   "height": 3072
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 144,
+   "width": 1200,
+   "height": 144
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 144,
+   "width": 1200,
+   "height": 144
+  },
+  {
+   "id": "player",
+   "left": 0,
+   "top": 0,
+   "right": 996,
+   "bottom": 144,
+   "width": 996,
+   "height": 144
+  },
+  {
+   "id": "time",
+   "left": 48,
+   "top": 48,
+   "right": 948,
+   "bottom": 96,
+   "width": 900,
+   "height": 48
+  },
+  {
+   "id": "track",
+   "left": 48,
+   "top": 48,
+   "right": 948,
+   "bottom": 96,
+   "width": 900,
+   "height": 48
+  }
+ ]
+}

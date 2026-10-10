@@ -21,12 +21,13 @@ import { checkTranslucent } from './analysis/paint-values/effects.ts';
 import { checkStackingClips } from './analysis/paint-values/stacking.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
+import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
 import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
@@ -902,17 +903,24 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
     for (const c of cases) {
       const reachable = c.interaction.filter((i) => i.value.kind === 'reachable');
       if (c.resolved === null || reachable.length === 0) continue;
-      const fact = [c.resolved, ...reachable.map((i) => i.resolved)].map((r) => hitUnmodelledFact(r, options.ua, compiles)).find((f) => f !== null) ?? null;
-      if (fact === null) continue;
+      const trees = [c.resolved, ...reachable.map((i) => i.resolved)];
+      const fact = trees.map((r) => hitUnmodelledFact(r, options.ua, compiles)).find((f) => f !== null) ?? null;
+      const grid = fact === null ? (trees.map((r) => hitUnmodelledGrid(r, compiles)).find((g) => g !== null) ?? null) : null;
+      if (fact === null && grid === null) continue;
       for (const r of rules) {
         const pseudo = firstInteractionPseudo(r);
         if (pseudo === null) continue;
         const origin = interactionRuleOrigin(r, c.resolved.element.node.origin);
-        const message = `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`;
+        const message = fact !== null
+          ? `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
+          : `:${pseudo} needs Dragon hit testing through the grid container ${grid as string}, which is not built yet (package GRID hit model)`;
         const id = `${t}|${JSON.stringify(origin)}|${message}`;
         if (seen.has(id)) continue;
         seen.add(id);
-        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual: `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.` }));
+        const manual = fact !== null
+          ? `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
+          : `Use flex or block layout in a document with :${pseudo} rules, or style the state with a component state until grid hit testing is built.`;
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual }));
       }
     }
   }
@@ -1194,6 +1202,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const nativeTargets = NATIVE_TARGETS.filter((t) => targets.includes(t));
       // MQ-R1: per-band transition and animation lists are refused on native until MQ-Rt, as on web until ANIM-mq.
       refuseBandedNativeAnimations(rules, inEveryBand, nativeTargets, diagnostics);
+      // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused.
+      refuseAnimatedGradients(animation, cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])), nativeTargets, diagnostics);
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.
