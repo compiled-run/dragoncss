@@ -6,7 +6,7 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
-import { resolveAlias } from './aliases.ts';
+import { legacyAliasRefusal, resolveAlias } from './aliases.ts';
 import { legacyDisplay } from './display-legacy.ts';
 import type { AtRuleContext, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
@@ -290,6 +290,12 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   // A legacy alias is its property (aliases.ts); its diagnostics name the alias as written too.
   const property = resolveAlias(name);
   if (property === name) return parseResolved(d, property, base, sheetText, order, diagnostics);
+  const valueSpan = spanOf(d['value'] as CssNode, base);
+  const legacy = legacyAliasRefusal(name, sheetText.slice(valueSpan.start - base.start, valueSpan.end - base.start));
+  if (legacy !== null) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(valueSpan), message: `${name}: ${generate(d['value'] as CssNode)} is unsupported: ${legacy}`, manual: `Write ${property} instead of ${name}.` }));
+    return null;
+  }
   const from = diagnostics.length;
   const declaration = parseResolved(d, property, base, sheetText, order, diagnostics);
   for (let i = from; i < diagnostics.length; i++) {
