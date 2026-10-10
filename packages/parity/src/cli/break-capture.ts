@@ -8,12 +8,13 @@ import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { atDpr, DPRS, zoomGuard } from '../dpr.ts';
 import { chromeBreaksText, captureBreakTexts, compareVectorWithChrome, expectedBreaksDir, expectedBreaksPath, leafTexts, readBreakVector } from '../line-breaks.ts';
 import type { ChromeBreaks } from '../line-breaks.ts';
-import { nativeCases } from '../native-host.ts';
+import { engineCases } from '../native-host.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 
 const platform = hostPlatform();
 if (platform !== REFERENCE_PLATFORM) throw new Error(`break captures are taken on the reference platform ${REFERENCE_PLATFORM}, not ${platform}`);
-const cases = nativeCases();
+// TXT1a-2: every layout case, a shaped one (native refuses it until phase R) through its engine projection.
+const cases = engineCases();
 console.log(`parity:break-capture: ${cases.length} cases per DPR; DPRs ${DPRS.join(', ')}`);
 const captured = new Map<string, ChromeBreaks>();
 for (const dpr of DPRS) {
@@ -28,6 +29,7 @@ for (const dpr of DPRS) {
     await inOrder(cases, CHROME_PAGES, async (n) => {
       const page = await openPage(browser, n.case.authoredHtml, atDpr(n.case.environment, dpr));
       try {
+        if (n.case.authoredPrepare !== null) await n.case.authoredPrepare(page);
         const b: ChromeBreaks = { case: n.case.id, chrome: CHROME_VERSION, dpr, texts: await captureBreakTexts(page) };
         captured.set(`${n.case.id}@${dpr}`, b);
         writeFileSync(expectedBreaksPath(n.case.id, dpr, platform), chromeBreaksText(b));
@@ -55,7 +57,7 @@ for (const dpr of DPRS) {
       mismatches.push(`${n.case.id}@${dpr}: break-mismatch: ${v === null ? 'no break vector (pnpm run layout:break-vectors)' : 'no Chrome capture'}`);
       continue;
     }
-    const r = compareVectorWithChrome(v, c, leafTexts(n.programs.uikit.root));
+    const r = compareVectorWithChrome(v, c, leafTexts(n.root));
     texts += r.compared;
     if (r.problems.length === 0) equal++;
     for (const p of r.problems) mismatches.push(`${n.case.id}@${dpr}: ${p.kind}: ${p.detail}`);

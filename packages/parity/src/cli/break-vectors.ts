@@ -2,13 +2,15 @@
 // text node of every layout case at every device DPR, through the engine's own placeLines as the device reads them,
 // written to packages/layout/break-vectors/dpr-<d>/<case>.json. The case list is layoutCases(); the DPRs are DPRS.
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { programInput } from 'dragon';
 import { DPRS } from '../dpr.ts';
 import { breakVector, breakVectorDir, breakVectorPath, breakVectorText, engineTextLines } from '../line-breaks.ts';
-import { nativeCases, referenceMeasurer } from '../native-host.ts';
+import { engineCases } from '../native-host.ts';
+import { referenceShapedMeasurer } from '../text-shaper-host.ts';
 
-const cases = nativeCases();
-const m = referenceMeasurer();
+// TXT1a-2: every layout case, a shaped one (native refuses it until phase R) through its engine projection.
+const cases = engineCases();
+// The shaped cases lay out in their real faces, which the device measurer (native-host.ts referenceMeasurer, Ahem) does not bundle.
+const m = referenceShapedMeasurer();
 let lines = 0;
 for (const dpr of DPRS) {
   const dir = breakVectorDir(dpr);
@@ -16,9 +18,8 @@ for (const dpr of DPRS) {
   for (const f of readdirSync(dir)) if (f.endsWith('.json')) rmSync(`${dir}/${f}`);
   let texts = 0;
   for (const n of cases) {
-    // Both backends run the one shared engine input tree; the break vector is of that tree.
-    if (JSON.stringify(n.programs.uikit.root) !== JSON.stringify(n.programs['android-views'].root)) throw new Error(`${n.case.id}: the uikit and android-views programs hold different engine inputs`);
-    const t = engineTextLines(programInput(n.programs.uikit, n.case.environment.viewport, dpr), m);
+    // Both backends run the one shared engine input tree (engineCases checks it); the break vector is of that tree.
+    const t = engineTextLines(n.inputAt(dpr), m);
     texts += t.length;
     lines += t.reduce((k, x) => k + x.lines.length, 0);
     writeFileSync(breakVectorPath(n.case.id, dpr), breakVectorText(breakVector(n.case.id, dpr, t)));

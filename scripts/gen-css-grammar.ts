@@ -38,7 +38,7 @@ const SUBSET = [
   'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
   'flex', 'flex-flow', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
   'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap',
-  'font-size', 'font-family', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
+  'font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
   ...LOGICAL_SHORTHANDS,
   ...WRITING_MODE_SHORTHANDS,
 
@@ -52,6 +52,8 @@ const SUBSET = [
   'border-radius', '-webkit-border-radius',
   // Box shadows (PNT1), after the radii.
   'box-shadow',
+  // Outlines (PNT1), after the radius family, as LONGHANDS registers them, then their shorthand.
+  'outline-color', 'outline-style', 'outline-width', 'outline-offset', 'outline',
   // Transforms (PNT2), after grid, as LONGHANDS registers them.
   ...TRANSFORM_LONGHANDS,
   // opacity and z-index (PNT1), after transforms.
@@ -60,6 +62,8 @@ const SUBSET = [
   'content', 'list-style', 'list-style-type', 'list-style-position', 'list-style-image',
   // Background layers (BG2), as LONGHANDS registers them, then background-position.
   'background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip', 'background-position',
+  // T150a: visibility (css-display-3 §4), after lists, as LONGHANDS registers it.
+  'visibility',
 ] as const;
 
 /**

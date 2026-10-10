@@ -133,6 +133,10 @@ export function hitRefusal(n: NativeCase): string | null {
   // PNT1: a stacking context below the root paints its layer in z-order, which rt-hit.ts does not order yet.
   const contexts = nodes.filter((x) => x.parent !== null && (x.facts['stacking'] as { readonly createsContext?: boolean } | undefined)?.createsContext === true).map((x) => x.id);
   if (contexts.length > 0) return `stacking context on ${contexts.join(', ')}: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)`;
+  // T150a: Chrome's elementFromPoint passes over a box that is not visible (its visible descendants still hit), which the hit test
+  // does not model yet.
+  const hidden = nodes.filter((x) => x.writes.some((w) => w.kind === 'visibility')).map((x) => x.id);
+  if (hidden.length > 0) return `visibility on ${hidden.join(', ')}: hit testing past a box that is not visible is not modelled yet (T150b)`;
   // PNT1-radius: Blink clips a hit to the rounded border box, which the hit test does not model yet.
   const rounded = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'border-radius')).map((x) => x.id);
   if (rounded.length > 0) return `border-radius on ${rounded.join(', ')}: hit testing through rounded corners is not modelled yet (PNT1)`;
@@ -199,10 +203,11 @@ export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.jso
 /**
  * Files that are new since the identity base: SELD-R1b's fixtures (hit-*, reject-pointer-events-*), SELD-R2a's (interaction-*,
  * reject-interaction-*), the fixtures of PNT2's transforms group (transform-*, reject-transform-*), CTX-PROOF's (ctx-proof-*),
- * PNT1's radius group (radius-*, reject-radius-*), PNT1's effects group (opacity-*, stacking-*, their rejects included) and PNT1's
- * shadow group (shadow-*, calib-shadow-*, reject-shadow-*), which landed after it.
+ * PNT1's radius group (radius-*, reject-radius-*), PNT1's effects group (opacity-*, stacking-*, their rejects included), PNT1's
+ * shadow group (shadow-*, calib-shadow-*, reject-shadow-*), PNT1's outline group (outline-*, reject-outline-*) and T150a's visibility
+ * group (visibility-*), which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-)[^/]*$/;
 /** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
@@ -211,10 +216,11 @@ export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; 
 };
 
 /**
- * The longhands added since the identity base, beside pointer-events: PNT1's four corner radii and box-shadow, which every capture and emitted rule
- * gained after the base was written, so the base files must differ from it by exactly these keys and pointer-events.
+ * The longhands added since the identity base, beside pointer-events: PNT1's four corner radii, box-shadow and the four outline
+ * longhands, which every capture and emitted rule gained after the base was written, so the base files must differ from it by
+ * exactly these keys and pointer-events.
  */
-const KEYS_SINCE_BASE = ['pointer-events', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'box-shadow'];
+const KEYS_SINCE_BASE = ['pointer-events', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'box-shadow', 'outline-color', 'outline-style', 'outline-width', 'outline-offset'];
 const JSON_KEYS = new RegExp(`,\\n[ ]*"(${KEYS_SINCE_BASE.join('|')})": "[^"]*"`, 'g');
 const CSS_KEYS = new RegExp(`^[ ]*(${KEYS_SINCE_BASE.join('|')}): [^;\\n]*;\\n`, 'gm');
 /**
@@ -223,6 +229,9 @@ const CSS_KEYS = new RegExp(`^[ ]*(${KEYS_SINCE_BASE.join('|')}): [^;\\n]*;\\n`,
  */
 const JSON_EFFECTS = /,\n[ ]*"(?:opacity": "1|z-index": "auto)"/g;
 const CSS_EFFECTS = /^[ ]*(?:opacity: 1|z-index: auto);\n/gm;
+/** T150a's visibility, also added after the base, at its initial value only: a base file whose element is not visible would still differ. */
+const JSON_VISIBILITY = /,\n[ ]*"visibility": "visible"/g;
+const CSS_VISIBILITY = /^[ ]*visibility: visible;\n/gm;
 
 /**
  * GEN-b's longhands (content, list-style-type, -position, -image), also added after the identity base, at their neutral values in
@@ -260,12 +269,12 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    const stripped = text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(genB, '');
+    const stripped = text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(genB, '');
     return BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
-    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(genB, '').replace(CSS_BG2, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(genB, '').replace(CSS_BG2, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }

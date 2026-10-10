@@ -1,11 +1,14 @@
 // Stage 3 of docs/api.md §4.1 for web: CSS emitted from the resolved result (stage 1), never from a backend lowering.
 // One rule per element with every milestone longhand written, so the output does not depend on the UA stylesheet. The inset
 // longhands are the one exception: they are written when any of them is not auto. Auto is their initial value and no Chrome UA
-// rule sets them on a supported tag (ua.test.ts), so leaving them out gives the same computed values.
+// rule sets them on a supported tag (ua.test.ts), so leaving them out gives the same computed values. The outline longhands are the
+// other: they are written only when an author declaration sets one (in any band or interaction state of the element), since
+// Chrome's UA :focus-visible rule (outline: auto 1px -webkit-focus-ring-color) draws the focus ring an explicit none would hide.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
+import { OUTLINE_LONGHANDS } from '../css/properties/outline.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { familyListText } from '../css/values.ts';
 import { parseFamilyList } from '../fonts/family-list.ts';
@@ -28,6 +31,18 @@ function writesInsets(el: ResolvedElement): boolean {
   return INSET_LONGHANDS.some((p) => {
     const v = (el.props.get(p) as ResolvedValue).value;
     return !(v.kind === 'keyword' && v.value === 'auto');
+  });
+}
+
+/**
+ * Whether an author declaration sets an outline longhand of the element. revert and revert-layer roll back to the UA origin, whose
+ * :focus-visible rule the output must keep, so they do not count.
+ */
+export function authorsOutline(el: ResolvedElement): boolean {
+  return OUTLINE_LONGHANDS.some((p) => {
+    const r = el.props.get(p as never) as ResolvedValue | undefined;
+    if (r === undefined) throw new Error(`${el.element.address}: ${p} is not resolved`);
+    return r.declaration !== null && !(r.declared?.kind === 'keyword' && (r.declared.value === 'revert' || r.declared.value === 'revert-layer'));
   });
 }
 
@@ -197,7 +212,13 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     const bandBase = bandCase.map((bc) => byAddress(bc.root));
     const visit = (el: ResolvedElement, under: boolean): void => {
       const insets = writesInsets(el);
-      const decls = LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => declLine(el, p, under));
+      // The outline longhands are written for every resolution of the element or none (an unwritten one is Chrome's UA value).
+      const at = (m: ReadonlyMap<string, ResolvedElement>): ResolvedElement[] => {
+        const x = m.get(el.element.address);
+        return x === undefined ? [] : [x];
+      };
+      const outline = [el, ...inBands.flatMap(at), ...states.flatMap((list) => list.flatMap((st) => at(st.at)))].some(authorsOutline);
+      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p))).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
       if (animations !== null) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).

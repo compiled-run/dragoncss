@@ -1,0 +1,15 @@
+<div d0
+{on === true ? 'on' : ''}
+<div d1
+{on === true ? 'on' : ''}
+<div d2
+{on === true ? 'on' : ''}
+<div d3
+{on === true ? 'on' : ''}
+<div d4
+{on === true ? 'on' : ''}
+<div d5
+on: [false, true] = false
+component App
+<html>
+<body>

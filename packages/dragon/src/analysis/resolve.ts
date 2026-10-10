@@ -13,7 +13,7 @@ import { uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeGridLengths, computeJustifyItems, computeLengths, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeJustifyItems, computeLengths, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
 import { presentationalHints } from './elements/replaced.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
@@ -143,13 +143,23 @@ const displayOf = (el: ResolvedElement): string => {
   return v.kind === 'keyword' ? v.value : '';
 };
 
+/** css-variables-1 §2: every resolved element's computed custom properties (ANIM-v substitutes transition and animation values with them). */
+const RESOLVED_CUSTOMS = new WeakMap<ResolvedElement, CustomProperties>();
+
+/** The computed custom properties of an element resolveTree returned; a compiler error for any other element. */
+export function resolvedCustoms(el: ResolvedElement): CustomProperties {
+  const c = RESOLVED_CUSTOMS.get(el);
+  if (c === undefined) throw new Error(`${el.element.address} was not resolved by resolveTree`);
+  return c;
+}
+
 // css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand. interaction:
 // the hovered and focused elements the selectors match against (SELD-R2a); none by default.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
 export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState = NO_INTERACTION): ResolvedElement {
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
-  const customsOf = new WeakMap<ResolvedElement, CustomProperties>();
+  const customsOf = RESOLVED_CUSTOMS;
   // The children of each inline box, waiting for its block container's inline formatting context to collapse their text.
   const pendingInline = new Map<ResolvedElement, readonly (ResolvedElement | LinkedText)[]>();
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null): ResolvedElement => {
@@ -159,7 +169,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const tag = uaTagOf(el.tag);
     const none = { declaration: null, declared: null, losing: [] } as const;
     const fromParent = (p: Longhand): ResolvedValue => {
-      if (parent === null) return { value: parseValueText(p, environment.ua.computed.html[p] as string), origin: 'initial', span: null, ...none };
+      // The UA capture has no font-weight or font-style (datasets.ts TEXT_FONT_LONGHANDS); the root takes their initial value.
+      const rootValue = environment.ua.computed.html[p];
+      if (parent === null) return { value: rootValue === undefined ? initialValue(p, environment.ua) : parseValueText(p, rootValue), origin: 'initial', span: null, ...none };
       const pv = parent.props.get(p) as ResolvedValue;
       return { value: pv.value, origin: 'inherited', span: pv.span, ...none };
     };
@@ -225,6 +237,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent, revertedProps);
     // A replaced key's forced values (iframe overflow: clip) hold whatever the cascade says (ELB-2 userAgentForced).
     applyForcedUserAgent(tag, props, environment.ua);
+    computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {

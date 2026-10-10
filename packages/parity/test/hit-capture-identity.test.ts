@@ -107,6 +107,13 @@ describe('pointer-events changes the captures and emitted files only by its own 
     }
   });
 
+  it("removes T150a's visibility, added after the base, only at its initial value", () => {
+    expect(withoutPointerEvents('x/a.web.json', '{\n  "x": "1",\n  "visibility": "visible"\n}')).toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('x/a.web.json', '{\n  "x": "1",\n  "visibility": "hidden"\n}')).not.toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('e/a.css', '.d {\n  color: red;\n  visibility: visible;\n}\n')).toBe('.d {\n  color: red;\n}\n');
+    expect(withoutPointerEvents('e/a.css', '.d {\n  color: red;\n  visibility: collapse;\n}\n')).not.toBe('.d {\n  color: red;\n}\n');
+  });
+
   it("removes GEN-b's four longhands, added after the base, only at their neutral values (decimal only in block-elements-defaults)", () => {
     const json = (type: string, image = 'none'): string => `{\n  "will-change": "auto",\n  "content": "normal",\n  "list-style-type": "${type}",\n  "list-style-position": "outside",\n  "list-style-image": "${image}"\n}`;
     const base = '{\n  "will-change": "auto"\n}';
@@ -147,6 +154,15 @@ describe('pointer-events changes the captures and emitted files only by its own 
     expect(withoutPointerEvents('a.css', '.d {\n  box-shadow: none;\n  color: red;\n}\n')).toBe('.d {\n  color: red;\n}\n');
     // A shadow-like key that is not box-shadow still differs.
     expect(withoutPointerEvents('a.css', '.d {\n  text-shadow: none;\n  color: red;\n}\n')).not.toBe('.d {\n  color: red;\n}\n');
+  });
+
+  it('removes the PNT1 outline longhands added since the base, and nothing else', () => {
+    const json = '{\n  "x": "1",\n  "outline-color": "rgb(0, 0, 0)",\n  "outline-style": "none",\n  "outline-width": "0px",\n  "outline-offset": "0px"\n}';
+    expect(withoutPointerEvents('a.json', json)).toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('a.css', '.d {\n  outline-color: currentcolor;\n  color: red;\n  outline-style: none;\n  outline-width: 0px;\n  outline-offset: 0px;\n}\n')).toBe('.d {\n  color: red;\n}\n');
+    // The outline shorthand, or a changed value beside the stripped ones, still differs.
+    expect(withoutPointerEvents('a.json', '{\n  "x": "1",\n  "outline": "none"\n}')).not.toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('a.css', '.d {\n  outline-width: 1px;\n  color: blue;\n}\n')).not.toBe(withoutPointerEvents('a.css', '.d {\n  color: red;\n}\n'));
   });
 
   it('parity:hit-capture takes --vectors, --identity-base <rev> or nothing, and refuses anything else', () => {

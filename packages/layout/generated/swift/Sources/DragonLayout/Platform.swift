@@ -46,7 +46,7 @@ public let platform_REFERENCE_PLATFORM: JsString = S.s_darwin_arm64
 public let platform_REFERENCE_LANGUAGE: JsString = S.s_en_US
 
 // ts: packages/layout/src/platform.ts:25
-public let platform_MEASURERS: JsStringMap<MeasurerEntry> = JsStringMap<MeasurerEntry>([(S.s_darwin_arm64, MeasurerEntry(S.s407, text_ahemMeasurer))])
+public let platform_MEASURERS: JsStringMap<MeasurerEntry> = JsStringMap<MeasurerEntry>([(S.s_darwin_arm64, MeasurerEntry(S.s410, text_ahemMeasurer))])
 
 // ts: packages/layout/src/platform.ts:30
 public func platform_measurerFor(_ platform: JsString) throws -> any U_MeasurerChoice_ok_MeasurerChoice_refused {
@@ -54,7 +54,7 @@ public func platform_measurerFor(_ platform: JsString) throws -> any U_MeasurerC
   let rules: JsArray<PlatformRule>? = platformRules_PLATFORM_RULES.get(platform)
   // ts: packages/layout/src/platform.ts:33
   if ((m == nil) || (rules == nil)) {
-    return MeasurerChoice_refused(S.s_refused, S.s_no_platform_rules, platform, jsConcat(S.s647, platform, S.s135))
+    return MeasurerChoice_refused(S.s_refused, S.s_no_platform_rules, platform, jsConcat(S.s657, platform, S.s136))
   }
   return try MeasurerChoice_ok(S.s_ok, platform, jsUnwrap(m).key, jsUnwrap(m).measurer, jsUnwrap(rules))
 }
@@ -69,9 +69,9 @@ public func platform_shapedMeasurerFor(_ platform: JsString, _ faces: JsStringMa
   let rules: JsArray<PlatformRule>? = platformRules_PLATFORM_RULES.get(platform)
   // ts: packages/layout/src/platform.ts:60
   if ((!platform_MEASURERS.has(platform)) || (rules == nil)) {
-    return MeasurerChoice_refused(S.s_refused, S.s_no_platform_rules, platform, jsConcat(S.s647, platform, S.s135))
+    return MeasurerChoice_refused(S.s_refused, S.s_no_platform_rules, platform, jsConcat(S.s657, platform, S.s136))
   }
-  return try MeasurerChoice_ok(S.s_ok, platform, jsConcat(S.s739, platform), shaping_latinScopedMeasurer(shaping_shapedMeasurer(faces, shaper, platform_shapingFaultsOf(faults), language), faults.latinCheckSkipped), jsUnwrap(rules))
+  return try MeasurerChoice_ok(S.s_ok, platform, jsConcat(S.s751, platform), shaping_latinScopedMeasurer(shaping_shapedMeasurer(faces, shaper, platform_shapingFaultsOf(faults), language), faults.latinCheckSkipped), jsUnwrap(rules))
 }
 
 // ts: packages/layout/src/platform.ts:71
@@ -84,7 +84,7 @@ public func platform_deviceShapedMeasurer(_ faces: JsStringMap<FontData>, _ shap
   let m: any U_MeasurerChoice_ok_MeasurerChoice_refused = try platform_shapedMeasurerFor(platform_REFERENCE_PLATFORM, shaped, shaper, platform_REFERENCE_LANGUAGE, block_NO_ENGINE_FAULTS)
   // ts: packages/layout/src/platform.ts:75
   if (m.kind != S.s_ok) {
-    throw JsError(message: jsConcat((m as! MeasurerChoice_refused).code, S.s119, (m as! MeasurerChoice_refused).detail))
+    throw JsError(message: jsConcat((m as! MeasurerChoice_refused).code, S.s120, (m as! MeasurerChoice_refused).detail))
   }
   return (m as! MeasurerChoice_ok).measurer
 }

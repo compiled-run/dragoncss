@@ -168,7 +168,7 @@ describe('animation and transition parsing', () => {
     expect(refusal('animation-timeline', 'auto')).toBeNull();
   });
 
-  it('refuses var() and math functions in a declaration before parsing it', () => {
+  it('refuses math functions in a declaration before parsing it, and keeps a var() value for substitution (ANIM-v)', () => {
     const declare = (p: string, v: string): string => {
       const node = parse(v, { context: 'value', positions: true });
       const ds: Diagnostic[] = [];
@@ -177,7 +177,9 @@ describe('animation and transition parsing', () => {
       return r === null ? `${ds[0]?.code} ${/package ([A-Za-z-]+)/.exec(ds[0]?.message ?? '')?.[1] ?? ''}` : 'ok';
     };
     expect(declare('transition-duration', 'calc(1s + 100ms)')).toBe('DRAGON_UNSUPPORTED_VALUE ANIM-k');
-    expect(declare('transition', 'var(--t)')).toBe('DRAGON_UNSUPPORTED_VALUE ANIM-v');
+    expect(declare('transition', 'var(--t)')).toBe('ok');
+    expect(declare('transition', 'color var(--d, 1s)')).toBe('ok');
+    expect(declare('transition', 'var(--t,')).toBe('DRAGON_CSS_INVALID_VALUE ');
     expect(declare('transition', 'color 1s 1s 1s')).toBe('DRAGON_CSS_INVALID_VALUE ');
     expect(declare('transition', 'color 1s')).toBe('ok');
   });
@@ -266,6 +268,46 @@ describe('animation analysis', () => {
     // The web frame lanes (chrome-dual, PR 3a) prove these features; ios has no device-anim row until 3b.
     expect([...new Set(ds.map((d) => d.target))].sort()).toEqual(['ios']);
     expect(ds.map((d) => d.profile?.feature).filter((f, i, a) => a.indexOf(f) === i).sort()).toEqual(['animatable:color', 'animation-name:<custom-ident>', 'at-rule:@keyframes', 'transition-property:<custom-ident>']);
+  });
+});
+
+describe('var() in transition and animation values (ANIM-v)', () => {
+  it('runs the substituted list: a transition of color only leaves a border-top-width change alone, as the list all would not', () => {
+    const pair = '.a { border-top-width: 1px; border-top-style: solid; color: rgb(0, 0, 0); transition: VALUE; } .a.on { border-top-width: 3px; color: rgb(9, 9, 9); }';
+    expect(compile(`.a { --t: color 1s; } ${pair.replace('VALUE', 'var(--t)')}`)).toEqual([]);
+    expect(packages(compile(`.a { --t: all 1s; } ${pair.replace('VALUE', 'var(--t)')}`))).toEqual(['ANIM-p']);
+    expect(compile(pair.replace('VALUE', 'color var(--d, 1s)'))).toEqual([]);
+    expect(compile(`.a { --p: color; } ${pair.replace('VALUE', 'var(--p) 1s')}`)).toEqual([]);
+  });
+
+  it('treats a substitution that fails or does not parse as unset, as Chrome does, so nothing transitions', () => {
+    const pair = '.a { border-top-width: 1px; border-top-style: solid; transition: VALUE; } .a.on { border-top-width: 3px; }';
+    expect(compile(pair.replace('VALUE', 'var(--missing)'))).toEqual([]);
+    expect(compile(`.a { --t: border-top-width 1s 1s 1s; } ${pair.replace('VALUE', 'var(--t)')}`)).toEqual([]);
+  });
+
+  it('holds a substituted value to the refusals of the same value written without var()', () => {
+    expect(packages(compile('.a { --t: color 1s linear(0, 1); transition: var(--t); }'))).toEqual(['ANIM-L']);
+    expect(packages(compile('.a { --d: calc(1s + 1ms); transition: color var(--d); }'))).toEqual(['ANIM-k']);
+    const ds = compile('.a { --t: color 1s linear(0, 1); transition: var(--t); }');
+    expect(ds.map((d) => d.message.split(':').slice(0, 2).join(':'))).toEqual(['transition: substitutes to "color 1s linear(0, 1)"']);
+  });
+
+  it('keys an animation through var() per element, with the custom properties of its state', () => {
+    expect(compile('.b { --k: k; animation: var(--k) 1s infinite; } @keyframes k { from { margin-left: 1px } to { margin-left: 5px } }')).toEqual([]);
+    expect(packages(compile('.a { --n: 1; animation: k 1s var(--n); } .a.on { --n: 2; } @keyframes k { to { width: 5px } }'))).toEqual(['ANIM-t']);
+  });
+
+  it('refuses a custom property a var() animation value reads when an interaction rule sets it', () => {
+    const ds = compile('.a { transition: var(--t); } .a:hover { --t: color 1s; }');
+    expect(ds.filter((d) => d.message.includes('through var()')).map((d) => [d.code, d.message.split(' in ')[0]])).toEqual([['DRAGON_UNSUPPORTED_SELECTOR', '--t']]);
+    expect(compile('.a { transition: var(--t); } .a:hover { --u: color 1s; }').filter((d) => d.message.includes('through var()'))).toEqual([]);
+  });
+
+  it('gates a var() value under var() features until a frame lane proves them', () => {
+    const ds = compile('.a { --t: color 1s; transition: var(--t); }', 'enforce');
+    const features = [...new Set(ds.filter((d) => d.profile?.context === 'animation').map((d) => d.profile?.feature))].sort();
+    expect(features).toContain('transition-property:var()');
   });
 });
 

@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 10688
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 1344,
+   "y": 1344,
+   "width": 64512,
+   "height": 8000
+  },
+  {
+   "id": "hid-a",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 10720,
+   "height": 4000
+  },
+  {
+   "id": "hid-a:text0",
+   "parent": "hid-a",
+   "x": 320,
+   "y": 320,
+   "width": 1680,
+   "height": 1664
+  },
+  {
+   "id": "hid-a:text0:line0",
+   "parent": "hid-a:text0",
+   "x": 0,
+   "y": 0,
+   "width": 1680,
+   "height": 1664
+  },
+  {
+   "id": "kid-b",
+   "parent": "body",
+   "x": 0,
+   "y": 4000,
+   "width": 10720,
+   "height": 4000
+  },
+  {
+   "id": "kid-b:text0",
+   "parent": "kid-b",
+   "x": 320,
+   "y": 320,
+   "width": 3360,
+   "height": 1664
+  },
+  {
+   "id": "kid-b:text0:line0",
+   "parent": "kid-b:text0",
+   "x": 0,
+   "y": 0,
+   "width": 3360,
+   "height": 1664
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 167,
+   "width": 1050,
+   "height": 167
+  },
+  {
+   "id": "body",
+   "left": 21,
+   "top": 21,
+   "right": 1029,
+   "bottom": 146,
+   "width": 1008,
+   "height": 125
+  },
+  {
+   "id": "hid-a",
+   "left": 21,
+   "top": 21,
+   "right": 189,
+   "bottom": 84,
+   "width": 168,
+   "height": 63
+  },
+  {
+   "id": "hid-a:text0",
+   "left": 26,
+   "top": 26,
+   "right": 52,
+   "bottom": 52,
+   "width": 26,
+   "height": 26
+  },
+  {
+   "id": "hid-a:text0:line0",
+   "left": 26,
+   "top": 26,
+   "right": 52,
+   "bottom": 52,
+   "width": 26,
+   "height": 26
+  },
+  {
+   "id": "kid-b",
+   "left": 21,
+   "top": 84,
+   "right": 189,
+   "bottom": 146,
+   "width": 168,
+   "height": 62
+  },
+  {
+   "id": "kid-b:text0",
+   "left": 26,
+   "top": 89,
+   "right": 79,
+   "bottom": 115,
+   "width": 53,
+   "height": 26
+  },
+  {
+   "id": "kid-b:text0:line0",
+   "left": 26,
+   "top": 89,
+   "right": 79,
+   "bottom": 115,
+   "width": 53,
+   "height": 26
+  }
+ ]
+}

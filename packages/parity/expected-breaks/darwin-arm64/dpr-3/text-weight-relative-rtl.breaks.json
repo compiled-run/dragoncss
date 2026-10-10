@@ -1,0 +1,25 @@
+{
+  "case": "text-weight-relative-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"a1u:text0","data":"Bolder one","lines":1,"units":[0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a1d:text0","data":"Lighter one","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a99d:text0","data":"Lighter below hundred","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a100d:text0","data":"Lighter hundred","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a349u:text0","data":"Bolder below edge","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a349d:text0","data":"Lighter below edge","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a350u:text0","data":"Bolder at edge","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a549u:text0","data":"Bolder below middle","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a549d:text0","data":"Lighter below middle","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a550u:text0","data":"Bolder at middle","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a550d:text0","data":"Lighter at middle","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a749d:text0","data":"Lighter below upper","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a750d:text0","data":"Lighter at upper","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a900u:text0","data":"Bolder at top","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a900d:text0","data":"Lighter at top","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a1000u:text0","data":"Bolder thousand","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a1000i:text0","data":"Inherited thousand","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"ccc:text0","data":"Chain of three","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

@@ -76,6 +76,8 @@ type Spec = { readonly tag: string; readonly attrs: Readonly<Record<string, stri
 const SPECS: Record<string, Spec> = { ...Object.fromEntries(TAGS.map((t) => [t, { tag: t, attrs: {} }])), ...KEY_SPECS, ...REPLACED_KEY_SPECS, ...PHRASING_KEY_SPECS };
 /** Inherited font properties no milestone longhand models; a UA value for them changes how text is drawn. */
 const TEXT_FONT_PROPERTIES = ['font-weight', 'font-style'] as const;
+/** TXT-W1: every longhand but the text-font ones, which only the text-font rows hold (datasets.ts TEXT_FONT_LONGHANDS). */
+const CAPTURED_LONGHANDS = LONGHANDS.filter((p) => !(TEXT_FONT_PROPERTIES as readonly string[]).includes(p));
 const BORDER_KEYWORDS = ['thin', 'medium', 'thick'] as const;
 const SYSTEM_COLORS = [
   'Canvas', 'CanvasText', 'LinkText', 'VisitedText', 'ActiveText', 'ButtonFace', 'ButtonText', 'ButtonBorder', 'Field', 'FieldText',
@@ -170,7 +172,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       for (const key of keys) read(document.querySelector(`[data-key="${key}"]`) as HTMLElement, key);
       return { out, initial };
     },
-    { tags: [...TAGS], keys: ALL_KEYS, specs: SPECS, props: [...LONGHANDS] },
+    { tags: [...TAGS], keys: ALL_KEYS, specs: SPECS, props: [...CAPTURED_LONGHANDS] },
   );
   const borderKeywords = await hidden.evaluate(() =>
     Object.fromEntries(
@@ -263,7 +265,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       }
       return out;
     },
-    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, props: [...LONGHANDS] },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, props: [...CAPTURED_LONGHANDS] },
   );
   // Chrome's minimum logical font size: an em font size under the keyword-sized root is clamped up to it; an authored px size is not.
   const { minimumLogicalFontSize, authoredPx } = await host.evaluate(() => {
@@ -357,7 +359,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       }
       return out;
     },
-    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], ancestors: [...ELEMENT_TAGS, ...ANCESTOR_KEYS], specs: SPECS, props: [...LONGHANDS], minimum: minimumLogicalFontSize, declared },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], ancestors: [...ELEMENT_TAGS, ...ANCESTOR_KEYS], specs: SPECS, props: [...CAPTURED_LONGHANDS], minimum: minimumLogicalFontSize, declared },
   );
   const textFonts = await host.evaluate(
     ({ tags, specs, props }) => {
@@ -426,7 +428,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
       }
       return { unmodelled, forced };
     },
-    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, longhands: [...LONGHANDS], declared, textFonts },
+    { tags: [...ELEMENT_TAGS, ...ALL_KEYS], specs: SPECS, longhands: [...CAPTURED_LONGHANDS], declared, textFonts },
   );
   const systemColors = await host.evaluate((names) => {
     const hostEl = document.getElementById('host') as HTMLElement;
@@ -465,7 +467,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
     const ltr = (declared[tag] as Dirs)['ltr'] as Record<string, string>;
     const own = values[tag] as Record<string, string>;
     const init = initial[tag] as Record<string, string>;
-    const set = [...LONGHANDS].sort().filter((p) => own[p] !== init[p]);
+    const set = [...CAPTURED_LONGHANDS].sort().filter((p) => own[p] !== init[p]);
     if (JSON.stringify(Object.keys(ltr).sort()) !== JSON.stringify(set)) throw new Error(`${scheme} ${tag}: declared longhands ${Object.keys(ltr).join(',')} differ from the captured ${set.join(',')}`);
   }
   await hidden.context().close();
@@ -558,7 +560,7 @@ function render(c: Capture, scheme: Scheme): string {
   for (const tag of TAGS) {
     lines.push(`  ${JSON.stringify(tag)}: {`);
     const row = values[tag] as Record<string, string>;
-    for (const p of [...LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
+    for (const p of [...CAPTURED_LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
     lines.push('  },');
   }
   lines.push('};');
@@ -566,7 +568,7 @@ function render(c: Capture, scheme: Scheme): string {
   const longhandsOf = (tag: string): string[] => {
     const own = values[tag] as Record<string, string>;
     const init = initial[tag] as Record<string, string>;
-    return [...LONGHANDS].sort().filter((p) => own[p] !== init[p]);
+    return [...CAPTURED_LONGHANDS].sort().filter((p) => own[p] !== init[p]);
   };
   const declaredOf = (tag: string): string => {
     const d = declared[tag];
@@ -617,7 +619,7 @@ function render(c: Capture, scheme: Scheme): string {
   for (const k of ELEMENT_KEYS) {
     lines.push(`  ${JSON.stringify(k)}: {`);
     const row = values[k] as Record<string, string>;
-    for (const p of [...LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
+    for (const p of [...CAPTURED_LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
     lines.push('  },');
   }
   lines.push('};');
@@ -680,7 +682,7 @@ function render(c: Capture, scheme: Scheme): string {
   for (const k of REPLACED_KEYS) {
     lines.push(`  ${JSON.stringify(k)}: {`);
     const row = values[k] as Record<string, string>;
-    for (const p of [...LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
+    for (const p of [...CAPTURED_LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
     lines.push('  },');
   }
   lines.push('};');
@@ -728,7 +730,7 @@ function render(c: Capture, scheme: Scheme): string {
   for (const k of PHRASING_KEYS) {
     lines.push(`  ${JSON.stringify(k)}: {`);
     const row = values[k] as Record<string, string>;
-    for (const p of [...LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
+    for (const p of [...CAPTURED_LONGHANDS].sort()) lines.push(`    ${JSON.stringify(p)}: ${JSON.stringify(row[p])},`);
     lines.push('  },');
   }
   lines.push('};');

@@ -26,7 +26,7 @@ import { LISTS_VALUE_PROPERTIES, parseListsValue } from './properties/lists.ts';
 import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
-import { BASELINE_PROPERTIES, baselinePosition, COLOR_FIX, CSS_WIDE, familyValue, featureOf, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
+import { COLOR_FIX, CSS_WIDE, familyValue, featureOf, PAIR_VALUE_PROPERTIES, pairValue, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
 import { webProfile } from '../profiles/web.ts';
 import { provenContexts } from '../profiles/types.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
@@ -614,14 +614,16 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
   // and z-index among them (properties/effects.ts: Chrome's clamps and whole-number calculations).
   const paint = wide ? undefined : PAINT_VALUE_PARSERS.get(property);
   if (paint !== undefined) return paint(tokens, base);
-  // css-align-3 §4.2: <baseline-position> is one keyword value, [ first | last ]? baseline.
-  const baseline = !wide && BASELINE_PROPERTIES.has(property) ? baselinePosition(tokens) : null;
+  // css-align-3 §4.2 <baseline-position> and css-fonts-4 §2.3 oblique <angle>: one value in two tokens.
+  const pair = !wide && PAIR_VALUE_PROPERTIES.has(property) ? pairValue(property, tokens) : null;
+  if (pair !== null && 'invalid' in pair) return { kind: 'invalid', reason: pair.invalid };
+  if (pair !== null && 'refused' in pair) return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(tokens[tokens.length - 1] as CssNode, base)), message: `${property}: ${pair.refused}`, manual: 'Write the angle in deg, between -90deg and 90deg.' }) };
   // Chrome 145 parses align-content's baseline with ConsumeFirstBaseline (css_parsing_utils.cc), which takes first but not last.
-  if (property === 'align-content' && baseline !== null && baseline.kind === 'keyword' && baseline.value === 'last baseline') {
+  if (property === 'align-content' && pair !== null && 'kind' in pair && pair.kind === 'keyword' && pair.value === 'last baseline') {
     return { kind: 'invalid', reason: 'Chrome takes only baseline or first baseline here (css_parsing_utils.cc ConsumeFirstBaseline)' };
   }
-  const values: CssValue[] = baseline === null ? [] : [baseline];
-  for (const t of baseline === null ? tokens : []) {
+  const values: CssValue[] = pair === null ? [] : [pair];
+  for (const t of pair === null ? tokens : []) {
     const unitRefused = t.type === 'Dimension' ? unitRefusal(normalizeUnit(String(t['unit']))) : t.type === 'Function' ? mathFunctionRefusal(String(t['name'])) : null;
     if (unitRefused !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${unitRefused.reason}`, manual: unitRefused.fix }) };

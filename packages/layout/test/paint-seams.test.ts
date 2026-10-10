@@ -37,7 +37,7 @@ describe('EMS: engine paint seams', () => {
       "export { opacityAlpha8, replacedPaint } from './paint.ts';",
       "export type { BoxShape } from './paint.ts';",
       "export type { RadiusFaults, RadiusLength } from './paint-radius.ts';",
-      "export { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from './paint-radius.ts';",
+      "export { hasRoundedCorner, NO_RADIUS_FAULTS, outlineOffsetPx, outlineRings, outlineWidthPx, roundedShape } from './paint-radius.ts';",
       "export type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from './paint-shadow.ts';",
       "export { insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver } from './paint-shadow.ts';",
       "export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';",

@@ -38,6 +38,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/flex/line_flexer.cc`: Copyright 2024 The Chromium Authors
 - `third_party/blink/renderer/core/layout/geometry/writing_mode_converter.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_layout_algorithm.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/layout/grid/grid_layout_utils.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_line_resolver.cc`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_placement.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_track_collection.cc`: Copyright 2020 The Chromium Authors
@@ -56,6 +57,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/paint/box_fragment_painter.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_painter_base.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/contoured_border_geometry.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/paint/outline_painter.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/style/border_edge.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/style/display_style.h`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/script_run_iterator.cc`: Copyright 2015 The Chromium Authors
@@ -221,6 +223,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/core/css/css_font_face_src_value.cc`: Copyright (C) 2007, 2010 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/css_font_face.cc`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/css_gradient_value.cc`: Copyright (C) 2008 Apple Inc.  All rights reserved.; Copyright (C) 2015 Google Inc. All rights reserved.
+- `third_party/blink/renderer/core/css/css_segmented_font_face.cc`: Copyright (C) 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/css_unicode_range_value.cc`: Copyright (C) 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/font_face_cache.cc`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/font_face_cache.h`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.
