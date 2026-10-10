@@ -161,6 +161,6 @@ describe('box-shadow: lowering and emission', () => {
     if (w === undefined || w.kind !== 'box-shadow') throw new Error('no shadow write');
     expect(SHADOW_EMITTER.lines.uikit('v0', a as never, w)).toEqual(['  dragonSetShadows(t, v0, [ShadowInput(false, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 128.0), ShadowInput(true, 0.0, 0.0, 5.0, 0.0, 255.0, 0.0, 0.0, 255.0)])']);
     expect(SHADOW_EMITTER.lines['android-views']('v0', a as never, w)).toEqual(['  dragonSetShadows(t, v0, arrayOf(ShadowInput(false, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 128.0), ShadowInput(true, 0.0, 0.0, 5.0, 0.0, 255.0, 0.0, 0.0, 255.0)))']);
-    expect(SHADOW_EMITTER.applied({} as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box: {} as never, size: [0, 0], fontSize: null, replaced: null })).toEqual([[0, 1, 2, 3, 4, 1, 2, 3, 128], [1, 0, 0, 5, 0, 255, 0, 0, 255]]);
+    expect(SHADOW_EMITTER.applied({} as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box: {} as never, size: [0, 0], fontSize: null, replaced: null, scroll: null })).toEqual([[0, 1, 2, 3, 4, 1, 2, 3, 128], [1, 0, 0, 5, 0, 255, 0, 0, 255]]);
   });
 });
