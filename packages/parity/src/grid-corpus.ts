@@ -232,6 +232,7 @@ export const REFUSAL_CATEGORIES: readonly { readonly id: string; readonly owner:
   { id: 'sizing-keyword', owner: 'SIZE: min-content, max-content and fit-content as width', pattern: /width: (min-content|max-content|fit-content)/ },
   { id: 'safe-alignment', owner: 'ALGN: safe and unsafe alignment keywords, anchor-center', pattern: /"(un)?safe center"|safe center|anchor-center/ },
   { id: 'overflow-auto', owner: 'OVFL-B: native scroll views (overflow auto and scroll on native targets)', pattern: /overflow-[xy] (is|computes to) (auto|scroll)\b[^;]*, a box the user scrolls; \w+ has no native scroll views until OVFL-B/ },
+  { id: 'grid-scroll-overflow', owner: "G-OVF: a grid container's scrollable overflow with its grid area, for native scroll views", pattern: /the native scroll view.s range is not decided at \S+: a grid container: its scrollable overflow/ },
   { id: 'float', owner: 'FLT: floats', pattern: /float is not supported/ },
   { id: 'aspect-ratio', owner: 'SIZE-ar: aspect-ratio', pattern: /aspect-ratio is not supported/ },
   { id: 'calc', owner: 'V1: math functions in the engine value model', pattern: /calc\(\) is a css-values-4 math function/ },
