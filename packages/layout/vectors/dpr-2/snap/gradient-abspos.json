@@ -38,7 +38,7 @@
    "id": "abs-icb",
    "parent": "body",
    "x": 38400,
-   "y": 2560,
+   "y": 25600,
    "width": 7168,
    "height": 8960
   },
@@ -107,9 +107,9 @@
   {
    "id": "abs-icb",
    "left": 600,
-   "top": 40,
+   "top": 400,
    "right": 712,
-   "bottom": 180,
+   "bottom": 540,
    "width": 112,
    "height": 140
   },

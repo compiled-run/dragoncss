@@ -896,7 +896,7 @@
         "position": "absolute",
         "top": {
          "kind": "px",
-         "value": 20
+         "value": 200
         },
         "right": {
          "kind": "auto"
@@ -1054,7 +1054,7 @@
    "id": "abs-icb",
    "parent": "body",
    "x": 19200,
-   "y": 1280,
+   "y": 12800,
    "width": 3584,
    "height": 4480
   },
