@@ -72,6 +72,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-phase-1': ['border-dash-fit', 'border-dot-fit'],
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
   'radius-square': ['radius-basic'],
+  // calib-shadow-blur's small blurs change the sampled shadow pixels under a 1 device px shift.
+  'shadow-offset-1': ['calib-shadow-blur'],
   // PNT1: opacity-basic's translucent boxes paint opaque when the writer ignores the alpha; stacking-basic samples the interiors of
   // overlapping boxes, whose colours swap when the layer items sort beneath the flow.
   'alpha-ignored': ['opacity-basic'],
@@ -81,12 +83,14 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'translate-percent-of-parent': ['transform-translate'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
 };
-/** The sample rules a paint plant's device-pixels failures must name: border bands and edges, or radius points. */
+/** The sample rules a paint plant's device-pixels failures must name: border bands and edges, radius or shadow points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'dash-phase-1': /^(border:|edge:)/,
   'dash-gap-unfitted': /^(border:|edge:)/,
   // Square corners paint the box's colour where Chrome's rounded corner shows the backdrop: the radius rule catches it.
   'radius-square': /^radius:/,
+  // A shadow drawn 1 device px off moves the sampled shadow pixels: the shadow rule catches it.
+  'shadow-offset-1': /^shadow:/,
   'alpha-ignored': /^interior:/,
   'order-swap': /^interior:/,
   // A transform moves every pixel of the box, so any colour rule may catch it.

@@ -24,6 +24,11 @@ fun paintDither_ccTileStart(i: Double, tileSize: Double): Double {
   return (i * (tileSize - (2.0 * paintDither_CC_BORDER_TEXELS)))
 }
 
+// ts: packages/layout/src/paint-dither.ts:63
+fun paintDither_ccTileEnd(i: Double, tileSize: Double): Double {
+  return (paintDither_ccTileStart(i, tileSize) + tileSize)
+}
+
 // ts: packages/layout/src/paint-dither.ts:89
 fun paintDither_f32(v: Double): Double {
   return rtEasing_froundOf(v)

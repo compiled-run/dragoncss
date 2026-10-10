@@ -22,6 +22,11 @@ public func paintDither_ccTileStart(_ i: Double, _ tileSize: Double) throws -> D
   return (i * (tileSize - (2.0 * paintDither_CC_BORDER_TEXELS)))
 }
 
+// ts: packages/layout/src/paint-dither.ts:63
+public func paintDither_ccTileEnd(_ i: Double, _ tileSize: Double) throws -> Double {
+  return try (paintDither_ccTileStart(i, tileSize) + tileSize)
+}
+
 // ts: packages/layout/src/paint-dither.ts:89
 public func paintDither_f32(_ v: Double) throws -> Double {
   return try rtEasing_froundOf(v)
