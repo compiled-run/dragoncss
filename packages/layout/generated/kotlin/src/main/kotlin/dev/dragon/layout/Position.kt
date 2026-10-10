@@ -53,11 +53,11 @@ fun position_checkOutOfFlowSiblings(ctx: Ctx, box: LayoutBox): Unit {
 }) as LayoutBox?)
   // ts: packages/layout/src/position.ts:38
   run {
-    val _a134 = box.children
-    var _i134 = 0
-    while (_i134 < _a134.size) {
-      val k: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a134[_i134]
-      _i134++
+    val _a137 = box.children
+    var _i137 = 0
+    while (_i137 < _a137.size) {
+      val k: U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a137[_i137]
+      _i137++
       // ts: packages/layout/src/position.ts:39
       if ((jsStrEq(k.kind, "replaced") && position_isOutOfFlow(ctx, (k as ReplacedLeaf)))) {
         unsupported_unsupported("replaced-out-of-flow", (k as ReplacedLeaf).id, "CSS 2.2 \u00a710.3.8, \u00a710.6.5", ("absolutely positioned replaced " + (k as ReplacedLeaf).id + " is not supported"))

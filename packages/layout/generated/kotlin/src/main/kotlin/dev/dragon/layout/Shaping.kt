@@ -355,11 +355,11 @@ fun shaping_utf16Units(text: String): JsArray<Double> {
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/shaping.ts:82
   run {
-    val _a205 = jsCodePoints(text)
-    var _i205 = 0
-    while (_i205 < _a205.size) {
-      val ch: String = _a205[_i205]
-      _i205++
+    val _a208 = jsCodePoints(text)
+    var _i208 = 0
+    while (_i208 < _a208.size) {
+      val ch: String = _a208[_i208]
+      _i208++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       jsPush(out, cp)
       // ts: packages/layout/src/shaping.ts:85
@@ -438,11 +438,11 @@ fun shaping_getScripts(cp: Double): JsArray<Double> {
   var dst: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/shaping.ts:120
   run {
-    val _a206 = scriptData_scriptExtensions(cp)
-    var _i206 = 0
-    while (_i206 < _a206.size) {
-      val s: Double = _a206[_i206]
-      _i206++
+    val _a209 = scriptData_scriptExtensions(cp)
+    var _i209 = 0
+    while (_i209 < _a209.size) {
+      val s: Double = _a209[_i209]
+      _i209++
       jsPush(dst, s)
     }
   }
@@ -599,11 +599,11 @@ fun shaping_fixupStack(st: ScriptRunState, resolved: Double, excludeLast: Boolea
 fun shaping_refusalOf(units: JsArray<Double>): String {
   // ts: packages/layout/src/shaping.ts:209
   run {
-    val _a207 = units
-    var _i207 = 0
-    while (_i207 < _a207.size) {
-      val cp: Double = _a207[_i207]
-      _i207++
+    val _a210 = units
+    var _i210 = 0
+    while (_i210 < _a210.size) {
+      val cp: Double = _a210[_i210]
+      _i210++
       // ts: packages/layout/src/shaping.ts:210
       if ((cp < 0.0)) {
         continue
@@ -687,11 +687,11 @@ fun shaping_segmentText(text: String): U_SegmentResult_okFalse_SegmentResult_okT
                 if ((((script == scriptData_USCRIPT_HAN) || (script == scriptData_USCRIPT_HIRAGANA)) || (script == scriptData_USCRIPT_BOPOMOFO))) {
                   // ts: packages/layout/src/shaping.ts:251
                   run {
-                    val _a208 = st.currentSet
-                    var _i208 = 0
-                    while (_i208 < _a208.size) {
-                      val s: Double = _a208[_i208]
-                      _i208++
+                    val _a211 = st.currentSet
+                    var _i211 = 0
+                    while (_i211 < _a211.size) {
+                      val s: Double = _a211[_i211]
+                      _i211++
                       // ts: packages/layout/src/shaping.ts:252
                       if ((((s == scriptData_USCRIPT_HAN) || (s == scriptData_USCRIPT_HIRAGANA)) || (s == scriptData_USCRIPT_BOPOMOFO))) {
                         script = s
@@ -930,11 +930,11 @@ fun shaping_hanKerningFeatures(item: ShapeItem, start: Double, end: Double, isLi
   val features: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/shaping.ts:404
   run {
-    val _a209 = indices
-    var _i209 = 0
-    while (_i209 < _a209.size) {
-      val i: Double = _a209[_i209]
-      _i209++
+    val _a212 = indices
+    var _i212 = 0
+    while (_i212 < _a212.size) {
+      val i: Double = _a212[_i212]
+      _i212++
       jsPush(features, shaping_TAG_HALT)
       jsPush(features, 1.0)
       jsPush(features, i)
@@ -974,11 +974,11 @@ fun shaping_sumAdvances(advances: JsArray<Double>, faults: ShapingFaults, clampN
     var w: Double = 0.0
     // ts: packages/layout/src/shaping.ts:494
     run {
-      val _a210 = advances
-      var _i210 = 0
-      while (_i210 < _a210.size) {
-        val a: Double = _a210[_i210]
-        _i210++
+      val _a213 = advances
+      var _i213 = 0
+      while (_i213 < _a213.size) {
+        val a: Double = _a213[_i213]
+        _i213++
         w = units_floatAdd(w, units_inlineToFloat(a))
       }
     }
@@ -987,11 +987,11 @@ fun shaping_sumAdvances(advances: JsArray<Double>, faults: ShapingFaults, clampN
   var total: Double = 0.0
   // ts: packages/layout/src/shaping.ts:498
   run {
-    val _a211 = advances
-    var _i211 = 0
-    while (_i211 < _a211.size) {
-      val a: Double = _a211[_i211]
-      _i211++
+    val _a214 = advances
+    var _i214 = 0
+    while (_i214 < _a214.size) {
+      val a: Double = _a214[_i214]
+      _i214++
       total = (total + a)
     }
   }
@@ -1026,11 +1026,11 @@ fun shaping_shapeRange(item: ShapeItem, start: Double, end: Double, isLineStart:
   val unsafe: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/shaping.ts:524
   run {
-    val _a212 = item.segments
-    var _i212 = 0
-    while (_i212 < _a212.size) {
-      val seg: ScriptSegment = _a212[_i212]
-      _i212++
+    val _a215 = item.segments
+    var _i215 = 0
+    while (_i215 < _a215.size) {
+      val seg: ScriptSegment = _a215[_i215]
+      _i215++
       val s: Double = (if ((seg.start > start)) seg.start else start)
       val e: Double = (if ((seg.end < end)) seg.end else end)
       // ts: packages/layout/src/shaping.ts:527
@@ -1041,31 +1041,31 @@ fun shaping_shapeRange(item: ShapeItem, start: Double, end: Double, isLineStart:
       val features: JsArray<Double> = jsArrayOf<Double>()
       // ts: packages/layout/src/shaping.ts:530
       run {
-        val _a213 = item.features
-        var _i213 = 0
-        while (_i213 < _a213.size) {
-          val f: Double = _a213[_i213]
-          _i213++
+        val _a216 = item.features
+        var _i216 = 0
+        while (_i216 < _a216.size) {
+          val f: Double = _a216[_i216]
+          _i216++
           jsPush(features, f)
         }
       }
       // ts: packages/layout/src/shaping.ts:531
       run {
-        val _a214 = extra.features
-        var _i214 = 0
-        while (_i214 < _a214.size) {
-          val f: Double = _a214[_i214]
-          _i214++
+        val _a217 = extra.features
+        var _i217 = 0
+        while (_i217 < _a217.size) {
+          val f: Double = _a217[_i217]
+          _i217++
           jsPush(features, f)
         }
       }
       // ts: packages/layout/src/shaping.ts:532
       run {
-        val _a215 = extra.unsafeBefore
-        var _i215 = 0
-        while (_i215 < _a215.size) {
-          val u: Double = _a215[_i215]
-          _i215++
+        val _a218 = extra.unsafeBefore
+        var _i218 = 0
+        while (_i218 < _a218.size) {
+          val u: Double = _a218[_i218]
+          _i218++
           jsPush(unsafe, u)
         }
       }
@@ -1098,18 +1098,18 @@ fun shaping_shapeRange(item: ShapeItem, start: Double, end: Double, isLineStart:
   }
   // ts: packages/layout/src/shaping.ts:552
   run {
-    val _a216 = unsafe
-    var _i216 = 0
-    while (_i216 < _a216.size) {
-      val offset: Double = _a216[_i216]
-      _i216++
+    val _a219 = unsafe
+    var _i219 = 0
+    while (_i219 < _a219.size) {
+      val offset: Double = _a219[_i219]
+      _i219++
       // ts: packages/layout/src/shaping.ts:553
       run {
-        val _a217 = runs
-        var _i217 = 0
-        while (_i217 < _a217.size) {
-          val run: ShapingRun = _a217[_i217]
-          _i217++
+        val _a220 = runs
+        var _i220 = 0
+        while (_i220 < _a220.size) {
+          val run: ShapingRun = _a220[_i220]
+          _i220++
           val ro: Double = (offset - run.start)
           // ts: packages/layout/src/shaping.ts:555
           if (((ro < 0.0) || (ro >= run.numChars))) {
@@ -1117,11 +1117,11 @@ fun shaping_shapeRange(item: ShapeItem, start: Double, end: Double, isLineStart:
           }
           // ts: packages/layout/src/shaping.ts:556
           run {
-            val _a218 = run.glyphs
-            var _i218 = 0
-            while (_i218 < _a218.size) {
-              val g: ShapingGlyph = _a218[_i218]
-              _i218++
+            val _a221 = run.glyphs
+            var _i221 = 0
+            while (_i221 < _a221.size) {
+              val g: ShapingGlyph = _a221[_i221]
+              _i221++
               // ts: packages/layout/src/shaping.ts:556
               if ((g.ci == ro)) {
                 g.safe = false
@@ -1141,18 +1141,18 @@ fun shaping_shapeRange(item: ShapeItem, start: Double, end: Double, isLineStart:
   var lastRaw: Double = 0.0
   // ts: packages/layout/src/shaping.ts:567
   run {
-    val _a219 = runs
-    var _i219 = 0
-    while (_i219 < _a219.size) {
-      val run: ShapingRun = _a219[_i219]
-      _i219++
+    val _a222 = runs
+    var _i222 = 0
+    while (_i222 < _a222.size) {
+      val run: ShapingRun = _a222[_i222]
+      _i222++
       // ts: packages/layout/src/shaping.ts:568
       run {
-        val _a220 = run.glyphs
-        var _i220 = 0
-        while (_i220 < _a220.size) {
-          val g: ShapingGlyph = _a220[_i220]
-          _i220++
+        val _a223 = run.glyphs
+        var _i223 = 0
+        while (_i223 < _a223.size) {
+          val g: ShapingGlyph = _a223[_i223]
+          _i223++
           val idx: Double = ((run.start + g.ci) - start)
           // ts: packages/layout/src/shaping.ts:570
           if ((jsLength(safe) <= idx)) {
@@ -1259,18 +1259,18 @@ fun shaping_viewWidth(segments: JsArray<ViewSegment>, faults: ShapingFaults): Do
   var width: Double = 0.0
   // ts: packages/layout/src/shaping.ts:654
   run {
-    val _a221 = segments
-    var _i221 = 0
-    while (_i221 < _a221.size) {
-      val seg: ViewSegment = _a221[_i221]
-      _i221++
+    val _a224 = segments
+    var _i224 = 0
+    while (_i224 < _a224.size) {
+      val seg: ViewSegment = _a224[_i224]
+      _i224++
       // ts: packages/layout/src/shaping.ts:655
       run {
-        val _a222 = seg.result.runs
-        var _i222 = 0
-        while (_i222 < _a222.size) {
-          val run: ShapingRun = _a222[_i222]
-          _i222++
+        val _a225 = seg.result.runs
+        var _i225 = 0
+        while (_i225 < _a225.size) {
+          val run: ShapingRun = _a225[_i225]
+          _i225++
           val runEnd: Double = (run.start + run.numChars)
           val s: Double = (if ((seg.start > run.start)) seg.start else run.start)
           val e: Double = (if ((seg.end < runEnd)) seg.end else runEnd)
@@ -1286,11 +1286,11 @@ fun shaping_viewWidth(segments: JsArray<ViewSegment>, faults: ShapingFaults): Do
             val advances: JsArray<Double> = jsArrayOf<Double>()
             // ts: packages/layout/src/shaping.ts:665
             run {
-              val _a223 = run.glyphs
-              var _i223 = 0
-              while (_i223 < _a223.size) {
-                val g: ShapingGlyph = _a223[_i223]
-                _i223++
+              val _a226 = run.glyphs
+              var _i226 = 0
+              while (_i226 < _a226.size) {
+                val g: ShapingGlyph = _a226[_i226]
+                _i226++
                 val c: Double = (run.start + g.ci)
                 // ts: packages/layout/src/shaping.ts:667
                 if (((c >= s) && (c < e))) {
@@ -1332,11 +1332,11 @@ fun shaping_isStartSafe(result: ShapeResult): Boolean {
 fun shaping_missingIn(results: JsArray<ShapeResult>): Double {
   // ts: packages/layout/src/shaping.ts:698
   run {
-    val _a224 = results
-    var _i224 = 0
-    while (_i224 < _a224.size) {
-      val r: ShapeResult = _a224[_i224]
-      _i224++
+    val _a227 = results
+    var _i227 = 0
+    while (_i227 < _a227.size) {
+      val r: ShapeResult = _a227[_i227]
+      _i227++
       // ts: packages/layout/src/shaping.ts:698
       if ((r.missing >= 0.0)) {
         return r.missing
@@ -1437,11 +1437,11 @@ fun shaping_viewLine(item: ShapeItem, segments: JsArray<ViewSegment>, end: Doubl
   val shaped: JsArray<ShapeResult> = jsArrayOf<ShapeResult>()
   // ts: packages/layout/src/shaping.ts:887
   run {
-    val _a225 = segments
-    var _i225 = 0
-    while (_i225 < _a225.size) {
-      val s: ViewSegment = _a225[_i225]
-      _i225++
+    val _a228 = segments
+    var _i228 = 0
+    while (_i228 < _a228.size) {
+      val s: ViewSegment = _a228[_i228]
+      _i228++
       jsPush(shaped, s.result)
     }
   }
@@ -1656,11 +1656,11 @@ fun shaping_subView(view: LineView, start: Double, end: Double): LineView {
   val out: JsArray<ViewSegment> = jsArrayOf<ViewSegment>()
   // ts: packages/layout/src/shaping.ts:1026
   run {
-    val _a226 = view.segments
-    var _i226 = 0
-    while (_i226 < _a226.size) {
-      val s: ViewSegment = _a226[_i226]
-      _i226++
+    val _a229 = view.segments
+    var _i229 = 0
+    while (_i229 < _a229.size) {
+      val s: ViewSegment = _a229[_i229]
+      _i229++
       val a: Double = (if ((s.start > start)) s.start else start)
       val b: Double = (if ((s.end < end)) s.end else end)
       // ts: packages/layout/src/shaping.ts:1029
@@ -1720,11 +1720,11 @@ fun shaping_recomputePosition(b: LineBuild): Unit {
   var p: Double = 0.0
   // ts: packages/layout/src/shaping.ts:1146
   run {
-    val _a227 = b.results
-    var _i227 = 0
-    while (_i227 < _a227.size) {
-      val r: MutableResult = _a227[_i227]
-      _i227++
+    val _a230 = b.results
+    var _i230 = 0
+    while (_i230 < _a230.size) {
+      val r: MutableResult = _a230[_i230]
+      _i230++
       p = (p + r.width)
     }
   }
@@ -2181,11 +2181,11 @@ fun shaping_breakOneLine(b: LineBuild): BrokenLine {
   val results: JsArray<BreakResult> = jsArrayOf<BreakResult>()
   // ts: packages/layout/src/shaping.ts:1452
   run {
-    val _a228 = b.results
-    var _i228 = 0
-    while (_i228 < _a228.size) {
-      val r: MutableResult = _a228[_i228]
-      _i228++
+    val _a231 = b.results
+    var _i231 = 0
+    while (_i231 < _a231.size) {
+      val r: MutableResult = _a231[_i231]
+      _i231++
       jsPush(results, BreakResult(r.index, r.start, r.end, r.width, r.hyphen, r.view, r.canBreakAfter, r.mayBreakInside))
     }
   }
@@ -2274,11 +2274,11 @@ fun shaping_latinScopedMeasurer(measurer: TextMeasurer, latinCheckSkipped: Boole
 fun shaping_firstOutsideLatin(text: String): Double {
   // ts: packages/layout/src/shaping.ts:1625
   run {
-    val _a229 = jsCodePoints(text)
-    var _i229 = 0
-    while (_i229 < _a229.size) {
-      val ch: String = _a229[_i229]
-      _i229++
+    val _a232 = jsCodePoints(text)
+    var _i232 = 0
+    while (_i232 < _a232.size) {
+      val ch: String = _a232[_i232]
+      _i232++
       // ts: packages/layout/src/shaping.ts:1625
       if ((!scriptData_isLatinText(ch))) {
         return jsUnwrap(jsCodePointAt0(ch))
