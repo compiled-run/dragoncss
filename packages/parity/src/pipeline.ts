@@ -1,11 +1,11 @@
 // One fixture end to end through the public compile entry, then both lanes for every case in every environment:
 //   linux-dragon-layout: internal ios layout projection -> validator -> Dragon layout -> 1 device px against authored Chrome;
 //   chrome-dual: Dragon's web output rendered in Chrome against the authored rendering, boxes and computed values exactly.
-import type { Browser } from 'playwright';
+import type { Browser, Page } from 'playwright';
 import type { EngineFaults, LayoutInput, LayoutRect, LayoutUnsupported } from '@dragon/layout';
 import { absoluteRects, layoutWithFaults, validateLayoutInput } from '@dragon/layout';
 import type { Assignment, CompilerFaults, Compiled, Diagnostic, Environment, FrontEndResult, LayoutProjection, Origin, Scalar, TextTopologyEntry } from 'dragon';
-import { compiledCases, compiledFeatures, createProjectWith, interactionPartitionOf, iosLayoutProjection, laneOnlyNative, nativeLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
+import { compiledCases, compiledFeatures, createProjectWith, engineLayoutProjection, interactionPartitionOf, iosLayoutProjection, laneOnlyNative, nativeLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { captureFixture } from './capture.ts';
 import type { ParityCase } from './cases.ts';
@@ -22,6 +22,7 @@ import { ENVIRONMENT, environmentsOf } from './fixtures.ts';
 import { fontMapOf, withFontMapAssets } from './fixture-groups/fonts.ts';
 import { fontDataUrl } from './font-reference.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
+import { breakProblems, expectedFacesOf, faceCheck, isShapedInput, joinHyphenRects, liveChromeBreaks } from './text-latin-run.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import { authoredModel } from './render.ts';
 import type { TreeExpectation } from './tree-fixture.ts';
@@ -294,21 +295,24 @@ export function topologyProblems(declared: TreeExpectation, input: FrontEndResul
   return problems;
 }
 
-/** The engine lane's projection of a case: the native projection, or engineLayoutProjection for the text-latin registry (TXT1a-1). */
+/** The engine lane's projection of a case: engineLayoutProjection, which is the native projection whenever native lowers the case. */
 export type Projection = (compiled: object, environment: Environment, assignment: Assignment) => LayoutProjection;
 
 export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, webCss: string | null, browser: Browser, opts: RunOptions, projectionOf: Projection | null = null): Promise<CaseOutcome> {
-  // SELD-R2: a case only the lanes compile on native (a user's compile refuses it there) proves no native row; web rows only.
-  // SELD-R2: a case only the lanes compile on native (a user's compile refuses it there) proves no native row; web rows only.
-  const features = { ios: laneOnlyNative(compiled, 'ios') ? [] : compiledFeatures(compiled, 'ios', c.assignment), web: compiledFeatures(compiled, 'web', c.assignment) };
+  // SELD-R2: an interaction state of a case has its own native lowering, the lane's projection of that state.
+  const state = c.interaction ?? null;
+  const projection = projectionOf !== null ? projectionOf(compiled, c.environment, c.assignment) : state !== null ? nativeLayoutProjection(compiled, c.environment, c.assignment, state) : engineLayoutProjection(compiled, c.environment, c.assignment);
+  // TXT1a-2: the engine lane runs a case native refuses for its real faces (engine mode), and a shaped case, which the device runtime
+  // cannot draw until phase R; neither proves a native row, so its ios features are empty (as TXT1a-1's registry had them). SELD-R2:
+  // nor does a case only the lanes compile on native (a user's compile refuses it there).
+  const nativeProven = !laneOnlyNative(compiled, 'ios') && nativeLayoutProjection(compiled, c.environment, c.assignment, state).kind === 'ready' && (projection.kind !== 'ready' || !isShapedInput(projection.input));
+  const features = { ios: nativeProven ? compiledFeatures(compiled, 'ios', c.assignment) : [], web: compiledFeatures(compiled, 'web', c.assignment) };
   const topology = textTopology(compiled, c.assignment);
   const base = { id: c.id, fixture: c.fixture, index: c.index, direction: c.environment.direction, assignment: c.assignment, isInitial: c.isInitial, features, unsupported: null, comparison: null, dual: null, vector: null, topology, textLines: [] };
   const notRun = { 'linux-dragon-layout': 'not-run', 'chrome-dual': 'not-run' } as const;
   const fail = (reason: string): CaseOutcome => ({ ...base, lanes: notRun, status: 'fail', reason });
-  const state = c.interaction ?? null;
-  const projection = projectionOf === null ? nativeLayoutProjection(compiled, c.environment, c.assignment, state) : projectionOf(compiled, c.environment, c.assignment);
   const errors = compiled.diagnostics.map((d) => `${d.code} ${d.message}`).join('; ');
-  if ((projectionOf === null && compiled.outputs.ios.kind === 'blocked') || projection.kind === 'blocked') return fail(`ios output blocked: ${projection.kind === 'blocked' ? projection.reason : ''} ${errors}`);
+  if (projection.kind === 'blocked') return fail(`ios output blocked: ${projection.kind === 'blocked' ? projection.reason : ''} ${errors}`);
   if (webCss === null) return fail(`web output not ready: ${errors}`);
   const authored = await opts.authored(c);
 
@@ -325,9 +329,21 @@ export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, 
     layoutStatus = 'fail';
     reasons.push(`linux-dragon-layout: LayoutUnsupported ${unsupported.code} at ${unsupported.nodeId} (${unsupported.specSection}): ${unsupported.detail}`);
   } else {
-    comparison = compareLayout(authored, absoluteRects(result.boxes), validated.input, c.environment);
-    layoutStatus = comparison.pass ? 'pass' : 'fail';
-    if (!comparison.pass) reasons.push(`linux-dragon-layout: ${comparison.problems.join('; ')}`);
+    // TXT1a-2: a shaped case (text-latin-run.ts) is compared against the capture with its hyphen rects joined, exactly at 1/64 px,
+    // and its engine breaks against Chrome's at DPR 1.
+    const shaped = isShapedInput(validated.input);
+    comparison = compareLayout(shaped ? joinHyphenRects(authored) : authored, absoluteRects(result.boxes), validated.input, c.environment);
+    const problems = [...comparison.problems];
+    if (shaped) {
+      for (const n of comparison.nodes) if (n.dragon !== null && !n.exactLu) problems.push(`${n.id} is not exact at 1/64 px (chrome ${JSON.stringify(n.chrome)}, dragon ${JSON.stringify(n.dragon)})`);
+      if (problems.length === 0) {
+        const b = breakProblems(c.id, 1, validated.input, await liveChromeBreaks(browser, c, 1), opts.engineFaults);
+        if (b.compared === 0) problems.push('breaks: no text node compared');
+        for (const p of b.problems) problems.push(`breaks: ${p}`);
+      }
+    }
+    layoutStatus = comparison.pass && problems.length === 0 ? 'pass' : 'fail';
+    if (layoutStatus === 'fail') reasons.push(`linux-dragon-layout: ${problems.join('; ')}`);
   }
 
   // Lane chrome-dual.
@@ -337,9 +353,14 @@ export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, 
   if (classOf === null || colors === null || textColors === null) return fail('the compiled result has no web class map or resolved colours for this case');
   const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(webCss, classOf), c.environment, c.computedExtra, prepareOf(c));
   const dual = compareDual(authored, compiledCapture, colors, textColors, c.computedExtra);
+  // TXT1a-2: every listed element's text is drawn with its face alone in both documents (text-latin-run.ts faceCheck).
+  const faces = expectedFacesOf(c.fixture);
+  const faceProblems = faces === null ? [] : await faceCheck(browser, c, authored, c.compiledHtml(webCss, classOf), faces);
+  const dualPass = dual.pass && faceProblems.length === 0;
   if (!dual.pass) reasons.push(`chrome-dual: ${dual.problems.join('; ')}`);
+  if (faceProblems.length > 0) reasons.push(`chrome-dual faces: ${faceProblems.join('; ')}`);
 
-  const pass = layoutStatus === 'pass' && dual.pass;
+  const pass = layoutStatus === 'pass' && dualPass;
   const boxes = result.kind === 'ok' ? result.boxes : [];
   const textLines = (topology === null ? [] : topology).map((t) => ({
     address: t.address,
@@ -349,7 +370,7 @@ export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, 
   return {
     ...base,
     textLines,
-    lanes: { 'linux-dragon-layout': layoutStatus, 'chrome-dual': dual.pass ? 'pass' : 'fail' },
+    lanes: { 'linux-dragon-layout': layoutStatus, 'chrome-dual': dualPass ? 'pass' : 'fail' },
     status: pass ? 'pass' : 'fail',
     reason: pass ? null : reasons.join(' | '),
     unsupported,
@@ -360,4 +381,15 @@ export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, 
 }
 
 /** Authored captures taken live in the pinned Chrome, in the case's environment. */
-export const liveAuthored = (browser: Browser) => (c: ParityCase): Promise<WebCapture> => captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, prepareOf(c));
+/** The authored page's preparation: the reference fonts (TXT1a-2) and the forced interaction pseudo-classes (SELD-R2), in that order. */
+export const authoredPrepareOf = (c: ParityCase): ((page: Page) => Promise<void>) | undefined => {
+  const fonts = c.authoredPrepare ?? undefined;
+  const forced = prepareOf(c);
+  if (fonts === undefined || forced === undefined) return fonts ?? forced;
+  return async (page) => {
+    await fonts(page);
+    await forced(page);
+  };
+};
+
+export const liveAuthored = (browser: Browser) => (c: ParityCase): Promise<WebCapture> => captureFixture(browser, c.id, c.authoredHtml, c.environment, c.computedExtra, authoredPrepareOf(c));

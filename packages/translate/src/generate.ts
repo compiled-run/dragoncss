@@ -55,6 +55,9 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     { file: at('text.ts'), name: 'ahemMeasurer' },
     // R4: a host scopes its shaped measurer to Latin text as platform.ts shapedMeasurerFor does (the harness's replay included).
     { file: at('shaping.ts'), name: 'latinScopedMeasurer' },
+    // TXT1a-2 phase R: a device app measures with the shaped measurer over its HarfBuzz and draws each line piece's shaped glyphs.
+    { file: at('platform.ts'), name: 'deviceShapedMeasurer' },
+    { file: at('shaping.ts'), name: 'pieceGlyphs' },
     // The one pixel-snap rule (native-strategy.md section 3.3): native lanes snap engine rects to device px with it.
     { file: at('snap.ts'), name: 'snapEdges' },
     { file: at('snap.ts'), name: 'snapRect' },

@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import type { LayoutBox, LayoutRect } from '@dragon/layout';
-import { AHEM_FONT_DATA, coveredIndex, LU_PER_PX, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
+import { AHEM_FONT_DATA, coveredIndex, LU_PER_PX, pieceGlyphs, platformFontSize, snapEdges, zoomFontSize } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { borderDevicePx, programInput } from 'dragon';
 import { chromeArgsAt, CHROME_VERSION } from './chrome.ts';
@@ -16,6 +16,7 @@ import type { CheckResult, RgbaImage } from './native-compare.ts';
 import { checkPixels } from './native-compare.ts';
 import type { DumpSample } from './native-dump.ts';
 import { expectedEngine, referenceMeasurer } from './native-host.ts';
+import { shapedInk } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { GlyphBox, GlyphLine, ImageSize, SampleBox, SamplePoint, SampleResult } from './samples.ts';
@@ -265,11 +266,11 @@ export function ahemGlyphBoxes(): ReadonlyMap<number, FontBox | null> {
 
 const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(`${r.parent}:line`);
 
-function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: number }> {
-  const out = new Map<string, { family: string; size: number }>();
+function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: number; text: string }> {
+  const out = new Map<string, { family: string; size: number; text: string }>();
   // Text leaves sit in their block container or, through any depth of inline boxes, inside it (INL1a).
   const inline = (c: Exclude<LayoutBox['children'][number], LayoutBox>): void => {
-    if (c.kind === 'text') out.set(c.id, { family: c.font.family, size: c.font.size });
+    if (c.kind === 'text') out.set(c.id, { family: c.font.family, size: c.font.size, text: c.text });
     else if (c.kind === 'inline') for (const k of c.children) inline(k);
   };
   const walk = (b: LayoutBox): void => {
@@ -283,15 +284,14 @@ function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: numb
 }
 
 /**
- * The glyph lines of a program at a DPR, as the device places them: the pen starts at the line's absolute x and advances by
- * float32(size x advance / unitsPerEm) with size = platformFontSize(zoomFontSize(css size, DPR)); the baseline is the snapped line
- * top plus the engine's ascent. Each glyph's box is its font box scaled by size / unitsPerEm. Only Ahem is accepted.
+ * The glyph lines of a program at a DPR, as the device places them: each Ahem glyph at the line's absolute x plus its pen position
+ * from the shaped item (pieceGlyphs, HarfBuzz's 16.16 advances), with size = platformFontSize(zoomFontSize(css size, DPR)); the
+ * baseline is the snapped line top plus the engine's ascent. Each Ahem glyph's box is its font box scaled by size / unitsPerEm; a real
+ * face's are its shaped glyphs' HarfBuzz extents (TXT1a-2).
  */
 export function glyphLines(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): GlyphLine[] {
   const input = programInput(p, viewport, dpr);
   const sizes = cssFontSizes(input.root);
-  // The glyph rule's own refusal comes first: the engine's font-data measurer refuses a face other than Ahem too (TXT1a-1).
-  for (const [id, css] of sizes) if (css.family !== 'Ahem') throw new Error(`${id}: the glyph rule refuses the font family ${css.family}; glyph boxes are known for Ahem only`);
   const m = referenceMeasurer();
   const texts = engineTextLines(input, m);
   const boxes = ahemGlyphBoxes();
@@ -300,21 +300,30 @@ export function glyphLines(p: NativeProgram, viewport: { readonly width: number;
   for (const t of texts) {
     const css = sizes.get(t.id);
     if (css === undefined) throw new Error(`no text leaf ${t.id}`);
-    if (css.family !== 'Ahem') throw new Error(`${t.id}: the glyph rule refuses the font family ${css.family}; glyph boxes are known for Ahem only`);
     const size = platformFontSize(zoomFontSize(css.size, dpr));
     const metrics = m.metrics(t.font);
     for (const [j, line] of t.lines.entries()) {
       const baseline = line.snapped.top + metrics.ascent / 64;
-      let pen = 0;
+      if (css.family !== 'Ahem') {
+        // TXT1a-2: a real face's glyph boxes are HarfBuzz's extents of the shaped line (text-shaper-host.ts shapedInk), from its left.
+        const x0 = line.rect.x / 64;
+        const ink = shapedInk(css.family, size, String.fromCodePoint(...line.cps));
+        const glyphs: GlyphBox[] = ink.flatMap((g) => (g === null ? [] : [{ left: x0 + g.left, right: x0 + g.right, top: baseline - g.top, bottom: baseline - g.bottom }]));
+        out.push({ id: `${t.id}:line${j}`, glyphs });
+        continue;
+      }
+      // The piece's code points: the leaf's code points before its UTF-16 start, then the shown ones.
+      const start = [...css.text.slice(0, line.start)].length;
+      const shaped = pieceGlyphs(m, css.text, t.font, start, start + line.cps.length);
+      if (!shaped.ok) throw new Error(`${t.id} line ${j}: ${shaped.reason}`);
+      // Ahem shapes one glyph per code point, so each glyph's box is its code point's.
+      if (shaped.xs.length !== line.cps.length) throw new Error(`${t.id} line ${j}: ${shaped.xs.length} glyphs for ${line.cps.length} code points`);
       const glyphs: GlyphBox[] = [];
-      for (const cp of line.cps) {
-        const k = coveredIndex(cp);
-        const adv = k < 0 ? undefined : AHEM_FONT_DATA.advances[k];
-        if (adv === undefined) throw new Error(`${t.id}: U+${cp.toString(16)} is not covered by Ahem`);
+      for (const [n, cp] of line.cps.entries()) {
+        if (coveredIndex(cp) < 0) throw new Error(`${t.id}: U+${cp.toString(16)} is not covered by Ahem`);
         const b = boxes.get(cp);
-        const x = line.rect.x / 64 + pen;
+        const x = line.rect.x / 64 + (shaped.xs[n] as number);
         if (b !== null && b !== undefined) glyphs.push({ left: x + (b.xMin * size) / upem, right: x + (b.xMax * size) / upem, top: baseline - (b.yMax * size) / upem, bottom: baseline - (b.yMin * size) / upem });
-        pen = Math.fround(pen + Math.fround((size * adv) / upem));
       }
       out.push({ id: `${t.id}:line${j}`, glyphs });
     }
@@ -336,6 +345,19 @@ export function casePoints(p: NativeProgram, viewport: { readonly width: number;
  * before the glyph clearance and the vertical glyph-edge scanlines, to read failure lists of runs from before them.
  */
 export function caseSamples(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, clearance = true): SampleResult {
+  const boxes = caseBoxes(p, viewport, dpr);
+  const size = rasterSize(viewport, dpr);
+  const lines = glyphLines(p, viewport, dpr);
+  const box = sampleBoxes(boxes, size, clearance ? lines.flatMap((l) => l.glyphs) : []);
+  const glyph = sampleGlyphs(lines, size, SAMPLE_INSET_DEVICE_PX, clearance);
+  const base = [...box.points, ...glyph.points];
+  // The paint modules' points follow the base points; a module may suppress base points its paint replaces (paint-samples/).
+  const points = withPaintSamples({ program: p, viewport, dpr, size, boxes, base });
+  return { points, dropped: [...box.dropped, ...glyph.dropped], rescued: box.rescued };
+}
+
+/** The sample boxes of a case at a DPR: every element box's snapped device-px edges and device-px borders, from the engine. */
+export function caseBoxes(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): SampleBox[] {
   const input = programInput(p, viewport, dpr);
   const engine = expectedEngine();
   const out = engine.layout(input, engine.measurer);
@@ -352,14 +374,7 @@ export function caseSamples(p: NativeProgram, viewport: { readonly width: number
     const b = borders.get(r.id) ?? [0, 0, 0, 0];
     boxes.push({ id: r.id, left: s.left, top: s.top, right: s.right, bottom: s.bottom, border: { top: b[0], right: b[1], bottom: b[2], left: b[3] }, radius: 0, clips: n.clips, size: [r.width / LU_PER_PX, r.height / LU_PER_PX] });
   });
-  const size = rasterSize(viewport, dpr);
-  const lines = glyphLines(p, viewport, dpr);
-  const box = sampleBoxes(boxes, size, clearance ? lines.flatMap((l) => l.glyphs) : []);
-  const glyph = sampleGlyphs(lines, size, SAMPLE_INSET_DEVICE_PX, clearance);
-  const base = [...box.points, ...glyph.points];
-  // The paint modules' points follow the base points; a module may suppress base points its paint replaces (paint-samples/).
-  const points = withPaintSamples({ program: p, viewport, dpr, size, boxes, base });
-  return { points, dropped: [...box.dropped, ...glyph.dropped], rescued: box.rescued };
+  return boxes;
 }
 
 /**

@@ -14,12 +14,14 @@ export type UnsupportedCode =
   | 'flex-intrinsic-wrap-column'
   | 'replaced-out-of-flow'
   | 'line-break'
+  | 'grid-baseline'
+  | 'grid-abspos'
+  | 'grid-replaced'
   | 'mixed-text-wrap-mode'
   | 'inline-box-decoration'
   | 'vertical-align'
   | 'inline-box-position'
   | 'inline-empty-line'
-  | 'grid-layout'
   | 'text-shaping-run';
 
 /** The refusals a TextMeasurer returns: a code point with no glyph, or text outside the measurer's scripts (R4, notes/T056-txt1a-spec.md). */

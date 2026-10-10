@@ -8,7 +8,7 @@ import type { EngineFaults, FontSpec, GlyphShaper, InlineBox, InlineChild, Layou
 import { intrinsicContentInlineSize } from '../../layout/src/intrinsic.ts';
 import { scrollMetrics, scrollRanges } from '../../layout/src/overflow.ts';
 import { HitError, hitTableOf, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
-import { layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, shapedMeasurerFor, validateLayoutInput } from '@dragon/layout';
+import { layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, NO_GRID_FAULTS, shapedMeasurerFor, validateLayoutInput } from '@dragon/layout';
 import { engineTextLines } from '../src/line-breaks.ts';
 import { repoPath } from '../src/paths.ts';
 import { launchChrome } from '../src/chrome.ts';
@@ -305,7 +305,7 @@ const minCases = [...sized, ...hyphenated];
 function intrinsicOf(c: (typeof latin)[number], kind: 'min' | 'max', faults: EngineFaults = NO_ENGINE_FAULTS): number {
   const input = inputOf(c.width, [leaf('t', c.text, registerFace(c.bytes), c.size)]);
   const p = ((input.root.children[0] as LayoutBox).children[0]) as LayoutBox;
-  return intrinsicContentInlineSize({ measurer: referenceShapedMeasurer(faults, faceBytes), devicePixelRatio: 1, faults }, p, kind) as number;
+  return intrinsicContentInlineSize({ measurer: referenceShapedMeasurer(faults, faceBytes), devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS }, p, kind) as number;
 }
 
 describe('TXT1a-1 phase B: real-font intrinsic sizes', () => {

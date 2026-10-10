@@ -78,7 +78,7 @@ describe('(f2) querySupport from the public entry (docs/api.md §6.3)', () => {
     if (gap.kind !== 'needs-context') throw new Error(gap.kind);
     expect([...new Set(gap.candidates.map((c) => c.feature))].sort()).toEqual(['column-gap:<length-px>', 'row-gap:<length-px>']);
     expect(gap.candidates.some((c) => c.proofs.some((p) => p.lane === 'linux-dragon-layout' && p.tolerance === 'gate-1-device-px'))).toBe(true);
-    expect(querySupport({ kind: 'possibilities', target: { kind: 'web' }, css: 'display: grid' })).toMatchObject({ kind: 'unsupported', declaration: 'display: grid' });
+    expect(querySupport({ kind: 'possibilities', target: { kind: 'web' }, css: 'display: inline-grid' })).toMatchObject({ kind: 'unsupported', declaration: 'display: inline-grid' });
   });
   it('possibilities: malformed CSS, several declarations and a bad target are invalid queries', () => {
     expect(querySupport({ kind: 'possibilities', target: { kind: 'web' }, css: 'width: -1px' }).kind).toBe('invalid-query');
@@ -97,7 +97,7 @@ describe('(f2) querySupport from the public entry (docs/api.md §6.3)', () => {
     expect(querySupport({ kind: 'resolved', result: c, target: 'web', node: 'a', instance: 'doc', assignment: [], property: 'height' })).toMatchObject({ kind: 'decided', cases: [{ decision: null }] });
   });
   it('resolved: blocked results, unknown nodes, states, properties and targets', () => {
-    const blocked = both().compile(inputFor('.g { display: grid; }', (r) => [div(r, 'g', ['g'])]));
+    const blocked = both().compile(inputFor('.g { display: inline-grid; }', (r) => [div(r, 'g', ['g'])]));
     const b = querySupport({ kind: 'resolved', result: blocked, target: 'web', node: 'g', instance: 'doc', assignment: [], property: 'display' });
     expect(b.kind).toBe('blocked');
     const c = both().compile(inputFor(`${FONT} .a { width: 50px; }`, (r) => [div(r, 'a', ['a'])]));
@@ -202,15 +202,15 @@ describe('T005 rec 3: diagnostics inside an unsupported at-rule are reported in 
   });
   it('the enclosed rules are analysed with the block unwrapped, top-level and nested: their diagnostics are related entries that start with the code, and nothing is emitted', () => {
     // A top-level @media is conditional since MQ-a, so the unsupported top-level at-rule here is @container.
-    const css = `${FONT}\n@container (min-width: 1px) { .a { display: grid; } }\n.b { width: 5px; @supports (display: flex) { margin-right: 6mm; } }\n`;
+    const css = `${FONT}\n@container (min-width: 1px) { .a { display: inline-grid; } }\n.b { width: 5px; @supports (display: flex) { margin-right: 6mm; } }\n`;
     const input = inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]);
     const c = both().compile(input);
     const atRules = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
     expect(atRules.length).toBe(2);
     const [media, supports] = atRules as [Diagnostic, Diagnostic];
-    expect(media.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[ios\]: display: grid is unsupported/), expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[web\]: display: grid is unsupported/)]);
+    expect(media.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[ios\]: display: inline-grid is unsupported/), expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[web\]: display: inline-grid is unsupported/)]);
     expect(supports.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNPROVEN_CONTEXT \[ios\]: margin-right:<length-mm> on b is used in the block\/ltr context/), expect.stringMatching(/^DRAGON_UNPROVEN_CONTEXT \[web\]: margin-right:<length-mm> on b/)]);
-    for (const r of [...media.related, ...supports.related]) expect(spanTextOf(input, { ...media, origin: r.origin })).toMatch(/^(grid|6mm)$/);
+    for (const r of [...media.related, ...supports.related]) expect(spanTextOf(input, { ...media, origin: r.origin })).toMatch(/^(inline-grid|6mm)$/);
     // The unwrapped rules never reach the top-level diagnostics or an output.
     expect(c.diagnostics.map((d) => d.code).sort()).toEqual(['DRAGON_UNSUPPORTED_AT_RULE', 'DRAGON_UNSUPPORTED_AT_RULE']);
     expect(blockedEverywhere(c)).toBe(true);
@@ -218,25 +218,25 @@ describe('T005 rec 3: diagnostics inside an unsupported at-rule are reported in 
 });
 
 describe('T005 rec 5: formatDiagnostics groups diagnostics that differ only in their target', () => {
-  it('display: grid on ios and web renders as one block listing both targets; the objects stay one per target; formatDiagnostic is unchanged', () => {
-    const c = both().compile(inputFor('.g { display: grid; }', (r) => [div(r, 'g', ['g'])]));
+  it('display: inline-grid on ios and web renders as one block listing both targets; the objects stay one per target; formatDiagnostic is unchanged', () => {
+    const c = both().compile(inputFor('.g { display: inline-grid; }', (r) => [div(r, 'g', ['g'])]));
     expect(c.diagnostics.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios'], ['DRAGON_UNSUPPORTED_VALUE', 'web']]);
     const grouped = formatDiagnostics(c.diagnostics, c.sources);
     const single = formatDiagnostic(c.diagnostics[0] as Diagnostic, c.sources);
-    expect(single.split('\n')[0]).toMatch(/: error DRAGON_UNSUPPORTED_VALUE \[ios\]: display: grid is unsupported/);
+    expect(single.split('\n')[0]).toMatch(/: error DRAGON_UNSUPPORTED_VALUE \[ios\]: display: inline-grid is unsupported/);
     expect(grouped.split('\n')[0]).toBe(single.split('\n')[0]?.replace('[ios]', '[ios, web]'));
     expect(grouped.split('\n').slice(1)).toEqual(single.split('\n').slice(1));
     expect(grouped.match(/DRAGON_UNSUPPORTED_VALUE/g)?.length).toBe(1);
     // Diagnostics that differ in more than the target stay separate blocks, each exactly as formatDiagnostic renders it.
-    const two = both().compile(inputFor('.g { display: grid; float: left; }', (r) => [div(r, 'g', ['g'])]));
+    const two = both().compile(inputFor('.g { display: inline-grid; float: left; }', (r) => [div(r, 'g', ['g'])]));
     expect(formatDiagnostics(two.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY'), two.sources)).toBe(formatDiagnostic(two.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY') as Diagnostic, two.sources));
   });
 });
 
 describe('T005 rec 6: unsupported-value and unproven-context messages list the supported alternatives in context, from the profile rows', () => {
-  it('display: grid in block flow lists block, flex, list-item, none and the CSS-wide keywords proven there (GEN-b, CASC)', () => {
-    const c = both().compile(inputFor('.g { display: grid; }', (r) => [div(r, 'g', ['g'])]));
-    for (const d of c.diagnostics) expect(d.message).toMatch(/^display: grid is unsupported \(support profile m1-s5\); in block\/ltr use block, flex, list-item, none, revert or revert-layer$/);
+  it('display: inline-grid in block flow lists block, flex, grid, list-item, none and the CSS-wide keywords proven there (GEN-b, CASC)', () => {
+    const c = both().compile(inputFor('.g { display: inline-grid; }', (r) => [div(r, 'g', ['g'])]));
+    for (const d of c.diagnostics) expect(d.message).toMatch(/^display: inline-grid is unsupported \(support profile m1-s5\); in block\/ltr use block, flex, grid, list-item, none, revert or revert-layer$/);
   });
   it('margin-right: 6mm in block flow lists the margin-right values proven there', () => {
     const c = both().compile(inputFor(`${FONT} .a { margin-right: 6mm; }`, (r) => [div(r, 'a', ['a'])]));
@@ -272,7 +272,7 @@ describe('T039 M3: absolutely positioned boxes beside text are refused with a tr
     }
   });
   it('profile refusals keep the profile why', () => {
-    const c = both().compile(inputFor('.g { display: grid; }', (r) => [div(r, 'g', ['g'])]));
+    const c = both().compile(inputFor('.g { display: inline-grid; }', (r) => [div(r, 'g', ['g'])]));
     for (const d of c.diagnostics) expect(d.why).toBe(CATALOGUE.DRAGON_UNSUPPORTED_VALUE.why);
   });
 });

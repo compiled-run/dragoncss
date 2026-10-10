@@ -21,12 +21,13 @@ import { checkTranslucent } from './analysis/paint-values/effects.ts';
 import { checkStackingClips } from './analysis/paint-values/stacking.ts';
 import { inDomain, validateInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
+import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
 import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
@@ -254,6 +255,11 @@ export type InternalOptions = {
   readonly supportProfiles?: SupportProfiles;
   readonly foldViewport?: Viewport;
   /**
+   * Native targets lower real bundled faces (TXT1a-2 phase C). Off by default: phase R, the device GlyphShaper over the T081 bridges,
+   * is not built, and the device runtime measures and draws only the bundled Ahem (emit/native-support.ts DragonBridge.measurer).
+   */
+  readonly nativeRealFaces?: boolean;
+  /**
    * SELD-R2: the parity lanes compile :hover, :active, :focus and :focus-visible on native, to prove each state's resolution ahead
    * of the native runtime; every other compile refuses them there (nativeInteractionRefusals).
    */
@@ -271,6 +277,7 @@ type Resolved = {
   /** Snapshots (snapshotProfile): the support checks and the digest read these same objects. */
   readonly supportProfiles: Required<SupportProfiles>;
   readonly foldViewport: Viewport | null;
+  readonly nativeRealFaces: boolean;
   readonly interactionLanes: boolean;
   readonly nativeLanes: NativeLanes | null;
 };
@@ -418,7 +425,7 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
 }
 
 /** The lowering's font refusal, reported for every laid-out text node of every case, whether or not another error blocks ios. */
-function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>, target: 'ios' | 'android', ahemDeclared: boolean, deferrals: Set<string>): void {
+function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: Set<string>, target: 'ios' | 'android', ahemDeclared: boolean, deferrals: Set<string>, realFaceAt: (address: string) => boolean): void {
   const walk = (el: ResolvedElement): void => {
     const display = (el.props.get('display') as ResolvedValue).value;
     if (display.kind === 'keyword' && display.value === 'none') return;
@@ -429,6 +436,8 @@ function checkFonts(root: ResolvedElement, diagnostics: Diagnostic[], reported: 
       }
       // Native draws its bundled Ahem, so an @font-face that declares Ahem for web would make the targets disagree: it blocks native.
       const problem = textFontProblem(c);
+      // TXT1a-2 (notes/T084-txt1a-2.md): native lays out a node whose font resolves to one real bundled face, as the engine does.
+      if (problem !== null && realFaceAt(c.node.address)) continue;
       const message = problem ?? (ahemDeclared ? `font-family Ahem on ${c.node.address} names the family an @font-face rule declares, while ${target} draws the bundled Ahem` : null);
       if (message === null) continue;
       const id = `${target}|${c.node.address}|font-family|${message}`;
@@ -747,6 +756,17 @@ type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; res
 /** A case's used keys with those of every interaction state, for the value checks' context lists. */
 const allUsed = (c: CaseResult): UsedKey[] => [...c.used, ...c.interaction.flatMap((i) => i.used)];
 
+/**
+ * TXT1a-2: the faces of a case's nodes that resolve to one real bundled static face, as engine mode resolves them, by address;
+ * empty without fonts. A node in the family Ahem never reads it (it keeps AHEM_FACE).
+ */
+function realFacesOf(root: ResolvedElement, fonts: ProjectFonts | null, ua: UaDataset): Map<string, EngineFace> {
+  const out = new Map<string, EngineFace>();
+  if (fonts === null) return out;
+  for (const [address, face] of engineFacesOf(root, fonts, ua)) if (face.kind === 'face') out.set(address, face);
+  return out;
+}
+
 /** What checkCases has reported, shared by every band's pass so a diagnostic is reported once. */
 type Reported = { readonly contextual: Set<string>; readonly refused: Set<string>; readonly fonts: Set<string>; readonly fenced: Set<string>; readonly fontDeferrals: Set<string> };
 const freshReported = (fontDeferrals: Set<string> = new Set()): Reported => ({ contextual: new Set(), refused: new Set(), fonts: new Set(), fenced: new Set(), fontDeferrals });
@@ -775,7 +795,11 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
     const computedAt = diagnostics.length;
-    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, options.faults);
+    const realFaces = realFacesOf(resolved, projectFonts, options.ua);
+    // Off by default (InternalOptions.nativeRealFaces): native targets keep refusing real faces, and the engine lane lowers them in
+    // engine mode (TXT1a-1's deferred font refusal).
+    const realFaceAt = (address: string): boolean => options.nativeRealFaces && realFaces.has(address);
+    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, options.faults);
     // The UA font-weight and font-style refusal is native-only: the engine resolves those faces (engine mode refuses synthesis).
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
     // PNT1: outside the parity lanes, native refuses a fractional opacity (PNT1-opacity-b); the lanes run it to prove its web rows.
@@ -784,7 +808,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     // (analysis/paint-values/stacking.ts); the lanes keep it under the clip, and the device pixels judge it.
     if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
-    for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals);
+    for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals, realFaceAt);
     if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkSyntheticStyles(resolved, projectFonts, options.ua, t, diagnostics, fonts);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, options.ua, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
@@ -870,17 +894,24 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
     for (const c of cases) {
       const reachable = c.interaction.filter((i) => i.value.kind === 'reachable');
       if (c.resolved === null || reachable.length === 0) continue;
-      const fact = [c.resolved, ...reachable.map((i) => i.resolved)].map((r) => hitUnmodelledFact(r, options.ua, compiles)).find((f) => f !== null) ?? null;
-      if (fact === null) continue;
+      const trees = [c.resolved, ...reachable.map((i) => i.resolved)];
+      const fact = trees.map((r) => hitUnmodelledFact(r, options.ua, compiles)).find((f) => f !== null) ?? null;
+      const grid = fact === null ? (trees.map((r) => hitUnmodelledGrid(r, compiles)).find((g) => g !== null) ?? null) : null;
+      if (fact === null && grid === null) continue;
       for (const r of rules) {
         const pseudo = firstInteractionPseudo(r);
         if (pseudo === null) continue;
         const origin = interactionRuleOrigin(r, c.resolved.element.node.origin);
-        const message = `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`;
+        const message = fact !== null
+          ? `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
+          : `:${pseudo} needs Dragon hit testing through the grid container ${grid as string}, which is not built yet (package GRID hit model)`;
         const id = `${t}|${JSON.stringify(origin)}|${message}`;
         if (seen.has(id)) continue;
         seen.add(id);
-        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual: `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.` }));
+        const manual = fact !== null
+          ? `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
+          : `Use flex or block layout in a document with :${pseudo} rules, or style the state with a component state until grid hit testing is built.`;
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual }));
       }
     }
   }
@@ -1162,6 +1193,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const nativeTargets = NATIVE_TARGETS.filter((t) => targets.includes(t));
       // MQ-R1: per-band transition and animation lists are refused on native until MQ-Rt, as on web until ANIM-mq.
       refuseBandedNativeAnimations(rules, inEveryBand, nativeTargets, diagnostics);
+      // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused.
+      refuseAnimatedGradients(animation, cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])), nativeTargets, diagnostics);
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.
@@ -1240,6 +1273,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     profiles: targets.map((t) => profileDigest(profileFor(profiles, t))),
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
+    ...(options.nativeRealFaces ? { nativeRealFaces: true } : {}),
     direction: options.direction,
     config,
     input: canonicalInput(input),
@@ -1266,7 +1300,11 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const lowerings = (bandCases[k] as { cases: CaseResult[] }).cases.flatMap((c) => (c.resolved === null ? [] : [{ key: c.key, resolved: c.resolved }, ...c.interaction.map((i) => ({ key: interactionKey(c.key, i.value), resolved: i.resolved }))]));
       for (const c of lowerings) {
         try {
-          const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native' });
+          // Off by default (InternalOptions.nativeRealFaces): every non-Ahem face is refused natively until phase R, since the device
+          // runtime measures only Ahem; an element's own font (its strut) counts, not only its text.
+          const real = options.nativeRealFaces ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
+          const refused = options.nativeRealFaces ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until TXT1a-2 phase R';
+          const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
           lowered.set(c.key, tree);
           // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
           // may refuse is refused here, naming the engine's reason.
@@ -1499,6 +1537,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     ua: choice.dataset,
     supportProfiles: snapshotProfiles(options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles),
     foldViewport: options.foldViewport === undefined ? null : checkedViewport(options.foldViewport),
+    nativeRealFaces: options.nativeRealFaces === true,
     interactionLanes: options.interactionLanes === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
   };

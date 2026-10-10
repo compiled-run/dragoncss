@@ -360,7 +360,7 @@ function listMarkerOf(el: ResolvedElement): string | null {
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
 // (nested lists), display: list-item with a marker (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
 // minimum logical font size clamps, and text that inherits a UA font-weight or font-style no longhand models (headings, address).
-function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, faults: GenBFaults): void {
+function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults): void {
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
     reported.add(id);
@@ -410,7 +410,8 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
       const row = uaRows(ua, uaTagOf(fonts.element.tag)).textFonts;
       const set = Object.entries(row).map(([p, v]) => `${p}: ${v}`).join('; ');
       for (const c of el.children) {
-        if (c.kind !== 'text') continue;
+        // TXT1a-2: a real bundled face at the UA weight and style draws it (synthesis is refused as DRAGON_SYNTHETIC_FONT_STYLE).
+        if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
         // Web draws the UA weight and style itself; every configured native target draws the regular face.
         for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
           once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
@@ -499,7 +500,7 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, faults: GenBFaults = GEN_B_FAULTS): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, faults: GenBFaults = GEN_B_FAULTS): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
@@ -518,13 +519,13 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkInline(el, targets, diagnostics, reported);
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
-    if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported);
+    if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
     for (const c of el.children) if (c.kind === 'element') walk(c, here, inner);
   };
   walk(root, false, 'viewport');
-  checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, faults);
+  checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
 }

@@ -453,7 +453,7 @@ export function nativeBandProgram(compiled: object, backend: NativeBackend, faul
 
 // SELD-R2 (notes/T064-seld-r2-spec.md): interaction states, their partition and the generated web conditions.
 export type { ChainValue, FocusValue, ForcedPseudo, InteractionElement, InteractionKind, InteractionPartition, InteractionValue, StateMatch } from './analysis/interaction.ts';
-export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledFact, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
+export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledFact, hitUnmodelledGrid, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
 export type { InteractionState } from './analysis/match.ts';
 export { NO_INTERACTION } from './analysis/match.ts';
 export type { InteractionCondition, WebInteraction } from './emit/web-css.ts';
@@ -462,6 +462,8 @@ export { conditionsExclusive, gatedConditions, HOVER_MEDIA, interactionCondition
 // SELD-R2 PR 3 (notes/T064-seld-r2-spec.md R7, R12, R16): the interaction program and the interaction runtime's reference.
 export type { InteractionLevel, InteractionLevelInput, InteractionProgram } from './lower/interaction-program.ts';
 export { deriveInteractionProgram, INTERACTION_PROGRAM_VERSION, interactionDelta, interactionProgramAt, interactionTables } from './lower/interaction-program.ts';
+export type { InteractionEmit, InteractionScript, InteractionScriptStep } from './emit/runtime/interaction.ts';
+export { emitInteractionPrograms, INTERACTION_FAULT_FIELDS, INTERACTION_RUNTIME_VERSION, INTERACTION_TABLE_FIELDS, InteractionEmitError, interactionFaultsLit, interactionTablesLit, TRACE_LINE, traceLineOf } from './emit/runtime/interaction.ts';
 import type { InteractionLevelInput as LevelInput } from './lower/interaction-program.ts';
 
 /** HTML text fields (input types whose element may show a virtual keyboard, R8, P6): pointer focus on them is focus-visible. */

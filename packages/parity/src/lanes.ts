@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { LayoutRect } from '@dragon/layout';
-import { layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
+import { layoutWithFaults, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
 import { nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { atDpr, committedDprCapture, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
@@ -20,15 +20,17 @@ import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { enforcedCompile } from './pipeline.ts';
 import { SAMPLE_RULES } from './samples.ts';
+import { isShapedInput, joinHyphenRects } from './text-latin-run.ts';
+import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './device-lanes.ts';
 import type { DeviceLaneId } from './device-lanes.ts';
-import { ANIM_LANE, DEVICE_CHECK_LANES, failuresByKind, HIT_LANE, laneFailures, STATE_LANE } from './device-lanes.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, failuresByKind, HIT_LANE, laneFailures, STATE_LANE, TRACE_LANE } from './device-lanes.ts';
 import type { DeviceEvidence } from './device-evidence.ts';
 import { deviceEvidence, evidenceProblems } from './device-evidence.ts';
 import type { DeviceRecord } from './device-run.ts';
 import { TRUST_CASES } from './device-run.ts';
 import type { CaseSet, LaneConfig, LaneId, NativeTarget, TargetConfig } from './targets.ts';
-import { declaredLane, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, NATIVE_TARGETS, p1Manifest } from './targets.ts';
+import { declaredLane, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, NATIVE_TARGETS, p1Manifest, vectorCaseIds } from './targets.ts';
 
 export type LaneState = 'pass' | 'fail' | 'blocked (owner tooling)' | 'not run';
 
@@ -339,12 +341,14 @@ export async function runHostLane(t: TargetConfig, opts: HostOptions = {}): Prom
 export type ReferenceRow = { readonly dpr: number; readonly role: 'shared' | 'extra'; readonly cases: number; readonly valid: number; readonly chrome: number; readonly engine: number; readonly chromeCompared: number; readonly engineCompared: number; readonly failures: readonly string[] };
 
 /**
- * For every layout case (or those of the fixtures given) at every device DPR of each target: the TS engine through the target's
+ * For every device case (or those of the fixtures given) at every device DPR of each target: the TS engine through the target's
  * projection, snapped by snapRect into a ts-reference dump, which must validate and pass (a) against Chrome at that DPR and (d) against the engine.
  */
 export function referenceProof(targets: readonly TargetConfig[], all: ReturnType<typeof layoutCases> = layoutCases()): { readonly target: NativeTarget; readonly rows: readonly ReferenceRow[] }[] {
-  const m = measurerFor(REFERENCE_PLATFORM);
-  if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
+  // TXT1a-2: the engine the device mirrors measures every face through HarfBuzz (native-host.ts referenceMeasurer).
+  const measurer = referenceShapedMeasurer();
+  // The device cases (targets.ts vectorCaseIds): a shaped case is not drawn on devices until TXT1a-2 phase R.
+  const device = new Set(vectorCaseIds());
   return targets.map((t) => ({
     target: t.target,
     rows: t.dprs.map((dpr): ReferenceRow => {
@@ -357,6 +361,7 @@ export function referenceProof(targets: readonly TargetConfig[], all: ReturnType
       let cases = 0;
       for (const f of all) {
         for (const c of f.cases) {
+          if (!device.has(c.id)) continue;
           cases++;
           const comp = enforcedCompile(f.spec, c.environment.direction);
           const env = atDpr(c.environment, dpr);
@@ -370,7 +375,7 @@ export function referenceProof(targets: readonly TargetConfig[], all: ReturnType
             failures.push(`${c.id}@${dpr}: layout input rejected`);
             continue;
           }
-          const out = layoutWithFaults(v.input, m.measurer, NO_ENGINE_FAULTS);
+          const out = layoutWithFaults(v.input, measurer, NO_ENGINE_FAULTS);
           if (out.kind !== 'ok') {
             failures.push(`${c.id}@${dpr}: LayoutUnsupported ${out.unsupported.code}`);
             continue;
@@ -383,7 +388,8 @@ export function referenceProof(targets: readonly TargetConfig[], all: ReturnType
             continue;
           }
           valid++;
-          const a = checkAgainstChrome(checked.dump, committedDprCapture(c.id, dpr));
+          const cap = committedDprCapture(c.id, dpr);
+          const a = checkAgainstChrome(checked.dump, isShapedInput(v.input) ? joinHyphenRects(cap) : cap);
           const d = checkAgainstEngine(checked.dump, boxes);
           chromeCompared += a.compared;
           engineCompared += d.compared;
@@ -451,6 +457,8 @@ export type DeviceRun = {
   readonly hits?: readonly DeviceSet[];
   /** ANIM-b1 3b: the frame samples' sets (device-anim), one per device; absent before it. */
   readonly anims?: readonly DeviceSet[];
+  /** SELD-R2: the interaction scripts' trace sets (device-traces), one per device; absent before them. */
+  readonly traces?: readonly DeviceSet[];
   readonly trust: readonly { readonly device: string; readonly dpr: number; readonly rows: readonly TrustRow[] }[];
   /** A tooling fault that stopped the run (a device that failed to boot twice, a device that cannot hold the root). */
   readonly blocked: string | null;
@@ -585,6 +593,7 @@ function lanesFileOf(targets: readonly TargetConfig[], problems: readonly string
           if (l.lane === STATE_LANE) return hosts(deviceLaneRecord(l, d, d.states ?? []));
           if (l.lane === HIT_LANE) return hosts(deviceLaneRecord(l, d, d.hits ?? []));
           if (l.lane === ANIM_LANE) return hosts(deviceLaneRecord(l, d, d.anims ?? []));
+          if (l.lane === TRACE_LANE) return hosts(deviceLaneRecord(l, d, d.traces ?? []));
           if (l.lane !== 'layout-vectors-device') return hosts(deviceLaneRecord(l, d));
           if (d.vectors === null) return hosts(laneRecord(l, d.blocked === null ? 'not run' : 'blocked (owner tooling)', d.blocked ?? DEVICE_NOT_RUN, null));
           return hosts(laneRecord(l, d.vectors.state, d.vectors.reason, { toolchain: d.vectors.toolchain, suites: d.vectors.suites, digests: d.vectors.digests }, null, d.evidence));

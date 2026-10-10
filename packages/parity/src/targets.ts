@@ -9,12 +9,16 @@ import { animSampleIds } from './anim-samples.ts';
 import { DUMP_FAULTS } from './native-compare.ts';
 import { repoPath } from './paths.ts';
 import { SAMPLE_RULES } from './samples.ts';
+import { shapedCaseIds } from './text-latin-run.ts';
+import { traceScriptIds } from './trace-lane.ts';
 
 export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels',
   // SELD-R1b (notes/T047 §3.3 item 5): the case scripts' dumps, and the device hit test's answers.
   'device-states', 'device-hit',
   // ANIM-b1 3b (T065 R18): every frame sample's dump.
-  'device-anim'] as const;
+  'device-anim',
+  // SELD-R2 (T064 R14): the interaction scripts' traces, through the entry points (and on Android through MotionEvents too).
+  'device-traces'] as const;
 export type LaneId = (typeof LANES)[number];
 export type NativeTarget = 'ios' | 'android';
 export const NATIVE_TARGETS: readonly NativeTarget[] = ['ios', 'android'];
@@ -64,6 +68,16 @@ export function layoutCaseIds(): readonly string[] {
   return topLevel;
 }
 
+let vectorIds: readonly string[] | null = null;
+/** The layout case ids whose vectors are plain (no shape transcript): every layout case but the shaped ones (text-latin-run.ts). */
+export function vectorCaseIds(): readonly string[] {
+  if (vectorIds === null) {
+    const shaped = shapedCaseIds();
+    vectorIds = layoutCaseIds().filter((id) => !shaped.has(id));
+  }
+  return vectorIds;
+}
+
 const extraName = (dpr: number): string | null => EXTRA_DPRS.find((e) => e.dpr === dpr)?.name ?? null;
 
 function dprSet(dpr: number, ids: readonly string[]): CaseSet {
@@ -95,11 +109,12 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'p1', suite: 'animator', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/animator/cases.json').cases.length },
     // SELD-R2 (T064 R12): the interaction runtime's scripts, built in code (packages/translate/src/corpus-interaction.ts).
     { corpus: 'p1', suite: 'interaction', cases: p1.cases['interaction'] ?? 0 },
-    { corpus: 'extended', suite: 'engine-dpr', cases: layoutCaseIds().length * x.dprSets.length },
+    // A shaped case's vectors are the text-latin suite's (TXT1a-2), so engine-dpr counts the plain ones.
+    { corpus: 'extended', suite: 'engine-dpr', cases: vectorCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },
     { corpus: 'extended', suite: 'snap', cases: x.snapVectors + x.snapGenerated },
     // V1 value model (notes/T006): the values cases' snap vectors, the calc engine goldens, generated calc trees and calc units.
-    { corpus: 'extended', suite: 'snap-values', cases: layoutCaseIds().filter((id) => id.startsWith('values-')).length * x.dprSets.length },
+    { corpus: 'extended', suite: 'snap-values', cases: vectorCaseIds().filter((id) => id.startsWith('values-')).length * x.dprSets.length },
     { corpus: 'extended', suite: 'calc-goldens', cases: readdirSync(repoPath('packages/layout/vectors/calc')).filter((f) => f.endsWith('.json')).length },
     { corpus: 'extended', suite: 'engine-calc', cases: x.engineCalc },
     { corpus: 'extended', suite: 'units-calc', cases: x.calcUnitsPerFunction * x.calcUnitsFunctions.length },
@@ -107,6 +122,8 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'extended', suite: 'engine-inline', cases: x.engineInline },
     // OVFL: generated scroll containers with scroll metrics (corpus-dpr.ts engineOverflowCases).
     { corpus: 'extended', suite: 'engine-overflow', cases: x.engineOverflow },
+    // TXT1a-2: every shaped case's vector with its shape transcript, at DPR 1 and every DPR set (corpus-dpr.ts textLatinVectorCases).
+    { corpus: 'extended', suite: 'text-latin', cases: shapedCaseIds().size * (1 + x.dprSets.length) },
   ];
 }
 
@@ -126,20 +143,24 @@ export function stateScriptIds(): readonly string[] {
  */
 export function hitCaseIds(): readonly string[] {
   const refused = readJson<{ readonly refused?: Readonly<Record<string, string>> }>('packages/layout/rt-vectors/hit/facts.json').refused ?? {};
-  return layoutCaseIds().filter((id) => refused[id] === undefined);
+  // TXT1a-2: a shaped case is not a device case (vectorCaseIds), so device-hit never runs one.
+  return vectorCaseIds().filter((id) => refused[id] === undefined);
 }
 
 /** The declared lane: vectors lanes hold every top-level and DPR vector plus the corpora; device lanes the cases at the device DPRs. */
 export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
-  const ids = layoutCaseIds();
   const where = lane === 'layout-vectors-host' ? 'host' : 'device';
   if (lane === 'layout-vectors-host' || lane === 'layout-vectors-device') {
-    return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids }, ...DPRS.map((d) => dprSet(d, ids))], corpora: corpusSuites() };
+    // A shaped case's vectors are the text-latin suite's (they carry a shape transcript), not a vectors set's.
+    const vectors = vectorCaseIds();
+    return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids: vectors }, ...DPRS.map((d) => dprSet(d, vectors))], corpora: corpusSuites() };
   }
   if (lane === 'device-states') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, stateScriptIds())), corpora: [] };
   if (lane === 'device-anim') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, animSampleIds(target))), corpora: [] };
+  // TXT1a-2: a shaped case is not a device case until phase R gives the device runtime its shaper (the device measures only Ahem).
   if (lane === 'device-hit') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, hitCaseIds())), corpora: [] };
-  return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, ids)), corpora: [] };
+  if (lane === 'device-traces') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, traceScriptIds())), corpora: [] };
+  return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, vectorCaseIds())), corpora: [] };
 }
 
 function targetConfig(target: NativeTarget): TargetConfig {

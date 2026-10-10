@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; --shadow-strong: rgba(0, 0, 0, 0.48); }
+.stage { display: flex; flex-wrap: wrap; width: 360px; padding: 20px; column-gap: 30px; row-gap: 30px; background-color: #334455; color: #ffcc66; }
+.b { width: 60px; height: 40px; background-color: #ddeeff; box-shadow: 0 0.25rem 0.5em var(--shadow-strong); }
+.em { font-size: 20px; box-shadow: 0.2em 0.3em 0.5em 0.1em rgba(0, 0, 0, 0.5); }
+.current { box-shadow: 3px 3px 6px currentcolor; }
+.list { box-shadow: 0 0 0 2px #ff6600, 0 4px 10px var(--shadow-strong); }
+.none { box-shadow: none; }
+.inherit { box-shadow: inherit; }
+.parent { box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.4); background-color: #ccddee; padding: 6px; }
+.child { width: 24px; height: 16px; background-color: #884422; }
+.unit { box-shadow: 0 0 2mm 1pt rgba(0, 0, 0, 0.5); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="var" class="b"></div>
+<div data-dragon-id="em" class="b em"></div>
+<div data-dragon-id="current" class="b current"></div>
+<div data-dragon-id="list" class="b list"></div>
+<div data-dragon-id="none" class="b none"></div>
+<div data-dragon-id="parent" class="parent"><div data-dragon-id="inherit" class="child inherit"></div></div>
+<div data-dragon-id="unit" class="b unit"></div>
+</div>
+</body>
+</html>
