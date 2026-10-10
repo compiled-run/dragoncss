@@ -140,7 +140,7 @@ export function scrollRangesWithFaults(given: LayoutInput, measurer: TextMeasure
   try {
     // The input as the layout above resolved it, with the caller's measurer (as scrollMetricsWithFaults).
     const input = resolvedInput(given, measurer, faults);
-    const ctx: Ctx = { measurer: layoutMeasurer(measurer, faults), devicePixelRatio: input.devicePixelRatio, faults };
+    const ctx: Ctx = { measurer: layoutMeasurer(measurer, faults), devicePixelRatio: input.devicePixelRatio, faults, gridFaults: NO_GRID_FAULTS };
     ix = indexOf(ctx, input, absoluteRects(r.boxes));
   } catch (e) {
     if (e instanceof UnsupportedSignal) return { kind: 'refused', nodeId: e.unsupported.nodeId, detail: `${e.unsupported.code}: ${e.unsupported.detail}` };
