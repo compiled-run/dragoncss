@@ -93,6 +93,8 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'p1', suite: 'hit', cases: ['', ...DPRS.map((d) => `/dpr-${d}`)].reduce((n, d) => n + readdirSync(repoPath(`packages/layout/vectors${d}`)).filter((f) => f.endsWith('.json') && hitRefused[f.slice(0, -'.json'.length)] === undefined).length, 0) },
     // ANIM-b1 3b (T065 R16): one animator case per frame case (packages/layout/rt-vectors/animator/cases.json).
     { corpus: 'p1', suite: 'animator', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/animator/cases.json').cases.length },
+    // SELD-R2 (T064 R12): the interaction runtime's scripts, built in code (packages/translate/src/corpus-interaction.ts).
+    { corpus: 'p1', suite: 'interaction', cases: p1.cases['interaction'] ?? 0 },
     { corpus: 'extended', suite: 'engine-dpr', cases: layoutCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },
     { corpus: 'extended', suite: 'snap', cases: x.snapVectors + x.snapGenerated },
