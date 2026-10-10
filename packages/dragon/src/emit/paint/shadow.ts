@@ -61,7 +61,8 @@ public func dragonSetShadows(_ t: DragonTree, _ v: DragonBoxView, _ shadows: [Sh
 }
 
 /// The backdrop of a box's shadows: each ancestor box's background over its (rounded) border box, outermost first, then the box's
-/// own when own is set (the inset shadows); the white root is beneath.
+/// own when own is set (the inset shadows); the white root is beneath. T150a: a box that is not visible paints no background, so
+/// it is no backdrop (html's and body's canvas background still is).
 public func dragonShadowBackdrop(_ v: DragonBoxView, own: Bool) -> [BackdropFill] {
   var chain: [DragonBoxView] = own ? [v] : []
   var p = v.superview
@@ -72,7 +73,7 @@ public func dragonShadowBackdrop(_ v: DragonBoxView, own: Bool) -> [BackdropFill
   var out: [BackdropFill] = []
   for b in chain {
     let c = b.dragonBackgroundColor
-    if c.a == 0 { continue }
+    if c.a == 0 || (!b.dragonVisible && !b.dragonVisibilityCanvas) { continue }
     let e = b.dragonShape.edges
     out.append(BackdropFill(e[0], e[1], e[2], e[3], JsArray(b.dragonShape.radii), Double(c.r), Double(c.g), Double(c.b), Double(c.a)))
   }
@@ -203,7 +204,8 @@ fun dragonSetShadows(t: DragonTree, v: DragonBoxView, shadows: Array<ShadowInput
 
 /**
  * The backdrop of a box's shadows: each ancestor box's background over its (rounded) border box, outermost first, then the box's
- * own when own is set (the inset shadows); the white root is beneath.
+ * own when own is set (the inset shadows); the white root is beneath. T150a: a box that is not visible is no backdrop (html's and
+ * body's canvas background still is).
  */
 fun dragonShadowBackdrop(v: DragonBoxView, own: Boolean): MutableList<BackdropFill> {
   val chain = ArrayList<DragonBoxView>()
@@ -216,7 +218,7 @@ fun dragonShadowBackdrop(v: DragonBoxView, own: Boolean): MutableList<BackdropFi
   val out = ArrayList<BackdropFill>()
   for (b in chain) {
     val c = b.dragonBackgroundColor
-    if (c.a == 0) continue
+    if (c.a == 0 || (!b.dragonVisible && !b.dragonVisibilityCanvas)) continue
     val e = b.dragonShape.edges
     out.add(BackdropFill(e[0], e[1], e[2], e[3], JsArray(b.dragonShape.radii.toMutableList()), c.r.toDouble(), c.g.toDouble(), c.b.toDouble(), c.a.toDouble()))
   }

@@ -7,7 +7,7 @@ import type { ImageSize, SampleBox, SamplePoint } from '../samples.ts';
 
 /** The paint modules, in the one registry order of the compiler's paint registries (dragon lower/paint/types.ts). */
 export const PAINT_SAMPLE_MODULES = [
-  'background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'transform', 'gradient', 'scroll', 'fixed', 'scrollbar', 'image', 'foreign-view', 'control',
+  'background', 'border', 'clip', 'radius', 'shadow', 'effects', 'stacking', 'outline', 'transform', 'gradient', 'scroll', 'fixed', 'scrollbar', 'image', 'foreign-view', 'control', 'visibility',
 ] as const;
 export type PaintSampleModule = (typeof PAINT_SAMPLE_MODULES)[number];
 

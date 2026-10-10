@@ -107,6 +107,13 @@ describe('pointer-events changes the captures and emitted files only by its own 
     }
   });
 
+  it("removes T150a's visibility, added after the base, only at its initial value", () => {
+    expect(withoutPointerEvents('x/a.web.json', '{\n  "x": "1",\n  "visibility": "visible"\n}')).toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('x/a.web.json', '{\n  "x": "1",\n  "visibility": "hidden"\n}')).not.toBe('{\n  "x": "1"\n}');
+    expect(withoutPointerEvents('e/a.css', '.d {\n  color: red;\n  visibility: visible;\n}\n')).toBe('.d {\n  color: red;\n}\n');
+    expect(withoutPointerEvents('e/a.css', '.d {\n  color: red;\n  visibility: collapse;\n}\n')).not.toBe('.d {\n  color: red;\n}\n');
+  });
+
   it("removes GEN-b's four longhands, added after the base, only at their neutral values (decimal only in block-elements-defaults)", () => {
     const json = (type: string, image = 'none'): string => `{\n  "will-change": "auto",\n  "content": "normal",\n  "list-style-type": "${type}",\n  "list-style-position": "outside",\n  "list-style-image": "${image}"\n}`;
     const base = '{\n  "will-change": "auto"\n}';
