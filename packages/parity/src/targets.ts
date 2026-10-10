@@ -5,6 +5,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
+import { animSampleIds } from './anim-samples.ts';
 import { DUMP_FAULTS } from './native-compare.ts';
 import { repoPath } from './paths.ts';
 import { SAMPLE_RULES } from './samples.ts';
@@ -13,6 +14,8 @@ import { traceScriptIds } from './trace-lane.ts';
 export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels',
   // SELD-R1b (notes/T047 §3.3 item 5): the case scripts' dumps, and the device hit test's answers.
   'device-states', 'device-hit',
+  // ANIM-b1 3b (T065 R18): every frame sample's dump.
+  'device-anim',
   // SELD-R2 (T064 R14): the interaction scripts' traces, through the entry points (and on Android through MotionEvents too).
   'device-traces'] as const;
 export type LaneId = (typeof LANES)[number];
@@ -137,6 +140,7 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
     return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids }, ...DPRS.map((d) => dprSet(d, ids))], corpora: corpusSuites() };
   }
   if (lane === 'device-states') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, stateScriptIds())), corpora: [] };
+  if (lane === 'device-anim') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, animSampleIds(target))), corpora: [] };
   if (lane === 'device-hit') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, hitCaseIds())), corpora: [] };
   if (lane === 'device-traces') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, traceScriptIds())), corpora: [] };
   return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, ids)), corpora: [] };

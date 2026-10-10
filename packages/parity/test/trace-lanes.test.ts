@@ -108,7 +108,7 @@ describe('the device-traces lane record', () => {
 describe('a device process\'s outcome', () => {
   const s = (failures: readonly LaneFailure[]): DeviceSet => ({ dpr: 2, device: { name: 'fake' } as DeviceRecord, cases: 1, dumps: 1, compared: { a: 0, b: 1, c: 0, d: 0, breaks: 0 }, dumpsSha256: '0', failures, faults: [] });
   const f = (lane: string): LaneFailure => ({ lane, case: 'x', dpr: 2, node: null, kind: 'trace-mismatch', detail: 'd' }) as LaneFailure;
-  const o = (traces: DeviceSet | undefined): string => JSON.stringify({ device: 'fake', set: s([]), states: s([]), hits: s([]), traces, trust: { device: 'fake', dpr: 2, rows: [] }, vectors: null, blocked: null });
+  const o = (traces: DeviceSet | undefined): string => JSON.stringify({ device: 'fake', set: s([]), states: s([]), hits: s([]), anim: s([]), traces, trust: { device: 'fake', dpr: 2, rows: [] }, vectors: null, blocked: null });
   it('carries its trace set, refuses a set without one and a failure filed under another lane', () => {
     expect(parseOutcome(o(s([f(TRACE_LANE)])), 'fake').traces?.failures.length).toBe(1);
     expect(() => parseOutcome(o(undefined), 'fake')).toThrow(/a set without its traces set/);

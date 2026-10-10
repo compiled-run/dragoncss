@@ -38,10 +38,10 @@ const stateCaseCount = (name: string): number => {
 };
 
 describe('native targets', () => {
-  it('ios and android, each with the nine lanes in order', () => {
+  it('ios and android, each with the ten lanes in order', () => {
     expect(targets.map((t) => t.target)).toEqual(['ios', 'android']);
-    // SELD-R1b appends device-states and device-hit after the six P5 lanes; SELD-R2 (T064 R14) appends device-traces.
-    expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels', 'device-states', 'device-hit', 'device-traces']);
+    // SELD-R1b appends device-states and device-hit after the six P5 lanes; ANIM-b1 3b appends device-anim; SELD-R2 (T064 R14) device-traces.
+    expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels', 'device-states', 'device-hit', 'device-anim', 'device-traces']);
     for (const t of targets) expect(lane(t, TRACE_LANE)?.sets.map((s) => [s.dpr, s.ids]), t.target).toEqual(t.dprs.map((d) => [d, traceScriptIds()]));
     for (const t of targets) expect(t.lanes.map((l) => l.lane)).toEqual([...LANES]);
   });
