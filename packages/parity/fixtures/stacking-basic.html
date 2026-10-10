@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.stage { height: 260px; background-color: rgb(225, 225, 225); }
+.gap { height: 140px; }
+.p1 { height: 40px; background-color: rgb(180, 180, 250); }
+.rel { position: relative; top: 30px; width: 60px; height: 30px; background-color: rgb(250, 120, 200); }
+.p2 { height: 40px; background-color: rgb(120, 220, 220); }
+.flex { display: flex; height: 40px; }
+.i1 { width: 60px; z-index: 3; background-color: rgb(90, 50, 20); }
+.i2 { width: 60px; margin-inline-start: -40px; background-color: rgb(230, 230, 120); }
+.a { position: absolute; left: 20px; top: 10px; width: 100px; height: 100px; z-index: 2; background-color: rgb(220, 40, 40); }
+.b { position: absolute; left: 60px; top: 40px; width: 100px; height: 90px; z-index: 1; background-color: rgb(40, 170, 60); }
+.f { position: absolute; left: 80px; top: 0; width: 60px; height: 40px; z-index: auto; background-color: rgb(250, 200, 0); }
+.n { position: absolute; left: 300px; top: 100px; width: 80px; height: 40px; z-index: -1; background-color: rgb(40, 80, 220); }
+.n2 { position: absolute; left: 300px; top: 240px; width: 80px; height: 60px; z-index: -2; background-color: rgb(120, 40, 160); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="gap" class="gap"></div>
+<div data-dragon-id="p1" class="p1"><div data-dragon-id="s-rel" class="rel"></div></div>
+<div data-dragon-id="p2" class="p2"></div>
+<div data-dragon-id="flex" class="flex"><div data-dragon-id="s-i1" class="i1"></div><div data-dragon-id="s-i2" class="i2"></div></div>
+<div data-dragon-id="s-a" class="a"></div>
+<div data-dragon-id="s-b" class="b"></div>
+<div data-dragon-id="s-f" class="f"></div>
+<div data-dragon-id="s-n" class="n"></div>
+<div data-dragon-id="s-n2" class="n2"></div>
+</div>
+</body>
+</html>
