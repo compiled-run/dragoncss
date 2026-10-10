@@ -20,6 +20,7 @@ import { FONTS } from './fixture-groups/fonts.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
+import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LIST_ITEMS } from './fixture-groups/list-items.ts';
@@ -118,6 +119,7 @@ export const GROUPS = {
   grid: GRID,
   'inherit-contexts': INHERIT_CONTEXTS,
   inline: INLINE,
+  'inline-tags': INLINE_TAGS,
   interaction: INTERACTION,
   'list-items': LIST_ITEMS,
   'logical-props': LOGICAL_PROPS,

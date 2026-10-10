@@ -15,9 +15,9 @@ import type { GenBFaults } from '../faults/gen-b.ts';
 import { GEN_B_FAULTS } from '../faults/gen-b.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
-import { uaRows } from '../ua/datasets.ts';
+import { textFontsOf, uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
-import { uaTagOf } from './elements.ts';
+import { UNSTYLED_TAGS, uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
@@ -359,7 +359,9 @@ function listMarkerOf(el: ResolvedElement): string | null {
 
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
 // (nested lists), display: list-item with a marker (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
-// minimum logical font size clamps, and text that inherits a UA font-weight or font-style no longhand models (headings, address).
+// minimum logical font size clamps, text that inherits a UA font-weight or font-style no longhand models (headings, address, b,
+// strong, em, i), and a phrasing tag whose text-font row was captured under a parent at the initial text font set inside an
+// ancestor whose UA row already sets that property.
 function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults): void {
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
@@ -385,6 +387,18 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
         manual: `Use a div in place of <${tag}> ${el.element.address}, or move it out of <${ancestor.element.tag}> ${ancestor.element.address}.`,
       })));
     }
+    const own = textFontsOf(ua, tag);
+    if (UNSTYLED_TAGS.has(tag)) {
+      for (const [p, v] of Object.entries(own)) {
+        const setter = [...ancestors].reverse().find((a) => textFontsOf(ua, a.element.tag)[p] !== undefined);
+        if (setter === undefined) continue;
+        once(`ua-text-font|${el.element.address}|${p}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', {
+          origin: el.element.node.origin,
+          message: `<${tag}> ${el.element.address} inside <${setter.element.tag}> ${setter.element.address}: Chrome's captured ${p}: ${v} for <${tag}> holds under a parent at the initial ${p}, and <${setter.element.tag}> ${setter.element.address} sets ${p}: ${textFontsOf(ua, setter.element.tag)[p]} from Chrome's user-agent stylesheet`,
+          manual: `Use a span in place of <${tag}> ${el.element.address}, or move it out of <${setter.element.tag}> ${setter.element.address}.`,
+        })));
+      }
+    }
     if (!here) {
       const display = keywordOf(el.props.get('display') as ResolvedValue);
       if (display === 'list-item') {
@@ -405,9 +419,9 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
         perTarget(el, 'font-size', `font-size: ${valueToString(size.value)} on <${tag}> ${el.element.address} comes from Chrome's user-agent stylesheet and is below Chrome's minimum logical font size (${ua.minimumLogicalFontSize}px), which Chrome clamps depending on the device pixel ratio`, `Set a px font-size on <${tag}> ${el.element.address} or one of its ancestors.`);
       }
     }
-    const fonts = Object.keys(uaRows(ua, uaTagOf(tag)).textFonts).length > 0 ? el : fontTag;
+    const fonts = Object.keys(own).length > 0 ? el : fontTag;
     if (!here && fonts !== null) {
-      const row = uaRows(ua, uaTagOf(fonts.element.tag)).textFonts;
+      const row = textFontsOf(ua, fonts.element.tag);
       const set = Object.entries(row).map(([p, v]) => `${p}: ${v}`).join('; ');
       for (const c of el.children) {
         // TXT1a-2: a real bundled face at the UA weight and style draws it (synthesis is refused as DRAGON_SYNTHETIC_FONT_STYLE).

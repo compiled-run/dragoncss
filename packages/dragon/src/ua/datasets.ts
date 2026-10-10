@@ -3,6 +3,7 @@
 import * as darwinArm64Dark from './chrome-145.darwin-arm64.dark.generated.ts';
 import * as darwinArm64 from './chrome-145.darwin-arm64.generated.ts';
 import type { CapturedTag, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
+import { UNSTYLED_TAGS } from '../analysis/elements.ts';
 
 export type { CapturedTag, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
 
@@ -18,8 +19,11 @@ export type UaDataset = {
   readonly userAgentDeclared: { readonly [T in CapturedTag]: { readonly ltr: { readonly [property: string]: string }; readonly rtl: { readonly [property: string]: string } } };
   /** Ancestor tags under which a Chrome UA rule gives the tag values userAgentDeclared does not model. */
   readonly userAgentContexts: { readonly [T in CapturedTag]: readonly string[] };
-  /** Inherited font properties a UA rule sets per tag that no longhand models (font-weight, font-style). */
-  readonly userAgentTextFonts: { readonly [T in CapturedTag]: { readonly [property: string]: string } };
+  /**
+   * Inherited font properties a UA rule sets per tag that no longhand models (font-weight, font-style); the phrasing tags that read
+   * dragon-unstyled (b, strong, em, i) carry their phrasingKeyTextFonts row, captured under a parent at the initial text font.
+   */
+  readonly userAgentTextFonts: { readonly [T in CapturedTag]: TextFontRow } & { readonly [K in PhrasingKey]?: TextFontRow };
   /** Chrome's minimum logical font size in px, which clamps an em font size under the keyword-sized root. */
   readonly minimumLogicalFontSize: number;
   /** REPL-0: the replaced keys (iframe, img with a src), in tables of their own; uaRows reads them. */
@@ -30,6 +34,8 @@ export type UaDataset = {
   readonly replacedKeyTextFonts: { readonly [K in ReplacedKey]: { readonly [property: string]: string } };
   readonly replacedKeyForced: { readonly [K in ReplacedKey]: DirRows };
 };
+
+type TextFontRow = { readonly [property: string]: string };
 
 /** A row key of the UA dataset: a captured tag, or a replaced key (REPL-0). */
 export type UaKey = CapturedTag | ReplacedKey;
@@ -61,10 +67,21 @@ export function uaRows(ua: UaDataset, key: UaKey): UaRows {
 /** The platform the committed Chrome references and the UA dataset were captured on. */
 export const REFERENCE_PLATFORM = 'darwin-arm64';
 
-const DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64.platform, darwinArm64]]);
+/** A captured dataset whose text-font table also holds the phrasingKeyTextFonts row of every phrasing tag that reads dragon-unstyled. */
+function withPhrasingTextFonts(ds: typeof darwinArm64 | typeof darwinArm64Dark): UaDataset {
+  const rows = Object.entries(ds.phrasingKeyTextFonts).filter(([tag]) => UNSTYLED_TAGS.has(tag));
+  return { ...ds, userAgentTextFonts: { ...ds.userAgentTextFonts, ...Object.fromEntries(rows) } };
+}
+
+const DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64.platform, withPhrasingTextFonts(darwinArm64)]]);
 
 /** The same capture under html{color-scheme:dark}, keyed by the same platforms. */
-const DARK_DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64Dark.platform, darwinArm64Dark]]);
+const DARK_DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64Dark.platform, withPhrasingTextFonts(darwinArm64Dark)]]);
+
+/** The text font a UA rule gives an element's tag (userAgentTextFonts); empty for a tag no such rule names. */
+export function textFontsOf(ua: UaDataset, tag: string): TextFontRow {
+  return (ua.userAgentTextFonts as { readonly [tag: string]: TextFontRow | undefined })[tag] ?? {};
+}
 
 export type UaDatasetChoice =
   | { readonly kind: 'ok'; readonly dataset: UaDataset }

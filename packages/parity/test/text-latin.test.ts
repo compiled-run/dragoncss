@@ -218,6 +218,8 @@ const NEW_IDS = [
   'text-latin-lato', 'text-latin-punct', 'text-latin-faces', 'text-latin-flex', 'text-latin-words', 'text-latin-words-rtl', 'text-latin-metrics', 'text-ahem-fractional',
   'text-calibration-lato', 'text-calibration-sans', 'text-calibration-mono',
 ];
+/** T133 (fixture-groups/inline-tags.ts): b, strong, em and i over real faces, appended after the TXT1a-2 cases. */
+const TAG_IDS = ['inline-tags-faces', 'inline-tags-faces-rtl'];
 
 const specOf = (id: string): FixtureSpec => {
   const f = FIXTURES.find((x) => x.id === id);
@@ -240,23 +242,24 @@ const probe = (id: string) => {
 
 describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
   const BASE_LAYOUT_CASES = 733;
-  it('keeps every BASE layout case in order, and adds exactly the text-latin, Ahem fractional and calibration cases', () => {
+  const ADDED = [...NEW_IDS, ...TAG_IDS];
+  it('keeps every BASE layout case in order, and adds exactly the text-latin, Ahem fractional and calibration cases and the T133 tag cases', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
     // BASE is master at ef96e1c079 (#258: #103, #251, #236, #250 and #255 on 1137788a1e), whose FIXTURES hold 733 layout cases.
     // Groups added after the per-feature split run in id order after the legacy ones (fixtures.ts), so the text groups sit among them.
-    const base = ids.filter((id) => !NEW_IDS.includes(id));
+    const base = ids.filter((id) => !ADDED.includes(id));
     expect(base.length).toBe(BASE_LAYOUT_CASES);
     expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('812a71e08a4aa266c23d420d7d3b93490c47bbbb4debe36b7fedd51d07bba462');
-    expect(ids.filter((id) => NEW_IDS.includes(id)).sort()).toEqual([...NEW_IDS].sort());
-    expect(ids.length).toBe(BASE_LAYOUT_CASES + NEW_IDS.length);
+    expect(ids.filter((id) => ADDED.includes(id)).sort()).toEqual([...ADDED].sort());
+    expect(ids.length).toBe(BASE_LAYOUT_CASES + ADDED.length);
   });
 
   it('derives the shaped cases from the compiled input alone: every new case, and no BASE case', () => {
-    expect([...shapedCaseIds()].sort()).toEqual([...NEW_IDS].sort());
+    expect([...shapedCaseIds()].sort()).toEqual([...ADDED].sort());
   });
 
   it('compiles each new case with the reference map, captures it under its stated reference, and lists its expected faces', () => {
-    for (const id of NEW_IDS) {
+    for (const id of [...NEW_IDS, ...TAG_IDS]) {
       const fixture = id.replace(/-rtl$/, '');
       expect(fontMapOf(fixture), id).toBe(FONT_REFERENCE_MAP);
       const c = caseOf(fixture, id.endsWith('-rtl') ? 'rtl' : 'ltr');
@@ -266,7 +269,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
       if (fixture !== 'text-ahem-fractional') expect(expectedFacesOf(fixture), id).not.toBeNull();
     }
     expect(expectedFacesOf('text-ahem-fractional')).toBeNull();
-    for (const f of FIXTURES) if (!NEW_IDS.includes(f.id) && f.kind === 'layout') expect(caseOf(f.id, f.environments[0]).authoredPrepare, f.id).toBeNull();
+    for (const f of FIXTURES) if (![...NEW_IDS, ...TAG_IDS].includes(f.id) && f.kind === 'layout') expect(caseOf(f.id, f.environments[0]).authoredPrepare, f.id).toBeNull();
   });
 
   it('makes the Ahem fractional case shaped because the Ahem measurer misses Chrome there, and HarfBuzz does not', () => {
@@ -280,7 +283,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
     // The device runtime measures and draws only the bundled Ahem (emit/native-support.ts DragonBridge.measurer), so native keeps
     // TXT1a-1's deferred font refusal and the engine lane lowers the case in engine mode; the Ahem fractional case lowers natively
     // but is shaped, so it is no device case either (targets.ts vectorCaseIds).
-    for (const id of NEW_IDS) {
+    for (const id of [...NEW_IDS, ...TAG_IDS]) {
       const direction = id.endsWith('-rtl') ? 'rtl' : 'ltr';
       const c = derived(id.replace(/-rtl$/, ''), direction);
       const env = caseOf(id.replace(/-rtl$/, ''), direction).environment;
@@ -293,7 +296,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
       expect([c.outputs.ios.kind, dragon.nativeLayoutProjection(c, env, []).kind], id).toEqual(['blocked', 'blocked']);
     }
     const device = new Set(vectorCaseIds());
-    expect(NEW_IDS.filter((id) => device.has(id))).toEqual([]);
+    expect([...NEW_IDS, ...TAG_IDS].filter((id) => device.has(id))).toEqual([]);
   });
 
   it('gives every FIXTURES case native lowers the native projection as its engine projection, at every DPR', () => {
@@ -312,7 +315,7 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
           const native = dragon.nativeLayoutProjection(compiled, env, c.assignment);
           if (native.kind === 'blocked') {
             engineOnly++;
-            expect(NEW_IDS, c.id).toContain(c.id);
+            expect([...NEW_IDS, ...TAG_IDS], c.id).toContain(c.id);
             expect(dragon.engineLayoutProjection(compiled, env, c.assignment).kind, `${c.id} at DPR ${dpr}`).toBe('ready');
             continue;
           }
@@ -321,8 +324,8 @@ describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
         }
       }
     }
-    // The 10 real-face cases are native-refused (engine only); every other case, the Ahem fractional one too, lowers natively.
-    expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + 1) * 4, (NEW_IDS.length - 1) * 4]);
+    // The 10 real-face cases and T133's 2 are native-refused (engine only); every other case, the Ahem fractional one too, lowers natively.
+    expect([compared, engineOnly]).toEqual([(BASE_LAYOUT_CASES + 1) * 4, (NEW_IDS.length - 1 + TAG_IDS.length) * 4]);
   });
 
   it('DRAGON_SYNTHETIC_FONT_STYLE fires on no FIXTURES case', () => {
@@ -410,7 +413,7 @@ describe('TXT1a-2 phase F: text-latin vectors replay in the translated engine (R
   const lineOf = (v: ReturnType<typeof tl.textLatinVector>, faults: EngineFaults = NO_ENGINE_FAULTS): string => JSON.stringify({ platform: v.platform, faults, input: v.input, shaping: { language: v.language, faces: v.faces, calls: v.calls } });
 
   it('has a vector for every case at every DPR, each written from the committed captures', () => {
-    expect(vecs.length).toBe(NEW_IDS.length * 4);
+    expect(vecs.length).toBe((NEW_IDS.length + TAG_IDS.length) * 4);
     for (const { file, v } of vecs) expect(readFileSync(file, 'utf8'), file).toBe(tl.textLatinVectorText(tl.textLatinVector(v.input)));
   });
 

@@ -32,9 +32,9 @@ describe('values group registration (fixture-groups/values.ts)', () => {
   it('is the last legacy group before SELD-R1b\'s states; every layout fixture runs in both directions and every id carries the values- prefix the corpus keys on', () => {
     // Groups added after the per-feature split run after the legacy groups (fixtures.ts LEGACY_RUN_ORDER).
     expect(FIXTURE_GROUPS.map((g) => g.id).slice(LEGACY_RUN_ORDER.length - 2, LEGACY_RUN_ORDER.length)).toEqual(['values', 'states']);
-    // TXT1a-2: every case of the text groups is shaped, so they add no plain vector to the corpus the values- prefix keys.
+    // TXT1a-2 and T133: every case of the text groups and inline-tags is shaped, so they add no plain vector to the corpus the values- prefix keys.
     const shaped = shapedCaseIds();
-    for (const g of FIXTURE_GROUPS.filter((x) => x.id === 'text-latin' || x.id === 'text-calibration')) for (const f of g.fixtures) for (const id of layoutCaseIds().filter((x) => x === f.id || x === `${f.id}-rtl`)) expect(shaped.has(id), id).toBe(true);
+    for (const g of FIXTURE_GROUPS.filter((x) => x.id === 'text-latin' || x.id === 'text-calibration' || x.id === 'inline-tags')) for (const f of g.fixtures) for (const id of layoutCaseIds().filter((x) => x === f.id || x === `${f.id}-rtl`)) expect(shaped.has(id), id).toBe(true);
     for (const f of VALUES) expect(f.id.startsWith('values-'), f.id).toBe(true);
     for (const f of LAYOUT) expect(f.kind === 'layout' && f.environments, f.id).toEqual(['ltr', 'rtl']);
     expect(LAYOUT.length).toBeGreaterThanOrEqual(25);

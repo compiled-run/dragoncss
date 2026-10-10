@@ -51,7 +51,7 @@
     "units-calc": 50000,
     "engine-inline": 3000,
     "engine-overflow": 3000,
-    "text-latin": 44
+    "text-latin": 52
   },
   "engineSplit": {
     "ok": 2038,
@@ -72,7 +72,7 @@
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50",
     "engine-inline": "0794df4444de99c4cbc9eeb56b474376fd188d46e656d71d09b65e000e5f3ea8",
     "engine-overflow": "8b510fc4f7852bcf607f8770e378f3c423c6c2650d87c05e7d2702f6c1cd4f83",
-    "text-latin": "39477ec6c1172e8235177df3e5e9a6dd06d2e045227562224884fa434cd02a45"
+    "text-latin": "c3de8788e08f1694244744d639f15d0a5640a544d96f4b514bca0db989300230"
   },
-  "digest": "95635e157ac9dc278f284af6c229a3da3aa37674fb54b7417ccc4d082b2cfb72"
+  "digest": "d55a6b74f5e1e6128304959674f770dcf9b1ee459e37f715f5a7b66c073beeab"
 }
