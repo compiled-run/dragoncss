@@ -239,14 +239,14 @@ const probe = (id: string) => {
 };
 
 describe('TXT1a-2 phase F: the text-latin cases are FIXTURES cases', () => {
-  const BASE_LAYOUT_CASES = 667;
+  const BASE_LAYOUT_CASES = 681;
   it('keeps every BASE layout case in order, and adds exactly the text-latin, Ahem fractional and calibration cases', () => {
     const ids = layoutCases().flatMap((f) => f.cases.map((c) => c.id));
-    // BASE is #103's head 6f8d87d6c7 (master at 03ba583dff: b97cf50c62's 666 plus #231 OVFL-B's overflow-background), whose FIXTURES hold 667 layout cases.
+    // BASE is #103's head ed2d6a3316 (master at d3c79509a3: 03ba583dff's 667 plus #196 PNT1's effects group), whose FIXTURES hold 681 layout cases.
     // Groups added after the per-feature split run in id order after the legacy ones (fixtures.ts), so the text groups sit among them.
     const base = ids.filter((id) => !NEW_IDS.includes(id));
     expect(base.length).toBe(BASE_LAYOUT_CASES);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('def7a6b1be2fd43cd8890ac95b104c3a7752b13ce4cea0cc0e1e5ae0cac8279b');
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('8daaa1300b10583877eabf22aa80931b23c03efd4b7ca8e72c21eb126af1683c');
     expect(ids.filter((id) => NEW_IDS.includes(id)).sort()).toEqual([...NEW_IDS].sort());
     expect(ids.length).toBe(BASE_LAYOUT_CASES + NEW_IDS.length);
   });
