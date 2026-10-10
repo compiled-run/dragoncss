@@ -652,6 +652,7 @@
     "inline-tags-rtl": "s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "inline-baselines": "b1s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "inline-baselines-rtl": "b1s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "alias-paint": "transform on a0, a1, a2, a3, a4, b0, b1: hit testing through transforms is SELD-R2b (T146)",
     "opacity-basic": "stacking context on op-fold, op-zero, op-group, op-border, op-nest-kid, op-textonly: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "opacity-basic-rtl": "stacking context on op-fold, op-zero, op-group, op-border, op-nest-kid, op-textonly: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "opacity-cascade": "stacking context on op-parent, op-inherit, op-var, op-neg: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
