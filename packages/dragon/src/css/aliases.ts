@@ -3,11 +3,11 @@
 // resolves an alias to its property at parse time, so a declaration of either is the same declaration and the later one wins in
 // the cascade. Each family's aliases live in aliases/<family>.ts, spread here one line per family, sorted by family id. An alias
 // is listed only when its property is a Dragon longhand or shorthand and Chrome parses the two alike, or legacyAliasRefusal
-// refuses every value Chrome parses differently: -webkit-transform takes a unitless perspective() length (UseAliasParsing). The
-// other aliases Chrome parses with UseAliasParsing (-webkit-perspective, -webkit-background-*, -webkit-mask-*, -webkit-appearance)
-// wait for their property's lane, -webkit-border-radius is the radius family's own shorthand (properties/radius.ts),
-// -webkit-writing-mode is a surrogate, not an alias, and grid-gap, grid-row-gap and grid-column-gap are already shorthands of the
-// grid family (properties/grid.ts).
+// refuses every value Chrome parses differently: -webkit-transform takes a unitless perspective() length (UseAliasParsing,
+// css_parsing_utils.cc ConsumePerspective). The other aliases Chrome parses with UseAliasParsing (-webkit-perspective,
+// -webkit-background-*, -webkit-mask-*, -webkit-appearance) wait for their property's lane, -webkit-border-radius is the radius
+// family's own shorthand (properties/radius.ts), -webkit-writing-mode is a surrogate, not an alias, and grid-gap, grid-row-gap
+// and grid-column-gap are already shorthands of the grid family (properties/grid.ts).
 // The animation family's targets are the transition and animation list properties, which stay out of LONGHANDS (T065 option B).
 import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
