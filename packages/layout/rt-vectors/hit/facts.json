@@ -644,6 +644,7 @@
     "inline-tags-rtl": "s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "inline-baselines": "b1s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "inline-baselines-rtl": "b1s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "alias-paint": "transform on a0, a1, a2, a3, a4, b0, b1: hit testing through transforms is SELD-R2b (T146)",
     "radius-basic": "border-radius on px, pct, circle, pill, ellipse, corners, eight, rem, em, mixed, one, frac, tall: hit testing through rounded corners is not modelled yet (PNT1)",
     "radius-basic-rtl": "border-radius on px, pct, circle, pill, ellipse, corners, eight, rem, em, mixed, one, frac, tall: hit testing through rounded corners is not modelled yet (PNT1)",
     "radius-borders": "border-radius on base, thin, thick, sides, colors, partial, hidden, circle, alpha, ellipse: hit testing through rounded corners is not modelled yet (PNT1)",
