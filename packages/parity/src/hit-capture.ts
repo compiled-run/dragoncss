@@ -128,6 +128,10 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
 export function hitRefusal(n: NativeCase): string | null {
   const moved = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
+  // T150a: Chrome's elementFromPoint passes over a box that is not visible (its visible descendants still hit), which the hit test
+  // does not model yet.
+  const hidden = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'visibility')).map((x) => x.id);
+  if (hidden.length > 0) return `visibility on ${hidden.join(', ')}: hit testing past a box that is not visible is not modelled yet (T150b)`;
   // PNT1-radius: Blink clips a hit to the rounded border box, which the hit test does not model yet.
   const rounded = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'border-radius')).map((x) => x.id);
   if (rounded.length > 0) return `border-radius on ${rounded.join(', ')}: hit testing through rounded corners is not modelled yet (PNT1)`;

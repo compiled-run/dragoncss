@@ -38,6 +38,7 @@ import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
 import { VALUES } from './fixture-groups/values.ts';
+import { VISIBILITY } from './fixture-groups/visibility.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
 
 /**
@@ -130,6 +131,7 @@ export const GROUPS = {
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,
   values: VALUES,
+  visibility: VISIBILITY,
   'writing-mode': WRITING_MODE,
 } as const satisfies { readonly [id: string]: readonly FixtureSpec[] };
 

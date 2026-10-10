@@ -76,6 +76,10 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'transform-origin-ignored': ['transform-origin'],
   'translate-percent-of-parent': ['transform-translate'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
+  // T150a: visibility-basic's hidden boxes (ids hid-*) paint their backgrounds when the writer is ignored; its visible children
+  // (kid-*) vanish when the writer hides the box view itself.
+  'visibility-ignored': ['visibility-basic'],
+  'visibility-subtree': ['visibility-basic'],
 };
 /** The sample rules a paint plant's device-pixels failures must name: border bands and edges, or radius points. */
 export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
@@ -87,6 +91,8 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'translate-percent-of-parent': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'image-offset-1': /^(image-flat:|edge:)/,
+  'visibility-ignored': /^interior:hid-/,
+  'visibility-subtree': /^interior:kid-/,
 };
 /** The devices of the raster plant runs (section 4 item 5). */
 export const PLANT_DEVICES: { readonly [T in NativeTarget]: string } = { ios: 'iPhone 17', android: 'dragon-smoke' };

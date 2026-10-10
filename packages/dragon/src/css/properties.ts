@@ -21,6 +21,7 @@ import { TRANSFORM_ASPECTS, TRANSFORM_CONTAINER, TRANSFORM_INHERITED, TRANSFORM_
 import { BACKGROUND_LAYERS_ASPECTS, BACKGROUND_LAYERS_CONTAINER, BACKGROUND_LAYERS_INHERITED, BACKGROUND_LAYERS_LONGHANDS, BACKGROUND_LAYERS_SHORTHANDS, BACKGROUND_LAYERS_TEXT_ROLE } from './properties/background-layers.ts';
 import { LISTS_ASPECTS, LISTS_CONTAINER, LISTS_INHERITED, LISTS_LONGHANDS, LISTS_SHORTHANDS, LISTS_TEXT_ROLE } from './properties/lists.ts';
 import { SCROLLBAR_ASPECTS, SCROLLBAR_CONTAINER, SCROLLBAR_INHERITED, SCROLLBAR_LONGHANDS, SCROLLBAR_SHORTHANDS, SCROLLBAR_TEXT_ROLE } from './properties/scrollbar.ts';
+import { VISIBILITY_ASPECTS, VISIBILITY_CONTAINER, VISIBILITY_INHERITED, VISIBILITY_LONGHANDS, VISIBILITY_SHORTHANDS, VISIBILITY_TEXT_ROLE } from './properties/visibility.ts';
 
 /** What a longhand affects: layout (box geometry) and paint (pixels). */
 export type PropertyAspect = { readonly layout: boolean; readonly paint: boolean };
@@ -68,6 +69,8 @@ const FAMILIES = [
   family('scrollbar', SCROLLBAR_LONGHANDS, SCROLLBAR_SHORTHANDS, SCROLLBAR_INHERITED, SCROLLBAR_ASPECTS, SCROLLBAR_CONTAINER, SCROLLBAR_TEXT_ROLE),
   // GEN-b (notes/T151-gen-spec.md R13): content and list-style, after the paint families.
   family('lists', LISTS_LONGHANDS, LISTS_SHORTHANDS, LISTS_INHERITED, LISTS_ASPECTS, LISTS_CONTAINER, LISTS_TEXT_ROLE),
+  // T150a (css-display-3 §4): visibility, after lists.
+  family('visibility', VISIBILITY_LONGHANDS, VISIBILITY_SHORTHANDS, VISIBILITY_INHERITED, VISIBILITY_ASPECTS, VISIBILITY_CONTAINER, VISIBILITY_TEXT_ROLE),
 ] as const;
 
 export type Longhand = (typeof FAMILIES)[number] extends infer F ? (F extends Family<infer L, string> ? L : never) : never;
