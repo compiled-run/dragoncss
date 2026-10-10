@@ -76,10 +76,14 @@ export function rootScrollX(boxes: readonly LayoutRect[], abs: ReadonlyMap<strin
   return min;
 }
 
-/** rootScrollX of a laid-out program in device px, with the program's clipping boxes. */
+/**
+ * rootScrollX of a laid-out program in whole device px, with the program's clipping boxes. Chrome's scroll origin is a whole
+ * point, the floor of the overflow's offset negated (PaintLayerScrollableArea::UpdateScrollOrigin, ToFlooredPoint), so the
+ * contents layer starts at the ceiling of the overflow's left edge.
+ */
 function programRootX(p: NativeProgram, boxes: readonly LayoutRect[], abs: ReadonlyMap<string, LayoutRect>, rtl: boolean): number {
   const clipping = new Set(p.nodes.filter((n) => n.clips).map((n) => n.id));
-  return rootScrollX(boxes, abs, (id) => clipping.has(id), rtl) / LU_PER_PX;
+  return Math.ceil(rootScrollX(boxes, abs, (id) => clipping.has(id), rtl) / LU_PER_PX) + 0;
 }
 
 /** The root scroller's contents origin of a program at a DPR, in page device px on the x axis (rootScrollX), as the device has it. */
@@ -127,7 +131,10 @@ export function backgroundPlans(p: NativeProgram, viewport: { readonly width: nu
       layerX: w.layerOrigin[0] + rootX,
       layerY: w.layerOrigin[1],
     };
-    return { id, plan: planBackground(paint, faults) };
+    const plan = planBackground(paint, faults);
+    // The checks refuse every background the plan does not model, so one here is a compiler fault, never an empty draw.
+    if (!plan.modelled) throw new Error(`${id}: the background plan at ${dpr}x is not modelled (layer origin ${paint.layerX}, ${paint.layerY})`);
+    return { id, plan };
   });
 }
 

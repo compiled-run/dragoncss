@@ -66,14 +66,18 @@ public final class DragonGradientLayers {
   }
 }
 
-/// The raster of one layout: premultiplied sRGB over the snapped border box in device px from its left and top, and whether
-/// every layer drew one tile of a modelled shader (paint-gradient.ts BackgroundPlan.modelled).
+/// The raster of one layout: premultiplied sRGB over the snapped border box in device px from its left and top, in strips top to
+/// bottom (each image and its top in page device px), and whether every layer drew one tile of a modelled shader
+/// (paint-gradient.ts BackgroundPlan.modelled).
 public struct DragonGradientRaster {
-  public let image: CGImage?
+  public let strips: [(image: CGImage, top: Int)]
   public let left: Int
   public let top: Int
   public let modelled: Bool
 }
+
+/// The most bytes one strip of a raster holds, so a tall box never needs one image (or one buffer) the size of its whole border box.
+public let dragonGradientStripBytes = 1 << 24
 
 /// Device px the raster is drawn right of the border box: 0 except in the gradient-offset-1 raster plant build.
 public let dragonGradientPlantDevicePx: Double = 0
@@ -98,24 +102,35 @@ public func dragonAfterLayoutGradient(_ v: DragonBoxView, _ shape: DragonBoxShap
     let paint = BackgroundPaint(box, p.color, JsString(p.colorClip), JsArray(p.layers), p.lastIsBottom, scale, try paintGradient_referenceTileSize(scale), p.layerX + shape.rootX / lu, p.layerY)
     let faults = try paintGradient_gradientFaults(JsString("none"))
     let plan = try paintGradient_planBackground(paint, faults)
+    // The checks refuse every background the plan does not model, so one here is a compiler fault, never an empty draw.
+    if !plan.modelled { fatalError("dragon: the background plan of \(v.dragonId) is not modelled (layer origin \(paint.layerX), \(paint.layerY))") }
     let left = dragonCheckedInt(plan.left, "\(v.dragonId) gradient left")
     let top = dragonCheckedInt(plan.top, "\(v.dragonId) gradient top")
     let w = dragonCheckedInt(plan.right, "\(v.dragonId) gradient right") - left
     let h = dragonCheckedInt(plan.bottom, "\(v.dragonId) gradient bottom") - top
-    guard w > 0 && h > 0 else { v.dragonGradientRaster = DragonGradientRaster(image: nil, left: left, top: top, modelled: plan.modelled); return }
-    var bytes = [UInt8](repeating: 0, count: w * h * 4)
-    for y in 0..<h {
-      let row = try paintGradient_backgroundRow(plan, Double(top + y), faults).items
-      if row.count != w * 4 { fatalError("dragon: the gradient row of \(v.dragonId) has \(row.count) values, not \(w * 4)") }
-      for i in 0..<row.count {
-        let c = row[i]
-        if !(c >= 0 && c <= 255) || c.rounded(.towardZero) != c { fatalError("dragon: gradient channel \(c) of \(v.dragonId) is not a byte") }
-        bytes[y * w * 4 + i] = UInt8(c)
+    guard w > 0 && h > 0 else { v.dragonGradientRaster = DragonGradientRaster(strips: [], left: left, top: top, modelled: plan.modelled); return }
+    guard let space = CGColorSpace(name: CGColorSpace.sRGB) else { fatalError("dragon: no sRGB space for the gradient of \(v.dragonId)") }
+    let rows = max(1, dragonGradientStripBytes / (w * 4))
+    var strips: [(image: CGImage, top: Int)] = []
+    var y0 = 0
+    while y0 < h {
+      let sh = min(rows, h - y0)
+      var bytes = [UInt8](repeating: 0, count: w * sh * 4)
+      for y in 0..<sh {
+        let row = try paintGradient_backgroundRow(plan, Double(top + y0 + y), faults).items
+        if row.count != w * 4 { fatalError("dragon: the gradient row of \(v.dragonId) has \(row.count) values, not \(w * 4)") }
+        for i in 0..<row.count {
+          let c = row[i]
+          if !(c >= 0 && c <= 255) || c.rounded(.towardZero) != c { fatalError("dragon: gradient channel \(c) of \(v.dragonId) is not a byte") }
+          bytes[y * w * 4 + i] = UInt8(c)
+        }
       }
+      guard let provider = CGDataProvider(data: Data(bytes) as CFData) else { fatalError("dragon: no data provider for the gradient of \(v.dragonId)") }
+      guard let image = CGImage(width: w, height: sh, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: w * 4, space: space, bitmapInfo: CGBitmapInfo(rawValue: dragonGradientPlantAlpha.rawValue), provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) else { fatalError("dragon: the gradient raster of \(v.dragonId) is not a CGImage") }
+      strips.append((image: image, top: top + y0))
+      y0 += sh
     }
-    guard let space = CGColorSpace(name: CGColorSpace.sRGB), let provider = CGDataProvider(data: Data(bytes) as CFData) else { fatalError("dragon: no sRGB space or data provider for the gradient of \(v.dragonId)") }
-    guard let image = CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: w * 4, space: space, bitmapInfo: CGBitmapInfo(rawValue: dragonGradientPlantAlpha.rawValue), provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) else { fatalError("dragon: the gradient raster of \(v.dragonId) is not a CGImage") }
-    v.dragonGradientRaster = DragonGradientRaster(image: image, left: left, top: top, modelled: plan.modelled)
+    v.dragonGradientRaster = DragonGradientRaster(strips: strips, left: left, top: top, modelled: plan.modelled)
   } catch {
     fatalError("dragon: the gradient raster of \(v.dragonId) threw: \(error)")
   }
@@ -125,19 +140,23 @@ public func dragonAfterLayoutGradient(_ v: DragonBoxView, _ shape: DragonBoxShap
 /// The background-layers stage: the raster at its device-px offset in the view, one image pixel per device pixel, clipped to the
 /// rounded border box when the radius module rounds it.
 public func dragonPaintGradientStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
-  guard let r = v.dragonGradientRaster, let image = r.image else { return }
+  guard let r = v.dragonGradientRaster, !r.strips.isEmpty else { return }
   let s = CGFloat(v.dragonScale)
-  let rect = CGRect(x: (CGFloat(Double(r.left) - shape.edges[0]) + CGFloat(dragonGradientPlantDevicePx)) / s, y: CGFloat(Double(r.top) - shape.edges[1]) / s, width: CGFloat(image.width) / s, height: CGFloat(image.height) / s)
   ctx.saveGState()
   if let path = dragonRoundedPath(v, shape, inner: false) {
     ctx.addPath(path)
     ctx.clip()
   }
   ctx.interpolationQuality = .none
-  // UIKit's context is flipped; CGContext.draw puts an image's first row at the bottom of its rect.
-  ctx.translateBy(x: 0, y: rect.minY + rect.height)
-  ctx.scaleBy(x: 1, y: -1)
-  ctx.draw(image, in: CGRect(x: rect.minX, y: 0, width: rect.width, height: rect.height))
+  for strip in r.strips {
+    let rect = CGRect(x: (CGFloat(Double(r.left) - shape.edges[0]) + CGFloat(dragonGradientPlantDevicePx)) / s, y: CGFloat(Double(strip.top) - shape.edges[1]) / s, width: CGFloat(strip.image.width) / s, height: CGFloat(strip.image.height) / s)
+    ctx.saveGState()
+    // UIKit's context is flipped; CGContext.draw puts an image's first row at the bottom of its rect.
+    ctx.translateBy(x: 0, y: rect.minY + rect.height)
+    ctx.scaleBy(x: 1, y: -1)
+    ctx.draw(strip.image, in: CGRect(x: rect.minX, y: 0, width: rect.width, height: rect.height))
+    ctx.restoreGState()
+  }
   ctx.restoreGState()
 }
 
@@ -190,8 +209,14 @@ import java.nio.ByteBuffer
  */
 class DragonGradientLayers(val color: StopColor, val colorClip: String, val obscures: Array<String>, val layers: List<BackgroundLayer>, val lastIsBottom: Boolean, val layerX: Double, val layerY: Double)
 
-/** The raster of one layout over the snapped border box, its device-px left and top, and whether every layer drew one tile. */
-class DragonGradientRaster(val bitmap: Bitmap?, val left: Int, val top: Int, val modelled: Boolean)
+/**
+ * The raster of one layout over the snapped border box, in strips top to bottom (each bitmap and its top in page device px), its
+ * device-px left and top, and whether every layer drew one tile.
+ */
+class DragonGradientRaster(val strips: List<Pair<Bitmap, Int>>, val left: Int, val top: Int, val modelled: Boolean)
+
+/** The most bytes one strip of a raster holds, so a tall box never needs one bitmap (or one buffer) the size of its whole border box. */
+const val DRAGON_GRADIENT_STRIP_BYTES = 1 shl 24
 
 /** Device px the raster is drawn right of the border box: 0 except in the gradient-offset-1 raster plant build. */
 const val DRAGON_GRADIENT_PLANT_DEVICE_PX = 0.0
@@ -220,43 +245,53 @@ fun dragonAfterLayoutGradient(v: DragonBoxView, shape: DragonBoxShape, scale: Do
   val paint = BackgroundPaint(box, p.color, p.colorClip, JsArray(p.layers.toMutableList()), p.lastIsBottom, scale, paintGradient_referenceTileSize(scale), p.layerX + shape.rootX / units_LU_PER_PX, p.layerY)
   val faults = paintGradient_gradientFaults("none")
   val plan = paintGradient_planBackground(paint, faults)
+  // The checks refuse every background the plan does not model, so one here is a compiler fault, never an empty draw.
+  if (!plan.modelled) throw IllegalStateException("dragon: the background plan of " + v.dragonId + " is not modelled (layer origin " + paint.layerX + ", " + paint.layerY + ")")
   val left = dragonCheckedInt(plan.left, v.dragonId + " gradient left")
   val top = dragonCheckedInt(plan.top, v.dragonId + " gradient top")
   val w = dragonCheckedInt(plan.right, v.dragonId + " gradient right") - left
   val h = dragonCheckedInt(plan.bottom, v.dragonId + " gradient bottom") - top
   if (w <= 0 || h <= 0) {
-    v.dragonGradientRaster = DragonGradientRaster(null, left, top, plan.modelled)
+    v.dragonGradientRaster = DragonGradientRaster(listOf(), left, top, plan.modelled)
     return
   }
-  val bytes = ByteArray(w * h * 4)
-  for (y in 0 until h) {
-    val row = paintGradient_backgroundRow(plan, (top + y).toDouble(), faults)
-    if (row.size != w * 4) throw IllegalStateException("dragon: the gradient row of " + v.dragonId + " has " + row.size + " values, not " + (w * 4))
-    for (i in 0 until row.size) {
-      val c = row[i]
-      if (!(c >= 0.0 && c <= 255.0) || kotlin.math.truncate(c) != c) throw IllegalStateException("dragon: gradient channel " + c + " of " + v.dragonId + " is not a byte")
-      bytes[y * w * 4 + i] = c.toInt().toByte()
+  val rows = maxOf(1, DRAGON_GRADIENT_STRIP_BYTES / (w * 4))
+  val strips = ArrayList<Pair<Bitmap, Int>>()
+  var y0 = 0
+  while (y0 < h) {
+    val sh = minOf(rows, h - y0)
+    val bytes = ByteArray(w * sh * 4)
+    for (y in 0 until sh) {
+      val row = paintGradient_backgroundRow(plan, (top + y0 + y).toDouble(), faults)
+      if (row.size != w * 4) throw IllegalStateException("dragon: the gradient row of " + v.dragonId + " has " + row.size + " values, not " + (w * 4))
+      for (i in 0 until row.size) {
+        val c = row[i]
+        if (!(c >= 0.0 && c <= 255.0) || kotlin.math.truncate(c) != c) throw IllegalStateException("dragon: gradient channel " + c + " of " + v.dragonId + " is not a byte")
+        bytes[y * w * 4 + i] = c.toInt().toByte()
+      }
     }
+    val bitmap = Bitmap.createBitmap(w, sh, Bitmap.Config.ARGB_8888)
+    if (DRAGON_GRADIENT_PLANT_SET_PIXELS) {
+      val argb = IntArray(w * sh) { k -> ((bytes[k * 4 + 3].toInt() and 255) shl 24) or ((bytes[k * 4].toInt() and 255) shl 16) or ((bytes[k * 4 + 1].toInt() and 255) shl 8) or (bytes[k * 4 + 2].toInt() and 255) }
+      bitmap.setPixels(argb, 0, w, 0, 0, w, sh)
+    } else {
+      bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(bytes))
+    }
+    strips.add(Pair(bitmap, top + y0))
+    y0 += sh
   }
-  val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-  if (DRAGON_GRADIENT_PLANT_SET_PIXELS) {
-    val argb = IntArray(w * h) { k -> ((bytes[k * 4 + 3].toInt() and 255) shl 24) or ((bytes[k * 4].toInt() and 255) shl 16) or ((bytes[k * 4 + 1].toInt() and 255) shl 8) or (bytes[k * 4 + 2].toInt() and 255) }
-    bitmap.setPixels(argb, 0, w, 0, 0, w, h)
-  } else {
-    bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(bytes))
-  }
-  v.dragonGradientRaster = DragonGradientRaster(bitmap, left, top, plan.modelled)
+  v.dragonGradientRaster = DragonGradientRaster(strips, left, top, plan.modelled)
   v.invalidate()
 }
 
 /** The background-layers stage: the raster at its device-px offset, one bitmap pixel per device pixel with a null Paint, clipped to the rounded box. */
 fun dragonPaintGradientStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape) {
   val r = v.dragonGradientRaster ?: return
-  val b = r.bitmap ?: return
+  if (r.strips.isEmpty()) return
   val save = canvas.save()
   val path = dragonRoundedPath(v, shape, false)
   if (path != null) canvas.clipPath(path)
-  canvas.drawBitmap(b, (r.left - shape.edges[0] + DRAGON_GRADIENT_PLANT_DEVICE_PX).toFloat(), (r.top - shape.edges[1]).toFloat(), null)
+  for ((b, top) in r.strips) canvas.drawBitmap(b, (r.left - shape.edges[0] + DRAGON_GRADIENT_PLANT_DEVICE_PX).toFloat(), (top - shape.edges[1]).toFloat(), null)
   canvas.restoreToCount(save)
 }
 

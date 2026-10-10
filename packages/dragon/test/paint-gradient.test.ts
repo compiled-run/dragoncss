@@ -192,6 +192,28 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
     // OVFL-B: a scroll container scrolls its contents in its own layer; overflow: hidden is not user-scrollable.
     for (const o of ['auto', 'scroll']) expect(compile(`overflow: ${o}; background: linear-gradient(110deg, red, blue);`).filter((m) => m.includes('composited layer')).length, o).toBe(2);
     expect(compile('overflow: hidden; background: linear-gradient(110deg, red, blue);').filter((m) => m.includes('composited layer'))).toEqual([]);
+    // The overflow the viewport takes (css-overflow-3 §3.3: html's, else a body's) scrolls the root scroller R4 models.
+    const layered = (page: string): string[] => {
+      const out = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`${page} .a { width: 40px; height: 20px; background: linear-gradient(110deg, red, blue); }`, (r) => [div(r, 'a', ['a'])]));
+      return out.diagnostics.filter((d) => d.message.includes('composited layer')).map((d) => `${d.target} ${/composited layer of (\S+)/.exec(d.message)?.[1] ?? ''}`).sort();
+    };
+    expect(layered('html { overflow-y: scroll; } body { margin: 0; }')).toEqual([]);
+    expect(layered('body { margin: 0; overflow: auto; }')).toEqual([]);
+    expect(layered('html { overflow: auto; } body { margin: 0; overflow: scroll; }').map((m) => m.split(' ')[0])).toEqual(['android', 'ios']);
+  });
+  it('refuses on ios and android an animation or transition of a colour a gradient box rasters (BG2c)', () => {
+    const run = (css: string, targets: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }): string[] => {
+      const c = createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; } ${css}`, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]));
+      return c.diagnostics.filter((d) => d.message.includes('the native animator changes it')).map((d) => `${d.target} ${d.message.split(':')[0]}`).sort();
+    };
+    const gradient = '.a { width: 40px; height: 20px; background: linear-gradient(110deg, red, blue) white; }';
+    expect(run(`@keyframes s { from { background-color: red; } to { background-color: blue; } } ${gradient} .a { animation: s 1s infinite; }`)).toEqual(['android an animation of background-color on a', 'ios an animation of background-color on a']);
+    // Another box's animation, a colour the raster does not hold, a transition no state starts (animations.test.ts has one a
+    // state starts) and the web target are not refused.
+    expect(run(`${gradient} .a { transition: color 1s; }`)).toEqual([]);
+    expect(run(`@keyframes s { from { background-color: red; } to { background-color: blue; } } ${gradient} .b { height: 10px; animation: s 1s infinite; }`)).toEqual([]);
+    expect(run(`@keyframes f { from { opacity: 0; } to { opacity: 1; } } ${gradient} .a { animation: f 1s infinite; }`)).toEqual([]);
+    expect(run(`${gradient} .a { transition: background-color 1s; }`, { web: {} })).toEqual([]);
   });
   it('refuses an angle off the 0.01deg grid and a corner on ios and android only (BG2b)', () => {
     const off = compile('background: linear-gradient(1rad, red, blue);');
@@ -248,7 +270,7 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
       const out: Diagnostic[] = [];
       const check = GRADIENT_VALUES.check;
       if (check === null) throw new Error("the gradient module has no element check");
-      check(tree(transform) as never, ['ios', 'android', 'web'], out, new Set());
+      check(tree(transform) as never, ['ios', 'android', 'web'], out, new Set(), null);
       return out.map((d) => `${d.code} ${d.target} ${d.message.includes('BG2-x') && d.message.startsWith('background-image on t/g:') ? 'BG2-x' : d.message}`);
     };
     expect(run({ kind: 'other', text: 'translateX(-18%) rotate(8deg)' } as CssValue)).toEqual(['DRAGON_UNPROVEN_CONTEXT ios BG2-x', 'DRAGON_UNPROVEN_CONTEXT android BG2-x']);
@@ -372,8 +394,15 @@ describe('the gradient module: lowering and emission (BG2-a3)', () => {
       if (b === 'uikit') expect(own).toContain('public let dragonGradientPlantAlpha = CGImageAlphaInfo.premultipliedLast');
       else {
         expect(own).toContain('bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(bytes))');
-        expect(own).toContain('canvas.drawBitmap(b, (r.left - shape.edges[0] + DRAGON_GRADIENT_PLANT_DEVICE_PX).toFloat(), (r.top - shape.edges[1]).toFloat(), null)');
+        expect(own).toContain('canvas.drawBitmap(b, (r.left - shape.edges[0] + DRAGON_GRADIENT_PLANT_DEVICE_PX).toFloat(), (top - shape.edges[1]).toFloat(), null)');
       }
+      // A tall box rasters in strips of bounded size, and a plan the checks should have refused fails instead of drawing nothing.
+      expect(own).toContain(b === 'uikit' ? 'let rows = max(1, dragonGradientStripBytes / (w * 4))' : 'val rows = maxOf(1, DRAGON_GRADIENT_STRIP_BYTES / (w * 4))');
+      expect(own).toContain(b === 'uikit' ? 'if !plan.modelled { fatalError(' : 'if (!plan.modelled) throw IllegalStateException(');
+      // A box's own percentage paddings, which its children's content width takes, resolve against its padding basis too.
+      expect(tree).toContain(b === 'uikit' ? 'let pad = try box_resolvePadding(z.style, try paddingBasis(id))' : 'val cb = absoluteBasis(id) ?: if (parent != null) contentWidth(parent) else units_fromCssPx(zoomed.viewport.width)');
+      // RTL: the root scroller's layer starts at a whole device px, the ceiling of the overflow's left edge.
+      expect(tree).toContain(b === 'uikit' ? 'rootX = (rootX / lu).rounded(.up) * lu + 0' : 'rootX = kotlin.math.ceil(rootX / lu) * lu + 0.0');
     }
     expect(SUPPORT_PLANTS).toContain('gradient-offset-1');
     expect(SUPPORT_PLANTS).toContain('gradient-unpremultiplied-upload');

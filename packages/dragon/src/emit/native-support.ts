@@ -622,6 +622,8 @@ public final class DragonTree {
         }
         if !held, let a = abs.get(r.id), a.x < rootX { rootX = a.x }
       }
+      // Chrome's scroll origin is a whole point (ToFlooredPoint of the overflow's offset negated): the layer starts at the ceiling.
+      rootX = (rootX / lu).rounded(.up) * lu + 0
     }
     root.frame = CGRect(x: 0, y: 0, width: CGFloat(input.viewport.width), height: CGFloat(input.viewport.height))
     var edges: [String: [Double]] = [:]
@@ -629,28 +631,31 @@ public final class DragonTree {
     var rects: [String: LayoutRect] = [:]
     // Content widths in LU, for the text breaking width: the border box minus borders and paddings (percentages of the parent's).
     var contentCache: [String: Double] = [:]
-    func contentWidth(_ id: String) throws -> Double {
-      if let c = contentCache[id] { return c }
-      guard let z = zBoxes[id], let r = rects[id] else { fatalError("dragon: no box \(id)") }
-      let cb = try zParent[id].map { try contentWidth($0) } ?? units_fromCssPx(zoomed.viewport.width)
-      let pad = try box_resolvePadding(z.style, cb)
-      let bor = try box_resolveBorder(z.style, zoomed.devicePixelRatio)
-      let w = r.width - bor.left - bor.right - pad.left - pad.right
-      contentCache[id] = w
-      return w
-    }
-    // BG2: what a box's percentage paddings resolve against, as the engine does: an in-flow box's parent's content width; an
-    // absolutely positioned box's containing block (CSS2 §10.1), the padding box of its nearest positioned ancestor or the
-    // initial containing block (layout.ts containingBlock).
-    func paddingBasis(_ id: String) throws -> Double {
+    // BG2: an absolutely positioned box's containing block width (CSS2 §10.1), the padding box of its nearest positioned ancestor
+    // or the initial containing block (layout.ts containingBlock); nil for an in-flow box.
+    func absoluteBasis(_ id: String) throws -> Double? {
       guard let z = zStyles[id] else { fatalError("dragon: no zoomed box \(id)") }
-      if z.position.description != "absolute" { return try zParent[id].map { try contentWidth($0) } ?? units_fromCssPx(zoomed.viewport.width) }
+      if z.position.description != "absolute" { return nil }
       var at = zParent[id]
       while let a = at, let st = zStyles[a], st.position.description == "static" { at = zParent[a] }
       guard let a = at else { return units_fromCssPx(zoomed.viewport.width) }
       guard let st = zStyles[a], let r = rects[a] else { fatalError("dragon: the containing block \(a) of \(id) is not placed") }
       let bor = try box_resolveBorder(st, zoomed.devicePixelRatio)
       return r.width - bor.left - bor.right
+    }
+    // What a box's percentage paddings resolve against, as the engine does: its absoluteBasis, or its parent's content width.
+    func contentWidth(_ id: String) throws -> Double {
+      if let c = contentCache[id] { return c }
+      guard let z = zBoxes[id], let r = rects[id] else { fatalError("dragon: no box \(id)") }
+      let pad = try box_resolvePadding(z.style, try paddingBasis(id))
+      let bor = try box_resolveBorder(z.style, zoomed.devicePixelRatio)
+      let w = r.width - bor.left - bor.right - pad.left - pad.right
+      contentCache[id] = w
+      return w
+    }
+    func paddingBasis(_ id: String) throws -> Double {
+      if let b = try absoluteBasis(id) { return b }
+      return try zParent[id].map { try contentWidth($0) } ?? units_fromCssPx(zoomed.viewport.width)
     }
     for (i, r) in boxes.enumerated() {
       if DragonTree.isLine(r) { continue }
@@ -1477,31 +1482,19 @@ class DragonTree(val context: Context) {
         val a = abs.get(r.id)
         if (!held && a != null && a.x < rootX) rootX = a.x
       }
+      // Chrome's scroll origin is a whole point (ToFlooredPoint of the overflow's offset negated): the layer starts at the ceiling.
+      rootX = kotlin.math.ceil(rootX / lu) * lu + 0.0
     }
     setFrame(root.dragonFrame, 0.0, 0.0, kotlin.math.ceil(input.viewport.width * scale), kotlin.math.ceil(input.viewport.height * scale), "root")
     val edges = HashMap<String, DoubleArray>()
     val borders = HashMap<String, DoubleArray>()
     val rects = HashMap<String, LayoutRect>()
     val contentCache = HashMap<String, Double>()
-    fun contentWidth(id: String): Double {
-      val cached = contentCache[id]
-      if (cached != null) return cached
-      val z = zBoxes[id] ?: throw IllegalStateException("dragon: no box " + id)
-      val r = rects[id] ?: throw IllegalStateException("dragon: no rect " + id)
-      val parent = zParent[id]
-      val cb = if (parent != null) contentWidth(parent) else units_fromCssPx(zoomed.viewport.width)
-      val pad = box_resolvePadding(z.style, cb)
-      val bor = box_resolveBorder(z.style, zoomed.devicePixelRatio)
-      val w = r.width - bor.left - bor.right - pad.left - pad.right
-      contentCache[id] = w
-      return w
-    }
-    // BG2: what a box's percentage paddings resolve against, as the engine does: an in-flow box's parent's content width; an
-    // absolutely positioned box's containing block (CSS2 §10.1), the padding box of its nearest positioned ancestor or the
-    // initial containing block (layout.ts containingBlock).
-    fun paddingBasis(id: String): Double {
+    // BG2: an absolutely positioned box's containing block width (CSS2 §10.1), the padding box of its nearest positioned ancestor
+    // or the initial containing block (layout.ts containingBlock); null for an in-flow box.
+    fun absoluteBasis(id: String): Double? {
       val z = zStyles[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
-      if (z.position != "absolute") { val p = zParent[id]; return if (p != null) contentWidth(p) else units_fromCssPx(zoomed.viewport.width) }
+      if (z.position != "absolute") return null
       var at = zParent[id]
       while (at != null && zStyles[at]?.position == "static") at = zParent[at]
       if (at == null) return units_fromCssPx(zoomed.viewport.width)
@@ -1509,6 +1502,24 @@ class DragonTree(val context: Context) {
       val r = rects[at] ?: throw IllegalStateException("dragon: the containing block " + at + " of " + id + " is not placed")
       val bor = box_resolveBorder(st, zoomed.devicePixelRatio)
       return r.width - bor.left - bor.right
+    }
+    // What a box's percentage paddings resolve against, as the engine does: its absoluteBasis, or its parent's content width.
+    fun contentWidth(id: String): Double {
+      val cached = contentCache[id]
+      if (cached != null) return cached
+      val z = zBoxes[id] ?: throw IllegalStateException("dragon: no box " + id)
+      val r = rects[id] ?: throw IllegalStateException("dragon: no rect " + id)
+      val parent = zParent[id]
+      val cb = absoluteBasis(id) ?: if (parent != null) contentWidth(parent) else units_fromCssPx(zoomed.viewport.width)
+      val pad = box_resolvePadding(z.style, cb)
+      val bor = box_resolveBorder(z.style, zoomed.devicePixelRatio)
+      val w = r.width - bor.left - bor.right - pad.left - pad.right
+      contentCache[id] = w
+      return w
+    }
+    fun paddingBasis(id: String): Double {
+      val p = zParent[id]
+      return absoluteBasis(id) ?: if (p != null) contentWidth(p) else units_fromCssPx(zoomed.viewport.width)
     }
     for (i in boxes.indices) {
       val r = boxes[i]

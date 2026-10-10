@@ -22,6 +22,7 @@ import { elementWillChange } from './transform.ts';
 import { linearSlope } from '../../paint-data/libm.ts';
 import type { Diagnostic } from '../../types.ts';
 import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
+import type { AnimationAnalysis } from '../animations.ts';
 import type { ResolvedElement, ResolvedValue } from '../resolve.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
@@ -688,13 +689,26 @@ export function resolvedLayers(el: ResolvedElement): ElementLayer[] {
   return elementLayers((p) => (el.props.get(p) as ResolvedValue).value);
 }
 
+/** Whether an element paints a gradient layer; one whose layers keep an unfolded length is refused (CALC-p) before it is read. */
+function paintsGradient(el: ResolvedElement): boolean {
+  if (el.props.get('background-image') === undefined) return false;
+  if (BACKGROUND_LAYERS_LONGHANDS.some((p) => {
+    const v = el.props.get(p as Longhand);
+    return v !== undefined && unfoldedLength(v.value) !== null;
+  })) return false;
+  return resolvedLayers(el).some((l) => l.image.kind === 'gradient');
+}
+
 /**
  * R4: Chrome rasters a gradient box in the root scroller's layer unless the box or an ancestor has a compositing reason; then the
  * layer's origin starts the cc tiles, the dither and the shader matrix, which Dragon does not model. will-change: transform or
  * opacity and a user-scrollable container are the reasons Dragon compiles (every other one is refused where it is parsed).
+ * propagated is the element whose overflow the viewport takes (css-overflow-3 §3.3): it is not a scroll container itself, and the
+ * viewport is the root scroller R4 models.
  */
-export function compositesSubtree(el: ResolvedElement): boolean {
+export function compositesSubtree(el: ResolvedElement, propagated: ResolvedElement | null = null): boolean {
   if (elementWillChange(el).some((f) => f === 'transform' || f === 'opacity')) return true;
+  if (el === propagated) return false;
   // OVFL-B: a user-scrollable container (overflow auto or scroll) scrolls its contents in a composited layer of its own.
   return (['overflow-x', 'overflow-y'] as const).some((p) => {
     const v = (el.props.get(p) as ResolvedValue).value;
@@ -705,7 +719,7 @@ export function compositesSubtree(el: ResolvedElement): boolean {
 /** Refuses, on the native targets, every gradient box in the subtree of `root`, which rasters in its own composited layer (R4). */
 function refuseComposited(el: ResolvedElement, root: ResolvedElement, native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const image = el.props.get('background-image') as ResolvedValue | undefined;
-  if (image !== undefined && resolvedLayers(el).some((l) => l.image.kind === 'gradient')) {
+  if (image !== undefined && paintsGradient(el)) {
     refuse(el, image, native, 'background-layers-layer', `background-image on ${el.element.address}: the box rasters in the composited layer of ${root.element.address} (will-change, or a scroll container), which Dragon does not model (${BG2C})`, 'Remove will-change: transform and opacity, and overflow auto and scroll, from the gradient box and its ancestors.', diagnostics, reported);
   }
   for (const c of el.children) if (c.kind === 'element') refuseComposited(c, root, native, diagnostics, reported);
@@ -745,10 +759,10 @@ export function unfoldedLength(v: CssValue): string | null {
   return found;
 }
 
-const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) => {
+const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, propagated) => {
   const native = targets.filter((t) => t !== 'web');
   if (transformsSubtree(el)) refuseTransformed(el, el, native, diagnostics, reported);
-  if (compositesSubtree(el)) refuseComposited(el, el, native, diagnostics, reported);
+  if (compositesSubtree(el, propagated)) refuseComposited(el, el, native, diagnostics, reported);
   for (const p of BACKGROUND_LAYERS_LONGHANDS) {
     const v = el.props.get(p as Longhand);
     const length = v === undefined ? null : unfoldedLength(v.value);
@@ -814,6 +828,56 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) =
   }
 };
 
+/** The colours a gradient box bakes into its one raster: the layers' backdrop, currentcolor stops, and the borders that obscure it. */
+const RASTER_COLORS: readonly Longhand[] = ['background-color', 'color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];
+
+/**
+ * BG2c on the native targets: a gradient box rasters its layers, with its background colour, currentcolor stops and obscuring
+ * borders baked in, once per layout; the native animator patches those colours per frame without a layout, so the raster would
+ * keep the first frame's colours over the animated ones. An animation or transition of one of them on a gradient box is refused,
+ * at its animation-name or transition-property (a transition only where a reachable state changes the colour). roots are the
+ * resolved roots of the analysed cases, in the analysis's order.
+ */
+export function refuseAnimatedGradients(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[]): void {
+  if (nativeTargets.length === 0) return;
+  const reported = new Set<string>();
+  const trees = analysis.cases.map((_, i) => {
+    const byAddress = new Map<string, ResolvedElement>();
+    const walk = (el: ResolvedElement): void => {
+      byAddress.set(el.element.address, el);
+      for (const k of el.children) if (k.kind === 'element') walk(k);
+    };
+    const root = roots[i];
+    if (root !== undefined) walk(root);
+    return byAddress;
+  });
+  // A transition starts only where a reachable state changes the colour.
+  const changes = (address: string, p: Longhand): boolean => new Set(trees.map((t) => JSON.stringify(t.get(address)?.props.get(p)?.value ?? null))).size > 1;
+  analysis.cases.forEach((c, i) => {
+    const byAddress = trees[i] as Map<string, ResolvedElement>;
+    for (const ea of c.elements.values()) {
+      const el = byAddress.get(ea.address);
+      if (el === undefined) continue;
+      const animated = ea.animations.flatMap((a) => (a.name === 'none' || !a.hasKeyframes ? [] : (analysis.keyframes.get(a.name)?.blocks ?? []).flatMap((b) => b.values.map((v) => v.property)))).filter((p) => RASTER_COLORS.includes(p as Longhand));
+      const transitioned = RASTER_COLORS.filter((p) => {
+        const l = ea.listings.get(p);
+        return l !== undefined && l.mode === 'listed' && l.delay + l.duration > 0 && changes(ea.address, p);
+      });
+      if ((animated.length === 0 && transitioned.length === 0) || !paintsGradient(el)) continue;
+      for (const [p, what, longhand] of [...animated.map((x) => [x, 'an animation', 'animation-name'] as const), ...transitioned.map((x) => [x, 'a transition', 'transition-property'] as const)]) {
+        const d = ea.declarations.find((x) => x.animation?.longhands.has(longhand) === true) ?? ea.declarations[0];
+        const origin = d === undefined ? el.element.node.origin : authored(d.valueSpan);
+        for (const t of nativeTargets) {
+          const id = `${t}|${ea.address}|${p}`;
+          if (reported.has(id)) continue;
+          reported.add(id);
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${what} of ${p} on ${ea.address}: the gradient box rasters ${p} into its background once per layout, and the native animator changes it without one, so the raster would keep the first frame's colour (${BG2C})`, manual: `Animate ${p} on a box without a gradient background, or remove the ${longhand === 'animation-name' ? 'animation' : 'transition'}.` }));
+        }
+      }
+    }
+  });
+}
+
 /**
  * R13 (BG2-x): Chrome rasterises a gradient under a transform with the transform in the shader matrix, and a native transform of a
  * bitmap Dragon already rasterised resamples it; every gradient in a subtree whose transform is not the identity is refused on the
@@ -821,7 +885,7 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported) =
  */
 function refuseTransformed(el: ResolvedElement, root: ResolvedElement, native: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const image = el.props.get('background-image') as ResolvedValue | undefined;
-  if (image !== undefined && resolvedLayers(el).some((l) => l.image.kind === 'gradient')) {
+  if (image !== undefined && paintsGradient(el)) {
     refuse(el, image, native, 'background-layers-transformed', `background-image on ${el.element.address}: the gradient is inside ${root.element.address}, whose transform is not the identity; Chrome rasterises it with the transform in the shader matrix, and the native targets would resample a bitmap drawn untransformed (${BG2_X})`, 'Remove the transform from the gradient box and its ancestors.', diagnostics, reported, 'DRAGON_UNPROVEN_CONTEXT');
   }
   for (const c of el.children) if (c.kind === 'element') refuseTransformed(c, root, native, diagnostics, reported);
