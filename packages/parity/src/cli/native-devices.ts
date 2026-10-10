@@ -23,7 +23,7 @@ import { validateNativeDump } from '../native-dump.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BACKEND_OF, buildAndroid, buildIos, nativeCases, nativeOut } from '../native-host.ts';
-import { casePoints, rasterSize, runFileText } from '../pixel-reference.ts';
+import { devicePoints, rasterSize, runFileText } from '../pixel-reference.ts';
 import type { NativeTarget } from '../targets.ts';
 
 const args = process.argv.slice(2);
@@ -95,7 +95,7 @@ if (isPaintPlant(plant)) {
     try {
       const dpr = deviceProfile(h).profileScale;
       const dir = join(nativeOut(target), 'devices', `${spec.name}-${plant}`);
-      const r = await runApp(h, build.artifact, { runFile: runFileText(ns.map((n) => ({ id: n.case.id, points: casePoints(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr) })), false), caseCount: ns.length, outDir: dir });
+      const r = await runApp(h, build.artifact, { runFile: runFileText(ns.map((n) => ({ id: n.case.id, points: devicePoints(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr) })), false), caseCount: ns.length, outDir: dir });
       if (r.error !== null) log(`${target} ${spec.name} @${dpr} ${plant}: FAIL the host did not finish: ${r.error}`);
       const all = ns.flatMap((n) => {
         const read = readDump(dumpFile(dir, n.case.id, dpr));

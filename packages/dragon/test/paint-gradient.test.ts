@@ -230,8 +230,11 @@ describe('the native element check (R3, R6, R8) and the targets each refusal blo
     expect(compile('background: linear-gradient(red, transparent);')[0]).toContain('BG2c');
     expect(compile('background: linear-gradient(red, transparent);', { web: {} })).toEqual([]);
   });
-  it('refuses a translucent stack under opacity too: opacity is not a longhand until PNT1, which isolates the box', () => {
-    expect(compile('background: linear-gradient(red, transparent); opacity: 0.5;')[0]).toContain('opacity is not supported');
+  it('refuses a translucent stack under opacity too, though PNT1 makes the box its own group', () => {
+    // opacity 0 compiles natively (PNT1), so the BG2c refusal is the only one left on each native target.
+    const found = compile('background: linear-gradient(red, transparent); opacity: 0;');
+    expect(found.map((m) => m.split(' ').slice(0, 2).join(' '))).toEqual(['DRAGON_UNSUPPORTED_VALUE android', 'DRAGON_UNSUPPORTED_VALUE ios']);
+    for (const m of found) expect(m).toContain('BG2c');
   });
   it('refuses a padding-box or content-box clip on a rounded box on ios and android (the raster takes the rounded border box only)', () => {
     expect(compile('border-radius: 6px; padding: 2px; background: linear-gradient(red, blue) padding-box white;')[0]).toContain('inner rounded box');

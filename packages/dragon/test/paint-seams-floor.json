@@ -24,8 +24,11 @@
     "border-colors",
     "padding-box-clip",
     "border-radius",
+    "opacity",
+    "paint-order",
     "transform",
     "background-layers",
+    "scroll-container",
     "replaced-image",
     "foreign-view"
   ],
@@ -33,6 +36,8 @@
     "border:dash-phase-1",
     "border:dash-gap-unfitted",
     "radius:radius-square",
+    "effects:alpha-ignored",
+    "stacking:order-swap",
     "transform:transform-origin-ignored",
     "transform:translate-percent-of-parent",
     "gradient:gradient-offset-1",
@@ -45,6 +50,8 @@
     "dash-phase-1",
     "dash-gap-unfitted",
     "radius-square",
+    "alpha-ignored",
+    "order-swap",
     "transform-origin-ignored",
     "translate-percent-of-parent",
     "gradient-offset-1",
@@ -63,12 +70,16 @@
     "Support/Paint/DragonPaintBorder.swift",
     "Support/Paint/DragonPaintClip.swift",
     "Support/Paint/DragonPaintRadius.swift",
+    "Support/Paint/DragonPaintEffects.swift",
+    "Support/Paint/DragonPaintStacking.swift",
     "Support/Paint/DragonPaintTransform.swift",
     "Support/Paint/DragonPaintGradient.swift",
+    "Support/Paint/DragonPaintScroll.swift",
     "Support/Paint/DragonPaintImage.swift",
     "Support/Paint/DragonPaintForeignView.swift",
     "Support/DragonClock.swift",
-    "Support/DragonState.swift"
+    "Support/DragonState.swift",
+    "Support/DragonAnim.swift"
   ],
   "supportFiles:android-views": [
     "kotlin/dev/dragon/views/DragonChecked.kt",
@@ -81,21 +92,28 @@
     "kotlin/dev/dragon/views/paint/DragonPaintBorder.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintClip.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintRadius.kt",
+    "kotlin/dev/dragon/views/paint/DragonPaintEffects.kt",
+    "kotlin/dev/dragon/views/paint/DragonPaintStacking.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintTransform.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintGradient.kt",
+    "kotlin/dev/dragon/views/paint/DragonPaintScroll.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintImage.kt",
     "kotlin/dev/dragon/views/paint/DragonPaintForeignView.kt",
     "kotlin/dev/dragon/views/DragonClock.kt",
-    "kotlin/dev/dragon/views/DragonState.kt"
+    "kotlin/dev/dragon/views/DragonState.kt",
+    "kotlin/dev/dragon/views/DragonAnim.kt"
   ],
   "filledPaintModules": [
     "background",
     "border",
     "clip",
+    "effects",
     "foreign-view",
     "gradient",
     "image",
     "radius",
+    "scroll",
+    "stacking",
     "transform"
   ]
 }
