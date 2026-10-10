@@ -14,7 +14,7 @@ export const SELECTORS: readonly FixtureSpec[] = [
   layout('selectors-has'),
   layout('selectors-specificity'),
   tree('tree-selectors-state'),
-  reject('reject-selector-pseudo-element', 'DRAGON_UNSUPPORTED_SELECTOR', '::before'),
+  reject('reject-selector-pseudo-element', 'DRAGON_UNSUPPORTED_SELECTOR', '::first-line'),
   reject('reject-selector-hover', 'DRAGON_UNSUPPORTED_SELECTOR', ':focus-within'),
   reject('reject-selector-s-flag', 'DRAGON_UNSUPPORTED_SELECTOR', '[ui-kind="a" s]'),
   reject('reject-selector-nested-has', 'DRAGON_UNSUPPORTED_SELECTOR', ':has(.b)'),

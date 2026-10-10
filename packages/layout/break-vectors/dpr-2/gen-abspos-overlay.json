@@ -1,0 +1,10 @@
+{
+  "case": "gen-abspos-overlay",
+  "dpr": 2,
+  "texts": [
+    {"id":"a1:text0","lines":[[0,2]]},
+    {"id":"b1:text0","lines":[[0,2]]},
+    {"id":"c1:text0","lines":[[0,2]]},
+    {"id":"c::after:text0","lines":[[0,2]]}
+  ]
+}

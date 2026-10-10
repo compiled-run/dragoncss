@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.b { width: 100px; }
+.b::before { content: ''; display: block; height: 10px; background-color: rgb(0, 128, 0); }
+.b::after { content: 'zz yy'; display: block; width: 30px; padding-left: 2px; }
+.m::before { content: 'mm'; display: block; margin-bottom: 5px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="b" class="b">aa bb</div>
+<div data-dragon-id="m" class="m"><div data-dragon-id="m1">cc</div></div>
+</body>
+</html>

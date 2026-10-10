@@ -17,6 +17,7 @@ import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
+import { GENERATED_CONTENT } from './fixture-groups/generated-content.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
@@ -113,6 +114,7 @@ export const GROUPS = {
   effects: EFFECTS,
   env: ENV,
   fonts: FONTS,
+  'generated-content': GENERATED_CONTENT,
   gradients: GRADIENTS,
   grid: GRID,
   'inherit-contexts': INHERIT_CONTEXTS,

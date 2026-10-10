@@ -115,6 +115,20 @@ export function gatedConditions(c: InteractionCondition, gate: boolean): { reado
   return [{ media: HOVER_MEDIA, condition: c }, { media: NO_HOVER_MEDIA, condition: { on: c.on, off: c.off.filter((t) => !hover(t)) } }];
 }
 
+/**
+ * GEN-a: a ::before or ::after box of the resolved tree (analysis/generated.ts), read from the resolved element's tag alone, so the
+ * emitter still reads only the resolved result.
+ */
+const isGeneratedElement = (el: ResolvedElement): boolean => el.element.tag === '::before' || el.element.tag === '::after';
+
+/** One emitted part of a class: the element (suffix '') or one of its generated boxes ('::before', '::after'). */
+type Part = {
+  readonly suffix: string;
+  readonly decls: readonly string[];
+  readonly diffs: readonly (readonly string[])[];
+  readonly own: readonly { readonly band: number; readonly conditions: InteractionCondition[]; readonly lines: string[] }[];
+};
+
 /** One band after the first (MQ-a): its condition text and every case resolved in it. */
 export type WebBand = { readonly condition: string; readonly cases: readonly WebCase[] };
 
@@ -180,7 +194,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
   const bandRules: string[][] = bands.map(() => []);
   // SELD-R2: per class, per band (the first, then each later one), its interaction states: the condition of every combination a
   // state stands for (R5), and the declarations that differ from the band's none state.
-  const pending: { cls: string; root: boolean; states: { band: number; conditions: InteractionCondition[]; lines: string[] }[] }[] = [];
+  const pending: { subject: string; root: boolean; states: Part['own'] }[] = [];
   const classesOf = new Map<string, string[]>();
   for (const c of cases) {
     const map = new Map<string, string>();
@@ -195,11 +209,13 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     const bandCase = [c, ...bands.map((b) => b.cases.find((x) => x.key === c.key) as WebCase)];
     const states = bandCase.map((bc) => (bc.interaction?.states ?? []).map((st) => ({ conditions: st.members.map((m) => interactionCondition(m, (bc.interaction as WebInteraction).candidates)), at: byAddress(st.root) })));
     const bandBase = bandCase.map((bc) => byAddress(bc.root));
-    const visit = (el: ResolvedElement, under: boolean): void => {
+    // One part: an element, or one of its ::before and ::after boxes (GEN-a R7), whose rule is the element's class with the
+    // pseudo-element appended. Its lines, its diffs in each later band, and its interaction states against each band's none state.
+    const partOf = (el: ResolvedElement, suffix: string, under: boolean, withAnimations: boolean): Part => {
       const insets = writesInsets(el);
       const decls = LONGHANDS.filter((p) => insets || !INSET_LONGHANDS.includes(p)).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
-      if (animations !== null) decls.push(...animations.lines(c.key, el.element.address));
+      if (animations !== null && withAnimations) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).
       const diffs = inBands.map((m) => {
         const other = m.get(el.element.address);
@@ -214,23 +230,33 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         const lines = LONGHANDS.map((p) => declLine(here, p, under)).filter((line, k) => line !== declLine(base, LONGHANDS[k] as (typeof LONGHANDS)[number], under));
         return lines.length === 0 ? [] : [{ band, conditions: st.conditions, lines }];
       }));
-      const variant = `${el.element.address}\u0000${decls.join('\n')}${diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(diffs)}` : ''}${own.length > 0 ? `\u0001${JSON.stringify(own)}` : ''}`;
+      return { suffix, decls, diffs, own };
+    };
+    const visit = (el: ResolvedElement, under: boolean): void => {
+      const below = under || sources.has(el.element.address);
+      // GEN-a: a generated box has no DOM element; it is emitted with its host as the host's class plus ::before or ::after.
+      const generated = el.children.filter((ch): ch is ResolvedElement => ch.kind === 'element' && isGeneratedElement(ch));
+      const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false))];
+      const keyOf = (pt: Part): string => `${pt.suffix}\u0000${pt.decls.join('\n')}${pt.diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(pt.diffs)}` : ''}${pt.own.length > 0 ? `\u0001${JSON.stringify(pt.own)}` : ''}`;
+      const variant = `${el.element.address}${parts.map(keyOf).join('\u0002')}`;
       let cls = variants.get(variant);
       if (cls === undefined) {
         cls = `dg${variants.size}`;
         variants.set(variant, cls);
-        rules.push(`.${cls} {\n${decls.join('\n')}\n}`);
-        diffs.forEach((d, k) => {
-          if (d.length > 0) (bandRules[k] as string[]).push(`.${cls} {\n${d.join('\n')}\n}`);
-        });
-        if (own.length > 0) pending.push({ cls, root: el === c.root, states: own });
+        for (const pt of parts) {
+          const subject = `.${cls}${pt.suffix}`;
+          rules.push(`${subject} {\n${pt.decls.join('\n')}\n}`);
+          pt.diffs.forEach((d, k) => {
+            if (d.length > 0) (bandRules[k] as string[]).push(`${subject} {\n${d.join('\n')}\n}`);
+          });
+          if (pt.own.length > 0) pending.push({ subject, root: el === c.root, states: pt.own });
+        }
         const list = classesOf.get(el.element.address) ?? [];
         list.push(cls);
         classesOf.set(el.element.address, list);
       }
       map.set(el.element.address, cls);
-      const below = under || sources.has(el.element.address);
-      for (const ch of el.children) if (ch.kind === 'element') visit(ch, below);
+      for (const ch of el.children) if (ch.kind === 'element' && !isGeneratedElement(ch)) visit(ch, below);
     };
     visit(c.root, false);
   }
@@ -253,7 +279,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       for (const g of st.conditions.flatMap((c) => gatedConditions(c, gateHover))) {
         const cond = `:root${g.condition.on.map(([a, ps]) => test(a, ps, isRoot)).join('')}${g.condition.off.map(([a, ps]) => `:not(${test(a, ps, isRoot)})`).join('')}`;
         const list = selectors.get(g.media) ?? [];
-        list.push(p.root ? `${cond}.${p.cls}` : `${cond} .${p.cls}`);
+        list.push(p.root ? `${cond}${p.subject}` : `${cond} ${p.subject}`);
         selectors.set(g.media, list);
       }
       const byGate = stateRules[st.band] as Map<string | null, string[]>;

@@ -8,6 +8,7 @@ import { CASC_PROPERTY_FAULTS } from './faults/casc-property.ts';
 import { CASCADE_VAR_FAULTS } from './faults/cascade-var.ts';
 import { ENV_SAFE_FAULTS } from './faults/env-safe.ts';
 import { FONTS_FAULTS } from './faults/fonts.ts';
+import { GEN_A_FAULTS } from './faults/gen-a.ts';
 import { GEN_B_FAULTS } from './faults/gen-b.ts';
 import { GEN_C_FAULTS } from './faults/gen-c.ts';
 import { INL1A_FAULTS } from './faults/inl1a.ts';
@@ -29,6 +30,7 @@ export const FAULT_GROUPS = {
   'cascade-var': CASCADE_VAR_FAULTS,
   'env-safe': ENV_SAFE_FAULTS,
   fonts: FONTS_FAULTS,
+  'gen-a': GEN_A_FAULTS,
   'gen-b': GEN_B_FAULTS,
   'gen-c': GEN_C_FAULTS,
   inl1a: INL1A_FAULTS,

@@ -21,7 +21,7 @@ import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { environmentOf, valueToString } from './resolve.ts';
+import { environmentOf, generatedPseudoOf, refusedGenerationOf, valueToString } from './resolve.ts';
 import { usedColors } from '../lower/paint/colors.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
@@ -305,8 +305,8 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
     if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
     if (keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute') continue;
     refuse(c, keywordOf(el.props.get('display') as ResolvedValue) === 'flex'
-      ? `position: absolute on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination`
-      : `position: absolute on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out`);
+      ? `position: absolute on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination (POSX-IFC)`
+      : `position: absolute on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out (POSX-IFC)`);
   }
 }
 
@@ -519,6 +519,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     }
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
+    checkGeneratedContent(el, targets, diagnostics, reported);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
     for (const c of el.children) if (c.kind === 'element') walk(c, here, inner);
@@ -529,3 +530,37 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkTransformContexts(root, targets, diagnostics, reported);
 }
 
+const GENERATED_DISPLAY_OWNER: readonly (readonly [RegExp, string])[] = [
+  [/list-item/, 'the ::marker package GEN-d6'],
+  [/^table|^inline-table$/, 'the table package TBL'],
+  [/^contents$/, 'the generated-content package GEN-d'],
+  [/^ruby/, 'the generated-content package GEN-d'],
+];
+
+// GEN-a (notes/T151-gen-spec.md R4, R6, R8): the ::before and ::after boxes resolve.ts refused on their host (a replaced element, a
+// form control or the root), a generated box whose display is a list item, a table part, contents or ruby, and a direction declared
+// on a generated box, which takes its host's direction. Each is refused on every target at the declaration.
+function checkGeneratedContent(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (v: ResolvedValue, at: string, what: string, message: string, manual: string): void => {
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of targets) {
+      const id = `${t}|gen-${what}|${JSON.stringify(origin)}|${at}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  for (const r of refusedGenerationOf(el)) {
+    const at = `${el.element.address}::${r.pseudo}`;
+    refuse(r.content, at, 'host', `content: ${valueToString(r.content.value)} on ${at} is not supported yet: ${r.reason}`, `Remove the ::${r.pseudo} rule's content for <${el.element.tag}> ${el.element.address}, or put the content in a real element beside it.`);
+  }
+  const info = generatedPseudoOf(el);
+  if (info === undefined) return;
+  const at = el.element.address;
+  const display = el.props.get('display') as ResolvedValue;
+  const shown = valueToString(display.value);
+  const owner = GENERATED_DISPLAY_OWNER.find(([re]) => re.test(shown));
+  if (owner !== undefined) refuse(display, at, 'display', `display: ${shown} on ${at} is not supported yet on a generated box (${owner[1]})`, `Give ${at} display: inline or block.`);
+  const direction = el.props.get('direction') as ResolvedValue;
+  if (direction.origin === 'author') refuse(direction, at, 'direction', `direction on ${at} is not supported: a generated box takes its host ${info.host.element.address}'s direction (notes/T151-gen-spec.md R6)`, `Set direction on ${info.host.element.address} instead.`);
+}

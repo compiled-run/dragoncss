@@ -1,0 +1,18 @@
+{
+  "case": "gen-inline-text-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"w:text0","data":"  eeee ffff gggg hhhh iiii  ","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2],"blank":[0,1,11,21,27]},
+    {"id":"q:text0","data":"rr","lines":1,"units":[0,0],"blank":[]},
+    {"id":"s:text0","data":"tt uu vv","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"n:text0","data":"oo","lines":1,"units":[0,0],"blank":[]},
+    {"id":"w::before:text0","data":"ab  ","lines":1,"units":[0,0,0,-1],"blank":[]},
+    {"id":"w::after:text0","data":"  cde","lines":1,"units":[-1,-1,0,0,0],"blank":[]},
+    {"id":"q::before:text0","data":"x\ny","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"q::after:text0","data":"zz ","lines":1,"units":[0,0,-1],"blank":[]},
+    {"id":"s::before:text0","data":"k","lines":1,"units":[0],"blank":[]},
+    {"id":"s::after:text0","data":"l mm","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"n::before:text0","data":"ppp qqq ","lines":2,"units":[0,0,0,-1,1,1,1,-1],"blank":[]}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "case": "gen-block",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"b:text0","data":"aa bb","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"m1:text0","data":"cc","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b::after:text0","data":"zz yy","lines":2,"units":[0,0,-1,1,1],"blank":[]},
+    {"id":"m::before:text0","data":"mm","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

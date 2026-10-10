@@ -13,6 +13,8 @@ import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
+import { captureGeneratedTexts, pseudoId } from './pseudo-capture.ts';
+import type { GeneratedText } from './pseudo-capture.ts';
 import { applyTransformTwin } from './transform-capture.ts';
 
 export const BREAK_MISMATCH = 'break-mismatch';
@@ -168,7 +170,7 @@ export function readChromeBreaks(caseId: string, dpr: number): ChromeBreaks | nu
 export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> {
   // PNT2: text in a transformed box is read on the transform twin, so each line keeps its untransformed rect.
   await applyTransformTwin(page, []);
-  return page.evaluate(() => {
+  const real = await page.evaluate(() => {
     const out: { id: string; data: string; lines: number; units: number[]; blank: number[] }[] = [];
     const isBlank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
     for (const el of Array.from(document.querySelectorAll('[data-dragon-id]'))) {
@@ -209,6 +211,22 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
     }
     return out;
   });
+  // GEN-a R9: generated text has no DOM node for a Range; its lines are the snapshot text boxes (pseudo-capture.ts).
+  return [...real, ...(await captureGeneratedTexts(page)).map(generatedBreakText)];
+}
+
+/** A generated text's breaks from its snapshot text boxes: each unit a box covers is on that box's line; a zero-width box is blank. */
+export function generatedBreakText(t: GeneratedText): ChromeBreakText {
+  const units = new Array<number>(t.text.length).fill(-1);
+  const blank: number[] = [];
+  t.boxes.forEach((b, j) => {
+    for (let i = b.start; i < b.start + b.length && i < units.length; i++) {
+      if (units[i] !== -1) continue;
+      units[i] = j;
+      if (b.rect[2] === 0) blank.push(i);
+    }
+  });
+  return { id: `${pseudoId(t.host, t.type)}:text0`, data: t.text, lines: t.boxes.length, units, blank };
 }
 
 const WHITE = /[ \t\n\r\f]/;

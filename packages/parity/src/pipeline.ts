@@ -8,6 +8,7 @@ import type { Assignment, CompilerFaults, Compiled, Diagnostic, Environment, Fro
 import { compiledCases, compiledFeatures, createProjectWith, interactionPartitionOf, iosLayoutProjection, laneOnlyNative, nativeLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { captureFixture } from './capture.ts';
+import { pseudoSetProblems } from './pseudo-capture.ts';
 import type { ParityCase } from './cases.ts';
 import { casesOf, expectedCaseCount, fixtureInput, forcedCasesOf } from './cases.ts';
 import { INTERACTION_FORCED } from './fixture-groups/interaction.ts';
@@ -335,6 +336,12 @@ export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, 
   const colors = resolvedColors(compiled, c.assignment, state);
   const textColors = resolvedTextColors(compiled, c.assignment, state);
   if (classOf === null || colors === null || textColors === null) return fail('the compiled result has no web class map or resolved colours for this case');
+  // GEN-a R9: the generated boxes Chrome made are the ones Dragon generated (every resolved element of the case has colours).
+  const pseudoSet = pseudoSetProblems(authored, colors.keys());
+  if (pseudoSet.length > 0) {
+    layoutStatus = 'fail';
+    reasons.push(`linux-dragon-layout: ${pseudoSet.join('; ')}`);
+  }
   const compiledCapture = await captureFixture(browser, c.id, c.compiledHtml(webCss, classOf), c.environment, c.computedExtra, prepareOf(c));
   const dual = compareDual(authored, compiledCapture, colors, textColors, c.computedExtra);
   if (!dual.pass) reasons.push(`chrome-dual: ${dual.problems.join('; ')}`);
