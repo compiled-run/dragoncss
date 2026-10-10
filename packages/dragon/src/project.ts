@@ -781,10 +781,14 @@ const freshReported = (fontDeferrals: Set<string> = new Set()): Reported => ({ c
  */
 const deferralKey = (d: Diagnostic): string => JSON.stringify(d);
 
-/** A native profile refusal of a font-family feature: no native font row is proven until TXT1a-2, so the engine lane defers it too. */
+/**
+ * A native profile refusal of a font-family, font-weight or font-style feature: they choose the face, and only a shaped case
+ * (real faces) proves one beyond Ahem, which proves no native row until TXT1a-2 phase R, so the engine lane defers them too.
+ */
+const FACE_FEATURES = ['font-family:', 'font-weight:', 'font-style:'] as const;
 const isFontProfileRefusal = (d: Diagnostic): boolean =>
   d.target !== null && (NATIVE_TARGETS as readonly string[]).includes(d.target) && (d.code === 'DRAGON_UNSUPPORTED_VALUE' || d.code === 'DRAGON_UNPROVEN_CONTEXT')
-  && d.profile !== null && d.profile.feature.startsWith('font-family:');
+  && d.profile !== null && FACE_FEATURES.some((f) => d.profile?.feature.startsWith(f) === true);
 
 /**
  * Resolves and checks every case: computed-value refusals, fonts, then (when enforcing) the contextual check, where a feature
