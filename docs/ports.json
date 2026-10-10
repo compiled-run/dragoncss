@@ -570,8 +570,10 @@
       "fileSha256": "f779a32927a4eddcbb5f917f841d260885393ef6d110a568ab4d90d3b5388cf7",
       "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
       "ranges": [
+        { "lines": "179-182", "symbol": "ConsumeFirstBaseline", "source": "located" },
         { "lines": "4174-4179", "symbol": "IsInvalidFontFamily", "source": "located" },
         { "lines": "5989-6010", "symbol": "ConsumeFontFamily", "source": "located" },
+        { "lines": "4265-4300", "symbol": "ConsumeContentDistributionOverflowPosition", "source": "located" },
         { "lines": "6031-6033", "symbol": "ConsumeGenericFamily", "source": "located" },
         { "lines": "3640-3688", "symbol": "ConsumeImage", "source": "located" }
       ],
@@ -580,12 +582,32 @@
         { "file": "packages/dragon/src/css/grid-values.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/css/math.ts", "symbol": "MathGrammar", "use": "port" },
         { "file": "packages/dragon/src/css/shorthands/radius.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/stylesheet.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "isInvalidFontFamily", "use": "port" },
         { "file": "packages/dragon/src/fonts/family-list.ts", "symbol": "parseFamilyList", "use": "port" },
         { "file": "packages/dragon/src/fonts/font-face.ts", "symbol": null, "use": "port" },
         { "file": "packages/parity/src/font-reference.ts", "symbol": "PARSER_GENERICS", "use": "port" },
+        { "file": "packages/parity/test/place-computed.test.ts", "symbol": null, "use": "reference" },
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/properties/shorthands/shorthands_custom.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "d012d8a61585deb8606e4cb11c212cc943ea36ec2ff9c757a8ce48b716c9b5b2",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "3892-3944", "symbol": "PlaceContent::ParseShorthand", "source": "located" },
+        { "lines": "3956-4003", "symbol": "PlaceItems::ParseShorthand", "source": "located" },
+        { "lines": "4015-4062", "symbol": "PlaceSelf::ParseShorthand", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/css/place.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/css/place.ts", "symbol": "splitPlace", "use": "port" }
       ]
     },
     {
