@@ -95,6 +95,8 @@ describe('the paddings a gradient raster takes (paint-samples/gradient.ts paddin
     // .rel's padding box is 240 CSS px (480 device px): 10% is 48 device px. .flow is in flow: 10% of .rel's 200px content box.
     expect(pads.get('abs')).toEqual([48 * 64, 48 * 64, 48 * 64, 48 * 64]);
     expect(pads.get('flow')).toEqual([40 * 64, 40 * 64, 40 * 64, 40 * 64]);
+    // .abs-kid is in flow in .abs-wrap: 10% of its 50px content box, whose own paddings take .rel's padding box (24px each).
+    expect(pads.get('abs-kid')).toEqual([10 * 64, 10 * 64, 10 * 64, 10 * 64]);
     // .abs-icb has no positioned ancestor: the initial containing block, the 400px viewport (800 device px).
     expect(pads.get('abs-icb')).toEqual([40 * 64, 16 * 64, 40 * 64, 16 * 64]);
   }, 600_000);

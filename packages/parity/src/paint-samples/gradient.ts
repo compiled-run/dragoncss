@@ -132,8 +132,9 @@ export function backgroundPlans(p: NativeProgram, viewport: { readonly width: nu
       layerY: w.layerOrigin[1],
     };
     const plan = planBackground(paint, faults);
-    // The checks refuse every background the plan does not model, so one here is a compiler fault, never an empty draw.
-    if (!plan.modelled) throw new Error(`${id}: the background plan at ${dpr}x is not modelled (layer origin ${paint.layerX}, ${paint.layerY})`);
+    // The checks refuse every background the plan does not model, so one here is a compiler fault, never an empty draw (a
+    // planted fault may leave a layer unmodelled on purpose).
+    if (!plan.modelled && !Object.values(faults).some((v) => v === true)) throw new Error(`${id}: the background plan at ${dpr}x is not modelled (layer origin ${paint.layerX}, ${paint.layerY})`);
     return { id, plan };
   });
 }
