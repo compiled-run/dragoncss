@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { keyframesOverride } from '../src/analysis/animations.ts';
-import { ALIAS_FAMILIES, resolveAlias } from '../src/css/aliases.ts';
+import { ALIAS_FAMILIES, legacyAliasRefusal, resolveAlias } from '../src/css/aliases.ts';
 import { parseKeyframesRules } from '../src/css/at-rules/keyframes.ts';
 import type { KeyframesSource } from '../src/css/at-rules/keyframes.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
@@ -83,6 +83,12 @@ const SAMPLES: { readonly [property: string]: readonly string[] } = {
   'padding-block-start': ['1px'],
   'padding-inline-end': ['5%'],
   'padding-inline-start': ['8px'],
+  'border-bottom-left-radius': ['4px', '10px 20%'],
+  'border-bottom-right-radius': ['50%', '1em 2px'],
+  'border-top-left-radius': ['0', '-1px'],
+  'border-top-right-radius': ['3px 3px', 'calc(1px + 10%)'],
+  transform: ['rotate(10deg)', 'translate(5px, 2px) scale(2)', 'none', 'skewX(5deg)', 'matrix(1, 0, 0, 1, 2, 3)'],
+  'transform-origin': ['left top', '20px 10px', 'center', '1px 2px 3px'],
   animation: ['k 1s ease-in 0.5s 2 alternate backwards', 'k 1s, j 2s steps(3) infinite reverse paused', 'none', 'k 1s linear(0, 1)', 'k 1s calc(1s)'],
   'animation-delay': ['0.5s', '-1s, 2s', '1px'],
   'animation-direction': ['alternate', 'reverse, normal', 'sideways'],
@@ -102,20 +108,24 @@ const COMMON = ['inherit', 'initial', 'unset', 'revert', 'var(--x)', 'var(--x, 1
 
 describe('legacy aliases parse as their property', () => {
   it('every alias is a lower-case -webkit- name, and resolveAlias maps it and nothing else', () => {
-    expect(ALIASES.length).toBe(58);
+    expect(ALIASES.length).toBe(64);
     for (const [alias, property] of ALIASES) {
       expect(alias, alias).toMatch(/^-webkit-[a-z-]+$/);
       expect(resolveAlias(alias)).toBe(property);
       expect(resolveAlias(property)).toBe(property);
     }
-    expect(resolveAlias('-webkit-transform')).toBe('-webkit-transform');
+    expect(resolveAlias('-webkit-perspective')).toBe('-webkit-perspective');
     expect(resolveAlias('--webkit-flex')).toBe('--webkit-flex');
   });
   it('an alias declaration parses exactly as its property declaration, for valid, multi-token, wide, var() and invalid values', () => {
     for (const [alias, property] of ALIASES) {
       const values = SAMPLES[property];
       expect(values, `${alias}: no sample values for ${property}`).toBeDefined();
-      for (const v of [...(values ?? []), ...COMMON]) expect(parsed(`${alias}: ${v}`), `${alias}: ${v}`).toEqual(asAlias(parsed(`${property}: ${v}`), alias, property));
+      for (const v of [...(values ?? []), ...COMMON]) {
+        // A value legacyAliasRefusal covers is refused instead (the legacy-parsing test below).
+        if (legacyAliasRefusal(alias, v) !== null) continue;
+        expect(parsed(`${alias}: ${v}`), `${alias}: ${v}`).toEqual(asAlias(parsed(`${property}: ${v}`), alias, property));
+      }
     }
   });
   it('the name is matched ASCII case-insensitively and through escapes, as every property name is', () => {
@@ -127,11 +137,32 @@ describe('legacy aliases parse as their property', () => {
     expect(parsed('margin-block-start: foo').diagnostics).toEqual([['DRAGON_CSS_INVALID_VALUE', '"foo" is not a valid value for margin-block-start (@webref/css grammar)']]);
   });
   it('aliases Chrome parses with legacy rules, and non-aliases, stay refused as unknown properties', () => {
-    for (const name of ['-webkit-transform', '-webkit-transform-origin', '-webkit-writing-mode', '-webkit-user-select', '-webkit-box-reflect', '-webkit-line-clamp']) {
+    for (const name of ['-webkit-perspective', '-webkit-writing-mode', '-webkit-user-select', '-webkit-box-reflect', '-webkit-line-clamp']) {
       expect(parse(`${name}: none`).diagnostics.map((d) => d.code), name).toEqual(['DRAGON_UNSUPPORTED_PROPERTY']);
     }
     // PNT1-radius: -webkit-border-radius is the radius family's own shorthand with Chrome's legacy two-value parsing, not an alias.
     expect(parse('-webkit-border-radius: 4px 8px').diagnostics).toEqual([]);
+  });
+  it('-webkit-transform refuses every value that could hold a unitless perspective(), which only its legacy parsing accepts', () => {
+    const refusal = 'Chrome parses -webkit-transform with legacy rules (a unitless perspective() length), and Dragon parses only transform';
+    for (const v of ['perspective(100)', 'perspective(100px)', 'rotate(1deg) PERSPECTIVE(0)', 'var(--p)', 'rotate(var(--a, 1deg))', 'env(x, perspective(1))', '\\70 erspective(100)', 'r\\otate(1deg)']) {
+      expect(parsed(`-webkit-transform: ${v}`).diagnostics, v).toEqual([['DRAGON_UNSUPPORTED_VALUE', expect.stringContaining(refusal)]]);
+      expect(parsed(`-webkit-transform: ${v}`).declarations, v).toEqual([]);
+    }
+    const kf = (body: string) => {
+      const diagnostics: Diagnostic[] = [];
+      const sources: KeyframesSource[] = [];
+      const text = `@keyframes k { from { ${body} } }`;
+      parseStylesheet(text, { source: SRC, start: 0, end: text.length }, { id: 's', owner: 'o', scope: 'document' }, 0, diagnostics, [], [], sources);
+      const rules = parseKeyframesRules(sources, diagnostics);
+      return { values: rules.flatMap((r) => r.blocks.flatMap((b) => b.values.map((x) => x.property))), diagnostics: diagnostics.map((d) => [d.code, d.message]) };
+    };
+    expect(kf('-webkit-transform: perspective(100)')).toEqual({ values: [], diagnostics: [['DRAGON_UNSUPPORTED_VALUE', expect.stringContaining(`in @keyframes k is unsupported: ${refusal}`)]] });
+    expect(kf('-webkit-transform: rotate(5deg)')).toEqual(kf('transform: rotate(5deg)'));
+    // transform itself keeps its own parse: a unitless perspective() is invalid there, as in Chrome.
+    expect(parsed('transform: perspective(100)').diagnostics.map((d) => d[0])).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    // Every other alias parses no value differently.
+    for (const [alias] of ALIASES) if (alias !== '-webkit-transform') expect(legacyAliasRefusal(alias, 'perspective(1) var(--x) \\61'), alias).toBeNull();
   });
   it('an alias in a keyframe block sets its property', () => {
     const frames = (body: string) => {
@@ -226,7 +257,7 @@ describe('profile diagnostics name the alias as written', () => {
 
 describe('the alias fixtures cover every alias', () => {
   it('each alias appears in a fixture of the aliases group, or the animation ones in the anim-webkit frame fixture', () => {
-    const html = ['alias-flex', 'alias-logical'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
+    const html = ['alias-flex', 'alias-logical', 'alias-paint'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
     const frames = readFileSync(new URL('../../parity/fixtures/anim-webkit/view.css', import.meta.url), 'utf8');
     for (const [alias] of ALIASES) expect((alias.includes('-transition') || alias.includes('-animation') ? frames : html).includes(`${alias}:`), alias).toBe(true);
     expect(frames).toContain('@-webkit-keyframes');
