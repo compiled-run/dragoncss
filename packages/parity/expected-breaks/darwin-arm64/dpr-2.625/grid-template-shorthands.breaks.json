@@ -1,0 +1,16 @@
+{
+  "case": "grid-template-shorthands",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"t1a:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"t1b:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t1d:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"t2b:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"t3b:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t4a:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"t4c:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t6b:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"t7b:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}

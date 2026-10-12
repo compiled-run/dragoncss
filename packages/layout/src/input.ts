@@ -198,12 +198,43 @@ export type TrackSize =
  */
 export type TrackRepeater = { readonly count: number; readonly sizes: readonly TrackSize[] };
 /**
- * An item's lines in one axis, resolved by the compiler (Blink GridLineResolver::ResolveGridPositionsFromStyle): definite lines
- * as 0-based indices from the explicit grid's start line, which are negative before it; or an automatic position of span lines.
+ * The automatic repeater of a track list (css-grid-2 §7.2.3.2, Blink GridTrackRepeater kAutoFill and kAutoFit), at most one per
+ * axis. It stands before template[index] (at the end when index is the template's length); the engine computes its repetitions
+ * from the container's available size. lineNames are the axis's line names, by the ids its items' GridLine positions carry.
+ */
+export type GridAutoRepeat = {
+  readonly type: 'auto-fill' | 'auto-fit';
+  readonly index: number;
+  readonly sizes: readonly TrackSize[];
+  readonly lineNames: readonly GridLineName[];
+};
+/**
+ * One line name of an axis with an automatic repeater, as Blink's GridNamedLineCollection reads it, each list ascending.
+ * explicit: the template's lines with the name, counting the automatic repeater as one track; repeat: the lines with the name
+ * inside one repetition (0 to its track count); implicit: the lines grid-template-areas names (css-grid-2 §7.3).
+ */
+export type GridLineName = { readonly explicit: readonly number[]; readonly repeat: readonly number[]; readonly implicit: readonly number[] };
+/**
+ * A grid-*-start or grid-*-end value (Blink GridPosition) that the engine resolves, with names as GridLineName ids: auto;
+ * <integer>; <integer> <name>; span <integer>; span <integer> <name>; or a lone <name>, which reads the side's implicit
+ * <name>-start or <name>-end id first.
+ */
+export type GridLine =
+  | { readonly kind: 'auto' }
+  | { readonly kind: 'line'; readonly n: number }
+  | { readonly kind: 'named-line'; readonly n: number; readonly name: number }
+  | { readonly kind: 'span'; readonly n: number }
+  | { readonly kind: 'named-span'; readonly n: number; readonly name: number }
+  | { readonly kind: 'area'; readonly implicitName: number; readonly name: number };
+/**
+ * An item's lines in one axis (Blink GridLineResolver::ResolveGridPositionsFromStyle): resolved by the compiler as definite lines,
+ * 0-based from the explicit grid's start line and negative before it, or an automatic position of span lines; or, in an axis with
+ * an automatic repeater, whose explicit grid the engine sizes, the start and end positions the engine resolves.
  */
 export type GridSpan =
   | { readonly kind: 'definite'; readonly start: number; readonly end: number }
-  | { readonly kind: 'auto'; readonly span: number };
+  | { readonly kind: 'auto'; readonly span: number }
+  | { readonly kind: 'lines'; readonly start: GridLine; readonly end: GridLine };
 /** css-align-3 §6.1 self positions in a grid container; normal and stretch stretch an auto size. */
 export type GridSelfAlign =
   | 'normal'
@@ -219,7 +250,8 @@ export type GridSelfAlign =
   | 'right';
 /**
  * A grid container's own grid properties (css-grid-2 §7). The explicit track counts are the larger of the template's and the
- * template areas' (css-grid-2 §7.1); tracks beyond the template are sized by the automatic tracks. autoColumns and autoRows
+ * template areas' (css-grid-2 §7.1), not counting an automatic repeater, whose tracks the engine adds; tracks beyond the
+ * template are sized by the automatic tracks. autoColumns and autoRows
  * are never empty (the initial value is one auto track). justifyItems is the computed value with legacy already resolved.
  */
 export type GridContainerStyle = {
@@ -229,6 +261,8 @@ export type GridContainerStyle = {
   readonly autoRows: readonly TrackSize[];
   readonly explicitColumnCount: number;
   readonly explicitRowCount: number;
+  readonly autoRepeatColumns: GridAutoRepeat | null;
+  readonly autoRepeatRows: GridAutoRepeat | null;
   readonly autoFlow: 'row' | 'column';
   readonly dense: boolean;
   readonly justifyItems: GridSelfAlign;

@@ -333,8 +333,8 @@ describe('grid family: compile', () => {
     expect(css).toContain('  justify-items: normal;\n');
     expect(c.outputs.ios.kind).toBe('analysis-only');
   });
-  for (const value of ['grid', 'inline-grid']) {
-    it(`display: ${value} stays refused until the grid engine lands`, () => {
+  for (const value of ['inline-grid']) {
+    it(`display: ${value} stays refused until the inline-grid package (G-INL) lands`, () => {
       const input = inputFor(`.a { display: ${value}; width: 100px; }`, tree);
       const c = project().compile(input);
       expect(c.ok).toBe(false);

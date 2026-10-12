@@ -189,9 +189,9 @@ describe('MQ-a: the band fold', () => {
     expectCatalogued(c.diagnostics);
   });
   it('the rules inside an unsupported at-rule inside @media are analysed for diagnostics, whatever the band', () => {
-    const { c } = compile('.a { width: 10px; } @media (max-width: 400px) { .a { width: 20px; } } @unknown-thing w { @media (max-width: 3px) { .a { display: grid; } } }', { foldViewport: { width: 400, height: 300 } });
+    const { c } = compile('.a { width: 10px; } @media (max-width: 400px) { .a { width: 20px; } } @unknown-thing w { @media (max-width: 3px) { .a { display: inline-grid; } } }', { foldViewport: { width: 400, height: 300 } });
     const layer = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
-    expect(layer?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[ios\]: display: grid/), expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[web\]: display: grid/)]);
+    expect(layer?.related.map((r) => r.message)).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[ios\]: display: inline-grid/), expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE \[web\]: display: inline-grid/)]);
   });
   it('the rules inside an unsupported at-rule are analysed against every band\'s cascade, for every target (MQ-R1)', () => {
     // At the 400px fold the body is flex and margin-right: 6mm is proven; above 500px the body is block, where neither target proves it.
@@ -228,10 +228,10 @@ describe('MQ-a, MQ-R1: every check blocks the targets of the bands it applies in
     expectCatalogued(outside.diagnostics);
   });
   it('a value no context proves, only outside the fold\'s band, is refused for web and for ios', () => {
-    const outside = compile('.a { width: 10px; } @media (min-width: 500px) { .a { display: grid; } }', FOLD).c;
+    const outside = compile('.a { width: 10px; } @media (min-width: 500px) { .a { display: inline-grid; } }', FOLD).c;
     expect(codes(outside).filter(([code]) => code === 'DRAGON_UNSUPPORTED_VALUE').map(([, t]) => t)).toEqual(['ios', 'web']);
     expect(outside.outputs.ios.kind).toBe('blocked');
-    const inside = compile('.a { width: 10px; } @media (max-width: 500px) { .a { display: grid; } }', FOLD).c;
+    const inside = compile('.a { width: 10px; } @media (max-width: 500px) { .a { display: inline-grid; } }', FOLD).c;
     expect(codes(inside).filter(([code]) => code === 'DRAGON_UNSUPPORTED_VALUE').map(([, t]) => t)).toEqual(['ios', 'web']);
   });
   const rtl = (css: string, opts: Partial<InternalOptions>): Compiled<K> => {
@@ -251,7 +251,7 @@ describe('MQ-a, MQ-R1: every check blocks the targets of the bands it applies in
     }
   });
   it('a project without web reports a rule that applies only outside the fold\'s band, which native switches to', () => {
-    const input = inputFor(`${FONT} .a { width: 10px; } @media (min-width: 500px) { .a { font-family: NotAFont; display: grid; } }`, (r) => [div(r, 'a', ['a'])]);
+    const input = inputFor(`${FONT} .a { width: 10px; } @media (min-width: 500px) { .a { font-family: NotAFont; display: inline-grid; } }`, (r) => [div(r, 'a', ['a'])]);
     const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', ...FOLD }).compile(input);
     expect(c.diagnostics.map((d) => d.code).sort()).toEqual(['DRAGON_FONT_UNMAPPED_FAMILY', 'DRAGON_UNSUPPORTED_VALUE']);
   });

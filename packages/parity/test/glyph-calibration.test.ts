@@ -14,6 +14,8 @@ import { BACKEND_OF, nativeCases } from '../src/native-host.ts';
 import { decodePng, glyphLines, PIXEL_CAPTURE } from '../src/pixel-reference.ts';
 import { SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
 import { deviceDprs } from '../src/targets.ts';
+import { inputFaces } from '../src/text-latin-run.ts';
+import { programInput } from 'dragon';
 
 const manifest = JSON.parse(readFileSync(glyphCalibrationManifestPath(), 'utf8')) as CalibrationManifest;
 const images = new Map(manifest.sets.map((s) => [s.dpr, decodePng(readFileSync(glyphCalibrationPath(s.dpr)))]));
@@ -102,7 +104,8 @@ describe('the corpus against the calibration', () => {
     const cases = nativeCases();
     for (const target of ['ios', 'android'] as const) {
       for (const dpr of deviceDprs(target)) {
-        for (const n of cases) {
+        // TXT1a-2: the calibration is of Ahem's glyphs; real-font text is the R10 text pixel rule's (notes/T056-txt1a-spec.md).
+        for (const n of cases.filter((c) => [...inputFaces(programInput(c.programs.uikit, c.case.environment.viewport, dpr))].every((f) => f === 'Ahem'))) {
           for (const l of glyphLines(n.programs[BACKEND_OF[target]], n.case.environment.viewport, dpr)) for (const g of l.glyphs) largest = Math.max(largest, g.right - g.left, g.bottom - g.top);
         }
       }

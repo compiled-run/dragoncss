@@ -18,6 +18,7 @@ import { SCROLLBAR_VALUES } from './scrollbar.ts';
 import { SHADOW_VALUES } from './shadow.ts';
 import { STACKING_VALUES } from './stacking.ts';
 import { TRANSFORM_VALUES } from './transform.ts';
+import { VISIBILITY_VALUES } from './visibility.ts';
 import type { PaintValueContext, PaintValues } from './types.ts';
 
 export type { PaintValueContext, PaintValues } from './types.ts';
@@ -40,6 +41,7 @@ export const PAINT_VALUES: readonly PaintValues[] = [
   IMAGE_VALUES,
   FOREIGN_VIEW_VALUES,
   CONTROL_VALUES,
+  VISIBILITY_VALUES,
 ];
 
 if (PAINT_VALUES.map((m) => m.name).join() !== PAINT_MODULE_NAMES.join()) throw new Error('the paint-values registry is not in PAINT_MODULE_NAMES order');

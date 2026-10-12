@@ -68,6 +68,20 @@ jobs:
         run: |
           retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
           retry pnpm install --frozen-lockfile
+      # dragon_hb, the HarfBuzz shim both apps link (packages/text-shaper, built by native-shim.ts buildShim): the pinned Zig, checked.
+      - name: Zig 0.16.0
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          case "$(uname -s)-$(uname -m)" in
+            Darwin-arm64) zig=zig-aarch64-macos-0.16.0; sha=b23d70deaa879b5c2d486ed3316f7eaa53e84acf6fc9cc747de152450d401489 ;;
+            Linux-x86_64) zig=zig-x86_64-linux-0.16.0; sha=70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00 ;;
+            *) echo "::error::no pinned Zig for $(uname -s)-$(uname -m)"; exit 1 ;;
+          esac
+          retry curl -sSfL -o "$RUNNER_TEMP/$zig.tar.xz" "https://ziglang.org/download/0.16.0/$zig.tar.xz"
+          echo "$sha  $RUNNER_TEMP/$zig.tar.xz" | shasum -a 256 -c -
+          tar xf "$RUNNER_TEMP/$zig.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/$zig" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/$zig/zig" version
       - name: The pinned iOS 26.5 (23F77) simulator runtime
         run: |
           have() { xcrun simctl list runtimes -j | jq -e '.runtimes[] | select(.buildversion == "23F77" and .isAvailable)' >/dev/null; }
@@ -163,30 +177,52 @@ jobs:
         run: |
           retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
           retry pnpm install --frozen-lockfile
+      # dragon_hb, the HarfBuzz shim both apps link (packages/text-shaper, built by native-shim.ts buildShim): the pinned Zig, checked.
+      - name: Zig 0.16.0
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
+          case "$(uname -s)-$(uname -m)" in
+            Darwin-arm64) zig=zig-aarch64-macos-0.16.0; sha=b23d70deaa879b5c2d486ed3316f7eaa53e84acf6fc9cc747de152450d401489 ;;
+            Linux-x86_64) zig=zig-x86_64-linux-0.16.0; sha=70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00 ;;
+            *) echo "::error::no pinned Zig for $(uname -s)-$(uname -m)"; exit 1 ;;
+          esac
+          retry curl -sSfL -o "$RUNNER_TEMP/$zig.tar.xz" "https://ziglang.org/download/0.16.0/$zig.tar.xz"
+          echo "$sha  $RUNNER_TEMP/$zig.tar.xz" | shasum -a 256 -c -
+          tar xf "$RUNNER_TEMP/$zig.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/$zig" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/$zig/zig" version
       - name: KVM for the emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
           ls -l /dev/kvm
-      - name: JDK 17, kotlinc and the Android SDK packages (the local Mac's versions, from Homebrew)
+      # JDK 17 from Homebrew; kotlinc pinned to the JetBrains release the committed host lane records (Homebrew's kotlin moves
+      # to each new release, and a newer kotlinc fails the toolchain check below).
+      - name: JDK 17, kotlinc 2.4.20 and the Android SDK packages (the local Mac's versions)
         run: |
           retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          retry brew install openjdk@17 kotlin
+          retry brew install openjdk@17
           echo "JAVA_HOME=$(brew --prefix openjdk@17)" >> "$GITHUB_ENV"
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+          retry curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+          # Added after brew's bin, so it comes first on PATH.
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
           sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$sdk" --licenses >/dev/null || true
           # A download can fail transiently ("unknown archive"): sdkmanager is retried, three failures fail the step, and every
           # package is then checked installed on its own.
-          pkgs=(emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64')
+          # ndk;27.2.12479018: the sysroot dragon_hb links (native-shim.ts SHIM_NDK); the runner's own ANDROID_NDK_HOME is another NDK.
+          pkgs=(emulator platform-tools 'build-tools;36.0.0' 'platforms;android-36' 'system-images;android-36;default;x86_64' 'ndk;27.2.12479018')
           # Its progress output goes to a log; a failed attempt prints the log's tail beside the retry warning.
           sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }
           retry sdk_install
           installed=$("$sdk" --list_installed | awk -F'|' 'NF >= 3 { gsub(/ /, "", $1); print $1 }')
           echo "$installed"
           for p in "${pkgs[@]}"; do grep -qFx "$p" <<<"$installed" || { echo "::error::sdkmanager did not install $p"; exit 1; }; done
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
       - name: kotlinc and the JDK the committed host lane records
         run: |
           cat > "$RUNNER_TEMP/toolchain.mts" <<'EOF'

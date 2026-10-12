@@ -1,0 +1,12 @@
+{
+  "case": "text-weight-nested-bold",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"s:text0","data":"Strong heading","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"bb:text0","data":"Bold in strong","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"lb:text0","data":"Bolder than light","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"mb:text0","data":"Bolder than semi","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"h1b:text0","data":"Bold in heading","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

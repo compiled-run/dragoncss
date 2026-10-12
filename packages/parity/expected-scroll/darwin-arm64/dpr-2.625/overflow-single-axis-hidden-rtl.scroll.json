@@ -21,5 +21,14 @@
    "clientWidth": 20,
    "clientHeight": 10
   }
+ ],
+ "extents": [
+  {
+   "id": "a",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 9.904762268066406
+  }
  ]
 }

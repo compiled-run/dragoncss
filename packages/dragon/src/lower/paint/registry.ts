@@ -17,6 +17,7 @@ import { SCROLLBAR_LOWERING } from './scrollbar.ts';
 import { SHADOW_LOWERING } from './shadow.ts';
 import { STACKING_LOWERING } from './stacking.ts';
 import { TRANSFORM_LOWERING } from './transform.ts';
+import { VISIBILITY_LOWERING } from './visibility.ts';
 import type { BoxPaintContext, NativeBackend, PaintLowering, VocabularyEntry } from './types.ts';
 import { PAINT_MODULE_NAMES } from './types.ts';
 
@@ -38,6 +39,7 @@ const LOWERINGS = [
   IMAGE_LOWERING,
   FOREIGN_VIEW_LOWERING,
   CONTROL_LOWERING,
+  VISIBILITY_LOWERING,
 ] as const;
 
 type WriteOf<L> = L extends PaintLowering<infer W> ? W : never;

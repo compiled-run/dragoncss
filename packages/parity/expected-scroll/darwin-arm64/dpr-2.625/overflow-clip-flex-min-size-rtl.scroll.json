@@ -28,5 +28,21 @@
    "clientWidth": 50,
    "clientHeight": 0
   }
+ ],
+ "extents": [
+  {
+   "id": "r2a",
+   "minLeft": -80,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "c1b",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 40
+  }
  ]
 }

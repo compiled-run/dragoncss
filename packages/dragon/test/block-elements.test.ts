@@ -103,7 +103,7 @@ describe('refusals of UA defaults Dragon does not model', () => {
       ['DRAGON_UNSUPPORTED_FONT', 'android', 'text h2:text0 inherits font-weight: 700'],
       ['DRAGON_UNSUPPORTED_FONT', 'ios', 'text h2:text0 inherits font-weight: 700'],
     ]);
-    expect(all.diagnostics.find((d) => d.target === 'android')?.message).toMatch(/so android would draw it in the regular face/);
+    expect(all.diagnostics.find((d) => d.target === 'android')?.message).toMatch(/android draws this text in its one regular face/);
     expect([all.outputs.ios.kind, all.outputs.android.kind, all.outputs.web.kind]).toEqual(['blocked', 'blocked', 'ready']);
     const android = run({ android: { minSdk: 31 }, web: {} });
     expect(android.diagnostics.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_FONT', 'android']]);

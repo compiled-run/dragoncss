@@ -6,7 +6,7 @@
 // their typed codes.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { absoluteRects, ahemMeasurer, fromCssPx, layout, layoutWithFaults, NO_ENGINE_FAULTS, placeLines, validateLayoutInput, zoomInput } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, fromCssPx, layout, layoutWithFaults, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, validateLayoutInput, zoomInput } from '../src/index.ts';
 import { isRtlSafe } from '../src/inline.ts';
 import type { EngineFaults, InlineChild, LayoutInput, LayoutRect, LineHeightValue, TextLeaf } from '../src/index.ts';
 import { ahemFont, box, br, neutralEnvironment, px, span, text } from './helpers.ts';
@@ -179,7 +179,7 @@ function compare(id: string, c: ProbeCase, faults: EngineFaults): string[] {
       if (JSON.stringify(got) !== JSON.stringify(exp)) problems.push(`${env} ${what}: engine ${JSON.stringify(got)}, Chrome ${JSON.stringify(exp)}`);
     };
     expectEq('container', at('c'), rectLu(want.container, dpr));
-    const lines = placeLines({ measurer: ahemMeasurer, devicePixelRatio: 1, faults }, zoomedContainer(input), fromCssPx(c.width * dpr));
+    const lines = placeLines({ measurer: ahemMeasurer, devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS }, zoomedContainer(input), fromCssPx(c.width * dpr));
     expectEq('line count', lines.length, want.lines.length);
     want.lines.forEach((l, k) => {
       const got = lines[k];
