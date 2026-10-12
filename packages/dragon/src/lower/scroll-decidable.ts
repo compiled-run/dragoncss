@@ -52,18 +52,40 @@ function oofsOf(b: LayoutNode): LayoutNode[] {
   return out;
 }
 
-/** overflowOf, without the scroll container's own flow (flow below). */
-function overflowOf(b: LayoutNode): void {
-  if (b.kind === 'replaced') return;
-  if (b.style.display === 'grid') throw new Undecided(b.id, 'a grid container: its scrollable overflow (with its grid area) is not decided here');
-  lineLevel(b);
-  for (const k of b.children) if (isNode(k) && !outOfFlow(k)) propagated(k);
-  for (const k of oofsOf(b)) propagated(k);
+/**
+ * overflow.ts paddingKnown: the boxes whose percentage padding resolves against a grid area (a grid item, or an absolutely
+ * positioned child of a positioned grid container), or against a content box that one of them sets.
+ */
+function unknownPadding(root: LayoutBox): ReadonlySet<string> {
+  const out = new Set<string>();
+  const hasPercentPadding = (b: LayoutNode): boolean => [b.style.paddingTop, b.style.paddingRight, b.style.paddingBottom, b.style.paddingLeft].some(mayHavePercent);
+  const walk = (b: LayoutNode, basisKnown: boolean): void => {
+    const known = basisKnown || !hasPercentPadding(b);
+    if (!known) out.add(b.id);
+    if (b.kind === 'replaced') return;
+    const grid = b.style.display === 'grid';
+    for (const k of b.children) {
+      if (!isNode(k)) continue;
+      walk(k, outOfFlow(k) ? !(grid && b.style.position !== 'static') : known && !grid);
+    }
+  };
+  walk(root, true);
+  return out;
 }
 
-function propagated(n: LayoutNode): void {
+/** overflowOf, without the scroll container's own flow (flow below). */
+function overflowOf(b: LayoutNode, unknown: ReadonlySet<string>): void {
+  if (b.kind === 'replaced') return;
+  if (unknown.has(b.id)) throw new Undecided(b.id, 'a percentage padding against a grid area: its basis is not decided here');
+  if (b.style.display === 'grid') throw new Undecided(b.id, 'a grid container: its scrollable overflow (with its grid area) is not decided here');
+  lineLevel(b);
+  for (const k of b.children) if (isNode(k) && !outOfFlow(k)) propagated(k, unknown);
+  for (const k of oofsOf(b)) propagated(k, unknown);
+}
+
+function propagated(n: LayoutNode, unknown: ReadonlySet<string>): void {
   if (n.kind === 'replaced' || scrollContainer(n) || (n.style.overflowX === 'clip' && n.style.overflowY === 'clip')) return;
-  overflowOf(n);
+  overflowOf(n, unknown);
 }
 
 const fcRoot = (b: LayoutNode): boolean => b.kind === 'replaced' || b.style.display !== 'block' || scrollContainer(b);
@@ -84,10 +106,11 @@ function flow(b: LayoutBox): void {
 /** Every auto or scroll container of a lowered tree whose scroll range the engine may refuse, in preorder, with the first reason. */
 export function undecidedScrollContainers(root: LayoutBox): ScrollUndecided[] {
   const out: ScrollUndecided[] = [];
+  const unknown = unknownPadding(root);
   const walk = (b: LayoutNode): void => {
     if (userScrolls(b) && b.kind === 'box') {
       try {
-        overflowOf(b);
+        overflowOf(b, unknown);
         if (b.children.some((k) => isNode(k) && !outOfFlow(k))) flow(b);
       } catch (e) {
         if (!(e instanceof Undecided)) throw e;

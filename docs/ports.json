@@ -1093,7 +1093,9 @@
         { "lines": "587-743", "symbol": "ComputeGridGeometry", "source": "located" },
         { "lines": "871-1101", "symbol": "GridLayoutAlgorithm::ContributionSizeForGridItem", "source": "located" },
         { "lines": "1551-1617", "symbol": "CompleteTrackSizingAlgorithm", "source": "located" },
-        { "lines": "2178-2353", "symbol": "PlaceGridItems", "source": "located" }
+        { "lines": "2178-2353", "symbol": "PlaceGridItems", "source": "located" },
+        { "lines": "2967-3040", "symbol": "GridLayoutAlgorithm::PlaceOutOfFlowItems", "source": "located" },
+        { "lines": "3102-3127", "symbol": "GridLayoutAlgorithm::ComputeOutOfFlowItemContainingRect", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "port" }
@@ -1108,9 +1110,17 @@
       "fileSha256": "0b031dc4989c610e4a0e9487289beee03c19a064a41d77f47539a259dc8a39c7",
       "headerSha256": "f0becbc6a99a89f1949bdbdac5e4f383c5c94c1c7a235ff46564eb41cd5c0ae7",
       "ranges": [
-        { "lines": "68-183", "symbol": "CalculateAutomaticRepetitions", "source": "located" }
+        { "lines": "68-183", "symbol": "CalculateAutomaticRepetitions", "source": "located" },
+        { "lines": "191-218", "symbol": "ComputeTrackSizesInRange", "source": "located" },
+        { "lines": "222-255", "symbol": "ComputeTrackOffsetInRange", "source": "located" },
+        { "lines": "258-293", "symbol": "TrackOffset", "source": "located" },
+        { "lines": "295-321", "symbol": "TrackStartOffset", "source": "located" },
+        { "lines": "323-344", "symbol": "TrackEndOffset", "source": "located" },
+        { "lines": "348-405", "symbol": "ComputeOutOfFlowOffsetAndSize", "source": "located" },
+        { "lines": "407-445", "symbol": "AlignmentOffsetForOutOfFlow", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/grid.ts", "symbol": "autoRepetitions", "use": "port" }
       ]
     },
@@ -1148,7 +1158,8 @@
       "ranges": [
         { "lines": "52-115", "symbol": "GridPlacement::RunAutoPlacementAlgorithm", "source": "located" },
         { "lines": "318-335", "symbol": "PlaceGridItemAtCursor", "source": "located" },
-        { "lines": "435-528", "symbol": "AutoPlacementCursor::MoveCursorToFitGridSpan", "source": "located" }
+        { "lines": "435-528", "symbol": "AutoPlacementCursor::MoveCursorToFitGridSpan", "source": "located" },
+        { "lines": "648-686", "symbol": "GridPlacement::ResolveOutOfFlowItemGridLines", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/grid.ts", "symbol": null, "use": "port" }
