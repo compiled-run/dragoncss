@@ -1,0 +1,16 @@
+{
+  "case": "text-spacing-lato",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"liga:text0","data":"office affine waffle fjord flight","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"liga-on:text0","data":"office affine waffle fjord flight","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"kern:text0","data":"AVATAR Wave To Ty Yo","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"neg:text0","data":"The quick brown fox jumps over the lazy dog","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[25]},
+    {"id":"wrap:text0","data":"Keep these words together while the spaced type wraps","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],"blank":[16,35]},
+    {"id":"sans:text0","data":"Waves and wind over the quiet harbour at night","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2],"blank":[19,40]},
+    {"id":"mixed:text0","data":"Plain words ","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"mixed:text1","data":" then plain","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[0]},
+    {"id":"spaced:text0","data":"spaced office","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

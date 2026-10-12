@@ -119,7 +119,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -231,7 +232,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -343,7 +345,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -455,7 +458,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -567,7 +571,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -679,7 +684,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -791,7 +797,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -933,7 +940,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1075,7 +1083,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1237,7 +1246,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1349,7 +1359,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1461,7 +1472,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1573,7 +1585,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1685,7 +1698,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1797,7 +1811,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     },
     {
@@ -1909,7 +1924,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "letter-spacing": "normal"
       }
     }
   ]

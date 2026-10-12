@@ -406,17 +406,7 @@ public func paintBlur_scanLine(_ plan: PlanGauss, _ src: JsArray<Double>, _ faul
   }
   // ts: packages/layout/src/paint-blur.ts:272
   do {
-    let _a143 = b0.cells
-    var _i143 = 0
-    while _i143 < _a143.items.count {
-      let c: PaintBlur_Cell = _a143.items[_i143]
-      _i143 += 1
-      c.v = 0.0
-    }
-  }
-  // ts: packages/layout/src/paint-blur.ts:273
-  do {
-    let _a144 = b1.cells
+    let _a144 = b0.cells
     var _i144 = 0
     while _i144 < _a144.items.count {
       let c: PaintBlur_Cell = _a144.items[_i144]
@@ -424,13 +414,23 @@ public func paintBlur_scanLine(_ plan: PlanGauss, _ src: JsArray<Double>, _ faul
       c.v = 0.0
     }
   }
-  // ts: packages/layout/src/paint-blur.ts:274
+  // ts: packages/layout/src/paint-blur.ts:273
   do {
-    let _a145 = b2.cells
+    let _a145 = b1.cells
     var _i145 = 0
     while _i145 < _a145.items.count {
       let c: PaintBlur_Cell = _a145.items[_i145]
       _i145 += 1
+      c.v = 0.0
+    }
+  }
+  // ts: packages/layout/src/paint-blur.ts:274
+  do {
+    let _a146 = b2.cells
+    var _i146 = 0
+    while _i146 < _a146.items.count {
+      let c: PaintBlur_Cell = _a146.items[_i146]
+      _i146 += 1
       c.v = 0.0
     }
   }
@@ -596,11 +596,11 @@ public func paintBlur_gaussFactors(_ sigma: Double) throws -> JsArray<Double> {
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/paint-blur.ts:392
   do {
-    let _a146 = try paintBlur_gaussFilter(sigma)
-    var _i146 = 0
-    while _i146 < _a146.items.count {
-      let d: Double = _a146.items[_i146]
-      _i146 += 1
+    let _a147 = try paintBlur_gaussFilter(sigma)
+    var _i147 = 0
+    while _i147 < _a147.items.count {
+      let d: Double = _a147.items[_i147]
+      _i147 += 1
       _ = try jsPush(out, paintBlur_wrap16(rtEasing_roundOf((d * paintBlur_TWO_POW_16))))
     }
   }
@@ -953,7 +953,7 @@ public func paintBlur_rectShadowCoverage(_ rect: PaintBlur_FRect, _ sigma: Doubl
   }
   // ts: packages/layout/src/paint-blur.ts:617
   if try paintBlur_hasNoBlur(sigma) {
-    throw JsError(message: jsConcat(S.s753, jsNumberToString(sigma), S.s29))
+    throw JsError(message: jsConcat(S.s760, jsNumberToString(sigma), S.s31))
   }
   let out: TaintedMask = try paintBlur_blurred(paintBlur_rectMask(rect, paintBlur_maskBounds(rect, clip, paintBlur_boxBlurMargin(sigma))), sigma, faults)
   return ShadowCoverage(((sigma < 2.0) ? S.s_small_blur : S.s_triple_box), out.mask, out.tainted)
