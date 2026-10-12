@@ -6,8 +6,10 @@ import { objectBoundingBox } from '@dragon/layout';
 import { parsePathData, parseSvgLength, parseViewBox } from '../src/analysis/elements/svg-path.ts';
 import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints } from '../src/analysis/elements/svg.ts';
 import { createProjectWith, NO_FAULTS, svgScenes } from '../src/internal.ts';
-import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/types.ts';
+import type { ComponentDefinition, ElementNode, Origin, SourceRef, TreeNode } from '../src/types.ts';
 import { div, inputFor, staticClass, DOC } from './helpers.ts';
+
+const _ref = (o: Origin): SourceRef => (o as Extract<Origin, { kind: 'authored' }>).span.source;
 
 const bbox = (d: string): number[] => {
   const p = parsePathData(d);
@@ -129,6 +131,48 @@ describe('the svg model in a compile', () => {
     expect(e).toContain('DRAGON_UNSUPPORTED_ELEMENT * text inside an <svg> is not supported: SVG text waits for the SVG structure package SVG-b');
     expect(e.some((m) => m.startsWith('DRAGON_UNSUPPORTED_ELEMENT * <rect> q inside an SVG shape is not supported'))).toBe(true);
     expect(e.some((m) => m.startsWith('DRAGON_UNSUPPORTED_ELEMENT * <svg> n inside an <svg> is not supported'))).toBe(true);
+  });
+  // The content model is the expanded tree's: a call's root sits where the call sits, a projection's children where the projection sits.
+  const withComponents = (input: ReturnType<typeof svgTree>, defs: (o: Origin) => ComponentDefinition[]) => {
+    const tree = input.tree as NonNullable<typeof input.tree>;
+    return { ...input, tree: { ...tree, components: [...tree.components, ...defs(tree.components[0]?.origin as Origin)] } };
+  };
+  const def = (o: Origin, id: string, root: TreeNode[], slots: string[] = []): ComponentDefinition => ({ id, module: 'm', params: [], states: [], slots: slots.map((name) => ({ name, origin: o })), root, origin: o });
+  const call = (o: Origin, id: string, component: string, slots: [string, TreeNode[]][] = []): TreeNode => ({ kind: 'call', id, component, args: [], aliases: [], slots: slots.map(([name, children]) => ({ name, children, origin: o })), origin: o });
+  const icon = (o: Origin): ComponentDefinition => def(o, 'Icon', [{ kind: 'element', id: 'i', tag: 'svg', classes: [], attributes: [['width', '24'], ['height', '24']].map(([name, value]) => ({ name: name as string, value: [{ when: { kind: 'true' as const }, value: value as string }], origin: o })), children: [{ kind: 'projection', id: 'g-slot', slot: 'g', origin: o }], origin: o }], ['g']);
+  const content = (c: ReturnType<typeof compile>) => errors(c).filter((m) => / (inside|outside) an /.test(m));
+
+  it('refuses a component called inside an <svg> whose root is a <div>, and the text in it', () => {
+    const input = withComponents(svgTree('', (_r, o) => [call(o, 'card', 'Card')]), (o) => [def(o, 'Card', [div(_ref(o), 'd', [], [{ kind: 'text', id: 't', text: 'text', origin: o }])])]);
+    expect(content(compile(input, true))).toEqual(['DRAGON_UNSUPPORTED_ELEMENT * <div> d inside an <svg> is not supported: an <svg> draws only <path>, <rect> and <circle> children until the SVG structure package SVG-b', 'DRAGON_UNSUPPORTED_ELEMENT * text inside an <svg> is not supported: SVG text waits for the SVG structure package SVG-b']);
+  });
+  it('refuses a <div> a caller projects into an <svg> slot', () => {
+    const input = withComponents(inputFor('body { margin: 0 }', (r) => {
+      const o: Origin = { kind: 'authored', span: { source: r, start: 0, end: 0 } };
+      return [call(o, 'icon', 'Icon', [['g', [div(r, 'd', [])]]])];
+    }), (o) => [icon(o)]);
+    expect(content(compile(input, true))).toEqual(['DRAGON_UNSUPPORTED_ELEMENT * <div> d inside an <svg> is not supported: an <svg> draws only <path>, <rect> and <circle> children until the SVG structure package SVG-b']);
+  });
+  it('accepts a shape-rooted component called inside an <svg> and a shape projected into an <svg> slot, and refuses each outside one', () => {
+    const inside = withComponents(inputFor('body { margin: 0 } svg { display: block }', (r) => {
+      const o: Origin = { kind: 'authored', span: { source: r, start: 0, end: 0 } };
+      return [call(o, 'icon', 'Icon', [['g', [shape(o, 'p', 'path', [['d', 'M2 2 H20 V20 Z']]), call(o, 'dot', 'Dot')]]])];
+    }), (o) => [icon(o), def(o, 'Dot', [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '4']])])]);
+    const c = compile(inside, true);
+    expect(errors(c)).toEqual([]);
+    expect(c.targets.web).not.toBe('blocked');
+    const outside = withComponents(inputFor('body { margin: 0 }', (r) => {
+      const o: Origin = { kind: 'authored', span: { source: r, start: 0, end: 0 } };
+      return [call(o, 'dot', 'Dot')];
+    }), (o) => [def(o, 'Dot', [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '4']])])]);
+    expect(content(compile(outside, true))).toEqual(['DRAGON_UNSUPPORTED_ELEMENT * <circle> c outside an <svg> is not supported: Chrome draws an SVG shape only inside an <svg>']);
+  });
+  it('checks a component in each context it is called in, and not at all when no call reaches it', () => {
+    const input = withComponents(inputFor('body { margin: 0 } svg { display: block }', (r) => {
+      const o: Origin = { kind: 'authored', span: { source: r, start: 0, end: 0 } };
+      return [call(o, 'icon', 'Icon', [['g', [call(o, 'in', 'Dot')]]]), call(o, 'out', 'Dot')];
+    }), (o) => [icon(o), def(o, 'Dot', [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '4']])]), def(o, 'Unused', [div(_ref(o), 'u', [], [shape(o, 'x', 'rect', [])])])]);
+    expect(content(compile(input, true))).toEqual(['DRAGON_UNSUPPORTED_ELEMENT * <circle> c outside an <svg> is not supported: Chrome draws an SVG shape only inside an <svg>']);
   });
   it('checks a paint attribute against the support profile as the same value in CSS: the same rows decide both', () => {
     const enforced = (css: string, attrs: [string, string][]) =>
