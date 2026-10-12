@@ -84,11 +84,7 @@ const effectiveText = (m: Matches): string => JSON.stringify([m.hoverMedia ? m.h
  * turned into touches (setEmitTouchEventsForMouse off). A forced step clears the real pointer and focus first, so Chrome forces
  * exactly the one element (RT-6(a)), and forcing none restores them; the restored effective matches must equal those before.
  */
-export const DIAG: { t: number; d: number; e: string }[] = [];
-let DIAG_N = 0;
 class TraceDriver {
-  readonly id = DIAG_N++;
-  private log(e: string): void { DIAG.push({ t: Date.now(), d: this.id, e }); }
   private context: TraceContext = 'mouse';
   private mouse: { x: number; y: number } | null = null;
   private pressAt: { x: number; y: number } | null = null;
@@ -134,9 +130,7 @@ class TraceDriver {
 
   private async setContext(c: TraceContext): Promise<void> {
     if (c === this.context) return;
-    this.log(`send touch ${c}`);
     await this.cdp.send('Emulation.setTouchEmulationEnabled', c === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
-    this.log(`ack touch ${c}`);
     this.context = c;
     await frames(this.page);
   }
@@ -172,7 +166,6 @@ class TraceDriver {
 
   /** Runs one step and returns Chrome's matches after it; a context whose hover media disagrees with it fails closed (R2). */
   async step(s: InteractionStep): Promise<{ context: TraceContext; matches: Matches }> {
-    this.log(`step ${s.kind}`);
     if (MOUSE_KINDS.has(s.kind)) await this.setContext('mouse');
     if (isTouch(s.kind)) await this.setContext('touch');
     switch (s.kind) {
@@ -231,24 +224,6 @@ class TraceDriver {
     if (isTouch(s.kind)) await this.page.waitForTimeout(TAP_SETTLE_MS);
     await frames(this.page);
     const m = await this.matches();
-    this.log(`read hover media ${String(m.hoverMedia)} in ${this.context}`);
-    if ((this.context === 'touch') === m.hoverMedia) {
-      const t0 = Date.now();
-      const flips: string[] = [];
-      let last = m.hoverMedia;
-      while (Date.now() - t0 < 3000) {
-        const v = await this.page.evaluate(() => matchMedia('(hover: hover)').matches);
-        if (v !== last) { flips.push(`${Date.now() - t0}ms->${String(v)}`); last = v; }
-        await new Promise((r) => setTimeout(r, 10));
-      }
-      await this.cdp.send('Emulation.setTouchEmulationEnabled', this.context === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
-      const resent = await this.page.evaluate(() => matchMedia('(hover: hover)').matches);
-      const hv: [number, string, boolean][] = [];
-      const now = Date.now();
-      const mine = DIAG.filter((x) => x.d === this.id).slice(-14).map((x) => `${x.t - now}:${x.e}`).join(' | ');
-      const others = DIAG.filter((x) => x.d !== this.id && now - x.t < 4000 && x.e.startsWith('send touch')).map((x) => `${x.t - now}:d${x.d} ${x.e}`).join(' | ');
-      throw new Error(`DIAG d${this.id} ${s.kind} ctx ${this.context} media ${String(m.hoverMedia)}; polled flips [${flips.join(', ')}]; resent -> ${String(resent)}; page changes [${hv.map(([t, k, v]) => `${t - now}:${k} ${String(v)}`).join(', ')}]; mine [${mine}]; others' toggles [${others}]`);
-    }
     if (this.context === 'touch' && m.hoverMedia) throw new Error(`${s.kind}: (hover: hover) matches under touch emulation`);
     if (this.context === 'mouse' && !m.hoverMedia) throw new Error(`${s.kind}: (hover: hover) does not match without touch emulation`);
     return { context: this.context, matches: m };
