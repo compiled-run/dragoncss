@@ -99,17 +99,24 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
     const placed: readonly PlacedLine[] = placeLines(ctx, p, contentWidth(pId));
     const pieces = boxes.filter((b) => isLine(b) && b.parent === r.id);
     const own: EngineLine[] = [];
+    // A leaf of preserved text (TXT2-c) can have several pieces on one line (its text, hanging spaces, line feeds): one line here,
+    // from its first piece's start to its last piece's end, at its first piece's rect.
+    let used = 0;
     for (const line of placed) {
-      const mine = line.pieces.find((q) => q.leaf === li);
-      if (mine === undefined) continue;
-      const piece = pieces[own.length];
-      if (piece === undefined) throw new Error(`${r.id}: the engine's breaks give more lines than its layout (${pieces.length})`);
+      const mine = line.pieces.filter((q) => q.leaf === li);
+      const first = mine[0];
+      const last = mine[mine.length - 1];
+      if (first === undefined || last === undefined) continue;
+      const piece = pieces[used];
+      if (piece === undefined || used + mine.length > pieces.length) throw new Error(`${r.id}: the engine's breaks give more lines than its layout (${pieces.length})`);
+      used += mine.length;
       const a = abs.get(piece.id);
       const e = snapped.get(piece.id);
       if (a === undefined || e === undefined) throw new Error(`no absolute rect for ${piece.id}`);
-      own.push({ start: utf16(mine.start), end: utf16(mine.end), cps: scalars.slice(mine.start, mine.visibleEnd).map((ch) => ch.codePointAt(0) as number), rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom } });
+      const cps = mine.flatMap((q) => scalars.slice(q.start, q.visibleEnd).map((ch) => ch.codePointAt(0) as number));
+      own.push({ start: utf16(first.start), end: utf16(last.end), cps, rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom } });
     }
-    if (own.length !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${own.length} lines, its layout ${pieces.length}`);
+    if (used !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${used} line pieces, its layout ${pieces.length}`);
     out.push({ id: r.id, container: pId, font: leaf.font, lines: own });
   }
   return out;
@@ -230,9 +237,18 @@ const WHITE = /[ \t\n\r\f]/;
  */
 export function alignUnits(dom: string, engine: string): number[] | null {
   const map = new Array<number>(dom.length).fill(-1);
+  // Preserved text (TXT2-c, preserve and break-spaces) reaches the engine as authored.
+  if (dom === engine) return map.map((_, i) => i);
   let d = 0;
   for (let e = 0; e < engine.length; e++) {
     const ch = engine[e] as string;
+    if (ch === '\n') {
+      // preserve-breaks keeps each U+000A and removes the white space around it.
+      while (d < dom.length && WHITE.test(dom[d] as string) && dom[d] !== '\n') d++;
+      if (d >= dom.length || dom[d] !== '\n') return null;
+      map[d++] = e;
+      continue;
+    }
     if (ch === ' ') {
       while (d < dom.length && !WHITE.test(dom[d] as string)) {
         if (dom[d] !== engine[e]) return null;
@@ -255,8 +271,8 @@ export function alignUnits(dom: string, engine: string): number[] | null {
 /**
  * Chrome's lines in engine offsets. A mapped unit belongs to the line of its first rect; a unit without a rect continues the line
  * of the unit before it. A line starts at its smallest engine offset whose unit is not a white-space unit with a zero-width rect (a
- * hanging or collapsed space never starts a line: the engine starts a line at its first shown character; U+200B is not white space)
- * and ends after its largest engine offset.
+ * hanging or collapsed space never starts a line: the engine starts a line at its first shown character; U+200B is not white space,
+ * and a preserved U+000A starts its line) and ends after its largest engine offset.
  */
 export function chromeLines(t: ChromeBreakText, engineText: string): (readonly [number, number])[] | null {
   const map = alignUnits(t.data, engineText);
@@ -270,7 +286,9 @@ export function chromeLines(t: ChromeBreakText, engineText: string): (readonly [
     const e = map[d] as number;
     if (e < 0 || current < 0) return;
     ends[current] = Math.max(ends[current] ?? e + 1, e + 1);
-    if (line >= 0 && !(blank.has(d) && WHITE.test(t.data[d] as string))) starts[current] = Math.min(starts[current] ?? e, e);
+    // A preserved U+000A (TXT2-c) has a zero-width rect and still starts the line it alone is on.
+    const shown = !(blank.has(d) && WHITE.test(t.data[d] as string)) || engineText[e] === '\n';
+    if (line >= 0 && shown) starts[current] = Math.min(starts[current] ?? e, e);
   });
   const out: (readonly [number, number])[] = [];
   for (let j = 0; j < t.lines; j++) {
@@ -428,8 +446,9 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
     let placed = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
     var lines: [String] = []
     for line in placed {
-      guard let piece = line.pieces.items.first(where: { Int($0.leaf) == li }) else { continue }
-      lines.append("[\(utf16(Int(piece.start))),\(utf16(Int(piece.end)))]")
+      let mine = line.pieces.items.filter { Int($0.leaf) == li }
+      guard let first = mine.first, let last = mine.last else { continue }
+      lines.append("[\(utf16(Int(first.start))),\(utf16(Int(last.end)))]")
     }
     out.append("\(id)\t[\(lines.joined(separator: ","))]")
   }
@@ -525,8 +544,9 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
     val placed = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
     val lines = ArrayList<String>()
     for (line in placed) {
-      val piece = line.pieces.firstOrNull { it.leaf.toInt() == li } ?: continue
-      lines.add("[" + utf16(piece.start.toInt()) + "," + utf16(piece.end.toInt()) + "]")
+      val mine = line.pieces.filter { it.leaf.toInt() == li }
+      if (mine.isEmpty()) continue
+      lines.add("[" + utf16(mine.first().start.toInt()) + "," + utf16(mine.last().end.toInt()) + "]")
     }
     out.add(id + "\t[" + lines.joinToString(",") + "]")
   }

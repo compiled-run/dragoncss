@@ -964,6 +964,7 @@ const FAULT_KEYS: readonly string[] = [
   'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
   'metricRoundingSwapped', 'latinCheckSkipped',
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding',
+  'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -1021,6 +1022,9 @@ function decodeFaults(v: JsonValue): EngineFaults {
     orderUnclamped: b('orderUnclamped'),
     gutterReserved: b('gutterReserved'),
     overflowIgnoresPadding: b('overflowIgnoresPadding'),
+    preservedSpaceCollapsed: b('preservedSpaceCollapsed'),
+    trailingPreWrapNotHanging: b('trailingPreWrapNotHanging'),
+    breakSpacesHanging: b('breakSpacesHanging'),
   };
 }
 

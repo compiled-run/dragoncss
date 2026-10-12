@@ -347,7 +347,7 @@ function decideLines(st: ShapedText, text: string, font: string, size: number, w
   const shaped = st.item(text, font, size);
   if (!shaped.ok) return shaped.reason;
   const items: BreakItem[] = [{ kind: 'text', item: shaped.item, result: shaped.result, opportunities: [...opps].sort((x, y) => x - y), atEnd: true, offset: 0 }];
-  const r = breakItemLines(items, fromRaw(widthLu), true, false, true);
+  const r = breakItemLines(items, fromRaw(widthLu), true, false, true, false);
   if (!r.ok) return r.reason;
   let start = 0;
   return r.lines.map((l) => {

@@ -131,6 +131,12 @@ export type EngineFaults = {
   readonly gutterReserved: boolean;
   /** A scroll container's scrollable overflow leaves out its end padding after the in-flow content (overflow.ts). */
   readonly overflowIgnoresPadding: boolean;
+  /** TXT2-c: a run of preserved spaces advances as one space. */
+  readonly preservedSpaceCollapsed: boolean;
+  /** TXT2-c: pre-wrap spaces before a soft wrap opportunity count toward the fit instead of hanging. */
+  readonly trailingPreWrapNotHanging: boolean;
+  /** TXT2-c: break-spaces spaces before a soft wrap opportunity hang, as pre-wrap spaces do. */
+  readonly breakSpacesHanging: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -185,6 +191,9 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   orderUnclamped: false,
   gutterReserved: false,
   overflowIgnoresPadding: false,
+  preservedSpaceCollapsed: false,
+  trailingPreWrapNotHanging: false,
+  breakSpacesHanging: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */

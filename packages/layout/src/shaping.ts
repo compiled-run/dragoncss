@@ -1089,7 +1089,7 @@ export type BrokenLine = {
 
 export type BrokenLines = { readonly ok: true; readonly lines: readonly BrokenLine[] } | { readonly ok: false; readonly reason: string };
 
-type MutableResult = { index: number; start: number; end: number; width: LU; hyphen: LU; view: LineView | null; canBreakAfter: boolean; mayBreakInside: boolean };
+type MutableResult = { index: number; start: number; end: number; width: LU; hyphen: LU; view: LineView | null; canBreakAfter: boolean; mayBreakInside: boolean; hangs: boolean };
 
 type BreakState = 'continue' | 'trailing' | 'overflow' | 'done';
 
@@ -1109,6 +1109,8 @@ type LineBuild = {
   readonly accurateEnd: boolean;
   readonly afterForced: boolean;
   readonly lineStart: number;
+  /** white-space-collapse: preserve (TXT2-c): spaces are not collapsible, so none is skipped at a line start or removed at its end. */
+  readonly preserve: boolean;
   results: MutableResult[];
   position: number;
   state: BreakState;
@@ -1138,7 +1140,7 @@ function itemBreakable(it: BreakItem, offset: number): boolean {
 }
 
 function emptyResult(index: number, offset: number, canBreakAfter: boolean): MutableResult {
-  return { index, start: offset, end: offset, width: ZERO, hyphen: ZERO, view: null, canBreakAfter, mayBreakInside: false };
+  return { index, start: offset, end: offset, width: ZERO, hyphen: ZERO, view: null, canBreakAfter, mayBreakInside: false, hangs: false };
 }
 
 function recomputePosition(b: LineBuild): void {
@@ -1208,11 +1210,36 @@ function breakText(b: LineBuild, r: MutableResult, availIn: number, availWithHyp
   }
 }
 
-/** LineBreaker::HandleTrailingSpaces with collapsible white space: one space hangs, then the line is done unless the item ends. */
+/**
+ * LineBreaker::HandleTrailingSpaces. Collapsible white space: one space hangs, then the line is done unless the item ends. Preserved
+ * (pre-wrap): the whole run of spaces is a result of its own that hangs (has_only_pre_wrap_trailing_spaces), shaped as a view of the item.
+ */
 function handleTrailingSpaces(b: LineBuild): void {
   const it = b.items[b.curItem] as BreakItem;
   if (!b.wrap || textUnit(it, b.curOffset) !== 0x20) {
     b.state = 'done';
+    return;
+  }
+  if (b.preserve && it.kind === 'text') {
+    let end = b.curOffset;
+    while (end < itemLength(it) && textUnit(it, end) === 0x20) end++;
+    const last = b.results[b.results.length - 1];
+    if (last !== undefined) last.canBreakAfter = true;
+    const r = emptyResult(b.curItem, b.curOffset, true);
+    r.end = end;
+    r.view = { segments: [{ result: it.result, start: b.curOffset, end }] };
+    r.width = viewSnappedWidth(it.item, r.view);
+    r.hangs = true;
+    b.results.push(r);
+    b.position = b.position + r.width;
+    b.curOffset = end;
+    if (end < itemLength(it)) {
+      b.state = 'done';
+      return;
+    }
+    b.curItem++;
+    b.curOffset = 0;
+    b.state = 'trailing';
     return;
   }
   b.curOffset++;
@@ -1296,7 +1323,7 @@ function handleOverflow(b: LineBuild): void {
       const itemAvail = -toRewind;
       const minAvail = r.width - 1;
       if (minAvail <= 0) throw new BreakFailure('a zero-width text result overflows (BreakTextAtPreviousBreakOpportunity)');
-      const before: MutableResult = { index: r.index, start: r.start, end: r.end, width: r.width, hyphen: r.hyphen, view: r.view, canBreakAfter: r.canBreakAfter, mayBreakInside: r.mayBreakInside };
+      const before: MutableResult = { index: r.index, start: r.start, end: r.end, width: r.width, hyphen: r.hyphen, view: r.view, canBreakAfter: r.canBreakAfter, mayBreakInside: r.mayBreakInside, hangs: r.hangs };
       breakText(b, r, itemAvail < minAvail ? itemAvail : minAvail, itemAvail);
       if (r.canBreakAfter && r.width <= itemAvail && r.end < before.end) {
         if (i + 1 === b.results.length) {
@@ -1334,7 +1361,7 @@ function handleText(b: LineBuild): void {
     handleTrailingSpaces(b);
     return;
   }
-  if (b.leading && textUnit(it, b.curOffset) === 0x20) {
+  if (b.leading && !b.preserve && textUnit(it, b.curOffset) === 0x20) {
     b.curOffset++;
     if (b.curOffset >= itemLength(it)) {
       b.results.push(emptyResult(b.curItem, b.curOffset, false));
@@ -1436,7 +1463,7 @@ function breakOneLine(b: LineBuild): BrokenLine {
   }
   let hang = -1;
   let hangWidth = ZERO;
-  for (let i = b.results.length - 1; i >= 0; i--) {
+  for (let i = b.results.length - 1; i >= 0 && !b.preserve; i--) {
     const r = b.results[i] as MutableResult;
     const it = b.items[r.index] as BreakItem;
     if (it.kind !== 'text' || r.end === r.start) continue;
@@ -1447,7 +1474,7 @@ function breakOneLine(b: LineBuild): BrokenLine {
     break;
   }
   const visibleWidths: LU[] = [];
-  for (let i = 0; i < b.results.length; i++) visibleWidths.push(i === hang ? hangWidth : (b.results[i] as MutableResult).width);
+  for (let i = 0; i < b.results.length; i++) visibleWidths.push((b.results[i] as MutableResult).hangs ? ZERO : i === hang ? hangWidth : (b.results[i] as MutableResult).width);
   const results: BreakResult[] = [];
   for (const r of b.results) results.push({ index: r.index, start: r.start, end: r.end, width: r.width, hyphen: r.hyphen, view: r.view, canBreakAfter: r.canBreakAfter, mayBreakInside: r.mayBreakInside });
   return { results, visibleWidths, nextItem: b.curItem, nextOffset: b.curOffset, forced: b.forced };
@@ -1456,9 +1483,10 @@ function breakOneLine(b: LineBuild): BrokenLine {
 /**
  * LineBreaker::NextLine over the items with an available width (no floats, no text-indent). wrap is the context's
  * text-wrap-mode; accurateEnd is LineInfo::NeedsAccurateEndPosition (text-align other than the start side), which keeps
- * ShapeLine reshaping the end of a line that breaks at a space. epsilon is LayoutUnit::AddEpsilon (AvailableWidthToFit).
+ * ShapeLine reshaping the end of a line that breaks at a space. epsilon is LayoutUnit::AddEpsilon (AvailableWidthToFit). preserve:
+ * the text's white-space-collapse is preserve, so its spaces are not collapsible (pre, pre-wrap).
  */
-export function breakItemLines(items: readonly BreakItem[], available: LU, wrap: boolean, accurateEnd: boolean, epsilon: boolean): BrokenLines {
+export function breakItemLines(items: readonly BreakItem[], available: LU, wrap: boolean, accurateEnd: boolean, epsilon: boolean, preserve: boolean): BrokenLines {
   const toFit: number = epsilon ? available + 1 : available;
   const lines: BrokenLine[] = [];
   let curItem = 0;
@@ -1467,7 +1495,7 @@ export function breakItemLines(items: readonly BreakItem[], available: LU, wrap:
   try {
     while (curItem < items.length) {
       const b: LineBuild = {
-        items, toFit, wrap, accurateEnd, afterForced, lineStart: lineOffsetOf(items, curItem, curOffset),
+        items, toFit, wrap, accurateEnd, afterForced, lineStart: lineOffsetOf(items, curItem, curOffset), preserve,
         results: [], position: 0, state: 'continue', leading: true, forced: false, curItem, curOffset,
       };
       const line = breakOneLine(b);
@@ -1591,7 +1619,28 @@ export type PieceGlyphs = { readonly ok: true; readonly glyphs: readonly number[
  * The glyphs of code points [start, end) of text as the measurer shapes it (TextMeasurer.shaped): the whole item's shaping, not
  * ShapeLine's reshaping at line edges, and no glyph x or y offsets. Both are exact for Ahem; the real-face slice adds them.
  */
-export function pieceGlyphs(measurer: TextMeasurer, text: string, font: TextFont, start: number, end: number): PieceGlyphs {
+export function pieceGlyphs(measurer: TextMeasurer, textIn: string, font: TextFont, startIn: number, endIn: number): PieceGlyphs {
+  if (endIn <= startIn) return { ok: true, glyphs: [], xs: [] };
+  // A preserved U+000A (TXT2-c) ends a text item: the piece is shaped in the text between the line feeds that holds it.
+  let text = textIn;
+  let start = startIn;
+  let end = endIn;
+  if (textIn.includes('\n')) {
+    let k = 0;
+    let segStart = 0;
+    let seg = '';
+    for (const ch of textIn) {
+      if (ch === '\n') {
+        if (k >= endIn) break;
+        segStart = k + 1;
+        seg = '';
+      } else seg += ch;
+      k++;
+    }
+    text = seg;
+    start = startIn - segStart;
+    end = endIn - segStart;
+  }
   const s = measurer.shaped(text, font);
   if (!s.ok) return { ok: false, reason: s.reason };
   const from = offsetOfCodePoint(s.item.units, start);

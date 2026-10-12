@@ -760,8 +760,9 @@ public final class DragonTree {
       var specs: [DragonLineSpec] = []
       var viewMetrics: (halfLeadings: [Double], ascent: Double, descent: Double)? = nil
       var firstBaselineOffset: Double? = nil
+      // Preserved text (TXT2-c) can give a leaf several pieces on one line: its text, its hanging spaces and its line feeds.
       for line in placed {
-        guard let piece = line.pieces.items.first(where: { Int($0.leaf) == li }) else { continue }
+        for piece in line.pieces.items where Int(piece.leaf) == li {
         // One font per text view: every line's ascent and descent are the view's; its content top below the line top is the line's.
         let halfLeading = (piece.top - line.top) / lu
         if let m = viewMetrics, m.ascent != piece.ascent / lu || m.descent != piece.descent / lu { fatalError("dragon: \(id): line ascent \(piece.ascent / lu) and descent \(piece.descent / lu) differ from the text view's \(m.ascent) and \(m.descent)") }
@@ -799,6 +800,7 @@ public final class DragonTree {
           }
         }
         specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: glyphs, xs: xs, xLU: xLU, widthLU: piece.width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end))))
+        }
       }
       if specs.count != pieces.count { fatalError("dragon: \(id): the engine's breaks give \(specs.count) lines, its layout \(pieces.count)") }
       textMetrics[id] = viewMetrics
@@ -1675,8 +1677,9 @@ class DragonTree(val context: Context) {
       val specs = ArrayList<DragonLineSpec>()
       var viewMetrics: DoubleArray? = null
       var firstBaselineOffset: Double? = null
-      for (line in placed) {
-        val piece = line.pieces.firstOrNull { it.leaf.toInt() == li } ?: continue
+      // Preserved text (TXT2-c) can give a leaf several pieces on one line: its text, its hanging spaces and its line feeds.
+      for (line in placed) for (piece in line.pieces) {
+        if (piece.leaf.toInt() != li) continue
         // One font per text view: every line's ascent and descent are the view's; its content top below the line top is the line's.
         val known = viewMetrics
         if (known != null && (known[0] != piece.ascent / lu || known[1] != piece.descent / lu)) throw IllegalStateException("dragon: " + id + ": line ascent " + (piece.ascent / lu) + " and descent " + (piece.descent / lu) + " differ from the text view's " + known[0] + " and " + known[1])

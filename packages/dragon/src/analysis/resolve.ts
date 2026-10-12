@@ -135,6 +135,32 @@ export function collapseInlineContext(runs: readonly (string | null)[]): (string
   return runs.map((t, run) => (t === null ? null : out.filter((c) => c.run === run).map((c) => c.ch).join('')));
 }
 
+/** The computed white-space-collapse keyword of an element's props. */
+function collapseModeOf(props: ReadonlyMap<Longhand, ResolvedValue>): string {
+  const v = (props.get('white-space-collapse') as ResolvedValue).value;
+  return v.kind === 'keyword' ? v.value : '';
+}
+
+const SEGMENT_SPACE = /[ \t]+/g;
+
+/**
+ * Phase I of one text whose white-space-collapse is not collapse (css-text-4 §4.1.1; Blink InlineItemsBuilder::AppendText): preserve
+ * and break-spaces keep the text as authored (AppendPreserveWhitespace; each U+000A is a forced break the engine reads); preserve-breaks
+ * (AppendPreserveNewline) keeps each U+000A, collapses every other white space sequence to one space, and removes the spaces on
+ * either side of each U+000A and at the text's start and end (AppendForcedBreakCollapseWhitespace). The compiler refuses tabs and
+ * other control characters in preserved text (computed-checks.ts).
+ */
+export function phaseOne(text: string, mode: string, faults: CompilerFaults): string {
+  if (mode !== 'preserve-breaks') return text;
+  const segments = text.split('\n').map((seg) => seg.replace(SEGMENT_SPACE, ' '));
+  const last = segments.length - 1;
+  return segments.map((seg, i) => {
+    let out = seg.replace(/^ /, '');
+    if (!(faults.preLineKeepsSpaceBeforeNewline && i < last)) out = out.replace(/ $/, '');
+    return out;
+  }).join('\n');
+}
+
 /** CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7). */
 const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline';
 
@@ -273,24 +299,33 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     // (CSS2 §9.2.4), so they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
     const collapsed = new Map<LinkedText, string>();
     let run: (LinkedText | null)[] = [];
+    // The white-space-collapse each text of the run takes from the element that holds it (textProps).
+    let modes: string[] = [];
     const flush = (): void => {
-      const texts = collapseInlineContext(run.map((t) => (t === null ? null : t.text)));
+      // A context holding preserved text with inline boxes or <br>s is refused (computed-checks.ts); each text takes its own phase I.
+      const texts = modes.every((m) => m === 'collapse') ? collapseInlineContext(run.map((t) => (t === null ? null : t.text))) : run.map((t, i) => (t === null ? null : phaseOne(t.text, modes[i] as string, faults)));
       run.forEach((t, i) => {
         if (t !== null) collapsed.set(t, texts[i] as string);
       });
       run = [];
+      modes = [];
     };
-    const gather = (items: readonly (ResolvedElement | LinkedText)[]): void => {
+    const gather = (items: readonly (ResolvedElement | LinkedText)[], owner: ReadonlyMap<Longhand, ResolvedValue>): void => {
       for (const kid of items) {
-        if (kid.kind === 'text') run.push(kid);
-        else if (displayOf(kid) === 'none') continue;
+        if (kid.kind === 'text') {
+          run.push(kid);
+          modes.push(collapseModeOf(owner));
+        } else if (displayOf(kid) === 'none') continue;
         else if (isInlineBox(kid)) {
-          if (kid.element.tag === 'br') run.push(null);
-          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[]);
+          if (kid.element.tag === 'br') {
+            run.push(null);
+            modes.push('collapse');
+          }
+          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
         } else flush();
       }
     };
-    gather(kids);
+    gather(kids, props);
     flush();
     const place = (owner: { children: (ResolvedElement | ResolvedText)[] }, ownerProps: ReadonlyMap<Longhand, ResolvedValue>, items: readonly (ResolvedElement | LinkedText)[]): void => {
       for (const kid of items) {

@@ -32,6 +32,7 @@ import type {
   TextAlign,
   TextLeaf,
   TextWrapMode,
+  WhiteSpaceCollapse,
 } from '@dragon/layout';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
@@ -363,16 +364,19 @@ function lowerFont(id: string, get: (p: TextLonghand) => CssValue, mode: LowerMo
   return { font: { family: face, size: fs.value, specifiedSize: { kind: 'px', value: fs.value }, absoluteSize: true }, lineHeight };
 }
 
+/** The white-space-collapse values the engine lays out (input.ts WhiteSpaceCollapse). */
+const WHITE_SPACE_COLLAPSE: readonly string[] = ['collapse', 'preserve', 'preserve-breaks', 'break-spaces'] satisfies readonly WhiteSpaceCollapse[];
+
 // goal.md principle 3: the text node carries its inherited text styles, so the lowering reads the text node and never its parent.
 function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
   const id = t.node.address;
   const get = (p: TextLonghand): CssValue => (t.props.get(p) as ResolvedValue).value;
   const { font, lineHeight } = lowerFont(id, get, mode);
   const collapse = get('white-space-collapse');
-  if (collapse.kind !== 'keyword' || collapse.value !== 'collapse') fail(id, 'white-space-collapse', collapse, 'collapse');
+  if (collapse.kind !== 'keyword' || !WHITE_SPACE_COLLAPSE.includes(collapse.value)) return fail(id, 'white-space-collapse', collapse, WHITE_SPACE_COLLAPSE.join(' | '));
   const wrap = get('text-wrap-mode');
   if (wrap.kind !== 'keyword' || (wrap.value !== 'wrap' && wrap.value !== 'nowrap')) return fail(id, 'text-wrap-mode', wrap, 'wrap | nowrap');
-  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: wrap.value as TextWrapMode };
+  return { kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: collapse.value as WhiteSpaceCollapse, textWrapMode: wrap.value as TextWrapMode };
 }
 
 /**
