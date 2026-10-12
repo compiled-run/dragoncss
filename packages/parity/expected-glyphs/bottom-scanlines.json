@@ -291,7 +291,9 @@
       "visibility-text": [7,8],
       "visibility-text-rtl": [7,8],
       "visibility-root": [2,2],
-      "visibility-root-rtl": [2,2]
+      "visibility-root-rtl": [2,2],
+      "white-space-preserve": [14,17],
+      "white-space-wrap": [14,29]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -584,7 +586,9 @@
       "visibility-text": [7,8],
       "visibility-text-rtl": [7,8],
       "visibility-root": [2,2],
-      "visibility-root-rtl": [2,2]
+      "visibility-root-rtl": [2,2],
+      "white-space-preserve": [14,17],
+      "white-space-wrap": [14,29]
     }
   },
   "android": {
@@ -879,7 +883,9 @@
       "visibility-text": [7,8],
       "visibility-text-rtl": [7,8],
       "visibility-root": [2,2],
-      "visibility-root-rtl": [2,2]
+      "visibility-root-rtl": [2,2],
+      "white-space-preserve": [14,17],
+      "white-space-wrap": [14,29]
     },
     "3": {
       "text-ahem-single-line": [10,10],
@@ -1172,7 +1178,9 @@
       "visibility-text": [7,8],
       "visibility-text-rtl": [7,8],
       "visibility-root": [2,2],
-      "visibility-root-rtl": [2,2]
+      "visibility-root-rtl": [2,2],
+      "white-space-preserve": [14,17],
+      "white-space-wrap": [14,29]
     },
     "2.625": {
       "text-ahem-single-line": [10,10],
@@ -1465,7 +1473,9 @@
       "visibility-text": [7,8],
       "visibility-text-rtl": [7,8],
       "visibility-root": [2,2],
-      "visibility-root-rtl": [2,2]
+      "visibility-root-rtl": [2,2],
+      "white-space-preserve": [14,17],
+      "white-space-wrap": [15,29]
     }
   }
 }
