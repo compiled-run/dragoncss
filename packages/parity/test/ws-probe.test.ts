@@ -1,5 +1,5 @@
 // Scratch probe (removed before the PR): Chrome's line rects for white-space preserve modes.
-import { expect, it } from 'vitest';
+import { it } from 'vitest';
 import { captureFixture } from '../src/capture.ts';
 import { launchChrome } from '../src/chrome.ts';
 import { ENVIRONMENT, RTL_ENVIRONMENT } from '../src/fixtures.ts';
@@ -55,5 +55,5 @@ it('dumps Chrome rects', async () => {
   } finally {
     await browser.close();
   }
-  expect(out.join('\n')).toBe('');
+  throw new Error(`PROBE\n${out.join('\n')}`);
 }, 120_000);
