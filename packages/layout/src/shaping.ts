@@ -1621,26 +1621,22 @@ export type PieceGlyphs = { readonly ok: true; readonly glyphs: readonly number[
  */
 export function pieceGlyphs(measurer: TextMeasurer, textIn: string, font: TextFont, startIn: number, endIn: number): PieceGlyphs {
   if (endIn <= startIn) return { ok: true, glyphs: [], xs: [] };
-  // A preserved U+000A (TXT2-c) ends a text item: the piece is shaped in the text between the line feeds that holds it.
-  let text = textIn;
-  let start = startIn;
-  let end = endIn;
-  if (textIn.includes('\n')) {
-    let k = 0;
-    let segStart = 0;
-    let seg = '';
-    for (const ch of textIn) {
-      if (ch === '\n') {
-        if (k >= endIn) break;
-        segStart = k + 1;
-        seg = '';
-      } else seg += ch;
-      k++;
-    }
-    text = seg;
-    start = startIn - segStart;
-    end = endIn - segStart;
+  // A preserved U+000A (TXT2-c) ends a text item: the piece is shaped in the text between the line feeds that holds it (without
+  // one, the whole text and its offsets).
+  let k = 0;
+  let segStart = 0;
+  let seg = '';
+  for (const ch of textIn) {
+    if (ch === '\n') {
+      if (k >= endIn) break;
+      segStart = k + 1;
+      seg = '';
+    } else seg += ch;
+    k++;
   }
+  const text = seg;
+  const start = startIn - segStart;
+  const end = endIn - segStart;
   const s = measurer.shaped(text, font);
   if (!s.ok) return { ok: false, reason: s.reason };
   const from = offsetOfCodePoint(s.item.units, start);

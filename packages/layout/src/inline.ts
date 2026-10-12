@@ -384,7 +384,16 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
 /** A leaf's text split at its preserved U+000A (the whole text for collapse text): what the measurer shapes, one text item each. */
 function lineFeedSegments(t: TextLeaf): string[] {
   if (t.whiteSpaceCollapse === 'collapse') return [t.text];
-  return t.text.split('\n');
+  const out: string[] = [];
+  let seg = '';
+  for (const ch of t.text) {
+    if (ch === '\n') {
+      out.push(seg);
+      seg = '';
+    } else seg += ch;
+  }
+  out.push(seg);
+  return out;
 }
 
 /**
@@ -408,7 +417,9 @@ function checkPreservedText(ctx: Ctx, box: LayoutBox, flat: Flat, mode: WhiteSpa
 
 /** Preserved text beside an inline box or a <br> is refused before the boxes are checked, as the compiler refuses it (computed-checks.ts). */
 function checkPreservedBesideInline(box: LayoutBox, kids: readonly InlineChild[]): void {
-  if (kids.every((k) => k.kind === 'text')) return;
+  let inline = false;
+  for (const k of kids) if (k.kind !== 'text') inline = true;
+  if (!inline) return;
   const leaves = inlineLeaves(box);
   for (const t of leaves) if (t.whiteSpaceCollapse !== 'collapse') unsupported('mixed-white-space', t.id, 'css-text-4 §4.1.1', `white-space-collapse: ${t.whiteSpaceCollapse} text beside inline boxes or <br>s in ${box.id}`);
 }
@@ -832,11 +843,13 @@ function width(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
       continue;
     }
     let text = '';
+    let afterSpace = false;
     // Planted fault preservedSpaceCollapsed: a run of preserved spaces advances as one space.
     const collapseSpaces = ctx.faults.preservedSpaceCollapsed && ifc.mode !== 'collapse';
     while (i < end && (ifc.items[i] as Item).kind === 'char' && (ifc.items[i] as Item).leaf === it.leaf) {
       const ch = (ifc.items[i++] as Item).ch;
-      if (!(collapseSpaces && ch === ' ' && text.endsWith(' '))) text += ch;
+      if (!(collapseSpaces && ch === ' ' && afterSpace)) text += ch;
+      afterSpace = ch === ' ';
     }
     const t = ifc.leaves[it.leaf] as TextLeaf;
     const m = ctx.measurer.measure(text, fontOf(t.font));
@@ -877,8 +890,10 @@ function cachedWidth(ctx: Ctx, ifc: Ifc, start: number, end: number): LU {
   return total;
 }
 
+type LineFeedSegment = { readonly text: string; readonly start: number };
+
 /** The text between the preserved U+000A of a leaf that holds code point at, and the code point it starts at (the whole text for collapse text). */
-function segmentAt(t: TextLeaf, at: number): { readonly text: string; readonly start: number } {
+function segmentAt(t: TextLeaf, at: number): LineFeedSegment {
   if (t.whiteSpaceCollapse === 'collapse') return { text: t.text, start: 0 };
   let start = 0;
   let k = 0;
