@@ -1,7 +1,7 @@
 // TXT2-e: text-transform: its regen steps, extra outputs and MANUAL entries (scripts/regen.ts).
 import type { RegenFeature } from './step.ts';
 
-export const TXT2_E: RegenFeature = {
+export const TXT2E: RegenFeature = {
   steps: [],
   outputs: {},
   manual: [
