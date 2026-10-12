@@ -147,15 +147,24 @@ describe('the decoration capture against the engine (TDEC-a2)', () => {
     expect(runAll(textDecoration.NO_DECORATION_FAULTS, { propagatedIntoOutOfFlow: true }).failed.length).toBeGreaterThan(0);
   }, 600_000);
 
-  it('probes (T148J-1 ruling 3): every decorated case is ready on web and refused on ios naming TDEC-b; the Ahem auto underline is skip-ink-intercepts', () => {
+  it('probes (T148J-1 ruling 3, TDEC-b): every decorated case is ready on web; ios draws it unless the capture could find a skip-ink band crossed; the Ahem auto underline is skip-ink-intercepts', () => {
+    let drawn = 0;
     for (const { fixture, case: c } of decorationCases()) {
       const compiled = compileHtml(fixture, c.authoredHtml, c.environment.direction);
       expect(compiled.outputs.web.kind, c.id).toBe('ready');
-      expect(compiled.diagnostics.some((d) => d.target === 'ios' && d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('draws decorations from TDEC-b')), c.id).toBe(true);
+      const refused = compiled.diagnostics.filter((d) => d.target === 'ios' && d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('draws text-decoration'));
+      if (refused.length > 0) continue;
+      drawn += 1;
+      // What ios draws, the engine predicts at every capture DPR without a skip-ink refusal: the compiler's proof is never looser
+      // than the capture's per-glyph check.
+      for (const dpr of [1, 2, 3, 2.625]) expect(predictDecorations(fixture, c, dpr).kind, `${c.id} at DPR ${dpr}`).toBe('rects');
     }
+    expect(drawn).toBeGreaterThan(0);
     const probe = decorationCases().find((x) => x.case.id === PROBE);
     if (probe === undefined) throw new Error(PROBE);
     const p = predictDecorations(probe.fixture, probe.case, 1);
     expect(p).toMatchObject({ kind: 'refused', code: 'skip-ink-intercepts' });
+    const compiled = compileHtml(probe.fixture, probe.case.authoredHtml, probe.case.environment.direction);
+    expect(compiled.diagnostics.some((d) => d.target === 'ios' && d.code === 'DRAGON_UNSUPPORTED_VALUE' && /skip-ink-intercepts: .*TDEC-d/.test(d.message)), PROBE).toBe(true);
   }, 300_000);
 });

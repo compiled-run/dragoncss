@@ -1709,6 +1709,7 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/text-decoration.ts", "symbol": "AppliedDecoration", "use": "reference" },
+        { "file": "packages/dragon/src/lower/paint/text-decoration.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/test/text-decoration.test.ts", "symbol": null, "use": "reference" }
       ]
@@ -1725,6 +1726,8 @@
         { "lines": "550-557", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/emit/paint/text-decoration.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/lower/paint/text-decoration.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" }
       ]
     },
@@ -1740,6 +1743,7 @@
         { "lines": "555-563", "symbol": null, "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "underlineClearsAhem", "use": "reference" },
         { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/test/text-decoration.test.ts", "symbol": null, "use": "reference" }
       ]

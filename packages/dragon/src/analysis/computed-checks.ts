@@ -8,7 +8,7 @@ import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
 import { exactLayoutRatio, featureOf } from '../css/values.ts';
-import type { FamilyKeyContext } from '../css/values.ts';
+import type { CssValue, FamilyKeyContext } from '../css/values.ts';
 import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
@@ -567,26 +567,80 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkTransformContexts(root, targets, diagnostics, reported);
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
-  checkDecorations(root, targets, diagnostics, reported);
+  checkDecorations(root, targets, diagnostics, reported, realFaceAt);
 }
 
+/** TDEC-b: the Ahem face's ink, in em below the baseline: every Ahem glyph that has ink fills its em box, 0.2 em below the baseline. */
+const AHEM_DESCENT_EM = 0.2;
+/** The device scales a native proof spans; every device lane's DPR (1, 2, 2.625 and 3) lies inside. */
+const NATIVE_DPR_SPAN = [1, 4] as const;
+
 /**
- * TDEC-a: web draws every accepted decoration; ios and android refuse decorated text until TDEC-b draws it. A child of a decorated
- * element in a formatting context no Chrome case proves propagation for is refused on every target.
+ * TDEC-b: whether an underline with skip-ink auto clears every Ahem glyph's ink at every device scale of NATIVE_DPR_SPAN, so the
+ * skip-ink band (text_painter.cc:555-563, layout text-decoration.ts skipInkClear) clips nothing and the device need not compute
+ * intercepts (TDEC-d). The band's top is 0.5 px below the line's unsnapped top, baseline + gap + roundf(offset): gap is
+ * max(1, ceil(t / 2)) >= 1 for an auto offset and 0 otherwise, and roundf(offset) >= offset - 0.5, so the band top lies at least
+ * gap + offset px below the baseline, offset being v * d for v css px or p% of the decorating box's font size. The glyphs' ink
+ * reaches 0.2 * size * d below it. The bound is linear in d, so its two ends prove the span; a 1/32 px margin covers skipInkClear's
+ * 1/64 and float rounding. textSize and boxSize are css px.
  */
-function checkDecorations(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+export function underlineClearsAhem(textSize: number, offset: CssValue, boxSize: number): boolean {
+  const auto = offset.kind === 'keyword' && offset.value === 'auto';
+  const perPx = auto ? 0 : offset.kind === 'length' && offset.unit === 'px' ? offset.value : offset.kind === 'percentage' ? (offset.value * boxSize) / 100 : Number.NaN;
+  if (!Number.isFinite(perPx) || !Number.isFinite(textSize) || !Number.isFinite(boxSize)) return false;
+  return NATIVE_DPR_SPAN.every((d) => (auto ? 1 : 0) + perPx * d >= AHEM_DESCENT_EM * textSize * d + 1 / 32);
+}
+
+/** Whether the device takes a thickness or underline offset: auto, a px length or a percentage (lower/paint/text-decoration.ts). */
+const nativeDecorationLength = (v: CssValue): boolean => (v.kind === 'keyword' && v.value === 'auto') || (v.kind === 'length' && v.unit === 'px' && Number.isFinite(v.value)) || (v.kind === 'percentage' && Number.isFinite(v.value));
+
+/**
+ * TDEC-a: web draws every accepted decoration. TDEC-b: ios and android draw solid decorations (the value table refuses every other
+ * style on every target) and refuse, per decorated text, what the device does not reproduce: a thickness or offset that is not
+ * auto, px or a percentage; a decorated text that is not visible; an overline with skip-ink auto, or an underline with skip-ink auto
+ * that underlineClearsAhem does not prove clear of the glyphs, or one on a real face (skip-ink-intercepts, TDEC-d). A child of a
+ * decorated element in a formatting context no Chrome case proves propagation for is refused on every target.
+ */
+function checkDecorations(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
   const { applied, unproven } = analyzeDecorations(root);
-  const byAddress = new Map<string, ResolvedText>();
-  const index = (el: ResolvedElement): void => {
+  const byAddress = new Map<string, { readonly text: ResolvedText; readonly containerSize: number; readonly visibility: string }>();
+  const sizeOf = (props: ReadonlyMap<Longhand, ResolvedValue>): number => {
+    const v = props.get('font-size')?.value;
+    return v !== undefined && v.kind === 'length' && v.unit === 'px' ? v.value : Number.NaN;
+  };
+  // A block decorating box draws with its text's container strut: the nearest ancestor that is not an inline box.
+  const index = (el: ResolvedElement, containerSize: number): void => {
+    const inline = el !== root && valueToString((el.props.get('display') as ResolvedValue).value) === 'inline';
+    const here = inline ? containerSize : sizeOf(el.props);
     for (const c of el.children) {
-      if (c.kind === 'text') byAddress.set(c.node.address, c);
-      else index(c);
+      // A text's visibility is its parent element's (an inherited property).
+      if (c.kind === 'text') byAddress.set(c.node.address, { text: c, containerSize: here, visibility: valueToString((el.props.get('visibility') as ResolvedValue).value) });
+      else index(c, here);
     }
   };
-  index(root);
+  index(root, sizeOf(root.props));
+  const inlineAt = new Set<string>();
+  const inlines = (el: ResolvedElement): void => {
+    if (el !== root && valueToString((el.props.get('display') as ResolvedValue).value) === 'inline') inlineAt.add(el.element.address);
+    for (const c of el.children) if (c.kind === 'element') inlines(c);
+  };
+  inlines(root);
   for (const [address, list] of applied) {
-    const text = byAddress.get(address);
-    if (text === undefined) throw new Error(`${address}: a decorated text leaf that is not in the tree`);
+    const hit = byAddress.get(address);
+    if (hit === undefined) throw new Error(`${address}: a decorated text leaf that is not in the tree`);
+    const { text, containerSize, visibility } = hit;
+    const textSize = sizeOf(text.props);
+    const reasons: string[] = [];
+    let intercepts = false;
+    if (visibility !== 'visible') reasons.push(`it is ${visibility}, and its decoration views do not follow visibility`);
+    for (const d of list) {
+      if (!nativeDecorationLength(d.thickness)) reasons.push(`the text-decoration-thickness of ${d.box} is ${valueToString(d.thickness)}, not auto, a px length or a percentage`);
+      if (!nativeDecorationLength(d.underlineOffset)) reasons.push(`the text-underline-offset of ${d.box} is ${valueToString(d.underlineOffset)}, not auto, a px length or a percentage`);
+      if (d.skipInk !== 'auto') continue;
+      if (d.lines.includes('overline') || (d.lines.includes('underline') && (realFaceAt(address) || !underlineClearsAhem(textSize, d.underlineOffset, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
+    }
+    if (intercepts) reasons.push('skip-ink-intercepts: glyph ink may cross the skip-ink band of an under or overline from ' + list.filter((d) => d.skipInk === 'auto').map((d) => d.box).join(', ') + ', which the intercepts of TDEC-d clip');
+    if (reasons.length === 0) continue;
     const what = list.map((d) => `${d.lines.join(' ')} from ${d.box}`).join(', ');
     for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
       const id = `${t}|decoration|${address}`;
@@ -595,8 +649,8 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
         origin: text.node.node.origin,
         target: t,
-        message: `text ${address} draws text-decoration (${what}); ${t} draws decorations from TDEC-b`,
-        manual: `Set text-decoration: none on the decorating box, or build for web; native decorations come with TDEC-b.`,
+        message: `text ${address} draws text-decoration (${what}) that ${t} does not draw: ${reasons.join('; ')}`,
+        manual: intercepts ? 'Set text-decoration-skip-ink: none on the decorating box, move the underline clear of the glyphs with text-underline-offset, or build for web; skip-ink intercepts come with TDEC-d.' : 'Set text-decoration: none on the decorating box, or build for web.',
         basis: 'computed-value',
       }));
     }

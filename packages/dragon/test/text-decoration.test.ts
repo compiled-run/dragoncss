@@ -146,9 +146,9 @@ describe('propagation (css-text-decor-3 §2.1)', () => {
 
 describe('the targets', () => {
   const project = () => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' });
-  it('web accepts decorated text; ios refuses it naming TDEC-b; undecorated text compiles on ios', () => {
+  it('web accepts decorated text; ios refuses an Ahem underline whose skip-ink band the glyphs cross, naming TDEC-d (TDEC-b draws the rest); undecorated text compiles on ios', () => {
     const c = project().compile(inputFor('body { font-family: Ahem; } .u { text-decoration: underline; }', (r) => [el(r, 'u', 'div', ['u'], [text(r, 't', 'XX')]), el(r, 'p', 'div', [], [text(r, 'q', 'XX')])]));
-    expect(c.diagnostics.map((d) => `${d.code} ${String(d.target)} ${d.message}`)).toEqual(['DRAGON_UNSUPPORTED_VALUE ios text u:text0 draws text-decoration (underline from u); ios draws decorations from TDEC-b']);
+    expect(c.diagnostics.map((d) => `${d.code} ${String(d.target)} ${d.message}`)).toEqual(['DRAGON_UNSUPPORTED_VALUE ios text u:text0 draws text-decoration (underline from u) that ios does not draw: skip-ink-intercepts: glyph ink may cross the skip-ink band of an under or overline from u, which the intercepts of TDEC-d clip']);
     expect(c.outputs.web.kind).toBe('ready');
     expect(c.outputs.ios.kind).toBe('blocked');
   });
