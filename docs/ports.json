@@ -3046,6 +3046,22 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/platform/text/character_property_data.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "fbc5ff22c1edc5b48a746c37c30f2a303903be7021ff520d4f2a40af99968be7",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "15-37", "symbol": null, "source": "cited" },
+        { "lines": "39-148", "symbol": null, "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/inline.ts", "symbol": "maybeCjkIdeographOrSymbol", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/inline/inline_layout_algorithm.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
