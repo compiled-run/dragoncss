@@ -6,6 +6,10 @@
     {"id":"a:text0","data":"Hello  world  again  and  more","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2],"blank":[]},
     {"id":"b:text0","data":"Hi  there\nfriend  ","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],"blank":[9]},
     {"id":"c:text0","data":" Hi   there \n  friend","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],"blank":[0,4,5,11,12,13,14]},
-    {"id":"d:text0","data":"Hi\n  there you","lines":2,"units":[0,0,0,1,1,1,1,1,1,1,1,1,1,1],"blank":[2]}
+    {"id":"d:text0","data":"Hi\n  there you","lines":2,"units":[0,0,0,1,1,1,1,1,1,1,1,1,1,1],"blank":[2]},
+    {"id":"r1:text0","data":"Hi   ","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"r2:text0","data":"Hi   ","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"r3:text0","data":"Hi  there\nfriend  ","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],"blank":[9]},
+    {"id":"r4:text0","data":"Hi  there\nyou   ","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1],"blank":[9]}
   ]
 }
