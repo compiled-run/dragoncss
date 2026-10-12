@@ -169,6 +169,7 @@ export const styleSchema = obj({
     percent: { value: anyNum },
     ...calc,
   }),
+  textOverflow: lit('clip', 'ellipsis'),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
 });
@@ -821,6 +822,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   columnGap: { kind: 'normal' },
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
+  textOverflow: 'clip',
   grid: null,
 };
 

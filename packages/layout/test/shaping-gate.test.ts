@@ -101,7 +101,7 @@ function fontData(id: string): FontData {
   for (let i = 0; i < d.getUint16(4); i++) tables.set(b.toString('latin1', 12 + i * 16, 16 + i * 16), d.getUint32(12 + i * 16 + 8));
   const head = tables.get('head') as number;
   const hhea = tables.get('hhea') as number;
-  return { unitsPerEm: d.getUint16(head + 18), ascent: d.getInt16(hhea + 4), descent: -d.getInt16(hhea + 6), lineGap: d.getInt16(hhea + 8), advances: [], xHeight: 0, capHeight: 0, zeroAdvance: 0 };
+  return { unitsPerEm: d.getUint16(head + 18), ascent: d.getInt16(hhea + 4), descent: -d.getInt16(hhea + 6), lineGap: d.getInt16(hhea + 8), advances: [], xHeight: 0, capHeight: 0, zeroAdvance: 0, ellipsisAdvance: -1 };
 }
 
 /**

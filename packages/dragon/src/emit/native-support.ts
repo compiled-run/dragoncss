@@ -127,8 +127,8 @@ public func dragonMetricUnits(head: [UInt8], hhea: [UInt8], hmtx: [UInt8], cmap:
 }
 
 /// The raw data as the translated measurer's FontData.
-public func dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: [Double], xHeight: Double, capHeight: Double, zeroAdvance: Double) -> FontData {
-  return FontData(unitsPerEm, ascent, descent, lineGap, JsArray(advances), xHeight, capHeight, zeroAdvance)
+public func dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: [Double], xHeight: Double, capHeight: Double, zeroAdvance: Double, ellipsisAdvance: Double) -> FontData {
+  return FontData(unitsPerEm, ascent, descent, lineGap, JsArray(advances), xHeight, capHeight, zeroAdvance, ellipsisAdvance)
 }
 
 /// The bridge self-check: the raw data read from the bundled font equal the Ahem constants of the translated engine.
@@ -142,6 +142,7 @@ public func dragonSelfCheck(_ d: FontData) -> [String] {
   if d.xHeight != want.xHeight { out.append("xHeight \(d.xHeight), Ahem \(want.xHeight)") }
   if d.capHeight != want.capHeight { out.append("capHeight \(d.capHeight), Ahem \(want.capHeight)") }
   if d.zeroAdvance != want.zeroAdvance { out.append("zeroAdvance \(d.zeroAdvance), Ahem \(want.zeroAdvance)") }
+  if d.ellipsisAdvance != want.ellipsisAdvance { out.append("ellipsisAdvance \(d.ellipsisAdvance), Ahem \(want.ellipsisAdvance)") }
   let cps = try! text_coveredCodePoints().items
   if d.advances.items.count != want.advances.items.count { out.append("\(d.advances.items.count) advances, Ahem \(want.advances.items.count)") }
   for (k, cp) in cps.enumerated() where k < d.advances.items.count && k < want.advances.items.count {
@@ -464,7 +465,9 @@ public final class DragonBridge {
     }
     guard let os2Data = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableOS2), []) as Data?, let locaData = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableLoca), []) as Data?, let glyfData = CTFontCopyTable(probe, CTFontTableTag(kCTFontTableGlyf), []) as Data? else { fatalError("dragon bridge: OS/2, loca or glyf is missing") }
     let units = dragonMetricUnits(head: [UInt8](headData), hhea: hhea, hmtx: hmtx, cmap: cmap, os2: [UInt8](os2Data), loca: [UInt8](locaData), glyf: [UInt8](glyfData))
-    data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: advances, xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance)
+    // The ellipsis text-overflow draws (U+2026), measured only when the font maps it.
+    let ellipsis = dragonGlyph(cmap: cmap, 0x2026)
+    data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: advances, xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance, ellipsisAdvance: ellipsis == 0 ? -1 : dragonAdvance(hhea: hhea, hmtx: hmtx, ellipsis))
     selfCheck = dragonSelfCheck(data)
     layoutShaper = DragonBridge.shaper
     fontDataMeasurer = try! text_fontDataMeasurer(data, AhemRuleFaults(false, false))
@@ -1043,7 +1046,7 @@ fun dragonMetricUnits(head: ByteArray, hhea: ByteArray, hmtx: ByteArray, cmap: B
 }
 
 /** The raw data as the translated measurer's FontData. */
-fun dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: List<Double>, xHeight: Double, capHeight: Double, zeroAdvance: Double): FontData = FontData(unitsPerEm, ascent, descent, lineGap, ArrayList(advances), xHeight, capHeight, zeroAdvance)
+fun dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: List<Double>, xHeight: Double, capHeight: Double, zeroAdvance: Double, ellipsisAdvance: Double): FontData = FontData(unitsPerEm, ascent, descent, lineGap, ArrayList(advances), xHeight, capHeight, zeroAdvance, ellipsisAdvance)
 
 /** The bridge self-check: the raw data read from the bundled font equal the Ahem constants of the translated engine. */
 fun dragonSelfCheck(d: FontData): List<String> {
@@ -1056,6 +1059,7 @@ fun dragonSelfCheck(d: FontData): List<String> {
   if (d.xHeight != want.xHeight) out.add("xHeight " + d.xHeight + ", Ahem " + want.xHeight)
   if (d.capHeight != want.capHeight) out.add("capHeight " + d.capHeight + ", Ahem " + want.capHeight)
   if (d.zeroAdvance != want.zeroAdvance) out.add("zeroAdvance " + d.zeroAdvance + ", Ahem " + want.zeroAdvance)
+  if (d.ellipsisAdvance != want.ellipsisAdvance) out.add("ellipsisAdvance " + d.ellipsisAdvance + ", Ahem " + want.ellipsisAdvance)
   val cps = text_coveredCodePoints()
   if (d.advances.size != want.advances.size) out.add("" + d.advances.size + " advances, Ahem " + want.advances.size)
   for (k in cps.indices) {
@@ -1313,7 +1317,9 @@ class DragonBridge private constructor(ctx: Context) {
       advances.add(if (gid == 0) -1.0 else dragonAdvance(hhea, hmtx, gid))
     }
     val units = dragonMetricUnits(dragonSfntTable(raw, "head"), hhea, hmtx, cmap, dragonSfntTable(raw, "OS/2"), dragonSfntTable(raw, "loca"), dragonSfntTable(raw, "glyf"))
-    data = dragonFontData(header[0], header[1], header[2], header[3], advances, units[0], units[1], units[2])
+    // The ellipsis text-overflow draws (U+2026), measured only when the font maps it.
+    val ellipsis = dragonGlyph(cmap, 0x2026)
+    data = dragonFontData(header[0], header[1], header[2], header[3], advances, units[0], units[1], units[2], if (ellipsis == 0) -1.0 else dragonAdvance(hhea, hmtx, ellipsis))
     selfCheck = dragonSelfCheck(data)
     layoutShaper = shaper
     fontDataMeasurer = text_fontDataMeasurer(data, AhemRuleFaults(false, false))
@@ -2057,7 +2063,7 @@ export const STYLE_FIELDS = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height', 'minWidth', 'minHeight',
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
-  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'grid', 'gridItem',
+  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'grid', 'gridItem',
 ] as const;
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = {

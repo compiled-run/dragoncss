@@ -53,6 +53,8 @@ export type FontData = {
   readonly xHeight: number;
   readonly capHeight: number;
   readonly zeroAdvance: number;
+  /** The hmtx advance of the glyph cmap maps U+2026 to, or -1 when the font maps none (the ellipsis text-overflow draws). */
+  readonly ellipsisAdvance: number;
 };
 
 /** The Dragon covered-glyph predicate: the index of a code point in coveredCodePoints(), or -1 when Dragon does not cover it. */
@@ -63,6 +65,9 @@ export function coveredIndex(cp: number): number {
 }
 
 /** The code points a font-data measurer covers: printable ASCII except the apostrophe, then U+200B. */
+/** U+2026 HORIZONTAL ELLIPSIS: measured from FontData.ellipsisAdvance, never laid out as text (line_truncator.cc ComputeEllipsisText). */
+export const ELLIPSIS = 0x2026;
+
 export function coveredCodePoints(): number[] {
   const out: number[] = [];
   for (let cp = 0x20; cp <= 0x7e; cp++) if (cp !== 0x27) out.push(cp);
@@ -73,7 +78,7 @@ export function coveredCodePoints(): number[] {
 /** The WPT Ahem v1.50 font data: every covered glyph advances 1em and U+200B advances 0 (css-fonts-4 §5). */
 export function ahemFontData(): FontData {
   const advances = coveredCodePoints().map((cp) => (cp === ZWSP ? 0 : AHEM_UNITS_PER_EM));
-  return { unitsPerEm: AHEM_UNITS_PER_EM, ascent: AHEM_ASCENT, descent: AHEM_DESCENT, lineGap: 0, advances, xHeight: AHEM_X_HEIGHT, capHeight: AHEM_CAP_HEIGHT, zeroAdvance: AHEM_UNITS_PER_EM };
+  return { unitsPerEm: AHEM_UNITS_PER_EM, ascent: AHEM_ASCENT, descent: AHEM_DESCENT, lineGap: 0, advances, xHeight: AHEM_X_HEIGHT, capHeight: AHEM_CAP_HEIGHT, zeroAdvance: AHEM_UNITS_PER_EM, ellipsisAdvance: AHEM_UNITS_PER_EM };
 }
 
 /**
@@ -97,12 +102,20 @@ export const AHEM_FACE_ID = 'Ahem';
 /** The sha256 of the bundled Ahem's bytes (vendor/fonts/Ahem.ttf), which a host checks before it shapes with the face. */
 export const AHEM_SHA256 = 'b719ecb31c5b21fc573c03f6421c74ac63c271a5a3ff841e34f9705fb94b8448';
 
-/** A covered code point's advance in whole em, or -1 when it is not covered or its advance is not a whole number of em. */
+/**
+ * A covered code point's advance in whole em, or -1 when it is not covered or its advance is not a whole number of em. U+2026 is
+ * measured only when the font maps it (the ellipsis).
+ */
 function emAdvance(data: FontData, cp: number): number {
+  if (cp === ELLIPSIS) return data.ellipsisAdvance < 0 ? -1 : wholeEm(data, data.ellipsisAdvance);
   const k = coveredIndex(cp);
   if (k < 0) return -1;
   const units = data.advances[k];
   if (units === undefined) return -1;
+  return wholeEm(data, units);
+}
+
+function wholeEm(data: FontData, units: number): number {
   const em = units / data.unitsPerEm;
   return Number.isInteger(em) && em >= 0 ? em : -1;
 }

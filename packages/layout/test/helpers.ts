@@ -45,6 +45,7 @@ export const divStyle: LayoutStyle = {
   textAlign: 'start',
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
+  textOverflow: 'clip',
   grid: null,
   gridItem: null,
 };
