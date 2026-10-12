@@ -1,49 +1,41 @@
-// DIAGNOSTIC (temporary, reverted before the PR): drives every interaction group's trace capture in several browsers at once, for
-// several rounds, under CPU load, and prints every hover-media disagreement with its timeline.
-import { availableParallelism } from 'node:os';
-import { Worker } from 'node:worker_threads';
+// DIAGNOSTIC (temporary, reverted before the PR): runs the real trace-capture CLI repeatedly while the other Chrome captures that
+// regen runs beside it (dpr-capture, capture) load the machine, and prints every hover-media disagreement with its timeline.
+import { spawn } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { launchChrome } from '../src/chrome.ts';
-import { captureTraces, traceGroups } from '../src/trace-capture.ts';
+import { repoPath } from '../src/paths.ts';
 
-const ROUNDS = Number(process.env.DIAG_ROUNDS ?? 5);
-const BROWSERS = Number(process.env.DIAG_BROWSERS ?? 3);
-const WIDTH = 6;
-const BURNERS = availableParallelism();
+const RUNS = Number(process.env.DIAG_RUNS ?? 6);
+
+function run(script: string): Promise<{ code: number | null; out: string }> {
+  return new Promise((resolve) => {
+    const p = spawn('pnpm', ['-s', 'run', script], { cwd: repoPath('.'), stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '';
+    p.stdout.on('data', (d: Buffer) => { out += d.toString(); });
+    p.stderr.on('data', (d: Buffer) => { out += d.toString(); });
+    p.on('close', (code) => resolve({ code, out }));
+  });
+}
 
 describe('trace capture hover media (diagnostic)', () => {
-  it('captures every group without a hover media disagreement', async () => {
-    const groups = traceGroups();
-    const errors: string[] = [];
-    const burners = Array.from({ length: BURNERS }, () => new Worker('for (;;) {}', { eval: true }));
-    const loop = async (b: number): Promise<void> => {
-      const browser = await launchChrome();
-      try {
-        for (let r = 0; r < ROUNDS; r++) {
-          let next = 0;
-          const worker = async (): Promise<void> => {
-            while (next < groups.length) {
-              const g = groups[next++]!;
-              try {
-                await captureTraces(browser, g);
-              } catch (e) {
-                errors.push(`browser ${b} round ${r} ${g.id}: ${e instanceof Error ? e.message : String(e)}`);
-              }
-            }
-          };
-          await Promise.all(Array.from({ length: WIDTH }, worker));
-          console.log(`browser ${b} round ${r}: ${errors.length} errors so far (${new Date().toISOString()})`);
-        }
-      } finally {
-        await browser.close();
+  it('runs the trace-capture CLI under regen-like load without a hover media disagreement', async () => {
+    let stop = false;
+    const load = async (script: string): Promise<void> => {
+      while (!stop) {
+        const r = await run(script);
+        console.log(`load ${script}: exit ${r.code} ${r.out.slice(-200)}`);
       }
     };
-    try {
-      await Promise.all(Array.from({ length: BROWSERS }, (_, b) => loop(b)));
-    } finally {
-      for (const w of burners) await w.terminate();
+    const loads = [load('parity:dpr-capture'), load('parity:capture')];
+    const errors: string[] = [];
+    for (let i = 0; i < RUNS; i++) {
+      const t = Date.now();
+      const r = await run('parity:trace-capture');
+      console.log(`trace-capture run ${i}: exit ${r.code} in ${Date.now() - t} ms`);
+      if (r.code !== 0) errors.push(`run ${i}: ${r.out.slice(-6000)}`);
     }
+    stop = true;
+    await Promise.all(loads);
     for (const e of errors) console.log(e);
     expect(errors).toEqual([]);
-  }, 3_600_000);
+  }, 5_400_000);
 });
