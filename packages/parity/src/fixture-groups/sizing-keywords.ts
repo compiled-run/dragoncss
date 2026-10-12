@@ -6,5 +6,8 @@ import { both, reject } from './define.ts';
 
 export const SIZING_KEYWORDS: readonly FixtureSpec[] = [
   both('sizing-keywords-block'),
+  // The same keywords inside a min-content or max-content contribution: under a max-content, min-content or fit-content parent, an
+  // absolutely positioned box and a flex item, each of which sizes to its children's contributions.
+  both('sizing-keywords-contribution'),
   reject('reject-sizing-keyword-flex-item', 'DRAGON_UNPROVEN_CONTEXT', 'min-content', 'width:min-content on i is used in the flex-row'),
 ];

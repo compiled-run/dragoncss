@@ -18,6 +18,7 @@ import type {
   FontSpec,
   GapValue,
   InlineBox,
+  InlineSizeValue,
   InlineChild,
   GridAutoRepeat,
   GridContainerStyle,
@@ -41,6 +42,7 @@ import type {
   ObjectFit,
   ObjectPositionValue,
   ReplacedLeaf,
+  MaxInlineSizeValue,
   MaxSizeValue,
   MinSizeValue,
   Overflow,
@@ -541,6 +543,26 @@ function maxSizeValue(v: JsonValue, path: string): MaxSizeValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+/** width and min-width: a SizeValue, or the css-sizing-3 keywords min-content, max-content and fit-content. */
+function inlineSizeValue(v: JsonValue, path: string): InlineSizeValue {
+  const k = kindOf(v, path);
+  if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return sizeValue(v, path);
+  obj(v, ['kind'], path);
+  if (k === 'min-content') return { kind: 'min-content' };
+  if (k === 'max-content') return { kind: 'max-content' };
+  return { kind: 'fit-content' };
+}
+
+/** max-width: a MaxSizeValue, or the css-sizing-3 keywords min-content, max-content and fit-content. */
+function maxInlineSizeValue(v: JsonValue, path: string): MaxInlineSizeValue {
+  const k = kindOf(v, path);
+  if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return maxSizeValue(v, path);
+  obj(v, ['kind'], path);
+  if (k === 'min-content') return { kind: 'min-content' };
+  if (k === 'max-content') return { kind: 'max-content' };
+  return { kind: 'fit-content' };
+}
+
 function paddingValue(v: JsonValue, path: string): PaddingValue {
   const k = kindOf(v, path);
   if (k === 'calc') return lengthCalc(v, path);
@@ -781,11 +803,11 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     overflowY: lit(f('overflowY'), ['visible', 'hidden', 'clip', 'auto', 'scroll'], p('overflowY')) as Overflow,
     direction: lit(f('direction'), ['ltr', 'rtl'], p('direction')) as Direction,
     boxSizing: lit(f('boxSizing'), ['content-box', 'border-box'], p('boxSizing')) as BoxSizing,
-    width: sizeValue(f('width'), p('width')),
+    width: inlineSizeValue(f('width'), p('width')),
     height: sizeValue(f('height'), p('height')),
-    minWidth: sizeValue(f('minWidth'), p('minWidth')) as MinSizeValue,
+    minWidth: inlineSizeValue(f('minWidth'), p('minWidth')),
     minHeight: sizeValue(f('minHeight'), p('minHeight')) as MinSizeValue,
-    maxWidth: maxSizeValue(f('maxWidth'), p('maxWidth')),
+    maxWidth: maxInlineSizeValue(f('maxWidth'), p('maxWidth')),
     maxHeight: maxSizeValue(f('maxHeight'), p('maxHeight')),
     marginTop: sizeValue(f('marginTop'), p('marginTop')) as MarginValue,
     marginRight: sizeValue(f('marginRight'), p('marginRight')) as MarginValue,
