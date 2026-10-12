@@ -112,7 +112,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -217,7 +220,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -322,7 +328,10 @@
         "content": "normal",
         "list-style-type": "square",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -427,7 +436,10 @@
         "content": "normal",
         "list-style-type": "square",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -552,7 +564,10 @@
         "content": "normal",
         "list-style-type": "square",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -677,7 +692,10 @@
         "content": "normal",
         "list-style-type": "circle",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -782,7 +800,10 @@
         "content": "normal",
         "list-style-type": "circle",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -907,7 +928,10 @@
         "content": "normal",
         "list-style-type": "decimal",
         "list-style-position": "inside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -1032,7 +1056,10 @@
         "content": "normal",
         "list-style-type": "\">> \"",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -1157,7 +1184,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "inside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -1282,7 +1312,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {

@@ -112,7 +112,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -217,7 +220,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -322,7 +328,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -427,7 +436,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -532,7 +544,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -637,7 +652,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -762,7 +780,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -867,7 +888,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -972,7 +996,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -1077,7 +1104,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -1182,7 +1212,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -1287,7 +1320,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -1392,7 +1428,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -1497,7 +1536,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -1602,7 +1644,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -1707,7 +1752,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -1812,7 +1860,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -1917,7 +1968,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -2022,7 +2076,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -2127,7 +2184,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -2232,7 +2292,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -2337,7 +2400,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     },
     {
@@ -2442,7 +2508,10 @@
         "content": "normal",
         "list-style-type": "disc",
         "list-style-position": "outside",
-        "list-style-image": "none"
+        "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none"
       }
     }
   ]

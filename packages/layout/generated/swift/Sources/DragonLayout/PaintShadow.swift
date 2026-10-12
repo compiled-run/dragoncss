@@ -148,7 +148,7 @@ public func paintShadow_at(_ xs: JsArray<Double>, _ i: Double) throws -> Double 
   let v: Double? = jsAt(xs, i)
   // ts: packages/layout/src/paint-shadow.ts:106
   if (v == nil) {
-    throw JsError(message: jsConcat(S.s686, jsNumberToString(i), S.s58, jsNumberToString(jsLength(xs)), S.s87))
+    throw JsError(message: jsConcat(S.s691, jsNumberToString(i), S.s58, jsNumberToString(jsLength(xs)), S.s88))
   }
   return try jsUnwrap(v)
 }
@@ -182,7 +182,7 @@ public func paintShadow_cellAt(_ xs: JsArray<PaintShadow_Cell>, _ i: Double) thr
   let c: PaintShadow_Cell? = jsAt(xs, i)
   // ts: packages/layout/src/paint-shadow.ts:126
   if (c == nil) {
-    throw JsError(message: jsConcat(S.s685, jsNumberToString(i), S.s58, jsNumberToString(jsLength(xs)), S.s19))
+    throw JsError(message: jsConcat(S.s690, jsNumberToString(i), S.s58, jsNumberToString(jsLength(xs)), S.s19))
   }
   return try jsUnwrap(c)
 }
@@ -232,7 +232,7 @@ public func paintShadow_sizeComponent(_ v: Double) throws -> Double {
 public func paintShadow_spreadShape(_ left: Double, _ top: Double, _ right: Double, _ bottom: Double, _ radii: JsArray<Double>, _ spread: Double, _ faults: ShadowFaults) throws -> ShadowShape {
   // ts: packages/layout/src/paint-shadow.ts:195
   if (jsLength(radii) != 8.0) {
-    throw JsError(message: jsConcat(S.s682, jsNumberToString(jsLength(radii)), S.s78))
+    throw JsError(message: jsConcat(S.s687, jsNumberToString(jsLength(radii)), S.s79))
   }
   let s: Double = (faults.spreadIgnored ? 0.0 : spread)
   let w: Double = try paintShadow_f32((right - left))
@@ -687,11 +687,11 @@ public func paintShadow_backdropAt(_ fills: JsArray<BackdropFill>, _ x: Double, 
       _i158 += 1
       // ts: packages/layout/src/paint-shadow.ts:518
       if (jsLength(f.radii) != 8.0) {
-        throw JsError(message: jsConcat(S.s684, jsNumberToString(jsLength(f.radii)), S.s78))
+        throw JsError(message: jsConcat(S.s689, jsNumberToString(jsLength(f.radii)), S.s79))
       }
       // ts: packages/layout/src/paint-shadow.ts:519
       if try ((((!paintShadow_isByte(f.r)) || (!paintShadow_isByte(f.g))) || (!paintShadow_isByte(f.b))) || (!paintShadow_isByte(f.a))) {
-        throw JsError(message: jsConcat(S.s683, jsNumberToString(f.r), S.s97, jsNumberToString(f.g), S.s97, jsNumberToString(f.b), S.s97, jsNumberToString(f.a), S.s52))
+        throw JsError(message: jsConcat(S.s688, jsNumberToString(f.r), S.s99, jsNumberToString(f.g), S.s99, jsNumberToString(f.b), S.s99, jsNumberToString(f.a), S.s52))
       }
       let shape: ShadowShape = ShadowShape(f.left, f.top, f.right, f.bottom, f.radii)
       // ts: packages/layout/src/paint-shadow.ts:521
@@ -752,7 +752,7 @@ public func paintShadow_platformOver(_ s: Double, _ a: Double, _ d: Double) thro
 public func paintShadow_encodeOver(_ cr: Double, _ cg: Double, _ cb: Double, _ br: Double, _ bg: Double, _ bb: Double, _ a: Double) throws -> JsArray<Double> {
   // ts: packages/layout/src/paint-shadow.ts:563
   if try (((((((!paintShadow_isByte(cr)) || (!paintShadow_isByte(cg))) || (!paintShadow_isByte(cb))) || (!paintShadow_isByte(br))) || (!paintShadow_isByte(bg))) || (!paintShadow_isByte(bb))) || (!paintShadow_isByte(a))) {
-    throw JsError(message: jsConcat(S.s682, jsNumberToString(cr), S.s97, jsNumberToString(cg), S.s97, jsNumberToString(cb), S.s75, jsNumberToString(br), S.s97, jsNumberToString(bg), S.s97, jsNumberToString(bb), S.s14, jsNumberToString(a), S.s51))
+    throw JsError(message: jsConcat(S.s687, jsNumberToString(cr), S.s99, jsNumberToString(cg), S.s99, jsNumberToString(cb), S.s76, jsNumberToString(br), S.s99, jsNumberToString(bg), S.s99, jsNumberToString(bb), S.s14, jsNumberToString(a), S.s51))
   }
   // ts: packages/layout/src/paint-shadow.ts:564
   do {
@@ -782,7 +782,7 @@ public func paintShadow_encodeOver(_ cr: Double, _ cg: Double, _ cb: Double, _ b
       d += 1.0
     }
   }
-  throw JsError(message: jsConcat(S.s687, jsNumberToString(cr), S.s97, jsNumberToString(cg), S.s97, jsNumberToString(cb), S.s75, jsNumberToString(br), S.s97, jsNumberToString(bg), S.s97, jsNumberToString(bb)))
+  throw JsError(message: jsConcat(S.s692, jsNumberToString(cr), S.s99, jsNumberToString(cg), S.s99, jsNumberToString(cb), S.s76, jsNumberToString(br), S.s99, jsNumberToString(bg), S.s99, jsNumberToString(bb)))
 }
 
 // ts: packages/layout/src/paint-shadow.ts:578
@@ -967,7 +967,7 @@ public func paintShadow_insetShadowLayerOver(_ left: Double, _ top: Double, _ ri
 public func paintShadow_insetLayer(_ left: Double, _ top: Double, _ right: Double, _ bottom: Double, _ borders: JsArray<Double>, _ innerRadii: JsArray<Double>, _ shadows: JsArray<ShadowInput>, _ dpr: Double, _ faults: ShadowFaults, _ backdrop: JsArray<BackdropFill>?) throws -> ShadowLayer {
   // ts: packages/layout/src/paint-shadow.ts:710
   if (jsLength(borders) != 4.0) {
-    throw JsError(message: jsConcat(S.s682, jsNumberToString(jsLength(borders)), S.s16))
+    throw JsError(message: jsConcat(S.s687, jsNumberToString(jsLength(borders)), S.s16))
   }
   let pl: Double = try (left + paintShadow_at(borders, 3.0))
   let pt: Double = try (top + paintShadow_at(borders, 0.0))

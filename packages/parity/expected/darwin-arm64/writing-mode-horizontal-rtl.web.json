@@ -113,6 +113,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -219,6 +222,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -325,6 +331,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -431,6 +440,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -567,6 +579,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -703,6 +718,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -839,6 +857,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -975,6 +996,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1101,6 +1125,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1237,6 +1264,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1363,6 +1393,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1489,6 +1522,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1595,6 +1631,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1701,6 +1740,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1807,6 +1849,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1913,6 +1958,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2049,6 +2097,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2185,6 +2236,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2291,6 +2345,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -2397,6 +2454,9 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
+        "vertical-align": "baseline",
+        "float": "none",
+        "clear": "none",
         "writing-mode": "horizontal-tb"
       }
     }
