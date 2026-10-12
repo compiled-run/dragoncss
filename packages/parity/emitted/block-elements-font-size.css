@@ -1108,7 +1108,7 @@
   text-align: start;
   white-space-collapse: collapse;
   text-wrap-mode: wrap;
-  color: rgb(128, 128, 128);
+  color: revert;
   text-decoration-line: none;
   text-decoration-style: solid;
   text-decoration-color: currentcolor;
