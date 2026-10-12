@@ -11,12 +11,14 @@ import type { FixtureSpec } from '../src/fixtures.ts';
 import { ENVIRONMENT } from '../src/fixtures.ts';
 import { emitCases, NATIVE_CONFIG, nativeCases } from '../src/native-host.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
+import { ANIMATION_CONTEXT } from '../src/profile-rows.ts';
 import { resizeCaseReport, resizeCases, resizeProgram } from '../src/resize-capture.ts';
 
 const cases = nativeCases();
 const byId = new Map(cases.map((n) => [n.case.id, n]));
 // MQ-R1: media rows are proven by resize cases, not layout cases; the last test here checks those on android.
-const promoted = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context !== MEDIA_CONTEXT);
+// Animation rows are proved by device-anim frame cases (deriveAnimationRows over the device records), not by layout cases.
+const promoted = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context !== MEDIA_CONTEXT && r.context !== ANIMATION_CONTEXT);
 const promotedMedia = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context === MEDIA_CONTEXT);
 
 /** The lane compile of native-host.ts nativeCompile, with the committed profiles enforced. */
@@ -46,7 +48,12 @@ describe('the android profile follows the iOS rule', () => {
   it('holds exactly the iOS rows, statuses and proofs', () => {
     expect(androidProfile.target).toBe('android');
     expect(androidProfile.revision).toBe(iosProfile.revision);
-    expect(androidProfile.rows).toEqual(iosProfile.rows);
+    // Animation rows follow each target's own device-anim record (deriveAnimationRows), so their proving cases may differ;
+    // the features and statuses they claim may not.
+    const layout = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context !== ANIMATION_CONTEXT);
+    const claims = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context === ANIMATION_CONTEXT).map((r) => `${r.feature} ${r.status}`);
+    expect(layout(androidProfile.rows)).toEqual(layout(iosProfile.rows));
+    expect(claims(androidProfile.rows)).toEqual(claims(iosProfile.rows));
     expect(promoted.length).toBeGreaterThan(0);
   });
 
