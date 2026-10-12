@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { repoPath } from '../src/paths.ts';
 
-const RUNS = Number(process.env.DIAG_RUNS ?? 6);
+const RUNS = Number(process.env.DIAG_RUNS ?? 10);
 
 function run(script: string): Promise<{ code: number | null; out: string }> {
   return new Promise((resolve) => {
@@ -37,5 +37,5 @@ describe('trace capture hover media (diagnostic)', () => {
     await Promise.all(loads);
     for (const e of errors) console.log(e);
     expect(errors).toEqual([]);
-  }, 5_400_000);
+  }, 7_000_000);
 });

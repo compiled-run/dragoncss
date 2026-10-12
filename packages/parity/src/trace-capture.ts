@@ -115,12 +115,6 @@ class TraceDriver {
       await cdp.send('Emulation.setEmitTouchEventsForMouse', { enabled: false });
       await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
       const { root } = await cdp.send('DOM.getDocument', { depth: 0 });
-      await page.evaluate(() => {
-        const w = window as unknown as { __hv: [number, string, boolean][] };
-        const mq = matchMedia('(hover: hover)');
-        w.__hv = [[Date.now(), 'init', mq.matches]];
-        mq.addEventListener('change', (e) => w.__hv.push([Date.now(), 'change', e.matches]));
-      });
       return new TraceDriver(page, cdp, root.nodeId);
     } catch (e) {
       await page.context().close();
@@ -145,7 +139,6 @@ class TraceDriver {
     this.log(`ack touch ${c}`);
     this.context = c;
     await frames(this.page);
-    this.log(`frames after touch ${c}: hover media ${String(await this.page.evaluate(() => matchMedia('(hover: hover)').matches))}`);
   }
 
   private async mouseEvent(type: 'mouseMoved' | 'mousePressed' | 'mouseReleased', p: { x: number; y: number }): Promise<void> {
@@ -248,11 +241,13 @@ class TraceDriver {
         if (v !== last) { flips.push(`${Date.now() - t0}ms->${String(v)}`); last = v; }
         await new Promise((r) => setTimeout(r, 10));
       }
-      const hv = await this.page.evaluate(() => (window as unknown as { __hv: [number, string, boolean][] }).__hv);
+      await this.cdp.send('Emulation.setTouchEmulationEnabled', this.context === 'touch' ? { enabled: true, maxTouchPoints: 1 } : { enabled: false });
+      const resent = await this.page.evaluate(() => matchMedia('(hover: hover)').matches);
+      const hv: [number, string, boolean][] = [];
       const now = Date.now();
       const mine = DIAG.filter((x) => x.d === this.id).slice(-14).map((x) => `${x.t - now}:${x.e}`).join(' | ');
       const others = DIAG.filter((x) => x.d !== this.id && now - x.t < 4000 && x.e.startsWith('send touch')).map((x) => `${x.t - now}:d${x.d} ${x.e}`).join(' | ');
-      throw new Error(`DIAG d${this.id} ${s.kind} ctx ${this.context} media ${String(m.hoverMedia)}; polled flips [${flips.join(', ')}]; page changes [${hv.map(([t, k, v]) => `${t - now}:${k} ${String(v)}`).join(', ')}]; mine [${mine}]; others' toggles [${others}]`);
+      throw new Error(`DIAG d${this.id} ${s.kind} ctx ${this.context} media ${String(m.hoverMedia)}; polled flips [${flips.join(', ')}]; resent -> ${String(resent)}; page changes [${hv.map(([t, k, v]) => `${t - now}:${k} ${String(v)}`).join(', ')}]; mine [${mine}]; others' toggles [${others}]`);
     }
     if (this.context === 'touch' && m.hoverMedia) throw new Error(`${s.kind}: (hover: hover) matches under touch emulation`);
     if (this.context === 'mouse' && !m.hoverMedia) throw new Error(`${s.kind}: (hover: hover) does not match without touch emulation`);
