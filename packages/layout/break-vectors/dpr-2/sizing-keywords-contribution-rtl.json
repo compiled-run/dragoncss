@@ -1,0 +1,17 @@
+{
+  "case": "sizing-keywords-contribution-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"x1:text0","lines":[[0,6]]},
+    {"id":"x2:text0","lines":[[0,3],[3,6]]},
+    {"id":"x3:text0","lines":[[0,6]]},
+    {"id":"x4:text0","lines":[[0,3],[3,6]]},
+    {"id":"x5:text0","lines":[[0,11]]},
+    {"id":"x6:text0","lines":[[0,3],[3,6]]},
+    {"id":"x7:text0","lines":[[0,6]]},
+    {"id":"x9:text0","lines":[[0,6]]},
+    {"id":"y9:text0","lines":[[0,4]]},
+    {"id":"x8:text0","lines":[[0,6]]},
+    {"id":"y8:text0","lines":[[0,4]]}
+  ]
+}
