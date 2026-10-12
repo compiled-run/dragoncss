@@ -671,7 +671,7 @@
       "licence": "lgpl",
       "ruling": {
         "class": "A",
-        "basis": "css-text-decor-3 §2.1 and Chrome observation (the decoration capture)",
+        "basis": "css-text-decor-3 §2.1",
         "proof": [
           "packages/dragon/test/text-decoration.test.ts"
         ]

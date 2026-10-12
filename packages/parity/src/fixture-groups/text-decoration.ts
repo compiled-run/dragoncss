@@ -1,5 +1,5 @@
 // Fixture group text-decoration (TDEC-a, notes/T148J-tdec.md): the values every target refuses. Decorated text is drawn on web
-// only until TDEC-b, so the decorated cases are in the web-only lane (fixture-groups/fonts.ts) and the decoration capture.
+// only until TDEC-b, so the decorated cases are in the web-only lane (fixture-groups/fonts.ts).
 import type { FixtureSpec } from '../fixtures.ts';
 import { reject } from './define.ts';
 

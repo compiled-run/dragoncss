@@ -1,7 +1,7 @@
 // Text decorations (TDEC-a, notes/T148J-tdec.md): the a:any-link UA rule and the decorations each text leaf draws. Propagation is
-// written from css-text-decor-3 §2.1 (Blink's style_adjuster.cc and computed_style.cc are LGPL and are behaviour references only)
-// and checked against Chrome by the decoration capture: a decoration propagates to in-flow block children, inline boxes and flex
-// items, and never into out-of-flow boxes or atomic inlines.
+// written from css-text-decor-3 §2.1 (Blink's style_adjuster.cc and computed_style.cc are LGPL and are behaviour references only):
+// a decoration propagates to in-flow block children, inline boxes and flex items, and never into out-of-flow boxes or atomic
+// inlines. No Chrome comparison checks the propagation on this branch yet; TDEC-a2's decoration capture is to check it.
 import type { CssValue } from '../css/values.ts';
 import type { DecorationLine } from '../css/properties/text-decoration.ts';
 import { DECORATION_LINES } from '../css/properties/text-decoration.ts';
@@ -24,14 +24,16 @@ export const isAnyLink = (el: LinkedElement): boolean => el.tag === 'a' && el.at
 
 /**
  * html.css:1501-1505: a:-webkit-any-link { color: -webkit-link; text-decoration: underline }. Each longhand no author declaration
- * set takes the captured value (UaDataset.anyLink). An element that is not a hyperlink is left untouched.
+ * set takes the captured value (UaDataset.anyLink), keeping the longhand's provenance (an author declaration that reverted to the UA
+ * origin stays recorded). An element that is not a hyperlink is left untouched.
  */
 export function applyAnyLink(el: LinkedElement, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, ua: UaDataset): void {
   if (!isAnyLink(el)) return;
   const none = { span: null, declaration: null, declared: null, losing: [] } as const;
   const dir = valueToString((props.get('direction') as ResolvedValue).value) === 'rtl' ? 'rtl' : 'ltr';
-  if (defaulted.has('color')) props.set('color', { value: parseValueText('color', ua.anyLink.color[dir]), origin: 'user-agent', ...none });
-  if (defaulted.has('text-decoration-line')) props.set('text-decoration-line', { value: parseValueText('text-decoration-line', ua.anyLink.line), origin: 'user-agent', ...none });
+  const take = (p: Longhand, text: string): void => props.set(p, { ...none, ...props.get(p), value: parseValueText(p, text), origin: 'user-agent' });
+  if (defaulted.has('color')) take('color', ua.anyLink.color[dir]);
+  if (defaulted.has('text-decoration-line')) take('text-decoration-line', ua.anyLink.line);
 }
 
 /** One decoration a text leaf draws: its decorating box's lines, style, colour, thickness, underline offset and font. */
@@ -111,6 +113,8 @@ export function analyzeDecorations(root: ResolvedElement, colorOf: (el: Resolved
         if (list.length > 0) applied.set(c.node.address, list);
         continue;
       }
+      // A child that generates no box takes part in no formatting context.
+      if (keyword(c, 'display') === 'none') continue;
       const context = propagationContext(c, el);
       if (list.length > 0 && context === 'unproven') unproven.push({ address: c.element.address, box: (list[list.length - 1] as AppliedDecoration).box });
       const propagates = context === 'block' || context === 'inline' || context === 'flex-item' || (context === 'out-of-flow' && faults.propagatedIntoOutOfFlow);
@@ -121,7 +125,7 @@ export function analyzeDecorations(root: ResolvedElement, colorOf: (el: Resolved
   return { applied, unproven };
 }
 
-/** The decorations of a compiled case (null when it did not resolve), for the decoration capture. */
+/** The decorations of a compiled case (null when it did not resolve). */
 export function appliedDecorationsOf(compiled: object, assignment: Assignment, faults: CompilerFaults = NO_FAULTS): DecorationAnalysis | null {
   const record = internalRecord(compiled);
   const c = record === undefined ? undefined : caseByAssignment(record, assignment);

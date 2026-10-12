@@ -2,7 +2,7 @@
 // §2.1) and the refusals. Chrome agreement is in packages/parity/test/text-decoration.test.ts.
 import { describe, expect, it } from 'vitest';
 import type { AttributeBinding, ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, NO_FAULTS, WEB_CSS_PATH } from '../src/internal.ts';
 import type { LinkedElement, LinkedText } from '../src/analysis/link.ts';
 import type { ResolvedElement, ResolvedValue } from '../src/analysis/resolve.ts';
 import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
@@ -91,6 +91,15 @@ describe('a:any-link (html.css:1501-1505)', () => {
     expect([v(find(root, 'c'), 'color'), v(find(root, 'c'), 'text-decoration-line')]).toEqual(['rgb(9, 9, 9)', 'none']);
     expect([v(find(root, 'p'), 'color'), v(find(root, 'p'), 'text-decoration-line')]).toEqual(['rgb(1, 2, 3)', 'none']);
   });
+  it('keeps the provenance of an author declaration that reverts to the UA origin', () => {
+    const root = resolve('.r { color: revert; text-decoration-line: revert; }', (r) => [el(r, 'l', 'a', ['r'], [text(r, 't', 'X')], { href: '#' })]);
+    const l = find(root, 'l');
+    expect([v(l, 'color'), v(l, 'text-decoration-line')]).toEqual(['rgb(0, 0, 238)', 'underline']);
+    for (const p of ['color', 'text-decoration-line'] as const) {
+      expect(l.props.get(p)?.origin, p).toBe('user-agent');
+      expect(l.props.get(p)?.declaration, p).not.toBeNull();
+    }
+  });
   it('identity: on an element that is not a hyperlink the hook changes no longhand', () => {
     const root = resolve('.x { color: rgb(4, 5, 6); text-decoration: underline; }', (r) => [el(r, 'd', 'div', ['x'], [el(r, 's', 'span'), el(r, 'a', 'a'), el(r, 'h', 'span', [], [], { href: '#' })])]);
     for (const id of ['d', 's', 'a', 'h']) {
@@ -137,6 +146,12 @@ describe('propagation (css-text-decor-3 §2.1)', () => {
     expect(unproven).toEqual([]);
     expect(applied.get('u:text0')?.[0]?.color).toEqual({ r: 255, g: 0, b: 0, alpha: 255 });
   });
+  it('skips a display: none child, which generates no box, instead of refusing it as unproven', () => {
+    const { applied, unproven } = analyzeDecorations(resolve('body { font-family: Ahem; } .h { display: none; }', (r) => [el(r, 'l', 'a', [], [el(r, 'h', 'span', ['h'], [text(r, 'ht', 'x')]), text(r, 't', 'text')], { href: '#' })]));
+    expect(unproven).toEqual([]);
+    expect((applied.get('l:text0') ?? []).map((d) => d.box)).toEqual(['l']);
+    expect(applied.has('h:text0')).toBe(false);
+  });
   it('the propagatedIntoOutOfFlow plant decorates the absolutely positioned box', () => {
     const { applied } = analyzeDecorations(resolve(css, tree), undefined, { ...NO_FAULTS, propagatedIntoOutOfFlow: true });
     expect((applied.get('ab:text0') ?? []).map((d) => d.box)).toEqual(['u']);
@@ -145,6 +160,20 @@ describe('propagation (css-text-decor-3 §2.1)', () => {
 
 describe('the targets', () => {
   const project = () => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' });
+  it('web leaves a hyperlink\'s UA colour to Chrome (color: revert, inherited below it), so :active and visited colours still apply', () => {
+    const c = project().compile(inputFor('body { font-family: Ahem; } .c { color: rgb(9, 9, 9); }', (r) => [
+      el(r, 'l', 'a', [], [el(r, 's', 'span', [], [text(r, 't', 'Go')])], { href: '/x' }),
+      el(r, 'c', 'a', ['c'], [text(r, 'u', 'Go')], { href: '/y' }),
+    ]));
+    expect(c.outputs.web.kind).toBe('ready');
+    const css = (c.outputs.web.kind === 'ready' ? c.outputs.web.files : []).find((f) => f.path === WEB_CSS_PATH)?.text ?? '';
+    // The captured -webkit-link colour is never written as an author rule; the author's colour is.
+    expect(css).not.toContain('rgb(0, 0, 238)');
+    expect(css).not.toContain('#0000ee');
+    expect(css.match(/color: revert;/g)?.length).toBe(1);
+    expect(css).toContain('color: inherit;');
+    expect(css).toMatch(/color: (rgb\(9, 9, 9\)|#090909);/);
+  });
   it('web accepts decorated text; ios refuses it naming TDEC-b; undecorated text compiles on ios', () => {
     const c = project().compile(inputFor('body { font-family: Ahem; } .u { text-decoration: underline; }', (r) => [el(r, 'u', 'div', ['u'], [text(r, 't', 'XX')]), el(r, 'p', 'div', [], [text(r, 'q', 'XX')])]));
     expect(c.diagnostics.map((d) => `${d.code} ${String(d.target)} ${d.message}`)).toEqual(['DRAGON_UNSUPPORTED_VALUE ios text u:text0 draws text-decoration (underline from u); ios draws decorations from TDEC-b']);
