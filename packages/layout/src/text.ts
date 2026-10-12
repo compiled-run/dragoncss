@@ -64,10 +64,10 @@ export function coveredIndex(cp: number): number {
   return -1;
 }
 
-/** The code points a font-data measurer covers: printable ASCII except the apostrophe, then U+200B. */
 /** U+2026 HORIZONTAL ELLIPSIS: measured from FontData.ellipsisAdvance, never laid out as text (line_truncator.cc ComputeEllipsisText). */
 export const ELLIPSIS = 0x2026;
 
+/** The code points a font-data measurer covers: printable ASCII except the apostrophe, then U+200B. */
 export function coveredCodePoints(): number[] {
   const out: number[] = [];
   for (let cp = 0x20; cp <= 0x7e; cp++) if (cp !== 0x27) out.push(cp);

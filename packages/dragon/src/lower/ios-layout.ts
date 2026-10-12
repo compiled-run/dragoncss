@@ -30,6 +30,7 @@ import type {
   Position,
   SizeValue,
   TextAlign,
+  TextOverflow,
   TextLeaf,
   TextWrapMode,
 } from '@dragon/layout';
@@ -301,6 +302,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     aspectRatio: aspectRatio(id, get),
     // CSS2 §10.8.1: vertical-align is not a Dragon longhand; every box takes its initial value, which only inline boxes read.
     verticalAlign: { kind: 'keyword', value: 'baseline' },
+    textOverflow: keyword<TextOverflow>(id, get, 'text-overflow', ['clip', 'ellipsis']),
     grid: null,
     gridItem: null,
   };

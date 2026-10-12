@@ -53,13 +53,13 @@ function codePoints(text: string, start: number, end: number): string {
   return out;
 }
 
+type Fit = { readonly count: number; readonly width: LU };
+
 /**
  * ShapeResult::OffsetToFit (shape_result.cc, left to right, without breaking glyphs): how many code points from start fit in
  * target, keeping a cluster only when its float end is at most target; and the truncated text's SnappedWidth. Font-data text
  * (Ahem) measures each prefix as its own item, whose SnappedWidth is at most target exactly when its float width is.
  */
-type Fit = { readonly count: number; readonly width: LU };
-
 function offsetToFit(ctx: Ctx, nodeId: string, s: TruncSource, shaped: boolean, target: LU): Fit {
   const length = s.end - s.start;
   if (target <= 0) return { count: 0, width: ZERO };

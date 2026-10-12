@@ -1260,6 +1260,30 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/inline/line_truncator.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 The Chromium Authors",
+      "fileSha256": "38e440bae8376bcc48f87671de515513cfe08fd7ab176e60d6baabf29cba0eb7",
+      "headerSha256": "bb164409c6a3593ec3b8bb889d907af0efb2e323920ac00bd35aa1f81101ab72",
+      "ranges": [
+        { "lines": "50-60", "symbol": "LineTruncator::ComputeEllipsisText", "source": "located" },
+        { "lines": "62-71", "symbol": "LineTruncator::SetupEllipsis", "source": "located" },
+        { "lines": "73-109", "symbol": "LineTruncator::PlaceEllipsisNextTo", "source": "located" },
+        { "lines": "142-201", "symbol": "LineTruncator::TruncateLine", "source": "located" },
+        { "lines": "449-496", "symbol": "LineTruncator::EllipsizeChild", "source": "located" },
+        { "lines": "505-539", "symbol": "LineTruncator::TruncateChild", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": "EngineFaults", "use": "reference" },
+        { "file": "packages/layout/src/inline.ts", "symbol": "LineEllipsis", "use": "port" },
+        { "file": "packages/layout/src/text.ts", "symbol": "ELLIPSIS", "use": "reference" },
+        { "file": "packages/layout/src/truncate.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/truncate.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/inline/line_utils.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -2009,6 +2033,7 @@
       "dragon": [
         { "file": "packages/layout/src/shaping.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/shaping.ts", "symbol": "sumAdvances", "use": "port" },
+        { "file": "packages/layout/src/truncate.ts", "symbol": "offsetToFit", "use": "port" },
         { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
         { "file": "packages/text-shaper/src/blink.ts", "symbol": null, "use": "port" },
         { "file": "packages/text-shaper/src/blink.ts", "symbol": "sumAdvances", "use": "port" }

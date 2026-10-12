@@ -64,6 +64,8 @@ const SUBSET = [
   'background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip', 'background-position',
   // T150a: visibility (css-display-3 §4), after lists, as LONGHANDS registers it.
   'visibility',
+  // TXT2-f: text-overflow (css-overflow-4 §3.1), after visibility.
+  'text-overflow',
 ] as const;
 
 /**
@@ -89,6 +91,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink ListStyleType::ParseSingleValue (css/properties/longhands/longhands_custom.cc): none, a string or a counter-style name;
   // symbols() is parsed only in @counter-style, so webref's <symbols()> is dropped (pinned by packages/parity/test/list-style-parse.test.ts).
   'list-style-type': '<counter-style-name> | <string> | none',
+  // Blink parses one keyword, clip or ellipsis: the <string> value (TextOverflowString) and the two-value form are test features
+  // in Chrome 145 (notes/T149-txt2-spec.md R2), and webref's fade and fade() are not parsed.
+  'text-overflow': 'clip | ellipsis',
   display: [
     '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
     '[ block | inline ]? && [ flow | flow-root ]? && list-item',
