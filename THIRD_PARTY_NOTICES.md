@@ -44,6 +44,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/grid/grid_track_collection.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_track_sizing_algorithm.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/fragment_item.cc`: Copyright 2019 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/inline_node.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/layout_utils.cc`: Copyright 2018 The Chromium Authors
@@ -64,6 +65,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/fonts/shaping/font_features.cc`: Copyright 2021 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/han_kerning.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/run_segmenter.cc`: Copyright 2015 The Chromium Authors
+- `third_party/blink/renderer/platform/fonts/shaping/shape_result_spacing.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/shape_result_view.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/shaping_line_breaker.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/skia/skia_text_metrics.cc`: Copyright 2016 The Chromium Authors
@@ -188,6 +190,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/platform/fonts/shaping/shape_result.cc`: Copyright (c) 2012 Google Inc. All rights reserved.; Copyright (C) 2013 BlackBerry Limited. All rights reserved.
 - `third_party/blink/renderer/platform/geometry/layout_unit.h`: Copyright (c) 2012, Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/graphics/styled_stroke_data.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
+- `third_party/blink/renderer/platform/text/character.h`: Copyright (C) 2014 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/wtf/decimal.cc`: Copyright (C) 2012 Google Inc. All rights reserved.
 
 ```

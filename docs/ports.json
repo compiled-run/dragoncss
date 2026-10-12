@@ -1240,6 +1240,21 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/inline/inline_node.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "53ad34a5a950124f9fae8e9511a1ad9220e819dbf27a926888e4d32bb81632ea",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "453-472", "symbol": "ShouldBreakShapingBeforeText", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/inline.ts", "symbol": "checkShapedText", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/inline/line_breaker.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -1907,7 +1922,11 @@
         { "lines": "1-272", "symbol": null, "source": "whole-file" }
       ],
       "dragon": [
-        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
+        { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
+        { "file": "packages/layout/src/block.ts", "symbol": "EngineFaults", "use": "reference" },
+        { "file": "packages/layout/src/shaping.ts", "symbol": "makeItem", "use": "port" },
+        { "file": "packages/layout/test/letter-spacing.test.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/parity/src/fixture-groups/text-spacing.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -1978,6 +1997,21 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/platform/fonts/shaping/shape_result_spacing.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "0b32d984a5caf43d9b6da82810c254ff4e73802cbcda9242836d430620f7de33",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "119-152", "symbol": "ShapeResultSpacing::ComputeSpacing", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/shaping.ts", "symbol": "applySpacing", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/platform/fonts/shaping/shape_result_view.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -2011,7 +2045,8 @@
         { "file": "packages/layout/src/shaping.ts", "symbol": "sumAdvances", "use": "port" },
         { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" },
         { "file": "packages/text-shaper/src/blink.ts", "symbol": null, "use": "port" },
-        { "file": "packages/text-shaper/src/blink.ts", "symbol": "sumAdvances", "use": "port" }
+        { "file": "packages/text-shaper/src/blink.ts", "symbol": "sumAdvances", "use": "port" },
+        { "file": "packages/layout/src/shaping.ts", "symbol": "applySpacing", "use": "port" }
       ]
     },
     {
@@ -2254,6 +2289,21 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/images/natural-size.ts", "symbol": "densityCorrectedSize", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/text/character.h",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2014 Google Inc. All rights reserved.",
+      "fileSha256": "55167fd8f1ec64163a371e98a1a815b22c7f5a3eab6d3b2e343ee4fd8683c2e7",
+      "headerSha256": "0f58332f67e2adc7ccffd70648e9f677d3c8e4beaa2e7a1247c7f4b3cfe4441b",
+      "ranges": [
+        { "lines": "179-198", "symbol": "Character::TreatAsZeroWidthSpace", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/text.ts", "symbol": "treatAsZeroWidthSpace", "use": "port" }
       ]
     },
     {
@@ -2987,12 +3037,16 @@
       "ranges": [
         { "lines": "3330-3378", "symbol": "Content::ParseSingleValue", "source": "located" },
         { "lines": "3431-3436", "symbol": "Content::ApplyValue", "source": "located" },
-        { "lines": "6772-6785", "symbol": "ListStyleType::ParseSingleValue", "source": "located" }
+        { "lines": "6772-6785", "symbol": "ListStyleType::ParseSingleValue", "source": "located" },
+        { "lines": "6617-6636", "symbol": "LetterSpacing::CSSValueFromComputedStyleInternal", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "contentRefusal", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/lists.ts", "symbol": "parseListsValue", "use": "reference" },
-        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" }
+        { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_OVERRIDES", "use": "reference" },
+        { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "computeLetterSpacing", "use": "port" },
+        { "file": "packages/dragon/src/css/properties/text-spacing.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/faults/txt2b.ts", "symbol": "Txt2bFaults", "use": "reference" }
       ]
     }
   ],

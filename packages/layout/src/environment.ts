@@ -180,6 +180,7 @@ function boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): boolean {
 /** Whether an inline-level child or its descendants hold a font or line height to resolve, or an inline box a calculation. */
 function inlineNeedsEnvironment(c: InlineChild, faults: EngineFaults): boolean {
   if (fontNeedsEnvironment(c.font, c.lineHeight, faults)) return true;
+  if (c.kind === 'text' && (c.letterSpacing.kind !== 'px' || !inCssLengthRange(c.letterSpacing.value))) return true;
   if (c.kind !== 'inline') return false;
   if (styleNeedsEnvironment(c.style)) return true;
   for (const k of c.children) if (inlineNeedsEnvironment(k, faults)) return true;
@@ -259,7 +260,21 @@ function resolveText(t: TextLeaf, parent: Env): TextLeaf {
   const env: Env = { ...parent, node: t.id };
   const size = computedSize(t.font, env);
   const font: FontSpec = { family: t.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true };
-  return { kind: 'text', id: t.id, text: t.text, font, lineHeight: resolveLineHeightValue(t.lineHeight, size, env), whiteSpaceCollapse: t.whiteSpaceCollapse, textWrapMode: t.textWrapMode };
+  return {
+    kind: 'text', id: t.id, text: t.text, font, lineHeight: resolveLineHeightValue(t.lineHeight, size, env), whiteSpaceCollapse: t.whiteSpaceCollapse, textWrapMode: t.textWrapMode,
+    letterSpacing: resolveLetterSpacing(t.letterSpacing, env),
+  };
+}
+
+/**
+ * letter-spacing in zoomed px (StyleBuilderConverter::ConvertSpacing through ConvertToLength): a px length zoomed and clamped, a
+ * calculation without a percentage Length::Fixed of its double value. A percentage is of the font size (FontDescription::LetterSpacing),
+ * which is not ported yet.
+ */
+function resolveLetterSpacing(e: CalcExpr, env: Env): Px {
+  if (e.kind === 'px') return lengthPx(e, env.zoom);
+  if (calcHasPercent(e)) unsupported('letter-spacing', env.node, 'css-text-3 §8.2', `a percentage letter-spacing on ${env.node} (relative to the font size) is not laid out yet`);
+  return { kind: 'px', value: cssLengthFixed(lengthDouble({ kind: 'calc', expr: e, range: 'all' }, env)) };
 }
 
 function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
@@ -455,7 +470,7 @@ function fontLengths(font: FontSpec, env: Env): FontLengths {
   const size = computedSize(font, env);
   const m = env.faults.exUntruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: env.faults.metricHalfUp, untruncatedFontSize: true }) : env.measurer;
   refuseUnknownFace(m, font, env);
-  return m.lengths({ family: font.family, size });
+  return m.lengths({ family: font.family, size, letterSpacing: 0 });
 }
 
 /** A face the measurer does not hold is refused with text-glyph, at the node whose font or length names it. */
@@ -486,7 +501,7 @@ function computedLineHeightPx(lh: LineHeightValue, font: FontSpec, env: Env): nu
         return floatAdd(floatAdd(fontMetricPx(i, d.unitsPerEm, d.ascent), fontMetricPx(i, d.unitsPerEm, d.descent)), fontMetricPx(i, d.unitsPerEm, d.lineGap));
       }
       refuseUnknownFace(env.measurer, font, env);
-      const m = env.measurer.metrics({ family: font.family, size });
+      const m = env.measurer.metrics({ family: font.family, size, letterSpacing: 0 });
       return toPx(add(add(m.ascent, m.descent), m.lineGap));
     }
     case 'number':

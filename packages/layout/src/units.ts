@@ -672,6 +672,16 @@ export function metricLeafPx(value: number, metricPx: number): number {
   return value * Math.fround(metricPx);
 }
 
+/** TextRunLayoutUnit(float) (FixedPoint<16, int32_t>): float(px) * 65536 in float, truncated toward zero into the int range. */
+export function textRunLayoutUnit(px: number): number {
+  return saturatedInt(Math.fround(Math.fround(px) * 65536));
+}
+
+/** SkiaScalarToHarfBuzzPosition of a glyph advance of units at an instance size: float(units * size / upem) * 65536, truncated. */
+export function glyphAdvance16(units: number, instanceSizePx: number, unitsPerEm: number): number {
+  return saturatedInt(Math.fround(Math.fround((units * instanceSizePx) / unitsPerEm) * 65536));
+}
+
 /** base::saturated_cast<int>(double): NaN is 0, and the value truncates toward zero into the int range. */
 function saturatedInt(v: number): number {
   if (Number.isNaN(v)) return 0;

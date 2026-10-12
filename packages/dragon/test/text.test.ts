@@ -85,18 +85,18 @@ describe('MF4: whitespace-only text never has an empty address', () => {
 
 describe('text nodes carry their inherited text styles (goal.md principle 3)', () => {
   const input = inputFor(`${FONT} .p { line-height: 1.5; text-align: center; color: #102030; white-space: nowrap; }`, (r) => [div(r, 'p', ['p'], [text(r, 't', 'XX XX')])]);
-  it('each of the eight text properties has an Origin of kind inherited naming the insertion parent', () => {
+  it('each of the nine text properties has an Origin of kind inherited naming the insertion parent', () => {
     const c = derive().compile(input);
     const topo = textTopology(c, []);
     expect(topo?.map((t) => t.address)).toEqual(['p:text0']);
     const t = (topo ?? [])[0];
-    expect(Object.keys(t?.inherited ?? {}).sort()).toEqual(['color', 'direction', 'font-family', 'font-size', 'line-height', 'text-align', 'text-wrap-mode', 'white-space-collapse']);
+    expect(Object.keys(t?.inherited ?? {}).sort()).toEqual(['color', 'direction', 'font-family', 'font-size', 'letter-spacing', 'line-height', 'text-align', 'text-wrap-mode', 'white-space-collapse']);
     for (const o of Object.values(t?.inherited ?? {})) expect(o).toMatchObject({ kind: 'inherited', element: 'p' });
     expect(t?.inherited['font-size']).toMatchObject({ kind: 'inherited', element: 'p', from: { kind: 'inherited', element: 'body', from: { kind: 'authored' } } });
     expect(t?.context).toBe('text-in-block/ltr');
   });
   it('the lowering reads the text node, never its parent: a text node with a dropped font-size lays out at its own 16px', () => {
-    expect(find(lowered(input), 'p:text0')).toEqual({ kind: 'text', id: 'p:text0', text: 'XX XX', font: { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'nowrap' });
+    expect(find(lowered(input), 'p:text0')).toEqual({ kind: 'text', id: 'p:text0', text: 'XX XX', font: { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight: { kind: 'number', value: 1.5 }, whiteSpaceCollapse: 'collapse', textWrapMode: 'nowrap', letterSpacing: { kind: 'px', value: 0 } });
     const faulty = find(lowered(input, { ...NO_FAULTS, dropInheritedText: true }), 'p:text0');
     expect(faulty?.kind === 'text' && faulty.font.size).toBe(16);
     expect((find(lowered(input, { ...NO_FAULTS, dropInheritedText: true }), 'p') as LayoutBox).style.textAlign).toBe('center');

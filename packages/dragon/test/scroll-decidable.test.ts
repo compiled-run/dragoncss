@@ -30,7 +30,7 @@ const box = (id: string, style: Partial<LayoutStyle>, children: Child[] = []): L
 });
 const span = (id: string, children: InlineChild[]): InlineBox => ({ kind: 'inline', id, style: { ...DIV, display: 'inline' }, font: AHEM, lineHeight: { kind: 'normal' }, children });
 const br = (id: string): LineBreak => ({ kind: 'br', id, font: AHEM, lineHeight: { kind: 'normal' } });
-const leaf = (id: string, value: string): TextLeaf => ({ kind: 'text', id, text: value, font: AHEM, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap' });
+const leaf = (id: string, value: string): TextLeaf => ({ kind: 'text', id, text: value, font: AHEM, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 } });
 const VIEW = { width: 400, height: 300 };
 
 const input = (children: LayoutBox[]): LayoutInput => ({

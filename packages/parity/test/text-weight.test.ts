@@ -212,9 +212,10 @@ describe('BASE pins', () => {
     // Groups after the per-feature split run in id order (fixtures.ts), so the text-weight group sits between text-latin and transforms.
     expect(ids.filter((id) => added.includes(id))).toEqual(added);
     const base = ids.filter((id) => !added.includes(id));
-    // BASE is batch #262 (master f88834ce3d plus #257, #238, #254, #260 and #104-#105, which land with this change), whose FIXTURES hold 766 layout cases.
-    expect(base.length).toBe(766);
-    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('9ed8160c7db04452c284f56fea08be80f8b3900d806881535604eccb9764b25e');
+    // BASE is batch #262 (master f88834ce3d plus #257, #238, #254, #260 and #104-#105, which land with this change), whose FIXTURES hold 766 layout cases,
+    // plus TXT2-b's four text-spacing cases (Ahem and Lato, ltr and rtl).
+    expect(base.length).toBe(770);
+    expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('9b148d25757534b67bedae96e71b859ac52d5a93fdb01becabb53b972ff8dc74');
   });
   it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE', () => {
     const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];
@@ -233,6 +234,8 @@ describe('BASE pins', () => {
         if (n.computed['font-weight'] === undefined || n.computed['font-style'] === undefined) lacking.push(p);
         delete n.computed['font-weight'];
         delete n.computed['font-style'];
+        // TXT2-b adds letter-spacing to LONGHANDS after BASE, so every capture gains it.
+        delete n.computed['letter-spacing'];
       }
       return JSON.stringify(c);
     };

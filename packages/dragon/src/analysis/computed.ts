@@ -207,6 +207,16 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
   computePaintValues(props, { em: own, rem: rootFontSize ?? own });
 }
 
+/**
+ * css-text-3 §8.2 as Chrome 145 computes letter-spacing (longhands_custom.cc LetterSpacing::CSSValueFromComputedStyleInternal): a
+ * zero length computes to normal. Planted fault zeroNotNormal keeps the zero length.
+ */
+export function computeLetterSpacing(props: Map<Longhand, ResolvedValue>, zeroNotNormal: boolean): void {
+  const v = props.get('letter-spacing') as ResolvedValue;
+  if (zeroNotNormal || (v.value.kind !== 'length' && v.value.kind !== 'number') || v.value.value !== 0) return;
+  props.set('letter-spacing', { ...v, value: { kind: 'keyword', value: 'normal' } });
+}
+
 /** css-values-4 §6: the lengths inside track-list values compute to px, as computeLengths does for single lengths. */
 export function computeGridLengths(props: Map<Longhand, ResolvedValue>, em: number | null, rem: number | null): void {
   if (em === null || rem === null) return;

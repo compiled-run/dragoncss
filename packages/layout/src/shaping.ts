@@ -10,12 +10,12 @@ import {
   USCRIPT_BOPOMOFO, USCRIPT_COMMON, USCRIPT_HAN, USCRIPT_HIRAGANA, USCRIPT_INHERITED, USCRIPT_KATAKANA, USCRIPT_LATIN,
 } from './script-data.ts';
 import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from './text.ts';
-import { fontMetricLengths } from './text.ts';
+import { fontMetricLengths, letterSpacingAfter } from './text.ts';
 import type { TextRefusalCode } from './unsupported.ts';
 import type { LU } from './units.ts';
 import {
   add, floatAdd, floorToWholePx, fontMetricPx, fromPxCeil, fromRaw, inlineToFloat, inlineToLayoutUnitCeil, neg, platformFontSize, roundCoreTextMetricToWholePx,
-  roundFontMetricHalfUpToWholePx, sub, toFloat, toPx, ZERO,
+  roundFontMetricHalfUpToWholePx, sub, textRunLayoutUnit, toFloat, toPx, ZERO,
 } from './units.ts';
 
 /** Integers per shaped glyph: glyph id, cluster (UTF-16 offset in the text), x advance, y advance, x offset, y offset (16.16), flags. */
@@ -26,6 +26,9 @@ export const FEATURE_TO_END = 4294967295;
 export const TAG_KERN = 1801810542;
 export const TAG_HALT = 1751215220;
 export const TAG_CHWS = 1667790707;
+export const TAG_LIGA = 1818847073;
+export const TAG_CLIG = 1668049255;
+export const TAG_CALT = 1667329140;
 
 /**
  * R1, amended by the PM (T082 B2): the host's HarfBuzz. Shapes text[start, end) with the whole text as context, at the font size
@@ -64,11 +67,17 @@ export type ShapingFaults = {
   readonly softHyphenWidthMissing: boolean;
   /** Round ascent and descent from the unquantised size * units / upem, halves up (T005's rule), instead of Core Text's 16.16 value. */
   readonly metricRoundingSwapped: boolean;
+  /** TXT2-b: no letter spacing after the last cluster of an item. */
+  readonly trailingSpacingDropped: boolean;
+  /** TXT2-b: letter spacing after every code point of a cluster instead of once after the cluster. */
+  readonly spacingPerCodePoint: boolean;
+  /** TXT2-b: liga, clig and calt stay on under letter spacing. */
+  readonly ligaturesKept: boolean;
 };
 
 export const NO_SHAPING_FAULTS: ShapingFaults = {
   advanceNot16_16: false, doubleAccumulation: false, noReshapeAtBreak: false, kerningDropped: false, wholePixelPositions: false, softHyphenWidthMissing: false,
-  metricRoundingSwapped: false,
+  metricRoundingSwapped: false, trailingSpacingDropped: false, spacingPerCodePoint: false, ligaturesKept: false,
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------
@@ -448,6 +457,8 @@ export type ShapeItem = {
   readonly features: readonly number[];
   readonly hanKerning: HanKerningFontData;
   readonly hanKerningMayApply: boolean;
+  /** The letter spacing as TextRunLayoutUnit (16.16), which ShapeResult::ApplySpacing adds after every cluster; 0 for none. */
+  readonly letterSpacing16: number;
   readonly faults: ShapingFaults;
 };
 
@@ -458,6 +469,8 @@ export type ItemInput = {
   readonly text: string;
   readonly language: string;
   readonly hanKerning: HanKerningFontData;
+  /** The used letter spacing in px (FontDescription::LetterSpacing), 0 for normal. */
+  readonly letterSpacing: number;
   readonly faults: ShapingFaults;
 };
 
@@ -474,6 +487,15 @@ export function makeItem(input: ItemInput): ItemResult {
     features.push(0);
     features.push(FEATURE_TO_END);
   }
+  // FontFeatureRange::FromFontDescription (font_features.cc): nonzero letter spacing turns off liga, clig and calt.
+  if (Math.fround(input.letterSpacing) !== 0 && !input.faults.ligaturesKept) {
+    for (const tag of [TAG_LIGA, TAG_CLIG, TAG_CALT]) {
+      features.push(tag);
+      features.push(0);
+      features.push(0);
+      features.push(FEATURE_TO_END);
+    }
+  }
   features.push(TAG_CHWS);
   features.push(1);
   features.push(0);
@@ -482,7 +504,7 @@ export function makeItem(input: ItemInput): ItemResult {
     ok: true,
     item: {
       shaper: input.shaper, face: input.face, size: input.size, text: input.text, units, language: input.language, segments: seg.segments, features,
-      hanKerning: input.hanKerning, hanKerningMayApply: hanKerningMayApply(units, 0, units.length), faults: input.faults,
+      hanKerning: input.hanKerning, hanKerningMayApply: hanKerningMayApply(units, 0, units.length), letterSpacing16: textRunLayoutUnit(input.letterSpacing), faults: input.faults,
     },
   };
 }
@@ -515,6 +537,29 @@ function wholePixel(raw: number): number {
   return (0 - floorToWholePx(neg(lu))) * 1024;
 }
 
+/**
+ * ShapeResult::ApplySpacingOrExpansion with letter spacing (shape_result.cc, shape_result_spacing.cc ComputeSpacing): the last glyph
+ * of every HarfBuzz cluster gains the spacing, the last cluster of the item included, unless the cluster starts with a zero-width
+ * space. The run width is then the unclamped sum. Word spacing is not modelled; the compiler accepts only its initial value.
+ */
+function applySpacing(item: ShapeItem, g: readonly number[], glyphs: ShapingGlyph[], advances: number[], runEnd: number): void {
+  const n = glyphs.length;
+  for (let i = 0; i < n; i++) {
+    const cluster = g[i * GLYPH_STRIDE + 1] as number;
+    const last = i + 1 >= n || (g[(i + 1) * GLYPH_STRIDE + 1] as number) !== cluster;
+    if (!last) continue;
+    if (item.faults.trailingSpacingDropped && i + 1 >= n && runEnd >= item.units.length) continue;
+    let add = letterSpacingAfter(item.units[cluster] as number, item.letterSpacing16);
+    if (item.faults.spacingPerCodePoint) {
+      const next = i + 1 < n ? (g[(i + 1) * GLYPH_STRIDE + 1] as number) : runEnd;
+      for (let c = cluster + 1; c < next; c++) if ((item.units[c] as number) >= 0) add = add + letterSpacingAfter(item.units[c] as number, item.letterSpacing16);
+    }
+    const old = glyphs[i] as ShapingGlyph;
+    glyphs[i] = { glyph: old.glyph, ci: old.ci, advance: old.advance + add, safe: old.safe };
+    advances[i] = old.advance + add;
+  }
+}
+
 /** HarfBuzzShaper::Shape over [start, end) with the item as context. */
 function shapeRange(item: ShapeItem, start: number, end: number, isLineStart: boolean, hanStart: boolean, hanEnd: boolean): ShapeResult {
   const runs: ShapingRun[] = [];
@@ -544,7 +589,8 @@ function shapeRange(item: ShapeItem, start: number, end: number, isLineStart: bo
       glyphs.push({ glyph: gid, ci: cluster - s, advance, safe });
       advances.push(advance);
     }
-    const run: ShapingRun = { start: s, numChars: e - s, glyphs, width: sumAdvances(advances, item.faults, true) };
+    if (item.letterSpacing16 !== 0) applySpacing(item, g, glyphs, advances, e);
+    const run: ShapingRun = { start: s, numChars: e - s, glyphs, width: sumAdvances(advances, item.faults, item.letterSpacing16 === 0) };
     runs.push(run);
     width = accumulate(width, run.width, item.faults);
   }
@@ -723,7 +769,7 @@ export function lineWidth(item: ShapeItem, paragraph: ShapeResult, start: number
 /** ComputedStyle::HyphenString: U+2010 if the face has a glyph for it, else U+002D, shaped as its own item. */
 function hyphenWidth(item: ShapeItem): LineResult {
   const own = (text: string): ShapeResult => {
-    const made = makeItem({ shaper: item.shaper, face: item.face, size: item.size, text, language: item.language, hanKerning: NO_HAN_KERNING, faults: item.faults });
+    const made = makeItem({ shaper: item.shaper, face: item.face, size: item.size, text, language: item.language, hanKerning: NO_HAN_KERNING, letterSpacing: 0, faults: item.faults });
     if (!made.ok) return shapeRange(item, 0, 0, false, false, false);
     return shapeItem(made.item);
   };
@@ -1500,22 +1546,22 @@ export type ShapedItem = { readonly ok: true; readonly item: ShapeItem; readonly
 export type ShapedText = {
   /** R2's TextMeasurer, over the face TextFont.family names (the face id: Ahem, or a bundled face's sha256). */
   readonly measurer: TextMeasurer;
-  item(text: string, face: string, size: number): ShapedItem;
+  item(text: string, face: string, size: number, letterSpacing: number): ShapedItem;
   line(shaped: ShapedItem, start: number, breakOffset: number, available: LU, isBreakable: (offset: number) => boolean): LineResult;
 };
 
 /** The shaping core over the host's faces and HarfBuzz, for text in one language. */
 export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: GlyphShaper, faults: ShapingFaults, language: string): ShapedText {
   const cache = new Map<string, ShapedItem>();
-  const item = (text: string, face: string, size: number): ShapedItem => {
-    const key = `${face}\n${size}\n${text}`;
+  const item = (text: string, face: string, size: number, letterSpacing: number): ShapedItem => {
+    const key = `${face}\n${size}\n${letterSpacing}\n${text}`;
     const hit = cache.get(key);
     if (hit !== undefined) return hit;
     const f = faces.get(face);
     let out: ShapedItem;
     if (f === undefined) out = { ok: false, code: 'text-glyph', reason: `no bundled face ${face}` };
     else {
-      const made = makeItem({ shaper, face: f.id, size, text, language, hanKerning: f.hanKerning, faults });
+      const made = makeItem({ shaper, face: f.id, size, text, language, hanKerning: f.hanKerning, letterSpacing, faults });
       if (!made.ok) out = { ok: false, code: 'text-glyph', reason: made.reason };
       else {
         const result = shapeItem(made.item);
@@ -1529,7 +1575,7 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     if (!shaped.ok) return { ok: false, reason: shaped.reason };
     return lineWidth(shaped.item, shaped.result, start, breakOffset, available, isBreakable);
   };
-  const itemFor = (text: string, font: TextFont): ShapedItem => item(text, font.family, platformFontSize(font.size));
+  const itemFor = (text: string, font: TextFont): ShapedItem => item(text, font.family, platformFontSize(font.size), font.letterSpacing);
   const measurer: TextMeasurer = {
     // R5: SimpleFontData's rounded ascent and descent of the platform-size font; a zero line gap stays ZERO.
     metrics(font: TextFont): FontMetrics {
