@@ -15,7 +15,7 @@ import { compareDual } from './dual.ts';
 import type { FontFixture } from './fixture-groups/fonts.ts';
 import { fontFaceUrls, parseFixtureHtml } from './fixture-reader.ts';
 import type { PlatformFont } from './font-reference.ts';
-import { applyFontReference, fontDataUrl, pinnedFaceCss, pinnedGenerics, platformFonts, VENDOR_FONTS, vendorFontBytes } from './font-reference.ts';
+import { fontDataUrl, fontReferencePrepare, platformFonts, VENDOR_FONTS, vendorFontBytes } from './font-reference.ts';
 import type { CaseOutcome } from './pipeline.ts';
 import { repoPath } from './paths.ts';
 import { compileFixture, webCssOf } from './pipeline.ts';
@@ -35,16 +35,7 @@ export function authoredFontHtml(html: string): string {
 
 /** The stated-reference transform of a fixture with a font map; a fixture without one renders as authored. */
 export function referenceTransform(f: FontFixture): ((page: Page) => Promise<void>) | undefined {
-  if (f.map === null) return undefined;
-  const map = f.map;
-  const css = pinnedFaceCss(map, (src) => {
-    if (!src.startsWith(VENDOR_FONTS)) throw new Error(`the reference map's face ${src} is not a vendored font`);
-    return fontDataUrl(vendorFontBytes(src.slice(VENDOR_FONTS.length)));
-  });
-  const pinned = pinnedGenerics(map);
-  return async (page) => {
-    await applyFontReference(page, css, pinned);
-  };
+  return f.map === null ? undefined : fontReferencePrepare(f.map);
 }
 
 /** The cases of a fonts fixture, with the authored document's font URLs inlined. */

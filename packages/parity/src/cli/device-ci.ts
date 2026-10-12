@@ -140,8 +140,8 @@ if (mode === 'one' && rest.length === 3) {
     process.exit(2);
   }
   const d = diffCaseHashes(a, b);
-  for (const k of ['set', 'states', 'hits'] as const) console.log(`${k}: ${d[k].length} of ${new Set([...Object.keys(a[k]), ...Object.keys(b[k])]).size} cases differ${d[k].length === 0 ? '' : `: ${d[k].join(' ')}`}`);
-  if (d.set.length + d.states.length + d.hits.length > 0) process.exitCode = 1;
+  for (const k of ['set', 'states', 'hits', 'anim'] as const) console.log(`${k}: ${d[k].length} of ${new Set([...Object.keys(a[k]), ...Object.keys(b[k])]).size} cases differ${d[k].length === 0 ? '' : `: ${d[k].join(' ')}`}`);
+  if (d.set.length + d.states.length + d.hits.length + d.anim.length > 0) process.exitCode = 1;
 } else {
   console.error(USAGE);
   process.exit(2);

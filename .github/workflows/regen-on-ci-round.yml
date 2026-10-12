@@ -96,7 +96,11 @@ jobs:
         if: inputs.side == 'host'
         run: |
           brew install openjdk@17
-          brew upgrade kotlin || brew install kotlin
+          # kotlinc pinned to the JetBrains release lanes.json records; Homebrew's kotlin moves to each new release.
+          curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
+          export PATH="$RUNNER_TEMP/kotlinc/bin:$PATH"
           cat > "$RUNNER_TEMP/toolchains.mts" <<'EOF'
           // The host lanes record their toolchain in lanes.json; a runner with another one would rewrite those rows.
           import { readFileSync } from 'node:fs';

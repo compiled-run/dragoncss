@@ -299,3 +299,10 @@ Landed: #217, #219, #220, #221, #222, #223, #224, #225, #226, #227. #227 brought
 - anything under scripts/
 
 Better: a runtime check. Under DRAGON_REQUIRE_NATIVE=1, every native-group test must record that it actually ran a toolchain, enforced by a vitest setup file. Low priority, since none of these shapes exist today.
+
+## Cloud landing replaces the Mac driver (2026-10-09)
+
+The owner asked that landing never depend on the Mac. The Mac driver at /private/tmp/dragon-land is retired; land.yml is the only driver.
+- **Token:** a GitHub App, not a PAT. The precomputed Claude reviews are posted from cloud sessions as the owner's account, so the merging identity must be another one (checkNotReviewer). The driver mints an hour-long installation token from `vars.LAND_APP_ID` and `secrets.LAND_APP_PRIVATE_KEY` in the `land` environment whenever the one it holds has under 15 minutes left (scripts/land-app-token.ts), and takes its own identity from the App's bot user. LAND_TOKEN still works for a PAT.
+- **Defaults:** LAND_REVIEWERS defaults to the owner's id 104264123 and LAND_STOP_ISSUE to #244, so no repository variables are needed.
+- **Owner setup left:** create and install the App, put its id and key in the `land` environment restricted to master, and add the master ruleset requiring PRs.

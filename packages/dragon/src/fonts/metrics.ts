@@ -52,6 +52,17 @@ export function hasItalicTrait(font: SfntFont): boolean {
   return ((font.os2?.fsSelection ?? 0) & 1) !== 0 || (font.post !== null && font.post.italicAngle !== 0);
 }
 
+/**
+ * The traits under which Chrome suppresses synthesis (font_custom_platform_data.cc:286-287, SkTypeface isBold and isItalic), read
+ * broadly so a refusal never misses one: bold is usWeightClass 600 and up, OS/2 fsSelection bit 5 or head.macStyle bit 0; italic is
+ * hasItalicTrait or head.macStyle bit 1.
+ */
+export function synthesisTraits(font: SfntFont): { readonly bold: boolean; readonly italic: boolean } {
+  const os2 = font.os2;
+  const bold = (os2 !== null && (os2.usWeightClass >= 600 || (os2.fsSelection & 0x20) !== 0)) || (font.head.macStyle & 1) !== 0;
+  return { bold, italic: hasItalicTrait(font) || (font.head.macStyle & 2) !== 0 };
+}
+
 export type MetricsResult = { readonly ok: true; readonly metrics: FaceMetrics } | { readonly ok: false; readonly refusal: SfntRefusal };
 
 /** SkScalarRoundToScalar: floorf(x + 0.5f). */

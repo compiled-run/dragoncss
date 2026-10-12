@@ -24,6 +24,7 @@ import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
 import { SVG_ANIMATION } from './animation-kinds/svg.ts';
 import { TEXT_ANIMATION } from './animation-kinds/text.ts';
 import { TRANSFORM_ANIMATION } from './animation-kinds/transform.ts';
+import { VISIBILITY_ANIMATION } from './animation-kinds/visibility.ts';
 import { WRITING_MODE_ANIMATION } from './animation-kinds/writing-mode.ts';
 
 export type { AnimationKind, LengthRange } from './animation-kinds/kinds.ts';
@@ -48,6 +49,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...SVG_ANIMATION,
   ...TEXT_ANIMATION,
   ...TRANSFORM_ANIMATION,
+  ...VISIBILITY_ANIMATION,
   ...WRITING_MODE_ANIMATION,
 };
 

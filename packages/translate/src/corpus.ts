@@ -9,6 +9,7 @@ import type { LayoutBox, LayoutInput, LayoutStyle, LineStrut, TextLeaf } from '.
 import { validateLayoutInput } from '../../layout/src/validate.ts';
 import { runEngineCase, runLibraryCase, runSnapCase, runUnitsCase } from '../harness/harness.ts';
 import { bitsHex } from '../harness/host.ts';
+import { interactionCases, interactionExpected } from './corpus-interaction.ts';
 import { ROOT } from './generate.ts';
 
 export const CORPUS_SPEC = {
@@ -674,6 +675,7 @@ export function buildCorpus(): Corpus {
   const rt = rtCases();
   const hit = hitCases();
   const animator = animatorCases();
+  const interaction = interactionCases();
   const suites: Suite[] = [
     { name: 'vectors', mode: 'engine', lines: vLines, expected: vLines.map(runEngineCase) },
     { name: 'units', mode: 'units', lines: units, expected: units.map(runUnitsCase) },
@@ -685,6 +687,8 @@ export function buildCorpus(): Corpus {
     { name: 'hit', mode: 'library', lines: hit, expected: hitExpected(hit) },
     // ANIM-b1 3b: the runtime animator over every frame case's tables and script, after hit.
     { name: 'animator', mode: 'library', lines: animator, expected: animatorExpected(animator) },
+    // SELD-R2: the interaction runtime over synthetic tables and event scripts, after animator.
+    { name: 'interaction', mode: 'library', lines: interaction, expected: interactionExpected(interaction) },
   ];
   const d = digestsOf(suites);
   return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: d.digest, digests: d.digests };

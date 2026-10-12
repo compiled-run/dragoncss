@@ -1,0 +1,9 @@
+{
+  "case": "text-calibration-lato",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"p1:text0","lines":[[0,38],[38,60]]},
+    {"id":"p2:text0","lines":[[0,32],[32,51]]},
+    {"id":"p3:text0","lines":[[0,23]]}
+  ]
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { absoluteRects, ahemMeasurer, coveredCodePoints, fromCssPx, layout, layoutWithFaults, NO_ENGINE_FAULTS, placeLines, validateLayoutInput } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, coveredCodePoints, fromCssPx, layout, layoutWithFaults, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, validateLayoutInput } from '../src/index.ts';
 import { ahemOpportunities } from '../src/inline.ts';
 import { lineBreakOpportunitiesWith } from '../src/linebreak.ts';
 import type { EngineFaults } from '../src/index.ts';
@@ -180,7 +180,7 @@ describe('engine refusals for text', () => {
 });
 
 describe('placeLines: the one source of lines (INL1a, notes/T044-inl-spec.md R3)', () => {
-  const ctx = { measurer: ahemMeasurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS };
+  const ctx = { measurer: ahemMeasurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
   it('gives each line its top, height and baseline, and each leaf piece its code point range, x, width and content top', () => {
     const b = box('a', { width: px(30) }, [text('t0', 'XX X'), text('t1', 'Y YY')]);
     const got = placeLines(ctx, b, fromCssPx(30));
@@ -221,7 +221,7 @@ describe('soft wrap opportunities equal Chrome\'s on INL-P family 3 (UAX #14 as 
   };
   const linesOf = (value: string, width: number, dpr: number, faults: EngineFaults, direction: 'ltr' | 'rtl' = 'ltr'): string[] => {
     const leaf = text('t', value, { font: ahemFont(10 * dpr) });
-    const got = placeLines({ measurer: ahemMeasurer, devicePixelRatio: dpr, faults }, box('c', { width: px(width), direction }, [leaf]), fromCssPx(width * dpr));
+    const got = placeLines({ measurer: ahemMeasurer, devicePixelRatio: dpr, faults, gridFaults: NO_GRID_FAULTS }, box('c', { width: px(width), direction }, [leaf]), fromCssPx(width * dpr));
     return got.map((l) => {
       if (l.pieces.length !== 1) throw new Error(`${value}: a line of one leaf has ${l.pieces.length} pieces`);
       const p = l.pieces[0] as (typeof l.pieces)[number];

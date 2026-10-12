@@ -19,8 +19,11 @@ import type {
   GapValue,
   InlineBox,
   InlineChild,
+  GridAutoRepeat,
   GridContainerStyle,
   GridItemStyle,
+  GridLine,
+  GridLineName,
   GridSelfAlign,
   GridSpan,
   InsetValue,
@@ -130,11 +133,15 @@ import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
 import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
 import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors } from '../../layout/src/rt-animator.ts';
+import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTables } from '../../layout/src/rt-interaction.ts';
+import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, forcePseudo, hoverExitStarted, hoverMatches, interactionCombo, interactionFrame, interactionStart, interactionState, keyboardFocused, keyPressed, layoutChanged, mousePressed, mouseReleased, pointerExited, pointerMoved, remapPointer, touchCancelled, touchPressed, touchReleased } from '../../layout/src/rt-interaction.ts';
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
 import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
-import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
+import { constrainCornerRadii, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
+import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from '../../layout/src/paint-shadow.ts';
+import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, outerShadowLayer, outerShadowLayerOver, platformOver, shapeCoverage, shapeType, spreadShape } from '../../layout/src/paint-shadow.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
 export class HarnessError extends Error {
@@ -670,6 +677,29 @@ function repeaters(v: JsonValue, path: string): TrackRepeater[] {
   });
 }
 
+function gridLine(v: JsonValue, path: string): GridLine {
+  const k = kindOf(v, path);
+  if (k === 'auto') {
+    obj(v, ['kind'], path);
+    return { kind: 'auto' };
+  }
+  if (k === 'line') return { kind: 'line', n: numField(obj(v, ['kind', 'n'], path), 'n', path) };
+  if (k === 'span') return { kind: 'span', n: numField(obj(v, ['kind', 'n'], path), 'n', path) };
+  if (k === 'named-line') {
+    const o = obj(v, ['kind', 'n', 'name'], path);
+    return { kind: 'named-line', n: numField(o, 'n', path), name: numField(o, 'name', path) };
+  }
+  if (k === 'named-span') {
+    const o = obj(v, ['kind', 'n', 'name'], path);
+    return { kind: 'named-span', n: numField(o, 'n', path), name: numField(o, 'name', path) };
+  }
+  if (k === 'area') {
+    const o = obj(v, ['kind', 'implicitName', 'name'], path);
+    return { kind: 'area', implicitName: numField(o, 'implicitName', path), name: numField(o, 'name', path) };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
 function gridSpan(v: JsonValue, path: string): GridSpan {
   const k = kindOf(v, path);
   if (k === 'definite') {
@@ -677,12 +707,36 @@ function gridSpan(v: JsonValue, path: string): GridSpan {
     return { kind: 'definite', start: numField(o, 'start', path), end: numField(o, 'end', path) };
   }
   if (k === 'auto') return { kind: 'auto', span: numField(obj(v, ['kind', 'span'], path), 'span', path) };
+  if (k === 'lines') {
+    const o = obj(v, ['kind', 'start', 'end'], path);
+    return { kind: 'lines', start: gridLine(field(o, 'start', path), `${path}.start`), end: gridLine(field(o, 'end', path), `${path}.end`) };
+  }
   return fail(`${path}: unknown kind ${k}`);
+}
+
+function lineList(v: JsonValue, path: string): number[] {
+  return arr(v, path).map((x, i) => num(x, `${path}[${i}]`));
+}
+
+function gridAutoRepeat(v: JsonValue, path: string): GridAutoRepeat | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['type', 'index', 'sizes', 'lineNames'], path);
+  const names = arr(field(o, 'lineNames', path), `${path}.lineNames`).map((n, i): GridLineName => {
+    const at = `${path}.lineNames[${i}]`;
+    const l = obj(n, ['explicit', 'repeat', 'implicit'], at);
+    return { explicit: lineList(field(l, 'explicit', at), `${at}.explicit`), repeat: lineList(field(l, 'repeat', at), `${at}.repeat`), implicit: lineList(field(l, 'implicit', at), `${at}.implicit`) };
+  });
+  return {
+    type: lit(field(o, 'type', path), ['auto-fill', 'auto-fit'], `${path}.type`) === 'auto-fit' ? 'auto-fit' : 'auto-fill',
+    index: numField(o, 'index', path),
+    sizes: trackSizes(field(o, 'sizes', path), `${path}.sizes`),
+    lineNames: names,
+  };
 }
 
 function decodeGrid(v: JsonValue, path: string): GridContainerStyle | null {
   if (v.kind === 'null') return null;
-  const o = obj(v, ['templateColumns', 'templateRows', 'autoColumns', 'autoRows', 'explicitColumnCount', 'explicitRowCount', 'autoFlow', 'dense', 'justifyItems'], path);
+  const o = obj(v, ['templateColumns', 'templateRows', 'autoColumns', 'autoRows', 'explicitColumnCount', 'explicitRowCount', 'autoRepeatColumns', 'autoRepeatRows', 'autoFlow', 'dense', 'justifyItems'], path);
   const f = (k: string): JsonValue => field(o, k, path);
   return {
     templateColumns: repeaters(f('templateColumns'), `${path}.templateColumns`),
@@ -691,6 +745,8 @@ function decodeGrid(v: JsonValue, path: string): GridContainerStyle | null {
     autoRows: trackSizes(f('autoRows'), `${path}.autoRows`),
     explicitColumnCount: num(f('explicitColumnCount'), `${path}.explicitColumnCount`),
     explicitRowCount: num(f('explicitRowCount'), `${path}.explicitRowCount`),
+    autoRepeatColumns: gridAutoRepeat(f('autoRepeatColumns'), `${path}.autoRepeatColumns`),
+    autoRepeatRows: gridAutoRepeat(f('autoRepeatRows'), `${path}.autoRepeatRows`),
     autoFlow: lit(f('autoFlow'), ['row', 'column'], `${path}.autoFlow`) === 'column' ? 'column' : 'row',
     dense: bool(f('dense'), `${path}.dense`),
     justifyItems: lit(f('justifyItems'), GRID_SELF_ALIGN, `${path}.justifyItems`) as GridSelfAlign,
@@ -1353,6 +1409,58 @@ function radiusFaults(a: readonly JsonValue[], i: number): RadiusFaults {
   return { radiusUnclamped: arg(a, i) !== 0, innerRadiusNotReduced: arg(a, i + 1) !== 0 };
 }
 
+/** The shadow faults from arguments i (spreadIgnored), i + 1 (sigmaHalfBlur) and i + 2 (shadowNotClippedOut). */
+function shadowFaults(a: readonly JsonValue[], i: number): ShadowFaults {
+  return { spreadIgnored: arg(a, i) !== 0, sigmaHalfBlur: arg(a, i + 1) !== 0, shadowNotClippedOut: arg(a, i + 2) !== 0 };
+}
+
+/** A shadow shape from arguments i (left, top, right, bottom, then eight radii). */
+function shadowShape(a: readonly JsonValue[], i: number): ShadowShape {
+  return { left: arg(a, i), top: arg(a, i + 1), right: arg(a, i + 2), bottom: arg(a, i + 3), radii: argList(a, i + 4, 8) };
+}
+
+/** A count at argument i, then that many shadows of nine arguments each (inset, x, y, blur, spread, r, g, b, a). */
+function shadowInputs(a: readonly JsonValue[], i: number): ShadowInput[] {
+  const n = arg(a, i);
+  const out: ShadowInput[] = [];
+  for (let k = 0; k < n; k++) {
+    const at = i + 1 + 9 * k;
+    out.push({ inset: arg(a, at) !== 0, x: arg(a, at + 1), y: arg(a, at + 2), blur: arg(a, at + 3), spread: arg(a, at + 4), r: arg(a, at + 5), g: arg(a, at + 6), b: arg(a, at + 7), a: arg(a, at + 8) });
+  }
+  return out;
+}
+
+/** A count at argument i, then that many backdrop fills of sixteen arguments each (edges, eight radii, r, g, b, a). */
+function backdropFills(a: readonly JsonValue[], i: number): BackdropFill[] {
+  const n = arg(a, i);
+  const out: BackdropFill[] = [];
+  for (let k = 0; k < n; k++) {
+    const at = i + 1 + 16 * k;
+    out.push({ left: arg(a, at), top: arg(a, at + 1), right: arg(a, at + 2), bottom: arg(a, at + 3), radii: argList(a, at + 4, 8), r: arg(a, at + 12), g: arg(a, at + 13), b: arg(a, at + 14), a: arg(a, at + 15) });
+  }
+  return out;
+}
+
+/** A shape result: its edges then its eight radii. */
+function shapeResult(s: ShadowShape): string {
+  const xs: number[] = [s.left, s.top, s.right, s.bottom];
+  for (let k = 0; k < s.radii.length; k++) xs.push(s.radii[k] as number);
+  return numList(xs);
+}
+
+/**
+ * A layer result: its edges, its value count and a digest of its values (h = (h * 31 + v + 1) mod 2147483647, exact in double),
+ * so a layer of thousands of values stays one short line while any changed value changes the line.
+ */
+function layerResult(l: ShadowLayer): string {
+  let d = 0;
+  for (let k = 0; k < l.rgba.length; k++) {
+    const v = d * 31 + (l.rgba[k] as number) + 1;
+    d = v - Math.floor(v / 2147483647) * 2147483647;
+  }
+  return numList([l.left, l.top, l.right, l.bottom, l.rgba.length, d]);
+}
+
 /**
  * One paint case, run through the units mode: ["paint:<feature>:<function>", arg...] in, the whole result line out; null for any
  * other name. Registration point (RT-13 style): each paint package adds one case per root; its vectors are
@@ -1386,7 +1494,28 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
   if (name === 'paint:radius:radiiRenderable') return `["ok",${radiiRenderable(argList(a, 1, 8), arg(a, 9), arg(a, 10)) ? 'true' : 'false'}]`;
   if (name === 'paint:radius:innerCornerRadii') return numList(innerCornerRadii(argList(a, 1, 8), argList(a, 9, 4), arg(a, 13), arg(a, 14), radiusFaults(a, 15)));
   if (name === 'paint:radius:roundedShape') return numList(roundedShape(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), argList(a, 7, 4), radiusLengths(a, 11), arg(a, 27), radiusFaults(a, 28)));
+  if (name === 'paint:radius:outlineWidthPx') return `["ok",${h(outlineWidthPx(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:radius:outlineOffsetPx') return `["ok",${h(outlineOffsetPx(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:radius:outlineRings') return numList(outlineRings(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13), arg(a, 14), arg(a, 15) !== 0));
   if (name === 'paint:radius:hasRoundedCorner') return `["ok",${hasRoundedCorner(argList(a, 1, 8)) ? 'true' : 'false'}]`;
+  if (name === 'paint:shadow:spreadShape') return shapeResult(spreadShape(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13), shadowFaults(a, 14)));
+  if (name === 'paint:shadow:shapeCoverage') return `["ok",${h(shapeCoverage(shadowShape(a, 1), arg(a, 13), arg(a, 14)))}]`;
+  if (name === 'paint:shadow:shapeType') return `["ok",${q(shapeType(shadowShape(a, 1)))}]`;
+  if (name === 'paint:shadow:blurredCoverage') {
+    const m = blurredCoverage(shadowShape(a, 1), arg(a, 13), { left: arg(a, 14), top: arg(a, 15), right: arg(a, 16), bottom: arg(a, 17) });
+    return layerResult({ left: m.bounds.left, top: m.bounds.top, right: m.bounds.right, bottom: m.bounds.bottom, rgba: m.data });
+  }
+  if (name === 'paint:shadow:outerShadowLayer') return layerResult(outerShadowLayer(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14))));
+  if (name === 'paint:shadow:insetShadowLayer') return layerResult(insetShadowLayer(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 4), argList(a, 9, 8), shadowInputs(a, 17), arg(a, 18 + 9 * arg(a, 17)), shadowFaults(a, 19 + 9 * arg(a, 17))));
+  if (name === 'paint:shadow:outerShadowLayerOver') return layerResult(outerShadowLayerOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14)), backdropFills(a, 19 + 9 * arg(a, 14))));
+  if (name === 'paint:shadow:insetShadowLayerOver') return layerResult(insetShadowLayerOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 4), argList(a, 9, 8), shadowInputs(a, 17), arg(a, 18 + 9 * arg(a, 17)), shadowFaults(a, 19 + 9 * arg(a, 17)), backdropFills(a, 22 + 9 * arg(a, 17))));
+  if (name === 'paint:shadow:backdropAt') {
+    const fills = backdropFills(a, 1);
+    const at = 2 + 16 * fills.length;
+    return numList(backdropAt(fills, arg(a, at), arg(a, at + 1)));
+  }
+  if (name === 'paint:shadow:platformOver') return `["ok",${h(platformOver(arg(a, 1), arg(a, 2), arg(a, 3)))}]`;
+  if (name === 'paint:shadow:encodeOver') return numList(encodeOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7)));
   const gradient = gradientResult(name, a);
   if (gradient !== null) return gradient;
   return null;
@@ -1769,6 +1898,9 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
     // animator suite (ANIM-b1 3b, T065 R16): the runtime animator over a frame case's tables and script.
     case 'rt-animator':
       return rtAnimatorResult(a);
+    // interaction suite (SELD-R2, T064 R12): the interaction runtime over synthetic tables and an event script.
+    case 'rt-interaction':
+      return rtInteractionResult(a);
     default:
       return fail(`unknown operation ${op}`);
   }
@@ -2367,6 +2499,114 @@ function rtAnimatorResult(a: readonly JsonValue[]): string {
       for (const c of frameColors(frame, t, AN_NO_FAULTS)) colors += `${colors === '' ? '' : ','}[${q(c.node)},${q(c.property)},${h(c.rgba.r)},${h(c.rgba.g)},${h(c.rgba.b)},${h(c.rgba.alpha)}]`;
       out += `${out === '' ? '' : ','}[[${values}],[${colors}]]`;
     } else fail(`${path}: unknown step ${op}`);
+  });
+  return `[${out}]`;
+}
+
+// ---------------------------------------------------------------- interaction suite (SELD-R2, T064 R12)
+
+/** The interaction runtime runs with no planted fault: the plants are proven by the host trace check and the device traces. */
+const IA_NO_FAULTS: InteractionFaults = {
+  tapSetsHover: false,
+  hoverWithoutAncestors: false,
+  forcedSetsAncestors: false,
+  focusOnNonFocusable: false,
+  focusVisibleOnPointer: false,
+  activeWithoutAncestors: false,
+  activeStaysAfterRelease: false,
+  focusAtTouchPress: false,
+  rangeTapFocuses: false,
+  hoverNotRecomputedAfterLayout: false,
+  hoverExitOnPress: false,
+};
+
+function iaInt(v: JsonValue, path: string): number {
+  const n = num(v, path);
+  if (!Number.isInteger(n)) return fail(`${path}: ${bitsHex(n)} is not an integer`);
+  return n;
+}
+
+function iaInts(o: JsonObj, k: string, path: string): number[] {
+  return arr(field(o, k, path), `${path}.${k}`).map((x, i): number => iaInt(x, `${path}.${k}[${i}]`));
+}
+
+function iaBools(o: JsonObj, k: string, path: string): boolean[] {
+  return arr(field(o, k, path), `${path}.${k}`).map((x, i): boolean => bool(x, `${path}.${k}[${i}]`));
+}
+
+function iaTables(v: JsonValue, path: string): InteractionTables {
+  const o = obj(v, ['parent', 'focusable', 'touchConsumesTap', 'keyboardInput', 'chainOf', 'activeChainOf', 'pointerFocusOf', 'keyboardFocusOf', 'forcedHoverOf', 'forcedActiveOf', 'forcedFocusOf', 'forcedFocusVisibleOf', 'hoverValues', 'activeValues', 'focusValues', 'combos'], path);
+  return {
+    parent: iaInts(o, 'parent', path),
+    focusable: iaBools(o, 'focusable', path),
+    touchConsumesTap: iaBools(o, 'touchConsumesTap', path),
+    keyboardInput: iaBools(o, 'keyboardInput', path),
+    chainOf: iaInts(o, 'chainOf', path),
+    activeChainOf: iaInts(o, 'activeChainOf', path),
+    pointerFocusOf: iaInts(o, 'pointerFocusOf', path),
+    keyboardFocusOf: iaInts(o, 'keyboardFocusOf', path),
+    forcedHoverOf: iaInts(o, 'forcedHoverOf', path),
+    forcedActiveOf: iaInts(o, 'forcedActiveOf', path),
+    forcedFocusOf: iaInts(o, 'forcedFocusOf', path),
+    forcedFocusVisibleOf: iaInts(o, 'forcedFocusVisibleOf', path),
+    hoverValues: iaInt(field(o, 'hoverValues', path), `${path}.hoverValues`),
+    activeValues: iaInt(field(o, 'activeValues', path), `${path}.activeValues`),
+    focusValues: iaInt(field(o, 'focusValues', path), `${path}.focusValues`),
+    combos: iaInts(o, 'combos', path),
+  };
+}
+
+function iaForced(v: JsonValue, path: string): ForcedKind {
+  const k = lit(v, ['none', 'hover', 'active', 'focus', 'focus-visible'], path);
+  if (k === 'hover') return 'hover';
+  if (k === 'active') return 'active';
+  if (k === 'focus') return 'focus';
+  if (k === 'focus-visible') return 'focus-visible';
+  return 'none';
+}
+
+function iaElements(xs: readonly number[]): string {
+  let out = '';
+  for (const x of xs) out += `${out === '' ? '' : ','}${h(x)}`;
+  return `[${out}]`;
+}
+
+/** One step of an interaction script: [kind, ...arguments]; each kind takes exactly its own arguments. */
+function iaStep(t: InteractionTables, s: InteractionPointer, g: readonly JsonValue[], path: string): InteractionPointer {
+  const op = str(item(g, 0, path), path);
+  const want = op === 'move' || op === 'mouse-down' || op === 'touch-down' || op === 'touch-up' || op === 'key' || op === 'key-focus' || op === 'remap' || op === 'layout' ? 2 : op === 'force' ? 3 : 1;
+  if (g.length !== want) return fail(`${path}: step ${op} expects ${want} items, got ${g.length}`);
+  if (op === 'move') return pointerMoved(t, s, iaInt(item(g, 1, path), path));
+  if (op === 'exit') return pointerExited(t, s);
+  if (op === 'exit-start') return hoverExitStarted(t, s);
+  if (op === 'frame') return interactionFrame(t, s);
+  if (op === 'mouse-down') return mousePressed(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'mouse-up') return mouseReleased(t, s, IA_NO_FAULTS);
+  if (op === 'touch-down') return touchPressed(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'touch-up') return touchReleased(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'touch-cancel') return touchCancelled(t, s, IA_NO_FAULTS);
+  if (op === 'key') return keyPressed(t, s, bool(item(g, 1, path), path));
+  if (op === 'key-focus') return keyboardFocused(t, s, iaInt(item(g, 1, path), path));
+  if (op === 'remap') return remapPointer(t, s, arr(item(g, 1, path), path).map((x, i): number => iaInt(x, `${path}[1][${i}]`)));
+  if (op === 'layout') return layoutChanged(t, s, iaInt(item(g, 1, path), path), IA_NO_FAULTS);
+  if (op === 'force') return forcePseudo(t, s, iaForced(item(g, 1, path), path), iaInt(item(g, 2, path), path));
+  return fail(`${path}: unknown step ${op}`);
+}
+
+/**
+ * An interaction script: [op, tables, states, steps]. After each step the record is [hover matches, active matches, focus match,
+ * focus-visible match, combination, state], every element index and number as bits.
+ */
+function rtInteractionResult(a: readonly JsonValue[]): string {
+  if (a.length !== 4) return fail('rt-interaction: expected [op, tables, states, steps]');
+  const t = iaTables(item(a, 1, '$'), '$[1]');
+  checkInteractionTables(t, iaInt(item(a, 2, '$'), '$[2]'));
+  let s: InteractionPointer = interactionStart();
+  let out = '';
+  arr(item(a, 3, '$'), '$[3]').forEach((step, i) => {
+    const path = `$[3][${i.toString(16)}]`;
+    s = iaStep(t, s, arr(step, path), path);
+    out += `${out === '' ? '' : ','}[${iaElements(hoverMatches(t, s, IA_NO_FAULTS))},${iaElements(activeMatches(t, s, IA_NO_FAULTS))},${h(focusMatch(s))},${h(focusVisibleMatch(s))},${h(interactionCombo(t, s))},${h(interactionState(t, s))}]`;
   });
   return `[${out}]`;
 }

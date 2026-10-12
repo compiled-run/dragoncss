@@ -5,6 +5,7 @@ import type { ReplacedLeaf } from './input.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import type { ObjectRect, PixelRect } from './replaced.ts';
 import { drawnObjectRect, naturalSizingOf, objectFitRect, pixelSnappedRect } from './replaced.ts';
+import { floorOf, froundOf } from './rt-easing.ts';
 
 /** A box's paint shape in device px: the snapped border-box edges, the border widths and the eight corner radii (horizontal then vertical, top-left first). */
 export type BoxShape = {
@@ -28,3 +29,12 @@ export function replacedPaint(leaf: ReplacedLeaf, content: ObjectRect): Replaced
 
 /** A replaced box's paint rects in absolute device px: the destination, the content box, and the drawn part (null for none). */
 export type ReplacedPaint = { readonly dest: PixelRect; readonly content: PixelRect; readonly drawn: PixelRect | null };
+
+/**
+ * Skia's paint alpha of a Blink opacity (Skia 2ab8add5 include/core/SkPaint.h:264-266 getAlpha, sk_float_round2int(alpha * 255),
+ * every step in float): Chrome composites an opacity group, or a draw its alpha folds into (cc PlaybackFoldingIterator), with it.
+ */
+export function opacityAlpha8(opacity: number): number {
+  const o = froundOf(opacity < 0 ? 0 : opacity > 1 ? 1 : opacity);
+  return floorOf(froundOf(froundOf(o * 255) + 0.5));
+}

@@ -9,6 +9,7 @@ import { isAnimationProperty } from '../css/properties/animation.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { Compound, InteractionPseudo, PseudoClass, Selector } from '../css/selectors.ts';
 import type { Rule } from '../css/stylesheet.ts';
+import type { VarPart } from '../css/variables.ts';
 import type { CssValue } from '../css/values.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { UaDataset } from '../ua/datasets.ts';
@@ -19,6 +20,7 @@ import type { LinkedElement } from './link.ts';
 import type { InteractionProbe, InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
+import { propagatedFrom } from './computed-checks.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
 export const MAX_INTERACTION_STATES = 256;
@@ -382,9 +384,20 @@ export function firstInteractionPseudo(r: Rule): InteractionPseudo | null {
  */
 export function interactionRefusals(rules: readonly Rule[]): Diagnostic[] {
   const out: Diagnostic[] = [];
+  // ANIM-v: the custom properties a transition or animation value reads through var(), which an interaction rule may not set either.
+  const names = (parts: readonly VarPart[]): string[] => parts.flatMap((p) => (p.kind === 'var' ? [p.name, ...names(p.fallback ?? [])] : []));
+  const animVars = new Set(rules.flatMap((r) => r.declarations.flatMap((d) => names(d.animation?.pending?.parts ?? []))));
   for (const r of rules) {
     if (!ruleIsInteractive(r)) continue;
     for (const d of r.declarations) {
+      if (d.custom !== undefined && animVars.has(d.custom.name)) {
+        out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
+          origin: authored(d.span),
+          message: `${d.property} in a rule that tests :hover, :active, :focus or :focus-visible is not supported: a transition or animation value reads it through var(), and those values are resolved without the interaction states (a later SELD-R2 package)`,
+          manual: `Set ${d.property} in a rule without :hover, :active, :focus or :focus-visible, or write the transition or animation value without var(${d.property}).`,
+        }));
+        continue;
+      }
       if (d.animation !== undefined || isAnimationProperty(d.property)) {
         out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
           origin: authored(d.span),
@@ -445,9 +458,10 @@ export function interactionCapRefusal(caseLabel: string, over: NonNullable<Inter
 }
 
 const all = (): boolean => true;
-// OVFL: rt-hit clips hidden, auto, scroll and clip at the padding box. That is the hit at scroll offset 0, and native views do not
-// scroll until OVFL Phase B, which adds the offsets to the hit test.
-const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip', 'auto', 'scroll']);
+const zeroLength = (v: CssValue): boolean => v.kind === 'length' && v.value === 0;
+// OVFL: rt-hit clips hidden and clip at the padding box. auto and scroll are native scroll views (OVFL-B) the user scrolls, and the
+// hit test does not read scroll offsets yet (OVFL-B2), so they are unmodelled facts.
+const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip']);
 const overflowAtRest = (v: CssValue): boolean => v.kind === 'keyword' && OVERFLOW_AT_REST.has(v.value);
 
 /**
@@ -475,11 +489,33 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['fill', all],
   ['stroke', all],
   ['stroke-width', all],
+  // PNT1: the outline longhands at their computed initial values (the webref initial auto and medium compute to currentcolor and 0px).
+  ['outline-color', (v) => v.kind === 'keyword' && v.value === 'currentcolor'],
+  ['outline-style', (v) => v.kind === 'keyword' && v.value === 'none'],
+  ['outline-width', zeroLength],
+  ['outline-offset', zeroLength],
 ]);
+
+/**
+ * R13: the first grid container of a resolved tree whose display compiles, in preorder, or null. rt-hit.ts refuses grid containers
+ * (Blink paints grid items atomically in order-modified document order, which the hit table does not model yet).
+ */
+export function hitUnmodelledGrid(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): string | null {
+  const d = root.props.get('display');
+  if (d !== undefined && d.value.kind === 'keyword' && (d.value.value === 'grid' || d.value.value === 'inline-grid') && compiles(d)) return root.element.address;
+  for (const c of root.children) {
+    if (c.kind !== 'element') continue;
+    const found = hitUnmodelledGrid(c, compiles);
+    if (found !== null) return found;
+  }
+  return null;
+}
 
 /** R13: the first paint fact of a resolved tree the hit test does not model and that compiles, in preorder and longhand order, or null. */
 export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles: (v: ResolvedValue) => boolean = () => true): { readonly property: Longhand; readonly address: string } | null {
   const initial = new Map<Longhand, string>();
+  // css-overflow-3 §3.3: the element the viewport took its overflow from uses visible, so its overflow is no fact of its box.
+  const propagated = propagatedFrom(root);
   const visit = (el: ResolvedElement): { property: Longhand; address: string } | null => {
     if (el.element.tag === 'svg') return { property: 'fill', address: el.element.address };
     // An overflow value computed from its partner (computeOverflowPair) has no declaration: it compiles only when the partner does.
@@ -487,6 +523,7 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
     for (const [p, v] of el.props) {
       const other = partner(p);
       if (!PROPERTY_ASPECTS[p].paint || !compiles(v) || (other !== undefined && !compiles(other))) continue;
+      if (other !== undefined && el === propagated) continue;
       const modelled = HIT_MODELLED.get(p);
       if (modelled !== undefined) {
         if (modelled(v.value)) continue;

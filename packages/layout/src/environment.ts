@@ -20,6 +20,7 @@ import type {
   FlexBasisValue,
   FontSpec,
   GapValue,
+  GridAutoRepeat,
   GridContainerStyle,
   InsetValue,
   InlineChild,
@@ -206,7 +207,7 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
     s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.flexBasis, s.rowGap, s.columnGap,
   ];
   for (const v of lengths) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
-  return false;
+  return gridNeedsEnvironment(s.grid);
 }
 
 function resolveBox(b: LayoutBox, parent: Env): LayoutBox {
@@ -310,17 +311,50 @@ function zoomGrid(g: GridContainerStyle, z: number): GridContainerStyle {
     templateRows: repeaters(g.templateRows),
     autoColumns: g.autoColumns.map((t) => zoomTrack(t, z)),
     autoRows: g.autoRows.map((t) => zoomTrack(t, z)),
+    autoRepeatColumns: zoomAutoRepeat(g.autoRepeatColumns, z),
+    autoRepeatRows: zoomAutoRepeat(g.autoRepeatRows, z),
   };
+}
+
+function zoomAutoRepeat(r: GridAutoRepeat | null, z: number): GridAutoRepeat | null {
+  if (r === null) return null;
+  return { type: r.type, index: r.index, sizes: r.sizes.map((t) => zoomTrack(t, z)), lineNames: r.lineNames };
 }
 
 function zoomTrack(t: TrackSize, z: number): TrackSize {
   if (t.kind === 'breadth') return { kind: 'breadth', breadth: zoomBreadth(t.breadth, z) };
   if (t.kind === 'minmax') return { kind: 'minmax', min: zoomBreadth(t.min, z), max: zoomBreadth(t.max, z) };
-  return { kind: 'fit-content', limit: t.limit.kind === 'px' ? zoomPx(t.limit, z) : t.limit };
+  return { kind: 'fit-content', limit: t.limit.kind === 'px' ? lengthPx(t.limit, z) : t.limit };
 }
 
+/** A px track breadth is a length (Blink ConvertGridTrackBreadth through ConvertLength): zoomed, then clamped to the CSS length range. */
 function zoomBreadth(b: TrackBreadth, z: number): TrackBreadth {
-  return b.kind === 'px' ? zoomPx(b, z) : b;
+  return b.kind === 'px' ? lengthPx(b, z) : b;
+}
+
+function breadthOutOfRange(b: TrackBreadth): boolean {
+  return b.kind === 'px' && !inCssLengthRange(b.value);
+}
+
+function trackOutOfRange(t: TrackSize): boolean {
+  if (t.kind === 'breadth') return breadthOutOfRange(t.breadth);
+  if (t.kind === 'minmax') return breadthOutOfRange(t.min) || breadthOutOfRange(t.max);
+  return t.limit.kind === 'px' && !inCssLengthRange(t.limit.value);
+}
+
+function tracksOutOfRange(ts: readonly TrackSize[]): boolean {
+  for (const t of ts) if (trackOutOfRange(t)) return true;
+  return false;
+}
+
+/** Whether a grid container holds a px track size or fit-content() limit outside the CSS length range (clamped by the pass). */
+function gridNeedsEnvironment(g: GridContainerStyle | null): boolean {
+  if (g === null) return false;
+  for (const r of g.templateColumns) if (tracksOutOfRange(r.sizes)) return true;
+  for (const r of g.templateRows) if (tracksOutOfRange(r.sizes)) return true;
+  if (g.autoRepeatColumns !== null && tracksOutOfRange(g.autoRepeatColumns.sizes)) return true;
+  if (g.autoRepeatRows !== null && tracksOutOfRange(g.autoRepeatRows.sizes)) return true;
+  return tracksOutOfRange(g.autoColumns) || tracksOutOfRange(g.autoRows);
 }
 
 /** order: a math function's number rounded half toward +infinity and clamped to int; an integer in range is itself. */

@@ -1,0 +1,25 @@
+{
+ "schema": "dragon-frame-pixels/1",
+ "case": "anim-layout-margin-rtl@412x915",
+ "chrome": "145.0.7632.6",
+ "capture": "CDP Page.captureScreenshot {format: png}, the viewport at the forced device scale factor",
+ "rasterRule": "ceil(viewport css px x DPR) in each dimension; 400x300 at 2.625 is 1050x788",
+ "dpr": 3,
+ "flags": ["--force-device-scale-factor=3","--force-color-profile=srgb","--font-render-hinting=none","--disable-lcd-text","--hide-scrollbars"],
+ "raster": {"rasterization":"disabled_software","gpu_compositing":"disabled_software"},
+ "samples": [
+  {"k":0,"at":0,"width":1236,"height":2745,"sha256":"9833fb6db445273ffaf684283b0a5cfcf6f63b8f6c8bb04d9725a1fe14dbb5c3"},
+  {"k":1,"at":0,"width":1236,"height":2745,"sha256":"9833fb6db445273ffaf684283b0a5cfcf6f63b8f6c8bb04d9725a1fe14dbb5c3"},
+  {"k":2,"at":1,"width":1236,"height":2745,"sha256":"eb6ebf8d8d6454cfbc6cf99336db27a7326b21cec6c968fe12f97e3e00980348"},
+  {"k":4,"at":250,"width":1236,"height":2745,"sha256":"40fdb6bf1f5dde77e029f0f19294dba227b8331af7f7cbe68dcc835039587314"},
+  {"k":7,"at":501,"width":1236,"height":2745,"sha256":"75005e414214c87d0ac16d7d6128611e42275743c69cb9b6450688266bc96345"},
+  {"k":9,"at":600,"width":1236,"height":2745,"sha256":"4606ccde818f2b17bf8e78c67b06ba6e12ac2381ce0939e044dca46dc4881d8b"},
+  {"k":10,"at":601,"width":1236,"height":2745,"sha256":"bee81f13268f06ee8bf74974bc6276d39d226aed3494059dbe6f59ef037b28c7"},
+  {"k":12,"at":850,"width":1236,"height":2745,"sha256":"6910333ab7feb0c8d05d00dad426ff205cc7b6da706f2c6498cae8696246edea"},
+  {"k":13,"at":850,"width":1236,"height":2745,"sha256":"6910333ab7feb0c8d05d00dad426ff205cc7b6da706f2c6498cae8696246edea"},
+  {"k":14,"at":851,"width":1236,"height":2745,"sha256":"85882b13382c232e80edae3d6a779168ce3d32e2204ca2ea925d254cb25188b9"},
+  {"k":16,"at":1050.600847764961,"width":1236,"height":2745,"sha256":"124c37cc9c26de25d68e365dcc34bc27aa589424f429ad2a7d0bb320fc972e30"},
+  {"k":19,"at":1252.2016955299218,"width":1236,"height":2745,"sha256":"4606ccde818f2b17bf8e78c67b06ba6e12ac2381ce0939e044dca46dc4881d8b"},
+  {"k":21,"at":1451,"width":1236,"height":2745,"sha256":"4606ccde818f2b17bf8e78c67b06ba6e12ac2381ce0939e044dca46dc4881d8b"}
+ ]
+}

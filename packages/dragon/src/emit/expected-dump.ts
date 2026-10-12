@@ -3,7 +3,7 @@
 // the device scale (border widths, the padding-box clip, the text instance size) come from the TS engine with the same helpers
 // the generated code runs on the device through the translated engine. The digest of an expected dump is embedded in the
 // generated code, keyed by case and DPR. The compiler core imports the engine for types only, so the host passes the TS engine in.
-import type { Edges, EngineFaults, InlineChild, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, ObjectRect, ReplacedLeaf, ReplacedPaint, SnappedRect, TextMeasurer } from '@dragon/layout';
+import type { Edges, EngineFaults, InlineChild, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, ObjectRect, ReplacedLeaf, ReplacedPaint, ScrollRangesResult, SnappedRect, TextMeasurer } from '@dragon/layout';
 import { canonicalJson, sha256Hex } from '../digest.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { NativeBackend, NativeProgram, ProgramNode, ProgramWrite } from '../lower/native-program.ts';
@@ -39,10 +39,14 @@ export type ExpectedEngine = {
   /** REPL-a: padding against a containing block's content width, and a replaced box's paint rects (layout paint.ts). */
   readonly resolvePadding: (style: LayoutStyle, cbInline: number) => Edges;
   readonly replacedPaint: (leaf: ReplacedLeaf, content: ObjectRect) => ReplacedPaint;
+  /** PNT1: Skia's paint alpha byte of an opacity (layout paint.ts), which the device's opacity writer sets. */
+  readonly opacityAlpha8: (opacity: number) => number;
   readonly luPerPx: number;
   readonly platformFontSize: (px: number) => number;
   readonly zoomFontSize: (px: number, zoom: number) => number;
   readonly float32: (x: number) => number;
+  /** OVFL-B: every element scroll container's offset range in device px (layout overflow.ts). */
+  readonly scrollRanges: (input: LayoutInput, measurer: TextMeasurer) => ScrollRangesResult;
   /** The TS paint references (paint-*.ts) whose translations the device runs. */
   readonly paint: PaintEngine;
 };
@@ -55,7 +59,7 @@ export type ReplacedGeometry = { readonly content: readonly number[]; readonly d
  * layout border-box size before snapping, a text run's computed font size in device px from the resolved input (null for a box),
  * and for a replaced box its paint rects.
  */
-export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly size: readonly [number, number]; readonly fontSize: number | null; readonly replaced: ReplacedGeometry | null };
+export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly size: readonly [number, number]; readonly fontSize: number | null; readonly replaced: ReplacedGeometry | null; readonly scroll: readonly [number, number, number, number] | null };
 
 const rgba = (c: { r: number; g: number; b: number; alpha: number }): number[] => [c.r, c.g, c.b, c.alpha];
 
@@ -180,6 +184,10 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
   const borders = borderDevicePx(engine, input);
   const fontSizes = resolvedFontSizes(engine, input);
   const replaced = replacedGeometries(engine, input, out.boxes);
+  const ranges = engine.scrollRanges(input, engine.measurer);
+  if (ranges.kind !== 'ok') throw new Error(`${caseId}@${dpr}: the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
+  const scroll = new Map(ranges.ranges.map((r) => [r.id, [r.minX, r.maxX, r.minY, r.maxY] as const]));
+  const unscrollable = new Map(ranges.refused.map((r) => [r.id, r]));
   const byId = new Map(p.nodes.map((n) => [n.id, n]));
   const nodes: ExpectedNode[] = [];
   out.boxes.forEach((r, i) => {
@@ -188,7 +196,9 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
     if (n === undefined) throw new Error(`${caseId}@${dpr}: the engine laid out ${r.id}, which the program does not have`);
     const box = snapped[i] as SnappedRect;
     const rp = replaced.get(r.id);
-    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box, size: [r.width / engine.luPerPx, r.height / engine.luPerPx], fontSize: fontSizes.get(r.id) ?? null, replaced: rp === undefined ? null : { content: relative(rp.content, box), dest: relative(rp.dest, box), drawn: rp.drawn === null ? null : relative(rp.drawn, box) } };
+    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box, size: [r.width / engine.luPerPx, r.height / engine.luPerPx], fontSize: fontSizes.get(r.id) ?? null, replaced: rp === undefined ? null : { content: relative(rp.content, box), dest: relative(rp.dest, box), drawn: rp.drawn === null ? null : relative(rp.drawn, box) }, scroll: scroll.get(r.id) ?? null };
+    const no = unscrollable.get(r.id);
+    if (no !== undefined && n.writes.some((w) => w.kind === 'scroll-container')) throw new Error(`${caseId}@${dpr}: the engine refused the scroll range of ${r.id} at ${no.nodeId}: ${no.detail}`);
     const applied: { [key: string]: JsonValue } = {};
     for (const w of n.writes) applied[w.key] = appliedValue(engine, p.backend, w, dpr, g);
     nodes.push({ id: n.id, kind: n.kind, native: n.native, applied });

@@ -1,4 +1,4 @@
-// The host paint model of the PNT1 tests (pnt1-radius): boxes in tree order, each filling its rounded border box,
+// The host paint model of the PNT1 tests (pnt1-radius, pnt1-shadow): boxes in tree order, each filling its rounded border box,
 // borders between the rounded border-box and padding-edge shapes (a corner's side by the outer-to-inner diagonal), rounded overflow
 // clips of ancestors, and Skia's 8-bit source-over. It predicts the colour of a sample pixel from the program and the TS
 // paint-radius.ts geometry, for comparison with the committed Chrome PNGs.
@@ -86,9 +86,13 @@ export function modelAt(list: readonly Box[], x: number, y: number, stop: { read
       if (!insideRounded(cx, cy, pl, pt, pr, pb, a.radii === null ? null : a.radii.slice(8, 16))) clipped = true;
     }
     if (clipped || !insideRounded(cx, cy, b.l, b.t, b.r, b.b, b.radii === null ? null : b.radii.slice(0, 8))) continue;
+    // T150a: a box that is not visible paints no background or border of its own (html's and body's background is the canvas's).
+    const hidden = b.node.writes.find((w) => w.kind === 'visibility');
+    if (hidden !== undefined && hidden.kind === 'visibility' && !hidden.canvas) continue;
     const bg = b.node.writes.find((w) => w.kind === 'background-color');
     if (bg !== undefined && bg.kind === 'background-color') colour = over(colour, channels(bg.color));
     if (stop !== null && index === stop.index) break;
+    if (hidden !== undefined) continue;
     const [pl, pt, pr, pb] = padding(b);
     if (insideRounded(cx, cy, pl, pt, pr, pb, b.radii === null ? null : b.radii.slice(8, 16))) continue;
     const styles = b.node.writes.find((w) => w.kind === 'border-styles');

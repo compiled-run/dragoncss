@@ -86,8 +86,8 @@ describe('the css-overflow-3 §3.1 computed pair and the overflow refusals', () 
   // OVFL (T078J) supports every computed pair but clip beside visible; the refusal pins moved to that pair (OVFL-c).
   it('visible beside hidden computes to auto, clip beside hidden to hidden, and clip beside visible stays', () => {
     const pair = project('ltr').compile(inputFor(`${FONT} .a { overflow-x: hidden; }`, (r) => [div(r, 'a', ['a'])]));
-    // The computed auto makes a box the user scrolls, which native refuses until OVFL-B (T078 R14); web compiles it.
-    expect(pair.diagnostics.map((d) => `${d.target} ${d.message}`)).toEqual(['ios overflow-y computes to auto beside overflow-x: hidden (css-overflow-3 §3.1) on a, a box the user scrolls; ios has no native scroll views until OVFL-B']);
+    // The computed auto makes a box the user scrolls: a native scroll view (OVFL-B) on ios, the browser's on web.
+    expect(pair.diagnostics).toEqual([]);
     expect([resolved('.a { overflow-x: hidden; }').x, resolved('.a { overflow-x: hidden; }').y]).toEqual(['hidden', 'auto']);
     expect([resolved('.a { overflow: clip hidden; }').x, resolved('.a { overflow: clip hidden; }').y]).toEqual(['hidden', 'hidden']);
     // clip beside visible keeps both (the refusal below names the pair as computed).
@@ -107,8 +107,8 @@ describe('the css-overflow-3 §3.1 computed pair and the overflow refusals', () 
     for (const css of ['.a { overflow: hidden; }', 'body { overflow: hidden; }', 'body { overflow-x: hidden; }']) {
       expect(project('ltr').compile(inputFor(`${FONT} ${css}`, (r) => [div(r, 'a', ['a'])])).diagnostics, css).toEqual([]);
     }
-    // overflow-x: hidden alone computes overflow-y to auto: web compiles it, native refuses it until OVFL-B (T078 R14).
-    expect(project('ltr').compile(inputFor(`${FONT} .a { overflow-x: hidden; }`, (r) => [div(r, 'a', ['a'])])).diagnostics.map((d) => d.target)).toEqual(['ios']);
+    // overflow-x: hidden alone computes overflow-y to auto, a native scroll view (OVFL-B).
+    expect(project('ltr').compile(inputFor(`${FONT} .a { overflow-x: hidden; }`, (r) => [div(r, 'a', ['a'])])).diagnostics).toEqual([]);
   });
 });
 

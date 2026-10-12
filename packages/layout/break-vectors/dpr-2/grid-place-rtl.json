@@ -1,0 +1,25 @@
+{
+  "case": "grid-place-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"c0b:text0","lines":[[0,1]]},
+    {"id":"c1b:text0","lines":[[0,1]]},
+    {"id":"c2b:text0","lines":[[0,1]]},
+    {"id":"c3b:text0","lines":[[0,1]]},
+    {"id":"c4b:text0","lines":[[0,1]]},
+    {"id":"c5b:text0","lines":[[0,1]]},
+    {"id":"c6b:text0","lines":[[0,1]]},
+    {"id":"c7b:text0","lines":[[0,1]]},
+    {"id":"c8b:text0","lines":[[0,1]]},
+    {"id":"p0b:text0","lines":[[0,2]]},
+    {"id":"p1b:text0","lines":[[0,2]]},
+    {"id":"p2b:text0","lines":[[0,2]]},
+    {"id":"p3b:text0","lines":[[0,2]]},
+    {"id":"p4b:text0","lines":[[0,2]]},
+    {"id":"p5b:text0","lines":[[0,2]]},
+    {"id":"p6b:text0","lines":[[0,2]]},
+    {"id":"p7b:text0","lines":[[0,2]]},
+    {"id":"p8b:text0","lines":[[0,2]]},
+    {"id":"st:text0","lines":[[0,1]]}
+  ]
+}

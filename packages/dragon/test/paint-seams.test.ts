@@ -119,12 +119,12 @@ describe('P6a: border styles the side painter cannot draw', () => {
 });
 
 describe('EMS: programs', () => {
-  it('host every node under its DOM parent and carry an empty facts record, with writes in registry order', () => {
+  it('host every node under its DOM parent and carry only the stacking facts (every box; PNT1, rt-hit.ts reads them), with writes in registry order', () => {
     const p = programs();
     for (const prog of [p.uikit, p['android-views']]) {
       for (const n of prog.nodes) {
         expect(n.host, n.id).toBe(n.parent);
-        expect(n.facts, n.id).toEqual({});
+        expect(Object.keys(n.facts), n.id).toEqual(n.kind === 'text' ? [] : ['stacking']);
       }
       expect(prog.nodes.find((n) => n.id === 'a')?.writes.map((w) => w.kind)).toEqual(['background-color', 'border-widths', 'border-styles', 'border-colors', 'padding-box-clip']);
     }

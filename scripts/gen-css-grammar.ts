@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { GRID_LONGHANDS, GRID_SHORTHANDS } from '../packages/dragon/src/css/properties/grid.ts';
 import { LOGICAL_SHORTHANDS } from '../packages/dragon/src/css/properties/logical.ts';
 import { WRITING_MODE_SHORTHANDS } from '../packages/dragon/src/css/properties/writing-mode.ts';
+import { EFFECTS_LONGHANDS } from '../packages/dragon/src/css/properties/effects.ts';
 import { RADIUS_LONGHANDS } from '../packages/dragon/src/css/properties/radius.ts';
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 import { SVG_LONGHANDS } from '../packages/dragon/src/css/properties/svg.ts';
@@ -38,7 +39,7 @@ const SUBSET = [
   'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
   'flex', 'flex-flow', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order',
   'justify-content', 'align-items', 'align-self', 'align-content', 'gap', 'row-gap', 'column-gap',
-  'font-size', 'font-family', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
+  'font-size', 'font-family', 'font-weight', 'font-style', 'line-height', 'text-align', 'white-space', 'white-space-collapse', 'text-wrap-mode', 'color', 'background', 'background-color',
   ...LOGICAL_SHORTHANDS,
   ...WRITING_MODE_SHORTHANDS,
 
@@ -50,10 +51,20 @@ const SUBSET = [
   // Border radii (PNT1), after pointer-events, as LONGHANDS registers them, then their shorthands.
   ...RADIUS_LONGHANDS,
   'border-radius', '-webkit-border-radius',
+  // Box shadows (PNT1), after the radii.
+  'box-shadow',
+  // Outlines (PNT1), after the radius family, as LONGHANDS registers them, then their shorthand.
+  'outline-color', 'outline-style', 'outline-width', 'outline-offset', 'outline',
   // Transforms (PNT2), after grid, as LONGHANDS registers them.
   ...TRANSFORM_LONGHANDS,
+  // opacity and z-index (PNT1), after transforms.
+  ...EFFECTS_LONGHANDS,
   // GEN-b: content and list-style (css-content-3, css-lists-3), as LONGHANDS registers them.
   'content', 'list-style', 'list-style-type', 'list-style-position', 'list-style-image',
+  // Background layers (BG2), as LONGHANDS registers them, then background-position.
+  'background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip', 'background-position',
+  // T150a: visibility (css-display-3 §4), after lists, as LONGHANDS registers it.
+  'visibility',
   // SVG paint (SVG-a1), after GEN-b, last, as LONGHANDS registers them.
   ...SVG_LONGHANDS,
 ] as const;

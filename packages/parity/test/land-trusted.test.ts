@@ -65,12 +65,18 @@ describe('land.yml: the job that holds LAND_TOKEN runs no tree code', () => {
   it('keeps the token in the land environment, in the driver step only, never in a job environment', () => {
     expect(land).toMatch(/\n {4}environment: land\n/);
     expect(yml.match(/secrets\.LAND_TOKEN/g)).toHaveLength(2);
+    expect(yml.match(/secrets\.LAND_APP_PRIVATE_KEY/g)).toHaveLength(2);
+    expect(yml.match(/secrets\./g)).toHaveLength(4);
     const steps = stepsOf(land);
-    const withSecret = steps.filter((st) => st.includes('secrets.LAND_TOKEN')).map((st) => /- name: (.*)/.exec(st)![1]);
-    expect(withSecret).toEqual(['Check the token and the ref', 'Land one batch']);
-    // The check sees only whether it is set.
-    expect(steps.find((st) => st.includes('Check the token'))).toContain("HAS_LAND_TOKEN: ${{ secrets.LAND_TOKEN != '' }}");
-    expect(steps.find((st) => st.includes('Land one batch'))).toMatch(/env:\n {10}LAND_TOKEN: \$\{\{ secrets\.LAND_TOKEN \}\}\n {8}run: node scripts\/land\.ts "\$LAND_QUEUE_FILE"/);
+    for (const secret of ['secrets.LAND_TOKEN', 'secrets.LAND_APP_PRIVATE_KEY']) {
+      const withSecret = steps.filter((st) => st.includes(secret)).map((st) => /- name: (.*)/.exec(st)![1]);
+      expect(withSecret).toEqual(['Check the token and the ref', 'Land one batch']);
+    }
+    // The check sees only whether they are set.
+    expect(steps.find((st) => st.includes('Check the token'))).toContain("HAS_LAND_TOKEN: ${{ secrets.LAND_TOKEN != '' || (secrets.LAND_APP_PRIVATE_KEY != '' && vars.LAND_APP_ID != '') }}");
+    expect(steps.find((st) => st.includes('Land one batch'))).toMatch(
+      /env:\n {10}LAND_TOKEN: \$\{\{ secrets\.LAND_TOKEN \}\}\n {10}LAND_APP_ID: \$\{\{ vars\.LAND_APP_ID \}\}\n {10}LAND_APP_PRIVATE_KEY: \$\{\{ secrets\.LAND_APP_PRIVATE_KEY \}\}\n {8}run: node scripts\/land\.ts "\$LAND_QUEUE_FILE"/,
+    );
     const jobEnv = land.slice(land.indexOf('\n    env:\n'), land.indexOf('\n    steps:\n'));
     expect(jobEnv).not.toMatch(/secrets\./);
     expect(jobEnv).toContain('GH_TOKEN: ${{ github.token }}');
@@ -119,7 +125,7 @@ describe('land.yml: the job that holds LAND_TOKEN runs no tree code', () => {
 
   it('refuses a queue when there is no stop channel (LAND_STOP_ISSUE)', () => {
     const check = runOf(stepsOf(land).find((st) => st.includes('Check the token and the ref'))!)!;
-    expect(stepsOf(land).find((st) => st.includes('Check the token and the ref'))).toContain('STOP_ISSUE: ${{ vars.LAND_STOP_ISSUE }}');
+    expect(stepsOf(land).find((st) => st.includes('Check the token and the ref'))).toContain("STOP_ISSUE: ${{ vars.LAND_STOP_ISSUE || '244' }}");
     // After the empty-queue exit, so only a queue needs it.
     expect(check.indexOf('[[ "$STOP_ISSUE" =~ ^[1-9][0-9]*$ ]]')).toBeGreaterThan(check.indexOf('exit 0'));
   });
@@ -237,6 +243,9 @@ describe('the trusted driver (LAND_TRUSTED)', () => {
     expect(src).toMatch(/\['core\.symlinks', 'false'\]/);
     // The token: read once, out of the environment, only to git push and gh.
     expect(src).toMatch(/const TOKEN = env\['LAND_TOKEN'\] \|\| null;\ndelete env\['LAND_TOKEN'\];/);
+    expect(src).toMatch(/delete env\['LAND_APP_ID'\];\ndelete env\['LAND_APP_PRIVATE_KEY'\];/);
+    // The App's credentials reach the mint command on stdin only, with an environment of PATH alone.
+    expect(src).toMatch(/'land-app-token\.ts'\), 'mint', repo\], \{ input: JSON\.stringify\(APP\), encoding: 'utf8', env: \{ PATH: env\['PATH'\] \?\? '' \} \}/);
     expect(src.match(/withToken\(/g)!.length).toBe(2); // the driver's spawn and the builder's
   });
 });
@@ -967,5 +976,52 @@ describe('a PR whose own CI runs keep ending without a verdict is ejected (LAND_
     r1.admitted(7, shaOf(7));
     expect(st.streak(7).count).toBe(1);
     expect(st.streak(7, 'r1.1').count).toBe(0);
+  });
+});
+
+describe('the App installation token (scripts/land-app-token.ts)', async () => {
+  const { createVerify, generateKeyPairSync } = await import('node:crypto');
+  const { appJwt, checkCredentials, mint, parseMinted, reusable } = await import('../../../scripts/land-app-token.ts');
+  const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs1', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
+  const creds = checkCredentials({ appId: '12345', privateKey });
+
+  it('signs an RS256 JWT for the App, valid under ten minutes', () => {
+    const jwt = appJwt(creds, 1_000_000);
+    const [head, body, sig] = jwt.split('.') as [string, string, string];
+    expect(JSON.parse(Buffer.from(head, 'base64url').toString())).toEqual({ alg: 'RS256', typ: 'JWT' });
+    expect(JSON.parse(Buffer.from(body, 'base64url').toString())).toEqual({ iat: 999_940, exp: 1_000_540, iss: '12345' });
+    expect(createVerify('RSA-SHA256').update(`${head}.${body}`).verify(publicKey, Buffer.from(sig, 'base64url'))).toBe(true);
+  });
+
+  it('refuses malformed credentials and mint output', () => {
+    expect(() => checkCredentials({ appId: '12; rm', privateKey })).toThrow(/not an App id/);
+    expect(() => checkCredentials({ appId: '12345', privateKey: 'nope' })).toThrow(/not a PEM private key/);
+    expect(checkCredentials({ appId: ' Iv23liABCDEF ', privateKey: privateKey.replace(/\n/g, '\\n') })).toEqual({ appId: 'Iv23liABCDEF', privateKey });
+    expect(() => parseMinted('{"token":"x","expiresAt":1,"botId":1,"botLogin":"a[bot]"}')).toThrow(/no token/);
+    expect(() => parseMinted(`{"token":"${'g'.repeat(40)}","expiresAt":1,"botId":1,"botLogin":"someone"}`)).toThrow(/no bot login/);
+  });
+
+  it('reuses a token only while more than 15 minutes remain', () => {
+    const held = { token: 't'.repeat(40), expiresAt: 3_600_000, botId: 7, botLogin: 'a[bot]' };
+    expect(reusable(null, 0)).toBeNull();
+    expect(reusable(held, 3_600_000 - 16 * 60_000)).toBe(held);
+    expect(reusable(held, 3_600_000 - 14 * 60_000)).toBeNull();
+  });
+
+  it('mints a token scoped to the one repository and names the App\'s bot user', async () => {
+    const calls: string[] = [];
+    const reply = (status: number, v: unknown) => ({ ok: status < 300, status, text: async () => JSON.stringify(v) });
+    const fetchFn = async (url: string, init: { method: string; headers: Record<string, string>; body?: string }) => {
+      calls.push(`${init.method} ${url.replace('https://api.github.com', '')} ${init.headers.authorization!.split(' ')[0]} ${init.body ?? ''}`.trim());
+      if (url.endsWith('/app')) return reply(200, { slug: 'dragon-land' });
+      if (url.endsWith('/repos/o/r/installation')) return reply(200, { id: 99 });
+      if (url.endsWith('/app/installations/99/access_tokens')) return reply(201, { token: `ghs_${'a'.repeat(36)}`, expires_at: '2026-10-09T17:00:00Z' });
+      if (url.endsWith('/users/dragon-land%5Bbot%5D')) return reply(200, { id: 4242, login: 'dragon-land[bot]' });
+      return reply(404, { message: 'Not Found' });
+    };
+    expect(await mint(creds, 'o/r', fetchFn, Date.parse('2026-10-09T16:00:00Z'))).toEqual({ token: `ghs_${'a'.repeat(36)}`, expiresAt: Date.parse('2026-10-09T17:00:00Z'), botId: 4242, botLogin: 'dragon-land[bot]' });
+    expect(calls).toEqual(['GET /app Bearer', 'GET /repos/o/r/installation Bearer', 'POST /app/installations/99/access_tokens Bearer {"repositories":["r"]}', 'GET /users/dragon-land%5Bbot%5D token']);
+    await expect(mint(creds, 'o/other', fetchFn, 0)).rejects.toThrow(/GET \/repos\/o\/other\/installation returned HTTP 404/);
+    await expect(mint(creds, 'not a repo', fetchFn, 0)).rejects.toThrow(/is not owner\/repo/);
   });
 });

@@ -1,17 +1,16 @@
-// css-backgrounds-3 §3.10: the background shorthand. Its layout fixtures capture and compare every background longhand, not only
-// background-color (computedExtra), and !important on the shorthand (css-cascade-5 §6.4); the reject fixtures cover a non-initial
-// image and multiple layers.
-import { BACKGROUND_RESET_LONGHANDS } from 'dragon';
-import type { BackgroundResetLonghand } from 'dragon';
+// css-backgrounds-3 §3.10: the background shorthand. Its layout fixtures compare every background longhand (since BG2 every
+// layer longhand is a real longhand, captured with LONGHANDS) and !important on the shorthand (css-cascade-5 §6.4); the reject
+// fixtures cover an image and a layer list Dragon does not draw (BG2 retargeted both: gradients and plain layer lists compile), and
+// an em layer length under a font size compile time does not know.
 import type { FixtureSpec } from '../fixtures.ts';
-import { reject } from './define.ts';
-
-const background = (id: string): FixtureSpec => ({ id, format: 'html', kind: 'layout', gate: 'default', environments: ['ltr'], source: 'hand-written', rootFont: 'ahem', computedExtra: Object.keys(BACKGROUND_RESET_LONGHANDS) as BackgroundResetLonghand[] });
+import { layout, reject } from './define.ts';
 
 export const BACKGROUND: readonly FixtureSpec[] = [
-  background('background-shorthand-colors'),
-  background('background-shorthand-cascade'),
-  background('background-important'),
-  reject('reject-background-image', 'DRAGON_UNSUPPORTED_VALUE', 'linear-gradient(red, blue)', 'background: "linear-gradient(red, blue)" sets background-image'),
-  reject('reject-background-layers', 'DRAGON_UNSUPPORTED_VALUE', 'none, red', 'background: "none, red" has 2 layers'),
+  layout('background-shorthand-colors'),
+  layout('background-shorthand-cascade'),
+  layout('background-important'),
+  reject('reject-background-image', 'DRAGON_UNSUPPORTED_VALUE', 'url(a.png)', 'background: "url(a.png)" is unsupported: url() images'),
+  reject('reject-background-layers', 'DRAGON_UNSUPPORTED_VALUE', 'conic-gradient(red, blue)', 'background: "conic-gradient(red, blue)" is unsupported: conic gradients'),
+  // An em under a font size compile time does not know (font-size: larger) cannot be folded to px; every target refuses it.
+  reject('reject-gradient-em-unknown', 'DRAGON_UNSUPPORTED_VALUE', 'linear-gradient(red 1em, blue)', 'background-image on '),
 ];
