@@ -4,6 +4,10 @@
 // rule sets them on a supported tag (ua.test.ts), so leaving them out gives the same computed values. The outline longhands are the
 // other: they are written only when an author declaration sets one (in any band or interaction state of the element), since
 // Chrome's UA :focus-visible rule (outline: auto 1px -webkit-focus-ring-color) draws the focus ring an explicit none would hide.
+// A colour from the UA origin (a hyperlink's, TDEC-a analysis/text-decoration.ts applyAnyLink) is written `color: revert`, and every
+// colour inherited below it `color: inherit`: an author rule writing the captured -webkit-link colour would beat Chrome's UA
+// a:-webkit-any-link:active rule (color: -webkit-activelink) and its visited colour. revert gives the UA origin's value, which is
+// the resolved one.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
@@ -184,6 +188,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     // T065 R9: under an element that may animate its colour, an inherited colour stays inherited, so it follows each frame (the
     // static value is the same: the parent's resolved colour).
     if (p === 'color' && underSource && r.origin === 'inherited') return '  color: inherit;';
+    if (p === 'color' && r.origin === 'user-agent') return '  color: revert;';
     const v = r.value;
     // A folded order calculation that is not a whole number stays a calculation, which Chrome rounds as the engine does.
     if (p === 'order' && v.kind === 'number' && !Number.isInteger(v.value)) return `  ${p}: calc(${valueText(v)});`;
@@ -250,7 +255,9 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         classesOf.set(el.element.address, list);
       }
       map.set(el.element.address, cls);
-      const below = under || sources.has(el.element.address);
+      // Below a UA colour, an inherited colour stays inherited, so it follows a link's :active and visited colours.
+      const uaColor = (el.props.get('color') as ResolvedValue).origin === 'user-agent';
+      const below = under || sources.has(el.element.address) || uaColor;
       for (const ch of el.children) if (ch.kind === 'element') visit(ch, below);
     };
     visit(c.root, false);
