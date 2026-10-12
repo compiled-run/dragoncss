@@ -64,6 +64,8 @@ const SUBSET = [
   'background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip', 'background-position',
   // T150a: visibility (css-display-3 §4), after lists, as LONGHANDS registers it.
   'visibility',
+  // TXT2-e: text-transform (css-text-3 §2.1), after visibility, as LONGHANDS registers it.
+  'text-transform',
 ] as const;
 
 /**
@@ -89,6 +91,8 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink ListStyleType::ParseSingleValue (css/properties/longhands/longhands_custom.cc): none, a string or a counter-style name;
   // symbols() is parsed only in @counter-style, so webref's <symbols()> is dropped (pinned by packages/parity/test/list-style-parse.test.ts).
   'list-style-type': '<counter-style-name> | <string> | none',
+  // Blink's text-transform parser with CSSTextTransformFullWidth off (Chrome 145): one keyword; full-width and full-size-kana are invalid.
+  'text-transform': 'none | capitalize | uppercase | lowercase | math-auto',
   display: [
     '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
     '[ block | inline ]? && [ flow | flow-root ]? && list-item',

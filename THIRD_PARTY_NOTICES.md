@@ -72,6 +72,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/geometry/calculation_value.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/contoured_rect.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/physical_size.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/platform/text/capitalize.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/platform/text/character_property_data_generator.cc`: Copyright 2016 The Chromium Authors
 - `ui/gfx/animation/keyframe/timing_function.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/cubic_bezier.cc`: Copyright 2014 The Chromium Authors

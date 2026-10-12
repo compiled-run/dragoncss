@@ -28,6 +28,7 @@ import { usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
+import { checkTextTransform } from './text-transform.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
 
@@ -565,5 +566,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkTransformContexts(root, targets, diagnostics, reported);
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
+  // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).
+  checkTextTransform(root, targets, diagnostics, reported);
 }
 

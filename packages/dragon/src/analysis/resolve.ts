@@ -15,8 +15,10 @@ import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeJustifyItems, computeLengths, computeLists, computeOverflowPair, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
-import { presentationalHints } from './elements/replaced.ts';
+import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
+import type { TransformItem } from './text-transform.ts';
+import { textTransformOf, transformRun } from './text-transform.ts';
 import type { InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
 import type { Direction, DirectionContext } from './logical.ts';
@@ -273,24 +275,35 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     // (CSS2 §9.2.4), so they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
     const collapsed = new Map<LinkedText, string>();
     let run: (LinkedText | null)[] = [];
+    // TXT2-e: each text's transform, and the boxes that end its previous character, in tree order (text-transform.ts).
+    let transforms: TransformItem[] = [];
     const flush = (): void => {
-      const texts = collapseInlineContext(run.map((t) => (t === null ? null : t.text)));
+      // R7: Chrome transforms the DOM text before white-space processing, so the transform comes before the collapse.
+      const transformed = transformRun(transforms, faults);
+      const texts = collapseInlineContext(run.map((t) => (t === null ? null : (transformed.get(t) as string))));
       run.forEach((t, i) => {
         if (t !== null) collapsed.set(t, texts[i] as string);
       });
       run = [];
+      transforms = [];
     };
-    const gather = (items: readonly (ResolvedElement | LinkedText)[]): void => {
+    const gather = (items: readonly (ResolvedElement | LinkedText)[], ownerProps: ReadonlyMap<Longhand, ResolvedValue>): void => {
       for (const kid of items) {
-        if (kid.kind === 'text') run.push(kid);
-        else if (displayOf(kid) === 'none') continue;
+        if (kid.kind === 'text') {
+          run.push(kid);
+          transforms.push({ kind: 'text', node: kid, transform: textTransformOf(ownerProps) });
+        } else if (displayOf(kid) === 'none') continue;
         else if (isInlineBox(kid)) {
           if (kid.element.tag === 'br') run.push(null);
-          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[]);
-        } else flush();
+          if (kid.element.tag === 'br' || isReplacedTag(kid.element.tag)) transforms.push({ kind: 'break' });
+          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
+        } else {
+          flush();
+          if (displayOf(kid).startsWith('inline-')) transforms.push({ kind: 'atomic' });
+        }
       }
     };
-    gather(kids);
+    gather(kids, props);
     flush();
     const place = (owner: { children: (ResolvedElement | ResolvedText)[] }, ownerProps: ReadonlyMap<Longhand, ResolvedValue>, items: readonly (ResolvedElement | LinkedText)[]): void => {
       for (const kid of items) {
