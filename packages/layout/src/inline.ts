@@ -1510,7 +1510,9 @@ function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | '
   let widest = ZERO;
   if (kind === 'max') {
     const lines = breakShapedLines(ctx, box, ifc, fromRaw(NEARLY_MAX_RAW));
-    for (const line of lines) widest = max(widest, spanWidth(ctx, ifc, line, line.start, line.visibleEnd));
+    // At max-content preserved spaces at the end of a line count, as on the Ahem path (intrinsicEndOf): LineBreaker at an unlimited
+    // width keeps pre and break-spaces spaces, and pre-wrap's trailing spaces fit there, so none hangs.
+    for (const line of lines) widest = max(widest, spanWidth(ctx, ifc, line, line.start, intrinsicEndOf(ctx, ifc, line.start, line.end, 'max')));
     return widest;
   }
   let start = 0;

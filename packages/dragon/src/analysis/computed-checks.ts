@@ -299,14 +299,15 @@ function checkPreservedText(el: ResolvedElement, t: ResolvedText, refuse: (at: R
   const mode = keywordOf(t.props.get('white-space-collapse') as ResolvedValue);
   if (mode === 'collapse') return;
   const manual = `Remove the white-space declaration that reaches ${t.node.address}, or remove the character.`;
-  if (t.text.includes('\t')) refuse(el, 'tab-stop', `a tab in ${t.node.address}, whose white-space-collapse is ${mode}: tab stops (tab-size, css-text-3 §4.2) are not laid out yet`, manual);
+  // preserve-breaks collapses a tab like a space (phase I), so only the modes that keep it need tab stops.
+  if (mode !== 'preserve-breaks' && t.text.includes('\t')) refuse(el, 'tab-stop', `a tab in ${t.node.address}, whose white-space-collapse is ${mode}: tab stops (tab-size, css-text-3 §4.2) are not laid out yet`, manual);
   for (const ch of t.text) {
     const cp = ch.codePointAt(0) as number;
     if (cp === 0x0a || cp === 0x09 || !((cp < 0x20) || cp === 0x7f)) continue;
     refuse(el, 'preserved-control', `U+${cp.toString(16).toUpperCase().padStart(4, '0')} in ${t.node.address}, whose white-space-collapse is ${mode}: preserved control characters (css-text-3 §4.1.2) are not laid out`, manual);
     break;
   }
-  if (/^[ \n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
+  if (/^[ \t\n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
 }
 
 // CSS2 §9.2.1.1 and §10.3.7: an absolutely positioned box beside text in a block container would take its static position inside

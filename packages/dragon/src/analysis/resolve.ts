@@ -141,8 +141,6 @@ function collapseModeOf(props: ReadonlyMap<Longhand, ResolvedValue>): string {
   return v.kind === 'keyword' ? v.value : '';
 }
 
-const SEGMENT_SPACE = /[ \t]+/g;
-
 /**
  * Phase I of one text whose white-space-collapse is not collapse (css-text-4 §4.1.1; Blink InlineItemsBuilder::AppendText): preserve
  * and break-spaces keep the text as authored (AppendPreserveWhitespace; each U+000A is a forced break the engine reads); preserve-breaks
@@ -151,14 +149,45 @@ const SEGMENT_SPACE = /[ \t]+/g;
  * other control characters in preserved text (computed-checks.ts).
  */
 export function phaseOne(text: string, mode: string, faults: CompilerFaults): string {
-  if (mode !== 'preserve-breaks') return text;
-  const segments = text.split('\n').map((seg) => seg.replace(SEGMENT_SPACE, ' '));
-  const last = segments.length - 1;
-  return segments.map((seg, i) => {
-    let out = seg.replace(/^ /, '');
-    if (!(faults.preLineKeepsSpaceBeforeNewline && i < last)) out = out.replace(/ $/, '');
-    return out;
-  }).join('\n');
+  return phaseOneContext([text], [mode], faults)[0] as string;
+}
+
+/**
+ * Phase I over one inline formatting context's texts (null for a <br>), each with its white-space-collapse. preserve-breaks runs
+ * over the whole context, as Blink's InlineItemsBuilder carries its collapsing state from one text item to the next: a space at the
+ * end of one text and the start of the next is one space, wherever the text nodes split (a framework expression, a display: none
+ * element). A context that mixes modes, or holds <br>s beside preserved text, is refused (computed-checks.ts, the engine), so each
+ * of its texts takes its own phase I.
+ */
+export function phaseOneContext(runs: readonly (string | null)[], modes: readonly string[], faults: CompilerFaults): (string | null)[] {
+  const together = runs.every((t, i) => t !== null && modes[i] === 'preserve-breaks');
+  // preserve and break-spaces keep their text as authored.
+  if (!together) return runs.map((t, i) => (t === null || modes[i] !== 'preserve-breaks' ? t : (phaseOneContext([t], ['preserve-breaks'], faults)[0] as string)));
+  type C = { ch: string; run: number };
+  const chars: C[] = [];
+  runs.forEach((t, run) => {
+    for (const ch of t as string) chars.push({ ch, run });
+  });
+  const out: C[] = [];
+  let k = 0;
+  while (k < chars.length) {
+    const c = chars[k] as C;
+    if (c.ch !== ' ' && c.ch !== '\t') {
+      out.push(c);
+      k++;
+      continue;
+    }
+    let e = k;
+    while (e < chars.length && ((chars[e] as C).ch === ' ' || (chars[e] as C).ch === '\t')) e++;
+    const before = out[out.length - 1];
+    const after = chars[e];
+    const atStart = before === undefined || before.ch === '\n';
+    const atNewline = after !== undefined && after.ch === '\n';
+    // Planted fault preLineKeepsSpaceBeforeNewline: the space before a preserved U+000A stays.
+    if (!atStart && after !== undefined && (!atNewline || faults.preLineKeepsSpaceBeforeNewline)) out.push({ ch: ' ', run: c.run });
+    k = e;
+  }
+  return runs.map((_, run) => out.filter((c) => c.run === run).map((c) => c.ch).join(''));
 }
 
 /** CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7). */
@@ -303,7 +332,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     let modes: string[] = [];
     const flush = (): void => {
       // A context holding preserved text with inline boxes or <br>s is refused (computed-checks.ts); each text takes its own phase I.
-      const texts = modes.every((m) => m === 'collapse') ? collapseInlineContext(run.map((t) => (t === null ? null : t.text))) : run.map((t, i) => (t === null ? null : phaseOne(t.text, modes[i] as string, faults)));
+      const strings = run.map((t) => (t === null ? null : t.text));
+      const texts = modes.every((m) => m === 'collapse') ? collapseInlineContext(strings) : phaseOneContext(strings, modes, faults);
       run.forEach((t, i) => {
         if (t !== null) collapsed.set(t, texts[i] as string);
       });

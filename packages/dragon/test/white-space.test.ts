@@ -2,7 +2,7 @@
 // compiler keeps (a tab, a preserved control character, all-white-space preserved text). Chrome proves the layouts in
 // packages/parity/test/white-space.test.ts.
 import { describe, expect, it } from 'vitest';
-import { createProjectWith, NO_FAULTS, phaseOne } from '../src/internal.ts';
+import { createProjectWith, NO_FAULTS, phaseOne, phaseOneContext } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
 
 describe('phase I for the preserving modes (css-text-3 §4.1.1)', () => {
@@ -40,5 +40,23 @@ describe('preserved text the compiler refuses', () => {
   });
   it('leaves a tab in collapsed text alone (phase I turns it into a space)', () => {
     expect(errorsOf('.a { white-space: normal; }', 'XX\tXX')).toEqual([]);
+  });
+});
+
+describe('pre-line phase I over a whole formatting context', () => {
+  it('collapses the spaces at the joins of adjacent texts as one text (Blink carries its collapsing state across text items)', () => {
+    const pl = (runs: string[]) => phaseOneContext(runs, runs.map(() => 'preserve-breaks'), NO_FAULTS);
+    expect(pl(['XX ', 'YY'])).toEqual(['XX ', 'YY']);
+    expect(pl(['XX ', ' YY'])).toEqual(['XX ', 'YY']);
+    expect(pl(['XX', ' \t YY '])).toEqual(['XX', ' YY']);
+    expect(pl(['XX \n', ' YY'])).toEqual(['XX\n', 'YY']);
+    expect(pl(['XX \t', '\n YY'])).toEqual(['XX', '\nYY']);
+  });
+  it('leaves preserve and break-spaces texts as authored, and takes each text alone in a mixed context', () => {
+    expect(phaseOneContext([' a ', null, ' b '], ['preserve', 'collapse', 'preserve-breaks'], NO_FAULTS)).toEqual([' a ', null, 'b']);
+  });
+  it('compiles a tab in pre-line text, which collapses like a space, and keeps refusing one in pre text', () => {
+    expect(errorsOf('.a { white-space: pre-line; }', 'XX\t\tXX')).toEqual([]);
+    expect(errorsOf('.a { white-space: pre; }', 'XX\tXX').map((e) => e.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
   });
 });

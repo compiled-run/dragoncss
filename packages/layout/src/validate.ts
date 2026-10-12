@@ -864,9 +864,11 @@ function checkInlineContent(box: Record<string, unknown>, children: readonly unk
   const texts = runs.filter((t): t is Record<string, unknown> => t !== null);
   const strings = texts.map((t) => t['text']).filter((t): t is string => typeof t === 'string');
   if (strings.length !== texts.length) return;
-  // preserve-breaks text arrives collapsed between its preserved U+000A (resolve.ts phaseOne); preserved text is never empty.
+  // preserve-breaks text arrives collapsed between its preserved U+000A over the whole formatting context, joined across its leaves
+  // (resolve.ts phaseOneContext); preserved text is never empty.
   const preserved = texts.filter((t) => t['whiteSpaceCollapse'] !== 'collapse');
-  const badPreserved = preserved.some((t) => t['text'] === '' || (t['whiteSpaceCollapse'] === 'preserve-breaks' && (t['text'] as string).split('\n').some((g) => /[\t\r\f]| {2}/.test(g) || g.startsWith(' ') || g.endsWith(' '))));
+  const breaks = preserved.filter((t) => t['whiteSpaceCollapse'] === 'preserve-breaks').map((t) => t['text'] as string).join('');
+  const badPreserved = preserved.some((t) => t['text'] === '') || breaks.split('\n').some((g) => /[\t\r\f]| {2}/.test(g) || g.startsWith(' ') || g.endsWith(' '));
   if (badPreserved) {
     errors.push({ path: `${path}.children`, code: 'uncollapsed-text', message: 'preserved text is never empty, and preserve-breaks text must arrive collapsed between its line feeds: no tabs, doubled spaces or spaces at a line feed or an edge' });
   }
