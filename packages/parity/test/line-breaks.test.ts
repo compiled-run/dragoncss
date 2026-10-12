@@ -6,7 +6,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DPRS } from '../src/dpr.ts';
 import type { ChromeBreakText } from '../src/line-breaks.ts';
-import { alignUnits, BREAK_MISMATCH, breakVector, breakVectorDir, breakVectorPath, breakVectorText, checkDumpBreaks, chromeLines, compareVectorWithChrome, engineTextLines, expectedBreaksDir, hostBreakLine, leafTexts, parseHostBreaks, readBreakVector, readChromeBreaks, runHostBreaks } from '../src/line-breaks.ts';
+import { alignUnits, BREAK_MISMATCH, breakVector, breakVectorDir, breakVectorPath, breakVectorText, checkDumpBreaks, chromeLines, compareVectorWithChrome, engineTextLines, expectedBreaksDir, hostBreakLine, leafTexts, renderedTexts, parseHostBreaks, readBreakVector, readChromeBreaks, runHostBreaks } from '../src/line-breaks.ts';
 import { plantDumpFault } from '../src/native-compare.ts';
 import { engineCases, nativeCases, relabelledReferenceDumps } from '../src/native-host.ts';
 import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
@@ -86,6 +86,27 @@ describe('Chrome breaks', () => {
     expect(chromeLines(lead, ' YY')).toEqual([[1, 3]]);
     const zwsp: ChromeBreakText = { id: 'a:text2', data: '\u200b', lines: 1, units: [0], blank: [0] };
     expect(chromeLines(zwsp, '\u200b')).toEqual([[0, 1]]);
+  });
+  it('TXT2-e: a transformed node aligns its rendered text (the build-time transform of its DOM text) with the engine text, strictly', () => {
+    // U+00DF uppercases to "SS": both rendered units take the eszett's line, so the first line ends after them.
+    const up: ChromeBreakText = { id: 'a:text0', data: 'gro\u00df ma\u00df', lines: 2, units: [0, 0, 0, 0, 0, 1, 1, 1], blank: [4], transform: 'uppercase' };
+    expect(renderedTexts(up).map((t) => [t.data, t.units, t.blank])).toEqual([['GROSS MASS', [0, 0, 0, 0, 0, 0, 1, 1, 1, 1], [5]]]);
+    expect(chromeLines(up, 'GROSS MASS')).toEqual([[0, 6], [6, 10]]);
+    expect(chromeLines(up, 'GROSS MASs')).toBeNull();
+    expect(chromeLines({ id: up.id, data: up.data, lines: up.lines, units: up.units, blank: up.blank }, 'GROSS MASS')).toBeNull();
+    // Final_Sigma: the rendered text ends in U+03C2, so U+03C3 there does not align.
+    const low: ChromeBreakText = { id: 'a:text1', data: '\u039f\u0394\u039f\u03a3', lines: 1, units: [0, 0, 0, 0], blank: [], transform: 'lowercase' };
+    expect(chromeLines(low, '\u03bf\u03b4\u03bf\u03c2')).toEqual([[0, 4]]);
+    expect(chromeLines(low, '\u03bf\u03b4\u03bf\u03c3')).toBeNull();
+    // Capitalize: the first unit has both word-start readings (the text before the node is not captured); every other unit is exact.
+    const cap: ChromeBreakText = { id: 'a:text2', data: 'ab  cd', lines: 1, units: [0, 0, 0, 0, 0, 0], blank: [3], transform: 'capitalize' };
+    expect(renderedTexts(cap).map((t) => t.data)).toEqual(['Ab  Cd', 'ab  Cd']);
+    expect(chromeLines(cap, 'Ab Cd')).toEqual([[0, 5]]);
+    expect(chromeLines(cap, 'ab Cd')).toEqual([[0, 5]]);
+    expect(chromeLines(cap, 'Ab cd')).toBeNull();
+    expect(chromeLines(cap, 'AB CD')).toBeNull();
+    // A transform outside the four keywords has no reading.
+    expect(chromeLines({ ...cap, transform: 'full-width' }, 'ab cd')).toBeNull();
   });
   it('Chrome text the vector lacks is a break-mismatch when Chrome shows it; text that only collapses away is not', () => {
     const n = cases.find((c) => c.case.id === 'text-wrap-spaces');

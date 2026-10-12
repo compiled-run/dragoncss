@@ -269,7 +269,7 @@ function authoredFor(path: string, caseId: string, dpr: number, chrome: unknown,
 const isBreakText = (t: unknown): t is ChromeBreakText => {
   const x = (typeof t === 'object' && t !== null ? t : {}) as Record<string, unknown>;
   const ints = (v: unknown): boolean => Array.isArray(v) && v.every((n) => Number.isInteger(n));
-  return typeof x['id'] === 'string' && typeof x['data'] === 'string' && Number.isInteger(x['lines']) && ints(x['units']) && ints(x['blank']);
+  return typeof x['id'] === 'string' && typeof x['data'] === 'string' && Number.isInteger(x['lines']) && ints(x['units']) && ints(x['blank']) && (x['transform'] === undefined || typeof x['transform'] === 'string');
 };
 
 /** Chrome's breaks at every dump of a frame case at a device DPR, in dump order; null when none are committed. */
