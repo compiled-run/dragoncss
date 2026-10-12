@@ -1,7 +1,7 @@
 // visibility (notes/T150-visibility-spec.md R3, R5): a box whose used visibility is hidden or collapse paints none of its own
 // decorations or text, and keeps its frame, stacking, opacity group and clip; its descendants paint by their own value. Dragon
 // gates its own paint (the box view is never hidden, so visible descendants stay), turns the native background off, and hides the
-// views with no CSS children: the shadow companion, the outline view and the box's text views. A visible box has no write. An
+// box's text views. Its box-shadow and outline get no write at all (lower/paint/shadow.ts, outline.ts). A visible box has no write. An
 // anonymous box inherits its element's value; its text views follow the element's write (DragonTree.textNode). The background of
 // html and body is the canvas's, which Chrome paints whatever their visibility (R4), so theirs stays on (canvas).
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
@@ -16,8 +16,8 @@ export type VisibilityFacts = { readonly visible: false; readonly value: 'hidden
 export const VISIBILITY_LOWERING: PaintLowering<VisibilityWrite> = {
   name: 'visibility',
   vocabulary: {
-    uikit: { visibility: { key: 'visibility', technique: 'dragon-owned-paint', detail: "DragonBoxView.dragonVisible gates every Dragon paint stage and backgroundColor is nil; the shadow companion, outline view and the box's text views take isHidden. The box view is never hidden, so visible descendants paint" } },
-    'android-views': { visibility: { key: 'visibility', technique: 'dragon-owned-paint', detail: "DragonBoxView.dragonVisible gates every Dragon paint stage and background is null; the shadow companion, outline view and the box's text views are View.INVISIBLE. The box view is never hidden, so visible descendants paint" } },
+    uikit: { visibility: { key: 'visibility', technique: 'dragon-owned-paint', detail: "DragonBoxView.dragonVisible gates every Dragon paint stage and backgroundColor is nil; the box's text views take isHidden, and the box gets no box-shadow or outline write. The box view is never hidden, so visible descendants paint" } },
+    'android-views': { visibility: { key: 'visibility', technique: 'dragon-owned-paint', detail: "DragonBoxView.dragonVisible gates every Dragon paint stage and background is null; the box's text views are View.INVISIBLE, and the box gets no box-shadow or outline write. The box view is never hidden, so visible descendants paint" } },
   },
   css: { visibility: ['visibility'] },
   lower: ({ el, facts }) => {

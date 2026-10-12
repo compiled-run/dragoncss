@@ -1,11 +1,15 @@
 // box-shadow (css-backgrounds-3 §7.1): Dragon drawing (T046 §1). The write carries the computed shadows (css px at zoom 1, sRGB
 // RGBA8 colours, inset flags) in list order; the device rasters them with the translated paint-shadow.ts after every layout: the
 // outer shadows into a companion view directly beneath the box (the same host, so the paint order is CSS's), clipped out of the
-// border box, and the inset shadows into the box's inset-shadow stage, clipped to the padding box. A box with no shadow has no write.
+// border box, and the inset shadows into the box's inset-shadow stage, clipped to the padding box. A box with no shadow has no write,
+// nor has a box that is not visible (visibility hidden or collapse, own or inherited): Chrome paints no box-shadow for it, and its
+// visible descendants' shadows have their own writes (their backdrop already skips its background). Visibility and box-shadow are
+// static writes only (emit/runtime/state.ts).
 import type { ResolvedValue } from '../../analysis/resolve.ts';
 import type { Rgba8 } from '../../css/color.ts';
 import type { Shadow } from '../../css/properties/shadow.ts';
 import { shadowsOf } from '../../css/properties/shadow.ts';
+import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
 
@@ -46,6 +50,9 @@ export const SHADOW_LOWERING: PaintLowering<ShadowWrite> = {
   // An anonymous box takes the initial box-shadow (CSS2 §9.2.1.1): none, so no write.
   lower: ({ el, facts }) => {
     if (el === null) return [];
+    const visibility = el.props.get('visibility');
+    if (visibility === undefined) throw new ProgramError(`${el.element.address}: visibility did not resolve`);
+    if (!paintsOwn(visibilityOf(visibility.value))) return [];
     const shadows = shadowValues(el.props, el.element.address);
     if (shadows.length === 0) return [];
     const shadow: ShadowFacts = { shadows };
