@@ -6,7 +6,8 @@
 // text_decoration_info.cc). The device places the rects after every layout from the translated text-decoration.ts decorationRects
 // over each line's engine geometry (the same inputs as the decoration capture, parity/src/decoration-capture.ts predictDecorations),
 // an under or overline in a view beneath the text view and a line-through above it. analysis/computed-checks.ts checkDecorations
-// refuses what the device does not draw: a length other than auto, px or a percentage, and a skip-ink band glyph ink may cross.
+// refuses what the device does not draw: a length other than auto, px or a percentage, and skip-ink auto on an overline, on a real
+// face, or thicker than the decoration capture proves (TDEC-d clips Ahem glyphs only).
 import type { InlineChild, LayoutBox } from '@dragon/layout';
 import type { Rgba8 } from '../../css/color.ts';
 import type { DecorationLine } from '../../css/properties/text-decoration.ts';
@@ -27,6 +28,8 @@ export type TextDecorationEntry = {
   readonly color: Rgba8;
   readonly thickness: DecorationLengthValue;
   readonly underlineOffset: DecorationLengthValue;
+  /** text-decoration-skip-ink is auto: the device clips an under or overline around the glyphs' ink (TDEC-d). */
+  readonly skipInk: boolean;
 };
 
 export type TextDecorationWrite = { readonly kind: 'text-decoration'; readonly entries: readonly TextDecorationEntry[] };
@@ -78,6 +81,7 @@ export const TEXT_DECORATION_LOWERING: PaintLowering<TextDecorationWrite> = {
           color: d.color,
           thickness: decorationLengthOf(d.thickness, `${text}: the text-decoration-thickness of ${d.box}`),
           underlineOffset: decorationLengthOf(d.underlineOffset, `${text}: the text-underline-offset of ${d.box}`),
+          skipInk: d.skipInk === 'auto',
         });
       }
     }

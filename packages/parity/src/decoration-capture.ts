@@ -9,7 +9,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import type { CompilerFaults, Environment, FrontEndResult } from 'dragon';
 import { createProjectWith, engineLayoutProjection, NO_FAULTS, resolvedTextColors } from 'dragon';
 import type { LayoutBox, InlineChild, TextFont } from '@dragon/layout';
-import { textDecoration as td, zoomInput, NO_ENGINE_FAULTS } from '@dragon/layout';
+import { pieceGlyphs, textDecoration as td, zoomInput, NO_ENGINE_FAULTS } from '@dragon/layout';
 import type { AppliedDecoration, DecorationAnalysisFaults } from '../../dragon/src/analysis/text-decoration.ts';
 import { appliedDecorationsOf, NO_DECORATION_ANALYSIS_FAULTS } from '../../dragon/src/analysis/text-decoration.ts';
 import { readSfnt } from '../../dragon/src/fonts/sfnt.ts';
@@ -62,9 +62,10 @@ export function compileHtml(f: FontFixture, html: string, direction: Environment
 }
 
 /** One rect the engine paints, with its colour (8-bit straight alpha) and the text leaf it decorates. */
-export type PaintedRect = td.DecorationRect & { readonly color: td.Rgba; readonly text: string; readonly ink: td.Rgba | null };
+/** clips: the skip-ink column ranges (td.skipInkClips) the rect leaves unpainted, empty when nothing is clipped. */
+export type PaintedRect = td.DecorationRect & { readonly color: td.Rgba; readonly text: string; readonly ink: td.Rgba | null; readonly clips: readonly number[] };
 
-/** A case's predicted decorations, or the reason the engine refuses one (skip-ink-intercepts: TDEC-d). */
+/** A case's predicted decorations, or the reason the engine refuses one (skip-ink-intercepts: TDEC-d on a real face). */
 export type Prediction = { readonly kind: 'rects'; readonly rects: readonly PaintedRect[] } | { readonly kind: 'refused'; readonly code: 'skip-ink-intercepts'; readonly detail: string };
 
 let underlineThicknessCache: Map<string, (size: number) => number> | null = null;
@@ -103,6 +104,7 @@ type Prepared = {
   readonly fonts: ReadonlyMap<string, TextFont>;
   readonly root: LayoutBox;
   readonly metricsOf: (font: TextFont) => td.DecorationFont;
+  readonly measurer: ReturnType<typeof referenceShapedMeasurer>;
 };
 
 const prepared = new Map<string, Prepared>();
@@ -141,7 +143,7 @@ function prepare(f: FontFixture, c: ParityCase, dpr: number): Prepared {
     const a = m.metrics(font).ascent / 64;
     return { floatAscent: a, ascent: a, size: font.size, underlineThickness: underlineThicknessOf(font.family)(font.size) };
   };
-  const out = { decorated, texts, fonts, root: zoomed.root, metricsOf };
+  const out = { decorated, texts, fonts, root: zoomed.root, metricsOf, measurer: m };
   prepared.set(key, out);
   return out;
 }
@@ -175,11 +177,20 @@ export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, f
           font, textFont, left: line.rect.x / 64, width: line.rect.width / 64, textTop, decoratingTop: baseline - font.ascent,
         };
         for (const r of td.decorationRects(input, faults)) {
+          let clips: number[] = [];
           if (r.line !== 'line-through' && d.skipInk === 'auto') {
-            const glyphs = shapedInk(t.font.family, t.font.size, String.fromCodePoint(...line.cps)).flatMap((g) => (g === null ? [] : [{ top: baseline - g.top, bottom: baseline - g.bottom }]));
-            if (!td.skipInkClear(r, glyphs)) return { kind: 'refused', code: 'skip-ink-intercepts', detail: `${t.id} ${r.line} at DPR ${dpr}: a glyph's ink crosses the skip-ink band (TDEC-d)` };
+            if (t.font.family === 'Ahem') {
+              // TDEC-d for Ahem: each glyph's ink box at its pen x (the line's shaped glyphs), clipped out dilated by the thickness.
+              const shown = String.fromCodePoint(...line.cps);
+              const g = pieceGlyphs(p.measurer, shown, t.font, 0, line.cps.length);
+              if (!g.ok || g.xs.length !== line.cps.length) throw new Error(`${c.id}: ${t.id} has no glyph per code point: ${g.ok ? g.xs.length : g.reason}`);
+              clips = td.skipInkClips(r, td.ahemLineInk(line.cps, g.xs.map((x) => input.left + x), t.font.size, baseline), faults);
+            } else {
+              const glyphs = shapedInk(t.font.family, t.font.size, String.fromCodePoint(...line.cps)).flatMap((g) => (g === null ? [] : [{ top: baseline - g.top, bottom: baseline - g.bottom }]));
+              if (!td.skipInkClear(r, glyphs)) return { kind: 'refused', code: 'skip-ink-intercepts', detail: `${t.id} ${r.line} at DPR ${dpr}: a glyph's ink crosses the skip-ink band (TDEC-d)` };
+            }
           }
-          rects.push({ ...r, color: { r: d.color.r, g: d.color.g, b: d.color.b, a: d.color.alpha }, text: t.id, ink: ink === undefined ? null : { r: ink.r, g: ink.g, b: ink.b, a: ink.alpha } });
+          rects.push({ ...r, color: { r: d.color.r, g: d.color.g, b: d.color.b, a: d.color.alpha }, text: t.id, ink: ink === undefined ? null : { r: ink.r, g: ink.g, b: ink.b, a: ink.alpha }, clips });
         }
       }
     }
@@ -219,7 +230,7 @@ export function checkDecorations(decorated: RgbaImage, stripped: RgbaImage, rect
     for (let y = r.top; y < r.top + r.height; y++) {
       if (y < 0 || y >= stripped.height) continue;
       for (let x = x0; x < x1; x++) {
-        if (x < 0 || x >= W) continue;
+        if (x < 0 || x >= W || td.columnClipped(x, r.clips)) continue;
         const cov = td.columnAlpha(x, r.left, r.right, r.height);
         if (cov === 0) continue;
         const k = y * W + x;

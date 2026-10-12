@@ -4,7 +4,8 @@
 // with TextTop (49-81; simple_font_data.cc:421-424); decoration_line_painter.cc SnapYAxis, RoundDownThickness and DrawLineAsRect
 // (15-27, 75-93); text_fragment_painter.cc paint order (550-557); text_painter.cc skip-ink band (555-563). Every length is in zoomed
 // (device) px. Skia 2ab8add5 fills the snapped rect with anti-aliased x edges: SkScan_Antihair.cpp antifillrect's 8-bit partial
-// coverage, blended by the ARGB32 blitter. Reference only: no engine root reaches it until TDEC-b.
+// coverage, blended by the ARGB32 blitter. TDEC-d: the skip-ink clip of Ahem glyphs (skipInkClips; its dilation and rounding are
+// those the decoration capture measures). The native support places decorations with it (TDEC-b, emit/paint/text-decoration.ts).
 import { floorOf, roundOf } from './rt-easing.ts';
 
 /** Planted faults; the decoration capture against Chrome must catch each one. */
@@ -25,11 +26,14 @@ export type DecorationFaults = {
   readonly decoratingBoxFontIgnored: boolean;
   /** Underlines and overlines are painted after the text instead of before it. */
   readonly underlineAfterText: boolean;
+  /** TDEC-d: skip-ink clips each glyph's ink extent undilated instead of dilated by the thickness. */
+  readonly skipInkUndilated: boolean;
 };
 
 export const NO_DECORATION_FAULTS: DecorationFaults = {
   autoThicknessFromFont: false, gapWithFixedOffset: false, offsetNotRounded: false, snapFloorNotHalf: false,
   thicknessRoundedNotFloored: false, lineThroughFromBaseline: false, decoratingBoxFontIgnored: false, underlineAfterText: false,
+  skipInkUndilated: false,
 };
 
 /** C roundf: half away from zero. */
@@ -158,6 +162,61 @@ export function skipInkClear(rect: DecorationRect, glyphs: readonly GlyphExtent[
   return true;
 }
 
+
+/** A glyph's ink box in zoomed px: x from left to right, y from top to bottom (y grows down). */
+export type GlyphInk = { readonly left: number; readonly right: number; readonly top: number; readonly bottom: number };
+
+/**
+ * TDEC-d for Ahem: Ahem's ink per covered code point (Ahem.ttf glyf, the coveredCodePoints of text.ts) in em, as [left, right, top
+ * above the baseline, bottom above the baseline]: none for the space and U+200B, the descent only for p, the whole em box (0.8 above
+ * the baseline, 0.2 below it) for every other one. Each box is a rectangle, so Skia's glyph intercepts with any band it crosses are
+ * its whole x extent.
+ */
+export function ahemInkEm(cp: number): number[] {
+  if (cp === 0x20 || cp === 0x200b) return [];
+  if (cp === 0x70) return [0, 1, 0, -0.2];
+  return [0, 1, 0.8, -0.2];
+}
+
+/** The ink boxes of an Ahem line: each code point's ink at its pen x, scaled by the instance size, around the baseline. */
+export function ahemLineInk(cps: readonly number[], xs: readonly number[], size: number, baseline: number): GlyphInk[] {
+  const out: GlyphInk[] = [];
+  for (let i = 0; i < cps.length; i++) {
+    const e = ahemInkEm(cps[i] as number);
+    if (e.length === 0) continue;
+    const x = xs[i] as number;
+    out.push({ left: x + (e[0] as number) * size, right: x + (e[1] as number) * size, top: baseline - (e[2] as number) * size, bottom: baseline - (e[3] as number) * size });
+  }
+  return out;
+}
+
+/**
+ * text_painter.cc:555-563 ClipDecorationsStripe: every glyph whose ink crosses the skip-ink band (the line's Bounds inset by 0.5 px
+ * vertically) clips its intercept, dilated by the thickness on both sides, out of the line. The clip is not anti-aliased: Skia's
+ * rect clip keeps column x when x lies outside [round(left - t), round(right + t)), round being SkScalarRoundToInt (floor(v + 0.5)).
+ * Returns the clipped column ranges as [start, end) pairs; matched against Chrome's pixels by the decoration capture.
+ */
+export function skipInkClips(rect: DecorationRect, glyphs: readonly GlyphInk[], faults: DecorationFaults): number[] {
+  const bandTop = rect.y + 0.5;
+  const bandBottom = rect.y + rect.thickness - 0.5;
+  const d = faults.skipInkUndilated ? 0 : rect.thickness;
+  const out: number[] = [];
+  for (const g of glyphs) {
+    if (g.bottom > bandTop && g.top < bandBottom) {
+      out.push(floorOf(g.left - d + 0.5));
+      out.push(floorOf(g.right + d + 0.5));
+    }
+  }
+  return out;
+}
+
+/** Whether column x lies in one of the [start, end) pairs skipInkClips gives. */
+export function columnClipped(x: number, clips: readonly number[]): boolean {
+  for (let i = 0; i + 1 < clips.length; i += 2) {
+    if (x >= (clips[i] as number) && x < (clips[i + 1] as number)) return true;
+  }
+  return false;
+}
 
 /**
  * SkScan_Antihair.cpp antifilldot8 over a snapped rect (whole rows) in FDot8 (24.8): the 8-bit alpha the blitter gets for pixel

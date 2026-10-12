@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { textDecoration } from '@dragon/layout';
 import { NO_DECORATION_ANALYSIS_FAULTS } from '../../dragon/src/analysis/text-decoration.ts';
+import { ahemGlyphBoxes } from '../src/pixel-reference.ts';
 import { checkDecorations, committedDecorations, compileHtml, DECORATION_DPRS, decorationCases, decorationManifest, decorationPath, predictDecorations, sha256 } from '../src/decoration-capture.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
 import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
@@ -126,13 +127,31 @@ describe('the decoration capture against the engine (TDEC-a2)', () => {
     }
   });
 
-  it('the engine paints every decoration pixel exactly, colour included, at every DPR; only the skip-ink probe is refused', () => {
+  it('the engine paints every decoration pixel exactly, colour included, at every DPR; none is refused, and the Ahem skip-ink probe clips its glyphs (TDEC-d)', () => {
     const r = runAll(textDecoration.NO_DECORATION_FAULTS);
     expect(r.failed).toEqual([]);
-    expect([...r.refused].sort()).toEqual([...DECORATION_DPRS.map((d) => `${PROBE}@${d}`), ...DECORATION_DPRS.map((d) => `${PROBE}-rtl@${d}`)].sort());
-    expect(r.checked).toBe((decorationCases().length - 2) * DECORATION_DPRS.length);
+    expect(r.refused).toEqual([]);
+    expect(r.checked).toBe(decorationCases().length * DECORATION_DPRS.length);
     expect(r.pixels).toBeGreaterThan(100_000);
+    for (const id of [PROBE, `${PROBE}-rtl`]) {
+      const probe = decorationCases().find((x) => x.case.id === id);
+      if (probe === undefined) throw new Error(id);
+      for (const dpr of DECORATION_DPRS) {
+        const p = predictDecorations(probe.fixture, probe.case, dpr);
+        if (p.kind !== 'rects') throw new Error(`${id}@${dpr} refused`);
+        // Each of the four X's crosses the band and clips its dilated extent: only the middle of the space stays drawn.
+        expect(p.rects.map((x) => x.clips.length / 2), `${id}@${dpr}`).toEqual([4]);
+      }
+    }
   }, 600_000);
+
+  it("the device's Ahem ink (layout ahemInkEm, TDEC-d) is Ahem.ttf's glyf box for every covered code point", () => {
+    const boxes = ahemGlyphBoxes();
+    expect(boxes.size).toBeGreaterThan(90);
+    for (const [cp, b] of boxes) {
+      expect(textDecoration.ahemInkEm(cp), `U+${cp.toString(16)}`).toEqual(b === null ? [] : [b.xMin / 1000, b.xMax / 1000, b.yMax / 1000, b.yMin / 1000]);
+    }
+  });
 
   it('the north-star links pass the skip-ink bounds proof at every DPR (TDEC-d is not on the checkpoint-3 path)', () => {
     for (const { fixture, case: c } of decorationCases().filter((x) => x.case.fixture === 'text-decoration-north-star')) {
@@ -147,7 +166,7 @@ describe('the decoration capture against the engine (TDEC-a2)', () => {
     expect(runAll(textDecoration.NO_DECORATION_FAULTS, { propagatedIntoOutOfFlow: true }).failed.length).toBeGreaterThan(0);
   }, 600_000);
 
-  it('probes (T148J-1 ruling 3, TDEC-b): every decorated case is ready on web; ios draws it unless the capture could find a skip-ink band crossed; the Ahem auto underline is skip-ink-intercepts', () => {
+  it('probes (T148J-1 ruling 3, TDEC-b, TDEC-d): every decorated case is ready on web; what ios draws the capture predicts without a refusal; the Ahem auto underline is drawn', () => {
     let drawn = 0;
     for (const { fixture, case: c } of decorationCases()) {
       const compiled = compileHtml(fixture, c.authoredHtml, c.environment.direction);
@@ -155,16 +174,15 @@ describe('the decoration capture against the engine (TDEC-a2)', () => {
       const refused = compiled.diagnostics.filter((d) => d.target === 'ios' && d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('draws text-decoration'));
       if (refused.length > 0) continue;
       drawn += 1;
-      // What ios draws, the engine predicts at every capture DPR without a skip-ink refusal: the compiler's proof is never looser
-      // than the capture's per-glyph check.
+      // What ios draws, the engine predicts at every capture DPR without a skip-ink refusal: the compiler accepts skip-ink auto
+      // only where the capture clips glyphs itself (Ahem) or finds no band crossed.
       for (const dpr of [1, 2, 3, 2.625]) expect(predictDecorations(fixture, c, dpr).kind, `${c.id} at DPR ${dpr}`).toBe('rects');
     }
     expect(drawn).toBeGreaterThan(0);
     const probe = decorationCases().find((x) => x.case.id === PROBE);
     if (probe === undefined) throw new Error(PROBE);
-    const p = predictDecorations(probe.fixture, probe.case, 1);
-    expect(p).toMatchObject({ kind: 'refused', code: 'skip-ink-intercepts' });
+    expect(predictDecorations(probe.fixture, probe.case, 1).kind).toBe('rects');
     const compiled = compileHtml(probe.fixture, probe.case.authoredHtml, probe.case.environment.direction);
-    expect(compiled.diagnostics.some((d) => d.target === 'ios' && d.code === 'DRAGON_UNSUPPORTED_VALUE' && /skip-ink-intercepts: .*TDEC-d/.test(d.message)), PROBE).toBe(true);
+    expect(compiled.diagnostics.filter((d) => d.target === 'ios' && d.message.includes('draws text-decoration')), PROBE).toEqual([]);
   }, 300_000);
 });

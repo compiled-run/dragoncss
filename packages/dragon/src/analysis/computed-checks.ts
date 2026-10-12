@@ -570,25 +570,22 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);
 }
 
-/** TDEC-b: the Ahem face's ink, in em below the baseline: every Ahem glyph that has ink fills its em box, 0.2 em below the baseline. */
-const AHEM_DESCENT_EM = 0.2;
-/** The device scales a native proof spans; every device lane's DPR (1, 2, 2.625 and 3) lies inside. */
-const NATIVE_DPR_SPAN = [1, 4] as const;
+/** The largest device scale a native proof spans; every device lane's DPR (1, 2, 2.625 and 3) lies below it. */
+const NATIVE_DPR_MAX = 4;
+/** The largest skip-ink dilation the decoration capture proves: every captured skip-ink auto line is at most this thick. */
+const SKIP_INK_PROVEN_THICKNESS = 13;
 
 /**
- * TDEC-b: whether an underline with skip-ink auto clears every Ahem glyph's ink at every device scale of NATIVE_DPR_SPAN, so the
- * skip-ink band (text_painter.cc:555-563, layout text-decoration.ts skipInkClear) clips nothing and the device need not compute
- * intercepts (TDEC-d). The band's top is 0.5 px below the line's unsnapped top, baseline + gap + roundf(offset): gap is
- * max(1, ceil(t / 2)) >= 1 for an auto offset and 0 otherwise, and roundf(offset) >= offset - 0.5, so the band top lies at least
- * gap + offset px below the baseline, offset being v * d for v css px or p% of the decorating box's font size. The glyphs' ink
- * reaches 0.2 * size * d below it. The bound is linear in d, so its two ends prove the span; a 1/32 px margin covers skipInkClear's
- * 1/64 and float rounding. textSize and boxSize are css px.
+ * TDEC-d: whether a skip-ink auto line's thickness stays within SKIP_INK_PROVEN_THICKNESS zoomed px at every device scale up to
+ * NATIVE_DPR_MAX, so the device's dilation by the thickness (text_painter.cc:555-563, layout text-decoration.ts skipInkClips) is
+ * the one the captures prove. auto is size / 10 of the decorating box's font; a px length or a percentage rounds half up after zoom (roundf, +0.5 at
+ * most). boxSize is css px.
  */
-export function underlineClearsAhem(textSize: number, offset: CssValue, boxSize: number): boolean {
-  const auto = offset.kind === 'keyword' && offset.value === 'auto';
-  const perPx = auto ? 0 : offset.kind === 'length' && offset.unit === 'px' ? offset.value : offset.kind === 'percentage' ? (offset.value * boxSize) / 100 : Number.NaN;
-  if (!Number.isFinite(perPx) || !Number.isFinite(textSize) || !Number.isFinite(boxSize)) return false;
-  return NATIVE_DPR_SPAN.every((d) => (auto ? 1 : 0) + perPx * d >= AHEM_DESCENT_EM * textSize * d + 1 / 32);
+export function skipInkThicknessProven(thickness: CssValue, boxSize: number): boolean {
+  const auto = thickness.kind === 'keyword' && thickness.value === 'auto';
+  const perPx = auto ? boxSize / 10 : thickness.kind === 'length' && thickness.unit === 'px' ? thickness.value : thickness.kind === 'percentage' ? (thickness.value * boxSize) / 100 : Number.NaN;
+  if (!Number.isFinite(perPx)) return false;
+  return perPx * NATIVE_DPR_MAX + (auto ? 0 : 0.5) <= SKIP_INK_PROVEN_THICKNESS;
 }
 
 /** Whether the device takes a thickness or underline offset: auto, a px length or a percentage (lower/paint/text-decoration.ts). */
@@ -598,7 +595,7 @@ const nativeDecorationLength = (v: CssValue): boolean => (v.kind === 'keyword' &
  * TDEC-a: web draws every accepted decoration. TDEC-b: ios and android draw solid decorations (the value table refuses every other
  * style on every target) and refuse, per decorated text, what the device does not reproduce: a thickness or offset that is not
  * auto, px or a percentage; a decorated text that is not visible; an overline with skip-ink auto, or an underline with skip-ink auto
- * that underlineClearsAhem does not prove clear of the glyphs, or one on a real face (skip-ink-intercepts, TDEC-d). A child of a
+ * on a real face or thicker than skipInkThicknessProven allows (skip-ink-intercepts: TDEC-d clips Ahem glyphs within that bound). A child of a
  * decorated element in a formatting context no Chrome case proves propagation for is refused on every target.
  */
 function checkDecorations(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
@@ -629,7 +626,6 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
     const hit = byAddress.get(address);
     if (hit === undefined) throw new Error(`${address}: a decorated text leaf that is not in the tree`);
     const { text, containerSize, visibility } = hit;
-    const textSize = sizeOf(text.props);
     const reasons: string[] = [];
     let intercepts = false;
     if (visibility !== 'visible') reasons.push(`it is ${visibility}, and its decoration views do not follow visibility`);
@@ -637,7 +633,8 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
       if (!nativeDecorationLength(d.thickness)) reasons.push(`the text-decoration-thickness of ${d.box} is ${valueToString(d.thickness)}, not auto, a px length or a percentage`);
       if (!nativeDecorationLength(d.underlineOffset)) reasons.push(`the text-underline-offset of ${d.box} is ${valueToString(d.underlineOffset)}, not auto, a px length or a percentage`);
       if (d.skipInk !== 'auto') continue;
-      if (d.lines.includes('overline') || (d.lines.includes('underline') && (realFaceAt(address) || !underlineClearsAhem(textSize, d.underlineOffset, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
+      // TDEC-d clips Ahem glyphs only, for an underline (the capture's skip-ink probe), as thick as a capture proves.
+      if (d.lines.includes('overline') || (d.lines.includes('underline') && (realFaceAt(address) || !skipInkThicknessProven(d.thickness, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
     }
     if (intercepts) reasons.push('skip-ink-intercepts: glyph ink may cross the skip-ink band of an under or overline from ' + list.filter((d) => d.skipInk === 'auto').map((d) => d.box).join(', ') + ', which the intercepts of TDEC-d clip');
     if (reasons.length === 0) continue;
@@ -650,7 +647,7 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
         origin: text.node.node.origin,
         target: t,
         message: `text ${address} draws text-decoration (${what}) that ${t} does not draw: ${reasons.join('; ')}`,
-        manual: intercepts ? 'Set text-decoration-skip-ink: none on the decorating box, move the underline clear of the glyphs with text-underline-offset, or build for web; skip-ink intercepts come with TDEC-d.' : 'Set text-decoration: none on the decorating box, or build for web.',
+        manual: intercepts ? 'Set text-decoration-skip-ink: none on the decorating box, or build for web; skip-ink intercepts on overlines and real faces come with later TDEC-d slices.' : 'Set text-decoration: none on the decorating box, or build for web.',
         basis: 'computed-value',
       }));
     }

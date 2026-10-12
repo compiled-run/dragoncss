@@ -758,8 +758,11 @@ public final class DragonTree {
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       let size = try units_platformFontSize(leaves[li].font.size)
       var specs: [DragonLineSpec] = []
-      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks.
+      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
+      // points and glyph pens in zoomed px from the root.
       var geometry: [[Double]] = []
+      var geometryCps: [[Double]] = []
+      var geometryPens: [[Double]] = []
       var viewMetrics: (halfLeadings: [Double], ascent: Double, descent: Double)? = nil
       var firstBaselineOffset: Double? = nil
       for line in placed {
@@ -801,6 +804,8 @@ public final class DragonTree {
             pen = pen + Float(size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm)
           }
         }
+        geometryCps.append(shown.map { Double($0.value) })
+        geometryPens.append(xs.map { $0 + e[0] })
         specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: glyphs, xs: xs, xLU: xLU, widthLU: piece.width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end))))
       }
       if specs.count != pieces.count { fatalError("dragon: \(id): the engine's breaks give \(specs.count) lines, its layout \(pieces.count)") }
@@ -811,7 +816,7 @@ public final class DragonTree {
       if let cv = views[pId] as? DragonBoxView, let strut = p.strut, let m = viewMetrics {
         var boxFonts: [String: [Double]] = [:]
         for (b, ib) in ifc.boxes.items.enumerated() { boxFonts[ib.id.description] = [ifc.boxMetrics.items[b].ascent / lu, ifc.boxMetrics.items[b].ascent / lu, ib.font.size] }
-        dragonAfterText(cv, tv, DragonTextGeometry(id: id, lines: geometry, textFont: [m.ascent, m.ascent, leaves[li].font.size], strutFont: [ifc.strut.ascent / lu, ifc.strut.ascent / lu, strut.font.size], boxFonts: boxFonts, origin: [e[0], e[1]], scale: s))
+        dragonAfterText(cv, tv, DragonTextGeometry(id: id, lines: geometry, cps: geometryCps, pens: geometryPens, textFont: [m.ascent, m.ascent, leaves[li].font.size], strutFont: [ifc.strut.ascent / lu, ifc.strut.ascent / lu, strut.font.size], boxFonts: boxFonts, origin: [e[0], e[1]], scale: s))
       }
     }
     // Each inline box's fragments, one per line it is on (the engine's "<box>:line<j>"), with that line's baseline.
@@ -1683,8 +1688,11 @@ class DragonTree(val context: Context) {
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       val size = units_platformFontSize(leaves[li].font.size)
       val specs = ArrayList<DragonLineSpec>()
-      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks.
+      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
+      // points and glyph pens in zoomed px from the root.
       val geometry = ArrayList<DoubleArray>()
+      val geometryCps = ArrayList<DoubleArray>()
+      val geometryPens = ArrayList<DoubleArray>()
       var viewMetrics: DoubleArray? = null
       var firstBaselineOffset: Double? = null
       for (line in placed) {
@@ -1730,6 +1738,8 @@ class DragonTree(val context: Context) {
             pen = pen + (size * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat()
           }
         }
+        geometryCps.add(text.codePoints().toArray().map { it.toDouble() }.toDoubleArray())
+        geometryPens.add(DoubleArray(xs.size) { xs[it] + e[0] })
         specs.add(DragonLineSpec(text, glyphs, xs, xLU, piece.width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt())))
       }
       if (specs.size != pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give " + specs.size + " lines, its layout " + pieces.size)
@@ -1743,7 +1753,7 @@ class DragonTree(val context: Context) {
       if (cv != null && strut != null && vm != null) {
         val boxFonts = HashMap<String, DoubleArray>()
         for ((b, ib) in ifc.boxes.withIndex()) boxFonts[ib.id] = doubleArrayOf(ifc.boxMetrics[b].ascent / lu, ifc.boxMetrics[b].ascent / lu, ib.font.size)
-        dragonAfterText(cv, tv, DragonTextGeometry(id, geometry, doubleArrayOf(vm[0], vm[0], leaves[li].font.size), doubleArrayOf(ifc.strut.ascent / lu, ifc.strut.ascent / lu, strut.font.size), boxFonts, doubleArrayOf(e[0], e[1]), scale))
+        dragonAfterText(cv, tv, DragonTextGeometry(id, geometry, geometryCps, geometryPens, doubleArrayOf(vm[0], vm[0], leaves[li].font.size), doubleArrayOf(ifc.strut.ascent / lu, ifc.strut.ascent / lu, strut.font.size), boxFonts, doubleArrayOf(e[0], e[1]), scale))
       }
     }
     // Each inline box's fragments, one per line it is on (the engine's "<box>:line<j>"), with that line's baseline.
@@ -1950,11 +1960,13 @@ public func dragonAfterLayout(_ v: DragonBoxView, _ shape: DragonBoxShape, _ sca
 ${after}}
 
 /// TDEC-b: the engine geometry of one text view after the text pass: per line the piece's left, width and top in zoomed px from
-/// the root; the text's, the container strut's and each inline box's [float ascent, ascent, zoomed size]; the text view's absolute
-/// origin in device px; the device scale.
+/// the root, and (TDEC-d) its shown code points and glyph pens in zoomed px from the root; the text's, the container strut's and
+/// each inline box's [float ascent, ascent, zoomed size]; the text view's absolute origin in device px; the device scale.
 public struct DragonTextGeometry {
   public let id: String
   public let lines: [[Double]]
+  public let cps: [[Double]]
+  public let pens: [[Double]]
   public let textFont: [Double]
   public let strutFont: [Double]
   public let boxFonts: [String: [Double]]
@@ -2006,10 +2018,10 @@ ${after}}
 
 /**
  * TDEC-b: the engine geometry of one text view after the text pass: per line the piece's left, width and top in zoomed px from the
- * root; the text's, the container strut's and each inline box's [float ascent, ascent, zoomed size]; the text view's absolute
- * origin in device px; the device scale.
+ * root, and (TDEC-d) its shown code points and glyph pens in zoomed px from the root; the text's, the container strut's and each
+ * inline box's [float ascent, ascent, zoomed size]; the text view's absolute origin in device px; the device scale.
  */
-class DragonTextGeometry(val id: String, val lines: List<DoubleArray>, val textFont: DoubleArray, val strutFont: DoubleArray, val boxFonts: Map<String, DoubleArray>, val origin: DoubleArray, val scale: Double)
+class DragonTextGeometry(val id: String, val lines: List<DoubleArray>, val cps: List<DoubleArray>, val pens: List<DoubleArray>, val textFont: DoubleArray, val strutFont: DoubleArray, val boxFonts: Map<String, DoubleArray>, val origin: DoubleArray, val scale: Double)
 
 /** Registration point (TDEC-b): after the text pass configures a text view, each paint module's after-text hook in registry order. */
 fun dragonAfterText(v: DragonBoxView, tv: DragonTextView, g: DragonTextGeometry) {
