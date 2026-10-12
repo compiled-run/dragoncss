@@ -31,7 +31,9 @@ export function applyAnyLink(el: LinkedElement, props: Map<Longhand, ResolvedVal
   if (!isAnyLink(el)) return;
   const none = { span: null, declaration: null, declared: null, losing: [] } as const;
   const dir = valueToString((props.get('direction') as ResolvedValue).value) === 'rtl' ? 'rtl' : 'ltr';
-  const take = (p: Longhand, text: string): void => props.set(p, { ...none, ...props.get(p), value: parseValueText(p, text), origin: 'user-agent' });
+  const take = (p: Longhand, text: string): void => {
+    props.set(p, { ...none, ...props.get(p), value: parseValueText(p, text), origin: 'user-agent' });
+  };
   if (defaulted.has('color')) take('color', ua.anyLink.color[dir]);
   if (defaulted.has('text-decoration-line')) take('text-decoration-line', ua.anyLink.line);
 }
