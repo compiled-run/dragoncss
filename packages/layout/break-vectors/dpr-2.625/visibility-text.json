@@ -1,0 +1,13 @@
+{
+  "case": "visibility-text",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"hid-t1:text0","lines":[[0,12],[12,20]]},
+    {"id":"hid-t2a:text0","lines":[[0,5]]},
+    {"id":"kid-t2:text0","lines":[[0,5]]},
+    {"id":"kid-t3a:text0","lines":[[0,4]]},
+    {"id":"hid-t3:text0","lines":[[0,4]]},
+    {"id":"hid-f:text0","lines":[[0,4]]},
+    {"id":"kid-f:text0","lines":[[0,3]]}
+  ]
+}

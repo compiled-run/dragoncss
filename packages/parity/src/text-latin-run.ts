@@ -1,68 +1,40 @@
-// The lanes of the text-latin registry (fixture-groups/text-latin.ts; notes/T083-txt1a-1.md). Each case compiles with the reference
-// font map for web, ios and android; native is blocked only by its deferred font refusals, so the engine lays out the engine
-// projection (engineLayoutProjection) with the Node HarfBuzz host. The case must then pass linux-dragon-layout exactly (every
-// compared edge equal at 1/64 px), chrome-dual exactly, the face check (CSS.getPlatformFontsForNode) in both documents, and the
-// engine's line breaks must equal Chrome's. DPR 2, 3 and 2.625 run the DPR lane on their own captures. No native lane runs.
-import { existsSync, readFileSync } from 'node:fs';
+// The shaped cases of the corpus (TXT1a, notes/T083-txt1a-1.md and notes/T084-txt1a-2.md): a layout case is shaped when its engine
+// input names a face other than Ahem, or when the Ahem measurer of the replay hosts (measurerFor) lays it out differently from the
+// shaped one. Derived from the compiled input; no fixture carries a flag. A shaped case runs every FIXTURES lane, plus what real text
+// needs: the engine lane against the capture with its generated hyphen rects joined (joinHyphenRects), every compared edge exact at
+// 1/64 px, the face check (CSS.getPlatformFontsForNode) of every listed element in both documents, and the engine's breaks equal to
+// Chrome's at DPR 1. Its vectors carry the shape transcript (R3) and live in packages/layout/vectors/text-latin/dpr-<d>/.
 import type { Browser, Page } from 'playwright';
-import type { EngineFaults, GlyphShaper, LayoutInput, LayoutRect, LayoutUnsupported } from '@dragon/layout';
-import type { Comparison } from './compare.ts';
-import { compareLayout } from './compare.ts';
-import { absoluteRects, layout, layoutWithFaults, NO_ENGINE_FAULTS, shapedMeasurerFor, validateLayoutInput } from '@dragon/layout';
-import type { CompilerFaults, Compiled, Diagnostic, FrontEndResult } from 'dragon';
-import { createProjectWith, engineLayoutProjection, nativeLayoutProjection, NO_FAULTS, webClassMap } from 'dragon';
+import type { EngineFaults, GlyphShaper, LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
+import { layout, measurerFor, NO_ENGINE_FAULTS, shapedMeasurerFor } from '@dragon/layout';
+import { engineLayoutProjection, NO_FAULTS } from 'dragon';
 import type { CapturedNode, WebCapture } from './capture.ts';
-import { captureFixture, captureJson } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
-import type { DprCaseOutcome } from './dpr.ts';
-import { atDpr, dprLabel, runDprCase } from './dpr.ts';
-import { ENVIRONMENT, FIXTURES } from './fixtures.ts';
-import type { TextLatinFixture } from './fixture-groups/text-latin.ts';
-import { withFontMapAssets } from './fixture-groups/fonts.ts';
-import { faceProblem, fontCases, readFontCapture, referenceTransform } from './fonts-run.ts';
+import { layoutCases } from './dpr.ts';
+import { TEXT_CALIBRATION_FACES } from './fixture-groups/text-calibration.ts';
+import { INLINE_TAGS_FACES } from './fixture-groups/inline-tags.ts';
+import { TEXT_WEIGHT_FACES } from './fixture-groups/text-weight.ts';
+import { TEXT_LATIN_FACES } from './fixture-groups/text-latin.ts';
+import { faceProblem } from './fonts-run.ts';
 import type { PlatformFont } from './font-reference.ts';
 import { platformFonts } from './font-reference.ts';
-import type { BreakVector, ChromeBreakText, ChromeBreaks } from './line-breaks.ts';
-import { breakVector, chromeBreaksText, compareVectorWithChrome, engineTextLines, leafTexts } from './line-breaks.ts';
-import { fixtureInput } from './cases.ts';
-import { PROJECT_ID } from './fixture-reader.ts';
+import type { BreakVector, ChromeBreaks } from './line-breaks.ts';
+import { breakVector, captureBreakTexts, compareVectorWithChrome, engineTextLines, leafTexts } from './line-breaks.ts';
 import { repoPath } from './paths.ts';
+import { compileFixture } from './pipeline.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
-import type { CaseOutcome, RunOptions } from './pipeline.ts';
-import { runCase, webCssOf } from './pipeline.ts';
 import { hostShaper, REFERENCE_LANGUAGE, referenceShapedMeasurer, shapedFaceOf } from './text-shaper-host.ts';
 
-/** Every DPR the registry runs at: 1, then the DPR lane's. */
+/** Every DPR a shaped case's vectors are written at: 1, then the DPR lane's. */
 export const TEXT_LATIN_DPRS: readonly number[] = [1, 2, 3, 2.625];
 
-/** packages/parity/expected-text-latin/<platform>/dpr-<d>/<case>.web.json and .breaks.json, written only by the capture CLIs. */
-export const textLatinDir = (dpr: number, platform: string = REFERENCE_PLATFORM): string => repoPath(`packages/parity/expected-text-latin/${platform}/${dprLabel(dpr)}`);
-export const textLatinCapturePath = (caseId: string, dpr: number, platform: string = REFERENCE_PLATFORM): string => `${textLatinDir(dpr, platform)}/${caseId}.web.json`;
-export const textLatinBreaksPath = (caseId: string, dpr: number, platform: string = REFERENCE_PLATFORM): string => `${textLatinDir(dpr, platform)}/${caseId}.breaks.json`;
-export const textLatinEmittedPath = (fixture: string, direction: 'ltr' | 'rtl'): string => repoPath(`packages/parity/expected-text-latin/emitted/${fixture}${direction === 'rtl' ? '-rtl' : ''}.css`);
-/** packages/layout/vectors/text-latin/dpr-<d>/<case>.json: the engine input and output with the shape transcript (R3). */
-export const textLatinVectorPath = (caseId: string, dpr: number): string => repoPath(`packages/layout/vectors/text-latin/${dprLabel(dpr)}/${caseId}.json`);
+/** packages/layout/vectors/text-latin/dpr-<d>/: the engine input and output with the shape transcript (R3). */
+export const textLatinVectorDir = (dpr: number): string => repoPath(`packages/layout/vectors/text-latin/dpr-${dpr}`);
+export const textLatinVectorPath = (caseId: string, dpr: number): string => `${textLatinVectorDir(dpr)}/${caseId}.json`;
 
-/**
- * A text-latin compile: web and ios (as pipeline.ts compiles FIXTURES; the android profile holds every row unsupported until a
- * native android case passes) with the fixture's font map and its faces as snapshot assets.
- */
-export function compileTextLatin(f: TextLatinFixture, direction: 'ltr' | 'rtl', faults: CompilerFaults = NO_FAULTS, profiles: 'enforce' | 'derive' = 'enforce'): { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> } {
-  const input = f.map === null ? fixtureInput(f.spec) : withFontMapAssets(fixtureInput(f.spec), f.map);
-  const rootFont = f.spec.kind === 'layout' ? f.spec.rootFont : 'ahem';
-  const project = createProjectWith(
-    { projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} }, ...(f.map === null ? {} : { fonts: f.map }) },
-    { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont, foldViewport: ENVIRONMENT.viewport },
-  );
-  return { input, compiled: project.compile(input) };
-}
-
-/** The cases of a text-latin fixture (authored documents with their font URLs inlined). */
-export const textLatinCases = (f: TextLatinFixture): ParityCase[] => fontCases(f);
-
-/** Every face family the engine input of a projection names. */
-function inputFaces(input: LayoutInput): Set<string> {
+/** Every face family the engine input names. */
+export function inputFaces(input: LayoutInput): Set<string> {
   const out = new Set<string>();
   const walk = (v: unknown): void => {
     if (Array.isArray(v)) {
@@ -78,125 +50,23 @@ function inputFaces(input: LayoutInput): Set<string> {
   return out;
 }
 
-/**
- * The admission guard of the registry (notes/T083-txt1a-1.md): a case belongs here only when its web output is ready, the engine
- * projection is ready and the native one blocked, every diagnostic that blocks ios or android is a DRAGON_UNSUPPORTED_FONT, the
- * engine lays out at least one face other than Ahem, and no FIXTURES fixture has its id. Returns the reasons it is not admitted.
- */
-export function admissionProblems(f: TextLatinFixture, compiled: Compiled<'ios' | 'web'>, c: ParityCase): string[] {
-  const problems: string[] = [];
-  if (FIXTURES.some((x) => x.id === f.spec.id)) problems.push(`${f.spec.id} is also a FIXTURES fixture`);
-  if (compiled.outputs.web.kind !== 'ready') problems.push('the web output is not ready');
-  const engine = engineLayoutProjection(compiled, c.environment, c.assignment);
-  const native = nativeLayoutProjection(compiled, c.environment, c.assignment);
-  if (engine.kind !== 'ready') problems.push(`the engine projection is blocked: ${engine.reason}`);
-  if (native.kind !== 'blocked') problems.push('the native projection is ready, so the case belongs in FIXTURES');
-  const blocking = compiled.diagnostics.filter((d: Diagnostic) => d.severity === 'error' && (d.target === null || d.target === 'ios'));
-  if (blocking.length === 0) problems.push('ios is not blocked');
-  for (const d of blocking) if (!isNativeFontRefusal(d)) problems.push(`ios is blocked by ${d.code}: ${d.message}`);
-  if (engine.kind === 'ready' && ![...inputFaces(engine.input)].some((x) => x !== 'Ahem')) problems.push('the engine lays out no face other than Ahem');
-  return problems;
-}
-
-/** A native font refusal: DRAGON_UNSUPPORTED_FONT, or a profile refusal of a font-family feature (no native font row is proven yet). */
-export const isNativeFontRefusal = (d: Diagnostic): boolean =>
-  d.code === 'DRAGON_UNSUPPORTED_FONT' || ((d.code === 'DRAGON_UNSUPPORTED_VALUE' || d.code === 'DRAGON_UNPROVEN_CONTEXT') && d.profile !== null && d.profile.feature.startsWith('font-family:'));
-
-/** Throws unless the case is admitted. */
-export function requireAdmitted(f: TextLatinFixture, compiled: Compiled<'ios' | 'web'>, c: ParityCase): void {
-  const p = admissionProblems(f, compiled, c);
-  if (p.length > 0) throw new Error(`${c.id} is not a text-latin case: ${p.join('; ')}`);
-}
-
-/** The authored capture of a case at a DPR, live: the stated reference applied before the page is read. */
-export const liveTextLatinCapture = (browser: Browser, f: TextLatinFixture, c: ParityCase, dpr: number): Promise<WebCapture> =>
-  captureFixture(browser, c.id, c.authoredHtml, atDpr(c.environment, dpr), [], referenceTransform(f));
+const ahem = measurerFor(REFERENCE_PLATFORM);
 
 /**
- * Chrome's breaks of the open page as line-breaks.ts captureBreakTexts reads them, with the generated hyphen of a soft hyphen break
- * taken out: a text node's lines are its client rects joined per line (a hyphen rect shares its line's top), and a unit after
- * U+00AD takes the line of its last rect, since Chrome lists the previous line's hyphen first in that unit's Range.
+ * Whether a case input is shaped: it names a face other than Ahem, or the Ahem measurer the replay hosts build from measurerFor gives
+ * a different layout (or refusal) than the HarfBuzz measurer, so its vector needs a shape transcript to replay.
  */
-async function captureLatinBreakTexts(page: Page): Promise<ChromeBreakText[]> {
-  return page.evaluate(() => {
-    const out: { id: string; data: string; lines: number; units: number[]; blank: number[] }[] = [];
-    const isBlank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
-    for (const el of Array.from(document.querySelectorAll('[data-dragon-id]'))) {
-      const id = el.getAttribute('data-dragon-id') as string;
-      let k = 0;
-      let spaces = 0;
-      for (const child of Array.from(el.childNodes)) {
-        if (child.nodeType !== Node.TEXT_NODE) continue;
-        const t = child as Text;
-        const whole = document.createRange();
-        whole.selectNodeContents(t);
-        const lines: DOMRect[] = [];
-        for (const r of Array.from(whole.getClientRects())) {
-          const last = lines[lines.length - 1];
-          if (last !== undefined && Math.abs(last.y - r.y) < 0.001 && Math.abs(last.height - r.height) < 0.001) continue;
-          lines.push(r);
-        }
-        const blankNode = isBlank(t.data);
-        const textId = blankNode ? `${id}:space${spaces++}` : `${id}:text${k++}`;
-        if (blankNode && lines.length === 0) continue;
-        const units: number[] = [];
-        const blank: number[] = [];
-        for (let i = 0; i < t.data.length; i++) {
-          const r = document.createRange();
-          r.setStart(t, i);
-          r.setEnd(t, i + 1);
-          const rects = Array.from(r.getClientRects());
-          const pick = i > 0 && t.data.charCodeAt(i - 1) === 0xad && rects.length > 1 ? rects[rects.length - 1] : rects[0];
-          if (pick === undefined || lines.length === 0) {
-            units.push(-1);
-            continue;
-          }
-          const cy = pick.y + pick.height / 2;
-          let best = 0;
-          lines.forEach((l, j) => {
-            const b = lines[best] as DOMRect;
-            if (Math.abs(l.y + l.height / 2 - cy) < Math.abs(b.y + b.height / 2 - cy)) best = j;
-          });
-          units.push(best);
-          if (pick.width === 0) blank.push(i);
-        }
-        out.push({ id: textId, data: t.data, lines: lines.length, units, blank });
-      }
-    }
-    return out;
-  });
+export function isShapedInput(input: LayoutInput): boolean {
+  if ([...inputFaces(input)].some((f) => f !== 'Ahem')) return true;
+  if (ahem.kind !== 'ok') throw new Error(`${ahem.code}: ${ahem.detail}`);
+  const a = layout(input, ahem.measurer);
+  const s = layout(input, referenceShapedMeasurer());
+  return JSON.stringify(a.kind === 'ok' ? a.boxes : a.unsupported) !== JSON.stringify(s.kind === 'ok' ? s.boxes : s.unsupported);
 }
 
-/** Chrome's breaks of a case at a DPR, live, under the stated reference (captureLatinBreakTexts). */
-export async function liveTextLatinBreaks(browser: Browser, f: TextLatinFixture, c: ParityCase, dpr: number): Promise<ChromeBreaks> {
-  const page = await openPage(browser, c.authoredHtml, atDpr(c.environment, dpr));
-  try {
-    const prepare = referenceTransform(f);
-    if (prepare !== undefined) await prepare(page);
-    return { case: c.id, chrome: CHROME_VERSION, dpr, texts: await captureLatinBreakTexts(page) };
-  } finally {
-    await page.context().close();
-  }
-}
-
-/** The committed authored capture of a case at a DPR, checked as the fonts captures are (case, direction, Chrome, canonical bytes). */
-export function committedTextLatinCapture(c: ParityCase, dpr: number): WebCapture {
-  const path = textLatinCapturePath(c.id, dpr);
-  if (!existsSync(path)) throw new Error(`no committed capture ${path}; run node --conditions=dragon-internal packages/parity/src/cli/text-latin-capture.ts`);
-  const cap = readFontCapture(c, readFileSync(path, 'utf8'));
-  if (cap.devicePixelRatio !== dpr) throw new Error(`${path}: captured at DPR ${cap.devicePixelRatio}, not ${dpr}`);
-  return cap;
-}
-
-/** The committed Chrome breaks of a case at a DPR, checked against the case and in the form the capture writes. */
-export function committedTextLatinBreaks(c: ParityCase, dpr: number): ChromeBreaks {
-  const path = textLatinBreaksPath(c.id, dpr);
-  if (!existsSync(path)) throw new Error(`no committed breaks ${path}`);
-  const text = readFileSync(path, 'utf8');
-  const b = JSON.parse(text) as ChromeBreaks;
-  if (b.case !== c.id || b.dpr !== dpr || b.chrome !== CHROME_VERSION || !Array.isArray(b.texts)) throw new Error(`${path}: not the breaks of ${c.id} at DPR ${dpr} in Chrome ${CHROME_VERSION}`);
-  if (chromeBreaksText(b) !== text) throw new Error(`${path}: not in the form the capture writes`);
-  return b;
+/** The faces Chrome must draw each listed element's text with in a fixture (data-dragon-id to postScriptName), or null. */
+export function expectedFacesOf(fixture: string): { readonly [id: string]: string } | null {
+  return TEXT_LATIN_FACES.get(fixture) ?? TEXT_CALIBRATION_FACES.get(fixture) ?? INLINE_TAGS_FACES.get(fixture) ?? TEXT_WEIGHT_FACES.get(fixture) ?? null;
 }
 
 /**
@@ -234,23 +104,47 @@ export function joinHyphenRects(cap: WebCapture): WebCapture {
 }
 
 /** The faces of each listed element's text in one rendering. */
-async function facesOf(browser: Browser, html: string, c: ParityCase, ids: readonly string[], prepare: ReturnType<typeof referenceTransform>): Promise<PlatformFont[][]> {
+async function facesIn(browser: Browser, html: string, c: ParityCase, ids: readonly string[], prepare: ((page: Page) => Promise<void>) | null): Promise<PlatformFont[][]> {
   const page = await openPage(browser, html, c.environment);
   try {
-    if (prepare !== undefined) await prepare(page);
+    if (prepare !== null) await prepare(page);
     return await platformFonts(page, ids.map((id) => `[data-dragon-id="${id}"]`));
   } finally {
     await page.context().close();
   }
 }
 
-export type TextLatinOptions = {
-  readonly authored: (c: ParityCase, dpr: number) => Promise<WebCapture>;
-  readonly breaks: (c: ParityCase, dpr: number) => Promise<ChromeBreaks>;
-  readonly faults?: CompilerFaults;
-  readonly engineFaults?: EngineFaults;
-  readonly profiles?: 'enforce' | 'derive';
-};
+/**
+ * The face check of a case: every element with text in the authored capture is listed, and every listed element's text is drawn
+ * with its face alone in the authored document (under the stated reference) and in the compiled one.
+ */
+export async function faceCheck(browser: Browser, c: ParityCase, authored: WebCapture, compiledHtml: string, faces: { readonly [id: string]: string }): Promise<string[]> {
+  const ids = Object.keys(faces);
+  const problems: string[] = [];
+  const unlisted = [...new Set(authored.nodes.filter((n) => n.kind === 'text').map((n) => n.id.replace(/:text\d+$/, '')))].filter((id) => !ids.includes(id));
+  for (const id of unlisted) problems.push(`${id} has text but no expected face`);
+  const a = await facesIn(browser, c.authoredHtml, c, ids, c.authoredPrepare);
+  const b = await facesIn(browser, compiledHtml, c, ids, null);
+  ids.forEach((id, i) => {
+    const expected = faces[id] as string;
+    const pa = faceProblem(expected, a[i] ?? []);
+    const pb = faceProblem(expected, b[i] ?? []);
+    if (pa !== null) problems.push(`${id} authored: ${pa}`);
+    if (pb !== null) problems.push(`${id} compiled: ${pb}`);
+  });
+  return problems;
+}
+
+/** Chrome's breaks of a case at a DPR, live, under its stated reference (line-breaks.ts captureBreakTexts). */
+export async function liveChromeBreaks(browser: Browser, c: ParityCase, dpr: number): Promise<ChromeBreaks> {
+  const page = await openPage(browser, c.authoredHtml, { ...c.environment, devicePixelRatio: dpr });
+  try {
+    if (c.authoredPrepare !== null) await c.authoredPrepare(page);
+    return { case: c.id, chrome: CHROME_VERSION, dpr, texts: await captureBreakTexts(page) };
+  } finally {
+    await page.context().close();
+  }
+}
 
 /** The engine's breaks of an input against Chrome's: the problems, and how many text nodes were compared. */
 export function breakProblems(caseId: string, dpr: number, input: LayoutInput, chrome: ChromeBreaks, faults: EngineFaults = NO_ENGINE_FAULTS): { readonly vector: BreakVector; readonly compared: number; readonly problems: readonly string[] } {
@@ -259,113 +153,6 @@ export function breakProblems(caseId: string, dpr: number, input: LayoutInput, c
   const r = compareVectorWithChrome(vector, chrome, leafTexts(input.root));
   return { vector, compared: r.compared, problems: r.problems.map((p) => `${p.text}: ${p.detail}`) };
 }
-
-/** linux-dragon-layout on the engine projection with the host's HarfBuzz: every compared edge equal to Chrome's at 1/64 px. */
-export function engineLane(c: ParityCase, compiled: Compiled<'ios' | 'web'>, authored: WebCapture, faults: EngineFaults): { readonly pass: boolean; readonly reason: string | null; readonly comparison: Comparison | null; readonly unsupported: LayoutUnsupported | null; readonly vector: { readonly input: LayoutInput; readonly output: readonly LayoutRect[] } | null } {
-  const projection = engineLayoutProjection(compiled, c.environment, c.assignment);
-  if (projection.kind === 'blocked') return { pass: false, reason: `linux-dragon-layout: no engine projection: ${projection.reason}`, comparison: null, unsupported: null, vector: null };
-  const validated = validateLayoutInput(JSON.parse(JSON.stringify(projection.input)));
-  if (!validated.ok) return { pass: false, reason: `linux-dragon-layout: layout input rejected: ${validated.errors.map((e) => `${e.path} ${e.code}`).join('; ')}`, comparison: null, unsupported: null, vector: null };
-  const result = layoutWithFaults(validated.input, referenceShapedMeasurer(faults), faults);
-  if (result.kind === 'unsupported') {
-    const u = result.unsupported;
-    return { pass: false, reason: `linux-dragon-layout: LayoutUnsupported ${u.code} at ${u.nodeId} (${u.specSection}): ${u.detail}`, comparison: null, unsupported: u, vector: null };
-  }
-  const comparison = compareLayout(authored, absoluteRects(result.boxes), validated.input, c.environment);
-  const problems = [...comparison.problems];
-  for (const n of comparison.nodes) if (n.dragon !== null && !n.exactLu) problems.push(`${n.id} is not exact at 1/64 px (chrome ${JSON.stringify(n.chrome)}, dragon ${JSON.stringify(n.dragon)})`);
-  const pass = comparison.pass && problems.length === 0;
-  return { pass, reason: pass ? null : `linux-dragon-layout: ${problems.join('; ')}`, comparison, unsupported: null, vector: pass ? { input: validated.input, output: result.boxes } : null };
-}
-
-/** Every case of a text-latin fixture at DPR 1: both lanes exactly, the face check and the break check. */
-export async function runTextLatinFixture(f: TextLatinFixture, browser: Browser, opts: TextLatinOptions): Promise<CaseOutcome[]> {
-  const out: CaseOutcome[] = [];
-  const ids = Object.keys(f.faces);
-  for (const c of textLatinCases(f)) {
-    const { compiled } = compileTextLatin(f, c.environment.direction, opts.faults ?? NO_FAULTS, opts.profiles ?? 'enforce');
-    requireAdmitted(f, compiled, c);
-    const run: RunOptions = { authored: (k) => opts.authored(k, 1), faults: opts.faults ?? NO_FAULTS, engineFaults: opts.engineFaults ?? NO_ENGINE_FAULTS, profiles: opts.profiles ?? 'enforce' };
-    const two = compiled;
-    const raw = await runCase(c, two, webCssOf(two), browser, run, engineLayoutProjection);
-    const authored = await opts.authored(c, 1);
-    // linux-dragon-layout again against the capture with its hyphen rects joined (joinHyphenRects); chrome-dual stays raw.
-    const engine = engineLane(c, two, joinHyphenRects(authored), run.engineFaults);
-    const faceProblems: string[] = [];
-    const unlisted = [...new Set(authored.nodes.filter((n) => n.kind === 'text').map((n) => n.id.replace(/:text\d+$/, '')))].filter((id) => !ids.includes(id));
-    for (const id of unlisted) faceProblems.push(`${id} has text but no expected face`);
-    const css = webCssOf(two);
-    const classOf = webClassMap(two, c.assignment);
-    if (css !== null && classOf !== null) {
-      const authoredFaces = await facesOf(browser, c.authoredHtml, c, ids, referenceTransform(f));
-      const compiledFaces = await facesOf(browser, c.compiledHtml(css, classOf), c, ids, undefined);
-      ids.forEach((id, i) => {
-        const expected = f.faces[id] as string;
-        const pa = faceProblem(expected, authoredFaces[i] ?? []);
-        const pb = faceProblem(expected, compiledFaces[i] ?? []);
-        if (pa !== null) faceProblems.push(`${id} authored: ${pa}`);
-        if (pb !== null) faceProblems.push(`${id} compiled: ${pb}`);
-      });
-    }
-    const breaks: string[] = [];
-    if (engine.vector !== null) {
-      const b = breakProblems(c.id, 1, engine.vector.input, await opts.breaks(c, 1), run.engineFaults);
-      if (b.compared === 0) breaks.push('no text node compared');
-      breaks.push(...b.problems);
-    }
-    const layoutPass = engine.pass && breaks.length === 0;
-    const dualPass = raw.lanes['chrome-dual'] === 'pass' && faceProblems.length === 0;
-    const reasons = [
-      engine.reason,
-      breaks.length > 0 ? `breaks: ${breaks.join('; ')}` : null,
-      raw.lanes['chrome-dual'] === 'pass' ? null : raw.dual === null ? raw.reason : `chrome-dual: ${raw.dual.problems.join('; ')}`,
-      faceProblems.length > 0 ? `faces: ${faceProblems.join('; ')}` : null,
-    ].filter((x): x is string => x !== null);
-    const pass = layoutPass && dualPass;
-    // Native draws none of these faces yet: the cases prove web rows only (ios features stay empty, as the fonts fixtures'). They
-    // prove the font-family rows; their other features are the corpus's to prove, so the report, the parity test and profile:rows
-    // all read the same keys.
-    out.push({
-      ...raw,
-      features: { ios: [], web: raw.features.web.filter((k) => k.startsWith('font-family:')) },
-      lanes: { 'linux-dragon-layout': layoutPass ? 'pass' : 'fail', 'chrome-dual': dualPass ? 'pass' : 'fail' },
-      comparison: engine.comparison,
-      unsupported: engine.unsupported,
-      vector: layoutPass ? engine.vector : null,
-      status: pass ? 'pass' : 'fail',
-      reason: pass ? null : reasons.join(' | '),
-    });
-  }
-  return out;
-}
-
-/** The DPR lane of every case of a fixture at one DPR (exact zoomed LU), and the break check there. */
-export async function runTextLatinDpr(f: TextLatinFixture, dpr: number, opts: TextLatinOptions): Promise<(DprCaseOutcome & { readonly breakProblems: readonly string[] })[]> {
-  const out: (DprCaseOutcome & { readonly breakProblems: readonly string[] })[] = [];
-  for (const c of textLatinCases(f)) {
-    const { compiled } = compileTextLatin(f, c.environment.direction, opts.faults ?? NO_FAULTS, opts.profiles ?? 'enforce');
-    requireAdmitted(f, compiled, c);
-    const capture = joinHyphenRects(await opts.authored(c, dpr));
-    const r = runDprCase(c, compiled, dpr, capture, opts.engineFaults ?? NO_ENGINE_FAULTS, engineLayoutProjection);
-    let breaks: string[] = [];
-    if (r.vector !== null) {
-      const b = breakProblems(c.id, dpr, r.vector.input, await opts.breaks(c, dpr), opts.engineFaults ?? NO_ENGINE_FAULTS);
-      breaks = b.compared === 0 ? ['no text node compared'] : [...b.problems];
-    }
-    out.push({ ...r, breakProblems: breaks });
-  }
-  return out;
-}
-
-export const committedTextLatinOptions: TextLatinOptions = {
-  authored: (c, dpr) => Promise.resolve(committedTextLatinCapture(c, dpr)),
-  breaks: (c, dpr) => Promise.resolve(committedTextLatinBreaks(c, dpr)),
-};
-
-export const liveTextLatinOptions = (browsers: (dpr: number) => Browser, f: TextLatinFixture): TextLatinOptions => ({
-  authored: (c, dpr) => liveTextLatinCapture(browsers(dpr), f, c, dpr),
-  breaks: (c, dpr) => liveTextLatinBreaks(browsers(dpr), f, c, dpr),
-});
 
 // ---------------------------------------------------------------- R3 shape transcripts
 
@@ -390,12 +177,19 @@ export function recordingShaper(): { readonly shaper: GlyphShaper; readonly call
   return { shaper, calls: () => calls };
 }
 
+/** The shape transcript a replay host needs: the language, the faces with their data, and the calls. */
+export type Shaping = {
+  readonly language: string;
+  readonly faces: readonly { readonly id: string; readonly data: unknown; readonly hanKerning: unknown }[];
+  readonly calls: readonly ShapeCall[];
+};
+
 /** A text-latin vector: the engine input and output, and the shape transcript a replay host needs (faces with their data, calls). */
 export type TextLatinVector = {
   readonly platform: string;
   readonly measurer: string;
   readonly language: string;
-  readonly faces: readonly { readonly id: string; readonly data: unknown; readonly hanKerning: unknown }[];
+  readonly faces: Shaping['faces'];
   readonly calls: readonly ShapeCall[];
   readonly input: LayoutInput;
   readonly output: readonly LayoutRect[];
@@ -415,4 +209,47 @@ export function textLatinVector(input: LayoutInput): TextLatinVector {
 
 export const textLatinVectorText = (v: TextLatinVector): string => `${JSON.stringify(v, null, 1)}\n`;
 
-export { captureJson };
+/** The shape transcript of an input: every call the shaped measurer makes laying it out, over the faces it names. */
+export function shapingOf(input: LayoutInput): Shaping {
+  const faces = [...inputFaces(input)].sort().map((id) => shapedFaceOf(id, REFERENCE_LANGUAGE));
+  const rec = recordingShaper();
+  const m = shapedMeasurerFor(REFERENCE_PLATFORM, new Map(faces.map((x) => [x.id, x] as const)), rec.shaper, REFERENCE_LANGUAGE, NO_ENGINE_FAULTS);
+  if (m.kind !== 'ok') throw new Error(m.detail);
+  // A refused layout keeps the calls made before the refusal: a replay host refuses at the same point.
+  engineTextLinesOrNone(input, m.measurer);
+  return { language: REFERENCE_LANGUAGE, faces: faces.map((x) => ({ id: x.id, data: x.data, hanKerning: x.hanKerning })), calls: rec.calls() };
+}
+
+/** The device-side text loop over an input (engineTextLines), or nothing when the engine refuses the input. */
+function engineTextLinesOrNone(input: LayoutInput, measurer: TextMeasurer): void {
+  if (layout(input, measurer).kind === 'ok') engineTextLines(input, measurer);
+}
+
+/** The translate harness's engine line of a text-latin vector: its input, the faults, and its transcript. */
+export const textLatinEngineLine = (v: TextLatinVector, faults: EngineFaults = NO_ENGINE_FAULTS): string =>
+  JSON.stringify({ platform: v.platform, faults, input: v.input, shaping: { language: v.language, faces: v.faces, calls: v.calls } });
+
+let shapedIds: ReadonlySet<string> | null = null;
+
+/**
+ * The shaped layout case ids (isShapedInput of each case's engine input at DPR 1, compiled as profile:rows derives, so a case is
+ * classified before its rows exist). A case whose projection is blocked is not shaped; its lanes fail on their own.
+ */
+export function shapedCaseIds(): ReadonlySet<string> {
+  if (shapedIds !== null) return shapedIds;
+  const out = new Set<string>();
+  for (const f of layoutCases()) {
+    const byDirection = new Map<string, ReturnType<typeof compileFixture>['compiled']>();
+    for (const c of f.cases) {
+      let compiled = byDirection.get(c.environment.direction);
+      if (compiled === undefined) {
+        compiled = compileFixture(f.spec, NO_FAULTS, 'derive', c.environment.direction).compiled;
+        byDirection.set(c.environment.direction, compiled);
+      }
+      const p = engineLayoutProjection(compiled, c.environment, c.assignment);
+      if (p.kind === 'ready' && isShapedInput(p.input)) out.add(c.id);
+    }
+  }
+  shapedIds = out;
+  return out;
+}

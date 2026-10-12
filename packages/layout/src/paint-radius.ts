@@ -6,7 +6,7 @@
 // adjacent widths). Radii order everywhere: horizontal then vertical, top-left, top-right, bottom-right, bottom-left. Every
 // exported function is a translated engine root (translate/src/generate.ts), proven TS = Swift = Kotlin by
 // packages/layout/paint-vectors/radius.
-import { froundOf } from './rt-easing.ts';
+import { floorOf, froundOf, roundOf, truncOf } from './rt-easing.ts';
 
 /** Planted faults (T046 §5.2); the paint vectors and the pixel lanes must catch each one. */
 export type RadiusFaults = {
@@ -164,4 +164,99 @@ export function hasRoundedCorner(radii: readonly number[]): boolean {
   if (radii.length !== 8) throw new Error(`paint-radius: ${radii.length} radii, not 8`);
   for (let k = 0; k < 4; k++) if (at(radii, k) > 0 && at(radii, k + 4) > 0) return true;
   return false;
+}
+
+// ---------------------------------------------------------------- outlines (css-ui-4 §3)
+
+/** An outline width in device px, snapped as a border width is: at least 1 device px when positive, else floored. */
+export function outlineWidthPx(width: number, dpr: number): number {
+  const device = width * dpr;
+  if (device >= 1) return floorOf(device);
+  return device > 0 ? 1 : 0;
+}
+
+/** An outline offset in device px: Blink's integer outline offset, truncated toward zero (measured: -1.4 css px is -2 at DPR 2). */
+export function outlineOffsetPx(offset: number, dpr: number): number {
+  return truncOf(offset * dpr);
+}
+
+// outsetRadii below is ported from third_party/blink/renderer/platform/geometry/float_rounded_rect.cc in Chromium 145.0.7632.6,
+// under this notice:
+//
+//   Copyright (C) 2013 Adobe Systems Incorporated. All rights reserved.
+//
+//   Redistribution and use in source and binary forms, with or without
+//   modification, are permitted provided that the following conditions
+//   are met:
+//
+//   1. Redistributions of source code must retain the above
+//      copyright notice, this list of conditions and the following
+//      disclaimer.
+//   2. Redistributions in binary form must reproduce the above
+//      copyright notice, this list of conditions and the following
+//      disclaimer in the documentation and/or other materials
+//      provided with the distribution.
+//
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+//   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+//   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+//   FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+//   COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+//   (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+//   SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+//   HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+//   STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+//   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** FloatRoundedRect::Radii::Outset (Blink 145 float_rounded_rect.cc:115-132): each positive component grows by its sides' outsets. */
+function outsetRadii(radii: readonly number[], h: number, v: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < 8; i++) {
+    const r = at(radii, i);
+    out.push(r > 0 ? sizeClamp(maxOf(f32(r + (i < 4 ? h : v)), 0)) : r);
+  }
+  return out;
+}
+
+/** One ring: the snapped rect outset by outer (device px each axis) minus the rect outset by inner, each with its outset radii. */
+function pushRing(out: number[], l: number, t: number, r: number, b: number, radii: readonly number[], ox: number, oy: number, outer: number, inner: number): void {
+  out.push(l - (ox + outer));
+  out.push(t - (oy + outer));
+  out.push(r + (ox + outer));
+  out.push(b + (oy + outer));
+  out.push(l - (ox + inner));
+  out.push(t - (oy + inner));
+  out.push(r + (ox + inner));
+  out.push(b + (oy + inner));
+  const ro = outsetRadii(radii, ox + outer, oy + outer);
+  const ri = outsetRadii(radii, ox + inner, oy + inner);
+  for (let i = 0; i < 8; i++) out.push(at(ro, i));
+  for (let i = 0; i < 8; i++) out.push(at(ri, i));
+}
+
+/**
+ * The rings a solid or double outline paints around a snapped border box (edges in device px) with its eight outer radii, at a
+ * device width and offset (outlineWidthPx, outlineOffsetPx): 24 numbers per ring, the outer rect (left, top, right, bottom), the
+ * inner rect, the outer radii (8) and the inner radii (8). Blink 145: outline_painter.cc:74-80 AdjustedOutlineOffset (a negative
+ * offset shrinks the rect by at most half its size, per axis, in int division), box_border_painter.cc:1359-1393 (the ring between
+ * the rect outset by offset + width and by offset, with PixelSnappedContouredBorderWithOutsets, contoured_border_geometry.cc:219-247,
+ * outsetting the radii), and for double the two bands of round(width / 3) at either edge (outline_painter.cc:518-536; a width of 2
+ * or less is solid, :448-449). A zero width paints nothing.
+ */
+export function outlineRings(left: number, top: number, right: number, bottom: number, radii: readonly number[], width: number, offset: number, double: boolean): number[] {
+  if (radii.length !== 8) throw new Error(`paint-radius: an outline takes 8 radii, not ${radii.length}`);
+  const out: number[] = [];
+  if (width <= 0) return out;
+  const oy = maxOf(offset, -truncOf((bottom - top) / 2));
+  const ox = maxOf(offset, -truncOf((right - left) / 2));
+  if (!double || width <= 2) {
+    pushRing(out, left, top, right, bottom, radii, ox, oy, width, 0);
+    return out;
+  }
+  const band = roundOf(width / 3);
+  pushRing(out, left, top, right, bottom, radii, ox, oy, width, width - band);
+  pushRing(out, left, top, right, bottom, radii, ox, oy, band, 0);
+  return out;
 }

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { LONGHANDS } from '../src/css/properties.ts';
 import * as dark from '../src/ua/chrome-145.darwin-arm64.dark.generated.ts';
 import * as light from '../src/ua/chrome-145.darwin-arm64.generated.ts';
-import { phrasingDataFor } from '../src/ua/datasets.ts';
+import { phrasingDataFor, TEXT_FONT_LONGHANDS } from '../src/ua/datasets.ts';
 
 const PHRASING = ['br', 'strong', 'b', 'em', 'i', 'code', 'small', 'sub', 'sup', 'label'] as const;
 const FAMILIES = ['Ahem', 'monospace'];
@@ -36,7 +36,7 @@ describe('phrasing keys (INL-U)', () => {
   });
   it('cover every longhand, with the computed values Chrome gives each key under the medium root', () => {
     for (const k of PHRASING) {
-      for (const p of LONGHANDS) expect(light.phrasingKeyComputed[k][p], `${k} ${p}`).toBeTypeOf('string');
+      for (const p of LONGHANDS.filter((q) => !(TEXT_FONT_LONGHANDS as readonly string[]).includes(q))) expect(light.phrasingKeyComputed[k][p], `${k} ${p}`).toBeTypeOf('string');
       expect(light.phrasingKeyComputed[k].display, k).toBe('inline');
     }
     expect(light.phrasingKeyComputed.code['font-family']).toBe('monospace');

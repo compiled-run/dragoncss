@@ -26,7 +26,7 @@ export { iosProfile } from './profiles/ios.ts';
 export { webProfile } from './profiles/web.ts';
 export { androidProfile } from './profiles/android.ts';
 export type { Proof, ProofAspect, ProofLane, ProfileRow, SupportProfile } from './profiles/types.ts';
-export { PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
+export { nativeOutlinePending, PROFILE_NOTES, profileNoteFor, statusOf } from './profiles/types.ts';
 export type { ProfileNote } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
 export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';

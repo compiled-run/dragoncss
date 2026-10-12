@@ -11,7 +11,7 @@ import { parseOutcome } from '../src/device-jobs.ts';
 import { deviceHitSource, expectedHitRuns, hitCases } from '../src/hit-capture.ts';
 import type { DeviceRun } from '../src/lanes.ts';
 import { lanesFile } from '../src/lanes.ts';
-import { layoutCaseIds, nativeTargets } from '../src/targets.ts';
+import { nativeTargets, vectorCaseIds } from '../src/targets.ts';
 
 // Made in beforeAll: `vitest list` runs module scope but no hooks, so a module-scope folder would leak.
 let dir = '';
@@ -76,7 +76,7 @@ describe('the device-hit lane record', () => {
   });
   it('passes on a full run of the hit cases while the hit lane refuses some layout cases (PNT2 transforms), and fails a record short of a hit case', () => {
     const n = hitCases().length;
-    expect(n).toBeLessThan(layoutCaseIds().length);
+    expect(n).toBeLessThan(vectorCaseIds().length);
     expect(record([set(2), set(3), set(2.625)])?.reason ?? null).toBeNull();
     expect(record([set(2), set(3), set(2.625, [], n - 1)])?.reason).toContain(`DPR 2.625: ${n - 1}/${n} dumps`);
   });

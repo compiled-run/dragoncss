@@ -1,0 +1,9 @@
+{
+  "case": "text-weight-nested-italic",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"s:text0","lines":[[0,18]]},
+    {"id":"ae:text0","lines":[[0,19]]},
+    {"id":"he:text0","lines":[[0,19]]}
+  ]
+}

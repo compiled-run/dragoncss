@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; color: rgb(20, 20, 20); }
+.stage { display: flex; flex-direction: column; row-gap: 8px; padding: 8px; background-color: rgb(236, 240, 244); }
+.t { width: 120px; background-color: rgb(250, 230, 120); }
+.hid { visibility: hidden; }
+.vis { visibility: visible; color: rgb(0, 0, 200); }
+.f { display: flex; width: 120px; background-color: rgb(200, 230, 250); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="hid-t1" class="t hid">XXXX XX XXX XXXXX XX</div>
+<div data-dragon-id="hid-t2" class="t hid"><div data-dragon-id="hid-t2a">XX XX</div><div data-dragon-id="kid-t2" class="vis">XXX X</div></div>
+<div data-dragon-id="kid-t3" class="t"><div data-dragon-id="kid-t3a">XX X</div><div data-dragon-id="hid-t3" class="hid">XXXX</div></div>
+<div data-dragon-id="hid-f" class="f hid">XX X<div data-dragon-id="kid-f" class="vis">XXX</div></div>
+</div>
+</body>
+</html>
