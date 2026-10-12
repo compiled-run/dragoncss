@@ -17,5 +17,5 @@ export const WHITE_SPACE: readonly FixtureSpec[] = [
 
 /** data-dragon-id to postScriptName: the face Chrome must draw each listed element's text with, in both documents. */
 export const WHITE_SPACE_FACES: ReadonlyMap<string, { readonly [id: string]: string }> = new Map([
-  ['white-space-lato', { a: 'Lato-Regular', b: 'Lato-Regular', c: 'Lato-Regular', d: 'Lato-Regular' }],
+  ['white-space-lato', { a: 'Lato-Regular', b: 'Lato-Regular', c: 'Lato-Regular', d: 'Lato-Regular', r1: 'Lato-Regular', r2: 'Lato-Regular', r3: 'Lato-Regular', r4: 'Lato-Regular' }],
 ]);
