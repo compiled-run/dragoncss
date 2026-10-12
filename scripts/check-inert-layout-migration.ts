@@ -2,7 +2,7 @@
 // engine fields and CSS longhands"): every file that existed at the base commit either is unchanged or differs only by the three
 // longhands at their neutral values, and every file added since the base belongs to a fixture added since the base.
 // - Chrome captures (packages/parity/expected*/**.json): every computed object gains "vertical-align": "baseline", "float": "none"
-//   and "clear": "none", in that order right after list-style-image (the last longhand before them). With the keys removed the file
+//   and "clear": "none", in that order right after visibility (the last longhand before them). With the keys removed the file
 //   is byte-identical to the base.
 // - Emitted CSS (packages/parity/emitted/**, expected-*/emitted/**): every rule outside @media (which writes only the longhands
 //   that differ) ends with the three declarations. With them removed the file is byte-identical to the base, except the header's
@@ -45,9 +45,9 @@ type Migration = {
 const KEYS = ['vertical-align', 'float', 'clear'] as const;
 const NEUTRAL: { readonly [k: string]: string } = { 'vertical-align': 'baseline', float: 'none', clear: 'none' };
 /** How many longhands LONGHANDS held at the base, so how many computed values each element node compared. */
-const BASE_LONGHANDS = 94;
+const BASE_LONGHANDS = 101;
 /** The longhand the three new ones follow in LONGHANDS order. */
-const BEFORE = 'list-style-image';
+const BEFORE = 'visibility';
 /** The phrasing keys whose Chrome UA rule sets vertical-align (html.css: sub and sup), with the value it sets. */
 const UA_VERTICAL_ALIGN: { readonly [key: string]: string } = { sub: 'sub', sup: 'super' };
 
@@ -64,7 +64,7 @@ function indentOf(text: string): number {
 /** The computed values of a captured element node: every longhand, so padding-left and box-sizing among them. */
 const isComputed = (v: Record<string, unknown>): boolean => typeof v['padding-left'] === 'string' && typeof v['box-sizing'] === 'string';
 
-/** Captures: each computed object holds the three keys right after list-style-image at their neutral values; they are removed. */
+/** Captures: each computed object holds the three keys right after visibility at their neutral values; they are removed. */
 function stripCapture(after: string, before: string, path: string): Stripped {
   const json = JSON.parse(after) as unknown;
   let removed = 0;
@@ -302,7 +302,7 @@ const PLANTS: { readonly [name: string]: readonly [number, string, (t: string) =
   'ua-phrasing-value': [2, 'chrome-145.darwin-arm64.generated.ts', (t) => t.replace(/(export const phrasingKeyComputed[\s\S]*?)"vertical-align": "super"/, '$1"vertical-align": "sub"')],
   'vector-output': [3, 'layout/vectors/dpr-2/margin-collapse-body.json', (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
   'stray-file': [0, '', (t) => t],
-  'media-count': [0, 'expected-media/media-logic.json', (t) => t.replace(/"valuesCompared": (\d+)/, (_m, n: string) => `"valuesCompared": ${Number(n) + 97}`)],
+  'media-count': [0, 'expected-media/media-logic.json', (t) => t.replace(/"valuesCompared": (\d+)/, (_m, n: string) => `"valuesCompared": ${Number(n) + 104}`)],
   'glyph-pin': [6, 'bottom-scanlines.json', (t) => t.replace('"interaction-combo": [1,1]', '"interaction-combo": [1,2]')],
   'pixel-manifest': [5, 'darwin-arm64/manifest.json', (t) => t.replace(/"sha256":"[0-9a-f]/, (m) => `${m.slice(0, -1)}${m.endsWith('0') ? '1' : '0'}`)],
 };
