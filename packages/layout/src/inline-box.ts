@@ -6,7 +6,7 @@ import type { LayoutBox, LayoutStyle } from './input.ts';
 import type { LU } from './units.ts';
 import { add, max, min, sub, ZERO } from './units.ts';
 import type { Frag } from './box.ts';
-import { borderBoxFromSpecified, constrain, INDEFINITE, inlineMinMaxWith, isScrollContainer, resolveBorder, resolveInlineLengthWith, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
+import { borderBoxFromSpecified, constrain, INDEFINITE, inlineMinMaxOf, isScrollContainer, lengthWidth, resolveBorder, resolveInlineLengthWith, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
 import { layoutContents } from './block.ts';
 import type { IntrinsicKind } from './intrinsic.ts';
@@ -48,7 +48,7 @@ function atomicWidth(ctx: Ctx, box: LayoutBox, cbInline: LU, margins: LU): LU {
   const pad = resolvePaddingWith(s, cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
-  const specified = resolveInlineLengthWith(s.width, cbInline, ctx.faults);
+  const specified = resolveInlineLengthWith(lengthWidth(box.id, s.width), cbInline, ctx.faults);
   let width: LU;
   if (specified !== null) width = borderBoxFromSpecified(specified, hbp, s.boxSizing);
   else if (ctx.faults.atomicShrinkToFitIgnored) width = sub(cbInline, margins);
@@ -58,7 +58,7 @@ function atomicWidth(ctx: Ctx, box: LayoutBox, cbInline: LU, margins: LU): LU {
     const maxContent = add(intrinsicContentInlineSize(ctx, block, 'max'), hbp);
     width = min(maxContent, max(minContent, sub(cbInline, margins)));
   }
-  return max(constrain(width, inlineMinMaxWith(s, cbInline, hbp, ctx.faults)), hbp);
+  return max(constrain(width, inlineMinMaxOf(box.id, s, cbInline, hbp, ctx.faults)), hbp);
 }
 
 /**
