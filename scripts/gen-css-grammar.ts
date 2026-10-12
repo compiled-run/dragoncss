@@ -64,6 +64,8 @@ const SUBSET = [
   'background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip', 'background-position',
   // T150a: visibility (css-display-3 §4), after lists, as LONGHANDS registers it.
   'visibility',
+  // TXT2-b: letter-spacing (css-text-3 §8.2), after visibility, as LONGHANDS registers it.
+  'letter-spacing',
 ] as const;
 
 /**
