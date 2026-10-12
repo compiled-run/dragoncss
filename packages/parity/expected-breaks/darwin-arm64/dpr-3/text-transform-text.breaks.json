@@ -1,0 +1,17 @@
+{
+  "case": "text-transform-text",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"eszett:text0","data":"groß maß","lines":2,"units":[0,0,0,0,0,1,1,1],"blank":[4],"transform":"uppercase"},
+    {"id":"punct:text0","data":"x.y a:b x,y foo_bar 3.5x","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[],"transform":"capitalize"},
+    {"id":"br:text0","data":"ab","lines":1,"units":[0,0],"blank":[],"transform":"capitalize"},
+    {"id":"br:text1","data":"cd","lines":1,"units":[0,0],"blank":[],"transform":"capitalize"},
+    {"id":"hidden:text0","data":"ab","lines":1,"units":[0,0],"blank":[],"transform":"capitalize"},
+    {"id":"hidden:text1","data":"cd","lines":1,"units":[0,0],"blank":[],"transform":"capitalize"},
+    {"id":"gone:text0","data":"zz","lines":0,"units":[-1,-1],"blank":[],"transform":"capitalize"},
+    {"id":"space:text0","data":"ab ","lines":1,"units":[0,0,0],"blank":[],"transform":"capitalize"},
+    {"id":"sp:text0","data":"cd","lines":1,"units":[0,0],"blank":[],"transform":"capitalize"},
+    {"id":"collapse:text0","data":"  straße\n   und   ß  ","lines":2,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[0,1,8,9,10,11,16,17,19,20],"transform":"uppercase"}
+  ]
+}
