@@ -12,6 +12,7 @@ import { BOX_ANIMATION } from './animation-kinds/box.ts';
 import { EFFECTS_ANIMATION } from './animation-kinds/effects.ts';
 import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
+import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
 import { LISTS_ANIMATION } from './animation-kinds/lists.ts';
 import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
 import { OUTLINE_ANIMATION } from './animation-kinds/outline.ts';
@@ -35,6 +36,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...EFFECTS_ANIMATION,
   ...FLEX_ANIMATION,
   ...GRID_ANIMATION,
+  ...INLINE_ANIMATION,
   ...LISTS_ANIMATION,
   ...LOGICAL_ANIMATION,
   ...OUTLINE_ANIMATION,

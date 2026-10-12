@@ -41,6 +41,7 @@ import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
+import { VERTICAL_ALIGN } from './fixture-groups/vertical-align.ts';
 import { VALUES } from './fixture-groups/values.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
 
@@ -138,6 +139,7 @@ export const GROUPS = {
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,
   values: VALUES,
+  'vertical-align': VERTICAL_ALIGN,
   'writing-mode': WRITING_MODE,
 } as const satisfies { readonly [id: string]: readonly FixtureSpec[] };
 

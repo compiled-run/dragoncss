@@ -32,6 +32,8 @@ import type {
   TextAlign,
   TextLeaf,
   TextWrapMode,
+  VerticalAlignKeyword,
+  VerticalAlignValue,
 } from '@dragon/layout';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
@@ -241,6 +243,17 @@ export function viewportOverflow(root: ResolvedElement, faults: CompilerFaults):
   return { source: null, overflowX: 'auto', overflowY: 'auto', direction };
 }
 
+const VERTICAL_ALIGN_KEYWORDS: readonly VerticalAlignKeyword[] = ['baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom'];
+
+// CSS2 §10.8.1: only inline-level boxes read vertical-align, so every other box takes baseline, whatever it computes to.
+function verticalAlign(id: string, get: Get, l: Lowering): VerticalAlignValue {
+  if (keywordOf(get('display')) !== 'inline') return { kind: 'keyword', value: 'baseline' };
+  const v = get('vertical-align');
+  if (v.kind === 'keyword') return { kind: 'keyword', value: keyword(id, get, 'vertical-align', VERTICAL_ALIGN_KEYWORDS) };
+  const lp = lengthPercentage(id, get, 'vertical-align', 'all', l);
+  return lp === null ? fail(id, 'vertical-align', v, `${VERTICAL_ALIGN_KEYWORDS.join(' | ')} | px | % | a viewport length | a calculation`) : lp;
+}
+
 // css-align-3 §4.2: first baseline is baseline; last baseline has no layout mapping.
 function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allowed: readonly T[]): T {
   const v = get(p);
@@ -299,8 +312,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     columnGap: gap(id, get, 'column-gap', l),
     textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify']),
     aspectRatio: aspectRatio(id, get),
-    // CSS2 §10.8.1: vertical-align is not a Dragon longhand; every box takes its initial value, which only inline boxes read.
-    verticalAlign: { kind: 'keyword', value: 'baseline' },
+    verticalAlign: verticalAlign(id, get, l),
     grid: null,
     gridItem: null,
   };

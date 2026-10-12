@@ -60,6 +60,8 @@ const SUBSET = [
   'content', 'list-style', 'list-style-type', 'list-style-position', 'list-style-image',
   // Background layers (BG2), as LONGHANDS registers them, then background-position.
   'background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip', 'background-position',
+  // vertical-align (CSS2 §10.8.1), as LONGHANDS registers it.
+  'vertical-align',
 ] as const;
 
 /**
@@ -85,6 +87,10 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink ListStyleType::ParseSingleValue (css/properties/longhands/longhands_custom.cc): none, a string or a counter-style name;
   // symbols() is parsed only in @counter-style, so webref's <symbols()> is dropped (pinned by packages/parity/test/list-style-parse.test.ts).
   'list-style-type': '<counter-style-name> | <string> | none',
+  // Blink VerticalAlign::ParseSingleValue (css/properties/longhands/longhands_custom.cc): one keyword or one <length-percentage>
+  // (the unitless quirk applies only in quirks mode). Blink keeps vertical-align a longhand, not css-inline-3's shorthand of
+  // alignment-baseline and baseline-shift. Pinned against Chrome by packages/parity/test/vertical-align-parse.test.ts.
+  'vertical-align': 'baseline | sub | super | text-top | text-bottom | middle | top | bottom | -webkit-baseline-middle | <length-percentage>',
   display: [
     '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
     '[ block | inline ]? && [ flow | flow-root ]? && list-item',
