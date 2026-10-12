@@ -1026,6 +1026,37 @@ function treatAsSpace(cp: number): boolean {
   return cp === SPACE || cp === TAB || cp === LINE_FEED || cp === NO_BREAK_SPACE;
 }
 
+// Character::IsCJKIdeographOrSymbol (Blink 145 character_property_data.h kIsCJKIdeographOrSymbolRanges and
+// kIsCJKIdeographOrSymbolArray, with every Emoji_Presentation code point the generator adds; U+2695-2696 lies inside U+2300-2BFF): text-justify auto gives such a
+// character an opportunity on each side (CheckJustificationOpportunity). The two emoji spans are a superset of
+// Emoji_Presentation, so a code point that may be in Blink's set is never missed.
+const CJK_IDEOGRAPH_OR_SYMBOL_RANGES: readonly number[] = [
+  0x2156, 0x215a, 0x2160, 0x216b, 0x2170, 0x217b,
+  // Every range and value from U+2300 through U+2BFF, with Emoji_Presentation there, taken whole.
+  0x2300, 0x2bff,
+  0x2e80, 0x2fdf, 0x2ff0, 0x302d, 0x3031, 0x312f, 0x3190, 0x31bf, 0x31c0, 0x31ef, 0x3200, 0x33ff, 0x3400, 0x4dbf, 0x4dc0, 0x4dff,
+  0x4e00, 0x9fff, 0xf860, 0xf862, 0xf900, 0xfaff, 0xfe30, 0xfe6f, 0xff00, 0xff0c, 0xff0e, 0xff1a, 0xff1f, 0xffef, 0x16fe0, 0x16fff,
+  0x17000, 0x187ff, 0x18800, 0x18aff, 0x1b000, 0x1b0ff, 0x1b100, 0x1b12f, 0x1b170, 0x1b2ff,
+  // Every emoji range and value, with Emoji_Presentation, taken whole.
+  0x1f000, 0x1faff,
+  0x20000, 0x2ffff,
+];
+const CJK_IDEOGRAPH_OR_SYMBOL_VALUES: readonly number[] = [
+  0x2c7, 0x2ca, 0x2cb, 0x2d9, 0x2020, 0x2021, 0x2030, 0x203b, 0x203c, 0x2042, 0x2047, 0x2048, 0x2049, 0x2051, 0x20dd, 0x20de,
+  0x2100, 0x2103, 0x2105, 0x2109, 0x210a, 0x2113, 0x2116, 0x2121, 0x212b, 0x213b, 0x2150, 0x2151, 0x2152, 0x217f, 0x2189, 0xfe10,
+  0xfe11, 0xfe12, 0xfe19, 0xff1d,
+];
+
+/** True when Blink may give cp CJK justification opportunities (a superset of Character::IsCJKIdeographOrSymbol). */
+export function maybeCjkIdeographOrSymbol(cp: number): boolean {
+  if (cp < 0x2c7) return false;
+  for (let k = 0; k + 1 < CJK_IDEOGRAPH_OR_SYMBOL_RANGES.length; k += 2) {
+    if (cp >= (CJK_IDEOGRAPH_OR_SYMBOL_RANGES[k] as number) && cp <= (CJK_IDEOGRAPH_OR_SYMBOL_RANGES[k + 1] as number)) return true;
+  }
+  for (const v of CJK_IDEOGRAPH_OR_SYMBOL_VALUES) if (cp === v) return true;
+  return false;
+}
+
 // css-text-3 §7.3 and §7.4 with text-align-last and text-justify at their initial auto, as Blink 145 justifies Latin text
 // (ApplyJustificationInternal, justification_utils.cc 398-492; ShapeResultSpacing::ExpansionSetup and NextExpansion,
 // shape_result_spacing.cc 34-117; CheckJustificationOpportunity, justification_opportunity.cc 35-123). Every line but the last and
@@ -1036,6 +1067,12 @@ function justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, line: Line, last: boole
   if (box.style.textAlign !== 'justify' || last || line.forced) return null;
   const free = sub(available, spanWidth(ctx, ifc, line, line.start, line.visibleEnd));
   if (free <= 0) return null;
+  // Blink expands around a CJK ideograph or symbol too (both sides, text-justify auto on 16-bit text); no fixture proves that,
+  // so a line holding one, its hanging end included, is refused rather than given Latin-only opportunities.
+  for (let i = line.start; i < line.end; i++) {
+    const it = ifc.items[i] as Item;
+    if (it.kind === 'char' && maybeCjkIdeographOrSymbol(it.cp)) unsupported('text-align', box.id, 'css-text-3 §7.3', `text-align: justify on a line holding U+${it.cp.toString(16).toUpperCase()}, a CJK ideograph or symbol Chrome expands around, is not proven against Chrome`);
+  }
   let count = 0;
   let first = -1;
   let final = -1;
