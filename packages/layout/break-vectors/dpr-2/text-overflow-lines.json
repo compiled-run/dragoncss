@@ -1,0 +1,21 @@
+{
+  "case": "text-overflow-lines",
+  "dpr": 2,
+  "texts": [
+    {"id":"a1:text0","lines":[[0,11]]},
+    {"id":"a2:text0","lines":[[0,37]]},
+    {"id":"a3:text0","lines":[[0,11]]},
+    {"id":"a4:text0","lines":[[0,11]]},
+    {"id":"a5:text0","lines":[[0,11]]},
+    {"id":"a6:text0","lines":[[0,13],[13,15]]},
+    {"id":"a7:text0","lines":[[0,4]]},
+    {"id":"a8:text0","lines":[[0,11]]},
+    {"id":"a9:text0","lines":[[0,8]]},
+    {"id":"a9:text1","lines":[[0,2]]},
+    {"id":"a9:text2","lines":[[0,7]]},
+    {"id":"a10:text0","lines":[[0,8]]},
+    {"id":"a11:text0","lines":[[0,10]]},
+    {"id":"a12:text0","lines":[[0,5]]},
+    {"id":"a13:text0","lines":[[0,6]]}
+  ]
+}

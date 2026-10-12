@@ -143,6 +143,7 @@
      "kind": "keyword",
      "value": "baseline"
     },
+    "textOverflow": "clip",
     "grid": null,
     "gridItem": null
    },
@@ -263,6 +264,7 @@
        "kind": "keyword",
        "value": "baseline"
       },
+      "textOverflow": "clip",
       "grid": null,
       "gridItem": null
      },
@@ -385,6 +387,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": {
          "templateColumns": [
           {
@@ -555,6 +558,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": {
            "templateColumns": [
             {
@@ -738,6 +742,7 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
             "grid": null,
             "gridItem": {
              "column": {
@@ -869,6 +874,7 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
             "grid": null,
             "gridItem": {
              "column": {
@@ -1035,6 +1041,7 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
             "grid": null,
             "gridItem": {
              "column": {
@@ -1168,6 +1175,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": {
            "column": {
@@ -1300,6 +1308,7 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
             "grid": null,
             "gridItem": null
            },
@@ -1421,6 +1430,7 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
             "grid": null,
             "gridItem": null
            },
@@ -1580,6 +1590,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": {
          "templateColumns": [
           {
@@ -1750,6 +1761,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": {
            "column": {
@@ -1916,6 +1928,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": {
            "column": {
@@ -2047,6 +2060,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": null,
           "gridItem": {
            "column": {
@@ -2214,6 +2228,7 @@
          "kind": "keyword",
          "value": "baseline"
         },
+        "textOverflow": "clip",
         "grid": null,
         "gridItem": null
        },
@@ -2334,6 +2349,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": {
            "templateColumns": [
             {
@@ -2505,6 +2521,7 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
             "grid": null,
             "gridItem": {
              "column": {
@@ -2671,6 +2688,7 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
             "grid": null,
             "gridItem": {
              "column": {
@@ -2804,6 +2822,7 @@
            "kind": "keyword",
            "value": "baseline"
           },
+          "textOverflow": "clip",
           "grid": {
            "templateColumns": [
             {
@@ -2977,6 +2996,7 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
             "grid": null,
             "gridItem": {
              "column": {
@@ -3108,6 +3128,7 @@
              "kind": "keyword",
              "value": "baseline"
             },
+            "textOverflow": "clip",
             "grid": null,
             "gridItem": {
              "column": {

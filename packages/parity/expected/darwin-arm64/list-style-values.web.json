@@ -119,7 +119,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "text-overflow": "clip"
       }
     },
     {
@@ -231,7 +232,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "text-overflow": "clip"
       }
     },
     {
@@ -343,7 +345,8 @@
         "list-style-type": "square",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "text-overflow": "clip"
       }
     },
     {
@@ -455,7 +458,8 @@
         "list-style-type": "square",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "text-overflow": "clip"
       }
     },
     {
@@ -587,7 +591,8 @@
         "list-style-type": "square",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "text-overflow": "clip"
       }
     },
     {
@@ -719,7 +724,8 @@
         "list-style-type": "circle",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "text-overflow": "clip"
       }
     },
     {
@@ -831,7 +837,8 @@
         "list-style-type": "circle",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "text-overflow": "clip"
       }
     },
     {
@@ -963,7 +970,8 @@
         "list-style-type": "decimal",
         "list-style-position": "inside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "text-overflow": "clip"
       }
     },
     {
@@ -1095,7 +1103,8 @@
         "list-style-type": "\">> \"",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "text-overflow": "clip"
       }
     },
     {
@@ -1227,7 +1236,8 @@
         "list-style-type": "disc",
         "list-style-position": "inside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "text-overflow": "clip"
       }
     },
     {
@@ -1359,7 +1369,8 @@
         "list-style-type": "disc",
         "list-style-position": "outside",
         "list-style-image": "none",
-        "visibility": "visible"
+        "visibility": "visible",
+        "text-overflow": "clip"
       }
     },
     {

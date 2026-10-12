@@ -120,6 +120,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -233,6 +234,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -346,6 +348,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -459,6 +462,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -602,6 +606,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -745,6 +750,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -888,6 +894,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1031,6 +1038,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1174,6 +1182,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1317,6 +1326,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1450,6 +1460,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1563,6 +1574,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },
@@ -1706,6 +1718,7 @@
         "list-style-position": "outside",
         "list-style-image": "none",
         "visibility": "visible",
+        "text-overflow": "clip",
         "writing-mode": "horizontal-tb"
       }
     },

@@ -4,7 +4,7 @@ public final class AnimatorError: JsError {
   public let detail: JsString
   public init(_ detail: JsString) throws {
     self.detail = detail
-    super.init(message: jsConcat(S.s422, detail))
+    super.init(message: jsConcat(S.s426, detail))
   }
 }
 
@@ -328,11 +328,11 @@ public func rtAnimator_findStyle(_ b: LayoutBox, _ id: JsString) throws -> Layou
   }
   // ts: packages/layout/src/rt-animator.ts:197
   do {
-    let _a178 = b.children
-    var _i178 = 0
-    while _i178 < _a178.items.count {
-      let c: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a178.items[_i178]
-      _i178 += 1
+    let _a184 = b.children
+    var _i184 = 0
+    while _i184 < _a184.items.count {
+      let c: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a184.items[_i184]
+      _i184 += 1
       // ts: packages/layout/src/rt-animator.ts:198
       if ((c.kind == S.s_replaced) && ((c as! ReplacedLeaf).id == id)) {
         return (c as! ReplacedLeaf).style
@@ -433,7 +433,7 @@ public func rtAnimator_styleLength(_ s: LayoutStyle, _ property: JsString) throw
   if (property == S.s_column_gap) {
     return (s.columnGap as! any U_Auto_LengthCalc_NoneValue_NormalValue_Percent_Px)
   }
-  throw try AnimatorError(jsConcat(S.s789, property))
+  throw try AnimatorError(jsConcat(S.s798, property))
 }
 
 // ts: packages/layout/src/rt-animator.ts:234
@@ -471,11 +471,11 @@ public func rtAnimator_lengthBase(_ resolved: LayoutInput, _ node: JsString, _ p
 public func rtAnimator_rendered(_ t: AnimTables, _ node: JsString, _ i: Double) throws -> Bool {
   // ts: packages/layout/src/rt-animator.ts:253
   do {
-    let _a179 = t.rendered
-    var _i179 = 0
-    while _i179 < _a179.items.count {
-      let r: RenderedTable = _a179.items[_i179]
-      _i179 += 1
+    let _a185 = t.rendered
+    var _i185 = 0
+    while _i185 < _a185.items.count {
+      let r: RenderedTable = _a185.items[_i185]
+      _i185 += 1
       // ts: packages/layout/src/rt-animator.ts:254
       if (r.node != node) {
         continue
@@ -483,12 +483,12 @@ public func rtAnimator_rendered(_ t: AnimTables, _ node: JsString, _ i: Double) 
       let v: Bool? = jsAt(r.values, i)
       // ts: packages/layout/src/rt-animator.ts:256
       if (v == nil) {
-        throw try AnimatorError(jsConcat(jsConcat(jsConcat(S.s797, node), S.s27), rtInterpolate_intToString(i)))
+        throw try AnimatorError(jsConcat(jsConcat(jsConcat(S.s806, node), S.s27), rtInterpolate_intToString(i)))
       }
       return try jsUnwrap(v)
     }
   }
-  throw try AnimatorError(jsConcat(S.s796, node))
+  throw try AnimatorError(jsConcat(S.s805, node))
 }
 
 // ts: packages/layout/src/rt-animator.ts:262
@@ -498,7 +498,7 @@ public func rtAnimator_baseValue(_ kind: JsString, _ node: JsString, _ property:
     let input: LayoutInput? = jsAt(inputs, i)
     // ts: packages/layout/src/rt-animator.ts:265
     if (input == nil) {
-      throw try AnimatorError(jsConcat(S.s658, rtInterpolate_intToString(i)))
+      throw try AnimatorError(jsConcat(S.s664, rtInterpolate_intToString(i)))
     }
     return try rtAnimator_lengthBase(jsUnwrap(input), node, property)
   }
@@ -532,20 +532,20 @@ public func rtAnimator_rulesFor(_ t: AnimTables, _ property: JsString) throws ->
     let keyframes: JsArray<RuleKeyframe> = JsArray<RuleKeyframe>([])
     // ts: packages/layout/src/rt-animator.ts:286
     do {
-      let _a180 = r.blocks
-      var _i180 = 0
-      while _i180 < _a180.items.count {
-        let bl: KeyframeBlock = _a180.items[_i180]
-        _i180 += 1
+      let _a186 = r.blocks
+      var _i186 = 0
+      while _i186 < _a186.items.count {
+        let bl: KeyframeBlock = _a186.items[_i186]
+        _i186 += 1
         var sets: Bool = false
         var value: AnimatedValue = rtAnimator_EMPTY
         // ts: packages/layout/src/rt-animator.ts:289
         do {
-          let _a181 = bl.values
-          var _i181 = 0
-          while _i181 < _a181.items.count {
-            let v: KeyframeValue = _a181.items[_i181]
-            _i181 += 1
+          let _a187 = bl.values
+          var _i187 = 0
+          while _i187 < _a187.items.count {
+            let v: KeyframeValue = _a187.items[_i187]
+            _i187 += 1
             // ts: packages/layout/src/rt-animator.ts:290
             if (v.property != property) {
               continue
@@ -557,11 +557,11 @@ public func rtAnimator_rulesFor(_ t: AnimTables, _ property: JsString) throws ->
         }
         // ts: packages/layout/src/rt-animator.ts:295
         do {
-          let _a182 = bl.offsets
-          var _i182 = 0
-          while _i182 < _a182.items.count {
-            let offset: Double = _a182.items[_i182]
-            _i182 += 1
+          let _a188 = bl.offsets
+          var _i188 = 0
+          while _i188 < _a188.items.count {
+            let offset: Double = _a188.items[_i188]
+            _i188 += 1
             _ = try jsPush(keyframes, RuleKeyframe(offset, bl.hasEasing, (bl.hasEasing ? rtAnimator_easingOf(bl.easing) : rtEasing_LINEAR), sets, value))
           }
         }
@@ -575,22 +575,22 @@ public func rtAnimator_rulesFor(_ t: AnimTables, _ property: JsString) throws ->
 public func rtAnimator_ruleSetsByName(_ rules: JsArray<KeyframesRule>, _ name: JsString) throws -> Bool {
   // ts: packages/layout/src/rt-animator.ts:303
   do {
-    let _a183 = rules
-    var _i183 = 0
-    while _i183 < _a183.items.count {
-      let r: KeyframesRule = _a183.items[_i183]
-      _i183 += 1
+    let _a189 = rules
+    var _i189 = 0
+    while _i189 < _a189.items.count {
+      let r: KeyframesRule = _a189.items[_i189]
+      _i189 += 1
       // ts: packages/layout/src/rt-animator.ts:304
       if (r.name != name) {
         continue
       }
       // ts: packages/layout/src/rt-animator.ts:305
       do {
-        let _a184 = r.keyframes
-        var _i184 = 0
-        while _i184 < _a184.items.count {
-          let k: RuleKeyframe = _a184.items[_i184]
-          _i184 += 1
+        let _a190 = r.keyframes
+        var _i190 = 0
+        while _i190 < _a190.items.count {
+          let k: RuleKeyframe = _a190.items[_i190]
+          _i190 += 1
           // ts: packages/layout/src/rt-animator.ts:305
           if k.sets {
             return true
@@ -607,11 +607,11 @@ public func rtAnimator_sampleKeys(_ list: JsArray<RunningAnimation>, _ faults: R
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/rt-animator.ts:315
   do {
-    let _a185 = list
-    var _i185 = 0
-    while _i185 < _a185.items.count {
-      let a: RunningAnimation = _a185.items[_i185]
-      _i185 += 1
+    let _a191 = list
+    var _i191 = 0
+    while _i191 < _a191.items.count {
+      let a: RunningAnimation = _a191.items[_i191]
+      _i191 += 1
       let c: ComputedTiming = try rtTiming_computeSecondsTiming(a.timing, a.held.seconds, faults)
       _ = try jsPush(out, ((c.currentIteration == nil) ? (0.0 / 0.0) : jsUnwrap(c.currentIteration)))
       _ = try jsPush(out, ((c.progress == nil) ? (0.0 / 0.0) : jsUnwrap(c.progress)))
@@ -693,7 +693,7 @@ public func rtAnimator_recompose(_ s: AnimatorState, _ t: AnimTables, _ inputs: 
 public func rtAnimator_animatorStart(_ t: AnimTables, _ inputs: JsArray<LayoutInput>, _ initial: Double, _ faults: RtFaults, _ anim: AnimatorFaults) throws -> AnimatorState {
   // ts: packages/layout/src/rt-animator.ts:365
   if (jsLength(inputs) != t.assignments) {
-    throw try AnimatorError(jsConcat(jsConcat(jsConcat(rtInterpolate_intToString(jsLength(inputs)), S.s82), rtInterpolate_intToString(t.assignments)), S.s11))
+    throw try AnimatorError(jsConcat(jsConcat(jsConcat(rtInterpolate_intToString(jsLength(inputs)), S.s84), rtInterpolate_intToString(t.assignments)), S.s11))
   }
   let lists: JsArray<JsArray<RunningAnimation>> = try jsMap(t.animations, { (a: AnimationTable) throws -> JsArray<RunningAnimation> in
     return try rtAnimations_updateAnimations(JsArray<RunningAnimation>([]), rtAnimator_entriesOf(t, a, initial), faults)
@@ -742,18 +742,18 @@ public func rtAnimator_slotEvent(_ t: AnimTables, _ sl: SlotTable, _ running: Ru
 public func rtAnimator_animatorEvent(_ s: AnimatorState, _ t: AnimTables, _ inputs: JsArray<LayoutInput>, _ initial: Double, _ to: Double, _ faults: RtFaults, _ anim: AnimatorFaults) throws -> AnimatorState {
   // ts: packages/layout/src/rt-animator.ts:393
   if ((to < 0.0) || (to >= t.assignments)) {
-    throw try AnimatorError(jsConcat(jsConcat(jsConcat(jsConcat(S.s649, rtInterpolate_intToString(to)), S.s3), rtInterpolate_intToString(t.assignments)), S.s12))
+    throw try AnimatorError(jsConcat(jsConcat(jsConcat(jsConcat(S.s655, rtInterpolate_intToString(to)), S.s3), rtInterpolate_intToString(t.assignments)), S.s12))
   }
   let from: Double = s.current
   // ts: packages/layout/src/rt-animator.ts:395
   if (jsLength(s.transitions) != jsLength(t.slots)) {
-    throw try AnimatorError(jsConcat(jsConcat(jsConcat(rtInterpolate_intToString(jsLength(s.transitions)), S.s87), rtInterpolate_intToString(jsLength(t.slots))), S.s83))
+    throw try AnimatorError(jsConcat(jsConcat(jsConcat(rtInterpolate_intToString(jsLength(s.transitions)), S.s89), rtInterpolate_intToString(jsLength(t.slots))), S.s85))
   }
   let transitions: JsArray<RunningTransition?> = try jsMapI(s.transitions, { (r: RunningTransition?, k: Double) throws -> RunningTransition? in
     let sl: SlotTable? = jsAt(t.slots, k)
     // ts: packages/layout/src/rt-animator.ts:398
     if (sl == nil) {
-      throw try AnimatorError(jsConcat(S.s659, rtInterpolate_intToString(k)))
+      throw try AnimatorError(jsConcat(S.s665, rtInterpolate_intToString(k)))
     }
     return try rtAnimator_slotEvent(t, jsUnwrap(sl), r, from, to, inputs, faults, anim)
 })
@@ -770,7 +770,7 @@ public func rtAnimator_animatorEvent(_ s: AnimatorState, _ t: AnimTables, _ inpu
 public func rtAnimator_animatorAdvance(_ s: AnimatorState, _ t: AnimTables, _ inputs: JsArray<LayoutInput>, _ initial: Double, _ ms: Double, _ faults: RtFaults, _ anim: AnimatorFaults) throws -> AnimatorState {
   // ts: packages/layout/src/rt-animator.ts:413
   if ((!(ms >= 0.0)) || (ms == (1.0 / 0.0))) {
-    throw try AnimatorError(S.s407)
+    throw try AnimatorError(S.s411)
   }
   let transitions: JsArray<RunningTransition?> = try jsMap(s.transitions, { (r: RunningTransition?) throws -> RunningTransition? in
     return try ((r == nil) ? (nil as RunningTransition?) : ((rtTransition_transitionFinished(jsUnwrap(r)) ? (nil as RunningTransition?) : (rtTransition_advanceTransition(jsUnwrap(r), ms, faults) as RunningTransition?)) as RunningTransition?))
@@ -788,11 +788,11 @@ public func rtAnimator_animatorAdvance(_ s: AnimatorState, _ t: AnimTables, _ in
 public func rtAnimator_animatorBusy(_ s: AnimatorState) throws -> Bool {
   // ts: packages/layout/src/rt-animator.ts:422
   do {
-    let _a186 = s.transitions
-    var _i186 = 0
-    while _i186 < _a186.items.count {
-      let r: RunningTransition? = _a186.items[_i186]
-      _i186 += 1
+    let _a192 = s.transitions
+    var _i192 = 0
+    while _i192 < _a192.items.count {
+      let r: RunningTransition? = _a192.items[_i192]
+      _i192 += 1
       // ts: packages/layout/src/rt-animator.ts:422
       if try ((r != nil) && (!rtTransition_transitionFinished(jsUnwrap(r)))) {
         return true
@@ -801,18 +801,18 @@ public func rtAnimator_animatorBusy(_ s: AnimatorState) throws -> Bool {
   }
   // ts: packages/layout/src/rt-animator.ts:423
   do {
-    let _a187 = s.lists
-    var _i187 = 0
-    while _i187 < _a187.items.count {
-      let l: JsArray<RunningAnimation> = _a187.items[_i187]
-      _i187 += 1
+    let _a193 = s.lists
+    var _i193 = 0
+    while _i193 < _a193.items.count {
+      let l: JsArray<RunningAnimation> = _a193.items[_i193]
+      _i193 += 1
       // ts: packages/layout/src/rt-animator.ts:423
       do {
-        let _a188 = l
-        var _i188 = 0
-        while _i188 < _a188.items.count {
-          let a: RunningAnimation = _a188.items[_i188]
-          _i188 += 1
+        let _a194 = l
+        var _i194 = 0
+        while _i194 < _a194.items.count {
+          let a: RunningAnimation = _a194.items[_i194]
+          _i194 += 1
           // ts: packages/layout/src/rt-animator.ts:423
           if try ((!a.paused) && (!rtAnimations_animationFinished(a))) {
             return true
@@ -859,11 +859,11 @@ public func rtAnimator_animatorFrame(_ s: AnimatorState, _ t: AnimTables, _ faul
   var k: Double = 0.0
   // ts: packages/layout/src/rt-animator.ts:446
   do {
-    let _a189 = s.transitions
-    var _i189 = 0
-    while _i189 < _a189.items.count {
-      let r: RunningTransition? = _a189.items[_i189]
-      _i189 += 1
+    let _a195 = s.transitions
+    var _i195 = 0
+    while _i195 < _a195.items.count {
+      let r: RunningTransition? = _a195.items[_i195]
+      _i195 += 1
       let sl: SlotTable? = jsAt(t.slots, k)
       k += 1.0
       // ts: packages/layout/src/rt-animator.ts:449
@@ -905,11 +905,11 @@ public func rtAnimator_closureFrame(_ frame: JsArray<FrameEntry>, _ t: AnimTable
   }
   // ts: packages/layout/src/rt-animator.ts:469
   do {
-    let _a190 = t.closure
-    var _i190 = 0
-    while _i190 < _a190.items.count {
-      let c: ClosureTable = _a190.items[_i190]
-      _i190 += 1
+    let _a196 = t.closure
+    var _i196 = 0
+    while _i196 < _a196.items.count {
+      let c: ClosureTable = _a196.items[_i196]
+      _i196 += 1
       let i: Double = try rtAnimator_indexOfEntry(frame, c.source.node, c.source.property)
       let src: FrameEntry? = jsAt(frame, i)
       // ts: packages/layout/src/rt-animator.ts:472
@@ -918,11 +918,11 @@ public func rtAnimator_closureFrame(_ frame: JsArray<FrameEntry>, _ t: AnimTable
       }
       // ts: packages/layout/src/rt-animator.ts:473
       do {
-        let _a191 = c.writes
-        var _i191 = 0
-        while _i191 < _a191.items.count {
-          let w: TrackRef = _a191.items[_i191]
-          _i191 += 1
+        let _a197 = c.writes
+        var _i197 = 0
+        while _i197 < _a197.items.count {
+          let w: TrackRef = _a197.items[_i197]
+          _i197 += 1
           // ts: packages/layout/src/rt-animator.ts:473
           if try (rtAnimator_indexOfEntry(out, w.node, w.property) < 0.0) {
             try out = jsConcatArrays([out, JsArray<FrameEntry>([FrameEntry(w.node, w.property, jsUnwrap(src).value)])])
@@ -939,11 +939,11 @@ public func rtAnimator_frameColors(_ frame: JsArray<FrameEntry>, _ t: AnimTables
   let out: JsArray<ColorWrite> = JsArray<ColorWrite>([])
   // ts: packages/layout/src/rt-animator.ts:481
   do {
-    let _a192 = try rtAnimator_closureFrame(frame, t, anim)
-    var _i192 = 0
-    while _i192 < _a192.items.count {
-      let e: FrameEntry = _a192.items[_i192]
-      _i192 += 1
+    let _a198 = try rtAnimator_closureFrame(frame, t, anim)
+    var _i198 = 0
+    while _i198 < _a198.items.count {
+      let e: FrameEntry = _a198.items[_i198]
+      _i198 += 1
       // ts: packages/layout/src/rt-animator.ts:481
       if (e.value.kind == S.s_color) {
         _ = try jsPush(out, ColorWrite(e.node, e.property, rtInterpolate_colorRgba8(e.value.color)))
@@ -972,96 +972,96 @@ public func rtAnimator_withLength(_ s: LayoutStyle, _ property: JsString, _ l: L
   let v: any U_LengthCalc_Percent_Px = try rtAnimator_fieldOf(l, range)
   // ts: packages/layout/src/rt-animator.ts:495
   if (property == S.s_top) {
-    return LayoutStyle(s.display, s.position, (v as! any U_Auto_LengthCalc_Percent_Px), s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, (v as! any U_Auto_LengthCalc_Percent_Px), s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:496
   if (property == S.s_right) {
-    return LayoutStyle(s.display, s.position, s.top, (v as! any U_Auto_LengthCalc_Percent_Px), s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, (v as! any U_Auto_LengthCalc_Percent_Px), s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:497
   if (property == S.s_bottom) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, (v as! any U_Auto_LengthCalc_Percent_Px), s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, (v as! any U_Auto_LengthCalc_Percent_Px), s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:498
   if (property == S.s_left) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, (v as! any U_Auto_LengthCalc_Percent_Px), s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, (v as! any U_Auto_LengthCalc_Percent_Px), s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:499
   if (property == S.s_width) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, (v as! any U_Auto_LengthCalc_Percent_Px), s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, (v as! any U_Auto_LengthCalc_Percent_Px), s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:500
   if (property == S.s_height) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, (v as! any U_Auto_LengthCalc_Percent_Px), s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, (v as! any U_Auto_LengthCalc_Percent_Px), s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:501
   if (property == S.s_min_width) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, (v as! any U_Auto_LengthCalc_Percent_Px), s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, (v as! any U_Auto_LengthCalc_Percent_Px), s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:502
   if (property == S.s_min_height) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, (v as! any U_Auto_LengthCalc_Percent_Px), s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, (v as! any U_Auto_LengthCalc_Percent_Px), s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:503
   if (property == S.s_max_width) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, (v as! any U_LengthCalc_NoneValue_Percent_Px), s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, (v as! any U_LengthCalc_NoneValue_Percent_Px), s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:504
   if (property == S.s_max_height) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, (v as! any U_LengthCalc_NoneValue_Percent_Px), s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, (v as! any U_LengthCalc_NoneValue_Percent_Px), s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:505
   if (property == S.s_margin_top) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, (v as! any U_Auto_LengthCalc_Percent_Px), s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, (v as! any U_Auto_LengthCalc_Percent_Px), s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:506
   if (property == S.s_margin_right) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, (v as! any U_Auto_LengthCalc_Percent_Px), s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, (v as! any U_Auto_LengthCalc_Percent_Px), s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:507
   if (property == S.s_margin_bottom) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, (v as! any U_Auto_LengthCalc_Percent_Px), s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, (v as! any U_Auto_LengthCalc_Percent_Px), s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:508
   if (property == S.s_margin_left) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, (v as! any U_Auto_LengthCalc_Percent_Px), s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, (v as! any U_Auto_LengthCalc_Percent_Px), s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:509
   if (property == S.s_padding_top) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, v, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, v, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:510
   if (property == S.s_padding_right) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, v, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, v, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:511
   if (property == S.s_padding_bottom) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, v, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, v, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:512
   if (property == S.s_padding_left) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, v, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, v, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:513
   if (property == S.s_row_gap) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, (v as! any U_LengthCalc_NormalValue_Percent_Px), s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, (v as! any U_LengthCalc_NormalValue_Percent_Px), s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
   // ts: packages/layout/src/rt-animator.ts:514
   if (property == S.s_column_gap) {
-    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, (v as! any U_LengthCalc_NormalValue_Percent_Px), s.textAlign, s.aspectRatio, s.verticalAlign, s.grid, s.gridItem)
+    return LayoutStyle(s.display, s.position, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, (v as! any U_LengthCalc_NormalValue_Percent_Px), s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.grid, s.gridItem)
   }
-  throw try AnimatorError(jsConcat(S.s789, property))
+  throw try AnimatorError(jsConcat(S.s798, property))
 }
 
 // ts: packages/layout/src/rt-animator.ts:518
 public func rtAnimator_rangeOf(_ t: AnimTables, _ node: JsString, _ property: JsString) throws -> JsString {
   // ts: packages/layout/src/rt-animator.ts:519
   do {
-    let _a193 = t.slots
-    var _i193 = 0
-    while _i193 < _a193.items.count {
-      let sl: SlotTable = _a193.items[_i193]
-      _i193 += 1
+    let _a199 = t.slots
+    var _i199 = 0
+    while _i199 < _a199.items.count {
+      let sl: SlotTable = _a199.items[_i199]
+      _i199 += 1
       // ts: packages/layout/src/rt-animator.ts:519
       if ((sl.node == node) && (sl.property == property)) {
         return sl.range
@@ -1070,18 +1070,18 @@ public func rtAnimator_rangeOf(_ t: AnimTables, _ node: JsString, _ property: Js
   }
   // ts: packages/layout/src/rt-animator.ts:520
   do {
-    let _a194 = t.bases
-    var _i194 = 0
-    while _i194 < _a194.items.count {
-      let b: BaseTable = _a194.items[_i194]
-      _i194 += 1
+    let _a200 = t.bases
+    var _i200 = 0
+    while _i200 < _a200.items.count {
+      let b: BaseTable = _a200.items[_i200]
+      _i200 += 1
       // ts: packages/layout/src/rt-animator.ts:520
       if ((b.node == node) && (b.property == property)) {
         return b.range
       }
     }
   }
-  throw try AnimatorError(jsConcat(jsConcat(jsConcat(S.s660, node), S.s2), property))
+  throw try AnimatorError(jsConcat(jsConcat(jsConcat(S.s666, node), S.s2), property))
 }
 
 // ts: packages/layout/src/rt-animator.ts:524
@@ -1089,11 +1089,11 @@ public func rtAnimator_patchStyle(_ id: JsString, _ s: LayoutStyle, _ frame: JsA
   var style: LayoutStyle = s
   // ts: packages/layout/src/rt-animator.ts:526
   do {
-    let _a195 = frame
-    var _i195 = 0
-    while _i195 < _a195.items.count {
-      let e: FrameEntry = _a195.items[_i195]
-      _i195 += 1
+    let _a201 = frame
+    var _i201 = 0
+    while _i201 < _a201.items.count {
+      let e: FrameEntry = _a201.items[_i201]
+      _i201 += 1
       // ts: packages/layout/src/rt-animator.ts:526
       if ((e.node == id) && (e.value.kind == S.s_length)) {
         try style = rtAnimator_withLength(style, e.property, e.value.length, rtAnimator_rangeOf(t, e.node, e.property))
@@ -1134,11 +1134,11 @@ public func rtAnimator_patchInput(_ input: LayoutInput, _ frame: JsArray<FrameEn
   var `any`: Bool = false
   // ts: packages/layout/src/rt-animator.ts:549
   do {
-    let _a196 = frame
-    var _i196 = 0
-    while _i196 < _a196.items.count {
-      let e: FrameEntry = _a196.items[_i196]
-      _i196 += 1
+    let _a202 = frame
+    var _i202 = 0
+    while _i202 < _a202.items.count {
+      let e: FrameEntry = _a202.items[_i202]
+      _i202 += 1
       // ts: packages/layout/src/rt-animator.ts:549
       if (e.value.kind == S.s_length) {
         `any` = true
