@@ -33,8 +33,11 @@ describe('values group registration (fixture-groups/values.ts)', () => {
     // Groups added after the per-feature split run after the legacy groups (fixtures.ts LEGACY_RUN_ORDER).
     expect(FIXTURE_GROUPS.map((g) => g.id).slice(LEGACY_RUN_ORDER.length - 2, LEGACY_RUN_ORDER.length)).toEqual(['values', 'states']);
     // TXT1a-2, T133, TXT-W1 and TXT-W2: every case of the text groups, inline-tags, text-weight and font-shorthand is shaped, so they add no plain vector to the corpus the values- prefix keys.
+    // TXT-W2's one Ahem case (font: inherit over Ahem, the native proof of font-size and line-height inherit) is plain: its vector
+    // sorts among the earlier vectors, before the values group's (corpus-dpr.ts m2VectorCases).
     const shaped = shapedCaseIds();
-    for (const g of FIXTURE_GROUPS.filter((x) => ['text-latin', 'text-calibration', 'inline-tags', 'text-weight', 'font-shorthand'].includes(x.id))) for (const f of g.fixtures) for (const id of layoutCaseIds().filter((x) => x === f.id || x === `${f.id}-rtl`)) expect(shaped.has(id), id).toBe(true);
+    const AHEM = ['font-shorthand-inherit'];
+    for (const g of FIXTURE_GROUPS.filter((x) => ['text-latin', 'text-calibration', 'inline-tags', 'text-weight', 'font-shorthand'].includes(x.id))) for (const f of g.fixtures) for (const id of layoutCaseIds().filter((x) => x === f.id || x === `${f.id}-rtl`)) expect(shaped.has(id), id).toBe(!AHEM.includes(f.id));
     for (const f of VALUES) expect(f.id.startsWith('values-'), f.id).toBe(true);
     for (const f of LAYOUT) expect(f.kind === 'layout' && f.environments, f.id).toEqual(['ltr', 'rtl']);
     expect(LAYOUT.length).toBeGreaterThanOrEqual(25);
